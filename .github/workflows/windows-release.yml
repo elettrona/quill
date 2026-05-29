@@ -6,6 +6,9 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: windows-latest
@@ -13,9 +16,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.12"
       - name: Install test dependencies
-        run: python -m pip install -e .[ui,test]
+        run: python -m pip install -e .[ui,spellcheck,dev]
       - name: Run test suite
         run: pytest
       - name: Verify release corpus
@@ -28,18 +31,80 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.12"
       - name: Install build dependencies
-        run: python -m pip install -e .[ui]
+        run: python -m pip install -e .[ui,spellcheck,dev]
+      - name: Install Inno Setup
+        shell: pwsh
+        run: winget install --id JRSoftware.InnoSetup -e --accept-package-agreements --accept-source-agreements --disable-interactivity
+      - name: Locate Inno Setup compiler
+        shell: pwsh
+        run: |
+          $candidates = @(
+            "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
+            "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+            "C:\Program Files\Inno Setup 6\ISCC.exe"
+          )
+          $match = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $match) { throw 'Could not find ISCC.exe after installing Inno Setup.' }
+          "ISCC_PATH=$match" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Build Windows distribution
-        run: python -m scripts.build_windows_distribution --output-dir windows-distribution
+        run: python scripts/build_windows_distribution.py --bundle-python --compile-installer --iscc-path "$env:ISCC_PATH" --output-dir windows-distribution
+      - name: Generate release artifacts
+        run: python scripts/generate_release_artifacts.py --output-dir release-artifacts --include-optional
       - name: Upload portable bundle
         uses: actions/upload-artifact@v4
         with:
           name: quill-portable
           path: windows-distribution/portable
-      - name: Upload installer template
+      - name: Upload installer executable
         uses: actions/upload-artifact@v4
         with:
-          name: quill-installer-template
+          name: quill-installer
+          path: windows-distribution/installer/Output/Quill-Setup-*.exe
+      - name: Upload installer script
+        uses: actions/upload-artifact@v4
+        with:
+          name: quill-installer-script
           path: windows-distribution/installer/quill.iss
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: quill-release-artifacts
+          path: release-artifacts
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: quill-installer
+          path: release-assets/installer
+      - name: Download portable artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: quill-portable
+          path: release-assets/portable
+      - name: Download release metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: quill-release-artifacts
+          path: release-assets/metadata
+      - name: Archive portable bundle
+        run: |
+          cd release-assets
+          zip -r Quill-Portable-0.1.zip portable
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Quill 0.1 Beta
+          body_path: CHANGELOG.md
+          files: |
+            release-assets/installer/Quill-Setup-*.exe
+            release-assets/Quill-Portable-0.1.zip
+            release-assets/metadata/*.json
+          prerelease: true
