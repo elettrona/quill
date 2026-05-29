@@ -3217,6 +3217,9 @@ class MainFrame:
 
     def _on_editor_key_down(self, event: object) -> None:
         wx = self._wx
+        if event.ControlDown() and event.ShiftDown() and event.GetKeyCode() in (ord("O"), ord("o")):
+            self.open_outline_navigator()
+            return
         f8_key = getattr(wx, "WXK_F8", None)
         if (
             f8_key is not None
@@ -4536,7 +4539,11 @@ class MainFrame:
     def _select_tab(self, index: int) -> None:
         if index < 0 or index >= len(self._document_tabs):
             return
-        self.notebook.SetSelection(index)
+        change_selection = getattr(self.notebook, "ChangeSelection", None)
+        if callable(change_selection):
+            change_selection(index)
+        else:
+            self.notebook.SetSelection(index)
         self._activate_tab(index)
 
     def _active_tab(self) -> _DocumentTab:
@@ -6275,6 +6282,9 @@ class MainFrame:
         self._set_status(f"Moved to {label}")
 
     def open_outline_navigator(self) -> None:
+        if self.document.path is not None and self.document.path.suffix.lower() == ".epub":
+            self.open_epub_navigator()
+            return
         wx = self._wx
         entries = self._outline_entries()
         if not entries:

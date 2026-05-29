@@ -307,9 +307,21 @@ class _KeyEvent:
     def __init__(self, key_code: int) -> None:
         self._key_code = key_code
         self.skipped = False
+        self._control = False
+        self._shift = False
+        self._alt = False
 
     def GetKeyCode(self) -> int:
         return self._key_code
+
+    def ControlDown(self) -> bool:
+        return self._control
+
+    def ShiftDown(self) -> bool:
+        return self._shift
+
+    def AltDown(self) -> bool:
+        return self._alt
 
     def Skip(self) -> None:
         self.skipped = True
@@ -321,6 +333,39 @@ def test_insert_key_toggles_overwrite_mode_status() -> None:
     frame._wx = type("WX", (), {"WXK_INSERT": 45})()
     frame._on_editor_key_down(event)
     assert frame.statusbar.status[2] == "OVR"
+
+
+def test_ctrl_shift_o_opens_outline_navigator_from_editor() -> None:
+    frame = _build_frame("# Title", insertion_point=0)
+    called = {"outline": False}
+
+    def fake_open_outline_navigator() -> None:
+        called["outline"] = True
+
+    frame.open_outline_navigator = fake_open_outline_navigator  # type: ignore[method-assign]
+    event = _KeyEvent(ord("O"))
+    event._control = True
+    event._shift = True
+    frame._wx = type("WX", (), {"WXK_INSERT": 45, "WXK_F8": 119})()
+
+    frame._on_editor_key_down(event)
+
+    assert called["outline"] is True
+
+
+def test_open_outline_navigator_routes_epub_to_epub_navigator() -> None:
+    frame = _build_frame("# EPUB: Book", insertion_point=0)
+    frame.document.path = Path("book.epub")
+    called = {"epub": False}
+
+    def fake_open_epub_navigator() -> None:
+        called["epub"] = True
+
+    frame.open_epub_navigator = fake_open_epub_navigator  # type: ignore[method-assign]
+
+    frame.open_outline_navigator()
+
+    assert called["epub"] is True
 
 
 def test_save_all_files_calls_save_file() -> None:

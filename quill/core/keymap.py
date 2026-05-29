@@ -34,7 +34,6 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "tools.spell_check_dialog": "F7",
     "tools.next_misspelling": "Alt+F7",
     "tools.thesaurus": "Shift+F7",
-    "tools.epub_navigator": "Ctrl+Alt+E",
     "tools.read_aloud_start_pause": "Ctrl+Alt+P",
     "tools.read_aloud_stop": "Ctrl+Alt+S",
     "tools.document_intake_report": "Ctrl+Shift+I",

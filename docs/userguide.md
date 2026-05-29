@@ -313,7 +313,7 @@ These help you stay inside the editor instead of breaking flow for small writing
 - **EPUB Navigator...**
 - **OCR Image...**
 
-Read Aloud is particularly useful for proofreading by ear. EPUB Navigator gives a chapter-aware entry point when working with e-books. OCR Image handles image-to-text work with an explicit consent and progress flow.
+Read Aloud is particularly useful for proofreading by ear. On EPUB files, **Outline Navigator...** is the main keyboard path and opens the chapter-aware navigator, while **EPUB Navigator...** remains available as a menu command alias. OCR Image handles image-to-text work with an explicit consent and progress flow.
 
 #### Document intake and extraction review
 
