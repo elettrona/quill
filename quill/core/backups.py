@@ -13,6 +13,10 @@ def backup_document(document: Document) -> Path:
     backup_root.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     backup_path = backup_root / f"{stamp}.bak"
+    suffix = 1
+    while backup_path.exists():
+        backup_path = backup_root / f"{stamp}-{suffix}.bak"
+        suffix += 1
     with backup_path.open("w", encoding=document.encoding, newline="") as file_handle:
         file_handle.write(document.text)
     return backup_path
