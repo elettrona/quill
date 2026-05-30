@@ -6,7 +6,7 @@
 
 Quill is a screen-reader-first writing and reading environment for Windows. It is designed to feel calm, predictable, deeply keyboard-friendly, and respectful of your focus. It is also ambitious. Quill is not only a place to write plain text. It is a place to open difficult documents, inspect structure, navigate long material, compare revisions, prepare content for Markdown or HTML, and work with accessibility and extraction issues without leaving the editor.
 
-This guide is aligned to Quill 0.1.1 Beta, built by Blind Information Technology Solutions (BITS) together with Community Access.
+This guide is aligned to Quill 0.1.2 Beta, built by Blind Information Technology Solutions (BITS) together with Community Access.
 
 This guide is written as a companion, not a reference wall. Read it from the beginning if you are new to Quill. Dip into the sections that matter most if you already know what kind of work you want to do.
 
@@ -146,6 +146,7 @@ Use `F6` to move into it. Once there, you can move between cells and activate th
 You can reorder or hide status items through **Tools → Customize → Status Bar Settings...**.
 Right-click a focused status cell to **Activate**, **Hide this item**, or open **Status bar settings...**.
 Use **Restore Defaults** in status bar settings to reset visibility and order.
+When title mode is set to full path, Quill automatically hides the duplicate file-path status cell.
 
 ### Region cycling
 
@@ -286,25 +287,28 @@ Inline and structural formatting:
 - Insert table
 - Insert HTML tag
 - Insert Markdown tag
-- Insert snippet (`Ctrl+Space`)
-- Manage snippets (`Ctrl+Alt+Space`)
+- Word prediction (`Ctrl+Space`)
+- Insert snippet (`Ctrl+Alt+Space`)
+- Manage snippets (`Ctrl+Alt+Shift+Space`)
 
 Quill treats Markdown and HTML as working surfaces, not special-purpose export formats. This menu is where that philosophy becomes practical.
 
-### Snippets
+### Word prediction and snippets
 
-Quill 0.1.1 adds a full snippet flow designed for keyboard and screen-reader users:
+Quill 0.1.2 separates live prediction from snippet insertion so the hotkeys feel more like a modern editor:
 
-1. Press `Ctrl+Space` to open **Insert Snippet**.
-2. Type part of a name, trigger, tag, or body text to filter.
-3. Use arrow keys to choose a snippet and press Enter to insert.
-4. If the snippet includes placeholders (`${input:name}`, `${choice:a|b}`, `${date}`, `${time}`, `${cursor}`), Quill prompts in sequence and places the caret at `${cursor}`.
+1. Press `Ctrl+Space` to open **Word Prediction**.
+2. Type to surface matching document words, HTML tags, and Markdown tags.
+3. Use arrow keys to choose a result and press Enter to insert it.
 
 For setup and maintenance:
 
-- Press `Ctrl+Alt+Space` for **Manage Snippets** (create, edit, delete, import, export, and starter packs).
+- Press `Ctrl+Alt+Space` for **Insert Snippet**.
+- Press `Ctrl+Alt+Shift+Space` for **Manage Snippets** (create, edit, delete, import, export, and starter packs).
 - Open **Preferences -> Install Starter Snippet Packs** to install sample libraries for daily writing, developer flow, and support/accessibility notes.
-- In **General Preferences**, toggle **Expand snippet triggers while typing** to enable or disable trigger expansion.
+- In **General Preferences**, toggle **Word prediction and tag IntelliSense** or **Expand snippet triggers while typing** as needed.
+
+Snippets still support placeholders such as `${input:name}`, `${choice:a|b}`, `${date}`, `${time}`, and `${cursor}`.
 
 ### Tools
 
@@ -330,6 +334,19 @@ The palette also learns from usage. Commands you use more often rise naturally.
 - **Next Misspelling**
 - **Thesaurus...**
 - **Dictionary Status...**
+- **Writing Assistant...**
+- **Rewrite Selection**
+- **Summarize Selection**
+- **Continue Writing**
+- **Fix Grammar**
+- **Run Python...**
+- **Browser Preview...** (`Ctrl+Shift+V`)
+
+Browser Preview opens the current document in your chosen browser, defaulting to the system browser. It refreshes as you type so Markdown and HTML changes stay visible without leaving Quill.
+
+The Writing Assistant shell ranks Quill commands from your prompt, offers preset prompts for rewrite/summarize/continue/grammar flows, and Run Python executes a sandboxed transform against the current document text and selection.
+
+Use **Preferences -> AI Connection** to set provider, host, and model. Local Ollama use usually needs no key; if you add one for an authenticated endpoint, Quill stores it with Windows DPAPI.
 
 These help you stay inside the editor instead of breaking flow for small writing chores.
 
@@ -619,10 +636,19 @@ Profiles shape which feature clusters are on, quiet, or off. This helps Quill st
 Use **Profiles and Features...** to:
 
 - switch profiles
+- quick-switch profiles from anywhere with `Alt+Shift+P`
 - compare profiles
 - undo the last profile change
 - reset to Essential
 - import and export profile data
+- create custom profiles
+- update a custom profile from your current feature/settings/keymap state
+- delete custom profiles
+
+Custom profiles support an explicit inheritance choice:
+
+- **Inherit parent profile** keeps the selected built-in profile as the starting point.
+- **Bare-bones start** opts out of inherited features and starts with only locked core safety features enabled.
 
 ### Keyboard packs
 
@@ -758,7 +784,7 @@ That last command matters more than it first appears. It turns feature visibilit
 
 ## Beta Feedback and Bug Reporting
 
-Quill is ready for serious beta use, and Quill 0.1.1 Beta now ships a real in-app support starting point.
+Quill is ready for serious beta use, and Quill 0.1.2 Beta now ships a real in-app support starting point.
 
 ### What exists today
 
@@ -785,7 +811,7 @@ Before the broadest public rollout, publish one secure feedback route that does 
 3. a plain-language bug template with environment summary and reproduction steps
 4. the current **Help -> Report a Bug...** handoff kept as the guided in-app bridge until the fuller route is live
 
-Until that exists, use the current Help-menu path as the practical bridge. The important improvement in Quill 0.1.1 Beta is that Quill now helps users gather diagnostics locally, review what is being shared, and start a structured support report without forcing them to begin outside the tool.
+Until that exists, use the current Help-menu path as the practical bridge. The important improvement in Quill 0.1.2 Beta is that Quill now helps users gather diagnostics locally, review what is being shared, and start a structured support report without forcing them to begin outside the tool.
 
 ## A Fast Shortcut Tour
 

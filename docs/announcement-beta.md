@@ -8,7 +8,7 @@
 
 Quill Beta is here.
 
-This release is Quill 0.1.1 Beta from Blind Information Technology Solutions (BITS) and Community Access.
+This release is Quill 0.1.2 Beta from Blind Information Technology Solutions (BITS) and Community Access.
 
 Quill is a writing, reading, review, and document-intelligence environment for Windows built around a simple idea: powerful tools should feel calm, predictable, and welcoming from the keyboard. The editor is local-first, screen-reader-first, and designed to make serious text work feel steady instead of fragile.
 
@@ -19,6 +19,10 @@ Quill is not only a place to type notes. It is a place to open and write plain t
 It is also a place to grow. Quill now includes guided onboarding for optional external tools, so users can see exactly what helpers such as Pandoc, Tesseract OCR, LibreOffice, and Ghostscript would unlock before they install anything. When Pandoc is present, Quill can open a native conversion wizard and turn supported source files into Markdown, HTML, or plain text surfaces ready for reading, editing, or GLOW-oriented downstream workflows.
 
 This beta also includes a menu discoverability pass. The Tools menu is grouped into plain-language submenus (Writing and Language, Read Aloud, Integrations, Document Intake, Authoring and Automation, Compare Documents, Accessibility, Support, and Customize), and mark-ring wording now reads as Recent Marks (Ring) to lower jargon. The interactive status bar is also fuller: focused cells now expose direct context actions (Activate, Hide this item, Status bar settings), and status bar settings now include Restore Defaults.
+
+Quill 0.1.2 extends that foundation with editor-quality workflow upgrades: word prediction and tag IntelliSense (`Ctrl+Space`), dedicated snippet hotkeys (`Ctrl+Alt+Space` and `Ctrl+Alt+Shift+Space`), browser preview (`Ctrl+Shift+V`), a local Writing Assistant surface with rewrite/summarize/continue/grammar quick actions, and AI connection preferences for local Ollama or custom endpoints with DPAPI-protected optional keys.
+
+This cycle also strengthens customization with custom profiles (including opt-in inheritance or bare-bones starts), a quick profile picker on `Alt+Shift+P`, and cleaner status/title behavior by suppressing duplicate file-path reporting when full-path title mode is enabled.
 
 ## What makes Quill special
 
@@ -84,7 +88,7 @@ If something feels rough, that feedback is valuable. If something delights you, 
 
 We want the beta feedback path to be inclusive and low-friction.
 
-Inside Quill 0.1.1 Beta, the primary feedback path starts in the Help menu.
+Inside Quill 0.1.2 Beta, the primary feedback path starts in the Help menu.
 
 If you want to report a problem, Quill now guides you through it like this:
 
@@ -97,7 +101,7 @@ If you want to report a problem, Quill now guides you through it like this:
 
 That is the intended unified user route. It keeps the work inside Quill for as long as possible, explains what is being shared, and gives the user a clearer handoff into the Community Access support process.
 
-There is still room to improve this over time, especially around future no-login upload flows, but the important point for Quill 0.1.1 Beta is that users should start in **Help**, not by hunting for a GitHub page.
+There is still room to improve this over time, especially around future no-login upload flows, but the important point for Quill 0.1.2 Beta is that users should start in **Help**, not by hunting for a GitHub page.
 
 ## Thank you for trying Quill
 

@@ -277,7 +277,7 @@ def _comment_html_line(line: str) -> str:
     newline = "\n" if line.endswith("\n") else ""
     content = line[:-1] if newline else line
     if not content.strip():
-        return line
+        return f"<!--  -->{newline}"
     return f"<!-- {content} -->{newline}"
 
 
@@ -304,8 +304,6 @@ def _is_prefix_commented_line(line: str, prefix: str) -> bool:
 
 
 def _comment_prefix_line(line: str, prefix: str) -> str:
-    if not line.strip():
-        return line
     newline = "\n" if line.endswith("\n") else ""
     content = line[:-1] if newline else line
     indent_length = len(content) - len(content.lstrip(" \t"))

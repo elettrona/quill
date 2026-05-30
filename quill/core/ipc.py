@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Any, cast
 
 from quill.core.paths import app_data_dir
 
@@ -13,7 +14,8 @@ def try_claim_primary_instance() -> bool:
     if lock_path.exists():
         pid = _read_pid(lock_path)
         if pid is not None and _pid_is_running(pid):
-            return False
+            if not _pid_lock_is_stale(pid, lock_path):
+                return False
         lock_path.unlink(missing_ok=True)
     try:
         fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
@@ -31,21 +33,21 @@ def release_primary_instance() -> None:
         lock_path.unlink(missing_ok=True)
 
 
-def enqueue_open_request(path: Path) -> None:
+def enqueue_open_request(path: Path | None) -> None:
     queue_path = _queue_file_path()
     queue_path.parent.mkdir(parents=True, exist_ok=True)
     with queue_path.open("a", encoding="utf-8", newline="\n") as handle:
-        payload = {"path": str(path)}
+        payload = {"action": "show"} if path is None else {"action": "open", "path": str(path)}
         handle.write(json.dumps(payload, ensure_ascii=True) + "\n")
 
 
-def drain_open_requests() -> list[Path]:
+def drain_open_requests() -> list[Path | None]:
     queue_path = _queue_file_path()
     if not queue_path.exists():
         return []
     lines = queue_path.read_text(encoding="utf-8").splitlines()
     queue_path.unlink(missing_ok=True)
-    requests: list[Path] = []
+    requests: list[Path | None] = []
     for line in lines:
         if not line.strip():
             continue
@@ -53,7 +55,13 @@ def drain_open_requests() -> list[Path]:
             raw = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if isinstance(raw, dict) and isinstance(raw.get("path"), str):
+        if not isinstance(raw, dict):
+            continue
+        action = str(raw.get("action", "open")).strip().lower()
+        if action == "show":
+            requests.append(None)
+            continue
+        if isinstance(raw.get("path"), str):
             requests.append(Path(raw["path"]))
     return requests
 
@@ -96,3 +104,50 @@ def _pid_is_running(pid: int) -> bool:
     except OSError:
         return False
     return True
+
+
+def _pid_lock_is_stale(pid: int, lock_path: Path) -> bool:
+    if os.name != "nt":
+        return False
+    process_started = _pid_creation_time(pid)
+    if process_started is None:
+        return False
+    lock_mtime = lock_path.stat().st_mtime
+    return process_started > lock_mtime + 2.0
+
+
+def _pid_creation_time(pid: int) -> float | None:
+    if os.name != "nt":
+        return None
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.windll.kernel32
+    process_query_limited_information = 0x1000
+    handle = kernel32.OpenProcess(process_query_limited_information, False, pid)
+    if not handle:
+        return None
+    creation_time = wintypes.FILETIME()
+    exit_time = wintypes.FILETIME()
+    kernel_time = wintypes.FILETIME()
+    user_time = wintypes.FILETIME()
+    try:
+        if not kernel32.GetProcessTimes(
+            handle,
+            ctypes.byref(creation_time),
+            ctypes.byref(exit_time),
+            ctypes.byref(kernel_time),
+            ctypes.byref(user_time),
+        ):
+            return None
+        return _filetime_to_timestamp(creation_time)
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def _filetime_to_timestamp(filetime: object) -> float:
+    ft = cast(Any, filetime)
+    low = int(ft.dwLowDateTime)
+    high = int(ft.dwHighDateTime)
+    value = (high << 32) | low
+    return value / 10_000_000 - 11_644_473_600

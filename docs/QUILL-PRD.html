@@ -243,7 +243,7 @@ Document</h1>
 id="a-magical-screen-reader-first-writing-and-document-environment-built-in-wxpython">A
 magical, screen-reader-first writing and document environment, built in
 wxPython.</h2>
-<p>Status: Quill 1.0 PRD aligned with Quill 0.1.1 Beta Owner: Blind
+<p>Status: Quill 1.0 PRD aligned with Quill 0.1.2 Beta Owner: Blind
 Information Technology Solutions (BITS) and Community Access Target
 platform: Windows 10 and Windows 11 Target screen readers: NVDA
 (primary), JAWS, Narrator UI framework: wxPython (wxWidgets 3.2 or
@@ -1809,15 +1809,20 @@ one-time format chooser that the user can re-open from Settings).</li>
 <code>%APPDATA%\Quill\templates\</code>. Ships with: Markdown article,
 Meeting notes, Daily journal, Letter, Issue report, README, Changelog,
 MIT license header, Markdown blog post with front-matter.</li>
+<li><strong>Word prediction</strong>: <code>Ctrl+Space</code> opens an
+IntelliSense-style picker for document words plus HTML and Markdown tag
+completions. It can also run automatically while typing when enabled in
+Settings.</li>
 <li><strong>Snippets</strong>: per-format snippet packs with trigger +
-Tab expansion. Off by default in prose, on by default in code. Editable
-in Settings.</li>
+Tab expansion. <code>Ctrl+Alt+Space</code> opens Insert Snippet;
+<code>Ctrl+Alt+Shift+Space</code> opens Manage Snippets. Off by default
+in prose, on by default in code. Editable in Settings.</li>
 <li><strong>Save options</strong> (per document and per workspace): trim
 trailing whitespace on save, ensure final newline, normalise line
 endings on save.</li>
 <li><strong>Smart paste</strong>: by default, strip rich-text formatting
-when pasting from sources that include it. <code>Ctrl+Shift+V</code>
-pastes the original payload.</li>
+when pasting from sources that include it. Browser Preview uses
+<code>Ctrl+Shift+V</code>.</li>
 <li><strong>Sessions</strong>: <code>File &gt; Save Session…</code> and
 <code>File &gt; Open Session…</code> preserve the set of open documents
 and per-document cursor position.</li>
@@ -1858,21 +1863,21 @@ by Emacs but adapted to Windows muscle memory. Marks are
 <strong>temporary jump points</strong>; bookmarks (5.10) are named and
 more durable.</p>
 <ul>
-<li><code>Ctrl+</code>Space (overloaded carefully; the editor does not
-need plain Ctrl+Space) sets an anonymous mark at the cursor; status bar
-briefly announces <code>Mark set</code>.</li>
-<li><code>Ctrl+Shift+</code>Space pops to the most recent mark; further
-presses walk back through the ring.</li>
-<li><code>Ctrl+Alt+</code>Space exchanges point (cursor) and mark,
-useful for jumping to where the user was and back.</li>
+<li><code>Ctrl+Shift+M</code> sets an anonymous mark at the cursor;
+status bar briefly announces <code>Mark set</code>.</li>
+<li><code>Ctrl+M</code> pops to the most recent mark; further presses
+walk back through the ring.</li>
+<li><code>Ctrl+Shift+X</code> exchanges point (cursor) and mark, useful
+for jumping to where the user was and back.</li>
 <li><code>Edit → Mark Ring → List Marks…</code> shows the ring in a
 stock <code>wx.ListBox</code> with document, line, column, and
 surrounding text snippet.</li>
 <li>Up to 50 marks in a circular buffer per session. Marks do not
 persist across sessions in v1.0.</li>
-<li>All keystrokes reassignable. Default may be overridden by users for
-whom <code>Ctrl+Space</code> collides with screen-reader features; the
-conflict detector (8.4) flags the well-known cases at install time.</li>
+<li>All keystrokes reassignable. <code>Ctrl+Space</code> is reserved for
+Word Prediction by default, so users who rely on another screen-reader
+chord can reassign it; the conflict detector (8.4) flags the well-known
+cases at install time.</li>
 </ul>
 <h3 id="525-read-aloud-secondary-voice-not-the-screen-reader">5.25 Read
 Aloud (secondary voice, not the screen reader)</h3>
@@ -1971,9 +1976,11 @@ Insert Numbered List, Insert Task List, Insert Table…, Insert Link…,
 Insert Code Block, Insert Footnote.</li>
 <li>Magical tag helpers: Insert HTML Tag… (with attribute picker) and
 Insert Markdown Tag… (semantic snippet picker).</li>
-<li>Snippet helpers: Insert Snippet… (<code>Ctrl+Space</code>) and
-Manage Snippets… (<code>Ctrl+Alt+Space</code>) with searchable
+<li>Snippet helpers: Insert Snippet… (<code>Ctrl+Alt+Space</code>) and
+Manage Snippets… (<code>Ctrl+Alt+Shift+Space</code>) with searchable
 filtering, placeholder prompts, and starter-pack onboarding.</li>
+<li>Prediction helpers: Word Prediction… (<code>Ctrl+Space</code>) with
+words, HTML tags, and Markdown tag completions.</li>
 <li>Surface-aware formatting shortcuts (Markdown/HTML only):
 <code>Ctrl+B</code> bold, <code>Ctrl+I</code> italic, and heading levels
 <code>Ctrl+Alt+1</code> through <code>Ctrl+Alt+6</code>.</li>
@@ -2024,6 +2031,20 @@ searchable picker pattern used across Quill insertion flows.</li>
 via General Preferences.</li>
 <li>Starter packs are installable from Preferences and snippet
 management so onboarding can begin with practical templates.</li>
+</ul>
+<h3 id="529c-word-prediction-and-tag-intellisense">5.29c Word prediction
+and tag IntelliSense</h3>
+<ul>
+<li><code>Ctrl+Space</code> opens a prediction picker that reuses the
+same accessible searchable-pattern UX as other insertion dialogs.</li>
+<li>Predictions draw from the current document words, the merged spell
+dictionaries, and the HTML/Markdown tag vocabularies Quill already
+ships.</li>
+<li>When enabled in General Preferences, the same helper can
+auto-refresh while typing so the prediction list follows the current
+fragment.</li>
+<li>Accepting a prediction inserts the chosen word or tag completion at
+the caret; Escape dismisses the popup without changing text.</li>
 </ul>
 <h3 id="530-bookmark-export-and-import">5.30 Bookmark export and
 import</h3>
@@ -5453,6 +5474,12 @@ once we have telemetry on user save patterns.</li>
 screen-reader-optimised composer dialog whose Enter sends back to the
 main editor at the cursor. Useful for slow-speech users; needs user
 testing to confirm it is worth the surface area. Backlog for v1.1.</li>
+<li><strong>Full model-driven AI assistant runtime.</strong> Quill now
+ships a local Writing Assistant shell, prompt presets, generated tool
+catalog, assistant onboarding, AI connection preferences, and sandboxed
+Python runner; local Ollama can run without keys, while optional
+authenticated endpoint keys are stored via DPAPI. The CPU model backend
+and model download manager remain future work.</li>
 </ul>
 <h3
 id="174-explicitly-out-of-scope-for-quill-any-version-unless-re-evaluated">17.4
@@ -5476,10 +5503,10 @@ is post-v2 at earliest. The <code>core/</code> layer has no
 <em>committed</em>.</li>
 <li><strong>Voice input / dictation.</strong> Use Windows dictation;
 Quill does not reinvent it.</li>
-<li><strong>AI authoring assistant.</strong> No autocomplete, no
-paragraph rewriting, no "continue my thought" in v1.0. The AI surface is
-strictly reading-order repair and OCR escalation — both opt-in, both
-gated.</li>
+<li><strong>AI authoring assistant.</strong> The current build exposes a
+local Writing Assistant shell, prompt presets, AI connection preferences,
+and a sandboxed Python tool. The full CPU model backend for autocomplete,
+rewriting, and "continue my thought" remains future work.</li>
 <li><strong>Project workspaces and Find in Folder.</strong> Deferred to
 v1.2 (see 17.2).</li>
 <li><strong>Embedded media playback inside documents.</strong> Out of

@@ -185,7 +185,7 @@ Quill is not only a place to write plain text. It is a place to open
 difficult documents, inspect structure, navigate long material, compare
 revisions, prepare content for Markdown or HTML, and work with
 accessibility and extraction issues without leaving the editor.</p>
-<p>This guide is aligned to Quill 0.1.1 Beta, built by Blind Information
+<p>This guide is aligned to Quill 0.1.2 Beta, built by Blind Information
 Technology Solutions (BITS) together with Community Access.</p>
 <p>This guide is written as a companion, not a reference wall. Read it
 from the beginning if you are new to Quill. Dip into the sections that
@@ -528,37 +528,41 @@ markup-aware editing.</p>
 <li>Insert table</li>
 <li>Insert HTML tag</li>
 <li>Insert Markdown tag</li>
-<li>Insert snippet (<code>Ctrl+Space</code>)</li>
-<li>Manage snippets (<code>Ctrl+Alt+Space</code>)</li>
+<li>Word prediction (<code>Ctrl+Space</code>)</li>
+<li>Insert snippet (<code>Ctrl+Alt+Space</code>)</li>
+<li>Manage snippets (<code>Ctrl+Alt+Shift+Space</code>)</li>
 </ul>
 <p>Quill treats Markdown and HTML as working surfaces, not
 special-purpose export formats. This menu is where that philosophy
 becomes practical.</p>
-<h3 id="snippets">Snippets</h3>
-<p>Quill 0.1.1 adds a full snippet flow designed for keyboard and
-screen-reader users:</p>
+<h3 id="word-prediction-and-snippets">Word prediction and snippets</h3>
+<p>Quill 0.1.2 separates live prediction from snippet insertion so the
+hotkeys feel more like a modern editor:</p>
 <ol type="1">
-<li>Press <code>Ctrl+Space</code> to open <strong>Insert
-Snippet</strong>.</li>
-<li>Type part of a name, trigger, tag, or body text to filter.</li>
-<li>Use arrow keys to choose a snippet and press Enter to insert.</li>
-<li>If the snippet includes placeholders (<code>${input:name}</code>,
-<code>${choice:a|b}</code>, <code>${date}</code>, <code>${time}</code>,
-<code>${cursor}</code>), Quill prompts in sequence and places the caret
-at <code>${cursor}</code>.</li>
+<li>Press <code>Ctrl+Space</code> to open <strong>Word
+Prediction</strong>.</li>
+<li>Type to surface matching document words, HTML tags, and Markdown
+tags.</li>
+<li>Use arrow keys to choose a result and press Enter to insert it.</li>
 </ol>
 <p>For setup and maintenance:</p>
 <ul>
-<li>Press <code>Ctrl+Alt+Space</code> for <strong>Manage
+<li>Press <code>Ctrl+Alt+Space</code> for <strong>Insert
+Snippet</strong>.</li>
+<li>Press <code>Ctrl+Alt+Shift+Space</code> for <strong>Manage
 Snippets</strong> (create, edit, delete, import, export, and starter
 packs).</li>
 <li>Open <strong>Preferences -&gt; Install Starter Snippet
 Packs</strong> to install sample libraries for daily writing, developer
 flow, and support/accessibility notes.</li>
-<li>In <strong>General Preferences</strong>, toggle <strong>Expand
-snippet triggers while typing</strong> to enable or disable trigger
-expansion.</li>
+<li>In <strong>General Preferences</strong>, toggle <strong>Word
+prediction and tag IntelliSense</strong> or <strong>Expand snippet
+triggers while typing</strong> as needed.</li>
 </ul>
+<p>Snippets still support placeholders such as
+<code>${input:name}</code>, <code>${choice:a|b}</code>,
+<code>${date}</code>, <code>${time}</code>, and
+<code>${cursor}</code>.</p>
 <h3 id="tools">Tools</h3>
 <p>The <strong>Tools</strong> menu is Quill's workshop. It contains
 high-value actions that are not best understood as raw editing.</p>
@@ -583,9 +587,26 @@ naturally.</p>
 <li><strong>Next Misspelling</strong></li>
 <li><strong>Thesaurus...</strong></li>
 <li><strong>Dictionary Status...</strong></li>
+<li><strong>Writing Assistant...</strong></li>
+<li><strong>Rewrite Selection</strong></li>
+<li><strong>Summarize Selection</strong></li>
+<li><strong>Continue Writing</strong></li>
+<li><strong>Fix Grammar</strong></li>
+<li><strong>Run Python...</strong></li>
+<li><strong>Browser Preview...</strong> (<code>Ctrl+Shift+V</code>)</li>
 </ul>
 <p>These help you stay inside the editor instead of breaking flow for
 small writing chores.</p>
+<p>Browser Preview opens the current document in your chosen browser,
+defaulting to the system browser. It refreshes as you type so Markdown and
+HTML changes stay visible without leaving Quill.</p>
+<p>The Writing Assistant shell ranks Quill commands from your prompt,
+offers preset prompts for rewrite/summarize/continue/grammar flows, and Run
+Python executes a sandboxed transform against the current document text and
+selection.</p>
+<p>Use <strong>Preferences -&gt; AI Connection</strong> to set provider,
+host, and model. Local Ollama use usually needs no key; if you add one for
+an authenticated endpoint, Quill stores it with Windows DPAPI.</p>
 <h4 id="read-aloud-and-integrations">Read aloud and integrations</h4>
 <ul>
 <li><strong>Read Aloud</strong> submenu for start or pause, stop, and
@@ -1071,7 +1092,7 @@ have disappeared.</li>
 feature visibility from a mystery into an explanation.</p>
 <h2 id="beta-feedback-and-bug-reporting">Beta Feedback and Bug
 Reporting</h2>
-<p>Quill is ready for serious beta use, and Quill 0.1.1 Beta now ships a
+<p>Quill is ready for serious beta use, and Quill 0.1.2 Beta now ships a
 real in-app support starting point.</p>
 <h3 id="what-exists-today">What exists today</h3>
 <p>Today, Quill already has the foundations for careful support
@@ -1108,7 +1129,7 @@ reproduction steps</li>
 as the guided in-app bridge until the fuller route is live</li>
 </ol>
 <p>Until that exists, use the current Help-menu path as the practical
-bridge. The important improvement in Quill 0.1.1 Beta is that Quill now
+bridge. The important improvement in Quill 0.1.2 Beta is that Quill now
 helps users gather diagnostics locally, review what is being shared, and
 start a structured support report without forcing them to begin outside
 the tool.</p>

@@ -33,6 +33,11 @@ def test_toggle_line_comment_prefix_style() -> None:
     assert uncommented == text
 
 
+def test_toggle_line_comment_prefix_style_on_blank_line() -> None:
+    commented, _, _ = toggle_line_comment("", 0, 0, Path("script.py"))
+    assert commented == "# "
+
+
 def test_toggle_line_comment_html_style() -> None:
     text = "hello\nworld"
     commented, _, _ = toggle_line_comment(text, 0, len(text), Path("notes.md"))
@@ -40,6 +45,11 @@ def test_toggle_line_comment_html_style() -> None:
 
     uncommented, _, _ = toggle_line_comment(commented, 0, len(commented), Path("notes.md"))
     assert uncommented == text
+
+
+def test_toggle_line_comment_html_style_on_blank_line() -> None:
+    commented, _, _ = toggle_line_comment("", 0, 0, Path("notes.md"))
+    assert commented == "<!--  -->"
 
 
 def test_toggle_block_comment_wraps_and_unwraps() -> None:

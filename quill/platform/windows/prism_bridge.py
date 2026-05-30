@@ -4,6 +4,11 @@ from dataclasses import dataclass, replace
 from importlib import import_module
 from typing import Any
 
+try:
+    import pyttsx3  # type: ignore[import-untyped]
+except ImportError:  # pragma: no cover - optional runtime dependency
+    pyttsx3 = None
+
 _VALID_BACKENDS = {"auto", "prism", "status_only"}
 
 
@@ -77,6 +82,24 @@ class AnnouncementEngine:
 
     def announce(self, message: str) -> str | None:
         if self._runtime_backend is None:
+            if self._state.requested_backend == "auto" and pyttsx3 is not None:
+                try:
+                    engine = pyttsx3.init()
+                    try:
+                        engine.say(message)
+                        engine.runAndWait()
+                    finally:
+                        engine.stop()
+                    self._state = replace(
+                        self._state,
+                        active_backend="speech",
+                        backend_name="System Speech",
+                        last_error="",
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    error = f"System speech announcement failed: {exc}"
+                    self._state = replace(self._state, last_error=error)
+                    return error
             return None
         speak = getattr(self._runtime_backend, "speak", None)
         if not callable(speak):

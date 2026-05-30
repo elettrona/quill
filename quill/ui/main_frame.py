@@ -8,7 +8,7 @@ import time
 import unicodedata
 import webbrowser
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -27,9 +27,28 @@ from quill.core.a11y_regions import (
 )
 from quill.core.autosave import autosave_document
 from quill.core.backups import backup_document, list_backups
+from quill.core.browser_preview import (
+    available_browser_options,
+    browser_choice_label_for_value,
+    browser_choice_value_for_label,
+    file_url,
+    guess_preview_kind,
+    normalize_browser_choice,
+    open_preview_url,
+    preview_anchor_for_text,
+    render_preview_html,
+)
 from quill.core.bookmarks import bookmark_names, bookmark_position, set_bookmark
 from quill.core.commands import CommandRegistry
 from quill.core.contrast import render_contrast_report, validate_theme_contrast
+from quill.core.custom_profiles import (
+    CustomProfile,
+    build_bare_bones_profile_data,
+    build_parent_profile_data,
+    generate_custom_profile_id,
+    load_custom_profiles,
+    save_custom_profiles,
+)
 from quill.core.diagnostics import (
     build_bug_report_payload,
     build_diagnostics_review_text,
@@ -46,9 +65,19 @@ from quill.core.external_tools import (
     get_external_tool_statuses,
 )
 from quill.core.features import (
+    FEATURE_DEFINITIONS,
     PROFILE_DEFINITIONS,
+    PROFILE_ESSENTIAL,
     FeatureManager,
-    features_path,
+)
+from quill.core.file_search import (
+    FileReplaceReport,
+    FileSearchReport,
+    render_replace_preview,
+    render_replace_report,
+    render_search_report,
+    replace_files,
+    search_files,
 )
 from quill.core.format_ops import (
     convert_indentation_to_spaces,
@@ -112,6 +141,13 @@ from quill.core.navigation import (
     previous_heading_start,
 )
 from quill.core.notifications import add_notification, clear_notifications, load_notifications
+from quill.core.assistant import render_assistant_prompt
+from quill.core.onboarding import (
+    load_assistant_onboarding_complete,
+    load_onboarding_complete,
+    mark_assistant_onboarding_complete,
+    mark_onboarding_complete,
+)
 from quill.core.outline import OutlineEntry, extract_outline_entries
 from quill.core.paths import app_data_dir, ensure_app_directories
 from quill.core.read_aloud import (
@@ -144,6 +180,12 @@ from quill.core.sessions import (
     save_session as save_session_file,
 )
 from quill.core.settings import STATUS_BAR_ITEMS, Settings, load_settings, save_settings
+from quill.core.intellisense import (
+    IntellisenseContext,
+    IntellisenseSuggestion,
+    build_intellisense_suggestions,
+    collect_document_words,
+)
 from quill.core.snippets import (
     ExpansionResult as SnippetExpansionResult,
 )
@@ -177,6 +219,7 @@ from quill.core.spellcheck import (
 from quill.core.spellcheck import (
     previous_misspelling as find_previous_misspelling,
 )
+from quill.core.sticky_notes import save_sticky_note
 from quill.core.structure_nav import (
     find_matching_bracket,
     next_structure_position,
@@ -206,6 +249,15 @@ from quill.core.updates import (
     is_newer_version,
 )
 from quill.core.url_ops import format_content_length, host_for_url, is_cross_host_redirect
+from quill.core.yaml_structure import (
+    YamlNode,
+    YamlNodeKind,
+    add_yaml_child,
+    add_yaml_sibling,
+    delete_yaml_node,
+    extract_yaml_nodes,
+    rename_yaml_node,
+)
 from quill.io.pandoc import (
     PandocConversionError,
     PandocUnavailableError,
@@ -228,6 +280,12 @@ from quill.platform.windows.sr_announce import (
 )
 from quill.platform.windows.sr_detect import detect_screen_reader
 from quill.ui.palette import CommandPaletteDialog
+from quill.ui.sticky_notes import StickyNoteEditorDialog, StickyNotesVaultDialog
+from quill.ui.assistant_tools import (
+    AssistantConnectionDialog,
+    RunPythonDialog,
+    WritingAssistantDialog,
+)
 
 
 @dataclass(slots=True)
@@ -250,6 +308,14 @@ class _NavigatorNode:
 class _EpubNavigatorTarget:
     chapter_index: int
     heading_index: int | None = None
+
+
+@dataclass(slots=True)
+class _BrowserPreviewSession:
+    tab_index: int
+    preview_path: Path
+    browser_choice: str
+    title: str
 
 
 @dataclass(slots=True)
@@ -279,6 +345,89 @@ class _CompareSession:
     groups: list[_CompareDifferenceGroup]
     current_index: int = 0
     synchronized_navigation: bool = True
+
+
+@dataclass(slots=True)
+class _FileSearchRequest:
+    root: Path
+    pattern: str
+    query: str
+    replacement: str | None
+    options: SearchOptions
+    output_mode: str
+    preview_before_replace: bool
+
+
+class _IntellisensePopup:
+    def __init__(self, wx: object, parent: object) -> None:
+        self._wx = wx
+        self._accept_callback = None
+        self.frame = wx.Frame(
+            parent,
+            title="Word Prediction",
+            style=wx.FRAME_NO_TASKBAR | wx.STAY_ON_TOP | wx.BORDER_SIMPLE,
+        )
+        self.frame.SetSize((420, 220))
+        root = wx.BoxSizer(wx.VERTICAL)
+        self.status = wx.StaticText(self.frame, label="")
+        root.Add(self.status, 0, wx.EXPAND | wx.ALL, 6)
+        self.listbox = wx.ListBox(self.frame)
+        root.Add(self.listbox, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+        self.frame.SetSizer(root)
+        self.suggestions: list[IntellisenseSuggestion] = []
+        self.frame.Bind(wx.EVT_CLOSE, self._on_close)
+        self.listbox.Bind(wx.EVT_LISTBOX_DCLICK, self._on_accept)
+
+    def set_accept_callback(self, callback: object) -> None:
+        self._accept_callback = callback
+
+    def _on_close(self, event: object) -> None:
+        self.frame.Hide()
+        skip = getattr(event, "Skip", None)
+        if callable(skip):
+            skip()
+
+    def _on_accept(self, _event: object) -> None:
+        if callable(self._accept_callback):
+            self._accept_callback()
+
+    def update(self, suggestions: list[IntellisenseSuggestion], status: str) -> None:
+        self.suggestions = list(suggestions)
+        labels = [item.label for item in suggestions]
+        self.listbox.Set(labels)
+        if labels:
+            self.listbox.SetSelection(0)
+        self.status.SetLabel(status)
+
+    def show(self, position: tuple[int, int]) -> None:
+        self.frame.SetPosition(position)
+        show_without_activating = getattr(self.frame, "ShowWithoutActivating", None)
+        if callable(show_without_activating):
+            show_without_activating()
+        else:
+            self.frame.Show(True)
+        self.frame.Raise()
+
+    def hide(self) -> None:
+        self.frame.Hide()
+
+    def is_visible(self) -> bool:
+        return bool(self.frame.IsShown())
+
+    def selection_index(self) -> int:
+        return self.listbox.GetSelection()
+
+    def set_selection(self, index: int) -> None:
+        if not self.suggestions:
+            return
+        index = max(0, min(index, len(self.suggestions) - 1))
+        self.listbox.SetSelection(index)
+
+    def selected_suggestion(self) -> IntellisenseSuggestion | None:
+        index = self.listbox.GetSelection()
+        if index < 0 or index >= len(self.suggestions):
+            return None
+        return self.suggestions[index]
 
 
 class MainFrame:
@@ -352,10 +501,15 @@ class MainFrame:
         self._safe_mode = safe_mode
         self.document = Document()
         ensure_app_directories()
-        self._first_run_profile_prompt = not safe_mode and not features_path().exists()
+        self._first_run_profile_prompt = not safe_mode and not load_onboarding_complete()
         self.features = FeatureManager.load(persistent=not safe_mode)
         self.macros = MacroManager.load(persistent=not safe_mode)
         self.settings = load_settings()
+        self._first_run_assistant_prompt = (
+            not safe_mode
+            and not load_assistant_onboarding_complete()
+            and not getattr(self.settings, "assistant_enabled", False)
+        )
         if safe_mode:
             self.settings.theme = "system"
             self.settings.tray_enabled = False
@@ -364,6 +518,7 @@ class MainFrame:
             self.settings.start_with_no_document_open = False
             self.settings.announcement_backend = "status_only"
             self.settings.announcement_trace_enabled = False
+            self.settings.assistant_enabled = False
         self.keymap = dict(DEFAULT_KEYMAP) if safe_mode else load_keymap()
         self.recent_files = [] if safe_mode else load_recent_files()
         self._trusted_locations = set() if safe_mode else load_trusted_locations()
@@ -393,11 +548,13 @@ class MainFrame:
         self._extend_selection_mode = False
         self._extend_selection_anchor: int | None = None
         self._epub_book: EpubBook | None = None
+        self._browser_preview_session: _BrowserPreviewSession | None = None
         self._bookmarks: dict[str, int] = {}
         self._tray_icon: object | None = None
         self._is_exiting = False
         self._ipc_timer: object | None = None
         self._status_message = "Ready"
+        self._background_task_count = 0
         self._last_intake_report = ""
         self._startup_deferred_ran = False
         self._compare_session: _CompareSession | None = None
@@ -415,6 +572,12 @@ class MainFrame:
             load_snippet_library() if not safe_mode else SnippetLibrary(version=1, snippets=[])
         )
         self._snippet_expansion_guard = False
+        self._intellisense_popup: _IntellisensePopup | None = None
+        self._intellisense_context: IntellisenseContext | None = None
+        self._intellisense_fragment_text = ""
+        self._intellisense_suggestions: list[IntellisenseSuggestion] = []
+        self._intellisense_guard = False
+        self._sticky_note_hotkey_id = wx.NewIdRef()
         self.commands = CommandRegistry()
         self.commands.set_run_listener(self._on_command_run)
         self._recent_menu_ids: dict[int, Path] = {}
@@ -423,13 +586,20 @@ class MainFrame:
         self._recent_sessions = [] if safe_mode else load_recent_sessions()
 
         self.frame = wx.Frame(None, title="Untitled - Quill", size=(1000, 700))
-        self.notebook = wx.Notebook(self.frame)
+        self._intellisense_popup = _IntellisensePopup(wx, self.frame)
+        self._intellisense_popup.set_accept_callback(self._apply_intellisense_selection)
+        self._tab_control_visible = bool(self.settings.show_tab_control)
+        self._documents_panel = wx.Panel(self.frame)
+        self._documents_sizer = wx.BoxSizer(wx.VERTICAL)
+        self._documents_panel.SetSizer(self._documents_sizer)
+        self.notebook = self._create_tab_host(self._tab_control_visible)
         self._document_tabs: list[_DocumentTab] = []
         self._active_tab_index = -1
         self._statusbar_cells: list[_StatusBarCell] = []
         self._active_statusbar_cell_index = 0
         layout = wx.BoxSizer(wx.VERTICAL)
-        layout.Add(self.notebook, 1, wx.EXPAND)
+        self._documents_sizer.Add(self.notebook, 1, wx.EXPAND)
+        layout.Add(self._documents_panel, 1, wx.EXPAND)
         self.statusbar = wx.Panel(self.frame)
         self._statusbar_sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.statusbar.SetSizer(self._statusbar_sizer)
@@ -444,6 +614,7 @@ class MainFrame:
         self._build_menu()
         self._refresh_sessions_menu()
         self._apply_accelerators()
+        self._reload_global_hotkeys()
         self._bind_events()
         self._apply_startup_document_preference()
         self._apply_announcement_trace_setting()
@@ -488,7 +659,7 @@ class MainFrame:
             return
         self._empty_workspace_active = True
         self.editor.SetEditable(False)
-        self.notebook.SetPageText(0, "Start")
+        self._set_tab_page_text(0, "Start")
         self._set_status("No document open. Use File > New or File > Open.")
 
     def _clear_empty_workspace_state(self) -> None:
@@ -496,7 +667,7 @@ class MainFrame:
             return
         self._empty_workspace_active = False
         self.editor.SetEditable(True)
-        self.notebook.SetPageText(self._current_tab_index(), self.document.name)
+        self._set_tab_page_text(self._current_tab_index(), self.document.name)
 
     def _build_commands(self) -> None:
         self.commands.register(
@@ -551,12 +722,6 @@ class MainFrame:
             "file.page_setup",
             "Page Setup...",
             self.page_setup,
-            None,
-        )
-        self.commands.register(
-            "file.print_preview",
-            "Print Preview...",
-            self.print_preview,
             None,
         )
         self.commands.register(
@@ -650,6 +815,12 @@ class MainFrame:
             self._binding_for("view.toggle_soft_wrap"),
         )
         self.commands.register(
+            "view.toggle_tab_control",
+            "Toggle Tab Control",
+            self.toggle_tab_control,
+            self._binding_for("view.toggle_tab_control"),
+        )
+        self.commands.register(
             "view.toggle_find_wrap",
             "Toggle Find Wrap",
             self.toggle_find_wrap,
@@ -671,6 +842,54 @@ class MainFrame:
             "view.toggle_spellcheck_as_you_type",
             "Toggle Spell Check As You Type",
             self.toggle_spellcheck_as_you_type,
+            None,
+        )
+        self.commands.register(
+            "view.toggle_intellisense_as_you_type",
+            "Toggle Word Prediction As You Type",
+            self.toggle_intellisense_as_you_type,
+            None,
+        )
+        self.commands.register(
+            "view.browser_preview",
+            "Browser Preview",
+            self.preview_in_browser,
+            self._binding_for("view.browser_preview"),
+        )
+        self.commands.register(
+            "tools.ai_assistant",
+            "Writing Assistant",
+            self.open_writing_assistant,
+            None,
+        )
+        self.commands.register(
+            "tools.ai_rewrite_selection",
+            "Rewrite Selection",
+            self.open_ai_rewrite_selection,
+            None,
+        )
+        self.commands.register(
+            "tools.ai_summarize_selection",
+            "Summarize Selection",
+            self.open_ai_summarize_selection,
+            None,
+        )
+        self.commands.register(
+            "tools.ai_continue_writing",
+            "Continue Writing",
+            self.open_ai_continue_writing,
+            None,
+        )
+        self.commands.register(
+            "tools.ai_fix_grammar",
+            "Fix Grammar",
+            self.open_ai_fix_grammar,
+            None,
+        )
+        self.commands.register(
+            "tools.run_python",
+            "Run Python",
+            self.run_python_tool,
             None,
         )
         self.commands.register(
@@ -786,6 +1005,18 @@ class MainFrame:
             "Word Count...",
             self.show_word_count,
             self._binding_for("tools.word_count"),
+        )
+        self.commands.register(
+            "tools.sticky_notes",
+            "Sticky Notes...",
+            self.manage_sticky_notes,
+            None,
+        )
+        self.commands.register(
+            "tools.sticky_note_capture",
+            "New Sticky Note...",
+            self.create_sticky_note,
+            self._binding_for("tools.sticky_note_capture"),
         )
         self.commands.register(
             "tools.spell_check_dialog",
@@ -1136,6 +1367,18 @@ class MainFrame:
             None,
         )
         self.commands.register(
+            "help.open_logs_folder",
+            "Open Logs Folder",
+            self.open_logs_folder,
+            None,
+        )
+        self.commands.register(
+            "help.open_diagnostics_folder",
+            "Open Diagnostics Folder",
+            self.open_diagnostics_folder,
+            None,
+        )
+        self.commands.register(
             "help.what_can_i_do_here",
             "What Can I Do Here?",
             self.show_context_help,
@@ -1232,6 +1475,18 @@ class MainFrame:
             self._binding_for("edit.find_all_matches"),
         )
         self.commands.register(
+            "tools.search_in_files",
+            "Search in Files...",
+            self.search_in_files,
+            self._binding_for("tools.search_in_files"),
+        )
+        self.commands.register(
+            "tools.replace_in_files",
+            "Replace Across Files...",
+            self.replace_in_files,
+            self._binding_for("tools.replace_in_files"),
+        )
+        self.commands.register(
             "edit.replace_all",
             "Replace All...",
             self.replace_all_text,
@@ -1248,6 +1503,12 @@ class MainFrame:
             "Follow Link",
             self.follow_link,
             self._binding_for("edit.follow_link"),
+        )
+        self.commands.register(
+            "edit.word_prediction",
+            "Word Prediction...",
+            self.show_word_prediction,
+            self._binding_for("edit.word_prediction"),
         )
         self.commands.register(
             "edit.select_line",
@@ -1588,7 +1849,6 @@ class MainFrame:
         self._id_open_session = wx.NewIdRef()
         self._id_clear_recent_sessions = wx.NewIdRef()
         self._id_page_setup = wx.NewIdRef()
-        self._id_print_preview = wx.NewIdRef()
         self._id_print = wx.NewIdRef()
         self._id_save_plain_text = wx.NewIdRef()
         self._id_clear_recent = wx.NewIdRef()
@@ -1618,7 +1878,6 @@ class MainFrame:
         file_menu.AppendSeparator()
         # --- Print ---
         file_menu.Append(self._id_page_setup, "Pa&ge Setup...")
-        file_menu.Append(self._id_print_preview, "Print Pre&view...")
         file_menu.Append(self._id_print, self._menu_label("&Print...", "file.print"))
         file_menu.AppendSeparator()
         # --- Close ---
@@ -1639,8 +1898,11 @@ class MainFrame:
         self._id_find_next = wx.NewIdRef()
         self._id_find_previous = wx.NewIdRef()
         self._id_find_all_matches = wx.NewIdRef()
+        self._id_search_in_files = wx.NewIdRef()
+        self._id_replace_in_files = wx.NewIdRef()
         self._id_insert_link = wx.NewIdRef()
         self._id_follow_link = wx.NewIdRef()
+        self._id_word_prediction = wx.NewIdRef()
         self._id_select_line = wx.NewIdRef()
         self._id_select_paragraph = wx.NewIdRef()
         self._id_select_block = wx.NewIdRef()
@@ -1693,6 +1955,10 @@ class MainFrame:
         edit_menu.Append(
             self._id_follow_link,
             self._menu_label("&Follow Link", "edit.follow_link"),
+        )
+        edit_menu.Append(
+            self._id_word_prediction,
+            self._menu_label("&Word Prediction...", "edit.word_prediction"),
         )
         edit_menu.AppendSeparator()
         selection_menu = wx.Menu()
@@ -1770,7 +2036,7 @@ class MainFrame:
         search_menu.Append(self._id_find, self._menu_label("&Find...", "edit.find"))
         search_menu.Append(
             self._id_replace,
-            self._menu_label("&Replace...", "edit.replace_all"),
+            self._menu_label("&Replace...", "edit.replace"),
         )
         search_menu.AppendSeparator()
         search_menu.Append(
@@ -1785,15 +2051,27 @@ class MainFrame:
             self._id_find_all_matches,
             self._menu_label("Find &All Matches", "edit.find_all_matches"),
         )
+        search_menu.AppendSeparator()
+        search_menu.Append(
+            self._id_search_in_files,
+            self._menu_label("Search in &Files...", "tools.search_in_files"),
+        )
+        search_menu.Append(
+            self._id_replace_in_files,
+            self._menu_label("&Replace Across Files...", "tools.replace_in_files"),
+        )
         self._id_send_to_tray = wx.NewIdRef()
         self._id_toggle_tray_mode = wx.NewIdRef()
         self._id_toggle_soft_wrap = wx.NewIdRef()
+        self._id_toggle_tab_control = wx.NewIdRef()
         self._id_toggle_find_wrap = wx.NewIdRef()
         self._id_toggle_title_full_path = wx.NewIdRef()
         self._id_toggle_auto_check_updates = wx.NewIdRef()
         self._id_toggle_dark_mode = wx.NewIdRef()
         self._id_toggle_persistent_undo = wx.NewIdRef()
         self._id_toggle_spellcheck_as_you_type = wx.NewIdRef()
+        self._id_toggle_intellisense_as_you_type = wx.NewIdRef()
+        self._id_browser_preview = wx.NewIdRef()
         self._id_start_with_no_document_open = wx.NewIdRef()
         self._id_dirty_title_text = wx.NewIdRef()
         self._id_dirty_title_asterisk = wx.NewIdRef()
@@ -1807,20 +2085,14 @@ class MainFrame:
             self._menu_label("Toggle Soft &Wrap", "view.toggle_soft_wrap"),
         )
         view_menu.Check(self._id_toggle_soft_wrap, self.settings.soft_wrap)
+        view_menu.AppendCheckItem(self._id_toggle_tab_control, "Show &Tab Control")
+        view_menu.Check(self._id_toggle_tab_control, self.settings.show_tab_control)
         view_menu.AppendCheckItem(self._id_toggle_find_wrap, "Wrap &Find Searches")
         view_menu.Check(self._id_toggle_find_wrap, self.settings.wrap_find)
         view_menu.AppendCheckItem(self._id_toggle_title_full_path, "Show Full Path in &Title Bar")
         view_menu.Check(
             self._id_toggle_title_full_path,
             getattr(self.settings, "title_bar_path_mode", "name") == "full_path",
-        )
-        view_menu.AppendCheckItem(
-            self._id_toggle_auto_check_updates,
-            "Check for &Updates on Startup",
-        )
-        view_menu.Check(
-            self._id_toggle_auto_check_updates,
-            getattr(self.settings, "auto_check_updates", False),
         )
         dirty_menu = wx.Menu()
         dirty_menu.AppendRadioItem(self._id_dirty_title_text, "Dirty Indicator: Text")
@@ -1853,12 +2125,24 @@ class MainFrame:
             self.settings.spellcheck_as_you_type,
         )
         view_menu.AppendCheckItem(
+            self._id_toggle_intellisense_as_you_type,
+            "Word Prediction As You &Type",
+        )
+        view_menu.Check(
+            self._id_toggle_intellisense_as_you_type,
+            getattr(self.settings, "intellisense_as_you_type", False),
+        )
+        view_menu.AppendCheckItem(
             self._id_start_with_no_document_open,
             "Start With &No Document Open",
         )
         view_menu.Check(
             self._id_start_with_no_document_open,
             self.settings.start_with_no_document_open,
+        )
+        view_menu.Append(
+            self._id_browser_preview,
+            self._menu_label("&Browser Preview...", "view.browser_preview"),
         )
         menu_bar.Append(view_menu, "&View")
         menu_bar.Append(search_menu, "&Search")
@@ -2141,6 +2425,8 @@ class MainFrame:
         )
 
         self._id_word_count = wx.NewIdRef()
+        self._id_sticky_notes = wx.NewIdRef()
+        self._id_new_sticky_note = wx.NewIdRef()
         self._id_spell_check = wx.NewIdRef()
         self._id_previous_misspelling = wx.NewIdRef()
         self._id_next_misspelling = wx.NewIdRef()
@@ -2177,6 +2463,12 @@ class MainFrame:
         self._id_glow_fix_document = wx.NewIdRef()
         self._id_glow_fix_selection = wx.NewIdRef()
         self._id_link_inventory = wx.NewIdRef()
+        self._id_ai_assistant = wx.NewIdRef()
+        self._id_ai_rewrite_selection = wx.NewIdRef()
+        self._id_ai_summarize_selection = wx.NewIdRef()
+        self._id_ai_continue_writing = wx.NewIdRef()
+        self._id_ai_fix_grammar = wx.NewIdRef()
+        self._id_run_python = wx.NewIdRef()
         self._id_compare_with_file = wx.NewIdRef()
         self._id_compare_open_documents = wx.NewIdRef()
         self._id_compare_next_difference = wx.NewIdRef()
@@ -2197,6 +2489,8 @@ class MainFrame:
         self._id_about_quill = wx.NewIdRef()
         self._id_save_diagnostics = wx.NewIdRef()
         self._id_report_bug = wx.NewIdRef()
+        self._id_open_logs_folder = wx.NewIdRef()
+        self._id_open_diagnostics_folder = wx.NewIdRef()
         self._id_context_help = wx.NewIdRef()
         self._id_why_dont_i_see_feature = wx.NewIdRef()
         self._id_switch_feature_profile = wx.NewIdRef()
@@ -2206,11 +2500,23 @@ class MainFrame:
         self._id_profile_onboarding = wx.NewIdRef()
         self._id_keyboard_trap_snapshot = wx.NewIdRef()
         self._id_accessibility_audit = wx.NewIdRef()
+        self._id_yaml_structure_editor = wx.NewIdRef()
         tools_menu = wx.Menu()
         tools_menu.Append(
             self._id_palette,
             self._menu_label("&Command Palette...", "app.command_palette"),
         )
+        tools_menu.AppendSeparator()
+        sticky_notes_menu = wx.Menu()
+        sticky_notes_menu.Append(
+            self._id_sticky_notes,
+            self._menu_label("&Sticky Notes...", "tools.sticky_notes"),
+        )
+        sticky_notes_menu.Append(
+            self._id_new_sticky_note,
+            self._menu_label("&New Sticky Note...", "tools.sticky_note_capture"),
+        )
+        tools_menu.AppendSubMenu(sticky_notes_menu, "&Sticky Notes")
         tools_menu.AppendSeparator()
 
         writing_menu = wx.Menu()
@@ -2335,6 +2641,36 @@ class MainFrame:
                 "tools.external_tools",
             ),
         )
+        authoring_menu.Append(
+            self._id_yaml_structure_editor,
+            self._menu_label("&YAML Structure Editor...", "tools.yaml_structure_editor"),
+        )
+        ai_menu = wx.Menu()
+        ai_menu.Append(
+            self._id_ai_assistant,
+            self._menu_label("&Writing Assistant...", "tools.ai_assistant"),
+        )
+        ai_menu.Append(
+            self._id_ai_rewrite_selection,
+            self._menu_label("&Rewrite Selection", "tools.ai_rewrite_selection"),
+        )
+        ai_menu.Append(
+            self._id_ai_summarize_selection,
+            self._menu_label("&Summarize Selection", "tools.ai_summarize_selection"),
+        )
+        ai_menu.Append(
+            self._id_ai_continue_writing,
+            self._menu_label("&Continue Writing", "tools.ai_continue_writing"),
+        )
+        ai_menu.Append(
+            self._id_ai_fix_grammar,
+            self._menu_label("Fix &Grammar", "tools.ai_fix_grammar"),
+        )
+        ai_menu.Append(
+            self._id_run_python,
+            self._menu_label("&Run Python...", "tools.run_python"),
+        )
+        authoring_menu.AppendSubMenu(ai_menu, "&AI")
         glow_menu = wx.Menu()
         glow_menu.Append(
             self._id_glow_audit_document,
@@ -2449,6 +2785,11 @@ class MainFrame:
         support_menu.Append(self._id_notifications, "Show &Notifications")
         support_menu.Append(self._id_report_bug, "&Report a Bug...")
         support_menu.Append(self._id_save_diagnostics, "Save &Diagnostics...")
+        support_menu.Append(self._id_open_logs_folder, "Open &Logs Folder")
+        support_menu.Append(
+            self._id_open_diagnostics_folder,
+            "Open &Diagnostics Folder",
+        )
         support_menu.Append(self._id_check_updates, "Check for &Updates")
         tools_menu.AppendSubMenu(support_menu, "&Support")
 
@@ -2524,6 +2865,14 @@ class MainFrame:
         )
         help_menu.AppendSubMenu(profiles_menu, "Feature &Profiles")
         help_menu.AppendSeparator()
+        help_menu.AppendCheckItem(
+            self._id_toggle_auto_check_updates,
+            "Check for &Updates on Startup",
+        )
+        help_menu.Check(
+            self._id_toggle_auto_check_updates,
+            getattr(self.settings, "auto_check_updates", False),
+        )
         help_menu.Append(self._id_check_updates, "Check for &Updates...")
         help_menu.Append(self._id_about_quill, "&About Quill")
         menu_bar.Append(window_menu, "&Window")
@@ -2556,11 +2905,6 @@ class MainFrame:
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.save_session(), id=self._id_save_session)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_session(), id=self._id_open_session)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.page_setup(), id=self._id_page_setup)
-        self.frame.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.print_preview(),
-            id=self._id_print_preview,
-        )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.print_document(), id=self._id_print)
         self.frame.Bind(
             wx.EVT_MENU,
@@ -2606,6 +2950,31 @@ class MainFrame:
             lambda _e: self.run_profile_onboarding(),
             id=self._id_profile_onboarding,
         )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_writing_assistant(),
+            id=self._id_ai_assistant,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_ai_rewrite_selection(),
+            id=self._id_ai_rewrite_selection,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_ai_summarize_selection(),
+            id=self._id_ai_summarize_selection,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_ai_continue_writing(),
+            id=self._id_ai_continue_writing,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_ai_fix_grammar(),
+            id=self._id_ai_fix_grammar,
+        )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.send_to_tray(), id=self._id_send_to_tray)
         self.frame.Bind(
             wx.EVT_MENU,
@@ -2616,6 +2985,11 @@ class MainFrame:
             wx.EVT_MENU,
             self._on_toggle_soft_wrap,
             id=self._id_toggle_soft_wrap,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            self._on_toggle_tab_control,
+            id=self._id_toggle_tab_control,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -2661,6 +3035,26 @@ class MainFrame:
             wx.EVT_MENU,
             self._on_toggle_spellcheck_as_you_type,
             id=self._id_toggle_spellcheck_as_you_type,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            self._on_toggle_intellisense_as_you_type,
+            id=self._id_toggle_intellisense_as_you_type,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.preview_in_browser(),
+            id=self._id_browser_preview,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_writing_assistant(),
+            id=self._id_ai_assistant,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.run_python_tool(),
+            id=self._id_run_python,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -2837,6 +3231,16 @@ class MainFrame:
             lambda _e: self.find_all_matches(),
             id=self._id_find_all_matches,
         )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.search_in_files(),
+            id=self._id_search_in_files,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.replace_in_files(),
+            id=self._id_replace_in_files,
+        )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_upper_case(), id=self._id_upper_case)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_lower_case(), id=self._id_lower_case)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_title_case(), id=self._id_title_case)
@@ -2926,6 +3330,21 @@ class MainFrame:
             wx.EVT_MENU,
             lambda _e: self.manage_snippets(),
             id=self._id_manage_snippets,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.show_word_prediction(),
+            id=self._id_word_prediction,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.manage_sticky_notes(),
+            id=self._id_sticky_notes,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.create_sticky_note(),
+            id=self._id_new_sticky_note,
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.show_word_count(), id=self._id_word_count)
         self.frame.Bind(
@@ -3183,6 +3602,21 @@ class MainFrame:
         )
         self.frame.Bind(
             wx.EVT_MENU,
+            lambda _e: self.open_logs_folder(),
+            id=self._id_open_logs_folder,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_diagnostics_folder(),
+            id=self._id_open_diagnostics_folder,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_yaml_structure_editor(),
+            id=self._id_yaml_structure_editor,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
             lambda _e: self.show_accessibility_audit(),
             id=self._id_accessibility_audit,
         )
@@ -3231,6 +3665,34 @@ class MainFrame:
 
         self.frame.SetAcceleratorTable(wx.AcceleratorTable(entries))
 
+    def _reload_global_hotkeys(self) -> None:
+        if self._safe_mode:
+            return
+        self._unregister_global_hotkeys()
+        binding = self._binding_for("tools.sticky_note_capture")
+        parsed = self._parse_keybinding(binding)
+        if parsed is None or not hasattr(self.frame, "RegisterHotKey"):
+            return
+        flags, key_code = parsed
+        try:
+            self.frame.RegisterHotKey(int(self._sticky_note_hotkey_id), flags, key_code)
+        except Exception:
+            self._set_status("Sticky note hotkey could not be registered")
+
+    def _unregister_global_hotkeys(self) -> None:
+        if not hasattr(self.frame, "UnregisterHotKey"):
+            return
+        try:
+            self.frame.UnregisterHotKey(int(self._sticky_note_hotkey_id))
+        except Exception:
+            pass
+
+    def _on_global_hotkey(self, event: object) -> None:
+        if event.GetId() == int(self._sticky_note_hotkey_id):
+            self.create_sticky_note()
+            return
+        event.Skip()
+
     def _command_to_menu_id_map(self) -> dict[str, int]:
         return {
             "file.new": self._id_new,
@@ -3242,13 +3704,19 @@ class MainFrame:
             "file.reload_from_disk": self._id_reload_from_disk,
             "file.restore_backup": self._id_restore_backup,
             "file.page_setup": self._id_page_setup,
-            "file.print_preview": self._id_print_preview,
             "file.print": self._id_print,
             "window.next_document": self._id_next_document,
             "window.previous_document": self._id_previous_document,
             "view.send_to_tray": self._id_send_to_tray,
             "view.toggle_soft_wrap": self._id_toggle_soft_wrap,
             "view.toggle_find_wrap": self._id_toggle_find_wrap,
+            "view.browser_preview": self._id_browser_preview,
+            "tools.ai_assistant": self._id_ai_assistant,
+            "tools.ai_rewrite_selection": self._id_ai_rewrite_selection,
+            "tools.ai_summarize_selection": self._id_ai_summarize_selection,
+            "tools.ai_continue_writing": self._id_ai_continue_writing,
+            "tools.ai_fix_grammar": self._id_ai_fix_grammar,
+            "tools.run_python": self._id_run_python,
             "app.exit": self._id_exit,
             "app.command_palette": self._id_palette,
             "app.preferences": self._id_preferences,
@@ -3283,6 +3751,8 @@ class MainFrame:
             "navigate.next_region": self._id_next_region,
             "navigate.previous_region": self._id_previous_region,
             "tools.word_count": self._id_word_count,
+            "tools.sticky_notes": self._id_sticky_notes,
+            "tools.sticky_note_capture": self._id_new_sticky_note,
             "tools.spell_check_dialog": self._id_spell_check,
             "tools.previous_misspelling": self._id_previous_misspelling,
             "tools.next_misspelling": self._id_next_misspelling,
@@ -3317,6 +3787,9 @@ class MainFrame:
             "tools.glow_fix_selection": self._id_glow_fix_selection,
             "help.save_diagnostics": self._id_save_diagnostics,
             "help.report_bug": self._id_report_bug,
+            "help.open_logs_folder": self._id_open_logs_folder,
+            "help.open_diagnostics_folder": self._id_open_diagnostics_folder,
+            "tools.yaml_structure_editor": self._id_yaml_structure_editor,
             "edit.copy_with_source": self._id_copy_with_source,
             "edit.select_line": self._id_select_line,
             "format.decrease_heading_level": self._id_decrease_heading_level,
@@ -3343,6 +3816,7 @@ class MainFrame:
             "format.insert_markdown_tag": self._id_insert_markdown_tag,
             "format.insert_snippet": self._id_insert_snippet,
             "format.manage_snippets": self._id_manage_snippets,
+            "edit.word_prediction": self._id_word_prediction,
         }
 
     def _on_command_run(self, command_id: str) -> None:
@@ -3411,13 +3885,15 @@ class MainFrame:
 
     def _bind_events(self) -> None:
         wx = self._wx
-        self.notebook.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self._on_notebook_page_changed)
-        self.notebook.Bind(wx.EVT_CONTEXT_MENU, self._on_notebook_context_menu)
-        self.notebook.Bind(wx.EVT_KEY_DOWN, self._on_notebook_key_down)
+        if self._tab_control_visible:
+            self.notebook.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self._on_notebook_page_changed)
+            self.notebook.Bind(wx.EVT_CONTEXT_MENU, self._on_notebook_context_menu)
+            self.notebook.Bind(wx.EVT_KEY_DOWN, self._on_notebook_key_down)
         self.statusbar.Bind(wx.EVT_CONTEXT_MENU, self._on_statusbar_context_menu)
         self.frame.Bind(wx.EVT_CONTEXT_MENU, self._on_frame_context_menu)
         self.frame.Bind(wx.EVT_CLOSE, self._on_close)
         self.frame.Bind(wx.EVT_ICONIZE, self._on_iconize)
+        self.frame.Bind(wx.EVT_HOTKEY, self._on_global_hotkey)
         self._apply_soft_wrap(self.settings.soft_wrap)
 
     def _bind_editor_events(self, editor: object) -> None:
@@ -3454,6 +3930,50 @@ class MainFrame:
             self._refresh_title()
         self._refresh_sessions_menu()
         return index
+
+    def _create_tab_host(self, show_tab_control: bool) -> object:
+        wx = self._wx
+        if show_tab_control:
+            return wx.Notebook(self._documents_panel)
+        simplebook = getattr(wx, "Simplebook", None)
+        if simplebook is not None:
+            return simplebook(self._documents_panel)
+        return wx.Notebook(self._documents_panel)
+
+    def _rebuild_tab_host(self, show_tab_control: bool) -> None:
+        if show_tab_control == self._tab_control_visible:
+            return
+        wx = self._wx
+        old_host = self.notebook
+        active_index = self._current_tab_index()
+        self._documents_sizer.Detach(old_host)
+        new_host = self._create_tab_host(show_tab_control)
+        self.notebook = new_host
+        self._tab_control_visible = show_tab_control
+        for index, tab in enumerate(self._document_tabs):
+            tab.panel.Reparent(new_host)
+            new_host.AddPage(tab.panel, tab.document.name, select=False)
+            self._set_tab_page_text(index, tab.document.name)
+        self._documents_sizer.Add(new_host, 1, wx.EXPAND)
+        old_host.Destroy()
+        if self._tab_control_visible:
+            new_host.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self._on_notebook_page_changed)
+            new_host.Bind(wx.EVT_CONTEXT_MENU, self._on_notebook_context_menu)
+            new_host.Bind(wx.EVT_KEY_DOWN, self._on_notebook_key_down)
+        if 0 <= active_index < len(self._document_tabs):
+            self._select_tab(active_index)
+        self._documents_panel.Layout()
+        self.frame.Layout()
+
+    def _set_tab_page_text(self, index: int, title: str) -> None:
+        setter = getattr(self.notebook, "SetPageText", None)
+        if callable(setter) and 0 <= index < self.notebook.GetPageCount():
+            setter(index, title)
+
+    def _tab_page_title(self, index: int) -> str:
+        if index < 0 or index >= len(self._document_tabs):
+            return "this tab"
+        return self._document_tabs[index].document.name or "this tab"
 
     def _on_notebook_page_changed(self, event: object) -> None:
         selection = self.notebook.GetSelection()
@@ -3513,6 +4033,8 @@ class MainFrame:
         if not requests:
             return
         for candidate in requests:
+            if candidate is None:
+                continue
             if candidate.exists() and candidate.is_file():
                 self.open_file(candidate)
         self.frame.Show(True)
@@ -3531,6 +4053,8 @@ class MainFrame:
             self._record_persistent_undo_state(self.document.text)
         if self.settings.spellcheck_as_you_type:
             self._announce_spellcheck_hint()
+        self._refresh_intellisense_popup()
+        self._refresh_browser_preview()
         self._maybe_autosave()
         self._refresh_title()
         self._refresh_contextual_menu_items()
@@ -3630,6 +4154,8 @@ class MainFrame:
                 self._insert_key_down = True
                 self._refresh_statusbar()
             event.Skip()
+            return
+        if self._handle_intellisense_key_down(event):
             return
         tab_key = getattr(wx, "WXK_TAB", None)
         if tab_key is not None and event.GetKeyCode() == tab_key:
@@ -4057,7 +4583,7 @@ class MainFrame:
             pass
         if target_index < 0 or target_index >= len(self._document_tabs):
             target_index = self._current_tab_index()
-        tab_label = self.notebook.GetPageText(target_index) or "this tab"
+        tab_label = self._tab_page_title(target_index)
 
         menu = wx.Menu()
         close_id = wx.NewIdRef()
@@ -4121,7 +4647,7 @@ class MainFrame:
             return
         previous_active = self._active_tab_index
         self._select_tab(index)
-        if not self._prompt_to_save_active_document("Close"):
+        if not self._prompt_to_save_active_document("closing"):
             self._select_tab(previous_active)
             self._set_status("Close cancelled")
             return
@@ -4138,7 +4664,7 @@ class MainFrame:
             if self._document_tabs[index] is keep_tab:
                 continue
             self._select_tab(index)
-            if not self._prompt_to_save_active_document("Close"):
+            if not self._prompt_to_save_active_document("closing"):
                 self._set_status("Close other tabs cancelled")
                 # Restore focus to the tab we wanted to keep, if it still exists.
                 if keep_tab in self._document_tabs:
@@ -4157,7 +4683,7 @@ class MainFrame:
         closed = 0
         for index in range(len(self._document_tabs) - 1, anchor_index, -1):
             self._select_tab(index)
-            if not self._prompt_to_save_active_document("Close"):
+            if not self._prompt_to_save_active_document("closing"):
                 self._set_status("Close tabs to the right cancelled")
                 if anchor_tab in self._document_tabs:
                     self._select_tab(self._document_tabs.index(anchor_tab))
@@ -4175,11 +4701,39 @@ class MainFrame:
             if not path.exists():
                 self._set_status(f"Path no longer exists: {path}")
                 return
+            if path.is_dir():
+                subprocess.Popen(["explorer", str(path)])  # noqa: S603,S607
+                self._set_status(f"Opened {path.name} folder in Explorer")
+                return
             # /select, highlights the file in Windows Explorer.
             subprocess.Popen(["explorer", f"/select,{path}"])  # noqa: S603,S607
             self._set_status(f"Revealing {path.name} in Explorer")
         except OSError as error:
             self._set_status(f"Could not open Explorer: {error}")
+
+    def open_logs_folder(self) -> None:
+        logs_path = app_data_dir() / "logs"
+        logs_path.mkdir(parents=True, exist_ok=True)
+        self._reveal_in_explorer(logs_path)
+
+    def open_diagnostics_folder(self) -> None:
+        diagnostics_path = app_data_dir() / "diagnostics"
+        diagnostics_path.mkdir(parents=True, exist_ok=True)
+        self._reveal_in_explorer(diagnostics_path)
+
+    def _apply_editor_text(self, text: str, status: str) -> None:
+        if text == self.editor.GetValue():
+            self._set_status(status)
+            return
+        self.editor.ChangeValue(text)
+        self.document.set_text(text)
+        if not self._suspend_persistent_undo:
+            self._record_persistent_undo_state(text)
+        self._maybe_autosave()
+        self._refresh_title()
+        self._refresh_contextual_menu_items()
+        self._refresh_sessions_menu()
+        self._set_status(status)
 
     def _popup_context_menu(self, widget: object, menu: object, event: object) -> None:
         wx = self._wx
@@ -4203,6 +4757,7 @@ class MainFrame:
         if not self._can_close_all_documents():
             event.Veto()
             return
+        self._unregister_global_hotkeys()
         self._remove_tray_icon()
         save_settings(self.settings)
         self.flush_persistent_undo()
@@ -4230,6 +4785,10 @@ class MainFrame:
         enabled = bool(event.IsChecked())
         self.toggle_soft_wrap(enabled)
 
+    def _on_toggle_tab_control(self, event: object) -> None:
+        enabled = bool(event.IsChecked())
+        self.toggle_tab_control(enabled)
+
     def _on_toggle_find_wrap(self, event: object) -> None:
         enabled = bool(event.IsChecked())
         self.toggle_find_wrap(enabled)
@@ -4246,9 +4805,7 @@ class MainFrame:
         self.settings.auto_check_updates = enabled
         save_settings(self.settings)
         self._set_status(
-            "Check for updates on startup on"
-            if enabled
-            else "Check for updates on startup off"
+            "Check for updates on startup on" if enabled else "Check for updates on startup off"
         )
 
     def _on_toggle_dark_mode(self, event: object) -> None:
@@ -4262,6 +4819,10 @@ class MainFrame:
     def _on_toggle_spellcheck_as_you_type(self, event: object) -> None:
         enabled = bool(event.IsChecked())
         self.toggle_spellcheck_as_you_type(enabled)
+
+    def _on_toggle_intellisense_as_you_type(self, event: object) -> None:
+        enabled = bool(event.IsChecked())
+        self.toggle_intellisense_as_you_type(enabled)
 
     def _on_toggle_start_with_no_document_open(self, event: object) -> None:
         enabled = bool(event.IsChecked())
@@ -4280,51 +4841,93 @@ class MainFrame:
             return
         wx = self._wx
         offer = self._recovery_offers[0]
-        result = self._show_message_box(
-            "Quill detected an unclean exit. Restore the latest autosave snapshot?",
-            "Crash Recovery",
-            wx.ICON_WARNING | wx.YES_NO | wx.NO_DEFAULT,
+        logs_path = app_data_dir() / "logs"
+        logs_path.mkdir(parents=True, exist_ok=True)
+        dialog = wx.Dialog(self.frame, title="Crash Recovery", size=(780, 360))
+        panel = wx.Panel(dialog)
+        root = wx.BoxSizer(wx.VERTICAL)
+        root.Add(
+            wx.StaticText(
+                panel,
+                label=(
+                    "Quill detected an unclean exit. Restore the latest autosave snapshot, "
+                    "open the logs folder, or save diagnostics before continuing."
+                ),
+            ),
+            0,
+            wx.ALL | wx.EXPAND,
+            8,
         )
-        if result != wx.YES:
-            mark_recovery_offer_dismissed(offer)
+        root.Add(wx.StaticText(panel, label="Logs folder"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        logs_field = wx.TextCtrl(panel, style=wx.TE_READONLY)
+        logs_field.SetValue(str(logs_path))
+        root.Add(logs_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+
+        restore_button = wx.Button(panel, id=wx.ID_YES, label="Restore Latest Snapshot")
+        open_logs_button = wx.Button(panel, label="Open Logs Folder")
+        save_diagnostics_button = wx.Button(panel, label="Save Diagnostics...")
+        skip_button = wx.Button(panel, id=wx.ID_NO, label="Skip Recovery")
+        buttons = wx.BoxSizer(wx.HORIZONTAL)
+        buttons.Add(restore_button, 0, wx.RIGHT, 6)
+        buttons.Add(open_logs_button, 0, wx.RIGHT, 6)
+        buttons.Add(save_diagnostics_button, 0, wx.RIGHT, 6)
+        buttons.AddStretchSpacer(1)
+        buttons.Add(skip_button, 0)
+        root.Add(buttons, 0, wx.ALL | wx.EXPAND, 8)
+        panel.SetSizer(root)
+
+        open_logs_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_APPLY))
+        save_diagnostics_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_SAVE))
+
+        while True:
+            result = self._show_modal_dialog(dialog, "Crash Recovery")
+            if result == wx.ID_APPLY:
+                self.open_logs_folder()
+                continue
+            if result == wx.ID_SAVE:
+                self.save_diagnostics_bundle()
+                continue
+            if result != wx.ID_YES:
+                mark_recovery_offer_dismissed(offer)
+                record_diagnostic_event(
+                    "recovery",
+                    "offer-dismissed",
+                    detail=f"session={offer.session_id}; snapshot={offer.snapshot}",
+                )
+                self._set_status("Skipped crash recovery")
+                self._record_notification("Crash recovery offer dismissed", "recovery")
+                return
+            try:
+                recovered_text = read_recovery_snapshot(offer.snapshot)
+            except OSError as error:
+                record_diagnostic_event(
+                    "recovery",
+                    "snapshot-read-failed",
+                    detail=f"session={offer.session_id}; snapshot={offer.snapshot}; error={error}",
+                )
+                self._show_message_box(
+                    f"Could not restore snapshot: {error}",
+                    "Crash Recovery",
+                    wx.ICON_ERROR | wx.OK,
+                )
+                self._set_status("Crash recovery failed")
+                return
+            self._create_document_tab(
+                Document(text=recovered_text, path=None, modified=True),
+                select=True,
+            )
+            mark_recovery_offer_recovered(offer)
             record_diagnostic_event(
                 "recovery",
-                "offer-dismissed",
+                "snapshot-recovered",
                 detail=f"session={offer.session_id}; snapshot={offer.snapshot}",
             )
-            self._set_status("Skipped crash recovery")
-            self._record_notification("Crash recovery offer dismissed", "recovery")
+            self._location_ring = LocationRing()
+            self._location_ring.record(0)
+            self._refresh_title()
+            self._set_status("Recovered latest autosave snapshot")
+            self._record_notification("Recovered autosave snapshot", "recovery")
             return
-        try:
-            recovered_text = read_recovery_snapshot(offer.snapshot)
-        except OSError as error:
-            record_diagnostic_event(
-                "recovery",
-                "snapshot-read-failed",
-                detail=f"session={offer.session_id}; snapshot={offer.snapshot}; error={error}",
-            )
-            self._show_message_box(
-                f"Could not restore snapshot: {error}",
-                "Crash Recovery",
-                wx.ICON_ERROR | wx.OK,
-            )
-            self._set_status("Crash recovery failed")
-            return
-        self._create_document_tab(
-            Document(text=recovered_text, path=None, modified=True),
-            select=True,
-        )
-        mark_recovery_offer_recovered(offer)
-        record_diagnostic_event(
-            "recovery",
-            "snapshot-recovered",
-            detail=f"session={offer.session_id}; snapshot={offer.snapshot}",
-        )
-        self._location_ring = LocationRing()
-        self._location_ring.record(0)
-        self._refresh_title()
-        self._set_status("Recovered latest autosave snapshot")
-        self._record_notification("Recovered autosave snapshot", "recovery")
 
     def _apply_theme(self, theme: str) -> None:
         wx = self._wx
@@ -4609,7 +5212,7 @@ class MainFrame:
         self.frame.SetTitle(f"{self._title_subject()}{modified_suffix} - Quill")
         if self._active_tab_index >= 0 and self._active_tab_index < self.notebook.GetPageCount():
             page_title = f"{self.document.name}{modified_suffix}"
-            self.notebook.SetPageText(self._active_tab_index, page_title)
+            self._set_tab_page_text(self._active_tab_index, page_title)
         self._refresh_statusbar()
 
     def _title_subject(self) -> str:
@@ -4722,6 +5325,11 @@ class MainFrame:
         ordered = [item for item in self.settings.status_bar_order if item in allowed]
         hidden = {item for item in self.settings.status_bar_hidden if item in allowed}
         visible = [item for item in ordered if item not in hidden]
+        if (
+            getattr(self.settings, "title_bar_path_mode", "name") == "full_path"
+            and "file_path" in visible
+        ):
+            visible = [item for item in visible if item != "file_path"]
         document = getattr(self, "document", None)
         if document is not None and document.path is not None:
             for item in ("encoding", "line_endings"):
@@ -4767,7 +5375,10 @@ class MainFrame:
         notifications = getattr(self, "_notifications", [])
         autosave_interval = getattr(self, "_autosave_interval", timedelta(seconds=30))
         if item == "message":
-            return getattr(self, "_status_message", "Ready")
+            message = getattr(self, "_status_message", "Ready")
+            if message == "Modified" and self._dirty_title_suffix():
+                return "Ready"
+            return message
         if item == "file_path":
             document = getattr(self, "document", None)
             if document is None or document.path is None:
@@ -4809,6 +5420,9 @@ class MainFrame:
         if item == "spell_check":
             return "On" if getattr(self.settings, "spellcheck_as_you_type", False) else "Off"
         if item == "background_tasks":
+            count = getattr(self, "_background_task_count", 0)
+            if count > 0:
+                return f"{count} active"
             if read_aloud_state == "speaking":
                 return "Read aloud"
             if notifications:
@@ -5120,14 +5734,134 @@ class MainFrame:
             self._region_tracker.exit(caption)
         return result
 
+    def _prompt_untrusted_location(self, folder: Path) -> bool | None:
+        wx = self._wx
+        dialog = wx.Dialog(self.frame, title="Untrusted Location")
+        panel = wx.Panel(dialog)
+        root = wx.BoxSizer(wx.VERTICAL)
+        root.Add(
+            wx.StaticText(
+                panel,
+                label=(
+                    f"{folder} is not trusted yet. Open this file anyway?"
+                ),
+            ),
+            0,
+            wx.ALL | wx.EXPAND,
+            8,
+        )
+        trust_folder = wx.CheckBox(panel, label="Trust this folder for future opens")
+        root.Add(trust_folder, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+        buttons = dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
+        root.Add(buttons, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.ALIGN_RIGHT, 8)
+        panel.SetSizer(root)
+        dialog.SetAffirmativeId(wx.ID_OK)
+        dialog.SetEscapeId(wx.ID_CANCEL)
+        if self._show_modal_dialog(dialog, "Untrusted Location") != wx.ID_OK:
+            return None
+        return trust_folder.GetValue()
+
+    def _prompt_unsaved_changes_action(
+        self,
+        title: str,
+        message: str,
+        affirmative_label: str,
+        negative_label: str,
+    ) -> int:
+        wx = self._wx
+        dialog = wx.Dialog(self.frame, title=title)
+        panel = wx.Panel(dialog)
+        root = wx.BoxSizer(wx.VERTICAL)
+        root.Add(wx.StaticText(panel, label=message), 0, wx.ALL | wx.EXPAND, 8)
+
+        buttons = wx.BoxSizer(wx.HORIZONTAL)
+        save_button = wx.Button(panel, id=wx.ID_YES, label=affirmative_label)
+        save_button.SetDefault()
+        discard_button = wx.Button(panel, id=wx.ID_NO, label=negative_label)
+        cancel_button = wx.Button(panel, id=wx.ID_CANCEL, label="Cancel")
+        buttons.AddStretchSpacer(1)
+        buttons.Add(save_button, 0, wx.RIGHT, 6)
+        buttons.Add(discard_button, 0, wx.RIGHT, 6)
+        buttons.Add(cancel_button, 0)
+        root.Add(buttons, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+        panel.SetSizer(root)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(panel, 1, wx.EXPAND)
+        dialog.SetSizerAndFit(outer)
+        if hasattr(dialog, "SetAffirmativeId"):
+            dialog.SetAffirmativeId(wx.ID_YES)
+        if hasattr(dialog, "SetEscapeId"):
+            dialog.SetEscapeId(wx.ID_CANCEL)
+
+        def _on_char_hook(event: object) -> None:
+            key_code = event.GetKeyCode()
+            if key_code == wx.WXK_ESCAPE:
+                dialog.EndModal(wx.ID_CANCEL)
+                return
+            if key_code in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
+                dialog.EndModal(wx.ID_YES)
+                return
+            event.Skip()
+
+        dialog.Bind(wx.EVT_CHAR_HOOK, _on_char_hook)
+        try:
+            return self._show_modal_dialog(dialog, title)
+        finally:
+            dialog.Destroy()
+
     def _confirm_discard_changes(self) -> bool:
         wx = self._wx
-        result = self._show_message_box(
-            "You have unsaved changes. Close without saving?",
+        result = self._prompt_unsaved_changes_action(
             "Unsaved changes",
-            wx.ICON_WARNING | wx.YES_NO | wx.NO_DEFAULT,
+            "You have unsaved changes. Reload and discard them?",
+            "Reload",
+            "Keep Editing",
         )
-        return result == wx.YES
+        return result == wx.ID_YES
+
+    def _run_background_task(
+        self,
+        label: str,
+        work: Callable[[Callable[[str, int, int], None]], object],
+        on_success: Callable[[object], None],
+    ) -> None:
+        self._background_task_count = getattr(self, "_background_task_count", 0) + 1
+        self._set_status(f"{label} started")
+
+        def progress(message: str, current: int, total: int) -> None:
+            self._wx.CallAfter(self._set_status, f"{label}: {current}/{total} - {message}")
+
+        def worker() -> None:
+            try:
+                result = work(progress)
+            except Exception as error:  # surfaced to the user on the UI thread
+                self._wx.CallAfter(self._finish_background_task, label, error, None, on_success)
+                return
+            self._wx.CallAfter(self._finish_background_task, label, None, result, on_success)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _finish_background_task(
+        self,
+        label: str,
+        error: Exception | None,
+        result: object,
+        on_success: Callable[[object], None],
+    ) -> None:
+        self._background_task_count = max(0, getattr(self, "_background_task_count", 1) - 1)
+        if error is not None:
+            self._show_message_box(str(error), label, self._wx.ICON_ERROR | self._wx.OK)
+            self._set_status(f"{label} failed")
+            return
+        on_success(result)
+
+    def _open_generated_tab(self, title: str, text: str) -> int:
+        index = self._create_document_tab(
+            Document(text=text, path=None, modified=False), select=True
+        )
+        self._document_tabs[index].editor.SetEditable(False)
+        self._set_tab_page_text(index, title)
+        return index
 
     def _current_tab_index(self) -> int:
         return self.notebook.GetSelection()
@@ -5174,17 +5908,23 @@ class MainFrame:
         if not self.document.modified:
             return True
         wx = self._wx
-        result = self._show_message_box(
-            f"You have unsaved changes. {action_label} without saving?",
+        result = self._prompt_unsaved_changes_action(
             "Unsaved changes",
-            wx.ICON_WARNING | wx.YES_NO | wx.NO_DEFAULT,
+            f"You have unsaved changes. Save before {action_label}?",
+            "Save",
+            "Don't Save",
         )
-        return result == wx.YES
+        if result == wx.ID_CANCEL:
+            return False
+        if result == wx.ID_YES:
+            self.save_file()
+            return not self.document.modified
+        return True
 
     def _can_close_all_documents(self) -> bool:
         for index in range(len(self._document_tabs) - 1, -1, -1):
             self._select_tab(index)
-            if not self._prompt_to_save_active_document("Close"):
+            if not self._prompt_to_save_active_document("closing"):
                 return False
         return True
 
@@ -5233,20 +5973,11 @@ class MainFrame:
             self._set_status(f"Opened {selected_path.name}")
             return
         if not is_trusted_location(selected_path, self._trusted_locations):
-            result = self._show_message_box(
-                "This location is not trusted yet. Open file anyway?",
-                "Untrusted Location",
-                wx.ICON_WARNING | wx.YES_NO | wx.NO_DEFAULT,
-            )
-            if result != wx.YES:
+            trust_folder = self._prompt_untrusted_location(selected_path.parent.resolve())
+            if trust_folder is None:
                 self._set_status("Open cancelled for untrusted location")
                 return
-            trust_result = self._show_message_box(
-                "Trust this folder for future opens?",
-                "Untrusted Location",
-                wx.ICON_QUESTION | wx.YES_NO | wx.NO_DEFAULT,
-            )
-            if trust_result == wx.YES:
+            if trust_folder:
                 self._trusted_locations.add(selected_path.parent.resolve())
                 save_trusted_locations(self._trusted_locations)
 
@@ -5332,6 +6063,18 @@ class MainFrame:
         self._apply_soft_wrap(next_state)
         self._set_status("Soft wrap on" if next_state else "Soft wrap off")
 
+    def toggle_tab_control(self, enabled: bool | None = None) -> None:
+        next_state = (not self._tab_control_visible) if enabled is None else enabled
+        self.settings.show_tab_control = next_state
+        save_settings(self.settings)
+        self._rebuild_tab_host(next_state)
+        menu_bar = self.frame.GetMenuBar()
+        if menu_bar is not None:
+            item = menu_bar.FindItemById(self._id_toggle_tab_control)
+            if item is not None:
+                item.Check(next_state)
+        self._set_status("Tab control shown" if next_state else "Tab control hidden")
+
     def toggle_find_wrap(self, enabled: bool | None = None) -> None:
         next_state = (not self.settings.wrap_find) if enabled is None else enabled
         self.settings.wrap_find = next_state
@@ -5373,6 +6116,24 @@ class MainFrame:
         self.settings.spellcheck_as_you_type = next_state
         self._set_status(
             "Spell check as you type on" if next_state else "Spell check as you type off"
+        )
+
+    def toggle_intellisense_as_you_type(self, enabled: bool | None = None) -> None:
+        next_state = (
+            not getattr(self.settings, "intellisense_as_you_type", False)
+            if enabled is None
+            else enabled
+        )
+        self.settings.intellisense_as_you_type = next_state
+        if not next_state:
+            self._hide_intellisense_popup()
+        menu_bar = self.frame.GetMenuBar()
+        if menu_bar is not None:
+            item = menu_bar.FindItemById(self._id_toggle_intellisense_as_you_type)
+            if item is not None:
+                item.Check(next_state)
+        self._set_status(
+            "Word prediction as you type on" if next_state else "Word prediction as you type off"
         )
 
     def toggle_extend_selection_mode(self, enabled: bool | None = None) -> None:
@@ -5562,11 +6323,18 @@ class MainFrame:
             return
         menu = wx.Menu()
         show_id = wx.NewIdRef()
+        sticky_id = wx.NewIdRef()
+        new_sticky_id = wx.NewIdRef()
         exit_id = wx.NewIdRef()
         menu.Append(show_id, "Show Quill")
         menu.AppendSeparator()
+        menu.Append(sticky_id, "Sticky Notes...")
+        menu.Append(new_sticky_id, "New Sticky Note...")
+        menu.AppendSeparator()
         menu.Append(exit_id, "Exit Quill")
         menu.Bind(wx.EVT_MENU, lambda _e: self._restore_from_tray(), id=show_id)
+        menu.Bind(wx.EVT_MENU, lambda _e: self.manage_sticky_notes(), id=sticky_id)
+        menu.Bind(wx.EVT_MENU, lambda _e: self.create_sticky_note(), id=new_sticky_id)
         menu.Bind(wx.EVT_MENU, lambda _e: self._exit_from_tray(), id=exit_id)
         self._tray_icon.PopupMenu(menu)
         menu.Destroy()
@@ -5702,20 +6470,6 @@ class MainFrame:
             self._set_status("Page setup updated")
         finally:
             dialog.Destroy()
-
-    def print_preview(self) -> None:
-        wx = self._wx
-        text = self.editor.GetValue()
-        printout1 = self._build_text_printout(self.document.name, text)
-        printout2 = self._build_text_printout(self.document.name, text)
-        preview = wx.PrintPreview(printout1, printout2, self._print_data)
-        if not preview.IsOk():
-            self._show_message_box("Print preview failed.", "Print Preview", wx.ICON_ERROR | wx.OK)
-            return
-        frame = wx.PreviewFrame(preview, self.frame, "Print Preview", size=(700, 500))
-        frame.Initialize()
-        frame.Show()
-        self._set_status("Opened print preview")
 
     def print_document(self) -> None:
         wx = self._wx
@@ -5927,6 +6681,25 @@ class MainFrame:
         dialog = CommandPaletteDialog(self.frame, self.commands, self.features)
         dialog.show_modal_and_run()
 
+    def create_sticky_note(self) -> None:
+        if self._safe_mode:
+            self._set_status("Sticky notes are unavailable in safe mode")
+            return
+        editor = StickyNoteEditorDialog(self.frame)
+        body = editor.show_modal_and_get_body()
+        if body is None:
+            self._set_status("Sticky note cancelled")
+            return
+        note = save_sticky_note(body)
+        self._set_status(f"Saved sticky note: {note.title}")
+
+    def manage_sticky_notes(self) -> None:
+        if self._safe_mode:
+            self._set_status("Sticky notes are unavailable in safe mode")
+            return
+        StickyNotesVaultDialog(self.frame).show_modal()
+        self._set_status("Closed sticky notes vault")
+
     def open_preferences(self) -> None:
         wx = self._wx
         options: list[tuple[str, Callable[[], None]]] = [
@@ -5934,6 +6707,7 @@ class MainFrame:
             ("Profiles and Features", self.open_profiles_and_features_settings),
             ("Status Bar Layout", self.open_status_bar_settings),
             ("Keymap Editor", self.open_keymap_editor),
+            ("AI Connection", self.open_ai_preferences),
             ("Install Starter Snippet Packs", self.install_starter_snippet_packs),
         ]
         with wx.SingleChoiceDialog(
@@ -5994,6 +6768,10 @@ class MainFrame:
             soft_wrap.SetValue(self.settings.soft_wrap)
             panel_sizer.Add(soft_wrap, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
+            show_tabs = wx.CheckBox(panel, label="Show tab control")
+            show_tabs.SetValue(self.settings.show_tab_control)
+            panel_sizer.Add(show_tabs, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
             wrap_find = wx.CheckBox(panel, label="Wrap find searches")
             wrap_find.SetValue(self.settings.wrap_find)
             panel_sizer.Add(wrap_find, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
@@ -6009,6 +6787,37 @@ class MainFrame:
             spellcheck = wx.CheckBox(panel, label="Spell check as you type")
             spellcheck.SetValue(self.settings.spellcheck_as_you_type)
             panel_sizer.Add(spellcheck, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+            intellisense = wx.CheckBox(panel, label="Word prediction and tag IntelliSense")
+            intellisense.SetValue(getattr(self.settings, "intellisense_as_you_type", False))
+            panel_sizer.Add(intellisense, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+            assistant_enabled = wx.CheckBox(panel, label="Enable writing assistant")
+            assistant_enabled.SetValue(getattr(self.settings, "assistant_enabled", False))
+            panel_sizer.Add(assistant_enabled, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+            assistant_style = wx.Choice(
+                panel,
+                choices=["Balanced", "Concise", "Gentle", "Technical"],
+            )
+            assistant_style.SetSelection(
+                {
+                    "balanced": 0,
+                    "concise": 1,
+                    "gentle": 2,
+                    "technical": 3,
+                }.get(getattr(self.settings, "assistant_prompt_style", "balanced"), 0)
+            )
+            _add_choice_row("Assistant prompt style", assistant_style)
+
+            browser_choice = wx.Choice(
+                panel,
+                choices=[option.label for option in available_browser_options()],
+            )
+            browser_choice.SetStringSelection(
+                browser_choice_label_for_value(getattr(self.settings, "preview_browser", "system"))
+            )
+            _add_choice_row("Preview browser", browser_choice)
 
             snippet_expansion = wx.CheckBox(
                 panel,
@@ -6036,6 +6845,7 @@ class MainFrame:
                 "theme": (theme_choice.GetStringSelection() or "System").lower(),
                 "tray_enabled": bool(tray_mode.GetValue()),
                 "soft_wrap": bool(soft_wrap.GetValue()),
+                "show_tab_control": bool(show_tabs.GetValue()),
                 "wrap_find": bool(wrap_find.GetValue()),
                 "title_bar_path_mode": (
                     "full_path" if title_path_choice.GetSelection() == 1 else "name"
@@ -6043,6 +6853,17 @@ class MainFrame:
                 "auto_check_updates": bool(auto_updates.GetValue()),
                 "persistent_undo": bool(persistent_undo.GetValue()),
                 "spellcheck_as_you_type": bool(spellcheck.GetValue()),
+                "intellisense_as_you_type": bool(intellisense.GetValue()),
+                "assistant_enabled": bool(assistant_enabled.GetValue()),
+                "assistant_prompt_style": {
+                    0: "balanced",
+                    1: "concise",
+                    2: "gentle",
+                    3: "technical",
+                }.get(assistant_style.GetSelection(), "balanced"),
+                "preview_browser": browser_choice_value_for_label(
+                    browser_choice.GetStringSelection() or "System default browser"
+                ),
                 "snippet_trigger_expansion": bool(snippet_expansion.GetValue()),
                 "start_with_no_document_open": bool(start_empty.GetValue()),
                 "dirty_title_style": {
@@ -6055,6 +6876,9 @@ class MainFrame:
         self.set_theme(theme)
         self.settings.tray_enabled = bool(values.get("tray_enabled", self.settings.tray_enabled))
         self.settings.soft_wrap = bool(values.get("soft_wrap", self.settings.soft_wrap))
+        self.settings.show_tab_control = bool(
+            values.get("show_tab_control", self.settings.show_tab_control)
+        )
         self.settings.wrap_find = bool(values.get("wrap_find", self.settings.wrap_find))
         self.settings.title_bar_path_mode = str(
             values.get("title_bar_path_mode", self.settings.title_bar_path_mode)
@@ -6069,6 +6893,24 @@ class MainFrame:
             values.get("spellcheck_as_you_type", self.settings.spellcheck_as_you_type)
         )
         self._set_spellcheck_mode(spellcheck_enabled)
+        self.settings.intellisense_as_you_type = bool(
+            values.get(
+                "intellisense_as_you_type",
+                getattr(self.settings, "intellisense_as_you_type", False),
+            )
+        )
+        self.settings.assistant_enabled = bool(
+            values.get("assistant_enabled", getattr(self.settings, "assistant_enabled", False))
+        )
+        self.settings.assistant_prompt_style = str(
+            values.get(
+                "assistant_prompt_style",
+                getattr(self.settings, "assistant_prompt_style", "balanced"),
+            )
+        )
+        self.settings.preview_browser = normalize_browser_choice(
+            str(values.get("preview_browser", self.settings.preview_browser))
+        )
         self.settings.snippet_trigger_expansion = bool(
             values.get("snippet_trigger_expansion", self.settings.snippet_trigger_expansion)
         )
@@ -6084,10 +6926,26 @@ class MainFrame:
         )
         save_settings(self.settings)
         self._apply_soft_wrap_setting()
+        self._rebuild_tab_host(self.settings.show_tab_control)
+        menu_bar = self.frame.GetMenuBar()
+        if menu_bar is not None:
+            item = menu_bar.FindItemById(self._id_toggle_tab_control)
+            if item is not None:
+                item.Check(self.settings.show_tab_control)
+            intellisense_item = menu_bar.FindItemById(self._id_toggle_intellisense_as_you_type)
+            if intellisense_item is not None:
+                intellisense_item.Check(getattr(self.settings, "intellisense_as_you_type", False))
         self._apply_dirty_title_style_setting()
         self._refresh_title()
         self._refresh_view_menu_checks()
         self._set_status("Updated general preferences")
+
+    def open_ai_preferences(self) -> None:
+        dialog = AssistantConnectionDialog(self.frame)
+        if dialog.show_modal():
+            self._set_status("Updated AI connection settings")
+        else:
+            self._set_status("AI connection settings cancelled")
 
     def _apply_announcement_trace_setting(self) -> None:
         trace_enabled = bool(self.settings.announcement_trace_enabled)
@@ -6417,6 +7275,7 @@ class MainFrame:
         self._build_commands()
         self._build_menu()
         self._apply_accelerators()
+        self._reload_global_hotkeys()
 
     def open_welcome_guide(self) -> None:
         self._create_document_tab(
@@ -6703,7 +7562,7 @@ class MainFrame:
             },
         )
         index = self._create_document_tab(document, select=True)
-        self.notebook.SetPageText(index, f"Pandoc - {source_path.stem} ({output_kind})")
+        self._set_tab_page_text(index, f"Pandoc - {source_path.stem} ({output_kind})")
         self._set_status(f"Opened {source_path.name} as {output_kind} via Pandoc")
 
     def _prompt_pandoc_conversion_request(self) -> tuple[Path, str] | None:
@@ -6912,6 +7771,19 @@ class MainFrame:
             wx.ALL | wx.EXPAND,
             8,
         )
+        root.Add(wx.StaticText(panel, label="Logs folder"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        logs_field = wx.TextCtrl(panel, style=wx.TE_READONLY)
+        logs_field.SetValue(str(app_data_dir() / "logs"))
+        root.Add(logs_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+        root.Add(
+            wx.StaticText(panel, label="Diagnostics folder"),
+            0,
+            wx.LEFT | wx.RIGHT | wx.TOP,
+            8,
+        )
+        diagnostics_field = wx.TextCtrl(panel, style=wx.TE_READONLY)
+        diagnostics_field.SetValue(str(app_data_dir() / "diagnostics"))
+        root.Add(diagnostics_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
         root.Add(include_paths, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         root.Add(review, 1, wx.ALL | wx.EXPAND, 8)
         buttons = wx.BoxSizer(wx.HORIZONTAL)
@@ -6933,9 +7805,7 @@ class MainFrame:
         root = wx.BoxSizer(wx.VERTICAL)
         announcement_engine = getattr(self, "_announcement_engine", None)
         announcement_environment = (
-            announcement_engine.diagnostics_environment()
-            if announcement_engine is not None
-            else {}
+            announcement_engine.diagnostics_environment() if announcement_engine is not None else {}
         )
         root.Add(
             wx.StaticText(
@@ -7046,8 +7916,7 @@ class MainFrame:
                 "",
                 f"- Diagnostics bundle: {'Yes' if include_diag else 'No'}",
                 (
-                    f"- Plain file paths in diagnostics: "
-                    f"{'Yes' if include_plain_paths else 'No'}"
+                    f"- Plain file paths in diagnostics: {'Yes' if include_plain_paths else 'No'}"
                     if include_diag
                     else "- Plain file paths in diagnostics: N/A (diagnostics disabled)"
                 ),
@@ -7096,6 +7965,7 @@ class MainFrame:
         copy_button.Bind(wx.EVT_BUTTON, lambda _e: self._copy_to_clipboard(review.GetValue()))
         open_button.Bind(wx.EVT_BUTTON, lambda _e: submit_report())
         cancel_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CANCEL))
+
         def on_toggle_include_diagnostics() -> None:
             include_paths.Enable(include_diagnostics.GetValue())
             refresh_preview()
@@ -7132,12 +8002,12 @@ class MainFrame:
         detection = detect_screen_reader()
         announcement_engine = getattr(self, "_announcement_engine", None)
         announcement_environment = (
-            announcement_engine.diagnostics_environment()
-            if announcement_engine is not None
-            else {}
+            announcement_engine.diagnostics_environment() if announcement_engine is not None else {}
         )
-        target = app_data_dir() / "diagnostics" / (
-            f"quill-diagnostics-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.zip"
+        target = (
+            app_data_dir()
+            / "diagnostics"
+            / (f"quill-diagnostics-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.zip")
         )
         bundle_path = write_diagnostics_bundle(
             target,
@@ -7179,7 +8049,7 @@ class MainFrame:
             Document(text=text, path=None, modified=False),
             select=True,
         )
-        self.notebook.SetPageText(index, title)
+        self._set_tab_page_text(index, title)
 
     def _glow_scope(self) -> tuple[str, int, int, str]:
         start, end = self.editor.GetSelection()
@@ -7223,7 +8093,7 @@ class MainFrame:
             Document(text=result.text, path=None, modified=False),
             select=True,
         )
-        self.notebook.SetPageText(index, preview_title)
+        self._set_tab_page_text(index, preview_title)
         report = build_fix_report(self.document.name, result, markup, "current document")
         self._record_notification(report.splitlines()[0], "glow")
         self._start_compare_session([(self.document.name, original), (preview_title, result.text)])
@@ -7435,19 +8305,38 @@ class MainFrame:
         if markup_kind == "plain":
             self._set_status("Outline is not available for plain text files")
             return
-        nodes = self._build_outline_navigator_nodes()
+        action_label = "Jump to Key" if markup_kind == "yaml" else "Jump to Heading"
+        nodes = self._build_outline_navigator_nodes(action_label=action_label)
         if not nodes:
-            self._set_status("No outline headings found")
+            if markup_kind == "yaml":
+                self._set_status("No YAML structure found")
+            else:
+                self._set_status("No outline headings found")
             return
+        title = "YAML Navigator" if markup_kind == "yaml" else "Outline Navigator"
+        root_label = "Keys" if markup_kind == "yaml" else "Headings"
         selected = self._show_tree_navigator(
-            title="Outline Navigator",
-            root_label="Headings",
+            title=title,
+            root_label=root_label,
             nodes=nodes,
         )
         if not isinstance(selected, OutlineEntry):
             self._set_status("Outline navigation cancelled")
             return
         self._jump_to(selected.position, "Moved to heading")
+
+    def open_yaml_structure_editor(self) -> None:
+        if infer_markup_kind(self.document.path) != "yaml":
+            self._set_status("YAML structure editing is only available for YAML files")
+            return
+        updated_text = self._show_yaml_structure_editor()
+        if updated_text is None:
+            self._set_status("YAML structure editor cancelled")
+            return
+        if updated_text == self.editor.GetValue():
+            self._set_status("YAML structure editor closed without changes")
+            return
+        self._apply_editor_text(updated_text, "Updated YAML structure")
 
     def match_bracket(self) -> None:
         target = find_matching_bracket(self.editor.GetValue(), self.editor.GetInsertionPoint())
@@ -7511,7 +8400,262 @@ class MainFrame:
         markup_kind = infer_markup_kind(self.document.path)
         return extract_outline_entries(self.editor.GetValue(), markup_kind)
 
-    def _build_outline_navigator_nodes(self) -> list[_NavigatorNode]:
+    def _build_yaml_structure_navigator_nodes(self) -> list[_NavigatorNode]:
+        nodes = extract_yaml_nodes(self.editor.GetValue())
+        roots: list[_NavigatorNode] = []
+        for node in nodes:
+            roots.append(self._build_yaml_structure_node(node))
+        return roots
+
+    def _build_yaml_structure_node(self, node: YamlNode) -> _NavigatorNode:
+        preview = self._yaml_node_preview(node)
+        return _NavigatorNode(
+            label=f"{node.label or '(item)'} (Ln {node.line_no + 1})",
+            preview=preview,
+            payload=node,
+            action_label="Edit Node",
+            children=[self._build_yaml_structure_node(child) for child in node.children],
+        )
+
+    def _yaml_node_preview(self, node: YamlNode, text: str | None = None) -> str:
+        source = text if text is not None else self.editor.GetValue()
+        lines = source.splitlines()
+        if not lines or node.line_no >= len(lines):
+            return node.label or "(item)"
+        end_line = min(node.end_line, len(lines) - 1)
+        excerpt = "\n".join(lines[node.line_no : end_line + 1]).strip()
+        return excerpt or (node.label or "(item)")
+
+    def _yaml_node_accepts_children(self, node: YamlNode) -> bool:
+        return not node.value.strip()
+
+    def _show_yaml_structure_editor(self) -> str | None:
+        wx = self._wx
+        working_text = self.editor.GetValue()
+        dialog = wx.Dialog(self.frame, title="YAML Structure Editor", size=(1020, 700))
+        splitter = wx.SplitterWindow(dialog, style=wx.SP_LIVE_UPDATE)
+        tree = wx.TreeCtrl(
+            splitter,
+            style=wx.TR_HAS_BUTTONS | wx.TR_LINES_AT_ROOT | wx.TR_HAS_VARIABLE_ROW_HEIGHT,
+        )
+        preview = wx.TextCtrl(splitter, style=wx.TE_MULTILINE | wx.TE_READONLY)
+        splitter.SplitVertically(tree, preview, 360)
+        splitter.SetMinimumPaneSize(240)
+
+        item_payloads: dict[object, YamlNode] = {}
+        selected_node: YamlNode | None = None
+        root = tree.AddRoot("YAML Structure")
+
+        def build_tree(preferred_line_no: int | None = None) -> None:
+            nonlocal selected_node, root
+            nodes = extract_yaml_nodes(working_text)
+            item_payloads.clear()
+            tree.DeleteAllItems()
+            root = tree.AddRoot("YAML Structure")
+
+            def append_nodes(parent: object, children: list[YamlNode]) -> object | None:
+                first_item = None
+                for node in children:
+                    label = f"{node.label or '(item)'} (Ln {node.line_no + 1})"
+                    item = tree.AppendItem(parent, label)
+                    item_payloads[item] = node
+                    if first_item is None:
+                        first_item = item
+                    append_nodes(item, node.children)
+                return first_item
+
+            first_item = append_nodes(root, nodes)
+            tree.Expand(root)
+            selected_node = None
+            target_item = first_item
+            if preferred_line_no is not None:
+                for item, node in item_payloads.items():
+                    if node.line_no == preferred_line_no:
+                        target_item = item
+                        break
+            if target_item is not None:
+                selected_node = item_payloads.get(target_item)
+                if selected_node is not None:
+                    preview.ChangeValue(self._yaml_node_preview(selected_node, working_text))
+                tree.SelectItem(target_item)
+            else:
+                preview.ChangeValue("No YAML structure found")
+                return
+
+        def current_node() -> YamlNode | None:
+            return selected_node
+
+        def refresh_preview(node: YamlNode | None) -> None:
+            if node is None:
+                preview.ChangeValue("No YAML structure found")
+                return
+            preview.ChangeValue(self._yaml_node_preview(node, working_text))
+
+        def prompt_kind(default_kind: str) -> YamlNodeKind | None:
+            with wx.SingleChoiceDialog(
+                dialog,
+                "Choose the YAML structure kind to insert:",
+                "Insert YAML Node",
+                choices=["Mapping key", "List item"],
+            ) as choice:
+                choice.SetSelection(0 if default_kind == "mapping" else 1)
+                if self._show_modal_dialog(choice, "Insert YAML Node Kind") != wx.ID_OK:
+                    return None
+                return "mapping" if choice.GetSelection() == 0 else "sequence"
+
+        def prompt_label(title: str, default_value: str = "") -> str | None:
+            with wx.TextEntryDialog(
+                dialog,
+                "Enter the YAML label or item text:",
+                title,
+                value=default_value,
+            ) as entry:
+                if self._show_modal_dialog(entry, title) != wx.ID_OK:
+                    return None
+                value = entry.GetValue().strip()
+                return value or None
+
+        def select_node_from_event(event: object) -> None:
+            nonlocal selected_node
+            node = item_payloads.get(event.GetItem())
+            selected_node = node
+            refresh_preview(node)
+            event.Skip()
+
+        def perform_update(action: str, update: str, preferred_line_no: int | None = None) -> None:
+            nonlocal working_text
+            working_text = update
+            build_tree(preferred_line_no)
+            node = current_node()
+            if node is not None:
+                refresh_preview(node)
+            self._set_status(action)
+
+        def add_child() -> None:
+            node = current_node()
+            if node is None:
+                return
+            if not self._yaml_node_accepts_children(node):
+                self._show_message_box(
+                    "This YAML node already has a scalar value, so it cannot accept children.",
+                    "YAML Structure Editor",
+                    wx.ICON_WARNING | wx.OK,
+                )
+                return
+            kind = prompt_kind("mapping" if node.kind == "mapping" else "sequence")
+            if kind is None:
+                return
+            label = prompt_label("Add YAML Child")
+            if label is None:
+                return
+            try:
+                updated = add_yaml_child(working_text, node.line_no, kind, label)
+            except ValueError as error:
+                self._show_message_box(str(error), "YAML Structure Editor", wx.ICON_ERROR | wx.OK)
+                return
+            perform_update("Added YAML child", updated, node.end_line + 1)
+
+        def add_sibling() -> None:
+            node = current_node()
+            if node is None:
+                return
+            kind = prompt_kind("mapping" if node.kind == "mapping" else "sequence")
+            if kind is None:
+                return
+            label = prompt_label("Add YAML Sibling")
+            if label is None:
+                return
+            try:
+                updated = add_yaml_sibling(working_text, node.line_no, kind, label)
+            except ValueError as error:
+                self._show_message_box(str(error), "YAML Structure Editor", wx.ICON_ERROR | wx.OK)
+                return
+            perform_update("Added YAML sibling", updated, node.end_line + 1)
+
+        def rename_node() -> None:
+            node = current_node()
+            if node is None:
+                return
+            label = prompt_label("Rename YAML Node", node.label)
+            if label is None:
+                return
+            try:
+                updated = rename_yaml_node(working_text, node.line_no, label)
+            except ValueError as error:
+                self._show_message_box(str(error), "YAML Structure Editor", wx.ICON_ERROR | wx.OK)
+                return
+            perform_update("Renamed YAML node", updated, node.line_no)
+
+        def delete_node() -> None:
+            node = current_node()
+            if node is None:
+                return
+            confirm = self._show_message_box(
+                f"Delete '{node.label or '(item)'}' and its children?",
+                "Delete YAML Node",
+                wx.ICON_WARNING | wx.YES_NO | wx.NO_DEFAULT,
+            )
+            if confirm != wx.YES:
+                return
+            try:
+                updated = delete_yaml_node(working_text, node.line_no)
+            except ValueError as error:
+                self._show_message_box(str(error), "YAML Structure Editor", wx.ICON_ERROR | wx.OK)
+                return
+            perform_update("Deleted YAML node", updated, max(node.line_no - 1, 0))
+
+        buttons = wx.BoxSizer(wx.VERTICAL)
+        add_child_button = wx.Button(dialog, label="Add Child...")
+        add_sibling_button = wx.Button(dialog, label="Add Sibling...")
+        rename_button = wx.Button(dialog, label="Rename...")
+        delete_button = wx.Button(dialog, label="Delete")
+        apply_button = wx.Button(dialog, id=wx.ID_OK, label="Apply Changes")
+        cancel_button = wx.Button(dialog, id=wx.ID_CANCEL, label="Close")
+        buttons.Add(add_child_button, 0, wx.EXPAND | wx.BOTTOM, 6)
+        buttons.Add(add_sibling_button, 0, wx.EXPAND | wx.BOTTOM, 6)
+        buttons.Add(rename_button, 0, wx.EXPAND | wx.BOTTOM, 6)
+        buttons.Add(delete_button, 0, wx.EXPAND | wx.BOTTOM, 6)
+        buttons.AddStretchSpacer(1)
+        buttons.Add(apply_button, 0, wx.EXPAND | wx.BOTTOM, 6)
+        buttons.Add(cancel_button, 0, wx.EXPAND)
+
+        controls = wx.BoxSizer(wx.VERTICAL)
+        controls.Add(
+            wx.StaticText(
+                dialog,
+                label=(
+                    "Use the structure tree to add, rename, and delete YAML keys or list items. "
+                    "Child insertions stay indented to match the current node."
+                ),
+            ),
+            0,
+            wx.ALL | wx.EXPAND,
+            8,
+        )
+        controls.Add(splitter, 1, wx.ALL | wx.EXPAND, 8)
+        content = wx.BoxSizer(wx.HORIZONTAL)
+        content.Add(controls, 1, wx.EXPAND)
+        content.Add(buttons, 0, wx.ALL | wx.EXPAND, 8)
+        dialog.SetSizer(content)
+
+        tree.Bind(wx.EVT_TREE_SEL_CHANGED, select_node_from_event)
+        add_child_button.Bind(wx.EVT_BUTTON, lambda _e: add_child())
+        add_sibling_button.Bind(wx.EVT_BUTTON, lambda _e: add_sibling())
+        rename_button.Bind(wx.EVT_BUTTON, lambda _e: rename_node())
+        delete_button.Bind(wx.EVT_BUTTON, lambda _e: delete_node())
+        apply_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_OK))
+        cancel_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CANCEL))
+
+        build_tree()
+        if self._show_modal_dialog(dialog, "YAML Structure Editor") != wx.ID_OK:
+            return None
+        return working_text
+
+    def _build_outline_navigator_nodes(
+        self,
+        *,
+        action_label: str = "Jump to Heading",
+    ) -> list[_NavigatorNode]:
         entries = self._outline_entries()
         if not entries:
             return []
@@ -7520,12 +8664,12 @@ class MainFrame:
         stack: list[tuple[int, _NavigatorNode]] = []
         for index, entry in enumerate(entries):
             end = entries[index + 1].position if index + 1 < len(entries) else len(text)
-            preview = text[entry.position:end].strip() or entry.title
+            preview = text[entry.position : end].strip() or entry.title
             node = _NavigatorNode(
                 label=entry.title,
                 preview=preview,
                 payload=entry,
-                action_label="Jump to Heading",
+                action_label=action_label,
                 children=[],
             )
             while stack and stack[-1][0] >= entry.level:
@@ -7590,8 +8734,8 @@ class MainFrame:
             excerpt = text[line_start:line_end].strip() or item.word
             nodes.append(
                 _NavigatorNode(
-                    label=f'{item.word} (Ln {line}, Col {column})',
-                    preview=f'Line {line}, Column {column}\n\n{excerpt}',
+                    label=f"{item.word} (Ln {line}, Col {column})",
+                    preview=f"Line {line}, Column {column}\n\n{excerpt}",
                     payload=item,
                     action_label="Jump to Occurrence",
                     children=[],
@@ -7737,8 +8881,8 @@ class MainFrame:
             line, column = line_column_for_position(text, position)
             nodes.append(
                 _NavigatorNode(
-                    label=f'{name} (Ln {line}, Col {column})',
-                    preview=f'Bookmark: {name}\n\nLine {line}, Column {column}',
+                    label=f"{name} (Ln {line}, Col {column})",
+                    preview=f"Bookmark: {name}\n\nLine {line}, Column {column}",
                     payload=name,
                     action_label="Jump to Bookmark",
                     children=[],
@@ -7791,22 +8935,19 @@ class MainFrame:
             )
         if document_path is None:
             document_line = (
-                f"- Document: {document_count} "
-                "(not available until the current document is saved)"
+                f"- Document: {document_count} (not available until the current document is saved)"
             )
         elif document_path.exists():
             document_line = f"- Document: {document_count} (stored at {document_path})"
         else:
             document_line = (
-                f"- Document: {document_count} "
-                f"(not created yet for this document: {document_path})"
+                f"- Document: {document_count} (not created yet for this document: {document_path})"
             )
         if project_path.exists():
             project_line = f"- Project: {project_count} (stored at {project_path})"
         else:
             project_line = (
-                f"- Project: {project_count} "
-                f"(not created yet in this folder: {project_path})"
+                f"- Project: {project_count} (not created yet in this folder: {project_path})"
             )
         lines = [
             f"Spell-check backend: {backend.name} — {backend.detail}",
@@ -7929,12 +9070,14 @@ class MainFrame:
         chooser.Bind(wx.EVT_LISTBOX, lambda _event: refresh_context())
         speak_button.Bind(
             wx.EVT_BUTTON,
-            lambda _event: self._speak_spellcheck_word(
-                misspellings[chooser.GetSelection()].word,
-                suggest_words(misspellings[chooser.GetSelection()].word, dictionary),
-            )
-            if chooser.GetSelection() != wx.NOT_FOUND
-            else self._set_status("Select a misspelling to speak"),
+            lambda _event: (
+                self._speak_spellcheck_word(
+                    misspellings[chooser.GetSelection()].word,
+                    suggest_words(misspellings[chooser.GetSelection()].word, dictionary),
+                )
+                if chooser.GetSelection() != wx.NOT_FOUND
+                else self._set_status("Select a misspelling to speak")
+            ),
         )
         review_button.Bind(wx.EVT_BUTTON, lambda _event: dialog.EndModal(wx.ID_OK))
         cancel_button.Bind(wx.EVT_BUTTON, lambda _event: dialog.EndModal(wx.ID_CANCEL))
@@ -8021,7 +9164,7 @@ class MainFrame:
             if backend_error and backend_error != self._announcement_error_reported:
                 self._announcement_error_reported = backend_error
                 self._record_notification(backend_error, "accessibility")
-            if backend_error is None and backend.state().active_backend == "prism":
+            if backend_error is None and backend.state().active_backend in {"prism", "speech"}:
                 return
         announce(message)
 
@@ -8296,12 +9439,9 @@ class MainFrame:
             select=True,
         )
         target_position = 0
-        status = (
-            f'Opened chapter "{chapter.title}" from EPUB navigator'
-        )
-        if (
-            selected.heading_index is not None
-            and 0 <= selected.heading_index < len(chapter.headings)
+        status = f'Opened chapter "{chapter.title}" from EPUB navigator'
+        if selected.heading_index is not None and 0 <= selected.heading_index < len(
+            chapter.headings
         ):
             heading = chapter.headings[selected.heading_index]
             target_position = self._find_heading_position(
@@ -8309,10 +9449,7 @@ class MainFrame:
                 heading.title,
                 selected.heading_index,
             )
-            status = (
-                f'Jumped to heading "{heading.title}" '
-                f'in chapter "{chapter.title}"'
-            )
+            status = f'Jumped to heading "{heading.title}" in chapter "{chapter.title}"'
         self.editor.SetInsertionPoint(target_position)
         self.editor.SetSelection(target_position, target_position)
         self.editor.SetFocus()
@@ -9151,6 +10288,10 @@ class MainFrame:
             ok_button = buttons.FindWindowById(wx.ID_OK)
             if ok_button is not None:
                 ok_button.SetDefault()
+        if hasattr(dialog, "SetAffirmativeId"):
+            dialog.SetAffirmativeId(wx.ID_OK)
+        if hasattr(dialog, "SetEscapeId"):
+            dialog.SetEscapeId(wx.ID_CANCEL)
 
         panel.SetSizer(root)
         outer = wx.BoxSizer(wx.VERTICAL)
@@ -9164,8 +10305,26 @@ class MainFrame:
         if replacement_ctrl is not None:
             replacement_ctrl.Bind(wx.EVT_TEXT_ENTER, submit)
 
-        query_ctrl.SetFocus()
-        query_ctrl.SetSelection(0, len(default_query))
+        def focus_query() -> None:
+            query_ctrl.SetFocus()
+            query_ctrl.SetSelection(0, len(default_query))
+
+        if hasattr(wx, "CallAfter"):
+            wx.CallAfter(focus_query)
+        else:
+            focus_query()
+
+        def _on_char_hook(event: object) -> None:
+            key_code = event.GetKeyCode()
+            if key_code == wx.WXK_ESCAPE:
+                dialog.EndModal(wx.ID_CANCEL)
+                return
+            if key_code in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
+                submit(event)
+                return
+            event.Skip()
+
+        dialog.Bind(wx.EVT_CHAR_HOOK, _on_char_hook)
         try:
             if self._show_modal_dialog(dialog, title) != wx.ID_OK:
                 return None
@@ -9452,6 +10611,218 @@ class MainFrame:
         self.document.set_text(updated_text)
         self._set_status(f"Replaced {replacements} occurrence(s)")
 
+    def _prompt_file_search(self, *, replace: bool) -> _FileSearchRequest | None:
+        wx = self._wx
+        default_root = self.document.path.parent if self.document.path is not None else Path.cwd()
+        dialog_label = "Replace Across Files" if replace else "Search in Files"
+        dialog = wx.Dialog(
+            self.frame,
+            title=dialog_label,
+            size=(700, 0),
+        )
+        panel = wx.Panel(dialog)
+        root = wx.BoxSizer(wx.VERTICAL)
+        form = wx.FlexGridSizer(0, 3, 8, 8)
+        form.AddGrowableCol(1, 1)
+
+        def add_row(label: str, control: object, button: object | None = None) -> None:
+            form.Add(wx.StaticText(panel, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
+            form.Add(control, 1, wx.EXPAND)
+            if button is None:
+                form.AddSpacer(1)
+            else:
+                form.Add(button, 0)
+
+        folder_picker = wx.DirPickerCtrl(panel, path=str(default_root))
+        add_row("Starting folder", folder_picker)
+
+        file_pattern_ctrl = wx.TextCtrl(panel, value="*")
+        add_row("File pattern", file_pattern_ctrl)
+
+        query_ctrl = wx.TextCtrl(panel, value="")
+        add_row("Search text", query_ctrl)
+
+        replacement_ctrl = None
+        if replace:
+            replacement_ctrl = wx.TextCtrl(panel, value="")
+            add_row("Replacement", replacement_ctrl)
+
+        mode_choice = wx.Choice(panel, choices=["Plain text", "Wildcard", "Regular expression"])
+        mode_choice.SetSelection(0)
+        add_row("Match mode", mode_choice)
+
+        output_choice = wx.Choice(
+            panel,
+            choices=[
+                "Filenames only",
+                "Filenames with line numbers and counts",
+                "Counts only",
+                "Filename with line context",
+            ],
+        )
+        output_choice.SetSelection(3)
+        add_row("Output format", output_choice)
+
+        case_sensitive = wx.CheckBox(panel, label="Case sensitive")
+        whole_word = wx.CheckBox(panel, label="Whole word")
+        root.Add(form, 0, wx.ALL | wx.EXPAND, 8)
+        root.Add(case_sensitive, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+        root.Add(whole_word, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+        preview_before_replace = None
+        if replace:
+            preview_before_replace = wx.CheckBox(panel, label="Preview before replacing")
+            preview_before_replace.SetValue(True)
+            root.Add(preview_before_replace, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+        buttons = dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
+        if buttons is not None:
+            root.Add(buttons, 0, wx.ALL | wx.ALIGN_RIGHT, 8)
+        panel.SetSizer(root)
+        dialog.SetSizerAndFit(root)
+        query_ctrl.SetFocus()
+
+        try:
+            if self._show_modal_dialog(dialog, dialog_label) != wx.ID_OK:
+                return None
+            query = query_ctrl.GetValue().strip()
+            if not query:
+                self._show_message_box(
+                    "Search text cannot be blank.",
+                    dialog_label,
+                    wx.ICON_ERROR | wx.OK,
+                )
+                return None
+            mode = mode_choice.GetStringSelection()
+            options = SearchOptions(
+                case_sensitive=bool(case_sensitive.GetValue()),
+                whole_word=bool(whole_word.GetValue()),
+                use_regex=mode == "Regular expression",
+                wildcard=mode == "Wildcard",
+            )
+            replacement_value = (
+                replacement_ctrl.GetValue() if replacement_ctrl is not None else None
+            )
+            preview = (
+                bool(preview_before_replace.GetValue())
+                if preview_before_replace is not None
+                else False
+            )
+            output_modes = (
+                "filenames",
+                "filenames_lines_counts",
+                "counts",
+                "context",
+            )
+            return _FileSearchRequest(
+                root=Path(folder_picker.GetPath()),
+                pattern=file_pattern_ctrl.GetValue().strip() or "*",
+                query=query,
+                replacement=replacement_value,
+                options=options,
+                output_mode=output_modes[
+                    max(0, min(output_choice.GetSelection(), len(output_modes) - 1))
+                ],
+                preview_before_replace=preview,
+            )
+        finally:
+            dialog.Destroy()
+
+    def search_in_files(self) -> None:
+        request = self._prompt_file_search(replace=False)
+        if request is None:
+            self._set_status("Search in files cancelled")
+            return
+
+        def work(progress: Callable[[str, int, int], None]) -> FileSearchReport:
+            return search_files(
+                request.root,
+                request.pattern,
+                request.query,
+                request.options,
+                progress=progress,
+            )
+
+        def on_success(result: object) -> None:
+            report = result if isinstance(result, FileSearchReport) else None
+            if report is None:
+                return
+            text = render_search_report(report, request.output_mode)
+            self._open_generated_tab(f"Search - {request.pattern}", text)
+            match_count = report.total_matches
+            file_count = len(report.entries)
+            self._set_status(
+                f"Search complete: {match_count} match(es) in {file_count} file(s)"
+            )
+
+        self._run_background_task("Searching files", work, on_success)
+
+    def replace_in_files(self) -> None:
+        request = self._prompt_file_search(replace=True)
+        if request is None:
+            self._set_status("Replace across files cancelled")
+            return
+        replacement = request.replacement or ""
+
+        if not request.preview_before_replace:
+            self._start_replace_files(request, replacement)
+            return
+
+        def preview_work(progress: Callable[[str, int, int], None]) -> FileSearchReport:
+            return search_files(
+                request.root,
+                request.pattern,
+                request.query,
+                request.options,
+                progress=progress,
+            )
+
+        def preview_done(result: object) -> None:
+            report = result if isinstance(result, FileSearchReport) else None
+            if report is None:
+                return
+            text = render_replace_preview(report, replacement)
+            self._open_generated_tab(f"Replace Preview - {request.pattern}", text)
+            if report.total_matches == 0:
+                self._set_status("No matches found")
+                return
+            confirm = self._show_message_box(
+                "Apply these replacements across files?",
+                "Replace Across Files",
+                self._wx.ICON_QUESTION | self._wx.YES_NO | self._wx.NO_DEFAULT,
+            )
+            if confirm == self._wx.YES:
+                self._start_replace_files(request, replacement)
+                return
+            self._set_status("Replace across files cancelled")
+
+        self._run_background_task("Previewing file replacements", preview_work, preview_done)
+
+    def _start_replace_files(self, request: _FileSearchRequest, replacement: str) -> None:
+        def work(progress: Callable[[str, int, int], None]) -> FileReplaceReport:
+            return replace_files(
+                request.root,
+                request.pattern,
+                request.query,
+                replacement,
+                request.options,
+                progress=progress,
+            )
+
+        def on_success(result: object) -> None:
+            report = result if isinstance(result, FileReplaceReport) else None
+            if report is None:
+                return
+            text = render_replace_report(report)
+            self._open_generated_tab(f"Replace Results - {request.pattern}", text)
+            replacement_count = report.total_replacements
+            file_count = len(report.entries)
+            self._set_status(
+                f"Replaced {replacement_count} occurrence(s) in {file_count} file(s)"
+            )
+
+        self._run_background_task("Replacing files", work, on_success)
+
     def insert_link(self) -> None:
         wx = self._wx
         selected_text = self.editor.GetStringSelection()
@@ -9509,6 +10880,146 @@ class MainFrame:
         self._set_status(f"Opening {host}...")
         webbrowser.open(target)
 
+    def preview_in_browser(self) -> None:
+        if not self._document_tabs:
+            self._set_status("No document open")
+            return
+        tab_index = self._active_tab_index if self._active_tab_index >= 0 else self._current_tab_index()
+        if tab_index < 0 or tab_index >= len(self._document_tabs):
+            self._set_status("No document open")
+            return
+        tab = self._document_tabs[tab_index]
+        text = tab.editor.GetValue()
+        kind = guess_preview_kind(tab.document.path, text)
+        anchor = preview_anchor_for_text(text, tab.editor.GetInsertionPoint(), kind)
+        title = f"{tab.document.name or 'Preview'} - Browser Preview"
+        preview_dir = app_data_dir() / "browser-preview"
+        preview_dir.mkdir(parents=True, exist_ok=True)
+        safe_name = re.sub(r"[^a-zA-Z0-9]+", "-", tab.document.name or "preview").strip("-") or "preview"
+        preview_path = preview_dir / f"{tab_index}-{safe_name}.html"
+        payload = render_preview_html(title, text, kind, anchor)
+        temp_path = preview_path.with_suffix(".tmp")
+        temp_path.write_text(payload, encoding="utf-8")
+        os.replace(temp_path, preview_path)
+        browser_choice = normalize_browser_choice(self.settings.preview_browser)
+        session = self._browser_preview_session
+        if (
+            session is None
+            or session.tab_index != tab_index
+            or session.preview_path != preview_path
+            or session.browser_choice != browser_choice
+        ):
+            open_preview_url(preview_path.as_uri(), browser_choice)
+            self._browser_preview_session = _BrowserPreviewSession(
+                tab_index=tab_index,
+                preview_path=preview_path,
+                browser_choice=browser_choice,
+                title=title,
+            )
+            self._set_status(f"Opened browser preview in {browser_choice_label_for_value(browser_choice)}")
+            return
+        self._set_status("Refreshed browser preview")
+
+    def _refresh_browser_preview(self) -> None:
+        session = self._browser_preview_session
+        if session is None:
+            return
+        if session.tab_index != self._active_tab_index:
+            return
+        self.preview_in_browser()
+
+    def open_writing_assistant(self, initial_prompt: str = "") -> None:
+        dialog = WritingAssistantDialog(
+            self.frame,
+            self.commands,
+            getattr(self, "features", None),
+            open_python_tool=self.run_python_tool,
+            selection_text=self._selected_text(),
+            document_text=self.editor.GetValue(),
+            initial_prompt=initial_prompt,
+            assistant_enabled=getattr(self.settings, "assistant_enabled", False),
+            prompt_style=getattr(self.settings, "assistant_prompt_style", "balanced"),
+        )
+        dialog.show_modal()
+
+    def open_ai_rewrite_selection(self) -> None:
+        self.open_writing_assistant(
+            render_assistant_prompt(
+                "rewrite",
+                selection_text=self._selected_text(),
+                document_text=self.editor.GetValue(),
+            )
+        )
+
+    def open_ai_summarize_selection(self) -> None:
+        self.open_writing_assistant(
+            render_assistant_prompt(
+                "summarize",
+                selection_text=self._selected_text(),
+                document_text=self.editor.GetValue(),
+            )
+        )
+
+    def open_ai_continue_writing(self) -> None:
+        self.open_writing_assistant(
+            render_assistant_prompt(
+                "continue",
+                selection_text=self._selected_text() or self.editor.GetValue(),
+                document_text=self.editor.GetValue(),
+            )
+        )
+
+    def open_ai_fix_grammar(self) -> None:
+        self.open_writing_assistant(
+            render_assistant_prompt(
+                "grammar",
+                selection_text=self._selected_text(),
+                document_text=self.editor.GetValue(),
+            )
+        )
+
+    def run_python_tool(self) -> None:
+        outline = [
+            {"level": entry.level, "title": entry.title, "position": entry.position}
+            for entry in self._outline_entries()
+        ]
+        dialog = RunPythonDialog(
+            self.frame,
+            document_text=self.editor.GetValue(),
+            selection_text=self._selected_text(),
+            outline=outline,
+            apply_callback=self._apply_python_result,
+        )
+        dialog.show_modal()
+
+    def _selected_text(self) -> str:
+        start, end = self.editor.GetSelection()
+        if start == end:
+            return ""
+        return self.editor.GetValue()[start:end]
+
+    def _apply_python_result(self, updated_text: str) -> None:
+        start, end = self.editor.GetSelection()
+        current = self.editor.GetValue()
+        if start != end:
+            new_text = current[:start] + updated_text + current[end:]
+            replace_start = start
+        else:
+            new_text = updated_text
+            replace_start = 0
+        self._replace_document_text(new_text)
+        self.document.set_text(new_text)
+        self._record_persistent_undo_state(new_text)
+        if start != end:
+            self.editor.SetSelection(replace_start, replace_start + len(updated_text))
+            self.editor.SetInsertionPoint(replace_start + len(updated_text))
+        else:
+            self.editor.SetSelection(0, len(updated_text))
+        self._maybe_autosave()
+        self._refresh_title()
+        self._refresh_contextual_menu_items()
+        self._set_status("Applied Python result")
+
     def select_line(self) -> None:
         text = self.editor.GetValue()
         cursor = self.editor.GetInsertionPoint()
@@ -9565,9 +11076,7 @@ class MainFrame:
         position = self.editor.GetInsertionPoint()
         self._mark_ring.set_mark(position)
         line, column = line_column_for_position(self.editor.GetValue(), position)
-        self._set_status(
-            f"Mark ring point set at line {line}, column {column} (temporary jump)"
-        )
+        self._set_status(f"Mark ring point set at line {line}, column {column} (temporary jump)")
 
     def pop_mark(self) -> None:
         mark = self._mark_ring.pop_mark()
@@ -9931,24 +11440,42 @@ class MainFrame:
 
     def _prompt_table_shape(self) -> tuple[int, int, bool] | None:
         wx = self._wx
-        with wx.TextEntryDialog(
-            self.frame,
-            "Enter number of columns (1-12):",
-            "Insert Table",
-            value="2",
-        ) as columns_dialog:
-            if self._show_modal_dialog(columns_dialog, "Insert Table") != wx.ID_OK:
-                return None
-            columns_raw = columns_dialog.GetValue().strip()
-        with wx.TextEntryDialog(
-            self.frame,
-            "Enter number of rows (1-50):",
-            "Insert Table",
-            value="2",
-        ) as rows_dialog:
-            if self._show_modal_dialog(rows_dialog, "Insert Table") != wx.ID_OK:
-                return None
-            rows_raw = rows_dialog.GetValue().strip()
+        def prompt_dimension(message: str, minimum: int, maximum: int) -> int | None:
+            while True:
+                with wx.TextEntryDialog(
+                    self.frame,
+                    message,
+                    "Insert Table",
+                    value="2",
+                ) as dialog:
+                    if self._show_modal_dialog(dialog, "Insert Table") != wx.ID_OK:
+                        return None
+                    raw_value = dialog.GetValue().strip()
+                try:
+                    value = int(raw_value)
+                except ValueError:
+                    self._show_message_box(
+                        "Rows and columns must be whole numbers.",
+                        "Insert Table",
+                        wx.ICON_ERROR | wx.OK,
+                    )
+                    continue
+                if value < minimum or value > maximum:
+                    label = "Columns" if maximum == 12 else "Rows"
+                    self._show_message_box(
+                        f"{label} must be between {minimum} and {maximum}.",
+                        "Insert Table",
+                        wx.ICON_ERROR | wx.OK,
+                    )
+                    continue
+                return value
+
+        columns = prompt_dimension("Enter number of columns (1-12):", 1, 12)
+        if columns is None:
+            return None
+        rows = prompt_dimension("Enter number of rows (1-50):", 1, 50)
+        if rows is None:
+            return None
         with wx.MessageDialog(
             self.frame,
             "Include a header row?",
@@ -9956,31 +11483,6 @@ class MainFrame:
             wx.YES_NO | wx.ICON_QUESTION,
         ) as header_dialog:
             include_header = self._show_modal_dialog(header_dialog, "Insert Table") == wx.ID_YES
-
-        try:
-            columns = int(columns_raw)
-            rows = int(rows_raw)
-        except ValueError:
-            self._show_message_box(
-                "Rows and columns must be whole numbers.",
-                "Insert Table",
-                wx.ICON_ERROR | wx.OK,
-            )
-            return None
-        if columns < 1 or columns > 12:
-            self._show_message_box(
-                "Columns must be between 1 and 12.",
-                "Insert Table",
-                wx.ICON_ERROR | wx.OK,
-            )
-            return None
-        if rows < 1 or rows > 50:
-            self._show_message_box(
-                "Rows must be between 1 and 50.",
-                "Insert Table",
-                wx.ICON_ERROR | wx.OK,
-            )
-            return None
         return rows, columns, include_header
 
     def _prompt_code_language(self) -> str | None:
@@ -10305,8 +11807,7 @@ class MainFrame:
             return None
         by_label = {self._snippet_picker_label(snippet): snippet for snippet in snippets}
         initial_choices = [
-            self._snippet_picker_label(snippet)
-            for snippet in search_snippets(snippets, "")
+            self._snippet_picker_label(snippet) for snippet in search_snippets(snippets, "")
         ]
         choice = self._choose_searchable_option(
             title="Insert Snippet",
@@ -10314,8 +11815,7 @@ class MainFrame:
             dialog_label="Insert Snippet",
             initial_choices=initial_choices,
             search_callback=lambda query: [
-                self._snippet_picker_label(snippet)
-                for snippet in search_snippets(snippets, query)
+                self._snippet_picker_label(snippet) for snippet in search_snippets(snippets, query)
             ],
             empty_search_examples=("email", "bug", ";meeting"),
         )
@@ -10367,6 +11867,130 @@ class MainFrame:
             InsertionResult(inserted_text=rendered.text, caret_offset=rendered.cursor)
         )
         self._set_status(f'Inserted snippet "{snippet.name}".')
+
+    def show_word_prediction(self) -> None:
+        if not self._feature_enabled("core.intellisense"):
+            self._set_status("Word prediction is unavailable in this profile")
+            return
+        if not self._show_intellisense_popup(manual=True):
+            self._set_status("No predictions available")
+
+    def _show_intellisense_popup(self, *, manual: bool) -> bool:
+        popup = getattr(self, "_intellisense_popup", None)
+        if popup is None:
+            return False
+        if not manual and not getattr(self.settings, "intellisense_as_you_type", False):
+            if popup.is_visible():
+                self._hide_intellisense_popup()
+            return False
+        text = self.editor.GetValue()
+        cursor = self.editor.GetInsertionPoint()
+        dictionary = self._spell_dictionary() | collect_document_words(text)
+        context, suggestions = build_intellisense_suggestions(
+            text,
+            cursor,
+            dictionary,
+            limit=8,
+        )
+        if not suggestions:
+            if popup.is_visible():
+                self._hide_intellisense_popup()
+            self._intellisense_context = context
+            self._intellisense_fragment_text = context.fragment if context is not None else ""
+            self._intellisense_suggestions = []
+            return False
+        if not manual and context is not None and len(context.fragment.strip()) < 2:
+            if self._intellisense_popup.is_visible():
+                self._hide_intellisense_popup()
+            return False
+        self._intellisense_context = context
+        self._intellisense_fragment_text = context.fragment if context is not None else ""
+        self._intellisense_suggestions = suggestions
+        status = f"{len(suggestions)} prediction(s). {suggestions[0].label}"
+        was_visible = popup.is_visible()
+        popup.update(suggestions, status)
+        if not was_visible:
+            editor_pos = self.editor.GetScreenPosition()
+            popup.show((editor_pos.x + 20, editor_pos.y + 40))
+            announce(status)
+        return True
+
+    def _refresh_intellisense_popup(self) -> None:
+        if self._intellisense_guard:
+            return
+        popup = getattr(self, "_intellisense_popup", None)
+        popup_visible = popup is not None and popup.is_visible()
+        if not popup_visible and not getattr(self.settings, "intellisense_as_you_type", False):
+            return
+        self._show_intellisense_popup(manual=popup_visible)
+
+    def _hide_intellisense_popup(self) -> None:
+        popup = getattr(self, "_intellisense_popup", None)
+        if popup is not None:
+            popup.hide()
+        self._intellisense_context = None
+        self._intellisense_fragment_text = ""
+        self._intellisense_suggestions = []
+
+    def _apply_intellisense_selection(self) -> bool:
+        popup = getattr(self, "_intellisense_popup", None)
+        context = getattr(self, "_intellisense_context", None)
+        if popup is None or context is None:
+            return False
+        suggestion = popup.selected_suggestion()
+        if suggestion is None:
+            return False
+        self._intellisense_guard = True
+        try:
+            self.editor.Replace(
+                context.replacement_start,
+                context.replacement_end,
+                suggestion.inserted_text,
+            )
+            caret = context.replacement_start + suggestion.caret_offset
+            caret = max(0, min(caret, len(self.editor.GetValue())))
+            self.editor.SetInsertionPoint(caret)
+            self.editor.SetSelection(caret, caret)
+        finally:
+            self._intellisense_guard = False
+        self._hide_intellisense_popup()
+        self._set_status(f'Inserted prediction "{suggestion.label}".')
+        return True
+
+    def _handle_intellisense_key_down(self, event: object) -> bool:
+        wx = self._wx
+        space_key = getattr(wx, "WXK_SPACE", ord(" "))
+        if event.ControlDown() and not event.AltDown() and not event.ShiftDown():
+            if event.GetKeyCode() == space_key:
+                if not self._feature_enabled("core.intellisense"):
+                    self._set_status("Word prediction is unavailable in this profile")
+                    return True
+                self._show_intellisense_popup(manual=True)
+                return True
+        popup = getattr(self, "_intellisense_popup", None)
+        if popup is None or not popup.is_visible():
+            return False
+        key_code = event.GetKeyCode()
+        if key_code == wx.WXK_ESCAPE:
+            self._hide_intellisense_popup()
+            return True
+        if key_code in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER, wx.WXK_TAB):
+            if self._apply_intellisense_selection():
+                return True
+            return False
+        if key_code == wx.WXK_UP:
+            popup.set_selection(popup.selection_index() - 1)
+            selection = popup.selected_suggestion()
+            if selection is not None:
+                announce(selection.label)
+            return True
+        if key_code == wx.WXK_DOWN:
+            popup.set_selection(popup.selection_index() + 1)
+            selection = popup.selected_suggestion()
+            if selection is not None:
+                announce(selection.label)
+            return True
+        return False
 
     def _prompt_snippet_editor(self, existing: Snippet | None = None) -> Snippet | None:
         wx = self._wx
@@ -10649,10 +12273,77 @@ class MainFrame:
         report = self.features.describe_feature(query)
         self._show_message_box(report, "Why Don't I See a Feature?", wx.ICON_INFORMATION | wx.OK)
 
+    def _load_custom_profiles(self) -> dict[str, CustomProfile]:
+        return load_custom_profiles()
+
+    def _save_custom_profiles(self, profiles: dict[str, CustomProfile]) -> None:
+        save_custom_profiles(profiles)
+
+    def _combined_profile_entries(self) -> list[tuple[str, str, str]]:
+        entries: list[tuple[str, str, str]] = [
+            ("built_in", profile.id, profile.name) for profile in PROFILE_DEFINITIONS.values()
+        ]
+        for profile in self._load_custom_profiles().values():
+            entries.append(("custom", profile.id, profile.name))
+        return entries
+
+    def _custom_profile_summary(self, profile: CustomProfile) -> str:
+        raw_profile_data = profile.feature_profile_data
+        active_profile_id = str(raw_profile_data.get("active_profile_id", PROFILE_ESSENTIAL))
+        if active_profile_id not in PROFILE_DEFINITIONS:
+            active_profile_id = PROFILE_ESSENTIAL
+        overrides_raw = raw_profile_data.get("overrides")
+        overrides = overrides_raw if isinstance(overrides_raw, dict) else {}
+        base_states = PROFILE_DEFINITIONS[active_profile_id].states
+        enabled = 0
+        for feature_id, definition in FEATURE_DEFINITIONS.items():
+            if definition.locked_on:
+                enabled += 1
+                continue
+            override = overrides.get(feature_id)
+            state = override if isinstance(override, str) else base_states.get(feature_id, "on")
+            if state != "off":
+                enabled += 1
+        parent_name = PROFILE_DEFINITIONS.get(
+            profile.parent_profile_id, PROFILE_DEFINITIONS[PROFILE_ESSENTIAL]
+        ).name
+        inheritance = (
+            f"Inherits from {parent_name}."
+            if profile.inherits_parent
+            else "Starts from a bare-bones baseline."
+        )
+        return (
+            f"Custom profile: {profile.name}\n\n"
+            f"{profile.description or 'No description provided.'}\n\n"
+            f"{inheritance}\nEnabled features: {enabled}\n"
+            f"Keyboard bindings captured: {len(profile.keymap_data)}"
+        )
+
+    def _apply_custom_profile(self, profile: CustomProfile) -> None:
+        self.features.import_profile_data(profile.feature_profile_data)
+        merged_settings = asdict(self.settings)
+        merged_settings.update(profile.settings_data)
+        self.settings = Settings.from_dict(merged_settings)
+        save_settings(self.settings)
+        self.keymap = DEFAULT_KEYMAP.copy()
+        self.keymap.update(profile.keymap_data)
+        save_keymap(self.keymap)
+        self._reload_shortcuts_from_keymap()
+        self._apply_soft_wrap(self.settings.soft_wrap)
+        self._rebuild_tab_host(self.settings.show_tab_control)
+        self._apply_statusbar_layout()
+        self._refresh_title()
+
     def switch_feature_profile(self) -> None:
         wx = self._wx
-        choices = [profile.name for profile in PROFILE_DEFINITIONS.values()]
-        profile_ids = list(PROFILE_DEFINITIONS.keys())
+        entries = self._combined_profile_entries()
+        if not entries:
+            self._set_status("No profiles available")
+            return
+        choices = [
+            name if kind == "built_in" else f"{name} (Custom)"
+            for kind, _profile_id, name in entries
+        ]
         with wx.SingleChoiceDialog(
             self.frame,
             "Choose a feature profile:",
@@ -10664,11 +12355,17 @@ class MainFrame:
             selection = dialog.GetSelection()
         if selection == wx.NOT_FOUND:
             return
-        target_profile_id = profile_ids[selection]
-        if target_profile_id == self.features.active_profile_id:
+        kind, target_profile_id, target_name = entries[selection]
+        if kind == "built_in" and target_profile_id == self.features.active_profile_id:
             self._set_status(f"Already using {self.features.active_profile.name}")
             return
         preview = self.features.change_profile_preview(target_profile_id)
+        if kind == "custom":
+            custom_profile = self._load_custom_profiles().get(target_profile_id)
+            if custom_profile is None:
+                self._set_status("Custom profile is no longer available")
+                return
+            preview = self._custom_profile_summary(custom_profile)
         with wx.MessageDialog(
             self.frame,
             preview + "\n\nSwitch profiles now?",
@@ -10678,12 +12375,27 @@ class MainFrame:
             if self._show_modal_dialog(confirm_dialog, "Switch Feature Profile") != wx.ID_YES:
                 self._set_status("Profile switch cancelled")
                 return
-        self.features.switch_profile(target_profile_id)
-        profile = self.features.active_profile
-        self._set_status(f"Profile changed to {profile.name}. Undo available.")
-        self._show_message_box(
-            self.features.profile_summary(), "Feature Profile", wx.ICON_INFORMATION | wx.OK
-        )
+        if kind == "custom":
+            custom_profile = self._load_custom_profiles().get(target_profile_id)
+            if custom_profile is None:
+                self._set_status("Custom profile is no longer available")
+                return
+            self._apply_custom_profile(custom_profile)
+            self._set_status(f"Profile changed to {target_name}.")
+            self._show_message_box(
+                self._custom_profile_summary(custom_profile),
+                "Feature Profile",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+        else:
+            self.features.switch_profile(target_profile_id)
+            profile = self.features.active_profile
+            self._set_status(f"Profile changed to {profile.name}. Undo available.")
+            self._show_message_box(
+                self.features.profile_summary(),
+                "Feature Profile",
+                wx.ICON_INFORMATION | wx.OK,
+            )
         self._apply_accelerators()
 
     def show_feature_profile_health_check(self) -> None:
@@ -10864,7 +12576,6 @@ class MainFrame:
 
     def open_profiles_and_features_settings(self) -> None:
         wx = self._wx
-        profiles = list(PROFILE_DEFINITIONS.values())
         dialog = wx.Dialog(self.frame, title="Profiles and Features", size=(820, 700))
         panel = wx.Panel(dialog)
         root = wx.BoxSizer(wx.VERTICAL)
@@ -10880,13 +12591,8 @@ class MainFrame:
             wx.ALL | wx.EXPAND,
             8,
         )
-        chooser = wx.ListBox(panel, choices=self._profile_choice_labels(profiles))
-        current_index = 0
-        for index, profile in enumerate(profiles):
-            if profile.id == self.features.active_profile_id:
-                current_index = index
-                break
-        chooser.SetSelection(current_index)
+        chooser = wx.ListBox(panel, choices=[])
+        entries: list[tuple[str, str, str]] = []
         summary = wx.TextCtrl(panel, style=wx.TE_MULTILINE | wx.TE_READONLY)
         keyboard_pack_choices = keyboard_pack_names(include_custom=True)
         keyboard_pack_choice = wx.Choice(panel, choices=keyboard_pack_choices)
@@ -10905,13 +12611,43 @@ class MainFrame:
             size=(-1, 160),
         )
 
-        def refresh_summary() -> None:
+        def refresh_profile_list(preferred_id: str | None = None) -> None:
+            nonlocal entries
+            entries = self._combined_profile_entries()
+            labels = [
+                name if kind == "built_in" else f"{name} (Custom)"
+                for kind, _profile_id, name in entries
+            ]
+            chooser.Set(labels)
+            selected_id = preferred_id or self.features.active_profile_id
+            selected_index = 0
+            for index, (_kind, profile_id, _name) in enumerate(entries):
+                if profile_id == selected_id:
+                    selected_index = index
+                    break
+            if entries:
+                chooser.SetSelection(selected_index)
+
+        def selected_entry() -> tuple[str, str, str] | None:
             selection = chooser.GetSelection()
-            if selection == wx.NOT_FOUND:
+            if selection == wx.NOT_FOUND or selection < 0 or selection >= len(entries):
+                return None
+            return entries[selection]
+
+        def refresh_summary() -> None:
+            entry = selected_entry()
+            if entry is None:
                 summary.SetValue(self.features.profile_summary())
                 return
-            profile = profiles[selection]
-            summary.SetValue(self.features.change_profile_preview(profile.id))
+            kind, profile_id, _name = entry
+            if kind == "built_in":
+                summary.SetValue(self.features.change_profile_preview(profile_id))
+                return
+            custom_profile = self._load_custom_profiles().get(profile_id)
+            if custom_profile is None:
+                summary.SetValue("Custom profile is no longer available.")
+                return
+            summary.SetValue(self._custom_profile_summary(custom_profile))
 
         def refresh_keyboard_preview() -> None:
             pack_name = keyboard_pack_choice.GetStringSelection() or KEYBOARD_PACK_DEFAULT
@@ -10923,24 +12659,41 @@ class MainFrame:
             keyboard_preview.SetValue(preview)
 
         def switch_selected() -> None:
-            selection = chooser.GetSelection()
-            if selection == wx.NOT_FOUND:
+            entry = selected_entry()
+            if entry is None:
                 return
-            profile = profiles[selection]
-            if profile.id == self.features.active_profile_id:
-                self._set_status(f"Already using {profile.name}")
-                return
-            self.features.switch_profile(profile.id)
+            kind, profile_id, name = entry
+            if kind == "built_in":
+                if profile_id == self.features.active_profile_id:
+                    self._set_status(f"Already using {name}")
+                    return
+                self.features.switch_profile(profile_id)
+                self._set_status(f"Profile changed to {name}. Undo available.")
+            else:
+                custom_profile = self._load_custom_profiles().get(profile_id)
+                if custom_profile is None:
+                    self._set_status("Custom profile is no longer available")
+                    refresh_profile_list()
+                    refresh_summary()
+                    return
+                self._apply_custom_profile(custom_profile)
+                self._set_status(f"Profile changed to {custom_profile.name}.")
             refresh_summary()
-            self._set_status(f"Profile changed to {profile.name}. Undo available.")
             self._refresh_title()
 
         def compare_selected() -> None:
-            selection = chooser.GetSelection()
-            if selection == wx.NOT_FOUND:
+            entry = selected_entry()
+            if entry is None:
                 return
-            profile = profiles[selection]
-            message = self.features.compare_profiles(self.features.active_profile_id, profile.id)
+            kind, profile_id, _name = entry
+            if kind != "built_in":
+                self._show_message_box(
+                    "Profile comparison is available for built-in profiles.",
+                    "Compare Profiles",
+                    wx.ICON_INFORMATION | wx.OK,
+                )
+                return
+            message = self.features.compare_profiles(self.features.active_profile_id, profile_id)
             self._show_message_box(message, "Compare Profiles", wx.ICON_INFORMATION | wx.OK)
 
         def undo_change() -> None:
@@ -10953,10 +12706,138 @@ class MainFrame:
 
         def reset_essential() -> None:
             self.features.reset_to_essential_profile()
-            chooser.SetSelection(0)
+            refresh_profile_list(PROFILE_ESSENTIAL)
             refresh_summary()
             self._set_status("Reset to Essential profile")
             self._refresh_title()
+
+        def create_custom_profile() -> None:
+            with wx.TextEntryDialog(
+                dialog,
+                "Enter a name for the custom profile:",
+                "Create Custom Profile",
+                value="My Custom Profile",
+            ) as name_dialog:
+                if self._show_modal_dialog(name_dialog, "Create Custom Profile") != wx.ID_OK:
+                    return
+                name = name_dialog.GetValue().strip()
+            if not name:
+                self._set_status("Custom profile name cannot be empty")
+                return
+            with wx.TextEntryDialog(
+                dialog,
+                "Optional description:",
+                "Create Custom Profile",
+                value="",
+            ) as description_dialog:
+                if self._show_modal_dialog(description_dialog, "Create Custom Profile") != wx.ID_OK:
+                    return
+                description = description_dialog.GetValue().strip()
+            built_in_profiles = list(PROFILE_DEFINITIONS.values())
+            parent_labels = [self._profile_choice_label(profile) for profile in built_in_profiles]
+            with wx.SingleChoiceDialog(
+                dialog,
+                "Choose the parent (global) profile:",
+                "Create Custom Profile",
+                choices=parent_labels,
+            ) as parent_dialog:
+                if self._show_modal_dialog(parent_dialog, "Create Custom Profile") != wx.ID_OK:
+                    return
+                parent_selection = parent_dialog.GetSelection()
+            if parent_selection == wx.NOT_FOUND:
+                return
+            parent_profile = built_in_profiles[parent_selection]
+            with wx.MessageDialog(
+                dialog,
+                (
+                    "Inherit the selected parent profile's feature set?\n\n"
+                    "Yes keeps inherited defaults. No starts from bare bones "
+                    "(only locked core features remain enabled)."
+                ),
+                "Custom Profile Inheritance",
+                wx.YES_NO | wx.ICON_QUESTION,
+            ) as inherit_dialog:
+                inherits_parent = (
+                    self._show_modal_dialog(
+                        inherit_dialog, "Custom Profile Inheritance"
+                    )
+                    == wx.ID_YES
+                )
+            if not inherits_parent:
+                self._show_message_box(
+                    "Bare-bones mode selected. Most features are disabled until you turn them on.",
+                    "Bare-Bones Profile",
+                    wx.ICON_WARNING | wx.OK,
+                )
+            custom_profiles = self._load_custom_profiles()
+            profile_id = generate_custom_profile_id(name, set(custom_profiles))
+            if inherits_parent:
+                feature_profile_data = build_parent_profile_data(parent_profile.id)
+                settings_data = asdict(self.settings)
+                keymap_data = dict(self.keymap)
+            else:
+                feature_profile_data = build_bare_bones_profile_data()
+                settings_data = asdict(Settings())
+                keymap_data = DEFAULT_KEYMAP.copy()
+            custom_profiles[profile_id] = CustomProfile(
+                id=profile_id,
+                name=name,
+                description=description,
+                parent_profile_id=parent_profile.id,
+                inherits_parent=inherits_parent,
+                feature_profile_data=feature_profile_data,
+                settings_data=settings_data,
+                keymap_data=keymap_data,
+            )
+            self._save_custom_profiles(custom_profiles)
+            refresh_profile_list(profile_id)
+            refresh_summary()
+            self._set_status(f"Created custom profile {name}")
+
+        def update_selected_custom_profile() -> None:
+            entry = selected_entry()
+            if entry is None:
+                return
+            kind, profile_id, _name = entry
+            if kind != "custom":
+                self._set_status("Select a custom profile to update")
+                return
+            custom_profiles = self._load_custom_profiles()
+            custom_profile = custom_profiles.get(profile_id)
+            if custom_profile is None:
+                self._set_status("Custom profile is no longer available")
+                refresh_profile_list()
+                refresh_summary()
+                return
+            custom_profile.feature_profile_data = self.features.export_profile_data()
+            custom_profile.settings_data = asdict(self.settings)
+            custom_profile.keymap_data = dict(self.keymap)
+            custom_profiles[profile_id] = custom_profile
+            self._save_custom_profiles(custom_profiles)
+            refresh_summary()
+            self._set_status(f"Updated custom profile {custom_profile.name} from current state")
+
+        def delete_selected_custom_profile() -> None:
+            entry = selected_entry()
+            if entry is None:
+                return
+            kind, profile_id, name = entry
+            if kind != "custom":
+                self._set_status("Select a custom profile to delete")
+                return
+            confirm = self._show_message_box(
+                f"Delete custom profile {name}?",
+                "Delete Custom Profile",
+                wx.YES_NO | wx.ICON_WARNING,
+            )
+            if confirm != wx.YES:
+                return
+            custom_profiles = self._load_custom_profiles()
+            custom_profiles.pop(profile_id, None)
+            self._save_custom_profiles(custom_profiles)
+            refresh_profile_list()
+            refresh_summary()
+            self._set_status(f"Deleted custom profile {name}")
 
         def apply_selected_keyboard_pack() -> None:
             pack_name = keyboard_pack_choice.GetStringSelection() or KEYBOARD_PACK_DEFAULT
@@ -11018,12 +12899,7 @@ class MainFrame:
             warnings = self.features.import_profile_data(raw)
             for warning in warnings:
                 self._record_notification(warning, "warning")
-            current_index = 0
-            for index, profile in enumerate(profiles):
-                if profile.id == self.features.active_profile_id:
-                    current_index = index
-                    break
-            chooser.SetSelection(current_index)
+            refresh_profile_list(self.features.active_profile_id)
             refresh_summary()
             self._set_status(f"Imported profile data from {source.name}")
             self._refresh_title()
@@ -11034,6 +12910,9 @@ class MainFrame:
         compare_button = wx.Button(panel, label="Compare Profiles")
         undo_button = wx.Button(panel, label="Undo Last Change")
         reset_button = wx.Button(panel, label="Reset to Essential")
+        create_custom_button = wx.Button(panel, label="Create Custom...")
+        update_custom_button = wx.Button(panel, label="Update Custom from Current")
+        delete_custom_button = wx.Button(panel, label="Delete Custom")
         export_button = wx.Button(panel, label="Export...")
         import_button = wx.Button(panel, label="Import...")
         apply_pack_button = wx.Button(panel, label="Apply Keyboard Pack")
@@ -11045,6 +12924,9 @@ class MainFrame:
         compare_button.Bind(wx.EVT_BUTTON, lambda _e: compare_selected())
         undo_button.Bind(wx.EVT_BUTTON, lambda _e: undo_change())
         reset_button.Bind(wx.EVT_BUTTON, lambda _e: reset_essential())
+        create_custom_button.Bind(wx.EVT_BUTTON, lambda _e: create_custom_profile())
+        update_custom_button.Bind(wx.EVT_BUTTON, lambda _e: update_selected_custom_profile())
+        delete_custom_button.Bind(wx.EVT_BUTTON, lambda _e: delete_selected_custom_profile())
         export_button.Bind(wx.EVT_BUTTON, lambda _e: export_profile())
         import_button.Bind(wx.EVT_BUTTON, lambda _e: import_profile())
         apply_pack_button.Bind(wx.EVT_BUTTON, lambda _e: apply_selected_keyboard_pack())
@@ -11085,6 +12967,9 @@ class MainFrame:
         buttons.Add(compare_button, 0, wx.RIGHT, 6)
         buttons.Add(undo_button, 0, wx.RIGHT, 6)
         buttons.Add(reset_button, 0, wx.RIGHT, 6)
+        buttons.Add(create_custom_button, 0, wx.RIGHT, 6)
+        buttons.Add(update_custom_button, 0, wx.RIGHT, 6)
+        buttons.Add(delete_custom_button, 0, wx.RIGHT, 6)
         buttons.Add(export_button, 0, wx.RIGHT, 6)
         buttons.Add(import_button, 0, wx.RIGHT, 6)
         buttons.AddStretchSpacer(1)
@@ -11094,6 +12979,7 @@ class MainFrame:
         buttons.Add(close_button, 0)
         root.Add(buttons, 0, wx.ALL | wx.EXPAND, 8)
         panel.SetSizer(root)
+        refresh_profile_list()
         refresh_summary()
         refresh_keyboard_preview()
         self._show_modal_dialog(dialog, "Profiles and Features")
@@ -11123,10 +13009,12 @@ class MainFrame:
         self._show_profile_onboarding(force=True)
 
     def _maybe_run_first_run_onboarding(self) -> None:
-        if not getattr(self, "_first_run_profile_prompt", False):
-            return
-        self._show_profile_onboarding(force=False)
-        self._first_run_profile_prompt = False
+        if getattr(self, "_first_run_profile_prompt", False):
+            self._show_profile_onboarding(force=False)
+            self._first_run_profile_prompt = False
+        if getattr(self, "_first_run_assistant_prompt", False):
+            self._show_assistant_onboarding(force=False)
+            self._first_run_assistant_prompt = False
 
     def _show_profile_onboarding(self, force: bool) -> None:
         wx = self._wx
@@ -11138,16 +13026,87 @@ class MainFrame:
             choices=self._profile_choice_labels(profiles),
         ) as dialog:
             if self._show_modal_dialog(dialog, "Profile Onboarding") != wx.ID_OK:
+                if not force:
+                    mark_onboarding_complete()
                 if force:
                     self._set_status("Profile onboarding skipped")
                 return
             selection = dialog.GetSelection()
         if selection == wx.NOT_FOUND:
+            if not force:
+                mark_onboarding_complete()
             return
         profile = profiles[selection]
         self.features.switch_profile(profile.id)
+        mark_onboarding_complete()
         self._set_status(f"Quill starts in the {profile.name} profile")
         self._refresh_title()
+
+    def _show_assistant_onboarding(self, force: bool) -> None:
+        wx = self._wx
+        with wx.Dialog(
+            self.frame,
+            title="Writing Assistant Onboarding",
+            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+        ) as dialog:
+            panel = wx.Panel(dialog)
+            root = wx.BoxSizer(wx.VERTICAL)
+            panel_sizer = wx.BoxSizer(wx.VERTICAL)
+
+            panel_sizer.Add(
+                wx.StaticText(
+                    panel,
+                    label=(
+                        "Quill can seed the writing assistant with a few focused prompt styles. "
+                        "You can change this later in General Preferences."
+                    ),
+                ),
+                0,
+                wx.EXPAND | wx.ALL,
+                8,
+            )
+
+            assistant_enabled = wx.CheckBox(panel, label="Enable the writing assistant by default")
+            assistant_enabled.SetValue(getattr(self.settings, "assistant_enabled", False))
+            panel_sizer.Add(assistant_enabled, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+            prompt_style = wx.Choice(panel, choices=["Balanced", "Concise", "Gentle", "Technical"])
+            prompt_style.SetSelection(
+                {
+                    "balanced": 0,
+                    "concise": 1,
+                    "gentle": 2,
+                    "technical": 3,
+                }.get(getattr(self.settings, "assistant_prompt_style", "balanced"), 0)
+            )
+            row = wx.BoxSizer(wx.HORIZONTAL)
+            row.Add(wx.StaticText(panel, label="Prompt style"), 0, wx.ALIGN_CENTER_VERTICAL)
+            row.AddSpacer(8)
+            row.Add(prompt_style, 1, wx.EXPAND)
+            panel_sizer.Add(row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+            panel.SetSizer(panel_sizer)
+            buttons = dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
+            root.Add(panel, 1, wx.EXPAND | wx.ALL, 8)
+            if buttons is not None:
+                root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
+            dialog.SetSizerAndFit(root)
+
+            if self._show_modal_dialog(dialog, "Writing Assistant Onboarding") != wx.ID_OK:
+                if not force:
+                    mark_assistant_onboarding_complete()
+                return
+
+            self.settings.assistant_enabled = bool(assistant_enabled.GetValue())
+            self.settings.assistant_prompt_style = {
+                0: "balanced",
+                1: "concise",
+                2: "gentle",
+                3: "technical",
+            }.get(prompt_style.GetSelection(), "balanced")
+            save_settings(self.settings)
+            mark_assistant_onboarding_complete()
+            self._set_status("Configured writing assistant onboarding")
 
     def _profile_choice_labels(self, profiles: list[object]) -> list[str]:
         return [self._profile_choice_label(profile) for profile in profiles]

@@ -28,7 +28,8 @@ def test_try_claim_replaces_stale_lock(monkeypatch: pytest.MonkeyPatch, tmp_path
     lock_path = tmp_path / "ipc" / "instance.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock_path.write_text("999999", encoding="utf-8")
-    monkeypatch.setattr(ipc, "_pid_is_running", lambda _pid: False)
+    monkeypatch.setattr(ipc, "_pid_is_running", lambda _pid: True)
+    monkeypatch.setattr(ipc, "_pid_lock_is_stale", lambda _pid, _path: True)
     assert try_claim_primary_instance() is True
 
 
@@ -41,3 +42,9 @@ def test_enqueue_and_drain_open_requests(monkeypatch: pytest.MonkeyPatch, tmp_pa
     drained = drain_open_requests()
     assert drained == [first, second]
     assert drain_open_requests() == []
+
+
+def test_enqueue_show_request(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    enqueue_open_request(None)
+    assert drain_open_requests() == [None]

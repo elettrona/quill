@@ -92,13 +92,18 @@ class Settings:
     tray_enabled: bool = False
     persistent_undo: bool = False
     spellcheck_as_you_type: bool = False
+    intellisense_as_you_type: bool = False
     snippet_trigger_expansion: bool = True
+    preview_browser: str = "system"
+    show_tab_control: bool = False
     title_bar_path_mode: str = "name"
     dirty_title_style: str = "text"
     start_with_no_document_open: bool = False
     read_aloud_voice: str = ""
     announcement_backend: str = "auto"
     announcement_trace_enabled: bool = False
+    assistant_enabled: bool = False
+    assistant_prompt_style: str = "balanced"
     status_bar_order: list[str] = field(default_factory=_default_status_bar_order)
     status_bar_hidden: list[str] = field(default_factory=_default_status_bar_hidden)
 
@@ -115,7 +120,10 @@ class Settings:
         tray_enabled = bool(data.get("tray_enabled", False))
         persistent_undo = bool(data.get("persistent_undo", False))
         spellcheck_as_you_type = bool(data.get("spellcheck_as_you_type", False))
+        intellisense_as_you_type = bool(data.get("intellisense_as_you_type", False))
         snippet_trigger_expansion = bool(data.get("snippet_trigger_expansion", True))
+        preview_browser = str(data.get("preview_browser", "system")).strip() or "system"
+        show_tab_control = bool(data.get("show_tab_control", False))
         title_bar_path_mode = str(data.get("title_bar_path_mode", "name"))
         if title_bar_path_mode not in {"name", "full_path"}:
             title_bar_path_mode = "name"
@@ -128,6 +136,10 @@ class Settings:
         if announcement_backend not in {"auto", "prism", "status_only"}:
             announcement_backend = "auto"
         announcement_trace_enabled = bool(data.get("announcement_trace_enabled", False))
+        assistant_enabled = bool(data.get("assistant_enabled", False))
+        assistant_prompt_style = str(data.get("assistant_prompt_style", "balanced")).strip().lower()
+        if assistant_prompt_style not in {"balanced", "concise", "gentle", "technical"}:
+            assistant_prompt_style = "balanced"
         status_bar_order = _normalize_status_bar_order(data.get("status_bar_order"))
         status_bar_hidden = _normalize_status_bar_hidden(
             data.get("status_bar_hidden"), status_bar_order
@@ -152,13 +164,18 @@ class Settings:
             tray_enabled=tray_enabled,
             persistent_undo=persistent_undo,
             spellcheck_as_you_type=spellcheck_as_you_type,
+            intellisense_as_you_type=intellisense_as_you_type,
             snippet_trigger_expansion=snippet_trigger_expansion,
+            preview_browser=preview_browser,
+            show_tab_control=show_tab_control,
             title_bar_path_mode=title_bar_path_mode,
             dirty_title_style=dirty_title_style,
             start_with_no_document_open=start_with_no_document_open,
             read_aloud_voice=read_aloud_voice,
             announcement_backend=announcement_backend,
             announcement_trace_enabled=announcement_trace_enabled,
+            assistant_enabled=assistant_enabled,
+            assistant_prompt_style=assistant_prompt_style,
             status_bar_order=status_bar_order,
             status_bar_hidden=status_bar_hidden,
         )

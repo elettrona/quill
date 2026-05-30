@@ -18,12 +18,15 @@ Quill is designed to stay focused and useful:
 
 ## Current release line
 
-Current release line: **0.1.1**
+Current release line: **0.1.2**
 
-Highlights in 0.1.1 include:
+Highlights in 0.1.2 include:
 
 - Insert menu with searchable Markdown/HTML insertion.
-- New snippet system with `Ctrl+Space` insertion, trigger expansion, and starter packs.
+- Word Prediction with `Ctrl+Space` plus HTML/Markdown tag IntelliSense.
+- New snippet system with `Ctrl+Alt+Space` insertion, trigger expansion, and starter packs.
+- Writing Assistant shell with prompt presets, generated tool suggestions, and a sandboxed Python runner.
+- Browser Preview with `Ctrl+Shift+V` and a selectable preview browser.
 - Search menu simplification with replace-all inside the Replace dialog.
 - Unified diagnostics-backed support flow under **Help -> Report a Bug**.
 - Menu IA refinement, including **Search** after **View**.
@@ -31,13 +34,14 @@ Highlights in 0.1.1 include:
 
 Snippet workflow quick start:
 
-1. Press `Ctrl+Space` to open **Insert Snippet**.
+1. Press `Ctrl+Alt+Space` to open **Insert Snippet**.
 2. Type to filter by snippet name, trigger, or body text.
 3. Use arrow keys to choose, press Enter to insert, and fill placeholders when prompted.
 
 Related commands:
 
-- `Ctrl+Alt+Space`: Manage snippets (create, edit, delete, import/export, starter packs).
+- `Ctrl+Space`: Word Prediction (words, HTML tags, Markdown tags).
+- `Ctrl+Alt+Shift+Space`: Manage snippets (create, edit, delete, import/export, starter packs).
 - `Preferences -> Install Starter Snippet Packs`: install sample packs for writing, developer flow, and accessibility/support notes.
 
 ## Project layout
@@ -49,7 +53,8 @@ Related commands:
 - `docs/` -- product docs and generated artifacts.
   - `QUILL-PRD.md` (+ `.html`, `.epub`)
   - `userguide.md` (+ `.html`, `.epub`)
-  - `announcement-beta.md` (+ `.html`, `.epub`)
+  - `announcement-beta.md` (+ `.html`, `.epub`) -- published on GitHub Pages
+  - `engineering/` -- implementation-facing docs surfaced on GitHub Pages
 - `tests/` -- unit/integration/accessibility/performance tests.
 - `scripts/` -- release, validation, and maintenance helpers.
 
@@ -83,10 +88,12 @@ Artifact parity guard:
 - `python scripts/check_docs_artifacts.py`
 
 This fails when a `docs/*.md` source changed but matching `.html`/`.epub` files were not updated.
+The installer ships the user-facing guides, while the GitHub Pages docs hub exposes the
+PRD and engineering docs for anyone who wants the deeper implementation detail.
 
 ## One-command release readiness
 
-Run the full 0.1.1 readiness flow:
+Run the full 0.1.2 readiness flow:
 
 - `python scripts/release_readiness.py`
 
@@ -102,7 +109,7 @@ This runs:
 
 - CI workflow: `.github/workflows/accessibility-ci.yml`
 - Windows release workflow: `.github/workflows/windows-release.yml`
-- Docs site workflow: `.github/workflows/github-pages.yml`
+- Docs site workflow: `.github/workflows/github-pages.yml` (publishes the docs hub and updates feed)
 
 ## Support and issue reporting
 
