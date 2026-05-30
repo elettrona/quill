@@ -1,3 +1,0 @@
-chore: remove temporary commit message file
-
-- delete accidentally tracked msg.txt created during commit automation
