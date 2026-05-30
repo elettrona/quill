@@ -12,45 +12,32 @@ Recommended default model: Phi-4-mini (Q4); Llama 3.2 1B for low-end machines.
 from __future__ import annotations
 
 import json
-import os
-from pathlib import Path
 
 from quill.core.ai.agent import ACTIONS, AgentDecision
 from quill.core.ai.backend import AIBackend, ContextWindowExceeded
-from quill.core.paths import app_data_dir
+from quill.core.ai.model_manager import choose_model_spec, ensure_model, existing_model
 
 _N_CTX = 4096
 _MAX_TOKENS = 1024
 
 
-def _models_dir() -> Path:
-    return app_data_dir() / "models"
-
-
-def default_model_path() -> str | None:
-    override = os.environ.get("QUILL_LLAMA_MODEL")
-    if override and Path(override).expanduser().exists():
-        return str(Path(override).expanduser())
-    models = _models_dir()
-    if models.exists():
-        for candidate in sorted(models.glob("*.gguf")):
-            return str(candidate)
-    return None
-
-
 class LlamaCppBackend(AIBackend):
     name = "llama.cpp (local CPU)"
 
-    def __init__(self, model_path: str | None = None, n_ctx: int = _N_CTX) -> None:
-        self._model_path = model_path or default_model_path()
+    def __init__(self, model_path: str | None = None, n_ctx: int = _N_CTX, progress=None) -> None:
+        self._model_path = model_path
         self._n_ctx = n_ctx
+        self._progress = progress
         self._llm = None
 
     def _load(self):
         if self._llm is None:
             from llama_cpp import Llama  # type: ignore[import-not-found]
 
-            self._llm = Llama(model_path=self._model_path, n_ctx=self._n_ctx, verbose=False)
+            # Resolve (and download the RAM-appropriate model the first time).
+            path = self._model_path or ensure_model(self._progress)
+            self._model_path = path
+            self._llm = Llama(model_path=path, n_ctx=self._n_ctx, verbose=False)
         return self._llm
 
     def is_available(self) -> tuple[bool, str | None]:
@@ -58,12 +45,16 @@ class LlamaCppBackend(AIBackend):
             import llama_cpp  # noqa: F401
         except ImportError:
             return False, "llama-cpp-python is not installed (pip install llama-cpp-python)"
-        if not self._model_path or not Path(self._model_path).exists():
-            return False, (
-                "No GGUF model found. Set QUILL_LLAMA_MODEL or place a .gguf file in "
-                f"{_models_dir()} (e.g. Phi-4-mini Q4)."
-            )
+        # A model is auto-downloaded (RAM-tiered) on first use if none is present.
         return True, None
+
+    def model_status(self) -> str:
+        """Human-readable note about which model is/will be used."""
+        found = self._model_path or existing_model()
+        if found:
+            return f"Using model: {found}"
+        spec = choose_model_spec()
+        return f"Will download {spec.name} on first use."
 
     def _complete(self, messages: list[dict], response_format: dict | None = None) -> str:
         llm = self._load()
