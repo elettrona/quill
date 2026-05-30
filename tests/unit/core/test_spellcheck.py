@@ -10,6 +10,7 @@ from quill.core.spellcheck import (
     load_combined_dictionary,
     misspelling_at_position,
     next_misspelling,
+    previous_misspelling,
     suggest_words,
 )
 
@@ -71,3 +72,10 @@ def test_next_misspelling_scans_only_after_cursor() -> None:
     item = next_misspelling(text, text.index("midword"), {"midword"})
     assert item is not None
     assert item.word == "anotherbad"
+
+
+def test_previous_misspelling_returns_previous_before_cursor() -> None:
+    text = "earlywrong midword laterwrong"
+    item = previous_misspelling(text, text.index("laterwrong"), {"midword"})
+    assert item is not None
+    assert item.word == "earlywrong"

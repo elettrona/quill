@@ -485,6 +485,20 @@ def test_list_bookmarks_jumps_to_selected_bookmark() -> None:
     assert frame._status_message == 'Jumped to bookmark "Middle"'
 
 
+def test_previous_misspelling_jumps_to_prior_item() -> None:
+    frame = _build_frame(
+        "wrng\nhello\nlaterbad\n",
+        insertion_point=len("wrng\nhello\nlaterbad"),
+    )
+    frame._spell_dictionary = lambda: {"hello"}  # type: ignore[method-assign]
+
+    frame.previous_misspelling()
+
+    assert frame.editor.GetInsertionPoint() == 11
+    assert frame.editor.selection == (11, 19)
+    assert frame._status_message == 'Previous misspelling: "laterbad"'
+
+
 def test_find_next_does_not_wrap_when_setting_disabled() -> None:
     frame = _build_frame("alpha beta alpha", insertion_point=len("alpha beta alpha"))
     frame._last_find_query = "alpha"

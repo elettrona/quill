@@ -245,6 +245,18 @@ def next_misspelling(text: str, cursor: int, dictionary: set[str]) -> Misspellin
     return None
 
 
+def previous_misspelling(text: str, cursor: int, dictionary: set[str]) -> Misspelling | None:
+    previous: Misspelling | None = None
+    scan_until = max(0, cursor)
+    for match in _WORD_PATTERN.finditer(text, 0, scan_until):
+        if match.end() > cursor:
+            break
+        token = match.group(0)
+        if not is_known_word(token, dictionary):
+            previous = Misspelling(word=token, start=match.start(), end=match.end())
+    return previous
+
+
 def misspelling_at_position(text: str, position: int, dictionary: set[str]) -> Misspelling | None:
     # Find the word boundary around `position` directly rather than scanning
     # every word in the document. Walk left to the start of the current word,

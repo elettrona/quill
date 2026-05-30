@@ -436,6 +436,7 @@ def feature_for_command(command_id: str) -> str:
         "tools.shell_remove": "core.shell",
         "tools.notifications": "core.notifications",
         "tools.check_updates": "core.updates",
+        "tools.previous_misspelling": "core.spellcheck",
         "tools.validate_contrast": "core.accessibility",
         "tools.link_inventory": "core.accessibility",
         "tools.compare_with_file": "core.analysis",

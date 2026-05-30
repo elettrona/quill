@@ -152,6 +152,9 @@ from quill.core.spellcheck import (
 from quill.core.spellcheck import (
     next_misspelling as find_next_misspelling,
 )
+from quill.core.spellcheck import (
+    previous_misspelling as find_previous_misspelling,
+)
 from quill.core.structure_nav import (
     find_matching_bracket,
     next_structure_position,
@@ -742,6 +745,12 @@ class MainFrame:
             "Next Misspelling",
             self.next_misspelling,
             self._binding_for("tools.next_misspelling"),
+        )
+        self.commands.register(
+            "tools.previous_misspelling",
+            "Previous Misspelling",
+            self.previous_misspelling,
+            self._binding_for("tools.previous_misspelling"),
         )
         self.commands.register(
             "tools.misspelling_list",
@@ -2037,6 +2046,7 @@ class MainFrame:
 
         self._id_word_count = wx.NewIdRef()
         self._id_spell_check = wx.NewIdRef()
+        self._id_previous_misspelling = wx.NewIdRef()
         self._id_next_misspelling = wx.NewIdRef()
         self._id_misspelling_list = wx.NewIdRef()
         self._id_dictionary_status = wx.NewIdRef()
@@ -2111,6 +2121,10 @@ class MainFrame:
         tools_menu.Append(
             self._id_spell_check,
             self._menu_label("&Spell Check...", "tools.spell_check_dialog"),
+        )
+        tools_menu.Append(
+            self._id_previous_misspelling,
+            self._menu_label("Previous Mi&sspelling", "tools.previous_misspelling"),
         )
         tools_menu.Append(
             self._id_next_misspelling,
@@ -2779,6 +2793,11 @@ class MainFrame:
         )
         self.frame.Bind(
             wx.EVT_MENU,
+            lambda _e: self.previous_misspelling(),
+            id=self._id_previous_misspelling,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
             lambda _e: self.next_misspelling(),
             id=self._id_next_misspelling,
         )
@@ -3097,6 +3116,7 @@ class MainFrame:
             "navigate.previous_region": self._id_previous_region,
             "tools.word_count": self._id_word_count,
             "tools.spell_check_dialog": self._id_spell_check,
+            "tools.previous_misspelling": self._id_previous_misspelling,
             "tools.next_misspelling": self._id_next_misspelling,
             "tools.misspelling_list": self._id_misspelling_list,
             "tools.thesaurus": self._id_thesaurus,
@@ -4058,11 +4078,6 @@ class MainFrame:
     def _menu_label(self, title: str, command_id: str) -> str:
         binding = self.commands.keybinding_for(command_id)
         label = title
-        state = self.features.state_for_command(command_id)
-        if state == "quiet":
-            label = f"{label} [quiet]"
-        elif state == "off":
-            label = f"{label} [off]"
         if binding is None:
             return label
         return f"{label}\t{binding}"
@@ -4369,13 +4384,17 @@ class MainFrame:
             self._id_insert_task_list,
             self._id_insert_code_block,
             self._id_insert_footnote,
-            self._id_insert_table,
         )
+        structured_markup_ids = (self._id_insert_table,)
         html_ids = (self._id_insert_html_tag,)
         for item_id in markdown_ids:
             menu_item = menu_bar.FindItemById(item_id)
             if menu_item is not None:
                 menu_item.Enable(markdown_ready)
+        for item_id in structured_markup_ids:
+            menu_item = menu_bar.FindItemById(item_id)
+            if menu_item is not None:
+                menu_item.Enable(context in {"markdown", "html"})
         for item_id in html_ids:
             menu_item = menu_bar.FindItemById(item_id)
             if menu_item is not None:
@@ -7013,6 +7032,22 @@ class MainFrame:
             self.editor.SetSelection(item.start, item.end)
         self.editor.SetFocus()
         self._set_status(f'Next misspelling: "{item.word}"')
+
+    def previous_misspelling(self) -> None:
+        dictionary = self._spell_dictionary()
+        cursor = self.editor.GetInsertionPoint()
+        item = find_previous_misspelling(self.editor.GetValue(), cursor, dictionary)
+        if item is None:
+            self._set_status("No previous misspelling")
+            return
+        self._record_location_before_jump()
+        if self._extend_selection_mode and self._extend_selection_anchor is not None:
+            self._move_point(item.start)
+        else:
+            self.editor.SetInsertionPoint(item.start)
+            self.editor.SetSelection(item.start, item.end)
+        self.editor.SetFocus()
+        self._set_status(f'Previous misspelling: "{item.word}"')
 
     def show_thesaurus(self) -> None:
         """Open the thesaurus for the selected word or the word under the caret."""
