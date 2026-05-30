@@ -4,12 +4,14 @@ import csv
 import html
 import io
 import json
+import posixpath
 import re
 import sqlite3
 import tomllib
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
+from xml.etree.ElementTree import Element
 
 from quill.core.document import Document
 from quill.core.epub import load_epub_book, render_epub_book
@@ -44,6 +46,9 @@ def read_structured_document(path: Path, encoding: str = "utf-8") -> Document:
     elif suffix == ".rtf":
         text = _format_rtf(path)
         metadata = {"source_kind": "rtf", "engine": "rtf", "quality_score": 100}
+    elif suffix == ".pptx":
+        text = _format_pptx(path)
+        metadata = {"source_kind": "pptx", "engine": "pptx", "quality_score": 100}
     else:
         raw_text = path.read_text(encoding=encoding)
         if suffix == ".json":
@@ -192,3 +197,177 @@ def _strip_markup(text: str) -> str:
     cleaned = re.sub(r"<[^>]+>", " ", text)
     cleaned = html.unescape(cleaned)
     return " ".join(cleaned.split())
+
+
+_PPTX_NAMESPACES = {
+    "a": "http://schemas.openxmlformats.org/drawingml/2006/main",
+    "p": "http://schemas.openxmlformats.org/presentationml/2006/main",
+    "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    "pr": "http://schemas.openxmlformats.org/package/2006/relationships",
+}
+
+
+def _format_pptx(path: Path) -> str:
+    with zipfile.ZipFile(path) as archive:
+        slide_paths = sorted(
+            [name for name in archive.namelist() if name.startswith("ppt/slides/slide") and name.endswith(".xml")],
+            key=_pptx_slide_sort_key,
+        )
+        if not slide_paths:
+            return "# PPTX Extract\n\n(no extractable slides)\n"
+        slide_rel_map = _load_pptx_slide_rel_map(archive)
+        lines = [f"# PPTX Extract: {path.name}", ""]
+        for index, slide_path in enumerate(slide_paths, start=1):
+            root = ET.fromstring(archive.read(slide_path).decode("utf-8", errors="ignore"))
+            title = _pptx_slide_title(root) or f"Slide {index}"
+            lines.append(f"# {title}")
+            body_lines = _pptx_slide_body_lines(root)
+            lines.extend(body_lines or ["(no body text)"])
+
+            table_blocks = _pptx_slide_table_blocks(root)
+            if table_blocks:
+                lines.append("")
+                lines.append("## Tables")
+                for table in table_blocks:
+                    lines.extend(table)
+                    lines.append("")
+
+            notes_lines = _pptx_slide_notes_lines(archive, slide_path, slide_rel_map)
+            if notes_lines:
+                lines.append("")
+                lines.append("## Notes")
+                lines.extend(notes_lines)
+            lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _pptx_slide_sort_key(path: str) -> tuple[int, str]:
+    match = re.search(r"slide(\d+)\.xml$", path)
+    if match is None:
+        return (0, path)
+    return (int(match.group(1)), path)
+
+
+def _load_pptx_slide_rel_map(archive: zipfile.ZipFile) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for rel_path in [
+        name
+        for name in archive.namelist()
+        if name.startswith("ppt/slides/_rels/slide") and name.endswith(".xml.rels")
+    ]:
+        try:
+            root = ET.fromstring(archive.read(rel_path).decode("utf-8", errors="ignore"))
+        except ET.ParseError:
+            continue
+        slide_name = rel_path.replace("ppt/slides/_rels/", "").replace(".rels", "")
+        for relation in root.findall("pr:Relationship", _PPTX_NAMESPACES):
+            rel_type = relation.attrib.get("Type", "")
+            target = relation.attrib.get("Target", "")
+            if not rel_type.endswith("/notesSlide") or not target:
+                continue
+            source_part = f"ppt/slides/{slide_name}"
+            normalized = _normalize_pptx_target(source_part, target)
+            mapping[slide_name] = normalized
+            break
+    return mapping
+
+
+def _normalize_pptx_target(source_part_path: str, target: str) -> str:
+    base_dir = Path(source_part_path).parent.as_posix()
+    return posixpath.normpath(posixpath.join(base_dir, target))
+
+
+def _pptx_slide_title(root: Element) -> str:
+    for shape in root.findall(".//p:sp", _PPTX_NAMESPACES):
+        if not _pptx_shape_is_title(shape):
+            continue
+        paragraphs = _pptx_shape_paragraphs(shape)
+        for paragraph in paragraphs:
+            if paragraph.strip():
+                return paragraph.strip()
+    return ""
+
+
+def _pptx_shape_is_title(shape: Element) -> bool:
+    placeholder = shape.find(".//p:nvSpPr/p:nvPr/p:ph", _PPTX_NAMESPACES)
+    if placeholder is None:
+        return False
+    placeholder_type = (placeholder.attrib.get("type") or "").strip()
+    return placeholder_type in {"title", "ctrTitle", "subTitle"}
+
+
+def _pptx_shape_paragraphs(shape: Element) -> list[str]:
+    paragraphs: list[str] = []
+    for paragraph in shape.findall(".//a:p", _PPTX_NAMESPACES):
+        text = "".join(node.text or "" for node in paragraph.findall(".//a:t", _PPTX_NAMESPACES)).strip()
+        if text:
+            paragraphs.append(text)
+    return paragraphs
+
+
+def _pptx_slide_body_lines(root: Element) -> list[str]:
+    lines: list[str] = []
+    for shape in root.findall(".//p:sp", _PPTX_NAMESPACES):
+        if _pptx_shape_is_title(shape):
+            continue
+        for paragraph in shape.findall(".//a:p", _PPTX_NAMESPACES):
+            text = "".join(node.text or "" for node in paragraph.findall(".//a:t", _PPTX_NAMESPACES)).strip()
+            if not text:
+                continue
+            level = 0
+            paragraph_props = paragraph.find("a:pPr", _PPTX_NAMESPACES)
+            if paragraph_props is not None:
+                raw_level = paragraph_props.attrib.get("lvl")
+                if raw_level and raw_level.isdigit():
+                    level = int(raw_level)
+            lines.append(f"{'  ' * max(0, level)}- {text}")
+    return lines
+
+
+def _pptx_slide_table_blocks(root: Element) -> list[list[str]]:
+    tables: list[list[str]] = []
+    for table in root.findall(".//a:tbl", _PPTX_NAMESPACES):
+        rows: list[list[str]] = []
+        for row in table.findall("a:tr", _PPTX_NAMESPACES):
+            cells: list[str] = []
+            for cell in row.findall("a:tc", _PPTX_NAMESPACES):
+                text = "".join(node.text or "" for node in cell.findall(".//a:t", _PPTX_NAMESPACES)).strip()
+                cells.append(text or " ")
+            if cells:
+                rows.append(cells)
+        if not rows:
+            continue
+        columns = max(len(row) for row in rows)
+        normalized = [row + [" "] * (columns - len(row)) for row in rows]
+        header = normalized[0]
+        block = [
+            "| " + " | ".join(header) + " |",
+            "| " + " | ".join("---" for _ in header) + " |",
+        ]
+        for row in normalized[1:]:
+            block.append("| " + " | ".join(row) + " |")
+        tables.append(block)
+    return tables
+
+
+def _pptx_slide_notes_lines(
+    archive: zipfile.ZipFile,
+    slide_path: str,
+    slide_rel_map: dict[str, str],
+) -> list[str]:
+    slide_name = Path(slide_path).name
+    notes_path = slide_rel_map.get(slide_name)
+    if notes_path is None:
+        return []
+    if notes_path not in archive.namelist():
+        return []
+    try:
+        root = ET.fromstring(archive.read(notes_path).decode("utf-8", errors="ignore"))
+    except ET.ParseError:
+        return []
+    lines: list[str] = []
+    for paragraph in root.findall(".//a:p", _PPTX_NAMESPACES):
+        text = "".join(node.text or "" for node in paragraph.findall(".//a:t", _PPTX_NAMESPACES)).strip()
+        if text:
+            lines.append(text)
+    return lines

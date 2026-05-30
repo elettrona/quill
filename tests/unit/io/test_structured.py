@@ -128,3 +128,55 @@ def test_read_structured_pdf_attaches_metadata(monkeypatch, tmp_path: Path) -> N
     assert document.source_metadata["source_kind"] == "pdf"
     assert document.source_metadata["quality_score"] == 81
     assert document.source_metadata["page_count"] == 2
+
+
+def test_read_structured_pptx_extracts_headings_lists_tables_and_notes(tmp_path: Path) -> None:
+    target = tmp_path / "sample.pptx"
+    slide_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+        'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">'
+        "<p:cSld><p:spTree>"
+        "<p:sp><p:nvSpPr><p:nvPr><p:ph type=\"title\"/></p:nvPr></p:nvSpPr>"
+        "<p:txBody><a:p><a:r><a:t>Slide Title</a:t></a:r></a:p></p:txBody></p:sp>"
+        "<p:sp><p:nvSpPr><p:nvPr><p:ph type=\"body\"/></p:nvPr></p:nvSpPr><p:txBody>"
+        "<a:p><a:pPr lvl=\"0\"/><a:r><a:t>Top item</a:t></a:r></a:p>"
+        "<a:p><a:pPr lvl=\"1\"/><a:r><a:t>Nested item</a:t></a:r></a:p>"
+        "</p:txBody></p:sp>"
+        "<p:graphicFrame><a:graphic><a:graphicData>"
+        "<a:tbl><a:tr><a:tc><a:txBody><a:p><a:r><a:t>H1</a:t></a:r></a:p></a:txBody></a:tc>"
+        "<a:tc><a:txBody><a:p><a:r><a:t>H2</a:t></a:r></a:p></a:txBody></a:tc></a:tr>"
+        "<a:tr><a:tc><a:txBody><a:p><a:r><a:t>A</a:t></a:r></a:p></a:txBody></a:tc>"
+        "<a:tc><a:txBody><a:p><a:r><a:t>B</a:t></a:r></a:p></a:txBody></a:tc></a:tr>"
+        "</a:tbl></a:graphicData></a:graphic></p:graphicFrame>"
+        "</p:spTree></p:cSld></p:sld>"
+    )
+    rels_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" '
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" '
+        'Target="../notesSlides/notesSlide1.xml"/>'
+        "</Relationships>"
+    )
+    notes_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<p:notes xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+        'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">'
+        "<p:cSld><p:spTree><p:sp><p:txBody>"
+        "<a:p><a:r><a:t>Speaker note line</a:t></a:r></a:p>"
+        "</p:txBody></p:sp></p:spTree></p:cSld></p:notes>"
+    )
+    with zipfile.ZipFile(target, "w") as archive:
+        archive.writestr("ppt/slides/slide1.xml", slide_xml)
+        archive.writestr("ppt/slides/_rels/slide1.xml.rels", rels_xml)
+        archive.writestr("ppt/notesSlides/notesSlide1.xml", notes_xml)
+
+    document = read_structured_document(target)
+
+    assert "# Slide Title" in document.text
+    assert "- Top item" in document.text
+    assert "  - Nested item" in document.text
+    assert "| H1 | H2 |" in document.text
+    assert "## Notes" in document.text
+    assert "Speaker note line" in document.text

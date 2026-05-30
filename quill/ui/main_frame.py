@@ -6049,10 +6049,10 @@ class MainFrame:
                 "Open text file",
                 wildcard=(
                     "Supported files (*.txt;*.md;*.html;*.htm;*.xhtml;*.json;*.yaml;*.yml;"
-                    "*.toml;*.xml;*.csv;*.tsv;*.ipynb;*.sqlite;*.db;*.docx;*.epub;*.pdf;*.odt;*.rtf)|"
+                    "*.toml;*.xml;*.csv;*.tsv;*.ipynb;*.sqlite;*.db;*.docx;*.epub;*.pdf;*.odt;*.rtf;*.pptx)|"
                     "*.txt;*.md;*.html;"
                     "*.htm;*.xhtml;*.json;*.yaml;*.yml;*.toml;*.xml;*.csv;*.tsv;"
-                    "*.ipynb;*.sqlite;*.db;*.docx;*.epub;*.pdf;*.odt;*.rtf|All files (*.*)|*.*"
+                    "*.ipynb;*.sqlite;*.db;*.docx;*.epub;*.pdf;*.odt;*.rtf;*.pptx|All files (*.*)|*.*"
                 ),
                 style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
             ) as dialog:
@@ -6093,6 +6093,7 @@ class MainFrame:
             ".pdf",
             ".odt",
             ".rtf",
+            ".pptx",
         }
         if selected_path.suffix.lower() in structured_extensions:
             from quill.io.structured import read_structured_document

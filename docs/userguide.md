@@ -746,7 +746,7 @@ Quill keeps an internal notification center for update and workflow events. Upda
 
 ## Working with Different Document Types
 
-Quill is strongest today with plain text, Markdown, HTML, RTF, EPUB, and extracted text workflows. It also has intake and extraction review features for imported material such as PDF and OCR sources.
+Quill is strongest today with plain text, Markdown, HTML, RTF, EPUB, and extracted text workflows. It also has intake and extraction review features for imported material such as PDF/OCR sources and structured import support for PowerPoint slides.
 
 ### Plain text
 
@@ -767,6 +767,10 @@ RTF documents can use Quill's rich-text-capable editing surface when formatting 
 ### EPUB
 
 EPUB gets navigator support and chapter-oriented reading.
+
+### PowerPoint (.pptx)
+
+PowerPoint imports are structure-aware: slide titles become headings, slide bullets become nested list items, tables are rendered into tab-friendly text tables, and speaker notes are included when present.
 
 ### PDF and OCR-derived text
 
