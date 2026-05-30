@@ -37,6 +37,7 @@ class AccessibleWebView:
         intro: tuple | None = None,
         suggestions: tuple[str, ...] = (),
         on_send=None,
+        on_close=None,
     ) -> None:
         import wx
         import wx.html2 as webview
@@ -48,6 +49,7 @@ class AccessibleWebView:
         self._ready = False
         self._pending: list[tuple[str, object]] = []
         self._on_send = on_send
+        self._on_close = on_close
         self._suggestions = list(suggestions)
         self._want_focus = False
 
@@ -172,6 +174,15 @@ class AccessibleWebView:
     msg.addEventListener('keydown', function(e) {{
       if (e.key === 'Enter' && !e.shiftKey) {{ e.preventDefault(); form.requestSubmit(); }}
     }});
+    // Escape closes the chat (the native WebView swallows it, so bridge it out).
+    document.addEventListener('keydown', function(e) {{
+      if (e.key === 'Escape') {{
+        e.preventDefault();
+        if (window.quill && window.quill.postMessage) {{
+          window.quill.postMessage(JSON.stringify({{type: 'close'}}));
+        }}
+      }}
+    }});
     if (sug) {{
       sug.addEventListener('click', function(e) {{
         var b = e.target.closest('button');
@@ -212,10 +223,13 @@ class AccessibleWebView:
             data = json.loads(event.GetString())
         except Exception:  # noqa: BLE001
             return
-        if data.get("type") == "send" and self._on_send is not None:
+        kind = data.get("type")
+        if kind == "send" and self._on_send is not None:
             text = str(data.get("text", "")).strip()
             if text:
                 self._on_send(text)
+        elif kind == "close" and self._on_close is not None:
+            self._on_close()
 
     def _on_loaded(self, _event: object) -> None:
         self._ready = True

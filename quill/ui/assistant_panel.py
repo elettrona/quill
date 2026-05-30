@@ -79,6 +79,7 @@ class AskQuillChatDialog:
                 intro=("Quill", "Hi! Ask me to write, edit, or run something in your document."),
                 suggestions=SUGGESTED_PROMPTS,
                 on_send=self._submit,
+                on_close=self._close,
             )
             outer.Add(self._webview.control, 1, wx.EXPAND | wx.ALL, 0)
         except Exception:  # noqa: BLE001
@@ -150,10 +151,13 @@ class AskQuillChatDialog:
         self.input.Bind(wx.EVT_TEXT_ENTER, lambda _e: self._submit(self.input.GetValue()))
         self.send_button.Bind(wx.EVT_BUTTON, lambda _e: self._submit(self.input.GetValue()))
 
+    def _close(self) -> None:
+        self.dialog.EndModal(self._wx.ID_CANCEL)
+
     def _on_char_hook(self, event: object) -> None:
         wx = self._wx
         if event.GetKeyCode() == wx.WXK_ESCAPE:
-            self.dialog.EndModal(wx.ID_CANCEL)
+            self._close()
             return
         event.Skip()
 
