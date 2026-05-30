@@ -2194,6 +2194,7 @@ class MainFrame:
         self._id_preview = wx.NewIdRef()
         self._id_split_preview = wx.NewIdRef()
         self._id_focus_preview = wx.NewIdRef()
+        self._id_toggle_auto_side_preview = wx.NewIdRef()
         self._id_start_with_no_document_open = wx.NewIdRef()
         self._id_dirty_title_text = wx.NewIdRef()
         self._id_dirty_title_asterisk = wx.NewIdRef()
@@ -2207,6 +2208,10 @@ class MainFrame:
             self._menu_label("Toggle Soft &Wrap", "view.toggle_soft_wrap"),
         )
         view_menu.Check(self._id_toggle_soft_wrap, self.settings.soft_wrap)
+        view_menu.AppendCheckItem(
+            self._id_toggle_auto_side_preview, "&Auto Side-by-Side Preview"
+        )
+        view_menu.Check(self._id_toggle_auto_side_preview, self.settings.auto_side_preview)
         view_menu.AppendCheckItem(self._id_toggle_tab_control, "Show &Tab Control")
         view_menu.Check(self._id_toggle_tab_control, self.settings.show_tab_control)
         view_menu.AppendCheckItem(self._id_toggle_find_wrap, "Wrap &Find Searches")
@@ -3180,6 +3185,11 @@ class MainFrame:
             wx.EVT_MENU,
             self._on_toggle_soft_wrap,
             id=self._id_toggle_soft_wrap,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            self._on_toggle_auto_side_preview,
+            id=self._id_toggle_auto_side_preview,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -4175,6 +4185,7 @@ class MainFrame:
             self.document = document
             self._apply_statusbar_layout()
             self._refresh_title()
+            self._maybe_auto_side_preview(tab)
         self._refresh_sessions_menu()
         return index
 
@@ -4267,6 +4278,34 @@ class MainFrame:
         self._refresh_title()
         self._refresh_contextual_menu_items()
         self._refresh_sessions_menu()
+        self._maybe_auto_side_preview(tab)
+
+    def _maybe_auto_side_preview(self, tab) -> None:
+        """Auto-show the side-by-side preview for previewable (Markdown/HTML)
+        documents when the setting is on, so the user doesn't have to ask each
+        time. Plain text is left alone, and an explicit toggle still wins."""
+        if not getattr(self.settings, "auto_side_preview", True):
+            return
+        splitter = getattr(tab, "splitter", None)
+        if splitter is None or splitter.IsSplit():
+            return
+        text = tab.editor.GetValue()
+        if guess_preview_kind(tab.document.path, text) == "plain":
+            return
+        # Defer so the splitter has its real size before we set the sash.
+        self._wx.CallAfter(self._show_side_preview_for, tab)
+
+    def _show_side_preview_for(self, tab) -> None:
+        splitter = getattr(tab, "splitter", None)
+        if splitter is None or splitter.IsSplit():
+            return
+        if tab.preview is None:
+            from quill.ui.preview_dialog import SidePreview
+
+            tab.preview = SidePreview(splitter, on_return=self._focus_editor_from_preview)
+        sash = max(splitter.GetClientSize().x // 2, 200)
+        splitter.SplitVertically(tab.editor, tab.preview.control, sash)
+        self._update_side_preview(tab)
 
     def _start_ipc_poll(self) -> None:
         wx = self._wx
@@ -5108,6 +5147,18 @@ class MainFrame:
     def _on_toggle_soft_wrap(self, event: object) -> None:
         enabled = bool(event.IsChecked())
         self.toggle_soft_wrap(enabled)
+
+    def _on_toggle_auto_side_preview(self, event: object) -> None:
+        enabled = bool(event.IsChecked())
+        self.settings.auto_side_preview = enabled
+        save_settings(self.settings)
+        if enabled:
+            tab = self._active_tab()
+            if tab is not None:
+                self._maybe_auto_side_preview(tab)
+            self._set_status("Auto side-by-side preview on")
+        else:
+            self._set_status("Auto side-by-side preview off")
 
     def _on_toggle_tab_control(self, event: object) -> None:
         enabled = bool(event.IsChecked())
@@ -11824,13 +11875,7 @@ class MainFrame:
             self._set_status("Preview hidden")
             self.editor.SetFocus()
             return
-        if tab.preview is None:
-            from quill.ui.preview_dialog import SidePreview
-
-            tab.preview = SidePreview(splitter, on_return=self._focus_editor_from_preview)
-        sash = max(splitter.GetClientSize().x // 2, 200)
-        splitter.SplitVertically(tab.editor, tab.preview.control, sash)
-        self._update_side_preview(tab)
+        self._show_side_preview_for(tab)
         self._set_status("Preview shown on the right")
 
     def focus_preview(self) -> None:

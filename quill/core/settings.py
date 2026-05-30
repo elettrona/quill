@@ -97,6 +97,7 @@ class Settings:
     intellisense_as_you_type: bool = False
     snippet_trigger_expansion: bool = True
     preview_browser: str = "system"
+    auto_side_preview: bool = True
     show_tab_control: bool = False
     title_bar_path_mode: str = "name"
     dirty_title_style: str = "text"
@@ -136,6 +137,7 @@ class Settings:
         intellisense_as_you_type = bool(data.get("intellisense_as_you_type", False))
         snippet_trigger_expansion = bool(data.get("snippet_trigger_expansion", True))
         preview_browser = str(data.get("preview_browser", "system")).strip() or "system"
+        auto_side_preview = bool(data.get("auto_side_preview", True))
         show_tab_control = bool(data.get("show_tab_control", False))
         title_bar_path_mode = str(data.get("title_bar_path_mode", "name"))
         if title_bar_path_mode not in {"name", "full_path"}:
@@ -191,6 +193,7 @@ class Settings:
             intellisense_as_you_type=intellisense_as_you_type,
             snippet_trigger_expansion=snippet_trigger_expansion,
             preview_browser=preview_browser,
+            auto_side_preview=auto_side_preview,
             show_tab_control=show_tab_control,
             title_bar_path_mode=title_bar_path_mode,
             dirty_title_style=dirty_title_style,
