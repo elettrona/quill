@@ -146,6 +146,11 @@ def build_bug_report_payload(
     *,
     current_document: Document | None,
     extra_environment: dict[str, object] | None = None,
+    summary_override: str | None = None,
+    happened: str | None = None,
+    expected: str | None = None,
+    steps: str | None = None,
+    diagnostics_note: str | None = None,
 ) -> dict[str, str]:
     metadata = collect_environment_info(extra_environment=extra_environment)
     document_label = "No document open"
@@ -154,9 +159,25 @@ def build_bug_report_payload(
         name = snapshot.get("name")
         if isinstance(name, str) and name.strip():
             document_label = name
-    summary = f"Bug report: {document_label}"
+    summary = (summary_override or "").strip() or f"Bug report: {document_label}"
+    happened_text = (
+        (happened or "").strip()
+        or "Please describe what happened and what you expected to happen."
+    )
+    expected_text = (expected or "").strip() or "Please describe the expected behavior."
+    steps_text = (steps or "").strip() or "Please list steps to reproduce."
+    diagnostics_text = (diagnostics_note or "").strip() or (
+        "If possible, attach a diagnostics bundle created from Help -> Save Diagnostics..."
+    )
     details = [
-        "Please describe what happened and what you expected to happen.",
+        "Issue details:",
+        happened_text,
+        "",
+        "Expected behavior:",
+        expected_text,
+        "",
+        "Steps to reproduce:",
+        steps_text,
         "",
         "Environment summary:",
         f"- Quill version: {metadata['quill_version']}",
@@ -165,7 +186,7 @@ def build_bug_report_payload(
         f"- Locale: {metadata['locale']}",
         f"- Current document: {document_label}",
         "",
-        "If possible, attach a diagnostics bundle created from Help -> Save Diagnostics...",
+        diagnostics_text,
     ]
     return {
         "summary": summary,

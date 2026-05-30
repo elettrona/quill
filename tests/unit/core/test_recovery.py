@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import time
 from pathlib import Path
 from uuid import uuid4
@@ -7,9 +8,11 @@ from uuid import uuid4
 import pytest
 
 from quill.core.recovery import (
+    RecoveryOffer,
     begin_session,
     latest_session_snapshot,
     mark_clean_exit,
+    mark_recovery_offer_dismissed,
     read_recovery_snapshot,
 )
 
@@ -57,3 +60,22 @@ def test_latest_session_snapshot_and_reader(
     latest = latest_session_snapshot(session)
     assert latest == newer
     assert read_recovery_snapshot(newer) == "new"
+
+
+def test_begin_session_skips_dismissed_offer_for_same_snapshot(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    previous = str(uuid4())
+    current = str(uuid4())
+    session_root = tmp_path / "autosave" / previous
+    session_root.mkdir(parents=True)
+    snap = session_root / "doc.snap"
+    snap.write_text("recovered text", encoding="utf-8")
+    (tmp_path / "recovery_state.json").write_text(
+        json.dumps({"last_session_id": previous, "clean_exit": False}),
+        encoding="utf-8",
+    )
+    mark_recovery_offer_dismissed(RecoveryOffer(session_id=previous, snapshot=snap))
+    offers = begin_session(current)
+    assert offers == []

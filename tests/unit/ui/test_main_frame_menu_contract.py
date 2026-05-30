@@ -1,0 +1,33 @@
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+
+def test_menu_item_ids_have_menu_bindings() -> None:
+    source = (Path(__file__).resolve().parents[3] / "quill" / "ui" / "main_frame.py").read_text(
+        encoding="utf-8"
+    )
+    menu_ids = set(
+        re.findall(
+            r"\.(?:Append|AppendCheckItem|AppendRadioItem)\(\s*(self\._id_[A-Za-z0-9_]+)",
+            source,
+        )
+    )
+    bound_ids = set(
+        re.findall(
+            r"self\.frame\.Bind\(\s*wx\.EVT_MENU,.*?id\s*=\s*(self\._id_[A-Za-z0-9_]+)",
+            source,
+            flags=re.S,
+        )
+    )
+
+    # These are handled by dynamic menu callbacks rather than direct id-specific
+    # Bind(...) calls.
+    dynamically_handled_ids = {
+        "self._id_clear_recent",
+        "self._id_clear_recent_sessions",
+    }
+
+    missing_bindings = menu_ids - bound_ids - dynamically_handled_ids
+    assert missing_bindings == set()

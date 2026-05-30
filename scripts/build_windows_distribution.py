@@ -198,7 +198,8 @@ def _render_launcher_script() -> str:
     """Return the contents of ``run-quill.cmd``.
 
     The launcher prefers a Python interpreter shipped alongside it
-    (``python\\python.exe``, populated by ``--bundle-python``) so the
+    (``python\\pythonw.exe`` for normal windowed launch and
+    ``python\\python.exe`` with ``--console``) so the
     typical end user never has to install Python. If no bundled
     interpreter is present we fall back to one on ``PATH`` and, failing
     that, print a clear screen-reader-friendly error.
@@ -210,8 +211,29 @@ def _render_launcher_script() -> str:
         "set QUILL_PORTABLE=1\r\n"
         "set QUILL_APP_ROOT=%~dp0\r\n"
         "set QUILL_PORTABLE_ROOT=%~dp0data\r\n"
+        "set QUILL_CONSOLE_MODE=0\r\n"
+        'if /I "%~1"=="--console" (\r\n'
+        "    set QUILL_CONSOLE_MODE=1\r\n"
+        "    shift\r\n"
+        ")\r\n"
+        'if /I "%~1"=="--no-console" (\r\n'
+        "    set QUILL_CONSOLE_MODE=0\r\n"
+        "    shift\r\n"
+        ")\r\n"
         ":: Prefer the bundled embedded Python that ships with the installer.\r\n"
         'set "QUILL_BUNDLED_PYTHON=%~dp0python\\python.exe"\r\n'
+        'set "QUILL_BUNDLED_PYTHONW=%~dp0python\\pythonw.exe"\r\n'
+        'if "%QUILL_CONSOLE_MODE%"=="0" (\r\n'
+        '    if exist "%QUILL_BUNDLED_PYTHONW%" (\r\n'
+        '        start "" "%QUILL_BUNDLED_PYTHONW%" -m quill %*\r\n'
+        "        exit /b 0\r\n"
+        "    )\r\n"
+        "    where pythonw >nul 2>nul\r\n"
+        "    if errorlevel 1 goto :run_console\r\n"
+        '    start "" pythonw -m quill %*\r\n'
+        "    exit /b 0\r\n"
+        ")\r\n"
+        ":run_console\r\n"
         'if exist "%QUILL_BUNDLED_PYTHON%" (\r\n'
         '    "%QUILL_BUNDLED_PYTHON%" -m quill %*\r\n'
         "    goto :after_run\r\n"

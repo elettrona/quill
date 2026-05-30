@@ -22,6 +22,8 @@ def test_feature_mapping_infers_command_groups() -> None:
     assert feature_for_command("edit.find") == "core.search"
     assert feature_for_command("edit.replace_all") == "core.search.regex"
     assert feature_for_command("tools.read_aloud_start_pause") == "core.read_aloud"
+    assert feature_for_command("tools.announcement_backend") == "core.accessibility"
+    assert feature_for_command("tools.announcement_trace_toggle") == "core.accessibility"
     assert feature_for_command("format.insert_table") == "core.format"
 
 
@@ -40,6 +42,15 @@ def test_feature_manager_can_switch_profiles() -> None:
     assert "Comparing Essential to Developer and Power Text" in comparison
     manager.switch_profile(PROFILE_DEVELOPER_POWER_TEXT)
     assert manager.active_profile_id == PROFILE_DEVELOPER_POWER_TEXT
+
+
+def test_change_profile_preview_reports_same_profile() -> None:
+    manager = FeatureManager(active_profile_id=PROFILE_ESSENTIAL)
+
+    preview = manager.change_profile_preview(PROFILE_ESSENTIAL)
+
+    assert preview.startswith("Essential is already active.")
+    assert "No switch was made because this profile is already in use." in preview
 
 
 def test_feature_manager_undo_and_reset_profile() -> None:

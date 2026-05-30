@@ -2,7 +2,7 @@
 
 Quill is a screen-reader-first writing and reading environment for Windows. It is designed to feel calm, predictable, deeply keyboard-friendly, and respectful of your focus. It is also ambitious. Quill is not only a place to write plain text. It is a place to open difficult documents, inspect structure, navigate long material, compare revisions, prepare content for Markdown or HTML, and work with accessibility and extraction issues without leaving the editor.
 
-This guide is aligned to Quill 0.1 Beta, built by Blind Information Technology Solutions (BITS) together with Community Access.
+This guide is aligned to Quill 0.1.1 Beta, built by Blind Information Technology Solutions (BITS) together with Community Access.
 
 This guide is written as a companion, not a reference wall. Read it from the beginning if you are new to Quill. Dip into the sections that matter most if you already know what kind of work you want to do.
 
@@ -80,9 +80,11 @@ The menu bar follows the Windows and Office order you likely expect:
 
 - File
 - Edit
+- Search
 - View
 - Navigate
 - Format
+- Insert
 - Tools
 - Window
 - Help
@@ -137,7 +139,9 @@ Use `F6` to move into it. Once there, you can move between cells and activate th
 - current search term
 - file path or unsaved state
 
-You can reorder or hide status items through **Tools → Customize → Status Bar Layout...**.
+You can reorder or hide status items through **Tools → Customize → Status Bar Settings...**.
+Right-click a focused status cell to **Activate**, **Hide this item**, or open **Status bar settings...**.
+Use **Restore Defaults** in status bar settings to reset visibility and order.
 
 ### Region cycling
 
@@ -155,7 +159,7 @@ The **File** menu is the full document lifecycle.
 - **Open...** opens a document from disk.
 - **Open Recent** returns quickly to recently used files.
 - **Open from URL...** downloads a document or text resource through an explicit safety flow that confirms host and expected size.
-- **Sessions** lets you save and reopen groups of documents.
+- **Workspace Snapshots** lets you save and reopen groups of documents as a single workspace snapshot, similar to lightweight workspaces in Visual Studio Code.
 - **Save** writes the current document.
 - **Save As...** writes to a new path.
 - **Save All** writes every modified open document.
@@ -186,7 +190,7 @@ Quill then goes further with selection and navigation-aware editing:
 
 - **Extend Selection Mode** turns selection growth into a dedicated mode.
 - **Selection** submenu includes Select Line, Select Paragraph, Select Block, Select to Start or End of Line, and Select to Start or End of Document.
-- **Mark Ring** commands let you set, pop, exchange, and list marks. If you come from editors with a stronger structural navigation culture, this becomes a favorite quickly.
+- **Recent Marks (Ring)** commands let you set a temporary mark, jump to previous marks, swap cursor and mark, and list recent marks while you move through an editing flow.
 - **Insert Link...** creates a format-aware link.
 - **Follow Link** opens the link under the caret.
 - **Find...** and **Replace All...** sit here as expected.
@@ -297,7 +301,7 @@ The palette is one of the fastest ways to learn Quill. It supports query modes:
 
 The palette also learns from usage. Commands you use more often rise naturally.
 
-#### Writing aids
+#### Writing and language
 
 - **Word Count...**
 - **Spell Check...**
@@ -307,13 +311,12 @@ The palette also learns from usage. Commands you use more often rise naturally.
 
 These help you stay inside the editor instead of breaking flow for small writing chores.
 
-#### Reading aids
+#### Read aloud and integrations
 
 - **Read Aloud** submenu for start or pause, stop, and voice selection
-- **EPUB Navigator...**
-- **OCR Image...**
+- **Integrations** submenu with **OCR Image...** and shell integration commands.
 
-Read Aloud is particularly useful for proofreading by ear. On EPUB files, **Outline Navigator...** is the main keyboard path and opens the chapter-aware navigator, while **EPUB Navigator...** remains available as a menu command alias. OCR Image handles image-to-text work with an explicit consent and progress flow.
+Read Aloud is particularly useful for proofreading by ear. OCR Image handles image-to-text work with an explicit consent and progress flow.
 
 #### Document intake and extraction review
 
@@ -347,11 +350,12 @@ GLOW inside Quill is a guided layout and output workflow for deterministic text 
 
 The key design choice is how GLOW feels inside Quill. Audit results open as readable Quill tabs. Fixing the current document opens a named preview tab and immediately starts a compare session against the original. Selection fixes apply in place to the current selection, paragraph, or line. That keeps GLOW close to the writing experience instead of making it feel like a detached compliance tool.
 
-#### Power tools and cleanup
+#### Authoring and automation
 
 - **Regex Helper...**
 - **Pandoc Conversion Wizard...**
 - **External Tools and Format Support...**
+- **GLOW** submenu
 - **Macros** submenu
 - **Convert** submenu with sort, reverse, deduplicate, trim trailing whitespace, normalize whitespace, and convert indentation commands
 
@@ -359,7 +363,7 @@ These are especially valuable in large cleanup jobs and repetitive editing workf
 
 The new external-tools surface deserves a special note. Quill does not treat optional tools as hidden technical chores. **External Tools and Format Support...** explains what each supported helper unlocks, whether Quill can already see it, and what the best first touch point is. If Pandoc is installed or bundled, **Pandoc Conversion Wizard...** can turn supported source files into Markdown, HTML, or plain text tabs that open directly in Quill. That makes Quill feel less like a dead-end editor and more like a calm bridge into real-world document cleanup and GLOW-oriented handoff work.
 
-#### Compare and analysis
+#### Compare documents
 
 - **Compare with File...**
 - **Compare Open Documents**
@@ -373,7 +377,7 @@ The new external-tools surface deserves a special note. Quill does not treat opt
 
 Quill's compare model is practical and local. It supports file-to-file review, multi-document review, summary generation, and synchronized movement through differences.
 
-#### Accessibility and inspection
+#### Accessibility
 
 - **Accessibility Audit...**
 - **Keyboard Trap Snapshot...**
@@ -382,13 +386,14 @@ Quill's compare model is practical and local. It supports file-to-file review, m
 
 These tools help review the editor experience itself, the current document's link surface, and low-vision presentation issues.
 
-#### System integration and customization
+#### Support and customization
 
-- **Notifications...**
+- **Show Notifications**
+- **Report a Bug...**
+- **Save Diagnostics...**
 - **Check for Updates...**
-- **Shell Integration** commands
 - **Profiles and Features...**
-- **Status Bar Layout...**
+- **Status Bar Settings...**
 - **Keymap Editor...**
 - **Export Keymap...**
 - **Import Keymap...**
@@ -416,7 +421,7 @@ The **Help** menu is where Quill becomes a guide.
 - **What Can I Do Here?** gives context-aware assistance.
 - **Why Don't I See a Feature?** explains profile-driven feature visibility.
 - **Feature Profiles** commands let you switch profile, run health checks, undo the last profile change, reset to Essential, and run onboarding.
-- **Check for Updates...** verifies the signed update manifest.
+- **Check for Updates...** verifies the signed update manifest, opens the installer download page, and can close Quill so setup can run immediately.
 - **About Quill** shows version and publisher details.
 
 If you only remember one thing about Help, remember this: it is a working surface, not a dead-end menu. The welcome guide teaches the basics, the keyboard reference reflects your live bindings, the user guide gives the full map, diagnostics package the current state, and the bug-report action turns that state into a support-ready starting point.
@@ -617,7 +622,7 @@ Choose a pack in **Profiles and Features...**. If you later hand-edit shortcuts 
 
 Use the keymap editor when you want to rebind a single command. Quill detects conflicts and warns you before reassigning a binding already in use.
 
-### Status bar layout
+### Status bar settings
 
 If the current status bar is too busy or not informative enough, change it. You can reorder items and choose which ones stay visible.
 
@@ -639,7 +644,7 @@ Quill's current settings and customization surface covers the things you are mos
 - custom keybindings through the keymap editor
 - status-bar order and status-bar visibility
 
-Some of these live in the View menu for quick toggling. Others live in **Profiles and Features...**, **Status Bar Layout...**, **Keymap Editor...**, and the related customization commands under **Tools**.
+Some of these live in the View menu for quick toggling. Others live in **Profiles and Features...**, **Status Bar Settings...**, **Keymap Editor...**, and the related customization commands under **Tools**.
 
 ## Trust, Recovery, Sessions, and Safety
 
@@ -647,7 +652,24 @@ Quill is serious about recovery and user control.
 
 ### Sessions
 
-Sessions let you reopen groups of documents. This is useful when a project naturally spans multiple notes, references, and generated reports.
+Sessions in Quill are best understood as **workspace snapshots**. A session captures your currently open documents and active tab, then lets you reopen that exact working set later.
+
+If you are familiar with VS Code workspaces, think of Quill sessions as a simpler, document-focused version of that idea:
+
+- save your current workspace state
+- reopen it from Recent Workspace Snapshots
+- quickly switch among open documents in the current workspace group
+
+This is useful when one writing task spans notes, references, drafts, and generated reports.
+
+### Marks vs bookmarks (and the ring)
+
+Quill has two jump systems on purpose:
+
+- **Bookmarks** are named jump points. They are explicit, easy to list, and best for durable places you want to revisit by name.
+- **Marks** are temporary jump points in a **ring**. The ring is a rolling stack of recent mark locations for fast back-and-forth movement while editing.
+
+Use bookmarks for long-lived anchors; use marks when you are actively traversing and reshaping text.
 
 ### Autosave and backups
 
@@ -675,7 +697,7 @@ Quill keeps an internal notification center for update and workflow events. Upda
 
 ## Working with Different Document Types
 
-Quill is strongest today with plain text, Markdown, HTML, EPUB, and extracted text workflows. It also has intake and extraction review features for imported material such as PDF and OCR sources.
+Quill is strongest today with plain text, Markdown, HTML, RTF, EPUB, and extracted text workflows. It also has intake and extraction review features for imported material such as PDF and OCR sources.
 
 ### Plain text
 
@@ -688,6 +710,10 @@ Markdown gets structure-aware commands, list helpers, heading helpers, links, co
 ### HTML
 
 HTML gets tag insertion, structure-aware editing help, link handling, and GLOW review focused on language metadata, image alt text, heading order, and table headers.
+
+### RTF
+
+RTF documents can use Quill's rich-text-capable editing surface when formatting fidelity matters. Commands such as bold, italic, and underline are exposed contextually in this mode while preserving Quill's keyboard-first, screen-reader-first behavior.
 
 ### EPUB
 
@@ -711,7 +737,7 @@ That last command matters more than it first appears. It turns feature visibilit
 
 ## Beta Feedback and Bug Reporting
 
-Quill is ready for serious beta use, and Quill 0.1 Beta now ships a real in-app support starting point.
+Quill is ready for serious beta use, and Quill 0.1.1 Beta now ships a real in-app support starting point.
 
 ### What exists today
 
@@ -738,7 +764,7 @@ Before the broadest public rollout, publish one secure feedback route that does 
 3. a plain-language bug template with environment summary and reproduction steps
 4. the current **Help -> Report a Bug...** handoff kept as the guided in-app bridge until the fuller route is live
 
-Until that exists, use the current Help-menu path as the practical bridge. The important improvement in Quill 0.1 Beta is that Quill now helps users gather diagnostics locally, review what is being shared, and start a structured support report without forcing them to begin outside the tool.
+Until that exists, use the current Help-menu path as the practical bridge. The important improvement in Quill 0.1.1 Beta is that Quill now helps users gather diagnostics locally, review what is being shared, and start a structured support report without forcing them to begin outside the tool.
 
 ## A Fast Shortcut Tour
 

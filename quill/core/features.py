@@ -421,11 +421,12 @@ def feature_for_command(command_id: str) -> str:
         "tools.next_misspelling": "core.spellcheck",
         "tools.misspelling_list": "core.spellcheck",
         "tools.dictionary_status": "core.spellcheck",
-        "tools.epub_navigator": "core.navigate",
         "tools.ocr_image": "core.ocr",
         "tools.read_aloud_start_pause": "core.read_aloud",
         "tools.read_aloud_stop": "core.read_aloud",
         "tools.read_aloud_voice": "core.read_aloud",
+        "tools.announcement_backend": "core.accessibility",
+        "tools.announcement_trace_toggle": "core.accessibility",
         "tools.document_intake_report": "core.trust",
         "tools.review_extraction_quality": "core.trust",
         "tools.regex_helper": "core.search.regex",
@@ -703,6 +704,12 @@ class FeatureManager:
 
     def change_profile_preview(self, target_profile_id: str) -> str:
         target = PROFILE_DEFINITIONS[target_profile_id]
+        current = self.active_profile
+        if target.id == current.id:
+            return (
+                f"{target.name} is already active.\n\n"
+                "No switch was made because this profile is already in use."
+            )
         turn_on: list[str] = []
         turn_quiet: list[str] = []
         turn_off: list[str] = []
@@ -720,7 +727,7 @@ class FeatureManager:
             else:
                 turn_off.append(definition.name)
         return (
-            f"Switching from {self.active_profile.name} to {target.name} will turn on "
+            f"Switching from {current.name} to {target.name} will turn on "
             f"{len(turn_on)} features, make {len(turn_quiet)} features quiet, "
             f"and turn off {len(turn_off)} features.\n\n"
             + self._format_feature_lines("Turned on", turn_on)

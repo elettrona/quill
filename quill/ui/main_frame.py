@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
+from urllib.error import URLError
 from uuid import uuid4
 
 if TYPE_CHECKING:  # imports kept out of cold-start path
@@ -119,7 +120,13 @@ from quill.core.read_aloud import (
     list_voices,
 )
 from quill.core.recent import add_recent_file, clear_recent_files, load_recent_files
-from quill.core.recovery import begin_session, mark_clean_exit, read_recovery_snapshot
+from quill.core.recovery import (
+    begin_session,
+    mark_clean_exit,
+    mark_recovery_offer_dismissed,
+    mark_recovery_offer_recovered,
+    read_recovery_snapshot,
+)
 from quill.core.search import SearchOptions, SearchPatternError, find_matches, replace_all
 from quill.core.search_history import add_search_term, load_search_history
 from quill.core.selection import block_span, line_span, paragraph_span
@@ -136,7 +143,7 @@ from quill.core.sessions import (
 from quill.core.sessions import (
     save_session as save_session_file,
 )
-from quill.core.settings import STATUS_BAR_ITEMS, load_settings, save_settings
+from quill.core.settings import STATUS_BAR_ITEMS, Settings, load_settings, save_settings
 from quill.core.spellcheck import (
     Misspelling,
     add_word_to_scope,
@@ -175,7 +182,12 @@ from quill.core.tagging import (
 from quill.core.transforms import to_lower, to_sentence_case, to_title, to_toggle_case, to_upper
 from quill.core.trust import is_trusted_location, load_trusted_locations, save_trusted_locations
 from quill.core.undo_store import load_undo_history, save_undo_history
-from quill.core.updates import DEFAULT_UPDATE_MANIFEST_URL, fetch_update_manifest, is_newer_version
+from quill.core.updates import (
+    DEFAULT_UPDATE_MANIFEST_URL,
+    UpdateManifest,
+    fetch_update_manifest,
+    is_newer_version,
+)
 from quill.core.url_ops import format_content_length, host_for_url, is_cross_host_redirect
 from quill.io.pandoc import (
     PandocConversionError,
@@ -184,13 +196,19 @@ from quill.io.pandoc import (
 )
 from quill.io.text import read_text_document, write_text_document
 from quill.platform.windows.high_contrast import is_high_contrast_enabled
+from quill.platform.windows.prism_bridge import AnnouncementEngine
 from quill.platform.windows.shell_integration import (
     build_shell_integration_plan,
     install_shell_integration,
     launcher_command,
     remove_shell_integration,
 )
-from quill.platform.windows.sr_announce import announce, set_announce_handler
+from quill.platform.windows.sr_announce import (
+    announce,
+    enable_transcript_capture,
+    set_announce_handler,
+    set_transcript_path,
+)
 from quill.platform.windows.sr_detect import detect_screen_reader
 from quill.ui.palette import CommandPaletteDialog
 
@@ -247,6 +265,11 @@ class _CompareSession:
 
 
 class MainFrame:
+    _ANNOUNCEMENT_BACKEND_LABELS: dict[str, str] = {
+        "auto": "Automatic (use Prism when available)",
+        "prism": "Prism",
+        "status_only": "Status Bar Only",
+    }
     _STATUS_BAR_LABELS: dict[str, str] = {
         "message": "Status Message",
         "line_column": "Line / Column",
@@ -322,6 +345,8 @@ class MainFrame:
             self.settings.persistent_undo = False
             self.settings.spellcheck_as_you_type = False
             self.settings.start_with_no_document_open = False
+            self.settings.announcement_backend = "status_only"
+            self.settings.announcement_trace_enabled = False
         self.keymap = dict(DEFAULT_KEYMAP) if safe_mode else load_keymap()
         self.recent_files = [] if safe_mode else load_recent_files()
         self._trusted_locations = set() if safe_mode else load_trusted_locations()
@@ -345,6 +370,8 @@ class MainFrame:
         self._persistent_undo_dirty = False
         self._last_persistent_undo_write_at: datetime | None = None
         self._spell_dictionary_cache: tuple[tuple[Path | None, Path], set[str]] | None = None
+        self._last_live_misspelling_feedback: tuple[str, int, int] | None = None
+        self._last_live_misspelling_feedback_at: float = 0.0
         self._extend_selection_mode = False
         self._extend_selection_anchor: int | None = None
         self._epub_book: EpubBook | None = None
@@ -359,6 +386,8 @@ class MainFrame:
         self._compare_ignore_trailing_spaces = True
         self._compare_ignore_line_endings = True
         self._empty_workspace_active = False
+        self._announcement_engine = AnnouncementEngine(self.settings.announcement_backend)
+        self._announcement_error_reported = ""
         self._read_aloud = ReadAloudController()
         self._overwrite_mode = False
         self._insert_key_down = False
@@ -395,12 +424,14 @@ class MainFrame:
         self._apply_accelerators()
         self._bind_events()
         self._apply_startup_document_preference()
+        self._apply_announcement_trace_setting()
 
         set_announce_handler(self._announce)
         if safe_mode:
             self._set_status("Safe mode enabled. Optional state is disabled.")
         else:
             self._set_status("Ready. Tip: press Ctrl+Shift+P for Command Palette.")
+        self._announce_backend_state_on_startup()
         self._refresh_title()
 
     def show(self) -> None:
@@ -771,12 +802,6 @@ class MainFrame:
             None,
         )
         self.commands.register(
-            "tools.epub_navigator",
-            "EPUB Navigator...",
-            self.open_epub_navigator,
-            self._binding_for("tools.epub_navigator"),
-        )
-        self.commands.register(
             "tools.ocr_image",
             "OCR Image...",
             self.ocr_image_file,
@@ -798,6 +823,18 @@ class MainFrame:
             "tools.read_aloud_voice",
             "Read Aloud Voice...",
             self.choose_read_aloud_voice,
+            None,
+        )
+        self.commands.register(
+            "tools.announcement_backend",
+            "Announcement Backend...",
+            self.choose_announcement_backend,
+            None,
+        )
+        self.commands.register(
+            "tools.announcement_trace_toggle",
+            "Toggle Announcement Trace Capture",
+            self.toggle_announcement_trace_capture,
             None,
         )
         self.commands.register(
@@ -1159,6 +1196,12 @@ class MainFrame:
             "Find Previous",
             self.find_previous,
             self._binding_for("edit.find_previous"),
+        )
+        self.commands.register(
+            "edit.replace",
+            "Replace...",
+            self.replace_text,
+            self._binding_for("edit.replace"),
         )
         self.commands.register(
             "edit.find_all_matches",
@@ -1527,7 +1570,7 @@ class MainFrame:
         file_menu.AppendSubMenu(self._recent_menu, "Open &Recent")
         self._refresh_recent_menu()
         file_menu.Append(self._id_open_url, "Open from &URL...")
-        file_menu.AppendSubMenu(self._sessions_menu, "Ses&sions")
+        file_menu.AppendSubMenu(self._sessions_menu, "&Workspace Snapshots")
         file_menu.AppendSeparator()
         # --- Save ---
         file_menu.Append(self._id_save, self._menu_label("&Save", "file.save"))
@@ -1557,7 +1600,11 @@ class MainFrame:
         self._id_redo = wx.NewIdRef()
         self._id_copy_with_source = wx.NewIdRef()
         self._id_toggle_extend_selection_mode = wx.NewIdRef()
+        self._id_replace = wx.NewIdRef()
         self._id_replace_all = wx.NewIdRef()
+        self._id_find_next = wx.NewIdRef()
+        self._id_find_previous = wx.NewIdRef()
+        self._id_find_all_matches = wx.NewIdRef()
         self._id_insert_link = wx.NewIdRef()
         self._id_follow_link = wx.NewIdRef()
         self._id_select_line = wx.NewIdRef()
@@ -1656,38 +1703,57 @@ class MainFrame:
         mark_ring_menu = wx.Menu()
         mark_ring_menu.Append(
             self._id_set_mark,
-            self._menu_label("&Set Mark", "edit.set_mark"),
+            self._menu_label("&Set Temporary Mark", "edit.set_mark"),
         )
         mark_ring_menu.Append(
             self._id_pop_mark,
-            self._menu_label("&Pop Mark", "edit.pop_mark"),
+            self._menu_label("&Jump to Previous Mark", "edit.pop_mark"),
         )
         mark_ring_menu.Append(
             self._id_exchange_point_mark,
             self._menu_label(
-                "&Exchange Point and Mark",
+                "&Swap Cursor and Mark",
                 "edit.exchange_point_mark",
             ),
         )
         mark_ring_menu.Append(
             self._id_list_marks,
-            self._menu_label("&List Marks", "edit.list_marks"),
+            self._menu_label("&List Recent Marks", "edit.list_marks"),
         )
         selection_menu.AppendSeparator()
-        selection_menu.AppendSubMenu(mark_ring_menu, "Mark &Ring")
+        selection_menu.AppendSubMenu(mark_ring_menu, "Recent &Marks (Ring)")
         edit_menu.AppendSubMenu(selection_menu, "&Selection")
-        edit_menu.AppendSeparator()
-        edit_menu.Append(self._id_find, self._menu_label("&Find...", "edit.find"))
-        edit_menu.Append(
-            self._id_replace_all,
-            self._menu_label("Rep&lace All...", "edit.replace_all"),
-        )
         edit_menu.AppendSeparator()
         edit_menu.Append(
             self._id_preferences,
             self._menu_label("Pre&ferences...", "app.preferences"),
         )
         menu_bar.Append(edit_menu, "&Edit")
+
+        search_menu = wx.Menu()
+        search_menu.Append(self._id_find, self._menu_label("&Find...", "edit.find"))
+        search_menu.Append(
+            self._id_replace,
+            self._menu_label("&Replace...", "edit.replace"),
+        )
+        search_menu.Append(
+            self._id_replace_all,
+            self._menu_label("Rep&lace All...", "edit.replace_all"),
+        )
+        search_menu.AppendSeparator()
+        search_menu.Append(
+            self._id_find_next,
+            self._menu_label("Find &Next", "edit.find_next"),
+        )
+        search_menu.Append(
+            self._id_find_previous,
+            self._menu_label("Find &Previous", "edit.find_previous"),
+        )
+        search_menu.Append(
+            self._id_find_all_matches,
+            self._menu_label("Find &All Matches", "edit.find_all_matches"),
+        )
+        menu_bar.Append(search_menu, "&Search")
 
         self._id_send_to_tray = wx.NewIdRef()
         self._id_toggle_tray_mode = wx.NewIdRef()
@@ -1768,9 +1834,6 @@ class MainFrame:
 
         navigate_menu = wx.Menu()
         self._id_go_to_line = wx.NewIdRef()
-        self._id_find_next = wx.NewIdRef()
-        self._id_find_previous = wx.NewIdRef()
-        self._id_find_all_matches = wx.NewIdRef()
         self._id_set_bookmark = wx.NewIdRef()
         self._id_go_to_bookmark = wx.NewIdRef()
         self._id_list_bookmarks = wx.NewIdRef()
@@ -1855,19 +1918,6 @@ class MainFrame:
         navigate_menu.Append(
             self._id_list_bookmarks,
             self._menu_label("List B&ookmarks...", "navigate.list_bookmarks"),
-        )
-        navigate_menu.AppendSeparator()
-        navigate_menu.Append(
-            self._id_find_next,
-            self._menu_label("Find &Next", "edit.find_next"),
-        )
-        navigate_menu.Append(
-            self._id_find_previous,
-            self._menu_label("Find &Previous", "edit.find_previous"),
-        )
-        navigate_menu.Append(
-            self._id_find_all_matches,
-            self._menu_label("Find &All Matches", "edit.find_all_matches"),
         )
         self._id_insert_html_tag = wx.NewIdRef()
         self._id_insert_markdown_tag = wx.NewIdRef()
@@ -2050,7 +2100,6 @@ class MainFrame:
         self._id_next_misspelling = wx.NewIdRef()
         self._id_misspelling_list = wx.NewIdRef()
         self._id_dictionary_status = wx.NewIdRef()
-        self._id_epub_navigator = wx.NewIdRef()
         self._id_ocr_image = wx.NewIdRef()
         self._id_regex_helper = wx.NewIdRef()
         self._id_pandoc_wizard = wx.NewIdRef()
@@ -2058,6 +2107,11 @@ class MainFrame:
         self._id_read_aloud = wx.NewIdRef()
         self._id_read_aloud_stop = wx.NewIdRef()
         self._id_read_aloud_voice = wx.NewIdRef()
+        self._id_announcement_backend = wx.NewIdRef()
+        self._id_announcement_backend_auto = wx.NewIdRef()
+        self._id_announcement_backend_prism = wx.NewIdRef()
+        self._id_announcement_backend_status_only = wx.NewIdRef()
+        self._id_toggle_announcement_trace = wx.NewIdRef()
         self._id_document_intake_report = wx.NewIdRef()
         self._id_review_extraction_quality = wx.NewIdRef()
         self._id_report_bad_extraction = wx.NewIdRef()
@@ -2107,44 +2161,44 @@ class MainFrame:
         self._id_keyboard_trap_snapshot = wx.NewIdRef()
         self._id_accessibility_audit = wx.NewIdRef()
         tools_menu = wx.Menu()
-        # --- Discovery ---
         tools_menu.Append(
             self._id_palette,
             self._menu_label("&Command Palette...", "app.command_palette"),
         )
         tools_menu.AppendSeparator()
-        # --- Writing aids ---
-        tools_menu.Append(
+
+        writing_menu = wx.Menu()
+        writing_menu.Append(
             self._id_word_count,
             self._menu_label("&Word Count...", "tools.word_count"),
         )
-        tools_menu.Append(
+        writing_menu.Append(
             self._id_spell_check,
             self._menu_label("&Spell Check...", "tools.spell_check_dialog"),
         )
-        tools_menu.Append(
+        writing_menu.Append(
             self._id_previous_misspelling,
             self._menu_label("Previous Mi&sspelling", "tools.previous_misspelling"),
         )
-        tools_menu.Append(
+        writing_menu.Append(
             self._id_next_misspelling,
             self._menu_label("Next &Misspelling", "tools.next_misspelling"),
         )
-        tools_menu.Append(
+        writing_menu.Append(
             self._id_misspelling_list,
             self._menu_label("&Misspelling List...", "tools.misspelling_list"),
         )
         self._id_thesaurus = wx.NewIdRef()
-        tools_menu.Append(
+        writing_menu.Append(
             self._id_thesaurus,
             self._menu_label("&Thesaurus...", "tools.thesaurus"),
         )
-        tools_menu.Append(
+        writing_menu.Append(
             self._id_dictionary_status,
             self._menu_label("Dictionary &Status...", "tools.dictionary_status"),
         )
-        tools_menu.AppendSeparator()
-        # --- Reading aids ---
+        tools_menu.AppendSubMenu(writing_menu, "&Writing and Language")
+
         read_aloud_menu = wx.Menu()
         read_aloud_menu.Append(
             self._id_read_aloud,
@@ -2158,40 +2212,77 @@ class MainFrame:
             self._id_read_aloud_voice,
             self._menu_label("&Voice...", "tools.read_aloud_voice"),
         )
-        tools_menu.AppendSubMenu(read_aloud_menu, "Read &Aloud")
-        tools_menu.Append(
-            self._id_epub_navigator,
-            self._menu_label("EPUB &Navigator...", "tools.epub_navigator"),
+        read_aloud_menu.Append(
+            self._id_announcement_backend,
+            self._menu_label("Announcement &Backend...", "tools.announcement_backend"),
         )
-        tools_menu.Append(
+        backend_menu = wx.Menu()
+        backend_menu.AppendRadioItem(
+            self._id_announcement_backend_auto,
+            "Automatic (Prism when available)",
+        )
+        backend_menu.AppendRadioItem(self._id_announcement_backend_prism, "Prism")
+        backend_menu.AppendRadioItem(self._id_announcement_backend_status_only, "Status Bar Only")
+        current_backend = self._announcement_engine.state().requested_backend
+        backend_menu.Check(self._id_announcement_backend_auto, current_backend == "auto")
+        backend_menu.Check(self._id_announcement_backend_prism, current_backend == "prism")
+        backend_menu.Check(
+            self._id_announcement_backend_status_only,
+            current_backend == "status_only",
+        )
+        read_aloud_menu.AppendSubMenu(backend_menu, "Announcement Bac&kend")
+        read_aloud_menu.AppendCheckItem(
+            self._id_toggle_announcement_trace,
+            "Capture Announcement &Trace in Diagnostics",
+        )
+        read_aloud_menu.Check(
+            self._id_toggle_announcement_trace,
+            self.settings.announcement_trace_enabled,
+        )
+        tools_menu.AppendSubMenu(read_aloud_menu, "Read &Aloud")
+
+        integrations_menu = wx.Menu()
+        integrations_menu.Append(
             self._id_ocr_image,
             self._menu_label("OCR &Image...", "tools.ocr_image"),
         )
-        tools_menu.AppendSeparator()
-        # --- Document intake ---
-        tools_menu.Append(
+        shell_menu = wx.Menu()
+        shell_menu.Append(
+            self._id_shell_install,
+            self._menu_label("&Install Shell Integration...", "tools.shell_install"),
+        )
+        shell_menu.Append(
+            self._id_shell_remove,
+            self._menu_label("&Remove Shell Integration", "tools.shell_remove"),
+        )
+        integrations_menu.AppendSubMenu(shell_menu, "Sh&ell Integration")
+        tools_menu.AppendSubMenu(integrations_menu, "&Integrations")
+
+        intake_menu = wx.Menu()
+        intake_menu.Append(
             self._id_document_intake_report,
             self._menu_label("&Document Intake Report...", "tools.document_intake_report"),
         )
-        tools_menu.Append(
+        intake_menu.Append(
             self._id_review_extraction_quality,
             self._menu_label("&Review Extraction Quality...", "tools.review_extraction_quality"),
         )
-        tools_menu.Append(
+        intake_menu.Append(
             self._id_report_bad_extraction,
             self._menu_label("R&eport Bad Extraction...", "tools.report_bad_extraction"),
         )
-        tools_menu.AppendSeparator()
-        # --- Power tools ---
-        tools_menu.Append(
+        tools_menu.AppendSubMenu(intake_menu, "Document &Intake")
+
+        authoring_menu = wx.Menu()
+        authoring_menu.Append(
             self._id_regex_helper,
             self._menu_label("Regex &Helper...", "tools.regex_helper"),
         )
-        tools_menu.Append(
+        authoring_menu.Append(
             self._id_pandoc_wizard,
             self._menu_label("Pandoc Conversion &Wizard...", "tools.pandoc_wizard"),
         )
-        tools_menu.Append(
+        authoring_menu.Append(
             self._id_external_tools,
             self._menu_label(
                 "External Tools and Format &Support...",
@@ -2216,7 +2307,7 @@ class MainFrame:
             self._id_glow_fix_selection,
             self._menu_label("Fix S&election", "tools.glow_fix_selection"),
         )
-        tools_menu.AppendSubMenu(glow_menu, "&GLOW")
+        authoring_menu.AppendSubMenu(glow_menu, "&GLOW")
         macro_menu = wx.Menu()
         macro_menu.Append(
             self._id_start_macro_recording,
@@ -2234,7 +2325,7 @@ class MainFrame:
             self._id_manage_macros,
             self._menu_label("&Manage Macros...", "tools.manage_macros"),
         )
-        tools_menu.AppendSubMenu(macro_menu, "&Macros")
+        authoring_menu.AppendSubMenu(macro_menu, "&Macros")
         convert_menu = wx.Menu()
         convert_menu.Append(
             self._id_sort_lines_ascending,
@@ -2279,11 +2370,11 @@ class MainFrame:
                 "edit.convert_indentation_to_tabs",
             ),
         )
-        tools_menu.AppendSubMenu(convert_menu, "Co&nvert")
-        tools_menu.AppendSeparator()
-        # --- Compare ---
-        tools_menu.Append(self._id_compare_with_file, "Compare with &File...")
+        authoring_menu.AppendSubMenu(convert_menu, "Co&nvert")
+        tools_menu.AppendSubMenu(authoring_menu, "Authoring && &Automation")
+
         compare_menu = wx.Menu()
+        compare_menu.Append(self._id_compare_with_file, "Compare with &File...")
         compare_menu.Append(self._id_compare_open_documents, "Compare &Open Documents...")
         compare_menu.AppendSeparator()
         compare_menu.Append(self._id_compare_next_difference, "&Next Difference")
@@ -2296,31 +2387,25 @@ class MainFrame:
         compare_menu.Append(self._id_compare_create_summary, "Create Difference &Summary")
         compare_menu.Append(self._id_compare_copy_current, "Copy &Current Difference")
         compare_menu.Append(self._id_compare_copy_all, "Copy A&ll Differences")
-        tools_menu.AppendSubMenu(compare_menu, "Compare &Documents")
-        tools_menu.AppendSeparator()
-        # --- Accessibility & inspection ---
-        tools_menu.Append(self._id_accessibility_audit, "Accessibility A&udit...")
-        tools_menu.Append(
+        tools_menu.AppendSubMenu(compare_menu, "&Compare Documents")
+
+        accessibility_menu = wx.Menu()
+        accessibility_menu.Append(self._id_accessibility_audit, "Accessibility A&udit...")
+        accessibility_menu.Append(
             self._id_keyboard_trap_snapshot,
             "&Keyboard Trap && Tab-Order Snapshot...",
         )
-        tools_menu.Append(self._id_validate_contrast, "&Validate Contrast...")
-        tools_menu.Append(self._id_link_inventory, "Link Inventory && Alt-Text Catalo&g...")
-        tools_menu.AppendSeparator()
-        # --- System integration & notifications ---
-        tools_menu.Append(self._id_notifications, "Notif&ications...")
-        shell_menu = wx.Menu()
-        shell_menu.Append(
-            self._id_shell_install,
-            self._menu_label("&Install Shell Integration...", "tools.shell_install"),
-        )
-        shell_menu.Append(
-            self._id_shell_remove,
-            self._menu_label("&Remove Shell Integration", "tools.shell_remove"),
-        )
-        tools_menu.AppendSubMenu(shell_menu, "Sh&ell Integration")
-        tools_menu.AppendSeparator()
-        # --- Customize (replaces former Settings top-level menu) ---
+        accessibility_menu.Append(self._id_validate_contrast, "&Validate Contrast...")
+        accessibility_menu.Append(self._id_link_inventory, "Link Inventory && Alt-Text Catalo&g...")
+        tools_menu.AppendSubMenu(accessibility_menu, "A&ccessibility")
+
+        support_menu = wx.Menu()
+        support_menu.Append(self._id_notifications, "Show &Notifications")
+        support_menu.Append(self._id_report_bug, "&Report a Bug...")
+        support_menu.Append(self._id_save_diagnostics, "Save &Diagnostics...")
+        support_menu.Append(self._id_check_updates, "Check for &Updates")
+        tools_menu.AppendSubMenu(support_menu, "&Support")
+
         customize_menu = wx.Menu()
         customize_menu.Append(
             self._id_profiles_and_features,
@@ -2628,6 +2713,7 @@ class MainFrame:
             id=self._id_toggle_extend_selection_mode,
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.find_text(), id=self._id_find)
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.replace_text(), id=self._id_replace)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.replace_all_text(), id=self._id_replace_all)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.go_to_line(), id=self._id_go_to_line)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.go_to_page(), id=self._id_go_to_page)
@@ -2816,11 +2902,6 @@ class MainFrame:
             lambda _e: self.show_dictionary_status(),
             id=self._id_dictionary_status,
         )
-        self.frame.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.open_epub_navigator(),
-            id=self._id_epub_navigator,
-        )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.ocr_image_file(), id=self._id_ocr_image)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.show_regex_helper(), id=self._id_regex_helper)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.toggle_read_aloud(), id=self._id_read_aloud)
@@ -2833,6 +2914,31 @@ class MainFrame:
             wx.EVT_MENU,
             lambda _e: self.choose_read_aloud_voice(),
             id=self._id_read_aloud_voice,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.choose_announcement_backend(),
+            id=self._id_announcement_backend,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.set_announcement_backend("auto"),
+            id=self._id_announcement_backend_auto,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.set_announcement_backend("prism"),
+            id=self._id_announcement_backend_prism,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.set_announcement_backend("status_only"),
+            id=self._id_announcement_backend_status_only,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.toggle_announcement_trace_capture(),
+            id=self._id_toggle_announcement_trace,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -2893,6 +2999,11 @@ class MainFrame:
             wx.EVT_MENU,
             lambda _e: self.open_keymap_editor(),
             id=self._id_keymap_editor,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_profiles_and_features_settings(),
+            id=self._id_profiles_and_features,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -3094,6 +3205,7 @@ class MainFrame:
             "edit.find_next": self._id_find_next,
             "edit.find_previous": self._id_find_previous,
             "edit.find_all_matches": self._id_find_all_matches,
+            "edit.replace": self._id_replace,
             "edit.replace_all": self._id_replace_all,
             "edit.select_to_start_of_line": self._id_select_to_start_of_line,
             "edit.select_to_end_of_line": self._id_select_to_end_of_line,
@@ -3121,7 +3233,8 @@ class MainFrame:
             "tools.misspelling_list": self._id_misspelling_list,
             "tools.thesaurus": self._id_thesaurus,
             "tools.dictionary_status": self._id_dictionary_status,
-            "tools.epub_navigator": self._id_epub_navigator,
+            "tools.announcement_backend": self._id_announcement_backend,
+            "tools.announcement_trace_toggle": self._id_toggle_announcement_trace,
             "tools.document_intake_report": self._id_document_intake_report,
             "tools.review_extraction_quality": self._id_review_extraction_quality,
             "tools.report_bad_extraction": self._id_report_bad_extraction,
@@ -3242,6 +3355,7 @@ class MainFrame:
         wx = self._wx
         self.notebook.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self._on_notebook_page_changed)
         self.notebook.Bind(wx.EVT_CONTEXT_MENU, self._on_notebook_context_menu)
+        self.notebook.Bind(wx.EVT_KEY_DOWN, self._on_notebook_key_down)
         self.statusbar.Bind(wx.EVT_CONTEXT_MENU, self._on_statusbar_context_menu)
         self.frame.Bind(wx.EVT_CONTEXT_MENU, self._on_frame_context_menu)
         self.frame.Bind(wx.EVT_CLOSE, self._on_close)
@@ -3287,6 +3401,28 @@ class MainFrame:
         selection = self.notebook.GetSelection()
         if selection != self._active_tab_index:
             self._activate_tab(selection)
+        event.Skip()
+
+    def _on_notebook_key_down(self, event: object) -> None:
+        wx = self._wx
+        key_code = event.GetKeyCode()
+        return_keys = {
+            getattr(wx, "WXK_RETURN", 13),
+            getattr(wx, "WXK_NUMPAD_ENTER", 13),
+            getattr(wx, "WXK_SPACE", 32),
+        }
+        if key_code in return_keys:
+            selection = self.notebook.GetSelection()
+            if selection != getattr(wx, "NOT_FOUND", -1):
+                self._activate_tab(selection)
+                self.editor.SetFocus()
+                self._set_status(f"Focused document {self.document.name}")
+                return
+        tab_key = getattr(wx, "WXK_TAB", 9)
+        if key_code == tab_key and not event.ShiftDown():
+            self.editor.SetFocus()
+            self._set_status(f"Focused document {self.document.name}")
+            return
         event.Skip()
 
     def _activate_tab(self, index: int) -> None:
@@ -3380,6 +3516,13 @@ class MainFrame:
                 self._insert_key_down = True
                 self._refresh_statusbar()
             event.Skip()
+            return
+        tab_key = getattr(wx, "WXK_TAB", None)
+        if tab_key is not None and event.GetKeyCode() == tab_key:
+            if event.ShiftDown():
+                self.format_outdent()
+            else:
+                self.format_indent()
             return
         if self._extend_selection_mode and event.GetKeyCode() == wx.WXK_ESCAPE:
             caret = self.editor.GetInsertionPoint()
@@ -4029,13 +4172,39 @@ class MainFrame:
             wx.ICON_WARNING | wx.YES_NO | wx.NO_DEFAULT,
         )
         if result != wx.YES:
+            mark_recovery_offer_dismissed(offer)
+            record_diagnostic_event(
+                "recovery",
+                "offer-dismissed",
+                detail=f"session={offer.session_id}; snapshot={offer.snapshot}",
+            )
             self._set_status("Skipped crash recovery")
             self._record_notification("Crash recovery offer dismissed", "recovery")
             return
-        recovered_text = read_recovery_snapshot(offer.snapshot)
+        try:
+            recovered_text = read_recovery_snapshot(offer.snapshot)
+        except OSError as error:
+            record_diagnostic_event(
+                "recovery",
+                "snapshot-read-failed",
+                detail=f"session={offer.session_id}; snapshot={offer.snapshot}; error={error}",
+            )
+            self._show_message_box(
+                f"Could not restore snapshot: {error}",
+                "Crash Recovery",
+                wx.ICON_ERROR | wx.OK,
+            )
+            self._set_status("Crash recovery failed")
+            return
         self._create_document_tab(
             Document(text=recovered_text, path=None, modified=True),
             select=True,
+        )
+        mark_recovery_offer_recovered(offer)
+        record_diagnostic_event(
+            "recovery",
+            "snapshot-recovered",
+            detail=f"session={offer.session_id}; snapshot={offer.snapshot}",
         )
         self._location_ring = LocationRing()
         self._location_ring.record(0)
@@ -4127,18 +4296,26 @@ class MainFrame:
         self._recent_session_menu_ids.clear()
         self._sessions_menu.Append(
             self._id_save_session,
-            self._menu_label("Save &Session...", "file.save_session"),
+            self._menu_label("Save Workspace &Snapshot...", "file.save_session"),
         )
         self._sessions_menu.Append(
             self._id_open_session,
-            self._menu_label("&Open Session...", "file.open_session"),
+            self._menu_label("&Open Workspace Snapshot...", "file.open_session"),
         )
-        self._sessions_menu.AppendSubMenu(self._recent_sessions_menu, "Recent &Sessions")
+        self._sessions_menu.AppendSubMenu(
+            self._recent_sessions_menu,
+            "Recent Workspace &Snapshots",
+        )
         self._sessions_menu.AppendSeparator()
-        self._sessions_menu.AppendSubMenu(self._open_documents_menu, "Open &Documents")
+        self._sessions_menu.AppendSubMenu(
+            self._open_documents_menu,
+            "Open &Documents in Current Workspace",
+        )
         self._refresh_recent_sessions_menu()
         if not self._document_tabs:
-            item = self._open_documents_menu.Append(self._wx.ID_ANY, "(No open documents)")
+            item = self._open_documents_menu.Append(
+                self._wx.ID_ANY, "(No open documents in workspace)"
+            )
             item.Enable(False)
             return
         for index, tab in enumerate(self._document_tabs):
@@ -4161,12 +4338,14 @@ class MainFrame:
         recent_sessions = load_recent_sessions()
         self._recent_sessions = recent_sessions
         if not recent_sessions:
-            item = self._recent_sessions_menu.Append(self._wx.ID_ANY, "(No saved sessions)")
+            item = self._recent_sessions_menu.Append(
+                self._wx.ID_ANY, "(No saved workspace snapshots)"
+            )
             item.Enable(False)
             self._recent_sessions_menu.AppendSeparator()
             self._recent_sessions_menu.Append(
                 self._id_clear_recent_sessions,
-                "C&lear Recent Sessions",
+                "C&lear Recent Workspace Snapshots",
             )
             return
         for path in recent_sessions:
@@ -4178,7 +4357,7 @@ class MainFrame:
         self._recent_sessions_menu.AppendSeparator()
         self._recent_sessions_menu.Append(
             self._id_clear_recent_sessions,
-            "C&lear Recent Sessions",
+            "C&lear Recent Workspace Snapshots",
         )
 
     def _on_session_menu(self, event: object) -> None:
@@ -4266,7 +4445,7 @@ class MainFrame:
         save_session_file(target, payload)
         self._recent_sessions = load_recent_sessions()
         self._refresh_sessions_menu()
-        self._set_status(f"Saved session to {target.name}")
+        self._set_status(f"Saved workspace snapshot to {target.name}")
 
     def open_session(self, path: Path | None = None) -> None:
         wx = self._wx
@@ -4298,7 +4477,7 @@ class MainFrame:
         self._open_documents_from_session(documents, active_index)
         self._recent_sessions = add_recent_session(target, self.settings.recent_files_limit)
         self._refresh_sessions_menu()
-        self._set_status(f"Opened session {target.name}")
+        self._set_status(f"Opened workspace snapshot {target.name}")
 
     def _on_open_recent(self, event: object) -> None:
         menu_id = event.GetId()
@@ -4371,6 +4550,8 @@ class MainFrame:
         context = self._current_markup_context()
         html_only = context == "html"
         markdown_ready = context in {"markdown", "plain"}
+        active_surface = self._active_markup_surface()
+        structured_markup_ready = active_surface in {"markdown", "html"}
         markdown_ids = (
             self._id_insert_markdown_tag,
             self._id_heading_1,
@@ -4394,7 +4575,7 @@ class MainFrame:
         for item_id in structured_markup_ids:
             menu_item = menu_bar.FindItemById(item_id)
             if menu_item is not None:
-                menu_item.Enable(context in {"markdown", "html"})
+                menu_item.Enable(structured_markup_ready)
         for item_id in html_ids:
             menu_item = menu_bar.FindItemById(item_id)
             if menu_item is not None:
@@ -4417,6 +4598,10 @@ class MainFrame:
     def _announce(self, message: str) -> None:
         self._status_message = message
         self._refresh_statusbar()
+        backend_error = self._announcement_engine.announce(message)
+        if backend_error and backend_error != self._announcement_error_reported:
+            self._announcement_error_reported = backend_error
+            self._record_notification(backend_error, "accessibility")
 
     def _statusbar_items(self) -> list[str]:
         allowed = set(STATUS_BAR_ITEMS)
@@ -4583,6 +4768,7 @@ class MainFrame:
         if not hasattr(self, "_wx") or not hasattr(self, "statusbar"):
             return
         wx = self._wx
+        context_menu_event = getattr(wx, "EVT_CONTEXT_MENU", None)
         self._statusbar_sizer.Clear(delete_windows=True)
         self._statusbar_cells = []
         items = self._statusbar_items()
@@ -4604,6 +4790,11 @@ class MainFrame:
                 wx.EVT_SET_FOCUS,
                 lambda event, cell=item: self._on_statusbar_cell_focus(event, cell),
             )
+            if context_menu_event is not None:
+                button.Bind(
+                    context_menu_event,
+                    lambda event, cell=item: self._on_statusbar_cell_context_menu(event, cell),
+                )
             self._statusbar_sizer.Add(
                 button,
                 1 if item == "message" else 0,
@@ -4751,6 +4942,49 @@ class MainFrame:
             self._set_status(self._statusbar_text_for_item(item))
             return
         action()
+
+    def _hide_statusbar_cell(self, item: str) -> None:
+        if item == "message":
+            self._set_status("Status Message cannot be hidden")
+            return
+        hidden = set(getattr(self.settings, "status_bar_hidden", []))
+        hidden.add(item)
+        ordered_hidden = [entry for entry in self.settings.status_bar_order if entry in hidden]
+        self.settings.status_bar_hidden = ordered_hidden
+        save_settings(self.settings)
+        self._apply_statusbar_layout()
+        label = self._STATUS_BAR_LABELS.get(item, item)
+        self._set_status(f"Hid {label} from status bar")
+
+    def _restore_default_statusbar_layout(self) -> None:
+        defaults = Settings()
+        self.settings.status_bar_order = list(defaults.status_bar_order)
+        self.settings.status_bar_hidden = list(defaults.status_bar_hidden)
+
+    def _on_statusbar_cell_context_menu(self, event: object, item: str) -> None:
+        wx = self._wx
+        menu = wx.Menu()
+        activate_id = wx.NewIdRef()
+        hide_id = wx.NewIdRef()
+        settings_id = wx.NewIdRef()
+        menu.Append(activate_id, "Activate")
+        menu.Append(hide_id, "Hide this item")
+        menu.Append(settings_id, "Status bar settings...")
+        menu.Bind(wx.EVT_MENU, lambda _e: self._activate_statusbar_cell(item), id=activate_id)
+        menu.Bind(wx.EVT_MENU, lambda _e: self._hide_statusbar_cell(item), id=hide_id)
+        menu.Bind(wx.EVT_MENU, lambda _e: self.open_status_bar_settings(), id=settings_id)
+        if item == "message":
+            hide_item = menu.FindItemById(hide_id)
+            if hide_item is not None:
+                hide_item.Enable(False)
+        popup_target = None
+        for cell in self._statusbar_cells:
+            if cell.item == item:
+                popup_target = cell.button
+                break
+        if popup_target is None:
+            popup_target = self.statusbar
+        self._popup_context_menu(popup_target, menu, event)
 
     def _show_modal_dialog(self, dialog: object, label: str) -> int:
         self._region_tracker.enter(label)
@@ -5374,7 +5608,21 @@ class MainFrame:
         text = self.editor.GetValue()
         printout = self._build_text_printout(self.document.name, text)
         printer = wx.Printer(wx.PrintDialogData(self._print_data))
-        if not printer.Print(self.frame, printout, True):
+        try:
+            success = bool(printer.Print(self.frame, printout, True))
+        except Exception as error:
+            printout.Destroy()
+            self._show_message_box(f"Printing failed: {error}", "Print", wx.ICON_ERROR | wx.OK)
+            return
+        if not success:
+            read_last_error = getattr(printer, "GetLastError", None)
+            last_error = read_last_error() if callable(read_last_error) else None
+            cancelled_code = getattr(wx, "PRINTER_CANCELLED", None)
+            no_error_code = getattr(wx, "PRINTER_NO_ERROR", None)
+            if last_error == cancelled_code or last_error in {None, no_error_code}:
+                self._set_status("Printing cancelled")
+                printout.Destroy()
+                return
             self._show_message_box("Printing failed.", "Print", wx.ICON_ERROR | wx.OK)
             printout.Destroy()
             return
@@ -5566,7 +5814,109 @@ class MainFrame:
         dialog.show_modal_and_run()
 
     def open_preferences(self) -> None:
-        self.open_profiles_and_features_settings()
+        wx = self._wx
+        options: list[tuple[str, Callable[[], None]]] = [
+            ("Profiles and Features", self.open_profiles_and_features_settings),
+            ("Status Bar Layout", self.open_status_bar_settings),
+            ("Keymap Editor", self.open_keymap_editor),
+        ]
+        with wx.SingleChoiceDialog(
+            self.frame,
+            "Choose a settings area:",
+            "Preferences",
+            choices=[label for label, _handler in options],
+        ) as dialog:
+            dialog.SetSelection(0)
+            if self._show_modal_dialog(dialog, "Preferences") != wx.ID_OK:
+                self._set_status("Preferences cancelled")
+                return
+            selected = dialog.GetSelection()
+        if selected < 0 or selected >= len(options):
+            self._set_status("Preferences cancelled")
+            return
+        _label, handler = options[selected]
+        handler()
+
+    def _apply_announcement_trace_setting(self) -> None:
+        trace_enabled = bool(self.settings.announcement_trace_enabled)
+        if trace_enabled:
+            trace_path = app_data_dir() / "diagnostics" / "announcement-trace.log"
+            set_transcript_path(trace_path)
+            enable_transcript_capture(True)
+            return
+        enable_transcript_capture(False)
+        set_transcript_path(None)
+
+    def _announce_backend_state_on_startup(self) -> None:
+        state = self._announcement_engine.state()
+        if state.requested_backend == "prism" and state.active_backend != "prism":
+            self._record_notification(
+                "Prism backend requested but unavailable; using status bar announcements.",
+                "accessibility",
+            )
+
+    def _sync_announcement_backend_menu_state(self) -> None:
+        menu_bar = self.frame.GetMenuBar()
+        if menu_bar is None:
+            return
+        requested = self.settings.announcement_backend
+        item = menu_bar.FindItemById(self._id_announcement_backend_auto)
+        if item is not None:
+            item.Check(requested == "auto")
+        item = menu_bar.FindItemById(self._id_announcement_backend_prism)
+        if item is not None:
+            item.Check(requested == "prism")
+        item = menu_bar.FindItemById(self._id_announcement_backend_status_only)
+        if item is not None:
+            item.Check(requested == "status_only")
+        item = menu_bar.FindItemById(self._id_toggle_announcement_trace)
+        if item is not None:
+            item.Check(self.settings.announcement_trace_enabled)
+
+    def set_announcement_backend(self, requested_backend: str) -> None:
+        state = self._announcement_engine.configure(requested_backend)
+        self._announcement_error_reported = ""
+        self.settings.announcement_backend = state.requested_backend
+        save_settings(self.settings)
+        self._sync_announcement_backend_menu_state()
+        if state.active_backend == "prism":
+            self._set_status(f"Announcement backend set to Prism ({state.backend_name})")
+            return
+        if state.requested_backend == "prism":
+            self._set_status("Prism unavailable. Using status bar announcements.")
+            return
+        self._set_status("Announcement backend set to status bar")
+
+    def choose_announcement_backend(self) -> None:
+        wx = self._wx
+        backend_order = ["auto", "prism", "status_only"]
+        choices = [self._ANNOUNCEMENT_BACKEND_LABELS[item] for item in backend_order]
+        current = self.settings.announcement_backend
+        current_index = backend_order.index(current) if current in backend_order else 0
+        with wx.SingleChoiceDialog(
+            self.frame,
+            "Choose how Quill routes spoken announcements:",
+            "Announcement Backend",
+            choices=choices,
+        ) as dialog:
+            dialog.SetSelection(current_index)
+            if self._show_modal_dialog(dialog, "Announcement Backend") != wx.ID_OK:
+                self._set_status("Announcement backend selection cancelled")
+                return
+            selected = dialog.GetSelection()
+        if selected < 0 or selected >= len(backend_order):
+            return
+        self.set_announcement_backend(backend_order[selected])
+
+    def toggle_announcement_trace_capture(self) -> None:
+        self.settings.announcement_trace_enabled = not self.settings.announcement_trace_enabled
+        save_settings(self.settings)
+        self._apply_announcement_trace_setting()
+        self._sync_announcement_backend_menu_state()
+        if self.settings.announcement_trace_enabled:
+            self._set_status("Announcement trace capture enabled")
+            return
+        self._set_status("Announcement trace capture disabled")
 
     def _set_keyboard_pack(self, pack_name: str) -> None:
         self.settings.keyboard_pack = pack_name
@@ -5694,11 +6044,14 @@ class MainFrame:
         controls = wx.BoxSizer(wx.HORIZONTAL)
         move_up = wx.Button(panel, label="Move Up")
         move_down = wx.Button(panel, label="Move Down")
+        restore_defaults = wx.Button(panel, label="Restore Defaults")
         controls.Add(move_up, 0, wx.RIGHT, 8)
         controls.Add(move_down, 0, wx.RIGHT, 8)
+        controls.Add(restore_defaults, 0, wx.RIGHT, 8)
         root.Add(controls, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         root.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL | wx.ALIGN_RIGHT, 8)
         panel.SetSizer(root)
+        restore_defaults_selected = False
 
         def swap_items(first: int, second: int) -> None:
             if first < 0 or second < 0:
@@ -5753,16 +6106,26 @@ class MainFrame:
             )
             self._popup_context_menu(chooser, menu, event)
 
+        def on_restore_defaults(_event: object) -> None:
+            nonlocal restore_defaults_selected
+            restore_defaults_selected = True
+            self._set_status("Status bar defaults selected")
+
         move_up.Bind(wx.EVT_BUTTON, on_move_up)
         move_down.Bind(wx.EVT_BUTTON, on_move_down)
+        restore_defaults.Bind(wx.EVT_BUTTON, on_restore_defaults)
         chooser.Bind(wx.EVT_CONTEXT_MENU, on_context_menu)
 
         if self._show_modal_dialog(dialog, "Status Bar Layout") != wx.ID_OK:
             return
-        self.settings.status_bar_order = list(item_order)
-        self.settings.status_bar_hidden = [
-            item for index, item in enumerate(item_order) if not chooser.IsChecked(index)
-        ]
+        if restore_defaults_selected:
+            self._restore_default_statusbar_layout()
+        else:
+            self.settings.status_bar_order = list(item_order)
+            self.settings.status_bar_hidden = [
+                item for index, item in enumerate(item_order) if not chooser.IsChecked(index)
+            ]
+        save_settings(self.settings)
         self._apply_statusbar_layout()
         self._set_status("Status bar layout updated")
 
@@ -5871,7 +6234,11 @@ class MainFrame:
         info.SetVersion(__version__)
         info.SetDescription(
             "Quill 0.1 Beta is a screen-reader-first writing and document environment "
-            "for Windows from Blind Information Technology Solutions (BITS) and Community Access."
+            "for Windows from Blind Information Technology Solutions (BITS) "
+            "and Community Access.\n\n"
+            "With sincere thanks to our contributors and beta testers:\n"
+            "Techopolis, Taylor Arndt, Michael Doise, Kayla Bentas, "
+            "Shane Popplestone, and Becky Knobb."
         )
         info.SetCopyright(
             "Copyright (c) Blind Information Technology Solutions (BITS) and Community Access"
@@ -5880,6 +6247,8 @@ class MainFrame:
             [
                 "Blind Information Technology Solutions (BITS)",
                 "Community Access",
+                "Contributors and beta testers: Techopolis, Taylor Arndt, Michael Doise, "
+                "Kayla Bentas, Shane Popplestone, Becky Knobb",
             ]
         )
         wx.adv.AboutBox(info)
@@ -6053,47 +6422,11 @@ class MainFrame:
                 self._set_status("Pandoc wizard unavailable until Pandoc is installed")
             return
 
-        with wx.FileDialog(
-            self.frame,
-            "Choose a source document for Pandoc",
-            wildcard=(
-                "Pandoc-friendly files "
-                "(*.docx;*.md;*.markdown;*.html;*.htm;*.epub;*.odt;*.rst;*.txt)|"
-                "*.docx;*.md;*.markdown;*.html;*.htm;*.epub;*.odt;*.rst;*.txt|"
-                "All files (*.*)|*.*"
-            ),
-            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
-        ) as file_dialog:
-            if self._show_modal_dialog(file_dialog, "Pandoc Conversion Wizard") != wx.ID_OK:
-                self._set_status("Pandoc wizard cancelled")
-                return
-            source_path = Path(file_dialog.GetPath())
-
-        choices = [
-            "Open as Markdown in Quill",
-            "Open as HTML in Quill",
-            "Open as Plain Text in Quill",
-        ]
-        output_map = {
-            choices[0]: "markdown",
-            choices[1]: "html",
-            choices[2]: "plain",
-        }
-        with wx.SingleChoiceDialog(
-            self.frame,
-            (
-                "Choose the format Quill should generate for reading, editing, "
-                "or GLOW handoff:"
-            ),
-            "Pandoc Conversion Wizard",
-            choices=choices,
-        ) as format_dialog:
-            if self._show_modal_dialog(format_dialog, "Pandoc Conversion Wizard") != wx.ID_OK:
-                self._set_status("Pandoc wizard cancelled")
-                return
-            selection = format_dialog.GetStringSelection()
-
-        output_kind = output_map[selection]
+        request = self._prompt_pandoc_conversion_request()
+        if request is None:
+            self._set_status("Pandoc wizard cancelled")
+            return
+        source_path, output_kind = request
         self._set_status(f"Running Pandoc on {source_path.name}...")
         try:
             result = convert_document_with_pandoc(source_path, output_kind, tool_status=status)
@@ -6120,6 +6453,109 @@ class MainFrame:
         index = self._create_document_tab(document, select=True)
         self.notebook.SetPageText(index, f"Pandoc - {source_path.stem} ({output_kind})")
         self._set_status(f"Opened {source_path.name} as {output_kind} via Pandoc")
+
+    def _prompt_pandoc_conversion_request(self) -> tuple[Path, str] | None:
+        wx = self._wx
+        wildcard = (
+            "Pandoc-friendly files "
+            "(*.docx;*.md;*.markdown;*.html;*.htm;*.epub;*.odt;*.rst;*.txt)|"
+            "*.docx;*.md;*.markdown;*.html;*.htm;*.epub;*.odt;*.rst;*.txt|"
+            "All files (*.*)|*.*"
+        )
+        dialog = wx.Dialog(self.frame, title="Pandoc Conversion Wizard", size=(760, 360))
+        panel = wx.Panel(dialog)
+        root = wx.BoxSizer(wx.VERTICAL)
+        root.Add(
+            wx.StaticText(
+                panel,
+                label=(
+                    "Choose a source file and output format. Quill will convert it with Pandoc "
+                    "and open the converted text in a new tab."
+                ),
+            ),
+            0,
+            wx.ALL | wx.EXPAND,
+            8,
+        )
+        source_row = wx.BoxSizer(wx.HORIZONTAL)
+        source_label = wx.StaticText(panel, label="Source file")
+        source_field = wx.TextCtrl(panel)
+        browse_button = wx.Button(panel, label="Browse...")
+        source_row.Add(source_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        source_row.Add(source_field, 1, wx.RIGHT | wx.EXPAND, 8)
+        source_row.Add(browse_button, 0)
+        root.Add(source_row, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+
+        format_row = wx.BoxSizer(wx.HORIZONTAL)
+        format_label = wx.StaticText(panel, label="Output format")
+        format_choice = wx.Choice(
+            panel,
+            choices=[
+                "Markdown (.md)",
+                "HTML (.html)",
+                "Plain text (.txt)",
+            ],
+        )
+        format_choice.SetSelection(0)
+        format_row.Add(format_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        format_row.Add(format_choice, 1, wx.EXPAND)
+        root.Add(format_row, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+
+        validation_text = wx.StaticText(panel, label="")
+        root.Add(validation_text, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+
+        buttons = wx.BoxSizer(wx.HORIZONTAL)
+        convert_button = wx.Button(panel, id=wx.ID_OK, label="Convert and Open")
+        cancel_button = wx.Button(panel, id=wx.ID_CANCEL, label="Cancel")
+        buttons.AddStretchSpacer(1)
+        buttons.Add(convert_button, 0, wx.RIGHT, 6)
+        buttons.Add(cancel_button, 0)
+        root.Add(buttons, 0, wx.ALL | wx.EXPAND, 8)
+        panel.SetSizer(root)
+        dialog_result: dict[str, object] = {}
+
+        def browse_source() -> None:
+            with wx.FileDialog(
+                dialog,
+                "Choose a source document for Pandoc",
+                wildcard=wildcard,
+                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+            ) as file_dialog:
+                if self._show_modal_dialog(file_dialog, "Pandoc Source File") == wx.ID_OK:
+                    source_field.SetValue(file_dialog.GetPath())
+                    validation_text.SetLabel("")
+
+        def submit() -> None:
+            raw_path = source_field.GetValue().strip()
+            if not raw_path:
+                validation_text.SetLabel("Choose a source file before continuing.")
+                source_field.SetFocus()
+                return
+            candidate = Path(raw_path)
+            if not candidate.exists() or not candidate.is_file():
+                validation_text.SetLabel("The selected source file was not found.")
+                source_field.SetFocus()
+                return
+            output_options = ["markdown", "html", "plain"]
+            selection = format_choice.GetSelection()
+            if selection < 0 or selection >= len(output_options):
+                validation_text.SetLabel("Choose an output format before continuing.")
+                format_choice.SetFocus()
+                return
+            dialog_result["source_path"] = candidate
+            dialog_result["output_kind"] = output_options[selection]
+            dialog.EndModal(wx.ID_OK)
+
+        browse_button.Bind(wx.EVT_BUTTON, lambda _e: browse_source())
+        convert_button.Bind(wx.EVT_BUTTON, lambda _e: submit())
+        cancel_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CANCEL))
+        if self._show_modal_dialog(dialog, "Pandoc Conversion Wizard") != wx.ID_OK:
+            return None
+        source_path = dialog_result.get("source_path")
+        output_kind = dialog_result.get("output_kind")
+        if not isinstance(source_path, Path) or not isinstance(output_kind, str):
+            return None
+        return source_path, output_kind
 
     def save_diagnostics_bundle(self) -> None:
         wx = self._wx
@@ -6151,6 +6587,7 @@ class MainFrame:
             extra_environment={
                 "screen_reader": detection.name,
                 "wx_version": self._wx.version(),
+                **self._announcement_engine.diagnostics_environment(),
             },
         )
         self._record_notification(f"Saved diagnostics to {bundle_path.name}", "diagnostics")
@@ -6162,13 +6599,19 @@ class MainFrame:
             self._set_status("Bug report cancelled")
             return
         payload, issue_url = review
+        diagnostics_path = getattr(self, "_last_bug_report_diagnostics_path", None)
         clipboard_text = payload["body"]
+        if isinstance(diagnostics_path, Path):
+            clipboard_text = f"{clipboard_text}\n\nDiagnostics bundle path:\n{diagnostics_path}"
         self._copy_to_clipboard(clipboard_text)
         webbrowser.open(issue_url)
         self._record_notification("Opened support-hub bug report form", "support")
-        self._set_status(
-            "Opened bug report form and copied environment summary to clipboard"
-        )
+        if isinstance(diagnostics_path, Path):
+            self._set_status(
+                "Opened bug report form, copied report, and prepared diagnostics bundle path"
+            )
+        else:
+            self._set_status("Opened bug report form and copied environment summary to clipboard")
 
     def _review_diagnostics_export(self) -> bool | None:
         wx = self._wx
@@ -6193,6 +6636,7 @@ class MainFrame:
                     extra_environment={
                         "screen_reader": detection.name,
                         "wx_version": self._wx.version(),
+                        **self._announcement_engine.diagnostics_environment(),
                     },
                 )
             )
@@ -6231,46 +6675,157 @@ class MainFrame:
         return include_paths.GetValue()
 
     def _review_bug_report(self) -> tuple[dict[str, str], str] | None:
-        payload = build_bug_report_payload(
-            current_document=self.document,
-            extra_environment={
-                "screen_reader": detect_screen_reader().name,
-                "wx_version": self._wx.version(),
-            },
-        )
-        issue_url = build_support_issue_url(
-            payload,
-            source_app="Quill",
-            version=__version__,
-            platform_label=str(collect_environment_info()["platform"]),
-        )
         wx = self._wx
-        dialog = wx.Dialog(self.frame, title="Review Bug Report", size=(780, 560))
+        dialog = wx.Dialog(self.frame, title="Report a Bug", size=(860, 720))
         panel = wx.Panel(dialog)
         root = wx.BoxSizer(wx.VERTICAL)
-        review = wx.TextCtrl(panel, style=wx.TE_MULTILINE | wx.TE_READONLY)
-        review.SetValue(
-            f"Summary: {payload['summary']}\n\n{payload['body']}\n\nDestination:\n{issue_url}"
+        announcement_engine = getattr(self, "_announcement_engine", None)
+        announcement_environment = (
+            announcement_engine.diagnostics_environment()
+            if announcement_engine is not None
+            else {}
         )
-        copy_button = wx.Button(panel, label="Copy Summary")
-        open_button = wx.Button(panel, id=wx.ID_OK, label="Open Support Form")
-        cancel_button = wx.Button(panel, id=wx.ID_CANCEL, label="Cancel")
-        copy_button.Bind(wx.EVT_BUTTON, lambda _e: self._copy_to_clipboard(payload["body"]))
-        open_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_OK))
-        cancel_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CANCEL))
         root.Add(
             wx.StaticText(
                 panel,
                 label=(
-                    "Review the support report before Quill opens the Community Access "
-                    "support form in your browser."
+                    "Describe the issue, then open the support form. Quill can create a "
+                    "diagnostics bundle in this wizard so you can attach it to the issue."
                 ),
             ),
             0,
             wx.ALL | wx.EXPAND,
             8,
         )
+        summary_label = wx.StaticText(panel, label="Summary")
+        summary_field = wx.TextCtrl(panel)
+        summary_field.SetValue(f"Bug report: {self.document.name}")
+        root.Add(summary_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        root.Add(summary_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+
+        happened_label = wx.StaticText(panel, label="What happened")
+        happened_field = wx.TextCtrl(panel, style=wx.TE_MULTILINE)
+        root.Add(happened_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        root.Add(happened_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+
+        expected_label = wx.StaticText(panel, label="What you expected")
+        expected_field = wx.TextCtrl(panel, style=wx.TE_MULTILINE)
+        root.Add(expected_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        root.Add(expected_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+
+        steps_label = wx.StaticText(panel, label="Steps to reproduce")
+        steps_field = wx.TextCtrl(panel, style=wx.TE_MULTILINE)
+        root.Add(steps_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        root.Add(steps_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+
+        include_diagnostics = wx.CheckBox(
+            panel,
+            label="Create diagnostics bundle in this wizard",
+        )
+        include_diagnostics.SetValue(True)
+        include_paths = wx.CheckBox(panel, label="Include plain file paths in diagnostics")
+        include_paths.SetValue(False)
+        diagnostics_path_field = wx.TextCtrl(panel, style=wx.TE_READONLY)
+        root.Add(include_diagnostics, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        root.Add(include_paths, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+        root.Add(wx.StaticText(panel, label="Diagnostics bundle path"), 0, wx.LEFT | wx.RIGHT, 8)
+        root.Add(diagnostics_path_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+
+        preview_label = wx.StaticText(panel, label="Report preview")
+        review = wx.TextCtrl(panel, style=wx.TE_MULTILINE | wx.TE_READONLY)
+        root.Add(preview_label, 0, wx.LEFT | wx.RIGHT, 8)
         root.Add(review, 1, wx.ALL | wx.EXPAND, 8)
+        validation_text = wx.StaticText(panel, label="")
+        root.Add(validation_text, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+
+        copy_button = wx.Button(panel, label="Copy Preview")
+        open_button = wx.Button(panel, id=wx.ID_OK, label="Open Support Form")
+        cancel_button = wx.Button(panel, id=wx.ID_CANCEL, label="Cancel")
+        dialog_result: dict[str, object] = {}
+
+        def build_payload(
+            diagnostics_note: str | None = None,
+        ) -> tuple[dict[str, str], str]:
+            payload = build_bug_report_payload(
+                current_document=self.document,
+                extra_environment={
+                    "screen_reader": detect_screen_reader().name,
+                    "wx_version": self._wx.version(),
+                    **announcement_environment,
+                },
+                summary_override=summary_field.GetValue().strip(),
+                happened=happened_field.GetValue().strip(),
+                expected=expected_field.GetValue().strip(),
+                steps=steps_field.GetValue().strip(),
+                diagnostics_note=diagnostics_note,
+            )
+            issue_url = build_support_issue_url(
+                payload,
+                source_app="Quill",
+                version=__version__,
+                platform_label=str(collect_environment_info()["platform"]),
+                diagnostics_note=diagnostics_note,
+            )
+            return payload, issue_url
+
+        def refresh_preview() -> None:
+            diagnostics_note = None
+            path_text = diagnostics_path_field.GetValue().strip()
+            if path_text:
+                diagnostics_note = (
+                    "Diagnostics bundle created by Quill. Please attach this zip in the issue: "
+                    f"{path_text}"
+                )
+            elif include_diagnostics.GetValue():
+                diagnostics_note = (
+                    "Quill will create a diagnostics bundle when you continue. Attach the "
+                    "generated zip file to the issue."
+                )
+            payload, issue_url = build_payload(diagnostics_note=diagnostics_note)
+            review.SetValue(
+                f"Summary: {payload['summary']}\n\n{payload['body']}\n\nDestination:\n{issue_url}"
+            )
+
+        def submit_report() -> None:
+            diagnostics_path: Path | None = None
+            if include_diagnostics.GetValue():
+                try:
+                    diagnostics_path = self._create_diagnostics_bundle_for_report(
+                        include_paths.GetValue()
+                    )
+                except OSError as error:
+                    validation_text.SetLabel(f"Could not write diagnostics bundle: {error}")
+                    return
+                diagnostics_path_field.SetValue(str(diagnostics_path))
+            diagnostics_note = None
+            if diagnostics_path is not None:
+                diagnostics_note = (
+                    "Diagnostics bundle created by Quill. Please attach this zip in the issue: "
+                    f"{diagnostics_path}"
+                )
+            elif include_diagnostics.GetValue():
+                diagnostics_note = (
+                    "Diagnostics bundle requested, but no local bundle path is available."
+                )
+            payload, issue_url = build_payload(diagnostics_note=diagnostics_note)
+            dialog_result["payload"] = payload
+            dialog_result["issue_url"] = issue_url
+            dialog_result["diagnostics_path"] = diagnostics_path
+            dialog.EndModal(wx.ID_OK)
+
+        copy_button.Bind(wx.EVT_BUTTON, lambda _e: self._copy_to_clipboard(review.GetValue()))
+        open_button.Bind(wx.EVT_BUTTON, lambda _e: submit_report())
+        cancel_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CANCEL))
+        def on_toggle_include_diagnostics() -> None:
+            include_paths.Enable(include_diagnostics.GetValue())
+            refresh_preview()
+
+        include_diagnostics.Bind(wx.EVT_CHECKBOX, lambda _e: on_toggle_include_diagnostics())
+        include_paths.Bind(wx.EVT_CHECKBOX, lambda _e: refresh_preview())
+        summary_field.Bind(wx.EVT_TEXT, lambda _e: refresh_preview())
+        happened_field.Bind(wx.EVT_TEXT, lambda _e: refresh_preview())
+        expected_field.Bind(wx.EVT_TEXT, lambda _e: refresh_preview())
+        steps_field.Bind(wx.EVT_TEXT, lambda _e: refresh_preview())
         buttons = wx.BoxSizer(wx.HORIZONTAL)
         buttons.Add(copy_button, 0, wx.RIGHT, 6)
         buttons.AddStretchSpacer(1)
@@ -6278,9 +6833,47 @@ class MainFrame:
         buttons.Add(cancel_button, 0)
         root.Add(buttons, 0, wx.ALL | wx.EXPAND, 8)
         panel.SetSizer(root)
+        include_paths.Enable(include_diagnostics.GetValue())
+        refresh_preview()
         if self._show_modal_dialog(dialog, "Review Bug Report") != wx.ID_OK:
             return None
+        payload = dialog_result.get("payload")
+        issue_url = dialog_result.get("issue_url")
+        diagnostics_path = dialog_result.get("diagnostics_path")
+        if isinstance(diagnostics_path, Path):
+            self._last_bug_report_diagnostics_path = diagnostics_path
+        else:
+            self._last_bug_report_diagnostics_path = None
+        if not isinstance(payload, dict) or not isinstance(issue_url, str):
+            return None
         return payload, issue_url
+
+    def _create_diagnostics_bundle_for_report(self, include_file_paths: bool) -> Path:
+        detection = detect_screen_reader()
+        announcement_engine = getattr(self, "_announcement_engine", None)
+        announcement_environment = (
+            announcement_engine.diagnostics_environment()
+            if announcement_engine is not None
+            else {}
+        )
+        target = app_data_dir() / "diagnostics" / (
+            f"quill-diagnostics-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.zip"
+        )
+        bundle_path = write_diagnostics_bundle(
+            target,
+            settings=self.settings,
+            keymap=self.keymap,
+            notifications=self._notifications,
+            current_document=self.document,
+            include_file_paths=include_file_paths,
+            extra_environment={
+                "screen_reader": detection.name,
+                "wx_version": self._wx.version(),
+                **announcement_environment,
+            },
+        )
+        self._record_notification(f"Saved diagnostics to {bundle_path.name}", "diagnostics")
+        return bundle_path
 
     def show_keyboard_trap_snapshot(self) -> None:
         wx = self._wx
@@ -6558,6 +7151,10 @@ class MainFrame:
         if self.document.path is not None and self.document.path.suffix.lower() == ".epub":
             self.open_epub_navigator()
             return
+        markup_kind = infer_markup_kind(self.document.path)
+        if markup_kind == "plain":
+            self._set_status("Outline is not available for plain text files")
+            return
         nodes = self._build_outline_navigator_nodes()
         if not nodes:
             self._set_status("No outline headings found")
@@ -6811,7 +7408,7 @@ class MainFrame:
         default_name = f"Bookmark {len(self._bookmarks) + 1}"
         with wx.TextEntryDialog(
             self.frame,
-            "Enter bookmark name:",
+            "Enter bookmark name (named jump point):",
             "Set Bookmark",
             value=default_name,
         ) as dialog:
@@ -6829,11 +7426,11 @@ class MainFrame:
         wx = self._wx
         names = bookmark_names(self._bookmarks)
         if not names:
-            self._set_status("No bookmarks available")
+            self._set_status("No bookmarks available. Bookmarks are named jump points.")
             return
         with wx.SingleChoiceDialog(
             self.frame,
-            "Choose bookmark:",
+            "Choose bookmark (named jump point):",
             "Go To Bookmark",
             choices=names,
         ) as dialog:
@@ -6851,7 +7448,7 @@ class MainFrame:
     def list_bookmarks(self) -> None:
         names = bookmark_names(self._bookmarks)
         if not names:
-            self._set_status("No bookmarks available")
+            self._set_status("No bookmarks available. Bookmarks are named jump points.")
             return
         text = self.editor.GetValue()
         nodes: list[_NavigatorNode] = []
@@ -6869,7 +7466,7 @@ class MainFrame:
             )
         selected = self._show_tree_navigator(
             title="List Bookmarks",
-            root_label="Bookmarks",
+            root_label="Bookmarks (Named Jump Points)",
             nodes=nodes,
         )
         if not isinstance(selected, str):
@@ -6905,25 +7502,40 @@ class MainFrame:
         project_path = project_root / ".quill-dictionary.json"
         backend = spellcheck_backend_info()
         thesaurus_status = "installed" if thesaurus_engine.is_available() else "not installed"
-        document_exists = document_path is not None and document_path.exists()
-        document_status = "found" if document_exists else "missing"
-        if document_path is not None:
-            document_line = f"- Document: {document_count} ({document_status}: {document_path})"
+        if personal_path.exists():
+            personal_line = f"- Personal: {personal_count} (stored at {personal_path})"
+        else:
+            personal_line = (
+                f"- Personal: {personal_count} "
+                f"(not created yet; add a word to create {personal_path})"
+            )
+        if document_path is None:
+            document_line = (
+                f"- Document: {document_count} "
+                "(not available until the current document is saved)"
+            )
+        elif document_path.exists():
+            document_line = f"- Document: {document_count} (stored at {document_path})"
         else:
             document_line = (
                 f"- Document: {document_count} "
-                f"({document_status}: unavailable for unsaved document)"
+                f"(not created yet for this document: {document_path})"
             )
-        personal_status = "found" if personal_path.exists() else "missing"
-        project_status = "found" if project_path.exists() else "missing"
+        if project_path.exists():
+            project_line = f"- Project: {project_count} (stored at {project_path})"
+        else:
+            project_line = (
+                f"- Project: {project_count} "
+                f"(not created yet in this folder: {project_path})"
+            )
         lines = [
             f"Spell-check backend: {backend.name} — {backend.detail}",
             f"Thesaurus data: {thesaurus_status} ({thesaurus_engine.data_path()})",
             "",
             "User dictionary entries:",
-            f"- Personal: {personal_count} ({personal_status}: {personal_path})",
+            personal_line,
             document_line,
-            f"- Project: {project_count} ({project_status}: {project_path})",
+            project_line,
         ]
         self._show_message_box("\n".join(lines), "Dictionary Status", wx.ICON_INFORMATION | wx.OK)
         self._set_status(
@@ -6934,23 +7546,12 @@ class MainFrame:
     def open_spell_check_dialog(self) -> None:
         wx = self._wx
         dictionary = self._spell_dictionary()
-        misspellings = list_misspellings(self.editor.GetValue(), dictionary)
+        text = self.editor.GetValue()
+        misspellings = list_misspellings(text, dictionary)
         if not misspellings:
             self._set_status("No misspellings found")
             return
-        choices = []
-        for item in misspellings:
-            line, column = line_column_for_position(self.editor.GetValue(), item.start)
-            choices.append(f"{item.word} (Ln {line}, Col {column})")
-        with wx.SingleChoiceDialog(
-            self.frame,
-            "Choose misspelled word:",
-            "Spell Check",
-            choices=choices,
-        ) as dialog:
-            if self._show_modal_dialog(dialog, "Spell Check") != wx.ID_OK:
-                return
-            selection = dialog.GetSelection()
+        selection = self._choose_misspelling_with_context(misspellings, text, dictionary)
         if selection == wx.NOT_FOUND:
             return
         item = misspellings[selection]
@@ -6991,6 +7592,158 @@ class MainFrame:
             self._set_status("Spell check reviewed")
             return
         self._add_word_to_dictionary_scope(item.word, scope)
+
+    def _choose_misspelling_with_context(
+        self,
+        misspellings: list[Misspelling],
+        text: str,
+        dictionary: set[str],
+    ) -> int:
+        wx = self._wx
+        dialog = wx.Dialog(self.frame, title="Spell Check", size=(860, 520))
+        panel = wx.Panel(dialog)
+        root = wx.BoxSizer(wx.VERTICAL)
+        root.Add(
+            wx.StaticText(
+                panel,
+                label=(
+                    "Choose misspelled word. Tab to Context to read the nearby sentence before "
+                    "continuing. Use Speak Word to hear the word and spelling."
+                ),
+            ),
+            0,
+            wx.ALL | wx.EXPAND,
+            8,
+        )
+        choices = []
+        for item in misspellings:
+            line, column = line_column_for_position(text, item.start)
+            choices.append(f"{item.word} (Ln {line}, Col {column})")
+        chooser = wx.ListBox(panel, choices=choices)
+        chooser.SetSelection(0 if choices else wx.NOT_FOUND)
+        root.Add(chooser, 1, wx.LEFT | wx.RIGHT | wx.EXPAND, 8)
+        root.Add(wx.StaticText(panel, label="Context"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        context_field = wx.TextCtrl(
+            panel,
+            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_DONTWRAP,
+        )
+        root.Add(context_field, 1, wx.ALL | wx.EXPAND, 8)
+        buttons = wx.BoxSizer(wx.HORIZONTAL)
+        speak_button = wx.Button(panel, label="Speak Word")
+        review_button = wx.Button(panel, id=wx.ID_OK, label="Review Word")
+        cancel_button = wx.Button(panel, id=wx.ID_CANCEL, label="Cancel")
+        buttons.Add(speak_button, 0, wx.RIGHT, 8)
+        buttons.Add(review_button, 0, wx.RIGHT, 8)
+        buttons.Add(cancel_button, 0)
+        root.Add(buttons, 0, wx.ALL | wx.ALIGN_RIGHT, 8)
+        panel.SetSizer(root)
+
+        def refresh_context() -> None:
+            selection = chooser.GetSelection()
+            if selection == wx.NOT_FOUND:
+                context_field.SetValue("")
+                return
+            item = misspellings[selection]
+            context_field.SetValue(self._misspelling_context_text(text, item))
+
+        chooser.Bind(wx.EVT_LISTBOX, lambda _event: refresh_context())
+        speak_button.Bind(
+            wx.EVT_BUTTON,
+            lambda _event: self._speak_spellcheck_word(
+                misspellings[chooser.GetSelection()].word,
+                suggest_words(misspellings[chooser.GetSelection()].word, dictionary),
+            )
+            if chooser.GetSelection() != wx.NOT_FOUND
+            else self._set_status("Select a misspelling to speak"),
+        )
+        review_button.Bind(wx.EVT_BUTTON, lambda _event: dialog.EndModal(wx.ID_OK))
+        cancel_button.Bind(wx.EVT_BUTTON, lambda _event: dialog.EndModal(wx.ID_CANCEL))
+        refresh_context()
+        result = self._show_modal_dialog(dialog, "Spell Check")
+        selection = chooser.GetSelection()
+        dialog.Destroy()
+        if result != wx.ID_OK:
+            return wx.NOT_FOUND
+        return selection
+
+    def _misspelling_context_text(self, text: str, item: Misspelling) -> str:
+        if not text:
+            return item.word
+        boundaries = ".!?\n"
+        start = item.start
+        end = item.end
+        sentence_start = 0
+        for marker in boundaries:
+            position = text.rfind(marker, 0, start)
+            if position > sentence_start:
+                sentence_start = position
+        if sentence_start > 0:
+            sentence_start += 1
+        sentence_end = len(text)
+        for marker in boundaries:
+            position = text.find(marker, end)
+            if position != -1:
+                sentence_end = min(sentence_end, position + 1)
+        sentence = text[sentence_start:sentence_end].strip()
+        if not sentence:
+            window = 80
+            excerpt_start = max(0, start - window)
+            excerpt_end = min(len(text), end + window)
+            sentence = text[excerpt_start:excerpt_end].strip()
+            if excerpt_start > 0:
+                sentence = f"...{sentence}"
+            if excerpt_end < len(text):
+                sentence = f"{sentence}..."
+        return sentence or item.word
+
+    def _speak_spellcheck_word(self, word: str, suggestions: list[str]) -> None:
+        single_suggestion = suggestions[0] if len(suggestions) == 1 else None
+        message = self._spellcheck_speech_message(word, single_suggestion)
+        self._speak_with_announcement_backend(message)
+        if single_suggestion is None:
+            self._set_status(f'Spoke misspelling "{word}" and spelling')
+        else:
+            self._set_status(
+                f'Spoke misspelling "{word}" and single suggestion "{single_suggestion}"'
+            )
+
+    def _spellcheck_speech_message(self, word: str, single_suggestion: str | None = None) -> str:
+        parts = [
+            f'Misspelled word: "{word}".',
+            f"Spelling: {self._spell_word_for_speech(word)}.",
+        ]
+        if single_suggestion is not None:
+            parts.append(f'Only suggestion: "{single_suggestion}".')
+            parts.append(f"Suggestion spelling: {self._spell_word_for_speech(single_suggestion)}.")
+        return " ".join(parts)
+
+    def _spell_word_for_speech(self, word: str) -> str:
+        if not word:
+            return "empty"
+        spoken_letters: list[str] = []
+        for character in word:
+            if character == "-":
+                spoken_letters.append("dash")
+            elif character == "_":
+                spoken_letters.append("underscore")
+            elif character == "'":
+                spoken_letters.append("apostrophe")
+            elif character.isspace():
+                spoken_letters.append("space")
+            else:
+                spoken_letters.append(character.upper())
+        return ", ".join(spoken_letters)
+
+    def _speak_with_announcement_backend(self, message: str) -> None:
+        backend = getattr(self, "_announcement_engine", None)
+        if backend is not None:
+            backend_error = backend.announce(message)
+            if backend_error and backend_error != self._announcement_error_reported:
+                self._announcement_error_reported = backend_error
+                self._record_notification(backend_error, "accessibility")
+            if backend_error is None and backend.state().active_backend == "prism":
+                return
+        announce(message)
 
     def open_misspelling_list(self) -> None:
         dictionary = self._spell_dictionary()
@@ -7188,7 +7941,20 @@ class MainFrame:
         cursor = self.editor.GetInsertionPoint()
         item = find_next_misspelling(self.editor.GetValue(), cursor - 1, dictionary)
         if item is None or item.start != cursor:
+            self._last_live_misspelling_feedback = None
             return
+        key = (item.word.lower(), item.start, item.end)
+        now = time.monotonic()
+        if (
+            self._last_live_misspelling_feedback == key
+            and now - self._last_live_misspelling_feedback_at < 0.75
+        ):
+            return
+        self._last_live_misspelling_feedback = key
+        self._last_live_misspelling_feedback_at = now
+        bell = getattr(self._wx, "Bell", None)
+        if callable(bell):
+            bell()
         self._set_status(f'Possible misspelling: "{item.word}"')
 
     def _spell_dictionary(self) -> set[str]:
@@ -7520,37 +8286,88 @@ class MainFrame:
 
     def open_notifications(self) -> None:
         wx = self._wx
-        if not self._notifications:
-            self._show_message_box(
-                "No notifications.",
-                "Notifications",
-                wx.ICON_INFORMATION | wx.OK,
-            )
+        result = self._show_notifications_dialog()
+        if result == wx.ID_CLEAR:
+            clear_notifications()
+            self._notifications = []
+            self._set_status("Cleared notifications")
             return
-        lines = [
-            f"{entry.timestamp} [{entry.category}] {entry.message}"
-            for entry in self._notifications[-25:]
-        ]
-        self._show_message_box(
-            "\n".join(lines),
-            "Notifications",
-            wx.ICON_INFORMATION | wx.OK,
-        )
-        result = self._show_message_box(
-            "Clear all notifications?",
-            "Notifications",
-            wx.ICON_QUESTION | wx.YES_NO | wx.NO_DEFAULT,
-        )
-        if result != wx.YES:
+        if self._notifications:
             self._set_status("Viewed notifications")
             return
-        clear_notifications()
-        self._notifications = []
-        self._set_status("Cleared notifications")
+        self._set_status("No notifications")
+
+    def _show_notifications_dialog(self) -> int:
+        wx = self._wx
+        dialog = wx.Dialog(self.frame, title="Notifications", size=(900, 520))
+        panel = wx.Panel(dialog)
+        root = wx.BoxSizer(wx.VERTICAL)
+        root.Add(
+            wx.StaticText(
+                panel,
+                label=(
+                    "Quill notifications appear below. Selecting a row copies it to the clipboard, "
+                    "or use Copy Selected."
+                ),
+            ),
+            0,
+            wx.ALL | wx.EXPAND,
+            8,
+        )
+        lines = [
+            f"{entry.timestamp} [{entry.category}] {entry.message}"
+            for entry in self._notifications[-200:]
+        ]
+        chooser = wx.ListBox(panel, choices=lines)
+        root.Add(chooser, 1, wx.ALL | wx.EXPAND, 8)
+        button_row = wx.BoxSizer(wx.HORIZONTAL)
+        copy_button = wx.Button(panel, label="Copy Selected")
+        clear_button = wx.Button(panel, id=wx.ID_CLEAR, label="Clear Notifications")
+        close_button = wx.Button(panel, id=wx.ID_CLOSE, label="Close")
+        button_row.Add(copy_button, 0, wx.RIGHT, 8)
+        button_row.Add(clear_button, 0, wx.RIGHT, 8)
+        button_row.AddStretchSpacer(1)
+        button_row.Add(close_button, 0)
+        root.Add(button_row, 0, wx.ALL | wx.EXPAND, 8)
+        panel.SetSizer(root)
+
+        if lines:
+            chooser.SetSelection(len(lines) - 1)
+        else:
+            chooser.Enable(False)
+            copy_button.Enable(False)
+            clear_button.Enable(False)
+
+        def selected_line() -> str:
+            selection = chooser.GetSelection()
+            if selection == wx.NOT_FOUND:
+                return ""
+            return lines[selection]
+
+        def copy_selected() -> None:
+            value = selected_line()
+            if not value:
+                self._set_status("No notification selected")
+                return
+            if not self._copy_to_clipboard(value):
+                self._set_status("Could not copy notification")
+                return
+            self._set_status("Copied notification to clipboard")
+
+        chooser.Bind(wx.EVT_LISTBOX, lambda _e: copy_selected())
+        copy_button.Bind(wx.EVT_BUTTON, lambda _e: copy_selected())
+        clear_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CLEAR))
+        close_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CLOSE))
+
+        result = dialog.ShowModal()
+        dialog.Destroy()
+        return result
 
     def check_for_updates(self, silent_no_update: bool = False) -> None:
         wx = self._wx
-        from urllib.error import URLError
+        current_version = getattr(getattr(self, "_updates", None), "current_version", "")
+        if not current_version:
+            current_version = "0.0.0"
 
         self._set_status("Checking for updates...")
         try:
@@ -7568,12 +8385,12 @@ class MainFrame:
             self._set_status("Update check failed")
             self._record_notification("Update check failed", "update")
             return
-        if not is_newer_version(__version__, manifest.version):
+        if not is_newer_version(current_version, manifest.version):
             if silent_no_update:
                 self._record_notification("Update check found no newer version", "update")
                 return
             self._show_message_box(
-                f"You're up to date.\nCurrent: {__version__}\nAvailable: {manifest.version}",
+                f"You're up to date.\nCurrent: {current_version}\nAvailable: {manifest.version}",
                 "Check for Updates",
                 wx.ICON_INFORMATION | wx.OK,
             )
@@ -7583,10 +8400,11 @@ class MainFrame:
         notes = manifest.notes or "(no release notes provided)"
         result = self._show_message_box(
             (
-                f"Current version: {__version__}\n"
+                f"Current version: {current_version}\n"
                 f"Available version: {manifest.version}\n\n"
                 f"Release notes:\n{notes}\n\n"
-                "Open download page now?"
+                "Open download page now?\n"
+                "Quill will need to close before you run the installer."
             ),
             "Check for Updates",
             wx.ICON_INFORMATION | wx.YES_NO | wx.NO_DEFAULT,
@@ -7595,11 +8413,48 @@ class MainFrame:
             self._set_status("Update deferred")
             self._record_notification(f"Update {manifest.version} deferred", "update")
             return
-        import webbrowser
+        self._open_update_download_flow(manifest)
 
-        webbrowser.open(manifest.download_url)
-        self._set_status(f"Opened download page for {manifest.version}")
+    def _open_update_download_flow(self, manifest: UpdateManifest) -> None:
+        wx = self._wx
+        close_now = self._show_message_box(
+            (
+                f"Quill installer update {manifest.version} requires the editor to close.\n\n"
+                "Open the download page and close Quill now?"
+            ),
+            "Install Update",
+            wx.ICON_INFORMATION | wx.YES_NO | wx.NO_DEFAULT,
+        )
+        if close_now != wx.YES:
+            opened = webbrowser.open(manifest.download_url)
+            if opened:
+                self._set_status(f"Opened download page for {manifest.version}")
+                self._record_notification(
+                    (
+                        f"Opened update download for {manifest.version}. "
+                        "Close Quill before running installer."
+                    ),
+                    "update",
+                )
+                return
+            self._set_status("Could not open update download page")
+            self._record_notification("Could not open update download page", "update")
+            return
+        if not self._can_close_all_documents():
+            self._set_status("Update cancelled")
+            self._record_notification(
+                f"Update {manifest.version} cancelled before closing documents",
+                "update",
+            )
+            return
+        opened = webbrowser.open(manifest.download_url)
+        if not opened:
+            self._set_status("Could not open update download page")
+            self._record_notification("Could not open update download page", "update")
+            return
         self._record_notification(f"Opened update download for {manifest.version}", "update")
+        self._set_status(f"Closing Quill for update {manifest.version}")
+        self.exit_app()
 
     def validate_contrast(self) -> None:
         wx = self._wx
@@ -8089,6 +8944,7 @@ class MainFrame:
             return
         start, end = chosen
         self.editor.SetFocus()
+        self._ensure_extend_selection_anchor()
         if self._extend_selection_mode and self._extend_selection_anchor is not None:
             self._move_point(end)
         else:
@@ -8150,8 +9006,9 @@ class MainFrame:
 
         start, end = chosen
         self.editor.SetFocus()
+        self._ensure_extend_selection_anchor()
         if self._extend_selection_mode and self._extend_selection_anchor is not None:
-            self._move_point(end)
+            self._move_point(start if reverse else end)
         else:
             self.editor.SetSelection(start, end)
             self.editor.SetInsertionPoint(end)
@@ -8159,6 +9016,15 @@ class MainFrame:
         direction = "previous" if reverse else "next"
         wrap_suffix = " (wrapped)" if wrapped else ""
         self._set_status(f"Found {direction} at position {start + 1}{wrap_suffix}")
+
+    def _ensure_extend_selection_anchor(self) -> None:
+        if not self._extend_selection_mode or self._extend_selection_anchor is not None:
+            return
+        selection_start, selection_end = self.editor.GetSelection()
+        if selection_start != selection_end:
+            self._extend_selection_anchor = selection_start
+            return
+        self._extend_selection_anchor = self.editor.GetInsertionPoint()
 
     def find_all_matches(self) -> None:
         wx = self._wx
@@ -8216,6 +9082,59 @@ class MainFrame:
         )
         self._set_status(f"Found {len(matches)} match(es)")
 
+    def replace_text(self) -> None:
+        wx = self._wx
+        prompt = self._prompt_search("Replace", replacement=True)
+        if prompt is None:
+            self._set_status("Replace cancelled")
+            return
+        query, replacement, options = prompt
+        if replacement is None:
+            self._set_status("Replace cancelled")
+            return
+        self._search_history = add_search_term(query)
+        self._last_find_query = query
+        self._last_search_options = options
+
+        text = self.editor.GetValue()
+        try:
+            matches = find_matches(text, query, options)
+        except SearchPatternError as error:
+            self._show_message_box(str(error), "Replace", wx.ICON_ERROR | wx.OK)
+            self._set_status("Replace error")
+            return
+        if not matches:
+            self._set_status("No replacements made")
+            return
+
+        cursor = self.editor.GetInsertionPoint()
+        selected_start, selected_end = self.editor.GetSelection()
+        if selected_start != selected_end:
+            cursor = selected_end
+        chosen: tuple[int, int] | None = None
+        wrapped = False
+        for start, end in matches:
+            if start >= cursor:
+                chosen = (start, end)
+                break
+        if chosen is None and self.settings.wrap_find:
+            chosen = matches[0]
+            wrapped = True
+        if chosen is None:
+            self._set_status("No replacements made from the current position")
+            return
+
+        start, end = chosen
+        updated_text = text[:start] + replacement + text[end:]
+        self._replace_document_text(updated_text)
+        self.document.set_text(updated_text)
+        replaced_end = start + len(replacement)
+        self.editor.SetSelection(start, replaced_end)
+        self.editor.SetInsertionPoint(replaced_end)
+        self._last_match = (start, replaced_end)
+        wrap_suffix = " (wrapped)" if wrapped else ""
+        self._set_status(f"Replaced at position {start + 1}{wrap_suffix}")
+
     def replace_all_text(self) -> None:
         wx = self._wx
         prompt = self._prompt_search("Replace All", replacement=True)
@@ -8240,19 +9159,6 @@ class MainFrame:
         if not matches:
             self._set_status("No replacements made")
             return
-        preview_lines = []
-        for index, (start, end) in enumerate(matches[:10], start=1):
-            line_text = text[start:end]
-            preview_lines.append(f"{index}. {line_text}")
-        preview = "\n".join(preview_lines)
-        result = self._show_message_box(
-            f"Apply {len(matches)} replacement(s)?\n\nPreview:\n{preview}",
-            "Replace All",
-            wx.ICON_QUESTION | wx.YES_NO | wx.NO_DEFAULT,
-        )
-        if result != wx.YES:
-            self._set_status("Replace cancelled")
-            return
         try:
             updated_text, replacements = replace_all(text, query, replacement, options)
         except SearchPatternError as error:
@@ -8269,28 +9175,35 @@ class MainFrame:
     def insert_link(self) -> None:
         wx = self._wx
         selected_text = self.editor.GetStringSelection()
-        with wx.TextEntryDialog(
-            self.frame,
-            "Enter URL:",
-            "Insert Link",
-            value="https://",
-        ) as url_dialog:
-            if self._show_modal_dialog(url_dialog, "Insert Link") != wx.ID_OK:
+        dialog = wx.Dialog(self.frame, title="Insert Link", size=(540, 0))
+        panel = wx.Panel(dialog)
+        root = wx.BoxSizer(wx.VERTICAL)
+        root.Add(wx.StaticText(panel, label="Display text:"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        display_text_ctrl = wx.TextCtrl(panel, value=selected_text or "")
+        root.Add(display_text_ctrl, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        root.Add(wx.StaticText(panel, label="URL:"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        url_ctrl = wx.TextCtrl(panel, value="https://", style=wx.TE_PROCESS_ENTER)
+        root.Add(url_ctrl, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        buttons = dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
+        if buttons is not None:
+            root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
+        panel.SetSizer(root)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(panel, 1, wx.EXPAND)
+        dialog.SetSizerAndFit(outer)
+        url_ctrl.Bind(wx.EVT_TEXT_ENTER, lambda _e: dialog.EndModal(wx.ID_OK))
+        display_text_ctrl.Bind(wx.EVT_TEXT_ENTER, lambda _e: dialog.EndModal(wx.ID_OK))
+        url_ctrl.SetFocus()
+        try:
+            if self._show_modal_dialog(dialog, "Insert Link") != wx.ID_OK:
                 return
-            url = url_dialog.GetValue().strip()
+            url = url_ctrl.GetValue().strip()
+            display_text = display_text_ctrl.GetValue()
+        finally:
+            dialog.Destroy()
         if not url:
             self._set_status("Insert link cancelled")
             return
-
-        with wx.TextEntryDialog(
-            self.frame,
-            "Display text:",
-            "Insert Link",
-            value=selected_text or "",
-        ) as text_dialog:
-            if self._show_modal_dialog(text_dialog, "Insert Link") != wx.ID_OK:
-                return
-            display_text = text_dialog.GetValue()
 
         markup_kind = infer_markup_kind(self.document.path)
         snippet = build_link_text(markup_kind, display_text, url)
@@ -8372,23 +9285,27 @@ class MainFrame:
         position = self.editor.GetInsertionPoint()
         self._mark_ring.set_mark(position)
         line, column = line_column_for_position(self.editor.GetValue(), position)
-        self._set_status(f"Mark set at line {line}, column {column}")
+        self._set_status(
+            f"Mark ring point set at line {line}, column {column} (temporary jump)"
+        )
 
     def pop_mark(self) -> None:
         mark = self._mark_ring.pop_mark()
         if mark is None:
-            self._set_status("No marks in ring")
+            self._set_status("No marks in ring. Marks are temporary jump points.")
             return
         self.editor.SetInsertionPoint(mark)
         self.editor.SetSelection(mark, mark)
         line, column = line_column_for_position(self.editor.GetValue(), mark)
-        self._set_status(f"Popped to mark at line {line}, column {column}")
+        self._set_status(
+            f"Popped to mark ring point at line {line}, column {column} (temporary jump)"
+        )
 
     def exchange_point_and_mark(self) -> None:
         current = self.editor.GetInsertionPoint()
         target = self._mark_ring.exchange_point_and_mark(current)
         if target is None:
-            self._set_status("No marks in ring")
+            self._set_status("No marks in ring. Marks are temporary jump points.")
             return
         self.editor.SetInsertionPoint(target)
         self.editor.SetSelection(target, target)
@@ -8399,14 +9316,18 @@ class MainFrame:
         wx = self._wx
         marks = self._mark_ring.list_marks()
         if not marks:
-            self._set_status("No marks in ring")
+            self._set_status("No marks in ring. Marks are temporary jump points.")
             return
         lines: list[str] = []
         text = self.editor.GetValue()
         for index, position in enumerate(reversed(marks), start=1):
             line, column = line_column_for_position(text, position)
             lines.append(f"{index}. Line {line}, Column {column}")
-        self._show_message_box("\n".join(lines), "Mark Ring", wx.ICON_INFORMATION | wx.OK)
+        self._show_message_box(
+            "\n".join(lines),
+            "Mark Ring (Temporary Jump Points)",
+            wx.ICON_INFORMATION | wx.OK,
+        )
         self._set_status(f"Listed {len(marks)} mark(s)")
 
     def format_bold(self) -> None:
@@ -8452,15 +9373,33 @@ class MainFrame:
             "Toggled block comment",
         )
 
+    def _indent_width(self) -> int:
+        return max(1, int(getattr(self.settings, "indent_size", 4)))
+
+    def _indent_unit(self) -> str:
+        if bool(getattr(self.settings, "indent_with_tabs", False)):
+            return "\t"
+        return " " * self._indent_width()
+
     def format_indent(self) -> None:
         self._apply_selection_operation(
-            lambda text, start, end: indent_lines(text, start, end),
+            lambda text, start, end: indent_lines(
+                text,
+                start,
+                end,
+                indent_unit=self._indent_unit(),
+            ),
             "Indented lines",
         )
 
     def format_outdent(self) -> None:
         self._apply_selection_operation(
-            lambda text, start, end: outdent_lines(text, start, end),
+            lambda text, start, end: outdent_lines(
+                text,
+                start,
+                end,
+                indent_unit=self._indent_unit(),
+            ),
             "Outdented lines",
         )
 
@@ -8511,13 +9450,13 @@ class MainFrame:
 
     def convert_indentation_to_spaces(self) -> None:
         self._apply_text_block_operation(
-            lambda text: convert_indentation_to_spaces(text, 4),
+            lambda text: convert_indentation_to_spaces(text, self._indent_width()),
             "Converted indentation to spaces",
         )
 
     def convert_indentation_to_tabs(self) -> None:
         self._apply_text_block_operation(
-            lambda text: convert_indentation_to_tabs(text, 4),
+            lambda text: convert_indentation_to_tabs(text, self._indent_width()),
             "Converted indentation to tabs",
         )
 
@@ -8790,20 +9729,52 @@ class MainFrame:
         if not self._feature_enabled("core.format"):
             self._set_status(f"{label} is unavailable in this profile")
             return
+        text = self.editor.GetValue()
         start, end = self.editor.GetSelection()
         if start != end:
-            original = self.editor.GetRange(start, end)
+            original = text[start:end]
             updated = transform(original)
             self.editor.Replace(start, end, updated)
             self.editor.SetSelection(start, start + len(updated))
+            self.document.set_text(self.editor.GetValue())
             self._set_status(f"{label} applied to selection")
             return
 
-        original_document = self.editor.GetValue()
-        updated_document = transform(original_document)
-        self._replace_document_text(updated_document)
-        self.document.set_text(updated_document)
-        self._set_status(f"{label} applied to document")
+        word_span = self._current_word_span_at_caret(text, self.editor.GetInsertionPoint())
+        if word_span is None:
+            self._set_status("No current word to transform")
+            return
+        word_start, word_end = word_span
+        updated = transform(text[word_start:word_end])
+        self.editor.Replace(word_start, word_end, updated)
+        self.editor.SetSelection(word_start, word_start + len(updated))
+        self.document.set_text(self.editor.GetValue())
+        self._set_status(f"{label} applied to current word")
+
+    def _current_word_span_at_caret(self, text: str, caret: int) -> tuple[int, int] | None:
+        if not text:
+            return None
+        caret = max(0, min(caret, len(text)))
+
+        def is_word_char(character: str) -> bool:
+            return character.isalnum() or character in {"_", "'"}
+
+        if caret < len(text) and is_word_char(text[caret]):
+            start = caret
+            end = caret + 1
+        elif caret > 0 and is_word_char(text[caret - 1]):
+            start = caret - 1
+            end = caret
+        else:
+            return None
+
+        while start > 0 and is_word_char(text[start - 1]):
+            start -= 1
+        while end < len(text) and is_word_char(text[end]):
+            end += 1
+        if start == end:
+            return None
+        return start, end
 
     def _replace_document_text(self, updated_text: str) -> None:
         current_text = self.editor.GetValue()
@@ -9223,7 +10194,7 @@ class MainFrame:
             wx.ALL | wx.EXPAND,
             8,
         )
-        chooser = wx.ListBox(panel, choices=[profile.name for profile in profiles])
+        chooser = wx.ListBox(panel, choices=self._profile_choice_labels(profiles))
         current_index = 0
         for index, profile in enumerate(profiles):
             if profile.id == self.features.active_profile_id:
@@ -9237,6 +10208,11 @@ class MainFrame:
         if current_pack not in keyboard_pack_choices:
             current_pack = KEYBOARD_PACK_DEFAULT
         keyboard_pack_choice.SetStringSelection(current_pack)
+        indent_style_choice = wx.Choice(panel, choices=["Spaces", "Tabs"])
+        indent_style_choice.SetStringSelection(
+            "Tabs" if bool(getattr(self.settings, "indent_with_tabs", False)) else "Spaces"
+        )
+        indent_size_spin = wx.SpinCtrl(panel, min=1, max=8, initial=self._indent_width())
         keyboard_preview = wx.TextCtrl(
             panel,
             style=wx.TE_MULTILINE | wx.TE_READONLY,
@@ -9317,6 +10293,15 @@ class MainFrame:
             keyboard_pack_choice.SetStringSelection(current)
             refresh_keyboard_preview()
 
+        def apply_indentation_settings() -> None:
+            use_tabs = (indent_style_choice.GetStringSelection() or "Spaces") == "Tabs"
+            indent_size = max(1, int(indent_size_spin.GetValue()))
+            self.settings.indent_with_tabs = use_tabs
+            self.settings.indent_size = indent_size
+            save_settings(self.settings)
+            mode = "tabs" if use_tabs else "spaces"
+            self._set_status(f"Indentation set to {mode} ({indent_size})")
+
         def export_profile() -> None:
             with wx.FileDialog(
                 dialog,
@@ -9368,6 +10353,7 @@ class MainFrame:
         apply_pack_button = wx.Button(panel, label="Apply Keyboard Pack")
         reset_pack_button = wx.Button(panel, label="Reset Keyboard Pack")
         customize_pack_button = wx.Button(panel, label="Customize Shortcuts...")
+        apply_indent_button = wx.Button(panel, label="Apply Indentation")
         close_button = wx.Button(panel, id=wx.ID_OK, label="Close")
         switch_button.Bind(wx.EVT_BUTTON, lambda _e: switch_selected())
         compare_button.Bind(wx.EVT_BUTTON, lambda _e: compare_selected())
@@ -9378,6 +10364,7 @@ class MainFrame:
         apply_pack_button.Bind(wx.EVT_BUTTON, lambda _e: apply_selected_keyboard_pack())
         reset_pack_button.Bind(wx.EVT_BUTTON, lambda _e: reset_keyboard_pack())
         customize_pack_button.Bind(wx.EVT_BUTTON, lambda _e: customize_keymap())
+        apply_indent_button.Bind(wx.EVT_BUTTON, lambda _e: apply_indentation_settings())
         close_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_OK))
 
         root.Add(chooser, 1, wx.ALL | wx.EXPAND, 8)
@@ -9396,6 +10383,17 @@ class MainFrame:
         )
         root.Add(keyboard_pack_choice, 0, wx.ALL | wx.EXPAND, 8)
         root.Add(keyboard_preview, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+        root.Add(
+            wx.StaticText(panel, label="Indentation: choose tabs or spaces and indentation width."),
+            0,
+            wx.LEFT | wx.RIGHT | wx.TOP | wx.EXPAND,
+            8,
+        )
+        indent_row = wx.BoxSizer(wx.HORIZONTAL)
+        indent_row.Add(indent_style_choice, 1, wx.RIGHT, 8)
+        indent_row.Add(indent_size_spin, 0)
+        indent_row.Add(apply_indent_button, 0, wx.LEFT, 8)
+        root.Add(indent_row, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
         buttons = wx.BoxSizer(wx.HORIZONTAL)
         buttons.Add(switch_button, 0, wx.RIGHT, 6)
         buttons.Add(compare_button, 0, wx.RIGHT, 6)
@@ -9451,7 +10449,7 @@ class MainFrame:
             self.frame,
             "Choose how Quill should start:",
             "Profile Onboarding",
-            choices=[profile.name for profile in profiles],
+            choices=self._profile_choice_labels(profiles),
         ) as dialog:
             if self._show_modal_dialog(dialog, "Profile Onboarding") != wx.ID_OK:
                 if force:
@@ -9464,6 +10462,16 @@ class MainFrame:
         self.features.switch_profile(profile.id)
         self._set_status(f"Quill starts in the {profile.name} profile")
         self._refresh_title()
+
+    def _profile_choice_labels(self, profiles: list[object]) -> list[str]:
+        return [self._profile_choice_label(profile) for profile in profiles]
+
+    def _profile_choice_label(self, profile: object) -> str:
+        name = str(getattr(profile, "name", "Profile")).strip()
+        description = " ".join(str(getattr(profile, "description", "")).split())
+        if not description:
+            return name
+        return f"{name} — {description}"
 
     def show_regex_helper(self) -> None:
         report = (

@@ -4,10 +4,11 @@ from pathlib import Path
 
 import pytest
 
+import quill.ui.main_frame as main_frame_module
 from quill.core.a11y_regions import RegionTracker
 from quill.core.document import Document
 from quill.core.epub import EpubBook, EpubChapter, EpubHeading
-from quill.core.features import FEATURE_DEFINITIONS, feature_for_command
+from quill.core.features import FEATURE_DEFINITIONS, PROFILE_DEFINITIONS, feature_for_command
 from quill.core.locations import LocationRing
 from quill.core.search import SearchOptions
 from quill.core.spellcheck import Misspelling
@@ -283,6 +284,8 @@ def test_feature_coverage_maps_new_surfaces_to_known_features() -> None:
         "tools.open_keyboard_reference",
         "tools.read_aloud_start_pause",
         "tools.read_aloud_stop",
+        "tools.announcement_backend",
+        "tools.announcement_trace_toggle",
     ]
     assert all(feature_for_command(command_id) in FEATURE_DEFINITIONS for command_id in command_ids)
 
@@ -401,6 +404,80 @@ def test_open_outline_navigator_routes_epub_to_epub_navigator() -> None:
     assert called["epub"] is True
 
 
+def test_open_outline_navigator_reports_plain_text_as_unsupported() -> None:
+    frame = _build_frame("Plain text", insertion_point=0)
+    frame.document.path = Path("notes.txt")
+    frame._build_outline_navigator_nodes = lambda: (_ for _ in ()).throw(  # type: ignore[method-assign]
+        AssertionError("outline nodes should not be built for plain text")
+    )
+
+    frame.open_outline_navigator()
+
+    assert frame._status_message == "Outline is not available for plain text files"
+
+
+def test_open_preferences_shows_dialog_and_routes_selection() -> None:
+    frame = _build_frame("hello", insertion_point=0)
+    called: list[str] = []
+
+    class _ChoiceDialog:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            self.selection = 0
+
+        def __enter__(self) -> _ChoiceDialog:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def SetSelection(self, selection: int) -> None:
+            self.selection = selection
+
+        def GetSelection(self) -> int:
+            return self.selection
+
+    def _show_modal(dialog: object, _label: str) -> int:
+        dialog.selection = 2  # type: ignore[attr-defined]
+        return 1
+
+    frame._wx = type("WX", (), {"SingleChoiceDialog": _ChoiceDialog, "ID_OK": 1})()
+    frame._show_modal_dialog = _show_modal  # type: ignore[method-assign]
+    frame.open_profiles_and_features_settings = lambda: called.append("profiles")  # type: ignore[method-assign]
+    frame.open_status_bar_settings = lambda: called.append("status")  # type: ignore[method-assign]
+    frame.open_keymap_editor = lambda: called.append("keymap")  # type: ignore[method-assign]
+
+    frame.open_preferences()
+
+    assert called == ["keymap"]
+
+
+def test_open_preferences_sets_cancelled_status_when_dialog_is_cancelled() -> None:
+    frame = _build_frame("hello", insertion_point=0)
+
+    class _ChoiceDialog:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            self.selection = 0
+
+        def __enter__(self) -> _ChoiceDialog:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def SetSelection(self, selection: int) -> None:
+            self.selection = selection
+
+        def GetSelection(self) -> int:
+            return self.selection
+
+    frame._wx = type("WX", (), {"SingleChoiceDialog": _ChoiceDialog, "ID_OK": 1})()
+    frame._show_modal_dialog = lambda _dialog, _label: 0  # type: ignore[method-assign]
+
+    frame.open_preferences()
+
+    assert frame._status_message == "Preferences cancelled"
+
+
 def test_build_outline_navigator_nodes_tracks_heading_hierarchy() -> None:
     frame = _build_frame("# Title\nBody\n## Child\nText\n# Next\n", insertion_point=0)
 
@@ -434,6 +511,48 @@ def test_build_epub_navigator_nodes_uses_chapter_titles_and_preview() -> None:
     assert nodes[0].children[0].label == "Heading"
     assert nodes[0].children[0].action_label == "Jump to Heading"
     assert "First chapter" in nodes[0].preview
+
+
+def test_refresh_contextual_menu_disables_insert_table_for_plain_documents() -> None:
+    frame = _build_frame("Heading-like text\n- item\n", insertion_point=0)
+    frame.document.path = Path("note.txt")
+
+    class _TrackedMenuItem:
+        def __init__(self) -> None:
+            self.enabled: bool | None = None
+
+        def Enable(self, enabled: bool) -> None:
+            self.enabled = enabled
+
+    class _MenuBar:
+        def __init__(self, table_item: _TrackedMenuItem) -> None:
+            self._table_item = table_item
+
+        def FindItemById(self, item_id: int) -> object | None:
+            if item_id == frame._id_insert_table:
+                return self._table_item
+            return None
+
+    table_item = _TrackedMenuItem()
+    frame.frame.GetMenuBar = lambda: _MenuBar(table_item)  # type: ignore[attr-defined]
+    frame._id_insert_markdown_tag = 1001
+    frame._id_heading_1 = 1002
+    frame._id_heading_2 = 1003
+    frame._id_heading_3 = 1004
+    frame._id_heading_4 = 1005
+    frame._id_heading_5 = 1006
+    frame._id_heading_6 = 1007
+    frame._id_insert_bullet_list = 1008
+    frame._id_insert_numbered_list = 1009
+    frame._id_insert_task_list = 1010
+    frame._id_insert_code_block = 1011
+    frame._id_insert_footnote = 1012
+    frame._id_insert_table = 1013
+    frame._id_insert_html_tag = 1014
+
+    frame._refresh_contextual_menu_items()
+
+    assert table_item.enabled is False
 
 
 def test_find_heading_position_returns_matching_heading_offset() -> None:
@@ -499,6 +618,34 @@ def test_previous_misspelling_jumps_to_prior_item() -> None:
     assert frame._status_message == 'Previous misspelling: "laterbad"'
 
 
+def test_misspelling_context_text_prefers_sentence() -> None:
+    frame = _build_frame("This has wrng spelling. Another sentence here.", insertion_point=0)
+    item = Misspelling(word="wrng", start=9, end=13)
+
+    context = frame._misspelling_context_text(frame.editor.GetValue(), item)
+
+    assert context == "This has wrng spelling."
+
+
+def test_spell_word_for_speech_separates_letters_and_symbols() -> None:
+    frame = _build_frame("placeholder", insertion_point=0)
+
+    spoken = frame._spell_word_for_speech("can't-do_it")
+
+    assert spoken == "C, A, N, apostrophe, T, dash, D, O, underscore, I, T"
+
+
+def test_spellcheck_speech_message_includes_single_suggestion_spelling() -> None:
+    frame = _build_frame("placeholder", insertion_point=0)
+
+    message = frame._spellcheck_speech_message("wrng", "wrong")
+
+    assert 'Misspelled word: "wrng".' in message
+    assert "Spelling: W, R, N, G." in message
+    assert 'Only suggestion: "wrong".' in message
+    assert "Suggestion spelling: W, R, O, N, G." in message
+
+
 def test_find_next_does_not_wrap_when_setting_disabled() -> None:
     frame = _build_frame("alpha beta alpha", insertion_point=len("alpha beta alpha"))
     frame._last_find_query = "alpha"
@@ -545,6 +692,153 @@ def test_replace_all_uses_undo_preserving_replace_path(monkeypatch: pytest.Monke
     assert frame.editor.GetValue() == "omega beta omega"
 
 
+def test_replace_text_replaces_next_match() -> None:
+    frame = _build_frame("alpha beta alpha", insertion_point=0)
+    frame._wx = type("WX", (), {"ICON_ERROR": 0, "OK": 0})()
+    frame._prompt_search = lambda _title, replacement=False: (  # type: ignore[method-assign]
+        "alpha",
+        "omega",
+        SearchOptions(),
+    )
+
+    frame.replace_text()
+
+    assert frame.editor.GetValue() == "omega beta alpha"
+    assert frame._status_message == "Replaced at position 1"
+
+
+def test_replace_text_wraps_when_enabled() -> None:
+    frame = _build_frame("alpha beta alpha", insertion_point=len("alpha beta alpha"))
+    frame._wx = type("WX", (), {"ICON_ERROR": 0, "OK": 0})()
+    frame.settings.wrap_find = True
+    frame._prompt_search = lambda _title, replacement=False: (  # type: ignore[method-assign]
+        "alpha",
+        "omega",
+        SearchOptions(),
+    )
+
+    frame.replace_text()
+
+    assert frame.editor.GetValue() == "omega beta alpha"
+    assert frame._status_message.endswith("(wrapped)")
+
+
+def test_tab_key_indents_using_configured_mode() -> None:
+    frame = _build_frame("alpha", insertion_point=0)
+    frame.settings.indent_with_tabs = True
+    frame.settings.indent_size = 2
+    frame._wx = type("WX", (), {"WXK_INSERT": 45, "WXK_F8": 119, "WXK_TAB": 9})()
+    event = _KeyEvent(9)
+
+    frame._on_editor_key_down(event)
+
+    assert frame.editor.GetValue() == "\talpha"
+
+
+def test_shift_tab_outdents_using_configured_mode() -> None:
+    frame = _build_frame("\talpha", insertion_point=1)
+    frame.settings.indent_with_tabs = True
+    frame.settings.indent_size = 2
+    frame._wx = type("WX", (), {"WXK_INSERT": 45, "WXK_F8": 119, "WXK_TAB": 9})()
+    event = _KeyEvent(9)
+    event._shift = True
+
+    frame._on_editor_key_down(event)
+
+    assert frame.editor.GetValue() == "alpha"
+
+
+def test_notebook_enter_focuses_active_document() -> None:
+    frame = _build_frame("alpha", insertion_point=0)
+    frame._activate_tab = lambda _index: None  # type: ignore[method-assign]
+    frame._wx = type(
+        "WX",
+        (),
+        {
+            "WXK_RETURN": 13,
+            "WXK_NUMPAD_ENTER": 13,
+            "WXK_SPACE": 32,
+            "WXK_TAB": 9,
+            "NOT_FOUND": -1,
+        },
+    )()
+    event = _KeyEvent(13)
+
+    frame._on_notebook_key_down(event)
+
+    assert frame.editor.focused is True
+    assert frame._status_message.startswith("Focused document ")
+
+
+def test_profile_choice_label_includes_description() -> None:
+    frame = _build_frame("alpha", insertion_point=0)
+    profile = PROFILE_DEFINITIONS["essential"]
+    label = frame._profile_choice_label(profile)
+
+    assert label.startswith("Essential — ")
+    assert profile.description in label
+
+
+def test_print_document_cancel_reports_cancelled() -> None:
+    frame = _build_frame("alpha", insertion_point=0)
+    frame._print_data = object()
+    frame._build_text_printout = lambda *_args: type(  # type: ignore[method-assign]
+        "_Printout",
+        (),
+        {"Destroy": lambda self: None},
+    )()
+    frame._show_message_box = lambda *_args, **_kwargs: None  # type: ignore[method-assign]
+
+    class _Printer:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            return
+
+        def Print(self, *_args: object, **_kwargs: object) -> bool:
+            return False
+
+        def GetLastError(self) -> int:
+            return 2
+
+    frame._wx = type(
+        "WX",
+        (),
+        {
+            "PrintDialogData": staticmethod(lambda data: data),
+            "Printer": _Printer,
+            "PRINTER_NO_ERROR": 0,
+            "PRINTER_CANCELLED": 2,
+            "ICON_ERROR": 0,
+            "OK": 0,
+        },
+    )()
+
+    frame.print_document()
+
+    assert frame._status_message == "Printing cancelled"
+
+
+def test_spellcheck_hint_bell_debounces_same_word(monkeypatch: pytest.MonkeyPatch) -> None:
+    frame = _build_frame("alpha wrng", insertion_point=6)
+    bells: list[str] = []
+    frame._wx = type("WX", (), {"Bell": staticmethod(lambda: bells.append("bell"))})()
+    frame._last_live_misspelling_feedback = None
+    frame._last_live_misspelling_feedback_at = 0.0
+    frame._spell_dictionary = lambda: {"alpha"}  # type: ignore[method-assign]
+    monkeypatch.setattr(
+        main_frame_module,
+        "find_next_misspelling",
+        lambda *_args, **_kwargs: Misspelling("wrng", 6, 10),
+    )
+    ticks = iter([10.0, 10.1, 11.2])
+    monkeypatch.setattr(main_frame_module.time, "monotonic", lambda: next(ticks))
+
+    frame._announce_spellcheck_hint()
+    frame._announce_spellcheck_hint()
+    frame._announce_spellcheck_hint()
+
+    assert bells == ["bell", "bell"]
+
+
 def test_extend_selection_mode_moves_down_with_arrow_key() -> None:
     frame = _build_frame("one\ntwo", insertion_point=0)
     frame.toggle_extend_selection_mode(True)
@@ -584,6 +878,56 @@ def test_find_next_extends_selection_when_mode_enabled() -> None:
 
     assert frame.editor.GetInsertionPoint() == 22
     assert frame.editor.selection == (0, 22)
+
+
+def test_find_text_sets_anchor_and_extends_when_mode_is_on() -> None:
+    frame = _build_frame("alpha beta alpha", insertion_point=6)
+    frame._wx = type("WX", (), {"ICON_ERROR": 0, "OK": 0, "ICON_INFORMATION": 0})()
+    frame.toggle_extend_selection_mode(True)
+    frame._extend_selection_anchor = None
+    frame._prompt_search = lambda _title, replacement=False: (  # type: ignore[method-assign]
+        "alpha",
+        None,
+        SearchOptions(),
+    )
+
+    frame.find_text()
+
+    assert frame._extend_selection_anchor == 6
+    assert frame.editor.selection == (6, 16)
+    assert frame._status_message == "Found at position 12"
+
+
+def test_find_previous_sets_anchor_and_extends_when_mode_is_on() -> None:
+    frame = _build_frame("alpha beta alpha", insertion_point=len("alpha beta alpha"))
+    frame._last_find_query = "alpha"
+    frame._last_search_options = SearchOptions()
+    frame.toggle_extend_selection_mode(True)
+    frame._extend_selection_anchor = None
+
+    frame.find_previous()
+
+    assert frame._extend_selection_anchor == len("alpha beta alpha")
+    assert frame.editor.selection == (11, len("alpha beta alpha"))
+    assert frame._status_message == "Found previous at position 12"
+
+
+def test_format_case_no_selection_targets_current_word() -> None:
+    frame = _build_frame("hello world", insertion_point=1)
+
+    frame.format_upper_case()
+
+    assert frame.editor.GetValue() == "HELLO world"
+    assert frame._status_message == "Upper case applied to current word"
+
+
+def test_format_case_no_selection_on_whitespace_noops() -> None:
+    frame = _build_frame("hello  world", insertion_point=6)
+
+    frame.format_upper_case()
+
+    assert frame.editor.GetValue() == "hello  world"
+    assert frame._status_message == "No current word to transform"
 
 
 def test_save_all_files_calls_save_file() -> None:

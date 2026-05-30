@@ -33,9 +33,12 @@ version = "2.4.6"
     assert "set QUILL_PORTABLE=1" in launcher
     assert "set QUILL_APP_ROOT=%~dp0" in launcher
     assert "set QUILL_PORTABLE_ROOT=%~dp0data" in launcher
-    # Launcher prefers the bundled embedded Python before falling back to PATH.
+    # Launcher defaults to pythonw and supports --console for diagnostics.
     assert "QUILL_BUNDLED_PYTHON" in launcher
+    assert "QUILL_BUNDLED_PYTHONW" in launcher
     assert "python\\python.exe" in launcher
+    assert "python\\pythonw.exe" in launcher
+    assert '"--console"' in launcher
 
     readme_text = (portable_dir / "README.txt").read_text(encoding="utf-8")
     assert "Quill Portable 2.4.6" in readme_text

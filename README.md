@@ -2,7 +2,7 @@
 
 Quill is a screen-reader-first writing, reading, review, and document-intelligence environment for Windows.
 
-Quill 0.1 Beta is being built by Blind Information Technology Solutions (BITS) together with Community Access.
+Quill 0.1.1 Beta is being built by Blind Information Technology Solutions (BITS) together with Community Access.
 
 It is being built for people who want an editor that feels calm, native, and deeply trustworthy from the keyboard. Quill is not only a place to type plain text. It is a place to open difficult documents, navigate structure, compare revisions, inspect extraction quality, run deterministic GLOW review, work with golden keyboard packs, and grow into richer workflows through optional external tools such as Pandoc and Tesseract.
 
@@ -17,7 +17,7 @@ The current implementation includes:
 - spell check, thesaurus, read aloud, OCR image intake, extraction review, and GLOW audit and fix actions
 - feature profiles, keyboard packs, keymap editor, status-bar layout controls, and startup safety controls
 - autosave, backups, recovery, trusted locations, notifications, update checks, and diagnostics export
-- external tool onboarding, including a native Pandoc Conversion Wizard when Pandoc is available
+- external tool onboarding, including a native Pandoc Conversion Wizard with labeled fields and browse controls when Pandoc is available
 
 ## Optional Tool Ecosystem
 
@@ -27,6 +27,7 @@ Today Quill can detect or bundle tools such as:
 
 - Pandoc for conversion into Markdown, HTML, or plain text workflows
 - Tesseract OCR for local image-to-text workflows
+- Prism/Prismatoid for unified screen-reader announcement routing
 - LibreOffice for broader office conversion fallback planning
 - Ghostscript for deeper PDF and PostScript pipeline work
 
@@ -34,9 +35,25 @@ The External Tools and Format Support dialog explains what each tool unlocks, wh
 
 ## Feedback Path
 
-The primary support and feedback route for Quill 0.1 Beta is inside Quill itself.
+The primary support and feedback route for Quill 0.1.1 Beta is inside Quill itself.
 
 Use **Help -> Save Diagnostics...** when you want to create a reviewable diagnostics bundle, then use **Help -> Report a Bug...** to open Quill's guided report summary and handoff into the Community Access support form.
+
+Report a Bug now includes an in-app accessible form and can create a diagnostics zip in the same flow so the issue can be filed with everything ready to attach.
+
+## Update Feed and GitHub Pages
+
+Quill's update checker reads a signed update feed from:
+
+- `https://community-access.github.io/quill/updates/.quill-update-feed-v1.json`
+
+The feed filename is intentionally non-obvious under `/updates/` and is deployed through GitHub Pages from `docs/site/`.
+
+To regenerate the signed feed for a release:
+
+```powershell
+python scripts\generate_update_feed.py --version 0.1.1 --download-url https://github.com/Community-Access/quill/releases/latest --notes "Latest Quill release."
+```
 
 ## Key Documents
 
@@ -63,6 +80,8 @@ Engineering baseline docs are under `docs/engineering/`:
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e .[dev,ui]
+# Optional: install Prism bindings for enhanced announcement routing
+pip install prismatoid
 quill
 ```
 

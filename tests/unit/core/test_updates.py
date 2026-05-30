@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 
-from quill.core.updates import is_newer_version, parse_update_manifest
+from quill.core.updates import DEFAULT_UPDATE_MANIFEST_URL, is_newer_version, parse_update_manifest
 
 
 def _signed_payload(version: str, download_url: str, published_at: str, notes: str) -> str:
@@ -57,3 +57,8 @@ def test_parse_update_manifest_rejects_bad_signature() -> None:
 def test_is_newer_version_compares_semver_triplets() -> None:
     assert is_newer_version("0.1.0", "0.2.0") is True
     assert is_newer_version("1.2.3", "1.2.3") is False
+
+
+def test_default_update_manifest_url_points_to_hidden_pages_feed() -> None:
+    assert DEFAULT_UPDATE_MANIFEST_URL.startswith("https://community-access.github.io/quill/")
+    assert "/updates/." in DEFAULT_UPDATE_MANIFEST_URL

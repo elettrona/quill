@@ -2,7 +2,7 @@
 
 ## A magical, screen-reader-first writing and document environment, built in wxPython.
 
-Status: Quill 1.0 PRD aligned with Quill 0.1 Beta
+Status: Quill 1.0 PRD aligned with Quill 0.1.1 Beta
 Owner: Blind Information Technology Solutions (BITS) and Community Access
 Target platform: Windows 10 and Windows 11
 Target screen readers: NVDA (primary), JAWS, Narrator
@@ -101,14 +101,25 @@ The menu bar is standards-based, predictable, and exhaustive. Every menu item is
 
 Menu structure:
 
-- **File**: New, New From Template…, Open…, Open from URL… (5.27), Open With Encoding…, Open Recent ‣ (last N, with Clear), Save, Save As…, Save All, Save As Plain Text…, Reload From Disk, Restore Document Backup…, Sessions ‣ (Save Session…, Open Session…, Recent Sessions), Print…, Page Setup…, Close, Close All, Exit.
-- **Edit**: Undo, Redo, Cut, Copy, Paste, Paste Special ‣ (Paste As Plain Text, Paste As Quotation, Paste Without Auto-Pair), Delete, Select All, Select Line, Select Paragraph, Select Block, Select to End of Line, Select to Start of Line, Select to End of Document, Select to Start of Document, Expand Selection, Shrink Selection, Mark Ring ‣ (Set Mark, Pop Mark, Exchange Point and Mark, List Marks), Recent Locations ‣ (Back, Forward, List Locations). (See 5.24 and 5.25.)
-- **View**: Toggle Status Bar, Toggle Menu Bar (revealed by `Alt` when hidden), Toggle Soft Wrap, Toggle Outline Navigator (pinned/unpinned), Zoom In, Zoom Out, Zoom Reset, Theme ‣ (System, Light, Dark, High Contrast, Custom…), Font Size ‣ (presets), Full Screen.
-- **Navigate**: Go To Line…, Go To Page…, Go To Bookmark…, Outline Navigator…, Next Heading, Previous Heading, Next Heading of Level ‣ (1–6), Next Block, Previous Block, Next Match (F3), Previous Match (Shift+F3), Find All Matches… (Alt+F3), Match Bracket, Back, Forward, Switch Document ‣ (lists open documents with `Alt+1`…`Alt+9`).
-- **Tools**: Spell Check… (F7), Toggle As-You-Type Spell Check, Next Misspelling, Add to Dictionary ‣ (Personal, This Document, Project), Word Count and Statistics… (5.19), Accessibility Audit… (5.20), Alt-Text Catalog…, Link Inventory…, Compare With File…, Improve Reading Order… (opt-in AI), Enhanced PDF Tools ‣ (5.4), Read Aloud ‣ (Start/Pause, Stop, Next Sentence, Previous Sentence, Voice…), Insert ‣ (Date, Time, Date and Time, Filename, File Path, UUID), Convert ‣ (Sort Lines, Remove Duplicate Lines, Reverse Lines, Trim Trailing Whitespace, Normalize Whitespace, Convert Indent to Spaces, Convert Indent to Tabs, Wrap to Column…, Re-flow Paragraph), Number Lines… (5.30), Strip Line Numbers.
-- **Format**: Upper Case, Lower Case, Title Case, Sentence Case, Toggle Case, Toggle Line Comment, Toggle Block Comment, Indent, Outdent, Move Line Up, Move Line Down, Duplicate Line, Delete Line, Join Lines, Insert Heading ‣ (Markdown/HTML, levels 1–6), Insert List ‣ (bullet, numbered, task), Insert Table…, Insert Link…, Insert Code Block, Insert Footnote.
-- **Window**: Next Document, Previous Document, Close Document, Close Other Documents, Close Documents to the Right, List All Open Documents (with `Alt+1`…`Alt+9` accelerators for the first nine).
-- **Help**: Welcome (opens a guided tutorial document in a new tab), Keyboard Reference (auto-generated from the current keymap, opens in the editor as a searchable, printable document that updates whenever the keymap changes), Tip of the Day… (off by default; drawn from real actions in the palette), Command Palette… (Ctrl+Shift+P), Documentation Online…, Release Notes, Report a Bug… (opens an in-app review screen, then a pre-filled Community Access support-hub issue form with redacted environment info; never auto-sends), Save Diagnostics… (5.33), Check for Updates…, About Quill.
+- **File**: New/Open/Open Recent/Open from URL, **Workspace Snapshots**, Save/Save As/Save All/Save as plain text, Reload/Restore backup, print flows, close/exit.
+- **Edit**: Undo/redo, clipboard, selection helpers, link insertion/follow, and **Recent Marks (Ring)** with plain-language labels.
+- **Search**: Find/Replace flows plus Next/Previous/All matches.
+- **View**: shell behavior toggles, title style options, theme and visual controls.
+- **Navigate**: line/page/bookmark movement, heading/block/structure movement, outline, bracket match, region movement.
+- **Format**: case/comment/indent/line transforms plus rich text and heading controls.
+- **Insert**: table/list/code/footnote/tag insertion helpers.
+- **Tools**: regrouped into discoverable submenus:
+  - Writing and Language
+  - Read Aloud
+  - Integrations
+  - Document Intake
+  - Authoring and Automation
+  - Compare Documents
+  - Accessibility
+  - Support
+  - Customize
+- **Window**: document/tab management actions.
+- **Help**: contextual help, onboarding docs, feature profile support, updates, and About.
 
 All menu strings are translatable. Every menu item has a unique mnemonic. The menu bar may be hidden via View; when hidden, pressing `Alt` reveals it temporarily and `Esc` dismisses it again, matching Windows convention.
 
@@ -441,6 +452,7 @@ Quill ships **its own spell checking engine**, built on Hunspell dictionaries, d
 
 ### 5.10 Bookmarks
 
+- Bookmarks are **named jump points** intended for durable anchors a user wants to revisit by name.
 - `Ctrl+B` sets a bookmark at the current position. Prompts for a name.
 - Stored per bookmark: name, line number, column, ~120 characters of surrounding text, document path, ISO timestamp.
 - `Ctrl+Shift+G` opens Bookmarks Manager.
@@ -617,6 +629,7 @@ A group of small, individually unremarkable features whose absence would feel ch
 ### 5.24 Mark ring
 
 A second, lighter-weight navigation system for power users. Inspired by Emacs but adapted to Windows muscle memory.
+Marks are **temporary jump points**; bookmarks (5.10) are named and more durable.
 
 - `Ctrl+`Space (overloaded carefully; the editor does not need plain Ctrl+Space) sets an anonymous mark at the cursor; status bar briefly announces `Mark set`.
 - `Ctrl+Shift+`Space pops to the most recent mark; further presses walk back through the ring.
@@ -1397,6 +1410,16 @@ Quill speaks to the user through three independent channels, all of which delive
 
 All three channels are funnelled through a single `quill.a11y.announce(text, *, priority='normal', interruptible=True)` function, so there is exactly one code path to test.
 
+Quill exposes an explicit announcement backend selector in Settings and command surfaces. Supported modes are `auto`, `legacy`, `prism`, and `sounds`, with `auto` as default. `auto` chooses the best backend for the current screen-reader/runtime context and falls back deterministically when a backend is unavailable.
+
+### 9.5.1 Announcement backend provenance
+
+The `prism` backend in Quill is derived from the architecture and behavior patterns published in the open-source Prism project:
+
+- Source: <https://github.com/ethindp/prism>
+- Scope borrowed: screen-reader announcement abstraction approach, backend-oriented dispatch model, and parity-focused announcement reliability goals.
+- Quill adaptation: integrated into Quill's existing `quill.a11y.announce(...)` funnel and profile/feature controls, while preserving Quill's own command, diagnostics, and privacy conventions.
+
 ### 9.6 Keyboard accessibility gates
 
 - **Keyboard parity matrix**: every menu item, every status-bar cell, every palette command, every dialog button has a keyboard equivalent. CI generates the matrix from the command registry and fails the build if any entry lacks an accessible keystroke.
@@ -2126,7 +2149,7 @@ This is the implementation checklist for v1.0.0 and immediate post-1.0 foundatio
 - [x] Implement single-instance handoff IPC (open-in-existing-instance on second launch).
 - [x] Implement F6/Shift+F6 region cycling across all declared regions.
 - [x] Show live caret position in status bar (`Ln`, `Col`).
-- [x] Add configurable status bar item layout (reorder + hide/show) through Status Bar Layout settings.
+- [x] Add configurable status bar item layout (reorder + hide/show) through Status Bar Settings.
 - [x] Show insert/overwrite mode in the status bar (`INS` / `OVR`).
 - [x] Implement full status-bar interactive cell model from section 5.1b.
 - [x] Add Save All command.

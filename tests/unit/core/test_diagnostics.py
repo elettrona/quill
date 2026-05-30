@@ -65,6 +65,23 @@ def test_build_bug_report_payload_mentions_diagnostics() -> None:
     assert "Save Diagnostics" in payload["body"]
 
 
+def test_build_bug_report_payload_supports_user_entered_sections() -> None:
+    payload = build_bug_report_payload(
+        current_document=Document(text="x", path=Path("C:/Docs/sample.md")),
+        summary_override="Bug report: Spell check speaks too fast",
+        happened="Pressed Speak Word and could not follow the letters.",
+        expected="Letters should be spoken slowly and clearly.",
+        steps="1. Open spell check\n2. Select misspelling\n3. Press Speak Word",
+        diagnostics_note="Attach diagnostics bundle: C:\\Temp\\quill-diagnostics.zip",
+    )
+
+    assert payload["summary"] == "Bug report: Spell check speaks too fast"
+    assert "Pressed Speak Word" in payload["body"]
+    assert "Expected behavior:" in payload["body"]
+    assert "Steps to reproduce:" in payload["body"]
+    assert "Attach diagnostics bundle" in payload["body"]
+
+
 def test_build_diagnostics_review_text_mentions_hashing() -> None:
     review = build_diagnostics_review_text(
         settings=Settings(),

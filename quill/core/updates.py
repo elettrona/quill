@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from urllib.error import URLError
 from urllib.request import urlopen
 
-DEFAULT_UPDATE_MANIFEST_URL = "https://example.com/quill/manifest-v1.json"
+DEFAULT_UPDATE_MANIFEST_URL = (
+    "https://community-access.github.io/quill/updates/.quill-update-feed-v1.json"
+)
 _SIGNATURE_SALT = "quill-manifest-signature-v1"
 
 

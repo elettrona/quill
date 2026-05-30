@@ -82,6 +82,10 @@ def test_build_keymap_for_pack_applies_overlay() -> None:
     assert keymap["file.save"] == DEFAULT_KEYMAP["file.save"]
 
 
+def test_previous_misspelling_shortcut_is_available() -> None:
+    assert DEFAULT_KEYMAP["tools.previous_misspelling"] == "Shift+Alt+F7"
+
+
 def test_keyboard_pack_preview_mentions_highlights() -> None:
     preview = keyboard_pack_preview("Quill Review")
     assert "Highlights:" in preview

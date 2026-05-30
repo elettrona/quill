@@ -26,6 +26,8 @@ def test_load_epub_book_reads_ncx_order(tmp_path: Path) -> None:
     book = load_epub_book(target)
     assert book.chapters[0].title == "Start"
     assert "Hello EPUB" in book.chapters[0].text
+    assert book.chapters[0].headings[0].title == "One"
+    assert book.chapters[0].headings[0].level == 1
 
 
 def test_render_epub_book_includes_chapter_titles(tmp_path: Path) -> None:
@@ -36,3 +38,13 @@ def test_render_epub_book_includes_chapter_titles(tmp_path: Path) -> None:
     report = render_epub_book(book)
     assert "# EPUB:" in report
     assert "## 1." in report
+
+
+def test_load_epub_book_collects_multiple_headings(tmp_path: Path) -> None:
+    target = tmp_path / "headings.epub"
+    chapter = "<html><body><h1>Intro</h1><p>Hello</p><h2>Deep Dive</h2><p>More</p></body></html>"
+    with zipfile.ZipFile(target, "w") as archive:
+        archive.writestr("chapters/one.xhtml", chapter)
+    book = load_epub_book(target)
+    assert [heading.title for heading in book.chapters[0].headings] == ["Intro", "Deep Dive"]
+    assert [heading.level for heading in book.chapters[0].headings] == [1, 2]

@@ -85,6 +85,8 @@ class Settings:
     keyboard_pack: str = "Quill Default"
     soft_wrap: bool = True
     wrap_find: bool = True
+    indent_with_tabs: bool = False
+    indent_size: int = 4
     auto_check_updates: bool = False
     recent_files_limit: int = 10
     tray_enabled: bool = False
@@ -94,6 +96,8 @@ class Settings:
     dirty_title_style: str = "text"
     start_with_no_document_open: bool = False
     read_aloud_voice: str = ""
+    announcement_backend: str = "auto"
+    announcement_trace_enabled: bool = False
     status_bar_order: list[str] = field(default_factory=_default_status_bar_order)
     status_bar_hidden: list[str] = field(default_factory=_default_status_bar_hidden)
 
@@ -103,6 +107,8 @@ class Settings:
         keyboard_pack = str(data.get("keyboard_pack", "Quill Default"))
         soft_wrap = bool(data.get("soft_wrap", True))
         wrap_find = bool(data.get("wrap_find", True))
+        indent_with_tabs = bool(data.get("indent_with_tabs", False))
+        indent_size = int(data.get("indent_size", 4))
         auto_check_updates = bool(data.get("auto_check_updates", False))
         recent_files_limit = int(data.get("recent_files_limit", 10))
         tray_enabled = bool(data.get("tray_enabled", False))
@@ -116,6 +122,10 @@ class Settings:
             dirty_title_style = "text"
         start_with_no_document_open = bool(data.get("start_with_no_document_open", False))
         read_aloud_voice = str(data.get("read_aloud_voice", ""))
+        announcement_backend = str(data.get("announcement_backend", "auto")).strip().lower()
+        if announcement_backend not in {"auto", "prism", "status_only"}:
+            announcement_backend = "auto"
+        announcement_trace_enabled = bool(data.get("announcement_trace_enabled", False))
         status_bar_order = _normalize_status_bar_order(data.get("status_bar_order"))
         status_bar_hidden = _normalize_status_bar_hidden(
             data.get("status_bar_hidden"), status_bar_order
@@ -124,11 +134,17 @@ class Settings:
             recent_files_limit = 1
         if recent_files_limit > 50:
             recent_files_limit = 50
+        if indent_size < 1:
+            indent_size = 1
+        if indent_size > 8:
+            indent_size = 8
         return cls(
             theme=theme,
             keyboard_pack=keyboard_pack,
             soft_wrap=soft_wrap,
             wrap_find=wrap_find,
+            indent_with_tabs=indent_with_tabs,
+            indent_size=indent_size,
             auto_check_updates=auto_check_updates,
             recent_files_limit=recent_files_limit,
             tray_enabled=tray_enabled,
@@ -138,6 +154,8 @@ class Settings:
             dirty_title_style=dirty_title_style,
             start_with_no_document_open=start_with_no_document_open,
             read_aloud_voice=read_aloud_voice,
+            announcement_backend=announcement_backend,
+            announcement_trace_enabled=announcement_trace_enabled,
             status_bar_order=status_bar_order,
             status_bar_hidden=status_bar_hidden,
         )

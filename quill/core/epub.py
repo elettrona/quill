@@ -7,12 +7,22 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
+_HTML_HEADING_PATTERN = re.compile(r"<h([1-6])[^>]*>(.*?)</h\1>", re.IGNORECASE | re.DOTALL)
+_HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
+
+
+@dataclass(frozen=True, slots=True)
+class EpubHeading:
+    level: int
+    title: str
+
 
 @dataclass(frozen=True, slots=True)
 class EpubChapter:
     title: str
     href: str
     text: str
+    headings: tuple[EpubHeading, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,7 +44,15 @@ def load_epub_book(path: Path) -> EpubBook:
                 continue
             content = archive.read(matched).decode("utf-8", errors="ignore")
             text = _extract_text(content)
-            chapters.append(EpubChapter(title=label or Path(matched).stem, href=matched, text=text))
+            headings = tuple(_extract_headings(content))
+            chapters.append(
+                EpubChapter(
+                    title=label or Path(matched).stem,
+                    href=matched,
+                    text=text,
+                    headings=headings,
+                )
+            )
     return EpubBook(title=title, chapters=tuple(chapters))
 
 
@@ -112,3 +130,14 @@ def _extract_text(content: str) -> str:
     without_tags = re.sub(r"<[^>]+>", " ", content)
     decoded = html.unescape(without_tags)
     return " ".join(decoded.split())
+
+
+def _extract_headings(content: str) -> list[EpubHeading]:
+    headings: list[EpubHeading] = []
+    for match in _HTML_HEADING_PATTERN.finditer(content):
+        level = int(match.group(1))
+        raw = _HTML_TAG_PATTERN.sub("", match.group(2))
+        title = " ".join(html.unescape(raw).split())
+        if title:
+            headings.append(EpubHeading(level=level, title=title))
+    return headings

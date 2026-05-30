@@ -39,6 +39,9 @@ class CommandPaletteDialog:
         self.search.SetDescriptiveText("Type command (>, :, ?, ~ prefixes supported)")
         root.Add(self.search, 0, wx.EXPAND | wx.ALL, 8)
 
+        self.status = wx.StaticText(self.dialog, label="")
+        root.Add(self.status, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
         self.results = wx.ListBox(self.dialog)
         root.Add(self.results, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         self.dialog.SetSizer(root)
@@ -46,6 +49,7 @@ class CommandPaletteDialog:
         self.search.Bind(wx.EVT_TEXT, self._on_search_changed)
         self.search.Bind(wx.EVT_TEXT_ENTER, self._on_accept)
         self.results.Bind(wx.EVT_LISTBOX_DCLICK, self._on_accept)
+        self.results.Bind(wx.EVT_LISTBOX, self._on_result_selected)
         self.dialog.Bind(wx.EVT_CHAR_HOOK, self._on_char_hook)
 
         self._refresh_results()
@@ -77,26 +81,46 @@ class CommandPaletteDialog:
         if key_code in (self._wx.WXK_RETURN, self._wx.WXK_NUMPAD_ENTER):
             self._on_accept(event)
             return
+        if key_code == self._wx.WXK_DOWN and self.results.GetCount() > 0:
+            self.results.SetSelection(0)
+            self.results.SetFocus()
+            self._announce_selected_result()
+            return
+        if key_code == self._wx.WXK_UP and self.results.GetCount() > 0:
+            self.results.SetSelection(self.results.GetCount() - 1)
+            self.results.SetFocus()
+            self._announce_selected_result()
+            return
         event.Skip()
 
     def _refresh_results(self) -> None:
         labels = []
         for command in self._filtered_commands:
-            state = ""
-            if self._features is not None:
-                feature_state = self._features.state_for(command.feature_id)
-                if feature_state == "quiet":
-                    state = " [quiet]"
-                elif feature_state == "off":
-                    state = " [off]"
             if command.keybinding:
-                labels.append(f"{command.title}{state} [{command.keybinding}]")
+                labels.append(f"{command.title} [{command.keybinding}]")
             else:
-                labels.append(f"{command.title}{state}")
+                labels.append(command.title)
         self.results.Set(labels)
         if labels:
             self.results.SetSelection(0)
+            top = self._filtered_commands[0]
+            self.status.SetLabel(
+                f"{len(labels)} command(s). Top match: {top.title} ({top.id})"
+            )
+            return
+        self.status.SetLabel("No matching commands")
 
+    def _on_result_selected(self, _event: object) -> None:
+        self._announce_selected_result()
+
+    def _announce_selected_result(self) -> None:
+        selected = self.results.GetSelection()
+        if selected == self._wx.NOT_FOUND:
+            return
+        if selected < 0 or selected >= len(self._filtered_commands):
+            return
+        command = self._filtered_commands[selected]
+        self.status.SetLabel(f"Selected: {command.title} ({command.id})")
     def _run_selected(self) -> None:
         selected = self.results.GetSelection()
         if selected == self._wx.NOT_FOUND:

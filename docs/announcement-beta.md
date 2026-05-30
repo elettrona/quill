@@ -4,20 +4,24 @@
 
 Quill Beta is here.
 
-This release is Quill 0.1 Beta from Blind Information Technology Solutions (BITS) and Community Access.
+This release is Quill 0.1.1 Beta from Blind Information Technology Solutions (BITS) and Community Access.
 
 Quill is a writing, reading, review, and document-intelligence environment for Windows built around a simple idea: powerful tools should feel calm, predictable, and welcoming from the keyboard. The editor is local-first, screen-reader-first, and designed to make serious text work feel steady instead of fragile.
 
-Quill is not only a place to type notes. It is a place to open and write plain text, Markdown, and HTML; inspect structure; compare revisions; navigate EPUB content; review extraction quality; run accessibility checks; work with spelling and thesaurus tools; use golden keyboard packs; and move through real documents with confidence.
+The name is intentional. Quill reflects both writing craft and a love of magical storytelling (yes, Harry Potter), but grounded in dependable engineering. This work is built by us, for us, and for the wider world.
+
+Quill is not only a place to type notes. It is a place to open and write plain text, Markdown, HTML, and RTF; inspect structure; compare revisions; navigate EPUB content; review extraction quality; run accessibility checks; work with spelling and thesaurus tools; use golden keyboard packs; and move through real documents with confidence.
 
 It is also a place to grow. Quill now includes guided onboarding for optional external tools, so users can see exactly what helpers such as Pandoc, Tesseract OCR, LibreOffice, and Ghostscript would unlock before they install anything. When Pandoc is present, Quill can open a native conversion wizard and turn supported source files into Markdown, HTML, or plain text surfaces ready for reading, editing, or GLOW-oriented downstream workflows.
+
+This beta also includes a menu discoverability pass. The Tools menu is grouped into plain-language submenus (Writing and Language, Read Aloud, Integrations, Document Intake, Authoring and Automation, Compare Documents, Accessibility, Support, and Customize), and mark-ring wording now reads as Recent Marks (Ring) to lower jargon. The interactive status bar is also fuller: focused cells now expose direct context actions (Activate, Hide this item, Status bar settings), and status bar settings now include Restore Defaults.
 
 ## What makes Quill special
 
 Quill Beta already includes a broad set of everyday and specialist features:
 
 - a keyboard-first editor shell with command palette, tabs, rich navigation, and an interactive status bar
-- plain text, Markdown, and HTML workflows that stay readable and structured
+- plain text, Markdown, HTML, and RTF workflows that stay readable and structured
 - spell check, thesaurus, word count, link insertion, and source-aware copy
 - heading, list, table, code block, and markup insertion tools
 - compare workflows for file-to-file and document-to-document review
@@ -73,7 +77,7 @@ If something feels rough, that feedback is valuable. If something delights you, 
 
 We want the beta feedback path to be inclusive and low-friction.
 
-Inside Quill 0.1 Beta, the primary feedback path starts in the Help menu.
+Inside Quill 0.1.1 Beta, the primary feedback path starts in the Help menu.
 
 If you want to report a problem, Quill now guides you through it like this:
 
@@ -87,13 +91,22 @@ If you want to report a problem, Quill now guides you through it like this:
 
 That is the intended user route. It keeps the work inside Quill for as long as possible, explains what is being shared, and gives the user a clearer handoff into the Community Access support process.
 
-There is still room to improve this over time, especially around future no-login upload flows, but the important point for Quill 0.1 Beta is that users should start in **Help**, not by hunting for a GitHub page.
+There is still room to improve this over time, especially around future no-login upload flows, but the important point for Quill 0.1.1 Beta is that users should start in **Help**, not by hunting for a GitHub page.
 
 ## Thank you for trying Quill
 
 Trying a beta takes generosity. You are trusting unfinished software with real work, real attention, and real patience.
 
 Thank you for that.
+
+We also want to give specific, sincere thanks to contributors and beta testers who helped shape this release:
+
+- Techopolis
+- Taylor Arndt
+- Michael Doise
+- Kayla Bentas
+- Shane Popplestone
+- Becky Knobb
 
 If Quill helps you write more confidently, review more carefully, or simply feel more at home in a Windows editor, then the beta is already doing something important. And if you help point out what still needs work, you are helping build the version that will be even stronger.
 
