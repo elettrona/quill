@@ -8,7 +8,7 @@ import time
 import unicodedata
 import webbrowser
 from collections.abc import Callable
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -92,6 +92,12 @@ from quill.core.format_ops import (
     toggle_block_comment,
     toggle_line_comment,
     trim_trailing_whitespace,
+)
+from quill.core.heading_organizer import (
+    HeadingBlock,
+    apply_heading_organizer_edits,
+    parse_heading_blocks,
+    validate_heading_sequence,
 )
 from quill.core.heading_styles import HeadingStyle, apply_heading_style
 from quill.core.glow import build_audit_report, build_fix_report, fix_text
@@ -971,6 +977,12 @@ class MainFrame:
             "Outline Navigator...",
             self.open_outline_navigator,
             self._binding_for("navigate.outline_navigator"),
+        )
+        self.commands.register(
+            "navigate.heading_organizer",
+            "Heading Organizer...",
+            self.open_heading_organizer,
+            self._binding_for("navigate.heading_organizer"),
         )
         self.commands.register(
             "navigate.match_bracket",
@@ -2192,6 +2204,7 @@ class MainFrame:
         self._id_next_block = wx.NewIdRef()
         self._id_previous_block = wx.NewIdRef()
         self._id_outline_navigator = wx.NewIdRef()
+        self._id_heading_organizer = wx.NewIdRef()
         self._id_match_bracket = wx.NewIdRef()
         self._id_next_structure = wx.NewIdRef()
         self._id_previous_structure = wx.NewIdRef()
@@ -2232,6 +2245,10 @@ class MainFrame:
         navigate_menu.Append(
             self._id_outline_navigator,
             self._menu_label("Outline &Navigator...", "navigate.outline_navigator"),
+        )
+        navigate_menu.Append(
+            self._id_heading_organizer,
+            self._menu_label("&Heading Organizer...", "navigate.heading_organizer"),
         )
         navigate_menu.Append(
             self._id_match_bracket,
@@ -3238,6 +3255,11 @@ class MainFrame:
         )
         self.frame.Bind(
             wx.EVT_MENU,
+            lambda _e: self.open_heading_organizer(),
+            id=self._id_heading_organizer,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
             lambda _e: self.match_bracket(),
             id=self._id_match_bracket,
         )
@@ -3795,6 +3817,7 @@ class MainFrame:
             "navigate.back_location": self._id_back_location,
             "navigate.forward_location": self._id_forward_location,
             "navigate.outline_navigator": self._id_outline_navigator,
+            "navigate.heading_organizer": self._id_heading_organizer,
             "navigate.match_bracket": self._id_match_bracket,
             "navigate.next_structure": self._id_next_structure,
             "navigate.previous_structure": self._id_previous_structure,
@@ -8437,6 +8460,223 @@ class MainFrame:
             self._set_status("Outline navigation cancelled")
             return
         self._jump_to(selected.position, "Moved to heading")
+
+    def open_heading_organizer(self) -> None:
+        markup_kind = infer_markup_kind(self.document.path)
+        if markup_kind not in {"markdown", "html"}:
+            self._set_status("Heading Organizer is only available for Markdown or HTML documents")
+            return
+        text = self.editor.GetValue()
+        headings = parse_heading_blocks(text, markup_kind)
+        if not headings:
+            self._set_status("No headings found for Heading Organizer")
+            return
+        updated = self._show_heading_organizer_dialog(markup_kind, headings)
+        if updated is None:
+            self._set_status("Heading Organizer cancelled")
+            return
+        transformed = apply_heading_organizer_edits(text, markup_kind, updated)
+        if transformed == text:
+            self._set_status("Heading Organizer closed without changes")
+            return
+        self._apply_editor_text(transformed, "Applied heading organizer changes")
+
+    def _show_heading_organizer_dialog(
+        self,
+        markup_kind: str,
+        headings: list[HeadingBlock],
+    ) -> list[HeadingBlock] | None:
+        wx = self._wx
+        dialog = wx.Dialog(
+            self.frame,
+            title="Heading Organizer",
+            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+            size=(920, 620),
+        )
+        working = [replace(heading) for heading in headings]
+        source_text = self.editor.GetValue()
+        originals = {heading.source_index: heading for heading in headings}
+        selected_index = 0
+        list_box = wx.ListBox(dialog)
+        preview = wx.TextCtrl(dialog, style=wx.TE_MULTILINE | wx.TE_READONLY)
+        instructions = wx.StaticText(
+            dialog,
+            label=(
+                "Arrow through headings. Tab demotes, Shift+Tab promotes. "
+                "Use Move Up/Down to reorder sections and Rename to edit heading text."
+            ),
+        )
+        promote_button = wx.Button(dialog, label="Promote")
+        demote_button = wx.Button(dialog, label="Demote")
+        move_up_button = wx.Button(dialog, label="Move Up")
+        move_down_button = wx.Button(dialog, label="Move Down")
+        rename_button = wx.Button(dialog, label="Rename...")
+        validate_button = wx.Button(dialog, label="Validate")
+        apply_button = wx.Button(dialog, id=wx.ID_OK, label="Apply")
+        cancel_button = wx.Button(dialog, id=wx.ID_CANCEL, label="Cancel")
+
+        def labels() -> list[str]:
+            return [f"Heading {entry.level}: {entry.title or '(empty heading)'}" for entry in working]
+
+        def refresh() -> None:
+            nonlocal selected_index
+            list_box.Set(labels())
+            if not working:
+                preview.ChangeValue("No headings found.")
+                return
+            selected_index = max(0, min(selected_index, len(working) - 1))
+            list_box.SetSelection(selected_index)
+            update_preview()
+
+        def selected() -> HeadingBlock | None:
+            if not working:
+                return None
+            current = list_box.GetSelection()
+            if current == wx.NOT_FOUND:
+                return None
+            return working[current]
+
+        def set_selected(entry: HeadingBlock) -> None:
+            nonlocal selected_index
+            current = list_box.GetSelection()
+            if current == wx.NOT_FOUND:
+                return
+            working[current] = entry
+            selected_index = current
+            refresh()
+
+        def update_preview() -> None:
+            entry = selected()
+            if entry is None:
+                preview.ChangeValue("No heading selected.")
+                return
+            origin = originals.get(entry.source_index)
+            if origin is None:
+                preview.ChangeValue(entry.title)
+                return
+            section = source_text[origin.section_start : origin.section_end].strip()
+            preview.ChangeValue(section or entry.title)
+
+        def promote() -> None:
+            entry = selected()
+            if entry is None:
+                return
+            if entry.level <= 1:
+                self._set_status("Heading already at level 1")
+                return
+            set_selected(replace(entry, level=entry.level - 1))
+            self._set_status(f"{entry.title or '(empty heading)'} is now Heading {entry.level - 1}")
+
+        def demote() -> None:
+            entry = selected()
+            if entry is None:
+                return
+            if entry.level >= 6:
+                self._set_status("Heading already at level 6")
+                return
+            set_selected(replace(entry, level=entry.level + 1))
+            self._set_status(f"{entry.title or '(empty heading)'} is now Heading {entry.level + 1}")
+
+        def move(delta: int) -> None:
+            nonlocal selected_index
+            current = list_box.GetSelection()
+            if current == wx.NOT_FOUND:
+                return
+            target = current + delta
+            if target < 0 or target >= len(working):
+                return
+            working[current], working[target] = working[target], working[current]
+            selected_index = target
+            refresh()
+            self._set_status("Moved heading")
+
+        def rename() -> None:
+            entry = selected()
+            if entry is None:
+                return
+            with wx.TextEntryDialog(
+                dialog,
+                "Enter heading text:",
+                "Rename Heading",
+                value=entry.title,
+            ) as rename_dialog:
+                if self._show_modal_dialog(rename_dialog, "Rename Heading") != wx.ID_OK:
+                    return
+                new_title = rename_dialog.GetValue().strip()
+            set_selected(replace(entry, title=new_title))
+            self._set_status("Renamed heading")
+
+        def validate(show_success: bool = False) -> bool:
+            issues = validate_heading_sequence(working)
+            if not issues:
+                if show_success:
+                    self._show_message_box(
+                        "Heading order passed accessibility checks.",
+                        "Heading Organizer",
+                        wx.OK | wx.ICON_INFORMATION,
+                    )
+                return True
+            self._show_message_box(
+                "Fix these heading issues before applying:\n\n" + "\n".join(f"- {issue}" for issue in issues),
+                "Heading Organizer",
+                wx.OK | wx.ICON_WARNING,
+            )
+            return False
+
+        def on_key(event: object) -> None:
+            key_code = event.GetKeyCode()
+            if key_code == wx.WXK_TAB:
+                if event.ShiftDown():
+                    promote()
+                else:
+                    demote()
+                return
+            if key_code in (wx.WXK_ADD, wx.WXK_NUMPAD_ADD):
+                demote()
+                return
+            if key_code in (wx.WXK_SUBTRACT, wx.WXK_NUMPAD_SUBTRACT):
+                promote()
+                return
+            event.Skip()
+
+        body = wx.BoxSizer(wx.HORIZONTAL)
+        main = wx.BoxSizer(wx.VERTICAL)
+        main.Add(instructions, 0, wx.ALL | wx.EXPAND, 8)
+        main.Add(list_box, 1, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+        main.Add(wx.StaticText(dialog, label="Preview of selected heading section:"), 0, wx.LEFT | wx.RIGHT, 8)
+        main.Add(preview, 1, wx.ALL | wx.EXPAND, 8)
+        actions = wx.BoxSizer(wx.VERTICAL)
+        actions.Add(promote_button, 0, wx.EXPAND | wx.BOTTOM, 6)
+        actions.Add(demote_button, 0, wx.EXPAND | wx.BOTTOM, 6)
+        actions.Add(move_up_button, 0, wx.EXPAND | wx.BOTTOM, 6)
+        actions.Add(move_down_button, 0, wx.EXPAND | wx.BOTTOM, 6)
+        actions.Add(rename_button, 0, wx.EXPAND | wx.BOTTOM, 6)
+        actions.Add(validate_button, 0, wx.EXPAND | wx.BOTTOM, 6)
+        actions.AddStretchSpacer(1)
+        actions.Add(apply_button, 0, wx.EXPAND | wx.BOTTOM, 6)
+        actions.Add(cancel_button, 0, wx.EXPAND)
+        body.Add(main, 1, wx.EXPAND)
+        body.Add(actions, 0, wx.ALL | wx.EXPAND, 8)
+        dialog.SetSizer(body)
+
+        list_box.Bind(wx.EVT_LISTBOX, lambda _e: update_preview())
+        list_box.Bind(wx.EVT_CHAR_HOOK, on_key)
+        promote_button.Bind(wx.EVT_BUTTON, lambda _e: promote())
+        demote_button.Bind(wx.EVT_BUTTON, lambda _e: demote())
+        move_up_button.Bind(wx.EVT_BUTTON, lambda _e: move(-1))
+        move_down_button.Bind(wx.EVT_BUTTON, lambda _e: move(1))
+        rename_button.Bind(wx.EVT_BUTTON, lambda _e: rename())
+        validate_button.Bind(wx.EVT_BUTTON, lambda _e: validate(show_success=True))
+        apply_button.Bind(
+            wx.EVT_BUTTON,
+            lambda _e: dialog.EndModal(wx.ID_OK) if validate() else None,
+        )
+        cancel_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CANCEL))
+
+        refresh()
+        if self._show_modal_dialog(dialog, "Heading Organizer") != wx.ID_OK:
+            return None
+        return working
 
     def open_yaml_structure_editor(self) -> None:
         if infer_markup_kind(self.document.path) != "yaml":

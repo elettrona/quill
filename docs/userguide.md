@@ -282,6 +282,7 @@ Inline and structural formatting:
 - Insert Heading levels 1 through 6
 - Increase or decrease heading level
 - Style headings (font, size, alignment) for the current level or all levels
+- Open Heading Organizer (`Ctrl+Alt+Shift+H`) for heading-level edits, section reorder, and heading validation
 - Insert bullet, numbered, and task lists
 - Insert code block
 - Insert footnote
@@ -552,6 +553,8 @@ The heading tools do more than insert decoration. They help you maintain usable 
 Markdown list editing now follows editor-standard behavior: `Enter` continues the current bullet/numbered/task item, and `Enter` on an empty list marker exits the list. When the caret is on a list item, `Tab` nests it and `Shift+Tab` promotes it. For larger reorganizations, use **Format -> List -> List Manager...** (`Ctrl+Alt+L`) to move, promote/demote, add, edit, and delete list items from a tree view.
 
 For heading presentation control, open **Insert -> Heading -> Style Headings...**. You can style either all heading levels or the current heading level, then set font family, point size, and alignment. In Markdown documents, styled headings are written as HTML heading tags so the formatting is preserved.
+
+For structure editing, open **Navigate -> Heading Organizer...** (`Ctrl+Alt+Shift+H`). The organizer lists each heading as level + title, supports keyboard promotion/demotion (`Tab` and `Shift+Tab`), lets you move sections up/down, rename headings, and validates heading order (start level, skipped levels, empty headings) before apply.
 
 ### Tables, code blocks, and tags
 

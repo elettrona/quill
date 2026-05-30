@@ -28,6 +28,7 @@ Highlights in 0.1.2 include:
 - Writing Assistant shell with prompt presets, generated tool suggestions, and a sandboxed Python runner.
 - Browser Preview with `Ctrl+Shift+V` and a selectable preview browser.
 - Heading styling tools to apply font family, size, and alignment to current-level or all headings in Markdown/HTML.
+- Heading Organizer (`Ctrl+Alt+Shift+H`) with keyboard-driven heading level changes, section reordering, and accessibility validation.
 - Search menu simplification with replace-all inside the Replace dialog.
 - Unified diagnostics-backed support flow under **Help -> Report a Bug**.
 - Menu IA refinement, including **Search** after **View**.
