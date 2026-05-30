@@ -304,6 +304,9 @@ from quill.ui.assistant_tools import (
     RunPythonDialog,
     WritingAssistantDialog,
 )
+from quill.core.ai import Assistant
+from quill.core.ai.agent import allowed_tools
+from quill.ui.assistant_panel import AskQuillChatDialog
 
 
 @dataclass(slots=True)
@@ -902,6 +905,12 @@ class MainFrame:
             "tools.ai_assistant",
             "Writing Assistant",
             self.open_writing_assistant,
+            None,
+        )
+        self.commands.register(
+            "tools.ask_quill_chat",
+            "Ask Quill Chat",
+            self.open_ask_quill_chat,
             None,
         )
         self.commands.register(
@@ -2557,6 +2566,7 @@ class MainFrame:
         self._id_glow_fix_selection = wx.NewIdRef()
         self._id_link_inventory = wx.NewIdRef()
         self._id_ai_assistant = wx.NewIdRef()
+        self._id_ask_quill_chat = wx.NewIdRef()
         self._id_ai_rewrite_selection = wx.NewIdRef()
         self._id_ai_summarize_selection = wx.NewIdRef()
         self._id_ai_continue_writing = wx.NewIdRef()
@@ -2752,6 +2762,10 @@ class MainFrame:
             self._menu_label("&YAML Structure Editor...", "tools.yaml_structure_editor"),
         )
         ai_menu = wx.Menu()
+        ai_menu.Append(
+            self._id_ask_quill_chat,
+            self._menu_label("Ask Quill &Chat...", "tools.ask_quill_chat"),
+        )
         ai_menu.Append(
             self._id_ai_assistant,
             self._menu_label("&Writing Assistant...", "tools.ai_assistant"),
@@ -3060,6 +3074,11 @@ class MainFrame:
             wx.EVT_MENU,
             lambda _e: self.open_writing_assistant(),
             id=self._id_ai_assistant,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_ask_quill_chat(),
+            id=self._id_ask_quill_chat,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -3839,6 +3858,7 @@ class MainFrame:
             "view.toggle_find_wrap": self._id_toggle_find_wrap,
             "view.browser_preview": self._id_browser_preview,
             "tools.ai_assistant": self._id_ai_assistant,
+            "tools.ask_quill_chat": self._id_ask_quill_chat,
             "tools.ai_rewrite_selection": self._id_ai_rewrite_selection,
             "tools.ai_summarize_selection": self._id_ai_summarize_selection,
             "tools.ai_continue_writing": self._id_ai_continue_writing,
@@ -11493,6 +11513,51 @@ class MainFrame:
         if session.tab_index != self._active_tab_index:
             return
         self.preview_in_browser()
+
+    def _get_assistant(self) -> Assistant:
+        assistant = getattr(self, "_assistant", None)
+        if assistant is None:
+            assistant = Assistant()
+            self._assistant = assistant
+            self._apply_style_to_assistant()
+        return assistant
+
+    def _apply_style_to_assistant(self) -> None:
+        from quill.core.ai.style import load_style, style_preamble
+
+        assistant = getattr(self, "_assistant", None)
+        if assistant is not None:
+            assistant.set_style_preamble(style_preamble(load_style()))
+
+    def open_ask_quill_chat(self) -> None:
+        self._apply_style_to_assistant()
+        tool_catalog = allowed_tools(self.commands, getattr(self, "features", None))
+        dialog = AskQuillChatDialog(
+            self.frame,
+            self._get_assistant(),
+            get_document=lambda: self.editor.GetValue(),
+            get_selection=lambda: self.editor.GetStringSelection(),
+            insert_text=self._ai_insert_text,
+            replace_selection=self._ai_replace_selection,
+            run_command=self._ai_run_command,
+            tool_catalog=tool_catalog,
+            announce=self._set_status,
+        )
+        dialog.show()
+
+    def _ai_insert_text(self, text: str) -> None:
+        self.editor.WriteText(text)
+
+    def _ai_replace_selection(self, text: str) -> None:
+        start, end = self.editor.GetSelection()
+        if start != end:
+            self.editor.Replace(start, end, text)
+            self.editor.SetInsertionPoint(start + len(text))
+        else:
+            self.editor.WriteText(text)
+
+    def _ai_run_command(self, command_id: str) -> None:
+        self.commands.run(command_id)
 
     def open_writing_assistant(self, initial_prompt: str = "") -> None:
         dialog = WritingAssistantDialog(
