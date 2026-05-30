@@ -108,14 +108,17 @@ def guess_preview_kind(path: Path | None, text: str) -> str:
     return "plain"
 
 
+def render_preview_body(text: str, kind: str) -> str:
+    """Render just the body fragment (no <html> wrapper) for a preview surface."""
+    if kind == "markdown":
+        return _render_markdown(text)
+    if kind == "html":
+        return _render_html(text)
+    return f"<pre>{html.escape(text)}</pre>"
+
+
 def render_preview_html(title: str, text: str, kind: str, start_anchor: str | None = None) -> str:
-    body = (
-        _render_markdown(text)
-        if kind == "markdown"
-        else _render_html(text)
-        if kind == "html"
-        else f"<pre>{html.escape(text)}</pre>"
-    )
+    body = render_preview_body(text, kind)
     anchor_script = ""
     if start_anchor:
         anchor_script = (

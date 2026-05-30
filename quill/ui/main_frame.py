@@ -36,6 +36,7 @@ from quill.core.browser_preview import (
     normalize_browser_choice,
     open_preview_url,
     preview_anchor_for_text,
+    render_preview_body,
     render_preview_html,
 )
 from quill.core.bookmarks import bookmark_names, bookmark_position, set_bookmark
@@ -903,6 +904,12 @@ class MainFrame:
             "Toggle Word Prediction As You Type",
             self.toggle_intellisense_as_you_type,
             None,
+        )
+        self.commands.register(
+            "view.preview",
+            "Preview",
+            self.preview_in_app,
+            self._binding_for("view.preview"),
         )
         self.commands.register(
             "view.browser_preview",
@@ -2170,6 +2177,7 @@ class MainFrame:
         self._id_toggle_spellcheck_as_you_type = wx.NewIdRef()
         self._id_toggle_intellisense_as_you_type = wx.NewIdRef()
         self._id_browser_preview = wx.NewIdRef()
+        self._id_preview = wx.NewIdRef()
         self._id_start_with_no_document_open = wx.NewIdRef()
         self._id_dirty_title_text = wx.NewIdRef()
         self._id_dirty_title_asterisk = wx.NewIdRef()
@@ -2237,6 +2245,10 @@ class MainFrame:
         view_menu.Check(
             self._id_start_with_no_document_open,
             self.settings.start_with_no_document_open,
+        )
+        view_menu.Append(
+            self._id_preview,
+            self._menu_label("&Preview...", "view.preview"),
         )
         view_menu.Append(
             self._id_browser_preview,
@@ -3202,6 +3214,11 @@ class MainFrame:
         )
         self.frame.Bind(
             wx.EVT_MENU,
+            lambda _e: self.preview_in_app(),
+            id=self._id_preview,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
             lambda _e: self.preview_in_browser(),
             id=self._id_browser_preview,
         )
@@ -3890,6 +3907,7 @@ class MainFrame:
             "view.send_to_tray": self._id_send_to_tray,
             "view.toggle_soft_wrap": self._id_toggle_soft_wrap,
             "view.toggle_find_wrap": self._id_toggle_find_wrap,
+            "view.preview": self._id_preview,
             "view.browser_preview": self._id_browser_preview,
             "tools.ai_assistant": self._id_ai_assistant,
             "tools.ask_quill_chat": self._id_ask_quill_chat,
@@ -11715,6 +11733,27 @@ class MainFrame:
             )
             return
         self._set_status("Refreshed browser preview")
+
+    def preview_in_app(self) -> None:
+        if not self._document_tabs:
+            self._set_status("No document open")
+            return
+        tab_index = (
+            self._active_tab_index if self._active_tab_index >= 0 else self._current_tab_index()
+        )
+        if tab_index < 0 or tab_index >= len(self._document_tabs):
+            self._set_status("No document open")
+            return
+        tab = self._document_tabs[tab_index]
+        text = tab.editor.GetValue()
+        kind = guess_preview_kind(tab.document.path, text)
+        anchor = preview_anchor_for_text(text, tab.editor.GetInsertionPoint(), kind)
+        title = f"{tab.document.name or 'Preview'} - Preview"
+        body = render_preview_body(text, kind)
+        from quill.ui.preview_dialog import MarkdownPreviewDialog
+
+        MarkdownPreviewDialog(self.frame, title, body, anchor).show()
+        self._set_status("Opened preview")
 
     def _refresh_browser_preview(self) -> None:
         session = self._browser_preview_session
