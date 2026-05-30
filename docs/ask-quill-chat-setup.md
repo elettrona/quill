@@ -54,5 +54,6 @@ models folder.
   does nothing destructive (no crash).
 - Large documents/selections are handled by trimming context / chunking, so it
   won't error on the model's context-window limit.
-- This is separate from the Ollama-based **Writing Assistant** (see
-  `assistant-setup.md`); both can coexist.
+- **The on-device AI backend is llama.cpp** (CPU, GGUF) on Windows/Linux and
+  Apple Foundation Models on macOS — **not Ollama**. No local server is needed;
+  the model runs in-process.
