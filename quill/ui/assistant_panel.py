@@ -286,7 +286,11 @@ class AskQuillChatDialog:
     def show(self) -> None:
         self.dialog.CentreOnParent()
         try:
-            self.input.SetFocus()
+            # Land directly in the web view conversation (not the list/buttons).
+            if self._webview is not None:
+                self._wx.CallAfter(self._webview.focus)
+            else:
+                self.input.SetFocus()
             self.dialog.ShowModal()
         finally:
             self.dialog.Destroy()
