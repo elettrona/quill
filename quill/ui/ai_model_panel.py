@@ -1,4 +1,4 @@
-"""AI Model settings — choose which on-device model Quill uses.
+"""AI Model settings: choose which on-device model Quill uses.
 
 Defaults to "Recommended" (picked from the machine's RAM). The chosen model is
 downloaded automatically (no manual file handling). Accessible; download runs
@@ -50,7 +50,7 @@ class AIModelDialog:
                 tags.append("recommended")
             if is_downloaded(spec):
                 tags.append("downloaded")
-            suffix = f" — {', '.join(tags)}" if tags else ""
+            suffix = f" ({', '.join(tags)})" if tags else ""
             labels.append(f"{spec.name} (~{spec.approx_gb:g} GB){suffix}")
         self.choice = wx.Choice(self.dialog, choices=labels)
         self.choice.SetName("AI model")
@@ -80,7 +80,7 @@ class AIModelDialog:
     def _refresh_status(self) -> None:
         spec = resolve_spec(self._selected_id())
         state = "already downloaded" if is_downloaded(spec) else "downloads automatically on first use"
-        self.status.SetLabel(f"{spec.note}\n{spec.name} (~{spec.approx_gb:g} GB) — {state}.")
+        self.status.SetLabel(f"{spec.note}\n{spec.name} (~{spec.approx_gb:g} GB). {state.capitalize()}.")
 
     def _on_download(self, _event: object) -> None:
         save_model_choice(self._selected_id())

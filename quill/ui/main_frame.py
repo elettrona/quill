@@ -14192,6 +14192,29 @@ class MainFrame:
         if getattr(self, "_first_run_assistant_prompt", False):
             self._show_assistant_onboarding(force=False)
             self._first_run_assistant_prompt = False
+            self._maybe_offer_ai_model_download()
+
+    def _maybe_offer_ai_model_download(self) -> None:
+        """On first run, offer to download the on-device AI model (llama.cpp only)."""
+        from quill.core.ai.llama_cpp_backend import LlamaCppBackend
+        from quill.core.ai.model_manager import MODELS, existing_model, recommended_id
+
+        assistant = self._get_assistant()
+        if not isinstance(assistant.backend, LlamaCppBackend):
+            return  # e.g. macOS Foundation Models needs no download
+        if not assistant.is_available()[0] or existing_model():
+            return
+        wx = self._wx
+        spec = MODELS[recommended_id()]
+        result = self._show_message_box(
+            "Quill's on-device AI uses a local model. Download the recommended model "
+            f"now?\n\n{spec.name} (about {spec.approx_gb:g} GB). You can change this "
+            "later in the AI menu under AI Model.",
+            "Download AI Model",
+            wx.ICON_QUESTION | wx.YES_NO,
+        )
+        if result == wx.YES:
+            AIModelDialog(self.frame, announce=self._set_status).show()
 
     def _show_profile_onboarding(self, force: bool) -> None:
         wx = self._wx
