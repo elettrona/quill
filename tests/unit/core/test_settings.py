@@ -15,10 +15,13 @@ def test_settings_round_trip(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
             keyboard_pack="VS Code",
             soft_wrap=False,
             wrap_find=False,
+            auto_check_updates=True,
             recent_files_limit=7,
             tray_enabled=True,
             persistent_undo=True,
             spellcheck_as_you_type=True,
+            title_bar_path_mode="full_path",
+            dirty_title_style="asterisk_text",
             status_bar_order=["line_column", "mode", "message", "file_path", "selection"],
             status_bar_hidden=["selection"],
         )
@@ -28,10 +31,13 @@ def test_settings_round_trip(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
     assert loaded.keyboard_pack == "VS Code"
     assert loaded.soft_wrap is False
     assert loaded.wrap_find is False
+    assert loaded.auto_check_updates is True
     assert loaded.recent_files_limit == 7
     assert loaded.tray_enabled is True
     assert loaded.persistent_undo is True
     assert loaded.spellcheck_as_you_type is True
+    assert loaded.title_bar_path_mode == "full_path"
+    assert loaded.dirty_title_style == "asterisk_text"
     expected_order = list(
         dict.fromkeys(
             [

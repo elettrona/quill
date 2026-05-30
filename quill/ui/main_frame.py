@@ -420,6 +420,8 @@ class MainFrame:
             self._set_status("Ready. Tip: press Ctrl+Shift+P for Command Palette.")
         self._offer_crash_recovery()
         self._maybe_run_first_run_onboarding()
+        if getattr(self.settings, "auto_check_updates", False) and not self._safe_mode:
+            self.check_for_updates(silent_no_update=True)
 
     def _apply_startup_document_preference(self) -> None:
         if not self.settings.start_with_no_document_open:
@@ -716,6 +718,12 @@ class MainFrame:
             "Go To Bookmark...",
             self.go_to_bookmark,
             None,
+        )
+        self.commands.register(
+            "navigate.list_bookmarks",
+            "List Bookmarks...",
+            self.list_bookmarks,
+            self._binding_for("navigate.list_bookmarks"),
         )
         self.commands.register(
             "tools.word_count",
@@ -1676,11 +1684,15 @@ class MainFrame:
         self._id_toggle_tray_mode = wx.NewIdRef()
         self._id_toggle_soft_wrap = wx.NewIdRef()
         self._id_toggle_find_wrap = wx.NewIdRef()
+        self._id_toggle_title_full_path = wx.NewIdRef()
+        self._id_toggle_auto_check_updates = wx.NewIdRef()
         self._id_toggle_dark_mode = wx.NewIdRef()
         self._id_toggle_persistent_undo = wx.NewIdRef()
         self._id_toggle_spellcheck_as_you_type = wx.NewIdRef()
-        self._id_toggle_show_line_numbers = wx.NewIdRef()
         self._id_start_with_no_document_open = wx.NewIdRef()
+        self._id_dirty_title_text = wx.NewIdRef()
+        self._id_dirty_title_asterisk = wx.NewIdRef()
+        self._id_dirty_title_asterisk_text = wx.NewIdRef()
         view_menu = wx.Menu()
         view_menu.AppendCheckItem(self._id_toggle_tray_mode, "Enable System Tray &Mode")
         view_menu.Check(self._id_toggle_tray_mode, self.settings.tray_enabled)
@@ -1692,6 +1704,34 @@ class MainFrame:
         view_menu.Check(self._id_toggle_soft_wrap, self.settings.soft_wrap)
         view_menu.AppendCheckItem(self._id_toggle_find_wrap, "Wrap &Find Searches")
         view_menu.Check(self._id_toggle_find_wrap, self.settings.wrap_find)
+        view_menu.AppendCheckItem(self._id_toggle_title_full_path, "Show Full Path in &Title Bar")
+        view_menu.Check(
+            self._id_toggle_title_full_path,
+            getattr(self.settings, "title_bar_path_mode", "name") == "full_path",
+        )
+        view_menu.AppendCheckItem(
+            self._id_toggle_auto_check_updates,
+            "Check for &Updates on Startup",
+        )
+        view_menu.Check(
+            self._id_toggle_auto_check_updates,
+            getattr(self.settings, "auto_check_updates", False),
+        )
+        dirty_menu = wx.Menu()
+        dirty_menu.AppendRadioItem(self._id_dirty_title_text, "Dirty Indicator: Text")
+        dirty_menu.AppendRadioItem(self._id_dirty_title_asterisk, "Dirty Indicator: Asterisk")
+        dirty_menu.AppendRadioItem(
+            self._id_dirty_title_asterisk_text,
+            "Dirty Indicator: Asterisk + Text",
+        )
+        dirty_style = getattr(self.settings, "dirty_title_style", "text")
+        dirty_menu.Check(self._id_dirty_title_text, dirty_style == "text")
+        dirty_menu.Check(self._id_dirty_title_asterisk, dirty_style == "asterisk")
+        dirty_menu.Check(
+            self._id_dirty_title_asterisk_text,
+            dirty_style == "asterisk_text",
+        )
+        view_menu.AppendSubMenu(dirty_menu, "&Dirty Title Style")
         view_menu.AppendCheckItem(self._id_toggle_dark_mode, "Toggle &Dark Mode")
         view_menu.Check(self._id_toggle_dark_mode, self.settings.theme == "dark")
         view_menu.AppendCheckItem(
@@ -1706,14 +1746,6 @@ class MainFrame:
         view_menu.Check(
             self._id_toggle_spellcheck_as_you_type,
             self.settings.spellcheck_as_you_type,
-        )
-        view_menu.AppendCheckItem(
-            self._id_toggle_show_line_numbers,
-            "Show &Line Numbers",
-        )
-        view_menu.Check(
-            self._id_toggle_show_line_numbers,
-            self.settings.show_line_numbers,
         )
         view_menu.AppendCheckItem(
             self._id_start_with_no_document_open,
@@ -1732,6 +1764,7 @@ class MainFrame:
         self._id_find_all_matches = wx.NewIdRef()
         self._id_set_bookmark = wx.NewIdRef()
         self._id_go_to_bookmark = wx.NewIdRef()
+        self._id_list_bookmarks = wx.NewIdRef()
         self._id_go_to_page = wx.NewIdRef()
         self._id_back_location = wx.NewIdRef()
         self._id_forward_location = wx.NewIdRef()
@@ -1809,6 +1842,10 @@ class MainFrame:
         navigate_menu.Append(
             self._id_go_to_bookmark,
             self._menu_label("Go To &Bookmark...", "navigate.go_to_bookmark"),
+        )
+        navigate_menu.Append(
+            self._id_list_bookmarks,
+            self._menu_label("List B&ookmarks...", "navigate.list_bookmarks"),
         )
         navigate_menu.AppendSeparator()
         navigate_menu.Append(
@@ -2442,6 +2479,31 @@ class MainFrame:
         )
         self.frame.Bind(
             wx.EVT_MENU,
+            self._on_toggle_title_full_path,
+            id=self._id_toggle_title_full_path,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            self._on_toggle_auto_check_updates,
+            id=self._id_toggle_auto_check_updates,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.set_dirty_title_style("text"),
+            id=self._id_dirty_title_text,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.set_dirty_title_style("asterisk"),
+            id=self._id_dirty_title_asterisk,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.set_dirty_title_style("asterisk_text"),
+            id=self._id_dirty_title_asterisk_text,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
             self._on_toggle_dark_mode,
             id=self._id_toggle_dark_mode,
         )
@@ -2454,11 +2516,6 @@ class MainFrame:
             wx.EVT_MENU,
             self._on_toggle_spellcheck_as_you_type,
             id=self._id_toggle_spellcheck_as_you_type,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
-            self._on_toggle_show_line_numbers,
-            id=self._id_toggle_show_line_numbers,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -2622,6 +2679,11 @@ class MainFrame:
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.set_bookmark(), id=self._id_set_bookmark)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.go_to_bookmark(), id=self._id_go_to_bookmark)
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.list_bookmarks(),
+            id=self._id_list_bookmarks,
+        )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.find_next(), id=self._id_find_next)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.find_previous(), id=self._id_find_previous)
         self.frame.Bind(
@@ -3024,6 +3086,7 @@ class MainFrame:
             "edit.list_marks": self._id_list_marks,
             "navigate.go_to_line": self._id_go_to_line,
             "navigate.go_to_page": self._id_go_to_page,
+            "navigate.list_bookmarks": self._id_list_bookmarks,
             "navigate.back_location": self._id_back_location,
             "navigate.forward_location": self._id_forward_location,
             "navigate.outline_navigator": self._id_outline_navigator,
@@ -3298,6 +3361,11 @@ class MainFrame:
                 self._refresh_statusbar()
             event.Skip()
             return
+        if self._extend_selection_mode and event.GetKeyCode() == wx.WXK_ESCAPE:
+            caret = self.editor.GetInsertionPoint()
+            self.toggle_extend_selection_mode(False)
+            self.editor.SetSelection(caret, caret)
+            return
         if not self._extend_selection_mode:
             event.Skip()
             return
@@ -3316,8 +3384,10 @@ class MainFrame:
             return
         if self._extend_selection_anchor is None:
             self._extend_selection_anchor = self.editor.GetInsertionPoint()
+        if self._move_extend_selection_caret(event):
+            self._apply_extend_selection()
+            return
         event.Skip()
-        wx.CallAfter(self._apply_extend_selection)
 
     def _apply_extend_selection(self) -> None:
         if not self._extend_selection_mode or self._extend_selection_anchor is None:
@@ -3326,6 +3396,96 @@ class MainFrame:
         start = min(self._extend_selection_anchor, caret)
         end = max(self._extend_selection_anchor, caret)
         self.editor.SetSelection(start, end)
+
+    def _move_extend_selection_caret(self, event: object) -> bool:
+        wx = self._wx
+        text = self.editor.GetValue()
+        caret = self.editor.GetInsertionPoint()
+        key_code = event.GetKeyCode()
+        line_starts = [0]
+        for index, character in enumerate(text):
+            if character == "\n":
+                line_starts.append(index + 1)
+
+        def line_index_for_position(position: int) -> int:
+            for index in range(1, len(line_starts)):
+                if line_starts[index] > position:
+                    return index - 1
+            return len(line_starts) - 1
+
+        def line_limit(index: int) -> int:
+            if index + 1 < len(line_starts):
+                return line_starts[index + 1] - 1
+            return len(text)
+
+        def move_vertical(delta: int) -> bool:
+            current_line = line_index_for_position(caret)
+            target_line = max(0, min(current_line + delta, len(line_starts) - 1))
+            if target_line == current_line:
+                return False
+            column = caret - line_starts[current_line]
+            target = min(line_starts[target_line] + column, line_limit(target_line))
+            self.editor.SetInsertionPoint(target)
+            return True
+
+        def move_word(reverse: bool) -> bool:
+            if not text:
+                return False
+            target = caret
+            if reverse:
+                while target > 0 and text[target - 1].isspace():
+                    target -= 1
+                while target > 0 and not text[target - 1].isspace():
+                    target -= 1
+            else:
+                while target < len(text) and not text[target].isspace():
+                    target += 1
+                while target < len(text) and text[target].isspace():
+                    target += 1
+            if target == caret:
+                return False
+            self.editor.SetInsertionPoint(target)
+            return True
+
+        target = caret
+        if event.ControlDown() and key_code == wx.WXK_HOME:
+            target = 0
+        elif event.ControlDown() and key_code == wx.WXK_END:
+            target = len(text)
+        elif event.ControlDown() and key_code == wx.WXK_LEFT:
+            return move_word(reverse=True)
+        elif event.ControlDown() and key_code == wx.WXK_RIGHT:
+            return move_word(reverse=False)
+        elif key_code == wx.WXK_LEFT:
+            target = max(0, caret - 1)
+        elif key_code == wx.WXK_RIGHT:
+            target = min(len(text), caret + 1)
+        elif key_code == wx.WXK_UP:
+            return move_vertical(-1)
+        elif key_code == wx.WXK_DOWN:
+            return move_vertical(1)
+        elif key_code == wx.WXK_HOME:
+            target = line_starts[line_index_for_position(caret)]
+        elif key_code == wx.WXK_END:
+            target = line_limit(line_index_for_position(caret))
+        elif key_code == wx.WXK_PAGEUP:
+            return move_vertical(-10)
+        elif key_code == wx.WXK_PAGEDOWN:
+            return move_vertical(10)
+        else:
+            return False
+        if target == caret:
+            return False
+        self.editor.SetInsertionPoint(target)
+        return True
+
+    def _move_point(self, position: int) -> None:
+        capped = max(0, min(position, len(self.editor.GetValue())))
+        self.editor.SetInsertionPoint(capped)
+        if self._extend_selection_mode and self._extend_selection_anchor is not None:
+            self._apply_extend_selection()
+        else:
+            self.editor.SetSelection(capped, capped)
 
     def _on_editor_context_menu(self, event: object) -> None:
         wx = self._wx
@@ -3797,6 +3957,23 @@ class MainFrame:
         enabled = bool(event.IsChecked())
         self.toggle_find_wrap(enabled)
 
+    def _on_toggle_title_full_path(self, event: object) -> None:
+        enabled = bool(event.IsChecked())
+        self.settings.title_bar_path_mode = "full_path" if enabled else "name"
+        save_settings(self.settings)
+        self._refresh_title()
+        self._set_status("Title bar shows full path" if enabled else "Title bar shows file name")
+
+    def _on_toggle_auto_check_updates(self, event: object) -> None:
+        enabled = bool(event.IsChecked())
+        self.settings.auto_check_updates = enabled
+        save_settings(self.settings)
+        self._set_status(
+            "Check for updates on startup on"
+            if enabled
+            else "Check for updates on startup off"
+        )
+
     def _on_toggle_dark_mode(self, event: object) -> None:
         enabled = bool(event.IsChecked())
         self.toggle_dark_mode(enabled)
@@ -3809,15 +3986,10 @@ class MainFrame:
         enabled = bool(event.IsChecked())
         self.toggle_spellcheck_as_you_type(enabled)
 
-    def _on_toggle_show_line_numbers(self, event: object) -> None:
-        enabled = bool(event.IsChecked())
-        self.settings.show_line_numbers = enabled
-        self._refresh_statusbar()
-        self._set_status("Line numbers on" if enabled else "Line numbers off")
-
     def _on_toggle_start_with_no_document_open(self, event: object) -> None:
         enabled = bool(event.IsChecked())
         self.settings.start_with_no_document_open = enabled
+        save_settings(self.settings)
         self._set_status(
             "Start with no document open on" if enabled else "Start with no document open off"
         )
@@ -4125,12 +4297,28 @@ class MainFrame:
         self.open_file(path)
 
     def _refresh_title(self) -> None:
-        modified_suffix = " [modified]" if self.document.modified else ""
-        self.frame.SetTitle(f"{self.document.name}{modified_suffix} - Quill")
+        modified_suffix = self._dirty_title_suffix()
+        self.frame.SetTitle(f"{self._title_subject()}{modified_suffix} - Quill")
         if self._active_tab_index >= 0 and self._active_tab_index < self.notebook.GetPageCount():
             page_title = f"{self.document.name}{modified_suffix}"
             self.notebook.SetPageText(self._active_tab_index, page_title)
         self._refresh_statusbar()
+
+    def _title_subject(self) -> str:
+        if getattr(self.settings, "title_bar_path_mode", "name") == "full_path":
+            if self.document.path is not None:
+                return str(self.document.path)
+        return self.document.name
+
+    def _dirty_title_suffix(self) -> str:
+        if not self.document.modified:
+            return ""
+        style = getattr(self.settings, "dirty_title_style", "text")
+        if style == "asterisk":
+            return " *"
+        if style == "asterisk_text":
+            return " * [modified]"
+        return " [modified]"
 
     def _current_markup_context(self) -> str:
         path = self.document.path
@@ -4216,11 +4404,9 @@ class MainFrame:
         ordered = [item for item in self.settings.status_bar_order if item in allowed]
         hidden = {item for item in self.settings.status_bar_hidden if item in allowed}
         visible = [item for item in ordered if item not in hidden]
-        if not getattr(self.settings, "show_line_numbers", True):
-            visible = [item for item in visible if item != "line_column"]
         document = getattr(self, "document", None)
         if document is not None and document.path is not None:
-            for item in ("encoding", "line_endings", "file_path"):
+            for item in ("encoding", "line_endings"):
                 if item not in visible:
                     visible.append(item)
         last_find_query = getattr(self, "_last_find_query", "")
@@ -4785,6 +4971,19 @@ class MainFrame:
         save_settings(self.settings)
         self._set_status("Find wrap on" if next_state else "Find wrap off")
 
+    def set_dirty_title_style(self, style: str) -> None:
+        if style not in {"text", "asterisk", "asterisk_text"}:
+            return
+        self.settings.dirty_title_style = style
+        save_settings(self.settings)
+        self._refresh_title()
+        label = {
+            "text": "Dirty title style: text",
+            "asterisk": "Dirty title style: asterisk",
+            "asterisk_text": "Dirty title style: asterisk plus text",
+        }[style]
+        self._set_status(label)
+
     def toggle_dark_mode(self, enabled: bool | None = None) -> None:
         current = self.settings.theme == "dark"
         next_state = (not current) if enabled is None else enabled
@@ -5081,7 +5280,7 @@ class MainFrame:
         backup_path = backups[selection]
         restored_text = backup_path.read_text(encoding=self.document.encoding)
         self.document.set_text(restored_text)
-        self.editor.ChangeValue(restored_text)
+        self._replace_document_text(restored_text)
         self._refresh_title()
         self._set_status(f"Restored backup {backup_path.name}")
 
@@ -6214,7 +6413,7 @@ class MainFrame:
         else:
             insertion_point = min(line_start + target_column - 1, line_end)
         self._record_location_before_jump()
-        self.editor.SetInsertionPoint(insertion_point)
+        self._move_point(insertion_point)
         self.editor.SetFocus()
         self._location_ring.record(insertion_point)
         if target_column is None:
@@ -6253,8 +6452,7 @@ class MainFrame:
             )
             return
         self._record_location_before_jump()
-        self.editor.SetInsertionPoint(target)
-        self.editor.SetSelection(target, target)
+        self._move_point(target)
         self.editor.SetFocus()
         self._location_ring.record(target)
         self._set_status(f"Moved to page {page_number}")
@@ -6265,8 +6463,7 @@ class MainFrame:
         if target is None:
             self._set_status("No earlier location")
             return
-        self.editor.SetInsertionPoint(target)
-        self.editor.SetSelection(target, target)
+        self._move_point(target)
         self.editor.SetFocus()
         self._set_status("Moved back")
 
@@ -6276,8 +6473,7 @@ class MainFrame:
         if target is None:
             self._set_status("No later location")
             return
-        self.editor.SetInsertionPoint(target)
-        self.editor.SetSelection(target, target)
+        self._move_point(target)
         self.editor.SetFocus()
         self._set_status("Moved forward")
 
@@ -6583,8 +6779,7 @@ class MainFrame:
 
     def _jump_to(self, position: int, message: str) -> None:
         self._record_location_before_jump()
-        self.editor.SetInsertionPoint(position)
-        self.editor.SetSelection(position, position)
+        self._move_point(position)
         self.editor.SetFocus()
         self._location_ring.record(position)
         self._set_status(message)
@@ -6630,10 +6825,44 @@ class MainFrame:
         if target is None:
             self._set_status("Bookmark was not found")
             return
-        self.editor.SetInsertionPoint(target)
-        self.editor.SetSelection(target, target)
+        self._move_point(target)
         self.editor.SetFocus()
         self._set_status(f'Jumped to bookmark "{name}"')
+
+    def list_bookmarks(self) -> None:
+        names = bookmark_names(self._bookmarks)
+        if not names:
+            self._set_status("No bookmarks available")
+            return
+        text = self.editor.GetValue()
+        nodes: list[_NavigatorNode] = []
+        for name in names:
+            position = self._bookmarks[name]
+            line, column = line_column_for_position(text, position)
+            nodes.append(
+                _NavigatorNode(
+                    label=f'{name} (Ln {line}, Col {column})',
+                    preview=f'Bookmark: {name}\n\nLine {line}, Column {column}',
+                    payload=name,
+                    action_label="Jump to Bookmark",
+                    children=[],
+                )
+            )
+        selected = self._show_tree_navigator(
+            title="List Bookmarks",
+            root_label="Bookmarks",
+            nodes=nodes,
+        )
+        if not isinstance(selected, str):
+            self._set_status("Bookmark list cancelled")
+            return
+        target = bookmark_position(self._bookmarks, selected)
+        if target is None:
+            self._set_status("Bookmark was not found")
+            return
+        self._move_point(target)
+        self.editor.SetFocus()
+        self._set_status(f'Jumped to bookmark "{selected}"')
 
     def show_word_count(self) -> None:
         wx = self._wx
@@ -6760,8 +6989,11 @@ class MainFrame:
             self._set_status("Misspelling list cancelled")
             return
         self._record_location_before_jump()
-        self.editor.SetInsertionPoint(selected.start)
-        self.editor.SetSelection(selected.start, selected.end)
+        if self._extend_selection_mode and self._extend_selection_anchor is not None:
+            self._move_point(selected.start)
+        else:
+            self.editor.SetInsertionPoint(selected.start)
+            self.editor.SetSelection(selected.start, selected.end)
         self.editor.SetFocus()
         self._location_ring.record(selected.start)
         self._set_status(f'Jumped to misspelling "{selected.word}"')
@@ -6774,8 +7006,11 @@ class MainFrame:
             self._set_status("No next misspelling")
             return
         self._record_location_before_jump()
-        self.editor.SetInsertionPoint(item.start)
-        self.editor.SetSelection(item.start, item.end)
+        if self._extend_selection_mode and self._extend_selection_anchor is not None:
+            self._move_point(item.start)
+        else:
+            self.editor.SetInsertionPoint(item.start)
+            self.editor.SetSelection(item.start, item.end)
         self.editor.SetFocus()
         self._set_status(f'Next misspelling: "{item.word}"')
 
@@ -7193,7 +7428,7 @@ class MainFrame:
                 return
             progress.Update(90, "Opening OCR result")
             self.new_file()
-            self.editor.SetValue(ocr_result.text)
+            self._replace_document_text(ocr_result.text)
             self.document.set_text(ocr_result.text)
             self._refresh_title()
             self._set_status(f"OCR completed with {ocr_result.engine}")
@@ -7278,7 +7513,7 @@ class MainFrame:
         self._notifications = []
         self._set_status("Cleared notifications")
 
-    def check_for_updates(self) -> None:
+    def check_for_updates(self, silent_no_update: bool = False) -> None:
         wx = self._wx
         from urllib.error import URLError
 
@@ -7286,6 +7521,10 @@ class MainFrame:
         try:
             manifest = fetch_update_manifest(DEFAULT_UPDATE_MANIFEST_URL)
         except (URLError, ValueError) as error:
+            if silent_no_update:
+                self._record_notification(f"Update check failed: {error}", "update")
+                self._set_status("Update check failed")
+                return
             self._show_message_box(
                 f"Could not verify update manifest: {error}",
                 "Check for Updates",
@@ -7295,6 +7534,9 @@ class MainFrame:
             self._record_notification("Update check failed", "update")
             return
         if not is_newer_version(__version__, manifest.version):
+            if silent_no_update:
+                self._record_notification("Update check found no newer version", "update")
+                return
             self._show_message_box(
                 f"You're up to date.\nCurrent: {__version__}\nAvailable: {manifest.version}",
                 "Check for Updates",
@@ -7711,54 +7953,68 @@ class MainFrame:
         default_query = self._last_find_query or (
             self._search_history[0] if self._search_history else ""
         )
-        with wx.TextEntryDialog(
-            self.frame,
-            "Enter text to find:" if not replacement else "Find text:",
-            title,
-            value=default_query,
-        ) as query_dialog:
-            if self._show_modal_dialog(query_dialog, title) != wx.ID_OK:
-                return None
-            query = query_dialog.GetValue()
-        if not query:
-            return None
+        dialog = wx.Dialog(self.frame, title=title, size=(460, 0))
+        panel = wx.Panel(dialog)
+        root = wx.BoxSizer(wx.VERTICAL)
+        root.Add(wx.StaticText(panel, label="Find text:"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        query_ctrl = wx.TextCtrl(panel, value=default_query, style=wx.TE_PROCESS_ENTER)
+        root.Add(query_ctrl, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 8)
+
+        replacement_ctrl = None
+        if replacement:
+            root.Add(wx.StaticText(panel, label="Replace with:"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+            replacement_ctrl = wx.TextCtrl(panel, value="", style=wx.TE_PROCESS_ENTER)
+            root.Add(replacement_ctrl, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 8)
 
         mode_labels = ["Plain text", "Whole word", "Regular expression", "Wildcard"]
-        with wx.SingleChoiceDialog(
-            self.frame,
-            "Choose search mode:",
-            title,
-            mode_labels,
-        ) as mode_dialog:
-            mode_dialog.SetSelection(0)
-            if self._show_modal_dialog(mode_dialog, title) != wx.ID_OK:
-                return None
-            mode = mode_dialog.GetStringSelection()
+        root.Add(wx.StaticText(panel, label="Search mode:"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        mode_choice = wx.Choice(panel, choices=mode_labels)
+        mode_choice.SetSelection(0)
+        root.Add(mode_choice, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 8)
 
-        result = self._show_message_box(
-            "Case sensitive search?",
-            title,
-            wx.ICON_QUESTION | wx.YES_NO | wx.NO_DEFAULT,
-        )
-        case_sensitive = result == wx.YES
-        options = SearchOptions(
-            case_sensitive=case_sensitive,
-            whole_word=mode == "Whole word",
-            use_regex=mode == "Regular expression",
-            wildcard=mode == "Wildcard",
-        )
-        replacement_value: str | None = None
-        if replacement:
-            with wx.TextEntryDialog(
-                self.frame,
-                "Replace with:",
-                title,
-                value="",
-            ) as replacement_dialog:
-                if self._show_modal_dialog(replacement_dialog, title) != wx.ID_OK:
-                    return None
-                replacement_value = replacement_dialog.GetValue()
-        return query, replacement_value, options
+        case_sensitive = wx.CheckBox(panel, label="Case sensitive")
+        root.Add(case_sensitive, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+
+        buttons = dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
+        if buttons is not None:
+            root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
+            ok_button = buttons.FindWindowById(wx.ID_OK)
+            if ok_button is not None:
+                ok_button.SetDefault()
+
+        panel.SetSizer(root)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(panel, 1, wx.EXPAND)
+        dialog.SetSizerAndFit(outer)
+
+        def submit(_event: object) -> None:
+            dialog.EndModal(wx.ID_OK)
+
+        query_ctrl.Bind(wx.EVT_TEXT_ENTER, submit)
+        if replacement_ctrl is not None:
+            replacement_ctrl.Bind(wx.EVT_TEXT_ENTER, submit)
+
+        query_ctrl.SetFocus()
+        query_ctrl.SetSelection(0, len(default_query))
+        try:
+            if self._show_modal_dialog(dialog, title) != wx.ID_OK:
+                return None
+            query = query_ctrl.GetValue()
+            if not query:
+                return None
+            mode = mode_choice.GetStringSelection() or mode_labels[0]
+            options = SearchOptions(
+                case_sensitive=case_sensitive.GetValue(),
+                whole_word=mode == "Whole word",
+                use_regex=mode == "Regular expression",
+                wildcard=mode == "Wildcard",
+            )
+            replacement_value = (
+                replacement_ctrl.GetValue() if replacement_ctrl is not None else None
+            )
+            return query, replacement_value, options
+        finally:
+            dialog.Destroy()
 
     def find_text(self) -> None:
         wx = self._wx
@@ -7798,8 +8054,11 @@ class MainFrame:
             return
         start, end = chosen
         self.editor.SetFocus()
-        self.editor.SetSelection(start, end)
-        self.editor.SetInsertionPoint(end)
+        if self._extend_selection_mode and self._extend_selection_anchor is not None:
+            self._move_point(end)
+        else:
+            self.editor.SetSelection(start, end)
+            self.editor.SetInsertionPoint(end)
         self._last_match = chosen
         wrap_suffix = " (wrapped)" if wrapped else ""
         self._set_status(f"Found at position {start + 1}{wrap_suffix}")
@@ -7856,8 +8115,11 @@ class MainFrame:
 
         start, end = chosen
         self.editor.SetFocus()
-        self.editor.SetSelection(start, end)
-        self.editor.SetInsertionPoint(end)
+        if self._extend_selection_mode and self._extend_selection_anchor is not None:
+            self._move_point(end)
+        else:
+            self.editor.SetSelection(start, end)
+            self.editor.SetInsertionPoint(end)
         self._last_match = chosen
         direction = "previous" if reverse else "next"
         wrap_suffix = " (wrapped)" if wrapped else ""
@@ -7965,7 +8227,7 @@ class MainFrame:
         if replacements == 0:
             self._set_status("No replacements made")
             return
-        self.editor.SetValue(updated_text)
+        self._replace_document_text(updated_text)
         self.document.set_text(updated_text)
         self._set_status(f"Replaced {replacements} occurrence(s)")
 
@@ -8504,9 +8766,14 @@ class MainFrame:
 
         original_document = self.editor.GetValue()
         updated_document = transform(original_document)
-        self.editor.SetValue(updated_document)
+        self._replace_document_text(updated_document)
         self.document.set_text(updated_document)
         self._set_status(f"{label} applied to document")
+
+    def _replace_document_text(self, updated_text: str) -> None:
+        current_text = self.editor.GetValue()
+        self.editor.Replace(0, len(current_text), updated_text)
+        self.editor.SetSelection(0, len(updated_text))
 
     def _apply_selection_operation(
         self,
@@ -8519,10 +8786,11 @@ class MainFrame:
         text = self.editor.GetValue()
         start, end = self.editor.GetSelection()
         updated, new_start, new_end = operation(text, start, end)
-        self.editor.SetValue(updated)
+        self._replace_document_text(updated)
         self.document.set_text(updated)
         if new_start == new_end:
             self.editor.SetInsertionPoint(new_start)
+            self.editor.SetSelection(new_start, new_start)
         else:
             self.editor.SetSelection(new_start, new_end)
         self._set_status(status)
@@ -8544,7 +8812,7 @@ class MainFrame:
             end = line_span(text, max(0, end - 1))[1]
         updated_block = transform(text[start:end])
         updated = text[:start] + updated_block + text[end:]
-        self.editor.SetValue(updated)
+        self._replace_document_text(updated)
         self.document.set_text(updated)
         self.editor.SetSelection(start, start + len(updated_block))
         self._set_status(status)
@@ -8560,9 +8828,10 @@ class MainFrame:
         text = self.editor.GetValue()
         cursor = self.editor.GetInsertionPoint()
         updated, new_cursor = operation(text, cursor)
-        self.editor.SetValue(updated)
+        self._replace_document_text(updated)
         self.document.set_text(updated)
         self.editor.SetInsertionPoint(new_cursor)
+        self.editor.SetSelection(new_cursor, new_cursor)
         self._set_status(status)
 
     def insert_html_tag(self) -> None:

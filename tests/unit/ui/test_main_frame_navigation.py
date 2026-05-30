@@ -161,6 +161,8 @@ def _build_frame(text: str, insertion_point: int = 0) -> MainFrame:
     frame._status_message = "Ready"
     frame._overwrite_mode = False
     frame._insert_key_down = False
+    frame._extend_selection_mode = False
+    frame._extend_selection_anchor = None
     frame._compare_session = None
     frame._compare_ignore_trailing_spaces = True
     frame._compare_ignore_line_endings = True
@@ -173,6 +175,8 @@ def _build_frame(text: str, insertion_point: int = 0) -> MainFrame:
         {
             "persistent_undo": False,
             "wrap_find": True,
+            "title_bar_path_mode": "name",
+            "dirty_title_style": "text",
             "status_bar_order": ["message", "line_column", "mode", "selection", "file_path"],
             "status_bar_hidden": ["selection"],
         },
@@ -209,6 +213,8 @@ def test_persistent_undo_steps_across_history() -> None:
         {
             "persistent_undo": True,
             "wrap_find": True,
+            "title_bar_path_mode": "name",
+            "dirty_title_style": "text",
             "status_bar_order": ["message", "line_column", "mode", "selection", "file_path"],
             "status_bar_hidden": ["selection"],
         },
@@ -233,9 +239,31 @@ def test_statusbar_respects_order_and_hidden_items() -> None:
     frame.settings.status_bar_order = ["line_column", "mode", "file_path", "message", "selection"]
     frame.settings.status_bar_hidden = ["file_path", "selection"]
     frame._apply_statusbar_layout()
-    assert frame.statusbar.fields_count == 6
+    assert frame.statusbar.fields_count == 5
     assert frame.statusbar.status[0] == "Ln 1, Col 2"
     assert frame.statusbar.status[1] == "INS"
+
+
+def test_refresh_title_uses_full_path_when_enabled() -> None:
+    frame = _build_frame("hello", insertion_point=0)
+    frame.document.modified = True
+    frame.settings.title_bar_path_mode = "full_path"
+    frame.settings.dirty_title_style = "asterisk"
+
+    frame._refresh_title()
+
+    assert frame.frame.title == f"{frame.document.path} * - Quill"
+
+
+def test_refresh_title_uses_asterisk_text_dirty_style() -> None:
+    frame = _build_frame("hello", insertion_point=0)
+    frame.document.modified = True
+    frame.settings.title_bar_path_mode = "name"
+    frame.settings.dirty_title_style = "asterisk_text"
+
+    frame._refresh_title()
+
+    assert frame.frame.title == "note.md * [modified] - Quill"
 
 
 def test_feature_coverage_maps_new_surfaces_to_known_features() -> None:
@@ -446,6 +474,17 @@ def test_open_misspelling_list_jumps_to_selected_occurrence(
     assert frame.editor.selection == (6, 10)
 
 
+def test_list_bookmarks_jumps_to_selected_bookmark() -> None:
+    frame = _build_frame("alpha\nbeta\n", insertion_point=0)
+    frame._bookmarks = {"Middle": 6}
+    frame._show_tree_navigator = lambda **_kwargs: "Middle"  # type: ignore[method-assign]
+
+    frame.list_bookmarks()
+
+    assert frame.editor.GetInsertionPoint() == 6
+    assert frame._status_message == 'Jumped to bookmark "Middle"'
+
+
 def test_find_next_does_not_wrap_when_setting_disabled() -> None:
     frame = _build_frame("alpha beta alpha", insertion_point=len("alpha beta alpha"))
     frame._last_find_query = "alpha"
@@ -467,6 +506,70 @@ def test_find_next_wraps_when_setting_enabled() -> None:
 
     assert frame.editor.selection == (0, 5)
     assert frame._status_message.endswith("(wrapped)")
+
+
+def test_sort_lines_descending_uses_undo_preserving_replace_path() -> None:
+    frame = _build_frame("a\nc\nb\n", insertion_point=0)
+    frame.editor.SetSelection(0, len(frame.editor.GetValue()))
+    frame.sort_lines_descending()
+
+    assert frame.editor.GetValue() == "c\nb\na\n"
+
+
+def test_replace_all_uses_undo_preserving_replace_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    frame = _build_frame("alpha beta alpha", insertion_point=0)
+    frame._wx = type("WX", (), {"ICON_QUESTION": 0, "YES_NO": 0, "NO_DEFAULT": 0, "YES": 1})()
+    frame._prompt_search = lambda _title, replacement=False: (  # type: ignore[method-assign]
+        "alpha",
+        "omega",
+        SearchOptions(),
+    )
+    frame._show_message_box = lambda *_args, **_kwargs: 1  # type: ignore[method-assign]
+
+    frame.replace_all_text()
+
+    assert frame.editor.GetValue() == "omega beta omega"
+
+
+def test_extend_selection_mode_moves_down_with_arrow_key() -> None:
+    frame = _build_frame("one\ntwo", insertion_point=0)
+    frame.toggle_extend_selection_mode(True)
+    event = _KeyEvent(317)
+    frame._wx = type(
+        "WX",
+        (),
+        {
+            "WXK_INSERT": 45,
+            "WXK_F8": 119,
+            "WXK_LEFT": 314,
+            "WXK_RIGHT": 316,
+            "WXK_UP": 315,
+            "WXK_DOWN": 317,
+            "WXK_HOME": 313,
+            "WXK_END": 312,
+            "WXK_PAGEUP": 366,
+            "WXK_PAGEDOWN": 367,
+            "WXK_ESCAPE": 27,
+        },
+    )()
+
+    frame._on_editor_key_down(event)
+
+    assert frame.editor.GetInsertionPoint() == 4
+    assert frame.editor.selection == (0, 4)
+
+
+def test_find_next_extends_selection_when_mode_enabled() -> None:
+    frame = _build_frame("alpha beta gamma alpha", insertion_point=0)
+    frame.toggle_extend_selection_mode(True)
+    frame.editor.SetInsertionPoint(1)
+    frame._last_find_query = "alpha"
+    frame._last_search_options = SearchOptions()
+
+    frame.find_next()
+
+    assert frame.editor.GetInsertionPoint() == 22
+    assert frame.editor.selection == (0, 22)
 
 
 def test_save_all_files_calls_save_file() -> None:

@@ -8,8 +8,8 @@ from quill.core.paths import app_data_dir
 from quill.core.storage import read_json, write_json_atomic
 
 STATUS_BAR_ITEMS: tuple[str, ...] = (
-    "message",
     "line_column",
+    "message",
     "word_count",
     "mode",
     "selection",
@@ -23,6 +23,25 @@ STATUS_BAR_ITEMS: tuple[str, ...] = (
     "search_term",
     "file_path",
 )
+
+
+def _default_status_bar_order() -> list[str]:
+    return list(STATUS_BAR_ITEMS)
+
+
+def _default_status_bar_hidden() -> list[str]:
+    return [
+        "selection",
+        "encoding",
+        "line_endings",
+        "spell_check",
+        "background_tasks",
+        "notifications",
+        "read_aloud",
+        "autosave",
+        "search_term",
+        "file_path",
+    ]
 
 
 def _normalize_status_bar_order(raw: object) -> list[str]:
@@ -46,17 +65,7 @@ def _normalize_status_bar_order(raw: object) -> list[str]:
 
 def _normalize_status_bar_hidden(raw: object, order: list[str]) -> list[str]:
     if not isinstance(raw, list):
-        return [
-            "selection",
-            "encoding",
-            "line_endings",
-            "spell_check",
-            "background_tasks",
-            "notifications",
-            "read_aloud",
-            "autosave",
-            "search_term",
-        ]
+        return _default_status_bar_hidden()
     order_set = set(order)
     hidden: list[str] = []
     seen: set[str] = set()
@@ -76,27 +85,17 @@ class Settings:
     keyboard_pack: str = "Quill Default"
     soft_wrap: bool = True
     wrap_find: bool = True
+    auto_check_updates: bool = False
     recent_files_limit: int = 10
     tray_enabled: bool = False
     persistent_undo: bool = False
     spellcheck_as_you_type: bool = False
-    show_line_numbers: bool = True
+    title_bar_path_mode: str = "name"
+    dirty_title_style: str = "text"
     start_with_no_document_open: bool = False
     read_aloud_voice: str = ""
-    status_bar_order: list[str] = field(default_factory=lambda: list(STATUS_BAR_ITEMS))
-    status_bar_hidden: list[str] = field(
-        default_factory=lambda: [
-            "selection",
-            "encoding",
-            "line_endings",
-            "spell_check",
-            "background_tasks",
-            "notifications",
-            "read_aloud",
-            "autosave",
-            "search_term",
-        ]
-    )
+    status_bar_order: list[str] = field(default_factory=_default_status_bar_order)
+    status_bar_hidden: list[str] = field(default_factory=_default_status_bar_hidden)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Settings:
@@ -104,11 +103,17 @@ class Settings:
         keyboard_pack = str(data.get("keyboard_pack", "Quill Default"))
         soft_wrap = bool(data.get("soft_wrap", True))
         wrap_find = bool(data.get("wrap_find", True))
+        auto_check_updates = bool(data.get("auto_check_updates", False))
         recent_files_limit = int(data.get("recent_files_limit", 10))
         tray_enabled = bool(data.get("tray_enabled", False))
         persistent_undo = bool(data.get("persistent_undo", False))
         spellcheck_as_you_type = bool(data.get("spellcheck_as_you_type", False))
-        show_line_numbers = bool(data.get("show_line_numbers", True))
+        title_bar_path_mode = str(data.get("title_bar_path_mode", "name"))
+        if title_bar_path_mode not in {"name", "full_path"}:
+            title_bar_path_mode = "name"
+        dirty_title_style = str(data.get("dirty_title_style", "text"))
+        if dirty_title_style not in {"text", "asterisk", "asterisk_text"}:
+            dirty_title_style = "text"
         start_with_no_document_open = bool(data.get("start_with_no_document_open", False))
         read_aloud_voice = str(data.get("read_aloud_voice", ""))
         status_bar_order = _normalize_status_bar_order(data.get("status_bar_order"))
@@ -124,11 +129,13 @@ class Settings:
             keyboard_pack=keyboard_pack,
             soft_wrap=soft_wrap,
             wrap_find=wrap_find,
+            auto_check_updates=auto_check_updates,
             recent_files_limit=recent_files_limit,
             tray_enabled=tray_enabled,
             persistent_undo=persistent_undo,
             spellcheck_as_you_type=spellcheck_as_you_type,
-            show_line_numbers=show_line_numbers,
+            title_bar_path_mode=title_bar_path_mode,
+            dirty_title_style=dirty_title_style,
             start_with_no_document_open=start_with_no_document_open,
             read_aloud_voice=read_aloud_voice,
             status_bar_order=status_bar_order,
