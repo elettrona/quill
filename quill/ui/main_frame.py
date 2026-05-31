@@ -6943,11 +6943,11 @@ class MainFrame:
         return self._prompt_word_open_mode(path)
 
     def _experimental_structured_surfaces_enabled(self) -> bool:
-        # Release safety default: keep structured Word and CSV grid surfaces in
-        # the repository, but disable them unless explicitly enabled for
-        # internal verification.
-        raw = os.environ.get("QUILL_ENABLE_EXPERIMENTAL_SURFACES", "").strip().lower()
-        return raw in {"1", "true", "yes", "on"}
+        # The structured Word view and CSV grid are experimental and NOT enabled
+        # for users (same policy as VibeVoice). Hard-disabled — Word/CSV files
+        # always open in the normal text editor, with no env-var override. The
+        # code stays in the repository for future development on a feature branch.
+        return False
 
     def _prompt_csv_open_mode(self, path: Path) -> str:
         wx = self._wx
