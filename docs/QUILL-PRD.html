@@ -645,8 +645,9 @@ explicitly opts in.</li>
 <li><strong>What Can I Do Here?</strong>: context-sensitive help for the
 current surface, available from the Help menu and command palette.</li>
 <li><strong>Safe mode</strong>: a startup-safe mode disables plugins,
-custom keymaps, AI, recent docs, themes, and other optional state for
-troubleshooting.</li>
+experimental features, AI integrations, startup restore, background
+indexing, file watchers, custom themes, custom snippets, and network
+services for troubleshooting.</li>
 <li><strong>Portable mode clarity</strong>: portable builds can store
 settings locally next to Quill.exe or in AppData, with a first-run
 choice and an independence command.</li>
@@ -6776,7 +6777,17 @@ Internationalisation infrastructure</h3>
 <li>Bidirectional text in user documents is rendered by the OS edit
 control; full RTL UI is v1.2.</li>
 <li>A translation portal (Weblate or Crowdin) is set up at v1.0 beta;
-community translators are credited in About.</li>
+community translators are credited in About and release notes.</li>
+<li>Translation operations follow a documented contributor plan with:
+<ul>
+<li>gettext <code>POT -&gt; PO -&gt; MO</code> workflow,</li>
+<li>translator comments and placeholder-preservation rules,</li>
+<li>beta translation push and pre-release string freeze,</li>
+<li>CI quality gates for extraction, syntax, compile, and placeholder
+validation.</li>
+</ul></li>
+<li>Contributor process and policy reference:
+<code>docs/localization/translation-contributor-plan.md</code>.</li>
 </ul>
 <h3 id="1014-performance-budgets-and-instrumentation">10.14 Performance
 budgets and instrumentation</h3>
@@ -7813,6 +7824,36 @@ migration.</label></li>
 details with implemented macro and compare scope.</label></li>
 <li><label><input type="checkbox" checked="" />Run macro/compare
 regression suite and resolve resulting failures.</label></li>
+</ul>
+<h3 id="2116-wx-stability-and-hang-resistance">21.16 wx stability and
+hang resistance</h3>
+<ul class="task-list">
+<li><label><input type="checkbox" checked="" />Add a
+<code>quill.stability</code> package for logging, diagnostics, dispatch,
+heartbeat, task management, safe subprocesses, guarded regex, memory
+tracing, safe mode, and feature contracts.</label></li>
+<li><label><input type="checkbox" checked="" />Configure startup logging
+through a queue-backed listener so the wx main thread never blocks on
+file I/O.</label></li>
+<li><label><input type="checkbox" checked="" />Enable faulthandler at
+startup and keep a manual thread-stack dump path available from the
+CLI.</label></li>
+<li><label><input type="checkbox" checked="" />Add a
+<code>wx.Timer</code> heartbeat and watchdog that detect stalled UI
+loops.</label></li>
+<li><label><input type="checkbox" checked="" />Centralize worker-to-UI
+handoff through <code>wx.CallAfter</code>, custom wx events, and a
+coalesced progress reporter.</label></li>
+<li><label><input type="checkbox" checked="" />Route user-supplied regex
+through timeout-aware matching helpers.</label></li>
+<li><label><input type="checkbox" checked="" />Add a safe subprocess
+helper with explicit timeouts.</label></li>
+<li><label><input type="checkbox" checked="" />Add optional tracemalloc
+support and diagnostic bundle support for freeze reports.</label></li>
+<li><label><input type="checkbox" checked="" />Add a Safe Mode
+configuration path and startup flag handling.</label></li>
+<li><label><input type="checkbox" checked="" />Add feature contract
+validation for risky features.</label></li>
 </ul>
 </body>
 </html>

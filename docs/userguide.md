@@ -29,6 +29,7 @@ Quill is also in beta. Expect polish, depth, and real daily utility. Also expect
 - [Trust, Recovery, Sessions, and Safety](#trust-recovery-sessions-and-safety)
 - [Working with Different Document Types](#working-with-different-document-types)
 - [Help, Learning, and Daily Confidence](#help-learning-and-daily-confidence)
+- [Translation and Community Localization](#translation-and-community-localization)
 - [Beta Feedback and Bug Reporting](#beta-feedback-and-bug-reporting)
 - [A Fast Shortcut Tour](#a-fast-shortcut-tour)
 
@@ -869,6 +870,16 @@ Quill includes several layers of help because confidence does not come from memo
 - **Why Don't I See a Feature?** when a command seems to have disappeared.
 
 That last command matters more than it first appears. It turns feature visibility from a mystery into an explanation.
+
+## Translation and Community Localization
+
+QUILL is building localization as a community effort with a gettext catalog workflow (`POT -> PO -> MO`) and contributor-first onboarding. Translation contributions are welcomed during beta and reviewed with the same quality mindset as code and accessibility changes.
+
+If you want to help translate QUILL or review language quality, use the contributor plan:
+
+- [QUILL Translation Contributor Plan](localization/translation-contributor-plan.md)
+
+The plan documents how to contribute translations, what is and is not translated, how string freeze works, and how translator contributions are credited in releases.
 
 ## Beta Feedback and Bug Reporting
 

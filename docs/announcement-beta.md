@@ -276,6 +276,16 @@ Quill 0.1.2 Beta is not a narrow patch. It is a broad capability release that ma
 - revision and comparison-heavy editing
 - local-first AI-assisted drafting and refinement
 
+## Translation process and community effort
+
+QUILL's localization direction is community-first and modeled on a gettext catalog workflow (`POT -> PO -> MO`). The project is building translation as a release discipline, not as an afterthought.
+
+For contributors, translation work starts with GitHub pull requests against locale catalogs and clear translator comments. As the contributor base grows, QUILL will add a dedicated translation portal flow while keeping gettext catalogs as the source of truth.
+
+The contributor plan, release cadence, quality gates, and translator expectations live in the new planning doc:
+
+- [QUILL Translation Contributor Plan](localization/translation-contributor-plan.md)
+
 ## What is still in beta
 
 Quill is still a beta release, which means:

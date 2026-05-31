@@ -1,5 +1,7 @@
 # QUILL
 
+[![Contributors](https://contrib.rocks/image?repo=Community-Access/quill)](https://github.com/Community-Access/quill/graphs/contributors)
+
 **QUILL** stands for **Quality, Usable, Inclusive, Lightweight, Literate**.
 
 **QUILL: A quality, usable, inclusive, lightweight, and literate editor built for everyone who writes, codes, learns, and creates.**
@@ -143,6 +145,17 @@ This runs:
 ## Support and issue reporting
 
 Use **Help -> Report a Bug** inside Quill. The flow supports diagnostics bundle generation, report preview, clipboard copy, and browser handoff to support submission.
+
+## Contributing
+
+Community contributions are welcome.
+
+- Read **[CONTRIBUTING.md](CONTRIBUTING.md)** for setup, workflow, and PR expectations.
+- Read **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** before participating.
+- Read **[SECURITY.md](SECURITY.md)** for private vulnerability reporting.
+- Read **[GOVERNANCE.md](GOVERNANCE.md)** for project decision model.
+- Read **[MAINTAINERS.md](MAINTAINERS.md)** for maintainer responsibilities.
+- Contributor graph: **[contrib.rocks / QUILL](https://contrib.rocks/image?repo=Community-Access/quill)**
 
 ## License
 
