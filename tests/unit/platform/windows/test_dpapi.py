@@ -1,6 +1,15 @@
 from __future__ import annotations
 
+import sys
+
+import pytest
+
 from quill.platform.windows.dpapi import protect_secret, unprotect_secret
+
+# DPAPI is a Windows-only API; on macOS/Linux secrets use the platform keychain.
+pytestmark = pytest.mark.skipif(
+    sys.platform != "win32", reason="DPAPI is only available on Windows"
+)
 
 
 def test_dpapi_round_trip_secret() -> None:

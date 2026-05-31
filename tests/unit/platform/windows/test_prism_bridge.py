@@ -73,6 +73,10 @@ def test_announcement_engine_uses_system_speech_when_prism_is_missing(monkeypatc
             return None
 
     speech_engine = _FakeSpeechEngine()
+    # The pyttsx3 fallback is the Windows/Linux path; on macOS announcements go
+    # to VoiceOver instead. Pin a non-darwin platform so this exercises the TTS
+    # fallback regardless of the host OS the tests run on.
+    monkeypatch.setattr("quill.platform.windows.prism_bridge.sys.platform", "win32")
     monkeypatch.setattr(
         "quill.platform.windows.prism_bridge.pyttsx3",
         types.SimpleNamespace(init=lambda: speech_engine),

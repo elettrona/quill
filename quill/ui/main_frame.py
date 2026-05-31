@@ -5789,6 +5789,14 @@ class MainFrame:
         return visible
 
     def _statusbar_text_for_item(self, item: str) -> str:
+        try:
+            return self._statusbar_text_for_item_impl(item)
+        except RuntimeError:
+            # The editor's wrapped C++ object can be deleted during teardown /
+            # tab switching while a queued status refresh still fires. Don't crash.
+            return ""
+
+    def _statusbar_text_for_item_impl(self, item: str) -> str:
         feature_id = self._STATUS_BAR_FEATURES.get(item)
         feature_manager = getattr(self, "features", None)
         if (
