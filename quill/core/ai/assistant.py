@@ -21,6 +21,28 @@ _MAX_MESSAGE_CHARS = 4000
 # Document-context budgets to try (chars), shrinking until it fits the window.
 _CONTEXT_BUDGETS = (6000, 3000, 1200, 0)
 
+# Terms that signal the user actually wants to change the document. The
+# on-device model sometimes routes a greeting or a question to insert/replace
+# (offering to paste a chat reply into the document). Without one of these terms
+# we refuse to insert/replace and answer in chat instead. See _has_document_intent.
+# Action verbs only — NOT document nouns. A question like "how do I center a
+# heading?" mentions a noun ("heading") but is conversational; keying on verbs
+# keeps it in chat while still catching real requests ("write…", "add…").
+_DOC_INTENT_TERMS = (
+    "write", "add ", "insert", "draft", "compose", "continue", "append",
+    "generate", "create", "outline", "expand", "elaborate",
+    "rewrite", "rephrase", "reword", "revise", "edit ", "fix ", "correct",
+    "shorten", "lengthen", "simplify", "improve", "polish", "translate",
+    "summarize", "make it", "make this", "make the", "turn this", "turn it",
+    "replace", "reformat", "proofread", "tighten",
+)
+
+
+def _has_document_intent(message: str) -> bool:
+    """True if the message explicitly asks to write to or edit the document."""
+    low = (message or "").lower()
+    return any(term in low for term in _DOC_INTENT_TERMS)
+
 _OPERATION_PROMPTS: dict[str, str] = {
     "rewrite": "Rewrite the following text to be clear and well written. "
     "Return only the rewritten text, with no preamble:\n\n{text}",
@@ -187,7 +209,13 @@ class Assistant:
         decide = getattr(self.backend, "decide", None)
         if decide is None:
             return AgentDecision(action="answer", text=self.ask(user_message))
-        return decide(user_message, document_text, tuple(tool_ids), self._style_preamble)
+        decision = decide(user_message, document_text, tuple(tool_ids), self._style_preamble)
+        # Guard against the model turning a plain chat message (a greeting, a
+        # question) into a document edit. If the user didn't actually ask to
+        # write or edit anything, answer in chat instead of offering an insert.
+        if decision.action in ("insert", "replace") and not _has_document_intent(user_message):
+            return AgentDecision(action="answer", text=decision.text)
+        return decision
 
 
 def _split_into_chunks(text: str, max_chars: int) -> list[str]:
