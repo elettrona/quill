@@ -90,8 +90,7 @@ def test_build_inno_setup_script_mentions_portable_bundle() -> None:
     assert "aiassistant" in script
     assert 'Name: "pandoc"; Description: "Install bundled Pandoc for document conversion";' in script
     assert 'Name: "speechdectalk"; Description: "Install bundled DECtalk runtime";' in script
-    assert 'Name: "speechdectalk\\voices"; Description: "DECtalk voice selection";' in script
-    assert 'Name: "speechdectalk\\voices\\all"; Description: "All DECtalk voices";' in script
+    assert 'Name: "speechdectalk\\voices"; Description: "All DECtalk voices";' in script
     assert 'Name: "speechdectalk\\voices\\paul"; Description: "Paul voice";' in script
     assert 'Name: "speechdectalk\\voices\\harry"; Description: "Harry voice";' in script
     assert 'Name: "speechdectalk\\voices\\dennis"; Description: "Dennis voice";' in script
@@ -117,7 +116,8 @@ def test_build_inno_setup_script_mentions_portable_bundle() -> None:
     assert 'Source: "..\\portable\\tools\\speech\\dectalk\\*"; DestDir: "{app}\\tools\\speech\\dectalk";' in script
     assert 'Excludes: "voices\\*"; Components: speechdectalk' in script
     assert 'Source: "..\\portable\\tools\\speech\\dectalk\\voices\\*"; DestDir: "{app}\\tools\\speech\\dectalk\\voices";' in script
-    assert 'Components: speechdectalk\\voices\\all' in script
+    assert 'Components: speechdectalk\\voices' in script
+    assert "Check: not IsComponentSelected('speechdectalk\\voices')" in script
     assert 'Source: "..\\portable\\tools\\speech\\dectalk\\voices\\paul\\*"; DestDir: "{app}\\tools\\speech\\dectalk\\voices\\paul";' in script
     assert 'Source: "..\\portable\\tools\\speech\\dectalk\\voices\\harry\\*"; DestDir: "{app}\\tools\\speech\\dectalk\\voices\\harry";' in script
     assert 'Source: "..\\portable\\tools\\speech\\dectalk\\voices\\dennis\\*"; DestDir: "{app}\\tools\\speech\\dectalk\\voices\\dennis";' in script

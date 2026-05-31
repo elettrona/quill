@@ -471,9 +471,7 @@ def build_inno_setup_script(version: str) -> str:
         ' Types: full custom; Flags: checkablealone',
         'Name: "speechdectalk"; Description: "Install bundled DECtalk runtime";'
         ' Types: full custom; Flags: checkablealone',
-        'Name: "speechdectalk\\voices"; Description: "DECtalk voice selection";'
-        ' Types: full custom; Flags: checkablealone',
-        'Name: "speechdectalk\\voices\\all"; Description: "All DECtalk voices";'
+        'Name: "speechdectalk\\voices"; Description: "All DECtalk voices";'
         ' Types: full custom; Flags: checkablealone',
         'Name: "speechdectalk\\voices\\paul"; Description: "Paul voice"; Types: full custom; Flags: checkablealone',
         'Name: "speechdectalk\\voices\\harry"; Description: "Harry voice"; Types: full custom; Flags: checkablealone',
@@ -510,26 +508,25 @@ def build_inno_setup_script(version: str) -> str:
         ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist;'
         ' Excludes: "voices\\*"; Components: speechdectalk',
         'Source: "..\\portable\\tools\\speech\\dectalk\\voices\\*"; DestDir: "{app}\\tools\\speech\\dectalk\\voices";'
-        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist;'
-        ' Components: speechdectalk\\voices\\all',
+        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices',
         'Source: "..\\portable\\tools\\speech\\dectalk\\voices\\paul\\*"; DestDir: "{app}\\tools\\speech\\dectalk\\voices\\paul";'
-        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\paul',
+        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\paul; Check: not IsComponentSelected(\'speechdectalk\\voices\')',
         'Source: "..\\portable\\tools\\speech\\dectalk\\voices\\harry\\*"; DestDir: "{app}\\tools\\speech\\dectalk\\voices\\harry";'
-        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\harry',
+        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\harry; Check: not IsComponentSelected(\'speechdectalk\\voices\')',
         'Source: "..\\portable\\tools\\speech\\dectalk\\voices\\dennis\\*"; DestDir: "{app}\\tools\\speech\\dectalk\\voices\\dennis";'
-        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\dennis',
+        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\dennis; Check: not IsComponentSelected(\'speechdectalk\\voices\')',
         'Source: "..\\portable\\tools\\speech\\dectalk\\voices\\frank\\*"; DestDir: "{app}\\tools\\speech\\dectalk\\voices\\frank";'
-        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\frank',
+        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\frank; Check: not IsComponentSelected(\'speechdectalk\\voices\')',
         'Source: "..\\portable\\tools\\speech\\dectalk\\voices\\betty\\*"; DestDir: "{app}\\tools\\speech\\dectalk\\voices\\betty";'
-        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\betty',
+        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\betty; Check: not IsComponentSelected(\'speechdectalk\\voices\')',
         'Source: "..\\portable\\tools\\speech\\dectalk\\voices\\ursula\\*"; DestDir: "{app}\\tools\\speech\\dectalk\\voices\\ursula";'
-        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\ursula',
+        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\ursula; Check: not IsComponentSelected(\'speechdectalk\\voices\')',
         'Source: "..\\portable\\tools\\speech\\dectalk\\voices\\rita\\*"; DestDir: "{app}\\tools\\speech\\dectalk\\voices\\rita";'
-        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\rita',
+        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\rita; Check: not IsComponentSelected(\'speechdectalk\\voices\')',
         'Source: "..\\portable\\tools\\speech\\dectalk\\voices\\wendy\\*"; DestDir: "{app}\\tools\\speech\\dectalk\\voices\\wendy";'
-        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\wendy',
+        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\wendy; Check: not IsComponentSelected(\'speechdectalk\\voices\')',
         'Source: "..\\portable\\tools\\speech\\dectalk\\voices\\kit\\*"; DestDir: "{app}\\tools\\speech\\dectalk\\voices\\kit";'
-        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\kit',
+        ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\\voices\\kit; Check: not IsComponentSelected(\'speechdectalk\\voices\')',
         'Source: "..\\portable\\tools\\speech\\kokoro\\*"; DestDir: "{app}\\tools\\speech\\kokoro";'
         ' Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist;'
         ' Components: speechkokoro',
