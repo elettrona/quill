@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import ssl
+import sys
 from dataclasses import dataclass
 from urllib.error import URLError
 from urllib.request import Request, urlopen
@@ -93,14 +94,57 @@ def fetch_latest_release(
     return _release_from_json(best)
 
 
-def _release_from_json(data: dict) -> GitHubRelease:
-    assets = data.get("assets") or []
-    # Prefer a real downloadable asset; fall back to the release page.
-    download_url = ""
+# Assets that are NOT the installer (CI artifacts, signatures, checksums).
+_SKIP_ASSET_SUFFIXES = (
+    ".json",
+    ".sig",
+    ".asc",
+    ".pem",
+    ".sha256",
+    ".sha512",
+    ".txt",
+    ".sbom",
+    ".sbom.json",
+)
+_SKIP_ASSET_KEYWORDS = ("provenance", "checksum", "sbom", "signature")
+
+
+def _platform_asset_suffixes() -> tuple[str, ...]:
+    if sys.platform == "darwin":
+        return (".dmg", ".pkg", ".zip")
+    if sys.platform.startswith("win"):
+        return (".exe", ".msi", ".zip")
+    return (".appimage", ".tar.gz", ".zip")
+
+
+def _pick_asset(assets: list) -> str:
+    """Choose the real installer for this platform; skip provenance/checksums/etc."""
+    usable: list[tuple[str, str]] = []
     for asset in assets:
-        if isinstance(asset, dict) and asset.get("browser_download_url"):
-            download_url = str(asset["browser_download_url"])
-            break
+        if not isinstance(asset, dict):
+            continue
+        url = asset.get("browser_download_url")
+        name = str(asset.get("name") or "").lower()
+        if not url:
+            continue
+        if name.endswith(_SKIP_ASSET_SUFFIXES):
+            continue
+        if any(keyword in name for keyword in _SKIP_ASSET_KEYWORDS):
+            continue
+        usable.append((name, str(url)))
+    # Prefer the current platform's installer extension.
+    for suffix in _platform_asset_suffixes():
+        for name, url in usable:
+            if name.endswith(suffix):
+                return url
+    # Otherwise the first non-artifact asset (if any).
+    return usable[0][1] if usable else ""
+
+
+def _release_from_json(data: dict) -> GitHubRelease:
+    # Pick the platform installer asset; fall back to the release page when the
+    # release has no real installer (e.g. only provenance/checksum artifacts).
+    download_url = _pick_asset(data.get("assets") or [])
     if not download_url:
         download_url = str(data.get("html_url") or "")
     return GitHubRelease(
