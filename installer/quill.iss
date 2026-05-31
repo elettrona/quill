@@ -2,7 +2,7 @@
 ; Edit build_inno_setup_script(), not this file, to change packaging.
 
 #define AppName "Quill"
-#define AppVersion "0.1"
+#define AppVersion "0.1.2"
 #define AppPublisher "Blind Information Technology Solutions (BITS) and Community Access"
 #define AppURL "https://github.com/Community-Access/quill"
 #define AppExeName "run-quill.cmd"
@@ -25,7 +25,7 @@ DisableProgramGroupPage=auto
 AllowNoIcons=yes
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-OutputBaseFilename=Quill-Setup-0.1
+OutputBaseFilename=Quill-Setup-0.1.2
 Compression=lzma2/ultra
 SolidCompression=yes
 WizardStyle=modern
@@ -56,7 +56,7 @@ Source: "..\portable\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs c
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"
 Name: "{group}\{#AppName} README"; Filename: "{app}\README.txt"
 Name: "{group}\{#AppName} User Guide"; Filename: "{app}\docs\userguide.md"
-Name: "{group}\Writing Assistant Setup"; Filename: "{app}\docs\assistant-setup.md"; Components: aiassistant
+Name: "{group}\Writing Assistant Setup"; Filename: "{app}\docs\userguide.md"; Components: aiassistant
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
 
@@ -73,7 +73,7 @@ Root: HKCU; Subkey: "Software\Classes\.json\OpenWithList\{#AppExeName}"; Flags: 
 
 [Run]
 Filename: "{app}\README.txt"; Description: "View the Quill README"; Flags: postinstall shellexec skipifsilent unchecked
-Filename: "{app}\docs\assistant-setup.md"; Description: "View the Writing Assistant setup guide"; Flags: postinstall shellexec skipifsilent unchecked; Components: aiassistant
+Filename: "{app}\docs\userguide.md"; Description: "View the Writing Assistant setup guide"; Flags: postinstall shellexec skipifsilent unchecked; Components: aiassistant
 Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: postinstall nowait skipifsilent unchecked
 
 [UninstallDelete]

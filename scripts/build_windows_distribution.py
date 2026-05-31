@@ -411,7 +411,7 @@ def build_inno_setup_script(version: str) -> str:
         ),
         (
             'Name: "{group}\\Writing Assistant Setup"; '
-            'Filename: "{app}\\docs\\assistant-setup.md"; Components: aiassistant'
+            'Filename: "{app}\\docs\\userguide.md"; Components: aiassistant'
         ),
         'Name: "{group}\\Uninstall {#AppName}"; Filename: "{uninstallexe}"',
         'Name: "{autodesktop}\\{#AppName}"; Filename: "{app}\\{#AppExeName}";'
@@ -440,7 +440,7 @@ def build_inno_setup_script(version: str) -> str:
         "[Run]",
         'Filename: "{app}\\README.txt"; Description: "View the Quill README";'
         " Flags: postinstall shellexec skipifsilent unchecked",
-        'Filename: "{app}\\docs\\assistant-setup.md";'
+        'Filename: "{app}\\docs\\userguide.md";'
         ' Description: "View the Writing Assistant setup guide";'
         " Flags: postinstall shellexec skipifsilent unchecked; Components: aiassistant",
         'Filename: "{app}\\{#AppExeName}"; Description: "Launch {#AppName}";'
@@ -616,7 +616,6 @@ def _stage_distribution_docs(portable_dir: Path, source_root: Path) -> list[Path
     staged: list[Path] = []
     for relative in (
         Path("docs") / "userguide.md",
-        Path("docs") / "assistant-setup.md",
     ):
         source = source_root / relative
         if not source.exists():

@@ -363,6 +363,42 @@ Quill stores optional keys with Windows DPAPI and announces the verification res
 
 These help you stay inside the editor instead of breaking flow for small writing chores.
 
+### Ask Quill Chat setup (on-device AI)
+
+Ask Quill Chat (`AI -> Ask Quill Chat...`) is a message-style assistant that can answer, draft text, propose edits, and run Quill commands with approval before changes are applied.
+
+Runtime backends:
+
+- Windows and Linux: `llama.cpp` (`llama-cpp-python`, GGUF model)
+- macOS (Apple Silicon, macOS 26+): Apple Foundation Models
+
+Setup:
+
+1. Install dependencies: `pip install -r requirements.txt`
+2. Put a `.gguf` model in `%APPDATA%\\Quill\\models\\` (Windows) or set `QUILL_LLAMA_MODEL` to a full path.
+3. Open `AI -> Ask Quill Chat...` and send a prompt.
+
+Behavior notes:
+
+- Proposed actions use an explicit `Approve` or `Discard` step.
+- If model/runtime is unavailable, Quill reports this clearly and does not apply destructive changes.
+
+### Writing Assistant connection setup
+
+For release-safe beta validation, Word and CSV open in the normal plain-text editor surface. AI connection and chat flows remain available.
+
+Provider setup:
+
+1. Open `AI -> AI Connection...` (or `Preferences -> AI Connection`).
+2. Choose provider: `Ollama (local)`, `Ollama Cloud (API key)`, or `Custom HTTP`.
+3. Enter host and model.
+4. Enter API key only if required.
+5. Use `Verify Connection`.
+6. Use `List Models` to select from endpoint-reported models.
+7. Save settings. Quill auto-verifies and updates AI status/detail lines.
+
+After save, Quill announces plain-language verification feedback (for example, ready, auth failure, timeout, or endpoint unreachable).
+
 #### Read aloud and integrations
 
 - **Read Aloud** submenu for start or pause, stop, and voice selection

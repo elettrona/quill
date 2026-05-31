@@ -60,7 +60,7 @@ version = "2.4.6"
     assert manifest["version"] == "2.4.6"
     assert manifest["bundledPython"] is False
     assert manifest["bundledTools"] == []
-    assert manifest["docs"] == [r"docs\userguide.md", r"docs\assistant-setup.md"]
+    assert manifest["docs"] == [r"docs\userguide.md"]
 
     assert installer_script.exists()
     assert bundle["installer_script"] == str(installer_script)

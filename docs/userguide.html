@@ -607,11 +607,75 @@ and HTML changes stay visible without leaving Quill.</p>
 offers preset prompts for rewrite/summarize/continue/grammar flows, and
 Run Python executes a sandboxed transform against the current document
 text and selection.</p>
-<p>Use <strong>Preferences -&gt; AI Connection</strong> to set provider,
-host, and model. Local Ollama use usually needs no key; if you add one
-for an authenticated endpoint, Quill stores it with Windows DPAPI.</p>
+<p>Use <strong>AI -&gt; AI Connection...</strong> or <strong>Preferences
+-&gt; AI Connection</strong> to set provider, host, model, and optional
+key.</p>
+<p>AI connection flow:</p>
+<ol type="1">
+<li>Choose provider (<code>Ollama (local)</code>,
+<code>Ollama Cloud (API key)</code>, or <code>Custom HTTP</code>).</li>
+<li>Confirm host URL and model.</li>
+<li>Enter key only when your endpoint requires authentication.</li>
+<li>Use <strong>Verify Connection</strong> to test endpoint and
+credentials.</li>
+<li>Use <strong>List Models</strong> to fetch available models and
+select one.</li>
+<li>Save settings. Quill auto-runs verification and updates the AI
+status line in the AI menu.</li>
+</ol>
+<p>Quill stores optional keys with Windows DPAPI and announces the
+verification result in plain language for immediate screen-reader
+feedback.</p>
 <p>These help you stay inside the editor instead of breaking flow for
 small writing chores.</p>
+<h3 id="ask-quill-chat-setup-on-device-ai">Ask Quill Chat setup
+(on-device AI)</h3>
+<p>Ask Quill Chat (<code>AI -&gt; Ask Quill Chat...</code>) is a
+message-style assistant that can answer, draft text, propose edits, and
+run Quill commands with approval before changes are applied.</p>
+<p>Runtime backends:</p>
+<ul>
+<li>Windows and Linux: <code>llama.cpp</code>
+(<code>llama-cpp-python</code>, GGUF model)</li>
+<li>macOS (Apple Silicon, macOS 26+): Apple Foundation Models</li>
+</ul>
+<p>Setup:</p>
+<ol type="1">
+<li>Install dependencies:
+<code>pip install -r requirements.txt</code></li>
+<li>Put a <code>.gguf</code> model in
+<code>%APPDATA%\\Quill\\models\\</code> (Windows) or set
+<code>QUILL_LLAMA_MODEL</code> to a full path.</li>
+<li>Open <code>AI -&gt; Ask Quill Chat...</code> and send a prompt.</li>
+</ol>
+<p>Behavior notes:</p>
+<ul>
+<li>Proposed actions use an explicit <code>Approve</code> or
+<code>Discard</code> step.</li>
+<li>If model/runtime is unavailable, Quill reports this clearly and does
+not apply destructive changes.</li>
+</ul>
+<h3 id="writing-assistant-connection-setup">Writing Assistant connection
+setup</h3>
+<p>For release-safe beta validation, Word and CSV open in the normal
+plain-text editor surface. AI connection and chat flows remain
+available.</p>
+<p>Provider setup:</p>
+<ol type="1">
+<li>Open <code>AI -&gt; AI Connection...</code> (or
+<code>Preferences -&gt; AI Connection</code>).</li>
+<li>Choose provider: <code>Ollama (local)</code>,
+<code>Ollama Cloud (API key)</code>, or <code>Custom HTTP</code>.</li>
+<li>Enter host and model.</li>
+<li>Enter API key only if required.</li>
+<li>Use <code>Verify Connection</code>.</li>
+<li>Use <code>List Models</code> to select from endpoint-reported
+models.</li>
+<li>Save settings. Quill auto-verifies and updates AI status/detail
+lines.</li>
+</ol>
+<p>After save, Quill announces plain-language verification feedback (for
+example, ready, auth failure, timeout, or endpoint unreachable).</p>
 <h4 id="read-aloud-and-integrations">Read aloud and integrations</h4>
 <ul>
 <li><strong>Read Aloud</strong> submenu for start or pause, stop, and
@@ -642,6 +706,14 @@ like:</p>
 <li>Did the source likely contain structure that did not survive?</li>
 <li>Is this document safe to quote from directly?</li>
 <li>Do I need to escalate this source for manual cleanup?</li>
+</ul>
+<p>Release-safety note for current beta validation:</p>
+<ul>
+<li>Word files (<code>.doc</code>, <code>.docx</code>) open into the
+normal plain-text editing surface.</li>
+<li>CSV/TSV files open into the normal plain-text editing surface.</li>
+<li>Structured Word and CSV grid surfaces remain in the codebase behind
+an internal verification gate.</li>
 </ul>
 <h4 id="glow">GLOW</h4>
 <ul>

@@ -221,20 +221,25 @@ heading style controls for live font/size/alignment updates, a
 keyboard-first Heading Organizer (<code>Ctrl+Alt+Shift+H</code>) for
 level/reorder/validation, a local Writing Assistant surface with
 rewrite/summarize/continue/grammar quick actions, and AI connection
-preferences for local Ollama or custom endpoints with DPAPI-protected
-optional keys.</p>
+preferences for local Ollama, Ollama cloud key mode, or custom endpoints
+with DPAPI-protected optional keys.</p>
+<p>This cycle also improves AI connection confidence and accessibility.
+The connection dialog now supports Verify Connection, List Models, and
+model recommendations, and saving settings automatically runs
+verification. The AI menu shows a one-line status and detail
+(<code>Ready</code> or <code>Needs attention</code> with reason), and
+the same plain-language result is announced for screen-reader users
+immediately.</p>
 <p>This cycle also strengthens customization with custom profiles
 (including opt-in inheritance or bare-bones starts), a quick profile
 picker on <code>Alt+Shift+P</code>, and cleaner status/title behavior by
 suppressing duplicate file-path reporting when full-path title mode is
 enabled.</p>
-<p>This cycle also expands document-intake depth. CSV and TSV files now
-prompt for open mode (special grid or normal text) with a remembered
-default and a quick in-tab way back to normal editing. Word documents
-now offer a structured Word view and normal text editing mode, both with
-remembered defaults, and table-heavy Word content is rendered into
-explicit screen-reader-friendly table narration in the structured
-view.</p>
+<p>This cycle also expands document-intake depth. For release-safe beta
+validation, Word and CSV/TSV currently open in the normal plain-text
+editing surface by default. Structured Word and CSV grid paths remain in
+the codebase behind an internal gate for continued verification before
+wider rollout.</p>
 <h2 id="what-makes-quill-special">What makes Quill special</h2>
 <p>Quill Beta already includes a broad set of everyday and specialist
 features:</p>
