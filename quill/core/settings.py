@@ -143,6 +143,15 @@ class Settings:
     dictation_language: str = "en-US"
     dictation_model: str = "base"
     dictation_device_index: int = -1
+    bw_speech_selection_mode: str = "recommended"
+    bw_speech_model_id: str = "whisper-base"
+    bw_enable_parakeet_models: bool = False
+    bw_provider_id: str = "local_whisper"
+    bw_provider_mode: str = "local_first"
+    bw_show_cloud_providers: bool = True
+    bw_auto_open_status_page_on_download_start: bool = False
+    bw_safe_mode_lock: bool = False
+    status_page_refresh_announcement_cadence: str = "quiet"
     voice_commands_enabled: bool = False
     watch_folder_enabled: bool = False
     watch_folder_path: str = ""
@@ -282,7 +291,9 @@ class Settings:
             read_aloud_chatterbox_rate = 80
         if read_aloud_chatterbox_rate > 450:
             read_aloud_chatterbox_rate = 450
-        read_aloud_openvoice_executable = str(data.get("read_aloud_openvoice_executable", "")).strip()
+        read_aloud_openvoice_executable = str(
+            data.get("read_aloud_openvoice_executable", "")
+        ).strip()
         read_aloud_openvoice_voice = (
             str(data.get("read_aloud_openvoice_voice", "en-base")).strip().lower() or "en-base"
         )
@@ -307,6 +318,31 @@ class Settings:
         dictation_device_index = int(data.get("dictation_device_index", -1))
         if dictation_device_index < -1:
             dictation_device_index = -1
+        bw_speech_selection_mode = (
+            str(data.get("bw_speech_selection_mode", "recommended")).strip().lower()
+            or "recommended"
+        )
+        if bw_speech_selection_mode not in {"recommended", "manual"}:
+            bw_speech_selection_mode = "recommended"
+        bw_speech_model_id = (
+            str(data.get("bw_speech_model_id", "whisper-base")).strip() or "whisper-base"
+        )
+        bw_enable_parakeet_models = bool(data.get("bw_enable_parakeet_models", False))
+        bw_provider_id = str(data.get("bw_provider_id", "local_whisper")).strip() or "local_whisper"
+        bw_provider_mode = str(data.get("bw_provider_mode", "local_first")).strip().lower()
+        if bw_provider_mode not in {"local_first", "cloud_first"}:
+            bw_provider_mode = "local_first"
+        bw_show_cloud_providers = bool(data.get("bw_show_cloud_providers", True))
+        bw_auto_open_status_page_on_download_start = bool(
+            data.get("bw_auto_open_status_page_on_download_start", False)
+        )
+        bw_safe_mode_lock = bool(data.get("bw_safe_mode_lock", False))
+        status_page_refresh_announcement_cadence = (
+            str(data.get("status_page_refresh_announcement_cadence", "quiet")).strip().lower()
+            or "quiet"
+        )
+        if status_page_refresh_announcement_cadence not in {"quiet", "normal", "verbose"}:
+            status_page_refresh_announcement_cadence = "quiet"
         voice_commands_enabled = bool(data.get("voice_commands_enabled", False))
         watch_folder_enabled = bool(data.get("watch_folder_enabled", False))
         watch_folder_path = str(data.get("watch_folder_path", "")).strip()
@@ -393,6 +429,15 @@ class Settings:
             dictation_language=dictation_language,
             dictation_model=dictation_model,
             dictation_device_index=dictation_device_index,
+            bw_speech_selection_mode=bw_speech_selection_mode,
+            bw_speech_model_id=bw_speech_model_id,
+            bw_enable_parakeet_models=bw_enable_parakeet_models,
+            bw_provider_id=bw_provider_id,
+            bw_provider_mode=bw_provider_mode,
+            bw_show_cloud_providers=bw_show_cloud_providers,
+            bw_auto_open_status_page_on_download_start=bw_auto_open_status_page_on_download_start,
+            bw_safe_mode_lock=bw_safe_mode_lock,
+            status_page_refresh_announcement_cadence=status_page_refresh_announcement_cadence,
             voice_commands_enabled=voice_commands_enabled,
             watch_folder_enabled=watch_folder_enabled,
             watch_folder_path=watch_folder_path,

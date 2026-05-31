@@ -43,6 +43,48 @@ from quill.core.browser_preview import (
     render_preview_body,
     render_preview_html,
 )
+from quill.core.bw_speech import (
+    download_model as bw_download_model,
+)
+from quill.core.bw_speech import (
+    downloaded_model_ids as bw_downloaded_model_ids,
+)
+from quill.core.bw_speech import (
+    faster_whisper_status,
+)
+from quill.core.bw_speech import (
+    get_model as bw_get_model,
+)
+from quill.core.bw_speech import (
+    has_disk_capacity as bw_has_disk_capacity,
+)
+from quill.core.bw_speech import (
+    list_models as bw_list_models,
+)
+from quill.core.bw_speech import (
+    machine_guidance as bw_machine_guidance,
+)
+from quill.core.bw_speech import (
+    recommended_model_id as bw_recommended_model_id,
+)
+from quill.core.bw_speech import (
+    remove_model as bw_remove_model,
+)
+from quill.core.bw_providers import (
+    get_provider as bw_get_provider,
+)
+from quill.core.bw_providers import (
+    list_providers as bw_list_providers,
+)
+from quill.core.bw_providers import (
+    provider_mode_guidance as bw_provider_mode_guidance,
+)
+from quill.core.bw_providers import (
+    provider_readiness as bw_provider_readiness,
+)
+from quill.core.bw_providers import (
+    recommended_provider_id as bw_recommended_provider_id,
+)
 from quill.core.commands import CommandRegistry
 from quill.core.contrast import render_contrast_report, validate_theme_contrast
 from quill.core.custom_profiles import (
@@ -181,8 +223,8 @@ from quill.core.paths import app_data_dir, ensure_app_directories
 from quill.core.read_aloud import (
     ReadAloudController,
     ReadAloudUnavailableError,
-    discover_dectalk_executable,
     discover_chatterbox_executable,
+    discover_dectalk_executable,
     discover_espeak_executable,
     discover_melotts_executable,
     discover_openvoice_executable,
@@ -200,9 +242,9 @@ from quill.core.read_aloud import (
     list_rhvoice_english_voices,
     list_vibevoice_voices,
     list_voices,
-    synthesize_with_chatterbox,
     synthesize_to_file_with_dectalk,
     synthesize_to_file_with_pyttsx3,
+    synthesize_with_chatterbox,
     synthesize_with_espeak,
     synthesize_with_kokoro,
     synthesize_with_melotts,
@@ -297,9 +339,9 @@ from quill.core.updates import (
     UpdateManifest,
     URLError,
     download_release_asset,
-    fetch_update_manifest,
     fetch_latest_release,
     fetch_releases,
+    fetch_update_manifest,
     find_release,
     is_newer_version,
     select_latest,
@@ -311,9 +353,6 @@ from quill.core.voice_commands import (
     split_text_delta,
 )
 from quill.core.watch_folder import WatchFolderConfig, WatchFolderResult, WatchFolderService
-from quill.stability.memory_watch import should_trace_memory, start_memory_tracing
-from quill.stability.ui_responsiveness import mark_wx_main_thread
-from quill.stability.wx_heartbeat import HeartbeatState, WxHeartbeatTimer, WxHeartbeatWatchdog
 from quill.core.yaml_structure import (
     YamlNode,
     YamlNodeKind,
@@ -344,11 +383,14 @@ from quill.platform.windows.sr_announce import (
     set_transcript_path,
 )
 from quill.platform.windows.sr_detect import detect_screen_reader
+from quill.stability.memory_watch import should_trace_memory, start_memory_tracing
+from quill.stability.ui_responsiveness import mark_wx_main_thread
+from quill.stability.wx_heartbeat import HeartbeatState, WxHeartbeatTimer, WxHeartbeatWatchdog
 from quill.ui.ai_model_panel import AIModelDialog
 from quill.ui.assistant_panel import AskQuillChatDialog
 from quill.ui.assistant_tools import (
-    AIHubDialog,
     AgentCenterDialog,
+    AIHubDialog,
     AssistantConnectionDialog,
     PromptStudioDialog,
     RunPythonDialog,
@@ -356,8 +398,8 @@ from quill.ui.assistant_tools import (
 )
 from quill.ui.csv_grid import CsvGridSurface
 from quill.ui.palette import CommandPaletteDialog
-from quill.ui.style_panel import TrainStyleDialog
 from quill.ui.sticky_notes import StickyNoteEditorDialog, StickyNotesVaultDialog
+from quill.ui.style_panel import TrainStyleDialog
 from quill.ui.word_view import WordDocumentSurface
 
 
@@ -605,14 +647,12 @@ class MainFrame:
         "search_term": "core.search",
         "file_path": "core.file",
     }
-    _MACRO_CONTROL_COMMANDS: frozenset[str] = frozenset(
-        {
-            "tools.start_macro_recording",
-            "tools.stop_macro_recording",
-            "tools.play_last_macro",
-            "tools.manage_macros",
-        }
-    )
+    _MACRO_CONTROL_COMMANDS: frozenset[str] = frozenset({
+        "tools.start_macro_recording",
+        "tools.stop_macro_recording",
+        "tools.play_last_macro",
+        "tools.manage_macros",
+    })
 
     def __init__(self, safe_mode: bool = False) -> None:
         import wx
@@ -683,6 +723,12 @@ class MainFrame:
         self._background_task_count = 0
         self._background_tasks: list[dict[str, object]] = []
         self._background_task_sequence = 0
+        self._status_page_live_updates = False
+        self._status_page_refresh_ms = 2000
+        self._status_page_timer: object | None = None
+        self._status_page_last_announce_at = 0.0
+        self._status_page_last_announce_signature = ""
+        self._bw_download_status: dict[str, dict[str, object]] = {}
         self._last_intake_report = ""
         self._startup_deferred_ran = False
         self._compare_session: _CompareSession | None = None
@@ -1352,6 +1398,90 @@ class MainFrame:
             self.toggle_dictation_voice_commands,
             None,
             feature_id="core.voice_commands",
+        )
+        self.commands.register(
+            "whisperer.model_manager",
+            "BITS Whisperer Speech Model Manager...",
+            self.open_bw_model_manager,
+            None,
+            feature_id="core.bw_transcription",
+        )
+        self.commands.register(
+            "whisperer.model_status",
+            "BITS Whisperer Speech Model Status",
+            self.show_bw_model_status,
+            None,
+            feature_id="core.bw_transcription",
+        )
+        self.commands.register(
+            "whisperer.model_recommend",
+            "BITS Whisperer Use Recommended Speech Model",
+            self.apply_bw_recommended_model,
+            None,
+            feature_id="core.bw_transcription",
+        )
+        self.commands.register(
+            "whisperer.toggle_parakeet",
+            "BITS Whisperer Toggle Parakeet Model Visibility",
+            self.toggle_bw_parakeet_visibility,
+            None,
+            feature_id="core.bw_parakeet",
+        )
+        self.commands.register(
+            "whisperer.check_faster_whisper",
+            "BITS Whisperer Check faster-whisper Engine",
+            self.check_bw_faster_whisper_engine,
+            None,
+            feature_id="core.bw_transcription",
+        )
+        self.commands.register(
+            "whisperer.provider_center",
+            "BITS Whisperer Provider Center...",
+            self.open_bw_provider_center,
+            None,
+            feature_id="core.bw_providers",
+        )
+        self.commands.register(
+            "whisperer.provider_status",
+            "BITS Whisperer Provider Status",
+            self.show_bw_provider_status,
+            None,
+            feature_id="core.bw_providers",
+        )
+        self.commands.register(
+            "whisperer.provider_recommend",
+            "BITS Whisperer Use Recommended Provider",
+            self.apply_bw_recommended_provider,
+            None,
+            feature_id="core.bw_providers",
+        )
+        self.commands.register(
+            "whisperer.provider_select",
+            "BITS Whisperer Select Provider...",
+            self.select_bw_provider,
+            None,
+            feature_id="core.bw_providers",
+        )
+        self.commands.register(
+            "whisperer.readiness_check",
+            "BITS Whisperer Readiness Check",
+            self.show_bw_readiness_check,
+            None,
+            feature_id="core.bw_insights",
+        )
+        self.commands.register(
+            "whisperer.capability_matrix",
+            "BITS Whisperer Capability Matrix (HTML Preview)",
+            self.show_bw_capability_matrix_page,
+            None,
+            feature_id="core.bw_insights",
+        )
+        self.commands.register(
+            "whisperer.download_queue",
+            "BITS Whisperer Download Queue...",
+            self.manage_bw_download_queue,
+            None,
+            feature_id="core.bw_insights",
         )
         self.commands.register(
             "tools.watch_folder_toggle",
@@ -2797,6 +2927,18 @@ class MainFrame:
         self._id_toggle_announcement_trace = wx.NewIdRef()
         self._id_dictation = wx.NewIdRef()
         self._id_dictation_voice_commands = wx.NewIdRef()
+        self._id_bw_model_manager = wx.NewIdRef()
+        self._id_bw_model_status = wx.NewIdRef()
+        self._id_bw_model_recommend = wx.NewIdRef()
+        self._id_bw_toggle_parakeet = wx.NewIdRef()
+        self._id_bw_check_faster_whisper = wx.NewIdRef()
+        self._id_bw_provider_center = wx.NewIdRef()
+        self._id_bw_provider_status = wx.NewIdRef()
+        self._id_bw_provider_recommend = wx.NewIdRef()
+        self._id_bw_provider_select = wx.NewIdRef()
+        self._id_bw_readiness_check = wx.NewIdRef()
+        self._id_bw_capability_matrix = wx.NewIdRef()
+        self._id_bw_download_queue = wx.NewIdRef()
         self._id_watch_folder_toggle = wx.NewIdRef()
         self._id_watch_folder_settings = wx.NewIdRef()
         self._id_watch_folder_status = wx.NewIdRef()
@@ -3006,8 +3148,6 @@ class MainFrame:
             self._id_watch_folder_status,
             self._menu_label("Watch Folder St&atus...", "tools.watch_folder_status"),
         )
-        tools_menu.AppendSubMenu(dictation_menu, "D&ictation")
-
         integrations_menu = wx.Menu()
         integrations_menu.Append(
             self._id_ocr_image,
@@ -3155,6 +3295,103 @@ class MainFrame:
             self._id_profile_onboarding,
             self._menu_label("&Startup Wizard...", "help.startup_wizard"),
         )
+        bw_dictation_menu = wx.Menu()
+        bw_dictation_menu.Append(
+            self._id_dictation,
+            self._menu_label("&Dictation", "tools.dictation_toggle"),
+            "Press to start dictation, press again to stop and insert",
+        )
+        bw_dictation_menu.AppendCheckItem(
+            self._id_dictation_voice_commands,
+            self._menu_label("&Hey QUILL Commands", "tools.dictation_voice_commands_toggle"),
+        )
+        bw_dictation_menu.Check(
+            self._id_dictation_voice_commands, self.settings.voice_commands_enabled
+        )
+        bw_dictation_menu.AppendSeparator()
+        bw_dictation_menu.AppendCheckItem(
+            self._id_watch_folder_toggle,
+            self._menu_label("&Watch Folder Monitoring", "tools.watch_folder_toggle"),
+        )
+        bw_dictation_menu.Check(
+            self._id_watch_folder_toggle,
+            bool(getattr(self.settings, "watch_folder_enabled", False))
+            and self._watch_folder.is_running,
+        )
+        bw_dictation_menu.Append(
+            self._id_watch_folder_settings,
+            self._menu_label("Watch Folder &Settings...", "tools.watch_folder_settings"),
+        )
+        bw_dictation_menu.Append(
+            self._id_watch_folder_status,
+            self._menu_label("Watch Folder St&atus...", "tools.watch_folder_status"),
+        )
+        whisperer_menu.AppendSubMenu(bw_dictation_menu, "&Dictation and Watch Folder")
+
+        bw_models_menu = wx.Menu()
+        self._append_bw_safe_mode_badge(bw_models_menu)
+        bw_models_menu.Append(
+            self._id_bw_model_manager,
+            self._menu_label("&Model Manager...", "whisperer.model_manager"),
+        )
+        bw_models_menu.Append(
+            self._id_bw_model_status,
+            self._menu_label("Model &Status", "whisperer.model_status"),
+        )
+        bw_models_menu.Append(
+            self._id_bw_model_recommend,
+            self._menu_label("Use &Recommended Model", "whisperer.model_recommend"),
+        )
+        bw_models_menu.AppendCheckItem(
+            self._id_bw_toggle_parakeet,
+            self._menu_label("Show &Parakeet Models", "whisperer.toggle_parakeet"),
+        )
+        bw_models_menu.Check(
+            self._id_bw_toggle_parakeet,
+            bool(getattr(self.settings, "bw_enable_parakeet_models", False)),
+        )
+        bw_models_menu.AppendSeparator()
+        bw_models_menu.Append(
+            self._id_bw_check_faster_whisper,
+            self._menu_label("Check &faster-whisper Engine", "whisperer.check_faster_whisper"),
+        )
+        bw_models_menu.Append(
+            self._id_bw_download_queue,
+            self._menu_label("Download &Queue...", "whisperer.download_queue"),
+        )
+        whisperer_menu.AppendSubMenu(bw_models_menu, "Speech &Models")
+
+        bw_providers_menu = wx.Menu()
+        self._append_bw_safe_mode_badge(bw_providers_menu)
+        bw_providers_menu.Append(
+            self._id_bw_provider_center,
+            self._menu_label("&Provider Center...", "whisperer.provider_center"),
+        )
+        bw_providers_menu.Append(
+            self._id_bw_provider_status,
+            self._menu_label("Provider &Status", "whisperer.provider_status"),
+        )
+        bw_providers_menu.Append(
+            self._id_bw_provider_recommend,
+            self._menu_label("Use Re&commended Provider", "whisperer.provider_recommend"),
+        )
+        bw_providers_menu.Append(
+            self._id_bw_provider_select,
+            self._menu_label("&Select Provider...", "whisperer.provider_select"),
+        )
+        whisperer_menu.AppendSubMenu(bw_providers_menu, "&Providers")
+
+        bw_rollout_menu = wx.Menu()
+        self._append_bw_safe_mode_badge(bw_rollout_menu)
+        bw_rollout_menu.Append(
+            self._id_bw_readiness_check,
+            self._menu_label("&Readiness Check", "whisperer.readiness_check"),
+        )
+        bw_rollout_menu.Append(
+            self._id_bw_capability_matrix,
+            self._menu_label("&Capability Matrix (HTML Preview)", "whisperer.capability_matrix"),
+        )
+        whisperer_menu.AppendSubMenu(bw_rollout_menu, "&Rollout")
         menu_bar.Append(whisperer_menu, "&BITS Whisperer")
         glow_menu = wx.Menu()
         glow_menu.Append(
@@ -4041,6 +4278,66 @@ class MainFrame:
         )
         self.frame.Bind(
             wx.EVT_MENU,
+            lambda _e: self.open_bw_model_manager(),
+            id=self._id_bw_model_manager,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.show_bw_model_status(),
+            id=self._id_bw_model_status,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.apply_bw_recommended_model(),
+            id=self._id_bw_model_recommend,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.toggle_bw_parakeet_visibility(),
+            id=self._id_bw_toggle_parakeet,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.check_bw_faster_whisper_engine(),
+            id=self._id_bw_check_faster_whisper,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_bw_provider_center(),
+            id=self._id_bw_provider_center,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.show_bw_provider_status(),
+            id=self._id_bw_provider_status,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.apply_bw_recommended_provider(),
+            id=self._id_bw_provider_recommend,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.select_bw_provider(),
+            id=self._id_bw_provider_select,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.show_bw_readiness_check(),
+            id=self._id_bw_readiness_check,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.show_bw_capability_matrix_page(),
+            id=self._id_bw_capability_matrix,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.manage_bw_download_queue(),
+            id=self._id_bw_download_queue,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
             lambda _e: self.toggle_watch_folder_monitoring(),
             id=self._id_watch_folder_toggle,
         )
@@ -4447,6 +4744,18 @@ class MainFrame:
             "help.status_page": self._id_help_status_page,
             "help.startup_wizard": self._id_profile_onboarding,
             "whisperer.about": self._id_whisperer_about,
+            "whisperer.model_manager": self._id_bw_model_manager,
+            "whisperer.model_status": self._id_bw_model_status,
+            "whisperer.model_recommend": self._id_bw_model_recommend,
+            "whisperer.toggle_parakeet": self._id_bw_toggle_parakeet,
+            "whisperer.check_faster_whisper": self._id_bw_check_faster_whisper,
+            "whisperer.provider_center": self._id_bw_provider_center,
+            "whisperer.provider_status": self._id_bw_provider_status,
+            "whisperer.provider_recommend": self._id_bw_provider_recommend,
+            "whisperer.provider_select": self._id_bw_provider_select,
+            "whisperer.readiness_check": self._id_bw_readiness_check,
+            "whisperer.capability_matrix": self._id_bw_capability_matrix,
+            "whisperer.download_queue": self._id_bw_download_queue,
             "tools.yaml_structure_editor": self._id_yaml_structure_editor,
             "edit.copy_with_source": self._id_copy_with_source,
             "edit.select_line": self._id_select_line,
@@ -4732,8 +5041,8 @@ class MainFrame:
         for candidate in requests:
             if candidate is None:
                 continue
-            if candidate.exists() and candidate.is_file():
-                self.open_file(candidate)
+            if candidate.path.exists() and candidate.path.is_file():
+                self.open_file(candidate.path, line=candidate.line, column=candidate.column)
         self.frame.Show(True)
         self.frame.Raise()
         self.frame.RequestUserAttention()
@@ -6704,16 +7013,14 @@ class MainFrame:
         self._background_task_sequence = int(getattr(self, "_background_task_sequence", 0)) + 1
         task_id = self._background_task_sequence
         tasks = getattr(self, "_background_tasks", [])
-        tasks.append(
-            {
-                "id": task_id,
-                "label": label,
-                "status": "running",
-                "progress": "Starting",
-                "started_at": datetime.now(UTC).isoformat(),
-                "finished_at": "",
-            }
-        )
+        tasks.append({
+            "id": task_id,
+            "label": label,
+            "status": "running",
+            "progress": "Starting",
+            "started_at": datetime.now(UTC).isoformat(),
+            "finished_at": "",
+        })
         self._background_tasks = tasks[-100:]
         return task_id
 
@@ -6730,6 +7037,7 @@ class MainFrame:
                 continue
             task["progress"] = f"{current}/{total} - {message}"
             break
+        self._maybe_refresh_live_status_tabs()
 
     def _track_background_task_finish(self, task_id: int, status: str, detail: str) -> None:
         tasks = getattr(self, "_background_tasks", [])
@@ -6740,6 +7048,124 @@ class MainFrame:
             task["progress"] = detail
             task["finished_at"] = datetime.now(UTC).isoformat()
             break
+        self._maybe_refresh_live_status_tabs()
+
+    def _status_tab_indexes(self) -> list[int]:
+        getter = getattr(self.notebook, "GetPageText", None)
+        if not callable(getter):
+            return []
+        indexes: list[int] = []
+        for index in range(self.notebook.GetPageCount()):
+            if getter(index) == "Application Status":
+                indexes.append(index)
+        return indexes
+
+    def _ensure_status_page_timer(self) -> None:
+        if self._status_page_timer is not None:
+            return
+        wx = self._wx
+        timer = wx.Timer(self.frame)
+        self.frame.Bind(wx.EVT_TIMER, self._on_status_page_timer, timer)
+        self._status_page_timer = timer
+
+    def _set_status_page_live_updates(self, enabled: bool) -> None:
+        self._status_page_live_updates = enabled
+        self._status_page_last_announce_at = time.monotonic()
+        self._status_page_last_announce_signature = ""
+        timer = self._status_page_timer
+        if timer is None:
+            return
+        if enabled:
+            timer.Start(self._status_page_refresh_ms)
+        else:
+            timer.Stop()
+
+    def _status_page_announcement_interval_seconds(self) -> int | None:
+        cadence = str(
+            getattr(self.settings, "status_page_refresh_announcement_cadence", "quiet")
+        ).lower()
+        if cadence == "quiet":
+            return None
+        if cadence == "verbose":
+            return 10
+        return 30
+
+    def _status_page_refresh_signature(self) -> str:
+        tasks = getattr(self, "_background_tasks", [])[-20:]
+        task_snapshot = [
+            {
+                "id": int(task.get("id", -1)),
+                "status": str(task.get("status", "")),
+                "progress": str(task.get("progress", "")),
+            }
+            for task in tasks
+        ]
+        bw_snapshot = {
+            model_id: {
+                "status": str(entry.get("status", "")),
+                "progress": str(entry.get("progress", "")),
+            }
+            for model_id, entry in sorted(self._bw_download_status.items())
+        }
+        payload = {
+            "active_tasks": int(getattr(self, "_background_task_count", 0)),
+            "notifications": len(getattr(self, "_notifications", [])),
+            "bw_provider_mode": str(getattr(self.settings, "bw_provider_mode", "local_first")),
+            "bw_provider_id": str(getattr(self.settings, "bw_provider_id", "local_whisper")),
+            "bw_model": str(getattr(self.settings, "bw_speech_model_id", "whisper-base")),
+            "tasks": task_snapshot,
+            "bw_downloads": bw_snapshot,
+        }
+        return json.dumps(payload, sort_keys=True, ensure_ascii=False)
+
+    def _maybe_announce_status_page_refresh(self, signature: str) -> None:
+        interval_seconds = self._status_page_announcement_interval_seconds()
+        if interval_seconds is None:
+            return
+        if signature == self._status_page_last_announce_signature:
+            return
+        now = time.monotonic()
+        if now - self._status_page_last_announce_at < interval_seconds:
+            return
+        active_tasks = int(getattr(self, "_background_task_count", 0))
+        bw_running = sum(
+            1
+            for entry in self._bw_download_status.values()
+            if str(entry.get("status", "")).lower() == "running"
+        )
+        self._announce(
+            "Status page refreshed. "
+            f"{active_tasks} background task(s) active. "
+            f"{bw_running} BITS Whisperer download(s) running."
+        )
+        self._status_page_last_announce_at = now
+        self._status_page_last_announce_signature = signature
+
+    def _refresh_help_status_tabs(self) -> None:
+        indexes = self._status_tab_indexes()
+        if not indexes:
+            self._set_status_page_live_updates(False)
+            return
+        report_html = self._build_help_status_html()
+        selected_index = self._current_tab_index()
+        for index in indexes:
+            if not (0 <= index < len(self._document_tabs)):
+                continue
+            tab = self._document_tabs[index]
+            tab.editor.ChangeValue(report_html)
+            tab.document.set_text(report_html)
+            tab.document.modified = False
+            if index == selected_index and self._browser_preview_session is not None:
+                self._show_side_preview_for(tab)
+
+    def _maybe_refresh_live_status_tabs(self) -> None:
+        if not self._status_page_live_updates:
+            return
+        self._refresh_help_status_tabs()
+
+    def _on_status_page_timer(self, _event: object) -> None:
+        self._refresh_help_status_tabs()
+        self._maybe_announce_status_page_refresh(self._status_page_refresh_signature())
 
     def _open_generated_tab(self, title: str, text: str) -> int:
         index = self._create_document_tab(
@@ -6829,6 +7255,8 @@ class MainFrame:
         path: Path | None = None,
         record_recent: bool = True,
         refresh_existing: bool = False,
+        line: int | None = None,
+        column: int | None = None,
     ) -> None:
         self._clear_empty_workspace_state()
         wx = self._wx
@@ -6856,6 +7284,7 @@ class MainFrame:
             self._select_tab(existing_index)
             if record_recent:
                 self._record_recent(selected_path)
+            self._position_editor_at(line=line, column=column)
             self._set_status(f"Opened {selected_path.name}")
             return
         if not is_trusted_location(selected_path, self._trusted_locations):
@@ -6938,11 +7367,44 @@ class MainFrame:
             self._load_persistent_undo_state(selected_path, loaded.text)
             self._location_ring = LocationRing()
             self._location_ring.record(0)
+        self._position_editor_at(line=line, column=column)
         if record_recent:
             self._record_recent(selected_path)
         self._refresh_title()
         self._last_intake_report = build_intake_report(loaded)
         self._set_status(build_intake_summary(loaded))
+
+    def _position_editor_at(self, line: int | None = None, column: int | None = None) -> None:
+        if line is None and column is None:
+            return
+        text = self.editor.GetValue()
+        target = self._cursor_position_for_line_column(text, line=line, column=column)
+        self.editor.SetInsertionPoint(target)
+        self.editor.SetSelection(target, target)
+        self._set_status(
+            f"Moved cursor to line {line if line is not None else 1}, column {column if column is not None else 1}"
+        )
+
+    def _cursor_position_for_line_column(
+        self,
+        text: str,
+        *,
+        line: int | None,
+        column: int | None,
+    ) -> int:
+        target_line = 1 if line is None else max(1, line)
+        target_column = 1 if column is None else max(1, column)
+        if target_line <= 1 and target_column <= 1:
+            return 0
+        offset = 0
+        current_line = 1
+        for segment in text.splitlines(keepends=True):
+            if current_line == target_line:
+                line_text = segment.rstrip("\r\n")
+                return min(offset + target_column - 1, offset + len(line_text))
+            offset += len(segment)
+            current_line += 1
+        return len(text)
 
     def _resolve_csv_open_mode(self, path: Path) -> str:
         if not _csv_feature_enabled():
@@ -7773,6 +8235,8 @@ class MainFrame:
 
     def open_general_preferences(self) -> None:
         wx = self._wx
+        from quill.core.ai.model_manager import load_ai_enabled, save_ai_enabled
+
         with wx.Dialog(self.frame, title="General Preferences") as dialog:
             panel = wx.Panel(dialog)
             root = wx.BoxSizer(wx.VERTICAL)
@@ -7850,6 +8314,10 @@ class MainFrame:
             intellisense.SetValue(getattr(self.settings, "intellisense_as_you_type", False))
             panel_sizer.Add(intellisense, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
+            ai_enabled = wx.CheckBox(panel, label="Use Artificial Intelligence")
+            ai_enabled.SetValue(load_ai_enabled())
+            panel_sizer.Add(ai_enabled, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
             assistant_enabled = wx.CheckBox(panel, label="Enable writing assistant")
             assistant_enabled.SetValue(getattr(self.settings, "assistant_enabled", False))
             panel_sizer.Add(assistant_enabled, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
@@ -7867,6 +8335,48 @@ class MainFrame:
                 }.get(getattr(self.settings, "assistant_prompt_style", "balanced"), 0)
             )
             _add_choice_row("Assistant prompt style", assistant_style)
+
+            bw_auto_open_status = wx.CheckBox(
+                panel,
+                label="Auto-open Status Page when BITS Whisperer model downloads start",
+            )
+            bw_auto_open_status.SetValue(
+                bool(getattr(self.settings, "bw_auto_open_status_page_on_download_start", False))
+            )
+            panel_sizer.Add(bw_auto_open_status, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+            status_refresh_cadence = wx.Choice(
+                panel,
+                choices=[
+                    "Quiet (no spoken refresh notifications)",
+                    "Normal (spoken every 30 seconds)",
+                    "Verbose (spoken every 10 seconds)",
+                ],
+            )
+            status_refresh_cadence.SetSelection(
+                {
+                    "quiet": 0,
+                    "normal": 1,
+                    "verbose": 2,
+                }.get(
+                    str(
+                        getattr(
+                            self.settings,
+                            "status_page_refresh_announcement_cadence",
+                            "quiet",
+                        )
+                    ).lower(),
+                    0,
+                )
+            )
+            _add_choice_row("Status page refresh announcements", status_refresh_cadence)
+
+            bw_safe_mode_lock = wx.CheckBox(
+                panel,
+                label="Enable BITS Whisperer safe mode lock (blocks download/retry actions)",
+            )
+            bw_safe_mode_lock.SetValue(bool(getattr(self.settings, "bw_safe_mode_lock", False)))
+            panel_sizer.Add(bw_safe_mode_lock, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
             browser_choice = wx.Choice(
                 panel,
@@ -7913,6 +8423,7 @@ class MainFrame:
                 "persistent_undo": bool(persistent_undo.GetValue()),
                 "spellcheck_as_you_type": bool(spellcheck.GetValue()),
                 "intellisense_as_you_type": bool(intellisense.GetValue()),
+                "ai_enabled": bool(ai_enabled.GetValue()),
                 "assistant_enabled": bool(assistant_enabled.GetValue()),
                 "assistant_prompt_style": {
                     0: "balanced",
@@ -7920,6 +8431,13 @@ class MainFrame:
                     2: "gentle",
                     3: "technical",
                 }.get(assistant_style.GetSelection(), "balanced"),
+                "bw_auto_open_status_page_on_download_start": bool(bw_auto_open_status.GetValue()),
+                "status_page_refresh_announcement_cadence": {
+                    0: "quiet",
+                    1: "normal",
+                    2: "verbose",
+                }.get(status_refresh_cadence.GetSelection(), "quiet"),
+                "bw_safe_mode_lock": bool(bw_safe_mode_lock.GetValue()),
                 "preview_browser": browser_choice_value_for_label(
                     browser_choice.GetStringSelection() or "System default browser"
                 ),
@@ -7959,6 +8477,11 @@ class MainFrame:
                 getattr(self.settings, "intellisense_as_you_type", False),
             )
         )
+        ai_enabled_value = bool(values.get("ai_enabled", load_ai_enabled()))
+        save_ai_enabled(ai_enabled_value)
+        self._sync_ai_enabled_menu(ai_enabled_value)
+        self._apply_ai_menu_enabled()
+        self._refresh_ai_status()
         self.settings.assistant_enabled = bool(
             values.get("assistant_enabled", getattr(self.settings, "assistant_enabled", False))
         )
@@ -7967,6 +8490,21 @@ class MainFrame:
                 "assistant_prompt_style",
                 getattr(self.settings, "assistant_prompt_style", "balanced"),
             )
+        )
+        self.settings.bw_auto_open_status_page_on_download_start = bool(
+            values.get(
+                "bw_auto_open_status_page_on_download_start",
+                getattr(self.settings, "bw_auto_open_status_page_on_download_start", False),
+            )
+        )
+        self.settings.status_page_refresh_announcement_cadence = str(
+            values.get(
+                "status_page_refresh_announcement_cadence",
+                getattr(self.settings, "status_page_refresh_announcement_cadence", "quiet"),
+            )
+        )
+        self.settings.bw_safe_mode_lock = bool(
+            values.get("bw_safe_mode_lock", getattr(self.settings, "bw_safe_mode_lock", False))
         )
         self.settings.preview_browser = normalize_browser_choice(
             str(values.get("preview_browser", self.settings.preview_browser))
@@ -7987,14 +8525,7 @@ class MainFrame:
         save_settings(self.settings)
         self._apply_soft_wrap_setting()
         self._rebuild_tab_host(self.settings.show_tab_control)
-        menu_bar = self.frame.GetMenuBar()
-        if menu_bar is not None:
-            item = menu_bar.FindItemById(self._id_toggle_tab_control)
-            if item is not None:
-                item.Check(self.settings.show_tab_control)
-            intellisense_item = menu_bar.FindItemById(self._id_toggle_intellisense_as_you_type)
-            if intellisense_item is not None:
-                intellisense_item.Check(getattr(self.settings, "intellisense_as_you_type", False))
+        self._build_menu()
         self._apply_dirty_title_style_setting()
         self._refresh_title()
         self._refresh_view_menu_checks()
@@ -8725,13 +9256,11 @@ class MainFrame:
                 lines.extend(["", "Suggested first touch points:"])
                 lines.extend(f"- {item}" for item in touch_lines)
             if status.definition.category == "validation":
-                lines.extend(
-                    [
-                        "",
-                        "Why Quill recommends this:",
-                        "- It adds validation value without pulling in Node.js or Java.",
-                    ]
-                )
+                lines.extend([
+                    "",
+                    "Why Quill recommends this:",
+                    "- It adds validation value without pulling in Node.js or Java.",
+                ])
             lines.extend(["", f"Learn more: {status.definition.website_url}"])
             details.SetValue("\n".join(lines))
             copy_button.Enable(True)
@@ -8964,6 +9493,7 @@ class MainFrame:
                 "screen_reader": detection.name,
                 "wx_version": self._wx.version(),
                 **self._announcement_engine.diagnostics_environment(),
+                "bw_rollout": self._bw_diagnostics_snapshot(),
             },
         )
         self._record_notification(f"Saved diagnostics to {bundle_path.name}", "diagnostics")
@@ -9013,6 +9543,7 @@ class MainFrame:
                         "screen_reader": detection.name,
                         "wx_version": self._wx.version(),
                         **self._announcement_engine.diagnostics_environment(),
+                        "bw_rollout": self._bw_diagnostics_snapshot(),
                     },
                 )
             )
@@ -9285,6 +9816,7 @@ class MainFrame:
                 "screen_reader": detection.name,
                 "wx_version": self._wx.version(),
                 **announcement_environment,
+                "bw_rollout": self._bw_diagnostics_snapshot(),
             },
         )
         self._record_notification(f"Saved diagnostics to {bundle_path.name}", "diagnostics")
@@ -12177,6 +12709,647 @@ class MainFrame:
             self._voice_command_baseline_text = ""
             self._set_status("Hey QUILL commands disabled")
 
+    def _bw_include_parakeet_models(self) -> bool:
+        if not self._feature_enabled("core.bw_parakeet"):
+            return False
+        return bool(getattr(self.settings, "bw_enable_parakeet_models", False))
+
+    def show_bw_model_status(self) -> None:
+        include_parakeet = self._bw_include_parakeet_models()
+        models = bw_list_models(include_parakeet=include_parakeet)
+        downloaded = bw_downloaded_model_ids(include_parakeet=include_parakeet)
+        mode = str(getattr(self.settings, "bw_speech_selection_mode", "recommended"))
+        current_model = str(getattr(self.settings, "bw_speech_model_id", "whisper-base"))
+        recommended = bw_recommended_model_id(include_parakeet=include_parakeet)
+        ok, engine_status = faster_whisper_status()
+        status = [
+            "BITS Whisperer Speech Model Status",
+            "",
+            bw_machine_guidance(),
+            f"Selection mode: {mode}",
+            f"Configured default: {current_model}",
+            f"Recommended now: {recommended}",
+            f"Installed models: {len(downloaded)} of {len(models)}",
+            f"faster-whisper engine: {'Ready' if ok else 'Not installed'}",
+            engine_status,
+            "",
+            "This is a phased rollout. Additional BITS Whisperer capabilities will arrive gradually.",
+        ]
+        self._show_message_box("\n".join(status), "BITS Whisperer Speech Models", self._wx.OK)
+        self._set_status("BITS Whisperer speech model status shown")
+
+    def apply_bw_recommended_model(self) -> None:
+        model_id = bw_recommended_model_id(include_parakeet=self._bw_include_parakeet_models())
+        self.settings.bw_speech_selection_mode = "recommended"
+        self.settings.bw_speech_model_id = model_id
+        save_settings(self.settings)
+        self._set_status(f"Recommended mode active. Selected speech model: {model_id}")
+
+    def toggle_bw_parakeet_visibility(self) -> None:
+        self.settings.bw_enable_parakeet_models = not bool(
+            getattr(self.settings, "bw_enable_parakeet_models", False)
+        )
+        save_settings(self.settings)
+        item = self.frame.GetMenuBar().FindItemById(self._id_bw_toggle_parakeet)
+        if item is not None:
+            item.Check(self.settings.bw_enable_parakeet_models)
+        state_text = "enabled" if self.settings.bw_enable_parakeet_models else "disabled"
+        self._set_status(f"Parakeet model visibility {state_text}")
+
+    def check_bw_faster_whisper_engine(self) -> None:
+        ok, detail = faster_whisper_status()
+        icon = self._wx.ICON_INFORMATION if ok else self._wx.ICON_WARNING
+        self._show_message_box(detail, "faster-whisper Engine", self._wx.OK | icon)
+        self._set_status("faster-whisper engine ready" if ok else "faster-whisper not installed")
+
+    def _set_bw_download_status(
+        self,
+        model_id: str,
+        *,
+        model_name: str,
+        status: str,
+        progress: str,
+        started_at: str | None = None,
+        finished_at: str = "",
+    ) -> None:
+        existing = self._bw_download_status.get(model_id, {})
+        self._bw_download_status[model_id] = {
+            "model": model_name,
+            "status": status,
+            "progress": progress,
+            "started_at": started_at
+            or str(existing.get("started_at", datetime.now(UTC).isoformat())),
+            "finished_at": finished_at,
+        }
+        self._maybe_refresh_live_status_tabs()
+
+    def _bw_include_cloud_providers(self) -> bool:
+        return bool(getattr(self.settings, "bw_show_cloud_providers", True))
+
+    def _bw_local_first_mode(self) -> bool:
+        return str(getattr(self.settings, "bw_provider_mode", "local_first")) == "local_first"
+
+    def _bw_safe_mode_locked(self) -> bool:
+        return bool(getattr(self.settings, "bw_safe_mode_lock", False))
+
+    def _append_bw_safe_mode_badge(self, menu: object) -> None:
+        if not self._bw_safe_mode_locked():
+            return
+        badge_item = menu.Append(self._wx.ID_ANY, "Safe Mode Lock: Enabled")
+        badge_item.Enable(False)
+
+    def apply_bw_recommended_provider(self) -> None:
+        provider_id = bw_recommended_provider_id(local_first=self._bw_local_first_mode())
+        self.settings.bw_provider_id = provider_id
+        save_settings(self.settings)
+        provider = bw_get_provider(provider_id, include_cloud=True)
+        provider_name = provider.name if provider is not None else provider_id
+        self._set_status(f"Recommended provider selected: {provider_name}")
+
+    def select_bw_provider(self) -> None:
+        providers = bw_list_providers(include_cloud=self._bw_include_cloud_providers())
+        if not providers:
+            self._set_status("No providers available for current provider visibility settings")
+            return
+        labels = [f"{provider.name} ({provider.provider_type})" for provider in providers]
+        dialog = self._wx.SingleChoiceDialog(
+            self.frame,
+            "Select a provider to stage for upcoming BITS Whisperer phases.",
+            "BITS Whisperer Provider Selection",
+            labels,
+        )
+        try:
+            if dialog.ShowModal() != self._wx.ID_OK:
+                return
+            selection = dialog.GetSelection()
+        finally:
+            dialog.Destroy()
+
+        if selection < 0 or selection >= len(providers):
+            return
+        selected = providers[selection]
+        self.settings.bw_provider_id = selected.id
+        save_settings(self.settings)
+        self._set_status(f"Selected provider: {selected.name}")
+
+    def show_bw_provider_status(self) -> None:
+        provider_id = str(getattr(self.settings, "bw_provider_id", "local_whisper"))
+        local_first = self._bw_local_first_mode()
+        include_cloud = self._bw_include_cloud_providers()
+        provider = bw_get_provider(provider_id, include_cloud=include_cloud)
+        readiness = bw_provider_readiness(provider_id, local_first=local_first)
+        recommended_id = bw_recommended_provider_id(local_first=local_first)
+        recommended = bw_get_provider(recommended_id, include_cloud=True)
+        mode_name = "Local-first" if local_first else "Cloud-first"
+        lines = [
+            "BITS Whisperer Provider Status",
+            "",
+            bw_provider_mode_guidance(local_first=local_first),
+            f"Provider mode: {mode_name}",
+            f"Cloud providers visible: {'Yes' if include_cloud else 'No'}",
+            f"Configured provider: {provider.name if provider else provider_id}",
+            f"Recommended provider: {recommended.name if recommended else recommended_id}",
+            "",
+            f"Readiness: {'Ready' if readiness.ready else 'Needs setup'}",
+            readiness.summary,
+            "",
+            "Next steps:",
+        ]
+        lines.extend(f"- {step}" for step in readiness.next_steps)
+        lines.append("")
+        lines.append(
+            "Providers are staged intentionally in this phase; runtime provider routing remains gated."
+        )
+        self._show_message_box("\n".join(lines), "BITS Whisperer Providers", self._wx.OK)
+        self._set_status("BITS Whisperer provider status shown")
+
+    def open_bw_provider_center(self) -> None:
+        actions = [
+            "Use recommended provider",
+            "Select provider manually",
+            "Show provider status",
+            "Switch to local-first mode",
+            "Switch to cloud-first mode",
+            "Toggle cloud provider visibility",
+        ]
+        dialog = self._wx.SingleChoiceDialog(
+            self.frame,
+            "Choose a guided provider setup action.",
+            "BITS Whisperer Provider Center",
+            actions,
+        )
+        try:
+            if dialog.ShowModal() != self._wx.ID_OK:
+                return
+            action = actions[dialog.GetSelection()]
+        finally:
+            dialog.Destroy()
+
+        if action == "Use recommended provider":
+            self.apply_bw_recommended_provider()
+            return
+        if action == "Select provider manually":
+            self.select_bw_provider()
+            return
+        if action == "Show provider status":
+            self.show_bw_provider_status()
+            return
+        if action == "Switch to local-first mode":
+            self.settings.bw_provider_mode = "local_first"
+            save_settings(self.settings)
+            self._set_status("Provider mode set to local-first")
+            return
+        if action == "Switch to cloud-first mode":
+            self.settings.bw_provider_mode = "cloud_first"
+            save_settings(self.settings)
+            self._set_status("Provider mode set to cloud-first")
+            return
+        if action == "Toggle cloud provider visibility":
+            self.settings.bw_show_cloud_providers = not self._bw_include_cloud_providers()
+            save_settings(self.settings)
+            state_text = "enabled" if self.settings.bw_show_cloud_providers else "disabled"
+            self._set_status(f"Cloud provider visibility {state_text}")
+            return
+
+    def _bw_readiness_snapshot(self) -> dict[str, object]:
+        local_first = self._bw_local_first_mode()
+        provider_id = str(getattr(self.settings, "bw_provider_id", "local_whisper"))
+        provider = bw_get_provider(provider_id, include_cloud=True)
+        readiness = bw_provider_readiness(provider_id, local_first=local_first)
+        recommended_provider_id = bw_recommended_provider_id(local_first=local_first)
+        recommended_provider = bw_get_provider(recommended_provider_id, include_cloud=True)
+        downloaded_ids = bw_downloaded_model_ids(include_parakeet=False)
+        available_model_count = len(bw_list_models(include_parakeet=False))
+        engine_ok, engine_status = faster_whisper_status()
+        return {
+            "provider_mode": "local_first" if local_first else "cloud_first",
+            "provider_id": provider_id,
+            "provider_name": provider.name if provider is not None else provider_id,
+            "recommended_provider_id": recommended_provider_id,
+            "recommended_provider_name": (
+                recommended_provider.name
+                if recommended_provider is not None
+                else recommended_provider_id
+            ),
+            "provider_ready": readiness.ready,
+            "provider_summary": readiness.summary,
+            "provider_next_steps": list(readiness.next_steps),
+            "speech_model_mode": str(
+                getattr(self.settings, "bw_speech_selection_mode", "recommended")
+            ),
+            "speech_model_id": str(getattr(self.settings, "bw_speech_model_id", "whisper-base")),
+            "safe_mode_lock": self._bw_safe_mode_locked(),
+            "downloaded_model_count": len(downloaded_ids),
+            "available_model_count": available_model_count,
+            "downloaded_model_ids": sorted(downloaded_ids),
+            "engine_ready": engine_ok,
+            "engine_status": engine_status,
+            "machine_guidance": bw_machine_guidance(),
+        }
+
+    def _bw_diagnostics_snapshot(self) -> dict[str, object]:
+        snapshot = self._bw_readiness_snapshot()
+        snapshot["download_status"] = {
+            model_id: {
+                "model": str(entry.get("model", "")),
+                "status": str(entry.get("status", "")),
+                "progress": str(entry.get("progress", "")),
+                "started_at": str(entry.get("started_at", "")),
+                "finished_at": str(entry.get("finished_at", "")),
+            }
+            for model_id, entry in sorted(self._bw_download_status.items())
+        }
+        return snapshot
+
+    def show_bw_readiness_check(self) -> None:
+        snapshot = self._bw_readiness_snapshot()
+        lines = [
+            "BITS Whisperer Readiness Check",
+            "",
+            str(snapshot["machine_guidance"]),
+            f"Provider mode: {snapshot['provider_mode']}",
+            f"Configured provider: {snapshot['provider_name']}",
+            f"Recommended provider: {snapshot['recommended_provider_name']}",
+            f"Provider readiness: {'Ready' if snapshot['provider_ready'] else 'Needs setup'}",
+            str(snapshot["provider_summary"]),
+            f"Speech mode: {snapshot['speech_model_mode']}",
+            f"Configured speech model: {snapshot['speech_model_id']}",
+            f"Safe mode lock: {'Enabled' if snapshot['safe_mode_lock'] else 'Disabled'}",
+            (
+                "Downloaded whisper models: "
+                f"{snapshot['downloaded_model_count']} of {snapshot['available_model_count']}"
+            ),
+            f"faster-whisper engine: {'Ready' if snapshot['engine_ready'] else 'Not installed'}",
+            str(snapshot["engine_status"]),
+            "",
+            "Next steps:",
+        ]
+        lines.extend(f"- {step}" for step in snapshot["provider_next_steps"])
+        self._show_message_box("\n".join(lines), "BITS Whisperer Readiness", self._wx.OK)
+        self._set_status("BITS Whisperer readiness check complete")
+
+    def _build_bw_capability_matrix_html(self) -> str:
+        snapshot = self._bw_readiness_snapshot()
+        rows = [
+            (
+                "Whisper model acquisition",
+                "Phase 1",
+                "Ready"
+                if bool(snapshot["engine_ready"]) and int(snapshot["downloaded_model_count"]) > 0
+                else "In setup",
+                "Download and stage whisper models from the BITS Whisperer menu.",
+            ),
+            (
+                "Provider onboarding",
+                "Phase 1",
+                "Ready" if bool(snapshot["provider_ready"]) else "In setup",
+                "Use Provider Center and Readiness Check for safe staged onboarding.",
+            ),
+            (
+                "Dynamic status monitoring",
+                "Phase 1",
+                "Ready",
+                "Help Status Page refreshes live with accessibility-aware cadence controls.",
+            ),
+            (
+                "Parakeet runtime",
+                "Phase 2",
+                "Gated",
+                "Parakeet remains intentionally staged to reduce regression risk.",
+            ),
+            (
+                "Runtime provider routing",
+                "Phase 2",
+                "Gated",
+                "Cloud and advanced routing behavior is delayed until validation is complete.",
+            ),
+        ]
+        rows_html = "".join(
+            (
+                "<tr>"
+                f"<th scope='row'>{html.escape(name)}</th>"
+                f"<td>{html.escape(phase)}</td>"
+                f"<td>{html.escape(status)}</td>"
+                f"<td>{html.escape(notes)}</td>"
+                "</tr>"
+            )
+            for name, phase, status, notes in rows
+        )
+        return (
+            "<h1 id='bw-capability-matrix'>BITS Whisperer Capability Matrix</h1>"
+            "<p>This matrix shows rollout-safe capabilities currently staged in Quill.</p>"
+            "<table>"
+            "<caption>Capability status by rollout phase</caption>"
+            "<thead><tr>"
+            "<th scope='col'>Capability</th><th scope='col'>Phase</th>"
+            "<th scope='col'>Status</th><th scope='col'>Notes</th>"
+            "</tr></thead>"
+            f"<tbody>{rows_html}</tbody>"
+            "</table>"
+            "<h2 id='current-snapshot'>Current Snapshot</h2>"
+            "<ul>"
+            f"<li>Provider mode: {html.escape(str(snapshot['provider_mode']))}</li>"
+            f"<li>Configured provider: {html.escape(str(snapshot['provider_name']))}</li>"
+            f"<li>Speech model mode: {html.escape(str(snapshot['speech_model_mode']))}</li>"
+            f"<li>Configured speech model: {html.escape(str(snapshot['speech_model_id']))}</li>"
+            f"<li>Downloaded whisper models: {snapshot['downloaded_model_count']} of {snapshot['available_model_count']}</li>"
+            "</ul>"
+        )
+
+    def show_bw_capability_matrix_page(self) -> None:
+        index = self._open_generated_tab(
+            "BITS Whisperer Capability Matrix",
+            self._build_bw_capability_matrix_html(),
+        )
+        self._select_tab(index)
+        if 0 <= index < len(self._document_tabs):
+            self._show_side_preview_for(self._document_tabs[index])
+        self._set_status("Opened BITS Whisperer capability matrix")
+
+    def _start_bw_model_download(self, spec: object) -> None:
+        if self._bw_safe_mode_locked():
+            self._show_message_box(
+                "BITS Whisperer safe mode lock is enabled. Disable it in Preferences -> General "
+                "to allow model downloads.",
+                "BITS Whisperer Safe Mode",
+                self._wx.ICON_INFORMATION | self._wx.OK,
+            )
+            self._set_status("BITS Whisperer safe mode lock blocked model download")
+            return
+        model_id = str(getattr(spec, "id", ""))
+        model_name = str(getattr(spec, "name", model_id))
+        started_at = datetime.now(UTC).isoformat()
+        self._set_bw_download_status(
+            model_id,
+            model_name=model_name,
+            status="running",
+            progress="Starting",
+            started_at=started_at,
+        )
+
+        def work(progress: Callable[[str, int, int], None]) -> object:
+            def _progress(done: int, total: int) -> None:
+                total_display = total if total > 0 else 0
+                self._wx.CallAfter(
+                    self._set_bw_download_status,
+                    model_id,
+                    model_name=model_name,
+                    status="running",
+                    progress=f"{done}/{total_display}",
+                    started_at=started_at,
+                )
+                progress("Downloading model", done, total)
+
+            try:
+                return bw_download_model(spec, progress=_progress)
+            except Exception:
+                self._wx.CallAfter(
+                    self._set_bw_download_status,
+                    model_id,
+                    model_name=model_name,
+                    status="failed",
+                    progress="Failed",
+                    started_at=started_at,
+                    finished_at=datetime.now(UTC).isoformat(),
+                )
+                raise
+
+        def on_success(_result: object) -> None:
+            self._set_bw_download_status(
+                model_id,
+                model_name=model_name,
+                status="completed",
+                progress="Completed",
+                started_at=started_at,
+                finished_at=datetime.now(UTC).isoformat(),
+            )
+            self._set_status(f"Downloaded {model_name}. Check Help -> Status Page for details.")
+
+        self._run_background_task(
+            f"BITS Whisperer model download: {model_name}",
+            work,
+            on_success,
+            notify_on_success=True,
+            notify_on_error=True,
+            notification_category="speech",
+        )
+        if bool(
+            getattr(
+                self.settings,
+                "bw_auto_open_status_page_on_download_start",
+                False,
+            )
+        ):
+            self.show_help_status_page()
+        self._set_status(f"Started background download for {model_name}")
+
+    def manage_bw_download_queue(self) -> None:
+        actions = [
+            "Open live status page",
+            "Retry failed download",
+            "Clear completed and failed download history",
+        ]
+        dialog = self._wx.SingleChoiceDialog(
+            self.frame,
+            "Choose a download queue action.",
+            "BITS Whisperer Download Queue",
+            actions,
+        )
+        try:
+            if dialog.ShowModal() != self._wx.ID_OK:
+                return
+            action = actions[dialog.GetSelection()]
+        finally:
+            dialog.Destroy()
+
+        if action == "Open live status page":
+            self.show_help_status_page()
+            return
+
+        if action == "Retry failed download":
+            if self._bw_safe_mode_locked():
+                self._show_message_box(
+                    "BITS Whisperer safe mode lock is enabled. Disable it in Preferences -> "
+                    "General to allow download retries.",
+                    "BITS Whisperer Safe Mode",
+                    self._wx.ICON_INFORMATION | self._wx.OK,
+                )
+                self._set_status("BITS Whisperer safe mode lock blocked download retry")
+                return
+            failed_ids = [
+                model_id
+                for model_id, entry in self._bw_download_status.items()
+                if str(entry.get("status", "")).lower() == "failed"
+            ]
+            if not failed_ids:
+                self._set_status("No failed BITS Whisperer downloads to retry")
+                return
+            failed_choices = [
+                f"{model_id} ({self._bw_download_status[model_id].get('model', model_id)})"
+                for model_id in failed_ids
+            ]
+            retry_dialog = self._wx.SingleChoiceDialog(
+                self.frame,
+                "Choose a failed model download to retry.",
+                "Retry Download",
+                failed_choices,
+            )
+            try:
+                if retry_dialog.ShowModal() != self._wx.ID_OK:
+                    return
+                selection = retry_dialog.GetSelection()
+            finally:
+                retry_dialog.Destroy()
+            if selection < 0 or selection >= len(failed_ids):
+                return
+            model_id = failed_ids[selection]
+            spec = bw_get_model(model_id, include_parakeet=True)
+            if spec is None:
+                self._set_status(f"Could not retry; model no longer available: {model_id}")
+                return
+            self._start_bw_model_download(spec)
+            return
+
+        if action == "Clear completed and failed download history":
+            self._bw_download_status = {
+                model_id: entry
+                for model_id, entry in self._bw_download_status.items()
+                if str(entry.get("status", "")).lower() == "running"
+            }
+            self._maybe_refresh_live_status_tabs()
+            self._set_status("Cleared completed and failed BITS Whisperer download history")
+            return
+
+    def open_bw_model_manager(self) -> None:
+        include_parakeet = self._bw_include_parakeet_models()
+        models = bw_list_models(include_parakeet=include_parakeet)
+        downloaded = bw_downloaded_model_ids(include_parakeet=include_parakeet)
+        recommended = bw_recommended_model_id(include_parakeet=include_parakeet)
+
+        quick_actions = [
+            "Use recommended model",
+            "Choose model manually",
+            "Show model status",
+            "Check faster-whisper engine",
+        ]
+        quick_dialog = self._wx.SingleChoiceDialog(
+            self.frame,
+            (f"{bw_machine_guidance()}\n\nSelect a guided action for speech model setup."),
+            "BITS Whisperer Speech Setup",
+            quick_actions,
+        )
+        try:
+            if quick_dialog.ShowModal() != self._wx.ID_OK:
+                return
+            quick_action = quick_actions[quick_dialog.GetSelection()]
+        finally:
+            quick_dialog.Destroy()
+
+        if quick_action == "Use recommended model":
+            self.apply_bw_recommended_model()
+            return
+        if quick_action == "Show model status":
+            self.show_bw_model_status()
+            return
+        if quick_action == "Check faster-whisper engine":
+            self.check_bw_faster_whisper_engine()
+            return
+
+        choices: list[str] = []
+        model_ids: list[str] = []
+        for spec in models:
+            markers: list[str] = []
+            if spec.id in downloaded:
+                markers.append("downloaded")
+            if spec.id == recommended:
+                markers.append("recommended")
+            marker_text = f" [{' | '.join(markers)}]" if markers else ""
+            choices.append(f"{spec.name} ({spec.family}){marker_text}")
+            model_ids.append(spec.id)
+
+        dialog = self._wx.SingleChoiceDialog(
+            self.frame,
+            "Choose a speech model to configure.",
+            "BITS Whisperer Speech Models",
+            choices,
+        )
+        try:
+            if dialog.ShowModal() != self._wx.ID_OK:
+                return
+            selection = dialog.GetSelection()
+        finally:
+            dialog.Destroy()
+
+        if selection < 0 or selection >= len(model_ids):
+            return
+
+        model_id = model_ids[selection]
+        spec = bw_get_model(model_id, include_parakeet=include_parakeet)
+        if spec is None:
+            return
+
+        actions = ["Set as default", "Show status"]
+        is_present = spec.id in downloaded
+        if is_present:
+            actions.insert(1, "Remove downloaded model")
+        else:
+            actions.insert(1, "Download model")
+
+        action_dialog = self._wx.SingleChoiceDialog(
+            self.frame,
+            (
+                f"{spec.name}\n\n{spec.description}\n"
+                f"Approx size: {spec.approx_size_gb:.2f} GB\n"
+                f"Minimum RAM: {spec.min_ram_gb} GB"
+            ),
+            "BITS Whisperer Model Action",
+            actions,
+        )
+        try:
+            if action_dialog.ShowModal() != self._wx.ID_OK:
+                return
+            action = actions[action_dialog.GetSelection()]
+        finally:
+            action_dialog.Destroy()
+
+        if action == "Set as default":
+            self.settings.bw_speech_selection_mode = "manual"
+            self.settings.bw_speech_model_id = spec.id
+            save_settings(self.settings)
+            self._set_status(f"Manual mode active. Default speech model set to {spec.name}")
+            return
+
+        if action == "Download model":
+            if spec.family != "whisper":
+                self._show_message_box(
+                    "Parakeet downloads are intentionally gated in phase 1. "
+                    "Enable only whisper acquisition for now.",
+                    "BITS Whisperer Speech Models",
+                    self._wx.ICON_INFORMATION | self._wx.OK,
+                )
+                self._set_status("Parakeet download remains gated for later phases")
+                return
+            if not bw_has_disk_capacity(spec):
+                self._show_message_box(
+                    "Not enough disk space for this model plus safety buffer.",
+                    "BITS Whisperer Speech Models",
+                    self._wx.ICON_WARNING | self._wx.OK,
+                )
+                self._set_status("Speech model download blocked by disk space check")
+                return
+            self._start_bw_model_download(spec)
+            return
+
+        if action == "Remove downloaded model":
+            if bw_remove_model(spec):
+                self._set_status(f"Removed downloaded model {spec.name}")
+            else:
+                self._set_status(f"Model was not downloaded: {spec.name}")
+            return
+
+        if action == "Show status":
+            self.show_bw_model_status()
+
     def _watch_folder_config(self) -> WatchFolderConfig:
         return WatchFolderConfig(
             enabled=bool(getattr(self.settings, "watch_folder_enabled", False)),
@@ -12628,12 +13801,20 @@ class MainFrame:
         return result
 
     def show_help_status_page(self) -> None:
-        report_html = self._build_help_status_html()
-        index = self._open_generated_tab("Application Status", report_html)
-        self._select_tab(index)
-        if 0 <= index < len(self._document_tabs):
-            self._show_side_preview_for(self._document_tabs[index])
-        self._set_status("Opened application status page in HTML preview")
+        self._ensure_status_page_timer()
+        indexes = self._status_tab_indexes()
+        if indexes:
+            index = indexes[0]
+            self._select_tab(index)
+            self._refresh_help_status_tabs()
+        else:
+            report_html = self._build_help_status_html()
+            index = self._open_generated_tab("Application Status", report_html)
+            self._select_tab(index)
+            if 0 <= index < len(self._document_tabs):
+                self._show_side_preview_for(self._document_tabs[index])
+        self._set_status_page_live_updates(True)
+        self._set_status("Opened application status page in HTML preview with live updates")
 
     def _build_help_status_html(self) -> str:
         feature_rows: list[str] = []
@@ -12687,6 +13868,61 @@ class MainFrame:
             for name, value in speech_rows
         )
 
+        bw_mode = str(getattr(settings, "bw_provider_mode", "local_first"))
+        bw_local_first = bw_mode == "local_first"
+        bw_provider_id = str(getattr(settings, "bw_provider_id", "local_whisper"))
+        bw_provider = bw_get_provider(bw_provider_id, include_cloud=True)
+        bw_recommended_provider = bw_recommended_provider_id(local_first=bw_local_first)
+        bw_recommended_provider_spec = bw_get_provider(bw_recommended_provider, include_cloud=True)
+        bw_ready = bw_provider_readiness(bw_provider_id, local_first=bw_local_first)
+        bw_models = bw_list_models(include_parakeet=False)
+        bw_downloaded = bw_downloaded_model_ids(include_parakeet=False)
+        bw_engine_ok, bw_engine_status = faster_whisper_status()
+        bw_rows = [
+            ("Provider mode", "Local-first" if bw_local_first else "Cloud-first"),
+            ("Configured provider", bw_provider.name if bw_provider else bw_provider_id),
+            (
+                "Recommended provider",
+                bw_recommended_provider_spec.name
+                if bw_recommended_provider_spec
+                else bw_recommended_provider,
+            ),
+            ("Provider readiness", "Ready" if bw_ready.ready else "Needs setup"),
+            ("Model mode", str(getattr(settings, "bw_speech_selection_mode", "recommended"))),
+            (
+                "Configured speech model",
+                str(getattr(settings, "bw_speech_model_id", "whisper-base")),
+            ),
+            ("Whisper models downloaded", f"{len(bw_downloaded)} of {len(bw_models)}"),
+            ("faster-whisper engine", "Ready" if bw_engine_ok else "Not installed"),
+            ("Engine detail", bw_engine_status),
+            ("Last refresh", datetime.now(UTC).isoformat()),
+        ]
+        bw_table_rows = "".join(
+            f"<tr><th scope='row'>{html.escape(name)}</th><td>{html.escape(str(value))}</td></tr>"
+            for name, value in bw_rows
+        )
+
+        bw_download_rows: list[str] = []
+        for entry in sorted(
+            self._bw_download_status.values(),
+            key=lambda item: str(item.get("started_at", "")),
+            reverse=True,
+        ):
+            bw_download_rows.append(
+                "<tr>"
+                f"<td>{html.escape(str(entry.get('model', '')))}</td>"
+                f"<td>{html.escape(str(entry.get('status', '')))}</td>"
+                f"<td>{html.escape(str(entry.get('progress', '')))}</td>"
+                f"<td>{html.escape(str(entry.get('started_at', '')))}</td>"
+                f"<td>{html.escape(str(entry.get('finished_at', 'Running')))}</td>"
+                "</tr>"
+            )
+        if not bw_download_rows:
+            bw_download_rows.append(
+                "<tr><td colspan='5'>No BITS Whisperer model downloads have run in this session.</td></tr>"
+            )
+
         task_rows: list[str] = []
         for task in reversed(getattr(self, "_background_tasks", [])[-50:]):
             label = str(task.get("label", ""))
@@ -12725,11 +13961,24 @@ class MainFrame:
             f"<tr><th scope='row'>Background tasks running</th><td>{active_tasks}</td></tr>"
             f"<tr><th scope='row'>Notifications queued</th><td>{notification_count}</td></tr>"
             "</tbody></table>"
+            "<h2 id='bw-rollout-status'>BITS Whisperer Rollout Status</h2>"
+            "<table>"
+            "<caption>Provider and model rollout readiness</caption>"
+            "<thead><tr><th scope='col'>Item</th><th scope='col'>Value</th></tr></thead>"
+            f"<tbody>{bw_table_rows}</tbody></table>"
             "<h2 id='speech-status'>Speech Status</h2>"
             "<table>"
             "<caption>Speech engine configuration and downloads</caption>"
             "<thead><tr><th scope='col'>Setting</th><th scope='col'>Value</th></tr></thead>"
             f"<tbody>{speech_table_rows}</tbody></table>"
+            "<h2 id='bw-downloads'>BITS Whisperer Model Downloads</h2>"
+            "<table>"
+            "<caption>Asynchronous model acquisition jobs</caption>"
+            "<thead><tr>"
+            "<th scope='col'>Model</th><th scope='col'>Status</th><th scope='col'>Progress</th>"
+            "<th scope='col'>Started</th><th scope='col'>Finished</th>"
+            "</tr></thead>"
+            f"<tbody>{''.join(bw_download_rows)}</tbody></table>"
             "<h2 id='background-tasks'>Background Tasks and Downloads</h2>"
             "<table>"
             "<caption>Recent asynchronous jobs (downloads, generation, indexing)</caption>"
@@ -12750,6 +13999,8 @@ class MainFrame:
             f"<tbody>{''.join(feature_rows)}</tbody></table>"
             "<h2 id='recommended-actions'>Recommended Actions</h2>"
             "<ul>"
+            "<li>Open BITS Whisperer &gt; Providers &gt; Provider Center for staged onboarding guidance.</li>"
+            "<li>Open BITS Whisperer &gt; Speech Models to choose recommended or manual model setup.</li>"
             "<li>Open AI &gt; Speech &gt; Settings to configure engine-specific paths.</li>"
             "<li>Open AI &gt; Speech &gt; Voice to preview voices and variants.</li>"
             "<li>Open AI &gt; Speech &gt; Generate Audio to run asynchronous speech output jobs.</li>"
@@ -16096,12 +17347,14 @@ class MainFrame:
                 "Export snippet library",
                 "Install starter snippet packs",
             ],
-        ) as action_dialog:
-            action_dialog.SetSelection(0)
-            if self._show_modal_dialog(action_dialog, "Manage Snippets") != wx.ID_OK:
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Manage Snippets") != wx.ID_OK:
                 self._set_status("Manage snippets cancelled")
                 return
-            action = action_dialog.GetSelection()
+            action = dialog.GetSelection()
+        if action == wx.NOT_FOUND:
+            self._set_status("Manage snippets cancelled")
+            return
         if action == 5:
             self.install_starter_snippet_packs()
             return
@@ -17017,6 +18270,7 @@ class MainFrame:
         self._offer_ai_onboarding()
         self._show_assistant_onboarding(force=True)
         self._show_speech_onboarding(force=True)
+        self._show_bw_onboarding(force=True)
         self._show_watch_folder_onboarding(force=True)
         self._set_status("Startup Wizard completed")
 
@@ -17025,15 +18279,13 @@ class MainFrame:
         self.run_startup_wizard()
 
     def _maybe_run_first_run_onboarding(self) -> None:
-        if any(
-            (
-                getattr(self, "_first_run_trust_consent_prompt", False),
-                getattr(self, "_first_run_profile_prompt", False),
-                getattr(self, "_first_run_assistant_prompt", False),
-                getattr(self, "_first_run_speech_prompt", False),
-                getattr(self, "_first_run_watch_folder_prompt", False),
-            )
-        ):
+        if any((
+            getattr(self, "_first_run_trust_consent_prompt", False),
+            getattr(self, "_first_run_profile_prompt", False),
+            getattr(self, "_first_run_assistant_prompt", False),
+            getattr(self, "_first_run_speech_prompt", False),
+            getattr(self, "_first_run_watch_folder_prompt", False),
+        )):
             self.show_startup_wizard_page()
         if getattr(self, "_first_run_profile_prompt", False):
             self._show_profile_onboarding(force=False)
@@ -17108,6 +18360,16 @@ class MainFrame:
                 "Configure engines, paths, voices, and downloads.",
             ),
             (
+                "BITS Whisperer rollout setup",
+                (
+                    "Configured"
+                    if bool(getattr(self.settings, "bw_provider_id", ""))
+                    and bool(getattr(self.settings, "bw_speech_model_id", ""))
+                    else "Pending"
+                ),
+                "Set provider/model defaults, readiness checks, and status-page behavior.",
+            ),
+            (
                 "Watch folder setup",
                 "Completed" if load_watch_folder_onboarding_complete() else "Pending",
                 "Automatically open new supported files dropped into one folder.",
@@ -17130,8 +18392,9 @@ class MainFrame:
             "Step 3: Decide whether AI should be enabled now.",
             "Step 4: Configure writing assistant defaults.",
             "Step 5: Configure speech engines and download optional runtimes.",
-            "Step 6: Set up watch folder automation for supported document intake.",
-            "Step 7: Confirm settings and start writing.",
+            "Step 6: Configure BITS Whisperer rollout defaults and readiness checks.",
+            "Step 7: Set up watch folder automation for supported document intake.",
+            "Step 8: Confirm settings and start writing.",
         ]
         flow_html = "".join(f"<li>{html.escape(step)}</li>" for step in flow_steps)
 
@@ -17155,10 +18418,36 @@ class MainFrame:
             "<li>Every step uses keyboard-first dialogs with clear announcements.</li>"
             "<li>You can cancel any step and rerun Startup Wizard from the Help menu.</li>"
             "<li>No speech downloads occur without explicit confirmation.</li>"
+            "<li>BITS Whisperer onboarding changes setup defaults only; runtime routing remains staged.</li>"
             "</ul>"
             "<h2 id='where-next'>After Wizard</h2>"
             "<p>Open Help > Status Page (HTML Preview) to monitor task activity, feature state, and speech setup health.</p>"
         )
+
+    def _show_bw_onboarding(self, force: bool) -> None:
+        wx = self._wx
+        response = self._show_message_box(
+            "Configure BITS Whisperer rollout defaults now?\n\n"
+            "This step safely stages provider/model setup and status preferences without enabling "
+            "runtime routing changes.",
+            "BITS Whisperer Setup",
+            wx.ICON_QUESTION | wx.YES_NO,
+        )
+        if response != wx.YES:
+            if force:
+                self._set_status("BITS Whisperer setup skipped")
+            return
+        self.apply_bw_recommended_provider()
+        self.apply_bw_recommended_model()
+        if not bool(getattr(self.settings, "bw_auto_open_status_page_on_download_start", False)):
+            auto_open = self._show_message_box(
+                "Auto-open Help > Status Page when BITS Whisperer model downloads start?",
+                "BITS Whisperer Setup",
+                wx.ICON_QUESTION | wx.YES_NO,
+            )
+            self.settings.bw_auto_open_status_page_on_download_start = auto_open == wx.YES
+            save_settings(self.settings)
+        self._set_status("BITS Whisperer rollout defaults configured")
 
     def _offer_ai_onboarding(self) -> None:
         """First run: ask whether to use AI; if yes, set up the model."""
@@ -17574,7 +18863,7 @@ class MainFrame:
 
 
 def run_app(
-    startup_paths: list[Path] | None = None,
+    startup_requests: list[object] | None = None,
     safe_mode: bool = False,
     diagnostics_mode: bool = False,
 ) -> None:
@@ -17590,9 +18879,16 @@ def run_app(
     frame._stability_heartbeat_timer = WxHeartbeatTimer(frame.frame, heartbeat_state)
     frame._stability_watchdog = WxHeartbeatWatchdog(heartbeat_state)
     frame._stability_watchdog.start()
-    for path in startup_paths or []:
-        if path.exists() and path.is_file():
-            frame.open_file(path)
+    for request in startup_requests or []:
+        if request is None:
+            continue
+        path = getattr(request, "path", None)
+        if isinstance(path, Path) and path.exists() and path.is_file():
+            frame.open_file(
+                path,
+                line=getattr(request, "line", None),
+                column=getattr(request, "column", None),
+            )
     frame.show()
     try:
         app.MainLoop()

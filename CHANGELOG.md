@@ -6,6 +6,19 @@
 
 **QUILL: A quality, usable, inclusive, lightweight, and literate editor built for everyone who writes, codes, learns, and creates.**
 
+## Quill 0.1.5 Beta
+
+Quill 0.1.5 Beta focuses on safe rollout surfaces for BITS Whisperer, clearer preference parity, and more accessible status monitoring without changing core editor behavior.
+
+### Added and improved in 0.1.5
+
+- Added BITS Whisperer provider onboarding, readiness checks, capability matrix, and guarded download queue controls.
+- Added live Help status-page updates with quieter refresh announcements that only speak when tracked values change.
+- Added Preferences controls for AI enable state, BITS Whisperer safe mode lock, auto-open status behavior, and refresh cadence.
+- Added rollout-safe diagnostics snapshots and startup onboarding for BW setup defaults.
+- Enabled Ruff markdown preview formatting so release docs can stay formatted consistently.
+- Added robust command-line options, including `--help`, `--version`, startup cursor targeting (`--line`, `--column`), `--new-window`, and `--wait`.
+
 ## Quill 0.1.2 Beta
 
 Quill 0.1.2 Beta expands Quill's writing flow with prediction, snippets, in-app preview, local assistant workflows, and packaging/onboarding polish.

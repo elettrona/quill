@@ -2,7 +2,7 @@
 
 ## A magical, screen-reader-first writing and document environment, built in wxPython.
 
-Status: Quill 1.0 PRD aligned with Quill 0.1.2 Beta
+Status: Quill 1.0 PRD aligned with Quill 0.1.5 Beta
 Owner: Blind Information Technology Solutions (BITS) and Community Access
 Target platform: Windows 10 and Windows 11
 Target screen readers: NVDA (primary), JAWS, Narrator
@@ -440,14 +440,15 @@ Add Word-specific conversion routes:
 
 ```python
 READER_MAP: dict[str, str] = {
-    "docx": "docx",    # NEW: from .docx
-    "doc": "doc",      # NEW: from .doc (legacy)
+    "docx": "docx",  # NEW: from .docx
+    "doc": "doc",  # NEW: from .doc (legacy)
 }
 
 WRITER_MAP: dict[str, str] = {
-    "word": "docx",    # NEW: export to .docx
-    "word-old": "doc", # NEW: export to .doc (legacy)
+    "word": "docx",  # NEW: export to .docx
+    "word-old": "doc",  # NEW: export to .doc (legacy)
 }
+
 
 @dataclass(frozen=True, slots=True)
 class WordMetadata:
@@ -465,9 +466,10 @@ class WordMetadata:
 ```python
 TEXT_EXTENSIONS = {
     # ... existing ...
-    ".docx",   # NEW
-    ".doc",    # NEW
+    ".docx",  # NEW
+    ".doc",  # NEW
 }
+
 
 def looks_like_word_document(path: Path) -> bool:
     return path.suffix.lower() in {".docx", ".doc"}
@@ -639,7 +641,6 @@ source_metadata = {
     "engine": "pandoc",
     "engine_version": "3.1.0",
     "quality_score": 78,  # Reduced from 85 due to diagnostics
-    
     # GLOW-inspired diagnostics
     "extraction_diagnostics": {
         "fake_lists_detected": 2,  # Manually typed bullets
@@ -651,7 +652,6 @@ source_metadata = {
         "heading_hierarchy_issues": ["H1 at page 1, then H3 at page 2"],
         "extraction_engine_switches": ["Pandoc pages 1-8, python-docx pages 9-10"],
     },
-    
     "extraction_warnings": [
         {
             "id": "FAKE_LISTS_DETECTED",
@@ -678,7 +678,6 @@ source_metadata = {
             "suggestion": "Consider disabling hyphenation in Word for cleaner reflow",
         },
     ],
-    
     "word_metadata": {
         "title": "Q2 Report",
         "author": "Jane Doe",
@@ -745,15 +744,18 @@ def test_read_docx_simple():
     assert "Heading" in doc.text
     assert doc.source_metadata["quality_score"] > 80
 
+
 def test_read_doc_legacy_format():
     doc = read_word_document(Path("tests/fixtures/word/legacy_format.doc"))
     assert doc.text.strip()  # Non-empty
     assert "engine" in doc.source_metadata
 
+
 def test_read_corrupted_falls_back():
     doc = read_word_document(Path("tests/fixtures/word/corrupted.docx"))
     assert doc.source_metadata.get("quality_score", 0) < 50
     assert len(doc.text) > 0  # No crash; degraded gracefully
+
 
 def test_read_timeout_protection():
     with pytest.raises(ExtractionTimeoutError):
@@ -761,6 +763,7 @@ def test_read_timeout_protection():
             Path("tests/fixtures/word/large_50mb.docx"),
             timeout_sec=0.1,
         )
+
 
 def test_macros_not_executed():
     doc = read_word_document(Path("tests/fixtures/word/malicious_macros.docx"))
@@ -1156,9 +1159,11 @@ def test_read_pptx_simple():
     assert "Slide 1" in doc.text
     assert doc.source_metadata["quality_score"] > 80
 
+
 def test_speaker_notes_extracted():
     doc = read_powerpoint_presentation(Path("tests/fixtures/powerpoint/with_speaker_notes.pptx"))
     assert len(doc.source_metadata["speaker_notes"]) > 0
+
 
 def test_animations_detected():
     doc = read_powerpoint_presentation(Path("tests/fixtures/powerpoint/with_animations.pptx"))
@@ -1666,7 +1671,7 @@ Quill ships a read-aloud feature that uses a **secondary** voice the user picks 
 
 ### 5.25b Watch Folder automation
 
-Quill provides an optional watch-folder workflow under `Tools -> Dictation` for low-friction
+Quill provides an optional watch-folder workflow under `BITS Whisperer -> Dictation and Watch Folder` for low-friction
 document intake. Users can point Quill at a folder, drop supported files into it, and have Quill
 open those files automatically without leaving the editor.
 
@@ -1676,6 +1681,28 @@ open those files automatically without leaving the editor.
   immediately.
 - Status and failures surface through Quill's existing status/notification channel; no silent
   failures.
+
+### 5.25c BITS Whisperer phased transcription rollout
+
+Quill integrates BITS Whisperer speech capabilities in phased increments to minimize regression risk
+and preserve accessibility reliability.
+
+Phase 1 scope:
+
+- Keep current dictation behavior stable while introducing BITS Whisperer speech model management.
+- Surface model controls under `BITS Whisperer -> Speech Models`.
+- Add `BITS Whisperer -> Providers` with guided provider-center flows for staged onboarding.
+- Provide machine-aware default recommendations based on local configuration.
+- Include faster-whisper engine readiness checks and explicit user guidance.
+- Ensure `Help -> Status Page` can remain open and refresh dynamically with speech/BITS rollout task updates.
+- Add rollout-safe insight surfaces under `BITS Whisperer -> Rollout` (readiness check and capability matrix).
+- Add guarded download queue controls for staged model acquisition (retry failed downloads and clear history).
+- Keep advanced runtime paths staged for subsequent phases.
+
+Phase 2+ scope:
+
+- Expand runtime model execution paths and deeper transcription behavior.
+- Broaden model-family support as quality and hardware validation mature.
 
 ### 5.25a Speech Experience Platform (planned before implementation)
 
@@ -1931,7 +1958,7 @@ A dedicated menu surfacing transforms that are otherwise reachable via Tools or 
 
 ### 5.29a Magical HTML and Markdown tag picker
 
-- `Format → Insert HTML Tag…` opens a keyboard-first picker of common tags (`section`, `article`, headings, list/table tags, inline emphasis, links, images, code).  
+- `Format → Insert HTML Tag…` opens a keyboard-first picker of common tags (`section`, `article`, headings, list/table tags, inline emphasis, links, images, code).
 - After selecting a tag, Quill prompts for optional attributes in a compact `key=value; key2=value2` format and inserts valid tag text into the editor.
 - If text is selected, Quill wraps the selection in the chosen non-void tag. If not selected, Quill inserts an opening/closing pair and places the cursor between them. Void tags (`img`, `br`, `hr`, `input`) are inserted self-closing.
 - `Format → Insert Markdown Tag…` opens a semantic picker (`Bold`, `Italic`, `Inline Code`, `Code Block`, `Heading`, `List`, `Task List`, `Blockquote`, `Link`, `Image`, `Table`, `Footnote`) and inserts the matching markdown snippet.

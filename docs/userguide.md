@@ -6,7 +6,7 @@
 
 Quill is a screen-reader-first writing and reading environment for Windows. It is designed to feel calm, predictable, deeply keyboard-friendly, and respectful of your focus. It is also ambitious. Quill is not only a place to write plain text. It is a place to open difficult documents, inspect structure, navigate long material, compare revisions, prepare content for Markdown or HTML, and work with accessibility and extraction issues without leaving the editor.
 
-This guide is aligned to Quill 0.1.2 Beta, built by Blind Information Technology Solutions (BITS) together with Community Access.
+This guide is aligned to Quill 0.1.5 Beta, built by Blind Information Technology Solutions (BITS) together with Community Access.
 
 This guide is written as a companion, not a reference wall. Read it from the beginning if you are new to Quill. Dip into the sections that matter most if you already know what kind of work you want to do.
 
@@ -17,6 +17,7 @@ Quill is also in beta. Expect polish, depth, and real daily utility. Also expect
 - [Start Here](#start-here)
 - [What Quill Feels Like](#what-quill-feels-like)
 - [Your First Session](#your-first-session)
+- [Command-Line Launching](#command-line-launching)
 - [The Main Window](#the-main-window)
 - [The Menu Bar Reference](#the-menu-bar-reference)
 - [Writing and Editing](#writing-and-editing)
@@ -74,6 +75,29 @@ From there, a natural first session looks like this:
 6. Open **Help → Open Keyboard Reference** to see the exact shortcuts that exist in your current configuration, including your keyboard pack and any custom bindings.
 
 That first session matters because it teaches the most important Quill habit: you do not need to hunt. If an action exists, Quill wants you to be able to reach it from where you already are.
+
+## Command-Line Launching
+
+Quill supports command-line startup options for scripted workflows and direct navigation.
+
+Supported options:
+
+- `--help`: show command help and exit.
+- `--version`: print QUILL version and exit without launching the UI.
+- `--safe-mode`: launch with optional state disabled.
+- `--reset-profile`: reset feature profile store before launch.
+- `--diagnostics`: start with diagnostics tracing enabled.
+- `--dump-stacks`: write a thread-stack dump and exit.
+- `--line N`: 1-based line for the first startup file.
+- `--column M`: 1-based column for the first startup file.
+- `--new-window`: force a new process instead of forwarding to an existing instance.
+- `--wait`: when forwarding to an existing instance, wait for that instance to close.
+
+Examples:
+
+- `python -m quill --version`
+- `python -m quill notes.md --line 40 --column 5`
+- `python -m quill --new-window notes.md`
 
 ## The Main Window
 
@@ -298,7 +322,7 @@ Quill treats Markdown and HTML as working surfaces, not special-purpose export f
 
 ### Word prediction and snippets
 
-Quill 0.1.2 separates live prediction from snippet insertion so the hotkeys feel more like a modern editor:
+Quill 0.1.5 separates live prediction from snippet insertion so the hotkeys feel more like a modern editor:
 
 1. Press `Ctrl+Space` to open **Word Prediction**.
 2. Type to surface matching document words, HTML tags, and Markdown tags.
@@ -419,16 +443,51 @@ After save, Quill announces plain-language verification feedback (for example, r
 #### Read aloud and integrations
 
 - **Read Aloud** submenu for start or pause, stop, and voice selection
-- **Dictation** submenu for Windows dictation, plus an opt-in **Hey QUILL Commands** toggle that lets dictation phrases trigger Quill commands instead of inserting text.
-- **Dictation -> Watch Folder Monitoring** to automatically open new supported files dropped into a configured folder.
-- **Dictation -> Watch Folder Settings...** for folder path, subfolders, startup behavior, and polling behavior.
-- **Dictation -> Watch Folder Status...** for current runtime state and active configuration.
+- **BITS Whisperer -> Dictation and Watch Folder** submenu for Windows dictation, plus an opt-in **Hey QUILL Commands** toggle that lets dictation phrases trigger Quill commands instead of inserting text.
+- **BITS Whisperer -> Dictation and Watch Folder -> Watch Folder Monitoring** to automatically open new supported files dropped into a configured folder.
+- **BITS Whisperer -> Dictation and Watch Folder -> Watch Folder Settings...** for folder path, subfolders, startup behavior, and polling behavior.
+- **BITS Whisperer -> Dictation and Watch Folder -> Watch Folder Status...** for current runtime state and active configuration.
+- **BITS Whisperer -> Speech Models** for model manager, model status, recommended model selection, and faster-whisper engine checks.
+- **BITS Whisperer -> Providers** for provider center, provider status, recommended provider selection, and manual provider staging.
+- **BITS Whisperer -> Rollout** for readiness checks and capability matrix preview.
+- **BITS Whisperer -> Speech Models -> Download Queue...** for retry/cleanup/status actions on staged model downloads.
 - **Integrations** submenu with **OCR Image...** and shell integration commands.
+
+Speech model selection intentionally follows a two-mode flow:
+
+- **Recommended mode**: Quill selects a whisper model using machine-aware guidance (RAM/GPU profile).
+- **Manual mode**: You pick a specific whisper model yourself.
+
+In this phase, model infrastructure and download workflows are enabled while deeper runtime wiring remains staged.
+
+Provider setup follows the same phased safety model:
+
+- Use **Provider Center** for guided local-first or cloud-first setup choices.
+- Use **Provider Status** to understand readiness and next steps.
+- Providers are staged for rollout planning first; live provider routing remains gated in this phase.
+
+Status Page behavior:
+
+- **Help -> Status Page (HTML Preview)** now updates live while open.
+- It surfaces asynchronous speech generation and BITS Whisperer download/provider status so users can monitor progress without blocking dialogs.
+- In **Preferences -> General**, you can enable **Auto-open Status Page when BITS Whisperer model downloads start** (default off).
+- In **Preferences -> General**, set **Status page refresh announcements** to **Quiet**, **Normal**, or **Verbose** to control screen-reader announcement cadence.
+- In **Preferences -> General**, use **Use Artificial Intelligence** to mirror the AI menu toggle from one place.
+- In **Preferences -> General**, enable **BITS Whisperer safe mode lock** to block download/retry actions while keeping status and onboarding surfaces available.
+
+Startup Wizard now includes a BITS Whisperer rollout setup step that applies safe defaults without enabling runtime routing changes.
 
 Read Aloud is particularly useful for proofreading by ear. OCR Image handles image-to-text work with an explicit consent and progress flow.
 Dictation uses Windows' own speech input. When Hey QUILL Commands is enabled, Quill stays silent and only listens while dictation is active, then runs the matching action after the wake phrase.
 Watch Folder automation is best for "drop and open" workflows: copy supported files into one
 folder and let Quill open them in the background.
+
+BITS Whisperer phased rollout note:
+
+- Quill is adopting BITS Whisperer speech capabilities in phases.
+- Phase 1 focuses on machine-aware speech model management and safer setup guidance.
+- Additional BITS Whisperer transcription runtime features, including expanded model execution paths,
+  will be delivered incrementally in future phases.
 
 #### Document intake and extraction review
 
@@ -898,7 +957,7 @@ The plan documents how to contribute translations, what is and is not translated
 
 ## Beta Feedback and Bug Reporting
 
-Quill is ready for serious beta use, and Quill 0.1.2 Beta now ships a real in-app support starting point.
+Quill is ready for serious beta use, and Quill 0.1.5 Beta now ships a real in-app support starting point.
 
 ### What exists today
 
@@ -925,7 +984,7 @@ Before the broadest public rollout, publish one secure feedback route that does 
 3. a plain-language bug template with environment summary and reproduction steps
 4. the current **Help -> Report a Bug...** handoff kept as the guided in-app bridge until the fuller route is live
 
-Until that exists, use the current Help-menu path as the practical bridge. The important improvement in Quill 0.1.2 Beta is that Quill now helps users gather diagnostics locally, review what is being shared, and start a structured support report without forcing them to begin outside the tool.
+Until that exists, use the current Help-menu path as the practical bridge. The important improvement in Quill 0.1.5 Beta is that Quill now helps users gather diagnostics locally, review what is being shared, and start a structured support report without forcing them to begin outside the tool.
 
 ## A Fast Shortcut Tour
 
