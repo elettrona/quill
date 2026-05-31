@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           echo "GitHub Pages is not enabled or accessible for this repository/token. Skipping deploy without failing CI."
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         if: steps.pages.outcome == 'success'
         with:
           path: site-root
