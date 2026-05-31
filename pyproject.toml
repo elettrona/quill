@@ -56,6 +56,13 @@ dev = [
 [project.scripts]
 quill = "quill.__main__:main"
 
+[tool.hatch.metadata]
+# Allow direct URL references in optional-dependencies (e.g. the `vibevoice`
+# extra installs vibevoice-cpu from a GitHub archive). Quill is an app, not a
+# PyPI-published library, so direct references are fine — and hatchling refuses
+# to build metadata without this, which broke `pip install -e .` in CI.
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["quill"]
 
