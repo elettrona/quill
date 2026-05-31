@@ -11,8 +11,21 @@ APP="dist/Quill.app"
 DMG="dist/Quill.dmg"
 
 if [[ -n "${IDENTITY:-}" ]]; then
-  echo "==> Codesigning (hardened runtime)"
-  codesign --deep --force --options runtime --timestamp --sign "$IDENTITY" "$APP"
+  echo "==> Codesigning (hardened runtime, inside-out)"
+  # --deep is unreliable: it leaves nested .so/.dylib without a Developer ID
+  # signature or secure timestamp, which fails notarization. Sign every nested
+  # Mach-O individually first, then the bundle last.
+  find "$APP" \( -name "*.so" -o -name "*.dylib" \) -print0 \
+    | xargs -0 -P 6 -I{} codesign --force --timestamp --options runtime --sign "$IDENTITY" "{}"
+  if [[ -e "$APP/Contents/Frameworks/Python.framework/Versions/3.11/Python" ]]; then
+    codesign --force --timestamp --options runtime --sign "$IDENTITY" \
+      "$APP/Contents/Frameworks/Python.framework/Versions/3.11/Python"
+  fi
+  for exe in "$APP/Contents/MacOS/"*; do
+    codesign --force --timestamp --options runtime --sign "$IDENTITY" "$exe"
+  done
+  codesign --force --timestamp --options runtime --sign "$IDENTITY" "$APP"
+  codesign --verify --strict --verbose=2 "$APP"
 else
   echo "!! IDENTITY not set — skipping codesign (set IDENTITY='Developer ID Application: ...')"
 fi

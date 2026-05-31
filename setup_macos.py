@@ -9,6 +9,24 @@ Produces dist/Quill.app.
 """
 from setuptools import setup
 
+from quill import __version__
+
+# py2app's finalize_options aborts the build if the distribution carries
+# install_requires, which modern setuptools auto-populates from pyproject.toml's
+# [project.dependencies]. The .app bundles its own dependencies, so clear it
+# right before py2app's own check runs. (Also build with setuptools < 80.)
+import py2app.build_app as _py2app_build_app
+
+_orig_py2app_finalize = _py2app_build_app.py2app.finalize_options
+
+
+def _py2app_finalize_no_install_requires(self):  # type: ignore[no-untyped-def]
+    self.distribution.install_requires = None
+    _orig_py2app_finalize(self)
+
+
+_py2app_build_app.py2app.finalize_options = _py2app_finalize_no_install_requires
+
 from quill.platform.macos.shell_integration import (
     APP_DISPLAY_NAME,
     BUNDLE_IDENTIFIER,
@@ -25,8 +43,8 @@ OPTIONS = {
         "CFBundleName": APP_DISPLAY_NAME,
         "CFBundleDisplayName": APP_DISPLAY_NAME,
         "CFBundleIdentifier": BUNDLE_IDENTIFIER,
-        "CFBundleShortVersionString": "0.1.1",
-        "CFBundleVersion": "0.1.1",
+        "CFBundleShortVersionString": __version__,
+        "CFBundleVersion": __version__,
         "LSMinimumSystemVersion": "12.0",
         "NSHighResolutionCapable": True,
         "CFBundleDocumentTypes": document_types_plist(),
