@@ -201,12 +201,26 @@ def _launch_configuration(
 
 def _launch_arguments(arguments: list[str]) -> tuple[list[Path], bool, bool]:
     """Compatibility helper retained for existing tests and integrations."""
-
-    parsed = _parse_cli_arguments(arguments)
-    requests, safe_mode, reset_profile, _diagnostics_mode, _new_window, _wait = (
-        _launch_configuration(parsed)
-    )
-    return [request.path for request in requests], safe_mode, reset_profile
+    paths: list[Path] = []
+    safe_mode = False
+    reset_profile = False
+    for value in arguments:
+        if value == "--safe-mode":
+            safe_mode = True
+            continue
+        if value == "--reset-profile":
+            reset_profile = True
+            continue
+        if value.startswith("--"):
+            continue
+        if not value.strip():
+            continue
+        candidate = Path(value).expanduser()
+        if candidate.exists():
+            paths.append(candidate.resolve())
+    if os.environ.get("QUILL_SAFE_MODE") == "1":
+        safe_mode = True
+    return paths, safe_mode, reset_profile
 
 
 def _wait_for_primary_instance_shutdown(timeout_seconds: int = 3600) -> None:
