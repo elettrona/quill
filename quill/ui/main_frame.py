@@ -8130,7 +8130,9 @@ class MainFrame:
         "• pyobjc and py2app — macOS integration and packaging\n"
         "• WordNet (Princeton University) — thesaurus data\n"
         "• words_alpha — English word list\n"
-        "• DECtalk, Piper, Kokoro, and VibeVoice — speech voices\n\n"
+        "• DECtalk and Piper — bundled speech engines\n"
+        "• eSpeak NG — phoneme generation used by Piper\n"
+        "• Kokoro and VibeVoice — additional neural speech voices\n\n"
         "On macOS, on-device AI uses Apple Foundation Models.\n"
         "Each project is owned by its respective authors and used under its own license."
     )
