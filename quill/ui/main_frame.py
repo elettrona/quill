@@ -11153,10 +11153,14 @@ class MainFrame:
             current_version = __version__ or "0.0.0"
 
         beta = bool(getattr(self.settings, "beta_updates", False))
-        channel = "beta" if beta else "stable"
-        self._set_status(f"Checking for updates ({channel})...")
+        self._set_status("Checking for updates...")
         try:
-            release = fetch_latest_release(include_prereleases=beta)
+            latest_any = fetch_latest_release(include_prereleases=True)
+            latest_stable = (
+                latest_any
+                if (latest_any is not None and not latest_any.prerelease)
+                else fetch_latest_release(include_prereleases=False)
+            )
         except (URLError, ValueError, OSError) as error:
             if silent_no_update:
                 self._record_notification(f"Update check failed: {error}", "update")
@@ -11170,36 +11174,68 @@ class MainFrame:
             self._set_status("Update check failed")
             self._record_notification("Update check failed", "update")
             return
-        if release is None or not is_newer_version(current_version, release.version):
+
+        # The release for the user's current channel.
+        target = latest_any if beta else latest_stable
+        if target is not None and is_newer_version(current_version, target.version):
             if silent_no_update:
-                self._record_notification("Update check found no newer version", "update")
+                self._record_notification(f"Update {target.version} found; downloading", "update")
+                self._download_update_release(target)
                 return
-            self._set_status("No update available")
-            self._record_notification("Update check found no newer version", "update")
-            if not beta:
-                # On the stable channel and up to date — offer the beta channel.
-                self._offer_beta_switch(current_version, release)
+            if self._show_update_available_dialog(current_version, target):
+                self._download_update_release(target)
             else:
-                self._show_message_box(
-                    "You're up to date on the beta channel.\n"
-                    f"Current: {current_version}\nLatest beta: {available}",
-                    "Check for Updates",
-                    wx.ICON_INFORMATION | wx.OK,
+                self._set_status("Update deferred")
+                self._record_notification(f"Update {target.version} deferred", "update")
+            return
+
+        # No update on the current channel. If a newer build exists but it's a
+        # PRERELEASE and the user is on stable, route them to the beta channel.
+        prerelease_available = (
+            not beta
+            and latest_any is not None
+            and latest_any.prerelease
+            and is_newer_version(current_version, latest_any.version)
+        )
+        if prerelease_available:
+            if silent_no_update:
+                self._record_notification(
+                    f"A beta build {latest_any.version} is available. "
+                    "Enable beta updates to install it.",
+                    "update",
                 )
+                self._set_status("Beta update available")
+                return
+            self._route_prerelease_to_beta(current_version, latest_any)
             return
+
+        # Genuinely up to date.
         if silent_no_update:
-            # Auto-update channel: download the new release in the background.
-            self._record_notification(
-                f"Update {release.version} found ({channel}); downloading", "update"
-            )
-            self._download_update_release(release)
+            self._record_notification("Update check found no newer version", "update")
             return
-        # Manual check: show the release notes rendered as HTML.
+        self._set_status("No update available")
+        self._record_notification("Update check found no newer version", "update")
+        if beta:
+            self._show_message_box(
+                f"You're up to date on the beta channel.\nCurrent: {current_version}",
+                "Check for Updates",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+        else:
+            self._offer_beta_switch(current_version, latest_stable)
+
+    def _route_prerelease_to_beta(self, current_version: str, release: GitHubRelease) -> None:
+        """A prerelease is available while on stable — enroll in beta (with the
+        consent gate), then offer the prerelease for download."""
+        if not self._confirm_beta_channel(release):
+            self._set_status("Stayed on the stable channel")
+            return
+        self.settings.beta_updates = True
+        save_settings(self.settings)
+        self._set_status("Switched to the beta update channel")
+        self._announce("Beta updates enabled")
         if self._show_update_available_dialog(current_version, release):
             self._download_update_release(release)
-        else:
-            self._set_status("Update deferred")
-            self._record_notification(f"Update {release.version} deferred", "update")
 
     def _render_html(self, markdown_text: str) -> str:
         from quill.core.browser_preview import render_preview_body
@@ -11280,13 +11316,17 @@ class MainFrame:
         if self._show_update_available_dialog(current_version, release):
             self._download_update_release(release)
 
-    def _confirm_beta_channel(self) -> bool:
+    def _confirm_beta_channel(self, release: GitHubRelease | None = None) -> bool:
         """HTML consent gate the user must agree to before beta updates turn on."""
         from quill.ui.preview_dialog import HtmlMessageDialog
 
         wx = self._wx
+        detected = (
+            f"A beta build (**{release.version}**) is available.\n\n" if release is not None else ""
+        )
         body = self._render_html(
             "# Enable beta updates?\n\n"
+            f"{detected}"
             "Beta updates are **prerelease** builds. They get new features and fixes "
             "first, but they **may be unstable** — expect rough edges, and occasional "
             "bugs that could affect your documents.\n\n"
