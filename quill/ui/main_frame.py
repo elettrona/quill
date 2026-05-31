@@ -8105,7 +8105,7 @@ class MainFrame:
     _ABOUT_LINKS: tuple[tuple[str, str], ...] = (
         ("Techopolis", "https://techopolis.app"),
         ("Blind Information Technology Solutions (BITS)", "https://bits-acb.org"),
-        ("Community Access", "https://letitglow.app"),
+        ("Community Access", "https://community-access.org"),
     )
 
     # Open-source projects Quill is built with (credited in About).
