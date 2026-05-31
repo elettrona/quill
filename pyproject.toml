@@ -26,6 +26,9 @@ ui = [
     # Accessible wx.html2.WebView surfaces (chat, preview, dialogs) — extracted
     # from Quill and published so any wxPython app can reuse it.
     "wx-accessible-webview>=0.2.0",
+    # Offline VibeVoice speech-FILE generator (download model+voices from the GUI).
+    # Core is light (huggingface-hub); add [model] for on-device synthesis (torch).
+    "vibevoice-cpu @ git+https://github.com/Community-Access/vibevoice-cpu.git",
     "pyttsx3>=2.99",
     # CA bundle for verified HTTPS update checks (macOS Python lacks trusted roots).
     "certifi>=2024.2.2",

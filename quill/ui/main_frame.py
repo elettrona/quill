@@ -1284,6 +1284,12 @@ class MainFrame:
             None,
         )
         self.commands.register(
+            "tools.download_vibevoice",
+            "Download VibeVoice Speech Model...",
+            self.download_vibevoice_model,
+            None,
+        )
+        self.commands.register(
             "tools.announcement_backend",
             "Announcement Backend...",
             self.choose_announcement_backend,
@@ -2794,6 +2800,7 @@ class MainFrame:
         self._id_ai_speech_voice = wx.NewIdRef()
         self._id_ai_speech_settings = wx.NewIdRef()
         self._id_ai_speech_generate_audio = wx.NewIdRef()
+        self._id_ai_speech_download_vibevoice = wx.NewIdRef()
         self._id_train_style = wx.NewIdRef()
         self._id_compare_with_file = wx.NewIdRef()
         self._id_compare_open_documents = wx.NewIdRef()
@@ -3088,6 +3095,10 @@ class MainFrame:
         speech_menu.Append(
             self._id_ai_speech_generate_audio,
             self._menu_label("Generate &Audio...", "tools.read_aloud_generate_audio"),
+        )
+        speech_menu.Append(
+            self._id_ai_speech_download_vibevoice,
+            self._menu_label("&Download VibeVoice Model...", "tools.download_vibevoice"),
         )
         ai_menu.AppendSubMenu(speech_menu, "&Speech")
         menu_bar.Append(ai_menu, "A&I")
@@ -3941,6 +3952,11 @@ class MainFrame:
         )
         self.frame.Bind(
             wx.EVT_MENU,
+            lambda _e: self.download_vibevoice_model(),
+            id=self._id_ai_speech_download_vibevoice,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
             lambda _e: self.choose_announcement_backend(),
             id=self._id_announcement_backend,
         )
@@ -4290,6 +4306,7 @@ class MainFrame:
             "view.browser_preview": self._id_browser_preview,
             "tools.read_aloud_generate_audio": self._id_read_aloud_generate_audio,
             "tools.ai_hub": self._id_ai_hub,
+            "tools.download_vibevoice": self._id_ai_speech_download_vibevoice,
             "tools.ai_assistant": self._id_ai_assistant,
             "tools.ai_prompt_studio": self._id_ai_prompt_studio,
             "tools.ai_agent_center": self._id_ai_agent_center,
@@ -11561,6 +11578,47 @@ class MainFrame:
         engine_label = engine_choices[engine_values.index(selected_engine)]
         self._set_status(f"Read aloud engine set to {engine_label}")
 
+    def download_vibevoice_model(self) -> None:
+        """Download the VibeVoice speech model + reference voices from the GUI.
+
+        VibeVoice is an offline speech-FILE generator (not a live read-aloud
+        voice). This fetches the model and voices via the vibevoice-cpu library
+        in the background so the user never touches a terminal.
+        """
+        def work(progress: Callable[[str, int, int], None]) -> object:
+            try:
+                from vibevoice_cpu.download import DEFAULT_MODEL, ensure_model
+                from vibevoice_cpu.system import ram_warning
+                from vibevoice_cpu.voices import ensure_voices
+            except ImportError as exc:  # noqa: BLE001
+                raise RuntimeError(
+                    "VibeVoice support isn't installed in this build "
+                    "(the 'vibevoice-cpu' package)."
+                ) from exc
+            warning = ram_warning(DEFAULT_MODEL)
+            progress("Downloading VibeVoice model (several GB, one time)", 0, 2)
+            ensure_model(DEFAULT_MODEL)
+            progress("Downloading VibeVoice reference voices", 1, 2)
+            ensure_voices()
+            progress("VibeVoice ready", 2, 2)
+            return warning
+
+        def on_success(result: object) -> None:
+            message = "VibeVoice model and voices downloaded."
+            if result:
+                message += f" {result}"
+            self._set_status(message)
+            self._announce(message)
+
+        self._run_background_task(
+            "Downloading VibeVoice speech model and voices",
+            work,
+            on_success,
+            notify_on_success=True,
+            notify_on_error=True,
+            notification_category="speech",
+        )
+
     def generate_speech_audio(self) -> None:  # noqa: PLR0912,PLR0915
         wx = self._wx
         _TITLE = "Generate Speech Audio"
@@ -17123,7 +17181,7 @@ class MainFrame:
             "Configure eSpeak-NG path and English variant",
             "Configure Piper executable and English model folder",
             "Configure Kokoro English voice defaults",
-            "Configure VibeVoice executable and default voice",
+            "Download VibeVoice model and voices (speech-file generator)",
             "Configure RHVoice executable and English voice",
             "Configure MeloTTS executable and English voice",
             "Configure Chatterbox executable and English voice",
@@ -17219,15 +17277,10 @@ class MainFrame:
                             self.settings.read_aloud_kokoro_voice = voices[idx].id
 
         if 4 in selected:
-            exe = _ask_text("Path to vibevoice.exe:", self.settings.read_aloud_vibevoice_executable)
-            if exe is not None:
-                self.settings.read_aloud_vibevoice_executable = exe
-            default_voice = _ask_text(
-                "Default VibeVoice voice id (English):",
-                self.settings.read_aloud_vibevoice_voice,
-            )
-            if default_voice:
-                self.settings.read_aloud_vibevoice_voice = default_voice
+            # VibeVoice is an offline speech-FILE generator (not a live read-aloud
+            # voice). Download its model + voices via the GUI (no terminal); the
+            # same action is available any time at AI > Speech > Download VibeVoice.
+            self.download_vibevoice_model()
 
         if 5 in selected:
             exe = _ask_text(
