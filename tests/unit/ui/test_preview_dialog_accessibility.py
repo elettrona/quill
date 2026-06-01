@@ -3,11 +3,11 @@ from __future__ import annotations
 from quill.ui.preview_dialog import _build_accessible_dialog_body
 
 
-def test_dialog_body_injects_content_focus_script() -> None:
+def test_dialog_body_marks_content_as_document_without_forced_focus() -> None:
     html = _build_accessible_dialog_body("<h1>About</h1>")
 
     assert "document.getElementById('content')" in html
-    assert "c.setAttribute('tabindex','0');c.focus();" in html
+    assert "c.setAttribute('role','document');c.setAttribute('tabindex','-1');" in html
 
 
 def test_dialog_body_injects_enter_guard_for_static_content() -> None:

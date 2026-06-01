@@ -132,14 +132,19 @@ def _build_accessible_dialog_body(
     *,
     start_anchor: str | None = None,
 ) -> str:
-    """Add focus/keyboard hardening for modal HTML reading surfaces."""
+    """Add keyboard hardening for modal HTML reading surfaces.
+
+    Avoid forcing DOM focus into the content region on load: screen readers
+    commonly expose HTML in a virtual cursor/browse mode, and forced focus can
+    interfere with arrow-key reading in that mode.
+    """
 
     safe_anchor = json.dumps(start_anchor) if start_anchor else "null"
     script = (
         "<script>(function(){"
         "window.addEventListener('load',function(){"
         "var c=document.getElementById('content');"
-        "if(c){c.setAttribute('tabindex','0');c.focus();}"
+        "if(c){c.setAttribute('role','document');c.setAttribute('tabindex','-1');}"
         f"var a={safe_anchor};"
         "if(a){var n=document.getElementById(a);if(n){n.scrollIntoView();}}"
         "});"
