@@ -811,8 +811,13 @@ class MainFrame:
             self._set_status("Safe mode enabled. Optional state is disabled.")
         else:
             self._set_status("Ready. Tip: press Ctrl+Shift+P for Command Palette.")
-        self._announce_backend_state_on_startup()
-        self._refresh_title()
+        # This tail runs right after the startup tip is announced; never let it
+        # take down construction (that was a "reads the tip then crashes" path).
+        try:
+            self._announce_backend_state_on_startup()
+            self._refresh_title()
+        except Exception:
+            self._report_startup_task_failure("startup finalization")
 
     def show(self) -> None:
         self.frame.Show(True)
@@ -832,12 +837,20 @@ class MainFrame:
             self._wx.CallAfter(focus_target.SetFocus)
 
     def _run_deferred_startup_tasks(self) -> None:
-        self._start_ipc_poll()
-        detection = detect_screen_reader()
-        if detection.detected:
-            self._set_status(f"Detected screen reader: {detection.name}. Adaptive hints enabled.")
-        elif not self._safe_mode:
-            self._set_status("Ready. Tip: press Ctrl+Shift+P for Command Palette.")
+        try:
+            self._start_ipc_poll()
+        except Exception:
+            self._report_startup_task_failure("IPC poll")
+        try:
+            detection = detect_screen_reader()
+            if detection.detected:
+                self._set_status(
+                    f"Detected screen reader: {detection.name}. Adaptive hints enabled."
+                )
+            elif not self._safe_mode:
+                self._set_status("Ready. Tip: press Ctrl+Shift+P for Command Palette.")
+        except Exception:
+            self._report_startup_task_failure("screen-reader detection")
         # A first-run / onboarding step must NEVER take down the whole app on
         # launch. Previously an exception here propagated out of the wx CallAfter
         # handler and the app "crashed right away" after the startup tip, with
