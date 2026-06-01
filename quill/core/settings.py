@@ -85,6 +85,9 @@ class Settings:
     keyboard_pack: str = "Quill Default"
     soft_wrap: bool = True
     wrap_find: bool = True
+    browse_mode_wrap: bool = True
+    browse_mode_feedback: str = "speech"
+    browse_mode_preload_cache: bool = True
     csv_open_mode: str = "prompt"
     word_open_mode: str = "prompt"
     indent_with_tabs: bool = False
@@ -137,6 +140,7 @@ class Settings:
     announcement_trace_enabled: bool = False
     assistant_enabled: bool = False
     assistant_prompt_style: str = "balanced"
+    markdown_clipboard_format: str = "html"
     dictation_engine: str = "vosk"
     dictation_language: str = "en-US"
     dictation_model: str = "base"
@@ -166,6 +170,16 @@ class Settings:
         keyboard_pack = str(data.get("keyboard_pack", "Quill Default"))
         soft_wrap = bool(data.get("soft_wrap", True))
         wrap_find = bool(data.get("wrap_find", True))
+        browse_mode_wrap = bool(data.get("browse_mode_wrap", True))
+        browse_mode_feedback = str(data.get("browse_mode_feedback", "speech")).strip().lower()
+        if browse_mode_feedback not in {"sound", "speech", "both", "none"}:
+            browse_mode_feedback = "speech"
+        browse_mode_preload_cache = bool(
+            data.get(
+                "browse_mode_preload_cache",
+                data.get("browse_mode_prewarm_for_large_docs", True),
+            )
+        )
         csv_open_mode = str(data.get("csv_open_mode", "prompt")).strip().lower()
         if csv_open_mode not in {"prompt", "text", "grid"}:
             csv_open_mode = "prompt"
@@ -301,6 +315,11 @@ class Settings:
         assistant_prompt_style = str(data.get("assistant_prompt_style", "balanced")).strip().lower()
         if assistant_prompt_style not in {"balanced", "concise", "gentle", "technical"}:
             assistant_prompt_style = "balanced"
+        markdown_clipboard_format = (
+            str(data.get("markdown_clipboard_format", "html")).strip().lower() or "html"
+        )
+        if markdown_clipboard_format not in {"html", "rtf"}:
+            markdown_clipboard_format = "html"
         dictation_engine = str(data.get("dictation_engine", "vosk")).strip().lower()
         if dictation_engine not in {"vosk", "whisper"}:
             dictation_engine = "vosk"
@@ -362,6 +381,9 @@ class Settings:
             keyboard_pack=keyboard_pack,
             soft_wrap=soft_wrap,
             wrap_find=wrap_find,
+            browse_mode_wrap=browse_mode_wrap,
+            browse_mode_feedback=browse_mode_feedback,
+            browse_mode_preload_cache=browse_mode_preload_cache,
             csv_open_mode=csv_open_mode,
             word_open_mode=word_open_mode,
             indent_with_tabs=indent_with_tabs,
@@ -414,6 +436,7 @@ class Settings:
             announcement_trace_enabled=announcement_trace_enabled,
             assistant_enabled=assistant_enabled,
             assistant_prompt_style=assistant_prompt_style,
+            markdown_clipboard_format=markdown_clipboard_format,
             dictation_engine=dictation_engine,
             dictation_language=dictation_language,
             dictation_model=dictation_model,

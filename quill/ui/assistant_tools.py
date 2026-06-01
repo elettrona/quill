@@ -39,6 +39,7 @@ from quill.core.assistant_prompts import (
 from quill.core.commands import CommandRegistry
 from quill.core.features import FeatureManager
 from quill.core.python_sandbox import PythonSandboxResult, run_python_sandbox
+from quill.ui.dialog_contract import apply_modal_ids, show_modal_dialog
 
 
 class RunPythonDialog:
@@ -115,24 +116,18 @@ class RunPythonDialog:
         root.Add(buttons, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
         self.dialog.SetSizer(root)
+        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         self.run_button.Bind(wx.EVT_BUTTON, self._on_run)
         self.apply_button.Bind(wx.EVT_BUTTON, self._on_apply)
         self.close_button.Bind(wx.EVT_BUTTON, lambda _e: self.dialog.EndModal(wx.ID_CANCEL))
-        self.dialog.Bind(wx.EVT_CHAR_HOOK, self._on_char_hook)
         self.code.SetFocus()
 
     def show_modal(self) -> None:
         self.dialog.CentreOnParent()
         try:
-            self.dialog.ShowModal()
+            show_modal_dialog(self.dialog, "Run Python")
         finally:
             self.dialog.Destroy()
-
-    def _on_char_hook(self, event: object) -> None:
-        if event.GetKeyCode() == self._wx.WXK_ESCAPE:
-            self.dialog.EndModal(self._wx.ID_CANCEL)
-            return
-        event.Skip()
 
     def _on_run(self, _event: object) -> None:
         result = run_python_sandbox(
@@ -291,6 +286,7 @@ class PromptStudioDialog:
         self.use_button.Bind(wx.EVT_BUTTON, self._on_use_prompt_clicked)
         self.preview_button.Bind(wx.EVT_BUTTON, self._on_preview_prompt)
         self.save_button.Bind(wx.EVT_BUTTON, self._on_save_prompt)
+        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
 
         self._selected_prompt_key = ""
         self._refresh_prompt_list()
@@ -298,7 +294,7 @@ class PromptStudioDialog:
     def show_modal(self) -> None:
         self.dialog.CentreOnParent()
         try:
-            self.dialog.ShowModal()
+            show_modal_dialog(self.dialog, "Prompt Studio")
         finally:
             self.dialog.Destroy()
 
@@ -389,7 +385,7 @@ class PromptStudioDialog:
         if not rendered:
             self.status.SetLabel("Prompt rendered empty text.")
             return
-        self._on_use_prompt(rendered)
+        self._use_prompt_callback(rendered)
         self._announce("Loaded prompt into Writing Assistant")
         self.dialog.EndModal(self._wx.ID_OK)
 
@@ -463,7 +459,7 @@ class AgentCenterDialog:
         self._wx = wx
         self._selection_text = selection_text
         self._document_text = document_text
-        self._on_use_prompt = on_use_prompt
+        self._use_prompt_callback = on_use_prompt
         self._announce = announce or (lambda _message: None)
         self._profiles = agent_profiles()
 
@@ -545,12 +541,13 @@ class AgentCenterDialog:
         self.generate_button.Bind(wx.EVT_BUTTON, self._on_generate_prompt)
         self.use_button.Bind(wx.EVT_BUTTON, self._on_use_prompt_clicked)
         close_button.Bind(wx.EVT_BUTTON, lambda _e: self.dialog.EndModal(wx.ID_CANCEL))
+        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         self._on_agent_changed(None)
 
     def show_modal(self) -> None:
         self.dialog.CentreOnParent()
         try:
-            self.dialog.ShowModal()
+            show_modal_dialog(self.dialog, "Agent Center")
         finally:
             self.dialog.Destroy()
 
@@ -700,7 +697,7 @@ class WritingAssistantDialog:
 
         buttons = wx.BoxSizer(wx.HORIZONTAL)
         self.suggest_button = wx.Button(self.dialog, label="Suggest")
-        self.run_button = wx.Button(self.dialog, label="Run Selected Action")
+        self.run_button = wx.Button(self.dialog, id=wx.ID_OK, label="Run Selected Action")
         self.python_button = wx.Button(self.dialog, label="Run Python...")
         self.close_button = wx.Button(self.dialog, id=wx.ID_CANCEL, label="Close")
         buttons.Add(self.suggest_button, 0, wx.RIGHT, 8)
@@ -711,6 +708,7 @@ class WritingAssistantDialog:
         root.Add(buttons, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
         self.dialog.SetSizer(root)
+        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         self.suggest_button.Bind(wx.EVT_BUTTON, self._on_suggest)
         self.run_button.Bind(wx.EVT_BUTTON, self._on_run_selected)
         self.python_button.Bind(wx.EVT_BUTTON, lambda _e: self._open_python_tool())
@@ -728,15 +726,12 @@ class WritingAssistantDialog:
     def show_modal(self) -> None:
         self.dialog.CentreOnParent()
         try:
-            self.dialog.ShowModal()
+            show_modal_dialog(self.dialog, "Writing Assistant")
         finally:
             self.dialog.Destroy()
 
     def _on_char_hook(self, event: object) -> None:
         key_code = event.GetKeyCode()
-        if key_code == self._wx.WXK_ESCAPE:
-            self.dialog.EndModal(self._wx.ID_CANCEL)
-            return
         if key_code in (self._wx.WXK_RETURN, self._wx.WXK_NUMPAD_ENTER) and not event.ShiftDown():
             self._run_selected()
             return
@@ -874,6 +869,7 @@ class SearchableModelPickerDialog:
         if buttons is not None:
             root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
         self.dialog.SetSizer(root)
+        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
 
         self.query.Bind(wx.EVT_TEXT, self._on_query_changed)
         self.query.Bind(wx.EVT_TEXT_ENTER, self._on_query_enter)
@@ -898,7 +894,7 @@ class SearchableModelPickerDialog:
 
     def show_modal_and_get_selection(self) -> str:
         try:
-            if self.dialog.ShowModal() != self._wx.ID_OK:
+            if show_modal_dialog(self.dialog, "Available Models") != self._wx.ID_OK:
                 return ""
             selection = self.listbox.GetSelection()
             if selection == self._wx.NOT_FOUND:
@@ -1001,12 +997,13 @@ class AIHubDialog:
             lambda _e: self.dialog.EndModal(wx.ID_CLOSE),
             id=wx.ID_CLOSE,
         )
+        apply_modal_ids(self.dialog, escape_id=wx.ID_CLOSE)
         self._refresh_summary()
 
     def show_modal(self) -> None:
         self.dialog.CentreOnParent()
         try:
-            self.dialog.ShowModal()
+            show_modal_dialog(self.dialog, "AI Hub")
         finally:
             self.dialog.Destroy()
 
@@ -1164,11 +1161,15 @@ class AssistantConnectionDialog:
         panel_sizer.Add(wx.StaticText(panel, label="Host URL"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         panel_sizer.Add(self.host, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
-        self.model = wx.TextCtrl(panel)
+        self.model = wx.ComboBox(panel, style=wx.CB_DROPDOWN)
         self.model.SetValue(self._settings.model)
         self.model.SetName("Model")
         panel_sizer.Add(wx.StaticText(panel, label="Model"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         panel_sizer.Add(self.model, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+        self._set_model_choices(
+            self._model_choices_for_provider(self._settings.provider),
+            preferred=self._settings.model,
+        )
 
         self.api_key_label = wx.StaticText(
             panel,
@@ -1210,6 +1211,7 @@ class AssistantConnectionDialog:
         if buttons is not None:
             root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
         self.dialog.SetSizerAndFit(root)
+        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         self.provider.Bind(wx.EVT_CHOICE, self._on_provider_changed)
         self.verify_button.Bind(wx.EVT_BUTTON, self._on_verify_connection)
         self.list_models_button.Bind(wx.EVT_BUTTON, self._on_list_models)
@@ -1240,6 +1242,36 @@ class AssistantConnectionDialog:
             model=self.model.GetValue().strip() or fallback_model,
         )
 
+    def _model_choices_for_provider(self, provider: str) -> list[str]:
+        choices: list[str] = []
+
+        default_model = default_model_for_provider(provider).strip()
+        if default_model:
+            choices.append(default_model)
+
+        for item in recommended_model_guidance(provider):
+            model_name = item.model.strip()
+            if model_name and model_name not in choices:
+                choices.append(model_name)
+
+        return choices
+
+    def _set_model_choices(self, choices: list[str], preferred: str = "") -> None:
+        merged: list[str] = []
+        for candidate in [*choices, preferred.strip()]:
+            value = candidate.strip()
+            if value and value not in merged:
+                merged.append(value)
+
+        self.model.SetItems(merged)
+
+        if preferred.strip():
+            self.model.SetValue(preferred.strip())
+        elif merged:
+            self.model.SetValue(merged[0])
+        else:
+            self.model.SetValue("")
+
     def _on_provider_changed(self, _event: object | None) -> None:
         provider = self._provider_value()
         host_value = self.host.GetValue().strip()
@@ -1254,8 +1286,10 @@ class AssistantConnectionDialog:
         known_models = {
             default_model_for_provider(name) for name, _label in self._PROVIDER_CHOICES
         }
+        fallback_model = default_model_for_provider(provider)
         if not model_value or model_value in known_models:
-            self.model.SetValue(default_model_for_provider(provider))
+            model_value = fallback_model
+        self._set_model_choices(self._model_choices_for_provider(provider), preferred=model_value)
         requires_key = provider_requires_api_key(provider)
         self.api_key_label.SetLabel(provider_api_key_label(provider))
         self.provider_hint.SetLabel(provider_help_text(provider))
@@ -1306,7 +1340,10 @@ class AssistantConnectionDialog:
         picker = SearchableModelPickerDialog(self.dialog, models)
         selected = picker.show_modal_and_get_selection()
         if selected:
-            self.model.SetValue(selected)
+            self._set_model_choices(
+                self._model_choices_for_provider(settings.provider) + list(models),
+                preferred=selected,
+            )
             self.connection_status.SetLabel(f"Selected model: {selected}")
         else:
             self.connection_status.SetLabel("Model selection cancelled.")
@@ -1324,8 +1361,13 @@ class AssistantConnectionDialog:
             "Model Recommendations",
             labels,
         )
+        apply_modal_ids(
+            picker,
+            affirmative_id=self._wx.ID_OK,
+            escape_id=self._wx.ID_CANCEL,
+        )
         try:
-            if picker.ShowModal() != self._wx.ID_OK:
+            if show_modal_dialog(picker, "Model Recommendations") != self._wx.ID_OK:
                 self.connection_status.SetLabel("Recommendation selection cancelled.")
                 return
             selected_index = picker.GetSelection()
@@ -1343,7 +1385,7 @@ class AssistantConnectionDialog:
     def show_modal(self) -> bool:
         self.dialog.CentreOnParent()
         try:
-            if self.dialog.ShowModal() != self._wx.ID_OK:
+            if show_modal_dialog(self.dialog, "AI Connection Settings") != self._wx.ID_OK:
                 return False
             settings = self._current_settings()
             api_key = self.api_key.GetValue()

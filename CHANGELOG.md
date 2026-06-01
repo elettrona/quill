@@ -20,6 +20,11 @@ Quill 0.1.5 Beta focuses on safe rollout surfaces for BITS Whisperer, clearer pr
 
 ### Added and improved in 0.1.5
 
+- Added QUILL Quick Nav browse-style mode with `Ctrl+Shift+Grave`, cursor-only movement, and explicit non-editing behavior while active.
+- Added mnemonic Quick Nav movement for links, lists, list items, tables, block quotes, bookmarks, code blocks, table of contents, headings, heading levels 1 through 6, paragraphs, sentences, and blocks, with `Shift` reversing direction where applicable.
+- Added configurable Quick Nav wrap behavior and configurable Quick Nav feedback mode (`speech`, `sound`, `both`, `none`).
+- Added document-surface-aware Quick Nav indexing for Markdown and HTML, including heading parsing, Markdown and HTML list-item anchors, paragraph anchors, and sentence anchors.
+- Added Quick Nav cache invalidation on document edits, full-text replacement operations, and tab switches to preserve performance and correctness.
 - Added BITS Whisperer provider onboarding, readiness checks, capability matrix, and guarded download queue controls.
 - Added live Help status-page updates with quieter refresh announcements that only speak when tracked values change.
 - Added Preferences controls for AI enable state, BITS Whisperer safe mode lock, auto-open status behavior, and refresh cadence.

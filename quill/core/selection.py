@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 
 def line_span(text: str, cursor: int) -> tuple[int, int]:
     position = max(0, min(cursor, len(text)))
@@ -20,6 +22,26 @@ def paragraph_span(text: str, cursor: int) -> tuple[int, int]:
 
     next_break = text.find("\n\n", position)
     end = next_break if next_break >= 0 else len(text)
+    return start, end
+
+
+def sentence_span(text: str, cursor: int) -> tuple[int, int]:
+    position = max(0, min(cursor, len(text)))
+    if not text:
+        return 0, 0
+
+    start = 0
+    for match in re.finditer(r"[.!?](?:[\]\)\"']+)?\s+", text):
+        boundary = match.end()
+        if boundary > position:
+            break
+        start = boundary
+
+    end = len(text)
+    for match in re.finditer(r"[.!?](?:[\]\)\"']+)?\s+", text[position:]):
+        end = position + match.end()
+        break
+
     return start, end
 
 

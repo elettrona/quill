@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import json
 
+from quill.ui.dialog_contract import apply_modal_ids, show_modal_dialog
+
 try:
     from wx_accessible_webview import AccessibleHtmlDialog, SidePreview
 
@@ -88,8 +90,13 @@ except ImportError:
 
         def show_modal(self) -> int:
             self.dialog.CentreOnParent()
+            apply_modal_ids(
+                self.dialog,
+                affirmative_id=self._wx.ID_CANCEL,
+                escape_id=self._wx.ID_CANCEL,
+            )
             try:
-                self.dialog.ShowModal()
+                show_modal_dialog(self.dialog, self.dialog.GetTitle())
             finally:
                 self.dialog.Destroy()
             return self._result

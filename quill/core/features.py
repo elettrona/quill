@@ -581,6 +581,7 @@ def feature_for_command(command_id: str) -> str:
         "edit.undo": "core.edit",
         "edit.redo": "core.edit",
         "edit.copy_with_source": "core.edit",
+        "edit.copy_selection_for_email": "core.edit",
         "edit.toggle_extend_selection_mode": "core.edit",
         "edit.find": "core.search",
         "edit.find_next": "core.search",

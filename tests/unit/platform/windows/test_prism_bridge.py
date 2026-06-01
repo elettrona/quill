@@ -85,6 +85,10 @@ def test_announcement_engine_uses_system_speech_when_prism_is_missing(monkeypatc
         "quill.platform.windows.prism_bridge.import_module",
         lambda _name: (_ for _ in ()).throw(ImportError),
     )
+    monkeypatch.setattr(
+        "quill.platform.windows.prism_bridge._screen_reader_active",
+        lambda: False,
+    )
 
     engine = AnnouncementEngine("auto")
 

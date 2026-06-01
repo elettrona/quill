@@ -9,6 +9,7 @@ from __future__ import annotations
 import threading
 
 from quill.core.ai.style import add_sample, build_guide, load_style, save_style
+from quill.ui.dialog_contract import apply_modal_ids, show_modal_dialog
 
 
 class TrainStyleDialog:
@@ -160,8 +161,9 @@ class TrainStyleDialog:
     def show(self) -> None:
         wx = self._wx
         self.dialog.CentreOnParent()
+        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         try:
-            if self.dialog.ShowModal() == wx.ID_OK:
+            if show_modal_dialog(self.dialog, "Train Writing Style") == wx.ID_OK:
                 self._profile.enabled = self.enabled.GetValue()
                 save_style(self._profile)
                 self._announce("Saved writing style")

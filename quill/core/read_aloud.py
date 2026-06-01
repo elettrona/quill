@@ -509,6 +509,7 @@ def synthesize_to_file_with_dectalk(
     executable_path: Path,
     voice: str = "paul",
     rate: int = 180,
+    dictionary_path: Path | None = None,
 ) -> None:
     if not text.strip():
         raise ReadAloudUnavailableError("Cannot generate speech from empty text")
@@ -518,6 +519,7 @@ def synthesize_to_file_with_dectalk(
     voice_cmd = DECTALK_VOICE_COMMANDS.get(voice.strip().lower(), "")
     bounded_rate = max(75, min(650, int(rate)))
     payload = f"{voice_cmd} [:ra {bounded_rate}] {text}".strip()
+    dict_file = dictionary_path.expanduser() if dictionary_path is not None else executable_path.parent / "dtalk_us.dic"
     create_no_window = int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".txt", delete=False, encoding="utf-8", errors="replace"
@@ -526,7 +528,15 @@ def synthesize_to_file_with_dectalk(
         tmp_path = Path(fh.name)
     try:
         completed = subprocess.run(
-            [str(executable_path), "-file", str(tmp_path), "-wav", str(output_path)],
+            [
+                str(executable_path),
+                "-file",
+                str(tmp_path),
+                "-wav",
+                str(output_path),
+                "-dict",
+                str(dict_file),
+            ],
             cwd=str(executable_path.parent),
             capture_output=True,
             creationflags=create_no_window,
@@ -920,6 +930,7 @@ class ReadAloudController:
         target.write_bytes(source.read_bytes())
 
     def _speak_sentence_dectalk(self, executable: Path, payload: str) -> None:
+        dict_file = executable.parent / "dtalk_us.dic"
         with tempfile.NamedTemporaryFile(
             mode="w",
             delete=False,
@@ -932,7 +943,7 @@ class ReadAloudController:
         create_no_window = int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
         try:
             process = subprocess.Popen(
-                [str(executable), "-file", str(temp_path)],
+                [str(executable), "-file", str(temp_path), "-dict", str(dict_file)],
                 cwd=str(executable.parent),
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,

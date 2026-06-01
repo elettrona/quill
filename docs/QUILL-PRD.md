@@ -253,6 +253,59 @@ Quill should stay calm by default and unlock power features intentionally.
 - Exit: `Alt+F4` or `Ctrl+Q`. Prompts for each modified document.
 - Quill does not restore previous documents on launch by default. Opt-in setting available.
 
+### 5.2a QUILL Quick Nav mode
+
+Quill provides a browse-style, cursor-only navigation mode for long-form reading and structural movement in editable text surfaces.
+
+- Activation: `Ctrl+Shift+Grave` enters QUILL Quick Nav mode.
+- Exit: `Esc` exits QUILL Quick Nav mode.
+- Direction rule: pressing `Shift` with a Quick Nav key reverses direction.
+- Editing rule: no editing commands run while Quick Nav mode is active.
+- Status rule: status bar reports Quick Nav mode state while active.
+- Auto-exit rule: find and replace entry points return to normal command mode automatically.
+
+Default Quick Nav keys:
+
+- `H` / `Shift+H`: next and previous heading.
+- `1` to `6` / `Shift+1` to `Shift+6`: next and previous heading at level 1 through 6.
+- `A` / `Shift+A`: next and previous link anchor.
+- `L` / `Shift+L`: next and previous list container.
+- `I` / `Shift+I`: next and previous list item.
+- `T` / `Shift+T`: next and previous table.
+- `Q` / `Shift+Q`: next and previous block quote.
+- `B` / `Shift+B`: next and previous bookmark.
+- `'` / `Shift+'`: next and previous code block.
+- `C`: open table of contents (outline navigator).
+- `P` / `Shift+P`: next and previous paragraph.
+- `S` / `Shift+S`: next and previous sentence.
+- `Tab` / `Shift+Tab`: next and previous block.
+
+Artifact tracking model:
+
+- Quill maintains an in-memory navigation index per active document.
+- Index key: full document text plus markup kind.
+- Headings: parsed from Markdown and HTML heading structure.
+- Links: indexed from Markdown link forms and HTML anchor tags.
+- Lists: indexed from Markdown list block starts and HTML `ul`/`ol` tags.
+- List items: indexed from Markdown list markers and HTML `<li>` tags.
+- Tables: indexed from Markdown table starts and HTML `<table>` tags.
+- Block quotes: indexed from Markdown quote starts and HTML `<blockquote>` tags.
+- Code blocks: indexed from Markdown fenced code boundaries and HTML `<pre>`/`<code>` tags.
+- Bookmarks: indexed from active bookmark positions.
+- Paragraph anchors: blank-line paragraph boundaries for text/Markdown; block-level HTML tags (`p`, `li`, `blockquote`, `pre`, `h1` to `h6`, `td`, `th`) for HTML.
+- Sentence anchors: sentence-ending punctuation boundaries.
+
+Performance and invalidation:
+
+- Quick Nav movement reuses cached anchors to avoid reparsing per keystroke.
+- Index invalidates when document text changes, when full-text replacement occurs, and when active tab changes.
+- Missing-target announcements are plain-language and surface-aware (for example, "No list items found in this HTML document").
+
+Customization:
+
+- Settings include wrap behavior for Quick Nav boundary traversal and feedback mode (`speech`, `sound`, `both`, `none`).
+- Keyboard manager can reassign Quick Nav actions and leader sequences.
+
 ### 5.3 File operations
 
 - `Ctrl+N` new blank document.

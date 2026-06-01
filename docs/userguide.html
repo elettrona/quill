@@ -206,6 +206,7 @@ work.</p>
 <li><a href="#writing-and-editing">Writing and Editing</a></li>
 <li><a href="#search-replace-and-deep-navigation">Search, Replace, and
 Deep Navigation</a></li>
+<li><a href="#quill-quick-nav-mode">QUILL Quick Nav Mode</a></li>
 <li><a href="#formatting-and-markup-work">Formatting and Markup
 Work</a></li>
 <li><a href="#tools-for-reading-review-and-inspection">Tools for
@@ -988,8 +989,11 @@ includes watch-folder setup.</li>
 <li><strong>Check for Updates...</strong> verifies the signed update
 manifest, opens the installer download page, and can close Quill so
 setup can run immediately.</li>
-<li><strong>About Quill</strong> shows version and publisher
-details.</li>
+<li><strong>About Quill</strong> shows version, publisher details, and
+linked third-party dependency attribution with license and version
+metadata.</li>
+<li><strong>Open Third-Party Notices</strong> opens a full notices
+document with dependency tables and bundled license texts.</li>
 </ul>
 <p>If you only remember one thing about Help, remember this: it is a
 working surface, not a dead-end menu. The welcome guide teaches the
@@ -1075,6 +1079,77 @@ understands documents</h3>
 </ul>
 <p>When you combine this with marks and compare sessions, long-form
 review starts to feel much less fragile.</p>
+<h2 id="quill-quick-nav-mode">QUILL Quick Nav Mode</h2>
+<p>QUILL Quick Nav mode is a browse-style, cursor-only navigation layer
+for long documents.</p>
+<p>Enter the mode with <code>Ctrl+Shift+Grave</code>.</p>
+<p>While the mode is active:</p>
+<ul>
+<li><code>H</code> moves to the next heading.</li>
+<li><code>Shift+H</code> moves to the previous heading.</li>
+<li><code>1</code> through <code>6</code> move to the next heading at
+that specific level.</li>
+<li><code>Shift+1</code> through <code>Shift+6</code> move to the
+previous heading at that specific level.</li>
+<li><code>A</code> and <code>Shift+A</code> move by link anchor.</li>
+<li><code>L</code> and <code>Shift+L</code> move by list container.</li>
+<li><code>I</code> and <code>Shift+I</code> move by list item.</li>
+<li><code>T</code> and <code>Shift+T</code> move by table.</li>
+<li><code>Q</code> and <code>Shift+Q</code> move by block quote.</li>
+<li><code>B</code> and <code>Shift+B</code> move by bookmark.</li>
+<li><code>'</code> and <code>Shift+'</code> move by code block.</li>
+<li><code>C</code> opens table of contents (Outline Navigator).</li>
+<li><code>P</code> and <code>Shift+P</code> move by paragraph.</li>
+<li><code>S</code> and <code>Shift+S</code> move by sentence.</li>
+<li><code>Tab</code> and <code>Shift+Tab</code> move by block.</li>
+<li><code>]</code> jumps to the next line after the current list or
+table.</li>
+<li><code>[</code> jumps to the line above the current list or
+table.</li>
+<li><code>Esc</code> exits QUILL Quick Nav mode.</li>
+</ul>
+<p>Behavior rules:</p>
+<ul>
+<li>This mode does not edit text.</li>
+<li>It only changes cursor location.</li>
+<li>If a target does not exist for the active surface, Quill announces
+that clearly.</li>
+<li>Find and replace commands return you to normal command flow
+automatically.</li>
+<li>In <code>Preferences -&gt; General</code>, <strong>Preload QUILL
+browse cache in background</strong> is on by default. If you turn it
+off, Quill builds the cache the first time you use Quick Nav.</li>
+</ul>
+<p>How Quill tracks headings, lists, list items, paragraphs, and
+sentences:</p>
+<ul>
+<li>Quill creates a navigation index for the active document and reuses
+it until content or surface type changes.</li>
+<li>The index key is document text plus markup type, so unchanged
+documents do not pay repeated parse cost.</li>
+<li>Headings are parsed from Markdown and HTML heading structure.</li>
+<li>List-item anchors come from Markdown list markers and HTML
+<code>&lt;li&gt;</code> tags.</li>
+<li>Paragraph anchors come from blank-line boundaries in text/Markdown
+and block-level tags in HTML.</li>
+<li>Sentence anchors come from sentence-ending punctuation
+patterns.</li>
+<li>Table anchors come from Markdown table starts and HTML
+<code>&lt;table&gt;</code> tags.</li>
+<li>Block-quote anchors come from Markdown <code>&gt;</code> quote
+starts and HTML <code>&lt;blockquote&gt;</code> tags.</li>
+<li>Code-block anchors come from Markdown fenced code boundaries and
+HTML <code>&lt;pre&gt;</code> or <code>&lt;code&gt;</code> tags.</li>
+<li>Bookmark anchors come from your in-memory bookmark positions.</li>
+<li>The index is invalidated after edits, full document replacement
+operations, and tab/document switches.</li>
+</ul>
+<p>Performance note:</p>
+<ul>
+<li>Quick Nav avoids reparsing on every key press by caching artifact
+anchors.</li>
+<li>This keeps movement responsive on long Markdown and HTML files.</li>
+</ul>
 <h2 id="formatting-and-markup-work">Formatting and Markup Work</h2>
 <p>Quill understands that many users work in plain text while still
 caring deeply about exported structure.</p>
@@ -1264,6 +1339,39 @@ switches the pack label to <strong>Custom</strong>.</p>
 <p>Use the keymap editor when you want to rebind a single command. Quill
 detects conflicts and warns you before reassigning a binding already in
 use.</p>
+<h3 id="keyboard-manager-for-quill-quick-nav">Keyboard manager for QUILL
+Quick Nav</h3>
+<p>QUILL Quick Nav actions appear in Keymap Editor as dedicated
+entries:</p>
+<ul>
+<li><code>QUILL Quick Nav: Link</code></li>
+<li><code>QUILL Quick Nav: List</code></li>
+<li><code>QUILL Quick Nav: List Item</code></li>
+<li><code>QUILL Quick Nav: Table</code></li>
+<li><code>QUILL Quick Nav: Block Quote</code></li>
+<li><code>QUILL Quick Nav: Bookmark</code></li>
+<li><code>QUILL Quick Nav: Code Block</code></li>
+<li><code>QUILL Quick Nav: Table of Contents</code></li>
+<li><code>QUILL Quick Nav: Paragraph</code></li>
+<li><code>QUILL Quick Nav: Sentence</code></li>
+<li><code>QUILL Quick Nav: Heading</code></li>
+<li><code>QUILL Quick Nav: Block</code></li>
+</ul>
+<p>Exact rebinding examples:</p>
+<ol type="1">
+<li>Open <code>Tools -&gt; Customize -&gt; Keymap Editor...</code>.</li>
+<li>Choose <code>QUILL Quick Nav: Link</code>.</li>
+<li>Enter <code>K</code> if you want link jumps on <code>K</code>
+instead of <code>A</code>.</li>
+<li>Choose <code>QUILL Quick Nav: Code Block</code>.</li>
+<li>Enter ``` (grave) if you prefer grave instead of apostrophe.</li>
+</ol>
+<p>Notes:</p>
+<ul>
+<li>Conflicts are blocked by the keymap editor before saving.</li>
+<li>Quick Nav keys are interpreted only while QUILL Quick Nav mode is
+active.</li>
+</ul>
 <h3 id="status-bar-settings">Status bar settings</h3>
 <p>If the current status bar is too busy or not informative enough,
 change it. You can reorder items and choose which ones stay visible.</p>

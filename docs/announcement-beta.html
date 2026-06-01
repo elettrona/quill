@@ -258,6 +258,47 @@ navigation</h3>
 <li>bracket matching</li>
 <li>next and previous region movement</li>
 </ul>
+<h3 id="quill-quick-nav-mode-browse-style-cursor-navigation">QUILL Quick
+Nav mode (browse-style cursor navigation)</h3>
+<p>Quill 0.1.5 Beta introduces a dedicated browse-style quick navigation
+mode.</p>
+<ul>
+<li>enter with <code>Ctrl+Shift+Grave</code></li>
+<li>exit with <code>Esc</code></li>
+<li>move by heading with <code>H</code> and <code>Shift+H</code></li>
+<li>move by heading level with <code>1</code> through <code>6</code> and
+reverse with <code>Shift+1</code> through <code>Shift+6</code></li>
+<li>move by anchor with <code>A</code> and <code>Shift+A</code></li>
+<li>move by list with <code>L</code> and <code>Shift+L</code></li>
+<li>move by list item with <code>I</code> and <code>Shift+I</code></li>
+<li>move by table with <code>T</code> and <code>Shift+T</code></li>
+<li>move by block quote with <code>Q</code> and
+<code>Shift+Q</code></li>
+<li>move by bookmark with <code>B</code> and <code>Shift+B</code></li>
+<li>move by code block with <code>'</code> and <code>Shift+'</code></li>
+<li>open table of contents with <code>C</code></li>
+<li>move by paragraph with <code>P</code> and <code>Shift+P</code></li>
+<li>move by sentence with <code>S</code> and <code>Shift+S</code></li>
+<li>move by block with <code>Tab</code> and <code>Shift+Tab</code></li>
+</ul>
+<p>Quick Nav mode is movement-only. It does not edit text.</p>
+<p>How Quill keeps track of artifacts in Markdown and HTML:</p>
+<ul>
+<li>Quill builds and caches a navigation index for the active
+document.</li>
+<li>Headings are indexed from parsed Markdown and HTML heading
+structures.</li>
+<li>List-item anchors are indexed from Markdown list syntax and HTML
+<code>&lt;li&gt;</code> tags.</li>
+<li>Paragraph anchors are indexed from blank-line boundaries (text and
+Markdown) and block-level HTML tags.</li>
+<li>Sentence anchors are indexed from sentence punctuation
+boundaries.</li>
+<li>Indexes are invalidated when the document changes, when full-text
+replacement happens, and when the user switches tabs.</li>
+</ul>
+<p>This model keeps quick-nav movement responsive while preserving
+correct jumps across large documents.</p>
 <h3 id="formatting-markup-and-authoring">Formatting, markup, and
 authoring</h3>
 <p>Quill is strong in plain text and markup authoring:</p>
@@ -423,6 +464,10 @@ workflows.</li>
 Intelligence</strong> toggle (mirrors the AI menu) and a <strong>BITS
 Whisperer safe mode lock</strong> option for guarded rollout
 operation.</li>
+<li>QUILL now ships robust command-line startup options, including
+<code>--help</code>, <code>--version</code>, <code>--line</code>,
+<code>--column</code>, <code>--new-window</code>, and
+<code>--wait</code>.</li>
 <li>The first phase focuses on safe model management and guidance,
 including faster-whisper engine checks, while deeper transcription
 runtime behavior will roll out gradually.</li>

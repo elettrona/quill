@@ -84,6 +84,39 @@ Navigation features include:
 - bracket matching
 - next and previous region movement
 
+### QUILL Quick Nav mode (browse-style cursor navigation)
+
+Quill 0.1.5 Beta introduces a dedicated browse-style quick navigation mode.
+
+- enter with `Ctrl+Shift+Grave`
+- exit with `Esc`
+- move by heading with `H` and `Shift+H`
+- move by heading level with `1` through `6` and reverse with `Shift+1` through `Shift+6`
+- move by anchor with `A` and `Shift+A`
+- move by list with `L` and `Shift+L`
+- move by list item with `I` and `Shift+I`
+- move by table with `T` and `Shift+T`
+- move by block quote with `Q` and `Shift+Q`
+- move by bookmark with `B` and `Shift+B`
+- move by code block with `'` and `Shift+'`
+- open table of contents with `C`
+- move by paragraph with `P` and `Shift+P`
+- move by sentence with `S` and `Shift+S`
+- move by block with `Tab` and `Shift+Tab`
+
+Quick Nav mode is movement-only. It does not edit text.
+
+How Quill keeps track of artifacts in Markdown and HTML:
+
+- Quill builds and caches a navigation index for the active document.
+- Headings are indexed from parsed Markdown and HTML heading structures.
+- List-item anchors are indexed from Markdown list syntax and HTML `<li>` tags.
+- Paragraph anchors are indexed from blank-line boundaries (text and Markdown) and block-level HTML tags.
+- Sentence anchors are indexed from sentence punctuation boundaries.
+- Indexes are invalidated when the document changes, when full-text replacement happens, and when the user switches tabs.
+
+This model keeps quick-nav movement responsive while preserving correct jumps across large documents.
+
 ### Formatting, markup, and authoring
 
 Quill is strong in plain text and markup authoring:

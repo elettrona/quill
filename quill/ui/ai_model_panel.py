@@ -19,6 +19,7 @@ from quill.core.ai.model_manager import (
     save_model_choice,
     total_ram_gb,
 )
+from quill.ui.dialog_contract import apply_modal_ids, show_modal_dialog
 
 
 def _uses_foundation_models() -> bool:
@@ -176,8 +177,9 @@ class AIModelDialog:
     def show(self) -> None:
         wx = self._wx
         self.dialog.CentreOnParent()
+        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         try:
-            if self.dialog.ShowModal() == wx.ID_OK and self.choice is not None:
+            if show_modal_dialog(self.dialog, "AI Model & Connection") == wx.ID_OK and self.choice is not None:
                 save_model_choice(self._selected_id())
                 self._announce("Saved AI model choice")
         finally:

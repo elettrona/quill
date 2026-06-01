@@ -40,6 +40,7 @@ Highlights in 0.1.5 include:
 - In-App Preview and Side-by-Side Preview with a dedicated Focus Preview command.
 - Heading styling tools to apply font family, size, and alignment to current-level or all headings in Markdown/HTML.
 - Heading Organizer (`Ctrl+Alt+Shift+H`) with keyboard-driven heading level changes, section reordering, and accessibility validation.
+- QUILL Quick Nav mode (browse-style cursor navigation) activated with `Ctrl+Shift+Grave`, with mnemonic single-key movement for links, lists, list items, tables, block quotes, bookmarks, code blocks, table of contents, headings, heading levels (`1` through `6`), paragraphs, sentences, and blocks.
 - Watch Folder automation under **Tools -> Dictation** to auto-open newly dropped supported files.
 - Startup Wizard now includes a Watch Folder setup step so automation can be configured on first run.
 - Search menu simplification with replace-all inside the Replace dialog.
@@ -76,6 +77,27 @@ Watch Folder quick start:
 3. Enable watch folder monitoring.
 4. Turn on auto-start if you want it running every launch.
 5. Drop supported files into the folder; Quill opens them automatically.
+
+QUILL Quick Nav quick start:
+
+1. Press `Ctrl+Shift+Grave` to enter QUILL Quick Nav mode.
+2. Press `H` for next heading, or `Shift+H` for previous heading.
+3. Press `1` through `6` for next heading at that level, or `Shift+1` through `Shift+6` for previous heading at that level.
+4. Press `A` for links, `L` for lists, `I` for list items, `T` for tables, `Q` for block quotes, `B` for bookmarks, and `'` for code blocks.
+5. Press `C` to open table of contents, `P` for paragraphs, `S` for sentences, and `Tab` for blocks. Use `Shift` with any movement key to reverse direction.
+6. Press `]` to jump to the first line after the current list or table. Press `[` to jump to the line above it.
+7. In `Preferences -> General`, use **Preload QUILL browse cache in background**. It is on by default; if off, Quill builds the cache the first time you use Quick Nav.
+8. Press `Esc` to leave QUILL Quick Nav mode.
+
+How tracking works for Markdown and HTML:
+
+- Quill builds a per-document navigation index in memory and reuses it while the text and markup type stay unchanged.
+- Headings are indexed from parsed Markdown and HTML heading structures.
+- List-item anchors are indexed from Markdown list syntax and from HTML `<li>` tags.
+- Paragraph anchors are indexed by blank-line paragraph boundaries for text/Markdown and by block-level tags in HTML (`p`, `li`, `blockquote`, `pre`, `h1` to `h6`, `td`, `th`).
+- Sentence anchors are indexed from sentence-ending punctuation boundaries.
+- The index is invalidated on document edits, full-text replacements, and tab switches.
+- Quick Nav movement is cursor-only and non-editing by design.
 
 ## Platforms and on-device AI
 

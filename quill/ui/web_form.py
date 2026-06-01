@@ -27,6 +27,8 @@ from __future__ import annotations
 import html
 import json
 
+from quill.ui.dialog_contract import apply_modal_ids, show_modal_dialog
+
 FieldSpec = dict
 
 
@@ -107,11 +109,12 @@ class _WebFormDialog:
 
     def show(self) -> dict | None:
         self.dialog.CentreOnParent()
+        apply_modal_ids(self.dialog, affirmative_id=self._wx.ID_OK, escape_id=self._wx.ID_CANCEL)
         if self._native_controls:
             first = next(iter(self._native_controls.values()))
             self._wx.CallAfter(first.SetFocus)
         try:
-            if self.dialog.ShowModal() != self._wx.ID_OK:
+            if show_modal_dialog(self.dialog, self.dialog.GetTitle()) != self._wx.ID_OK:
                 return None
             if self._native_controls:
                 return self._read_native()

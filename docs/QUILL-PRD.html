@@ -809,6 +809,91 @@ modified document.</li>
 <li>Quill does not restore previous documents on launch by default.
 Opt-in setting available.</li>
 </ul>
+<h3 id="52a-quill-quick-nav-mode">5.2a QUILL Quick Nav mode</h3>
+<p>Quill provides a browse-style, cursor-only navigation mode for
+long-form reading and structural movement in editable text surfaces.</p>
+<ul>
+<li>Activation: <code>Ctrl+Shift+Grave</code> enters QUILL Quick Nav
+mode.</li>
+<li>Exit: <code>Esc</code> exits QUILL Quick Nav mode.</li>
+<li>Direction rule: pressing <code>Shift</code> with a Quick Nav key
+reverses direction.</li>
+<li>Editing rule: no editing commands run while Quick Nav mode is
+active.</li>
+<li>Status rule: status bar reports Quick Nav mode state while
+active.</li>
+<li>Auto-exit rule: find and replace entry points return to normal
+command mode automatically.</li>
+</ul>
+<p>Default Quick Nav keys:</p>
+<ul>
+<li><code>H</code> / <code>Shift+H</code>: next and previous
+heading.</li>
+<li><code>1</code> to <code>6</code> / <code>Shift+1</code> to
+<code>Shift+6</code>: next and previous heading at level 1 through
+6.</li>
+<li><code>A</code> / <code>Shift+A</code>: next and previous link
+anchor.</li>
+<li><code>L</code> / <code>Shift+L</code>: next and previous list
+container.</li>
+<li><code>I</code> / <code>Shift+I</code>: next and previous list
+item.</li>
+<li><code>T</code> / <code>Shift+T</code>: next and previous table.</li>
+<li><code>Q</code> / <code>Shift+Q</code>: next and previous block
+quote.</li>
+<li><code>B</code> / <code>Shift+B</code>: next and previous
+bookmark.</li>
+<li><code>'</code> / <code>Shift+'</code>: next and previous code
+block.</li>
+<li><code>C</code>: open table of contents (outline navigator).</li>
+<li><code>P</code> / <code>Shift+P</code>: next and previous
+paragraph.</li>
+<li><code>S</code> / <code>Shift+S</code>: next and previous
+sentence.</li>
+<li><code>Tab</code> / <code>Shift+Tab</code>: next and previous
+block.</li>
+</ul>
+<p>Artifact tracking model:</p>
+<ul>
+<li>Quill maintains an in-memory navigation index per active
+document.</li>
+<li>Index key: full document text plus markup kind.</li>
+<li>Headings: parsed from Markdown and HTML heading structure.</li>
+<li>Links: indexed from Markdown link forms and HTML anchor tags.</li>
+<li>Lists: indexed from Markdown list block starts and HTML
+<code>ul</code>/<code>ol</code> tags.</li>
+<li>List items: indexed from Markdown list markers and HTML
+<code>&lt;li&gt;</code> tags.</li>
+<li>Tables: indexed from Markdown table starts and HTML
+<code>&lt;table&gt;</code> tags.</li>
+<li>Block quotes: indexed from Markdown quote starts and HTML
+<code>&lt;blockquote&gt;</code> tags.</li>
+<li>Code blocks: indexed from Markdown fenced code boundaries and HTML
+<code>&lt;pre&gt;</code>/<code>&lt;code&gt;</code> tags.</li>
+<li>Bookmarks: indexed from active bookmark positions.</li>
+<li>Paragraph anchors: blank-line paragraph boundaries for
+text/Markdown; block-level HTML tags (<code>p</code>, <code>li</code>,
+<code>blockquote</code>, <code>pre</code>, <code>h1</code> to
+<code>h6</code>, <code>td</code>, <code>th</code>) for HTML.</li>
+<li>Sentence anchors: sentence-ending punctuation boundaries.</li>
+</ul>
+<p>Performance and invalidation:</p>
+<ul>
+<li>Quick Nav movement reuses cached anchors to avoid reparsing per
+keystroke.</li>
+<li>Index invalidates when document text changes, when full-text
+replacement occurs, and when active tab changes.</li>
+<li>Missing-target announcements are plain-language and surface-aware
+(for example, "No list items found in this HTML document").</li>
+</ul>
+<p>Customization:</p>
+<ul>
+<li>Settings include wrap behavior for Quick Nav boundary traversal and
+feedback mode (<code>speech</code>, <code>sound</code>,
+<code>both</code>, <code>none</code>).</li>
+<li>Keyboard manager can reassign Quick Nav actions and leader
+sequences.</li>
+</ul>
 <h3 id="53-file-operations">5.3 File operations</h3>
 <ul>
 <li><code>Ctrl+N</code> new blank document.</li>

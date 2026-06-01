@@ -15,6 +15,9 @@ def test_settings_round_trip(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
             keyboard_pack="VS Code",
             soft_wrap=False,
             wrap_find=False,
+            browse_mode_wrap=False,
+            browse_mode_feedback="both",
+            browse_mode_preload_cache=False,
             csv_open_mode="grid",
             word_open_mode="structured",
             indent_with_tabs=True,
@@ -56,6 +59,9 @@ def test_settings_round_trip(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
     assert loaded.keyboard_pack == "VS Code"
     assert loaded.soft_wrap is False
     assert loaded.wrap_find is False
+    assert loaded.browse_mode_wrap is False
+    assert loaded.browse_mode_feedback == "both"
+    assert loaded.browse_mode_preload_cache is False
     assert loaded.csv_open_mode == "grid"
     assert loaded.word_open_mode == "structured"
     assert loaded.indent_with_tabs is True
@@ -177,6 +183,28 @@ def test_settings_defaults_preview_browser_to_system(
     monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
     loaded = load_settings()
     assert loaded.preview_browser == "system"
+
+
+def test_settings_defaults_browse_mode_to_enabled_wrap_and_speech(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    loaded = load_settings()
+    assert loaded.browse_mode_wrap is True
+    assert loaded.browse_mode_feedback == "speech"
+    assert loaded.browse_mode_preload_cache is True
+
+
+def test_settings_normalize_invalid_browse_mode_feedback(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    (tmp_path / "settings.json").write_text(
+        '{"browse_mode_feedback":"loud"}',
+        encoding="utf-8",
+    )
+    loaded = load_settings()
+    assert loaded.browse_mode_feedback == "speech"
 
 
 def test_settings_defaults_csv_open_mode_to_prompt(

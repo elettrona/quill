@@ -31,3 +31,6 @@ jobs:
       - name: Run accessibility suite
         run: |
           pytest -q tests\accessibility tests\unit\platform\windows
+      - name: Run dialog accessibility regressions
+        run: |
+          pytest -q tests\unit\ui\test_dialog_contract.py tests\unit\ui\test_assistant_tools_dialog_callbacks.py tests\unit\ui\test_ui_palette_dialog.py tests\unit\ui\test_main_frame_navigation.py -k "dialog_contract or use_prompt or escape_is_not_manually_intercepted or prompt_search_defers_focus_and_uses_modal_ids or show_notifications_dialog_uses_close_for_affirmative_and_escape"

@@ -167,3 +167,13 @@ def test_palette_arrow_keys_move_from_search_to_results() -> None:
     up = _Event(dialog._wx.WXK_UP)  # noqa: SLF001
     dialog._on_char_hook(up)  # noqa: SLF001
     assert dialog.results.GetSelection() == dialog.results.GetCount() - 1
+
+
+def test_palette_escape_is_not_manually_intercepted() -> None:
+    dialog = _build_dialog()
+
+    escape = _Event(dialog._wx.WXK_ESCAPE)  # noqa: SLF001
+    dialog._on_char_hook(escape)  # noqa: SLF001
+
+    assert escape.skipped is True
+    assert dialog.dialog.ShowModal() == 0

@@ -8,6 +8,7 @@ from quill.core.sticky_notes import (
     load_sticky_notes,
     save_sticky_note,
 )
+from quill.ui.dialog_contract import apply_modal_ids, show_modal_dialog
 
 
 class StickyNoteEditorDialog:
@@ -61,13 +62,14 @@ class StickyNoteEditorDialog:
         else:
             self._build_native_fallback(sizer, title_value, body_value)
         self.dialog.SetSizer(sizer)
+        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
 
     def show_modal_and_get_body(self) -> str | None:
         self.dialog.CentreOnParent()
         if self._native_title is not None:
             self._wx.CallAfter(self._native_title.SetFocus)
         try:
-            result = self.dialog.ShowModal()
+            result = show_modal_dialog(self.dialog, "Sticky Note Editor")
             if result != self._wx.ID_OK:
                 return None
             if self._native_title is not None:
@@ -219,12 +221,13 @@ class StickyNotesVaultDialog:
         self.list.Bind(wx.EVT_LIST_ITEM_ACTIVATED, lambda _e: self._edit_selected())
         self.list.Bind(wx.EVT_CONTEXT_MENU, self._on_context_menu)
         self.dialog.Bind(wx.EVT_CHAR_HOOK, self._on_char_hook)
+        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_OK)
         self._refresh()
 
     def show_modal(self) -> None:
         self.dialog.CentreOnParent()
         try:
-            self.dialog.ShowModal()
+            show_modal_dialog(self.dialog, "Quill Notes Vault")
         finally:
             self.dialog.Destroy()
 
@@ -284,9 +287,6 @@ class StickyNotesVaultDialog:
             return
         if key_code == getattr(self._wx, "WXK_MENU", -1):
             self._show_context_menu()
-            return
-        if key_code == self._wx.WXK_ESCAPE:
-            self.dialog.EndModal(self._wx.ID_OK)
             return
         event.Skip()
 

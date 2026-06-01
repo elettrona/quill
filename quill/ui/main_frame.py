@@ -16,6 +16,11 @@ from typing import TYPE_CHECKING
 from urllib.error import URLError
 from uuid import uuid4
 
+try:
+    import winsound as _winsound  # type: ignore[import]
+except ImportError:  # pragma: no cover - non-Windows fallback
+    _winsound = None  # type: ignore[assignment]
+
 if TYPE_CHECKING:  # imports kept out of cold-start path
     from quill.core.epub import EpubBook, EpubChapter
 
@@ -267,7 +272,7 @@ from quill.core.recovery import (
 )
 from quill.core.search import SearchOptions, SearchPatternError, find_matches, replace_all
 from quill.core.search_history import add_search_term, load_search_history
-from quill.core.selection import block_span, line_span, paragraph_span
+from quill.core.selection import block_span, line_span, paragraph_span, sentence_span
 from quill.core.sessions import (
     active_index_from_session,
     add_recent_session,
@@ -380,6 +385,7 @@ from quill.platform.windows.shell_integration import (
     launcher_command,
     remove_shell_integration,
 )
+from quill.platform.windows.clipboard import build_email_clipboard_payload, copy_email_clipboard
 from quill.platform.windows.sr_announce import (
     announce,
     enable_transcript_capture,
@@ -401,6 +407,7 @@ from quill.ui.assistant_tools import (
     WritingAssistantDialog,
 )
 from quill.ui.csv_grid import CsvGridSurface
+from quill.ui.dialog_contract import apply_modal_ids, show_modal_dialog
 from quill.ui.palette import CommandPaletteDialog
 from quill.ui.sticky_notes import StickyNoteEditorDialog, StickyNotesVaultDialog
 from quill.ui.style_panel import TrainStyleDialog
@@ -647,6 +654,26 @@ class MainFrame:
         "tools.play_last_macro",
         "tools.manage_macros",
     })
+    _EXTEND_SELECTION_ACTION_EXEMPT_COMMANDS: set[str] = {
+        "edit.toggle_extend_selection_mode",
+        "edit.find",
+        "edit.find_next",
+        "edit.find_previous",
+        "edit.find_all_matches",
+        "edit.set_mark",
+        "edit.pop_mark",
+        "edit.list_marks",
+        "edit.exchange_point_mark",
+        "edit.follow_link",
+    }
+    _EXTEND_SELECTION_ACTION_COMMAND_PREFIXES: tuple[str, ...] = (
+        "edit.",
+        "format.",
+    )
+    _EXTEND_SELECTION_ACTION_COMMANDS: set[str] = {
+        "tools.glow_fix_document",
+        "tools.glow_fix_selection",
+    }
 
     def __init__(self, safe_mode: bool = False) -> None:
         import wx
@@ -691,6 +718,16 @@ class MainFrame:
         self._last_match: tuple[int, int] | None = None
         self._search_history = [] if safe_mode else load_search_history()
         self._searchable_picker_queries: dict[str, str] = {}
+        self._browse_navigation_cache: dict[str, object] | None = None
+        self._browse_prewarm_call_later = None
+        self._browse_prewarm_request_force = False
+        self._browse_prewarm_large_document_threshold = 20_000
+        self._browse_prewarm_delay_ms = 250
+        self._browse_cache_build_generation = 0
+        self._browse_cache_build_thread: threading.Thread | None = None
+        self._quill_key_mode_active = False
+        self._quill_key_mode_started_at = 0.0
+        self._quill_key_mode_timeout_seconds = 1.5
         self._notifications = [] if safe_mode else load_notifications()
         self._mark_ring = MarkRing()
         self._location_ring = LocationRing()
@@ -4816,6 +4853,8 @@ class MainFrame:
         }
 
     def _on_command_run(self, command_id: str) -> None:
+        if self._command_should_commit_extend_selection(command_id):
+            self._commit_pending_extend_selection()
         self._record_macro_step(command_id)
         record_diagnostic_event("command", command_id)
 
@@ -4828,6 +4867,8 @@ class MainFrame:
         if callable(get_id):
             command_id = command_by_menu_id.get(get_id())
         if command_id is not None:
+            if self._command_should_commit_extend_selection(command_id):
+                self._commit_pending_extend_selection()
             self._record_macro_step(command_id)
         skip = getattr(event, "Skip", None)
         if callable(skip):
@@ -4885,6 +4926,7 @@ class MainFrame:
             self.notebook.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self._on_notebook_page_changed)
             self.notebook.Bind(wx.EVT_CONTEXT_MENU, self._on_notebook_context_menu)
             self.notebook.Bind(wx.EVT_KEY_DOWN, self._on_notebook_key_down)
+        self.frame.Bind(wx.EVT_CHAR_HOOK, self._on_char_hook)
         self.statusbar.Bind(wx.EVT_CONTEXT_MENU, self._on_statusbar_context_menu)
         self.frame.Bind(wx.EVT_CONTEXT_MENU, self._on_frame_context_menu)
         self.frame.Bind(wx.EVT_CLOSE, self._on_close)
@@ -5009,13 +5051,618 @@ class MainFrame:
             return
         event.Skip()
 
+    def _on_char_hook(self, event: object) -> None:
+        if self._handle_quill_key_mode_event(event):
+            return
+        event.Skip()
+
+    def _handle_quill_key_mode_event(self, event: object) -> bool:
+        wx = self._wx
+        key_code = event.GetKeyCode()
+        prefix_key = getattr(wx, "WXK_BACKTICK", ord("`"))
+        if not self._quill_key_mode_active:
+            if event.ControlDown() and event.ShiftDown() and key_code == prefix_key and not event.AltDown():
+                self._enter_quill_key_mode()
+                return True
+            return False
+
+        if self._quill_key_mode_timed_out():
+            self._exit_quill_key_mode("QUILL browse mode timed out")
+            if self._event_has_modifiers(event):
+                event.Skip()
+            return True
+
+        if key_code in {getattr(wx, "WXK_ESCAPE", 27), 27}:
+            if event.ShiftDown():
+                self._refresh_browse_navigation_cache_now()
+                return True
+            self._exit_quill_key_mode("Exited QUILL browse mode")
+            return True
+
+        if event.ControlDown() and event.ShiftDown() and key_code == prefix_key and not event.AltDown():
+            self._exit_quill_key_mode("Exited QUILL browse mode")
+            return True
+
+        action = self._quill_key_action_for_event(event)
+        if action is None:
+            if self._event_has_modifiers(event):
+                self._exit_quill_key_mode("QUILL browse mode closed for normal shortcut use")
+                event.Skip()
+                return True
+            self._exit_quill_key_mode("No QUILL key action matched")
+            return True
+
+        if action == "exit":
+            self._exit_quill_key_mode("Exited QUILL browse mode")
+            return True
+
+        self._run_quill_key_action(action)
+        return True
+
+    def _enter_quill_key_mode(self) -> None:
+        self._quill_key_mode_active = True
+        self._quill_key_mode_started_at = time.monotonic()
+        self._quill_feedback(
+            "QUILL browse mode active. A links, L lists, I list items, T tables, Q block quotes, B bookmarks, apostrophe code blocks, C table of contents, P paragraphs, S sentences, H headings, 1 through 6 heading levels, right bracket skips forward past list or table, left bracket skips backward, Shift+Escape refreshes cache, Escape exits.",
+            status_message="QUILL browse mode active",
+            sound_kind="enter",
+        )
+
+    def _exit_quill_key_mode(self, message: str) -> None:
+        self._quill_key_mode_active = False
+        self._quill_key_mode_started_at = 0.0
+        self._quill_feedback(message, status_message=message, sound_kind="exit")
+
+    def _quill_key_mode_timed_out(self) -> bool:
+        if not self._quill_key_mode_active:
+            return False
+        return (time.monotonic() - self._quill_key_mode_started_at) > self._quill_key_mode_timeout_seconds
+
+    def _event_has_modifiers(self, event: object) -> bool:
+        return bool(event.ControlDown() or event.AltDown() or event.ShiftDown())
+
+    def _quill_key_action_for_event(self, event: object) -> str | None:
+        wx = self._wx
+        key_code = event.GetKeyCode()
+        shift = event.ShiftDown()
+        key_binding_map = {
+            "quill.quick_nav.heading": "heading",
+            "quill.quick_nav.link": "link",
+            "quill.quick_nav.list": "list",
+            "quill.quick_nav.list_item": "list_item",
+            "quill.quick_nav.table": "table",
+            "quill.quick_nav.block_quote": "block_quote",
+            "quill.quick_nav.bookmark": "bookmark",
+            "quill.quick_nav.code_block": "code_block",
+            "quill.quick_nav.table_of_contents": "table_of_contents",
+            "quill.quick_nav.paragraph": "paragraph",
+            "quill.quick_nav.sentence": "sentence",
+            "quill.quick_nav.block": "block",
+            "quill.quick_nav.skip_forward": "skip_forward",
+            "quill.quick_nav.skip_backward": "skip_backward",
+        }
+        for binding_key, action in key_binding_map.items():
+            configured = str(self._binding_for(binding_key) or "").strip().upper()
+            if not configured or "," in configured:
+                continue
+            if configured in {"TAB", "SHIFT+TAB"}:
+                continue
+            parsed = self._parse_keybinding(configured)
+            if parsed is None:
+                continue
+            _flags, configured_key_code = parsed
+            if key_code == configured_key_code:
+                return f"browse.{action}.previous" if shift else f"browse.{action}.next"
+        if ord("1") <= key_code <= ord("6"):
+            level = key_code - ord("0")
+            return f"browse.heading_level.{level}.previous" if shift else f"browse.heading_level.{level}.next"
+        if key_code in {getattr(wx, "WXK_TAB", 9)}:
+            return "browse.block.previous" if shift else "browse.block.next"
+        return None
+
+    def _run_quill_key_action(self, action: str) -> None:
+        if action.startswith("browse.heading_level."):
+            parts = action.split(".")
+            level = int(parts[2])
+            reverse = parts[3] == "previous"
+            self._browse_heading_level(level, reverse=reverse)
+            return
+        mapping = {
+            "browse.heading.next": lambda: self.navigate_next_heading(),
+            "browse.heading.previous": lambda: self.navigate_previous_heading(),
+            "browse.link.next": lambda: self._browse_link(reverse=False),
+            "browse.link.previous": lambda: self._browse_link(reverse=True),
+            "browse.list.next": lambda: self._browse_list(reverse=False),
+            "browse.list.previous": lambda: self._browse_list(reverse=True),
+            "browse.list_item.next": lambda: self._browse_list_item(reverse=False),
+            "browse.list_item.previous": lambda: self._browse_list_item(reverse=True),
+            "browse.table.next": lambda: self._browse_table(reverse=False),
+            "browse.table.previous": lambda: self._browse_table(reverse=True),
+            "browse.block_quote.next": lambda: self._browse_block_quote(reverse=False),
+            "browse.block_quote.previous": lambda: self._browse_block_quote(reverse=True),
+            "browse.bookmark.next": lambda: self._browse_bookmark(reverse=False),
+            "browse.bookmark.previous": lambda: self._browse_bookmark(reverse=True),
+            "browse.code_block.next": lambda: self._browse_code_block(reverse=False),
+            "browse.code_block.previous": lambda: self._browse_code_block(reverse=True),
+            "browse.table_of_contents.next": lambda: self.open_outline_navigator(),
+            "browse.table_of_contents.previous": lambda: self.open_outline_navigator(),
+            "browse.paragraph.next": lambda: self._browse_paragraph(reverse=False),
+            "browse.paragraph.previous": lambda: self._browse_paragraph(reverse=True),
+            "browse.sentence.next": lambda: self._browse_sentence(reverse=False),
+            "browse.sentence.previous": lambda: self._browse_sentence(reverse=True),
+            "browse.block.next": lambda: self.navigate_next_block(),
+            "browse.block.previous": lambda: self.navigate_previous_block(),
+            "browse.skip_forward.next": lambda: self._browse_skip_container(reverse=False),
+            "browse.skip_forward.previous": lambda: self._browse_skip_container(reverse=False),
+            "browse.skip_backward.next": lambda: self._browse_skip_container(reverse=True),
+            "browse.skip_backward.previous": lambda: self._browse_skip_container(reverse=True),
+        }
+        runner = mapping.get(action)
+        if runner is None:
+            self._quill_feedback(f"No QUILL key action mapped to {action}", status_message="No browse action mapped", sound_kind="error")
+            return
+        runner()
+
+    def _quill_feedback(self, message: str, *, status_message: str | None = None, sound_kind: str | None = None) -> None:
+        mode = str(getattr(self.settings, "browse_mode_feedback", "speech")).strip().lower()
+        status = status_message or message
+        if mode in {"speech", "both"}:
+            self._announce(message)
+        else:
+            self._set_status_quiet(status)
+        if sound_kind and mode in {"sound", "both"}:
+            self._play_quill_sound(sound_kind)
+
+    def _play_quill_sound(self, kind: str) -> None:
+        pattern = {
+            "enter": [(880, 45), (1175, 45)],
+            "exit": [(660, 70)],
+            "move": [(784, 30)],
+            "error": [(392, 70), (311, 90)],
+        }.get(kind, [(784, 30)])
+        if _winsound is not None:
+            try:
+                for frequency, duration in pattern:
+                    _winsound.Beep(frequency, duration)
+                return
+            except Exception:
+                pass
+        bell = getattr(self._wx, "Bell", None)
+        if callable(bell):
+            bell()
+
+    def _browse_navigation_context(self) -> dict[str, object]:
+        text = self.editor.GetValue()
+        markup_kind = infer_markup_kind(self.document.path)
+        cache = self._browse_navigation_cache
+        if cache is not None and cache.get("text") == text and cache.get("markup_kind") == markup_kind:
+            return cache
+        bookmarks = {
+            name: int(position)
+            for name, position in self._bookmarks.items()
+            if isinstance(position, int)
+        }
+        cache = self._build_browse_navigation_cache(text, markup_kind, bookmarks)
+        self._browse_navigation_cache = cache
+        return cache
+
+    def _build_browse_navigation_cache(
+        self,
+        text: str,
+        markup_kind: str,
+        bookmarks_map: dict[str, int],
+    ) -> dict[str, object]:
+        headings_by_level: dict[int, list[int]] = {level: [] for level in range(1, 7)}
+        if markup_kind in {"markdown", "html"}:
+            for heading in parse_heading_blocks(text, markup_kind):
+                headings_by_level.setdefault(heading.level, []).append(heading.start)
+        tables: list[int] = []
+        block_quotes: list[int] = []
+        code_blocks: list[int] = []
+        bookmarks: list[int] = sorted(set(bookmarks_map.values()))
+        lists: list[int] = []
+        list_items: list[int] = []
+        links = self._all_link_positions(text, markup_kind=markup_kind)
+        if markup_kind == "html":
+            for match in re.finditer(r"<(?:ul|ol)(?:\s+[^>]*)?>", text, flags=re.IGNORECASE):
+                lists.append(match.start())
+            for match in re.finditer(r"<li(?:\s+[^>]*)?>", text, flags=re.IGNORECASE):
+                list_items.append(match.start())
+            for match in re.finditer(r"<table(?:\s+[^>]*)?>", text, flags=re.IGNORECASE):
+                tables.append(match.start())
+            for match in re.finditer(r"<blockquote(?:\s+[^>]*)?>", text, flags=re.IGNORECASE):
+                block_quotes.append(match.start())
+            for match in re.finditer(r"<(?:pre|code)(?:\s+[^>]*)?>", text, flags=re.IGNORECASE):
+                code_blocks.append(match.start())
+        else:
+            line_start = 0
+            previous_line_is_list = False
+            previous_line_is_table = False
+            previous_line_is_quote = False
+            for raw_line in text.splitlines(keepends=True):
+                is_list_line = self._parse_list_manager_line(raw_line) is not None
+                if is_list_line and not previous_line_is_list:
+                    lists.append(line_start)
+                if is_list_line:
+                    list_items.append(line_start)
+                previous_line_is_list = is_list_line
+                line_text = raw_line.rstrip("\r\n")
+                is_table_line = bool(
+                    re.match(r"^\s*\|.+\|\s*$", line_text)
+                    or re.match(r"^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$", line_text)
+                )
+                if is_table_line and not previous_line_is_table:
+                    tables.append(line_start)
+                previous_line_is_table = is_table_line
+                is_quote_line = bool(re.match(r"^\s*>\s*", line_text))
+                if is_quote_line and not previous_line_is_quote:
+                    block_quotes.append(line_start)
+                previous_line_is_quote = is_quote_line
+                line_start += len(raw_line)
+            for match in re.finditer(r"(?m)^\s*(?:```|~~~)", text):
+                code_blocks.append(match.start())
+        paragraph_spans = self._all_paragraph_spans(text, markup_kind=markup_kind)
+        sentence_spans = self._all_sentence_spans(text)
+        cache = {
+            "text": text,
+            "markup_kind": markup_kind,
+            "headings_by_level": headings_by_level,
+            "links": links,
+            "tables": tables,
+            "block_quotes": block_quotes,
+            "bookmarks": bookmarks,
+            "code_blocks": sorted(set(code_blocks)),
+            "lists": lists,
+            "list_items": list_items,
+            "paragraph_spans": paragraph_spans,
+            "sentence_spans": sentence_spans,
+        }
+        return cache
+
+    def _refresh_browse_navigation_cache_now(self) -> None:
+        self._browse_navigation_cache = None
+        self._browse_navigation_context()
+        self._quill_feedback(
+            "QUILL browse cache refreshed",
+            status_message="QUILL browse cache refreshed",
+            sound_kind="move",
+        )
+
+    def _schedule_browse_prewarm(self, *, force: bool = False) -> None:
+        if not bool(getattr(self.settings, "browse_mode_preload_cache", True)):
+            return
+        text = self.editor.GetValue()
+        if not force and len(text) < self._browse_prewarm_large_document_threshold:
+            return
+        self._browse_prewarm_request_force = self._browse_prewarm_request_force or force
+        wx = self._wx
+        existing = self._browse_prewarm_call_later
+        stop = getattr(existing, "Stop", None)
+        if callable(stop):
+            stop()
+        call_later = getattr(wx, "CallLater", None)
+        if not callable(call_later):
+            return
+        self._browse_prewarm_call_later = call_later(
+            self._browse_prewarm_delay_ms,
+            self._run_browse_prewarm,
+        )
+
+    def _run_browse_prewarm(self) -> None:
+        force = bool(self._browse_prewarm_request_force)
+        self._browse_prewarm_request_force = False
+        try:
+            if not bool(getattr(self.settings, "browse_mode_preload_cache", True)):
+                return
+            text = self.editor.GetValue()
+            if not force and len(text) < self._browse_prewarm_large_document_threshold:
+                return
+            markup_kind = infer_markup_kind(self.document.path)
+            bookmarks = {
+                name: int(position)
+                for name, position in self._bookmarks.items()
+                if isinstance(position, int)
+            }
+            self._browse_cache_build_generation += 1
+            generation = self._browse_cache_build_generation
+
+            def _worker() -> None:
+                cache = self._build_browse_navigation_cache(text, markup_kind, bookmarks)
+                self._wx.CallAfter(
+                    self._accept_browse_prewarm_cache,
+                    generation,
+                    text,
+                    markup_kind,
+                    cache,
+                )
+
+            self._browse_cache_build_thread = threading.Thread(
+                target=_worker,
+                name="quill-browse-cache-prewarm",
+                daemon=True,
+            )
+            self._browse_cache_build_thread.start()
+        finally:
+            self._browse_prewarm_call_later = None
+
+    def _accept_browse_prewarm_cache(
+        self,
+        generation: int,
+        text_snapshot: str,
+        markup_kind_snapshot: str,
+        cache: dict[str, object],
+    ) -> None:
+        if generation != self._browse_cache_build_generation:
+            return
+        if self.editor.GetValue() != text_snapshot:
+            return
+        if infer_markup_kind(self.document.path) != markup_kind_snapshot:
+            return
+        self._browse_navigation_cache = cache
+
+    def _all_link_positions(self, text: str, *, markup_kind: str) -> list[int]:
+        positions: list[int] = []
+        if markup_kind == "html":
+            for match in re.finditer(r"<a\s+[^>]*href\s*=", text, flags=re.IGNORECASE):
+                positions.append(match.start())
+            return positions
+        for match in re.finditer(r"\[[^\]]+\]\([^\)]+\)", text):
+            positions.append(match.start())
+        for match in re.finditer(r"<https?://[^>]+>", text, flags=re.IGNORECASE):
+            positions.append(match.start())
+        for match in re.finditer(r"https?://[^\s\)\]\>]+", text, flags=re.IGNORECASE):
+            positions.append(match.start())
+        return sorted(set(positions))
+
+    def _all_paragraph_spans(self, text: str, *, markup_kind: str) -> list[tuple[int, int]]:
+        if markup_kind == "html":
+            spans: list[tuple[int, int]] = []
+            paragraph_pattern = re.compile(
+                r"<(?:p|li|blockquote|pre|h[1-6]|td|th)(?:\s+[^>]*)?>",
+                flags=re.IGNORECASE,
+            )
+            for match in paragraph_pattern.finditer(text):
+                spans.append((match.start(), match.start()))
+            if spans:
+                return spans
+        spans: list[tuple[int, int]] = []
+        offset = 0
+        for chunk in text.split("\n\n"):
+            spans.append((offset, offset + len(chunk)))
+            offset += len(chunk) + 2
+        return spans
+
+    def _all_sentence_spans(self, text: str) -> list[tuple[int, int]]:
+        spans: list[tuple[int, int]] = []
+        pattern = re.compile(r".+?(?:[.!?](?:[\]\)\"']+)?(?:\s+|$)|$)", re.DOTALL)
+        for match in pattern.finditer(text):
+            start, end = match.span()
+            if start == end:
+                continue
+            spans.append((start, end))
+        return spans
+
+    def _browse_heading_level(self, level: int, *, reverse: bool) -> None:
+        context = self._browse_navigation_context()
+        markup_kind = context["markup_kind"]
+        if markup_kind not in {"markdown", "html"}:
+            self._browse_unsupported("heading levels", markup_kind)
+            return
+        headings = list(context["headings_by_level"].get(level, []))
+        if not headings:
+            self._browse_not_found(f"heading level {level}", markup_kind)
+            return
+        self._browse_jump_to_positions(headings, f"heading level {level}", reverse=reverse)
+
+    def _browse_link(self, *, reverse: bool) -> None:
+        context = self._browse_navigation_context()
+        positions = list(context["links"])
+        if not positions:
+            self._browse_not_found("links", guess_preview_kind(self.document.path, self.editor.GetValue()))
+            return
+        self._browse_jump_to_positions(positions, "link", reverse=reverse)
+
+    def _browse_list(self, *, reverse: bool) -> None:
+        context = self._browse_navigation_context()
+        positions = list(context["lists"])
+        if not positions:
+            self._browse_not_found("lists", guess_preview_kind(self.document.path, self.editor.GetValue()))
+            return
+        self._browse_jump_to_positions(positions, "list", reverse=reverse)
+
+    def _browse_list_item(self, *, reverse: bool) -> None:
+        context = self._browse_navigation_context()
+        positions = list(context["list_items"])
+        if not positions:
+            self._browse_not_found("list items", guess_preview_kind(self.document.path, self.editor.GetValue()))
+            return
+        self._browse_jump_to_positions(positions, "list item", reverse=reverse)
+
+    def _browse_table(self, *, reverse: bool) -> None:
+        context = self._browse_navigation_context()
+        positions = list(context["tables"])
+        if not positions:
+            self._browse_not_found("tables", guess_preview_kind(self.document.path, self.editor.GetValue()))
+            return
+        self._browse_jump_to_positions(positions, "table", reverse=reverse)
+
+    def _browse_block_quote(self, *, reverse: bool) -> None:
+        context = self._browse_navigation_context()
+        positions = list(context["block_quotes"])
+        if not positions:
+            self._browse_not_found("block quotes", guess_preview_kind(self.document.path, self.editor.GetValue()))
+            return
+        self._browse_jump_to_positions(positions, "block quote", reverse=reverse)
+
+    def _browse_bookmark(self, *, reverse: bool) -> None:
+        context = self._browse_navigation_context()
+        positions = list(context["bookmarks"])
+        if not positions:
+            self._browse_not_found("bookmarks", guess_preview_kind(self.document.path, self.editor.GetValue()))
+            return
+        self._browse_jump_to_positions(positions, "bookmark", reverse=reverse)
+
+    def _browse_code_block(self, *, reverse: bool) -> None:
+        context = self._browse_navigation_context()
+        positions = list(context["code_blocks"])
+        if not positions:
+            self._browse_not_found("code blocks", guess_preview_kind(self.document.path, self.editor.GetValue()))
+            return
+        self._browse_jump_to_positions(positions, "code block", reverse=reverse)
+
+    def _browse_skip_container(self, *, reverse: bool) -> None:
+        text = self.editor.GetValue()
+        cursor = self.editor.GetInsertionPoint()
+        line_start, _line_end = line_span(text, cursor)
+        starts: list[int] = [0]
+        for index, character in enumerate(text):
+            if character == "\n":
+                starts.append(index + 1)
+        current_index = 0
+        for index, start in enumerate(starts):
+            if start <= line_start:
+                current_index = index
+            else:
+                break
+
+        def line_text(line_index: int) -> str:
+            start = starts[line_index]
+            end = starts[line_index + 1] if line_index + 1 < len(starts) else len(text)
+            return text[start:end].rstrip("\r\n")
+
+        def container_kind(value: str) -> str | None:
+            if self._parse_list_manager_line(value) is not None:
+                return "list"
+            if bool(
+                re.match(r"^\s*\|.+\|\s*$", value)
+                or re.match(r"^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$", value)
+            ):
+                return "table"
+            if bool(re.search(r"<li(?:\s+[^>]*)?>|<(?:ul|ol)(?:\s+[^>]*)?>", value, re.IGNORECASE)):
+                return "list"
+            if bool(re.search(r"<table(?:\s+[^>]*)?>", value, re.IGNORECASE)):
+                return "table"
+            return None
+
+        kind = container_kind(line_text(current_index))
+        if kind is None:
+            self._browse_not_found("list or table at cursor", guess_preview_kind(self.document.path, text))
+            return
+
+        def is_same_kind(line_index: int) -> bool:
+            return container_kind(line_text(line_index)) == kind
+
+        top = current_index
+        while top > 0 and is_same_kind(top - 1):
+            top -= 1
+        bottom = current_index
+        while bottom + 1 < len(starts) and is_same_kind(bottom + 1):
+            bottom += 1
+
+        if reverse:
+            if top == 0:
+                self._browse_not_found("previous line before container", guess_preview_kind(self.document.path, text))
+                return
+            target = starts[top - 1]
+            label = "previous line before"
+        else:
+            if bottom + 1 >= len(starts):
+                self._browse_not_found("next line after container", guess_preview_kind(self.document.path, text))
+                return
+            target = starts[bottom + 1]
+            label = "next line after"
+
+        self._record_location_before_jump()
+        self._move_point(target)
+        self.editor.SetFocus()
+        self._location_ring.record(target)
+        line, column = line_column_for_position(text, target)
+        self._browse_feedback_move(f"Moved to {label} {kind} at line {line}, column {column}")
+
+    def _browse_paragraph(self, *, reverse: bool) -> None:
+        positions = [start for start, _end in self._browse_navigation_context()["paragraph_spans"]]
+        if not positions:
+            self._browse_not_found("paragraphs", guess_preview_kind(self.document.path, self.editor.GetValue()))
+            return
+        self._browse_jump_to_positions(positions, "paragraph", reverse=reverse)
+
+    def _browse_sentence(self, *, reverse: bool) -> None:
+        positions = [start for start, _end in self._browse_navigation_context()["sentence_spans"]]
+        if not positions:
+            self._browse_not_found("sentences", guess_preview_kind(self.document.path, self.editor.GetValue()))
+            return
+        self._browse_jump_to_positions(positions, "sentence", reverse=reverse)
+
+    def _browse_jump_to_positions(self, positions: list[int], noun: str, *, reverse: bool) -> None:
+        cursor = self.editor.GetInsertionPoint()
+        sorted_positions = sorted(pos for pos in positions if pos >= 0)
+        if not sorted_positions:
+            self._browse_not_found(noun, guess_preview_kind(self.document.path, self.editor.GetValue()))
+            return
+        target: int | None = None
+        if reverse:
+            for candidate in reversed(sorted_positions):
+                if candidate < cursor:
+                    target = candidate
+                    break
+            if target is None and bool(getattr(self.settings, "browse_mode_wrap", True)):
+                target = sorted_positions[-1]
+        else:
+            for candidate in sorted_positions:
+                if candidate > cursor:
+                    target = candidate
+                    break
+            if target is None and bool(getattr(self.settings, "browse_mode_wrap", True)):
+                target = sorted_positions[0]
+        if target is None:
+            direction = "previous" if reverse else "next"
+            self._browse_not_found(f"{direction} {noun}", guess_preview_kind(self.document.path, self.editor.GetValue()))
+            return
+        self._record_location_before_jump()
+        self._move_point(target)
+        self.editor.SetFocus()
+        self._location_ring.record(target)
+        line, column = line_column_for_position(self.editor.GetValue(), target)
+        direction = "previous" if reverse else "next"
+        self._browse_feedback_move(f"Moved to {direction} {noun} at line {line}, column {column}")
+
+    def _browse_feedback_move(self, message: str) -> None:
+        self._quill_feedback(message, status_message=message, sound_kind="move")
+
+    def _browse_not_found(self, noun: str, surface: str) -> None:
+        detail = self._browse_surface_context(surface)
+        self._quill_feedback(
+            f"No {noun} found in this {detail}.",
+            status_message=f"No {noun} found",
+            sound_kind="error",
+        )
+
+    def _browse_unsupported(self, noun: str, surface: str) -> None:
+        detail = self._browse_surface_context(surface)
+        self._quill_feedback(
+            f"Browse mode cannot move by {noun} in this {detail}.",
+            status_message=f"No {noun} available",
+            sound_kind="error",
+        )
+
+    def _browse_surface_context(self, surface: str) -> str:
+        if surface == "markdown":
+            return "Markdown document"
+        if surface == "html":
+            return "HTML document"
+        if surface == "plain":
+            return "plain text document"
+        return f"{surface} document"
+
     def _activate_tab(self, index: int) -> None:
         if index < 0 or index >= len(self._document_tabs):
             return
         tab = self._document_tabs[index]
         self._active_tab_index = index
+        self._browse_navigation_cache = None
         self.editor = tab.editor
         self.document = tab.document
+        self._schedule_browse_prewarm(force=True)
         if self.settings.persistent_undo:
             if self.document.path is not None:
                 self._load_persistent_undo_state(self.document.path, self.editor.GetValue())
@@ -5087,7 +5734,9 @@ class MainFrame:
         self._sync_editor_change("Modified")
 
     def _sync_editor_change(self, status: str) -> None:
+        self._browse_navigation_cache = None
         self.document.set_text(self.editor.GetValue())
+        self._schedule_browse_prewarm()
         if not self._suspend_persistent_undo:
             self._record_persistent_undo_state(self.document.text)
         if self.settings.spellcheck_as_you_type:
@@ -5223,6 +5872,7 @@ class MainFrame:
                 return
         tab_key = getattr(wx, "WXK_TAB", None)
         if tab_key is not None and event.GetKeyCode() == tab_key:
+            self._commit_pending_extend_selection()
             if self._is_caret_on_markdown_list_item():
                 if event.ShiftDown():
                     self.format_outdent()
@@ -5262,12 +5912,14 @@ class MainFrame:
             wx.WXK_PAGEDOWN,
         }
         if event.GetKeyCode() not in movement_keys:
+            self._commit_pending_extend_selection()
             event.Skip()
             return
         if self._extend_selection_anchor is None:
             self._extend_selection_anchor = self.editor.GetInsertionPoint()
         if self._move_extend_selection_caret(event):
-            self._apply_extend_selection()
+            caret = self.editor.GetInsertionPoint()
+            self.editor.SetSelection(caret, caret)
             return
         event.Skip()
 
@@ -5310,6 +5962,27 @@ class MainFrame:
         start = min(self._extend_selection_anchor, caret)
         end = max(self._extend_selection_anchor, caret)
         self.editor.SetSelection(start, end)
+
+    def _has_pending_extend_selection(self) -> bool:
+        if not self._extend_selection_mode or self._extend_selection_anchor is None:
+            return False
+        selection_start, selection_end = self.editor.GetSelection()
+        if selection_start != selection_end:
+            return False
+        return self.editor.GetInsertionPoint() != self._extend_selection_anchor
+
+    def _commit_pending_extend_selection(self) -> bool:
+        if not self._has_pending_extend_selection():
+            return False
+        self._apply_extend_selection()
+        return True
+
+    def _command_should_commit_extend_selection(self, command_id: str) -> bool:
+        if command_id in self._EXTEND_SELECTION_ACTION_COMMANDS:
+            return True
+        if command_id in self._EXTEND_SELECTION_ACTION_EXEMPT_COMMANDS:
+            return False
+        return command_id.startswith(self._EXTEND_SELECTION_ACTION_COMMAND_PREFIXES)
 
     def _move_extend_selection_caret(self, event: object) -> bool:
         wx = self._wx
@@ -5396,10 +6069,7 @@ class MainFrame:
     def _move_point(self, position: int) -> None:
         capped = max(0, min(position, len(self.editor.GetValue())))
         self.editor.SetInsertionPoint(capped)
-        if self._extend_selection_mode and self._extend_selection_anchor is not None:
-            self._apply_extend_selection()
-        else:
-            self.editor.SetSelection(capped, capped)
+        self.editor.SetSelection(capped, capped)
 
     def _on_editor_context_menu(self, event: object) -> None:
         wx = self._wx
@@ -6857,14 +7527,13 @@ class MainFrame:
         self._popup_context_menu(popup_target, menu, event)
 
     def _show_modal_dialog(self, dialog: object, label: str) -> int:
-        self._region_tracker.enter(label)
-        announce(f"Entered {label} dialog")
-        try:
-            result = dialog.ShowModal()
-        finally:
-            announce(f"Exited {label} dialog")
-            self._region_tracker.exit(label)
-        return result
+        return show_modal_dialog(
+            dialog,
+            label,
+            announce=announce,
+            enter_region=self._region_tracker.enter,
+            exit_region=self._region_tracker.exit,
+        )
 
     def _show_message_box(self, message: str, caption: str, style: int) -> int:
         self._region_tracker.enter(caption)
@@ -6891,6 +7560,7 @@ class MainFrame:
         )
         if hasattr(dialog, "SetOKCancelLabels"):
             dialog.SetOKCancelLabels("Open", "Cancel")
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         dialog.ShowCheckBox("Trust this folder for future opens")
         result = self._show_modal_dialog(dialog, "Untrusted Location")
         trust = bool(dialog.IsCheckBoxChecked())
@@ -7455,6 +8125,7 @@ class MainFrame:
         )
         dialog.SetYesNoLabels(special_label, "Open in normal text editor")
         dialog.ShowCheckBox(remember_label)
+        apply_modal_ids(dialog, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO)
         result = self._show_modal_dialog(dialog, "Open Choice")
         remembered = bool(dialog.IsCheckBoxChecked())
         dialog.Destroy()
@@ -7660,6 +8331,7 @@ class MainFrame:
             choices,
         ) as dialog:
             dialog.SetSelection(current_index)
+            apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
             if self._show_modal_dialog(dialog, "Encoding") != wx.ID_OK:
                 self._set_status("Encoding selection cancelled")
                 return
@@ -8215,6 +8887,7 @@ class MainFrame:
             choices=[label for label, _handler in options],
         ) as dialog:
             dialog.SetSelection(0)
+            apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
             if self._show_modal_dialog(dialog, "Preferences") != wx.ID_OK:
                 self._set_status("Preferences cancelled")
                 return
@@ -8275,6 +8948,33 @@ class MainFrame:
             wrap_find = wx.CheckBox(panel, label="Wrap find searches")
             wrap_find.SetValue(self.settings.wrap_find)
             panel_sizer.Add(wrap_find, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+            browse_wrap = wx.CheckBox(panel, label="Wrap QUILL browse navigation at document boundaries")
+            browse_wrap.SetValue(bool(getattr(self.settings, "browse_mode_wrap", True)))
+            panel_sizer.Add(browse_wrap, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+            browse_feedback = wx.Choice(
+                panel,
+                choices=["Speech only", "Sound only", "Speech and sound", "Silent"],
+            )
+            browse_feedback.SetSelection(
+                {
+                    "speech": 0,
+                    "sound": 1,
+                    "both": 2,
+                    "none": 3,
+                }.get(str(getattr(self.settings, "browse_mode_feedback", "speech")).lower(), 0)
+            )
+            _add_choice_row("QUILL browse feedback", browse_feedback)
+
+            browse_preload_cache = wx.CheckBox(
+                panel,
+                label="Preload QUILL browse cache in background",
+            )
+            browse_preload_cache.SetValue(
+                bool(getattr(self.settings, "browse_mode_preload_cache", True))
+            )
+            panel_sizer.Add(browse_preload_cache, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
             auto_updates = wx.CheckBox(panel, label="Check for updates on startup")
             auto_updates.SetValue(self.settings.auto_check_updates)
@@ -8395,6 +9095,7 @@ class MainFrame:
             root.Add(panel, 1, wx.EXPAND | wx.ALL, 8)
             if buttons is not None:
                 root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
+            apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
             dialog.SetSizerAndFit(root)
 
             if self._show_modal_dialog(dialog, "General Preferences") != wx.ID_OK:
@@ -8407,6 +9108,14 @@ class MainFrame:
                 "soft_wrap": bool(soft_wrap.GetValue()),
                 "show_tab_control": bool(show_tabs.GetValue()),
                 "wrap_find": bool(wrap_find.GetValue()),
+                "browse_mode_wrap": bool(browse_wrap.GetValue()),
+                "browse_mode_feedback": {
+                    0: "speech",
+                    1: "sound",
+                    2: "both",
+                    3: "none",
+                }.get(browse_feedback.GetSelection(), "speech"),
+                "browse_mode_preload_cache": bool(browse_preload_cache.GetValue()),
                 "title_bar_path_mode": (
                     "full_path" if title_path_choice.GetSelection() == 1 else "name"
                 ),
@@ -8449,6 +9158,21 @@ class MainFrame:
             values.get("show_tab_control", self.settings.show_tab_control)
         )
         self.settings.wrap_find = bool(values.get("wrap_find", self.settings.wrap_find))
+        self.settings.browse_mode_wrap = bool(
+            values.get("browse_mode_wrap", getattr(self.settings, "browse_mode_wrap", True))
+        )
+        self.settings.browse_mode_feedback = str(
+            values.get(
+                "browse_mode_feedback",
+                getattr(self.settings, "browse_mode_feedback", "speech"),
+            )
+        )
+        self.settings.browse_mode_preload_cache = bool(
+            values.get(
+                "browse_mode_preload_cache",
+                getattr(self.settings, "browse_mode_preload_cache", True),
+            )
+        )
         self.settings.title_bar_path_mode = str(
             values.get("title_bar_path_mode", self.settings.title_bar_path_mode)
         )
@@ -8651,6 +9375,7 @@ class MainFrame:
             choices=choices,
         ) as dialog:
             dialog.SetSelection(current_index)
+            apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
             if self._show_modal_dialog(dialog, "Announcement Backend") != wx.ID_OK:
                 self._set_status("Announcement backend selection cancelled")
                 return
@@ -8704,11 +9429,28 @@ class MainFrame:
 
     def open_keymap_editor(self) -> None:
         wx = self._wx
+        quick_nav_actions: list[tuple[str, str]] = [
+            ("QUILL Quick Nav: Heading", "quill.quick_nav.heading"),
+            ("QUILL Quick Nav: Link", "quill.quick_nav.link"),
+            ("QUILL Quick Nav: List", "quill.quick_nav.list"),
+            ("QUILL Quick Nav: List Item", "quill.quick_nav.list_item"),
+            ("QUILL Quick Nav: Table", "quill.quick_nav.table"),
+            ("QUILL Quick Nav: Block Quote", "quill.quick_nav.block_quote"),
+            ("QUILL Quick Nav: Bookmark", "quill.quick_nav.bookmark"),
+            ("QUILL Quick Nav: Code Block", "quill.quick_nav.code_block"),
+            ("QUILL Quick Nav: Table of Contents", "quill.quick_nav.table_of_contents"),
+            ("QUILL Quick Nav: Paragraph", "quill.quick_nav.paragraph"),
+            ("QUILL Quick Nav: Sentence", "quill.quick_nav.sentence"),
+            ("QUILL Quick Nav: Block", "quill.quick_nav.block"),
+            ("QUILL Quick Nav: Skip Forward Past Container", "quill.quick_nav.skip_forward"),
+            ("QUILL Quick Nav: Skip Backward Past Container", "quill.quick_nav.skip_backward"),
+        ]
         command_choices = [
             f"{command.title} ({command.id})"
             for command in self.commands.list()
             if not command.id.startswith("tools.keymap_editor")
         ]
+        command_choices.extend(f"{title} ({command_id})" for title, command_id in quick_nav_actions)
         if not command_choices:
             self._set_status("No commands available for keymap editing")
             return
@@ -8749,6 +9491,16 @@ class MainFrame:
                 wx.ICON_ERROR | wx.OK,
             )
             return
+        if command_id.startswith("quill.quick_nav."):
+            normalized = new_binding.strip().upper()
+            quick_nav_valid = (len(normalized) == 1) or (normalized == "TAB")
+            if not quick_nav_valid:
+                self._show_message_box(
+                    "QUILL Quick Nav bindings must be a single key or TAB.",
+                    "Keymap Editor",
+                    wx.ICON_ERROR | wx.OK,
+                )
+                return
         conflict = find_keymap_conflict(self.keymap, command_id, new_binding)
         if conflict:
             self._show_message_box(
@@ -8799,6 +9551,7 @@ class MainFrame:
         controls.Add(restore_defaults, 0, wx.RIGHT, 8)
         root.Add(controls, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         root.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL | wx.ALIGN_RIGHT, 8)
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         panel.SetSizer(root)
         restore_defaults_selected = False
 
@@ -9306,6 +10059,7 @@ class MainFrame:
         root.Add(buttons, 0, wx.ALL | wx.EXPAND, 8)
         panel.SetSizer(root)
         refresh_details()
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_OK)
         self._show_modal_dialog(dialog, "External Tools and Format Support")
 
     def open_pandoc_wizard(self) -> None:
@@ -9453,6 +10207,7 @@ class MainFrame:
         browse_button.Bind(wx.EVT_BUTTON, lambda _e: browse_source())
         convert_button.Bind(wx.EVT_BUTTON, lambda _e: submit())
         cancel_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CANCEL))
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         if self._show_modal_dialog(dialog, "Pandoc Conversion Wizard") != wx.ID_OK:
             return None
         source_path = dialog_result.get("source_path")
@@ -9589,6 +10344,7 @@ class MainFrame:
         root.Add(buttons, 0, wx.ALL | wx.EXPAND, 8)
         panel.SetSizer(root)
         refresh()
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         if self._show_modal_dialog(dialog, "Review Diagnostics Export") != wx.ID_OK:
             return None
         return include_paths.GetValue()
@@ -9780,6 +10536,7 @@ class MainFrame:
         panel.SetSizer(root)
         include_paths.Enable(include_diagnostics.GetValue())
         refresh_preview()
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         if self._show_modal_dialog(dialog, "Review Bug Report") != wx.ID_OK:
             return None
         payload = dialog_result.get("payload")
@@ -10342,6 +11099,7 @@ class MainFrame:
         cancel_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CANCEL))
 
         refresh()
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         if self._show_modal_dialog(dialog, "Heading Organizer") != wx.ID_OK:
             return None
         return working
@@ -10668,6 +11426,7 @@ class MainFrame:
         cancel_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CANCEL))
 
         build_tree()
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         if self._show_modal_dialog(dialog, "YAML Structure Editor") != wx.ID_OK:
             return None
         return working_text
@@ -11103,6 +11862,7 @@ class MainFrame:
         review_button.Bind(wx.EVT_BUTTON, lambda _event: dialog.EndModal(wx.ID_OK))
         cancel_button.Bind(wx.EVT_BUTTON, lambda _event: dialog.EndModal(wx.ID_CANCEL))
         refresh_context()
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         result = self._show_modal_dialog(dialog, "Spell Check")
         selection = chooser.GetSelection()
         dialog.Destroy()
@@ -11858,6 +12618,7 @@ class MainFrame:
 
         preview_btn.Bind(wx.EVT_BUTTON, _on_preview)
         try:
+            apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
             if self._show_modal_dialog(dialog, "Read Aloud Voice") != wx.ID_OK:
                 self._set_status("Read aloud voice selection cancelled")
                 return
@@ -12641,8 +13402,9 @@ class MainFrame:
             "BITS Whisperer Provider Selection",
             labels,
         )
+        apply_modal_ids(dialog, affirmative_id=self._wx.ID_OK, escape_id=self._wx.ID_CANCEL)
         try:
-            if dialog.ShowModal() != self._wx.ID_OK:
+            if self._show_modal_dialog(dialog, "BITS Whisperer Provider Selection") != self._wx.ID_OK:
                 return
             selection = dialog.GetSelection()
         finally:
@@ -12701,8 +13463,9 @@ class MainFrame:
             "BITS Whisperer Provider Center",
             actions,
         )
+        apply_modal_ids(dialog, affirmative_id=self._wx.ID_OK, escape_id=self._wx.ID_CANCEL)
         try:
-            if dialog.ShowModal() != self._wx.ID_OK:
+            if self._show_modal_dialog(dialog, "BITS Whisperer Provider Center") != self._wx.ID_OK:
                 return
             action = actions[dialog.GetSelection()]
         finally:
@@ -12978,8 +13741,9 @@ class MainFrame:
             "BITS Whisperer Download Queue",
             actions,
         )
+        apply_modal_ids(dialog, affirmative_id=self._wx.ID_OK, escape_id=self._wx.ID_CANCEL)
         try:
-            if dialog.ShowModal() != self._wx.ID_OK:
+            if self._show_modal_dialog(dialog, "BITS Whisperer Download Queue") != self._wx.ID_OK:
                 return
             action = actions[dialog.GetSelection()]
         finally:
@@ -13017,8 +13781,13 @@ class MainFrame:
                 "Retry Download",
                 failed_choices,
             )
+            apply_modal_ids(
+                retry_dialog,
+                affirmative_id=self._wx.ID_OK,
+                escape_id=self._wx.ID_CANCEL,
+            )
             try:
-                if retry_dialog.ShowModal() != self._wx.ID_OK:
+                if self._show_modal_dialog(retry_dialog, "Retry Download") != self._wx.ID_OK:
                     return
                 selection = retry_dialog.GetSelection()
             finally:
@@ -13061,8 +13830,13 @@ class MainFrame:
             "BITS Whisperer Speech Setup",
             quick_actions,
         )
+        apply_modal_ids(
+            quick_dialog,
+            affirmative_id=self._wx.ID_OK,
+            escape_id=self._wx.ID_CANCEL,
+        )
         try:
-            if quick_dialog.ShowModal() != self._wx.ID_OK:
+            if self._show_modal_dialog(quick_dialog, "BITS Whisperer Speech Setup") != self._wx.ID_OK:
                 return
             quick_action = quick_actions[quick_dialog.GetSelection()]
         finally:
@@ -13096,8 +13870,9 @@ class MainFrame:
             "BITS Whisperer Speech Models",
             choices,
         )
+        apply_modal_ids(dialog, affirmative_id=self._wx.ID_OK, escape_id=self._wx.ID_CANCEL)
         try:
-            if dialog.ShowModal() != self._wx.ID_OK:
+            if self._show_modal_dialog(dialog, "BITS Whisperer Speech Models") != self._wx.ID_OK:
                 return
             selection = dialog.GetSelection()
         finally:
@@ -13128,8 +13903,13 @@ class MainFrame:
             "BITS Whisperer Model Action",
             actions,
         )
+        apply_modal_ids(
+            action_dialog,
+            affirmative_id=self._wx.ID_OK,
+            escape_id=self._wx.ID_CANCEL,
+        )
         try:
-            if action_dialog.ShowModal() != self._wx.ID_OK:
+            if self._show_modal_dialog(action_dialog, "BITS Whisperer Model Action") != self._wx.ID_OK:
                 return
             action = actions[action_dialog.GetSelection()]
         finally:
@@ -13618,10 +14398,12 @@ class MainFrame:
         copy_button.Bind(wx.EVT_BUTTON, lambda _e: copy_selected())
         clear_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CLEAR))
         close_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CLOSE))
+        apply_modal_ids(dialog, affirmative_id=wx.ID_CLOSE, escape_id=wx.ID_CLOSE)
 
-        result = dialog.ShowModal()
-        dialog.Destroy()
-        return result
+        try:
+            return self._show_modal_dialog(dialog, "Notifications")
+        finally:
+            dialog.Destroy()
 
     def show_help_status_page(self) -> None:
         self._ensure_status_page_timer()
@@ -14568,10 +15350,7 @@ class MainFrame:
             ok_button = buttons.FindWindowById(wx.ID_OK)
             if ok_button is not None:
                 ok_button.SetDefault()
-        if hasattr(dialog, "SetAffirmativeId"):
-            dialog.SetAffirmativeId(wx.ID_OK)
-        if hasattr(dialog, "SetEscapeId"):
-            dialog.SetEscapeId(wx.ID_CANCEL)
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
 
         panel.SetSizer(root)
         outer = wx.BoxSizer(wx.VERTICAL)
@@ -14593,18 +15372,6 @@ class MainFrame:
             wx.CallAfter(focus_query)
         else:
             focus_query()
-
-        def _on_char_hook(event: object) -> None:
-            key_code = event.GetKeyCode()
-            if key_code == wx.WXK_ESCAPE:
-                dialog.EndModal(wx.ID_CANCEL)
-                return
-            if key_code in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
-                submit(event)
-                return
-            event.Skip()
-
-        dialog.Bind(wx.EVT_CHAR_HOOK, _on_char_hook)
         try:
             if self._show_modal_dialog(dialog, title) != wx.ID_OK:
                 return None
@@ -14972,6 +15739,7 @@ class MainFrame:
         buttons = dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
         if buttons is not None:
             root.Add(buttons, 0, wx.ALL | wx.ALIGN_RIGHT, 8)
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         panel.SetSizer(root)
         dialog.SetSizerAndFit(root)
         query_ctrl.SetFocus()
@@ -15136,6 +15904,7 @@ class MainFrame:
         display_text_ctrl.Bind(wx.EVT_TEXT_ENTER, lambda _e: dialog.EndModal(wx.ID_OK))
         url_ctrl.SetFocus()
         try:
+            apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
             if self._show_modal_dialog(dialog, "Insert Link") != wx.ID_OK:
                 return
             url = url_ctrl.GetValue().strip()
@@ -16417,6 +17186,7 @@ class MainFrame:
         cancel_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CANCEL))
 
         build_tree()
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         if self._show_modal_dialog(dialog, "List Manager") != wx.ID_OK:
             return None
 
@@ -16648,9 +17418,11 @@ class MainFrame:
         return start, end
 
     def _replace_document_text(self, updated_text: str) -> None:
+        self._browse_navigation_cache = None
         current_text = self.editor.GetValue()
         self.editor.Replace(0, len(current_text), updated_text)
         self.editor.SetSelection(0, len(updated_text))
+        self._schedule_browse_prewarm()
 
     def _apply_selection_operation(
         self,
@@ -17663,6 +18435,7 @@ class MainFrame:
         root.Add(buttons, 0, wx.ALL | wx.EXPAND, 8)
         panel.SetSizer(root)
         refresh_details()
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_OK)
         self._show_modal_dialog(dialog, "Manage Macros")
 
     def open_profiles_and_features_settings(self) -> None:
@@ -18071,6 +18844,7 @@ class MainFrame:
         refresh_profile_list()
         refresh_summary()
         refresh_keyboard_preview()
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_OK)
         self._show_modal_dialog(dialog, "Profiles and Features")
 
     def undo_last_profile_change(self) -> None:

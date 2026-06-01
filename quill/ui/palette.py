@@ -8,6 +8,7 @@ from quill.core.palette import (
     record_palette_usage,
     save_palette_usage,
 )
+from quill.ui.dialog_contract import apply_modal_ids, show_modal_dialog
 
 
 class CommandPaletteDialog:
@@ -45,6 +46,7 @@ class CommandPaletteDialog:
         self.results = wx.ListBox(self.dialog)
         root.Add(self.results, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         self.dialog.SetSizer(root)
+        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
 
         self.search.Bind(wx.EVT_TEXT, self._on_search_changed)
         self.search.Bind(wx.EVT_TEXT_ENTER, self._on_accept)
@@ -57,7 +59,7 @@ class CommandPaletteDialog:
     def show_modal_and_run(self) -> None:
         self.dialog.CentreOnParent()
         try:
-            result = self.dialog.ShowModal()
+            result = show_modal_dialog(self.dialog, "Command Palette")
             if result == self._wx.ID_OK:
                 self._run_selected()
         finally:
@@ -75,9 +77,6 @@ class CommandPaletteDialog:
 
     def _on_char_hook(self, event: object) -> None:
         key_code = event.GetKeyCode()
-        if key_code == self._wx.WXK_ESCAPE:
-            self.dialog.EndModal(self._wx.ID_CANCEL)
-            return
         if key_code in (self._wx.WXK_RETURN, self._wx.WXK_NUMPAD_ENTER):
             self._on_accept(event)
             return

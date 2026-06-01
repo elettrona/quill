@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import threading
 
+from quill.ui.dialog_contract import apply_modal_ids, show_modal_dialog
+
 SUGGESTED_PROMPTS: tuple[str, ...] = (
     "Summarize this document",
     "Fix spelling and grammar",
@@ -352,9 +354,14 @@ class AskQuillChatDialog:
 
     def show(self) -> None:
         self.dialog.CentreOnParent()
+        apply_modal_ids(
+            self.dialog,
+            affirmative_id=self._wx.ID_CANCEL,
+            escape_id=self._wx.ID_CANCEL,
+        )
         try:
             # Land in the web view's edit field (or the wx field in fallback).
             self._wx.CallAfter(self._focus_composer)
-            self.dialog.ShowModal()
+            show_modal_dialog(self.dialog, "Ask Quill")
         finally:
             self.dialog.Destroy()

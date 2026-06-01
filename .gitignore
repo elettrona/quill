@@ -12,3 +12,4 @@ release-artifacts-*/
 installer-smoke*/
 *.log
 .quill-reqs.sha256
+kokoro/_hf_cache/

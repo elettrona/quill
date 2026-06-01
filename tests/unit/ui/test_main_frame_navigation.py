@@ -637,7 +637,11 @@ def test_open_preferences_shows_dialog_and_routes_selection() -> None:
         dialog.selection = 3  # type: ignore[attr-defined]
         return 1
 
-    frame._wx = type("WX", (), {"SingleChoiceDialog": _ChoiceDialog, "ID_OK": 1})()
+    frame._wx = type(
+        "WX",
+        (),
+        {"SingleChoiceDialog": _ChoiceDialog, "ID_OK": 1, "ID_CANCEL": 0},
+    )()
     frame._show_modal_dialog = _show_modal  # type: ignore[method-assign]
     frame.open_general_preferences = lambda: called.append("general")  # type: ignore[method-assign]
     frame.open_profiles_and_features_settings = lambda: called.append("profiles")  # type: ignore[method-assign]
@@ -668,7 +672,11 @@ def test_open_preferences_sets_cancelled_status_when_dialog_is_cancelled() -> No
         def GetSelection(self) -> int:
             return self.selection
 
-    frame._wx = type("WX", (), {"SingleChoiceDialog": _ChoiceDialog, "ID_OK": 1})()
+    frame._wx = type(
+        "WX",
+        (),
+        {"SingleChoiceDialog": _ChoiceDialog, "ID_OK": 1, "ID_CANCEL": 0},
+    )()
     frame._show_modal_dialog = lambda _dialog, _label: 0  # type: ignore[method-assign]
 
     frame.open_preferences()
@@ -696,7 +704,11 @@ def test_open_preferences_routes_to_general_settings() -> None:
         def GetSelection(self) -> int:
             return self.selection
 
-    frame._wx = type("WX", (), {"SingleChoiceDialog": _ChoiceDialog, "ID_OK": 1})()
+    frame._wx = type(
+        "WX",
+        (),
+        {"SingleChoiceDialog": _ChoiceDialog, "ID_OK": 1, "ID_CANCEL": 0},
+    )()
     frame._show_modal_dialog = lambda _dialog, _label: 1  # type: ignore[method-assign]
     frame.open_general_preferences = lambda: called.append("general")  # type: ignore[method-assign]
     frame.open_profiles_and_features_settings = lambda: called.append("profiles")  # type: ignore[method-assign]
@@ -1104,10 +1116,10 @@ def test_extend_selection_mode_moves_down_with_arrow_key() -> None:
     frame._on_editor_key_down(event)
 
     assert frame.editor.GetInsertionPoint() == 4
-    assert frame.editor.selection == (0, 4)
+    assert frame.editor.selection == (4, 4)
 
 
-def test_find_next_extends_selection_when_mode_enabled() -> None:
+def test_find_next_keeps_free_movement_when_mode_enabled() -> None:
     frame = _build_frame("alpha beta gamma alpha", insertion_point=0)
     frame.toggle_extend_selection_mode(True)
     frame.editor.SetInsertionPoint(1)
@@ -1117,10 +1129,10 @@ def test_find_next_extends_selection_when_mode_enabled() -> None:
     frame.find_next()
 
     assert frame.editor.GetInsertionPoint() == 22
-    assert frame.editor.selection == (0, 22)
+    assert frame.editor.selection == (22, 22)
 
 
-def test_find_text_sets_anchor_and_extends_when_mode_is_on() -> None:
+def test_find_text_sets_anchor_and_keeps_free_movement_when_mode_is_on() -> None:
     frame = _build_frame("alpha beta alpha", insertion_point=6)
     frame._wx = _FIND_WX()
     frame.toggle_extend_selection_mode(True)
@@ -1130,11 +1142,41 @@ def test_find_text_sets_anchor_and_extends_when_mode_is_on() -> None:
     frame._on_find_event(_FindEvent("alpha"))
 
     assert frame._extend_selection_anchor == 6
-    assert frame.editor.selection == (6, 16)
+    assert frame.editor.selection == (16, 16)
     assert frame._status_message == "Found next at position 12"
 
 
-def test_prompt_search_defers_focus_and_wires_escape() -> None:
+def test_extend_selection_commits_on_non_movement_key_action() -> None:
+    frame = _build_frame("alpha beta", insertion_point=0)
+    frame.toggle_extend_selection_mode(True)
+    frame.editor.SetInsertionPoint(5)
+    frame.editor.SetSelection(5, 5)
+    event = _KeyEvent(ord("X"))
+    frame._wx = type(
+        "WX",
+        (),
+        {
+            "WXK_INSERT": 45,
+            "WXK_F8": 119,
+            "WXK_LEFT": 314,
+            "WXK_RIGHT": 316,
+            "WXK_UP": 315,
+            "WXK_DOWN": 317,
+            "WXK_HOME": 313,
+            "WXK_END": 312,
+            "WXK_PAGEUP": 366,
+            "WXK_PAGEDOWN": 367,
+            "WXK_ESCAPE": 27,
+        },
+    )()
+
+    frame._on_editor_key_down(event)
+
+    assert event.skipped is True
+    assert frame.editor.selection == (0, 5)
+
+
+def test_prompt_search_defers_focus_and_uses_modal_ids() -> None:
     frame = _build_frame("alpha beta", insertion_point=0)
     frame._last_find_query = "alpha"
     deferred: list[object] = []
@@ -1279,7 +1321,6 @@ def test_prompt_search_defers_focus_and_wires_escape() -> None:
             callback()
         assert query.focused is True  # type: ignore[attr-defined]
         assert query.selection == (0, len("alpha"))  # type: ignore[attr-defined]
-        assert wx.EVT_CHAR_HOOK in dialog.handlers  # type: ignore[attr-defined]
         return wx.ID_CANCEL
 
     frame._show_modal_dialog = _show_modal  # type: ignore[method-assign]
@@ -1290,7 +1331,269 @@ def test_prompt_search_defers_focus_and_wires_escape() -> None:
     assert deferred
 
 
-def test_find_previous_sets_anchor_and_extends_when_mode_is_on() -> None:
+def test_prompt_file_search_uses_modal_ids() -> None:
+    frame = _build_frame("alpha beta", insertion_point=0)
+    captured: dict[str, object] = {}
+
+    class _Dialog:
+        def __init__(self, _parent: object, title: str, size: tuple[int, int]) -> None:
+            self.title = title
+            self.size = size
+            self.affirmative_id: int | None = None
+            self.escape_id: int | None = None
+            captured["dialog"] = self
+
+        def CreateButtonSizer(self, _style: int) -> None:
+            return None
+
+        def SetAffirmativeId(self, value: int) -> None:
+            self.affirmative_id = value
+
+        def SetEscapeId(self, value: int) -> None:
+            self.escape_id = value
+
+        def SetSizerAndFit(self, _sizer: object) -> None:
+            return None
+
+        def Destroy(self) -> None:
+            return None
+
+    class _Panel:
+        def __init__(self, _parent: object) -> None:
+            return None
+
+        def SetSizer(self, _sizer: object) -> None:
+            return None
+
+    class _BoxSizer:
+        def __init__(self, _orientation: int) -> None:
+            return None
+
+        def Add(self, _item: object, *_args: object, **_kwargs: object) -> None:
+            return None
+
+        def AddSpacer(self, _size: int) -> None:
+            return None
+
+    class _FlexGridSizer(_BoxSizer):
+        def __init__(self, *_args: object) -> None:
+            return None
+
+        def AddGrowableCol(self, _col: int, _proportion: int) -> None:
+            return None
+
+    class _StaticText:
+        def __init__(self, _parent: object, label: str) -> None:
+            self.label = label
+
+    class _DirPickerCtrl:
+        def __init__(self, _parent: object, path: str) -> None:
+            self.path = path
+
+        def GetPath(self) -> str:
+            return self.path
+
+    class _TextCtrl:
+        def __init__(self, _parent: object, value: str = "") -> None:
+            self.value = value
+
+        def GetValue(self) -> str:
+            return self.value
+
+        def SetFocus(self) -> None:
+            return None
+
+    class _Choice:
+        def __init__(self, _parent: object, choices: list[str]) -> None:
+            self.choices = choices
+            self.selection = 0
+
+        def SetSelection(self, selection: int) -> None:
+            self.selection = selection
+
+        def GetSelection(self) -> int:
+            return self.selection
+
+        def GetStringSelection(self) -> str:
+            return self.choices[self.selection]
+
+    class _CheckBox:
+        def __init__(self, _parent: object, label: str) -> None:
+            self.label = label
+            self.value = False
+
+        def GetValue(self) -> bool:
+            return self.value
+
+        def SetValue(self, value: bool) -> None:
+            self.value = value
+
+    wx = type(
+        "WX",
+        (),
+        {
+            "Dialog": _Dialog,
+            "Panel": _Panel,
+            "BoxSizer": _BoxSizer,
+            "FlexGridSizer": _FlexGridSizer,
+            "StaticText": _StaticText,
+            "DirPickerCtrl": _DirPickerCtrl,
+            "TextCtrl": _TextCtrl,
+            "Choice": _Choice,
+            "CheckBox": _CheckBox,
+            "VERTICAL": 1,
+            "ALIGN_CENTER_VERTICAL": 2,
+            "EXPAND": 4,
+            "ALL": 8,
+            "LEFT": 16,
+            "RIGHT": 32,
+            "TOP": 64,
+            "BOTTOM": 128,
+            "ALIGN_RIGHT": 256,
+            "OK": 1,
+            "CANCEL": 2,
+            "ID_OK": 1,
+            "ID_CANCEL": 0,
+        },
+    )()
+    frame._wx = wx
+
+    def _show_modal(dialog: object, label: str) -> int:
+        assert label == "Search in Files"
+        assert dialog.affirmative_id == wx.ID_OK  # type: ignore[attr-defined]
+        assert dialog.escape_id == wx.ID_CANCEL  # type: ignore[attr-defined]
+        return wx.ID_CANCEL
+
+    frame._show_modal_dialog = _show_modal  # type: ignore[method-assign]
+
+    result = frame._prompt_file_search(replace=False)
+
+    assert result is None
+
+
+def test_show_notifications_dialog_uses_close_for_affirmative_and_escape() -> None:
+    frame = MainFrame.__new__(MainFrame)
+
+    class _Dialog:
+        def __init__(self, _parent: object, title: str, size: tuple[int, int]) -> None:
+            self.title = title
+            self.size = size
+            self.affirmative_id: int | None = None
+            self.escape_id: int | None = None
+
+        def SetAffirmativeId(self, value: int) -> None:
+            self.affirmative_id = value
+
+        def SetEscapeId(self, value: int) -> None:
+            self.escape_id = value
+
+        def Destroy(self) -> None:
+            return
+
+        def EndModal(self, _result: int) -> None:
+            return
+
+    class _Panel:
+        def __init__(self, _parent: object) -> None:
+            return
+
+        def SetSizer(self, _sizer: object) -> None:
+            return
+
+    class _BoxSizer:
+        def __init__(self, _orientation: int) -> None:
+            return
+
+        def Add(self, *_args: object, **_kwargs: object) -> None:
+            return
+
+        def AddStretchSpacer(self, _proportion: int) -> None:
+            return
+
+    class _StaticText:
+        def __init__(self, _parent: object, label: str) -> None:
+            self.label = label
+
+    class _ListBox:
+        def __init__(self, _parent: object, choices: list[str]) -> None:
+            self.choices = choices
+            self.selection = -1
+            self.enabled = True
+            self.handlers: dict[int, object] = {}
+
+        def SetSelection(self, selection: int) -> None:
+            self.selection = selection
+
+        def GetSelection(self) -> int:
+            return self.selection
+
+        def Enable(self, enabled: bool) -> None:
+            self.enabled = enabled
+
+        def Bind(self, event_type: int, handler: object) -> None:
+            self.handlers[event_type] = handler
+
+    class _Button:
+        def __init__(self, _parent: object, id: int | None = None, label: str = "") -> None:
+            self.id = id
+            self.label = label
+            self.enabled = True
+            self.handlers: dict[int, object] = {}
+
+        def Enable(self, enabled: bool) -> None:
+            self.enabled = enabled
+
+        def Bind(self, event_type: int, handler: object) -> None:
+            self.handlers[event_type] = handler
+
+    wx = type(
+        "WX",
+        (),
+        {
+            "Dialog": _Dialog,
+            "Panel": _Panel,
+            "BoxSizer": _BoxSizer,
+            "StaticText": _StaticText,
+            "ListBox": _ListBox,
+            "Button": _Button,
+            "VERTICAL": 1,
+            "HORIZONTAL": 2,
+            "ALL": 4,
+            "EXPAND": 8,
+            "RIGHT": 16,
+            "ID_CLEAR": 1001,
+            "ID_CLOSE": 1000,
+            "NOT_FOUND": -1,
+            "EVT_LISTBOX": 200,
+            "EVT_BUTTON": 201,
+        },
+    )()
+    frame._wx = wx
+    frame.frame = object()
+    frame._notifications = [
+        types.SimpleNamespace(
+            timestamp="2026-01-01T00:00:00Z",
+            category="info",
+            message="Done",
+        )
+    ]
+    frame._copy_to_clipboard = lambda _text: True
+    frame._set_status = lambda _text: None
+
+    def _show_modal(dialog: object, label: str) -> int:
+        assert label == "Notifications"
+        assert dialog.affirmative_id == wx.ID_CLOSE  # type: ignore[attr-defined]
+        assert dialog.escape_id == wx.ID_CLOSE  # type: ignore[attr-defined]
+        return wx.ID_CLOSE
+
+    frame._show_modal_dialog = _show_modal  # type: ignore[method-assign]
+
+    result = frame._show_notifications_dialog()
+
+    assert result == wx.ID_CLOSE
+
+
+def test_find_previous_sets_anchor_and_keeps_free_movement_when_mode_is_on() -> None:
     frame = _build_frame("alpha beta alpha", insertion_point=len("alpha beta alpha"))
     frame._last_find_query = "alpha"
     frame._last_search_options = SearchOptions()
@@ -1300,8 +1603,30 @@ def test_find_previous_sets_anchor_and_extends_when_mode_is_on() -> None:
     frame.find_previous()
 
     assert frame._extend_selection_anchor == len("alpha beta alpha")
-    assert frame.editor.selection == (11, len("alpha beta alpha"))
+    assert frame.editor.selection == (11, 11)
     assert frame._status_message == "Found previous at position 12"
+
+
+def test_command_run_commits_pending_extend_selection_for_text_commands() -> None:
+    frame = _build_frame("alpha beta", insertion_point=0)
+    frame.toggle_extend_selection_mode(True)
+    frame.editor.SetInsertionPoint(5)
+    frame.editor.SetSelection(5, 5)
+
+    frame._on_command_run("format.bold")
+
+    assert frame.editor.selection == (0, 5)
+
+
+def test_command_run_does_not_commit_pending_extend_selection_for_search_navigation() -> None:
+    frame = _build_frame("alpha beta", insertion_point=0)
+    frame.toggle_extend_selection_mode(True)
+    frame.editor.SetInsertionPoint(5)
+    frame.editor.SetSelection(5, 5)
+
+    frame._on_command_run("edit.find_next")
+
+    assert frame.editor.selection == (5, 5)
 
 
 def test_format_case_no_selection_targets_current_word() -> None:
@@ -1396,6 +1721,7 @@ def test_prompt_untrusted_location_uses_single_checkbox_dialog() -> None:
             "CANCEL": 2,
             "ICON_WARNING": 4,
             "ID_OK": 1,
+            "ID_CANCEL": 0,
         },
     )()
     frame._wx = wx
