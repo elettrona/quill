@@ -141,5 +141,12 @@ module = [
     "faster_whisper",
     "kokoro",
     "openpyxl",
+    # Optional runtime dependencies that are not installed in the scoped-typing
+    # CI job (which installs only .[dev]); the gate should measure our code, not
+    # whether an optional extra happens to be present.
+    "markitdown",
+    "certifi",
+    "pdfplumber",
+    "pyttsx3",
 ]
 ignore_missing_imports = true

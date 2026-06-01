@@ -1129,6 +1129,25 @@ returns to the editor on close; tests or a contract check cover
 representative dialogs.</td>
 </tr>
 <tr>
+<td>OPS-1</td>
+<td>Green main: required CI gates must pass</td>
+<td>Foundations</td>
+<td>S</td>
+<td>In progress</td>
+<td>The gate ladder is only real if it is green on <code>main</code>.
+The newly added gate jobs were red because they installed only
+<code>.[dev]</code>: the UI test modules need <code>wx</code> (the
+<code>ui</code> extra) and the scoped-typing job could not find optional
+modules (<code>markitdown</code>, <code>certifi</code>,
+<code>pdfplumber</code>, <code>pyttsx3</code>). Fix: install
+<code>.[dev,ui]</code> in the test jobs and add the optional modules to
+the mypy <code>ignore_missing_imports</code> overrides so the typing
+gate measures first-party code regardless of optional extras.
+Acceptance: PR CI, Security CI, and Accessibility CI all conclude
+success on <code>main</code>. This is the first thing to resolve before
+any further work.</td>
+</tr>
+<tr>
 <td>FLAG-1</td>
 <td>Feature-flag respect is a UI contract</td>
 <td>Foundations</td>
@@ -4117,6 +4136,29 @@ adapter.</p>
 <p>The plan: adopt <code>quill-glow-core</code> as the single shared
 engine so QUILL’s in-editor GLOW and the GLOW desktop and web apps audit
 and fix by exactly the same rules, with one place to improve them.</p>
+<p>Where the code lives (for the implementer): the shared engine is the
+<code>quill-glow-core</code> repo at
+<code>s:\code\quill-glow-core</code> (package
+<code>quill_glow_core</code>, public API in
+<code>src/quill_glow_core/services.py</code>:
+<code>configure_default_services</code>,
+<code>audit_by_extension</code>, <code>fix_by_extension</code>,
+<code>convert_to_markdown</code>, <code>get_component_versions</code>,
+plus <code>from_glow_backend</code>, which bridges to the canonical
+engine <code>acb_large_print_core</code>). The full GLOW platform repo
+is <code>s:\code\glow</code>. Note: <code>s:\code\glow-7.0.0</code> is a
+stale snapshot and should be ignored; do not read or modify it. Tier 3
+therefore spans up to three repos — QUILL (this repo, the presentation
+layer), <code>quill-glow-core</code> (the shared contract), and
+<code>glow</code> (the rule engine) — so changes must be coordinated,
+each committed in its own repo, and the shared API kept stable.</p>
+<p>Cross-repo prerequisite for Tier 3 step 1: the
+<code>s:\code\glow</code> repo currently has failing CI/tests. Before
+QUILL depends on <code>quill-glow-core</code> (GLOW-1), the
+<code>glow</code> repo’s failures must be diagnosed and fixed and its
+suite brought green, so QUILL builds on a stable engine rather than
+inheriting breakage. This is the first task of GLOW-1 and is tracked in
+the GLOW-1 acceptance criteria.</p>
 <ul>
 <li>Depend on the shared core. Replace QUILL’s bespoke text-level checks
 with calls into <code>quill-glow-core</code>
@@ -4279,9 +4321,16 @@ for the combined suite</h4>
 <td>Suite</td>
 <td>M</td>
 <td>Todo</td>
-<td>QUILL audits and fixes via <code>quill-glow-core</code> with the
-GLOW backend when present and the safe no-op fallback when absent;
-in-editor reports unchanged for users; tests cover both paths.</td>
+<td>Step 1 (prerequisite): diagnose and fix the failing CI/tests in the
+<code>s:\code\glow</code> repo and bring its suite green so QUILL builds
+on a stable engine; commit those fixes in the <code>glow</code> repo.
+Step 2: QUILL audits and fixes via <code>quill-glow-core</code>
+(<code>s:\code\quill-glow-core</code>) with the GLOW backend
+(<code>from_glow_backend</code> -&gt; <code>acb_large_print_core</code>)
+when present and the safe no-op fallback when absent; in-editor reports
+unchanged for users; tests cover both paths. Coordinate changes across
+the three repos and keep the shared API stable. Ignore the stale
+<code>s:\code\glow-7.0.0</code> snapshot.</td>
 </tr>
 <tr>
 <td>GLOW-2</td>
@@ -4557,11 +4606,17 @@ priority)</h4>
 QUILL’s core mission of accessible documents and reuses a proven
 engine.</p>
 <ul>
-<li>GLOW as the in-app accessibility engine: GLOW-1 through GLOW-5.
-Value: audit and fix real documents to ACB, APH, and WCAG standards in
-place, through the shared <code>quill-glow-core</code> API rather than
-the thin local bridge. Outcome: writing and document accessibility
-become one app.</li>
+<li>GLOW as the in-app accessibility engine: GLOW-1 through GLOW-5. Step
+1 of GLOW-1 is a cross-repo prerequisite: fix the failing CI in the
+<code>s:\code\glow</code> engine repo and bring it green before QUILL
+depends on it. Then QUILL audits and fixes real documents to ACB, APH,
+and WCAG standards in place, through the shared
+<code>quill-glow-core</code> API rather than the thin local bridge. The
+work spans three repos (QUILL, <code>quill-glow-core</code>,
+<code>glow</code>); the stale <code>s:\code\glow-7.0.0</code> snapshot
+is ignored. Value: writing and document accessibility become one app,
+built on a stable engine. Outcome: a category-defining,
+accessibility-native editor.</li>
 <li>GLOW interaction quality: surface findings as reviewable-by-ear
 diffs and one-key jumps, reuse the consented, reversible flow from the
 Accessibility agent (AGENT-1), and keep the standards profiles (ACB 2025
@@ -4738,10 +4793,10 @@ CQ-16) are counted once, in their primary tier.</p>
 <tr>
 <td>Tier 1</td>
 <td>Protect users and unlock the team</td>
-<td>22</td>
+<td>23</td>
 <td>20</td>
-<td>2</td>
-<td>FLAG-1, FLAG-2</td>
+<td>3</td>
+<td>OPS-1 (in progress), FLAG-1, FLAG-2</td>
 </tr>
 <tr>
 <td>Tier 2</td>
@@ -4791,9 +4846,9 @@ LINUX-1, LINUX-2, ECO-1, L10N-1, COLLAB-1</td>
 <tr>
 <td><strong>Total</strong></td>
 <td>All tiers</td>
-<td><strong>155</strong></td>
+<td><strong>156</strong></td>
 <td><strong>20</strong></td>
-<td><strong>135</strong></td>
+<td><strong>136</strong></td>
 <td></td>
 </tr>
 </tbody>
@@ -4856,8 +4911,17 @@ working tree is gate-clean: <code>ruff format --check .</code> passes,
 <code>mypy quill\core quill\io</code> reports zero errors, and the full
 suite is 701 passed / 7 skipped with 72.28% core+io coverage. Two
 foundational feature-flag items (FLAG-1, FLAG-2) were subsequently added
-to Tier 1 and are the only Tier 1 work still open; the richer
-feature-profile UI (FLAG-3, FLAG-4) sits in Tier 2.</p>
+to Tier 1 and are open; the richer feature-profile UI (FLAG-3, FLAG-4)
+sits in Tier 2.</p>
+<p>First task before anything else (OPS-1): make <code>main</code>
+green. The gate jobs were red because they installed only
+<code>.[dev]</code> while the UI tests need <code>wx</code> and the
+typing gate needs the optional modules ignored; the fix (install
+<code>.[dev,ui]</code> in the test jobs and add
+<code>markitdown</code>/<code>certifi</code>/<code>pdfplumber</code>/<code>pyttsx3</code>
+to the mypy overrides) is committed — confirm PR CI, Security CI, and
+Accessibility CI all conclude success on <code>main</code> before
+proceeding.</p>
 <p>The agreed next sequence (decided with the maintainer): (1) do the
 cheap Tier 4 quality cleanup first — CQ-18 (the ~43 remaining E501
 line-length wraps, after which the <code>--ignore E501</code> can be
