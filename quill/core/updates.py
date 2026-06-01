@@ -26,15 +26,12 @@ def _ssl_context() -> ssl.SSLContext:
     """An SSL context with a real CA bundle.
 
     Python on macOS ships without trusted roots wired into urllib, which causes
-    'CERTIFICATE_VERIFY_FAILED'. Prefer certifi's bundle; fall back to the
-    system default so this never hard-fails at import.
+    'CERTIFICATE_VERIFY_FAILED'. Delegates to the shared verified context so
+    every network path in Quill uses the same certificate-verifying policy.
     """
-    try:
-        import certifi
+    from quill.core.net import verified_ssl_context
 
-        return ssl.create_default_context(cafile=certifi.where())
-    except Exception:  # noqa: BLE001
-        return ssl.create_default_context()
+    return verified_ssl_context()
 
 
 @dataclass(frozen=True, slots=True)

@@ -940,9 +940,13 @@ rejected with a clear message; test included.</td>
 <td>Explicit TLS verification on all network calls</td>
 <td>Security</td>
 <td>S</td>
-<td>Todo</td>
-<td>AI, update, and download requests verify certificates; a test or
-audit confirms no unverified context is used.</td>
+<td>Done</td>
+<td>A shared <code>verified_ssl_context()</code> (certifi-aware,
+<code>CERT_REQUIRED</code>, <code>check_hostname</code> on) backs AI,
+update, model-download, and DECTALK-download requests; HTTPS endpoints
+always pass it while local HTTP loopback does not; an audit test asserts
+no <code>_create_unverified_context</code> or <code>CERT_NONE</code> or
+disabled <code>check_hostname</code> anywhere in the package.</td>
 </tr>
 <tr>
 <td>SEC-6</td>

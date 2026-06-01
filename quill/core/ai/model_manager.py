@@ -184,7 +184,13 @@ def existing_model() -> str | None:
 def _download(url: str, target: Path, progress: _ProgressCallback | None = None) -> None:
     part = target.with_name(target.name + ".part")
     request = urllib.request.Request(url, headers={"User-Agent": "Quill"})
-    with urllib.request.urlopen(request) as response, open(part, "wb") as out:
+    from quill.core.net import verified_ssl_context
+
+    context = verified_ssl_context() if url.lower().startswith("https") else None
+    with (
+        urllib.request.urlopen(request, context=context) as response,
+        open(part, "wb") as out,
+    ):
         total = int(response.headers.get("Content-Length", 0))
         done = 0
         while True:

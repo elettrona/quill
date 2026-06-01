@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import ssl
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -474,6 +475,21 @@ def list_assistant_models(
     return [], last_error.message
 
 
+def _context_for(endpoint: str) -> ssl.SSLContext | None:
+    """Return a certificate-verifying context for HTTPS endpoints.
+
+    Cloud providers are always HTTPS and must verify certificates. Local
+    providers (Ollama on loopback or a private host) use plain HTTP, which has
+    no TLS context; returning ``None`` lets urllib proceed without one. HTTPS is
+    never downgraded to an unverified context.
+    """
+    if urlparse(endpoint).scheme == "https":
+        from quill.core.net import verified_ssl_context
+
+        return verified_ssl_context()
+    return None
+
+
 def _fetch_models_from_endpoint(
     endpoint: str,
     headers: dict[str, str],
@@ -483,7 +499,7 @@ def _fetch_models_from_endpoint(
 ) -> tuple[list[str], _FetchError | None]:
     request = Request(endpoint, headers=headers, method="GET")
     try:
-        with urlopen(request, timeout=timeout_seconds) as response:
+        with urlopen(request, timeout=timeout_seconds, context=_context_for(endpoint)) as response:
             payload = json.loads(response.read().decode("utf-8", errors="replace"))
     except HTTPError as exc:
         category = _category_for_status(exc.code)

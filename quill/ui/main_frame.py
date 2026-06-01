@@ -8905,9 +8905,14 @@ class MainFrame:
         resolved_url = raw_url
         content_length: int | None = None
 
+        from quill.core.net import verified_ssl_context
+
+        def _ssl_for(url: str) -> object | None:
+            return verified_ssl_context() if urlparse(url).scheme == "https" else None
+
         try:
             request = Request(raw_url, method="HEAD")
-            with urlopen(request, timeout=10) as response:
+            with urlopen(request, timeout=10, context=_ssl_for(raw_url)) as response:
                 resolved_url = response.geturl()
                 content_length_header = response.headers.get("Content-Length")
                 if content_length_header and content_length_header.isdigit():
@@ -8950,7 +8955,7 @@ class MainFrame:
             self._set_status("Open from URL cancelled")
             return
         try:
-            with urlopen(resolved_url, timeout=15) as response:
+            with urlopen(resolved_url, timeout=15, context=_ssl_for(resolved_url)) as response:
                 body = response.read()
                 resolved_url = response.geturl()
         except HTTPError as error:

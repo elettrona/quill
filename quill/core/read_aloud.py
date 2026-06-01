@@ -540,7 +540,11 @@ def synthesize_to_file_with_dectalk(
 def download_dectalk_runtime(target_dir: Path) -> Path:
     target_dir.mkdir(parents=True, exist_ok=True)
     archive = target_dir / "vs2022.zip"
-    with urllib.request.urlopen(DECTALK_RELEASE_ZIP_URL, timeout=180) as response:  # noqa: S310
+    from quill.core.net import verified_ssl_context
+
+    with urllib.request.urlopen(  # noqa: S310 - HTTPS URL constant, verified context
+        DECTALK_RELEASE_ZIP_URL, timeout=180, context=verified_ssl_context()
+    ) as response:
         archive.write_bytes(response.read())
     extract_root = target_dir / "release"
     if extract_root.exists():
