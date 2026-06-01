@@ -84,3 +84,20 @@ jobs:
       - name: Run banned-pattern gate
         run: |
           python -m quill.tools.check_banned_patterns
+
+  no-silent-network:
+    # GATE-9: every outbound network call must be in the reviewed egress
+    # inventory with a rationale. A new call without review fails the build.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+      - name: Audit network egress
+        run: |
+          pytest -q tests\unit\tools\test_network_egress_audit.py

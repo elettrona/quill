@@ -3449,9 +3449,17 @@ a no-plaintext-secret diagnostics check are required for merge.</td>
 <td>No-silent-network gate</td>
 <td>Gates</td>
 <td>S</td>
-<td>Todo</td>
-<td>An automated test asserts no outbound call without consent and that
-provider, model, and scope are always shown; required for merge.</td>
+<td>Done</td>
+<td><code>quill/tools/network_egress_audit.py</code> inventories every
+outbound call site (<code>urlopen</code>/<code>urlretrieve</code>) in
+the package via AST; a required CI test fails when a new egress point
+appears without a reviewed rationale describing the user action or
+explicit consent that triggers it. All eight current sites are
+documented (Open from URL prompt, optional DECTALK/model downloads with
+progress, consented update checks, user-initiated model discovery). The
+runtime provider/model/scope-shown assertion is coupled to the AI
+provider wiring (AI-13) and is called out there rather than overclaimed
+here.</td>
 </tr>
 <tr>
 <td>GATE-10</td>
