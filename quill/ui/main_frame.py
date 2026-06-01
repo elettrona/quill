@@ -4963,6 +4963,8 @@ class MainFrame:
         if not self._menu_updates_allowed():
             return
         self._pending_menu_refresh = False
+        self._refresh_recent_menu()
+        self._refresh_sessions_menu()
         self._refresh_contextual_menu_items()
         self._sync_announcement_backend_menu_state()
         self._apply_watch_folder_menu_state()
@@ -6898,6 +6900,11 @@ class MainFrame:
         return f"{label}\t{binding}"
 
     def _refresh_recent_menu(self) -> None:
+        if not hasattr(self, "_recent_menu") or not hasattr(self, "_wx"):
+            return
+        if not self._menu_updates_allowed():
+            self._request_menu_refresh()
+            return
         while self._recent_menu.GetMenuItemCount() > 0:
             item = self._recent_menu.FindItemByPosition(0)
             if item is None:
@@ -6919,6 +6926,9 @@ class MainFrame:
 
     def _refresh_sessions_menu(self) -> None:
         if not hasattr(self, "_sessions_menu") or not hasattr(self, "_wx"):
+            return
+        if not self._menu_updates_allowed():
+            self._request_menu_refresh()
             return
         try:
             while self._sessions_menu.GetMenuItemCount() > 0:
@@ -6974,6 +6984,9 @@ class MainFrame:
 
     def _refresh_recent_sessions_menu(self) -> None:
         if not hasattr(self, "_recent_sessions_menu") or not hasattr(self, "_wx"):
+            return
+        if not self._menu_updates_allowed():
+            self._request_menu_refresh()
             return
         while self._recent_sessions_menu.GetMenuItemCount() > 0:
             item = self._recent_sessions_menu.FindItemByPosition(0)
@@ -7188,7 +7201,7 @@ class MainFrame:
 
     def _refresh_contextual_menu_items(self) -> None:
         if not self._menu_updates_allowed():
-            self._pending_menu_refresh = True
+            self._request_menu_refresh()
             return
         get_menu_bar = getattr(self.frame, "GetMenuBar", None)
         if not callable(get_menu_bar):
@@ -9421,7 +9434,7 @@ class MainFrame:
         if menu_bar is None:
             return
         if not self._menu_updates_allowed():
-            self._pending_menu_refresh = True
+            self._request_menu_refresh()
             return
         item = menu_bar.FindItemById(self._id_ai_status_badge)
         if item is not None:
@@ -9476,7 +9489,7 @@ class MainFrame:
 
     def _sync_announcement_backend_menu_state(self) -> None:
         if not self._menu_updates_allowed():
-            self._pending_menu_refresh = True
+            self._request_menu_refresh()
             return
         menu_bar = self.frame.GetMenuBar()
         if menu_bar is None:
@@ -14145,7 +14158,7 @@ class MainFrame:
 
     def _apply_watch_folder_menu_state(self) -> None:
         if not self._menu_updates_allowed():
-            self._pending_menu_refresh = True
+            self._request_menu_refresh()
             return
         menu_bar = self.frame.GetMenuBar()
         if menu_bar is None:
@@ -16385,7 +16398,7 @@ class MainFrame:
         from quill.core.ai.model_manager import load_ai_enabled
 
         if not self._menu_updates_allowed():
-            self._pending_menu_refresh = True
+            self._request_menu_refresh()
             return
         bar = self.frame.GetMenuBar()
         if bar is None:

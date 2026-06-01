@@ -77,6 +77,8 @@ def test_request_menu_refresh_defers_when_menu_is_open() -> None:
     frame._sync_announcement_backend_menu_state = lambda: called.append("announce")
     frame._apply_watch_folder_menu_state = lambda: called.append("watch")
     frame._apply_ai_menu_enabled = lambda: called.append("ai")
+    frame._refresh_recent_menu = lambda: called.append("recent")
+    frame._refresh_sessions_menu = lambda: called.append("sessions")
 
     frame._request_menu_refresh()
 
@@ -99,8 +101,44 @@ def test_request_menu_refresh_flushes_when_menu_is_closed() -> None:
     frame._sync_announcement_backend_menu_state = lambda: called.append("announce")
     frame._apply_watch_folder_menu_state = lambda: called.append("watch")
     frame._apply_ai_menu_enabled = lambda: called.append("ai")
+    frame._refresh_recent_menu = lambda: called.append("recent")
+    frame._refresh_sessions_menu = lambda: called.append("sessions")
 
     frame._request_menu_refresh()
 
     assert frame._pending_menu_refresh is False
-    assert called == ["context", "announce", "watch", "ai"]
+    assert called == ["recent", "sessions", "context", "announce", "watch", "ai"]
+
+
+def test_refresh_recent_menu_defers_when_menu_is_open() -> None:
+    frame = MainFrame.__new__(MainFrame)
+    frame._menu_open_depth = 1
+    frame._pending_menu_refresh = False
+
+    class _Wx:
+        pass
+
+    frame._wx = _Wx()
+    frame._recent_menu = object()
+    frame._request_menu_refresh = MainFrame._request_menu_refresh.__get__(frame, MainFrame)
+
+    frame._refresh_recent_menu()
+
+    assert frame._pending_menu_refresh is True
+
+
+def test_refresh_sessions_menu_defers_when_menu_is_open() -> None:
+    frame = MainFrame.__new__(MainFrame)
+    frame._menu_open_depth = 1
+    frame._pending_menu_refresh = False
+
+    class _Wx:
+        pass
+
+    frame._wx = _Wx()
+    frame._sessions_menu = object()
+    frame._request_menu_refresh = MainFrame._request_menu_refresh.__get__(frame, MainFrame)
+
+    frame._refresh_sessions_menu()
+
+    assert frame._pending_menu_refresh is True
