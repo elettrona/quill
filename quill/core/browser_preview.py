@@ -8,7 +8,6 @@ import subprocess
 import webbrowser
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import quote
 
 from quill.core.navigation import previous_heading_start
 
@@ -108,8 +107,19 @@ def guess_preview_kind(path: Path | None, text: str) -> str:
     return "plain"
 
 
+# Characters that have no business in a text preview and render as a phantom
+# box: U+FFFC (object replacement — rides in on macOS rich-text/attachment
+# paste), the BOM, and zero-width no-break space.
+_PREVIEW_JUNK = {0xFFFC: None, 0xFEFF: None}
+
+
+def _sanitize_preview_text(text: str) -> str:
+    return text.translate(_PREVIEW_JUNK) if text else text
+
+
 def render_preview_body(text: str, kind: str) -> str:
     """Render just the body fragment (no <html> wrapper) for a preview surface."""
+    text = _sanitize_preview_text(text)
     if kind == "markdown":
         return _render_markdown(text)
     if kind == "html":
@@ -124,14 +134,14 @@ def render_preview_html(title: str, text: str, kind: str, start_anchor: str | No
         anchor_script = (
             "<script>"
             f'window.addEventListener("load", function(){{'
-            f'var node = document.getElementById({start_anchor!r});'
-            f'if (node) node.scrollIntoView();'
+            f"var node = document.getElementById({start_anchor!r});"
+            f"if (node) node.scrollIntoView();"
             "});"
             "</script>"
         )
     return (
-        "<!doctype html><html><head><meta charset=\"utf-8\">"
-        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+        '<!doctype html><html><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
         '<meta http-equiv="refresh" content="1">'
         f"<title>{html.escape(title)}</title>"
         "<style>"
@@ -239,7 +249,6 @@ def _render_markdown(text: str) -> str:
     list_tag = ""
     code_lines: list[str] = []
     in_code = False
-    code_language = ""
 
     def flush_paragraph() -> None:
         nonlocal paragraph
@@ -258,14 +267,9 @@ def _render_markdown(text: str) -> str:
         stripped = line.rstrip()
         if in_code:
             if stripped.startswith("```"):
-                blocks.append(
-                    "<pre><code>"
-                    + html.escape("\n".join(code_lines))
-                    + "</code></pre>"
-                )
+                blocks.append("<pre><code>" + html.escape("\n".join(code_lines)) + "</code></pre>")
                 in_code = False
                 code_lines = []
-                code_language = ""
                 continue
             code_lines.append(line)
             continue
@@ -273,7 +277,6 @@ def _render_markdown(text: str) -> str:
             flush_paragraph()
             flush_list()
             in_code = True
-            code_language = stripped[3:].strip()
             continue
         heading = re.match(r"^(#{1,6})\s+(.*)$", stripped)
         if heading:
@@ -282,9 +285,7 @@ def _render_markdown(text: str) -> str:
             level = len(heading.group(1))
             title = heading.group(2).strip()
             slug = _slugify(title)
-            blocks.append(
-                f'<h{level} id="{slug}">{_render_inline(title)}</h{level}>'
-            )
+            blocks.append(f'<h{level} id="{slug}">{_render_inline(title)}</h{level}>')
             continue
         bullet = re.match(r"^(\s*)([-*+])\s+(.*)$", line)
         numbered = re.match(r"^(\s*)(\d+)\.\s+(.*)$", line)
@@ -324,4 +325,3 @@ def _render_inline(text: str) -> str:
 
 def file_url(path: Path) -> str:
     return path.as_uri()
-
