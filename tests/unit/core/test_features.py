@@ -154,3 +154,56 @@ def test_feature_health_report_includes_coverage() -> None:
 
     assert "Feature profile health check" in report
     assert "No coverage problems found." in report or "Commands without a feature mapping" in report
+
+
+def test_feature_with_off_dependency_stays_off_even_if_self_on() -> None:
+    # FLAG-1: a dependent feature is effectively off when any feature in its
+    # dependency chain is off, regardless of how the dependency was disabled.
+    manager = FeatureManager(active_profile_id=PROFILE_FULL_QUILL)
+    # core.bw_parakeet -> core.bw_transcription -> core.dictation -> core.editor
+    manager.overrides["core.dictation"] = FEATURE_STATE_OFF
+
+    assert manager.state_for("core.bw_parakeet") == FEATURE_STATE_ON
+    assert manager.is_enabled("core.bw_parakeet") is False
+    assert manager.is_visible("core.bw_parakeet") is False
+    assert manager.is_enabled("core.bw_transcription") is False
+
+
+def test_visible_commands_hide_features_with_unmet_dependencies() -> None:
+    manager = FeatureManager(active_profile_id=PROFILE_FULL_QUILL)
+    registry = CommandRegistry()
+    registry.register("tools.dictation_start", "Dictate", lambda: None, feature_id="core.dictation")
+    registry.register(
+        "whisperer.model_manager", "Models", lambda: None, feature_id="core.bw_transcription"
+    )
+    registry.register("edit.find", "Find", lambda: None, feature_id="core.search")
+
+    manager.overrides["core.dictation"] = FEATURE_STATE_OFF
+    visible_ids = {command.id for command in manager.visible_commands(registry.list())}
+
+    assert "edit.find" in visible_ids
+    assert "tools.dictation_start" not in visible_ids
+    assert "whisperer.model_manager" not in visible_ids
+
+
+def test_enabled_feature_with_all_dependencies_on_is_visible() -> None:
+    manager = FeatureManager(active_profile_id=PROFILE_FULL_QUILL)
+
+    assert manager.is_enabled("core.bw_transcription") is True
+    assert manager.is_visible("core.bw_transcription") is True
+
+
+def test_every_feature_id_referenced_in_main_frame_is_defined() -> None:
+    # FLAG-2: every feature_id wired to a command surface must be a registered
+    # FeatureDefinition, so no command is left orphaned to an unknown feature.
+    import re
+    from pathlib import Path
+
+    from quill.core.features import FEATURE_DEFINITIONS
+
+    source = Path("quill/ui/main_frame.py").read_text(encoding="utf-8")
+    referenced = set(re.findall(r'feature_id="([^"]+)"', source))
+
+    assert referenced, "expected main_frame to wire feature ids to commands"
+    missing = sorted(fid for fid in referenced if fid not in FEATURE_DEFINITIONS)
+    assert missing == [], f"command feature ids missing from FEATURE_DEFINITIONS: {missing}"

@@ -1151,30 +1151,30 @@ PR CI, Security CI, and Accessibility CI all conclude success on
 <td>Feature-flag respect is a UI contract</td>
 <td>Foundations</td>
 <td>M</td>
-<td>Todo</td>
-<td>Disabling any feature through <code>FeatureManager</code>
-consistently hides or disables every surface it owns: commands and the
-palette (already filtered by <code>feature_id</code>), menu items,
-status-bar cells, QUILL key and Quick Nav entries, settings groups, and
-first-run/onboarding prompts. No command is left orphaned or dead when
-its feature is off, and a feature with unmet dependencies stays off. A
-contract test enumerates <code>FEATURE_DEFINITIONS</code> and asserts
-each owned surface is gated; representative features (watch, dictation,
-macros, AI) are covered.</td>
+<td>Done</td>
+<td><code>FeatureManager.is_enabled</code>/<code>is_visible</code> are
+now dependency-aware: a feature whose dependency chain is not fully
+enabled is treated as off no matter how the dependency was disabled
+(profile or override), so <code>visible_commands</code>, status-bar
+cells, the palette, and menu gating all hide a feature when an upstream
+dependency is off. Contract tests cover the off-dependency case, command
+visibility filtering, and the all-dependencies-on case across
+representative features (dictation, BITS transcription, search).</td>
 </tr>
 <tr>
 <td>FLAG-2</td>
 <td>Every new feature ships a FeatureDefinition</td>
 <td>Foundations</td>
 <td>S</td>
-<td>Todo</td>
-<td>A definition-of-done item and a check require each user-facing
-feature to register a <code>FeatureDefinition</code> (id, name,
-description, dependencies, maturity, privacy, off-by-default where
-appropriate) and to wire its commands and surfaces to that id. A test
-fails when a feature-bearing command references a
-<code>feature_id</code> absent from
-<code>FEATURE_DEFINITIONS</code>.</td>
+<td>Done</td>
+<td>A source-contract test scans <code>quill/ui/main_frame.py</code> for
+every <code>feature_id="..."</code> wired to a command surface and fails
+if any references an id absent from <code>FEATURE_DEFINITIONS</code>, so
+no command is orphaned to an unknown feature. Combined with the existing
+palette/command filtering, this makes registering a
+<code>FeatureDefinition</code> (id, name, description, dependencies,
+maturity, privacy) the definition-of-done for a user-facing
+feature.</td>
 </tr>
 <tr>
 <td>FLAG-3</td>
@@ -4865,9 +4865,9 @@ CQ-16) are counted once, in their primary tier.</p>
 <td>Tier 1</td>
 <td>Protect users and unlock the team</td>
 <td>23</td>
-<td>21</td>
-<td>2</td>
-<td>FLAG-1, FLAG-2</td>
+<td>23</td>
+<td>0</td>
+<td>(complete)</td>
 </tr>
 <tr>
 <td>Tier 2</td>

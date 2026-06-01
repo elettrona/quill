@@ -777,9 +777,18 @@ class FeatureManager:
         return self.state_for(feature_for_command(command_id))
 
     def is_enabled(self, feature_id: str) -> bool:
-        return self.state_for(feature_id) != FEATURE_STATE_OFF
+        if self.state_for(feature_id) == FEATURE_STATE_OFF:
+            return False
+        # FLAG-1: a feature whose dependency chain is not fully enabled stays
+        # off, no matter how the dependency was turned off (profile or override).
+        return all(
+            self.state_for(dependency_id) != FEATURE_STATE_OFF
+            for dependency_id in self.dependency_chain(feature_id)
+        )
 
     def is_visible(self, feature_id: str) -> bool:
+        if not self.is_enabled(feature_id):
+            return False
         state = self.state_for(feature_id)
         return state == FEATURE_STATE_ON or (
             state == FEATURE_STATE_QUIET and self.show_quiet_features
