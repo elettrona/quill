@@ -2377,7 +2377,7 @@ When Quill detects an autosave snapshot newer than the on-disk file on launch:
 ### 5.74 In-app changelog and update transparency
 
 - `Help → Release Notes` opens a Markdown document with one section per version. Auto-generated from `CHANGELOG.md` at build time.
-- The manual update dialog (5.34, 10.12) links to the release notes for the version it is offering.
+- The manual update dialog (5.34, 10.12) links to the release notes for the version it is offering, shows the published date when the feed provides it, and lets the user **Skip this version**, **Download**, or decide **Later**.
 - Past release notes remain reachable through the document's own outline (5.16).
 
 ### 5.75 Crash-report opt-in (per recovery)
@@ -3211,6 +3211,10 @@ All JSON files validate against schemas in `quill/core/schemas/`. All writes are
 
 - v1.0 ships **manual update check**: `Help → Check for Updates…` fetches the signed manifest, verifies it, compares versions, offers to download the next stable.
 - The download is verified (SHA-256) and Sigstore-attested; the installer is signed; the user runs it.
+- The asset download streams in fixed-size chunks and reports progress through an accessible callback, so screen-reader users hear coarse, non-spammy progress announcements (for example 25/50/75 percent) instead of a silent wait.
+- After a successful download Quill presents an **Update downloaded** dialog offering, as available, **Install now…** (Windows `.exe`/`.msi`), **Open the containing folder**, or **Close**. Install-now runs the in-app pre-update health check first.
+- The update-available dialog includes a **Skip this version** action; a skipped version is remembered and suppressed on silent launch checks until a newer version appears or the user checks manually.
+- Silent launch checks are throttled to at most once per 24 hours (recorded via the last-check timestamp); a manual `Check for Updates` always runs regardless of the throttle.
 - A small in-app pre-update health check ensures the user's editor has no unsaved documents before launching the installer.
 - Auto-update lands in v1.1 with a Squirrel-style delta channel.
 
