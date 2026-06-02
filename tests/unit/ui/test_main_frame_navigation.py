@@ -995,6 +995,68 @@ def test_list_bookmarks_jumps_to_selected_bookmark() -> None:
     assert frame._status_message == 'Jumped to bookmark "Middle"'
 
 
+def test_go_to_bookmark_jumps_and_wires_modal_ids() -> None:
+    # Regression for #85: Go To Bookmark must reliably show a dismissible
+    # dialog with a guaranteed selection and move the caret to the bookmark.
+    frame = _build_frame("alpha\nbeta\n", insertion_point=0)
+    frame._bookmarks = {"Middle": 6}
+    captured: dict[str, object] = {}
+
+    class _ChoiceDialog:
+        def __init__(
+            self, _parent: object, _message: str, _caption: str, choices: list[str]
+        ) -> None:
+            self.choices = choices
+            self.selection = -1
+            self.affirmative_id: int | None = None
+            self.escape_id: int | None = None
+            captured["dialog"] = self
+
+        def __enter__(self) -> _ChoiceDialog:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def SetSelection(self, selection: int) -> None:
+            self.selection = selection
+
+        def SetAffirmativeId(self, value: int) -> None:
+            self.affirmative_id = value
+
+        def SetEscapeId(self, value: int) -> None:
+            self.escape_id = value
+
+        def GetStringSelection(self) -> str:
+            return self.choices[self.selection]
+
+    frame._wx = type(
+        "WX",
+        (),
+        {"SingleChoiceDialog": _ChoiceDialog, "ID_OK": 1, "ID_CANCEL": 0},
+    )()
+    frame._show_modal_dialog = lambda _dialog, _label: 1  # type: ignore[method-assign]
+
+    frame.go_to_bookmark()
+
+    dialog = captured["dialog"]
+    assert dialog.selection == 0  # a default selection is guaranteed  # type: ignore[attr-defined]
+    assert dialog.affirmative_id == 1  # type: ignore[attr-defined]
+    assert dialog.escape_id == 0  # type: ignore[attr-defined]
+    assert frame.editor.GetInsertionPoint() == 6
+    assert frame._status_message == 'Jumped to bookmark "Middle"'
+
+
+def test_go_to_bookmark_without_bookmarks_announces() -> None:
+    frame = _build_frame("alpha\nbeta\n", insertion_point=0)
+    frame._bookmarks = {}
+    frame._wx = type("WX", (), {"ID_OK": 1, "ID_CANCEL": 0})()
+
+    frame.go_to_bookmark()
+
+    assert frame._status_message == "No bookmarks available. Bookmarks are named jump points."
+
+
 def test_previous_misspelling_jumps_to_prior_item() -> None:
     frame = _build_frame(
         "wrng\nhello\nlaterbad\n",
@@ -1548,13 +1610,17 @@ def test_prompt_file_search_uses_modal_ids() -> None:
             return self.path
 
     class _TextCtrl:
-        def __init__(self, _parent: object, value: str = "") -> None:
+        def __init__(self, _parent: object, value: str = "", style: int = 0) -> None:
             self.value = value
+            self.style = style
 
         def GetValue(self) -> str:
             return self.value
 
         def SetFocus(self) -> None:
+            return None
+
+        def Bind(self, _event: object, _handler: object) -> None:
             return None
 
     class _Choice:
@@ -1608,6 +1674,8 @@ def test_prompt_file_search_uses_modal_ids() -> None:
             "CANCEL": 2,
             "ID_OK": 1,
             "ID_CANCEL": 0,
+            "TE_PROCESS_ENTER": 512,
+            "EVT_TEXT_ENTER": object(),
         },
     )()
     frame._wx = wx

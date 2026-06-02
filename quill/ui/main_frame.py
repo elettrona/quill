@@ -9944,9 +9944,21 @@ class MainFrame:
         controls.Add(move_down, 0, wx.RIGHT, 8)
         controls.Add(restore_defaults, 0, wx.RIGHT, 8)
         root.Add(controls, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        root.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL | wx.ALIGN_RIGHT, 8)
+        buttons = dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
+        if buttons is not None:
+            # Same fix as the search dialogs (#84): add the StdDialogButtonSizer
+            # with wx.EXPAND (not wx.ALIGN_RIGHT) and give the dialog its own
+            # outer sizer wrapping the panel, so the buttons are realized and
+            # the panel fills the dialog. Previously only the panel had a sizer.
+            ok_button = dialog.FindWindowById(wx.ID_OK)
+            if ok_button is not None:
+                ok_button.SetDefault()
+            root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
         apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         panel.SetSizer(root)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(panel, 1, wx.EXPAND)
+        dialog.SetSizerAndFit(outer)
         restore_defaults_selected = False
 
         def swap_items(first: int, second: int) -> None:
@@ -12063,7 +12075,21 @@ class MainFrame:
             event.Skip()
 
         tree.Bind(wx.EVT_TREE_SEL_CHANGED, on_select)
-        result = self._show_modal_dialog(dialog, title)
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+
+        def focus_tree() -> None:
+            tree.SetFocus()
+
+        if hasattr(wx, "CallAfter"):
+            wx.CallAfter(focus_tree)
+        else:
+            focus_tree()
+        try:
+            result = self._show_modal_dialog(dialog, title)
+        finally:
+            destroy = getattr(dialog, "Destroy", None)
+            if callable(destroy):
+                destroy()
         if result != wx.ID_OK:
             return None
         return selected_payload
@@ -12109,6 +12135,12 @@ class MainFrame:
             "Go To Bookmark",
             choices=names,
         ) as dialog:
+            # Guarantee a valid selection so OK always resolves to a bookmark,
+            # and wire the standard affirmative/escape ids so the dialog is
+            # reliably dismissible by keyboard.
+            if hasattr(dialog, "SetSelection"):
+                dialog.SetSelection(0)
+            apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
             if self._show_modal_dialog(dialog, "Go To Bookmark") != wx.ID_OK:
                 return
             name = dialog.GetStringSelection()
@@ -12309,6 +12341,10 @@ class MainFrame:
         buttons.Add(cancel_button, 0)
         root.Add(buttons, 0, wx.ALL | wx.ALIGN_RIGHT, 8)
         panel.SetSizer(root)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(panel, 1, wx.EXPAND)
+        dialog.SetSizerAndFit(outer)
+        review_button.SetDefault()
 
         def refresh_context() -> None:
             selection = chooser.GetSelection()
@@ -16227,12 +16263,12 @@ class MainFrame:
         file_pattern_ctrl = wx.TextCtrl(panel, value="*")
         add_row("File pattern", file_pattern_ctrl)
 
-        query_ctrl = wx.TextCtrl(panel, value="")
+        query_ctrl = wx.TextCtrl(panel, value="", style=wx.TE_PROCESS_ENTER)
         add_row("Search text", query_ctrl)
 
         replacement_ctrl = None
         if replace:
-            replacement_ctrl = wx.TextCtrl(panel, value="")
+            replacement_ctrl = wx.TextCtrl(panel, value="", style=wx.TE_PROCESS_ENTER)
             add_row("Replacement", replacement_ctrl)
 
         mode_choice = wx.Choice(panel, choices=["Plain text", "Wildcard", "Regular expression"])
@@ -16265,13 +16301,36 @@ class MainFrame:
 
         buttons = dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
         if buttons is not None:
-            root.Add(buttons, 0, wx.ALL | wx.ALIGN_RIGHT, 8)
+            # Mirror the proven single-document search dialog (_prompt_search):
+            # a StdDialogButtonSizer must be added with wx.EXPAND, not
+            # wx.ALIGN_RIGHT. Adding it right-aligned left the OK/Cancel buttons
+            # unrealized on Windows, so the Cancel button could not be clicked
+            # and the dialog trapped the user (#84). EXPAND plus an explicit
+            # default button restores reliable, keyboard-accessible dismissal.
+            ok_button = dialog.FindWindowById(wx.ID_OK)
+            if ok_button is not None:
+                ok_button.SetDefault()
+            root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
         apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         panel.SetSizer(root)
         outer = wx.BoxSizer(wx.VERTICAL)
         outer.Add(panel, 1, wx.EXPAND)
         dialog.SetSizerAndFit(outer)
-        query_ctrl.SetFocus()
+
+        def submit(_event: object) -> None:
+            dialog.EndModal(wx.ID_OK)
+
+        query_ctrl.Bind(wx.EVT_TEXT_ENTER, submit)
+        if replacement_ctrl is not None:
+            replacement_ctrl.Bind(wx.EVT_TEXT_ENTER, submit)
+
+        def focus_query() -> None:
+            query_ctrl.SetFocus()
+
+        if hasattr(wx, "CallAfter"):
+            wx.CallAfter(focus_query)
+        else:
+            focus_query()
 
         try:
             if self._show_modal_dialog(dialog, dialog_label) != wx.ID_OK:
