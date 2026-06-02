@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from quill.core.compliance import (
+    ComplianceConfigError,
     build_dependency_notices,
     bundled_component_notices,
     dependency_names_from_pyproject,
@@ -116,3 +119,22 @@ dependencies = ["requests>=2"]
 def test_bundled_component_notices_has_license_sources() -> None:
     rows = bundled_component_notices()
     assert any(row["source"] for row in rows)
+
+
+def test_corrupt_pyproject_raises_clear_error(tmp_path: Path) -> None:
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text("this is = not valid = toml ][", encoding="utf-8")
+
+    with pytest.raises(ComplianceConfigError) as names_exc:
+        dependency_names_from_pyproject(pyproject)
+    assert str(pyproject) in str(names_exc.value)
+
+    with pytest.raises(ComplianceConfigError) as rows_exc:
+        dependency_requirements_from_pyproject(pyproject)
+    assert str(pyproject) in str(rows_exc.value)
+
+
+def test_missing_pyproject_still_raises_file_not_found(tmp_path: Path) -> None:
+    missing = tmp_path / "pyproject.toml"
+    with pytest.raises(FileNotFoundError):
+        dependency_names_from_pyproject(missing)

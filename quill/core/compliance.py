@@ -9,6 +9,25 @@ from pathlib import Path
 _NAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+")
 _PROJECT_URL_PREFERENCE = ("homepage", "source", "repository", "documentation")
 
+
+class ComplianceConfigError(ValueError):
+    """Raised when a project metadata file (``pyproject.toml``) cannot be parsed."""
+
+
+def _load_pyproject(path: Path) -> dict[str, object]:
+    """Parse ``pyproject.toml`` at ``path``, surfacing a clear error on corruption.
+
+    A missing file still raises :class:`FileNotFoundError` so callers can detect
+    absence, but a syntactically corrupt file raises :class:`ComplianceConfigError`
+    that names the offending path instead of leaking a bare ``TOMLDecodeError``.
+    """
+    try:
+        with path.open("rb") as handle:
+            return tomllib.load(handle)
+    except tomllib.TOMLDecodeError as exc:
+        raise ComplianceConfigError(f"Could not parse project metadata file {path}: {exc}") from exc
+
+
 _DEPENDENCY_METADATA_OVERRIDES: dict[str, tuple[str, str]] = {
     "certifi": ("MPL-2.0", "https://github.com/certifi/python-certifi"),
     "hatchling": ("MIT", "https://github.com/pypa/hatch"),
@@ -154,8 +173,7 @@ def requirement_specifier(requirement: str) -> str:
 
 
 def dependency_names_from_pyproject(path: Path, include_optional: bool = True) -> list[str]:
-    with path.open("rb") as handle:
-        data = tomllib.load(handle)
+    data = _load_pyproject(path)
     project = data.get("project", {})
     if not isinstance(project, dict):
         return []
@@ -180,8 +198,7 @@ def dependency_requirements_from_pyproject(
     include_dev: bool = True,
     include_build: bool = True,
 ) -> list[dict[str, str]]:
-    with path.open("rb") as handle:
-        data = tomllib.load(handle)
+    data = _load_pyproject(path)
 
     rows: dict[str, dict[str, str | set[str]]] = {}
 
