@@ -1399,16 +1399,26 @@ alongside CQ-1.</td>
 <td>Code quality</td>
 <td>S</td>
 <td>Todo</td>
-<td>Tier fallback and background preload are covered by tests.</td>
+<td>Tier fallback is now covered:
+<code>tests/unit/core/test_spellcheck_backend.py</code> pins each of the
+three tiers (enchant, bundled wordlist, built-in stub) by seeding the
+module caches and confirms <code>backend_info</code> and
+<code>is_known_word</code> honour the active tier, plus a
+personal-dictionary override. The background-preload half stays open
+until a spell-check preload API exists (tracked by PERF-1).</td>
 </tr>
 <tr>
 <td>CQ-13</td>
 <td>IO format coverage tests</td>
 <td>Code quality</td>
 <td>M</td>
-<td>Todo</td>
-<td>Markdown, HTML, JSON, CSV, DOCX bridge, and PDF scoring have
-fixture-based tests.</td>
+<td>Done</td>
+<td>Markdown, HTML, JSON, CSV, DOCX bridge, and PDF scoring all have
+fixture-based tests. JSON/CSV/DOCX-bridge/PDF-scoring live in
+<code>tests/unit/io/test_structured.py</code>; Markdown and HTML
+fixtures were added to <code>tests/unit/io/test_text.py</code>,
+confirming they open verbatim through the plain-text reader and
+round-trip through the writer.</td>
 </tr>
 <tr>
 <td>CQ-15</td>
@@ -2252,8 +2262,14 @@ diagnostics.</td>
 <td>Undo and redo tests</td>
 <td>Code quality</td>
 <td>S</td>
-<td>Todo</td>
-<td>Edge cases and persistence are covered.</td>
+<td>Done</td>
+<td>Edge cases and persistence are covered.
+<code>tests/unit/core/test_undo_store.py</code> exercises
+missing-history load, no-op clear of an absent history, filtering of
+non-string and non-list payloads, the <code>limit</code> boundary
+(including a non-positive limit coerced to one), the returned bounded
+list, multi-cycle accumulation, and per-path isolation so two documents
+never share a history.</td>
 </tr>
 <tr>
 <td>CQ-14</td>
@@ -5451,17 +5467,17 @@ LINUX-1, ECO-1, L10N-1, COLLAB-1</td>
 <td>Tier 6</td>
 <td>Documentation and learning surface</td>
 <td>33</td>
-<td>1</td>
-<td>32</td>
-<td>DOC-14..17, DOC-11, DOC-12, DOC-1..8, POD-1..5, TUT-1..7, CQ-11..14,
-CQ-23, CQ-24, LINUX-2</td>
+<td>3</td>
+<td>30</td>
+<td>DOC-14..17, DOC-11, DOC-12, DOC-1..8, POD-1..5, TUT-1..7, CQ-11,
+CQ-14, CQ-23, CQ-24, LINUX-2</td>
 </tr>
 <tr>
 <td><strong>Total</strong></td>
 <td>All tiers</td>
 <td><strong>180</strong></td>
-<td><strong>48</strong></td>
-<td><strong>132</strong></td>
+<td><strong>50</strong></td>
+<td><strong>130</strong></td>
 <td></td>
 </tr>
 </tbody>
@@ -5635,6 +5651,28 @@ sequencing: the <em>content</em> documentation (tutorials, podcasts,
 user guides) is deliberately held until the features they describe are
 built — closing CQ-15 takes a no-risk test item that happens to live in
 Tier 6 without prematurely documenting moving targets.</li>
+<li>CQ-12 and CQ-13 followed as the next two no-risk Tier 6 test items,
+both exercising already-stable code. CQ-13 (“IO format coverage”)
+confirmed Markdown, HTML, JSON, CSV, DOCX bridge, and PDF scoring all
+have fixture-based tests: JSON/CSV/DOCX-bridge/PDF-scoring were already
+covered in <code>tests/unit/io/test_structured.py</code>, and
+Markdown/HTML fixtures were added to
+<code>tests/unit/io/test_text.py</code> (they open verbatim through the
+plain-text reader and round-trip through the writer). CQ-12 (“Undo and
+redo tests”) grew <code>tests/unit/core/test_undo_store.py</code> to
+cover the edge cases — missing-history load, no-op clear,
+non-string/non-list payload filtering, the <code>limit</code> boundary
+(including a non-positive limit coerced to one), the returned bounded
+list, multi-cycle accumulation, and per-path isolation. CQ-11
+(“Spell-check fallback and preload tests”) was only half-closeable: its
+tier-fallback half landed as
+<code>tests/unit/core/test_spellcheck_backend.py</code>, which pins each
+of the three backend tiers (enchant, bundled wordlist, stub) and proves
+<code>backend_info</code>/<code>is_known_word</code> honour the active
+tier, but the background-preload half stays open because no spell-check
+preload API exists yet (tracked by PERF-1). With CQ-12 and CQ-13 done,
+Tier 6 moves to 3 of 33 (30 remaining) and the total to 50 of 180; CQ-11
+remains Todo.</li>
 </ul>
 <h4
 id="planning-watch-profiles-scoped-and-feature-flag-respect-made-fundamental">2026-06-01
