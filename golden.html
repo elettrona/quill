@@ -4484,10 +4484,29 @@ output and catches regressions before release.</td>
 <td>Accessibility agent (make this document accessible)</td>
 <td>AI</td>
 <td>L</td>
-<td>Todo</td>
+<td>In progress</td>
 <td>A consented, announced, reversible plan audits and fixes structure,
 alt text, link text, and plain language, then re-audits and reports;
-every step is a reviewable diff and a single undo.</td>
+every step is a reviewable diff and a single undo. The deterministic
+engine landed in <code>quill/core/accessibility_agent.py</code>
+(wx-free, strict-typed) on top of the in-repo <code>glow.py</code> +
+<code>plain_language.py</code> primitives: <code>build_plan</code>
+audits structure (markdown heading spacing, heading-jump, html missing
+<code>lang</code>), alt text, link text, and plain language and returns
+an ordered plan of per-step-consented <code>AgentStep</code>s;
+<code>apply_plan</code> applies only the accepted auto-fixable steps and
+re-audits, returning a run report. The
+<code>AccessibilityAgentDialog</code> (Tools &gt; AI &gt; Make This
+Document Accessible…, command <code>tools.ai_accessibility_agent</code>)
+shows each step as an accessible <code>wx.CheckListBox</code> with a
+before/after details pane; auto-fixable steps are pre-checked, advisory
+steps are listed for review. Applying replaces the whole editor buffer
+as <strong>one undo</strong> and opens a re-audit report tab; the
+summary is announced. <strong>Remaining (honest):</strong> structure and
+plain language are auto-fixed, but alt-text and link-text are
+advisory-only (flagged for human authoring, not auto-written) —
+AI-assisted alt-text/link-text authoring and richer structure repair are
+still to come, so this row stays In progress.</td>
 </tr>
 <tr>
 <td>AGENT-2</td>
@@ -5664,14 +5683,14 @@ the third table and are not part of either 1.0 list.</p>
 <td>Tier 2 — Flagship</td>
 <td>In progress</td>
 <td>SET-1, SET-2, SET-3, SET-4, SET-7, WATCH-5, WATCH-6, WATCH-7,
-MENU-1, MENU-5</td>
+MENU-1, MENU-5, AGENT-1</td>
 </tr>
 <tr>
 <td>Tier 2 — Flagship</td>
 <td>Todo</td>
-<td>AGENT-1, AI-1, AI-6, AI-7, AI-14, AI-19, AI-20, AI-22, AI-24, OCR-1,
-OCR-2, OCR-3, OCR-4, OCR-5, SET-5, SHARE-1, SHARE-2, SHARE-3, CTX-1,
-DICT-2, FEAT-19, FLAG-3, DLG-1</td>
+<td>AI-1, AI-6, AI-7, AI-14, AI-19, AI-20, AI-22, AI-24, OCR-1, OCR-2,
+OCR-3, OCR-4, OCR-5, SET-5, SHARE-1, SHARE-2, SHARE-3, CTX-1, DICT-2,
+FEAT-19, FLAG-3, DLG-1</td>
 </tr>
 <tr>
 <td>Tier 4 — Structural health</td>
@@ -5775,6 +5794,51 @@ note), and A11Y-1 (announcement grammar). The GATE-3/CQ-7 cleanup also
 incidentally cleared the <code>quill/core</code> and
 <code>quill/io</code> portion of the TYPE-1..8 zone, though those formal
 rows stay open until each is individually verified and closed.</p>
+<h4
+id="agent-1-accessibility-agent-deterministic-engine-and-reviewable-single-undo-ui-landed">2026-06-05:
+AGENT-1 accessibility agent — deterministic engine and reviewable,
+single-undo UI landed</h4>
+<p>The headline “make this document accessible” agent moved from Todo to
+<strong>In progress</strong>.</p>
+<ul>
+<li>New wx-free, strict-typed core engine
+<code>quill/core/accessibility_agent.py</code> builds on the in-repo
+<code>glow.py</code> audit/fix primitives and
+<code>plain_language.py</code>. <code>build_plan(...)</code> audits four
+domains — structure (markdown heading spacing to auto, heading-jump to
+advisory, html missing <code>lang</code> to auto), alt text
+(markdown/html missing alt to advisory), link text (generic “click here”
+link text to advisory), and plain language (controlled-vocabulary swaps
+to auto, case-preserving) — and returns an ordered, per-step-consented
+plan. <code>apply_plan(plan, text, accepted_ids)</code> applies only the
+accepted auto-fixable steps, re-audits via <code>audit_text</code>, and
+returns an <code>AgentRunResult</code> with a run report and
+before/after finding counts.</li>
+<li>New <code>AccessibilityAgentDialog</code>
+(<code>quill/ui/assistant_tools.py</code>) surfaces the plan as an
+accessible <code>wx.CheckListBox</code> (auto-fixable steps pre-checked,
+advisory steps listed for review) with a read-only before/after details
+pane and an Apply Checked Steps button.
+<code>make_document_accessible()</code> in <code>main_frame.py</code>
+announces the spoken summary, runs the dialog, and on apply replaces the
+whole editor buffer with one <code>editor.Replace(0, last, text)</code>
+so the change is a <strong>single undo</strong>, then opens the re-audit
+report in a named scratch tab. Reachable at Tools &gt; AI &gt; Make This
+Document Accessible… (command
+<code>tools.ai_accessibility_agent</code>); it is deterministic and
+offline, so it stays outside the AI-enable gate.</li>
+<li>Tests: 14 core engine tests
+(<code>tests/unit/core/test_accessibility_agent.py</code>) plus two
+dialog-apply behavior tests. Quality gates green: ruff format/check
+clean, strict mypy clean on the new core module, the menu and dialog
+contract guards pass, <code>dialogs.md</code> gained a row for the new
+dialog.</li>
+<li><strong>Honest remaining work:</strong> structure and plain language
+are auto-fixed, but alt-text and link-text are advisory-only (flagged,
+not auto-authored), so AGENT-1 stays <strong>In progress</strong> rather
+than Done. The Done count is unchanged (Tier 2 stays 27 of 58 done, 31
+remaining); AGENT-1 simply moves Todo to In progress.</li>
+</ul>
 <h4
 id="watch-6-and-watch-7-advanced-in-core-running-totals-reconciled-to-the-tracker">2026-06-04:
 WATCH-6 and WATCH-7 advanced in core; running totals reconciled to the

@@ -32,6 +32,7 @@ from quill.core.a11y_regions import (
     build_accessibility_audit_report,
     render_snapshot,
 )
+from quill.core.accessibility_agent import AgentRunResult, summarize_plan
 from quill.core.ai import Assistant
 from quill.core.ai.agent import allowed_tools
 from quill.core.assistant import render_assistant_prompt
@@ -445,6 +446,7 @@ from quill.stability.wx_heartbeat import HeartbeatState, WxHeartbeatTimer, WxHea
 from quill.ui.ai_model_panel import AIModelDialog
 from quill.ui.assistant_panel import AskQuillChatDialog
 from quill.ui.assistant_tools import (
+    AccessibilityAgentDialog,
     AgentCenterDialog,
     AIHubDialog,
     AssistantConnectionDialog,
@@ -1317,6 +1319,12 @@ class MainFrame:
             "tools.ai_agent_center",
             "Agent Center",
             self.open_agent_center,
+            None,
+        )
+        self.commands.register(
+            "tools.ai_accessibility_agent",
+            "Make This Document Accessible",
+            self.make_document_accessible,
             None,
         )
         self.commands.register(
@@ -3202,6 +3210,7 @@ class MainFrame:
         self._id_ai_assistant = wx.NewIdRef()
         self._id_ai_prompt_studio = wx.NewIdRef()
         self._id_ai_agent_center = wx.NewIdRef()
+        self._id_ai_accessibility_agent = wx.NewIdRef()
         self._id_ask_quill_chat = wx.NewIdRef()
         self._id_ai_enabled = wx.NewIdRef()
         self._id_ai_status_badge = wx.NewIdRef()
@@ -3468,6 +3477,10 @@ class MainFrame:
         ai_menu.Append(
             self._id_ai_agent_center,
             self._menu_label("Agent &Center...", "tools.ai_agent_center"),
+        )
+        ai_menu.Append(
+            self._id_ai_accessibility_agent,
+            self._menu_label("Make This Document &Accessible...", "tools.ai_accessibility_agent"),
         )
         ai_menu.Append(
             self._id_ai_rewrite_selection,
@@ -3938,6 +3951,11 @@ class MainFrame:
             wx.EVT_MENU,
             lambda _e: self.open_agent_center(),
             id=self._id_ai_agent_center,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.make_document_accessible(),
+            id=self._id_ai_accessibility_agent,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -4891,6 +4909,7 @@ class MainFrame:
             "tools.ai_assistant": self._id_ai_assistant,
             "tools.ai_prompt_studio": self._id_ai_prompt_studio,
             "tools.ai_agent_center": self._id_ai_agent_center,
+            "tools.ai_accessibility_agent": self._id_ai_accessibility_agent,
             "tools.ask_quill_chat": self._id_ask_quill_chat,
             "tools.ai_model": self._id_ai_model,
             "tools.ai_connection": self._id_ai_connection,
@@ -11624,6 +11643,39 @@ class MainFrame:
         report = build_fix_report(self.document.name, result, markup, scope_label)
         self._record_notification(report.splitlines()[0], "glow")
         self._set_status(f"Applied {len(result.fixes)} GLOW fixes to {scope_label}")
+
+    def make_document_accessible(self) -> None:
+        markup = self._current_markup_context()
+        original = self.editor.GetValue()
+
+        def _on_apply(result: AgentRunResult) -> None:
+            last = self.editor.GetLastPosition()
+            self.editor.Replace(0, last, result.text)
+            self.document.set_text(self.editor.GetValue())
+            self._record_notification(
+                f"Accessibility agent applied {len(result.applied)} changes "
+                f"to {self.document.name}",
+                "glow",
+            )
+            self._create_named_scratch_tab(
+                f"Accessibility Agent - {self.document.name}", result.report
+            )
+            self._set_status(
+                f"Accessibility agent applied {len(result.applied)} changes; "
+                f"{result.findings_after} findings remain"
+            )
+
+        dialog = AccessibilityAgentDialog(
+            self,
+            document_name=self.document.name,
+            document_text=original,
+            markup=markup,
+            scope_label="current document",
+            on_apply=_on_apply,
+            announce=self._announce,
+        )
+        self._announce(summarize_plan(dialog.plan))
+        dialog.show_modal()
 
     def go_to_line(self) -> None:
         wx = self._wx

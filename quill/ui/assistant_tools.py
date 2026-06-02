@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from quill.core.accessibility_agent import (
+    AccessibilityPlan,
+    AgentRunResult,
+    apply_plan,
+    build_plan,
+    summarize_plan,
+)
 from quill.core.assistant import (
     assistant_prompt_presets,
     build_assistant_tools,
@@ -439,6 +446,178 @@ class PromptStudioDialog:
         self._refresh_prompt_list()
         self.status.SetLabel("Saved custom prompt.")
         self._announce("Saved custom prompt")
+
+
+class AccessibilityAgentDialog:
+    """Reviewable, per-step, single-undo "make this document accessible" agent.
+
+    Surfaces the deterministic plan from
+    :mod:`quill.core.accessibility_agent` as an accessible checklist. Each
+    automatically-fixable step is pre-checked; advisory steps that need human
+    judgement are listed for review but cannot be auto-applied. Applying the
+    accepted steps is handed back to the caller as a single text replacement so
+    the editor records it as one undo unit.
+    """
+
+    def __init__(
+        self,
+        parent: object,
+        *,
+        document_name: str,
+        document_text: str,
+        markup: str,
+        scope_label: str,
+        on_apply: Callable[[AgentRunResult], None],
+        announce: Callable[[str], None] | None = None,
+    ) -> None:
+        import wx
+
+        self._wx = wx
+        self._document_text = document_text
+        self._on_apply = on_apply
+        self._announce = announce or (lambda _message: None)
+        self.plan: AccessibilityPlan = build_plan(document_name, document_text, markup, scope_label)
+        self.applied = False
+
+        self.dialog = wx.Dialog(
+            parent,
+            title="Make This Document Accessible",
+            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+        )
+        self.dialog.SetSize((860, 620))
+
+        panel = wx.Panel(self.dialog)
+        root = wx.BoxSizer(wx.VERTICAL)
+
+        root.Add(
+            wx.StaticText(
+                panel,
+                label=(
+                    "The accessibility agent audited this document and proposes the "
+                    "steps below. Checked steps are applied automatically; unchecked "
+                    "steps need your review. Nothing changes until you choose Apply."
+                ),
+            ),
+            0,
+            wx.EXPAND | wx.ALL,
+            8,
+        )
+
+        self.summary = wx.StaticText(panel, label=summarize_plan(self.plan))
+        root.Add(self.summary, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+        root.Add(
+            wx.StaticText(panel, label="Proposed steps"),
+            0,
+            wx.LEFT | wx.RIGHT,
+            8,
+        )
+        self.step_list = wx.CheckListBox(
+            panel,
+            choices=[self._step_label(step) for step in self.plan.steps],
+        )
+        root.Add(self.step_list, 1, wx.EXPAND | wx.ALL, 8)
+        for index, step in enumerate(self.plan.steps):
+            if step.auto_fixable:
+                self.step_list.Check(index, True)
+
+        root.Add(
+            wx.StaticText(panel, label="Step details"),
+            0,
+            wx.LEFT | wx.RIGHT,
+            8,
+        )
+        self.details = wx.TextCtrl(
+            panel,
+            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_SIMPLE,
+            size=(-1, 150),
+        )
+        root.Add(self.details, 0, wx.EXPAND | wx.ALL, 8)
+
+        self.status = wx.StaticText(panel, label="Ready to apply the checked steps.")
+        root.Add(self.status, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+        buttons = wx.BoxSizer(wx.HORIZONTAL)
+        self.apply_button = wx.Button(panel, label="Apply Checked Steps")
+        buttons.Add(self.apply_button, 0, wx.RIGHT, 8)
+        buttons.AddStretchSpacer(1)
+        close_button = wx.Button(panel, id=wx.ID_CANCEL, label="Close")
+        buttons.Add(close_button, 0)
+        root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
+
+        panel.SetSizer(root)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(panel, 1, wx.EXPAND)
+        self.dialog.SetSizer(outer)
+
+        self.step_list.Bind(wx.EVT_LISTBOX, self._on_step_selected)
+        self.apply_button.Bind(wx.EVT_BUTTON, self._on_apply_clicked)
+        close_button.Bind(wx.EVT_BUTTON, lambda _e: self.dialog.EndModal(wx.ID_CANCEL))
+        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+
+        if self.plan.steps:
+            self.step_list.SetSelection(0)
+            self._show_step_details(0)
+        else:
+            self.apply_button.Enable(False)
+            self.details.SetValue(
+                "No actionable accessibility issues were detected. The document is "
+                "ready for deeper human review and export checks."
+            )
+
+    def show_modal(self) -> None:
+        self.dialog.CentreOnParent()
+        try:
+            show_modal_dialog(self.dialog, "Make This Document Accessible")
+        finally:
+            self.dialog.Destroy()
+
+    def _step_label(self, step: object) -> str:
+        # step is AgentStep; build a screen-reader-friendly one-line label.
+        assert hasattr(step, "title")
+        location = f" (line {step.line})" if step.line is not None else ""
+        tag = "" if step.auto_fixable else " — needs review"
+        return f"{step.category}: {step.title}{location}{tag}"
+
+    def _on_step_selected(self, _event: object) -> None:
+        index = self.step_list.GetSelection()
+        if index != self._wx.NOT_FOUND and 0 <= index < len(self.plan.steps):
+            self._show_step_details(index)
+
+    def _show_step_details(self, index: int) -> None:
+        step = self.plan.steps[index]
+        lines = [step.title, "", step.rationale, ""]
+        if step.auto_fixable and step.after != step.before:
+            lines.append(f"Before: {step.before}")
+            lines.append(f"After: {step.after}")
+        else:
+            lines.append(f"Context: {step.before}")
+            lines.append(
+                "This step needs your judgement, so the agent will not change it "
+                "automatically. Edit it in the document after closing this dialog."
+            )
+        self.details.SetValue("\n".join(lines))
+
+    def _on_apply_clicked(self, _event: object) -> None:
+        accepted = {
+            self.plan.steps[index].step_id
+            for index in range(len(self.plan.steps))
+            if self.step_list.IsChecked(index)
+        }
+        result = apply_plan(self.plan, self._document_text, accepted)
+        if not result.changed:
+            self.status.SetLabel(
+                "No automatic changes were applied. Checked steps may need your review."
+            )
+            self._announce("Accessibility agent made no automatic changes")
+            return
+        self.applied = True
+        self._on_apply(result)
+        self._announce(
+            f"Accessibility agent applied {len(result.applied)} "
+            f"{'change' if len(result.applied) == 1 else 'changes'}"
+        )
+        self.dialog.EndModal(self._wx.ID_OK)
 
 
 class AgentCenterDialog:

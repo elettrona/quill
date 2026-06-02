@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from quill.ui.assistant_tools import AgentCenterDialog, PromptStudioDialog
+from quill.core.accessibility_agent import build_plan
+from quill.ui.assistant_tools import (
+    AccessibilityAgentDialog,
+    AgentCenterDialog,
+    PromptStudioDialog,
+)
 
 
 class _TextCtrl:
@@ -67,3 +72,56 @@ def test_agent_center_use_prompt_generates_then_routes_to_callback() -> None:
     assert used == ["Generated"]
     assert announcements == ["Loaded agent prompt into Writing Assistant"]
     assert dialog.dialog.ended_with == 1
+
+
+class _CheckListBox:
+    def __init__(self, checked: set[int]) -> None:
+        self._checked = checked
+
+    def IsChecked(self, index: int) -> bool:
+        return index in self._checked
+
+
+def _make_accessibility_dialog(
+    text: str, checked: set[int]
+) -> tuple[AccessibilityAgentDialog, list, list[str]]:
+    plan = build_plan("doc.md", text, "markdown", "current document")
+    dialog = AccessibilityAgentDialog.__new__(AccessibilityAgentDialog)
+    dialog._wx = SimpleNamespace(ID_OK=1)
+    dialog.plan = plan
+    dialog._document_text = text
+    dialog.applied = False
+    dialog.status = _Status()
+    dialog.dialog = _Dialog()
+    dialog.step_list = _CheckListBox(checked)
+    applied: list = []
+    announcements: list[str] = []
+    dialog._on_apply = lambda result: applied.append(result)
+    dialog._announce = lambda message: announcements.append(message)
+    return dialog, applied, announcements
+
+
+def test_accessibility_agent_apply_routes_checked_steps() -> None:
+    text = "#Title\nUtilize the tool in order to begin.\n"
+    dialog, applied, announcements = _make_accessibility_dialog(text, checked=set(range(len(text))))
+
+    dialog._on_apply_clicked(object())
+
+    assert dialog.applied is True
+    assert len(applied) == 1
+    assert applied[0].changed is True
+    assert applied[0].text != text
+    assert dialog.dialog.ended_with == 1
+    assert announcements and "applied" in announcements[0]
+
+
+def test_accessibility_agent_apply_with_nothing_checked_makes_no_change() -> None:
+    text = "#Title\nUtilize the tool in order to begin.\n"
+    dialog, applied, announcements = _make_accessibility_dialog(text, checked=set())
+
+    dialog._on_apply_clicked(object())
+
+    assert dialog.applied is False
+    assert applied == []
+    assert dialog.dialog.ended_with is None
+    assert announcements and "no automatic changes" in announcements[0].lower()
