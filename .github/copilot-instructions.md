@@ -85,6 +85,52 @@ Apply these rules to every UI change in `quill/ui/*`:
 - Keep dialog focus behavior predictable.
 	- Set explicit default buttons, bind Escape/Close consistently, and return focus to editor after modal close.
 - Add focused tests for dialog and menu regressions.
+
+## Cloud coding agent directives (read this first)
+
+When you run as the GitHub Copilot coding agent in the cloud, follow these standing
+rules in addition to everything above.
+
+### Mission and honesty
+
+- Drive QUILL 1.0 work (Tier 2 roadmap items in `golden.md` plus all associated
+  1.0 work, **including documentation**) toward genuine, tested Done.
+- HONESTY IS NON-NEGOTIABLE. Only mark an item Done when it is genuinely complete
+  and tested. If an item has a real runtime blocker, leave it honestly
+  "In progress" with an accurate note explaining why. Never fabricate Done.
+- You run on **Linux**, so `wxPython` cannot be imported. That is expected. Do not
+  try to instantiate live wx UI. Validate UI work through the existing bar:
+  source-contract tests (read the `.py` file as text and assert wiring
+  substrings), the A11Y-4 dialog-contract guard
+  (`tests/unit/ui/test_dialog_contract.py`), navigation tests, and the
+  public-surface fixture.
+- Items that need a real Windows runtime CANNOT be finished in cloud and must stay
+  honestly "In progress": OCR-1/OCR-3 (real OCR engine, clipboard, display),
+  AI-19 (live device-login endpoint), SET-2 (sensitivity-aware dictation backend),
+  AGENT-1 (advisory-only by design). Document them; do not mark them Done.
+
+### Out of scope for 1.0 (do NOT work on these)
+
+- GLOW integrations.
+- axe-core / vnu (Nu Html Checker) HTML/CSS/SVG validation.
+- BITS Whisperer.
+
+These are deferred to QUILL 2.0 and are already tracked as such in `golden.md`.
+
+### Per-change discipline (every commit / PR)
+
+- Format and lint: `ruff format` then `ruff check` (use `--fix` where safe).
+- Strict typing on changed `quill/core` and `quill/io` files: `mypy` must report
+  "Success: no issues found". `quill/core` and `quill/io` must stay wx-free.
+- Run the targeted `pytest` for what you changed; keep the suite green.
+- After editing `golden.md`, regenerate `golden.html` with
+  `pandoc -s golden.md -o golden.html` and commit both together.
+- If a new public `MainFrame` method is added, regenerate the fixture with
+  `python -m quill.tools.ui_surface --write` and stage
+  `tests/unit/ui/fixtures/main_frame_public_surface.json`.
+- Stage SPECIFIC files only. NEVER `git add -A` (it pulls in `.history/` and
+  `uv.lock`). Keep `golden.md`, the living lists, and the tracker totals
+  reconciled with each change.
 	- Include at least one behavior test (or source-contract test when UI stubs are limited) per bug class.
 
 ## Keep dialogs.md current
