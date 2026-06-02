@@ -117,6 +117,52 @@ def test_reconcile_keeps_context_menu_key() -> None:
     assert custom.item_order[CONTEXT_MENU_KEY] == ["edit.copy", "edit.cut"]
 
 
+def test_context_menu_reorder_hide_and_rename_through_shared_model() -> None:
+    """The editor context menu is configured through the same model as the menu bar.
+
+    It is addressed by :data:`CONTEXT_MENU_KEY` for ordering, while hiding and
+    renaming reuse the global item maps so a key configured once behaves the same
+    in the menu bar and the context menu.
+    """
+    default_context = ["edit.copy", "edit.cut", "edit.paste", "edit.select_all"]
+    custom = MenuCustomization()
+
+    # Reorder: put paste first; unlisted items keep default relative order.
+    custom.set_item_order(CONTEXT_MENU_KEY, ["edit.paste"])
+    assert custom.ordered_item_keys(CONTEXT_MENU_KEY, default_context) == [
+        "edit.paste",
+        "edit.copy",
+        "edit.cut",
+        "edit.select_all",
+    ]
+
+    # Hide: select-all disappears from the realized context menu.
+    custom.set_item_hidden("edit.select_all", True)
+    assert custom.visible_item_keys(CONTEXT_MENU_KEY, default_context) == [
+        "edit.paste",
+        "edit.copy",
+        "edit.cut",
+    ]
+
+    # Rename reuses the shared item-label map.
+    custom.rename_item("edit.paste", "Paste here")
+    assert custom.item_label("edit.paste", "Paste") == "Paste here"
+
+
+def test_context_menu_order_is_independent_of_menu_bar_order() -> None:
+    """Ordering the context menu must not disturb the Edit menu bar order."""
+    default_edit = ["edit.undo", "edit.redo", "edit.cut", "edit.copy", "edit.paste"]
+    custom = MenuCustomization()
+    custom.set_item_order(CONTEXT_MENU_KEY, ["edit.paste", "edit.copy"])
+
+    # The Edit menu bar keeps factory order; only the context menu changed.
+    assert custom.ordered_item_keys("edit", default_edit) == default_edit
+    assert custom.ordered_item_keys(CONTEXT_MENU_KEY, default_edit)[:2] == [
+        "edit.paste",
+        "edit.copy",
+    ]
+
+
 def test_from_dict_tolerates_garbage() -> None:
     assert MenuCustomization.from_dict(None).is_customized() is False
     assert MenuCustomization.from_dict([1, 2, 3]).is_customized() is False
