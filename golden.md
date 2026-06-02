@@ -1196,7 +1196,7 @@ platforms (Claude Code, Copilot, Gemini, Codex, and a Node.js MCP server with 24
 scanning tools). Most of it targets web developers and CI and is out of scope for
 a desktop writing app; the value to QUILL is narrower but real, and it already
 ships a GLOW bridge, so it is designed to interoperate with Tier 3, not compete.
-The proposed work (provisional prefix `AX-`) is five workstreams, all building on
+The proposed work (provisional prefix `AX-`) is six workstreams, all building on
 the shared GLOW engine and all behind `FeatureManager` (FLAG-1), reusing the
 consented AI layer (AI-13), and honoring the no-silent-network rule (GATE-9):
 
@@ -1228,9 +1228,24 @@ consented AI layer (AI-13), and honoring the no-silent-network rule (GATE-9):
   navigable findings dialog (GLOW-3) appears only on demand. The optional Node
   backend (AX-B) is needed only for the heavier Playwright behavioural passes, not
   the everyday HTML check.
+- AX-F: an optional, off-by-default HTML/CSS/SVG validity check on the HTML a user
+  authors or exports, using the Nu Html Checker (vnu, `validator/validator`,
+  MIT-licensed), normalized into the GLOW-3 report surface. This is the validity
+  complement to AX-E's axe-core accessibility check: axe-core answers "is this
+  accessible," vnu answers "is this well-formed, standards-conformant HTML," and
+  malformed markup is a common upstream cause of assistive-technology failures.
+  Decisive technical finding: vnu needs no Node.js — it is a Java tool shipped as a
+  self-contained precompiled Windows binary (`vnu-runtime-image`) that bundles its
+  own Java runtime, so it adds no Node and no separate Java install. It runs as a
+  local command-line check (or an optional local HTTP service) over the generated
+  doc artifacts and any user HTML export, invoked the same way pandoc is — from
+  `scripts/`/`tools/`, never inside the pure `quill/core` tree. Local and silent by
+  construction: no network, results folded into the navigable findings dialog
+  (GLOW-3) on demand. Pairs naturally with the existing `check_docs_artifacts.py`
+  gate over QUILL's pandoc-generated `*.html`.
 
-Sequencing: this tier lands after Tier 3 (GLOW) because AX-B, AX-C, AX-D, and
-AX-E all build on the shared GLOW engine and its report surface; documentation
+Sequencing: this tier lands after Tier 3 (GLOW) because AX-B, AX-C, AX-D, AX-E,
+and AX-F all build on the shared GLOW engine and its report surface; documentation
 still lands last so it describes a product that is already GLOW-native,
 agent-assisted, and transcription-capable. Open questions for the maintainer are
 in [aa.md](aa.md) section 6. Do not start this work or renumber the tiers until
