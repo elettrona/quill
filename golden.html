@@ -2402,8 +2402,9 @@ explanation.</td>
 <td>Resolve menu redundancy</td>
 <td>Menus</td>
 <td>S</td>
-<td>Todo</td>
-<td>Insert Link duplication is rationalized.</td>
+<td>Done</td>
+<td>Insert Link duplication is rationalized: the Edit-menu alias was
+removed, leaving Insert as the single primary entry.</td>
 </tr>
 <tr>
 <td>MENU-4</td>
@@ -2412,6 +2413,22 @@ explanation.</td>
 <td>S</td>
 <td>Todo</td>
 <td>Menu labels and announcements are consistent.</td>
+</tr>
+<tr>
+<td>MENU-5</td>
+<td>User-customizable menus and context menu (Menu Editor)</td>
+<td>Menus</td>
+<td>L</td>
+<td>In progress</td>
+<td>A person can reorder, rename, and hide top-level menus, menu items,
+and editor context-menu entries, with one Reset to Factory Defaults, all
+through an accessible Menu Editor. The <code>wx</code>-free model layer
+landed in <code>quill/core/menu_customization.py</code> (delta-only,
+self-healing <code>reconcile</code>, versioned persistence) and covers
+the menu bar and the editor context menu through one shared
+<code>CONTEXT_MENU_KEY</code> model, with full unit coverage. The
+menu-build transform pass and the Menu Editor dialog are the next,
+UI-side steps.</td>
 </tr>
 <tr>
 <td>FEAT-1</td>
@@ -5460,6 +5477,16 @@ suite (174 tests) plus the new
 <code>test_main_frame_settings_dialog.py</code> behavior tests pass;
 <code>main</code> stays green. Tier counts are unchanged because the SET
 items are In progress rather than Done.</li>
+<li>Follow-on the same day: the editor context-menu configuration
+(MENU-5, E-core) was proven to fold entirely into the shared
+<code>MenuCustomization</code> model through
+<code>CONTEXT_MENU_KEY</code>, with new tests covering context-menu
+reorder, hide, rename, and independence from the menu-bar order. MENU-3
+(Insert Link de-duplication) was confirmed Done and MENU-5 opened as In
+progress for the menu-bar and context-menu editor. The remaining UI-side
+steps (the menu-build transform pass and the Menu Editor dialog) are
+deliberately deferred as the riskier work in the large
+<code>main_frame.py</code> surface.</li>
 </ul>
 <h4
 id="planning-watch-profiles-scoped-and-feature-flag-respect-made-fundamental">2026-06-01
