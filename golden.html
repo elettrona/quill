@@ -2052,10 +2052,14 @@ deletes profiles. Each profile configures its folder, filters (suffix
 set, name patterns, min size and age, include-subfolders), action plus
 action options, schedule (always, interval, or quiet-hours window), and
 post-action handling (leave in place, move to a processed folder, or
-delete). A dedicated Settings group (SET-1) holds the global watch
-defaults. Validation is live and errors are announced; the whole surface
-is keyboard and screen-reader navigable. Tests cover create/edit/delete,
-validation, and persistence.</td>
+delete). A dedicated <strong>Watch Folders</strong> Settings group now
+holds the six global watch defaults (enable, default folder,
+include-subfolders, process-existing, auto-start, poll interval) and
+auto-renders in the tabbed dialog with per-setting reset, search, and
+export/import; the poll interval is clamped 2-300 s. Validation is live
+and errors are announced; the whole surface is keyboard and
+screen-reader navigable. Tests cover create/edit/delete, validation, and
+persistence.</td>
 </tr>
 <tr>
 <td>WATCH-6</td>
