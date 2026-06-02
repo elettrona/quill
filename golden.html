@@ -4875,12 +4875,35 @@ instructions-then-style-then-prompt ordering.</td>
 <td>Mid-task model speed/cost tiers</td>
 <td>AI</td>
 <td>S</td>
-<td>Todo</td>
+<td>In progress</td>
 <td>Derived from Pi’s mid-session model switching (see
 <code>pi.md</code>). Let the user pick a fast or local model for quick
 edits and a stronger model for a careful rewrite, switchable mid-task
 with an announced change, surfaced in the existing AI model panel.
-Local-first: the fast tier can be an on-device model.</td>
+Local-first: the fast tier can be an on-device model.
+<strong>Delivered:</strong> <code>quill/core/ai/model_tiers.py</code> is
+a complete, wx-free, strict-typed tier engine over the existing
+<code>model_manager</code> registry. Two named tiers — <code>Fast</code>
+(default <code>llama-3.2-1b</code>, on-device, for quick edits) and
+<code>Strong</code> (default <code>phi-4-mini</code>, for careful
+rewrites) — each map to a model id (or <code>auto</code> = the RAM
+recommendation). <code>set_active_tier</code> switches tiers mid-task
+and persists the choice; <code>assign_model_to_tier</code> lets a user
+re-point either tier at any registered model;
+<code>resolve_tier_spec</code> resolves the active tier to a concrete
+<code>ModelSpec</code> via <code>model_manager</code>;
+<code>announce_tier_change</code>/<code>describe_tier</code> produce
+A11Y-1-style spoken announcements (“Switched to the Fast tier (Llama 3.2
+1B Instruct) for quick edits.”). Tier assignments and the active tier
+persist atomically under
+<code>&lt;app data&gt;/ai/model-tiers.json</code>. Tested: defaults,
+mid-task switch persistence, per-tier reassignment, <code>auto</code>
+assignment, unknown-tier/unknown-model rejection, <code>auto</code>→spec
+resolution, and the spoken announcements (8 tests); ruff + strict mypy
+clean. <strong>In progress (honest):</strong> the engine is complete and
+tested, but the AI model panel control to pick the tier and announce the
+switch in the running UI is not yet wired, so this row stays In
+progress.</td>
 </tr>
 <tr>
 <td>AI-23</td>
@@ -5856,12 +5879,12 @@ the third table and are not part of either 1.0 list.</p>
 <td>Tier 2 — Flagship</td>
 <td>In progress</td>
 <td>SET-2, SET-3, MENU-1, MENU-5, AGENT-1, OCR-1, OCR-3, OCR-4, CTX-1,
-DICT-2, FEAT-19, DLG-1, AI-20</td>
+DICT-2, FEAT-19, DLG-1, AI-20, AI-22</td>
 </tr>
 <tr>
 <td>Tier 2 — Flagship</td>
 <td>Todo</td>
-<td>AI-19, AI-22, AI-24</td>
+<td>AI-19, AI-24</td>
 </tr>
 <tr>
 <td>Tier 4 — Structural health</td>
