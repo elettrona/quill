@@ -386,7 +386,21 @@ from quill.core.voice_commands import (
     resolve_voice_command,
     split_text_delta,
 )
-from quill.core.watch_folder import WatchFolderConfig, WatchFolderResult, WatchFolderService
+from quill.core.watch_profiles import (
+    POST_DELETE,
+    POST_LEAVE,
+    POST_MOVE,
+    WatchProfile,
+)
+from quill.core.watch_queue import (
+    STATE_DONE,
+    STATE_FAILED,
+    STATE_PROCESSING,
+    STATE_QUEUED,
+    STATE_SKIPPED,
+    QueueItem,
+)
+from quill.core.watch_service import WatchService
 from quill.core.yaml_structure import (
     YamlNode,
     YamlNodeKind,
@@ -841,18 +855,18 @@ class MainFrame:
         self._announcement_error_reported = ""
         self._read_aloud = ReadAloudController()
         self._dictation = DictationController()
-        self._watch_folder = WatchFolderService(
-            on_result=lambda result: self._wx.CallAfter(self._on_watch_folder_result, result),
-            on_error=lambda path, message: self._wx.CallAfter(
-                self._on_watch_folder_error,
-                path,
-                message,
-            ),
-            on_state_change=lambda running: self._wx.CallAfter(
-                self._on_watch_folder_state_change,
-                running,
+        self._watch_service = WatchService(
+            data_dir=app_data_dir(),
+            feature_enabled=self._feature_enabled,
+            on_open=lambda path: self._wx.CallAfter(self._on_watch_file_opened, path),
+            queue_listener=lambda event, item: self._wx.CallAfter(
+                self._on_watch_queue_event,
+                event,
+                item,
             ),
         )
+        self._watch_queue_monitor: object | None = None
+        self._watch_queue_listbox: object | None = None
         self._voice_command_scan_timer: threading.Timer | None = None
         self._voice_command_baseline_text = ""
         self._voice_command_aliases: dict[str, str] = {}
@@ -3316,16 +3330,15 @@ class MainFrame:
         )
         dictation_menu.Check(
             self._id_watch_folder_toggle,
-            bool(getattr(self.settings, "watch_folder_enabled", False))
-            and self._watch_folder.is_running,
+            self._watch_service.is_running,
         )
         dictation_menu.Append(
             self._id_watch_folder_settings,
-            self._menu_label("Watch Folder &Settings...", "tools.watch_folder_settings"),
+            self._menu_label("Watch Folder &Profiles...", "tools.watch_folder_settings"),
         )
         dictation_menu.Append(
             self._id_watch_folder_status,
-            self._menu_label("Watch Folder St&atus...", "tools.watch_folder_status"),
+            self._menu_label("Watch Folder &Queue...", "tools.watch_folder_status"),
         )
         integrations_menu = wx.Menu()
         integrations_menu.Append(
@@ -3489,16 +3502,15 @@ class MainFrame:
         )
         bw_dictation_menu.Check(
             self._id_watch_folder_toggle,
-            bool(getattr(self.settings, "watch_folder_enabled", False))
-            and self._watch_folder.is_running,
+            self._watch_service.is_running,
         )
         bw_dictation_menu.Append(
             self._id_watch_folder_settings,
-            self._menu_label("Watch Folder &Settings...", "tools.watch_folder_settings"),
+            self._menu_label("Watch Folder &Profiles...", "tools.watch_folder_settings"),
         )
         bw_dictation_menu.Append(
             self._id_watch_folder_status,
-            self._menu_label("Watch Folder St&atus...", "tools.watch_folder_status"),
+            self._menu_label("Watch Folder &Queue...", "tools.watch_folder_status"),
         )
         whisperer_menu.AppendSubMenu(bw_dictation_menu, "&Dictation and Watch Folder")
 
@@ -7063,7 +7075,7 @@ class MainFrame:
         if not self._can_close_all_documents():
             event.Veto()
             return
-        self._watch_folder.stop()
+        self._watch_service.stop()
         self._unregister_global_hotkeys()
         self._remove_tray_icon()
         save_settings(self.settings)
@@ -14809,20 +14821,6 @@ class MainFrame:
         if action == "Show status":
             self.show_bw_model_status()
 
-    def _watch_folder_config(self) -> WatchFolderConfig:
-        return WatchFolderConfig(
-            enabled=bool(getattr(self.settings, "watch_folder_enabled", False)),
-            folder_path=str(getattr(self.settings, "watch_folder_path", "")),
-            include_subfolders=bool(
-                getattr(self.settings, "watch_folder_include_subfolders", False)
-            ),
-            process_existing=bool(getattr(self.settings, "watch_folder_process_existing", False)),
-            auto_start=bool(getattr(self.settings, "watch_folder_auto_start", False)),
-            poll_interval_seconds=int(
-                getattr(self.settings, "watch_folder_poll_interval_seconds", 5)
-            ),
-        ).normalized()
-
     def _apply_watch_folder_menu_state(self) -> None:
         if not self._menu_updates_allowed():
             self._request_menu_refresh()
@@ -14833,189 +14831,517 @@ class MainFrame:
         item = menu_bar.FindItemById(self._id_watch_folder_toggle)
         if item is None:
             return
-        enabled = bool(getattr(self.settings, "watch_folder_enabled", False))
-        item.Check(enabled and self._watch_folder.is_running)
+        item.Check(self._watch_service.is_running)
 
     def _maybe_start_watch_folder(self) -> None:
-        config = self._watch_folder_config()
-        if not config.enabled or not config.auto_start:
+        if not bool(getattr(self.settings, "watch_folder_enabled", False)):
             self._apply_watch_folder_menu_state()
             return
-        self._start_watch_folder_monitoring(config, announce=False)
+        self._start_watch_folder_monitoring(announce=False)
 
-    def _start_watch_folder_monitoring(
-        self, config: WatchFolderConfig | None = None, *, announce: bool = True
-    ) -> bool:
+    def _start_watch_folder_monitoring(self, *, announce: bool = True) -> bool:
         if not self._feature_enabled("core.watch_folder"):
             if announce:
                 self._set_status("Watch folder is unavailable in this profile")
             return False
-        candidate = self._watch_folder_config() if config is None else config.normalized()
-        if not candidate.enabled:
-            if announce:
-                self._set_status("Enable watch folder monitoring first")
-            return False
-        if not candidate.folder_path:
-            if announce:
-                self._set_status("Set a watch folder path before starting monitoring")
-            return False
-        try:
-            started = self._watch_folder.start(candidate)
-        except ValueError as error:
-            if announce:
-                self._show_message_box(
-                    str(error),
-                    "Watch Folder",
-                    self._wx.ICON_WARNING | self._wx.OK,
-                )
-                self._set_status("Watch folder start failed")
-            self._apply_watch_folder_menu_state()
-            return False
-        if not started:
-            self._apply_watch_folder_menu_state()
-            return False
+        started = self._watch_service.start()
         self.settings.watch_folder_enabled = True
         save_settings(self.settings)
         self._apply_watch_folder_menu_state()
         if announce:
-            self._set_status("Watch folder monitoring started")
-            self._record_notification("Watch folder monitoring started", "speech")
+            if started:
+                count = len(started)
+                noun = "profile" if count == 1 else "profiles"
+                self._set_status(f"Watch folder monitoring started ({count} {noun})")
+                self._record_notification("Watch folder monitoring started", "speech")
+            else:
+                self._set_status("Watch folder is on, but no profiles are enabled")
+                self._record_notification(
+                    "Watch folder monitoring is on, but no profiles are enabled",
+                    "speech",
+                )
         return True
 
     def _stop_watch_folder_monitoring(self, *, announce: bool = True) -> None:
-        self._watch_folder.stop()
+        self._watch_service.stop()
         self._apply_watch_folder_menu_state()
         if announce:
             self._set_status("Watch folder monitoring stopped")
             self._record_notification("Watch folder monitoring stopped", "speech")
 
     def toggle_watch_folder_monitoring(self) -> None:
-        if self._watch_folder.is_running:
+        if self._watch_service.is_running:
             self.settings.watch_folder_enabled = False
             save_settings(self.settings)
             self._stop_watch_folder_monitoring()
             return
-        if not str(getattr(self.settings, "watch_folder_path", "")).strip():
+        if not self._watch_service.profiles():
             self.open_watch_folder_settings()
-            if not str(getattr(self.settings, "watch_folder_path", "")).strip():
+            if not self._watch_service.profiles():
                 self._apply_watch_folder_menu_state()
                 return
-        self.settings.watch_folder_enabled = True
-        save_settings(self.settings)
         self._start_watch_folder_monitoring()
 
     def show_watch_folder_status(self) -> None:
-        config = self._watch_folder_config()
-        running = "Running" if self._watch_folder.is_running else "Stopped"
-        folder = config.folder_path or "(not set)"
-        state = (
-            "Watch Folder Status\n\n"
-            f"State: {running}\n"
-            f"Path: {folder}\n"
-            f"Poll interval: {config.poll_interval_seconds} seconds\n"
-            f"Include subfolders: {'Yes' if config.include_subfolders else 'No'}\n"
-            f"Process existing files on start: {'Yes' if config.process_existing else 'No'}\n"
-            f"Auto-start on launch: {'Yes' if config.auto_start else 'No'}"
-        )
-        self._show_message_box(
-            state, "Watch Folder Status", self._wx.ICON_INFORMATION | self._wx.OK
-        )
-
-    def open_watch_folder_settings(self) -> None:  # noqa: PLR0915
+        """Open the accessible Watch Queue Monitor (WATCH-4)."""
+        if not self._feature_enabled("core.watch_folder"):
+            self._set_status("Watch folder is unavailable in this profile")
+            return
+        existing = self._watch_queue_monitor
+        if existing is not None:
+            try:
+                existing.Raise()
+                existing.SetFocus()
+                self._refresh_watch_queue_monitor()
+                return
+            except Exception:
+                self._watch_queue_monitor = None
+                self._watch_queue_listbox = None
         wx = self._wx
-        with wx.Dialog(self.frame, title="Watch Folder Settings") as dialog:
+        dialog = wx.Dialog(
+            self.frame,
+            title="Watch Queue Monitor",
+            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+        )
+        panel = wx.Panel(dialog)
+        panel_sizer = wx.BoxSizer(wx.VERTICAL)
+        root = wx.BoxSizer(wx.VERTICAL)
+
+        summary = wx.StaticText(panel, label="Watch queue")
+        summary.SetName("Watch queue summary")
+        panel_sizer.Add(summary, 0, wx.ALL, 8)
+
+        listbox = wx.ListBox(panel, style=wx.LB_SINGLE)
+        listbox.SetName("Watch queue items")
+        panel_sizer.Add(listbox, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+
+        button_row = wx.BoxSizer(wx.HORIZONTAL)
+        pause_button = wx.Button(panel, label="&Pause")
+        pause_button.SetName("Pause or resume the watch queue")
+        retry_button = wx.Button(panel, label="&Retry")
+        retry_button.SetName("Retry selected item")
+        open_button = wx.Button(panel, label="&Open Result")
+        open_button.SetName("Open the result of the selected item")
+        clear_button = wx.Button(panel, label="&Clear Finished")
+        clear_button.SetName("Clear finished items")
+        refresh_button = wx.Button(panel, label="Re&fresh")
+        refresh_button.SetName("Refresh the watch queue")
+        for button in (pause_button, retry_button, open_button, clear_button, refresh_button):
+            button_row.Add(button, 0, wx.RIGHT, 6)
+        panel_sizer.Add(button_row, 0, wx.ALL, 8)
+
+        panel.SetSizer(panel_sizer)
+        buttons = dialog.CreateButtonSizer(wx.CLOSE)
+        root.Add(panel, 1, wx.EXPAND | wx.ALL, 4)
+        if buttons is not None:
+            root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
+        dialog.SetSizerAndFit(root)
+        dialog.SetSize((640, 460))
+
+        def _selected_item() -> QueueItem | None:
+            index = listbox.GetSelection()
+            if index == wx.NOT_FOUND:
+                return None
+            items = self._watch_queue_items_cache
+            if 0 <= index < len(items):
+                return items[index]
+            return None
+
+        def _on_pause(_event: object) -> None:
+            if self._watch_service.queue.is_paused():
+                self._watch_service.resume()
+                self._set_status("Watch queue resumed")
+            else:
+                self._watch_service.pause()
+                self._set_status("Watch queue paused")
+            self._refresh_watch_queue_monitor()
+
+        def _on_retry(_event: object) -> None:
+            item = _selected_item()
+            if item is None:
+                self._set_status("Select a queue item to retry")
+                return
+            if self._watch_service.retry_item(item.item_id):
+                self._set_status(f"Retrying {Path(item.source_path).name}")
+            else:
+                self._set_status("That item cannot be retried")
+            self._refresh_watch_queue_monitor()
+
+        def _on_open(_event: object) -> None:
+            item = _selected_item()
+            if item is None:
+                self._set_status("Select a queue item to open")
+                return
+            target = item.result_path or item.source_path
+            if not target:
+                self._set_status("That item has no file to open")
+                return
+            self.open_file(Path(target), record_recent=True, refresh_existing=False)
+
+        def _on_clear(_event: object) -> None:
+            removed = self._watch_service.clear_finished()
+            self._set_status(f"Cleared {removed} finished item{'s' if removed != 1 else ''}")
+            self._refresh_watch_queue_monitor()
+
+        def _on_refresh(_event: object) -> None:
+            self._refresh_watch_queue_monitor()
+
+        def _on_close(_event: object) -> None:
+            self._watch_queue_monitor = None
+            self._watch_queue_listbox = None
+            self._watch_queue_pause_button = None
+            dialog.Destroy()
+
+        pause_button.Bind(wx.EVT_BUTTON, _on_pause)
+        retry_button.Bind(wx.EVT_BUTTON, _on_retry)
+        open_button.Bind(wx.EVT_BUTTON, _on_open)
+        clear_button.Bind(wx.EVT_BUTTON, _on_clear)
+        refresh_button.Bind(wx.EVT_BUTTON, _on_refresh)
+        dialog.Bind(wx.EVT_BUTTON, _on_close, id=wx.ID_CLOSE)
+        dialog.Bind(wx.EVT_CLOSE, _on_close)
+
+        self._watch_queue_monitor = dialog
+        self._watch_queue_listbox = listbox
+        self._watch_queue_summary = summary
+        self._watch_queue_pause_button = pause_button
+        self._watch_queue_items_cache = []
+        apply_modal_ids(dialog, affirmative_id=wx.ID_CLOSE, escape_id=wx.ID_CLOSE)
+        self._refresh_watch_queue_monitor()
+        dialog.Show()
+        listbox.SetFocus()
+
+    def _refresh_watch_queue_monitor(self) -> None:
+        dialog = self._watch_queue_monitor
+        listbox = self._watch_queue_listbox
+        if dialog is None or listbox is None:
+            return
+        try:
+            items = self._watch_service.queue_items()
+        except Exception:
+            items = []
+        self._watch_queue_items_cache = items
+        previous = listbox.GetSelection()
+        listbox.Clear()
+        for item in items:
+            name = Path(item.source_path).name if item.source_path else "(unknown)"
+            label = f"{item.state.title()} - {name}"
+            if item.attempts:
+                label += f" (attempt {item.attempts})"
+            if item.message:
+                label += f" - {item.message}"
+            listbox.Append(label)
+        if items:
+            target = previous if 0 <= previous < len(items) else 0
+            listbox.SetSelection(target)
+        counts = self._watch_service.queue_counts()
+        summary = getattr(self, "_watch_queue_summary", None)
+        if summary is not None:
+            queued = counts.get(STATE_QUEUED, 0) + counts.get(STATE_PROCESSING, 0)
+            done = counts.get(STATE_DONE, 0)
+            failed = counts.get(STATE_FAILED, 0)
+            skipped = counts.get(STATE_SKIPPED, 0)
+            paused = " (paused)" if self._watch_service.queue.is_paused() else ""
+            summary.SetLabel(
+                f"Pending {queued}, done {done}, failed {failed}, skipped {skipped}{paused}"
+            )
+        pause_button = getattr(self, "_watch_queue_pause_button", None)
+        if pause_button is not None:
+            pause_button.SetLabel("Resume" if self._watch_service.queue.is_paused() else "Pause")
+
+    def open_watch_folder_settings(self) -> None:
+        """Open the accessible Watch Profile Manager (WATCH-5)."""
+        if not self._feature_enabled("core.watch_folder"):
+            self._set_status("Watch folder is unavailable in this profile")
+            return
+        wx = self._wx
+        with wx.Dialog(
+            self.frame,
+            title="Watch Folder Profiles",
+            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+        ) as dialog:
             panel = wx.Panel(dialog)
             root = wx.BoxSizer(wx.VERTICAL)
             panel_sizer = wx.BoxSizer(wx.VERTICAL)
 
-            config = self._watch_folder_config()
+            heading = wx.StaticText(panel, label="Watch folder profiles")
+            heading.SetName("Watch folder profiles")
+            panel_sizer.Add(heading, 0, wx.ALL, 8)
 
-            enabled = wx.CheckBox(panel, label="Enable watch folder monitoring")
-            enabled.SetValue(config.enabled)
-            enabled.SetName("Enable watch folder monitoring")
-            panel_sizer.Add(enabled, 0, wx.LEFT | wx.RIGHT | wx.TOP | wx.BOTTOM, 8)
+            listbox = wx.ListBox(panel, style=wx.LB_SINGLE)
+            listbox.SetName("Watch folder profile list")
+            panel_sizer.Add(listbox, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+
+            button_row = wx.BoxSizer(wx.HORIZONTAL)
+            add_button = wx.Button(panel, label="&Add...")
+            edit_button = wx.Button(panel, label="&Edit...")
+            duplicate_button = wx.Button(panel, label="D&uplicate")
+            toggle_button = wx.Button(panel, label="Ena&ble/Disable")
+            delete_button = wx.Button(panel, label="De&lete")
+            for button in (add_button, edit_button, duplicate_button, toggle_button, delete_button):
+                button_row.Add(button, 0, wx.RIGHT, 6)
+            panel_sizer.Add(button_row, 0, wx.ALL, 8)
+
+            panel.SetSizer(panel_sizer)
+            buttons = dialog.CreateButtonSizer(wx.CLOSE)
+            root.Add(panel, 1, wx.EXPAND | wx.ALL, 4)
+            if buttons is not None:
+                root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
+            dialog.SetSizerAndFit(root)
+            dialog.SetSize((620, 440))
+
+            def _refresh_list(select: int = -1) -> None:
+                profiles = self._watch_service.profiles()
+                listbox.Clear()
+                for profile in profiles:
+                    state = "enabled" if profile.enabled else "disabled"
+                    folder = profile.folder_path or "(no folder)"
+                    listbox.Append(f"{profile.name} - {state} - {folder}")
+                if profiles:
+                    index = select if 0 <= select < len(profiles) else 0
+                    listbox.SetSelection(index)
+
+            def _selected_profile() -> WatchProfile | None:
+                index = listbox.GetSelection()
+                if index == wx.NOT_FOUND:
+                    return None
+                profiles = self._watch_service.profiles()
+                if 0 <= index < len(profiles):
+                    return profiles[index]
+                return None
+
+            def _on_add(_event: object) -> None:
+                profile = self._edit_watch_profile(None)
+                if profile is not None:
+                    self._watch_service.add_profile(profile)
+                    _refresh_list()
+                    self._set_status(f"Added watch profile {profile.name}")
+
+            def _on_edit(_event: object) -> None:
+                current = _selected_profile()
+                if current is None:
+                    self._set_status("Select a profile to edit")
+                    return
+                updated = self._edit_watch_profile(current)
+                if updated is not None:
+                    self._watch_service.update_profile(updated)
+                    _refresh_list(listbox.GetSelection())
+                    self._set_status(f"Updated watch profile {updated.name}")
+
+            def _on_duplicate(_event: object) -> None:
+                current = _selected_profile()
+                if current is None:
+                    self._set_status("Select a profile to duplicate")
+                    return
+                copy = self._watch_service.duplicate_profile(current.profile_id)
+                if copy is not None:
+                    _refresh_list()
+                    self._set_status(f"Duplicated watch profile {current.name}")
+
+            def _on_toggle(_event: object) -> None:
+                current = _selected_profile()
+                if current is None:
+                    self._set_status("Select a profile to enable or disable")
+                    return
+                self._watch_service.set_profile_enabled(current.profile_id, not current.enabled)
+                _refresh_list(listbox.GetSelection())
+                state = "disabled" if current.enabled else "enabled"
+                self._set_status(f"{current.name} {state}")
+
+            def _on_delete(_event: object) -> None:
+                current = _selected_profile()
+                if current is None:
+                    self._set_status("Select a profile to delete")
+                    return
+                response = self._show_message_box(
+                    f"Delete watch profile '{current.name}'?",
+                    "Delete Watch Profile",
+                    wx.ICON_QUESTION | wx.YES_NO,
+                )
+                if response != wx.YES:
+                    return
+                self._watch_service.delete_profile(current.profile_id)
+                _refresh_list()
+                self._set_status(f"Deleted watch profile {current.name}")
+
+            add_button.Bind(wx.EVT_BUTTON, _on_add)
+            edit_button.Bind(wx.EVT_BUTTON, _on_edit)
+            duplicate_button.Bind(wx.EVT_BUTTON, _on_duplicate)
+            toggle_button.Bind(wx.EVT_BUTTON, _on_toggle)
+            delete_button.Bind(wx.EVT_BUTTON, _on_delete)
+
+            _refresh_list()
+            apply_modal_ids(dialog, affirmative_id=wx.ID_CLOSE, escape_id=wx.ID_CLOSE)
+            self._show_modal_dialog(dialog, "Watch Folder Profiles")
+
+        if self._watch_service.is_running:
+            self._watch_service.restart()
+        self._apply_watch_folder_menu_state()
+        self._set_status("Updated watch folder profiles")
+
+    def _edit_watch_profile(self, profile: WatchProfile | None) -> WatchProfile | None:  # noqa: PLR0915
+        wx = self._wx
+        base = profile if profile is not None else WatchProfile()
+        title = "Edit Watch Profile" if profile is not None else "Add Watch Profile"
+        with wx.Dialog(self.frame, title=title) as dialog:
+            panel = wx.Panel(dialog)
+            root = wx.BoxSizer(wx.VERTICAL)
+            panel_sizer = wx.BoxSizer(wx.VERTICAL)
+
+            name_row = wx.BoxSizer(wx.HORIZONTAL)
+            name_label = wx.StaticText(panel, label="Profile name")
+            name_input = wx.TextCtrl(panel, value=base.name)
+            name_input.SetName("Profile name")
+            name_row.Add(name_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+            name_row.Add(name_input, 1, wx.EXPAND)
+            panel_sizer.Add(name_row, 0, wx.EXPAND | wx.ALL, 8)
+
+            enabled = wx.CheckBox(panel, label="Profile enabled")
+            enabled.SetValue(base.enabled)
+            enabled.SetName("Profile enabled")
+            panel_sizer.Add(enabled, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
             path_row = wx.BoxSizer(wx.HORIZONTAL)
-            path_label = wx.StaticText(panel, label="Watch folder path")
-            path_label.SetName("Watch folder path label")
-            path_input = wx.TextCtrl(panel, value=config.folder_path)
+            path_label = wx.StaticText(panel, label="Watch folder")
+            path_input = wx.TextCtrl(panel, value=base.folder_path)
             path_input.SetName("Watch folder path")
-            browse_button = wx.Button(panel, label="Browse...")
-            browse_button.SetName("Browse for watch folder")
+            path_browse = wx.Button(panel, label="Bro&wse...")
             path_row.Add(path_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
             path_row.Add(path_input, 1, wx.EXPAND | wx.RIGHT, 8)
-            path_row.Add(browse_button, 0)
+            path_row.Add(path_browse, 0)
             panel_sizer.Add(path_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
             include_subfolders = wx.CheckBox(panel, label="Include subfolders")
-            include_subfolders.SetValue(config.include_subfolders)
+            include_subfolders.SetValue(base.include_subfolders)
             include_subfolders.SetName("Include subfolders")
             panel_sizer.Add(include_subfolders, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
-            process_existing = wx.CheckBox(
-                panel, label="Process existing supported files on startup"
-            )
-            process_existing.SetValue(config.process_existing)
-            process_existing.SetName("Process existing supported files on startup")
+            process_existing = wx.CheckBox(panel, label="Process existing files on start")
+            process_existing.SetValue(base.process_existing)
+            process_existing.SetName("Process existing files on start")
             panel_sizer.Add(process_existing, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-
-            auto_start = wx.CheckBox(panel, label="Start monitoring automatically on launch")
-            auto_start.SetValue(config.auto_start)
-            auto_start.SetName("Start monitoring automatically on launch")
-            panel_sizer.Add(auto_start, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
             interval_row = wx.BoxSizer(wx.HORIZONTAL)
             interval_label = wx.StaticText(panel, label="Poll interval (seconds)")
-            interval_input = wx.SpinCtrl(
-                panel, min=2, max=300, initial=config.poll_interval_seconds
-            )
-            interval_input.SetName("Watch folder poll interval in seconds")
+            interval_input = wx.SpinCtrl(panel, min=2, max=300, initial=base.poll_interval_seconds)
+            interval_input.SetName("Poll interval in seconds")
             interval_row.Add(interval_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
             interval_row.Add(interval_input, 0)
             panel_sizer.Add(interval_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
-            def _browse_folder(_event: object) -> None:
+            available = list(self._watch_service.registry.available_actions())
+            action_ids = [action.action_id for action in available]
+            action_labels = [action.label for action in available]
+            action_row = wx.BoxSizer(wx.HORIZONTAL)
+            action_label = wx.StaticText(panel, label="Action")
+            action_choice = wx.Choice(panel, choices=action_labels)
+            action_choice.SetName("Watch action")
+            if base.action_id in action_ids:
+                action_choice.SetSelection(action_ids.index(base.action_id))
+            elif action_labels:
+                action_choice.SetSelection(0)
+            action_row.Add(action_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+            action_row.Add(action_choice, 1, wx.EXPAND)
+            panel_sizer.Add(action_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+            action_dest_row = wx.BoxSizer(wx.HORIZONTAL)
+            action_dest_label = wx.StaticText(panel, label="Action destination")
+            action_dest_input = wx.TextCtrl(
+                panel, value=str(base.action_options.get("destination", ""))
+            )
+            action_dest_input.SetName("Action destination folder")
+            action_dest_browse = wx.Button(panel, label="Brow&se...")
+            action_dest_row.Add(action_dest_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+            action_dest_row.Add(action_dest_input, 1, wx.EXPAND | wx.RIGHT, 8)
+            action_dest_row.Add(action_dest_browse, 0)
+            panel_sizer.Add(action_dest_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+            post_choices = ["Leave file in place", "Move to folder", "Delete file"]
+            post_values = [POST_LEAVE, POST_MOVE, POST_DELETE]
+            post_row = wx.BoxSizer(wx.HORIZONTAL)
+            post_label = wx.StaticText(panel, label="After processing")
+            post_choice = wx.Choice(panel, choices=post_choices)
+            post_choice.SetName("After processing")
+            post_choice.SetSelection(
+                post_values.index(base.post_action) if base.post_action in post_values else 0
+            )
+            post_row.Add(post_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+            post_row.Add(post_choice, 1, wx.EXPAND)
+            panel_sizer.Add(post_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+            post_dest_row = wx.BoxSizer(wx.HORIZONTAL)
+            post_dest_label = wx.StaticText(panel, label="Move destination")
+            post_dest_input = wx.TextCtrl(panel, value=base.post_action_destination)
+            post_dest_input.SetName("Post-action move destination")
+            post_dest_browse = wx.Button(panel, label="Brows&e...")
+            post_dest_row.Add(post_dest_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+            post_dest_row.Add(post_dest_input, 1, wx.EXPAND | wx.RIGHT, 8)
+            post_dest_row.Add(post_dest_browse, 0)
+            panel_sizer.Add(post_dest_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+            def _pick_folder(target: object) -> None:
                 with wx.DirDialog(
                     dialog,
-                    "Choose watch folder",
-                    defaultPath=path_input.GetValue().strip(),
+                    "Choose folder",
+                    defaultPath=target.GetValue().strip(),
                     style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST,
                 ) as picker:
-                    if self._show_modal_dialog(picker, "Watch Folder Settings") == wx.ID_OK:
-                        path_input.SetValue(picker.GetPath())
+                    if self._show_modal_dialog(picker, title) == wx.ID_OK:
+                        target.SetValue(picker.GetPath())
 
-            browse_button.Bind(wx.EVT_BUTTON, _browse_folder)
+            path_browse.Bind(wx.EVT_BUTTON, lambda _event: _pick_folder(path_input))
+            action_dest_browse.Bind(wx.EVT_BUTTON, lambda _event: _pick_folder(action_dest_input))
+            post_dest_browse.Bind(wx.EVT_BUTTON, lambda _event: _pick_folder(post_dest_input))
 
             panel.SetSizer(panel_sizer)
-            buttons = dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
+            ok_cancel = dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
             root.Add(panel, 1, wx.EXPAND | wx.ALL, 8)
-            if buttons is not None:
-                root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
+            if ok_cancel is not None:
+                root.Add(ok_cancel, 0, wx.EXPAND | wx.ALL, 8)
             dialog.SetSizerAndFit(root)
+            apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
 
-            if self._show_modal_dialog(dialog, "Watch Folder Settings") != wx.ID_OK:
-                self._set_status("Watch folder settings cancelled")
-                self._apply_watch_folder_menu_state()
-                return
+            if self._show_modal_dialog(dialog, title) != wx.ID_OK:
+                return None
 
-            self.settings.watch_folder_enabled = bool(enabled.GetValue())
-            self.settings.watch_folder_path = path_input.GetValue().strip()
-            self.settings.watch_folder_include_subfolders = bool(include_subfolders.GetValue())
-            self.settings.watch_folder_process_existing = bool(process_existing.GetValue())
-            self.settings.watch_folder_auto_start = bool(auto_start.GetValue())
-            self.settings.watch_folder_poll_interval_seconds = int(interval_input.GetValue())
-            save_settings(self.settings)
+            action_index = action_choice.GetSelection()
+            action_id = (
+                action_ids[action_index] if 0 <= action_index < len(action_ids) else base.action_id
+            )
+            action_options: dict[str, object] = {}
+            destination = action_dest_input.GetValue().strip()
+            if action_id == "move" and destination:
+                action_options["destination"] = destination
+            post_index = post_choice.GetSelection()
+            post_action = (
+                post_values[post_index] if 0 <= post_index < len(post_values) else POST_LEAVE
+            )
 
-        if self.settings.watch_folder_enabled:
-            started = self._start_watch_folder_monitoring(announce=False)
-            if started:
-                self._set_status("Updated watch folder settings and started monitoring")
-            else:
-                self._set_status("Updated watch folder settings")
-        else:
-            self._stop_watch_folder_monitoring(announce=False)
-            self._set_status("Updated watch folder settings")
-        self._apply_watch_folder_menu_state()
+            updated = WatchProfile(
+                profile_id=base.profile_id,
+                name=name_input.GetValue().strip() or "Untitled profile",
+                enabled=bool(enabled.GetValue()),
+                folder_path=path_input.GetValue().strip(),
+                include_subfolders=bool(include_subfolders.GetValue()),
+                process_existing=bool(process_existing.GetValue()),
+                suffixes=base.suffixes,
+                min_size_bytes=base.min_size_bytes,
+                min_age_seconds=base.min_age_seconds,
+                poll_interval_seconds=int(interval_input.GetValue()),
+                action_id=action_id,
+                action_options=action_options,
+                post_action=post_action,
+                post_action_destination=post_dest_input.GetValue().strip(),
+            ).normalized()
+
+            problems = updated.validate()
+            if problems:
+                self._show_message_box(
+                    "Please fix the following:\n\n- " + "\n- ".join(problems),
+                    title,
+                    wx.ICON_WARNING | wx.OK,
+                )
+                return None
+            return updated
 
     def _show_watch_folder_onboarding(self, force: bool) -> None:
         wx = self._wx
@@ -15034,22 +15360,27 @@ class MainFrame:
         self.open_watch_folder_settings()
         mark_watch_folder_onboarding_complete()
 
-    def _on_watch_folder_result(self, result: WatchFolderResult) -> None:
-        self.open_file(result.source_path, record_recent=True, refresh_existing=False)
-        self._record_notification(f"Watch folder opened {result.source_path.name}", "speech")
-        self._set_status(f"Watch folder opened {result.source_path.name}")
+    def _on_watch_file_opened(self, path: Path) -> None:
+        try:
+            self.open_file(path, record_recent=True, refresh_existing=False)
+        except Exception:
+            self._set_status(f"Watch folder could not open {path.name}")
+            return
+        self._record_notification(f"Watch folder opened {path.name}", "speech")
+        self._set_status(f"Watch folder opened {path.name}")
 
-    def _on_watch_folder_error(self, path: Path, message: str) -> None:
-        self._record_notification(
-            f"Watch folder failed for {path.name}: {message}",
-            "speech",
-        )
-        self._set_status(f"Watch folder failed for {path.name}")
-
-    def _on_watch_folder_state_change(self, running: bool) -> None:
-        self._apply_watch_folder_menu_state()
-        if running:
-            self._set_status("Watch folder monitoring active")
+    def _on_watch_queue_event(self, event: str, item: object) -> None:
+        if self._watch_queue_monitor is not None:
+            self._refresh_watch_queue_monitor()
+        if event == "failed" and item is not None:
+            source = getattr(item, "source_path", "")
+            name = Path(source).name if source else "a file"
+            message = getattr(item, "message", "") or "unknown error"
+            self._record_notification(
+                f"Watch failed for {name}: {message}",
+                "speech",
+            )
+            self._set_status(f"Watch failed for {name}")
 
     def _refresh_voice_command_aliases(self) -> None:
         self._voice_command_aliases = build_voice_command_aliases(
