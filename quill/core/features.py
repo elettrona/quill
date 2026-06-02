@@ -587,6 +587,8 @@ def feature_for_command(command_id: str) -> str:
         "tools.export_keymap": "core.keymap",
         "tools.keymap_editor": "core.keymap",
         "tools.status_bar_settings": "core.view",
+        "tools.share_export": "core.view",
+        "tools.share_import": "core.view",
         "tools.import_keymap": "core.keymap",
         "tools.reset_keymap": "core.keymap",
         "tools.open_welcome_guide": "core.help",

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -82,9 +82,12 @@ def _normalize_status_bar_hidden(raw: object, order: list[str]) -> list[str]:
 
 
 def _clamp_int(raw: object, fallback: int, minimum: int, maximum: int) -> int:
-    try:
-        value = int(raw)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+    if isinstance(raw, (int, float, str)):
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            value = fallback
+    else:
         value = fallback
     if value < minimum:
         value = minimum
@@ -574,8 +577,14 @@ def load_settings() -> Settings:
     raw = read_json(settings_path(), default={})
     if not isinstance(raw, dict):
         return Settings()
-    return Settings.from_dict(raw)
+    # SET-5: read either the nested, versioned document or a legacy flat file.
+    from quill.core.settings_migration import from_versioned
+
+    return from_versioned(raw)
 
 
 def save_settings(settings: Settings) -> None:
-    write_json_atomic(settings_path(), asdict(settings))
+    # SET-5: persist the nested, versioned document shape.
+    from quill.core.settings_migration import to_versioned
+
+    write_json_atomic(settings_path(), to_versioned(settings))

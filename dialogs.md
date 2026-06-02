@@ -117,6 +117,10 @@ or the command palette (`Ctrl+Shift+P`).
 ## L. Tools: appearance and behavior
 
 - [ ] Status Bar Layout: via Tools menu
+- [ ] Export and Back Up (share/backup export): Tools > Customize > Export and Back Up... (via menu)
+- [ ] Save export (file picker, nested in Export and Back Up): Save button within Export and Back Up
+- [ ] Import or Restore (share/backup import): Tools > Customize > Import or Restore... (via menu)
+- [ ] Open profile or backup (file picker, nested in Import or Restore): opens before the Import or Restore preview
 
 ## M. Tools: watch folder
 

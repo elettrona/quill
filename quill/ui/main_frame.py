@@ -322,6 +322,13 @@ from quill.core.sessions import (
     save_session as save_session_file,
 )
 from quill.core.settings import STATUS_BAR_ITEMS, Settings, load_settings, save_settings
+from quill.core.share_package import (
+    KIND_BACKUP,
+    KIND_PROFILE,
+    PackageError,
+    extension_for_kind,
+    package_summary,
+)
 from quill.core.snippets import (
     ExpansionResult as SnippetExpansionResult,
 )
@@ -457,6 +464,14 @@ from quill.ui.assistant_tools import (
 from quill.ui.csv_grid import CsvGridSurface
 from quill.ui.dialog_contract import apply_modal_ids, show_modal_dialog
 from quill.ui.palette import CommandPaletteDialog
+from quill.ui.share_dialogs import (
+    apply_import,
+    build_export_document,
+    gather_export_offers,
+    importable_sections,
+    read_import,
+    write_export,
+)
 from quill.ui.sticky_notes import StickyNoteEditorDialog, StickyNotesVaultDialog
 from quill.ui.style_panel import TrainStyleDialog
 from quill.ui.word_view import WordDocumentSurface
@@ -1873,6 +1888,18 @@ class MainFrame:
             None,
         )
         self.commands.register(
+            "tools.share_export",
+            "Export and Back Up...",
+            self.open_share_export_dialog,
+            None,
+        )
+        self.commands.register(
+            "tools.share_import",
+            "Import or Restore...",
+            self.open_share_import_dialog,
+            None,
+        )
+        self.commands.register(
             "tools.import_keymap",
             "Import Keymap...",
             self.import_keymap_file,
@@ -3196,6 +3223,8 @@ class MainFrame:
         self._id_check_updates = wx.NewIdRef()
         self._id_validate_contrast = wx.NewIdRef()
         self._id_status_bar_settings = wx.NewIdRef()
+        self._id_share_export = wx.NewIdRef()
+        self._id_share_import = wx.NewIdRef()
         self._id_keymap_editor = wx.NewIdRef()
         self._id_export_keymap = wx.NewIdRef()
         self._id_import_keymap = wx.NewIdRef()
@@ -3763,6 +3792,9 @@ class MainFrame:
             self._menu_label("&Profiles and Features...", "tools.profiles_and_features_settings"),
         )
         customize_menu.Append(self._id_status_bar_settings, "&Status Bar Layout...")
+        customize_menu.AppendSeparator()
+        customize_menu.Append(self._id_share_export, "&Export and Back Up...")
+        customize_menu.Append(self._id_share_import, "&Import or Restore...")
         customize_menu.AppendSeparator()
         customize_menu.Append(self._id_keymap_editor, "&Keymap Editor...")
         customize_menu.Append(self._id_export_keymap, "&Export Keymap...")
@@ -4654,6 +4686,16 @@ class MainFrame:
             wx.EVT_MENU,
             lambda _e: self.open_status_bar_settings(),
             id=self._id_status_bar_settings,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_share_export_dialog(),
+            id=self._id_share_export,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_share_import_dialog(),
+            id=self._id_share_import,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -10599,6 +10641,226 @@ class MainFrame:
         save_settings(self.settings)
         self._apply_statusbar_layout()
         self._set_status("Status bar layout updated")
+
+    def open_share_export_dialog(self) -> None:
+        """SHARE-1: Export and back up settings, features, and customizations.
+
+        Profile mode produces a privacy-clean package that never includes
+        machine-specific paths or secrets; backup mode keeps everything for the
+        person's own use.
+        """
+        wx = self._wx
+        offers = gather_export_offers(self.settings, self.features)
+        if not offers:
+            self._set_status("Nothing available to export")
+            return
+        dialog = wx.Dialog(self.frame, title="Export and Back Up", size=(560, 460))
+        panel = wx.Panel(dialog)
+        root = wx.BoxSizer(wx.VERTICAL)
+        root.Add(
+            wx.StaticText(
+                panel,
+                label=(
+                    "Share a profile to give someone your setup without personal "
+                    "paths or secrets, or back up everything for yourself."
+                ),
+            ),
+            0,
+            wx.ALL | wx.EXPAND,
+            8,
+        )
+        kind_choice = wx.RadioBox(
+            panel,
+            label="What to create",
+            choices=["Share a profile (privacy-clean)", "Back up everything"],
+            majorDimension=1,
+            style=wx.RA_SPECIFY_COLS,
+        )
+        root.Add(kind_choice, 0, wx.ALL | wx.EXPAND, 8)
+        root.Add(wx.StaticText(panel, label="&Name:"), 0, wx.LEFT | wx.RIGHT, 8)
+        name_field = wx.TextCtrl(panel, value="My QUILL setup")
+        root.Add(name_field, 0, wx.ALL | wx.EXPAND, 8)
+        root.Add(
+            wx.StaticText(panel, label="Include these sections:"),
+            0,
+            wx.LEFT | wx.RIGHT,
+            8,
+        )
+        chooser = wx.CheckListBox(
+            panel,
+            choices=[f"{offer.title} - {offer.summary}" for offer in offers],
+        )
+        for index in range(len(offers)):
+            chooser.Check(index, True)
+        root.Add(chooser, 1, wx.ALL | wx.EXPAND, 8)
+        buttons = dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
+        if buttons is not None:
+            ok_button = dialog.FindWindowById(wx.ID_OK)
+            if ok_button is not None:
+                ok_button.SetDefault()
+            root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+        panel.SetSizer(root)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(panel, 1, wx.EXPAND)
+        dialog.SetSizerAndFit(outer)
+
+        def sync_private(_event: object = None) -> None:
+            profile_mode = kind_choice.GetSelection() == 0
+            for index, offer in enumerate(offers):
+                if offer.private:
+                    if profile_mode:
+                        chooser.Check(index, False)
+                    chooser.Enable(index, not profile_mode)
+
+        kind_choice.Bind(wx.EVT_RADIOBOX, sync_private)
+        sync_private()
+
+        if self._show_modal_dialog(dialog, "Export and Back Up") != wx.ID_OK:
+            self._set_status("Export cancelled")
+            return
+        profile_mode = kind_choice.GetSelection() == 0
+        kind = KIND_PROFILE if profile_mode else KIND_BACKUP
+        selected_ids = [
+            offers[index].id for index in range(len(offers)) if chooser.IsChecked(index)
+        ]
+        name = name_field.GetValue().strip() or "My QUILL setup"
+        if not selected_ids:
+            self._set_status("Select at least one section to export")
+            return
+        try:
+            document = build_export_document(
+                kind=kind,
+                name=name,
+                source_version=__version__,
+                selected_ids=selected_ids,
+                offers=offers,
+            )
+        except (ValueError, PackageError) as exc:
+            self._show_message_box(str(exc), "Export", wx.ICON_ERROR | wx.OK)
+            self._set_status("Export failed")
+            return
+        extension = extension_for_kind(kind)
+        label = "profile" if profile_mode else "backup"
+        wildcard = f"QUILL {label} (*{extension})|*{extension}|All files (*.*)|*.*"
+        with wx.FileDialog(
+            self.frame,
+            "Save export",
+            wildcard=wildcard,
+            defaultFile=f"{name}{extension}",
+            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+        ) as file_dialog:
+            if self._show_modal_dialog(file_dialog, "Save export") != wx.ID_OK:
+                self._set_status("Export cancelled")
+                return
+            target = Path(file_dialog.GetPath())
+        try:
+            write_export(document, target)
+        except OSError as exc:
+            self._show_message_box(str(exc), "Export", wx.ICON_ERROR | wx.OK)
+            self._set_status("Export failed")
+            return
+        self._set_status(
+            f"Saved {label} with {len(selected_ids)} section(s) to {target.name}"
+        )
+
+    def open_share_import_dialog(self) -> None:
+        """SHARE-2: Import a profile or restore a backup, with preview and undo.
+
+        Feature changes are snapshotted and rolled back automatically if any
+        section fails to apply, so a bad file never leaves the app half-changed.
+        """
+        wx = self._wx
+        with wx.FileDialog(
+            self.frame,
+            "Open profile or backup",
+            wildcard=(
+                "QUILL profile or backup (*.quillprofile;*.quillbackup)"
+                "|*.quillprofile;*.quillbackup|All files (*.*)|*.*"
+            ),
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+        ) as file_dialog:
+            if self._show_modal_dialog(file_dialog, "Open profile or backup") != wx.ID_OK:
+                self._set_status("Import cancelled")
+                return
+            source = Path(file_dialog.GetPath())
+        try:
+            package = read_import(source)
+        except (PackageError, OSError, ValueError) as exc:
+            self._show_message_box(str(exc), "Import", wx.ICON_ERROR | wx.OK)
+            self._set_status("Import failed")
+            return
+        sections = importable_sections(package)
+        if not sections:
+            self._show_message_box(
+                "This file has no sections QUILL can import.",
+                "Import",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            self._set_status("Nothing to import")
+            return
+        dialog = wx.Dialog(self.frame, title="Import and Restore", size=(580, 480))
+        panel = wx.Panel(dialog)
+        root = wx.BoxSizer(wx.VERTICAL)
+        root.Add(
+            wx.StaticText(
+                panel,
+                label="Review what this file contains, then choose what to apply.",
+            ),
+            0,
+            wx.ALL | wx.EXPAND,
+            8,
+        )
+        preview = wx.TextCtrl(
+            panel,
+            value=package_summary(package),
+            style=wx.TE_MULTILINE | wx.TE_READONLY,
+        )
+        root.Add(preview, 1, wx.ALL | wx.EXPAND, 8)
+        root.Add(wx.StaticText(panel, label="Apply these sections:"), 0, wx.LEFT | wx.RIGHT, 8)
+        chooser = wx.CheckListBox(
+            panel,
+            choices=[f"{title} - {summary}" for _id, title, summary in sections],
+        )
+        for index in range(len(sections)):
+            chooser.Check(index, True)
+        root.Add(chooser, 1, wx.ALL | wx.EXPAND, 8)
+        buttons = dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
+        if buttons is not None:
+            ok_button = dialog.FindWindowById(wx.ID_OK)
+            if ok_button is not None:
+                ok_button.SetDefault()
+            root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+        panel.SetSizer(root)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(panel, 1, wx.EXPAND)
+        dialog.SetSizerAndFit(outer)
+        if self._show_modal_dialog(dialog, "Import and Restore") != wx.ID_OK:
+            self._set_status("Import cancelled")
+            return
+        selected_ids = [
+            sections[index][0] for index in range(len(sections)) if chooser.IsChecked(index)
+        ]
+        if not selected_ids:
+            self._set_status("Select at least one section to import")
+            return
+        try:
+            outcome = apply_import(package, selected_ids, self.settings, self.features)
+        except (PackageError, ValueError) as exc:
+            self._show_message_box(str(exc), "Import", wx.ICON_ERROR | wx.OK)
+            self._set_status("Import failed; no changes were applied")
+            return
+        applied = len(outcome.applied)
+        if outcome.settings is not None:
+            self.settings = outcome.settings
+            self._settings_dialog_apply_refresh(f"Imported {applied} section(s)")
+        else:
+            self._build_menu()
+            self._set_status(f"Imported {applied} section(s)")
+        notes = list(package.warnings) + list(outcome.warnings)
+        if notes:
+            self._show_message_box("\n".join(notes), "Import notes", wx.ICON_INFORMATION | wx.OK)
 
     def import_keymap_file(self) -> None:
         wx = self._wx

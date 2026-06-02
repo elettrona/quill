@@ -1787,10 +1787,19 @@ so this row stays In progress.</td>
 <td>Robust settings model with migration</td>
 <td>Settings</td>
 <td>L</td>
-<td>Todo</td>
-<td>Flat fields are grouped into nested, versioned dataclasses with
-validation on load and corrupt-file recovery that preserves other
-settings; round-trip and migration tests pass. (Pairs with CQ-4.)</td>
+<td>Done</td>
+<td>Flat fields are serialized into a nested, versioned document
+(<code>schema_version</code> 1, fields grouped via the settings
+registry; unspecced fields preserved under <code>_ungrouped</code>) by
+<code>quill/core/settings_migration.py</code>.
+<code>load_settings</code> migrates older nested documents and legacy
+flat documents, and <code>_safe_from_dict</code> recovers from
+corruption by dropping only the offending field while preserving every
+valid sibling; junk documents fall back to defaults.
+<code>save_settings</code> writes the versioned form atomically.
+Round-trip, migration, junk-recovery, and per-field corruption tests
+pass (<code>tests/unit/core/test_settings_migration.py</code>). (Pairs
+with CQ-4.)</td>
 </tr>
 <tr>
 <td>SET-6</td>
@@ -1829,67 +1838,75 @@ factory defaults (with a confirmation gate). Serialized through
 <td>One Export and Back Up dialog with a shareable-profile mode</td>
 <td>Settings</td>
 <td>M</td>
-<td>Todo</td>
-<td>A single accessible dialog is the front door for getting
-configuration out of QUILL, replacing the temptation to ship four
-separate export commands. A radio group picks the intent: <strong>Share
-a profile</strong> (a portable, privacy-scrubbed package meant to hand
-to a friend) or <strong>Back up everything</strong> (a full personal
-restore point for this device). A checkbox tree then chooses exactly
-what to include (settings groups, feature flags and profile, keymap and
-keyboard pack, snippets and macros, watch profiles, dictionaries and
-added words, style models, UI layout), with a live count and a one-line
-plain-language summary of each group. The privacy boundary is
-structural, not cosmetic: in <strong>Share a profile</strong> mode the
-private items (API keys and any DPAPI/Credential-Manager secret, license
-and registration data, recent-files and recent-folders history,
-per-device paths, telemetry ids) are not merely unchecked but absent
-from the surface and provably never written, and the dialog says so. The
-dialog satisfies the A11Y-4 contract guard, announces what was written,
-and uses the shared <code>show_web_form</code>/stock surface (pairs with
-DLG-1). Supersedes the plumbing of SET-7 and FLAG-4 as the user-facing
-experience; those become the underlying serializers.</td>
+<td>In progress</td>
+<td><code>open_share_export_dialog</code> (Tools &gt; Customize &gt;
+<strong>Export and Back Up…</strong>) is the single accessible front
+door: a radio group picks <strong>Share a profile
+(privacy-clean)</strong> or <strong>Back up everything</strong>, a name
+field labels the package, and a <code>wx.CheckListBox</code> chooses
+sections, each shown with a one-line plain-language summary. The privacy
+boundary is structural — in profile mode any section flagged private is
+unchecked and disabled, and the writer (<code>build_package</code>,
+SHARE-3) provably refuses to emit private data into a
+<code>.quillprofile</code> and scrubs private settings fields. Saves
+through a <code>wx.FileDialog</code> with the correct extension, honors
+the A11Y-4 contract via <code>apply_modal_ids</code> + the
+panel/outer-sizer + <code>SetDefault</code> surface, and announces what
+was written. Remaining: the package format already supports keymap,
+snippets, macros, watch profiles, dictionary, style models, and UI
+layout, but only the <strong>settings groups</strong> and
+<strong>features/profile</strong> sections are wired into the offer list
+today; the remaining section serializers and a live include-count still
+need wiring before this is Done.</td>
 </tr>
 <tr>
 <td>SHARE-2</td>
 <td>One Import and Restore dialog with the same two modes</td>
 <td>Settings</td>
 <td>M</td>
-<td>Todo</td>
-<td>The mirror of SHARE-1: a single accessible dialog brings
-configuration back in. A radio group picks <strong>Import a
-profile</strong> (apply a shared package, merging onto the current
-setup) or <strong>Restore a backup</strong> (replace this device’s
-configuration from a full restore point). After choosing a file the
-dialog shows a readable, screen-reader-pageable preview of what the
-package contains and a checkbox tree of what to apply, so a user can
-take just the keymap from a friend’s profile without disturbing their
-own AI keys. Application is schema-validated, atomic, and recoverable (a
-pre-apply safety snapshot is taken so an import can be undone),
-feature-flag dependencies resolve and announce per FLAG-1, and a shared
-package can never carry private secrets in (SHARE-3). Honors the A11Y-4
-contract guard and the shared form surface.</td>
+<td>In progress</td>
+<td><code>open_share_import_dialog</code> (Tools &gt; Customize &gt;
+<strong>Import or Restore…</strong>) mirrors SHARE-1: a
+<code>wx.FileDialog</code> opens a <code>.quillprofile</code> or
+<code>.quillbackup</code>, a screen-reader-pageable read-only
+<code>wx.TextCtrl</code> shows <code>package_summary</code> (including
+the privacy note), and a <code>wx.CheckListBox</code> of the importable
+sections lets the user apply only what they want. Application is
+recoverable: <code>apply_import</code> snapshots the feature state and
+rolls it back automatically if any section fails, imported settings flow
+through the shared <code>_settings_dialog_apply_refresh</code>
+persist-and-refresh path, and import notes/warnings surface in a
+follow-up message. Honors the A11Y-4 contract via
+<code>apply_modal_ids</code>. Remaining: the merge-vs-replace
+distinction between <strong>Import a profile</strong> and
+<strong>Restore a backup</strong> is not yet behaviorally separated,
+FLAG-1 feature-flag dependency resolution/announcement on import is not
+yet wired, and (as with SHARE-1) only settings and features sections are
+applied today.</td>
 </tr>
 <tr>
 <td>SHARE-3</td>
 <td>Portable, privacy-safe profile and backup package format</td>
 <td>Settings</td>
 <td>S</td>
-<td>Todo</td>
-<td>Define the on-disk package both SHARE dialogs read and write: a
-documented, versioned, human-readable manifest (a
+<td>Done</td>
+<td><code>quill/core/share_package.py</code> defines the versioned,
+human-readable package both SHARE dialogs read and write: a
 <code>.quillprofile</code> for shareable profiles and a
-<code>.quillbackup</code> for full restore points) listing contents,
-source version, and a plain-language “what’s inside” summary that can be
-read aloud before import. The schema marks every field as shareable or
-private; the writer refuses to emit private fields into a profile
-package and the reader refuses to apply them from one, enforced by a
-round-trip test and a privacy test that fails if any
-secret/recent-path/license field can reach a profile package. Magical
-touches that make sharing delightful: a spoken summary of what a package
-will change, named packages, and a safe-by-default merge that never
-clobbers silently. (Implements the format behind SHARE-1/2 and the
-schemas FLAG-4 and SET-7 reference.)</td>
+<code>.quillbackup</code> for full restore points, each carrying a
+manifest (<code>schema_version</code> 1, kind, name, source version,
+sorted contents, ISO timestamp) and a <code>package_summary</code>
+“what’s inside” string suitable for reading aloud before import.
+Fourteen sections are marked shareable or private;
+<code>build_package</code> raises <code>PrivacyError</code> if a profile
+would include a private section and scrubs private settings fields,
+while <code>read_package</code> defensively strips any private section a
+hand-edited profile smuggled in and re-scrubs settings. A round-trip
+test plus a privacy test (every secret/recent-path/license/device-path
+field provably cannot reach a profile) and file round-trip pass
+(<code>tests/unit/core/test_share_package.py</code>). (Implements the
+format behind SHARE-1/2 and the schemas FLAG-4 and SET-7
+reference.)</td>
 </tr>
 <tr>
 <td>MENU-2</td>
@@ -5567,10 +5584,10 @@ CQ-16) are counted once, in their primary tier.</p>
 <td>Tier 2</td>
 <td>Flagship experience</td>
 <td>58</td>
-<td>27</td>
-<td>31</td>
+<td>29</td>
+<td>29</td>
 <td>OCR-1..5, AGENT-1, AI-7, AI-1, AI-6, AI-14, AI-19, AI-20, AI-22,
-AI-24, SET-1..5, SET-7, SHARE-1..3, CTX-1, DICT-2, FEAT-19, WATCH-5..7,
+AI-24, SET-1..4, SET-7, SHARE-1..2, CTX-1, DICT-2, FEAT-19, WATCH-5..7,
 FLAG-3, DLG-1</td>
 </tr>
 <tr>
@@ -5595,8 +5612,8 @@ CQ-14, CQ-23, CQ-24, LINUX-2</td>
 <td><strong>1.0 subtotal</strong></td>
 <td>Tiers 1, 2, 4, 6 (the QUILL 1.0 scope)</td>
 <td><strong>144</strong></td>
-<td><strong>64</strong></td>
-<td><strong>80</strong></td>
+<td><strong>66</strong></td>
+<td><strong>78</strong></td>
 <td></td>
 </tr>
 <tr>
@@ -5636,8 +5653,8 @@ LINUX-1, ECO-1, L10N-1, COLLAB-1</td>
 <td><strong>Total</strong></td>
 <td>All tiers (1.0 + 2.0)</td>
 <td><strong>186</strong></td>
-<td><strong>64</strong></td>
-<td><strong>122</strong></td>
+<td><strong>66</strong></td>
+<td><strong>120</strong></td>
 <td></td>
 </tr>
 </tbody>
@@ -5682,15 +5699,14 @@ the third table and are not part of either 1.0 list.</p>
 <tr>
 <td>Tier 2 — Flagship</td>
 <td>In progress</td>
-<td>SET-1, SET-2, SET-3, SET-4, SET-7, WATCH-5, WATCH-6, WATCH-7,
-MENU-1, MENU-5, AGENT-1</td>
+<td>SET-1, SET-2, SET-3, SET-4, SET-7, SHARE-1, SHARE-2, WATCH-5,
+WATCH-6, WATCH-7, MENU-1, MENU-5, AGENT-1</td>
 </tr>
 <tr>
 <td>Tier 2 — Flagship</td>
 <td>Todo</td>
 <td>AI-1, AI-6, AI-7, AI-14, AI-19, AI-20, AI-22, AI-24, OCR-1, OCR-2,
-OCR-3, OCR-4, OCR-5, SET-5, SHARE-1, SHARE-2, SHARE-3, CTX-1, DICT-2,
-FEAT-19, FLAG-3, DLG-1</td>
+OCR-3, OCR-4, OCR-5, CTX-1, DICT-2, FEAT-19, FLAG-3, DLG-1</td>
 </tr>
 <tr>
 <td>Tier 4 — Structural health</td>
@@ -5732,7 +5748,8 @@ GATE-8, GATE-9, FLAG-1, FLAG-2</td>
 <td>Tier 2 — Flagship</td>
 <td>QK-1, QK-2, QK-3, QK-4, QK-5, QK-9, NAV-1, NAV-4, NAV-5, SEL-1,
 SEL-2, SEL-3, AI-13, AI-15, AI-16, AI-17, AI-21, AI-23, WATCH-1,
-WATCH-2, WATCH-3, WATCH-4, SET-6, FLAG-4, MENU-3, DICT-1</td>
+WATCH-2, WATCH-3, WATCH-4, SET-5, SET-6, SHARE-3, FLAG-4, MENU-3,
+DICT-1</td>
 </tr>
 <tr>
 <td>Tier 4 — Structural health</td>
@@ -5794,6 +5811,71 @@ note), and A11Y-1 (announcement grammar). The GATE-3/CQ-7 cleanup also
 incidentally cleared the <code>quill/core</code> and
 <code>quill/io</code> portion of the TYPE-1..8 zone, though those formal
 rows stay open until each is individually verified and closed.</p>
+<h4
+id="settingssharing-set-5-and-share-3-landed-done-share-1-and-share-2-dialogs-landed-in-progress">2026-06-06:
+Settings/sharing — SET-5 and SHARE-3 landed Done; SHARE-1 and SHARE-2
+dialogs landed In progress</h4>
+<p>The four “Settings / sharing” backlog items advanced together, two to
+Done and two to In progress, with the deterministic core fully tested
+and the two wx dialogs wired into Tools &gt; Customize.</p>
+<ul>
+<li><strong>SET-5 (Done):</strong> new wx-free
+<code>quill/core/settings_migration.py</code> serializes the flat
+<code>Settings</code> into a nested, versioned document
+(<code>schema_version</code> 1; fields grouped via the settings
+registry, unspecced fields preserved under <code>_ungrouped</code>).
+<code>load_settings</code> now migrates older nested documents and
+legacy flat documents through <code>from_versioned</code>, and
+<code>_safe_from_dict</code> recovers from corruption by dropping only
+the offending field while keeping every valid sibling; junk falls back
+to defaults. <code>save_settings</code> writes the versioned form
+atomically. The import cycle (settings to settings_migration to
+settings_registry) is broken with lazy imports inside load/save. Seven
+tests in <code>tests/unit/core/test_settings_migration.py</code> cover
+round-trip losslessness, nested and legacy migration, per-field
+corruption recovery, and junk handling.</li>
+<li><strong>SHARE-3 (Done):</strong> new wx-free
+<code>quill/core/share_package.py</code> defines the portable package
+both SHARE dialogs use — <code>.quillprofile</code> (shareable) and
+<code>.quillbackup</code> (full restore) — with a manifest (schema
+version, kind, name, source version, sorted contents, ISO timestamp) and
+a read-aloud <code>package_summary</code>. Fourteen sections are marked
+shareable or private; <code>build_package</code> raises
+<code>PrivacyError</code> on a profile carrying a private section and
+scrubs private settings fields, while <code>read_package</code>
+defensively strips smuggled-in private sections and re-scrubs. Eleven
+tests in <code>tests/unit/core/test_share_package.py</code> include the
+privacy guarantee (no secret/recent-path/license/device field can reach
+a profile) and a file round-trip.</li>
+<li><strong>SHARE-1 / SHARE-2 (In progress):</strong> a wx-free helper
+layer <code>quill/ui/share_dialogs.py</code> (offers, build/write
+export, read/apply import with a feature-state snapshot that rolls back
+on any failure) is covered by seven logic tests, and two wx dialogs
+(<code>open_share_export_dialog</code>,
+<code>open_share_import_dialog</code>) are wired into Tools &gt;
+Customize. Export offers a profile/backup radio, named package, section
+checklist, structural privacy (private sections unchecked and disabled
+in profile mode), and a save dialog with the correct extension. Import
+opens a <code>.quillprofile</code>/<code>.quillbackup</code>, shows a
+screen-reader-pageable read-only preview, applies only the chosen
+sections with automatic rollback, and routes imported settings through
+the shared persist-and-refresh path. Three source-contract tests guard
+the wiring. <strong>Honest remaining work:</strong> the package format
+supports keymap, snippets, macros, watch profiles, dictionary, style
+models, and UI layout, but only settings and features are wired into the
+offer/apply lists today; the merge-vs-replace distinction and FLAG-1
+dependency announcements on import are not yet implemented — so both
+stay In progress.</li>
+<li>Counts: SET-5 and SHARE-3 close, moving Tier 2 to <strong>29 of 58
+done (29 remaining)</strong> and the QUILL 1.0 scope to <strong>66 of
+144 done (78 remaining)</strong>. SHARE-1 and SHARE-2 move Todo to In
+progress. Quality gates: ruff format/check clean on all new and edited
+files, strict mypy clean on the touched <code>quill/core</code> modules
+(and on the wx-free <code>share_dialogs.py</code>),
+<code>main_frame</code> imports cleanly, and the menu and dialog
+(A11Y-4) contract guards pass. <code>dialogs.md</code> gained rows for
+both new dialogs.</li>
+</ul>
 <h4
 id="agent-1-accessibility-agent-deterministic-engine-and-reviewable-single-undo-ui-landed">2026-06-05:
 AGENT-1 accessibility agent — deterministic engine and reviewable,
