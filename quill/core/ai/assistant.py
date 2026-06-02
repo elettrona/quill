@@ -143,15 +143,25 @@ class Assistant:
             backend = make_default_backend()
         self.backend = backend
         self._style_preamble = ""
+        self._instructions_preamble = ""
 
     def set_style_preamble(self, preamble: str) -> None:
         """Condition generation on the user's writing style (empty to disable)."""
         self._style_preamble = preamble or ""
 
+    def set_instructions_preamble(self, preamble: str) -> None:
+        """Pin the user's durable writing instructions (AI-21; empty to disable)."""
+        self._instructions_preamble = preamble or ""
+
     def _wrap(self, prompt: str) -> str:
-        if self._style_preamble:
-            return f"{self._style_preamble}\n\n{prompt}"
-        return prompt
+        # Instructions (explicit user rules) lead, then the trained style
+        # (voice), then the task. Both are visible, user-owned conditioning.
+        segments = [
+            segment for segment in (self._instructions_preamble, self._style_preamble) if segment
+        ]
+        if not segments:
+            return prompt
+        return "\n\n".join([*segments, prompt])
 
     def is_available(self) -> tuple[bool, str | None]:
         return self.backend.is_available()

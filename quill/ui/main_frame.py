@@ -1314,6 +1314,12 @@ class MainFrame:
             None,
         )
         self.commands.register(
+            "tools.writing_instructions",
+            "Open Writing Instructions",
+            self.open_writing_instructions,
+            None,
+        )
+        self.commands.register(
             "view.toggle_overwrite_mode",
             "Toggle Overwrite Mode",
             self.toggle_overwrite_mode,
@@ -3155,6 +3161,7 @@ class MainFrame:
         self._id_ai_speech_settings = wx.NewIdRef()
         self._id_ai_speech_generate_audio = wx.NewIdRef()
         self._id_train_style = wx.NewIdRef()
+        self._id_writing_instructions = wx.NewIdRef()
         self._id_compare_with_file = wx.NewIdRef()
         self._id_compare_open_documents = wx.NewIdRef()
         self._id_compare_next_difference = wx.NewIdRef()
@@ -3425,6 +3432,10 @@ class MainFrame:
         ai_menu.Append(
             self._id_train_style,
             self._menu_label("&Train Writing Style...", "tools.train_writing_style"),
+        )
+        ai_menu.Append(
+            self._id_writing_instructions,
+            self._menu_label("&Writing Instructions...", "tools.writing_instructions"),
         )
         speech_menu = wx.Menu()
         speech_menu.Append(
@@ -4018,6 +4029,11 @@ class MainFrame:
             wx.EVT_MENU,
             lambda _e: self.open_train_writing_style(),
             id=self._id_train_style,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_writing_instructions(),
+            id=self._id_writing_instructions,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -4826,6 +4842,7 @@ class MainFrame:
             "tools.ai_continue_writing": self._id_ai_continue_writing,
             "tools.ai_fix_grammar": self._id_ai_fix_grammar,
             "tools.train_writing_style": self._id_train_style,
+            "tools.writing_instructions": self._id_writing_instructions,
             "app.exit": self._id_exit,
             "app.command_palette": self._id_palette,
             "app.preferences": self._id_preferences,
@@ -17029,10 +17046,45 @@ class MainFrame:
 
     def _apply_style_to_assistant(self) -> None:
         from quill.core.ai.style import load_style, style_preamble
+        from quill.core.ai.writing_instructions import (
+            instructions_preamble,
+            load_instructions,
+        )
 
         assistant = getattr(self, "_assistant", None)
         if assistant is not None:
             assistant.set_style_preamble(style_preamble(load_style()))
+            # AI-21: pin the user's durable, editable writing instructions
+            # (global + this document's sidecar), re-read live each time.
+            document_path = getattr(self.document, "path", None)
+            assistant.set_instructions_preamble(
+                instructions_preamble(load_instructions(document_path))
+            )
+
+    def open_writing_instructions(self) -> None:
+        """Open the user's durable writing-instructions file in the editor (AI-21).
+
+        Creates the global instructions file with a friendly template on first
+        use, then opens it as a normal document tab so the user edits it with
+        QUILL's own accessible editor. The assistant re-reads it live on the
+        next generation.
+        """
+        from quill.core.ai.writing_instructions import (
+            global_instructions_path,
+            save_global_instructions,
+        )
+
+        path = global_instructions_path()
+        if not path.exists():
+            save_global_instructions(
+                "# Writing instructions\n\n"
+                "Rules the assistant always follows for your writing. Edit freely.\n\n"
+                "- Audience: \n"
+                "- Tone: \n"
+                "- Words to avoid: \n"
+            )
+        self.open_file(path)
+        self._set_status("Opened writing instructions. The assistant honors these rules.")
 
     def open_train_writing_style(self) -> None:
         from quill.core.ai.model_manager import load_ai_enabled

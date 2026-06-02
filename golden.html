@@ -4478,13 +4478,24 @@ shared announcement grammar (A11Y-1).</td>
 drop</td>
 <td>AI</td>
 <td>M</td>
-<td>Todo</td>
-<td>Derived from Pi’s always-loaded context files (see
-<code>pi.md</code>). A user-owned, editable “writing instructions” file
-(house style, tone, audience, words to avoid) at document or project
-scope that the assistant always honors, with a live reload. Pairs with
-the existing Train Writing Style feature: train the voice, pin the
-rules. Visible and user-controlled; never a hidden prompt.</td>
+<td>Done</td>
+<td><code>quill/core/ai/writing_instructions.py</code> adds user-owned,
+editable plain-Markdown instruction files at two scopes: a
+global/project file
+(<code>&lt;app data&gt;/ai/writing-instructions.md</code>) and a
+per-document sidecar
+(<code>&lt;document&gt;.quill-instructions.md</code>), both re-read live
+on every generation (no caching). The Assistant gained
+<code>set_instructions_preamble</code>, and <code>_wrap</code> now leads
+with the pinned rules, then the trained style, then the task;
+<code>instructions_preamble</code> frames the rules as mandatory but
+forbids using them to shorten or skip the task. The Tools/AI menu and
+<code>tools.writing_instructions</code> command open the global file in
+QUILL’s own editor (creating a friendly template on first use), so it is
+visible and user-controlled, never a hidden prompt. Pairs with Train
+Writing Style: train the voice, pin the rules. Tested: path resolution,
+save/load per scope, live reload, preamble framing, and the
+instructions-then-style-then-prompt ordering.</td>
 </tr>
 <tr>
 <td>AI-22</td>
@@ -5337,11 +5348,11 @@ CQ-16) are counted once, in their primary tier.</p>
 <td>Tier 2</td>
 <td>Flagship experience</td>
 <td>58</td>
-<td>19</td>
-<td>39</td>
-<td>OCR-1..5, AGENT-1, AI-7, AI-1, AI-6, AI-14, AI-19..24, SET-1..7,
-SHARE-1..3, CTX-1, DICT-2, FEAT-19, WATCH-1..7, FLAG-3, FLAG-4,
-DLG-1</td>
+<td>20</td>
+<td>38</td>
+<td>OCR-1..5, AGENT-1, AI-7, AI-1, AI-6, AI-14, AI-19, AI-20, AI-22,
+AI-23, AI-24, SET-1..7, SHARE-1..3, CTX-1, DICT-2, FEAT-19, WATCH-1..7,
+FLAG-3, FLAG-4, DLG-1</td>
 </tr>
 <tr>
 <td>Tier 3</td>
@@ -5382,8 +5393,8 @@ CQ-23, CQ-24, LINUX-2</td>
 <td><strong>Total</strong></td>
 <td>All tiers</td>
 <td><strong>180</strong></td>
-<td><strong>42</strong></td>
-<td><strong>138</strong></td>
+<td><strong>43</strong></td>
+<td><strong>137</strong></td>
 <td></td>
 </tr>
 </tbody>

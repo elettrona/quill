@@ -652,6 +652,7 @@ def feature_for_command(command_id: str) -> str:
         "tools.ai_summarize_selection": "future.ai",
         "tools.ai_continue_writing": "future.ai",
         "tools.ai_fix_grammar": "future.ai",
+        "tools.writing_instructions": "future.ai",
         "tools.run_python": "future.ai",
     }
     if command_id in explicit:

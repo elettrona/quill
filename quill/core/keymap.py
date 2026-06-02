@@ -175,6 +175,7 @@ _PACK_LABELS: dict[str, str] = {
     "tools.thesaurus": "Thesaurus",
     "tools.search_in_files": "Search In Files",
     "tools.word_count": "Word Count",
+    "tools.writing_instructions": "Open Writing Instructions",
     "view.browser_preview": "Browser Preview",
     "view.preview": "Preview",
     "view.split_preview": "Preview Side by Side",
