@@ -1415,10 +1415,16 @@ fixture-based tests.</td>
 <td>Document cache locking and add concurrency tests</td>
 <td>Code quality</td>
 <td>S</td>
-<td>Todo</td>
-<td>Thesaurus/spell-check/watch-folder locks are confirmed present; add
-a concurrency test that exercises them and a short note of the
-invariants.</td>
+<td>Done</td>
+<td>Thesaurus/spell-check/watch-folder locks are confirmed present; a
+concurrency test exercises them and a short note records the invariants.
+The note is <a
+href="docs/engineering/thread-safety.md">docs/engineering/thread-safety.md</a>
+(shared with CQ-17), and
+<code>tests/unit/core/test_cache_concurrency.py</code> hammers the
+thesaurus index and spell-check wordlist from sixteen threads against a
+cold cache, proving each expensive load runs at most once and every
+thread agrees on the published snapshot and active backend tier.</td>
 </tr>
 <tr>
 <td>PERF-1</td>
@@ -2263,8 +2269,12 @@ SEC-2.)</td>
 <td>Thread-safety invariants note</td>
 <td>Code quality</td>
 <td>S</td>
-<td>Todo</td>
-<td>A short engineering note documents cache locking rules.</td>
+<td>Done</td>
+<td>A short engineering note documents cache locking rules. <a
+href="docs/engineering/thread-safety.md">docs/engineering/thread-safety.md</a>
+documents the double-checked module-level cache pattern (spellcheck
+wordlist/enchant, thesaurus index) and the per-instance mutable-set
+pattern (watch-folder seen-set), plus the rule for new caches.</td>
 </tr>
 <tr>
 <td>PERF-4</td>
@@ -2555,9 +2565,11 @@ registration and the unavailable-until-BW path.</td>
 <td>Document cwd safety for safe_subprocess</td>
 <td>Security</td>
 <td>S</td>
-<td>Todo</td>
+<td>Done</td>
 <td>Callers cannot point cwd outside expected directories; documented
-and tested.</td>
+and tested. <code>run_subprocess_safely</code> documents the contract
+and validates <code>cwd</code> is an existing directory (with
+<code>args</code>/executable checks); covered with SEC-15.</td>
 </tr>
 <tr>
 <td>SEC-7</td>
@@ -3371,20 +3383,27 @@ included. (Extends SEC-9.)</td>
 <td>safe_subprocess validates cwd and wraps OSError</td>
 <td>Security</td>
 <td>S</td>
-<td>Todo</td>
+<td>Done</td>
 <td><code>cwd</code> and executable are validated; <code>OSError</code>
 and <code>FileNotFoundError</code> are caught and surfaced clearly; test
-included. (Extends SEC-4.)</td>
+included. (Extends SEC-4.) Empty args and non-directory <code>cwd</code>
+raise <code>ValueError</code>; launch <code>OSError</code> is logged and
+re-raised with the tool name; five new tests in
+<code>tests/stability/test_stability.py</code>.</td>
 </tr>
 <tr>
 <td>SEC-16</td>
 <td>Validate credential and keychain inputs</td>
 <td>Security</td>
 <td>S</td>
-<td>Todo</td>
+<td>Done</td>
 <td><code>target_name</code>, account, and service match a safe pattern;
-macOS <code>set_secret</code> checks the return code; tests
-included.</td>
+macOS <code>set_secret</code> checks the return code; tests included. A
+shared <code>validate_credential_identifier</code> (in
+<code>quill/platform/credential_validation.py</code>) rejects empty,
+over-long, control-character, and leading-dash identifiers; wired into
+the Windows credential manager and the macOS keychain; six new unit
+tests.</td>
 </tr>
 <tr>
 <td>SEC-17</td>
@@ -3449,9 +3468,11 @@ scoped mypy are clean; full suite 739 passed.</td>
 <td>Define version pre-release ordering</td>
 <td>Code quality</td>
 <td>S</td>
-<td>Todo</td>
+<td>Done</td>
 <td>Release-candidate ordering is intentional and documented; test
-covers it.</td>
+covers it. <code>_version_tuple</code> now separates the pre-release
+suffix and ranks final &gt; rc &gt; beta &gt; alpha for the same x.y.z;
+<code>tests/unit/core/test_updates.py</code> covers it.</td>
 </tr>
 <tr>
 <td>CQ-21</td>
@@ -3467,8 +3488,13 @@ a silent abort.</td>
 <td>Document credential empty-blob behavior</td>
 <td>Code quality</td>
 <td>S</td>
-<td>Todo</td>
-<td>Empty-secret versus absent-credential is logged and documented.</td>
+<td>Done</td>
+<td>Empty-secret versus absent-credential is logged and documented.
+<code>load_generic_credential</code> now has a docstring spelling out
+the absent (<code>None</code>) versus empty-secret
+(<code>secret=""</code>) outcomes, debug-logs each path, and
+<code>tests/unit/platform/windows/test_credential_manager.py</code>
+asserts the distinction with a real round-trip on Windows.</td>
 </tr>
 <tr>
 <td>CQ-23</td>
@@ -5407,10 +5433,10 @@ DLG-1</td>
 <td>Tier 4</td>
 <td>Structural health and performance</td>
 <td>30</td>
-<td>9</td>
-<td>21</td>
+<td>11</td>
+<td>19</td>
 <td>CQ-16, CQ-1, DLG-2, GATE-11, PERF-1..3, PERF-9..14, GATE-10, SEC-6,
-SEC-7, SEC-8, SEC-14..17</td>
+SEC-7, SEC-8, SEC-14, SEC-17</td>
 </tr>
 <tr>
 <td>Tier 5</td>
@@ -5425,17 +5451,17 @@ LINUX-1, ECO-1, L10N-1, COLLAB-1</td>
 <td>Tier 6</td>
 <td>Documentation and learning surface</td>
 <td>33</td>
-<td>0</td>
-<td>33</td>
-<td>DOC-14..17, DOC-11, DOC-12, DOC-1..8, POD-1..5, TUT-1..7, CQ-11..15,
+<td>1</td>
+<td>32</td>
+<td>DOC-14..17, DOC-11, DOC-12, DOC-1..8, POD-1..5, TUT-1..7, CQ-11..14,
 CQ-23, CQ-24, LINUX-2</td>
 </tr>
 <tr>
 <td><strong>Total</strong></td>
 <td>All tiers</td>
 <td><strong>180</strong></td>
-<td><strong>45</strong></td>
-<td><strong>135</strong></td>
+<td><strong>48</strong></td>
+<td><strong>132</strong></td>
 <td></td>
 </tr>
 </tbody>
@@ -5443,12 +5469,13 @@ CQ-23, CQ-24, LINUX-2</td>
 <p>Completed outside the formal tier lists (cross-cutting protections
 and quality work that the tiers reference only by theme): SEC-2
 (path-escape guard for persistence writes), SEC-3 (OCR language
-allowlist), SEC-5 (verified TLS everywhere), GATE-1 (pre-commit), PERF-8
-(documented scoped type-check), and A11Y-1 (announcement grammar). The
-GATE-3/CQ-7 cleanup also incidentally cleared the
-<code>quill/core</code> and <code>quill/io</code> portion of the
-TYPE-1..8 zone, though those formal rows stay open until each is
-individually verified and closed.</p>
+allowlist), SEC-4 (documented and validated cwd safety for
+safe_subprocess), SEC-5 (verified TLS everywhere), GATE-1 (pre-commit),
+PERF-8 (documented scoped type-check), CQ-17 (thread-safety invariants
+note), and A11Y-1 (announcement grammar). The GATE-3/CQ-7 cleanup also
+incidentally cleared the <code>quill/core</code> and
+<code>quill/io</code> portion of the TYPE-1..8 zone, though those formal
+rows stay open until each is individually verified and closed.</p>
 <h4
 id="settings-became-a-single-registry-driven-tabbed-front-door">2026-06-02:
 Settings became a single registry-driven tabbed front door</h4>
@@ -5533,6 +5560,81 @@ hook briefly holds the destination open, then re-raises if the lock
 persists. Two new tests simulate transient contention (succeeds after
 retries) and permanent contention (re-raises). Both are cross-cutting
 code-quality rows and do not move the tier counts.</li>
+<li>CQ-20 closed as a pure-core quick win: version pre-release ordering
+is now intentional and tested. <code>_version_tuple</code> in
+<code>quill/core/updates.py</code> previously stripped non-digits per
+segment, so <code>1.2.0-rc1</code> parsed as patch <code>1</code> and
+wrongly outranked the final <code>1.2.0</code>. It now separates the
+pre-release suffix from the <code>major.minor.patch</code> core and
+appends a stage rank so that, for the same triplet, a final build sorts
+after every pre-release and the stages order final &gt; rc &gt; beta
+&gt; alpha (unknown suffixes fall to the earliest stage). Five new tests
+in <code>tests/unit/core/test_updates.py</code> cover stage ordering,
+the suffix-leak regression, and <code>select_latest</code> preferring
+the final release. Cross-cutting code quality, so the tier counts are
+unchanged.</li>
+<li>A security-hardening triplet closed across the subprocess and
+credential surfaces. SEC-4 and SEC-15 hardened
+<code>run_subprocess_safely</code>
+(<code>quill/stability/safe_subprocess.py</code>): it now rejects an
+empty <code>args</code> sequence and a <code>cwd</code> that is not an
+existing directory (both <code>ValueError</code>), documents the safety
+contract that callers pass a trusted absolute directory, and wraps a
+launch <code>OSError</code>/<code>FileNotFoundError</code> into a
+clearly logged, re-raised <code>OSError</code> naming the tool. SEC-16
+added a shared <code>validate_credential_identifier</code>
+(<code>quill/platform/credential_validation.py</code>) that rejects
+empty, over-long, control-character, and leading-dash identifiers, then
+wired it into the Windows credential manager (<code>target_name</code>)
+and the macOS keychain (<code>account</code>/<code>service</code>); the
+macOS <code>set_secret</code> already checked its return code. SEC-15
+and SEC-16 are Tier 4 items, so Tier 4 moves to 11 of 30 done (19
+remaining) and the total to 47 of 180; SEC-4 is a cross-cutting
+documentation row and is not tier-counted. Eleven new unit tests (five
+subprocess, six credential) cover the new guards.</li>
+<li>CQ-22 closed alongside the credential-validation work:
+<code>load_generic_credential</code> in
+<code>quill/platform/windows/credential_manager.py</code> now documents
+and debug-logs the two “no usable secret” outcomes so callers can tell
+them apart — an <strong>absent</strong> credential returns
+<code>None</code>, while a stored entry with an <strong>empty</strong>
+blob returns a <code>StoredCredential</code> whose <code>secret</code>
+is <code>""</code>. A new Windows-only test
+(<code>tests/unit/platform/windows/test_credential_manager.py</code>)
+proves the distinction with a real Credential Manager round-trip (absent
+then None, empty then <code>""</code>, deleted then None again) and that
+identifier validation still rejects a leading-dash target. Cross-cutting
+code quality, so the tier counts are unchanged.</li>
+<li>CQ-17 closed as a pure-documentation win: a new engineering note, <a
+href="docs/engineering/thread-safety.md">docs/engineering/thread-safety.md</a>,
+captures the cache-locking invariants that were previously only implied
+by the code. It records the two patterns Quill uses — double-checked
+module-level locking with an immutable published snapshot for
+read-mostly caches (the spell-check wordlist and enchant handle behind
+<code>_BACKEND_LOCK</code>, the thesaurus index behind
+<code>_LOAD_LOCK</code>), and a per-instance lock taken around every
+access for genuinely mutable state (the watch-folder seen-set) — plus
+the stability helpers and a rule that forbids new unguarded module-level
+mutable caches in <code>quill/core</code>. No code changed, so the tier
+counts are unchanged.</li>
+<li>CQ-15 closed as the natural follow-on to that note, and is the first
+Tier 6 item to land.
+<code>tests/unit/core/test_cache_concurrency.py</code> turns the
+documented invariants into an executable guard: it cold-starts the
+thesaurus index and the spell-check wordlist, then hammers
+<code>thesaurus.lookup</code> and
+<code>spellcheck.is_known_word</code>/<code>backend_info</code> from
+sixteen threads released together on a barrier. The tests prove the
+double-checked lock collapses the thundering herd to a single expensive
+load (the thesaurus parser runs once; the wordlist file is read at most
+once) and that every thread observes the same published snapshot and the
+same active backend tier. The shared note from CQ-17 satisfies the
+“short note of the invariants” half. CQ-15 is a Tier 6 ID, so Tier 6
+moves to 1 of 33 done (32 remaining) and the total to 48 of 180. Note on
+sequencing: the <em>content</em> documentation (tutorials, podcasts,
+user guides) is deliberately held until the features they describe are
+built — closing CQ-15 takes a no-risk test item that happens to live in
+Tier 6 without prematurely documenting moving targets.</li>
 </ul>
 <h4
 id="planning-watch-profiles-scoped-and-feature-flag-respect-made-fundamental">2026-06-01
