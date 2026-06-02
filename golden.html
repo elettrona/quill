@@ -1698,8 +1698,10 @@ remaining scattered Tools-menu toggles still need to fold in.</td>
 page per registry group (general, editing, navigation, accessibility,
 read aloud, AI, transcription, updates), each control generated from
 <code>quill/core/settings_registry.py</code> specs (bool, choice, int,
-float, text). Remaining feature areas (snippets, macros, sticky notes,
-status bar) still need registry specs.</td>
+float, text). Already-wired fields for side preview and CSV/Word open
+mode are now surfaced as registry specs. Remaining feature areas
+(snippets, macros, sticky notes, status bar) still need registry
+specs.</td>
 </tr>
 <tr>
 <td>SET-2</td>
@@ -5673,6 +5675,18 @@ tier, but the background-preload half stays open because no spell-check
 preload API exists yet (tracked by PERF-1). With CQ-12 and CQ-13 done,
 Tier 6 moves to 3 of 33 (30 remaining) and the total to 50 of 180; CQ-11
 remains Todo.</li>
+<li>SET-1 advanced (still In progress) with a zero-risk registry pass:
+three already-wired <code>Settings</code> fields that had behavior but
+no Settings-dialog presence were surfaced as registry specs —
+<code>auto_side_preview</code> (open preview beside the editor) plus the
+<code>csv_open_mode</code> and <code>word_open_mode</code> open-as
+choices. Because they reuse the flat <code>Settings</code> dataclass and
+its <code>from_dict</code> normalization, the tabbed dialog auto-renders
+them and the existing registry guard tests (field-mapping and
+choice-acceptance) cover them, with one focused test pinning their
+presence. No behavior changed and no <code>main_frame.py</code> edits
+were needed; snippets, macros, sticky notes, and status-bar registry
+specs still keep SET-1 open, so the tier counts are unchanged.</li>
 </ul>
 <h4
 id="planning-watch-profiles-scoped-and-feature-flag-respect-made-fundamental">2026-06-01

@@ -36,6 +36,12 @@ def test_spec_keys_are_unique() -> None:
     assert len(keys) == len(set(keys))
 
 
+def test_previously_unsurfaced_fields_are_registered() -> None:
+    keys = {spec.key for spec in SETTING_SPECS}
+    for key in ("auto_side_preview", "csv_open_mode", "word_open_mode"):
+        assert key in keys, f"{key} should be surfaced in the Settings registry"
+
+
 def test_specs_for_group_filters() -> None:
     for group in groups():
         for spec in specs_for_group(group.id):

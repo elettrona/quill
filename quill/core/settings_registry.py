@@ -136,6 +136,14 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("preview", "browser", "html"),
     ),
     SettingSpec(
+        "auto_side_preview",
+        "Open preview beside the editor",
+        "general",
+        "bool",
+        "Show HTML previews in a side pane instead of a separate window.",
+        keywords=("preview", "side", "pane", "html"),
+    ),
+    SettingSpec(
         "recent_files_limit",
         "Recent files to remember",
         "general",
@@ -222,6 +230,28 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "Format used when copying Markdown with source.",
         choices=(("html", "HTML"), ("rtf", "Rich text")),
         keywords=("clipboard", "copy", "markdown", "format"),
+    ),
+    SettingSpec(
+        "csv_open_mode",
+        "How to open CSV files",
+        "editing",
+        "choice",
+        "Open CSV files as plain text, as a grid, or ask each time.",
+        choices=(("prompt", "Ask each time"), ("text", "Plain text"), ("grid", "Grid")),
+        keywords=("csv", "open", "grid", "table"),
+    ),
+    SettingSpec(
+        "word_open_mode",
+        "How to open Word files",
+        "editing",
+        "choice",
+        "Open Word files as plain text, as structured content, or ask each time.",
+        choices=(
+            ("prompt", "Ask each time"),
+            ("text", "Plain text"),
+            ("structured", "Structured"),
+        ),
+        keywords=("word", "docx", "open", "structured"),
     ),
     # --- Navigation and QUILL key -----------------------------------------
     SettingSpec(
