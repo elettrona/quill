@@ -4689,9 +4689,16 @@ source-contract tests in
 <td>Page-stream large PDFs</td>
 <td>Performance</td>
 <td>S</td>
-<td>Todo</td>
-<td>Very large PDFs extract without materializing all pages at
-once.</td>
+<td>Done</td>
+<td>Very large PDFs extract without materializing all pages at once.
+<code>quill/io/pdf.py</code> iterates
+<code>pdf.pages</code>/<code>reader.pages</code> lazily (no
+<code>list(pdf.pages)</code>), flushes pdfplumber’s per-page cache as it
+goes, and stops at <code>_PDF_MAX_PAGES</code> (200) so a huge PDF
+cannot pull text from every page at once while still reporting the full
+<code>page_count</code>; covered by
+<code>tests/unit/io/test_pdf.py::test_pypdf_extraction_caps_pages_so_a_huge_pdf_cannot_materialize_every_page</code>
+(100k-page stub extracts only the cap).</td>
 </tr>
 <tr>
 <td>PERF-14</td>
@@ -7653,9 +7660,9 @@ CQ-16) are counted once, in their primary tier.</p>
 <td>Tier 4</td>
 <td>Structural health and performance</td>
 <td>31</td>
-<td>23</td>
-<td>8</td>
-<td>DLG-3, CQ-16, CQ-1, DLG-2, PERF-13, PERF-14, GATE-10, SEC-6</td>
+<td>24</td>
+<td>7</td>
+<td>DLG-3, CQ-16, CQ-1, DLG-2, PERF-14, GATE-10, SEC-6</td>
 </tr>
 <tr>
 <td>Tier 6</td>
@@ -7670,8 +7677,8 @@ CQ-14, CQ-23, CQ-24, LINUX-2</td>
 <td><strong>1.0 subtotal</strong></td>
 <td>Tiers 1, 2, 4, 6 (the QUILL 1.0 scope)</td>
 <td><strong>148</strong></td>
-<td><strong>106</strong></td>
-<td><strong>42</strong></td>
+<td><strong>107</strong></td>
+<td><strong>41</strong></td>
 <td></td>
 </tr>
 <tr>
@@ -7727,8 +7734,8 @@ LINUX-1, ECO-1, L10N-1, COLLAB-1</td>
 <td><strong>Total</strong></td>
 <td>All tiers (1.0 + 2.0)</td>
 <td><strong>211</strong></td>
-<td><strong>125</strong></td>
-<td><strong>86</strong></td>
+<td><strong>126</strong></td>
+<td><strong>85</strong></td>
 <td></td>
 </tr>
 </tbody>
@@ -7778,7 +7785,7 @@ the third table and are not part of either 1.0 list.</p>
 <tr>
 <td>Tier 4 — Structural health</td>
 <td>In progress / Todo</td>
-<td>DLG-3, CQ-1 (in progress), CQ-16, DLG-2, GATE-10, PERF-13, PERF-14,
+<td>DLG-3, CQ-1 (in progress), CQ-16, DLG-2, GATE-10, PERF-14,
 SEC-6</td>
 </tr>
 <tr>
@@ -7824,8 +7831,9 @@ SHELL-1</td>
 <td>Tier 4 — Structural health</td>
 <td>CQ-7, CQ-12, CQ-13, CQ-14, CQ-15, CQ-17, CQ-18, CQ-19, CQ-20, CQ-21,
 CQ-22, GATE-11, PERF-1, PERF-2, PERF-3, PERF-8, PERF-9, PERF-10,
-PERF-11, PERF-12, SEC-4, SEC-7, SEC-8, SEC-14, SEC-15, SEC-16, SEC-17,
-TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5, TYPE-6, TYPE-7, TYPE-8</td>
+PERF-11, PERF-12, PERF-13, SEC-4, SEC-7, SEC-8, SEC-14, SEC-15, SEC-16,
+SEC-17, TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5, TYPE-6, TYPE-7,
+TYPE-8</td>
 </tr>
 <tr>
 <td>EdSharp parity (delivered in 1.0)</td>

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import sys
+import types
 from pathlib import Path
 
+from quill.io import pdf as pdf_module
 from quill.io.pdf import PdfExtractionResult, _score_pdf_text, format_pdf_document
 
 
@@ -29,3 +32,42 @@ def test_format_pdf_document_uses_extraction_metadata(monkeypatch, tmp_path: Pat
     assert "Engine: pypdf" in formatted
     assert "Quality score: 72/100" in formatted
     assert "Extracted PDF text" in formatted
+
+
+def test_pypdf_extraction_caps_pages_so_a_huge_pdf_cannot_materialize_every_page(
+    monkeypatch, tmp_path: Path
+) -> None:
+    extracted_indices: list[int] = []
+
+    class _StubPage:
+        def __init__(self, index: int) -> None:
+            self._index = index
+
+        def extract_text(self) -> str:
+            extracted_indices.append(self._index)
+            return f"page {self._index} text"
+
+    class _LazyPages:
+        def __init__(self, total: int) -> None:
+            self._total = total
+
+        def __len__(self) -> int:
+            return self._total
+
+        def __iter__(self):
+            for index in range(self._total):
+                yield _StubPage(index)
+
+    class _StubReader:
+        def __init__(self, _path: str) -> None:
+            self.pages = _LazyPages(100_000)
+
+    fake_pypdf = types.ModuleType("pypdf")
+    fake_pypdf.PdfReader = _StubReader  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "pypdf", fake_pypdf)
+
+    result = pdf_module._extract_with_pypdf(tmp_path / "huge.pdf")
+
+    assert result.page_count == 100_000
+    assert len(extracted_indices) == pdf_module._PDF_MAX_PAGES
+    assert result.extracted_pages == pdf_module._PDF_MAX_PAGES

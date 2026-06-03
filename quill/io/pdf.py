@@ -5,6 +5,10 @@ from pathlib import Path
 
 from quill.io.markitdown_bridge import convert_with_markitdown
 
+# PERF-13: bound how many pages we pull text from so a very large PDF cannot
+# materialize every page at once. Pages beyond this cap are counted but skipped.
+_PDF_MAX_PAGES = 200
+
 
 @dataclass(slots=True)
 class PdfExtractionResult:
@@ -71,17 +75,22 @@ def _extract_with_pdfplumber(path: Path) -> PdfExtractionResult:
 
     page_texts: list[str] = []
     with pdfplumber.open(str(path)) as pdf:
-        pages = list(pdf.pages)
-        for page in pages:
+        page_count = len(pdf.pages)
+        for index, page in enumerate(pdf.pages):
+            if index >= _PDF_MAX_PAGES:
+                break
             text = page.extract_text() or ""
             page_texts.append(text.strip())
+            flush_cache = getattr(page, "flush_cache", None)
+            if callable(flush_cache):
+                flush_cache()
     text = "\n\n".join(page_texts).strip()
-    score = _score_pdf_text(text, len(pages), sum(1 for page_text in page_texts if page_text))
+    score = _score_pdf_text(text, page_count, sum(1 for page_text in page_texts if page_text))
     return PdfExtractionResult(
         text=text + "\n" if text else "",
         quality_score=score,
         engine="pdfplumber",
-        page_count=len(pages),
+        page_count=page_count,
         extracted_pages=sum(1 for page_text in page_texts if page_text),
         page_scores=[_score_pdf_text(page_text, 1, 1) for page_text in page_texts],
     )
@@ -91,16 +100,19 @@ def _extract_with_pypdf(path: Path) -> PdfExtractionResult:
     from pypdf import PdfReader  # type: ignore[import-not-found]
 
     reader = PdfReader(str(path))
-    page_texts = [(page.extract_text() or "").strip() for page in reader.pages]
+    page_count = len(reader.pages)
+    page_texts: list[str] = []
+    for index, page in enumerate(reader.pages):
+        if index >= _PDF_MAX_PAGES:
+            break
+        page_texts.append((page.extract_text() or "").strip())
     text = "\n\n".join(page_texts).strip()
-    score = _score_pdf_text(
-        text, len(reader.pages), sum(1 for page_text in page_texts if page_text)
-    )
+    score = _score_pdf_text(text, page_count, sum(1 for page_text in page_texts if page_text))
     return PdfExtractionResult(
         text=text + "\n" if text else "",
         quality_score=score,
         engine="pypdf",
-        page_count=len(reader.pages),
+        page_count=page_count,
         extracted_pages=sum(1 for page_text in page_texts if page_text),
         page_scores=[_score_pdf_text(page_text, 1, 1) for page_text in page_texts],
     )
