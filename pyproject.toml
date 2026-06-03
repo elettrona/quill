@@ -44,7 +44,7 @@ dictation = ["SpeechRecognition>=3.16.1"]
 # the zero-install Windows backend available; Tesseract (OCR-2) stays a separate
 # opt-in install for users who choose it.
 ocr = ["winsdk>=1.0.0b10; sys_platform == 'win32'"]
-pages = ["keynote-parser>=1.0", "markitdown[all]>=0.1.0"]
+pages = ["keynote-parser>=1.0", "markitdown[docx,pptx,xlsx,xls,pdf]>=0.1.0"]
 # macOS build + runtime. py2app 0.28.x is incompatible with setuptools >= 80
 # (the build aborts with "install_requires is no longer supported"), so pin it.
 # pyobjc powers the macOS platform layer; apple-fm-sdk is the Foundation Models

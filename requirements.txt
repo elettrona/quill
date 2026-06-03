@@ -50,5 +50,10 @@ SpeechRecognition>=3.16.1
 # (or `pip install .[ocr]`) on a supported Windows Python.
 
 # Structured document import (Word/PowerPoint/Excel/Pages/PDF fallback).
+# Only the converters Quill actually routes through MarkItDown are pulled in
+# (docx, pptx, xlsx, xls, pdf). The `[all]` extra additionally bundles audio
+# transcription (pydub/SpeechRecognition), youtube-transcript-api, and the
+# Azure Document Intelligence / Content Understanding SDKs, none of which Quill
+# uses — excluding them keeps the installed surface small.
 keynote-parser>=1.0
-markitdown[all]>=0.1.0
+markitdown[docx,pptx,xlsx,xls,pdf]>=0.1.0

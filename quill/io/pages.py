@@ -44,7 +44,8 @@ def read_pages_document(path: Path) -> Document:
             f"(Pages import not available for {path.name}.)\n\n"
             "To import Pages documents, either:\n"
             "1. Install keynote-parser: pip install keynote-parser\n"
-            "2. Or install LibreOffice and MarkItDown: pip install markitdown[all]\n"
+            "2. Or install LibreOffice and MarkItDown: "
+            "pip install markitdown[docx,pptx,xlsx,xls,pdf]\n"
         ),
         path=path,
         modified=False,

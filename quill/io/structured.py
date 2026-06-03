@@ -297,7 +297,8 @@ def _missing_spreadsheet_text(path: Path) -> tuple[str, dict[str, object]]:
     return (
         (
             f"(Spreadsheet import not available for {path.name}.)\n\n"
-            "Install MarkItDown support for spreadsheet extraction: pip install markitdown[all]\n"
+            "Install MarkItDown support for spreadsheet extraction: "
+            "pip install markitdown[xlsx,xls]\n"
         ),
         {
             "source_kind": path.suffix.lower().lstrip("."),

@@ -10,7 +10,7 @@ This file is generated from declared project metadata and installed package meta
 | hatchling | build-system | not-installed (>=1.29.0) | MIT | [upstream](https://github.com/pypa/hatch) | hatchling>=1.29.0 |
 | keynote-parser | optional:pages | not-installed (>=1.0) | MIT | [upstream](https://pypi.org/project/keynote-parser/) | keynote-parser>=1.0 |
 | llama-cpp-python | optional:ai | 0.3.23 | MIT | [upstream](https://github.com/abetlen/llama-cpp-python) | llama-cpp-python>=0.3.23 |
-| markitdown | optional:pages | not-installed ([all]>=0.1.0) | MIT | [upstream](https://github.com/microsoft/markitdown) | markitdown[all]>=0.1.0 |
+| markitdown | optional:pages | not-installed ([docx,pptx,xlsx,xls,pdf]>=0.1.0) | MIT | [upstream](https://github.com/microsoft/markitdown) | markitdown[docx,pptx,xlsx,xls,pdf]>=0.1.0 |
 | mypy | optional:dev | 2.1.0 | MIT | [upstream](https://www.mypy-lang.org/) | mypy>=2.1.0 |
 | prismatoid | optional:ui | 0.16.5 | MIT | [upstream](https://pypi.org/project/prismatoid/) | prismatoid>=0.16.5; sys_platform == 'win32' |
 | pyenchant | optional:spellcheck | 3.3.0 | LGPL | [upstream](https://pyenchant.github.io/pyenchant/) | pyenchant>=3.3.0 |
