@@ -432,7 +432,7 @@ This table is the execution source of truth. Update Status as work progresses. S
 
 | ID | Item | Area | Size | Status | Acceptance criteria |
 | --- | --- | --- | --- | --- | --- |
-| CQ-1 | Decompose main_frame into cohesive modules | Code quality | XL | Todo | main_frame is split into controllers or mixins with no behavior change; characterization tests pass before and after. |
+| CQ-1 | Decompose main_frame into cohesive modules | Code quality | XL | In progress | main_frame is split into controllers or mixins with no behavior change; characterization tests pass before and after. **First seam delivered:** the 25-method browse-mode navigation cluster (~455 lines) was extracted verbatim from `main_frame.py` into `quill/ui/main_frame_browse.py` as `BrowseModeMixin`, which `MainFrame` now inherits; calls resolve identically through the MRO so behavior is unchanged. `main_frame.py` dropped 23,332 to 22,877 lines and the GATE-11 budget ratcheted with it; the move is proven behavior-identical by the existing main_frame UI suite and the unchanged public-surface characterization fixture (all moved methods are private). The mixin pattern is now established for the remaining clusters (menu construction, QUILL key/Quick Nav, selection/marks, file/session lifecycle, status bar, AI actions), so this stays honestly In progress (XL) until those land. |
 | CQ-16 | Characterization tests around main_frame | Code quality | L | Todo | Behavior is pinned by tests prior to CQ-1; coverage includes menus, QUILL key, selection, file lifecycle. |
 | DLG-1 | Migrate hand-rolled submit-once form dialogs to the shared accessible helper | Code quality | M | Done | Executes the form wave of GitHub issue #73. Hand-rolled multi-field `wx.Dialog` forms that are pure submit-once input move onto the already-shipped `show_web_form` (`quill/ui/web_form.py`, accessible WebView with a native wx fallback) or, where a single field fits, a stock `wx.*` dialog. wxPython has no stock multi-field dialog, so this consolidates them on one tested, screen-reader-friendly surface rather than per-dialog focus/button code. Each migration keeps the existing inputs and outputs, lands behind a focused behavior test, and leaves the public surface unchanged (GATE-6). **Delivered:** Insert Link (two-field display-text + URL submit-once form) migrated onto `show_web_form`, keeping identical inputs and outputs (prefilled selection, `https://` default, blank-URL cancel, markdown/HTML/plain link emission) behind three focused behavior tests; public surface unchanged. **Delivered:** `_prompt_search` (Find All Matches dialog: query + optional replacement + mode choice + case-sensitive checkbox) migrated onto `show_web_form`, keeping identical inputs and outputs (query prefill, mode selection with Plain text/Whole word/Regular expression/Wildcard, case-sensitive checkbox, SearchOptions construction) behind six source-contract tests; public surface unchanged. **Deferred (honest):** find/replace-in-files (`_prompt_file_search`) carries a `DirPickerCtrl` Browse button that `show_web_form` does not support (text/textarea/select/checkbox only), plus mode/output `wx.Choice`es and conditional preview checkbox, so it remains a hand-rolled `wx.Dialog` and stays A11Y-4-compliant. Watch Folder Settings is a list manager (Add/Edit/Duplicate/Toggle/Delete) whose per-profile editor has Browse buttons, conditional schedule/action fields, and a sandboxed Python code editor — a CRUD flow, not a submit-once form. The read-aloud voice chooser is a per-engine chain of stock choice/entry dialogs (already simple). Status Bar Layout has Move Up/Down reordering (reorder flow, not submit-once). The YAML editor is a tree editor with Insert/Delete/Promote/Demote operations (tree CRUD, not submit-once). General Preferences is now the Settings dialog, a multi-page notebook with dynamic control generation, per-field reset buttons, and search — a complex live-update surface, not a submit-once form. These remain A11Y-4-compliant and are not migrated, to avoid degrading working dialogs. All genuinely submit-once dialogs suitable for `show_web_form` have been migrated. |
 | QA-1 | Living dialog regression checklist | Code quality | S | Done | `dialogs.md` in the repo root is the master manual regression checklist for every user-facing dialog, each mapped to the keyboard command or menu path that opens it, grouped by menu, with nested and startup-only dialogs called out. It is generated from a full scrub of `quill/ui/` and the `quill/core/keymap.py` bindings, formatted as a tick-off todo list so a tester can record a full pass on a build. A contributor rule in `.github/copilot-instructions.md` ("Keep dialogs.md current") requires the matching row to be updated in the same change whenever a dialog is added, removed, renamed, or rebound, so the map never drifts. This is the manual companion to the A11Y-4 machine-enforced dialog-contract guard. |
@@ -1159,14 +1159,14 @@ This table tracks how many of the backlog IDs each tier names are still open. It
 | --- | --- | --- | --- | --- | --- |
 | Tier 1 | Protect users and unlock the team | 23 | 23 | 0 | (complete) |
 | Tier 2 | Flagship experience | 57 | 51 | 6 | OCR-1, OCR-3, AGENT-1, AI-19, SET-2, SET-3 |
-| Tier 4 | Structural health and performance | 30 | 11 | 19 | CQ-16, CQ-1, DLG-2, GATE-11, PERF-1..3, PERF-9..14, GATE-10, SEC-6, SEC-7, SEC-8, SEC-14, SEC-17 |
+| Tier 4 | Structural health and performance | 30 | 12 | 18 | CQ-16, CQ-1, DLG-2, PERF-1..3, PERF-9..14, GATE-10, SEC-6, SEC-7, SEC-8, SEC-14, SEC-17 |
 | Tier 6 | Documentation and learning surface | 33 | 3 | 30 | DOC-14..17, DOC-11, DOC-12, DOC-1..8, POD-1..5, TUT-1..7, CQ-11, CQ-14, CQ-23, CQ-24, LINUX-2 |
-| **1.0 subtotal** | Tiers 1, 2, 4, 6 (the QUILL 1.0 scope) | **143** | **88** | **55** | |
+| **1.0 subtotal** | Tiers 1, 2, 4, 6 (the QUILL 1.0 scope) | **143** | **89** | **54** | |
 | Tier 3 (2.0) | GLOW accessibility engine — deferred to QUILL 2.0 | 8 | 0 | 8 | GLOW-1..7, WATCH-8 |
 | Tier 5 (2.0) | BITS Whisperer transcription — deferred to QUILL 2.0 | 28 | 0 | 28 | BW-1..10, WATCH-9, NAV-10, AI-11, AI-12, AI-18, FEAT-12..18, LINUX-1, ECO-1, L10N-1, COLLAB-1 |
 | AX (2.0) | Accessibility Agents / axe-core engine — deferred to QUILL 2.0 | 6 | 0 | 6 | AX-A..F |
 | **2.0 subtotal** | GLOW + BITS Whisperer + axe-core | **42** | **0** | **42** | |
-| **Total** | All tiers (1.0 + 2.0) | **185** | **88** | **97** | |
+| **Total** | All tiers (1.0 + 2.0) | **185** | **89** | **96** | |
 
 > Deferral note (2026-06-02): per maintainer direction, the GLOW accessibility
 > engine (Tier 3, including the WATCH-8 GLOW watch action), the BITS Whisperer
@@ -1193,7 +1193,7 @@ list.
 | Tier | Status | Feature IDs |
 | --- | --- | --- |
 | Tier 2 — Flagship | In progress | SET-2, SET-3, AGENT-1, OCR-1, OCR-3, AI-19 |
-| Tier 4 — Structural health | Todo | CQ-1, CQ-16, DLG-2, GATE-10, GATE-11, PERF-1, PERF-2, PERF-3, PERF-9, PERF-10, PERF-11, PERF-12, PERF-13, PERF-14, SEC-6, SEC-7, SEC-8, SEC-14, SEC-17 |
+| Tier 4 — Structural health | In progress / Todo | CQ-1 (in progress), CQ-16, DLG-2, GATE-10, PERF-1, PERF-2, PERF-3, PERF-9, PERF-10, PERF-11, PERF-12, PERF-13, PERF-14, SEC-6, SEC-7, SEC-8, SEC-14, SEC-17 |
 | Tier 6 — Documentation | Todo | DOC-1, DOC-2, DOC-3, DOC-4, DOC-5, DOC-6, DOC-7, DOC-8, DOC-11, DOC-12, DOC-14, DOC-15, DOC-16, DOC-17, POD-1, POD-2, POD-3, POD-4, POD-5, TUT-1, TUT-2, TUT-3, TUT-4, TUT-5, TUT-6, TUT-7, CQ-11, CQ-23, CQ-24, LINUX-2 |
 
 **Completed (QUILL 1.0 — Done)**
@@ -1202,7 +1202,7 @@ list.
 | --- | --- |
 | Tier 1 — Protect users | BUG-1, BUG-2, BUG-3, BUG-4, BUG-5, BUG-6, BUG-7, SEC-1, SEC-10, SEC-11, SEC-13, GATE-1, GATE-2, GATE-3, GATE-4, GATE-5, GATE-6, GATE-7, GATE-8, GATE-9, FLAG-1, FLAG-2 |
 | Tier 2 — Flagship | QK-1, QK-2, QK-3, QK-4, QK-5, QK-9, NAV-1, NAV-4, NAV-5, SEL-1, SEL-2, SEL-3, AI-1, AI-6, AI-7, AI-13, AI-14, AI-15, AI-16, AI-17, AI-21, AI-23, WATCH-1, WATCH-2, WATCH-3, WATCH-4, WATCH-5, WATCH-6, WATCH-7, SET-1, SET-4, SET-5, SET-6, SET-7, SHARE-1, SHARE-2, SHARE-3, FLAG-3, FLAG-4, MENU-3, MENU-1, MENU-5, DICT-1, CTX-1, DICT-2, FEAT-19, DLG-1, OCR-2, OCR-4, OCR-5, A11Y-4 |
-| Tier 4 — Structural health | CQ-7, CQ-12, CQ-13, CQ-14, CQ-15, CQ-17, CQ-18, CQ-19, CQ-20, CQ-21, CQ-22, PERF-8, SEC-4, SEC-15, SEC-16, TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5, TYPE-6, TYPE-7, TYPE-8 |
+| Tier 4 — Structural health | CQ-7, CQ-12, CQ-13, CQ-14, CQ-15, CQ-17, CQ-18, CQ-19, CQ-20, CQ-21, CQ-22, GATE-11, PERF-8, SEC-4, SEC-15, SEC-16, TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5, TYPE-6, TYPE-7, TYPE-8 |
 
 **Deferred to QUILL 2.0 (not in the 1.0 lists)**
 
@@ -1214,6 +1214,15 @@ list.
 | Tier 5 stretch explorations | NAV-10, AI-11, AI-12, AI-18, FEAT-12, FEAT-13, FEAT-14, FEAT-15, FEAT-16, FEAT-17, FEAT-18, LINUX-1, ECO-1, L10N-1, COLLAB-1 | Post-1.0 breadth, chosen with beta feedback in 2.0. |
 
 Completed outside the formal tier lists (cross-cutting protections and quality work that the tiers reference only by theme): SEC-2 (path-escape guard for persistence writes), SEC-3 (OCR language allowlist), SEC-4 (documented and validated cwd safety for safe_subprocess), SEC-5 (verified TLS everywhere), GATE-1 (pre-commit), PERF-8 (documented scoped type-check), CQ-17 (thread-safety invariants note), and A11Y-1 (announcement grammar). The GATE-3/CQ-7 cleanup also incidentally cleared the `quill/core` and `quill/io` portion of the TYPE-1..8 zone, though those formal rows stay open until each is individually verified and closed.
+
+#### 2026-06-10: Structural health — A11Y-4 and GATE-11 closed Done; CQ-1 first seam extracted
+
+Three Tier 2/Tier 4 structural items advanced, two to **Done** and the big decomposition to a genuine **In progress** with its first real seam landed.
+
+- **A11Y-4 (Done, Tier 2):** the dialog-construction contract is now machine-enforced. `quill/tools/check_banned_patterns.py` gained AST checks (`_check_dialog_contract`, `_check_raw_xml`) that flag the `EXPAND`/outer-sizer/default-button/`Destroy` bug class behind the find-in-files Cancel trap (#84) and the bookmark dialogs (#85), so the contract is un-regressable by construction rather than by review.
+- **GATE-11 (Done, Tier 4):** a ratcheting module-size budget gate (`quill/tools/module_size_budget.py` + `module_size_budgets.json`, eight tests) caps every module at 600 lines unless it carries an explicit, acknowledged budget that may only **decrease**. This instruments the CQ-1 decomposition: as code leaves `main_frame.py`, its budget ratchets down and can never silently regrow.
+- **CQ-1 (In progress, Tier 4 — first seam):** the real decomposition began. The 25-method browse-mode navigation cluster (~455 lines) was extracted verbatim from `main_frame.py` into `quill/ui/main_frame_browse.py` as `BrowseModeMixin`, which `MainFrame` now inherits; every call resolves identically through the MRO, so behavior is unchanged. `main_frame.py` dropped from 23,332 to 22,877 lines (the GATE-11 budget ratcheted with it); the mixin is 487 lines, under the 600 cap. Proven behavior-identical by the existing main_frame UI suite (274 passing; one pre-existing, unrelated `web_form` test-stub failure) and the unchanged public-surface characterization fixture — all moved methods are private. This establishes the mixin pattern for the remaining clusters (menu construction, QUILL key/Quick Nav, selection/marks, file/session lifecycle, status bar, AI actions), so CQ-1 stays honestly **In progress** (XL) rather than Done.
+- Counts: A11Y-4 was already reconciled to Tier 2 Done; GATE-11 closes, moving Tier 4 to **12 of 30 done (18 remaining)**, the QUILL 1.0 scope to **89 of 143 done (54 remaining)**, and the overall total to **89 of 185**.
 
 #### 2026-06-09: Sharing dialogs completed — SHARE-1 and SHARE-2 landed Done
 

@@ -1340,9 +1340,22 @@ green.</td>
 <td>Decompose main_frame into cohesive modules</td>
 <td>Code quality</td>
 <td>XL</td>
-<td>Todo</td>
+<td>In progress</td>
 <td>main_frame is split into controllers or mixins with no behavior
-change; characterization tests pass before and after.</td>
+change; characterization tests pass before and after. <strong>First seam
+delivered:</strong> the 25-method browse-mode navigation cluster (~455
+lines) was extracted verbatim from <code>main_frame.py</code> into
+<code>quill/ui/main_frame_browse.py</code> as
+<code>BrowseModeMixin</code>, which <code>MainFrame</code> now inherits;
+calls resolve identically through the MRO so behavior is unchanged.
+<code>main_frame.py</code> dropped 23,332 to 22,877 lines and the
+GATE-11 budget ratcheted with it; the move is proven behavior-identical
+by the existing main_frame UI suite and the unchanged public-surface
+characterization fixture (all moved methods are private). The mixin
+pattern is now established for the remaining clusters (menu
+construction, QUILL key/Quick Nav, selection/marks, file/session
+lifecycle, status bar, AI actions), so this stays honestly In progress
+(XL) until those land.</td>
 </tr>
 <tr>
 <td>CQ-16</td>
@@ -5979,10 +5992,10 @@ CQ-16) are counted once, in their primary tier.</p>
 <td>Tier 4</td>
 <td>Structural health and performance</td>
 <td>30</td>
-<td>11</td>
-<td>19</td>
-<td>CQ-16, CQ-1, DLG-2, GATE-11, PERF-1..3, PERF-9..14, GATE-10, SEC-6,
-SEC-7, SEC-8, SEC-14, SEC-17</td>
+<td>12</td>
+<td>18</td>
+<td>CQ-16, CQ-1, DLG-2, PERF-1..3, PERF-9..14, GATE-10, SEC-6, SEC-7,
+SEC-8, SEC-14, SEC-17</td>
 </tr>
 <tr>
 <td>Tier 6</td>
@@ -5997,8 +6010,8 @@ CQ-14, CQ-23, CQ-24, LINUX-2</td>
 <td><strong>1.0 subtotal</strong></td>
 <td>Tiers 1, 2, 4, 6 (the QUILL 1.0 scope)</td>
 <td><strong>143</strong></td>
-<td><strong>88</strong></td>
-<td><strong>55</strong></td>
+<td><strong>89</strong></td>
+<td><strong>54</strong></td>
 <td></td>
 </tr>
 <tr>
@@ -6038,8 +6051,8 @@ LINUX-1, ECO-1, L10N-1, COLLAB-1</td>
 <td><strong>Total</strong></td>
 <td>All tiers (1.0 + 2.0)</td>
 <td><strong>185</strong></td>
-<td><strong>88</strong></td>
-<td><strong>97</strong></td>
+<td><strong>89</strong></td>
+<td><strong>96</strong></td>
 <td></td>
 </tr>
 </tbody>
@@ -6088,8 +6101,8 @@ the third table and are not part of either 1.0 list.</p>
 </tr>
 <tr>
 <td>Tier 4 — Structural health</td>
-<td>Todo</td>
-<td>CQ-1, CQ-16, DLG-2, GATE-10, GATE-11, PERF-1, PERF-2, PERF-3,
+<td>In progress / Todo</td>
+<td>CQ-1 (in progress), CQ-16, DLG-2, GATE-10, PERF-1, PERF-2, PERF-3,
 PERF-9, PERF-10, PERF-11, PERF-12, PERF-13, PERF-14, SEC-6, SEC-7,
 SEC-8, SEC-14, SEC-17</td>
 </tr>
@@ -6134,8 +6147,8 @@ DLG-1, OCR-2, OCR-4, OCR-5, A11Y-4</td>
 <tr>
 <td>Tier 4 — Structural health</td>
 <td>CQ-7, CQ-12, CQ-13, CQ-14, CQ-15, CQ-17, CQ-18, CQ-19, CQ-20, CQ-21,
-CQ-22, PERF-8, SEC-4, SEC-15, SEC-16, TYPE-1, TYPE-2, TYPE-3, TYPE-4,
-TYPE-5, TYPE-6, TYPE-7, TYPE-8</td>
+CQ-22, GATE-11, PERF-8, SEC-4, SEC-15, SEC-16, TYPE-1, TYPE-2, TYPE-3,
+TYPE-4, TYPE-5, TYPE-6, TYPE-7, TYPE-8</td>
 </tr>
 </tbody>
 </table>
@@ -6191,6 +6204,51 @@ note), and A11Y-1 (announcement grammar). The GATE-3/CQ-7 cleanup also
 incidentally cleared the <code>quill/core</code> and
 <code>quill/io</code> portion of the TYPE-1..8 zone, though those formal
 rows stay open until each is individually verified and closed.</p>
+<h4
+id="structural-health-a11y-4-and-gate-11-closed-done-cq-1-first-seam-extracted">2026-06-10:
+Structural health — A11Y-4 and GATE-11 closed Done; CQ-1 first seam
+extracted</h4>
+<p>Three Tier 2/Tier 4 structural items advanced, two to
+<strong>Done</strong> and the big decomposition to a genuine <strong>In
+progress</strong> with its first real seam landed.</p>
+<ul>
+<li><strong>A11Y-4 (Done, Tier 2):</strong> the dialog-construction
+contract is now machine-enforced.
+<code>quill/tools/check_banned_patterns.py</code> gained AST checks
+(<code>_check_dialog_contract</code>, <code>_check_raw_xml</code>) that
+flag the
+<code>EXPAND</code>/outer-sizer/default-button/<code>Destroy</code> bug
+class behind the find-in-files Cancel trap (#84) and the bookmark
+dialogs (#85), so the contract is un-regressable by construction rather
+than by review.</li>
+<li><strong>GATE-11 (Done, Tier 4):</strong> a ratcheting module-size
+budget gate (<code>quill/tools/module_size_budget.py</code> +
+<code>module_size_budgets.json</code>, eight tests) caps every module at
+600 lines unless it carries an explicit, acknowledged budget that may
+only <strong>decrease</strong>. This instruments the CQ-1 decomposition:
+as code leaves <code>main_frame.py</code>, its budget ratchets down and
+can never silently regrow.</li>
+<li><strong>CQ-1 (In progress, Tier 4 — first seam):</strong> the real
+decomposition began. The 25-method browse-mode navigation cluster (~455
+lines) was extracted verbatim from <code>main_frame.py</code> into
+<code>quill/ui/main_frame_browse.py</code> as
+<code>BrowseModeMixin</code>, which <code>MainFrame</code> now inherits;
+every call resolves identically through the MRO, so behavior is
+unchanged. <code>main_frame.py</code> dropped from 23,332 to 22,877
+lines (the GATE-11 budget ratcheted with it); the mixin is 487 lines,
+under the 600 cap. Proven behavior-identical by the existing main_frame
+UI suite (274 passing; one pre-existing, unrelated <code>web_form</code>
+test-stub failure) and the unchanged public-surface characterization
+fixture — all moved methods are private. This establishes the mixin
+pattern for the remaining clusters (menu construction, QUILL key/Quick
+Nav, selection/marks, file/session lifecycle, status bar, AI actions),
+so CQ-1 stays honestly <strong>In progress</strong> (XL) rather than
+Done.</li>
+<li>Counts: A11Y-4 was already reconciled to Tier 2 Done; GATE-11
+closes, moving Tier 4 to <strong>12 of 30 done (18 remaining)</strong>,
+the QUILL 1.0 scope to <strong>89 of 143 done (54 remaining)</strong>,
+and the overall total to <strong>89 of 185</strong>.</li>
+</ul>
 <h4
 id="sharing-dialogs-completed-share-1-and-share-2-landed-done">2026-06-09:
 Sharing dialogs completed — SHARE-1 and SHARE-2 landed Done</h4>
