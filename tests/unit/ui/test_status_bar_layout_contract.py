@@ -32,3 +32,26 @@ def test_status_bar_layout_dialog_parents_controls_to_dialog() -> None:
     # Explicit default action and Escape mapping for predictable dismissal.
     assert "ok_button.SetDefault()" in body
     assert "apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)" in body
+
+
+def test_status_bar_dialog_exposes_shown_hidden_state() -> None:
+    # Accessibility: a CheckListBox checkbox state is not always voiced, so the
+    # shown/hidden state must also live in each item's visible label, and a
+    # Spacebar toggle (EVT_CHECKLISTBOX) must keep that label and an
+    # announcement in sync.
+    start = SOURCE.index("def open_status_bar_settings")
+    end = SOURCE.index("def open_share_export_dialog")
+    body = SOURCE[start:end]
+
+    # Item labels carry an explicit (shown)/(hidden) suffix.
+    assert "def state_label(" in body
+    assert "(shown)" in body
+    assert "(hidden)" in body
+    # Spacebar toggling is wired and refreshes label text + announces state.
+    assert "chooser.Bind(wx.EVT_CHECKLISTBOX, on_toggle)" in body
+    assert "def on_toggle(" in body
+    assert "def refresh_label(" in body
+    assert "def announce_state(" in body
+    # Context-menu toggle uses a programmatic path because Check() does not
+    # fire EVT_CHECKLISTBOX.
+    assert "def toggle_item(" in body

@@ -476,7 +476,7 @@ from quill.ui.assistant_tools import (
     WritingAssistantDialog,
 )
 from quill.ui.csv_grid import CsvGridSurface
-from quill.ui.dialog_contract import apply_modal_ids, show_modal_dialog
+from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control, show_modal_dialog
 from quill.ui.main_frame_ai_actions import AiActionsMixin
 from quill.ui.main_frame_browse import BrowseModeMixin
 from quill.ui.main_frame_edsharp import EdSharpActionsMixin
@@ -3794,7 +3794,11 @@ class MainFrame(
         apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         dialog.Fit()
         dialog.CenterOnParent()
-        dialog.ShowModal()
+        # Route through _show_modal_dialog (not dialog.ShowModal() directly) so
+        # this custom dialog gets the shared contract: initial focus on its
+        # content control instead of the OK button, region tracking,
+        # enter/exit announcements, and focus return to the editor on close.
+        self._show_modal_dialog(dialog, "Look Up")
         dialog.Destroy()
 
     def show_thesaurus_or_lookup(self, word: str) -> None:
@@ -4504,6 +4508,10 @@ class MainFrame(
         dialog.SetDefaultItem(restore_button)
         apply_modal_ids(dialog, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO)
         restore_button.SetFocus()
+        # The only content control here is a read-only logs-path field, so the
+        # primary action button is the right initial focus. Opt out of the
+        # shared content-auto-focus so _show_modal_dialog keeps this intent.
+        dialog._quill_keep_initial_focus = True
 
         try:
             while True:
@@ -4827,6 +4835,14 @@ class MainFrame(
             self._record_notification(backend_error, "accessibility")
 
     def _show_modal_dialog(self, dialog: object, label: str) -> int:
+        # Land initial focus on the dialog's primary content control rather than
+        # its OK button. Only custom wx.Dialog surfaces are adjusted; native
+        # dialogs (MessageDialog, FileDialog, RichMessageDialog, ...) manage
+        # their own focus and must not be touched.
+        wx = getattr(self, "_wx", None)
+        dialog_cls = getattr(wx, "Dialog", None)
+        if dialog_cls is not None and type(dialog) is dialog_cls:
+            focus_primary_control(dialog)
         result = show_modal_dialog(
             dialog,
             label,
@@ -7652,13 +7668,48 @@ class MainFrame(
             wx.ALL | wx.EXPAND,
             8,
         )
+
+        def state_label(item: str, shown: bool) -> str:
+            # Spell out the visibility in the item text so it is obvious without
+            # relying solely on the checkbox state (which some screen readers
+            # announce only on focus, not at a glance).
+            base = self._STATUS_BAR_LABELS.get(item, item)
+            return f"{base} (shown)" if shown else f"{base} (hidden)"
+
         chooser = wx.CheckListBox(
             dialog,
-            choices=[self._STATUS_BAR_LABELS.get(item, item) for item in item_order],
+            choices=[state_label(item, item not in hidden) for item in item_order],
         )
         for index, item in enumerate(item_order):
             chooser.Check(index, item not in hidden)
         root.Add(chooser, 1, wx.ALL | wx.EXPAND, 8)
+
+        def refresh_label(index: int) -> None:
+            if 0 <= index < len(item_order):
+                chooser.SetString(index, state_label(item_order[index], chooser.IsChecked(index)))
+
+        def announce_state(index: int) -> None:
+            if not (0 <= index < len(item_order)):
+                return
+            base = self._STATUS_BAR_LABELS.get(item_order[index], item_order[index])
+            self._set_status(f"{base} {'shown' if chooser.IsChecked(index) else 'hidden'}")
+
+        def toggle_item(index: int) -> None:
+            # Programmatic toggle (context menu) — Check() does not fire
+            # EVT_CHECKLISTBOX, so refresh the label and announce here.
+            if not (0 <= index < len(item_order)):
+                return
+            chooser.Check(index, not chooser.IsChecked(index))
+            refresh_label(index)
+            announce_state(index)
+
+        def on_toggle(event: object) -> None:
+            # Fired by the native checkbox toggle, including the Spacebar.
+            index = event.GetInt() if hasattr(event, "GetInt") else chooser.GetSelection()
+            refresh_label(index)
+            announce_state(index)
+
+        chooser.Bind(wx.EVT_CHECKLISTBOX, on_toggle)
         controls = wx.BoxSizer(wx.HORIZONTAL)
         move_up = wx.Button(dialog, label="Move Up")
         move_down = wx.Button(dialog, label="Move Down")
@@ -7685,12 +7736,10 @@ class MainFrame(
             item_order[first], item_order[second] = item_order[second], item_order[first]
             first_checked = chooser.IsChecked(first)
             second_checked = chooser.IsChecked(second)
-            first_label = self._STATUS_BAR_LABELS.get(item_order[first], item_order[first])
-            second_label = self._STATUS_BAR_LABELS.get(item_order[second], item_order[second])
-            chooser.SetString(first, first_label)
-            chooser.SetString(second, second_label)
             chooser.Check(first, second_checked)
             chooser.Check(second, first_checked)
+            chooser.SetString(first, state_label(item_order[first], second_checked))
+            chooser.SetString(second, state_label(item_order[second], first_checked))
             chooser.SetSelection(second)
 
         def move_selected(offset: int) -> None:
@@ -7725,7 +7774,7 @@ class MainFrame(
             menu.Bind(wx.EVT_MENU, lambda _e: move_selected(1), id=move_right_id)
             menu.Bind(
                 wx.EVT_MENU,
-                lambda _e: chooser.Check(selected, not chooser.IsChecked(selected)),
+                lambda _e: toggle_item(selected),
                 id=toggle_id,
             )
             self._popup_context_menu(chooser, menu, event)

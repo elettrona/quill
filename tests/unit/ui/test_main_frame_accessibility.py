@@ -62,6 +62,112 @@ def test_show_message_box_announces_entry_and_exit() -> None:
         clear_transcript()
 
 
+class _FakeContent:
+    """wx-like content control whose class name drives preferred matching."""
+
+    def __init__(self) -> None:
+        self._focused = False
+
+    def GetChildren(self) -> list[object]:
+        return []
+
+    def HasFocus(self) -> bool:
+        return self._focused
+
+    def IsEnabled(self) -> bool:
+        return True
+
+    def IsShown(self) -> bool:
+        return True
+
+    def CanAcceptFocus(self) -> bool:
+        return True
+
+    def SetFocus(self) -> None:
+        self._focused = True
+
+
+def _make_listbox() -> _FakeContent:
+    return type("ListBox", (_FakeContent,), {})()
+
+
+class _FakeDialog:
+    """Stands in for a raw ``wx.Dialog`` instance."""
+
+    def __init__(self, children: list[object], result: int = 0) -> None:
+        self._children = children
+        self._result = result
+
+    def GetChildren(self) -> list[object]:
+        return self._children
+
+    def ShowModal(self) -> int:
+        return self._result
+
+
+class _FakeWx:
+    Dialog = _FakeDialog
+    CallAfter = None
+
+
+def _make_frame() -> MainFrame:
+    frame = MainFrame.__new__(MainFrame)
+    frame._region_tracker = RegionTracker()
+    frame._wx = _FakeWx()
+    return frame
+
+
+def test_show_modal_dialog_focuses_content_for_raw_dialog() -> None:
+    # Every raw wx.Dialog routed through the chokepoint should have its first
+    # content control focused, redirecting away from the OK-button auto-park.
+    frame = _make_frame()
+    content = _make_listbox()
+    dialog = _FakeDialog([content])
+
+    frame._show_modal_dialog(dialog, "Test")
+
+    assert content.HasFocus() is True
+
+
+def test_show_modal_dialog_skips_dialog_subclasses() -> None:
+    # wx.Dialog *subclasses* manage their own focus; the type() gate must skip
+    # them so their construction-time focus is preserved.
+    frame = _make_frame()
+    content = _make_listbox()
+
+    class _SubDialog(_FakeDialog):
+        pass
+
+    dialog = _SubDialog([content])
+
+    frame._show_modal_dialog(dialog, "Test")
+
+    assert content.HasFocus() is False
+
+
+def test_show_modal_dialog_skips_native_dialogs() -> None:
+    # Native dialogs are not instances of wx.Dialog here, so the gate is a
+    # no-op and never touches focus.
+    frame = _make_frame()
+    content = _make_listbox()
+
+    class _NativeDialog:
+        def __init__(self, children: list[object]) -> None:
+            self._children = children
+
+        def GetChildren(self) -> list[object]:
+            return self._children
+
+        def ShowModal(self) -> int:
+            return 0
+
+    dialog = _NativeDialog([content])
+
+    frame._show_modal_dialog(dialog, "Test")
+
+    assert content.HasFocus() is False
+
+
 def test_request_menu_refresh_defers_when_menu_is_open() -> None:
     frame = MainFrame.__new__(MainFrame)
     frame._menu_open_depth = 1
