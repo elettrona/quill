@@ -927,7 +927,7 @@ These extend the section 14 tracker.
 | GATE-7 | Accessibility gate on every PR | Gates | M | Done | Accessibility CI runs on every pull request: the keyboard-trap and focus-order checks (`RegionTracker` in `tests/unit/core/test_a11y_regions.py`), the screen-reader announcement transcript suite (`tests/accessibility`), the dialog escape/default contract regressions, and the new announcement-grammar conformance suite (`tests/accessibility/test_announcement_grammar.py`) that asserts the A11Y-1 grammar stays well-formed. Contrast handling is covered by the high-contrast platform tests. |
 | GATE-8 | Security scan gate | Gates | M | Done | Security CI's `security-checks` job runs the hardened-XML / banned-pattern check (`check_banned_patterns`) and the static security invariant suites: verified TLS (`test_net_tls`), secret redaction / no-plaintext-secret diagnostics (`test_diagnostics`), XML-bomb hardening (`test_safe_xml`), zip decompression caps (`test_safe_archive`), the Python sandbox policy (`test_python_sandbox`), and the OCR argument allowlist (`test_ocr`). Dependency vulnerability auditing (`pip-audit --strict`) and the SBOM run in the adjacent job. A full third-party static analyzer (bandit) sweep is intentionally not claimed yet because the tree has 52 unreviewed `S`-rule findings; adopting it is tracked under the remaining SEC items. |
 | GATE-9 | No-silent-network gate | Gates | S | Done | `quill/tools/network_egress_audit.py` inventories every outbound call site (`urlopen`/`urlretrieve`) in the package via AST; a required CI test fails when a new egress point appears without a reviewed rationale describing the user action or explicit consent that triggers it. All eight current sites are documented (Open from URL prompt, optional DECTALK/model downloads with progress, consented update checks, user-initiated model discovery). The runtime provider/model/scope-shown assertion is coupled to the AI provider wiring (AI-13) and is called out there rather than overclaimed here. |
-| GATE-10 | Performance budget gate | Gates | M | Todo | Startup, first spell-check, first thesaurus lookup, large-document Quick Nav, and Read Aloud start stay within published budgets; regressions fail the build. |
+| GATE-10 | Performance budget gate | Gates | M | Done | Startup, first spell-check, first thesaurus lookup, large-document Quick Nav, and Read Aloud start stay within published budgets; regressions fail the build. **Delivered:** `tests/performance/test_budgets.py` now pins all five named paths with hard, decrease-only ceilings — the startup lexical warm-up (<3.0s cold), first spell check (<0.05s), first thesaurus lookup (<0.05s), large-document Quick Nav prewarm (<0.5s), and Read Aloud start (<0.5s to segment a 5,000-sentence document via the wx-free `sentence_spans`, the work that runs before the engine speaks the first word). The `performance-budgets` job in `.github/workflows/pr-ci.yml` runs `pytest tests\performance` on every push and PR, so a regression on any startup-critical or first-interaction path fails the build. Builds on PERF-9, which delivered the first four budgets; GATE-10 adds the Read Aloud start budget so every path named in the acceptance criteria is enforced. |
 | GATE-11 | Module-size budget gate | Gates | S | Done | `quill/tools/module_size_budget.py` enforces a ratcheting per-module line-count budget from `quill/tools/module_size_budgets.json`: every tracked module has an explicit maximum, any untracked module must stay at or below the 600-line default cap, and a stale budget entry for a deleted file is itself flagged. The gate runs both as a CLI (`python -m quill.tools.module_size_budget`, non-zero exit on any violation) and as `tests/unit/tools/test_module_size_budget.py`, which the required `unit-tests` CI job runs as part of `pytest tests\unit`. The budget is decrease-only by construction — the documented `_comment`, the module docstring, and `test_every_budget_entry_at_least_matches_current_size_or_smaller_is_fine` make raising a number to paper over growth a self-inflicted failure. The ratchet is live: extracting `BrowseModeMixin`, `AiActionsMixin`, `settings_specs.py`, and `settings_normalizers.py` each forced the touched budgets *down* (e.g. `settings_registry.py` 933→158, `settings.py` 617→570), and the gate blocked those modules from shipping over budget until the code was extracted rather than the cap raised. |
 | GATE-12 | Strengthen AI assistant repository guidance | Gates | S | Todo | copilot-instructions and a new AGENTS.md describe architecture, strict zone, scoped mypy, accessibility, no-silent-network, the audit footguns, and the definition of done; a check keeps them current. |
 | GATE-13 | Machine-checked definition of done | Gates | S | Todo | A short done checklist (accessible, typed, tested, lint-clean, no silent network, docs regenerated) is documented and mirrored by the gates. |
@@ -1430,16 +1430,16 @@ This table tracks how many of the backlog IDs each tier names are still open. It
 | --- | --- | --- | --- | --- | --- |
 | Tier 1 | Protect users and unlock the team | 23 | 23 | 0 | (complete) |
 | Tier 2 | Flagship experience | 60 | 57 | 3 | AI-19, SHELL-2, SHELL-3 |
-| Tier 4 | Structural health and performance | 31 | 25 | 6 | DLG-3, CQ-16, CQ-1, DLG-2, GATE-10, SEC-6 |
+| Tier 4 | Structural health and performance | 31 | 26 | 5 | DLG-3, CQ-16, CQ-1, DLG-2, SEC-6 |
 | Tier 6 | Documentation and learning surface | 34 | 3 | 31 | DOC-14..18, DOC-11, DOC-12, DOC-1..8, POD-1..5, TUT-1..7, CQ-11, CQ-14, CQ-23, CQ-24, LINUX-2 |
-| **1.0 subtotal** | Tiers 1, 2, 4, 6 (the QUILL 1.0 scope) | **148** | **108** | **40** | |
+| **1.0 subtotal** | Tiers 1, 2, 4, 6 (the QUILL 1.0 scope) | **148** | **109** | **39** | |
 | Tier 3 (2.0) | GLOW accessibility engine — deferred to QUILL 2.0 | 8 | 0 | 8 | GLOW-1..7, WATCH-8 |
 | Tier 5 (2.0) | BITS Whisperer transcription — deferred to QUILL 2.0 | 28 | 0 | 28 | BW-1..10, WATCH-9, NAV-10, AI-11, AI-12, AI-18, FEAT-12..18, LINUX-1, ECO-1, L10N-1, COLLAB-1 |
 | AX (2.0) | Accessibility Agents / axe-core engine — deferred to QUILL 2.0 | 6 | 0 | 6 | AX-A..F |
 | PKG (2.0) | Packaging / freezing evaluation — deferred to QUILL 2.0 | 1 | 0 | 1 | PKG-1 |
 | EDS | EdSharp feature parity — delivered in QUILL 1.0 | 21 | 21 | 0 | (complete) |
 | **2.0 subtotal** | GLOW + BITS Whisperer + axe-core (EdSharp parity now delivered) | **64** | **21** | **43** | |
-| **Total** | All tiers (1.0 + 2.0) | **211** | **127** | **84** | |
+| **Total** | All tiers (1.0 + 2.0) | **211** | **128** | **83** | |
 
 > Deferral note (2026-06-02): per maintainer direction, the GLOW accessibility
 > engine (Tier 3, including the WATCH-8 GLOW watch action), the BITS Whisperer
@@ -1466,7 +1466,7 @@ list.
 | Tier | Status | Feature IDs |
 | --- | --- | --- |
 | Tier 2 — Flagship | In progress | AI-19, SHELL-2, SHELL-3 |
-| Tier 4 — Structural health | In progress / Todo | DLG-3, CQ-1 (in progress), CQ-16, DLG-2, GATE-10, SEC-6 |
+| Tier 4 — Structural health | In progress / Todo | DLG-3, CQ-1 (in progress), CQ-16, DLG-2, SEC-6 |
 | Tier 6 — Documentation | Todo | DOC-1, DOC-2, DOC-3, DOC-4, DOC-5, DOC-6, DOC-7, DOC-8, DOC-11, DOC-12, DOC-14, DOC-15, DOC-16, DOC-17, DOC-18, POD-1, POD-2, POD-3, POD-4, POD-5, TUT-1, TUT-2, TUT-3, TUT-4, TUT-5, TUT-6, TUT-7, CQ-11, CQ-23, CQ-24, LINUX-2 |
 
 **Completed (QUILL 1.0 — Done)**
@@ -1475,7 +1475,7 @@ list.
 | --- | --- |
 | Tier 1 — Protect users | BUG-1, BUG-2, BUG-3, BUG-4, BUG-5, BUG-6, BUG-7, SEC-1, SEC-10, SEC-11, SEC-13, GATE-1, GATE-2, GATE-3, GATE-4, GATE-5, GATE-6, GATE-7, GATE-8, GATE-9, FLAG-1, FLAG-2 |
 | Tier 2 — Flagship | QK-1, QK-2, QK-3, QK-4, QK-5, QK-9, NAV-1, NAV-4, NAV-5, SEL-1, SEL-2, SEL-3, AI-1, AI-6, AI-7, AI-13, AI-14, AI-15, AI-16, AI-17, AI-21, AI-23, WATCH-1, WATCH-2, WATCH-3, WATCH-4, WATCH-5, WATCH-6, WATCH-7, SET-1, SET-4, SET-5, SET-6, SET-7, SHARE-1, SHARE-2, SHARE-3, FLAG-3, FLAG-4, MENU-3, MENU-1, MENU-5, DICT-1, CTX-1, DICT-2, FEAT-19, DLG-1, OCR-1, OCR-2, OCR-3, OCR-4, OCR-5, A11Y-4, SET-2, SET-3, AGENT-1, SHELL-1 |
-| Tier 4 — Structural health | CQ-7, CQ-12, CQ-13, CQ-14, CQ-15, CQ-17, CQ-18, CQ-19, CQ-20, CQ-21, CQ-22, GATE-11, PERF-1, PERF-2, PERF-3, PERF-8, PERF-9, PERF-10, PERF-11, PERF-12, PERF-13, PERF-14, SEC-4, SEC-7, SEC-8, SEC-14, SEC-15, SEC-16, SEC-17, TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5, TYPE-6, TYPE-7, TYPE-8 |
+| Tier 4 — Structural health | CQ-7, CQ-12, CQ-13, CQ-14, CQ-15, CQ-17, CQ-18, CQ-19, CQ-20, CQ-21, CQ-22, GATE-10, GATE-11, PERF-1, PERF-2, PERF-3, PERF-8, PERF-9, PERF-10, PERF-11, PERF-12, PERF-13, PERF-14, SEC-4, SEC-7, SEC-8, SEC-14, SEC-15, SEC-16, SEC-17, TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5, TYPE-6, TYPE-7, TYPE-8 |
 | EdSharp parity (delivered in 1.0) | EDS-1, EDS-2, EDS-3, EDS-4, EDS-5, EDS-6, EDS-7, EDS-8, EDS-9, EDS-10, EDS-11, EDS-12, EDS-13, EDS-14, EDS-15, EDS-16, EDS-17, EDS-18, EDS-19, EDS-20, EDS-21 |
 
 **Deferred to QUILL 2.0 (not in the 1.0 lists)**

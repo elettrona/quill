@@ -2,8 +2,10 @@
 
 Each test asserts a hard ceiling on an operation that a user feels at launch or
 on first interaction: the startup lexical warm-up, the first spell check, the
-first thesaurus lookup, and building the Quick Nav landmark index ("prewarm").
-The budgets are deliberately generous relative to local timings so they catch
+first thesaurus lookup, building the Quick Nav landmark index ("prewarm"), and
+the Read Aloud start (segmenting the document into the sentences the engine
+speaks, which gates how soon the first word is heard). The budgets are
+deliberately generous relative to local timings so they catch
 order-of-magnitude regressions on shared CI runners without being flaky. If a
 change makes one of these paths materially slower, the budget fails in CI and
 the regression is caught before release.
@@ -18,6 +20,7 @@ from time import perf_counter
 
 from quill.core import spellcheck, thesaurus
 from quill.core.quick_nav import build_nav_index
+from quill.core.sentence_split import sentence_spans
 
 # Hard ceilings (seconds). Lower is better; never raise these to hide a
 # regression -- fix the regression instead.
@@ -25,6 +28,7 @@ STARTUP_LEXICAL_WARMUP_BUDGET = 3.0
 FIRST_SPELL_CHECK_BUDGET = 0.05
 FIRST_THESAURUS_LOOKUP_BUDGET = 0.05
 QUICK_NAV_PREWARM_BUDGET = 0.5
+READ_ALOUD_START_BUDGET = 0.5
 
 
 def _reset_spellcheck_cache() -> None:
@@ -108,4 +112,26 @@ def test_quick_nav_prewarm_within_budget() -> None:
     assert items
     assert elapsed < QUICK_NAV_PREWARM_BUDGET, (
         f"Quick Nav prewarm took {elapsed:.3f}s (budget {QUICK_NAV_PREWARM_BUDGET}s)"
+    )
+
+
+def test_read_aloud_start_within_budget() -> None:
+    """Starting Read Aloud on a large document segments sentences quickly.
+
+    Read Aloud speaks one sentence at a time, so the latency before the first
+    word -- excluding the engine's own audio synthesis, which is environment
+    specific -- is dominated by computing the sentence spans for the whole
+    document. This pins that wx-free, deterministic start cost so a regression
+    in the splitter (the work that runs before any audio) fails the build.
+    """
+    sentence_count = 5000
+    text = " ".join(f"This is sentence number {i}." for i in range(sentence_count))
+
+    start = perf_counter()
+    spans = sentence_spans(text)
+    elapsed = perf_counter() - start
+
+    assert len(spans) == sentence_count
+    assert elapsed < READ_ALOUD_START_BUDGET, (
+        f"Read Aloud start took {elapsed:.3f}s (budget {READ_ALOUD_START_BUDGET}s)"
     )
