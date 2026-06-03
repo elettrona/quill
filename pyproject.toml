@@ -45,6 +45,14 @@ dictation = ["SpeechRecognition>=3.16.1"]
 # opt-in install for users who choose it.
 ocr = ["winsdk>=1.0.0b10; sys_platform == 'win32'"]
 pages = ["keynote-parser>=1.0", "markitdown[docx,pptx,xlsx,xls,pdf]>=0.1.0"]
+# GLOW document accessibility engine (audit / fix / convert for docx, pptx,
+# xlsx, pdf, epub, md). quill-glow-core is the thin, stable service contract
+# Quill imports; its [glow] extra pulls in the acb-large-print backend. The
+# dependency is named — never a drive path — so it resolves the same from any
+# checkout root on any machine. Until these are published to an index, install
+# the vendored, drive-independent pure-Python wheels with a repo-relative path:
+#   pip install --find-links vendor/wheels "quill-glow-core[glow]"
+glow = ["quill-glow-core[glow]"]
 # macOS build + runtime. py2app 0.28.x is incompatible with setuptools >= 80
 # (the build aborts with "install_requires is no longer supported"), so pin it.
 # pyobjc powers the macOS platform layer; apple-fm-sdk is the Foundation Models
