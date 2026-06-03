@@ -1137,6 +1137,87 @@ Why sixth: essential for greatness, but it should describe a product that is alr
 
 Why last: valuable but not required for a great, trustworthy 1.0; the transcription suite and the stretch items are best chosen with beta evidence in hand, and the build directive explicitly places transcription after QUILL, hardening, and GLOW.
 
+#### EdSharp feature parity (deferred to QUILL 2.0)
+
+> Status (2026-06-02): deferred to **QUILL 2.0**. This subsection captures the
+> competitive analysis of EdSharp 4.0 (Jamal Mazrui, 2007 to 2017), a respected
+> screen-reader-first Windows text editor (the "Homer editor interface"), against
+> QUILL's command surface, and the small backlog of genuine editor-convenience
+> gaps it surfaced. None of these are required for 1.0; they are recorded as 2.0
+> candidates so the analysis is not lost.
+
+Why this matters competitively: EdSharp is one of the few editors built, like
+QUILL, primarily for blind and low-vision writers, and it accumulated two decades
+of small, speech-friendly editor conveniences. QUILL already matches or exceeds
+EdSharp across its entire core editing, navigation, search, snippet, structured
+text, and file-management surface, and far exceeds it on AI, accessibility audit
+(GLOW), OCR and image description, modern TTS, dictation, macros, watch folders,
+feature profiles, and cross-screen-reader announcements. EdSharp's only large
+categories QUILL deliberately does not pursue are RTF word processing and
+JScript.NET scripting add-ins. The actionable residue is a set of roughly twenty
+self-contained editor conveniences, listed as EDS-1 through EDS-20 below.
+
+**Competitive analysis: EdSharp 4.0 vs QUILL**
+
+| Capability area | EdSharp 4.0 | QUILL today | Verdict |
+| --- | --- | --- | --- |
+| Core editing (copy/cut/paste, undo/redo, select all) | Yes | Yes (+ persistent undo) | QUILL parity+ |
+| Case conversion (upper/lower/proper/swap) | Yes | Yes | Parity |
+| Sort / reverse / unique / trim / join lines | Yes | Yes | Parity |
+| Find, find-again, reverse, regex replace | Yes | Yes (+ regex helper) | QUILL parity+ |
+| Go to line / page, bookmarks, brace match, block nav | Yes | Yes | Parity |
+| Indent/outdent, toggle comment | Yes | Yes | Parity |
+| Snippets, HTML/Markdown tag insertion | Yes (100+ snippets) | Yes | Parity |
+| Structured text (sections, table of contents, headings) | Yes (dashes+form-feed) | Yes (heading/region nav, outline) | QUILL different approach |
+| Spell check, thesaurus | Yes (needs MS Word) | Yes (native) | QUILL parity+ |
+| Format converters, open-other-format, export | Yes | Yes (pandoc, external tools) | Parity |
+| Encoding conversion (100+ encodings, codepoint dump) | Yes | Partial (choose-encoding only) | Gap (EDS scope) |
+| Small editor conveniences (insert special char, date/time, number lines, hard-wrap, read-only guard, delete-to-bounds) | Yes | Partial / no | Gap (EDS-1..20) |
+| On-demand speech queries (say address/status/selection) | Yes | Partial (status bar) | Gap (EDS-14) |
+| Key Describer, indent-announce mode | Yes | No | Gap (EDS-17, EDS-18) |
+| RTF word processing (justify/style/font, format nav) | Yes | No (plain-text/markup-first) | Out of scope by design |
+| JScript.NET scripting add-ins, exposed object model | Yes | No (plugins + AI instead) | Out of scope by design |
+| Compiler/run integration, LaTeX, PyBrace/PyDent | Yes | Partial (external tools) | Out of scope / future plugins |
+| Burn to CD, Send-To menu, MDI tile/cascade, web download | Yes | No | Obsolete / not pursued |
+| AI assistant (rewrite, summarize, continue, agents) | No | Yes | QUILL only |
+| Accessibility audit and fix (GLOW) | No | Yes | QUILL only |
+| OCR and on-demand image description | No | Yes | QUILL only |
+| Modern TTS read-aloud + audio export, dictation, macros | No | Yes | QUILL only |
+| Watch folders, feature profiles, onboarding | No | Yes | QUILL only |
+| Cross-screen-reader announcement engine, DPAPI secrets | Partial (direct SR speech) | Yes (NVDA/JAWS/Narrator parity) | QUILL parity+ |
+
+**EdSharp parity backlog (QUILL 2.0 candidates)**
+
+| ID | Item | Area | Size | Status | Acceptance criteria |
+| --- | --- | --- | --- | --- | --- |
+| EDS-1 | Insert special character by Unicode value | Features | S | Todo | A command prompts for a Unicode codepoint (hex, or decimal with a `d` prefix) and inserts the character at the cursor; announced; tests cover hex and decimal parsing and the invalid-code path. (EdSharp F2.) |
+| EDS-2 | Insert date and time at cursor | Features | S | Todo | A command inserts the current date and time using a configurable .NET-style or strftime-style format setting; announced; tests cover the default and a custom format. (EdSharp Alt+Shift+Semicolon.) |
+| EDS-3 | Calculate and insert a date | Features | S | Todo | A command computes a date from year, month, optional week, and weekday-or-day-number (for example "4th Thursday of November") and inserts it; tests cover nth-weekday and fixed-day cases. (EdSharp Ctrl+Shift+Semicolon.) |
+| EDS-4 | Number lines | Features | S | Todo | A command prefixes each non-blank line in the selection or document with a consecutive number starting at a prompted value; blank lines are skipped; tests cover start value and blank-line handling. (EdSharp Alt+Shift+N.) |
+| EDS-5 | Hard-wrap to width | Features | S | Todo | A command inserts hard line breaks so no line in the selection or document exceeds a prompted width, defaulting to the current widest line; the inverse of join-lines; tests cover wrap width and paragraph preservation. (EdSharp Ctrl+Shift+H.) |
+| EDS-6 | New document from clipboard | Features | S | Todo | A command opens a new editing buffer initialized with the current clipboard text; announced; test covers the empty-clipboard path. (EdSharp Ctrl+Shift+N.) |
+| EDS-7 | Insert file content at cursor | Features | S | Todo | A command inserts the full text of a chosen file at the cursor position, honoring encoding detection; tests cover insertion and a missing-file path. (EdSharp Ctrl+Shift+V, Paste File.) |
+| EDS-8 | Guard document (read-only toggle) | Features | S | Todo | A command toggles a per-document read-only guard that blocks edits and is restored when the file is reopened; state and transitions are announced; tests cover the guarded-edit rejection. (EdSharp Ctrl+F7.) |
+| EDS-9 | Delete to line and document bounds | Features | S | Todo | Commands delete from the cursor to start/end of line and to top/bottom of document, announcing the new cursor context; tests cover each of the four directions. (EdSharp Ctrl+Shift+Del/Bksp, Alt+Shift+Del/Bksp.) |
+| EDS-10 | Delete paragraph | Features | S | Todo | A command deletes the current paragraph (through one or more blank lines) and announces the new context; test covers multi-line paragraphs. (EdSharp Ctrl+Shift+D.) |
+| EDS-11 | Clipboard collector mode | Features | M | Todo | An opt-in per-document mode appends every subsequent clipboard copy into the document with a section divider and auto-saves, with an audible confirmation; toggling off restores normal paste; tests cover append, divider insertion, and toggle. (EdSharp Alt+7 paste-board.) |
+| EDS-12 | Set operations on lines | Features | S | Todo | Commands compute lines-in-first-not-second and lines-common-to-both, splitting on the cursor, and emit the result to a new buffer; tests cover both operations with case sensitivity. (EdSharp Alt+Shift+L, Alt+Shift+Q.) |
+| EDS-13 | Regex extract and count | Features | S | Todo | Commands count regex matches and extract all matches into a new buffer separated by a divider, over the selection or document; tests cover count and extract with capture groups. (EdSharp Ctrl+Shift+Y, Ctrl+Shift+E.) |
+| EDS-14 | On-demand speech queries | Accessibility | M | Todo | Commands speak the cursor address (line, column, percent), the document status (modified state and encoding), and the selection length without moving the cursor, layered on the announcement engine; tests cover the phrasing of each. (EdSharp Alt+A, Alt+Z, Shift+Space.) |
+| EDS-15 | Go to percent and column jump | Features | S | Todo | A go-to-percent command positions the cursor at a document percentage, and the go-to-line command accepts an optional `line,column` form; tests cover percent rounding and column targeting. (EdSharp Ctrl+G, Ctrl+J.) |
+| EDS-16 | First and last non-blank character navigation | Features | S | Todo | Commands move to the first non-whitespace character (after indentation) and the last non-whitespace character of the line, announcing the character; tests cover leading/trailing whitespace. (EdSharp Alt+Home, Alt+End.) |
+| EDS-17 | Key Describer mode | Accessibility | M | Todo | A toggle mode in which pressing a bound key speaks its action instead of performing it, auto-disabling on focus loss; a strong onboarding and discoverability aid; tests cover describe-not-execute and auto-off. (EdSharp Ctrl+F1.) |
+| EDS-18 | Indentation-announce mode and Infer Indent | Accessibility | M | Todo | An opt-in mode announces indentation-level changes while navigating by line, plus an Infer Indent command that reports and optionally adopts the document's indent unit; tests cover change announcement and inferred-unit adoption. (EdSharp Alt+Shift+I, Alt+RightBracket.) |
+| EDS-19 | Run file and run target at cursor | Features | M | Todo | Commands execute the current file via its OS association (saving first when it has a path) and execute a URL, email address, or path at the cursor or in the selection, both behind the existing executable-path security validation (SEC-1); tests cover the association path and the security-reject path. (EdSharp F5, Shift+F5.) |
+| EDS-20 | Rename and delete current file on disk | Features | S | Todo | Commands rename and delete the current file both in the editor and on disk, each behind an explicit confirmation; tests cover rename, delete, and the cancel path. (EdSharp Alt+Shift+R, Alt+Shift+D.) |
+
+Why deferred: every EDS item is a self-contained editor convenience that adds
+polish but is not required for a great, trustworthy 1.0. They are best sequenced
+into 2.0 alongside the other deferred work, and several (EDS-14, EDS-17, EDS-18)
+are accessibility niceties that should be designed against real beta feedback. The
+two large EdSharp categories QUILL omits, RTF word processing and JScript.NET
+scripting, remain deliberate scope choices rather than backlog items.
+
 ### 24. The development mindset in one paragraph
 
 Lead with cheap protections and gates, because they make everything after them safe and fast. Then spend the bulk of the energy on the flagship QUILL experience, including making the configured AI providers actually respond (AI-13), because that is where greatness is felt and where the product must be honest. Bring GLOW in next, since it extends QUILL's accessibility mission and reuses a proven engine, and only then add BITS Whisperer transcription, which is the most distant from the writing core. Treat the big refactor and performance and security depth as high-leverage investments that follow, not precede, the user-facing wins, and always do the refactor behind characterization tests. On the GitHub Copilot SDK: keep it optional and post-1.0, behind the same provider boundary, never a default, because its subscription and sign-in friction conflict with the local-first, bring-your-own-key promise even though the underlying models add value. Finish by making the documentation and learning surface as excellent as the product. Do not do hardening or refactoring for their own sake or all at once; do the parts that protect users early, and the parts that only reshape code later, once their value is clear and their risk is contained.
@@ -1165,8 +1246,9 @@ This table tracks how many of the backlog IDs each tier names are still open. It
 | Tier 3 (2.0) | GLOW accessibility engine — deferred to QUILL 2.0 | 8 | 0 | 8 | GLOW-1..7, WATCH-8 |
 | Tier 5 (2.0) | BITS Whisperer transcription — deferred to QUILL 2.0 | 28 | 0 | 28 | BW-1..10, WATCH-9, NAV-10, AI-11, AI-12, AI-18, FEAT-12..18, LINUX-1, ECO-1, L10N-1, COLLAB-1 |
 | AX (2.0) | Accessibility Agents / axe-core engine — deferred to QUILL 2.0 | 6 | 0 | 6 | AX-A..F |
-| **2.0 subtotal** | GLOW + BITS Whisperer + axe-core | **42** | **0** | **42** | |
-| **Total** | All tiers (1.0 + 2.0) | **185** | **90** | **95** | |
+| EDS (2.0) | EdSharp feature parity — deferred to QUILL 2.0 | 20 | 0 | 20 | EDS-1..20 |
+| **2.0 subtotal** | GLOW + BITS Whisperer + axe-core + EdSharp parity | **62** | **0** | **62** | |
+| **Total** | All tiers (1.0 + 2.0) | **205** | **90** | **115** | |
 
 > Deferral note (2026-06-02): per maintainer direction, the GLOW accessibility
 > engine (Tier 3, including the WATCH-8 GLOW watch action), the BITS Whisperer
@@ -1211,6 +1293,7 @@ list.
 | GLOW accessibility engine (Tier 3) | GLOW-1, GLOW-2, GLOW-3, GLOW-4, GLOW-5, GLOW-6, GLOW-7, WATCH-8 | Cross-repo engine integration; lands as a 2.0 headline once the shared `quill-glow-core` engine is green. |
 | BITS Whisperer transcription (Tier 5) | BW-1, BW-2, BW-3, BW-4, BW-5, BW-6, BW-7, BW-8, BW-9, BW-10, WATCH-9 | The second distinctive engine; a clean 2.0 integration after the 1.0 flagship ships. |
 | Accessibility Agents / axe-core (AX) | AX-A, AX-B, AX-C, AX-D, AX-E, AX-F | Builds on the GLOW engine and report surface, so it follows GLOW into 2.0. |
+| EdSharp feature parity (EDS) | EDS-1, EDS-2, EDS-3, EDS-4, EDS-5, EDS-6, EDS-7, EDS-8, EDS-9, EDS-10, EDS-11, EDS-12, EDS-13, EDS-14, EDS-15, EDS-16, EDS-17, EDS-18, EDS-19, EDS-20 | Self-contained editor conveniences from the EdSharp 4.0 competitive analysis; polish, not 1.0 blockers, so they land in 2.0 with beta feedback. |
 | Tier 5 stretch explorations | NAV-10, AI-11, AI-12, AI-18, FEAT-12, FEAT-13, FEAT-14, FEAT-15, FEAT-16, FEAT-17, FEAT-18, LINUX-1, ECO-1, L10N-1, COLLAB-1 | Post-1.0 breadth, chosen with beta feedback in 2.0. |
 
 Completed outside the formal tier lists (cross-cutting protections and quality work that the tiers reference only by theme): SEC-2 (path-escape guard for persistence writes), SEC-3 (OCR language allowlist), SEC-4 (documented and validated cwd safety for safe_subprocess), SEC-5 (verified TLS everywhere), GATE-1 (pre-commit), PERF-8 (documented scoped type-check), CQ-17 (thread-safety invariants note), and A11Y-1 (announcement grammar). The GATE-3/CQ-7 cleanup also incidentally cleared the `quill/core` and `quill/io` portion of the TYPE-1..8 zone, though those formal rows stay open until each is individually verified and closed.
