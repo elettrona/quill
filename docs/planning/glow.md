@@ -94,6 +94,18 @@ Before QUILL depends on `quill-glow-core`, the `glow` repo must build green.
 - In-editor reports are unchanged for users.
 - Tests cover both the backend path and the fallback path.
 
+Status (QUILL side, done): the optional `glow` extra is declared, and
+`quill/core/glow.py` gained a file-based seam — `audit_file`/`fix_file`,
+`get_glow_services`, `glow_backend_available`, and the `_glow_finding_to_quill`
+adapter (critical/high -> `error`, medium-band -> `warning`, low -> `info`;
+`score`/`grade` carried on `GlowFileAuditResult`, ACB `metadata` and location
+folded into the suggestion). The existing in-editor text reports
+(`audit_text`/`fix_text`/`build_audit_report`) are untouched, and
+`tests/unit/core/test_glow_backend.py` exercises both the backend and the
+fallback paths. `quill_glow_core` is registered in the mypy ignore-missing list
+so the scoped strict gate stays green. Remaining for GLOW-1: complete and verify
+Step 0 in the `glow` repo (green Flask web suite + version reconciliation).
+
 ### Step 2 (GLOW-2, with IO-1): audit and fix by structure, not just text
 
 - Today QUILL audits plain text, Markdown, and HTML.

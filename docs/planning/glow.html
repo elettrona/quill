@@ -309,6 +309,22 @@ and carries <code>score</code>, <code>grade</code>, and ACB
 <li>In-editor reports are unchanged for users.</li>
 <li>Tests cover both the backend path and the fallback path.</li>
 </ul>
+<p>Status (QUILL side, done): the optional <code>glow</code> extra is
+declared, and <code>quill/core/glow.py</code> gained a file-based seam —
+<code>audit_file</code>/<code>fix_file</code>,
+<code>get_glow_services</code>, <code>glow_backend_available</code>, and
+the <code>_glow_finding_to_quill</code> adapter (critical/high -&gt;
+<code>error</code>, medium-band -&gt; <code>warning</code>, low -&gt;
+<code>info</code>; <code>score</code>/<code>grade</code> carried on
+<code>GlowFileAuditResult</code>, ACB <code>metadata</code> and location
+folded into the suggestion). The existing in-editor text reports
+(<code>audit_text</code>/<code>fix_text</code>/<code>build_audit_report</code>)
+are untouched, and <code>tests/unit/core/test_glow_backend.py</code>
+exercises both the backend and the fallback paths.
+<code>quill_glow_core</code> is registered in the mypy ignore-missing
+list so the scoped strict gate stays green. Remaining for GLOW-1:
+complete and verify Step 0 in the <code>glow</code> repo (green Flask
+web suite + version reconciliation).</p>
 <h3
 id="step-2-glow-2-with-io-1-audit-and-fix-by-structure-not-just-text">Step
 2 (GLOW-2, with IO-1): audit and fix by structure, not just text</h3>

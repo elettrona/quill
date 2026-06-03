@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 from quill.core.plain_language import lint_plain_language
 
@@ -357,3 +359,283 @@ def _line_column_for_offset(text: str, offset: int) -> tuple[int, int]:
     if line_start < 0:
         return line, offset + 1
     return line, offset - line_start
+
+
+# ---------------------------------------------------------------------------
+# GLOW shared-core engine seam (GLOW-1).
+#
+# When the optional `quill-glow-core` backend is installed (the `glow` extra),
+# QUILL audits and fixes structured documents through that shared engine. When
+# it is absent, the seam degrades to a safe, QUILL-native result so `core`
+# never hard-fails and keeps no hard dependency on the optional package. The
+# in-editor text audit above (`audit_text`/`fix_text`) is unchanged.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class GlowFileAuditResult:
+    """Adapted result of a shared-core structured-document audit."""
+
+    path: str
+    score: int
+    grade: str
+    findings: tuple[GlowFinding, ...]
+    backend: str
+
+
+@dataclass(frozen=True, slots=True)
+class GlowFileFixResult:
+    """Adapted result of a shared-core structured-document fix."""
+
+    output_path: str
+    total_fixes: int
+    audit: GlowFileAuditResult
+    warnings: tuple[str, ...]
+    backend: str
+
+
+# Maps shared-core severities onto QUILL's three presentation levels. Per
+# GLOW-1, critical/high collapse to "error"; medium-band severities become
+# "warning"; the remainder are informational.
+_SEVERITY_MAP = {
+    "critical": "error",
+    "high": "error",
+    "error": "error",
+    "medium": "warning",
+    "moderate": "warning",
+    "warning": "warning",
+    "warn": "warning",
+    "low": "info",
+    "minor": "info",
+    "info": "info",
+    "informational": "info",
+}
+
+
+def _map_severity(severity: str) -> str:
+    return _SEVERITY_MAP.get(severity.strip().lower(), "warning")
+
+
+def _parse_location(location: str) -> tuple[int | None, int | None]:
+    """Best-effort line/column extraction from a shared-core location string.
+
+    Accepts trailing ``:line:column`` or ``:line`` suffixes (as emitted for
+    text-like sources) and a bare ``line N`` form. Returns ``(None, None)`` for
+    opaque locations such as a file path or a structural address.
+    """
+    text = location.strip()
+    if not text:
+        return None, None
+    tail = re.search(r":(\d+)(?::(\d+))?$", text)
+    if tail is not None:
+        line = int(tail.group(1))
+        column = int(tail.group(2)) if tail.group(2) is not None else None
+        return line, column
+    worded = re.search(r"\bline\s+(\d+)(?:\D+(\d+))?", text, re.IGNORECASE)
+    if worded is not None:
+        line = int(worded.group(1))
+        column = int(worded.group(2)) if worded.group(2) is not None else None
+        return line, column
+    return None, None
+
+
+def _glow_finding_to_quill(finding: Any) -> GlowFinding:
+    """Adapt a shared-core ``Finding`` (duck-typed) into a QUILL ``GlowFinding``.
+
+    Reads attributes defensively so the adapter tolerates the absence of the
+    optional package and minor shape drift. ACB metadata and the source
+    location are folded into the suggestion text because ``GlowFinding`` is a
+    flat presentation record; the structural score/grade ride on the enclosing
+    :class:`GlowFileAuditResult`.
+    """
+    rule_id = str(getattr(finding, "rule_id", "") or "GLOW-UNKNOWN")
+    severity = _map_severity(str(getattr(finding, "severity", "") or "warning"))
+    message = str(getattr(finding, "message", "") or "")
+    description = str(getattr(finding, "description", "") or "")
+    location = str(getattr(finding, "location", "") or "")
+    fixable = bool(getattr(finding, "auto_fixable", False))
+    line, column = _parse_location(location)
+
+    suggestion_parts: list[str] = []
+    if description:
+        suggestion_parts.append(description)
+    metadata = getattr(finding, "metadata", None)
+    if isinstance(metadata, dict) and metadata:
+        rendered = ", ".join(f"{key}: {value}" for key, value in sorted(metadata.items()))
+        suggestion_parts.append(f"Details: {rendered}.")
+    if not suggestion_parts:
+        suggestion_parts.append("Review this finding and apply an accessible correction.")
+    suggestion = " ".join(suggestion_parts)
+
+    return GlowFinding(
+        rule_id=rule_id,
+        severity=severity,
+        message=message,
+        suggestion=suggestion,
+        line=line,
+        column=column,
+        fixable=fixable,
+    )
+
+
+def _load_glow_core() -> Any:
+    """Return the imported ``quill_glow_core`` module, or ``None`` when absent."""
+    try:
+        import quill_glow_core
+    except Exception:
+        return None
+    return quill_glow_core
+
+
+def glow_backend_available() -> bool:
+    """True when the optional GLOW shared-core engine can be imported."""
+    return _load_glow_core() is not None
+
+
+def _backend_name(core: Any) -> str:
+    """Report the active shared-core backend ("glow", "safe-mode", ...)."""
+    try:
+        telemetry = core.get_startup_telemetry()
+    except Exception:
+        telemetry = None
+    if telemetry is None:
+        try:
+            core.configure_default_services()
+            telemetry = core.get_startup_telemetry()
+        except Exception:
+            telemetry = None
+    if telemetry is not None:
+        return str(getattr(telemetry, "backend", "") or "unknown")
+    return "unknown"
+
+
+def get_glow_services() -> Any:
+    """Return the configured shared-core services, or ``None`` when absent.
+
+    Delegates to ``quill_glow_core.get_services()``, which auto-selects the
+    real GLOW backend when installed and the safe ``NoOpCoreServices`` fallback
+    otherwise. Returns ``None`` only when the package itself is not installed.
+    """
+    core = _load_glow_core()
+    if core is None:
+        return None
+    try:
+        return core.get_services()
+    except Exception:
+        return None
+
+
+def _unavailable_audit(path: str) -> GlowFileAuditResult:
+    return GlowFileAuditResult(
+        path=path,
+        score=0,
+        grade="F",
+        findings=(
+            GlowFinding(
+                rule_id="GLOW-CORE-UNAVAILABLE",
+                severity="warning",
+                message="The GLOW accessibility engine is not installed.",
+                suggestion=(
+                    "Install QUILL's optional 'glow' extra to audit and fix "
+                    "structured documents (DOCX, PPTX, XLSX, PDF, EPUB)."
+                ),
+                fixable=False,
+            ),
+        ),
+        backend="unavailable",
+    )
+
+
+def audit_file(path: str | Path, **kwargs: Any) -> GlowFileAuditResult:
+    """Audit a structured document through the shared GLOW core.
+
+    Falls back to a safe, QUILL-native "engine unavailable" result when the
+    optional package is absent, so callers never have to special-case the
+    missing backend.
+    """
+    target = str(path)
+    services = get_glow_services()
+    if services is None:
+        return _unavailable_audit(target)
+    result = services.audit_by_extension(path, **kwargs)
+    findings = tuple(_glow_finding_to_quill(item) for item in result.findings)
+    return GlowFileAuditResult(
+        path=str(getattr(result, "file_path", target)),
+        score=int(getattr(result, "score", 0)),
+        grade=str(getattr(result, "grade", "") or "F"),
+        findings=findings,
+        backend=_backend_name(_load_glow_core()),
+    )
+
+
+def fix_file(
+    path: str | Path,
+    output_path: str | Path | None = None,
+    **kwargs: Any,
+) -> GlowFileFixResult:
+    """Fix a structured document through the shared GLOW core.
+
+    Returns a safe, no-op result when the optional package is absent.
+    """
+    target = str(path)
+    services = get_glow_services()
+    if services is None:
+        audit = _unavailable_audit(target)
+        return GlowFileFixResult(
+            output_path=str(output_path) if output_path is not None else target,
+            total_fixes=0,
+            audit=audit,
+            warnings=("The GLOW accessibility engine is not installed; no changes were made.",),
+            backend="unavailable",
+        )
+    result = services.fix_by_extension(path, output_path, **kwargs)
+    audit_result = getattr(result, "audit_result", None)
+    if audit_result is not None:
+        findings = tuple(_glow_finding_to_quill(item) for item in audit_result.findings)
+        audit = GlowFileAuditResult(
+            path=str(getattr(audit_result, "file_path", target)),
+            score=int(getattr(audit_result, "score", 0)),
+            grade=str(getattr(audit_result, "grade", "") or "F"),
+            findings=findings,
+            backend=_backend_name(_load_glow_core()),
+        )
+    else:
+        audit = _unavailable_audit(target)
+    return GlowFileFixResult(
+        output_path=str(getattr(result, "output_path", target)),
+        total_fixes=int(getattr(result, "total_fixes", 0)),
+        audit=audit,
+        warnings=tuple(str(item) for item in getattr(result, "warnings", ())),
+        backend=_backend_name(_load_glow_core()),
+    )
+
+
+def build_file_audit_report(result: GlowFileAuditResult) -> str:
+    """Render an adapted structured-document audit as plain text."""
+    fixable = sum(1 for item in result.findings if item.fixable)
+    lines = [
+        f"GLOW structured audit for {result.path}",
+        "",
+        f"Engine: {result.backend}",
+        f"Score: {result.score} (grade {result.grade})",
+        f"Findings: {len(result.findings)}",
+        f"Automatically fixable: {fixable}",
+    ]
+    if not result.findings:
+        lines.extend(["", "No GLOW findings detected for this document."])
+        return "\n".join(lines).rstrip() + "\n"
+    lines.extend(["", "Findings:"])
+    for index, finding in enumerate(result.findings, start=1):
+        location = ""
+        if finding.line is not None:
+            location = f" (line {finding.line}"
+            if finding.column is not None:
+                location += f", column {finding.column}"
+            location += ")"
+        fixable_suffix = " [auto-fix]" if finding.fixable else ""
+        lines.append(
+            f"{index}. [{finding.severity.upper()}] {finding.rule_id}{location}{fixable_suffix}"
+        )
+        lines.append(f"   {finding.message}")
+        lines.append(f"   Suggestion: {finding.suggestion}")
+    return "\n".join(lines).rstrip() + "\n"

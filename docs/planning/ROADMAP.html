@@ -6416,26 +6416,36 @@ keep both in step when any GLOW item changes scope or status.</p>
 <td>Adopt quill-glow-core as the shared engine</td>
 <td>Suite</td>
 <td>M</td>
-<td>Todo</td>
-<td>Step 1: in <code>s:\code\glow</code>, the consumed desktop core
-(<code>acb_large_print</code> / <code>acb_large_print_core</code>, the
-target of <code>from_glow_backend</code>) is already green (308 tests);
-fix the failing Flask web suite (<code>acb_large_print_web</code>: the
+<td>In progress</td>
+<td>Step 1 (glow repo, not yet verified): in <code>s:\code\glow</code>,
+the consumed desktop core (<code>acb_large_print</code> /
+<code>acb_large_print_core</code>, the target of
+<code>from_glow_backend</code>) is already green (308 tests); fix the
+failing Flask web suite (<code>acb_large_print_web</code>: the
 <code>/guide/</code> content string, branding injection, and form-POST
 tests) and reconcile the version sweep (VERSION 8.0.0 vs README vs
 TODO.md), committing in the <code>glow</code> repo so the whole engine
-is green. Step 2: QUILL audits and fixes via
-<code>quill-glow-core</code> (<code>s:\code\quill-glow-core</code>)
-behind a new optional extra
-<code>glow = ["quill-glow-core[glow]"]</code>, using the GLOW backend
-when present and the safe <code>NoOpCoreServices</code> fallback when
-absent; <code>quill/core/glow.py</code> becomes a thin presentation shim
+is green. Step 2 (QUILL side, DONE): QUILL audits and fixes via
+<code>quill-glow-core</code> behind the optional extra
+<code>glow = ["quill-glow-core[glow]"]</code>;
+<code>quill/core/glow.py</code> gained a file-based seam
+(<code>audit_file</code>/<code>fix_file</code>,
+<code>get_glow_services</code>, <code>glow_backend_available</code>)
 plus a <code>_glow_finding_to_quill</code> adapter (severity map
-critical/high -&gt; error, carry
-<code>score</code>/<code>grade</code>/ACB <code>metadata</code>);
-in-editor reports unchanged for users; tests cover both backend and
-fallback paths. Coordinate the three repos and keep the shared API
-stable. Ignore the stale <code>s:\code\glow-7.0.0</code> snapshot.</td>
+critical/high -&gt; error, medium-band -&gt; warning, low -&gt; info;
+carries <code>score</code>/<code>grade</code> on
+<code>GlowFileAuditResult</code> and folds ACB
+<code>metadata</code>/location into the suggestion), using the GLOW
+backend when present and the safe
+<code>NoOpCoreServices</code>/unavailable fallback when absent; the
+in-editor text reports
+(<code>audit_text</code>/<code>fix_text</code>/<code>build_audit_report</code>)
+are unchanged; <code>tests/unit/core/test_glow_backend.py</code> covers
+both backend and fallback paths. <code>quill_glow_core</code> registered
+in the mypy ignore-missing list so the scoped strict gate stays green.
+Remaining: verify/finish Step 1 in the <code>glow</code> repo.
+Coordinate the three repos and keep the shared API stable. Ignore the
+stale <code>s:\code\glow-7.0.0</code> snapshot.</td>
 </tr>
 <tr>
 <td>GLOW-2</td>

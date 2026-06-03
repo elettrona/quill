@@ -166,5 +166,10 @@ module = [
     "certifi",
     "pdfplumber",
     "pyttsx3",
+    # Optional GLOW shared-core engine, pulled in only by the `glow` extra.
+    # core/glow.py imports it behind a guarded try/except; the scoped strict
+    # gate must not depend on the extra being installed.
+    "quill_glow_core",
+    "quill_glow_core.*",
 ]
 ignore_missing_imports = true
