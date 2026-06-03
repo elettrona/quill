@@ -531,7 +531,7 @@ This table is the execution source of truth. Update Status as work progresses. S
 | KEY-4 | Validate keybinding syntax on save | Keymaps | S | Todo | Invalid bindings are rejected with a plain-language explanation. |
 | MENU-3 | Resolve menu redundancy | Menus | S | Done | Insert Link duplication is rationalized: the Edit-menu alias was removed, leaving Insert as the single primary entry. |
 | MENU-4 | Labels match announcement grammar | Menus | S | Todo | Menu labels and announcements are consistent. |
-| MENU-5 | User-customizable menus and context menu (Menu Editor) | Menus | L | In progress | A person can reorder, rename, and hide top-level menus, menu items, and editor context-menu entries, with one Reset to Factory Defaults, all through an accessible Menu Editor. The `wx`-free model layer landed in `quill/core/menu_customization.py` (delta-only, self-healing `reconcile`, versioned persistence) and covers the menu bar and the editor context menu through one shared `CONTEXT_MENU_KEY` model, with full unit coverage. The **top-level** Menu Editor now ships: Edit > Customize Menus... (`app.menu_editor`) opens a stock-control dialog (list + Move Up/Down, Rename, Show/Hide, Reset to Factory Defaults) that edits a working copy and persists only on Save, and a post-build transform pass applies the saved order/labels/visibility to the menu bar (bailing out untouched if any menu label is unrecognised). Remaining: the per-item and editor context-menu UI (the model already supports both). |
+| MENU-5 | User-customizable menus and context menu (Menu Editor) | Menus | L | Done | A person can reorder, rename, and hide top-level menus, menu items, and editor context-menu entries, with one Reset to Factory Defaults, all through an accessible Menu Editor. The `wx`-free model layer lives in `quill/core/menu_customization.py` (delta-only, self-healing `reconcile`, versioned persistence) and covers the menu bar and the editor context menu through one shared `CONTEXT_MENU_KEY` model, with full unit coverage. Edit > Customize Menus... (`app.menu_editor`) opens a tabbed dialog with three tabs: **Top-Level Menus** (list + Move Up/Down, Rename, Show/Hide, Reset to Factory Defaults), **Menu Items** (two-pane: select a menu, then edit its items with Move Up/Down, Rename, Show/Hide), and **Context Menu** (list + Move Up/Down, Rename, Show/Hide). The dialog edits a working copy, persists only on Save, and rebuilds the live menu with a post-build transform pass. Items are discovered dynamically from the built menu bar at runtime. Source-contract tests verify the three-tab structure, item discovery methods, and A11Y-4 modal dialog contract compliance. |
 | FEAT-1 | Read Aloud read-from-cursor, read-selection, spell mode | Features | M | Todo | Three modes work and announce; audio caching applies. (Pairs with PERF-3.) |
 | FEAT-3 | Thesaurus inline replacement | Features | S | Todo | Synonym replacement announces the substitution. |
 | FEAT-4 | Find and Replace ergonomics | Features | S | Todo | Replace-and-find-next, named-group preview, recipe quick picker. |
@@ -1157,15 +1157,15 @@ This table tracks how many of the backlog IDs each tier names are still open. It
 | Tier | Scope | Total items | Done | Remaining | Open item IDs |
 | --- | --- | --- | --- | --- | --- |
 | Tier 1 | Protect users and unlock the team | 23 | 23 | 0 | (complete) |
-| Tier 2 | Flagship experience | 57 | 45 | 12 | OCR-1, OCR-3, AGENT-1, AI-19, SET-2, SET-3, CTX-1, DICT-2, FEAT-19, DLG-1, MENU-5, A11Y-4 |
+| Tier 2 | Flagship experience | 57 | 46 | 11 | OCR-1, OCR-3, AGENT-1, AI-19, SET-2, SET-3, CTX-1, DICT-2, FEAT-19, DLG-1, A11Y-4 |
 | Tier 4 | Structural health and performance | 30 | 11 | 19 | CQ-16, CQ-1, DLG-2, GATE-11, PERF-1..3, PERF-9..14, GATE-10, SEC-6, SEC-7, SEC-8, SEC-14, SEC-17 |
 | Tier 6 | Documentation and learning surface | 33 | 3 | 30 | DOC-14..17, DOC-11, DOC-12, DOC-1..8, POD-1..5, TUT-1..7, CQ-11, CQ-14, CQ-23, CQ-24, LINUX-2 |
-| **1.0 subtotal** | Tiers 1, 2, 4, 6 (the QUILL 1.0 scope) | **143** | **82** | **61** | |
+| **1.0 subtotal** | Tiers 1, 2, 4, 6 (the QUILL 1.0 scope) | **143** | **83** | **60** | |
 | Tier 3 (2.0) | GLOW accessibility engine — deferred to QUILL 2.0 | 8 | 0 | 8 | GLOW-1..7, WATCH-8 |
 | Tier 5 (2.0) | BITS Whisperer transcription — deferred to QUILL 2.0 | 28 | 0 | 28 | BW-1..10, WATCH-9, NAV-10, AI-11, AI-12, AI-18, FEAT-12..18, LINUX-1, ECO-1, L10N-1, COLLAB-1 |
 | AX (2.0) | Accessibility Agents / axe-core engine — deferred to QUILL 2.0 | 6 | 0 | 6 | AX-A..F |
 | **2.0 subtotal** | GLOW + BITS Whisperer + axe-core | **42** | **0** | **42** | |
-| **Total** | All tiers (1.0 + 2.0) | **185** | **82** | **103** | |
+| **Total** | All tiers (1.0 + 2.0) | **185** | **83** | **102** | |
 
 > Deferral note (2026-06-02): per maintainer direction, the GLOW accessibility
 > engine (Tier 3, including the WATCH-8 GLOW watch action), the BITS Whisperer
@@ -1191,7 +1191,7 @@ list.
 
 | Tier | Status | Feature IDs |
 | --- | --- | --- |
-| Tier 2 — Flagship | In progress | SET-2, SET-3, MENU-5, AGENT-1, OCR-1, OCR-3, CTX-1, DICT-2, FEAT-19, DLG-1, AI-19 |
+| Tier 2 — Flagship | In progress | SET-2, SET-3, AGENT-1, OCR-1, OCR-3, CTX-1, DICT-2, FEAT-19, DLG-1, AI-19 |
 | Tier 2 — Flagship | Todo | A11Y-4 |
 | Tier 4 — Structural health | Todo | CQ-1, CQ-16, DLG-2, GATE-10, GATE-11, PERF-1, PERF-2, PERF-3, PERF-9, PERF-10, PERF-11, PERF-12, PERF-13, PERF-14, SEC-6, SEC-7, SEC-8, SEC-14, SEC-17 |
 | Tier 6 — Documentation | Todo | DOC-1, DOC-2, DOC-3, DOC-4, DOC-5, DOC-6, DOC-7, DOC-8, DOC-11, DOC-12, DOC-14, DOC-15, DOC-16, DOC-17, POD-1, POD-2, POD-3, POD-4, POD-5, TUT-1, TUT-2, TUT-3, TUT-4, TUT-5, TUT-6, TUT-7, CQ-11, CQ-23, CQ-24, LINUX-2 |
@@ -1201,7 +1201,7 @@ list.
 | Tier | Feature IDs |
 | --- | --- |
 | Tier 1 — Protect users | BUG-1, BUG-2, BUG-3, BUG-4, BUG-5, BUG-6, BUG-7, SEC-1, SEC-10, SEC-11, SEC-13, GATE-1, GATE-2, GATE-3, GATE-4, GATE-5, GATE-6, GATE-7, GATE-8, GATE-9, FLAG-1, FLAG-2 |
-| Tier 2 — Flagship | QK-1, QK-2, QK-3, QK-4, QK-5, QK-9, NAV-1, NAV-4, NAV-5, SEL-1, SEL-2, SEL-3, AI-1, AI-6, AI-7, AI-13, AI-14, AI-15, AI-16, AI-17, AI-21, AI-23, WATCH-1, WATCH-2, WATCH-3, WATCH-4, WATCH-5, WATCH-6, WATCH-7, SET-1, SET-4, SET-5, SET-6, SET-7, SHARE-1, SHARE-2, SHARE-3, FLAG-3, FLAG-4, MENU-3, MENU-1, DICT-1, OCR-2, OCR-4, OCR-5 |
+| Tier 2 — Flagship | QK-1, QK-2, QK-3, QK-4, QK-5, QK-9, NAV-1, NAV-4, NAV-5, SEL-1, SEL-2, SEL-3, AI-1, AI-6, AI-7, AI-13, AI-14, AI-15, AI-16, AI-17, AI-21, AI-23, WATCH-1, WATCH-2, WATCH-3, WATCH-4, WATCH-5, WATCH-6, WATCH-7, SET-1, SET-4, SET-5, SET-6, SET-7, SHARE-1, SHARE-2, SHARE-3, FLAG-3, FLAG-4, MENU-3, MENU-1, MENU-5, DICT-1, OCR-2, OCR-4, OCR-5 |
 | Tier 4 — Structural health | CQ-7, CQ-12, CQ-13, CQ-14, CQ-15, CQ-17, CQ-18, CQ-19, CQ-20, CQ-21, CQ-22, PERF-8, SEC-4, SEC-15, SEC-16, TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5, TYPE-6, TYPE-7, TYPE-8 |
 
 **Deferred to QUILL 2.0 (not in the 1.0 lists)**

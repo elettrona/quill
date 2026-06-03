@@ -2654,22 +2654,24 @@ removed, leaving Insert as the single primary entry.</td>
 <td>User-customizable menus and context menu (Menu Editor)</td>
 <td>Menus</td>
 <td>L</td>
-<td>In progress</td>
+<td>Done</td>
 <td>A person can reorder, rename, and hide top-level menus, menu items,
 and editor context-menu entries, with one Reset to Factory Defaults, all
 through an accessible Menu Editor. The <code>wx</code>-free model layer
-landed in <code>quill/core/menu_customization.py</code> (delta-only,
+lives in <code>quill/core/menu_customization.py</code> (delta-only,
 self-healing <code>reconcile</code>, versioned persistence) and covers
 the menu bar and the editor context menu through one shared
-<code>CONTEXT_MENU_KEY</code> model, with full unit coverage. The
-<strong>top-level</strong> Menu Editor now ships: Edit &gt; Customize
-Menus… (<code>app.menu_editor</code>) opens a stock-control dialog (list
-+ Move Up/Down, Rename, Show/Hide, Reset to Factory Defaults) that edits
-a working copy and persists only on Save, and a post-build transform
-pass applies the saved order/labels/visibility to the menu bar (bailing
-out untouched if any menu label is unrecognised). Remaining: the
-per-item and editor context-menu UI (the model already supports
-both).</td>
+<code>CONTEXT_MENU_KEY</code> model, with full unit coverage. Edit &gt;
+Customize Menus… (<code>app.menu_editor</code>) opens a tabbed dialog
+with three tabs: <strong>Top-Level Menus</strong> (list + Move Up/Down,
+Rename, Show/Hide, Reset to Factory Defaults), <strong>Menu
+Items</strong> (two-pane: select a menu, then edit its items with Move
+Up/Down, Rename, Show/Hide), and <strong>Context Menu</strong> (list +
+Move Up/Down, Rename, Show/Hide). The dialog edits a working copy,
+persists only on Save, and rebuilds the live menu with a post-build
+transform pass. Items are discovered dynamically from the built menu bar
+at runtime. Source-contract tests verify the three-tab structure, item
+discovery methods, and A11Y-4 modal dialog contract compliance.</td>
 </tr>
 <tr>
 <td>FEAT-1</td>
@@ -5838,10 +5840,10 @@ CQ-16) are counted once, in their primary tier.</p>
 <td>Tier 2</td>
 <td>Flagship experience</td>
 <td>57</td>
-<td>45</td>
-<td>12</td>
+<td>46</td>
+<td>11</td>
 <td>OCR-1, OCR-3, AGENT-1, AI-19, SET-2, SET-3, CTX-1, DICT-2, FEAT-19,
-DLG-1, MENU-5, A11Y-4</td>
+DLG-1, A11Y-4</td>
 </tr>
 <tr>
 <td>Tier 4</td>
@@ -5865,8 +5867,8 @@ CQ-14, CQ-23, CQ-24, LINUX-2</td>
 <td><strong>1.0 subtotal</strong></td>
 <td>Tiers 1, 2, 4, 6 (the QUILL 1.0 scope)</td>
 <td><strong>143</strong></td>
-<td><strong>82</strong></td>
-<td><strong>61</strong></td>
+<td><strong>83</strong></td>
+<td><strong>60</strong></td>
 <td></td>
 </tr>
 <tr>
@@ -5906,8 +5908,8 @@ LINUX-1, ECO-1, L10N-1, COLLAB-1</td>
 <td><strong>Total</strong></td>
 <td>All tiers (1.0 + 2.0)</td>
 <td><strong>185</strong></td>
-<td><strong>82</strong></td>
-<td><strong>103</strong></td>
+<td><strong>83</strong></td>
+<td><strong>102</strong></td>
 <td></td>
 </tr>
 </tbody>
@@ -5952,8 +5954,8 @@ the third table and are not part of either 1.0 list.</p>
 <tr>
 <td>Tier 2 — Flagship</td>
 <td>In progress</td>
-<td>SET-2, SET-3, MENU-5, AGENT-1, OCR-1, OCR-3, CTX-1, DICT-2, FEAT-19,
-DLG-1, AI-19</td>
+<td>SET-2, SET-3, AGENT-1, OCR-1, OCR-3, CTX-1, DICT-2, FEAT-19, DLG-1,
+AI-19</td>
 </tr>
 <tr>
 <td>Tier 2 — Flagship</td>
@@ -6002,7 +6004,7 @@ GATE-8, GATE-9, FLAG-1, FLAG-2</td>
 SEL-2, SEL-3, AI-1, AI-6, AI-7, AI-13, AI-14, AI-15, AI-16, AI-17,
 AI-21, AI-23, WATCH-1, WATCH-2, WATCH-3, WATCH-4, WATCH-5, WATCH-6,
 WATCH-7, SET-1, SET-4, SET-5, SET-6, SET-7, SHARE-1, SHARE-2, SHARE-3,
-FLAG-3, FLAG-4, MENU-3, MENU-1, DICT-1, OCR-2, OCR-4, OCR-5</td>
+FLAG-3, FLAG-4, MENU-3, MENU-1, MENU-5, DICT-1, OCR-2, OCR-4, OCR-5</td>
 </tr>
 <tr>
 <td>Tier 4 — Structural health</td>
