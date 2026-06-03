@@ -169,6 +169,21 @@ def _try_enchant() -> object | None:
         return _ENCHANT_DICT
 
 
+def preload() -> None:
+    """Warm the spell-check backend so the first check does not stall.
+
+    Resolves the active tier (pyenchant if present, otherwise the bundled
+    wordlist) and forces the wordlist into memory. Safe to call from a
+    background thread at startup; the underlying loaders are idempotent and
+    guarded by ``_BACKEND_LOCK``, so repeat calls are cheap no-ops once warm.
+    """
+    if _try_enchant() is not None:
+        # Enchant resolves its own dictionary lazily; touching it is enough to
+        # avoid a first-use stall. The bundled wordlist is the fallback corpus.
+        return
+    _load_wordlist()
+
+
 def backend_info() -> BackendInfo:
     """Return information about the currently active spell-check backend."""
     enchant_dict = _try_enchant()

@@ -1833,17 +1833,37 @@ thread agrees on the published snapshot and active backend tier.</td>
 <td>Background preload of spell-check wordlist</td>
 <td>Performance</td>
 <td>S</td>
-<td>Todo</td>
-<td>First spell check does not stall; preload runs off the UI thread;
-perf test added.</td>
+<td>Done</td>
+<td>First spell check no longer stalls.
+<code>quill/core/spellcheck.py</code> gained an idempotent, thread-safe
+<code>preload()</code> (reuses the existing <code>_BACKEND_LOCK</code>;
+tries enchant, else warms the wordlist cache). New wx-free helper
+<code>quill/core/lexical_preload.py::start_background_preload()</code>
+spins a daemon thread (<code>quill-lexical-preload</code>) calling
+<code>spellcheck.preload()</code> off the UI thread;
+<code>MainFrame._run_deferred_startup_tasks</code> invokes it via a new
+<code>"lexical cache warm-up"</code> deferred step, so the cache is warm
+before the first check. Perf test
+<code>tests/performance/test_lexical_preload.py</code> asserts the cache
+warms and the first check runs &lt;0.05s, preload is idempotent, and it
+is safe from concurrent threads.</td>
 </tr>
 <tr>
 <td>PERF-2</td>
 <td>Background preload of thesaurus</td>
 <td>Performance</td>
 <td>S</td>
-<td>Todo</td>
-<td>First lookup does not stall; perf test added.</td>
+<td>Done</td>
+<td>First thesaurus lookup no longer stalls.
+<code>quill/core/thesaurus.py</code> gained an idempotent, thread-safe
+<code>preload()</code> (delegates to <code>_ensure_loaded()</code> under
+the existing <code>_LOAD_LOCK</code>). The same
+<code>quill/core/lexical_preload.py</code> daemon thread calls
+<code>thesaurus.preload()</code> after the spellcheck warm-up, off the
+UI thread. Perf test
+<code>tests/performance/test_lexical_preload.py</code> asserts the index
+warms and the first lookup runs &lt;0.05s, preload is idempotent, and it
+is safe from concurrent threads.</td>
 </tr>
 <tr>
 <td>PERF-3</td>
@@ -7584,10 +7604,9 @@ CQ-16) are counted once, in their primary tier.</p>
 <td>Tier 4</td>
 <td>Structural health and performance</td>
 <td>31</td>
-<td>16</td>
-<td>15</td>
-<td>DLG-3, CQ-16, CQ-1, DLG-2, PERF-1..3, PERF-9..14, GATE-10,
-SEC-6</td>
+<td>18</td>
+<td>13</td>
+<td>DLG-3, CQ-16, CQ-1, DLG-2, PERF-3, PERF-9..14, GATE-10, SEC-6</td>
 </tr>
 <tr>
 <td>Tier 6</td>
@@ -7602,8 +7621,8 @@ CQ-14, CQ-23, CQ-24, LINUX-2</td>
 <td><strong>1.0 subtotal</strong></td>
 <td>Tiers 1, 2, 4, 6 (the QUILL 1.0 scope)</td>
 <td><strong>148</strong></td>
-<td><strong>99</strong></td>
-<td><strong>49</strong></td>
+<td><strong>101</strong></td>
+<td><strong>47</strong></td>
 <td></td>
 </tr>
 <tr>
@@ -7632,6 +7651,14 @@ LINUX-1, ECO-1, L10N-1, COLLAB-1</td>
 <td>AX-A..F</td>
 </tr>
 <tr>
+<td>PKG (2.0)</td>
+<td>Packaging / freezing evaluation — deferred to QUILL 2.0</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+<td>PKG-1</td>
+</tr>
+<tr>
 <td>EDS</td>
 <td>EdSharp feature parity — delivered in QUILL 1.0</td>
 <td>21</td>
@@ -7642,9 +7669,9 @@ LINUX-1, ECO-1, L10N-1, COLLAB-1</td>
 <tr>
 <td><strong>2.0 subtotal</strong></td>
 <td>GLOW + BITS Whisperer + axe-core (EdSharp parity now delivered)</td>
-<td><strong>63</strong></td>
+<td><strong>64</strong></td>
 <td><strong>21</strong></td>
-<td><strong>42</strong></td>
+<td><strong>43</strong></td>
 <td></td>
 </tr>
 <tr>
@@ -7702,8 +7729,8 @@ the third table and are not part of either 1.0 list.</p>
 <tr>
 <td>Tier 4 — Structural health</td>
 <td>In progress / Todo</td>
-<td>DLG-3, CQ-1 (in progress), CQ-16, DLG-2, GATE-10, PERF-1, PERF-2,
-PERF-3, PERF-9, PERF-10, PERF-11, PERF-12, PERF-13, PERF-14, SEC-6</td>
+<td>DLG-3, CQ-1 (in progress), CQ-16, DLG-2, GATE-10, PERF-3, PERF-9,
+PERF-10, PERF-11, PERF-12, PERF-13, PERF-14, SEC-6</td>
 </tr>
 <tr>
 <td>Tier 6 — Documentation</td>
@@ -7747,9 +7774,9 @@ SHELL-1</td>
 <tr>
 <td>Tier 4 — Structural health</td>
 <td>CQ-7, CQ-12, CQ-13, CQ-14, CQ-15, CQ-17, CQ-18, CQ-19, CQ-20, CQ-21,
-CQ-22, GATE-11, PERF-8, SEC-4, SEC-7, SEC-8, SEC-14, SEC-15, SEC-16,
-SEC-17, TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5, TYPE-6, TYPE-7,
-TYPE-8</td>
+CQ-22, GATE-11, PERF-1, PERF-2, PERF-8, SEC-4, SEC-7, SEC-8, SEC-14,
+SEC-15, SEC-16, SEC-17, TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5, TYPE-6,
+TYPE-7, TYPE-8</td>
 </tr>
 <tr>
 <td>EdSharp parity (delivered in 1.0)</td>

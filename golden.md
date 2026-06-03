@@ -452,8 +452,8 @@ This table is the execution source of truth. Update Status as work progresses. S
 | CQ-11 | Spell-check fallback and preload tests | Code quality | S | Todo | Tier fallback is now covered: `tests/unit/core/test_spellcheck_backend.py` pins each of the three tiers (enchant, bundled wordlist, built-in stub) by seeding the module caches and confirms `backend_info` and `is_known_word` honour the active tier, plus a personal-dictionary override. The background-preload half stays open until a spell-check preload API exists (tracked by PERF-1). |
 | CQ-13 | IO format coverage tests | Code quality | M | Done | Markdown, HTML, JSON, CSV, DOCX bridge, and PDF scoring all have fixture-based tests. JSON/CSV/DOCX-bridge/PDF-scoring live in `tests/unit/io/test_structured.py`; Markdown and HTML fixtures were added to `tests/unit/io/test_text.py`, confirming they open verbatim through the plain-text reader and round-trip through the writer. |
 | CQ-15 | Document cache locking and add concurrency tests | Code quality | S | Done | Thesaurus/spell-check/watch-folder locks are confirmed present; a concurrency test exercises them and a short note records the invariants. The note is [docs/engineering/thread-safety.md](docs/engineering/thread-safety.md) (shared with CQ-17), and `tests/unit/core/test_cache_concurrency.py` hammers the thesaurus index and spell-check wordlist from sixteen threads against a cold cache, proving each expensive load runs at most once and every thread agrees on the published snapshot and active backend tier. |
-| PERF-1 | Background preload of spell-check wordlist | Performance | S | Todo | First spell check does not stall; preload runs off the UI thread; perf test added. |
-| PERF-2 | Background preload of thesaurus | Performance | S | Todo | First lookup does not stall; perf test added. |
+| PERF-1 | Background preload of spell-check wordlist | Performance | S | Done | First spell check no longer stalls. `quill/core/spellcheck.py` gained an idempotent, thread-safe `preload()` (reuses the existing `_BACKEND_LOCK`; tries enchant, else warms the wordlist cache). New wx-free helper `quill/core/lexical_preload.py::start_background_preload()` spins a daemon thread (`quill-lexical-preload`) calling `spellcheck.preload()` off the UI thread; `MainFrame._run_deferred_startup_tasks` invokes it via a new `"lexical cache warm-up"` deferred step, so the cache is warm before the first check. Perf test `tests/performance/test_lexical_preload.py` asserts the cache warms and the first check runs <0.05s, preload is idempotent, and it is safe from concurrent threads. |
+| PERF-2 | Background preload of thesaurus | Performance | S | Done | First thesaurus lookup no longer stalls. `quill/core/thesaurus.py` gained an idempotent, thread-safe `preload()` (delegates to `_ensure_loaded()` under the existing `_LOAD_LOCK`). The same `quill/core/lexical_preload.py` daemon thread calls `thesaurus.preload()` after the spellcheck warm-up, off the UI thread. Perf test `tests/performance/test_lexical_preload.py` asserts the index warms and the first lookup runs <0.05s, preload is idempotent, and it is safe from concurrent threads. |
 | PERF-3 | Cache synthesized TTS audio | Performance | M | Todo | Identical sentences are not re-rendered; measurable latency reduction; test or benchmark added. |
 | PERF-9 | Performance budget suite | Performance | M | Todo | Startup, first spell check, first thesaurus, and Quick Nav prewarm have budgets enforced in CI. |
 | NAV-1 | Unified Quick Nav panel | Navigation | L | Done | Delivered as one unified surface with NAV-4 (`open_quick_nav`): a category list shows each element type with its live count, and the results list shows previews; fully keyboard and screen-reader operable. Built on the shared, fully unit-tested `quill/core/quick_nav.py` index. |
@@ -1430,14 +1430,15 @@ This table tracks how many of the backlog IDs each tier names are still open. It
 | --- | --- | --- | --- | --- | --- |
 | Tier 1 | Protect users and unlock the team | 23 | 23 | 0 | (complete) |
 | Tier 2 | Flagship experience | 60 | 57 | 3 | AI-19, SHELL-2, SHELL-3 |
-| Tier 4 | Structural health and performance | 31 | 16 | 15 | DLG-3, CQ-16, CQ-1, DLG-2, PERF-1..3, PERF-9..14, GATE-10, SEC-6 |
+| Tier 4 | Structural health and performance | 31 | 18 | 13 | DLG-3, CQ-16, CQ-1, DLG-2, PERF-3, PERF-9..14, GATE-10, SEC-6 |
 | Tier 6 | Documentation and learning surface | 34 | 3 | 31 | DOC-14..18, DOC-11, DOC-12, DOC-1..8, POD-1..5, TUT-1..7, CQ-11, CQ-14, CQ-23, CQ-24, LINUX-2 |
-| **1.0 subtotal** | Tiers 1, 2, 4, 6 (the QUILL 1.0 scope) | **148** | **99** | **49** | |
+| **1.0 subtotal** | Tiers 1, 2, 4, 6 (the QUILL 1.0 scope) | **148** | **101** | **47** | |
 | Tier 3 (2.0) | GLOW accessibility engine — deferred to QUILL 2.0 | 8 | 0 | 8 | GLOW-1..7, WATCH-8 |
 | Tier 5 (2.0) | BITS Whisperer transcription — deferred to QUILL 2.0 | 28 | 0 | 28 | BW-1..10, WATCH-9, NAV-10, AI-11, AI-12, AI-18, FEAT-12..18, LINUX-1, ECO-1, L10N-1, COLLAB-1 |
 | AX (2.0) | Accessibility Agents / axe-core engine — deferred to QUILL 2.0 | 6 | 0 | 6 | AX-A..F |
+| PKG (2.0) | Packaging / freezing evaluation — deferred to QUILL 2.0 | 1 | 0 | 1 | PKG-1 |
 | EDS | EdSharp feature parity — delivered in QUILL 1.0 | 21 | 21 | 0 | (complete) |
-| **2.0 subtotal** | GLOW + BITS Whisperer + axe-core (EdSharp parity now delivered) | **63** | **21** | **42** | |
+| **2.0 subtotal** | GLOW + BITS Whisperer + axe-core (EdSharp parity now delivered) | **64** | **21** | **43** | |
 | **Total** | All tiers (1.0 + 2.0) | **211** | **120** | **91** | |
 
 > Deferral note (2026-06-02): per maintainer direction, the GLOW accessibility
@@ -1465,7 +1466,7 @@ list.
 | Tier | Status | Feature IDs |
 | --- | --- | --- |
 | Tier 2 — Flagship | In progress | AI-19, SHELL-2, SHELL-3 |
-| Tier 4 — Structural health | In progress / Todo | DLG-3, CQ-1 (in progress), CQ-16, DLG-2, GATE-10, PERF-1, PERF-2, PERF-3, PERF-9, PERF-10, PERF-11, PERF-12, PERF-13, PERF-14, SEC-6 |
+| Tier 4 — Structural health | In progress / Todo | DLG-3, CQ-1 (in progress), CQ-16, DLG-2, GATE-10, PERF-3, PERF-9, PERF-10, PERF-11, PERF-12, PERF-13, PERF-14, SEC-6 |
 | Tier 6 — Documentation | Todo | DOC-1, DOC-2, DOC-3, DOC-4, DOC-5, DOC-6, DOC-7, DOC-8, DOC-11, DOC-12, DOC-14, DOC-15, DOC-16, DOC-17, DOC-18, POD-1, POD-2, POD-3, POD-4, POD-5, TUT-1, TUT-2, TUT-3, TUT-4, TUT-5, TUT-6, TUT-7, CQ-11, CQ-23, CQ-24, LINUX-2 |
 
 **Completed (QUILL 1.0 — Done)**
@@ -1474,7 +1475,7 @@ list.
 | --- | --- |
 | Tier 1 — Protect users | BUG-1, BUG-2, BUG-3, BUG-4, BUG-5, BUG-6, BUG-7, SEC-1, SEC-10, SEC-11, SEC-13, GATE-1, GATE-2, GATE-3, GATE-4, GATE-5, GATE-6, GATE-7, GATE-8, GATE-9, FLAG-1, FLAG-2 |
 | Tier 2 — Flagship | QK-1, QK-2, QK-3, QK-4, QK-5, QK-9, NAV-1, NAV-4, NAV-5, SEL-1, SEL-2, SEL-3, AI-1, AI-6, AI-7, AI-13, AI-14, AI-15, AI-16, AI-17, AI-21, AI-23, WATCH-1, WATCH-2, WATCH-3, WATCH-4, WATCH-5, WATCH-6, WATCH-7, SET-1, SET-4, SET-5, SET-6, SET-7, SHARE-1, SHARE-2, SHARE-3, FLAG-3, FLAG-4, MENU-3, MENU-1, MENU-5, DICT-1, CTX-1, DICT-2, FEAT-19, DLG-1, OCR-1, OCR-2, OCR-3, OCR-4, OCR-5, A11Y-4, SET-2, SET-3, AGENT-1, SHELL-1 |
-| Tier 4 — Structural health | CQ-7, CQ-12, CQ-13, CQ-14, CQ-15, CQ-17, CQ-18, CQ-19, CQ-20, CQ-21, CQ-22, GATE-11, PERF-8, SEC-4, SEC-7, SEC-8, SEC-14, SEC-15, SEC-16, SEC-17, TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5, TYPE-6, TYPE-7, TYPE-8 |
+| Tier 4 — Structural health | CQ-7, CQ-12, CQ-13, CQ-14, CQ-15, CQ-17, CQ-18, CQ-19, CQ-20, CQ-21, CQ-22, GATE-11, PERF-1, PERF-2, PERF-8, SEC-4, SEC-7, SEC-8, SEC-14, SEC-15, SEC-16, SEC-17, TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5, TYPE-6, TYPE-7, TYPE-8 |
 | EdSharp parity (delivered in 1.0) | EDS-1, EDS-2, EDS-3, EDS-4, EDS-5, EDS-6, EDS-7, EDS-8, EDS-9, EDS-10, EDS-11, EDS-12, EDS-13, EDS-14, EDS-15, EDS-16, EDS-17, EDS-18, EDS-19, EDS-20, EDS-21 |
 
 **Deferred to QUILL 2.0 (not in the 1.0 lists)**

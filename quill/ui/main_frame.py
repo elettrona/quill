@@ -224,6 +224,7 @@ from quill.core.lexical import (
     default_service,
     render_lookup,
 )
+from quill.core.lexical_preload import start_lexical_preload
 from quill.core.line_ops import (
     delete_line,
     duplicate_line,
@@ -1093,6 +1094,7 @@ class MainFrame(
             ("crash recovery", self._offer_crash_recovery),
             ("first-run onboarding", self._maybe_run_first_run_onboarding),
             ("watch-folder startup", self._maybe_start_watch_folder),
+            ("lexical cache warm-up", start_lexical_preload),
         ):
             try:
                 task()

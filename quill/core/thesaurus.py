@@ -159,6 +159,16 @@ def _clean_synonym(raw: str) -> str:
     return text
 
 
+def preload() -> None:
+    """Warm the thesaurus index so the first lookup does not stall.
+
+    Safe to call from a background thread at startup; ``_ensure_loaded`` is
+    idempotent and guarded by ``_LOAD_LOCK``, so repeat calls are cheap no-ops
+    once the index is in memory.
+    """
+    _ensure_loaded()
+
+
 def lookup(word: str) -> ThesaurusEntry | None:
     """Return the thesaurus entry for *word*, or ``None`` if not found."""
     if not word or not word.strip():
