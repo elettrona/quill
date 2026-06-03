@@ -455,6 +455,8 @@ from quill.core.yaml_structure import (
     extract_yaml_nodes,
     rename_yaml_node,
 )
+from quill.io.open_read import OFFICE_STREAM_SUFFIXES as _OFFICE_STREAM_SUFFIXES
+from quill.io.open_read import read_open_document
 from quill.io.pandoc import (
     PandocConversionError,
     PandocUnavailableError,
@@ -8363,60 +8365,58 @@ class MainFrame(
                 save_trusted_locations(self._trusted_locations)
 
         suffix = selected_path.suffix.lower()
+
+        def finish(result: object) -> None:
+            self._finish_open_document(
+                result,
+                selected_path=selected_path,
+                suffix=suffix,
+                existing_index=existing_index,
+                record_recent=record_recent,
+                line=line,
+                column=column,
+            )
+
+        if suffix in _OFFICE_STREAM_SUFFIXES:
+            # PERF-12: large office and PDF files are parsed on a worker thread
+            # so the UI thread never blocks while reading them. Any UI prompt
+            # (the Word open-mode chooser) is resolved here, before the worker
+            # starts, because workers must not touch wx.
+            word_mode = (
+                self._resolve_word_open_mode(selected_path) if suffix in {".doc", ".docx"} else None
+            )
+            self._run_background_task(
+                f"Opening {selected_path.name}",
+                lambda _progress: read_open_document(selected_path, suffix, word_mode=word_mode),
+                finish,
+            )
+            return
+
+        csv_mode = None
         if suffix in {".csv", ".tsv"}:
             csv_mode = self._resolve_csv_open_mode(selected_path)
-            if csv_mode == "grid":
-                loaded = read_text_document(selected_path)
-                loaded.source_metadata = {
-                    "source_kind": suffix.lstrip("."),
-                    "engine": "csv grid",
-                    "quality_score": 100,
-                    "csv_open_mode": "grid",
-                }
-            else:
-                loaded = read_text_document(selected_path)
-                loaded.source_metadata = {
-                    "source_kind": suffix.lstrip("."),
-                    "engine": "csv text",
-                    "quality_score": 100,
-                    "csv_open_mode": "text",
-                }
-        elif suffix in {".doc", ".docx"}:
-            word_mode = self._resolve_word_open_mode(selected_path)
-            from quill.io.structured import read_structured_document
+        finish(read_open_document(selected_path, suffix, csv_mode=csv_mode))
 
-            loaded = read_structured_document(selected_path)
-            loaded.source_metadata["word_open_mode"] = word_mode
-        elif suffix in {
-            ".json",
-            ".yaml",
-            ".yml",
-            ".toml",
-            ".xml",
-            ".ipynb",
-            ".sqlite",
-            ".db",
-            ".ppt",
-            ".xlsx",
-            ".xls",
-            ".pptx",
-            ".epub",
-            ".pages",
-            ".pdf",
-            ".odt",
-            ".rtf",
-        }:
-            from quill.io.structured import read_structured_document
+    def _finish_open_document(
+        self,
+        result: object,
+        *,
+        selected_path: Path,
+        suffix: str,
+        existing_index: int,
+        record_recent: bool,
+        line: int | None,
+        column: int | None,
+    ) -> None:
+        """Install a freshly read document into the UI (PERF-12 continuation).
 
-            loaded = read_structured_document(selected_path)
-        else:
-            loaded = read_text_document(selected_path)
-        if suffix == ".epub":
-            from quill.core.epub import load_epub_book
-
-            self._epub_book = load_epub_book(selected_path)
-        else:
-            self._epub_book = None
+        Always runs on the UI thread: directly for cheap reads, or marshalled
+        through ``wx.CallAfter`` by :meth:`_run_background_task` for the office
+        and PDF formats that were parsed on a worker thread.
+        """
+        assert isinstance(result, tuple)
+        loaded, epub_book = result
+        self._epub_book = epub_book if suffix == ".epub" else None
         if existing_index >= 0:
             tab = self._document_tabs[existing_index]
             tab.document = loaded

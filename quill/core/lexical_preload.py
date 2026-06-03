@@ -24,7 +24,7 @@ def _worker() -> None:
         pass
 
 
-def start_background_preload() -> threading.Thread:
+def start_lexical_preload() -> threading.Thread:
     """Warm the lexical caches off the calling thread.
 
     Returns the started daemon thread so callers (and tests) can join it.

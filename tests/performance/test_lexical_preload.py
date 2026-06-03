@@ -115,3 +115,21 @@ def test_preload_is_safe_from_a_background_thread() -> None:
     finally:
         _reset_spellcheck_cache()
         _reset_thesaurus_cache()
+
+
+def test_start_lexical_preload_is_importable_and_warms_caches() -> None:
+    # Regression guard: main_frame imports ``start_lexical_preload`` by this
+    # exact name, so a rename here would raise ImportError at app startup.
+    from quill.core.lexical_preload import start_lexical_preload
+
+    _reset_spellcheck_cache()
+    _reset_thesaurus_cache()
+    try:
+        thread = start_lexical_preload()
+        thread.join(timeout=30)
+        assert not thread.is_alive()
+        assert spellcheck._WORDLIST_CACHE is not None or spellcheck._ENCHANT_TRIED
+        assert thesaurus._INDEX is not None
+    finally:
+        _reset_spellcheck_cache()
+        _reset_thesaurus_cache()
