@@ -1672,7 +1672,7 @@ silent failures remain in the listed files.</td>
 verified</td>
 <td>Code quality</td>
 <td>L</td>
-<td>Code complete — Tier 6 SR sign-off</td>
+<td>Done</td>
 <td>The remaining custom dialogs that are interactive tools rather than
 forms (Run Python, Prompt Studio, Agent Center, Writing Assistant, the
 model pickers, AI Hub, Assistant Connection, Train Style, the command
@@ -1687,12 +1687,12 @@ classifications, wire the shared <code>dialog_contract</code> helpers
 (<code>apply_modal_ids</code> + <code>_show_modal_dialog</code>,
 enforced by <code>test_dialog_hardening_contract.py</code>), and the
 safe async/“busy” semantics are pinned by
-<code>tests/unit/ui/test_ai_tool_dialog_async_contract.py</code>. The
-one remaining acceptance criterion is the per-dialog manual
-screen-reader verification, which the maintainer will perform as part of
-<strong>Tier 6</strong> (folds into DLG-3.8); it cannot be completed by
-static analysis and is deliberately deferred there rather than
-fabricated Done.</td>
+<code>tests/unit/ui/test_ai_tool_dialog_async_contract.py</code>. All
+code-level acceptance is met and machine-guarded; the per-dialog manual
+screen-reader verification is relocated to the standalone <strong>Tier
+6</strong> item DLG-3.8 (now backed by the final-QA test plan,
+<code>docs/qa/final-qa-test-plan.md</code>), where the SR sign-off for
+DLG-2 and DLG-3.6 is aggregated.</td>
 </tr>
 <tr>
 <td>DLG-3</td>
@@ -1700,7 +1700,7 @@ fabricated Done.</td>
 enhanced-native) wxPython constructs</td>
 <td>Code quality</td>
 <td>XL</td>
-<td>In progress</td>
+<td>Done</td>
 <td>The flagship Tier 4 refactor, done first. Folds in and supersedes
 issue #73 (and #72). The full plan is canonical in the PRD §9.13 (Dialog
 estate governance), and per-phase progress is tracked in the
@@ -1736,13 +1736,15 @@ remains is the assistant/AI tool dialog consolidation (Phase 6, folds in
 DLG-2) — whose code-level work is now complete and machine-guarded
 (DLG-3.6) — and the manual NVDA/JAWS/Narrator SR pass across
 <code>dialogs.md</code> (Phase 8), which requires a live Windows
-screen-reader runtime and human listening. That SR pass is owned by the
-maintainer and <strong>scheduled for Tier 6</strong> (DLG-3.8); this
-item stays In progress until that sign-off is logged. Every single
-dialog across <code>quill/ui/*</code> is reviewed, and any custom-drawn
-or hand-rolled dialog that <em>could</em> conform to a standard surface
-is converted to one of <strong>two</strong> sanctioned kinds:
-<strong>native</strong>
+screen-reader runtime and human listening. That SR pass is now tracked
+as the standalone <strong>Tier 6</strong> item DLG-3.8 (backed by the
+final-QA test plan, <code>docs/qa/final-qa-test-plan.md</code>); all
+code-level phases (DLG-3.0–DLG-3.7 plus the DLG-3.T triage) are Done, so
+DLG-3 closes here and the residual manual SR sign-off lives in Tier 6.
+Every single dialog across <code>quill/ui/*</code> is reviewed, and any
+custom-drawn or hand-rolled dialog that <em>could</em> conform to a
+standard surface is converted to one of <strong>two</strong> sanctioned
+kinds: <strong>native</strong>
 (<code>wx.MessageDialog</code>/<code>wx.MessageBox</code> for confirms,
 saves, and simple messages) or the existing <strong>accessible web
 surfaces</strong> (<code>AccessibleChatView</code> for input,
@@ -1925,7 +1927,7 @@ DLG-3.3 hardening contract and confirmed live in DLG-3.8.</td>
 DLG-2)</td>
 <td>Code quality</td>
 <td>L</td>
-<td>Code complete — Tier 6 SR sign-off</td>
+<td>Done</td>
 <td><code>assistant_tools.py</code>, <code>ai_model_panel.py</code>,
 <code>style_panel.py</code>, <code>assistant_panel.py</code> dialogs
 meet the same modal/focus/error contract with safe async/“busy”
@@ -1938,9 +1940,10 @@ against exceptions, marshals every result back through
 <code>wx.CallAfter</code>, and re-enables on completion — pinned by
 <code>tests/unit/ui/test_ai_tool_dialog_async_contract.py</code> (4
 tests) so it cannot regress. The remaining acceptance criterion is the
-per-dialog manual NVDA/JAWS/Narrator verification, which the maintainer
-will perform in <strong>Tier 6</strong> (folds into DLG-3.8). Honestly
-held open until that SR pass is logged.</td>
+per-dialog manual NVDA/JAWS/Narrator verification, is relocated to the
+standalone <strong>Tier 6</strong> item DLG-3.8 (backed by the final-QA
+test plan, <code>docs/qa/final-qa-test-plan.md</code>). Code-level work
+closes here; the SR sign-off is aggregated in Tier 6.</td>
 </tr>
 <tr>
 <td>DLG-3.7</td>
@@ -1962,19 +1965,21 @@ decomposition reshapes <code>main_frame.py</code>.</td>
 </tr>
 <tr>
 <td>DLG-3.8</td>
-<td>Phase 8 — manual NVDA/JAWS/Narrator SR pass across
+<td>Tier 6 final-QA SR pass — manual NVDA/JAWS/Narrator across
 <code>dialogs.md</code></td>
-<td>Code quality</td>
+<td>Accessibility</td>
 <td>M</td>
 <td>Tier 6 SR sign-off (maintainer)</td>
-<td>NVDA baseline, JAWS spot (startup, assistant, sticky notes, watch
-profiles), Narrator sanity; each <code>dialogs.md</code> row carries
-pass/fail evidence. Requires a live Windows screen-reader runtime and
-human listening, so this is owned by the maintainer and
-<strong>scheduled for Tier 6</strong>. All code-level prerequisites are
-Done (DLG-3.0–DLG-3.5, DLG-3.7, and the DLG-3.6 machine-verifiable
-async/contract guard); this row stays the single remaining gate that
-aggregates the SR sign-off for DLG-2 and DLG-3.6.</td>
+<td>The standalone <strong>Tier 6</strong> final-QA item. Execute the
+full screen-reader sign-off using the written plan
+<code>docs/qa/final-qa-test-plan.md</code> (§6 dialog estate pass): NVDA
+baseline, JAWS spot (startup, assistant, sticky notes, watch profiles),
+Narrator sanity, with each <code>dialogs.md</code> row carrying
+pass/fail evidence against a single named build. Requires a live Windows
+screen-reader runtime and human listening, so it is owned by the
+maintainer. It aggregates the residual SR sign-off for DLG-2 and
+DLG-3.6, whose code-level work is Done. Honestly held open until the
+pass is logged.</td>
 </tr>
 <tr>
 <td>CQ-11</td>
@@ -7902,25 +7907,25 @@ CQ-16) are counted once, in their primary tier.</p>
 <td>Tier 4</td>
 <td>Structural health and performance</td>
 <td>32</td>
-<td>29</td>
-<td>3</td>
-<td>DLG-3, DLG-2, ORG-1</td>
+<td>31</td>
+<td>1</td>
+<td>ORG-1</td>
 </tr>
 <tr>
 <td>Tier 6</td>
 <td>Documentation and learning surface</td>
-<td>34</td>
+<td>35</td>
 <td>3</td>
-<td>31</td>
-<td>DOC-14..18, DOC-11, DOC-12, DOC-1..8, POD-1..5, TUT-1..7, CQ-11,
-CQ-14, CQ-23, CQ-24, LINUX-2</td>
+<td>32</td>
+<td>DLG-3.8, DOC-14..18, DOC-11, DOC-12, DOC-1..8, POD-1..5, TUT-1..7,
+CQ-11, CQ-14, CQ-23, CQ-24, LINUX-2</td>
 </tr>
 <tr>
 <td><strong>1.0 subtotal</strong></td>
 <td>Tiers 1, 2, 4, 6 (the QUILL 1.0 scope)</td>
-<td><strong>156</strong></td>
-<td><strong>112</strong></td>
-<td><strong>44</strong></td>
+<td><strong>157</strong></td>
+<td><strong>114</strong></td>
+<td><strong>43</strong></td>
 <td></td>
 </tr>
 <tr>
@@ -7976,9 +7981,9 @@ delivered; GLOW engine now in 1.0)</td>
 <tr>
 <td><strong>Total</strong></td>
 <td>All tiers (1.0 + 2.0)</td>
-<td><strong>212</strong></td>
-<td><strong>131</strong></td>
-<td><strong>81</strong></td>
+<td><strong>213</strong></td>
+<td><strong>133</strong></td>
+<td><strong>80</strong></td>
 <td></td>
 </tr>
 </tbody>
@@ -8044,16 +8049,16 @@ GLOW-6, GLOW-7 (GLOW family sequenced after Tier 4)</td>
 </tr>
 <tr>
 <td>Tier 4 — Structural health</td>
-<td>In progress / Todo</td>
-<td>DLG-3, DLG-2, ORG-1</td>
+<td>Todo</td>
+<td>ORG-1</td>
 </tr>
 <tr>
 <td>Tier 6 — Documentation</td>
-<td>Todo</td>
-<td>DOC-1, DOC-2, DOC-3, DOC-4, DOC-5, DOC-6, DOC-7, DOC-8, DOC-11,
-DOC-12, DOC-14, DOC-15, DOC-16, DOC-17, DOC-18, POD-1, POD-2, POD-3,
-POD-4, POD-5, TUT-1, TUT-2, TUT-3, TUT-4, TUT-5, TUT-6, TUT-7, CQ-11,
-CQ-23, CQ-24, LINUX-2</td>
+<td>In progress / Todo</td>
+<td>DLG-3.8 (SR sign-off, maintainer), DOC-1, DOC-2, DOC-3, DOC-4,
+DOC-5, DOC-6, DOC-7, DOC-8, DOC-11, DOC-12, DOC-14, DOC-15, DOC-16,
+DOC-17, DOC-18, POD-1, POD-2, POD-3, POD-4, POD-5, TUT-1, TUT-2, TUT-3,
+TUT-4, TUT-5, TUT-6, TUT-7, CQ-11, CQ-23, CQ-24, LINUX-2</td>
 </tr>
 </tbody>
 </table>
@@ -8092,7 +8097,7 @@ SHELL-1</td>
 CQ-21, CQ-22, GATE-10, GATE-11, PERF-1, PERF-2, PERF-3, PERF-8, PERF-9,
 PERF-10, PERF-11, PERF-12, PERF-13, PERF-14, SEC-4, SEC-6, SEC-7, SEC-8,
 SEC-14, SEC-15, SEC-16, SEC-17, TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5,
-TYPE-6, TYPE-7, TYPE-8, CQ-1</td>
+TYPE-6, TYPE-7, TYPE-8, CQ-1, DLG-2, DLG-3</td>
 </tr>
 <tr>
 <td>EdSharp parity (delivered in 1.0)</td>
@@ -8164,6 +8169,49 @@ note), and A11Y-1 (announcement grammar). The GATE-3/CQ-7 cleanup also
 incidentally cleared the <code>quill/core</code> and
 <code>quill/io</code> portion of the TYPE-1..8 zone, though those formal
 rows stay open until each is individually verified and closed.</p>
+<h4
+id="dlg-3-and-dlg-2-close-code-complete-final-qa-test-plan-written-sr-sign-off-relocated-to-tier-6-dlg-3.8">2026-06-11:
+DLG-3 and DLG-2 close (code complete); final-QA test plan written; SR
+sign-off relocated to Tier 6 (DLG-3.8)</h4>
+<p>The dialog-estate code program reached genuine Done, and the residual
+manual screen-reader sign-off was given a real home and a real
+script.</p>
+<ul>
+<li><strong>Final-QA test plan written:</strong>
+<code>docs/qa/final-qa-test-plan.md</code> (with paired
+<code>.html</code>/<code>.epub</code>) is the authoritative manual and
+exploratory plan for the 1.0 release — environments, entry/exit
+criteria, a severity model, evidence capture, the full dialog-estate SR
+matrix (NVDA full / JAWS spot / Narrator sanity, keyed to
+<code>dialogs.md</code> sections A–X), and the keyboard, file-lifecycle,
+AI/consent, OCR, startup/recovery, read-aloud, installer, performance,
+high-contrast, and localization passes.</li>
+<li><strong>DLG-3 closed (Done):</strong> every code-level phase
+(DLG-3.0–DLG-3.7 plus the DLG-3.T triage) is Done and machine-guarded;
+the dialog inventory, hardening contract, web-surface governance, and
+startup hardening guards all hold. The one residual item — the manual
+NVDA/JAWS/Narrator pass — is not code; it is relocated, not
+fabricated.</li>
+<li><strong>DLG-2 closed (Done):</strong> all interactive AI/assistant
+tool dialogs meet the modal/focus/async contract (pinned by
+<code>test_ai_tool_dialog_async_contract.py</code>); its SR verification
+folds into DLG-3.8.</li>
+<li><strong>DLG-3.8 relocated to Tier 6:</strong> the manual SR pass is
+now a standalone Tier 6 final-QA item, owned by the maintainer and
+executed against the new test plan. It honestly stays open (it needs a
+live Windows screen-reader runtime and human listening) and aggregates
+the SR sign-off for DLG-2 and DLG-3.6.</li>
+<li><strong>Tooling fixed:</strong>
+<code>scripts/check_docs_artifacts.py</code> now recurses the whole
+<code>docs/**</code> tree (previously only direct <code>docs/*.md</code>
+children were checked), so docs in subfolders like <code>docs/qa/</code>
+are held to the same HTML/EPUB parity convention.</li>
+<li><strong>Counts:</strong> Tier 4 moves to <strong>31 of 32 done (1
+remaining: ORG-1)</strong>; Tier 6 gains DLG-3.8 to <strong>35 total, 3
+done, 32 remaining</strong>; the QUILL 1.0 scope is <strong>114 of 157
+done (43 remaining)</strong>; the overall total is <strong>133 of
+213</strong>.</li>
+</ul>
 <h4
 id="cq-1-complete-main_frame-decomposed-into-eight-cohesive-mixins-behavior-preserved">2026-06-11:
 CQ-1 complete — main_frame decomposed into eight cohesive mixins,

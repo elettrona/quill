@@ -28,11 +28,21 @@ def _git_changed_paths(*, base_ref: str | None, head_ref: str | None) -> set[str
     return paths
 
 
+def _is_docs_markdown(source_path: Path) -> bool:
+    """True for any Markdown file anywhere under the top-level ``docs/`` tree.
+
+    The check is recursive: subdirectories such as ``docs/qa`` and
+    ``docs/engineering`` are covered, not just direct ``docs/*.md`` children.
+    """
+    parts = source_path.parts
+    return bool(parts) and parts[0] == "docs" and source_path.suffix.lower() == ".md"
+
+
 def _validate_docs_artifacts(changed_paths: set[str]) -> list[str]:
     errors: list[str] = []
     for source in sorted(changed_paths):
         source_path = Path(source)
-        if source_path.parent.as_posix() != "docs" or source_path.suffix.lower() != ".md":
+        if not _is_docs_markdown(source_path):
             continue
         if not source_path.exists():
             # Source markdown was removed or moved; matching artifact files are
@@ -51,7 +61,7 @@ def _validate_docs_artifacts(changed_paths: set[str]) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Fail if docs/*.md changed without matching HTML/EPUB updates."
+        description="Fail if any docs/**/*.md changed without matching HTML/EPUB updates."
     )
     parser.add_argument("--base-ref", help="Base git ref for diff comparison.")
     parser.add_argument("--head-ref", help="Head git ref for diff comparison.")
