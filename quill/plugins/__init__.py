@@ -1,5 +1,10 @@
 """Plugin interfaces and loading surfaces.
 
+Product naming: QUILL plugins are branded **Quillins**. When the plugin
+experience is built out (user-facing labels, docs, menus, marketplace copy),
+use "Quillin" / "Quillins" as the product term for a plugin; "plugin" remains
+the neutral technical term in code and APIs.
+
 SEC-8: third-party plugin loading is an *experimental* capability that is
 disabled in every QUILL 1.0 build. The loader below is the single entry point
 for discovering plugins, and it refuses to load anything unless the
