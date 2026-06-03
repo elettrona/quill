@@ -5877,7 +5877,58 @@ regress. This supersedes the batch ambition of DLG-2 (its individual
 AI-tool conversions fold in) and is sequenced ahead of the monolith
 decomposition so the dialog estate is sound before CQ-1/CQ-16 split it.
 Value: dialogs that are correct by construction. Outcome: the single
-highest-risk surface in the UI becomes durable and verifiable.</li>
+highest-risk surface in the UI becomes durable and verifiable. DLG-3
+also folds in and supersedes issues #73 and #72, whose concrete
+inventory it inherits:
+<ul>
+<li><strong>Two sanctioned dialog kinds, nothing bespoke.</strong>
+<strong>Native</strong>
+(<code>wx.MessageDialog</code>/<code>wx.MessageBox</code>) for confirms,
+saves, and simple messages; the existing <strong>accessible web
+surfaces</strong> for anything that displays rich content or captures
+input — reuse <code>AccessibleChatView</code> (the Ask Quill chat input
+pattern), <code>AccessibleHtmlDialog</code> for display, and
+<code>MarkdownPreviewDialog</code> for previews. No new component is
+built.</li>
+<li><strong>Keep as-is (already correct):</strong>
+<code>AskQuillChatDialog</code> (web chat),
+<code>MarkdownPreviewDialog</code> (web), the unsaved-changes prompt
+(native <code>wx.MessageDialog</code>), and the delete-note confirm
+(native).</li>
+<li><strong>Convert to web (display or input):</strong>
+<code>StickyNoteEditorDialog</code> and
+<code>StickyNotesVaultDialog</code>
+(<code>quill/ui/sticky_notes.py</code>); <code>RunPythonDialog</code>,
+<code>PromptStudioDialog</code>, <code>AgentCenterDialog</code>,
+<code>WritingAssistantDialog</code>,
+<code>SearchableModelPickerDialog</code>, <code>AIHubDialog</code>, and
+<code>AssistantConnectionDialog</code>
+(<code>quill/ui/assistant_tools.py</code>); <code>AIModelDialog</code>
+(<code>quill/ui/ai_model_panel.py</code>); <code>TrainStyleDialog</code>
+(<code>quill/ui/style_panel.py</code>); and the onboarding/welcome flow,
+which must render in a web surface instead of dumping raw HTML into a
+<code>Document</code> (this fixes #72).</li>
+<li><strong>Convert to native <code>wx.MessageDialog</code>:</strong>
+the trust-consent prompt, the untrusted-location prompt, and the
+assorted confirm prompts in <code>quill/ui/main_frame.py</code>.</li>
+<li><strong>Decide case-by-case:</strong>
+<code>CommandPaletteDialog</code> (search + list picker) — likely web
+for consistent screen-reader behavior.</li>
+<li><strong>Bugs this closes:</strong> the first-run onboarding
+<strong>startup crash</strong> on Windows and macOS with a screen reader
+active (it lives in a hand-rolled onboarding dialog in the
+<code>show_startup_wizard_page</code> →
+profile/assistant/speech/watch-folder sequence); the sticky-note editor
+landing focus on <strong>Save</strong> instead of the text field; and
+#72’s raw-HTML welcome document.</li>
+<li><strong>Acceptance:</strong> no hand-rolled <code>wx.Dialog</code>
+subclasses remain for confirm/message flows (those use
+<code>wx.MessageDialog</code>/<code>MessageBox</code>); input/display
+dialogs use the existing accessible web surfaces (not a new component);
+first-run onboarding completes without crashing on Windows and macOS
+with a screen reader on; welcome/onboarding content renders rather than
+appearing as raw HTML.</li>
+</ul></li>
 <li>Decompose the UI monolith behind characterization tests: CQ-16 then
 CQ-1, with GATE-6 and GATE-11. Value: every future change gets faster
 and safer. Outcome: the 18,748-line risk becomes maintainable.
