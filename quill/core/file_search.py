@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from bisect import bisect_right
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -254,9 +255,13 @@ def _group_matches_by_line(
     text: str, matches: list[tuple[int, int]]
 ) -> tuple[FileSearchLineMatch, ...]:
     spans = _line_spans(text)
+    # PERF-14: precompute line-start offsets once and resolve each match with a
+    # binary search instead of a per-match linear scan, so grouping M matches over
+    # L lines stays O(M log L) rather than O(M * L) on large files.
+    line_starts = [start for start, _end, _line in spans]
     grouped: dict[int, list[tuple[int, int]]] = {}
     for start, end in matches:
-        line_number = _line_number_for_position(spans, start)
+        line_number = _line_number_for_position(line_starts, start)
         grouped.setdefault(line_number, []).append((start, end))
     line_matches: list[FileSearchLineMatch] = []
     for line_number in sorted(grouped):
@@ -283,11 +288,11 @@ def _line_spans(text: str) -> list[tuple[int, int, str]]:
     return spans
 
 
-def _line_number_for_position(spans: list[tuple[int, int, str]], position: int) -> int:
-    for index, (start, end, _line) in enumerate(spans, start=1):
-        if start <= position < end:
-            return index
-    return len(spans)
+def _line_number_for_position(line_starts: list[int], position: int) -> int:
+    if not line_starts:
+        return 1
+    index = bisect_right(line_starts, position)
+    return max(1, min(index, len(line_starts)))
 
 
 def _detect_line_ending(text: str) -> str:

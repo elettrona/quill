@@ -50,3 +50,24 @@ def test_replace_preview_includes_changed_files(tmp_path: Path) -> None:
 
     assert "Replace Across Files Preview" in preview
     assert "a.txt" in preview
+
+
+def test_search_groups_many_matches_to_correct_lines_without_quadratic_scan(
+    tmp_path: Path,
+) -> None:
+    # PERF-14: a file with many lines and one match per line must map every match
+    # to the right line number via the binary-search lookup, not a per-match scan.
+    root = tmp_path / "big"
+    root.mkdir()
+    line_count = 5000
+    content = "".join(f"needle line {index}\n" for index in range(line_count))
+    (root / "big.txt").write_text(content, encoding="utf-8")
+
+    report = search_files(root, "*.txt", "needle", SearchOptions())
+
+    assert report.total_matches == line_count
+    entry = report.entries[0]
+    assert len(entry.lines) == line_count
+    assert entry.lines[0].line_number == 1
+    assert entry.lines[-1].line_number == line_count
+    assert all(line.match_count == 1 for line in entry.lines)

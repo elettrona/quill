@@ -786,7 +786,7 @@ These extend the section 14 tracker. Priorities follow the same scheme. The conf
 | PERF-11 | Cap or stream spreadsheet reads | Performance | S | Done | Large sheets do not exhaust memory; a row cap or streaming applies. openpyxl reads run in `read_only=True` streaming mode and `quill/io/structured.py` stops at `_SPREADSHEET_MAX_ROWS` (50) and `_SPREADSHEET_MAX_COLS` (20) so an extract never materializes an unbounded sheet; covered by row-cap and column-cap tests in `tests/unit/io/test_structured.py`. |
 | PERF-12 | Stream DOCX and PPTX off the UI thread | Performance | M | Done | Large office files do not block the UI thread. `MainFrame.open_file` reads every heavy office/PDF format (`_OFFICE_STREAM_SUFFIXES`) through `quill/io/open_read.read_open_document` on a worker thread via `_run_background_task`, resolving the Word open-mode prompt on the UI thread first and installing the result in `_finish_open_document` via `wx.CallAfter`; covered by `tests/unit/io/test_open_read.py` and source-contract tests in `tests/unit/ui/test_main_frame_open_threading.py`. |
 | PERF-13 | Page-stream large PDFs | Performance | S | Done | Very large PDFs extract without materializing all pages at once. `quill/io/pdf.py` iterates `pdf.pages`/`reader.pages` lazily (no `list(pdf.pages)`), flushes pdfplumber's per-page cache as it goes, and stops at `_PDF_MAX_PAGES` (200) so a huge PDF cannot pull text from every page at once while still reporting the full `page_count`; covered by `tests/unit/io/test_pdf.py::test_pypdf_extraction_caps_pages_so_a_huge_pdf_cannot_materialize_every_page` (100k-page stub extracts only the cap). |
-| PERF-14 | Chunk file search over large corpora | Performance | S | Todo | Search streams large inputs without quadratic blowups. |
+| PERF-14 | Chunk file search over large corpora | Performance | S | Done | Search streams large inputs without quadratic blowups. `quill/core/file_search.py` now groups matches to lines with a precomputed line-start table and a `bisect_right` lookup, so mapping M matches over L lines is O(M log L) instead of the previous O(M * L) per-match linear scan; covered by `tests/unit/core/test_file_search.py::test_search_groups_many_matches_to_correct_lines_without_quadratic_scan` (5000 matches map to correct lines). |
 | IO-1 | Add outline support for structured formats | IO | M | Todo | DOCX, PPTX, and XLSX provide an outline, or the contract is amended and documented. |
 | DOC-7 | Configuration schema reference | Docs | M | Todo | Settings, keymap, and data schemas are documented for pre-configuration. |
 | DOC-8 | Troubleshooting guide | Docs | S | Todo | Common issues (key conflicts, PDF extraction, AI connection, autosave) are documented with fixes. |
@@ -1430,16 +1430,16 @@ This table tracks how many of the backlog IDs each tier names are still open. It
 | --- | --- | --- | --- | --- | --- |
 | Tier 1 | Protect users and unlock the team | 23 | 23 | 0 | (complete) |
 | Tier 2 | Flagship experience | 60 | 57 | 3 | AI-19, SHELL-2, SHELL-3 |
-| Tier 4 | Structural health and performance | 31 | 24 | 7 | DLG-3, CQ-16, CQ-1, DLG-2, PERF-14, GATE-10, SEC-6 |
+| Tier 4 | Structural health and performance | 31 | 25 | 6 | DLG-3, CQ-16, CQ-1, DLG-2, GATE-10, SEC-6 |
 | Tier 6 | Documentation and learning surface | 34 | 3 | 31 | DOC-14..18, DOC-11, DOC-12, DOC-1..8, POD-1..5, TUT-1..7, CQ-11, CQ-14, CQ-23, CQ-24, LINUX-2 |
-| **1.0 subtotal** | Tiers 1, 2, 4, 6 (the QUILL 1.0 scope) | **148** | **107** | **41** | |
+| **1.0 subtotal** | Tiers 1, 2, 4, 6 (the QUILL 1.0 scope) | **148** | **108** | **40** | |
 | Tier 3 (2.0) | GLOW accessibility engine — deferred to QUILL 2.0 | 8 | 0 | 8 | GLOW-1..7, WATCH-8 |
 | Tier 5 (2.0) | BITS Whisperer transcription — deferred to QUILL 2.0 | 28 | 0 | 28 | BW-1..10, WATCH-9, NAV-10, AI-11, AI-12, AI-18, FEAT-12..18, LINUX-1, ECO-1, L10N-1, COLLAB-1 |
 | AX (2.0) | Accessibility Agents / axe-core engine — deferred to QUILL 2.0 | 6 | 0 | 6 | AX-A..F |
 | PKG (2.0) | Packaging / freezing evaluation — deferred to QUILL 2.0 | 1 | 0 | 1 | PKG-1 |
 | EDS | EdSharp feature parity — delivered in QUILL 1.0 | 21 | 21 | 0 | (complete) |
 | **2.0 subtotal** | GLOW + BITS Whisperer + axe-core (EdSharp parity now delivered) | **64** | **21** | **43** | |
-| **Total** | All tiers (1.0 + 2.0) | **211** | **126** | **85** | |
+| **Total** | All tiers (1.0 + 2.0) | **211** | **127** | **84** | |
 
 > Deferral note (2026-06-02): per maintainer direction, the GLOW accessibility
 > engine (Tier 3, including the WATCH-8 GLOW watch action), the BITS Whisperer
@@ -1466,7 +1466,7 @@ list.
 | Tier | Status | Feature IDs |
 | --- | --- | --- |
 | Tier 2 — Flagship | In progress | AI-19, SHELL-2, SHELL-3 |
-| Tier 4 — Structural health | In progress / Todo | DLG-3, CQ-1 (in progress), CQ-16, DLG-2, GATE-10, PERF-14, SEC-6 |
+| Tier 4 — Structural health | In progress / Todo | DLG-3, CQ-1 (in progress), CQ-16, DLG-2, GATE-10, SEC-6 |
 | Tier 6 — Documentation | Todo | DOC-1, DOC-2, DOC-3, DOC-4, DOC-5, DOC-6, DOC-7, DOC-8, DOC-11, DOC-12, DOC-14, DOC-15, DOC-16, DOC-17, DOC-18, POD-1, POD-2, POD-3, POD-4, POD-5, TUT-1, TUT-2, TUT-3, TUT-4, TUT-5, TUT-6, TUT-7, CQ-11, CQ-23, CQ-24, LINUX-2 |
 
 **Completed (QUILL 1.0 — Done)**
@@ -1475,7 +1475,7 @@ list.
 | --- | --- |
 | Tier 1 — Protect users | BUG-1, BUG-2, BUG-3, BUG-4, BUG-5, BUG-6, BUG-7, SEC-1, SEC-10, SEC-11, SEC-13, GATE-1, GATE-2, GATE-3, GATE-4, GATE-5, GATE-6, GATE-7, GATE-8, GATE-9, FLAG-1, FLAG-2 |
 | Tier 2 — Flagship | QK-1, QK-2, QK-3, QK-4, QK-5, QK-9, NAV-1, NAV-4, NAV-5, SEL-1, SEL-2, SEL-3, AI-1, AI-6, AI-7, AI-13, AI-14, AI-15, AI-16, AI-17, AI-21, AI-23, WATCH-1, WATCH-2, WATCH-3, WATCH-4, WATCH-5, WATCH-6, WATCH-7, SET-1, SET-4, SET-5, SET-6, SET-7, SHARE-1, SHARE-2, SHARE-3, FLAG-3, FLAG-4, MENU-3, MENU-1, MENU-5, DICT-1, CTX-1, DICT-2, FEAT-19, DLG-1, OCR-1, OCR-2, OCR-3, OCR-4, OCR-5, A11Y-4, SET-2, SET-3, AGENT-1, SHELL-1 |
-| Tier 4 — Structural health | CQ-7, CQ-12, CQ-13, CQ-14, CQ-15, CQ-17, CQ-18, CQ-19, CQ-20, CQ-21, CQ-22, GATE-11, PERF-1, PERF-2, PERF-3, PERF-8, PERF-9, PERF-10, PERF-11, PERF-12, PERF-13, SEC-4, SEC-7, SEC-8, SEC-14, SEC-15, SEC-16, SEC-17, TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5, TYPE-6, TYPE-7, TYPE-8 |
+| Tier 4 — Structural health | CQ-7, CQ-12, CQ-13, CQ-14, CQ-15, CQ-17, CQ-18, CQ-19, CQ-20, CQ-21, CQ-22, GATE-11, PERF-1, PERF-2, PERF-3, PERF-8, PERF-9, PERF-10, PERF-11, PERF-12, PERF-13, PERF-14, SEC-4, SEC-7, SEC-8, SEC-14, SEC-15, SEC-16, SEC-17, TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5, TYPE-6, TYPE-7, TYPE-8 |
 | EdSharp parity (delivered in 1.0) | EDS-1, EDS-2, EDS-3, EDS-4, EDS-5, EDS-6, EDS-7, EDS-8, EDS-9, EDS-10, EDS-11, EDS-12, EDS-13, EDS-14, EDS-15, EDS-16, EDS-17, EDS-18, EDS-19, EDS-20, EDS-21 |
 
 **Deferred to QUILL 2.0 (not in the 1.0 lists)**
