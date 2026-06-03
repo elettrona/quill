@@ -1870,9 +1870,24 @@ is safe from concurrent threads.</td>
 <td>Cache synthesized TTS audio</td>
 <td>Performance</td>
 <td>M</td>
-<td>Todo</td>
-<td>Identical sentences are not re-rendered; measurable latency
-reduction; test or benchmark added.</td>
+<td>Done</td>
+<td>Identical sentences are no longer re-rendered. New wx-free module
+<code>quill/core/tts_cache.py</code> provides a bounded, thread-safe,
+on-disk LRU cache keyed by a stable
+<code>signature(engine_seed, sentence)</code> (entry-count + byte-budget
+eviction, durable across runs).
+<code>cached_sentence_generator(seed, gen)</code> wraps an engine’s
+per-sentence renderer so a cache hit copies the stored WAV instead of
+re-synthesizing. <code>read_aloud.py</code> sets a per-engine
+<code>_cache_seed</code> (piper/kokoro/melotts/chatterbox/openvoice) and
+<code>_run_wav_sentences</code> wraps its generator once, leaving the
+playback loop unchanged. Unit tests
+<code>tests/unit/core/test_tts_cache.py</code> (signature stability,
+LRU/byte eviction, disk reindex, render-once-then-reuse, per-config
+separation, thread safety) and benchmark
+<code>tests/performance/test_tts_cache_benchmark.py</code> prove a
+repeated sentence is served from cache far faster than re-rendering and
+a 100-line document of 5 unique sentences synthesizes only 5 times.</td>
 </tr>
 <tr>
 <td>PERF-9</td>
@@ -4614,9 +4629,18 @@ the strict zone.</td>
 <td>Stream and cache Read Aloud audio</td>
 <td>Performance</td>
 <td>M</td>
-<td>Todo</td>
-<td>Long-document synthesis does not spike memory; identical sentences
-are cached.</td>
+<td>Done</td>
+<td>Long-document synthesis stays flat in memory and reuses identical
+sentences. Read Aloud already renders one sentence at a time to a
+temporary WAV and deletes it (<code>_run_wav_sentences</code>), so audio
+is never materialized for the whole document; the new
+<code>quill/core/tts_cache.py</code> LRU (PERF-3) adds bounded,
+disk-backed caching of identical sentences with both an entry-count and
+a byte budget so the cache itself cannot spike memory or disk. Benchmark
+<code>tests/performance/test_tts_cache_benchmark.py::test_long_document_only_renders_unique_sentences</code>
+confirms a 100-sentence document built from 5 unique lines synthesizes
+only 5 times, and <code>test_byte_budget_bounds_total_size</code>
+confirms the bound holds.</td>
 </tr>
 <tr>
 <td>PERF-11</td>
@@ -7604,9 +7628,9 @@ CQ-16) are counted once, in their primary tier.</p>
 <td>Tier 4</td>
 <td>Structural health and performance</td>
 <td>31</td>
-<td>18</td>
-<td>13</td>
-<td>DLG-3, CQ-16, CQ-1, DLG-2, PERF-3, PERF-9..14, GATE-10, SEC-6</td>
+<td>20</td>
+<td>11</td>
+<td>DLG-3, CQ-16, CQ-1, DLG-2, PERF-9, PERF-11..14, GATE-10, SEC-6</td>
 </tr>
 <tr>
 <td>Tier 6</td>
@@ -7621,8 +7645,8 @@ CQ-14, CQ-23, CQ-24, LINUX-2</td>
 <td><strong>1.0 subtotal</strong></td>
 <td>Tiers 1, 2, 4, 6 (the QUILL 1.0 scope)</td>
 <td><strong>148</strong></td>
-<td><strong>101</strong></td>
-<td><strong>47</strong></td>
+<td><strong>103</strong></td>
+<td><strong>45</strong></td>
 <td></td>
 </tr>
 <tr>
@@ -7678,8 +7702,8 @@ LINUX-1, ECO-1, L10N-1, COLLAB-1</td>
 <td><strong>Total</strong></td>
 <td>All tiers (1.0 + 2.0)</td>
 <td><strong>211</strong></td>
-<td><strong>120</strong></td>
-<td><strong>91</strong></td>
+<td><strong>122</strong></td>
+<td><strong>89</strong></td>
 <td></td>
 </tr>
 </tbody>
@@ -7729,8 +7753,8 @@ the third table and are not part of either 1.0 list.</p>
 <tr>
 <td>Tier 4 — Structural health</td>
 <td>In progress / Todo</td>
-<td>DLG-3, CQ-1 (in progress), CQ-16, DLG-2, GATE-10, PERF-3, PERF-9,
-PERF-10, PERF-11, PERF-12, PERF-13, PERF-14, SEC-6</td>
+<td>DLG-3, CQ-1 (in progress), CQ-16, DLG-2, GATE-10, PERF-9, PERF-11,
+PERF-12, PERF-13, PERF-14, SEC-6</td>
 </tr>
 <tr>
 <td>Tier 6 — Documentation</td>
@@ -7774,9 +7798,9 @@ SHELL-1</td>
 <tr>
 <td>Tier 4 — Structural health</td>
 <td>CQ-7, CQ-12, CQ-13, CQ-14, CQ-15, CQ-17, CQ-18, CQ-19, CQ-20, CQ-21,
-CQ-22, GATE-11, PERF-1, PERF-2, PERF-8, SEC-4, SEC-7, SEC-8, SEC-14,
-SEC-15, SEC-16, SEC-17, TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5, TYPE-6,
-TYPE-7, TYPE-8</td>
+CQ-22, GATE-11, PERF-1, PERF-2, PERF-3, PERF-8, PERF-10, SEC-4, SEC-7,
+SEC-8, SEC-14, SEC-15, SEC-16, SEC-17, TYPE-1, TYPE-2, TYPE-3, TYPE-4,
+TYPE-5, TYPE-6, TYPE-7, TYPE-8</td>
 </tr>
 <tr>
 <td>EdSharp parity (delivered in 1.0)</td>

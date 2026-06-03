@@ -14,6 +14,7 @@ from pathlib import Path
 
 from quill.core.punctuation_speech import normalize_punctuation_level, verbalize_punctuation
 from quill.core.sentence_split import SentenceSpan, sentence_spans
+from quill.core.tts_cache import cached_sentence_generator
 
 try:
     import pyttsx3  # type: ignore[import-untyped]
@@ -620,6 +621,7 @@ class ReadAloudController:
         self._lock = threading.Lock()
         self._sentence_pause_ms = 0
         self._punctuation_level = "some"
+        self._cache_seed: tuple[object, ...] = ()
 
     @property
     def state(self) -> str:
@@ -1017,6 +1019,7 @@ class ReadAloudController:
         generate_sentence_wav: Callable[[str, Path], None],
     ) -> None:
         """Generate per-sentence WAV then play via winsound."""
+        generate_sentence_wav = cached_sentence_generator(self._cache_seed, generate_sentence_wav)
         first = True
         for span in spans:
             if self._stop_event.is_set() or self._pause_event.is_set():
@@ -1082,6 +1085,7 @@ class ReadAloudController:
         def gen(sentence: str, out: Path) -> None:
             synthesize_with_piper(sentence, out, executable_path=executable, model_path=model)
 
+        self._cache_seed = ("piper", str(executable), str(model))
         self._run_wav_sentences(spans, text, on_progress=on_progress, generate_sentence_wav=gen)
 
     def _run_kokoro_live(
@@ -1096,6 +1100,7 @@ class ReadAloudController:
         def gen(sentence: str, out: Path) -> None:
             synthesize_with_kokoro(sentence, out, voice=voice, speed=speed)
 
+        self._cache_seed = ("kokoro", voice, speed)
         self._run_wav_sentences(spans, text, on_progress=on_progress, generate_sentence_wav=gen)
 
     def _run_espeak_live(
@@ -1162,6 +1167,7 @@ class ReadAloudController:
                 rate=rate,
             )
 
+        self._cache_seed = ("melotts", str(executable), voice, rate)
         self._run_wav_sentences(spans, text, on_progress=on_progress, generate_sentence_wav=gen)
 
     def _run_chatterbox_live(
@@ -1183,6 +1189,7 @@ class ReadAloudController:
                 rate=rate,
             )
 
+        self._cache_seed = ("chatterbox", str(executable), voice, rate)
         self._run_wav_sentences(spans, text, on_progress=on_progress, generate_sentence_wav=gen)
 
     def _run_openvoice_live(
@@ -1204,6 +1211,7 @@ class ReadAloudController:
                 rate=rate,
             )
 
+        self._cache_seed = ("openvoice", str(executable), voice, rate)
         self._run_wav_sentences(spans, text, on_progress=on_progress, generate_sentence_wav=gen)
 
     def pause(self) -> None:
