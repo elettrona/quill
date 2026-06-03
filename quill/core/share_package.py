@@ -112,9 +112,7 @@ _SPECS_BY_ID: dict[str, SectionSpec] = {spec.id: spec for spec in SECTION_SPECS}
 SHAREABLE_SECTION_IDS: frozenset[str] = frozenset(
     spec.id for spec in SECTION_SPECS if not spec.private
 )
-PRIVATE_SECTION_IDS: frozenset[str] = frozenset(
-    spec.id for spec in SECTION_SPECS if spec.private
-)
+PRIVATE_SECTION_IDS: frozenset[str] = frozenset(spec.id for spec in SECTION_SPECS if spec.private)
 
 #: Per-device path / device-state fields inside the otherwise-shareable
 #: ``settings`` section. These are scrubbed out of a profile package because

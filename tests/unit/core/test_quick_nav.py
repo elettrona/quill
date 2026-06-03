@@ -126,4 +126,3 @@ def test_include_nav_items_drops_lists_and_list_items_when_off() -> None:
     # Tables and bookmarks have no toggle and are always kept.
     assert "Table" in kinds
     assert "Bookmark" in kinds
-

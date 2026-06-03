@@ -8,9 +8,10 @@
     "quill/core/read_aloud.py": 1240,
     "quill/core/assistant_ai.py": 1230,
     "quill/core/features.py": 1113,
-    "quill/core/settings_registry.py": 933,
+    "quill/core/settings_registry.py": 158,
+    "quill/core/settings_specs.py": 865,
     "quill/core/watch_actions.py": 643,
     "quill/io/structured.py": 643,
-    "quill/core/settings.py": 617
+    "quill/core/settings.py": 570
   }
 }

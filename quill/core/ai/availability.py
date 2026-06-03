@@ -16,9 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 # Master-switch wording, shared by every entry point that guards on the toggle.
-AI_DISABLED_MESSAGE = (
-    "AI is turned off. Enable 'Use Artificial Intelligence' in the AI menu."
-)
+AI_DISABLED_MESSAGE = "AI is turned off. Enable 'Use Artificial Intelligence' in the AI menu."
 
 # Phrases a backend uses in its unavailable reason when the real problem is a
 # missing or unusable API key — detected so we can flag it for a louder cue.

@@ -78,4 +78,3 @@ def test_insert_link_is_not_duplicated_in_edit_menu() -> None:
         source,
     )
     assert insert_link_appends == ["insert_menu"], insert_link_appends
-
