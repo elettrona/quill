@@ -1800,6 +1800,85 @@ registration, the disabled-feature skip path, a happy-path conversion
 with an injected handler, and the no-engine failure path.</td>
 </tr>
 <tr>
+<td>SHELL-1</td>
+<td>“Send to Quill” shell verbs — file-manager context menu, in-app, and
+CLI</td>
+<td>Integration</td>
+<td>L</td>
+<td>Done</td>
+<td>A wx-free, platform-free verb registry
+(<code>quill/core/shell_verbs.py</code>) is the single source of truth
+for the “Send to Quill” actions (Open, OCR, OCR structured Markdown,
+Read aloud), each with its file-extension set, settings key, feature
+gate, and AI/consent flags, plus
+<code>default_shell_verbs</code>/<code>enabled_verbs</code>/<code>verb_for_action</code>/<code>verbs_for_extension</code>
+helpers. Verbs flow end to end on Windows: the single-instance IPC queue
+carries an <code>action</code> field (<code>OpenRequest.action</code>,
+<code>enqueue_open_request(..., action=...)</code>,
+<code>drain_open_requests</code> parsing) and a new
+<code>--action</code> CLI flag (validated against the registry) so
+<code>quill --action ocr &lt;path&gt;</code> reaches the running
+instance; a new <strong>Integration and Context Menu</strong> settings
+group (<code>shell_integration_enabled</code>, per-verb toggles,
+<code>shell_file_types</code>, validated in
+<code>Settings.from_dict</code> and surfaced in
+<code>settings_registry.py</code>) drives which verbs appear; the
+Windows shell-integration plan builder gains a per-extension
+context-menu plan (<code>build_context_menu_plan</code>,
+<code>verb_launcher_command</code>,
+<code>context_menu_registry_paths</code>,
+<code>install_context_menu</code>/<code>remove_context_menu</code>/<code>apply_shell_verb_settings</code>)
+that registers verbs under
+<code>SystemFileAssociations\&lt;ext&gt;\shell\Quill.&lt;verb&gt;</code>
+without owning the file association; and
+<code>MainFrame._handle_shell_request</code> dispatches each incoming
+request — <code>open</code> loads the file,
+<code>ocr</code>/<code>ocr-structured</code> run the existing offline
+OCR review pipeline (<code>_run_ocr_on_path</code>), and
+<code>read</code> opens then reads aloud — at both first-launch and
+live-IPC handoff. Install/remove of the file associations now also
+reconciles the context-menu verbs. Covered by core tests
+(<code>test_shell_verbs.py</code>, IPC action round-trip in
+<code>test_ipc.py</code>, settings round-trip + validation in
+<code>test_settings.py</code>/<code>test_settings_registry.py</code>)
+and the context-menu plan tests in
+<code>test_shell_integration.py</code>; ruff + strict mypy clean on the
+changed core/io modules.</td>
+</tr>
+<tr>
+<td>SHELL-2</td>
+<td>Structured-Markdown OCR verb (AI structuring pass)</td>
+<td>Integration</td>
+<td>M</td>
+<td>In progress</td>
+<td>The <code>ocr-structured</code> verb, its
+<code>shell_verb_ocr_structured</code> setting, and its AI/assistant
+gating are wired through the registry, IPC, CLI, and
+<code>_handle_shell_request</code> (it currently runs the same offline
+OCR pipeline as the plain verb). The actual AI pass that turns
+recognized text into structured Markdown is the remaining piece and
+needs a live assistant/AI key to verify end to end, so this stays
+honestly In progress rather than Done.</td>
+</tr>
+<tr>
+<td>SHELL-3</td>
+<td>Windows 11 modern context menu (IExplorerCommand) + installer
+registration</td>
+<td>Integration</td>
+<td>M</td>
+<td>Todo</td>
+<td>The classic (pre-Win11)
+<code>HKCU\Software\Classes\SystemFileAssociations</code> verb path
+ships in SHELL-1 and is buildable and verifiable locally. The packaged
+<code>IExplorerCommand</code> sparse-package that surfaces the same
+verbs in the Windows 11 primary (non-“Show more options”) menu, and its
+installer/uninstaller registration, require a live install/uninstall
+verification cycle and are deferred. Tracks intake issues #113
+(umbrella), #114 (Windows Explorer), and #116 (structured OCR data
+model, delivered by SHELL-1/SHELL-2); macOS Finder (#115) stays blocked
+on the macOS port (#42).</td>
+</tr>
+<tr>
 <td>QK-2</td>
 <td>QUILL key guided panel or overlay</td>
 <td>QUILL key</td>
@@ -5756,6 +5835,17 @@ through Tesseract when the user opts in during onboarding. Outcome:
 inaccessible images stop being dead ends, and the same engine plugs into
 Watch Profiles so whole folders of images become readable documents
 automatically.</li>
+<li>Send files straight to QUILL from the file manager: SHELL-1 through
+SHELL-3. Value: a blind writer right-clicks an image, PDF, or document
+in Explorer and chooses Open, OCR, OCR to structured Markdown, or Read
+aloud, and the running QUILL instance carries it out — the same verbs
+reachable in-app and from the command line
+(<code>quill --action ocr &lt;path&gt;</code>), all opt-in through the
+Integration and Context Menu settings. Outcome: QUILL becomes the
+obvious destination for inaccessible files anywhere on the system, with
+the classic Explorer menu shipping first (SHELL-1) and the Windows 11
+modern-menu packaging and the AI structuring pass tracked honestly as
+remaining (SHELL-2, SHELL-3).</li>
 <li>The Accessibility agent and trustworthy AI editing: AGENT-1, AI-7
 (diffs reviewable by ear), AI-1 (streaming), AI-6 (graceful
 degradation). Value: “make this document accessible,” done step by step,
@@ -6751,10 +6841,10 @@ CQ-16) are counted once, in their primary tier.</p>
 <tr>
 <td>Tier 2</td>
 <td>Flagship experience</td>
+<td>60</td>
 <td>57</td>
-<td>56</td>
-<td>1</td>
-<td>AI-19</td>
+<td>3</td>
+<td>AI-19, SHELL-2, SHELL-3</td>
 </tr>
 <tr>
 <td>Tier 4</td>
@@ -6777,9 +6867,9 @@ CQ-14, CQ-23, CQ-24, LINUX-2</td>
 <tr>
 <td><strong>1.0 subtotal</strong></td>
 <td>Tiers 1, 2, 4, 6 (the QUILL 1.0 scope)</td>
-<td><strong>145</strong></td>
-<td><strong>94</strong></td>
-<td><strong>51</strong></td>
+<td><strong>148</strong></td>
+<td><strong>95</strong></td>
+<td><strong>53</strong></td>
 <td></td>
 </tr>
 <tr>
@@ -6826,9 +6916,9 @@ LINUX-1, ECO-1, L10N-1, COLLAB-1</td>
 <tr>
 <td><strong>Total</strong></td>
 <td>All tiers (1.0 + 2.0)</td>
-<td><strong>208</strong></td>
-<td><strong>115</strong></td>
-<td><strong>93</strong></td>
+<td><strong>211</strong></td>
+<td><strong>116</strong></td>
+<td><strong>95</strong></td>
 <td></td>
 </tr>
 </tbody>
@@ -6918,8 +7008,8 @@ SEL-2, SEL-3, AI-1, AI-6, AI-7, AI-13, AI-14, AI-15, AI-16, AI-17,
 AI-21, AI-23, WATCH-1, WATCH-2, WATCH-3, WATCH-4, WATCH-5, WATCH-6,
 WATCH-7, SET-1, SET-4, SET-5, SET-6, SET-7, SHARE-1, SHARE-2, SHARE-3,
 FLAG-3, FLAG-4, MENU-3, MENU-1, MENU-5, DICT-1, CTX-1, DICT-2, FEAT-19,
-DLG-1, OCR-1, OCR-2, OCR-3, OCR-4, OCR-5, A11Y-4, SET-2, SET-3,
-AGENT-1</td>
+DLG-1, OCR-1, OCR-2, OCR-3, OCR-4, OCR-5, A11Y-4, SET-2, SET-3, AGENT-1,
+SHELL-1, SHELL-2, SHELL-3</td>
 </tr>
 <tr>
 <td>Tier 4 — Structural health</td>

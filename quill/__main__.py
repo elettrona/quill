@@ -20,6 +20,7 @@ class LaunchRequest:
     path: Path
     line: int | None = None
     column: int | None = None
+    action: str = "open"
 
 
 def main() -> int:
@@ -60,7 +61,12 @@ def main() -> int:
             reset_feature_profile_store()
         if not force_new_window and not try_claim_primary_instance():
             for request in launch_requests:
-                enqueue_open_request(request.path, line=request.line, column=request.column)
+                enqueue_open_request(
+                    request.path,
+                    line=request.line,
+                    column=request.column,
+                    action=request.action,
+                )
             enqueue_open_request(None)
             if wait:
                 _wait_for_primary_instance_shutdown()
@@ -166,12 +172,25 @@ def _parse_cli_arguments(arguments: list[str]) -> Namespace:
         default=None,
         help="1-based column number for the first opened file.",
     )
+    parser.add_argument(
+        "--action",
+        default="open",
+        help=(
+            "Shell verb to run on the opened file(s): one of "
+            "open, ocr, ocr-structured, read. Defaults to open."
+        ),
+    )
     return parser.parse_args(arguments)
 
 
 def _launch_configuration(
     parsed: Namespace,
 ) -> tuple[list[LaunchRequest], bool, bool, bool, bool, bool]:
+    from quill.core.shell_verbs import verb_actions
+
+    raw_action = str(getattr(parsed, "action", "open") or "open").strip().lower()
+    action = raw_action if raw_action in {"open", *verb_actions()} else "open"
+
     requests: list[LaunchRequest] = []
     for index, raw_path in enumerate(parsed.paths):
         if not str(raw_path).strip():
@@ -183,6 +202,7 @@ def _launch_configuration(
             path=candidate.resolve(),
             line=parsed.line if index == 0 else None,
             column=parsed.column if index == 0 else None,
+            action=action,
         )
         requests.append(request)
 

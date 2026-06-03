@@ -4,6 +4,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from quill.core.shell_verbs import ShellVerb, default_shell_verbs
+
 try:  # pragma: no cover - Windows-only module
     import winreg
 except ImportError:  # pragma: no cover - non-Windows fallback
@@ -15,6 +17,11 @@ APPLICATION_KEY = rf"Software\Classes\Applications\{APPLICATION_NAME}.exe"
 PROGID_TEXT = "Quill.Text"
 PROGID_MARKUP = "Quill.Markup"
 PROGID_HTML = "Quill.HTML"
+
+#: Namespace prefix for QUILL "Send to Quill" context-menu verb keys.
+VERB_KEY_PREFIX = "Quill"
+#: Per-extension context menus live under this Windows registry root.
+SYSTEM_FILE_ASSOCIATIONS = r"Software\Classes\SystemFileAssociations"
 
 TEXT_EXTENSIONS = (".txt",)
 MARKUP_EXTENSIONS = (".md", ".markdown", ".mdx")
@@ -37,6 +44,121 @@ class RegistryEntry:
 def launcher_command() -> str:
     executable = Path(sys.executable)
     return f'"{executable}" -m quill "%1"'
+
+
+def verb_launcher_command(action: str) -> str:
+    """Return the launch command for a "Send to Quill" verb.
+
+    The selected file is passed as ``%1`` and the verb is carried through the
+    ``--action`` flag so the running (or new) instance knows what to do.
+    """
+
+    executable = Path(sys.executable)
+    safe_action = (action or "open").strip().lower()
+    return f'"{executable}" -m quill --action {safe_action} "%1"'
+
+
+def _verb_key_name(verb: ShellVerb) -> str:
+    return f"{VERB_KEY_PREFIX}.{verb.verb_id}"
+
+
+def build_context_menu_plan(
+    verbs: tuple[ShellVerb, ...] | list[ShellVerb] | None = None,
+) -> list[RegistryEntry]:
+    """Return registry entries for the file-manager right-click verbs.
+
+    Each verb is registered per file extension under
+    ``SystemFileAssociations\\<ext>\\shell\\Quill.<verb_id>`` so QUILL appears
+    in the context menu without owning the file's default association.
+    """
+
+    selected = tuple(verbs) if verbs is not None else default_shell_verbs()
+    entries: list[RegistryEntry] = []
+    for verb in selected:
+        key_name = _verb_key_name(verb)
+        command = verb_launcher_command(verb.action)
+        for extension in verb.extensions:
+            shell_key = rf"{SYSTEM_FILE_ASSOCIATIONS}\{extension}\shell\{key_name}"
+            entries.append(
+                RegistryEntry(
+                    path=shell_key,
+                    values=(
+                        RegistryValue("", verb.label, _reg_kind("sz")),
+                        RegistryValue("MUIVerb", verb.label, _reg_kind("sz")),
+                    ),
+                )
+            )
+            entries.append(
+                RegistryEntry(
+                    path=rf"{shell_key}\command",
+                    values=(RegistryValue("", command, _reg_kind("sz")),),
+                )
+            )
+    return entries
+
+
+def context_menu_registry_paths(
+    verbs: tuple[ShellVerb, ...] | list[ShellVerb] | None = None,
+) -> list[str]:
+    """Return registry key paths created for the given (or all) verbs."""
+
+    selected = tuple(verbs) if verbs is not None else default_shell_verbs()
+    paths: list[str] = []
+    for verb in selected:
+        key_name = _verb_key_name(verb)
+        for extension in verb.extensions:
+            shell_key = rf"{SYSTEM_FILE_ASSOCIATIONS}\{extension}\shell\{key_name}"
+            paths.append(rf"{shell_key}\command")
+            paths.append(shell_key)
+    return paths
+
+
+def install_context_menu(
+    verbs: tuple[ShellVerb, ...] | list[ShellVerb] | None = None,
+) -> None:
+    """Write the "Send to Quill" context-menu verbs to the registry."""
+
+    if winreg is None:  # pragma: no cover - non-Windows fallback
+        raise RuntimeError("Windows registry access is unavailable")
+    for entry in build_context_menu_plan(verbs):
+        _write_entry(entry)
+
+
+def remove_context_menu(
+    verbs: tuple[ShellVerb, ...] | list[ShellVerb] | None = None,
+) -> None:
+    """Remove the "Send to Quill" context-menu verbs from the registry.
+
+    When ``verbs`` is ``None`` every known default verb key is removed, so a
+    full uninstall clears stale entries regardless of current settings.
+    """
+
+    if winreg is None:  # pragma: no cover - non-Windows fallback
+        raise RuntimeError("Windows registry access is unavailable")
+    for path in context_menu_registry_paths(verbs):
+        _delete_tree(winreg.HKEY_CURRENT_USER, path)
+
+
+def apply_shell_verb_settings(settings: object) -> None:
+    """Reconcile the context-menu verbs with the current settings.
+
+    Removes every known default verb key, then installs only the verbs the user
+    has enabled. ``settings`` is any object exposing the verb settings as
+    attributes (typically :class:`~quill.core.settings.Settings`).
+    """
+
+    from quill.core.shell_verbs import enabled_verbs
+
+    if winreg is None:  # pragma: no cover - non-Windows fallback
+        raise RuntimeError("Windows registry access is unavailable")
+    remove_context_menu()
+    active = enabled_verbs(
+        settings_values=settings,
+        master_enabled=bool(getattr(settings, "shell_integration_enabled", False)),
+        assistant_enabled=bool(getattr(settings, "assistant_enabled", False)),
+    )
+    if active:
+        install_context_menu(active)
 
 
 def build_shell_integration_plan(command: str | None = None) -> list[RegistryEntry]:

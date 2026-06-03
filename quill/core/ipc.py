@@ -122,6 +122,7 @@ class OpenRequest:
     path: Path
     line: int | None = None
     column: int | None = None
+    action: str = "open"
 
 
 def enqueue_open_request(
@@ -129,6 +130,7 @@ def enqueue_open_request(
     *,
     line: int | None = None,
     column: int | None = None,
+    action: str = "open",
 ) -> None:
     queue_path = _queue_file_path()
     queue_path.parent.mkdir(parents=True, exist_ok=True)
@@ -137,7 +139,7 @@ def enqueue_open_request(
             {"action": "show"}
             if path is None
             else {
-                "action": "open",
+                "action": (action or "open").strip().lower(),
                 "path": str(path),
                 "line": line,
                 "column": column,
@@ -174,6 +176,7 @@ def drain_open_requests() -> list[OpenRequest | None]:
                     path=Path(raw["path"]),
                     line=int(line_number) if isinstance(line_number, int) else None,
                     column=int(column_number) if isinstance(column_number, int) else None,
+                    action=action or "open",
                 )
             )
     return requests

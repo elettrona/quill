@@ -69,6 +69,11 @@ SETTING_GROUPS: tuple[SettingGroup, ...] = (
         "Watch Folders",
         "Default behavior for watched-folder automation.",
     ),
+    SettingGroup(
+        "integration",
+        "Integration and Context Menu",
+        "File-manager right-click verbs and how QUILL is offered on files.",
+    ),
     SettingGroup("updates", "Updates", "Update checking and release channel."),
 )
 
@@ -804,6 +809,63 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "Receive pre-release builds, which may be unstable.",
         feature_id="core.updates",
         keywords=("updates", "beta", "channel", "prerelease"),
+    ),
+    # --- Integration and Context Menu --------------------------------------
+    SettingSpec(
+        "shell_integration_enabled",
+        "Show QUILL in the file-manager right-click menu",
+        "integration",
+        "bool",
+        "Add QUILL's enabled verbs to the file manager context menu.",
+        keywords=("context menu", "right click", "explorer", "send to", "shell"),
+    ),
+    SettingSpec(
+        "shell_file_types",
+        "File types offered to QUILL",
+        "integration",
+        "choice",
+        "Which kinds of files show QUILL verbs in the context menu.",
+        choices=(
+            ("images", "Images only"),
+            ("images_pdf", "Images and PDF"),
+            ("images_pdf_docs", "Images, PDF, and text documents"),
+        ),
+        keywords=("file types", "images", "pdf", "documents"),
+    ),
+    SettingSpec(
+        "shell_verb_open",
+        "Offer \u201cOpen in QUILL\u201d",
+        "integration",
+        "bool",
+        "Add an \u201cOpen in QUILL\u201d verb for supported text documents.",
+        keywords=("open", "context menu", "verb"),
+    ),
+    SettingSpec(
+        "shell_verb_ocr",
+        "Offer \u201cOCR with QUILL\u201d",
+        "integration",
+        "bool",
+        "Add an OCR-to-text verb for images and PDF files.",
+        feature_id="core.ocr",
+        keywords=("ocr", "image", "pdf", "context menu", "verb"),
+    ),
+    SettingSpec(
+        "shell_verb_ocr_structured",
+        "Offer \u201cOCR with QUILL (structured Markdown)\u201d",
+        "integration",
+        "bool",
+        "Add an AI-assisted OCR verb that returns structured Markdown.",
+        feature_id="core.ocr",
+        keywords=("ocr", "markdown", "structured", "ai", "context menu"),
+    ),
+    SettingSpec(
+        "shell_verb_read",
+        "Offer \u201cRead aloud in QUILL\u201d",
+        "integration",
+        "bool",
+        "Add a verb that opens a file and starts reading it aloud.",
+        feature_id="read_aloud",
+        keywords=("read aloud", "speech", "context menu", "verb"),
     ),
 )
 

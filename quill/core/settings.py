@@ -187,6 +187,15 @@ class Settings:
     read_aloud_sentence_pause_ms: int = 0
     # OCR-2: image-to-text engine selection
     ocr_engine: str = "auto"
+    # SHELL-1: file-manager "Send to Quill" context-menu verbs
+    shell_integration_enabled: bool = False
+    shell_verb_ocr: bool = True
+    shell_verb_ocr_structured: bool = False
+    shell_verb_open: bool = True
+    shell_verb_read: bool = False
+    shell_file_types: str = "images_pdf"
+    ocr_structured: bool = False
+    ocr_capture_geometry: bool = False
     # FEAT-19: external file-change watch and safe reload
     external_change_watch_enabled: bool = True
     external_change_auto_reload_when_clean: bool = True
@@ -429,6 +438,17 @@ class Settings:
         ocr_engine = str(data.get("ocr_engine", "auto")).strip().lower()
         if ocr_engine not in {"auto", "windows", "tesseract"}:
             ocr_engine = "auto"
+        # SHELL-1: file-manager "Send to Quill" context-menu verbs
+        shell_integration_enabled = bool(data.get("shell_integration_enabled", False))
+        shell_verb_ocr = bool(data.get("shell_verb_ocr", True))
+        shell_verb_ocr_structured = bool(data.get("shell_verb_ocr_structured", False))
+        shell_verb_open = bool(data.get("shell_verb_open", True))
+        shell_verb_read = bool(data.get("shell_verb_read", False))
+        shell_file_types = str(data.get("shell_file_types", "images_pdf")).strip().lower()
+        if shell_file_types not in {"images", "images_pdf", "images_pdf_docs"}:
+            shell_file_types = "images_pdf"
+        ocr_structured = bool(data.get("ocr_structured", False))
+        ocr_capture_geometry = bool(data.get("ocr_capture_geometry", False))
         # FEAT-19: external file-change watch and safe reload
         external_change_watch_enabled = bool(data.get("external_change_watch_enabled", True))
         external_change_auto_reload_when_clean = bool(
@@ -569,6 +589,14 @@ class Settings:
             announcement_throttle_ms=announcement_throttle_ms,
             read_aloud_sentence_pause_ms=read_aloud_sentence_pause_ms,
             ocr_engine=ocr_engine,
+            shell_integration_enabled=shell_integration_enabled,
+            shell_verb_ocr=shell_verb_ocr,
+            shell_verb_ocr_structured=shell_verb_ocr_structured,
+            shell_verb_open=shell_verb_open,
+            shell_verb_read=shell_verb_read,
+            shell_file_types=shell_file_types,
+            ocr_structured=ocr_structured,
+            ocr_capture_geometry=ocr_capture_geometry,
             external_change_watch_enabled=external_change_watch_enabled,
             external_change_auto_reload_when_clean=external_change_auto_reload_when_clean,
             external_change_prompt_on_conflict=external_change_prompt_on_conflict,

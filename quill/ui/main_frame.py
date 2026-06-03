@@ -467,9 +467,11 @@ from quill.io.text import read_text_document, write_text_document
 from quill.platform.windows.high_contrast import is_high_contrast_enabled
 from quill.platform.windows.prism_bridge import AnnouncementEngine
 from quill.platform.windows.shell_integration import (
+    apply_shell_verb_settings,
     build_shell_integration_plan,
     install_shell_integration,
     launcher_command,
+    remove_context_menu,
     remove_shell_integration,
 )
 from quill.platform.windows.sr_announce import (
@@ -6067,10 +6069,29 @@ class MainFrame(ImageCaptureMixin, BrowseModeMixin, EdSharpActionsMixin, EdSharp
             if candidate is None:
                 continue
             if candidate.path.exists() and candidate.path.is_file():
-                self.open_file(candidate.path, line=candidate.line, column=candidate.column)
+                self._handle_shell_request(candidate)
         self.frame.Show(True)
         self.frame.Raise()
         self.frame.RequestUserAttention()
+
+    def _handle_shell_request(self, candidate: object) -> None:
+        """Dispatch a single IPC open request by its "Send to Quill" action.
+
+        ``open`` (and any unknown action) loads the file in the editor. ``ocr``
+        and ``ocr-structured`` run local OCR on an image or PDF. ``read`` opens
+        the file and starts reading it aloud. The image OCR helpers live in
+        :class:`ImageCaptureMixin` (OCR-3).
+        """
+        action = str(getattr(candidate, "action", "open") or "open").strip().lower()
+        path = candidate.path
+        if action in {"ocr", "ocr-structured"}:
+            self._run_ocr_on_path(path, confirm=False)
+            return
+        if action == "read":
+            self.open_file(path, line=candidate.line, column=candidate.column)
+            self.toggle_read_aloud()
+            return
+        self.open_file(path, line=candidate.line, column=candidate.column)
 
     def _on_text_changed(self, _event: object) -> None:
         if self._voice_command_guard:
@@ -17033,6 +17054,10 @@ class MainFrame(ImageCaptureMixin, BrowseModeMixin, EdSharpActionsMixin, EdSharp
             self._set_status("Shell integration install cancelled")
             return
         install_shell_integration(command)
+        try:
+            apply_shell_verb_settings(self.settings)
+        except Exception:  # pragma: no cover - registry best-effort
+            pass
         self._show_message_box(
             f"Installed shell integration for:\n{summary}",
             "Shell Integration",
@@ -17051,6 +17076,10 @@ class MainFrame(ImageCaptureMixin, BrowseModeMixin, EdSharpActionsMixin, EdSharp
             self._set_status("Shell integration removal cancelled")
             return
         remove_shell_integration()
+        try:
+            remove_context_menu()
+        except Exception:  # pragma: no cover - registry best-effort
+            pass
         self._set_status("Removed shell integration")
 
     def open_notifications(self) -> None:
@@ -22881,11 +22910,7 @@ def run_app(
             continue
         path = getattr(request, "path", None)
         if isinstance(path, Path) and path.exists() and path.is_file():
-            frame.open_file(
-                path,
-                line=getattr(request, "line", None),
-                column=getattr(request, "column", None),
-            )
+            frame._handle_shell_request(request)
     frame.show()
     try:
         app.MainLoop()

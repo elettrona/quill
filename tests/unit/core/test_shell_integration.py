@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from quill.core.shell_verbs import default_shell_verbs
 from quill.platform.windows.shell_integration import (
     APPLICATION_KEY,
     PROGID_HTML,
     PROGID_MARKUP,
     PROGID_TEXT,
+    build_context_menu_plan,
     build_shell_integration_plan,
+    context_menu_registry_paths,
+    verb_launcher_command,
 )
 
 
@@ -26,3 +30,36 @@ def test_build_shell_integration_plan_includes_extension_open_with_entries() -> 
     open_with_paths = [entry.path for entry in plan if entry.path.endswith(r"OpenWithProgids")]
 
     assert open_with_paths
+
+
+def test_verb_launcher_command_carries_action() -> None:
+    command = verb_launcher_command("ocr")
+    assert "--action ocr" in command
+    assert command.rstrip().endswith('"%1"')
+
+
+def test_context_menu_plan_registers_each_verb_extension() -> None:
+    plan = build_context_menu_plan()
+    paths = {entry.path for entry in plan}
+    # The OCR verb applies to images, so a .png shell key must exist.
+    assert any(r"SystemFileAssociations\.png\shell\Quill.ocr" in path for path in paths)
+    # Every verb shell key must have a matching \command child.
+    shell_keys = {p for p in paths if not p.endswith("command")}
+    for key in shell_keys:
+        assert rf"{key}\command" in paths
+
+
+def test_context_menu_plan_default_value_is_label() -> None:
+    plan = build_context_menu_plan()
+    ocr = default_shell_verbs()[0]
+    label_entries = [entry for entry in plan if entry.path.endswith(rf"shell\Quill.{ocr.verb_id}")]
+    assert label_entries
+    for entry in label_entries:
+        default_value = next(v.value for v in entry.values if v.name == "")
+        assert default_value == ocr.label
+
+
+def test_context_menu_registry_paths_cover_command_and_key() -> None:
+    paths = context_menu_registry_paths()
+    assert any(path.endswith("command") for path in paths)
+    assert any(not path.endswith("command") for path in paths)

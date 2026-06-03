@@ -304,3 +304,36 @@ def test_settings_normalize_status_page_refresh_announcement_cadence(
     )
     loaded = load_settings()
     assert loaded.status_page_refresh_announcement_cadence == "quiet"
+
+
+def test_shell_verb_settings_round_trip(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    save_settings(
+        Settings(
+            shell_integration_enabled=True,
+            shell_verb_ocr=False,
+            shell_verb_ocr_structured=True,
+            shell_verb_open=False,
+            shell_verb_read=True,
+            shell_file_types="images",
+        )
+    )
+    loaded = load_settings()
+    assert loaded.shell_integration_enabled is True
+    assert loaded.shell_verb_ocr is False
+    assert loaded.shell_verb_ocr_structured is True
+    assert loaded.shell_verb_open is False
+    assert loaded.shell_verb_read is True
+    assert loaded.shell_file_types == "images"
+
+
+def test_settings_normalize_invalid_shell_file_types(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    (tmp_path / "settings.json").write_text(
+        '{"shell_file_types":"nonsense"}',
+        encoding="utf-8",
+    )
+    loaded = load_settings()
+    assert loaded.shell_file_types == "images_pdf"

@@ -42,6 +42,21 @@ def test_previously_unsurfaced_fields_are_registered() -> None:
         assert key in keys, f"{key} should be surfaced in the Settings registry"
 
 
+def test_integration_group_and_shell_verb_specs_registered() -> None:
+    group_ids = {group.id for group in SETTING_GROUPS}
+    assert "integration" in group_ids
+    keys = {spec.key for spec in SETTING_SPECS}
+    for key in (
+        "shell_integration_enabled",
+        "shell_file_types",
+        "shell_verb_open",
+        "shell_verb_ocr",
+        "shell_verb_ocr_structured",
+        "shell_verb_read",
+    ):
+        assert key in keys, f"{key} should be surfaced in the Settings registry"
+
+
 def test_set2_set3_set4_fields_are_registered() -> None:
     keys = {spec.key for spec in SETTING_SPECS}
     for key in (

@@ -90,3 +90,19 @@ def test_enqueue_show_request(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -
     monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
     enqueue_open_request(None)
     assert drain_open_requests() == [None]
+
+
+def test_enqueue_and_drain_action(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    image = tmp_path / "scan.png"
+    enqueue_open_request(image, action="ocr")
+    drained = drain_open_requests()
+    assert [request.action for request in drained] == ["ocr"]
+    assert drained[0].path == image
+
+
+def test_default_action_is_open(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    enqueue_open_request(tmp_path / "doc.md")
+    drained = drain_open_requests()
+    assert drained[0].action == "open"
