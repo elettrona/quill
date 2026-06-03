@@ -1430,9 +1430,30 @@ progress (XL) until those land.</td>
 <td>Characterization tests around main_frame</td>
 <td>Code quality</td>
 <td>L</td>
-<td>Todo</td>
+<td>Done</td>
 <td>Behavior is pinned by tests prior to CQ-1; coverage includes menus,
-QUILL key, selection, file lifecycle.</td>
+QUILL key, selection, file lifecycle. <strong>Delivered:</strong>
+<code>tests/unit/ui/test_main_frame_cq16_characterization.py</code> pins
+the previously-uncovered seams via the <code>MainFrame.__new__</code>
+harness (no wx tree) — menu-state gating
+(<code>_menu_updates_allowed</code>) and markup-context detection
+(<code>_current_markup_context</code>); selection range/scope behavior
+(<code>_has_active_selection</code>,
+<code>_selection_action_specs</code>, and the
+<code>expand_selection</code>/<code>shrink_selection</code> stack
+round-trip); and the file lifecycle (<code>_find_tab_index</code>
+resolved-path matching,
+<code>_title_subject</code>/<code>_dirty_title_suffix</code> settings
+table, the <code>_prompt_to_save_active_document</code>
+save/cancel/don’t-save decision table, <code>_switch_document</code>
+wraparound and single-tab guard, and
+<code>_write_document_to_disk</code> RTF-vs-text routing). The QUILL-key
+surface remains pinned by <code>test_main_frame_quill_key.py</code>,
+menus by <code>test_main_frame_menu_contract.py</code>, and the
+file-open path by
+<code>test_main_frame_open_threading.py</code>/<code>test_main_frame_navigation.py</code>,
+so all four named areas now have isolated behavior coverage ahead of the
+CQ-1 decomposition.</td>
 </tr>
 <tr>
 <td>ORG-1</td>
@@ -7742,9 +7763,9 @@ CQ-16) are counted once, in their primary tier.</p>
 <td>Tier 4</td>
 <td>Structural health and performance</td>
 <td>32</td>
-<td>27</td>
-<td>5</td>
-<td>DLG-3, CQ-16, CQ-1, DLG-2, ORG-1</td>
+<td>28</td>
+<td>4</td>
+<td>DLG-3, CQ-1, DLG-2, ORG-1</td>
 </tr>
 <tr>
 <td>Tier 6</td>
@@ -7759,8 +7780,8 @@ CQ-14, CQ-23, CQ-24, LINUX-2</td>
 <td><strong>1.0 subtotal</strong></td>
 <td>Tiers 1, 2, 4, 6 (the QUILL 1.0 scope)</td>
 <td><strong>149</strong></td>
-<td><strong>110</strong></td>
-<td><strong>39</strong></td>
+<td><strong>111</strong></td>
+<td><strong>38</strong></td>
 <td></td>
 </tr>
 <tr>
@@ -7816,8 +7837,8 @@ LINUX-1, ECO-1, L10N-1, COLLAB-1</td>
 <td><strong>Total</strong></td>
 <td>All tiers (1.0 + 2.0)</td>
 <td><strong>212</strong></td>
-<td><strong>129</strong></td>
-<td><strong>83</strong></td>
+<td><strong>130</strong></td>
+<td><strong>82</strong></td>
 <td></td>
 </tr>
 </tbody>
@@ -7867,7 +7888,7 @@ the third table and are not part of either 1.0 list.</p>
 <tr>
 <td>Tier 4 — Structural health</td>
 <td>In progress / Todo</td>
-<td>DLG-3, CQ-1 (in progress), CQ-16, DLG-2, ORG-1</td>
+<td>DLG-3, CQ-1 (in progress), DLG-2, ORG-1</td>
 </tr>
 <tr>
 <td>Tier 6 — Documentation</td>
@@ -7910,8 +7931,8 @@ SHELL-1</td>
 </tr>
 <tr>
 <td>Tier 4 — Structural health</td>
-<td>CQ-7, CQ-12, CQ-13, CQ-14, CQ-15, CQ-17, CQ-18, CQ-19, CQ-20, CQ-21,
-CQ-22, GATE-10, GATE-11, PERF-1, PERF-2, PERF-3, PERF-8, PERF-9,
+<td>CQ-7, CQ-12, CQ-13, CQ-14, CQ-15, CQ-16, CQ-17, CQ-18, CQ-19, CQ-20,
+CQ-21, CQ-22, GATE-10, GATE-11, PERF-1, PERF-2, PERF-3, PERF-8, PERF-9,
 PERF-10, PERF-11, PERF-12, PERF-13, PERF-14, SEC-4, SEC-6, SEC-7, SEC-8,
 SEC-14, SEC-15, SEC-16, SEC-17, TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5,
 TYPE-6, TYPE-7, TYPE-8</td>
