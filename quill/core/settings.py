@@ -37,6 +37,7 @@ class Settings:
     quill_key_timeout_seconds: float = 1.5
     csv_open_mode: str = "prompt"
     word_open_mode: str = "prompt"
+    editor_surface: str = "plain"
     indent_with_tabs: bool = False
     indent_size: int = 4
     auto_check_updates: bool = False
@@ -188,6 +189,9 @@ class Settings:
         word_open_mode = str(data.get("word_open_mode", "prompt")).strip().lower()
         if word_open_mode not in {"prompt", "text", "structured"}:
             word_open_mode = "prompt"
+        editor_surface = str(data.get("editor_surface", "plain")).strip().lower()
+        if editor_surface not in {"plain", "rich"}:
+            editor_surface = "plain"
         indent_with_tabs = bool(data.get("indent_with_tabs", False))
         indent_size = int(data.get("indent_size", 4))
         auto_check_updates = bool(data.get("auto_check_updates", False))
@@ -452,6 +456,7 @@ class Settings:
             quill_key_timeout_seconds=quill_key_timeout_seconds,
             csv_open_mode=csv_open_mode,
             word_open_mode=word_open_mode,
+            editor_surface=editor_surface,
             indent_with_tabs=indent_with_tabs,
             indent_size=indent_size,
             auto_check_updates=auto_check_updates,

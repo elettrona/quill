@@ -484,6 +484,7 @@ from quill.ui.assistant_tools import (
 )
 from quill.ui.csv_grid import CsvGridSurface
 from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control, show_modal_dialog
+from quill.ui.editor_surface import surface_kind
 from quill.ui.main_frame_ai_actions import AiActionsMixin
 from quill.ui.main_frame_browse import BrowseModeMixin
 from quill.ui.main_frame_edsharp import EdSharpActionsMixin
@@ -496,6 +497,7 @@ from quill.ui.main_frame_selection import SelectionMarksMixin
 from quill.ui.main_frame_sessions import SessionsMixin
 from quill.ui.main_frame_statusbar import StatusBarMixin, _StatusBarCell
 from quill.ui.palette import CommandPaletteDialog
+from quill.ui.rich_text_surface import RichTextSurface
 from quill.ui.session_browser import SessionBrowserDialog
 from quill.ui.share_dialogs import (
     apply_import,
@@ -1352,6 +1354,12 @@ class MainFrame(
             "Focus Preview",
             self.focus_preview,
             self._binding_for("view.focus_preview"),
+        )
+        self.commands.register(
+            "view.switch_editing_lens",
+            "Switch Editing Lens",
+            self.switch_editing_lens,
+            self._binding_for("view.switch_editing_lens"),
         )
         self.commands.register(
             "view.browser_preview",
@@ -5380,6 +5388,11 @@ class MainFrame(
                 self._create_csv_document_tab(loaded, select=True)
             elif loaded.source_metadata.get("word_open_mode") == "structured":
                 self._create_word_document_tab(loaded, select=True)
+            elif suffix == ".rtf" and self._rich_editor_enabled():
+                # An .rtf is inherently a rich document, so it opens in the Rich
+                # text lens when that lens is enabled (rtf.md "Opening files").
+                self._create_rich_document_tab(loaded, select=True)
+                self._announce_rtf_safety(loaded)
             else:
                 self._create_document_tab(loaded, select=True)
             self._load_persistent_undo_state(selected_path, loaded.text)
@@ -5537,6 +5550,73 @@ class MainFrame(
             self._refresh_read_only_state()
         self._refresh_sessions_menu()
         return index
+
+    def _create_rich_document_tab(self, document: Document, select: bool = True) -> int:
+        """Create a tab backed by the native Rich text lens (rtf.md Part One).
+
+        Mirrors :meth:`_create_word_document_tab`: a duck-typed surface stands in
+        for ``self.editor``. The surface keeps QUILL markup canonical, so all
+        existing editor commands keep working through it.
+        """
+        wx = self._wx
+        surface = RichTextSurface(wx, self.notebook, document, self._sync_editor_change)
+        panel = surface.panel
+        self._bind_editor_events(surface)
+        tab = _DocumentTab(panel=panel, editor=surface, document=document)
+        self._document_tabs.append(tab)
+        index = self.notebook.GetPageCount()
+        self.notebook.AddPage(panel, document.name, select=select)
+        if select:
+            self._active_tab_index = index
+            self.editor = surface
+            self.document = document
+            self._apply_statusbar_layout()
+            self._refresh_title()
+            self._refresh_read_only_state()
+        self._refresh_sessions_menu()
+        return index
+
+    def _rich_editor_enabled(self) -> bool:
+        """True when the writer has opted into the Rich text lens (off by default)."""
+        return str(getattr(self.settings, "editor_surface", "plain")).lower() == "rich"
+
+    def _announce_lens(self, lens: str) -> None:
+        """Speak and show which editing lens is now active."""
+        self._set_status(f"{lens}")
+
+    def switch_editing_lens(self) -> None:
+        """Flip the current document between the Rich text and Markdown lenses.
+
+        On a rich surface this toggles the in-tab lens losslessly (the canonical
+        markup is shared, so no word is lost and the document is not marked dirty).
+        On a plain-text surface it reports how to enable the Rich text lens, since
+        QUILL's offset-based commands stay exact on the plain surface.
+        """
+        editor = self.editor
+        toggler = getattr(editor, "toggle_mode", None)
+        if surface_kind(editor) == "rich" and callable(toggler):
+            self._announce_lens(toggler())
+            return
+        if not self._rich_editor_enabled():
+            self._set_status("Rich text lens is off. Turn it on in Settings, Editing.")
+            return
+        self._set_status("This document is open in the Markdown lens.")
+
+    def _announce_rtf_safety(self, document: Document) -> None:
+        """Announce the Rich text lens and any RTF safety findings on open."""
+        metadata = document.source_metadata
+        blocked = metadata.get("rtf_blocked")
+        warnings = metadata.get("rtf_warnings")
+        parts = ["Opened in Rich text lens."]
+        if isinstance(blocked, list) and blocked:
+            parts.append(
+                "Removed unsafe content: " + ", ".join(str(item) for item in blocked) + "."
+            )
+        if isinstance(warnings, list) and warnings:
+            parts.append(
+                "Flagged for your consent: " + ", ".join(str(item) for item in warnings) + "."
+            )
+        self._set_status(" ".join(parts))
 
     def next_document(self) -> None:
         self._switch_document(reverse=False)

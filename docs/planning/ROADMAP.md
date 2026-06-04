@@ -1334,7 +1334,7 @@ format work — is listed as EDS-1 through EDS-21 below, all delivered in 1.0.
 | On-demand speech queries (say address/status/selection) | Yes | Yes | Delivered (EDS-14) |
 | Key Describer, indent-announce mode | Yes | Yes | Delivered (EDS-17, EDS-18) |
 | RTF as a file format (read formatting, write back) | Yes | Yes (io-layer round-trip) | Delivered (EDS-21) |
-| RTF live rich editing (justify/style/font, format nav) | Yes | No (plain-text/markup-first) | Out of scope by design |
+| RTF live rich editing (justify/style/font, format nav) | Yes | Opt-in Rich text lens (read-only rich view delivered; editable rich in progress) | Partial (RTF-22) |
 | JScript.NET scripting add-ins, exposed object model | Yes | No (plugins + AI instead) | Out of scope by design |
 | Compiler/run integration, LaTeX, PyBrace/PyDent | Yes | Partial (external tools) | Out of scope / future plugins |
 | Burn to CD, Send-To menu, MDI tile/cascade, web download | Yes | No | Obsolete / not pursued |
@@ -1370,6 +1370,7 @@ format work — is listed as EDS-1 through EDS-21 below, all delivered in 1.0.
 | EDS-19 | Run file and run target at cursor | Features | M | Done | Commands execute the current file via its OS association (saving first when it has a path) and execute a URL, email address, or path at the cursor or in the selection, both behind the existing executable-path security validation (SEC-1); tests cover the association path and the security-reject path. (EdSharp F5, Shift+F5.) Done: `quill/core/run_target.py` (`classify_target`/`target_at_cursor`/`is_dangerous_executable`) covered by `tests/unit/core/test_run_target.py`; wired as `run_current_file`/`run_target_at_cursor` (gated by `is_dangerous_executable`), registered `eds.run_current_file`/`eds.run_target_at_cursor`. |
 | EDS-20 | Rename and delete current file on disk | Features | S | Done | Commands rename and delete the current file both in the editor and on disk; rename is guarded by an explicit new-name prompt and delete by a destructive yes/no confirmation; tests cover the wiring and cancel paths. (EdSharp Alt+Shift+R, Alt+Shift+D.) Done: wired as `rename_current_file` (new-name prompt) and `delete_current_file` (yes/no confirmation), registered `eds.rename_current_file`/`eds.delete_current_file` on the EdSharp Tools menu and Keymap Editor. |
 | EDS-21 | RTF round-trip through the io layer | IO | M | Done | Promote RTF from the current lossy extract-only path to a real `io/*` format that reads RTF formatting into QUILL's Markdown-style internal markup and writes Markdown back out to valid RTF, following the `read(path) -> Document` / `write(doc, path)` contract; bold, italic, headings, lists, and links survive a round trip; no change to the editor control surface (the writing path stays a plain-text `wx.TextCtrl` over markup). Tests cover read, write, and a formatting round-trip. This is the only RTF scope QUILL pursues; see the note below. Done: `quill/io/rtf.py` implements `markdown_to_rtf`/`rtf_to_markdown`/`read_rtf_document`/`write_rtf_document`; `read_structured_document` delegates `.rtf` to the new reader (the lossy `_format_rtf` was removed) and `MainFrame._write_document_to_disk` routes `.rtf` saves through `write_rtf_document`; covered by `tests/unit/io/test_rtf.py` and `tests/unit/ui/test_main_frame_rtf_roundtrip.py`, strict-mypy and ruff clean. |
+| RTF-22 | Optional native Rich text lens (rtf.md Part One) | Features | L | In progress | An opt-in alternative editor surface that renders bold/italic/headings/bullets/links natively in a `wx.richtext.RichTextCtrl`, gated behind the `editor_surface` setting (default `plain`) so the stock `wx.TextCtrl` stays the default writing path. QUILL Markdown remains the canonical document value, so every existing offset-based command, search, metric, outline, autosave, and persistent-undo keeps working unchanged through the surface. **Delivered:** wx-free rich model and conversions (`quill/io/rtf_model.py`), RTF safety scanning that strips OLE/object groups and flags remote fields before native loading (`quill/io/rtf_safety.py`, wired into `read_rtf_document`), spoken-format vocabulary (`quill/core/format_speech.py`), the editor-surface protocol (`quill/ui/editor_surface.py`), the dual-lens `RichTextSurface` with a read-only native rich view plus the canonical Markdown lens (`quill/ui/rich_text_surface.py`), lossless lens switching (`view.switch_editing_lens`, `Ctrl+Shift+Grave, K`), and `.rtf` files opening in the rich lens when enabled. All covered by wx-free unit/source-contract tests, strict-mypy and ruff clean. **In progress (honest):** an editable rich surface with rich-native persistent undo — the rich lens currently renders read-only and editing happens in the Markdown lens, because faithful structural reconstruction from a live `RichTextCtrl` buffer plus rich undo is the subtlest part of the proposal and is not yet complete. |
 
 Note on RTF and the editor control surface: QUILL's writing path is a stock
 `wx.TextCtrl` on purpose, because plain-text-first editing gives the strongest,
@@ -1379,13 +1380,15 @@ pursued. **In scope (EDS-21):** RTF as a *format* in the io layer, where formatt
 is read into QUILL's Markdown-style markup and written back out to RTF, with the
 editor surface unchanged. This is a clean extension of the existing `io/*` contract
 and the right home for the lossy `_format_rtf` extract that exists today. **Out of
-scope by design:** RTF as a *live rich-editing surface*. True visual rich editing
-would require swapping the writing control to `wx.RichTextCtrl`, whose
-screen-reader behavior is weaker and whose selection, navigation, and announcement
-model differs from the one every existing command and the EDS-1 through EDS-20
-conveniences assume. That tradeoff conflicts directly with QUILL's accessibility-
-first, plain-text-first mandate, so live RTF word processing stays a deliberate
-scope choice rather than a backlog item. Importantly, none of EDS-1 through EDS-20
+scope by design:** RTF as a *live rich-editing surface* on the default writing
+path. The stock `wx.TextCtrl` remains the default and only writing control, because
+plain-text-first editing gives the strongest screen-reader fidelity and every
+existing command and EDS-1..20 convenience assumes it. RTF-22 adds an **opt-in**
+Rich text lens (off by default) that renders formatting natively in a
+`wx.richtext.RichTextCtrl` *without* changing the canonical document model — QUILL
+Markdown stays the editable canonical value, the rich view is an overlay, and the
+two lenses switch losslessly. A fully editable rich surface with rich-native undo
+remains honestly in progress (see RTF-22). Importantly, none of EDS-1 through EDS-20
 depend on RTF; they are plain-text conveniences that ship on the current surface
 regardless of whether EDS-21 lands.
 

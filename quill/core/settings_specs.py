@@ -296,6 +296,16 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("word", "docx", "open", "structured"),
     ),
     SettingSpec(
+        "editor_surface",
+        "Editing surface",
+        "editing",
+        "choice",
+        "Write in the plain-text editor, or open rich files in the Rich text lens. "
+        "The plain surface stays the default and is the most screen-reader tested.",
+        choices=(("plain", "Plain text"), ("rich", "Rich text lens")),
+        keywords=("rich", "rtf", "formatting", "lens", "bold", "surface"),
+    ),
+    SettingSpec(
         "autosave_interval_seconds",
         "Autosave interval (seconds)",
         "editing",

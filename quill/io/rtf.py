@@ -16,6 +16,7 @@ import re
 from pathlib import Path
 
 from quill.core.document import Document
+from quill.io.rtf_safety import scan_rtf_safety
 
 __all__ = [
     "markdown_to_rtf",
@@ -303,15 +304,32 @@ def rtf_to_markdown(rtf: str) -> str:
 # io contract
 # --------------------------------------------------------------------------- #
 def read_rtf_document(path: Path) -> Document:
-    """Read an RTF file into a Document whose text is Markdown-style markup."""
+    """Read an RTF file into a Document whose text is Markdown-style markup.
+
+    The raw bytes are scanned and sanitized first (embedded objects and binary
+    payloads stripped, remote references flagged) before any conversion, so the
+    rich surface never receives a dangerous construct. The safety outcome is
+    recorded in ``source_metadata`` for the UI to surface.
+    """
     raw = path.read_text(encoding=_RTF_ENCODING, errors="replace")
+    safety = scan_rtf_safety(raw)
+    metadata: dict[str, object] = {
+        "source_kind": "rtf",
+        "engine": "rtf",
+        "quality_score": 100,
+        "rtf_safe": safety.safe,
+    }
+    if safety.blocked:
+        metadata["rtf_blocked"] = list(safety.blocked)
+    if safety.warnings:
+        metadata["rtf_warnings"] = list(safety.warnings)
     return Document(
-        text=rtf_to_markdown(raw),
+        text=rtf_to_markdown(safety.sanitized_rtf),
         path=path,
         modified=False,
         encoding="utf-8",
         line_ending="\n",
-        source_metadata={"source_kind": "rtf", "engine": "rtf", "quality_score": 100},
+        source_metadata=metadata,
     )
 
 

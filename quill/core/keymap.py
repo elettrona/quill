@@ -66,6 +66,7 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "view.browser_preview": "Ctrl+Shift+Grave, V",
     "view.split_preview": "Ctrl+Shift+Backslash",
     "view.focus_preview": "Ctrl+F6",
+    "view.switch_editing_lens": "Ctrl+Shift+Grave, K",
     "edit.set_mark": "Ctrl+Shift+M",
     "edit.pop_mark": "Ctrl+M",
     "edit.exchange_point_mark": "Ctrl+Shift+X",

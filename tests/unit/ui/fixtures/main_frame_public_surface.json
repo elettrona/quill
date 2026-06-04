@@ -206,6 +206,7 @@
   "stop_macro_recording",
   "stop_read_aloud",
   "style_headings",
+  "switch_editing_lens",
   "switch_feature_profile",
   "toggle_announcement_trace_capture",
   "toggle_bw_parakeet_visibility",

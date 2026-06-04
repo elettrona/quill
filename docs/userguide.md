@@ -1056,7 +1056,7 @@ HTML gets tag insertion, structure-aware editing help, link handling, and GLOW r
 
 ### RTF
 
-RTF documents can use Quill's rich-text-capable editing surface when formatting fidelity matters. Commands such as bold, italic, and underline are exposed contextually in this mode while preserving Quill's keyboard-first, screen-reader-first behavior.
+RTF documents can use Quill's optional **Rich text lens**, a screen-reader-first rich editing surface. It is **off by default**: the standard plain-text editor stays Quill's writing path unless you opt in under Settings, Editing (the "Editor surface" choice). Turn it on and `.rtf` files open in the Rich text lens, which renders bold, italic, headings, bullets, and links natively. Your document text stays Quill Markdown underneath, so search, outline, metrics, autosave, and persistent undo keep working exactly as in plain-text mode. Press the editing-lens shortcut (`Ctrl+Shift+` ` then `K`) to switch losslessly between the rich view and the Markdown lens; no words are lost and the document is not marked changed by switching. When an RTF file contains unsafe embedded content (such as OLE objects) Quill strips it on open and tells you; remote fields are flagged for your consent rather than fetched silently.
 
 ### CSV and TSV
 

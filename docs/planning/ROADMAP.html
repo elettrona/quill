@@ -7420,8 +7420,9 @@ lines, hard-wrap, read-only guard, delete-to-bounds)</td>
 <tr>
 <td>RTF live rich editing (justify/style/font, format nav)</td>
 <td>Yes</td>
-<td>No (plain-text/markup-first)</td>
-<td>Out of scope by design</td>
+<td>Opt-in Rich text lens (read-only rich view delivered; editable rich
+in progress)</td>
+<td>Partial (RTF-22)</td>
 </tr>
 <tr>
 <td>JScript.NET scripting add-ins, exposed object model</td>
@@ -7856,6 +7857,39 @@ saves through <code>write_rtf_document</code>; covered by
 <code>tests/unit/ui/test_main_frame_rtf_roundtrip.py</code>, strict-mypy
 and ruff clean.</td>
 </tr>
+<tr>
+<td>RTF-22</td>
+<td>Optional native Rich text lens (rtf.md Part One)</td>
+<td>Features</td>
+<td>L</td>
+<td>In progress</td>
+<td>An opt-in alternative editor surface that renders
+bold/italic/headings/bullets/links natively in a
+<code>wx.richtext.RichTextCtrl</code>, gated behind the
+<code>editor_surface</code> setting (default <code>plain</code>) so the
+stock <code>wx.TextCtrl</code> stays the default writing path. QUILL
+Markdown remains the canonical document value, so every existing
+offset-based command, search, metric, outline, autosave, and
+persistent-undo keeps working unchanged through the surface.
+<strong>Delivered:</strong> wx-free rich model and conversions
+(<code>quill/io/rtf_model.py</code>), RTF safety scanning that strips
+OLE/object groups and flags remote fields before native loading
+(<code>quill/io/rtf_safety.py</code>, wired into
+<code>read_rtf_document</code>), spoken-format vocabulary
+(<code>quill/core/format_speech.py</code>), the editor-surface protocol
+(<code>quill/ui/editor_surface.py</code>), the dual-lens
+<code>RichTextSurface</code> with a read-only native rich view plus the
+canonical Markdown lens (<code>quill/ui/rich_text_surface.py</code>),
+lossless lens switching (<code>view.switch_editing_lens</code>,
+<code>Ctrl+Shift+Grave, K</code>), and <code>.rtf</code> files opening
+in the rich lens when enabled. All covered by wx-free
+unit/source-contract tests, strict-mypy and ruff clean. <strong>In
+progress (honest):</strong> an editable rich surface with rich-native
+persistent undo — the rich lens currently renders read-only and editing
+happens in the Markdown lens, because faithful structural reconstruction
+from a live <code>RichTextCtrl</code> buffer plus rich undo is the
+subtlest part of the proposal and is not yet complete.</td>
+</tr>
 </tbody>
 </table>
 <p>Note on RTF and the editor control surface: QUILL’s writing path is a
@@ -7868,16 +7902,19 @@ formatting is read into QUILL’s Markdown-style markup and written back
 out to RTF, with the editor surface unchanged. This is a clean extension
 of the existing <code>io/*</code> contract and the right home for the
 lossy <code>_format_rtf</code> extract that exists today. <strong>Out of
-scope by design:</strong> RTF as a <em>live rich-editing surface</em>.
-True visual rich editing would require swapping the writing control to
-<code>wx.RichTextCtrl</code>, whose screen-reader behavior is weaker and
-whose selection, navigation, and announcement model differs from the one
-every existing command and the EDS-1 through EDS-20 conveniences assume.
-That tradeoff conflicts directly with QUILL’s accessibility- first,
-plain-text-first mandate, so live RTF word processing stays a deliberate
-scope choice rather than a backlog item. Importantly, none of EDS-1
-through EDS-20 depend on RTF; they are plain-text conveniences that ship
-on the current surface regardless of whether EDS-21 lands.</p>
+scope by design:</strong> RTF as a <em>live rich-editing surface</em> on
+the default writing path. The stock <code>wx.TextCtrl</code> remains the
+default and only writing control, because plain-text-first editing gives
+the strongest screen-reader fidelity and every existing command and
+EDS-1..20 convenience assumes it. RTF-22 adds an <strong>opt-in</strong>
+Rich text lens (off by default) that renders formatting natively in a
+<code>wx.richtext.RichTextCtrl</code> <em>without</em> changing the
+canonical document model — QUILL Markdown stays the editable canonical
+value, the rich view is an overlay, and the two lenses switch
+losslessly. A fully editable rich surface with rich-native undo remains
+honestly in progress (see RTF-22). Importantly, none of EDS-1 through
+EDS-20 depend on RTF; they are plain-text conveniences that ship on the
+current surface regardless of whether EDS-21 lands.</p>
 <p>Status: delivered in 1.0. Every EDS item is a self-contained editor
 convenience, implemented with its wx-free logic in a dedicated
 <code>quill/core</code> module (unit-tested) and wired into the editor
