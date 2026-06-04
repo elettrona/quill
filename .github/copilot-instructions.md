@@ -91,6 +91,25 @@ authoring guide lives in
   - Set explicit default buttons, bind Escape/Close consistently, and return focus to editor after modal close.
 - Add focused tests for dialog and menu regressions.
 
+## Development environment (local vs cloud)
+
+Read this before deciding whether you can run live UI code.
+
+- **Local development happens on Windows.** The working tree lives on `S:\QUILL`,
+  the shell is PowerShell (`pwsh`), and **wxPython is installed and importable**
+  (wx 4.2.5 msw / wxWidgets 3.2.9, including `wx.richtext`). When you are working
+  locally you **can** create a `wx.App`, instantiate real controls, and run live
+  GUI tests with `python -m pytest`. Do **not** assume a headless or Linux
+  environment and do **not** refuse to verify GUI behavior locally — actually
+  exercise wx (for example for undo, spell-check, dialog focus, and announcement
+  behavior) instead of marking an item "needs runtime / cannot verify".
+- **The GitHub Copilot cloud coding agent runs on Linux**, where wxPython cannot
+  be imported. The Linux/headless constraints below in "Cloud coding agent
+  directives" apply **only** to that cloud agent, not to local Windows work.
+- Either way, `quill/core` and `quill/io` must stay wx-free — that is an
+  architectural rule, independent of the runtime. UI tests under `tests/unit/ui`
+  may import wx when running locally.
+
 ## Cloud coding agent directives (read this first)
 
 When you run as the GitHub Copilot coding agent in the cloud, follow these standing
@@ -103,7 +122,9 @@ rules in addition to everything above.
 - HONESTY IS NON-NEGOTIABLE. Only mark an item Done when it is genuinely complete
   and tested. If an item has a real runtime blocker, leave it honestly
   "In progress" with an accurate note explaining why. Never fabricate Done.
-- You run on **Linux**, so `wxPython` cannot be imported. That is expected. Do not
+- **In the cloud you run on Linux**, so `wxPython` cannot be imported. That is
+  expected in the cloud environment only (see "Development environment" above —
+  local Windows work can run live wx). Do not
   try to instantiate live wx UI. Validate UI work through the existing bar:
   source-contract tests (read the `.py` file as text and assert wiring
   substrings), the A11Y-4 dialog-contract guard
