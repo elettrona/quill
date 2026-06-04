@@ -9456,7 +9456,7 @@ class MainFrame(
             )
 
         dialog = AccessibilityAgentDialog(
-            self,
+            self.frame,
             document_name=self.document.name,
             document_text=original,
             markup=markup,

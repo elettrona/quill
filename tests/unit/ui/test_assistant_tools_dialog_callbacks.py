@@ -128,6 +128,21 @@ def test_accessibility_agent_apply_with_nothing_checked_makes_no_change() -> Non
     assert announcements and "no automatic changes" in announcements[0].lower()
 
 
+def test_make_document_accessible_parents_dialog_to_frame() -> None:
+    # Issue #134: the Accessibility Tune-Up dialog must be parented to the real
+    # wx frame (self.frame), not the MainFrame controller (self), or wx.Dialog
+    # gets a non-window parent and the dialog never shows.
+    from pathlib import Path
+
+    source = (
+        Path(__file__).resolve().parents[3] / "quill" / "ui" / "main_frame.py"
+    ).read_text(encoding="utf-8")
+    assert "AccessibilityAgentDialog(" in source
+    call = source.split("AccessibilityAgentDialog(", 1)[1]
+    first_arg = call.split(",", 1)[0].strip()
+    assert first_arg == "self.frame", first_arg
+
+
 def _make_diff_dialog(
     original: str, revised: str, checked: set[int]
 ) -> tuple[DiffReviewDialog, list[str], list[str]]:
