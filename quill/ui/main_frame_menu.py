@@ -471,26 +471,28 @@ class MenuBuilderMixin:
         self._id_insert_footnote = wx.NewIdRef()
         self._id_insert_table = wx.NewIdRef()
         format_menu = wx.Menu()
-        format_menu.Append(
+        case_menu = wx.Menu()
+        case_menu.Append(
             self._id_upper_case,
             self._menu_label("&Upper Case", "format.upper_case"),
         )
-        format_menu.Append(
+        case_menu.Append(
             self._id_lower_case,
             self._menu_label("&Lower Case", "format.lower_case"),
         )
-        format_menu.Append(
+        case_menu.Append(
             self._id_title_case,
             self._menu_label("&Title Case", "format.title_case"),
         )
-        format_menu.Append(
+        case_menu.Append(
             self._id_sentence_case,
             self._menu_label("&Sentence Case", "format.sentence_case"),
         )
-        format_menu.Append(
+        case_menu.Append(
             self._id_toggle_case,
             self._menu_label("To&ggle Case", "format.toggle_case"),
         )
+        format_menu.AppendSubMenu(case_menu, "Change &Case")
         format_menu.AppendSeparator()
         format_menu.Append(
             self._id_toggle_line_comment,
