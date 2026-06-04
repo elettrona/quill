@@ -180,6 +180,11 @@ from quill.core.format_ops import (
     trim_trailing_whitespace,
 )
 from quill.core.glow import build_audit_report, build_fix_report, fix_text
+from quill.core.glow_updates import (
+    GlowUpdateCheck,
+    apply_glow_update,
+    check_for_glow_update,
+)
 from quill.core.guides import (
     build_keyboard_shortcut_html,
     build_welcome_guide,
@@ -391,11 +396,6 @@ from quill.core.tagging import (
 from quill.core.transforms import to_lower, to_sentence_case, to_title, to_toggle_case, to_upper
 from quill.core.trust import is_trusted_location, load_trusted_locations, save_trusted_locations
 from quill.core.undo_store import load_undo_history, save_undo_history
-from quill.core.glow_updates import (
-    GlowUpdateCheck,
-    apply_glow_update,
-    check_for_glow_update,
-)
 from quill.core.updates import (
     GitHubRelease,
     UpdateManifest,

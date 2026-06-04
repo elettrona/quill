@@ -270,9 +270,7 @@ def test_settings_glow_engine_on_by_default_network_features_off(
     assert loaded.glow_language_processing_consent is False
 
 
-def test_settings_glow_consent_round_trips(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_settings_glow_consent_round_trips(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
     (tmp_path / "settings.json").write_text(
         '{"glow_enabled":false,"glow_ai_alt_text_consent":true,'
