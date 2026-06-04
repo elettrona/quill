@@ -64,6 +64,16 @@ def test_preferences_adds_a_page_and_open_button_per_area() -> None:
     assert 'chosen["handler"] = handler' in body
 
 
+def test_preferences_runs_chosen_handler_after_the_hub_closes() -> None:
+    body = _open_preferences_source()
+    # Exactly one modal is on screen at a time: the chosen area handler runs
+    # only after the hub has closed, and closing without a choice reports it.
+    assert 'handler = chosen["handler"]' in body
+    assert "if handler is None:" in body
+    assert 'self._set_status("Preferences closed")' in body
+    assert "handler()" in body
+
+
 def test_general_settings_search_box_removed() -> None:
     source = Path("quill/ui/main_frame.py").read_text(encoding="utf-8")
     # The "no search button here" requirement: the Settings notebook must no

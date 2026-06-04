@@ -764,111 +764,11 @@ def test_open_outline_navigator_reports_plain_text_as_unsupported() -> None:
     assert frame._status_message == "Outline is not available for plain text files"
 
 
-def test_open_preferences_shows_dialog_and_routes_selection() -> None:
-    frame = _build_frame("hello", insertion_point=0)
-    called: list[str] = []
-
-    class _ChoiceDialog:
-        def __init__(self, *_args: object, **_kwargs: object) -> None:
-            self.selection = 0
-
-        def __enter__(self) -> _ChoiceDialog:
-            return self
-
-        def __exit__(self, *_args: object) -> None:
-            return None
-
-        def SetSelection(self, selection: int) -> None:
-            self.selection = selection
-
-        def GetSelection(self) -> int:
-            return self.selection
-
-    def _show_modal(dialog: object, _label: str) -> int:
-        dialog.selection = 3  # type: ignore[attr-defined]
-        return 1
-
-    frame._wx = type(
-        "WX",
-        (),
-        {"SingleChoiceDialog": _ChoiceDialog, "ID_OK": 1, "ID_CANCEL": 0},
-    )()
-    frame._show_modal_dialog = _show_modal  # type: ignore[method-assign]
-    frame.open_general_preferences = lambda: called.append("general")  # type: ignore[method-assign]
-    frame.open_profiles_and_features_settings = lambda: called.append("profiles")  # type: ignore[method-assign]
-    frame.open_status_bar_settings = lambda: called.append("status")  # type: ignore[method-assign]
-    frame.open_keymap_editor = lambda: called.append("keymap")  # type: ignore[method-assign]
-
-    frame.open_preferences()
-
-    assert called == ["keymap"]
-
-
-def test_open_preferences_sets_cancelled_status_when_dialog_is_cancelled() -> None:
-    frame = _build_frame("hello", insertion_point=0)
-
-    class _ChoiceDialog:
-        def __init__(self, *_args: object, **_kwargs: object) -> None:
-            self.selection = 0
-
-        def __enter__(self) -> _ChoiceDialog:
-            return self
-
-        def __exit__(self, *_args: object) -> None:
-            return None
-
-        def SetSelection(self, selection: int) -> None:
-            self.selection = selection
-
-        def GetSelection(self) -> int:
-            return self.selection
-
-    frame._wx = type(
-        "WX",
-        (),
-        {"SingleChoiceDialog": _ChoiceDialog, "ID_OK": 1, "ID_CANCEL": 0},
-    )()
-    frame._show_modal_dialog = lambda _dialog, _label: 0  # type: ignore[method-assign]
-
-    frame.open_preferences()
-
-    assert frame._status_message == "Preferences cancelled"
-
-
-def test_open_preferences_routes_to_general_settings() -> None:
-    frame = _build_frame("hello", insertion_point=0)
-    called: list[str] = []
-
-    class _ChoiceDialog:
-        def __init__(self, *_args: object, **_kwargs: object) -> None:
-            self.selection = 0
-
-        def __enter__(self) -> _ChoiceDialog:
-            return self
-
-        def __exit__(self, *_args: object) -> None:
-            return None
-
-        def SetSelection(self, selection: int) -> None:
-            self.selection = selection
-
-        def GetSelection(self) -> int:
-            return self.selection
-
-    frame._wx = type(
-        "WX",
-        (),
-        {"SingleChoiceDialog": _ChoiceDialog, "ID_OK": 1, "ID_CANCEL": 0},
-    )()
-    frame._show_modal_dialog = lambda _dialog, _label: 1  # type: ignore[method-assign]
-    frame.open_general_preferences = lambda: called.append("general")  # type: ignore[method-assign]
-    frame.open_profiles_and_features_settings = lambda: called.append("profiles")  # type: ignore[method-assign]
-    frame.open_status_bar_settings = lambda: called.append("status")  # type: ignore[method-assign]
-    frame.open_keymap_editor = lambda: called.append("keymap")  # type: ignore[method-assign]
-
-    frame.open_preferences()
-
-    assert called == ["general"]
+# The live-execution Preferences tests that drove the old wx.SingleChoiceDialog
+# "choose then OK then open" flow were removed when that picker was replaced by
+# the multi-page Preferences hub (a wx.Listbook/wx.Toolbook book control). The
+# hub is wx-heavy and cannot be exercised headlessly, so its wiring is pinned by
+# the source-contract test in tests/unit/ui/test_preferences_hub_wiring.py.
 
 
 def test_build_outline_navigator_nodes_tracks_heading_hierarchy() -> None:
