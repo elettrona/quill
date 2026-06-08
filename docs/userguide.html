@@ -425,6 +425,8 @@ size.</li>
 <li><strong>Workspace Snapshots</strong> lets you save and reopen groups
 of documents as a single workspace snapshot, similar to lightweight
 workspaces in Visual Studio Code.</li>
+<li><strong>New from Clipboard</strong> opens a new document seeded with
+the current clipboard text.</li>
 <li><strong>Save</strong> writes the current document.</li>
 <li><strong>Save As…</strong> writes to a new path, converting the
 document to the file type you choose in the dialog. Quill keeps your
@@ -455,6 +457,11 @@ reloads the file from storage after confirmation.</li>
 version.</li>
 <li><strong>Page Setup…</strong> and <strong>Print…</strong> support
 paper and print workflows.</li>
+<li><strong>Run Current File</strong> executes the saved file with its
+associated tool, and <strong>Open Target at Cursor</strong> opens the
+path or link under the caret.</li>
+<li><strong>Rename Current File…</strong> and <strong>Delete Current
+File…</strong> manage the file on disk from inside the editor.</li>
 <li><strong>Close Document</strong> closes the current tab.</li>
 <li><strong>Exit</strong> closes the application.</li>
 </ul>
@@ -473,27 +480,36 @@ explicit. Nothing important is hidden behind a side effect.</p>
 <li>Copy With Source</li>
 <li>Select All</li>
 </ul>
-<p>Quill then goes further with selection and navigation-aware
+<p>Quill then goes further with selection- and navigation-aware
 editing:</p>
 <ul>
+<li><strong>Find…</strong>, <strong>Replace…</strong>, <strong>Find
+Next</strong>, <strong>Find Previous</strong>, and <strong>Find All
+Matches</strong> all live here. Replace includes a <strong>Replace
+All</strong> action in its dialog, so bulk replacement stays in one
+place.</li>
+<li><strong>Word Prediction…</strong> opens inline word and tag
+suggestions.</li>
 <li><strong>Extend Selection Mode</strong> turns selection growth into a
 dedicated mode.</li>
 <li><strong>Selection</strong> submenu includes Select Line, Select
-Paragraph, Select Block, Select to Start or End of Line, and Select to
-Start or End of Document.</li>
-<li><strong>Recent Marks (Ring)</strong> commands let you set a
-temporary mark, jump to previous marks, swap cursor and mark, and list
-recent marks while you move through an editing flow.</li>
-<li><strong>Insert Link…</strong> creates a format-aware link.</li>
-<li><strong>Follow Link</strong> opens the link under the caret.</li>
-<li><strong>Find…</strong> and <strong>Replace…</strong> sit here as
-expected.</li>
-<li><strong>Replace…</strong> includes a <strong>Replace All</strong>
-action in the dialog, so bulk replacement stays in one place.</li>
-<li><strong>Preferences…</strong> and <strong>Customize Menus…</strong>
-now live together with the rest of Quill’s configuration under
-<strong>Tools -&gt; Customize</strong>.</li>
+Paragraph, Select Block, Select to Start or End of Line, Select to Start
+or End of Document, and a nested <strong>Recent Marks (Ring)</strong>
+group (set a temporary mark, jump to previous marks, swap cursor and
+mark, list recent marks).</li>
+<li><strong>Follow Link</strong> opens the link under the caret. (Link
+<em>insertion</em> now lives in the <strong>Insert</strong> menu.)</li>
+<li><strong>Paste HTML as Markdown</strong> converts rich clipboard HTML
+to Markdown as it pastes.</li>
+<li>The deletion group — <strong>Delete to Line Start</strong>,
+<strong>Delete to Line End</strong>, <strong>Delete to Document
+Top</strong>, <strong>Delete to Document Bottom</strong>, and
+<strong>Delete Paragraph</strong> — removes text relative to the
+cursor.</li>
 </ul>
+<p><strong>Preferences…</strong> and <strong>Customize Menus…</strong>
+live with the rest of Quill’s configuration under <strong>Tools -&gt;
+Customize</strong>.</p>
 <h3 id="view">View</h3>
 <p>The <strong>View</strong> menu controls how Quill presents your
 document on screen without changing your content.</p>
@@ -518,45 +534,63 @@ undo, spell-check-as-you-type, and word-prediction-as-you-type — now
 live in the registry-driven <strong>Settings</strong> dialog
 (<strong>Tools -&gt; Customize -&gt; Preferences…</strong>), where they
 are persisted in one place.</p>
-<h3 id="navigate">Navigate</h3>
-<p>The <strong>Navigate</strong> menu is one of Quill’s strongest
-differentiators. It assumes you may need to move through large, dense,
-or extracted material without visual scanning.</p>
-<p>Core location commands:</p>
+<h3 id="insert">Insert</h3>
+<p>The <strong>Insert</strong> menu adds structured content at the
+cursor.</p>
 <ul>
-<li><strong>Go To Line…</strong></li>
-<li><strong>Go To Page…</strong></li>
-<li><strong>Back Location</strong></li>
-<li><strong>Forward Location</strong></li>
+<li><strong>Insert Link…</strong> creates a format-aware link.</li>
+<li><strong>Heading</strong> submenu: insert Heading 1 through 6,
+<strong>Decrease Level</strong> / <strong>Increase Level</strong>, and
+<strong>Style Headings…</strong> (font, size, alignment) for the current
+level or all levels.</li>
+<li><strong>List</strong> submenu: <strong>Bullet</strong>,
+<strong>Numbered</strong>, <strong>Task</strong>, and <strong>List
+Manager…</strong>.</li>
+<li><strong>Insert Code Block</strong>, <strong>Insert
+Footnote</strong>, <strong>Insert Table…</strong>, <strong>Insert HTML
+Tag…</strong>, and <strong>Insert Markdown Tag…</strong>.</li>
+<li><strong>Insert Snippet…</strong> and <strong>Manage
+Snippets…</strong> for reusable text with placeholders.</li>
+<li><strong>Special Character…</strong>, <strong>Date and Time</strong>,
+<strong>Calculated Date…</strong>, and <strong>File Content…</strong>
+insert symbols, timestamps, computed dates, and the contents of another
+file.</li>
 </ul>
-<p>Structural movement commands:</p>
+<p>Quill treats Markdown and HTML as working surfaces, not
+special-purpose export formats, so tag insertion lives here beside the
+structural inserts.</p>
+<h4 id="word-prediction-and-snippets">Word prediction and snippets</h4>
+<p>Quill separates live prediction from snippet insertion so the hotkeys
+feel like a modern editor:</p>
+<ol type="1">
+<li>Press <code>Ctrl+Space</code> to open <strong>Word
+Prediction</strong> (also on <strong>Edit -&gt; Word
+Prediction…</strong>).</li>
+<li>Type to surface matching document words, HTML tags, and Markdown
+tags.</li>
+<li>Use arrow keys to choose a result and press Enter to insert it.</li>
+</ol>
+<p>For setup and maintenance:</p>
 <ul>
-<li><strong>Next Heading</strong></li>
-<li><strong>Previous Heading</strong></li>
-<li><strong>Next Block</strong></li>
-<li><strong>Previous Block</strong></li>
-<li><strong>Outline Navigator…</strong></li>
-<li><strong>Match Bracket</strong></li>
-<li><strong>Next Structure</strong></li>
-<li><strong>Previous Structure</strong></li>
-<li><strong>Next Region</strong></li>
-<li><strong>Previous Region</strong></li>
+<li>Press <code>Ctrl+Alt+Space</code> for <strong>Insert
+Snippet</strong>.</li>
+<li>Press <code>Ctrl+Alt+Shift+Space</code> for <strong>Manage
+Snippets</strong> (create, edit, delete, import, export, and starter
+packs).</li>
+<li>Open <strong>Preferences -&gt; Install Starter Snippet
+Packs</strong> to install sample libraries for daily writing, developer
+flow, and support/accessibility notes.</li>
+<li>In <strong>General Preferences</strong>, toggle <strong>Word
+prediction and tag IntelliSense</strong> or <strong>Expand snippet
+triggers while typing</strong> as needed.</li>
 </ul>
-<p>Bookmark and search navigation:</p>
-<ul>
-<li><strong>Set Bookmark…</strong></li>
-<li><strong>Go To Bookmark…</strong></li>
-<li><strong>Find Next</strong></li>
-<li><strong>Find Previous</strong></li>
-<li><strong>Find All Matches</strong></li>
-</ul>
-<p>If your work involves transcripts, legal text, long Markdown notes,
-HTML source, or extracted PDFs, spend time here. This is the menu that
-turns Quill from a text box into a navigable workspace.</p>
+<p>Snippets support placeholders such as <code>${input:name}</code>,
+<code>${choice:a|b}</code>, <code>${date}</code>, <code>${time}</code>,
+and <code>${cursor}</code>.</p>
 <h3 id="format">Format</h3>
 <p>The <strong>Format</strong> menu handles presentation and
-markup-aware editing.</p>
-<p>Case operations:</p>
+markup-aware editing of existing text.</p>
+<p>Case operations live in the <strong>Change Case</strong> submenu:</p>
 <ul>
 <li>Upper Case</li>
 <li>Lower Case</li>
@@ -579,57 +613,73 @@ markup-aware editing.</p>
 <li>Delete Line</li>
 <li>Join Lines</li>
 </ul>
-<p>Inline and structural formatting:</p>
+<p>Inline emphasis:</p>
 <ul>
 <li>Bold</li>
 <li>Italic</li>
-<li>Insert Heading levels 1 through 6</li>
-<li>Increase or decrease heading level</li>
-<li>Style headings (font, size, alignment) for the current level or all
-levels</li>
-<li>Open Heading Organizer (<code>Ctrl+Alt+Shift+H</code>) for
-heading-level edits, section reorder, and heading validation</li>
-<li>Insert bullet, numbered, and task lists</li>
-<li>Insert code block</li>
-<li>Insert footnote</li>
-<li>Insert table</li>
-<li>Insert HTML tag</li>
-<li>Insert Markdown tag</li>
-<li>Word prediction (<code>Ctrl+Space</code>)</li>
-<li>Insert snippet (<code>Ctrl+Alt+Space</code>)</li>
-<li>Manage snippets (<code>Ctrl+Alt+Shift+Space</code>)</li>
 </ul>
-<p>Quill treats Markdown and HTML as working surfaces, not
-special-purpose export formats. This menu is where that philosophy
-becomes practical.</p>
-<h3 id="word-prediction-and-snippets">Word prediction and snippets</h3>
-<p>Quill 0.1.5 separates live prediction from snippet insertion so the
-hotkeys feel more like a modern editor:</p>
-<ol type="1">
-<li>Press <code>Ctrl+Space</code> to open <strong>Word
-Prediction</strong>.</li>
-<li>Type to surface matching document words, HTML tags, and Markdown
-tags.</li>
-<li>Use arrow keys to choose a result and press Enter to insert it.</li>
-</ol>
-<p>For setup and maintenance:</p>
+<p>The <strong>Transform Lines</strong> submenu gathers every line and
+text transform in one place: <strong>Number Lines…</strong>,
+<strong>Hard-Wrap Lines…</strong>, <strong>Sort Lines
+Ascending</strong>, <strong>Sort Lines Descending</strong>,
+<strong>Reverse Lines</strong>, <strong>Remove Duplicate Lines</strong>,
+<strong>Trim Trailing Whitespace</strong>, <strong>Normalize
+Whitespace</strong>, <strong>Convert Indentation to Spaces</strong>, and
+<strong>Convert Indentation to Tabs</strong>.</p>
+<h3 id="navigate">Navigate</h3>
+<p>The <strong>Navigate</strong> menu is one of Quill’s strongest
+differentiators. It assumes you may need to move through large, dense,
+or extracted material without visual scanning.</p>
+<p>Core location commands:</p>
 <ul>
-<li>Press <code>Ctrl+Alt+Space</code> for <strong>Insert
-Snippet</strong>.</li>
-<li>Press <code>Ctrl+Alt+Shift+Space</code> for <strong>Manage
-Snippets</strong> (create, edit, delete, import, export, and starter
-packs).</li>
-<li>Open <strong>Preferences -&gt; Install Starter Snippet
-Packs</strong> to install sample libraries for daily writing, developer
-flow, and support/accessibility notes.</li>
-<li>In <strong>General Preferences</strong>, toggle <strong>Word
-prediction and tag IntelliSense</strong> or <strong>Expand snippet
-triggers while typing</strong> as needed.</li>
+<li><strong>Go To Line…</strong></li>
+<li><strong>Go To Page…</strong></li>
+<li><strong>Back Location</strong></li>
+<li><strong>Forward Location</strong></li>
 </ul>
-<p>Snippets still support placeholders such as
-<code>${input:name}</code>, <code>${choice:a|b}</code>,
-<code>${date}</code>, <code>${time}</code>, and
-<code>${cursor}</code>.</p>
+<p>Structural movement commands:</p>
+<ul>
+<li><strong>Next Heading</strong></li>
+<li><strong>Previous Heading</strong></li>
+<li><strong>Next Block</strong></li>
+<li><strong>Previous Block</strong></li>
+<li><strong>Outline Navigator…</strong></li>
+<li><strong>Heading Organizer…</strong> (<code>Ctrl+Alt+Shift+H</code>)
+for heading-level edits, section reorder, and heading validation</li>
+<li><strong>Match Bracket</strong></li>
+<li><strong>Next Structure</strong></li>
+<li><strong>Previous Structure</strong></li>
+<li><strong>Next Region</strong></li>
+<li><strong>Previous Region</strong></li>
+</ul>
+<p>Bookmark and position commands:</p>
+<ul>
+<li><strong>Set Bookmark…</strong></li>
+<li><strong>Go To Bookmark…</strong></li>
+<li><strong>List Bookmarks…</strong></li>
+<li><strong>Go to Percent…</strong></li>
+<li><strong>First Non-Blank</strong></li>
+<li><strong>Last Non-Blank</strong></li>
+</ul>
+<p>If your work involves transcripts, legal text, long Markdown notes,
+HTML source, or extracted PDFs, spend time here. This is the menu that
+turns Quill from a text box into a navigable workspace. (Find Next, Find
+Previous, and Find All Matches now live in <strong>Edit</strong>, beside
+Find and Replace.)</p>
+<h3 id="search">Search</h3>
+<p>The <strong>Search</strong> menu is the across-files and pattern hub.
+In-document Find and Replace live in <strong>Edit</strong>; this menu
+covers multi-file and regular-expression work.</p>
+<ul>
+<li><strong>Search in Files…</strong> and <strong>Replace Across
+Files…</strong> search and replace across a folder of documents.</li>
+<li><strong>Count Regex Matches…</strong> and <strong>Extract Regex
+Matches…</strong> report or pull out every match of a regular
+expression.</li>
+<li><strong>Lines in First Block Only</strong> and <strong>Lines Common
+to Both Blocks</strong> filter lines by block membership (set operations
+between two marked blocks).</li>
+</ul>
 <h3 id="tools">Tools</h3>
 <p>The <strong>Tools</strong> menu is Quill’s workshop. It contains
 high-value actions that are not best understood as raw editing.</p>
@@ -969,14 +1019,12 @@ instead of making it feel like a detached compliance tool.</p>
 <li><strong>Regex Helper…</strong></li>
 <li><strong>Pandoc Conversion Wizard…</strong></li>
 <li><strong>External Tools and Format Support…</strong></li>
-<li><strong>GLOW</strong> submenu</li>
-<li><strong>Macros</strong> submenu</li>
-<li><strong>Convert</strong> submenu with sort, reverse, deduplicate,
-trim trailing whitespace, normalize whitespace, and convert indentation
-commands</li>
+<li><strong>YAML Structure Editor…</strong></li>
 </ul>
-<p>These are especially valuable in large cleanup jobs and repetitive
-editing workflows.</p>
+<p>GLOW and Macros are now their own <strong>Tools</strong> submenus
+(described below), and the old line/text <strong>Convert</strong> group
+moved to <strong>Format -&gt; Transform Lines</strong>, so Authoring and
+Automation holds just these four authoring utilities.</p>
 <p>Regex Helper now opens as a full accessible dialog rather than a
 short informational prompt. It includes:</p>
 <ul>
@@ -997,6 +1045,30 @@ Wizard…</strong> can turn supported source files into Markdown, HTML, or
 plain text tabs that open directly in Quill. That makes Quill feel less
 like a dead-end editor and more like a calm bridge into real-world
 document cleanup and GLOW-oriented handoff work.</p>
+<h4 id="macros">Macros</h4>
+<ul>
+<li><strong>Start Recording</strong></li>
+<li><strong>Stop Recording</strong></li>
+<li><strong>Play Last Macro</strong></li>
+<li><strong>Manage Macros…</strong></li>
+</ul>
+<p>Macros record a sequence of editing commands and replay them, which
+is ideal for repetitive cleanup. Manage Macros lets you name, edit, and
+organize saved macros.</p>
+<h4 id="power-tools">Power Tools</h4>
+<ul>
+<li><strong>Toggle Read-Only Guard</strong></li>
+<li><strong>Toggle Clipboard Collector</strong></li>
+<li><strong>Collect Clipboard Now</strong></li>
+<li><strong>Toggle Key Describer</strong></li>
+<li><strong>Toggle Indentation Announcements</strong></li>
+<li><strong>Infer Indentation…</strong></li>
+</ul>
+<p>Power Tools collects the editor-behavior power toggles that have no
+other conventional home. (These were previously grouped under the
+“EdSharp Tools” submenu; the rest of those commands now live in their
+natural menus — see File, Edit, Insert, Format -&gt; Transform Lines,
+Navigate, Search, and Accessibility.)</p>
 <h4 id="compare-documents">Compare documents</h4>
 <ul>
 <li><strong>Compare with File…</strong></li>
@@ -1015,9 +1087,13 @@ synchronized movement through differences.</p>
 <h4 id="accessibility">Accessibility</h4>
 <ul>
 <li><strong>Accessibility Audit…</strong></li>
-<li><strong>Keyboard Trap Snapshot…</strong></li>
+<li><strong>Keyboard Trap &amp; Tab-Order Snapshot…</strong></li>
 <li><strong>Validate Contrast…</strong></li>
-<li><strong>Link Inventory…</strong></li>
+<li><strong>Link Inventory &amp; Alt-Text Catalog…</strong></li>
+<li><strong>Speak Cursor Address</strong>, <strong>Speak Document
+Status</strong>, and <strong>Speak Selection Length</strong> announce
+the caret position, document state, and selection size to your screen
+reader.</li>
 </ul>
 <p>These tools help review the editor experience itself, the current
 document’s link surface, and low-vision presentation issues.</p>
