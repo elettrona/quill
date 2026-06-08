@@ -75,8 +75,8 @@ def join_paragraph(text: str, cursor: int) -> tuple[str, int]:
         last += 1
     if first == last:
         return text, cursor
-    joined = " ".join(part.strip() for part in lines[first:last + 1])
-    new_lines = lines[:first] + [joined] + lines[last + 1:]
+    joined = " ".join(part.strip() for part in lines[first : last + 1])
+    new_lines = lines[:first] + [joined] + lines[last + 1 :]
     updated = "\n".join(new_lines)
     return updated, _line_start(updated, first)
 
@@ -94,6 +94,7 @@ def join_with_next_line(text: str, cursor: int) -> tuple[str, int]:
 
 
 # -- private helpers ----------------------------------------------------------
+
 
 def _lines(text: str) -> list[str]:
     if text == "":

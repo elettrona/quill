@@ -64,18 +64,14 @@ class SecurityWatchdog:
             elif isinstance(node, ast.Call):
                 if isinstance(node.func, ast.Name):
                     if node.func.id in ("eval", "exec"):
-                        issues.append(
-                            (
-                                node.lineno,
-                                f"CRITICAL: Forbidden use of {node.func.id()}(). Sandbox escape risk.",
-                            )
-                        )
+                        issues.append((
+                            node.lineno,
+                            f"CRITICAL: Forbidden use of {node.func.id()}(). Sandbox escape risk.",
+                        ))
 
         return issues
 
-    def _check_module(
-        self, module_name: str, line_no: int
-    ) -> Optional[Tuple[int, str]]:
+    def _check_module(self, module_name: str, line_no: int) -> Optional[Tuple[int, str]]:
         if not module_name:
             return None
 

@@ -1,5 +1,6 @@
 from quill import api
 
+
 def run_audit(context):
     """
     Analyzes the current document for common accessibility pitfalls.
@@ -15,7 +16,7 @@ def run_audit(context):
         if line.startswith("#"):
             level = len(line) - len(line.lstrip("#"))
             if level > last_level + 1:
-                issues.append(f"Heading Level Skip: Found { '#' * level } after { '#' * last_level }")
+                issues.append(f"Heading Level Skip: Found {'#' * level} after {'#' * last_level}")
             last_level = level
 
     # Rule 2: Empty Alt Text markers
@@ -29,8 +30,9 @@ def run_audit(context):
     if not issues:
         api.announce("Accessibility Audit: No immediate issues found. Great work!")
     else:
-        report = "\n".join([f"Issue {i+1}: {msg}" for i, msg in enumerate(issues)])
+        report = "\n".join([f"Issue {i + 1}: {msg}" for i, msg in enumerate(issues)])
         api.insert_text(f"\n--- Accessibility Audit Report ---\n{report}\n")
         api.announce(f"Audit complete. Found {len(issues)} accessibility issues.")
+
 
 api.register_command("run_audit", run_audit)

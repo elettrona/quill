@@ -36,9 +36,7 @@ def sync_from_github(token, repo_name="Community-Access/quill"):
                 plugin.status = "Verified"  # Assuming if it's in main, it's verified
 
                 # Construct the raw GitHub download URL
-                plugin.download_url = (
-                    f"https://github.com/{repo_name}/archive/refs/heads/main.zip"
-                )
+                plugin.download_url = f"https://github.com/{repo_name}/archive/refs/heads/main.zip"
 
                 db.session.add(plugin)
                 db.session.commit()

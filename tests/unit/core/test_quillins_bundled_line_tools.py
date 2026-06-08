@@ -33,6 +33,7 @@ _DIR = bundled_extensions_root() / "line-tools"
 
 # -- helpers ------------------------------------------------------------------
 
+
 def _load_manifest():
     raw = json.loads((_DIR / "manifest.json").read_text(encoding="utf-8"))
     assert validate_manifest(raw) == []
@@ -90,6 +91,7 @@ def _register_extension() -> _FakeApi:
 
 
 # -- line_ops.py algorithm ----------------------------------------------------
+
 
 def test_duplicate_line_inserts_copy_below() -> None:
     ops = _load_line_ops()
@@ -197,6 +199,7 @@ def test_join_with_next_line_on_last_is_noop() -> None:
 
 # -- manifest + registry ------------------------------------------------------
 
+
 def test_manifest_validates_and_has_correct_id() -> None:
     manifest = _load_manifest()
     assert manifest.id == "com.quill.bundled.line-tools"
@@ -228,6 +231,7 @@ def test_six_commands_all_in_edit_menu() -> None:
 
 
 # -- extension handler behavior -----------------------------------------------
+
 
 def test_handler_duplicate_line_calls_set_text_and_set_cursor() -> None:
     api = _register_extension()

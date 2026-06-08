@@ -31,6 +31,7 @@ _TEXT_DIR = bundled_extensions_root() / "text-tools"
 
 # -- helpers ------------------------------------------------------------------
 
+
 def _load_html_ops():
     spec = importlib.util.spec_from_file_location("html_ops", _TEXT_DIR / "html_ops.py")
     assert spec and spec.loader
@@ -89,6 +90,7 @@ class _FakeCtx:
     def get_cursor(self):
         class _C:
             line = 1
+
         return _C()
 
 
@@ -105,6 +107,7 @@ def _register_extension() -> _FakeApi:
 
 
 # -- html_ops.py algorithm ----------------------------------------------------
+
 
 def test_bold_and_italic() -> None:
     ops = _load_html_ops()
@@ -188,7 +191,9 @@ def test_plain_text_passes_through() -> None:
 
 def test_cf_html_fragment_extraction() -> None:
     ops = _load_html_ops()
-    payload = "Version:0.9\r\nStartHTML:0000000000\r\n<!--StartFragment--><b>hi</b><!--EndFragment-->"
+    payload = (
+        "Version:0.9\r\nStartHTML:0000000000\r\n<!--StartFragment--><b>hi</b><!--EndFragment-->"
+    )
     assert ops.extract_cf_html_fragment(payload) == "<b>hi</b>"
 
 
@@ -199,6 +204,7 @@ def test_cf_html_plain_html_passes_through() -> None:
 
 
 # -- manifest reflects the new command ----------------------------------------
+
 
 def test_manifest_includes_html_to_markdown_command() -> None:
     raw = json.loads((_TEXT_DIR / "manifest.json").read_text(encoding="utf-8"))
@@ -215,6 +221,7 @@ def test_manifest_declares_clipboard_read_capability() -> None:
 
 
 # -- extension handler behavior -----------------------------------------------
+
 
 def test_html_to_markdown_handler_inserts_result() -> None:
     api = _register_extension()

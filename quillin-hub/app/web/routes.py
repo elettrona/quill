@@ -44,7 +44,8 @@ def search():
     """Dedicated search results page for accessibility navigation."""
     q = request.args.get("q", "")
     plugins = (
-        Plugin.query.filter(Plugin.name.contains(q) | Plugin.description.contains(q))
+        Plugin.query
+        .filter(Plugin.name.contains(q) | Plugin.description.contains(q))
         .filter_by(status="Verified")
         .all()
     )

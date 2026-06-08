@@ -27,10 +27,26 @@ class _ListContext:
 
 
 _BLOCK_TAGS = {
-    "p", "div", "section", "article", "header", "footer",
-    "ul", "ol", "li", "blockquote", "pre",
-    "h1", "h2", "h3", "h4", "h5", "h6",
-    "table", "tr", "hr",
+    "p",
+    "div",
+    "section",
+    "article",
+    "header",
+    "footer",
+    "ul",
+    "ol",
+    "li",
+    "blockquote",
+    "pre",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "table",
+    "tr",
+    "hr",
 }
 
 
@@ -45,7 +61,7 @@ def extract_cf_html_fragment(payload: str) -> str:
     start = payload.find(start_marker)
     end = payload.find(end_marker)
     if start != -1 and end != -1 and end > start:
-        return payload[start + len(start_marker):end].strip()
+        return payload[start + len(start_marker) : end].strip()
     match_start = re.search(r"StartFragment:(\d+)", payload)
     match_end = re.search(r"EndFragment:(\d+)", payload)
     if match_start and match_end:

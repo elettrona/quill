@@ -139,12 +139,8 @@ def test_insert_tools_manifest_is_capability_free_layer_one() -> None:
 
 def test_insert_tools_snippets_expand() -> None:
     manifest = _load_manifest(_INSERT_DIR)
-    snippets = {
-        command.id: command.snippet for command in manifest.contributes.commands
-    }
-    date = expand_snippet(
-        snippets["ext.insert.date"], SnippetContext(date="2025-01-02")
-    )
+    snippets = {command.id: command.snippet for command in manifest.contributes.commands}
+    date = expand_snippet(snippets["ext.insert.date"], SnippetContext(date="2025-01-02"))
     assert date.text == "2025-01-02"
     both = expand_snippet(
         snippets["ext.insert.datetime"], SnippetContext(date="2025-01-02", time="09:30")

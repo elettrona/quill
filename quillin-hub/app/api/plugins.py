@@ -12,19 +12,17 @@ def get_plugins():
     Returns a JSON list of all verified plugins for the QUILL client.
     """
     plugins = Plugin.query.filter_by(status="Verified").all()
-    return jsonify(
-        [
-            {
-                "id": p.manifest_id,
-                "name": p.name,
-                "version": p.version,
-                "description": p.description,
-                "download_url": p.download_url,
-                "gold_standard": p.is_gold_standard,
-            }
-            for p in plugins
-        ]
-    )
+    return jsonify([
+        {
+            "id": p.manifest_id,
+            "name": p.name,
+            "version": p.version,
+            "description": p.description,
+            "download_url": p.download_url,
+            "gold_standard": p.is_gold_standard,
+        }
+        for p in plugins
+    ])
 
 
 @plugins_bp.route("/plugins/<manifest_id>/latest", methods=["GET"])
@@ -33,10 +31,8 @@ def get_latest_plugin(manifest_id):
     if not plugin:
         return jsonify({"error": "Plugin not found or not verified"}), 404
 
-    return jsonify(
-        {
-            "id": plugin.manifest_id,
-            "version": plugin.version,
-            "download_url": plugin.download_url,
-        }
-    )
+    return jsonify({
+        "id": plugin.manifest_id,
+        "version": plugin.version,
+        "download_url": plugin.download_url,
+    })

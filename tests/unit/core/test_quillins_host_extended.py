@@ -117,6 +117,7 @@ def _call(dispatcher: ApiDispatcher, method: str, *args: Any) -> dict[str, Any]:
 
 # -- get_cursor_offset --------------------------------------------------------
 
+
 def test_get_cursor_offset_returns_integer() -> None:
     services = _RecordingServices()
     dispatcher = ApiDispatcher(_manifest(CAP_EDITOR_READ), services)
@@ -135,6 +136,7 @@ def test_get_cursor_offset_requires_editor_read() -> None:
 
 # -- get_selection_range ------------------------------------------------------
 
+
 def test_get_selection_range_returns_start_end_dict() -> None:
     services = _RecordingServices()
     dispatcher = ApiDispatcher(_manifest(CAP_EDITOR_READ), services)
@@ -149,6 +151,7 @@ def test_get_selection_range_requires_editor_read() -> None:
 
 
 # -- set_cursor ---------------------------------------------------------------
+
 
 def test_set_cursor_moves_to_offset() -> None:
     services = _RecordingServices()
@@ -165,6 +168,7 @@ def test_set_cursor_requires_editor_write() -> None:
 
 # -- replace_range ------------------------------------------------------------
 
+
 def test_replace_range_invokes_service_with_correct_args() -> None:
     services = _RecordingServices()
     dispatcher = ApiDispatcher(_manifest(CAP_EDITOR_WRITE), services)
@@ -179,6 +183,7 @@ def test_replace_range_requires_editor_write() -> None:
 
 
 # -- set_status ---------------------------------------------------------------
+
 
 def test_set_status_reaches_service() -> None:
     services = _RecordingServices()
@@ -209,6 +214,7 @@ def test_set_status_is_not_consent_gated() -> None:
 
 # -- show_choices -------------------------------------------------------------
 
+
 def test_show_choices_returns_first_item() -> None:
     services = _RecordingServices()
     dispatcher = ApiDispatcher(_manifest(CAP_UI_CHOICES), services)
@@ -232,6 +238,7 @@ def test_show_choices_requires_ui_choices() -> None:
 
 
 # -- storage ------------------------------------------------------------------
+
 
 def test_storage_roundtrip_within_session() -> None:
     services = _RecordingServices()
@@ -284,8 +291,10 @@ def test_external_storage_dict_is_shared() -> None:
 
 # -- capability constants are in CAPABILITIES ---------------------------------
 
+
 def test_new_capabilities_are_in_the_catalogue() -> None:
     from quill.core.quillins.model import CAPABILITIES
+
     assert CAP_UI_STATUS in CAPABILITIES
     assert CAP_UI_CHOICES in CAPABILITIES
     assert CAP_STORAGE in CAPABILITIES

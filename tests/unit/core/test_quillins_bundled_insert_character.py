@@ -32,6 +32,7 @@ _DIR = bundled_extensions_root() / "insert-character"
 
 # -- helpers ------------------------------------------------------------------
 
+
 def _load_manifest():
     raw = json.loads((_DIR / "manifest.json").read_text(encoding="utf-8"))
     assert validate_manifest(raw) == []
@@ -84,10 +85,11 @@ def _register_extension() -> _FakeApi:
 
 # -- codepoints.py algorithm --------------------------------------------------
 
+
 def test_hex_input_returns_correct_char() -> None:
     cp = _load_codepoints()
     assert cp.parse_codepoint("41") == "A"
-    assert cp.parse_codepoint("1F600") == "\U0001F600"
+    assert cp.parse_codepoint("1F600") == "\U0001f600"
 
 
 def test_hex_is_case_insensitive() -> None:
@@ -98,7 +100,7 @@ def test_hex_is_case_insensitive() -> None:
 def test_decimal_prefix_d() -> None:
     cp = _load_codepoints()
     assert cp.parse_codepoint("d65") == "A"
-    assert cp.parse_codepoint("d128512") == "\U0001F600"
+    assert cp.parse_codepoint("d128512") == "\U0001f600"
 
 
 def test_uppercase_D_is_hex_digit_not_prefix() -> None:
@@ -109,7 +111,7 @@ def test_uppercase_D_is_hex_digit_not_prefix() -> None:
 def test_u_plus_notation() -> None:
     cp = _load_codepoints()
     assert cp.parse_codepoint("U+0041") == "A"
-    assert cp.parse_codepoint("u+1F600") == "\U0001F600"
+    assert cp.parse_codepoint("u+1F600") == "\U0001f600"
 
 
 def test_whitespace_is_stripped() -> None:
@@ -148,10 +150,11 @@ def test_unpaired_surrogate_raises() -> None:
 def test_boundary_codepoints_are_valid() -> None:
     cp = _load_codepoints()
     assert cp.parse_codepoint("0") == "\x00"
-    assert cp.parse_codepoint("10FFFF") == "\U0010FFFF"
+    assert cp.parse_codepoint("10FFFF") == "\U0010ffff"
 
 
 # -- manifest + registry ------------------------------------------------------
+
 
 def test_manifest_validates_and_has_correct_id() -> None:
     manifest = _load_manifest()
@@ -176,6 +179,7 @@ def test_manifest_single_command_under_insert_menu() -> None:
 
 # -- extension handler behavior -----------------------------------------------
 
+
 def test_handler_inserts_ascii_char() -> None:
     api = _register_extension()
     ctx = _FakeCtx(prompts=["41"])
@@ -188,7 +192,7 @@ def test_handler_inserts_emoji() -> None:
     api = _register_extension()
     ctx = _FakeCtx(prompts=["1F600"])
     api.handlers["insert_character"](ctx)
-    assert ctx.inserted == ["\U0001F600"]
+    assert ctx.inserted == ["\U0001f600"]
 
 
 def test_handler_inserts_via_decimal_prefix() -> None:

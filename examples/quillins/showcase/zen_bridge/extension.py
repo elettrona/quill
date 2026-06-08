@@ -2,6 +2,7 @@ import subprocess
 import os
 from quill import api
 
+
 def activate_zen(context):
     """
     Simulates the activation of a system-wide focus mode.
@@ -11,15 +12,16 @@ def activate_zen(context):
     try:
         # Example: Use a shell command to launch a focus playlist (Mock)
         # subprocess.run(["start", "spotify-focus-playlist-url"])
-        
-        # In this showcase version, we simulate the environment change by 
+
+        # In this showcase version, we simulate the environment change by
         # announcing the transition and perhaps updating a status message.
         api.announce("Zen Sanctuary activated. Notifications silenced, focus music playing.")
-        
+
         # Use the editor to mark the transition
         api.insert_text("\n[--- ZEN MODE ACTIVE ---]\n")
     except Exception as e:
         api.announce(f"Failed to activate Zen Bridge: {str(e)}")
+
 
 def deactivate_zen(context):
     """
@@ -30,6 +32,7 @@ def deactivate_zen(context):
         api.insert_text("\n[--- ZEN MODE EXITED ---]\n")
     except Exception as e:
         api.announce(f"Failed to deactivate Zen Bridge: {str(e)}")
+
 
 api.register_command("activate_zen", activate_zen)
 api.register_command("deactivate_zen", deactivate_zen)

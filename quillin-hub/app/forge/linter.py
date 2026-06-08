@@ -40,15 +40,13 @@ def audit_submission(upload_path: str, manifest: Dict[str, Any]) -> Dict[str, An
             # We only fail the whole submission if there are HIGH severity issues
             security_data = json.loads(bandit_proc.stdout)
             high_issues = [
-                i
-                for i in security_data.get("results", [])
-                if i["issue_severity"] == "HIGH"
+                i for i in security_data.get("results", []) if i["issue_severity"] == "HIGH"
             ]
             if high_issues:
                 results["status"] = "FAIL"
-                results["reports"][
-                    "security"
-                ] = "High-severity security vulnerabilities detected via Bandit."
+                results["reports"]["security"] = (
+                    "High-severity security vulnerabilities detected via Bandit."
+                )
             else:
                 results["reports"]["security"] = "Minor security warnings detected."
     except Exception as e:
@@ -64,14 +62,12 @@ def audit_submission(upload_path: str, manifest: Dict[str, Any]) -> Dict[str, An
         watchdog_issues = watchdog.scan_file(py_file)
         if watchdog_issues:
             results["status"] = "FAIL"
-            results["reports"]["watchdog"] = "\n".join(
-                [f"Line {ln}: {msg}" for ln, msg in watchdog_issues]
-            )
+            results["reports"]["watchdog"] = "\n".join([
+                f"Line {ln}: {msg}" for ln, msg in watchdog_issues
+            ])
     elif manifest.get("capabilities"):
         # If capabilities are declared but no python code exists, that's a mismatch
         results["status"] = "FAIL"
-        results["reports"][
-            "watchdog"
-        ] = "Capabilities declared but no implementation file found."
+        results["reports"]["watchdog"] = "Capabilities declared but no implementation file found."
 
     return results
