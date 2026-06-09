@@ -10787,10 +10787,18 @@ class MainFrame(
         if not misspellings:
             self._set_status("No misspellings found")
             return
-        selection = self._choose_misspelling_with_context(misspellings, text, dictionary)
-        if selection == wx.NOT_FOUND:
-            return
-        item = misspellings[selection]
+        # A single typo (the common case, e.g. "This is a bligtest") goes straight
+        # to its corrections. Previously F7 always opened a "choose the misspelling"
+        # chooser first, which showed no correction options and made spell check
+        # look broken (#129). Multiple misspellings still use the chooser so each
+        # can be reviewed in context.
+        if len(misspellings) == 1:
+            item = misspellings[0]
+        else:
+            selection = self._choose_misspelling_with_context(misspellings, text, dictionary)
+            if selection == wx.NOT_FOUND:
+                return
+            item = misspellings[selection]
         suggestions = suggest_words(item.word, dictionary)
         if suggestions:
             with wx.SingleChoiceDialog(
@@ -10843,8 +10851,9 @@ class MainFrame(
             wx.StaticText(
                 panel,
                 label=(
-                    "Choose misspelled word. Tab to Context to read the nearby sentence before "
-                    "continuing. Use Speak Word to hear the word and spelling."
+                    "Choose a misspelled word, then Show Corrections to see replacement "
+                    "options. Tab to Context to read the nearby sentence; use Speak Word to "
+                    "hear the word and its spelling."
                 ),
             ),
             0,
@@ -10866,7 +10875,7 @@ class MainFrame(
         root.Add(context_field, 1, wx.ALL | wx.EXPAND, 8)
         buttons = wx.BoxSizer(wx.HORIZONTAL)
         speak_button = wx.Button(panel, label="Speak Word")
-        review_button = wx.Button(panel, id=wx.ID_OK, label="Review Word")
+        review_button = wx.Button(panel, id=wx.ID_OK, label="Show Corrections...")
         cancel_button = wx.Button(panel, id=wx.ID_CANCEL, label="Cancel")
         buttons.AddStretchSpacer(1)
         buttons.Add(speak_button, 0, wx.RIGHT, 8)
