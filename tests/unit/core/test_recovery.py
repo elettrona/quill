@@ -60,7 +60,9 @@ def test_latest_session_snapshot_and_reader(
     newer.write_text("new", encoding="utf-8")
     latest = latest_session_snapshot(session)
     assert latest == newer
-    assert read_recovery_snapshot(newer) == "new"
+    text, had_replacements = read_recovery_snapshot(newer)
+    assert text == "new"
+    assert had_replacements is False
 
 
 def test_begin_session_skips_dismissed_offer_for_same_snapshot(

@@ -24,6 +24,9 @@ class _Dialog:
         self._result = 0
         self.ended_with: int | None = None
 
+    def SetName(self, _name: str) -> None:
+        return
+
     def SetSize(self, _size: tuple[int, int]) -> None:
         return
 
@@ -59,7 +62,13 @@ class _SearchCtrl:
     def __init__(self, *_args: object, **_kwargs: object) -> None:
         self._value = ""
 
+    def SetName(self, _name: str) -> None:
+        return
+
     def ShowSearchButton(self, _enabled: bool) -> None:
+        return
+
+    def ShowCancelButton(self, _enabled: bool) -> None:
         return
 
     def SetDescriptiveText(self, _text: str) -> None:
@@ -74,10 +83,16 @@ class _SearchCtrl:
     def SetValue(self, value: str) -> None:
         self._value = value
 
+    def Clear(self) -> None:
+        self._value = ""
+
 
 class _StaticText:
     def __init__(self, *_args: object, label: str = "", **_kwargs: object) -> None:
         self.label = label
+
+    def SetName(self, _name: str) -> None:
+        return
 
     def SetLabel(self, value: str) -> None:
         self.label = value
@@ -88,6 +103,9 @@ class _ListBox:
         self._items: list[str] = []
         self._selection = -1
         self.focused = False
+
+    def SetName(self, _name: str) -> None:
+        return
 
     def Bind(self, *_args: object, **_kwargs: object) -> None:
         return
@@ -135,6 +153,7 @@ def _install_fake_wx() -> None:
         WXK_UP=38,
         EVT_TEXT=object(),
         EVT_TEXT_ENTER=object(),
+        EVT_SEARCHCTRL_CANCEL_BTN=object(),
         EVT_LISTBOX_DCLICK=object(),
         EVT_LISTBOX=object(),
         EVT_CHAR_HOOK=object(),
@@ -160,15 +179,20 @@ def test_palette_reports_count_and_top_match() -> None:
 def test_palette_arrow_keys_move_from_search_to_results() -> None:
     dialog = _build_dialog()
 
+    # _refresh_results auto-selects the first item on init.
+    assert dialog.results.GetSelection() == 0
+
     down = _Event(dialog._wx.WXK_DOWN)  # noqa: SLF001
     dialog._on_char_hook(down)  # noqa: SLF001
-    assert dialog.results.GetSelection() == 0
+    assert dialog.results.GetSelection() == 1
     assert dialog.results.focused is True
-    assert dialog.status.label.startswith("Selected:")
+    # _announce_at() sets status.label to command.title (no "Selected:" prefix)
+    assert dialog.status.label == "Replace"
 
     up = _Event(dialog._wx.WXK_UP)  # noqa: SLF001
     dialog._on_char_hook(up)  # noqa: SLF001
-    assert dialog.results.GetSelection() == dialog.results.GetCount() - 1
+    assert dialog.results.GetSelection() == 0
+    assert dialog.status.label == "Find"
 
 
 def test_palette_escape_closes_buttonless_dialog() -> None:

@@ -18,6 +18,7 @@ from quill.core.sessions import (
     active_index_from_session,
     add_recent_session,
     build_session_payload,
+    caret_positions_from_session,
     clear_recent_sessions,
     documents_from_session,
     load_recent_sessions,
@@ -153,7 +154,12 @@ class SessionsMixin:
         self._document_tabs.clear()
         self._active_tab_index = -1
 
-    def _open_documents_from_session(self, documents: list[Document], active_index: int) -> None:
+    def _open_documents_from_session(
+        self,
+        documents: list[Document],
+        active_index: int,
+        caret_positions: list[int] | None = None,
+    ) -> None:
         self._clear_document_tabs()
         for document in documents:
             self._create_document_tab(document, select=False)
@@ -163,6 +169,15 @@ class SessionsMixin:
             self._location_ring.record(0)
             self._refresh_sessions_menu()
             return
+        # §8.4: restore per-tab caret positions saved with the session.
+        if caret_positions:
+            for idx, tab in enumerate(self._document_tabs):
+                pos = caret_positions[idx] if idx < len(caret_positions) else 0
+                if pos > 0 and tab.editor is not None:
+                    try:
+                        tab.editor.SetInsertionPoint(pos)
+                    except Exception:  # noqa: BLE001
+                        pass
         active_index = max(0, min(active_index, len(self._document_tabs) - 1))
         self._select_tab(active_index)
         self._location_ring = LocationRing()
@@ -202,10 +217,19 @@ class SessionsMixin:
                 session_title_text = session_title_text[: -len(suffix)]
                 break
         session_title_text = session_title_text.strip() or "Quill Session"
+        # §8.4: collect per-tab caret positions to restore on next session open.
+        caret_positions: list[int] = []
+        for tab in self._document_tabs:
+            try:
+                pos = tab.editor.GetInsertionPoint() if tab.editor is not None else 0
+            except Exception:  # noqa: BLE001
+                pos = 0
+            caret_positions.append(pos)
         payload = build_session_payload(
             title=session_title_text,
             active_index=self._current_tab_index(),
             documents=[tab.document for tab in self._document_tabs],
+            caret_positions=caret_positions,
         )
         save_session_file(target, payload)
         self._recent_sessions = load_recent_sessions()
@@ -238,8 +262,9 @@ class SessionsMixin:
             return
         payload = load_session(target)
         documents = documents_from_session(payload)
+        caret_positions = caret_positions_from_session(payload)
         active_index = active_index_from_session(payload, len(documents))
-        self._open_documents_from_session(documents, active_index)
+        self._open_documents_from_session(documents, active_index, caret_positions=caret_positions)
         self._recent_sessions = add_recent_session(target, self.settings.recent_files_limit)
         self._refresh_sessions_menu()
         self._set_status(f"Opened workspace snapshot {target.name}")

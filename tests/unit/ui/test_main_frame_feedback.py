@@ -25,6 +25,7 @@ def _build_frame() -> MainFrame:
     frame._record_notification = lambda message, category="info": setattr(
         frame, "_notification", (message, category)
     )
+    frame._announce = lambda *_args, **_kwargs: None
     return frame
 
 
@@ -32,6 +33,7 @@ def test_report_bug_reviews_then_opens_support_form(monkeypatch) -> None:
     frame = _build_frame()
     opened: list[str] = []
     copied: list[str] = []
+    monkeypatch.setattr(frame, "_feedback_hub_available", lambda: False)
     monkeypatch.setattr(
         frame,
         "_review_bug_report",
@@ -52,6 +54,7 @@ def test_report_bug_includes_diagnostics_path_when_present(monkeypatch) -> None:
     opened: list[str] = []
     copied: list[str] = []
     frame._last_bug_report_diagnostics_path = Path(r"C:\Temp\quill-diagnostics.zip")
+    monkeypatch.setattr(frame, "_feedback_hub_available", lambda: False)
     monkeypatch.setattr(
         frame,
         "_review_bug_report",

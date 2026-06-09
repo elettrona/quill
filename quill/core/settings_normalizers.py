@@ -23,6 +23,8 @@ STATUS_BAR_ITEMS: tuple[str, ...] = (
     "search_term",
     "file_path",
     "quill_key_mode",
+    # A11Y live indicator (§8.3): shows the detected screen reader by name.
+    "sr_name",
 )
 
 
@@ -43,6 +45,7 @@ def _default_status_bar_hidden() -> list[str]:
         "search_term",
         "file_path",
         "quill_key_mode",
+        "sr_name",
     ]
 
 

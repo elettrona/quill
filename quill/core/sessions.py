@@ -44,13 +44,19 @@ def build_session_payload(
     title: str,
     active_index: int,
     documents: list[Document],
+    caret_positions: list[int] | None = None,
 ) -> dict[str, object]:
+    positions = caret_positions or [0] * len(documents)
+    if len(positions) < len(documents):
+        positions = list(positions) + [0] * (len(documents) - len(positions))
     return {
         "version": 1,
         "title": title,
         "saved_at": datetime.now(UTC).isoformat(),
         "active_index": active_index,
-        "documents": [_document_payload(document) for document in documents],
+        "documents": [
+            _document_payload(doc, pos) for doc, pos in zip(documents, positions, strict=False)
+        ],
     }
 
 
@@ -87,6 +93,25 @@ def documents_from_session(payload: dict[str, object]) -> list[Document]:
     return documents or [Document()]
 
 
+def caret_positions_from_session(payload: dict[str, object]) -> list[int]:
+    """Return per-document caret positions saved with the session (§8.4).
+
+    Returns a list that is the same length as ``documents_from_session()``.
+    Missing or invalid entries default to 0 (start of document).
+    """
+    documents_payload = payload.get("documents", [])
+    if not isinstance(documents_payload, list):
+        return [0]
+    positions: list[int] = []
+    for item in documents_payload:
+        if isinstance(item, dict):
+            raw = item.get("caret_position", 0)
+            positions.append(int(raw) if isinstance(raw, int) else 0)
+        else:
+            positions.append(0)
+    return positions or [0]
+
+
 def active_index_from_session(payload: dict[str, object], count: int) -> int:
     active_index = payload.get("active_index", 0)
     if not isinstance(active_index, int):
@@ -96,7 +121,7 @@ def active_index_from_session(payload: dict[str, object], count: int) -> int:
     return max(0, min(active_index, count - 1))
 
 
-def _document_payload(document: Document) -> dict[str, object]:
+def _document_payload(document: Document, caret_position: int = 0) -> dict[str, object]:
     return {
         "text": document.text,
         "path": str(document.path) if document.path is not None else None,
@@ -104,6 +129,8 @@ def _document_payload(document: Document) -> dict[str, object]:
         "encoding": document.encoding,
         "line_ending": document.line_ending,
         "source_metadata": document.source_metadata,
+        # §8.4 "Resume from where I left off": editor caret position at save time.
+        "caret_position": int(caret_position),
     }
 
 

@@ -49,6 +49,19 @@ _pyttsx3_engine: Any | None = None
 _pyttsx3_engine_lock = threading.Lock()
 _pyttsx3_engine_failed: bool = False
 
+# TTS-FALLBACK-ANNOUNCE: callers can check this after startup.
+# True means pyttsx3.init() threw and the screen-reader fallback is active.
+_tts_init_failed: bool = False
+
+
+def tts_init_failed() -> bool:
+    """Return True when pyttsx3.init() failed at engine construction time.
+
+    The UI uses this to show a one-shot status-bar prompt:
+    "Screen reader fallback active. Press F8 to retry TTS."
+    """
+    return _tts_init_failed
+
 
 def _get_pyttsx3_engine() -> Any | None:
     """Return a cached pyttsx3 engine, or ``None`` if it cannot be built.
@@ -69,7 +82,9 @@ def _get_pyttsx3_engine() -> Any | None:
         try:
             engine = pyttsx3.init()
         except Exception:  # noqa: BLE001 - any failure flips us off permanently
+            global _tts_init_failed  # noqa: PLW0603
             _pyttsx3_engine_failed = True
+            _tts_init_failed = True
             return None
         _pyttsx3_engine = engine
         atexit.register(_shutdown_pyttsx3_engine)
@@ -89,11 +104,28 @@ def _shutdown_pyttsx3_engine() -> None:
         pass
 
 
+def retry_tts_init() -> bool:
+    """Clear the failure flag and attempt to rebuild the pyttsx3 engine.
+
+    Returns True when the engine is successfully (re-)initialised, False on
+    failure. Called from the UI when the user presses the F8 retry shortcut
+    shown by the TTS-FALLBACK-ANNOUNCE status-bar prompt.
+    """
+    global _pyttsx3_engine_failed, _tts_init_failed
+    _pyttsx3_engine_failed = False
+    _tts_init_failed = False
+    result = _get_pyttsx3_engine()
+    if result is None:
+        _tts_init_failed = True
+    return result is not None
+
+
 def reset_pyttsx3_engine_for_tests() -> None:
     """Discard the cached engine. Test-only helper."""
-    global _pyttsx3_engine, _pyttsx3_engine_failed
+    global _pyttsx3_engine, _pyttsx3_engine_failed, _tts_init_failed
     _shutdown_pyttsx3_engine()
     _pyttsx3_engine_failed = False
+    _tts_init_failed = False
 
 
 @dataclass(frozen=True, slots=True)

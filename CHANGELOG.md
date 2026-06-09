@@ -1,5 +1,62 @@
 # Changelog
 
+## Security Hardening and UX Delight (1.0 Release Pass)
+
+This section records the 13 HIGH-severity security fixes, 16 UX delight features, and the LOW/NIT fixes applied during the pre-1.0 code review. All items below were open in `issues.md` before this pass and are now closed.
+
+### HIGH security and reliability fixes (all 13 closed)
+
+- **H-SAFE-1 / H-1-tests — Safe Mode now enforced in all load-bearing paths.** `--safe-mode` / `QUILL_SAFE_MODE=1` disables AI responses, the watch folder, and Quillin contributions. Covered by `test_safe_mode_blocks_assistant_network_calls`.
+- **H-1 — Subprocess args no longer logged in full.** `redaction.py::format_args_for_log` redacts every argument; only the executable basename and arg count are preserved. Covered by `test_run_subprocess_safely_does_not_log_secrets`.
+- **H-2 — Crash bundle redacts secrets before shipping.** `build_diagnostic_bundle` runs `redact_text_for_bundle_with_stats` on every text file. Covered by `test_diagnostic_bundle_redacts_secrets_and_paths`.
+- **H-3 — `recent_commands` sanitized before embedding in diagnostic bundle.** `filter_recent_commands` validates every item against the command-id grammar and drops anything invalid.
+- **H-4-core — `recovery.py` state mutations serialized.** `begin_session`, `mark_clean_exit`, and `_record_offer_outcome` are now protected by a `threading.RLock` (in-process) and `msvcrt.locking` / `fcntl.flock` (cross-process). Covered by `test_concurrent_begin_session_serialize_via_lock`.
+- **H-1-core — `QUILL_DATA_DIR` gated on `_DEV_BUILD`.** Release builds ignore the env var entirely. Dev builds additionally require the path to be under `Path.home()`. Covered by `tests/unit/core/test_paths.py` (4 tests).
+- **H-2-core — External engine executable allowlist.** `configure_engine` and `probe_engine` validate the executable basename against `_ENGINE_EXECUTABLE_BASENAMES` before any I/O. Covered by `test_configure_engine_rejects_unallowed_executable` and `test_probe_engine_rejects_unallowed_executable`.
+- **H-3-core — SSH uses `RejectPolicy` by default.** `paramiko.AutoAddPolicy` is only available when `trust_first_use=True` is passed explicitly. System host keys are always loaded first. Covered by 4 tests in `test_ssh_client.py`.
+- **H-4-core-2 — IPC queue append serialized in-process.** `enqueue_open_request` acquires a module-level `threading.Lock` before opening the JSONL file. Covered by `test_concurrent_enqueue_serializes_via_lock`.
+- **H-1-ui / H-2-ui — Quillin consent and remove-confirm dialogs use the modal contract.** Both `quillin_consent` and `on_remove` now route through `_show_modal_dialog` + `apply_modal_ids`. Covered by `test_quillin_consent_uses_modal_contract` and `test_on_remove_uses_modal_contract`.
+- **H-3-ui — Watch Queue Monitor properly cleaned up on close.** `_on_close` explicitly destroys the monitor dialog and clears all references before the watch service stops.
+- **H-1-platform / H-2-platform — `pyttsx3` engine is a process-wide singleton.** Initialization happens once; a `_pyttsx3_engine_failed` gate prevents repeated failure. `reset_pyttsx3_engine_for_tests()` helper added for test isolation.
+- **H-3-platform — `Windows.Media.Ocr` import wrapped.** `winsdk` imports are wrapped in `try/except ImportError`; `_WINSDK_AVAILABLE` flag prevents crashes on non-Windows builds. Covered by `test_module_imports_without_winsdk`.
+- **H-4-platform — macOS VoiceOver errors now logged.** The `except Exception: pass` branch is now `logger.warning(...)`. Covered by `test_macos_announce_error_logged`.
+
+### Magic / UX delight (all 16 closed — §8)
+
+- **Key cheatsheet (`Alt+Shift+/`).** `open_key_cheatsheet()` opens a searchable dialog listing every command and its keybinding.
+- **Go to anything (`Ctrl+Shift+Grave, G`).** `GoToAnythingDialog` in `quill/ui/palette.py` searches commands (`>` prefix) and headings (`#` prefix). Activating a heading calls `go_to_line_number(lineno)` on `MainFrame`.
+- **Earcons.** `_play_quill_sound()` fires at mode-entry transitions, queued separately from TTS so it does not interrupt screen-reader output.
+- **"Why Don't I See a Feature?" (`Alt+F1`).** `explain_unavailable_feature()` announces the reason a command is unavailable.
+- **Live contrast checker (`Ctrl+Shift+Grave, Shift+C`).** `announce_contrast_ratio()` computes the WCAG 2.1 relative-luminance ratio for the current theme and announces it. Also fires automatically after `_apply_theme()`.
+- **Magic Paste (`Ctrl+Alt+V`).** `magic_paste()` inspects the clipboard for a URL, Markdown block, or base64 image and presents a picker before inserting.
+- **Recovery diff UX.** `_offer_crash_recovery()` now includes a 30-line read-only snapshot preview so users can review content before deciding to restore.
+- **Status bar context help (`Alt+H`).** `show_context_help()` announces the most useful keys for the current mode in priority order.
+- **Soft error recovery link.** `_show_error_with_hint()` is used for file-open, export, and import errors. A "What to try next..." toggle reveals a `wx.TE_READONLY` area with contextual guidance.
+- **TTS fallback announcement.** `_check_tts_fallback_on_startup()` fires at startup and announces "Screen reader fallback active. F8 to retry TTS." when `pyttsx3` could not be initialised. `retry_tts_init()` exposed in `prism_bridge.py`.
+- **Recovery `had_replacements` note.** `read_recovery_snapshot()` returns `(text, had_replacements)`; the recovery dialog shows a warning when replacement characters are detected.
+- **Annisuggestion.** `top_suggestion()` in `quill/core/palette.py` surfaces the most-used recent command (≥3 uses, within 1 hour) as a `suggestion` status-bar cell. Activating the cell runs the command.
+- **Crash-recovery loop fix (M-28).** `RecoveryOffer.dismissal_count` adapts the dialog text and relabels the skip button "Discard and Continue" after 3 dismissals.
+- **File-context summary (`Alt+I`).** `show_document_summary()` announces word count, line count, heading count, last-saved time, and recovery snapshot presence.
+- **A11Y live indicator.** `"sr_name"` status-bar cell shows which screen reader is detected, populated by `detect_screen_reader()` from `sr_detect.py`.
+- **"Resume from where I left off".** Caret position is saved per autosave cycle (`save_cursor_position()` in `recovery.py`) and per workspace snapshot (`caret_positions_from_session()` in `sessions.py`). Both are restored on next open.
+
+### LOW and NIT fixes
+
+- **L-8** — `updates.py`: removed unnecessary `getattr` guard around `response.headers.get("Content-Length")`.
+- **L-12** — `safe_mode.py`: deleted unused `safe_mode_message()` export.
+- **L-15** — `network_egress_audit.py`: duplicate egress-site key now raises `ValueError` at scan time so no new egress site can be silently dropped.
+- **N-1** — `stability/__init__.py`: re-exported `build_diagnostic_bundle`, `configure_logging`, and `run_subprocess_safely` for ergonomic call sites.
+- **N-4** — `module_size_budgets.json`: `_comment` / `_rebaseline_*` keys are now stripped before the budget map is read.
+- **N-7** — `quillin_lint.py`: `_JSON_TYPES` is now `types.MappingProxyType({...})` for immutability.
+- **N-8** — `dialog_button_contract.py`: `_FLAG_TO_ID` reverse-lookup dict used by `_collect_button_ids`; `# noqa: dialog_button_contract` opt-out added.
+- **N-9** — `feature_contracts.py`: `requires_timeout: bool | None = None` moved to end of dataclass for default-value ordering.
+- **N-11** — `external_engine.py`: `configure_engine` docstring documents POSIX-style shell-command format and `shlex.split` semantics.
+- **N-12** — `recovery.py`: `_validate_session_id()` helper replaces three `UUID(session_id)` side-effect calls.
+- **N-15** — `dictation.py`: `try/except ImportError` block carries explicit Windows-only intent comment.
+- **N-16** — `announcements.py`: `format_progress` docstring states its pure-function, no-I/O, thread-safe contract.
+
+---
+
 ## QUILL Brand Identity
 
 **QUILL** stands for **Quality, Usable, Inclusive, Lightweight, Literate**.

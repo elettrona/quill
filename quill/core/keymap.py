@@ -108,6 +108,20 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "quill.quick_nav.block": "TAB",
     "quill.quick_nav.skip_forward": "]",
     "quill.quick_nav.skip_backward": "[",
+    # §8.1 — context help for current mode (Alt+H) and doc summary (Alt+I).
+    "help.context_help": "Alt+H",
+    "document.summary": "Alt+I",
+    # §8.2 — universal "Go to anything" palette (Quill+G).
+    "navigate.go_to_anything": "Ctrl+Shift+Grave, G",
+    # §8.1 — QUILL-key cheatsheet overlay (Alt+?).
+    "help.key_cheatsheet": "Alt+Shift+/",
+    # §8.1 — live contrast check announcement.
+    "view.announce_contrast": "Ctrl+Shift+Grave, Shift+C",
+    # §8.2 — explain why the focused item is unavailable ("Why don't I see…?").
+    "help.why_unavailable": "Alt+F1",
+    # §8.2 — magic paste with clipboard-type picker (explicit invoke; auto
+    # intercept on Ctrl+V when clipboard has URL/image/rich content).
+    "edit.magic_paste": "Ctrl+Alt+V",
 }
 
 KEYBOARD_PACK_DEFAULT = "Quill Default"

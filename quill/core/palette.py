@@ -148,6 +148,41 @@ def _parse_mode(query: str) -> tuple[str, str]:
     return "default", trimmed.lower()
 
 
+def top_suggestion(
+    usage: dict[str, PaletteUsage],
+    commands: Iterable[Command],
+    *,
+    min_count: int = 3,
+    recency_window_seconds: int = 3600,
+) -> Command | None:
+    """§8.2 Annisuggestion: return the command to suggest in the action bar.
+
+    Returns the most frequently used command that has been invoked at least
+    *min_count* times within the last *recency_window_seconds* seconds, or
+    ``None`` if no command meets the threshold.  The UI surfaces this as a
+    single-key status-bar nudge ("F6: insert table") so the user discovers
+    their most-used action without hunting through menus.
+    """
+    from datetime import UTC, datetime
+
+    now_epoch = int(datetime.now(UTC).timestamp())
+    cutoff = now_epoch - recency_window_seconds
+    command_map = {cmd.id: cmd for cmd in commands}
+    best_count = 0
+    best_cmd: Command | None = None
+    for command_id, entry in usage.items():
+        if entry.count < min_count:
+            continue
+        if entry.last_used_epoch < cutoff:
+            continue
+        if command_id not in command_map:
+            continue
+        if entry.count > best_count:
+            best_count = entry.count
+            best_cmd = command_map[command_id]
+    return best_cmd
+
+
 def _subsequence_score(text: str, query: str) -> int:
     position = -1
     spread = 0

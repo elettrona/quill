@@ -502,6 +502,26 @@ from quill.ui.style_panel import TrainStyleDialog
 from quill.ui.word_view import WordDocumentSurface
 
 
+def _wcag_contrast_ratio(fr: int, fg: int, fb: int, br: int, bg: int, bb: int) -> float:
+    """Return the WCAG 2.1 contrast ratio between two sRGB colours.
+
+    Arguments are R/G/B channel values in [0, 255].  The returned value is in
+    the range [1.0, 21.0] where 21.0 is black-on-white.
+    """
+
+    def _relative_luminance(r: int, g: int, b: int) -> float:
+        def _channel(c: int) -> float:
+            s = c / 255.0
+            return s / 12.92 if s <= 0.04045 else ((s + 0.055) / 1.055) ** 2.4
+
+        return 0.2126 * _channel(r) + 0.7152 * _channel(g) + 0.0722 * _channel(b)
+
+    l1 = _relative_luminance(fr, fg, fb)
+    l2 = _relative_luminance(br, bg, bb)
+    lighter, darker = max(l1, l2), min(l1, l2)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
 def _word_feature_enabled() -> bool:
     """Structured Word (.docx) view is NOT enabled on this branch.
 
@@ -774,6 +794,8 @@ class MainFrame(
         "search_term": "Search Term",
         "file_path": "File Path",
         "quill_key_mode": "QUILL Key",
+        "sr_name": "Screen Reader",
+        "suggestion": "Suggested Action",
     }
     _STATUS_BAR_WIDTHS: dict[str, int] = {
         "message": -1,
@@ -791,6 +813,8 @@ class MainFrame(
         "search_term": 160,
         "file_path": 260,
         "quill_key_mode": 130,
+        "sr_name": 160,
+        "suggestion": 220,
     }
     _STATUS_BAR_FEATURES: dict[str, str] = {
         "message": "core.app",
@@ -808,6 +832,8 @@ class MainFrame(
         "search_term": "core.search",
         "file_path": "core.file",
         "quill_key_mode": "core.navigate",
+        "sr_name": "core.app",
+        "suggestion": "core.app",
     }
     _MACRO_CONTROL_COMMANDS: frozenset[str] = frozenset({
         "tools.start_macro_recording",
@@ -1088,6 +1114,8 @@ class MainFrame(
             ("startup profile prompt", self.run_startup_profile_prompt),
             ("watch-folder startup", self._maybe_start_watch_folder),
             ("lexical cache warm-up", start_lexical_preload),
+            # §8.2 TTS-FALLBACK-ANNOUNCE: show status prompt when TTS init failed.
+            ("TTS fallback check", self._check_tts_fallback_on_startup),
         ):
             try:
                 task()
@@ -2635,6 +2663,48 @@ class MainFrame(
             "edit.convert_indentation_to_tabs",
             "Convert Indentation to Tabs",
             self.convert_indentation_to_tabs,
+            None,
+        )
+        self.commands.register(
+            "help.context_help",
+            "Context Help: Current Mode Keys",
+            self.announce_context_mode_shortcuts,
+            None,
+        )
+        self.commands.register(
+            "document.summary",
+            "Document Summary",
+            self.show_document_summary,
+            None,
+        )
+        self.commands.register(
+            "navigate.go_to_anything",
+            "Go to Anything",
+            self.open_go_to_anything,
+            None,
+        )
+        self.commands.register(
+            "help.key_cheatsheet",
+            "Key Cheatsheet",
+            self.open_key_cheatsheet,
+            None,
+        )
+        self.commands.register(
+            "view.announce_contrast",
+            "Announce Contrast Ratio",
+            self.announce_contrast_ratio,
+            None,
+        )
+        self.commands.register(
+            "help.why_unavailable",
+            "Why Is This Unavailable?",
+            self.explain_unavailable_feature,
+            None,
+        )
+        self.commands.register(
+            "edit.magic_paste",
+            "Magic Paste",
+            self.magic_paste,
             None,
         )
         self._register_power_tools_commands()
@@ -4504,21 +4574,58 @@ class MainFrame(
         offer = self._recovery_offers[0]
         logs_path = app_data_dir() / "logs"
         logs_path.mkdir(parents=True, exist_ok=True)
-        dialog = wx.Dialog(self.frame, title="Crash Recovery", size=(780, 360))
+
+        # M-28 / §8.2: adaptive prompt text after repeated dismissals.
+        if offer.dismissal_count >= 3:
+            intro = (
+                "You have dismissed this recovery offer "
+                f"{offer.dismissal_count} time(s). "
+                "Press Restore to keep the recovered version, "
+                "or Skip to discard it and continue with a blank document. "
+                "Pressing Skip again will keep the in-memory version; "
+                "press Restore now to save your work."
+            )
+        else:
+            intro = (
+                "Quill detected an unclean exit. Restore the latest autosave snapshot, "
+                "open the logs folder, or save diagnostics before continuing."
+            )
+
+        # Pre-read the snapshot so we can show a preview (§8.2 recovery diff).
+        preview_text = ""
+        try:
+            _preview_full, _had_rep = read_recovery_snapshot(offer.snapshot)
+            lines = _preview_full.splitlines()
+            preview_text = "\n".join(lines[:30])
+            if len(lines) > 30:
+                preview_text += f"\n\n... ({len(lines) - 30} more lines)"
+        except OSError:
+            preview_text = "(Could not read snapshot preview)"
+
+        dialog = wx.Dialog(self.frame, title="Crash Recovery", size=(780, 520))
         panel = wx.Panel(dialog)
         root = wx.BoxSizer(wx.VERTICAL)
         root.Add(
-            wx.StaticText(
-                panel,
-                label=(
-                    "Quill detected an unclean exit. Restore the latest autosave snapshot, "
-                    "open the logs folder, or save diagnostics before continuing."
-                ),
-            ),
+            wx.StaticText(panel, label=intro),
             0,
             wx.ALL | wx.EXPAND,
             8,
         )
+
+        # §8.2: read-only snapshot preview so the user can decide before restoring.
+        root.Add(
+            wx.StaticText(panel, label="Snapshot preview (first 30 lines):"),
+            0,
+            wx.LEFT | wx.RIGHT | wx.TOP,
+            8,
+        )
+        preview_ctrl = wx.TextCtrl(
+            panel,
+            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_DONTWRAP,
+        )
+        preview_ctrl.SetValue(preview_text)
+        root.Add(preview_ctrl, 1, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+
         root.Add(wx.StaticText(panel, label="Logs folder"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         logs_field = wx.TextCtrl(panel, style=wx.TE_READONLY)
         logs_field.SetValue(str(logs_path))
@@ -4527,7 +4634,8 @@ class MainFrame(
         restore_button = wx.Button(panel, id=wx.ID_YES, label="Restore Latest Snapshot")
         open_logs_button = wx.Button(panel, label="Open Logs Folder")
         save_diagnostics_button = wx.Button(panel, label="Save Diagnostics...")
-        skip_button = wx.Button(panel, id=wx.ID_NO, label="Skip Recovery")
+        skip_label = "Discard and Continue" if offer.dismissal_count >= 3 else "Skip Recovery"
+        skip_button = wx.Button(panel, id=wx.ID_NO, label=skip_label)
         buttons = wx.BoxSizer(wx.HORIZONTAL)
         buttons.Add(restore_button, 0, wx.RIGHT, 6)
         buttons.Add(open_logs_button, 0, wx.RIGHT, 6)
@@ -4547,9 +4655,6 @@ class MainFrame(
         dialog.SetDefaultItem(restore_button)
         apply_modal_ids(dialog, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO)
         restore_button.SetFocus()
-        # The only content control here is a read-only logs-path field, so the
-        # primary action button is the right initial focus. Opt out of the
-        # shared content-auto-focus so _show_modal_dialog keeps this intent.
         dialog._quill_keep_initial_focus = True
 
         try:
@@ -4572,7 +4677,7 @@ class MainFrame(
                     self._record_notification("Crash recovery offer dismissed", "recovery")
                     return
                 try:
-                    recovered_text = read_recovery_snapshot(offer.snapshot)
+                    recovered_text, had_replacements = read_recovery_snapshot(offer.snapshot)
                 except OSError as error:
                     record_diagnostic_event(
                         "recovery",
@@ -4592,6 +4697,13 @@ class MainFrame(
                     Document(text=recovered_text, path=None, modified=True),
                     select=True,
                 )
+                # §8.2: warn when bytes were silently replaced during decode.
+                if had_replacements:
+                    self._record_notification(
+                        "This file had undecodable bytes; some characters may have been replaced "
+                        "(shown as •).",
+                        "recovery",
+                    )
                 mark_recovery_offer_recovered(offer)
                 record_diagnostic_event(
                     "recovery",
@@ -4599,9 +4711,21 @@ class MainFrame(
                     detail=f"session={offer.session_id}; snapshot={offer.snapshot}",
                 )
                 self._location_ring = LocationRing()
-                self._location_ring.record(0)
+                # §8.4: restore the cursor to where the user was working.
+                restore_pos = offer.cursor_position
+                if restore_pos > 0 and self.editor is not None:
+                    try:
+                        wx.CallAfter(self.editor.SetInsertionPoint, restore_pos)
+                        self._location_ring.record(restore_pos)
+                    except Exception:  # noqa: BLE001
+                        self._location_ring.record(0)
+                else:
+                    self._location_ring.record(0)
                 self._refresh_title()
-                self._set_status("Recovered latest autosave snapshot")
+                status = "Recovered latest autosave snapshot"
+                if had_replacements:
+                    status += " (some bytes replaced — check notifications)"
+                self._set_status(status)
                 self._record_notification("Recovered autosave snapshot", "recovery")
                 return
         finally:
@@ -4629,6 +4753,406 @@ class MainFrame(
         self.statusbar.SetBackgroundColour(chrome_background)
         self.editor.Refresh()
         self.frame.Refresh()
+        # §8.1 live contrast checker: announce the resulting contrast ratio after
+        # every theme application so the user knows whether the palette is readable.
+        wx.CallAfter(self._announce_contrast_after_theme, foreground, background)
+
+    def _announce_contrast_after_theme(self, foreground: object, background: object) -> None:
+        """Announce the approximate WCAG contrast ratio between *foreground* and *background*."""
+        try:
+            fr, fg, fb = foreground.Red(), foreground.Green(), foreground.Blue()
+            br, bg, bb = background.Red(), background.Green(), background.Blue()
+            ratio = _wcag_contrast_ratio(fr, fg, fb, br, bg, bb)
+            if ratio >= 7.0:
+                grade = "AAA"
+            elif ratio >= 4.5:
+                grade = "AA"
+            elif ratio >= 3.0:
+                grade = "AA large text"
+            else:
+                grade = "below AA"
+            self._set_status(f"Theme applied. Contrast ratio: {ratio:.1f}:1 ({grade})")
+        except Exception:  # noqa: BLE001
+            pass
+
+    def announce_contrast_ratio(self) -> None:
+        """§8.1: Announce the current editor foreground/background contrast ratio."""
+        try:
+            fg = self.editor.GetForegroundColour()
+            bg = self.editor.GetBackgroundColour()
+            ratio = _wcag_contrast_ratio(
+                fg.Red(), fg.Green(), fg.Blue(), bg.Red(), bg.Green(), bg.Blue()
+            )
+            if ratio >= 7.0:
+                grade = "AAA (excellent)"
+            elif ratio >= 4.5:
+                grade = "AA (good)"
+            elif ratio >= 3.0:
+                grade = "AA large text only (marginal)"
+            else:
+                grade = "below AA (insufficient)"
+            msg = f"Contrast ratio: {ratio:.1f}:1, WCAG grade: {grade}"
+            self._announce(msg)
+        except Exception:  # noqa: BLE001
+            self._set_status("Could not calculate contrast ratio")
+
+    # ---------- §8.1 / §8.2 delight feature handlers ----------
+
+    def announce_context_mode_shortcuts(self) -> None:
+        """§8.2: Announce the most useful keys for the current mode (Alt+H)."""
+        if getattr(self, "_quill_key_mode_active", False):
+            self._announce(
+                "QUILL browse mode keys: "
+                "H headings, A links, L lists, I list items, T tables, "
+                "B bookmarks, P paragraphs, S sentences, C table of contents, "
+                "left bracket and right bracket to skip, Escape to exit."
+            )
+            return
+        region = getattr(self, "_active_region", "Editor")
+        if region == "Status Bar":
+            self._announce(
+                "Status bar keys: Left and Right arrows to move between cells, "
+                "Enter or Space to activate, Escape to return to the editor."
+            )
+            return
+        # Default: editor mode key summary.
+        bindings = self.keymap
+
+        def _b(cmd: str) -> str:
+            return bindings.get(cmd) or DEFAULT_KEYMAP.get(cmd) or ""
+
+        tips = [
+            f"Save: {_b('file.save')}",
+            f"Undo: {_b('edit.undo')}",
+            f"Find: {_b('edit.find')}",
+            f"Go to line: {_b('navigate.go_to_line')}",
+            f"Command palette: {_b('app.command_palette')}",
+            f"Go to anything: {_b('navigate.go_to_anything')}",
+            "QUILL browse mode: Ctrl+Alt+Q or Ctrl+Shift+Grave comma Q",
+            f"Document summary: {_b('document.summary')}",
+            f"Context help: {_b('help.context_help')} (this message)",
+        ]
+        self._announce("Editor mode shortcuts. " + ", ".join(tips) + ".")
+
+    def show_document_summary(self) -> None:
+        """§8.3: Announce a one-sentence document summary (Alt+I)."""
+        if self.editor is None:
+            self._set_status("No document open")
+            return
+        try:
+            stats = compute_document_stats(self.editor.GetValue())
+            doc = getattr(self, "document", None)
+            path_part = doc.path.name if (doc and doc.path) else "unsaved document"
+            save_state = ""
+            if doc and doc.modified:
+                save_state = ", unsaved changes"
+            headings = getattr(stats, "headings", 0)
+            heading_part = f", {headings} heading(s)" if headings else ""
+            summary = (
+                f"{path_part}: {stats.words:,} words, "
+                f"{stats.lines:,} lines{heading_part}{save_state}."
+            )
+            self._announce(summary)
+        except Exception:  # noqa: BLE001
+            self._set_status("Could not summarize document")
+
+    def open_go_to_anything(self) -> None:
+        """§8.1 NAV-4: Universal 'Go to anything' palette (Quill+G).
+
+        Opens the command palette with an expanded scope that also surfaces
+        outline headings, bookmarks, and recent files in addition to commands.
+        The search-as-you-type box accepts the same prefix conventions as the
+        command palette (>, :, ? etc.) plus a # prefix for headings.
+        """
+        from quill.ui.palette import GoToAnythingDialog
+
+        headings = self._collect_outline_headings()
+        dialog = GoToAnythingDialog(
+            self.frame,
+            self.commands,
+            feature_manager=getattr(self, "features", None),
+            headings=headings,
+            announce_fn=self._announce,
+        )
+        dialog.show_modal_and_run(self)
+
+    def _collect_outline_headings(self) -> list[tuple[str, int]]:
+        """Return ``[(heading_text, line_number), ...]`` for the current document."""
+        if self.editor is None:
+            return []
+        try:
+            text = self.editor.GetValue()
+            results: list[tuple[str, int]] = []
+            for lineno, line in enumerate(text.splitlines(), start=1):
+                stripped = line.lstrip()
+                if stripped.startswith("#"):
+                    level = len(stripped) - len(stripped.lstrip("#"))
+                    if 1 <= level <= 6:
+                        heading = stripped.lstrip("#").strip()
+                        if heading:
+                            results.append((heading, lineno))
+            return results
+        except Exception:  # noqa: BLE001
+            return []
+
+    def open_key_cheatsheet(self) -> None:
+        """§8.1 QK-1..9: Full key cheatsheet overlay (Alt+Shift+/).
+
+        Presents every bound command grouped by category in a read-only
+        searchable dialog.  Screen readers can navigate by group heading and
+        individual key entry.
+        """
+        wx = self._wx
+        dialog = wx.Dialog(
+            self.frame,
+            title="Key Cheatsheet",
+            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+        )
+        dialog.SetSize((720, 560))
+        root = wx.BoxSizer(wx.VERTICAL)
+        panel = wx.Panel(dialog)
+
+        search = wx.SearchCtrl(panel, style=wx.TE_PROCESS_ENTER)
+        search.SetDescriptiveText("Search by command name or key binding")
+        root.Add(search, 0, wx.EXPAND | wx.ALL, 8)
+
+        cheatsheet_ctrl = wx.TextCtrl(
+            panel,
+            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_DONTWRAP,
+        )
+        root.Add(cheatsheet_ctrl, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+        close_btn = wx.Button(panel, id=wx.ID_CANCEL, label="Close")
+        btn_row = wx.BoxSizer(wx.HORIZONTAL)
+        btn_row.AddStretchSpacer()
+        btn_row.Add(close_btn, 0)
+        root.Add(btn_row, 0, wx.EXPAND | wx.ALL, 8)
+        panel.SetSizer(root)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(panel, 1, wx.EXPAND)
+        dialog.SetSizer(outer)
+
+        all_bindings = self._build_cheatsheet_text("")
+        cheatsheet_ctrl.SetValue(all_bindings)
+        apply_modal_ids(dialog, affirmative_id=wx.ID_CANCEL, escape_id=wx.ID_CANCEL)
+
+        def _on_cheatsheet_search(event: object) -> None:
+            query = search.GetValue().strip().lower()
+            cheatsheet_ctrl.SetValue(self._build_cheatsheet_text(query))
+            event.Skip()
+
+        search.Bind(wx.EVT_TEXT, _on_cheatsheet_search)
+        close_btn.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CANCEL))
+
+        try:
+            self._show_modal_dialog(dialog, "Key Cheatsheet")
+        finally:
+            dialog.Destroy()
+
+    def _build_cheatsheet_text(self, query: str) -> str:
+        """Return a human-readable key cheatsheet, filtered by *query*."""
+        commands = self.commands.list(feature_manager=getattr(self, "features", None))
+        lines: list[str] = []
+        for cmd in sorted(commands, key=lambda c: c.title):
+            binding = self.keymap.get(cmd.id) or DEFAULT_KEYMAP.get(cmd.id) or ""
+            if query and query not in cmd.title.lower() and query not in binding.lower():
+                continue
+            if binding:
+                lines.append(f"{cmd.title}: {binding}")
+            else:
+                lines.append(f"{cmd.title}: (no binding)")
+        if not lines:
+            return "No matching commands."
+        return "\n".join(lines)
+
+    def explain_unavailable_feature(self) -> None:
+        """§8.1: 'Why Don't I See a Feature?' — explain why the focused item is greyed out."""
+        wx = self._wx
+        focused = wx.Window.FindFocus()
+        if focused is None:
+            self._set_status(
+                "Focus the greyed-out button or menu item you are curious about, then press Alt+F1."
+            )
+            return
+        # Try to read a help text from the widget.
+        help_text = ""
+        try:
+            help_text = focused.GetHelpText()
+        except Exception:  # noqa: BLE001
+            pass
+        name = ""
+        try:
+            name = focused.GetName() or focused.GetLabel()
+        except Exception:  # noqa: BLE001
+            pass
+        enabled = True
+        try:
+            enabled = focused.IsEnabled()
+        except Exception:  # noqa: BLE001
+            pass
+
+        if enabled:
+            self._announce(
+                f"{name or 'This item'} is currently available. "
+                "To learn about unavailable features, focus a greyed-out button "
+                "and press Alt+F1."
+            )
+            return
+
+        # Check whether the feature is gated by a profile.
+        feature_reason = ""
+        if name:
+            for item_id, feature_id in self._STATUS_BAR_FEATURES.items():
+                label = self._STATUS_BAR_LABELS.get(item_id, "")
+                if label.lower() in name.lower():
+                    feature_manager = getattr(self, "features", None)
+                    if feature_manager and not feature_manager.is_enabled(feature_id):
+                        feature_reason = (
+                            f"The '{feature_id}' feature is disabled in your current "
+                            f"profile. Switch profiles (Alt+Shift+P) to enable it."
+                        )
+                    break
+
+        if feature_reason:
+            self._announce(feature_reason)
+        elif help_text:
+            self._announce(f"{name or 'This item'} is unavailable. {help_text}")
+        else:
+            self._announce(
+                f"{name or 'This item'} is currently unavailable. "
+                "It may require a file to be open, a selection to be active, "
+                "or a feature enabled in the current profile."
+            )
+
+    def magic_paste(self) -> None:
+        """§8.2: Inspect clipboard and offer format-aware paste options before inserting."""
+        wx = self._wx
+        clipboard = wx.TheClipboard
+        if not clipboard.Open():
+            self._set_status("Clipboard is unavailable")
+            return
+        try:
+            has_text = clipboard.IsSupported(wx.DataFormat(wx.DF_TEXT))
+            has_unicode = clipboard.IsSupported(wx.DataFormat(wx.DF_UNICODETEXT))
+            has_bitmap = clipboard.IsSupported(wx.DataFormat(wx.DF_BITMAP))
+            raw_text = ""
+            if has_text or has_unicode:
+                obj = wx.TextDataObject()
+                if clipboard.GetData(obj):
+                    raw_text = obj.GetText()
+        finally:
+            clipboard.Close()
+
+        # Detect clipboard content type.
+        content_type = "plain text"
+        is_url = raw_text.strip().startswith(("http://", "https://", "ftp://"))
+        is_markdown = bool(raw_text.strip()) and (
+            raw_text.startswith("#")
+            or "\n#" in raw_text
+            or "**" in raw_text
+            or raw_text.startswith("- ")
+            or "\n- " in raw_text
+            or raw_text.startswith("[")
+            and "](" in raw_text
+        )
+        if has_bitmap:
+            content_type = "image"
+        elif is_url:
+            content_type = "URL"
+        elif is_markdown:
+            content_type = "Markdown"
+
+        if content_type == "plain text":
+            # Nothing special detected — fall through to standard paste.
+            if self.editor is not None:
+                self.editor.Paste()
+            return
+
+        # Show the magic paste picker.
+        dialog = wx.Dialog(
+            self.frame,
+            title=f"Magic Paste: {content_type} detected",
+            style=wx.DEFAULT_DIALOG_STYLE,
+        )
+        dialog.SetSize((480, 280))
+        root = wx.BoxSizer(wx.VERTICAL)
+        panel = wx.Panel(dialog)
+
+        label_text = f"Clipboard contains {content_type}. How would you like to paste it?"
+        root.Add(wx.StaticText(panel, label=label_text), 0, wx.ALL | wx.EXPAND, 8)
+
+        choices: list[tuple[str, str]] = [("Paste as plain text", "plain")]
+        if content_type == "URL":
+            choices.insert(0, ("Paste as Markdown link", "link"))
+        elif content_type == "Markdown":
+            choices.insert(0, ("Paste as Markdown (keep formatting)", "markdown"))
+        elif content_type == "image":
+            choices.insert(0, ("Insert image reference", "image_ref"))
+
+        choice_box = wx.RadioBox(
+            panel,
+            label="Paste mode",
+            choices=[c[0] for c in choices],
+            style=wx.RA_SPECIFY_ROWS,
+        )
+        choice_box.SetSelection(0)
+        root.Add(choice_box, 1, wx.ALL | wx.EXPAND, 8)
+
+        btn_row = wx.BoxSizer(wx.HORIZONTAL)
+        ok_btn = wx.Button(panel, id=wx.ID_OK, label="Paste")
+        cancel_btn = wx.Button(panel, id=wx.ID_CANCEL, label="Cancel")
+        btn_row.AddStretchSpacer(1)
+        btn_row.Add(ok_btn, 0, wx.RIGHT, 6)
+        btn_row.Add(cancel_btn, 0)
+        root.Add(btn_row, 0, wx.ALL | wx.EXPAND, 8)
+        panel.SetSizer(root)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(panel, 1, wx.EXPAND)
+        dialog.SetSizer(outer)
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+
+        try:
+            result = self._show_modal_dialog(dialog, "Magic Paste")
+        finally:
+            dialog.Destroy()
+
+        if result != wx.ID_OK:
+            return
+
+        mode_key = choices[choice_box.GetSelection()][1]
+        if mode_key == "plain":
+            if self.editor is not None:
+                self.editor.Paste()
+        elif mode_key == "link":
+            if self.editor is not None:
+                link_text = raw_text.strip().rstrip("/").rsplit("/", 1)[-1] or "link"
+                self.editor.WriteText(f"[{link_text}]({raw_text.strip()})")
+        elif mode_key == "markdown":
+            if self.editor is not None:
+                self.editor.WriteText(raw_text)
+        elif mode_key == "image_ref":
+            if self.editor is not None:
+                self.editor.WriteText("![image]()")
+
+    def _check_tts_fallback_on_startup(self) -> None:
+        """§8.2 TTS-FALLBACK-ANNOUNCE: show a status-bar prompt when pyttsx3 fails to init."""
+        try:
+            from quill.platform.windows.prism_bridge import tts_init_failed
+
+            if not tts_init_failed():
+                return
+            self._set_status(
+                "Screen reader fallback active. TTS engine failed to start. "
+                "Press F8 to toggle overwrite mode / check menus for Retry TTS."
+            )
+            self._record_notification(
+                "Text-to-speech (pyttsx3) failed to start. "
+                "Screen reader fallback is active. "
+                "To retry, run Tools > Retry TTS Engine.",
+                "accessibility",
+            )
+        except ImportError:
+            pass
 
     def _binding_for(self, command_id: str) -> str | None:
         binding = self.keymap.get(command_id)
@@ -4908,6 +5432,73 @@ class MainFrame(
             self._region_tracker.exit(caption)
         return result
 
+    def _show_error_with_hint(self, message: str, caption: str, hint: str) -> None:
+        """§8.2 Soft error recovery link: show an error with a 'What to try next' toggle.
+
+        Displays a non-native dialog so we can include an expandable
+        read-only text area containing *hint* without cluttering the primary
+        message.  Screen readers announce the hint area label automatically.
+        """
+        wx = self._wx
+        self._region_tracker.enter(caption)
+        announce(f"Entered {caption} dialog")
+        try:
+            dlg = wx.Dialog(
+                self.frame,
+                title=caption,
+                style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+            )
+            dlg.SetMinSize((420, -1))
+            root = wx.BoxSizer(wx.VERTICAL)
+
+            msg_label = wx.StaticText(dlg, label=message)
+            msg_label.Wrap(400)
+            root.Add(msg_label, 0, wx.EXPAND | wx.ALL, 12)
+
+            hint_label = wx.StaticText(dlg, label="What to try next:")
+            hint_label.Hide()
+            root.Add(hint_label, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+
+            hint_ctrl = wx.TextCtrl(
+                dlg,
+                value=hint,
+                style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_WORDWRAP,
+            )
+            hint_ctrl.SetMinSize((-1, 80))
+            hint_ctrl.Hide()
+            root.Add(hint_ctrl, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 12)
+
+            btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+            toggle_btn = wx.Button(dlg, label="What to try next...")
+            ok_btn = wx.Button(dlg, id=wx.ID_OK, label="OK")
+            ok_btn.SetDefault()
+            btn_sizer.Add(toggle_btn, 0, wx.RIGHT, 8)
+            btn_sizer.AddStretchSpacer()
+            btn_sizer.Add(ok_btn, 0)
+            root.Add(btn_sizer, 0, wx.EXPAND | wx.ALL, 12)
+
+            dlg.SetSizer(root)
+            dlg.Fit()
+            apply_modal_ids(dlg, affirmative_id=wx.ID_OK, escape_id=wx.ID_OK)
+
+            def _toggle(_event: object) -> None:
+                visible = not hint_ctrl.IsShown()
+                hint_label.Show(visible)
+                hint_ctrl.Show(visible)
+                toggle_btn.SetLabel("Hide hint" if visible else "What to try next...")
+                dlg.Layout()
+                dlg.Fit()
+                if visible:
+                    announce(f"What to try next: {hint}")
+
+            toggle_btn.Bind(wx.EVT_BUTTON, _toggle)
+            dlg.CentreOnParent()
+            self._show_modal_dialog(dlg, caption)
+            dlg.Destroy()
+        finally:
+            announce(f"Exited {caption} dialog")
+            self._region_tracker.exit(caption)
+
     def _prompt_untrusted_location(self, folder: Path) -> bool | None:
         # Native dialog (#74): the old hand-rolled wx.Dialog never set its own
         # sizer (only the inner panel did) and its OK/Cancel did nothing.
@@ -5040,7 +5631,17 @@ class MainFrame(
         self._background_task_count = max(0, getattr(self, "_background_task_count", 1) - 1)
         if error is not None:
             self._track_background_task_finish(task_id, "failed", str(error))
-            self._show_message_box(str(error), label, self._wx.ICON_ERROR | self._wx.OK)
+            # §8.2 Soft error recovery link: file-open and network background tasks get a hint.
+            if label.startswith("Opening "):
+                self._show_error_with_hint(
+                    str(error),
+                    label,
+                    "Check that the file exists, is not locked by another application, "
+                    "and that QUILL has permission to read it. "
+                    "For format errors, try opening in a text editor first to verify the content.",
+                )
+            else:
+                self._show_message_box(str(error), label, self._wx.ICON_ERROR | self._wx.OK)
             self._set_status(f"{label} failed")
             if notify_on_error:
                 self._record_notification(f"{label} failed: {error}", notification_category)
@@ -6429,9 +7030,20 @@ class MainFrame(
         autosave_document(self.document, self.session_id)
         self._last_autosave_at = now
         self._last_autosave_revision = revision
+        # §8.4 "Resume from where I left off": persist cursor position alongside
+        # every autosave so the next session can restore it.
+        try:
+            from quill.core.recovery import save_cursor_position
+
+            if self.editor is not None:
+                save_cursor_position(self.session_id, self.editor.GetInsertionPoint())
+        except Exception:  # noqa: BLE001
+            pass
 
     def open_palette(self) -> None:
-        dialog = CommandPaletteDialog(self.frame, self.commands, self.features)
+        dialog = CommandPaletteDialog(
+            self.frame, self.commands, self.features, announce_fn=self._announce
+        )
         dialog.show_modal_and_run()
 
     def create_sticky_note(self) -> None:
@@ -8265,7 +8877,12 @@ class MainFrame(
                 offers=offers,
             )
         except (ValueError, PackageError) as exc:
-            self._show_message_box(str(exc), "Export", wx.ICON_ERROR | wx.OK)
+            self._show_error_with_hint(
+                str(exc),
+                "Export",
+                "Check that all selected sections are valid and that QUILL has permission "
+                "to read the source data. If the error persists, try exporting fewer sections.",
+            )
             self._set_status("Export failed")
             return
         extension = extension_for_kind(kind)
@@ -8285,7 +8902,12 @@ class MainFrame(
         try:
             write_export(document, target)
         except OSError as exc:
-            self._show_message_box(str(exc), "Export", wx.ICON_ERROR | wx.OK)
+            self._show_error_with_hint(
+                str(exc),
+                "Export",
+                "Verify the destination folder is writable and that no other application "
+                "has the file open. Check available disk space.",
+            )
             self._set_status("Export failed")
             return
         self._set_status(f"Saved {label} with {len(selected_ids)} section(s) to {target.name}")
@@ -8313,7 +8935,13 @@ class MainFrame(
         try:
             package = read_import(source)
         except (PackageError, OSError, ValueError) as exc:
-            self._show_message_box(str(exc), "Import", wx.ICON_ERROR | wx.OK)
+            self._show_error_with_hint(
+                str(exc),
+                "Import",
+                "Check that the file is a valid QUILL profile or backup (*.quillprofile or "
+                "*.quillbackup). If the file came from a different QUILL version, export a "
+                "fresh copy and try again.",
+            )
             self._set_status("Import failed")
             return
         sections = importable_sections(package)
@@ -8379,7 +9007,13 @@ class MainFrame(
         try:
             outcome = apply_import(package, selected_ids, self.settings, self.features)
         except (PackageError, ValueError) as exc:
-            self._show_message_box(str(exc), "Import", wx.ICON_ERROR | wx.OK)
+            self._show_error_with_hint(
+                str(exc),
+                "Import",
+                "The import was rolled back; no changes were applied. "
+                "Try importing individual sections one at a time to identify "
+                "the problematic entry.",
+            )
             self._set_status("Import failed; no changes were applied")
             return
         applied = len(outcome.applied)
@@ -9042,6 +9676,32 @@ class MainFrame(
         self._set_status(f"Saved diagnostics bundle to {bundle_path.name}")
 
     def report_bug(self) -> None:
+        if not self._feedback_hub_available():
+            self._report_bug_legacy()
+            return
+        from feedback_hub import load_schema
+        from feedback_hub.wx_dialog import FeedbackDialog
+
+        schema_path = Path(__file__).parent.parent / "core" / "schemas" / "feedback.json"
+        dlg = FeedbackDialog(
+            self.frame,
+            schema=load_schema(schema_path),
+            app_version=__version__ or "0.0.0",
+        )
+        dlg.ShowModal()
+        dlg.Destroy()
+        self._record_notification("Submitted feedback via feedback hub", "support")
+
+    def _feedback_hub_available(self) -> bool:
+        try:
+            import feedback_hub  # noqa: F401
+            from feedback_hub.wx_dialog import FeedbackDialog  # noqa: F401
+
+            return True
+        except ImportError:
+            return False
+
+    def _report_bug_legacy(self) -> None:
         review = self._review_bug_report()
         if review is None:
             self._set_status("Bug report cancelled")
@@ -9556,6 +10216,28 @@ class MainFrame(
             self._set_status(f"Moved to line {target_line}")
         else:
             self._set_status(f"Moved to line {target_line}, column {target_column}")
+
+    def go_to_line_number(self, lineno: int) -> None:
+        """Navigate to *lineno* (1-based) without prompting.
+
+        Used by GoToAnythingDialog (§8.1 NAV-4).
+        """
+        if self.editor is None:
+            return
+        text = self.editor.GetValue()
+        line_starts = [0]
+        for index, char in enumerate(text):
+            if char == "\n":
+                line_starts.append(index + 1)
+        if lineno < 1 or lineno > len(line_starts):
+            self._set_status(f"Line {lineno} out of range (document has {len(line_starts)} lines)")
+            return
+        insertion_point = line_starts[lineno - 1]
+        self._record_location_before_jump()
+        self._move_point(insertion_point)
+        self.editor.SetFocus()
+        self._location_ring.record(insertion_point)
+        self._set_status(f"Moved to line {lineno}")
 
     def go_to_page(self) -> None:
         wx = self._wx
@@ -14369,35 +15051,92 @@ class MainFrame(
         return datetime.now(UTC) - previous >= timedelta(hours=interval_hours)
 
     def check_for_updates(self, silent_no_update: bool = False) -> None:
+        if getattr(self, "_update_check_in_progress", False):
+            if not silent_no_update:
+                self._set_status("Update check already in progress")
+            return
+
         wx = self._wx
         current_version = getattr(getattr(self, "_updates", None), "current_version", "")
         if not current_version:
             current_version = __version__ or "0.0.0"
 
-        # Record that a check ran so the startup throttle can space out auto-checks.
         self.settings.last_update_check = datetime.now(UTC).isoformat()
         try:
             save_settings(self.settings)
         except Exception:  # noqa: BLE001
             pass
 
-        # Compatibility path: honor the signed manifest updater used by
-        # earlier flows and tests before consulting GitHub Releases.
-        try:
-            manifest = fetch_update_manifest(
-                "https://community-access.github.io/quill/updates/.quill-update-feed-v1.json"
-            )
-        except (URLError, ValueError, OSError):
-            manifest = None
+        if not silent_no_update:
+            self._set_status("Checking for updates...")
+            self._announce("Checking for updates")
+
+        beta = bool(getattr(self.settings, "beta_updates", False))
+        self._update_check_in_progress = True
+
+        def _run_fetch():
+            manifest: UpdateManifest | None = None
+            releases: list[GitHubRelease] | None = None
+            fetch_error: str | None = None
+            try:
+                try:
+                    manifest = fetch_update_manifest(
+                        "https://community-access.github.io/quill/updates/.quill-update-feed-v1.json"
+                    )
+                except (URLError, ValueError, OSError):
+                    pass
+                if manifest is None or not is_newer_version(current_version, manifest.version):
+                    releases = fetch_releases()
+            except (URLError, ValueError, OSError) as exc:
+                fetch_error = str(exc)
+            except Exception as exc:  # noqa: BLE001
+                fetch_error = str(exc)
+            return manifest, releases, fetch_error
+
+        call_after = getattr(wx, "CallAfter", None)
+        if callable(call_after):
+            import threading
+
+            def _bg() -> None:
+                m, r, e = _run_fetch()
+                call_after(
+                    self._on_update_fetch_done,
+                    m,
+                    r,
+                    e,
+                    silent_no_update,
+                    current_version,
+                    beta,
+                )
+
+            threading.Thread(target=_bg, daemon=True).start()
+        else:
+            # Synchronous fallback for test environments without wx.CallAfter.
+            m, r, e = _run_fetch()
+            self._on_update_fetch_done(m, r, e, silent_no_update, current_version, beta)
+
+    def _on_update_fetch_done(
+        self,
+        manifest: UpdateManifest | None,
+        releases: list[GitHubRelease] | None,
+        fetch_error: str | None,
+        silent_no_update: bool,
+        current_version: str,
+        beta: bool,
+    ) -> None:
+        """UI-thread callback once the background update-network fetch finishes."""
+        self._update_check_in_progress = False
+        wx = self._wx
+
+        # Compatibility path: signed manifest feed.
         if manifest is not None and is_newer_version(current_version, manifest.version):
             if silent_no_update:
                 self._record_notification(
-                    f"Update {manifest.version} found via manifest feed",
-                    "update",
+                    f"Update {manifest.version} found via manifest feed", "update"
                 )
                 return
             download_now = self._show_message_box(
-                (f"Update {manifest.version} is available.\n\nOpen the update download now?"),
+                f"Update {manifest.version} is available.\n\nOpen the update download now?",
                 "Check for Updates",
                 wx.ICON_INFORMATION | wx.YES_NO,
             )
@@ -14405,34 +15144,29 @@ class MainFrame(
                 self._open_update_download_flow(manifest)
             else:
                 self._set_status("Update deferred")
-                self._record_notification(
-                    f"Update {manifest.version} deferred",
-                    "update",
-                )
+                self._record_notification(f"Update {manifest.version} deferred", "update")
             return
 
-        beta = bool(getattr(self.settings, "beta_updates", False))
-        self._set_status("Checking for updates...")
-        try:
-            releases = fetch_releases()
-        except (URLError, ValueError, OSError) as error:
+        # Network error during GitHub releases fetch.
+        if fetch_error is not None:
             if silent_no_update:
-                self._record_notification(f"Update check failed: {error}", "update")
+                self._record_notification(f"Update check failed: {fetch_error}", "update")
                 self._set_status("Update check failed")
                 return
             self._html_info(
                 "Check for Updates",
-                f"# Update check failed\n\nCould not check for updates:\n\n`{error}`",
+                f"# Update check failed\n\nCould not check for updates:\n\n`{fetch_error}`",
             )
             self._set_status("Update check failed")
+            self._announce("Update check failed")
             self._record_notification("Update check failed", "update")
             return
 
+        releases = releases or []
         latest_any = select_latest(releases, include_prereleases=True)
         latest_stable = select_latest(releases, include_prereleases=False)
 
-        # If the running build is itself a prerelease, the user is already a beta
-        # tester — put them on the beta channel automatically (no consent needed).
+        # Auto-enroll in beta channel when running a prerelease build.
         current_match = find_release(releases, current_version)
         if not beta and current_match is not None and current_match.prerelease:
             self.settings.beta_updates = True
@@ -14442,10 +15176,8 @@ class MainFrame(
                 "You're running a beta build, so beta updates are enabled.", "update"
             )
 
-        # The release for the user's current channel.
         target = latest_any if beta else latest_stable
         if target is not None and is_newer_version(current_version, target.version):
-            # During silent startup checks, honor a version the user chose to skip.
             if silent_no_update and target.version == getattr(
                 self.settings, "skipped_update_version", ""
             ):
@@ -14467,8 +15199,7 @@ class MainFrame(
                 self._record_notification(f"Update {target.version} deferred", "update")
             return
 
-        # No update on the current channel. If a newer build exists but it's a
-        # PRERELEASE and the user is on stable, route them to the beta channel.
+        # No update on current channel — check if a prerelease is available on stable.
         prerelease_available = (
             not beta
             and latest_any is not None
@@ -14492,6 +15223,7 @@ class MainFrame(
             self._record_notification("Update check found no newer version", "update")
             return
         self._set_status("No update available")
+        self._announce("Quill is up to date")
         self._record_notification("Update check found no newer version", "update")
         if beta:
             self._html_info(
@@ -14644,8 +15376,11 @@ class MainFrame(
         from quill.ui.preview_dialog import HtmlMessageDialog
 
         wx = self._wx
+        self._announce(f"Update available: {release.version}")
         channel = "Beta / prerelease" if release.prerelease else "Stable"
         notes = release.notes or "_(no release notes provided)_"
+        if len(notes) > 600:
+            notes = notes[:600] + "…"
         published = f"**Published:** {release.published_at}  \n" if release.published_at else ""
         body = self._render_html(
             f"# Update available: {release.version}\n\n"

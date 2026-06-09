@@ -89,6 +89,11 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "(_EditorHostServices reaches fetch only after the host's capability + "
         "consent check passes); there is no silent path."
     ),
+    # feedback_hub is an optional external library (not in quill/); its urlopen
+    # call is not found by this AST scan but is documented here for auditability.
+    # report_bug() -> FeedbackDialog._on_submit -> create_issue -> urlopen
+    # Triggered only by an explicit user action (clicking Submit in the dialog).
+    # Falls back to the legacy browser path when feedback_hub is not installed.
 }
 
 

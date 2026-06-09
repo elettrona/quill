@@ -15,6 +15,7 @@ from datetime import timedelta
 
 from quill.core.marks import line_column_for_position
 from quill.core.metrics import compute_document_stats
+from quill.core.palette import load_palette_usage, top_suggestion
 from quill.core.settings import STATUS_BAR_ITEMS, Settings, save_settings
 from quill.platform.windows.sr_announce import announce
 
@@ -66,6 +67,11 @@ class StatusBarMixin:
         selection_start, selection_end = editor.GetSelection()
         if selection_end > selection_start and "selection" not in visible:
             visible.append("selection")
+        # §8.2 Annisuggestion: surface the most-used recent command when the
+        # threshold is met, but only if the item is not already configured in
+        # the user's status bar order.
+        if "suggestion" not in visible and self._get_action_suggestion() is not None:
+            visible.append("suggestion")
         if not visible:
             return ["message"]
         if "message" not in visible:
@@ -171,7 +177,41 @@ class StatusBarMixin:
             if getattr(self, "_quill_key_prefix_pending", False):
                 return "Prefix"
             return "Off"
+        if item == "sr_name":
+            # A11Y live indicator (§8.3): show the detected screen reader name.
+            # Cache the result on the instance to avoid re-running tasklist on
+            # every status-bar refresh.
+            if not hasattr(self, "_sr_name_cache"):
+                try:
+                    from quill.platform.windows.sr_detect import detect_screen_reader
+
+                    result = detect_screen_reader()
+                    self._sr_name_cache = result.name if result.detected else "None detected"
+                except Exception:  # noqa: BLE001
+                    self._sr_name_cache = "Unknown"
+            return self._sr_name_cache
+        if item == "suggestion":
+            # §8.2 Annisuggestion: show most-used recent command.
+            suggestion = self._get_action_suggestion()
+            if suggestion is None:
+                return ""
+            binding = getattr(suggestion, "keybinding", "") or ""
+            if binding:
+                return f"{suggestion.title} ({binding})"
+            return suggestion.title
         return ""
+
+    def _get_action_suggestion(self) -> object | None:
+        """Return the Annisuggestion for the current session, or None."""
+        commands_obj = getattr(self, "commands", None)
+        if commands_obj is None:
+            return None
+        try:
+            usage = load_palette_usage()
+            commands = commands_obj.list(feature_manager=getattr(self, "features", None))
+            return top_suggestion(usage, commands)
+        except Exception:  # noqa: BLE001
+            return None
 
     def _statusbar_button_label(self, item: str) -> str:
         label = self._STATUS_BAR_LABELS.get(item, item)
@@ -209,6 +249,8 @@ class StatusBarMixin:
             "search_term": "Reopen Find",
             "file_path": "Open containing folder",
             "quill_key_mode": "QUILL key mode state",
+            "sr_name": "Detected screen reader. Press Enter to re-detect.",
+            "suggestion": "Frequently used command. Press Enter to run it.",
         }
         return labels.get(item, self._STATUS_BAR_LABELS.get(item, item))
 
@@ -383,6 +425,21 @@ class StatusBarMixin:
             "search_term": self.find_text,
             "file_path": self.open_containing_folder,
         }
+        # §8.3: A11Y indicator re-detection.
+        if item == "sr_name":
+            if hasattr(self, "_sr_name_cache"):
+                del self._sr_name_cache
+            self._refresh_statusbar()
+            return
+        # §8.2 Annisuggestion: run the suggested command.
+        if item == "suggestion":
+            suggestion = self._get_action_suggestion()
+            if suggestion is not None:
+                try:
+                    self.commands.run(suggestion.id)
+                except Exception:  # noqa: BLE001
+                    self._set_status(f"Could not run suggestion: {suggestion.title}")
+            return
         action = actions.get(item)
         if action is None:
             self._set_status(self._statusbar_text_for_item(item))
