@@ -128,28 +128,6 @@ def _import_paramiko():
     return paramiko
 
 
-def _load_private_key(paramiko, key_path: str, passphrase: str | None):
-    """Load an OpenSSH-format private key, trying each supported algorithm.
-
-    PuTTY ``.ppk`` and SecureCRT keys are not in OpenSSH format; convert them
-    first (``puttygen key.ppk -O private-openssh -o key``). That conversion is
-    out of scope for this loader.
-    """
-    last_error: Exception | None = None
-    for key_class_name in ("Ed25519Key", "ECDSAKey", "RSAKey", "DSSKey"):
-        key_class = getattr(paramiko, key_class_name, None)
-        if key_class is None:
-            continue
-        try:
-            return key_class.from_private_key_file(key_path, password=passphrase or None)
-        except Exception as exc:  # noqa: BLE001 - wrong algorithm; try the next
-            last_error = exc
-    raise SshDependencyError(
-        f"Could not load the private key at {key_path}. If it is a PuTTY (.ppk) "
-        f"or SecureCRT key, convert it to OpenSSH format first."
-    ) from last_error
-
-
 def connect(
     host: str,
     *,
@@ -171,7 +149,9 @@ def connect(
 
     pkey = None
     if auth == AUTH_KEY and key_path:
-        pkey = _load_private_key(paramiko, key_path, key_passphrase)
+        from quill.core.ssh.keys import load_private_key
+
+        pkey = load_private_key(key_path, key_passphrase)
 
     client.connect(
         hostname=host,

@@ -96,6 +96,9 @@ class SshEditingMixin:
                     password=request.password,
                     auth=request.auth,
                     key_path=request.key_path,
+                    # For key auth the password field doubles as the key passphrase
+                    # (used to decrypt an encrypted OpenSSH or .ppk key).
+                    key_passphrase=request.password or None,
                 )
             except SshDependencyError as error:
                 self._wx.CallAfter(self._ssh_error, str(error))
