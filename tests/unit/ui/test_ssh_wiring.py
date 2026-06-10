@@ -23,7 +23,10 @@ def test_main_frame_mixes_in_ssh_editing() -> None:
 def test_save_uploads_back_over_ssh() -> None:
     source = _read("quill/ui/main_frame.py")
     start = source.index("def save_file")
-    body = source[start : start + 700]
+    # Read a generous window so we can match across the function body even
+    # when the file grows; the contract is that save_file triggers the
+    # SSH upload helper from SshEditingMixin.
+    body = source[start : start + 1500]
     assert "self.maybe_upload_remote_on_save()" in body
 
 

@@ -175,6 +175,91 @@ class SelectionMarksMixin:
                 action()
                 return
 
+    def set_named_mark(self) -> None:
+        """Prompt for a name and store the current cursor position (SEL-4)."""
+        wx = self._wx
+        with wx.TextEntryDialog(self.frame, "Mark name:", "Set Named Mark") as dlg:
+            apply_modal_ids(dlg, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+            if self._show_modal_dialog(dlg, "Set Named Mark") != wx.ID_OK:
+                return
+            name = dlg.GetValue().strip()
+        if not name:
+            self._set_status("Mark name cannot be empty")
+            return
+        position = self.editor.GetInsertionPoint()
+        self._named_marks.set(name, position)
+        line, column = line_column_for_position(self.editor.GetValue(), position)
+        self._set_status(f"Named mark '{name}' set at line {line}, column {column}")
+
+    def jump_to_named_mark(self) -> None:
+        """Show all named marks and jump to the chosen one (SEL-4)."""
+        wx = self._wx
+        names = self._named_marks.names()
+        if not names:
+            self._set_status("No named marks. Use Set Named Mark to create one.")
+            return
+        text = self.editor.GetValue()
+        labels = []
+        for name in names:
+            pos = self._named_marks.get(name)
+            if pos is not None:
+                pos = min(pos, len(text))
+                line, col = line_column_for_position(text, pos)
+                labels.append(f"{name}  (line {line}, col {col})")
+            else:
+                labels.append(name)
+        with wx.SingleChoiceDialog(
+            self.frame,
+            "Jump to mark:",
+            "Named Marks",
+            choices=labels,
+        ) as dlg:
+            apply_modal_ids(dlg, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+            if self._show_modal_dialog(dlg, "Named Marks") != wx.ID_OK:
+                return
+            idx = dlg.GetSelection()
+        if idx < 0 or idx >= len(names):
+            return
+        pos = self._named_marks.get(names[idx])
+        if pos is None:
+            return
+        pos = min(pos, len(self.editor.GetValue()))
+        self.editor.SetInsertionPoint(pos)
+        self.editor.SetFocus()
+        line, column = line_column_for_position(self.editor.GetValue(), pos)
+        self._set_status(f"Jumped to mark '{names[idx]}' at line {line}, column {column}")
+
+    def open_review_buffer(self) -> None:
+        """Open the active selection in a read-only dialog for screen-reader review (SEL-4)."""
+        wx = self._wx
+        start, end = self.editor.GetSelection()
+        if start == end:
+            self._set_status("Select text first to open in review buffer")
+            return
+        text = self.editor.GetValue()[start:end]
+        with wx.Dialog(self.frame, title="Review Buffer") as dlg:
+            sizer = wx.BoxSizer(wx.VERTICAL)
+            ctrl = wx.TextCtrl(
+                dlg,
+                value=text,
+                style=wx.TE_MULTILINE | wx.TE_READONLY | wx.HSCROLL,
+            )
+            ctrl.SetName("Review buffer — read-only copy of the selected text")
+            ctrl.SetFocus()
+            sizer.Add(ctrl, 1, wx.EXPAND | wx.ALL, 8)
+            close_btn = wx.Button(dlg, wx.ID_CLOSE, "Close")
+            btn_row = wx.BoxSizer(wx.HORIZONTAL)
+            btn_row.AddStretchSpacer()
+            btn_row.Add(close_btn, 0)
+            sizer.Add(btn_row, 0, wx.EXPAND | wx.ALL, 8)
+            dlg.SetSizer(sizer)
+            dlg.SetSize((500, 400))
+            close_btn.Bind(wx.EVT_BUTTON, lambda _e: dlg.EndModal(wx.ID_CLOSE))
+            apply_modal_ids(dlg, affirmative_id=wx.ID_CLOSE, escape_id=wx.ID_CLOSE)
+            self._show_modal_dialog(dlg, "Review Buffer")
+        words = len(text.split())
+        self._set_status_quiet(f"Closed review buffer ({words} words)")
+
     def select_to_start_of_line(self) -> None:
         text = self.editor.GetValue()
         cursor = self.editor.GetInsertionPoint()

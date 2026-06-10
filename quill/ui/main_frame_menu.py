@@ -25,6 +25,10 @@ class MenuBuilderMixin:
         self._id_preferences = wx.NewIdRef()
         self._id_menu_editor = wx.NewIdRef()
         self._id_open_url = wx.NewIdRef()
+        self._id_open_remote = wx.NewIdRef()
+        self._id_save_to_remote = wx.NewIdRef()
+        self._id_save_copy_to_remote = wx.NewIdRef()
+        self._id_manage_remote_sites = wx.NewIdRef()
         self._id_ssh_quick_connect = wx.NewIdRef()
         self._id_ssh_site_manager = wx.NewIdRef()
         self._id_close_document = wx.NewIdRef()
@@ -54,6 +58,25 @@ class MenuBuilderMixin:
         ssh_menu.Append(self._id_ssh_quick_connect, "&Quick Connect...")
         ssh_menu.Append(self._id_ssh_site_manager, "&Site Manager...")
         file_menu.AppendSubMenu(ssh_menu, "Open over SS&H")
+        remote_menu = wx.Menu()
+        remote_menu.Append(
+            self._id_open_remote,
+            self._menu_label("&Open from Remote...", "file.open_from_remote"),
+        )
+        remote_menu.Append(
+            self._id_save_to_remote,
+            self._menu_label("&Save to Remote", "file.save_to_remote"),
+        )
+        remote_menu.Append(
+            self._id_save_copy_to_remote,
+            self._menu_label("Save &Copy to Remote...", "file.save_copy_to_remote"),
+        )
+        remote_menu.AppendSeparator()
+        remote_menu.Append(
+            self._id_manage_remote_sites,
+            self._menu_label("&Manage Remote Sites...", "file.manage_remote_sites"),
+        )
+        file_menu.AppendSubMenu(remote_menu, "Open from &Remote")
         file_menu.AppendSubMenu(self._sessions_menu, "&Workspace Snapshots")
         # New document from clipboard sits beside New (Power Tools recirculation,
         # menus.md Phase 4).
@@ -113,10 +136,15 @@ class MenuBuilderMixin:
         self._id_select_to_end_of_line = wx.NewIdRef()
         self._id_select_to_start_of_document = wx.NewIdRef()
         self._id_select_to_end_of_document = wx.NewIdRef()
+        self._id_expand_selection = wx.NewIdRef()
+        self._id_shrink_selection = wx.NewIdRef()
         self._id_set_mark = wx.NewIdRef()
         self._id_pop_mark = wx.NewIdRef()
         self._id_exchange_point_mark = wx.NewIdRef()
         self._id_list_marks = wx.NewIdRef()
+        self._id_set_named_mark = wx.NewIdRef()
+        self._id_jump_to_named_mark = wx.NewIdRef()
+        self._id_open_review_buffer = wx.NewIdRef()
         self._id_sort_lines_ascending = wx.NewIdRef()
         self._id_sort_lines_descending = wx.NewIdRef()
         self._id_reverse_lines = wx.NewIdRef()
@@ -230,6 +258,14 @@ class MenuBuilderMixin:
             self._id_select_block,
             self._menu_label("Select &Block", "edit.select_block"),
         )
+        selection_menu.Append(
+            self._id_expand_selection,
+            self._menu_label("E&xpand Selection", "edit.expand_selection"),
+        )
+        selection_menu.Append(
+            self._id_shrink_selection,
+            self._menu_label("S&hrink Selection", "edit.shrink_selection"),
+        )
         selection_menu.AppendSeparator()
         selection_menu.Append(
             self._id_select_to_end_of_line,
@@ -276,8 +312,22 @@ class MenuBuilderMixin:
             self._id_list_marks,
             self._menu_label("&List Recent Marks", "edit.list_marks"),
         )
-        selection_menu.AppendSeparator()
         selection_menu.AppendSubMenu(mark_ring_menu, "Recent &Marks (Ring)")
+        named_marks_menu = wx.Menu()
+        named_marks_menu.Append(
+            self._id_set_named_mark,
+            self._menu_label("&Set Named Mark...", "edit.set_named_mark"),
+        )
+        named_marks_menu.Append(
+            self._id_jump_to_named_mark,
+            self._menu_label("&Jump to Named Mark...", "edit.jump_to_named_mark"),
+        )
+        named_marks_menu.Append(
+            self._id_open_review_buffer,
+            self._menu_label("&Review Buffer", "edit.open_review_buffer"),
+        )
+        selection_menu.AppendSeparator()
+        selection_menu.AppendSubMenu(named_marks_menu, "&Named Marks")
         edit_menu.AppendSubMenu(selection_menu, "&Selection")
         # Paste-as-Markdown and line-deletion commands (Power Tools recirculation,
         # menus.md Phase 4).
@@ -1420,6 +1470,26 @@ class MenuBuilderMixin:
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.new_file(), id=self._id_new)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_file(), id=self._id_open)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_url(), id=self._id_open_url)
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_from_remote(),
+            id=self._id_open_remote,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.save_to_remote(),
+            id=self._id_save_to_remote,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.save_copy_to_remote(),
+            id=self._id_save_copy_to_remote,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.manage_remote_sites(),
+            id=self._id_manage_remote_sites,
+        )
         self._bind_ssh_file_menu()
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.save_file(), id=self._id_save)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.save_file_as(), id=self._id_save_as)
@@ -1728,6 +1798,19 @@ class MenuBuilderMixin:
             id=self._id_select_paragraph,
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.select_block(), id=self._id_select_block)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.expand_selection(), id=self._id_expand_selection
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.shrink_selection(), id=self._id_shrink_selection
+        )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.set_named_mark(), id=self._id_set_named_mark)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.jump_to_named_mark(), id=self._id_jump_to_named_mark
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.open_review_buffer(), id=self._id_open_review_buffer
+        )
         self.frame.Bind(
             wx.EVT_MENU,
             lambda _e: self.select_to_start_of_line(),

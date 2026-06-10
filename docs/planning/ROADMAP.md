@@ -19,9 +19,7 @@ Non-negotiable principle: everything ships accessible. No feature is "done" unti
 
 1. Vision and the "magical and accessible" bar
 2. Product-wide delight themes
-3. The QUILL key as a flagship feature
 4. Navigation deep dive (Quick Nav)
-5. Selection deep dive
 6. Menus and information architecture
 7. Keymaps and profiles
 8. Feature-by-feature enhancement pass
@@ -61,47 +59,12 @@ What "accessible, no questions asked" means here, concretely:
 These themes cut across many features and inform the backlog.
 
 1. Outcome announcements with a shared grammar. Define a small announcement style guide (verb, object, scope, count) and apply it everywhere. Example: "Rewrote paragraph, 42 words." See backlog A11Y-1.
-2. A consistent "scope" concept. Many actions operate on selection, paragraph, or document. Make that fallback model uniform and always announced. See NAV-3, SEL-2.
+2. A consistent "scope" concept. Many actions operate on selection, paragraph, or document. Make that fallback model uniform and always announced. See NAV-3.
 3. Progressive disclosure. First-run users see scaffolding and tips; power users can silence it. Tie this to feature profiles. See UX-2.
-4. Earcons (optional, off by default). Subtle, distinct sounds for mode-enter, action-done, not-found. Already partially present for the QUILL key; generalize tastefully and make it opt-in. See QK-6.
+4. Earcons (optional, off by default). Subtle, distinct sounds for mode-enter, action-done, not-found. Custom WAV earcons for the QUILL key (enter, exit, move, error) are now implemented and configurable in Preferences (QK-6, done 2026-06-10). Generalize earcons to other modes tastefully, keep them opt-in.
 5. Recoverability everywhere. Undo, backups, crash recovery, and "return to editor" are universal guarantees. Audit every dialog for an escape and a default. See A11Y-4.
 6. Honesty about AI and extraction. Always show provider, model, scope, and confidence. Never a silent network call. Already strong; keep it as a hard rule. See AI-5.
 7. Feature flags are a fundamental, not an afterthought. Every feature is individually switchable through the existing `FeatureManager` (`quill/core/features.py`), and the UI must honor that choice everywhere: a disabled feature hides or disables its commands, menu items, status-bar cells, QUILL key and Quick Nav entries, settings groups, and onboarding prompts, and a feature with unmet dependencies stays off. Feature profiles (Essential, Writer, Developer Power Text, Accessibility Professional, Full QUILL) let users adopt whole sets at once, and individual toggles override within a profile. Every new feature ships with a `FeatureDefinition` (id, dependencies, maturity, privacy, and whether it is off by default), so users can turn anything on or off and the product respects it consistently, with no orphaned or dead commands. See FLAG-1 through FLAG-4.
-
----
-
-## 3. The QUILL key as a flagship feature
-
-Today the QUILL key is implemented as a prefix chord, `Ctrl+Shift+Grave`, followed by a second key, with a 1.5 second timeout window. It drives document actions (headings, snippets, preview, read aloud, dictation, sticky notes) and a separate Quick Nav browse mode that uses single-letter keys (H for heading, A for link, L for list, I for list item, T for table, Q for block quote, B for bookmark, P for paragraph, S for sentence, and so on).
-
-This is good bones. The problem: the QUILL key is powerful but under-told and slightly inconsistent. It deserves to be the signature interaction that people talk about.
-
-### 3.1 Make the QUILL key a named, prominent identity
-
-- Give it a canonical name in all docs and UI: "the QUILL key." Establish that `Ctrl+Shift+Grave` is the QUILL key, and that it is also remappable for keyboards where Grave is awkward (for example to `Caps Lock` via an opt-in, or to a single dedicated key). See QK-1.
-- Add a discoverable, always-available "QUILL key menu" overlay. When you press the QUILL key and pause, a non-modal, screen-reader-friendly list appears announcing the available follow-on keys grouped by purpose (Navigate, Insert, Format, Read, Dictate). This is a guided cheat sheet that does not block typing. See QK-2.
-- QUILL key plus question mark shows the full, live QUILL key cheat sheet on demand: every follow-on key and what it does, grouped by purpose, in an accessible, screen-reader-pageable list that reflects the active keymap and profile (so it always matches the user's real bindings). This is the instant "what can I press" answer and the fastest path to discovery. See QK-9.
-- Context-sensitive help is built into every mode: pressing question mark after entering a QUILL sub-mode shows only that mode's keys. For example, QUILL key plus N (Quick Nav) followed by question mark lists every navigation key (H heading, A link, L list, T table, and the rest) with live counts and current bindings; the same pattern applies to Insert, Format, Read, and Dictate sub-modes. Help is always one question mark away, wherever the user is. See QK-9, NAV-1.
-- Status bar indicator. When QUILL key mode is pending or active, the status bar announces and shows a subtle state so users always know the mode is live. See QK-3.
-
-### 3.2 Make the timeout forgiving and configurable
-
-- The 1.5 second window is invisible and can feel like a trap. Make the timeout configurable (including "no timeout until Escape") and announce entry and expiry. See QK-4.
-- Allow a sticky mode: press the QUILL key twice to "lock" browse mode until Escape, for extended navigation sessions. See QK-5.
-
-### 3.3 Resolve the binding collisions and inconsistencies
-
-- Today `Ctrl+Shift+Grave, N` is Sticky Note capture, while Quick Nav uses bare letters once in browse mode. Two different mental models share one prefix. Document the two modes clearly and consider unifying: a single QUILL key that opens a navigable, type-ahead "QUILL panel" with tabs for Navigate, Insert, Format, Read. See QK-2, QK-7.
-- Audit all QUILL key chords for conflicts and ensure `find_keymap_conflict` is wired into the keymap editor and import flow with a spoken warning. See KEY-3.
-
-### 3.4 Extend the QUILL key with new magic (opt-in, discoverable)
-
-- QUILL key plus G: "Go to anything" universal jump (headings, bookmarks, links, open documents, recent files) with type-ahead. See NAV-4.
-- QUILL key plus K: command palette scoped to the cursor context ("what can I do here").
-- QUILL key plus number 0: jump to top, repeated for cycling key landmarks.
-- QUILL key plus period: repeat last QUILL action. See QK-8.
-
-Acceptance for the QUILL key program: a new user can discover every QUILL action without reading a manual, a power user can operate silently and fast, and the feature is documented as the headline interaction in the user guide and the marketing announcement.
 
 ---
 
@@ -129,32 +92,6 @@ Add an opt-in "Quick Nav panel" (QUILL key plus N) that lists every navigable el
 
 - Build a single index of landmarks (headings, links, tables, code blocks, bookmarks, marks, comments or footnotes) and expose a type-ahead jumper (QUILL key plus G). See NAV-4.
 - Cache invalidation correctness: ensure the prewarm cache invalidates on edits within the changed region only, and verify there is no race in cache rebuild. See NAV-9, PERF-5.
-
----
-
-## 5. Selection deep dive
-
-Selection today includes line, paragraph, block, to-end and to-start of line and document, an Emacs-style mark ring (set, jump, swap, list), and an F8 extend-selection mode.
-
-### 5.1 Bind and announce the structural selections
-
-- Select Line, Select Paragraph, Select Block are present but unbound by default. Provide sensible default bindings and announce the resulting scope and word count. See SEL-1.
-
-### 5.2 Expand and shrink selection by structure
-
-- Add "expand selection" and "shrink selection" that grow or shrink by semantic unit: word, sentence, paragraph, block, document. This is one of the most loved features in modern editors and is highly accessible because each step announces its new scope. See SEL-2.
-
-### 5.3 Selection actions surface
-
-- After any selection, offer a quick "do something with this" affordance (QUILL key while a selection is active) that lists scope-aware actions: rewrite, summarize, fix grammar, read aloud, copy with source, convert case, count words. See SEL-3.
-
-### 5.4 Multi-mark and rectangular review
-
-- Allow naming marks and reviewing a marked range non-destructively. Consider a read-only "review buffer" that shows the marked region in a stock multiline control for screen-reader paging. See SEL-4.
-
-### 5.5 Extend mode polish
-
-- Make extend-selection mode announce on enter and exit, show state in the status bar, and confirm the committed scope when broken. See SEL-5.
 
 ---
 
@@ -461,11 +398,6 @@ This table is the execution source of truth. Update Status as work progresses. S
 | NAV-7 | Table review mode | Navigation | M | Todo | Cell reading announces row and column position. |
 | NAV-8 | Misspellings and matches as Quick Nav types | Navigation | S | Todo | Both are navigable element types with announcements. |
 | NAV-9 | Quick Nav prewarm race audit | Navigation | S | Todo | No race in cache rebuild; covered by a test. (Pairs with PERF-5.) |
-| SEL-4 | Named marks and review buffer | Selection | M | Todo | Marks can be named; a read-only review buffer pages a marked range. |
-| SEL-5 | Extend mode polish | Selection | S | Todo | Enter and exit announce; status shows state; committed scope confirms. |
-| QK-6 | Optional generalized earcons | QUILL key | S | Todo | Distinct, opt-in sounds for mode enter, action done, not found. |
-| QK-7 | Unify QUILL key mental models | QUILL key | M | Todo | The two modes are clearly documented or unified into one panel; no ambiguity. |
-| QK-8 | Repeat last QUILL action | QUILL key | S | Todo | A key repeats the last QUILL action with announcement. |
 | KEY-2 | Exportable keyboard reference | Keymaps | S | Todo | Reference exports as accessible HTML and EPUB. (Pairs with DOC-6.) |
 | KEY-4 | Validate keybinding syntax on save | Keymaps | S | Todo | Invalid bindings are rejected with a plain-language explanation. |
 | MENU-4 | Labels match announcement grammar | Menus | S | Todo | Menu labels and announcements are consistent. |
@@ -496,7 +428,6 @@ This table is the execution source of truth. Update Status as work progresses. S
 
 | ID | Item | Area | Size | Status | Acceptance criteria |
 | --- | --- | --- | --- | --- | --- |
-| QK-6b | Earcon sound design pass | QUILL key | M | Todo | A small, tasteful sound set is designed and user-tested with screen-reader users. |
 | FEAT-12 | Named workspace restore polish | Features | M | Todo | Named workspaces reopen and announce what was restored. |
 | FEAT-13 | Screen-reader-tuned focus mode | Features | M | Todo | Non-essential chatter is silenced; essential confirmations remain. |
 | FEAT-14 | Reading ruler and line focus | Features | M | Todo | Configurable, high-contrast, large line focus for low vision. |
@@ -522,7 +453,7 @@ This table is the execution source of truth. Update Status as work progresses. S
 ## 15. Suggested release sequencing
 
 1. Harden and gate (P0 security, accessibility, and continuous integration items). These protect users and unblock everything else. This is the 1.0 quality bar.
-2. Land the QUILL key flagship (QK-1 through QK-5, NAV-1, NAV-4, SEL-1 through SEL-3) plus the primer and first tutorials. This is the story that makes QUILL memorable.
+2. Land the QUILL key flagship (QK-1 through QK-5, NAV-1, NAV-4) plus the primer and first tutorials. This is the story that makes QUILL memorable.
 3. Decompose main_frame safely (CQ-16 then CQ-1) to make all future work faster and lower risk.
 4. Performance polish (PERF-1 through PERF-3 and PERF-9) so first use feels instant.
 5. Documentation and launch content (remaining podcasts and tutorials, keyboard reference, developer quickstart) so launch lands with a complete learning surface.
@@ -1075,7 +1006,7 @@ Why first: these are inexpensive, they protect users immediately, and they make 
 The highest user-impact features: the reasons a blind writer would choose and recommend QUILL.
 
 - The QUILL key as a discoverable, tunable, consistent flagship: QK-1 through QK-5, QK-9 (question-mark cheat sheet and per-mode help). Value: the signature interaction becomes learnable in seconds and fast forever. Outcome: a memorable identity no competitor has.
-- Navigation and selection by structure: NAV-1, NAV-4 (go-to-anything), NAV-5, SEL-1 through SEL-3. Value: moving and selecting by meaning, not by guesswork. Outcome: real documents become navigable by ear at speed.
+- Navigation by structure: NAV-1, NAV-4 (go-to-anything), NAV-5. Value: moving by semantic units. Outcome: real documents become navigable by ear at speed.
 - Bring visuals into text with OCR: OCR-1 through OCR-5. Value: a blind writer pulls text out of an image, a screenshot, a clipboard grab, or a screen region and hears it land in the document, working offline by default through the built-in Windows OCR engine with no install, and through Tesseract when the user opts in during onboarding. Outcome: inaccessible images stop being dead ends, and the same engine plugs into Watch Profiles so whole folders of images become readable documents automatically.
 - Send files straight to QUILL from the file manager: SHELL-1 through SHELL-3. Value: a blind writer right-clicks an image, PDF, or document in Explorer and chooses Open, OCR, OCR to structured Markdown, or Read aloud, and the running QUILL instance carries it out — the same verbs reachable in-app and from the command line (`quill --action ocr <path>`), all opt-in through the Integration and Context Menu settings. Outcome: QUILL becomes the obvious destination for inaccessible files anywhere on the system, with the classic Explorer menu shipping first (SHELL-1) and the Windows 11 modern-menu packaging and the AI structuring pass tracked honestly as remaining (SHELL-2, SHELL-3).
 - The Accessibility agent and trustworthy AI editing: AGENT-1, AI-7 (diffs reviewable by ear), AI-1 (streaming), AI-6 (graceful degradation). Value: "make this document accessible," done step by step, reversibly, by keyboard and voice. Outcome: a category-defining capability that embodies the mission.
@@ -1330,7 +1261,7 @@ under Tier 2.
 | Tier | Feature IDs |
 | --- | --- |
 | Tier 1 — Protect users | BUG-1, BUG-2, BUG-3, BUG-4, BUG-5, BUG-6, BUG-7, SEC-1, SEC-10, SEC-11, SEC-13, GATE-1, GATE-2, GATE-3, GATE-4, GATE-5, GATE-6, GATE-7, GATE-8, GATE-9, FLAG-1, FLAG-2 |
-| Tier 2 — Flagship | QK-1, QK-2, QK-3, QK-4, QK-5, QK-9, NAV-1, NAV-4, NAV-5, SEL-1, SEL-2, SEL-3, AI-1, AI-6, AI-7, AI-13, AI-14, AI-15, AI-16, AI-17, AI-21, AI-23, WATCH-1, WATCH-2, WATCH-3, WATCH-4, WATCH-5, WATCH-6, WATCH-7, SET-1, SET-4, SET-5, SET-6, SET-7, SHARE-1, SHARE-2, SHARE-3, FLAG-3, FLAG-4, MENU-3, MENU-1, MENU-5, DICT-1, CTX-1, DICT-2, FEAT-19, DLG-1, OCR-1, OCR-2, OCR-3, OCR-4, OCR-5, A11Y-4, SET-2, SET-3, AGENT-1, SHELL-1, GLOW-6 |
+| Tier 2 — Flagship | QK-1, QK-2, QK-3, QK-4, QK-5, QK-9, NAV-1, NAV-4, NAV-5, AI-1, AI-6, AI-7, AI-13, AI-14, AI-15, AI-16, AI-17, AI-21, AI-23, WATCH-1, WATCH-2, WATCH-3, WATCH-4, WATCH-5, WATCH-6, WATCH-7, SET-1, SET-4, SET-5, SET-6, SET-7, SHARE-1, SHARE-2, SHARE-3, FLAG-3, FLAG-4, MENU-3, MENU-1, MENU-5, DICT-1, CTX-1, DICT-2, FEAT-19, DLG-1, OCR-1, OCR-2, OCR-3, OCR-4, OCR-5, A11Y-4, SET-2, SET-3, AGENT-1, SHELL-1, GLOW-6 |
 | Tier 4 — Structural health | CQ-7, CQ-12, CQ-13, CQ-14, CQ-15, CQ-16, CQ-17, CQ-18, CQ-19, CQ-20, CQ-21, CQ-22, GATE-10, GATE-11, PERF-1, PERF-2, PERF-3, PERF-8, PERF-9, PERF-10, PERF-11, PERF-12, PERF-13, PERF-14, SEC-4, SEC-6, SEC-7, SEC-8, SEC-14, SEC-15, SEC-16, SEC-17, TYPE-1, TYPE-2, TYPE-3, TYPE-4, TYPE-5, TYPE-6, TYPE-7, TYPE-8, CQ-1, DLG-2, DLG-3, ORG-1 |
 | power-tool (delivered in 1.0) | EDS-1, EDS-2, EDS-3, EDS-4, EDS-5, EDS-6, EDS-7, EDS-8, EDS-9, EDS-10, EDS-11, EDS-12, EDS-13, EDS-14, EDS-15, EDS-16, EDS-17, EDS-18, EDS-19, EDS-20, EDS-21 |
 
@@ -1748,7 +1679,7 @@ Tier 1's original scope is complete: all seven bugs, the cheap security hardenin
 
 First task before anything else (OPS-1): make `main` green. The gate jobs were red because they installed only `.[dev]` while the UI tests need `wx` and the typing gate needs the optional modules ignored; the fix (install `.[dev,ui]` in the test jobs and add `markitdown`/`certifi`/`pdfplumber`/`pyttsx3` to the mypy overrides) is committed and verified — PR CI, Security CI, and Accessibility CI all conclude success on `main` (commit d62d3bd). OPS-1 is Done.
 
-The agreed next sequence (decided with the maintainer): (1) do the cheap Tier 4 quality cleanup first — CQ-18 (the ~43 remaining E501 line-length wraps, after which the `--ignore E501` can be removed from the lint gate and pre-commit) and individually verify/close the TYPE-1..8 rows — because it is low-risk, behavior-preserving, and makes every later PR land in a clean tree; (2) then build Tier 2 flagship work (QUILL key QK-1..5/QK-9, navigation NAV-1/4/5, selection SEL-1..3, then AI-13 provider wiring); (3) do the big `MainFrame` decomposition (CQ-1/CQ-16) last, behind the GATE-6 characterization snapshot, never before Tier 2. Tiers are then executed in order through Tier 6: Tier 3 GLOW (engine adopted via quill-glow-core, structured-format audit as the headline), Tier 4 structural health, Tier 5 BITS Whisperer transcription (the docs/BITS swap puts transcription before documentation), and Tier 6 documentation last.
+The agreed next sequence (decided with the maintainer): (1) do the cheap Tier 4 quality cleanup first — CQ-18 (the ~43 remaining E501 line-length wraps, after which the `--ignore E501` can be removed from the lint gate and pre-commit) and individually verify/close the TYPE-1..8 rows — because it is low-risk, behavior-preserving, and makes every later PR land in a clean tree; (2) then build Tier 2 flagship work (QUILL key QK-1..5/QK-9, navigation NAV-1/4/5, then AI-13 provider wiring); (3) do the big `MainFrame` decomposition (CQ-1/CQ-16) last, behind the GATE-6 characterization snapshot, never before Tier 2. Tiers are then executed in order through Tier 6: Tier 3 GLOW (engine adopted via quill-glow-core, structured-format audit as the headline), Tier 4 structural health, Tier 5 BITS Whisperer transcription (the docs/BITS swap puts transcription before documentation), and Tier 6 documentation last.
 
 Parallelization guidance (no code collision): the cheap cleanup and the flagship work own disjoint directories, so they can run as separate agents — Agent A on `quill/io`, `quill/core` (non-`ai`), `quill/platform`, `quill/tools`; Agent B on the QUILL key and NAV/SEL features in `quill/ui/` plus new `quill/core/` modules; Agent C on docs under `docs/`. The single hard rule: only one agent may touch `quill/ui/main_frame.py` at a time, because it is the 18k-line shared surface, and the `MainFrame` decomposition must be serialized after the features land. Each agent regenerates `golden.html` with pandoc, updates this tracker, and commits per item.
 
@@ -1802,7 +1733,7 @@ Honest dimension movement since the 0.1.5 baseline:
 | AI and agents | Level 2 | Level 2 to 3 | Connection diagnostics are now honest and screen-reader-friendly; the headline gap (configured providers still fall back to local generation, AI-13) is not yet closed. |
 | Test coverage | Level 2 to 3 | Level 3 | New regression tests for every bug class and the AI taxonomy; the broad UI characterization and IO matrix work is still ahead. |
 
-What is explicitly not done yet: the quality-gate ladder is not enforced in CI (GATE items), the configured AI providers still do not drive generation (AI-13), the UI monolith is intact (CQ-1), and the flagship QUILL key, navigation, selection, and settings work (Tier 2) has not started. Overall standing remains roughly Level 3, already Level 4 on accessibility; this section moved the safety floor up without yet adding user-facing flagship value.
+What is explicitly not done yet: the quality-gate ladder is not enforced in CI (GATE items), the configured AI providers still do not drive generation (AI-13), and the UI monolith is intact (CQ-1). The flagship QUILL key work (QK-6/7/8) and the selection deep dive (SEL-1 through SEL-5) shipped in June 2026; navigation (NAV family) and the full settings tuning surface (SET family) remain ahead. Overall standing remains roughly Level 3, already Level 4 on accessibility; this section moved the safety floor up and delivered the first major user-facing flagship features.
 
 ### What QUILL would be
 
@@ -1841,3 +1772,44 @@ The earlier draft of this plan listed frontiers that would remain even after ful
 - Localization depth. The plan commits to full UI and core-documentation localization for the launch languages, with a process to keep translations current (L10N-1).
 
 These are large (XL) investments and are sequenced into Tier 6 after the 1.0 wins, but they are now part of the committed plan, so the honest answer to "what would still fall short?" is: nothing of substance. The only remaining limits are deliberate scope choices (no real-time co-editing) and the permanent reality that a living product keeps improving with user feedback.
+
+
+---
+
+## Changelog
+
+### 2026-06-10
+
+#### EdSharp selection parity
+
+Eight new selection commands implementing the EdSharp F8-based anchor model:
+
+- `edit.start_selection` (F8): sets an anchor at the cursor position
+- `edit.complete_selection` (Shift+F8): selects anchor to cursor, announces span
+- `edit.reselect` (Ctrl+Shift+F8): restores the last committed selection
+- `edit.go_to_start_of_selection` (Alt+Shift+F8): moves cursor to selection start
+- `edit.copy_all` (Ctrl+F8): copies the entire document
+- `edit.unselect_all` (Ctrl+Shift+A): collapses selection to cursor
+- `edit.say_selected`: announces selected text via screen reader
+- `edit.read_all` (Alt+F8): reads the document from the beginning
+- `edit.toggle_extend_selection_mode`: improved entry/exit announcements with anchor position and span
+
+All eight appear in the Selection menu and command palette.
+
+#### QUILL key improvements (QK-6, QK-7, QK-8)
+
+- **QK-6 earcons**: Four custom WAV file path settings (`quill_key_sound_enter`, `quill_key_sound_exit`, `quill_key_sound_move`, `quill_key_sound_error`) exposed in Preferences > Navigation and QUILL Key with a Browse button. `_play_quill_sound` tries the WAV path first and falls back to beeps when no path is set.
+- **QK-7 mental model clarity**: Prefix mode announcement now names both modes, says "press again for sticky mode" and "? for help". Browse mode entry announcement is condensed and adds "period repeats last action".
+- **QK-8 repeat last action**: Period key (.) in browse mode repeats the previous browse action. Reports "No previous QUILL action" with an error earcon if nothing has been run yet.
+
+#### Selection features (SEL-1, SEL-2, SEL-3, SEL-4, SEL-5)
+
+- **SEL-1 bindings**: `edit.select_paragraph` bound to Ctrl+Alt+P; `edit.select_block` to Ctrl+Shift+B. Both announce scope and word count. Both now appear in the Selection menu.
+- **SEL-2 bindings**: `edit.expand_selection` bound to Alt+Shift+Up; `edit.shrink_selection` to Alt+Shift+Down. Both appear in the Selection menu.
+- **SEL-3**: QUILL key + A with text selected opens scope-aware selection actions (already implemented, marked done).
+- **SEL-4 named marks and review buffer**: Three new commands — `set_named_mark` (prompts for a name and stores the cursor position), `jump_to_named_mark` (pick from a list, jump to position with line/column announcement), `open_review_buffer` (opens selection in a read-only dialog for non-destructive screen-reader paging). All accessible via Selection > Named Marks submenu and command palette.
+- **SEL-5 status bar indicator**: Extend selection mode now shows an "EXT" badge in the status bar whenever active, using the same dynamic-pane mechanism as the QUILL key indicator. Entry and exit already announced in a prior session.
+
+#### Roadmap maintenance
+
+Removed completed sections and backlog rows: QUILL key section (§3, QK-6/7/8/6b), selection section (§5, SEL-1 through SEL-5). Stale references to these IDs updated throughout narrative and tier tables.

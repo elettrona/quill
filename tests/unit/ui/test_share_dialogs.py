@@ -287,12 +287,12 @@ def test_profile_merge_is_additive_for_keymap() -> None:
     )
 
     # Recipient already has a different custom binding.
-    save_keymap({"command.other": "Ctrl+Alt+P"})
+    save_keymap({"command.other": "Ctrl+Alt+Q"})
     package = read_package(document)
     apply_import(package, [SECTION_KEYMAP], Settings(), _features())
     merged = load_keymap()
     assert merged.get("command.custom") == "Ctrl+Shift+Z"  # imported
-    assert merged.get("command.other") == "Ctrl+Alt+P"  # preserved
+    assert merged.get("command.other") == "Ctrl+Alt+Q"  # preserved
 
 
 def test_feature_import_announces_dependency_enable() -> None:

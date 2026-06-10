@@ -101,7 +101,7 @@ The menu bar is standards-based, predictable, and exhaustive. Every menu item is
 
 Menu structure:
 
-- **File**: New/Open/**New from Clipboard**/Open Recent/Open from URL, **Workspace Snapshots**, Save/Save As/Save All/Save as plain text, Reload/Restore backup, print flows, **Run current file / Open target at cursor / Rename / Delete current file**, close/exit.
+- **File**: New/Open/**New from Clipboard**/Open Recent/Open from URL, **Open from Remote / Save to Remote / Save Copy to Remote / Manage Remote Sites** (FTP, SFTP, HTTPS, WebDAV, S3 — verified TLS, host-allow-listed, explicit consent, screen-reader announcements), **Workspace Snapshots**, Save/Save As/Save All/Save as plain text, Reload/Restore backup, print flows, **Run current file / Open target at cursor / Rename / Delete current file**, close/exit.
 - **Edit**: Undo/redo, clipboard (including **Paste HTML as Markdown**), **Find/Replace plus Find Next/Previous/All Matches**, selection helpers, **delete-to-line/document and delete-paragraph**, link insertion/follow, and **Recent Marks (Ring)** with plain-language labels.
 - **View**: shell behavior, theme and visual controls (preference toggles such as persistent undo, spell-check-as-you-type, word prediction, dark mode, tray mode, title-path and dirty-title style now live in **Settings**).
 - **Insert**: table/list/code/footnote/tag insertion helpers plus **special character, date and time, calculated date, and file content**.
@@ -2044,6 +2044,25 @@ A small tool that addresses a real recurring user request.
 - Redirects are followed up to 5 hops; redirects to a different host prompt for confirmation.
 - All TLS errors and 4xx/5xx responses are reported with a single readable sentence, no stack traces.
 
+### 5.27a Remote Sites (FTP, SFTP, HTTPS, WebDAV, S3)
+
+Remote I/O is the natural extension of "Open from URL": once a user has a saved site, opening and saving is one click, with the same explicit-safety guarantees.
+
+- **File menu → Open from Remote** (default key: QUILL key then `R`) opens a two-pane site list + remote directory browser. Sites are sorted alphabetically; the user can search/filter. The dialog uses native wx controls; the directory pane is a stock `wx.ListCtrl` so screen readers can read filenames in order with no synthesized markup.
+- **Save to Remote** (QUILL key then `Shift+R`) and **Save Copy to Remote...** (menu only) use the same dialog in a "Save" mode that includes a target file name field.
+- **Manage Remote Sites...** (QUILL key then `Shift+M`) opens the site list editor with **New site...** / **Edit site...** / **Delete site** buttons and a per-protocol sub-dialog (FTP, SFTP, WebDAV, S3) that validates required fields before enabling Save.
+- A **site** is `RemoteSite(id, name, protocol, host, port, username, root_dir, trust_first_use, extra)` with protocol-specific fields in `extra` (e.g. `s3_bucket`, `webdav_base`, `s3_endpoint`, `s3_region`, `s3_access_key`, `s3_secret_key`). Sites are persisted to `%APPDATA%\Quill\remote-sites.json` via atomic write; passwords are persisted separately through `quill/core/remote_sites.py` using the Windows Credential Manager → DPAPI file → macOS Keychain ladder.
+- **Five transport modules** live in `quill/io/`, all wx-free:
+  - `remote_transport.py` — `RemoteTransport` ABC + `RemoteEntry`, `DownloadResult`, `RemoteTransportError`/`RemoteAuthError`/`RemoteNotFoundError`, `chunked_copy`, `merge_headers`.
+  - `http_transport.py` — `download_url(url, *, timeout, progress, max_bytes) -> HttpDownload` with verified TLS, default `_MAX_BYTES` cap, visible progress.
+  - `ftp_transport.py` — FTP and FTPS open/save, MLSD time parser, listing normalization.
+  - `sftp_transport.py` — paramiko SFTP open/save; honours `settings.ssh_trust_first_use` and `paramiko.AutoAddPolicy`.
+  - `webdav_transport.py` — depth-1 `PROPFIND` directory listing, basic auth, parsed through `quill.core.safe_xml.fromstring` to refuse DTD/entity expansion.
+  - `s3_transport.py` + `s3_sigv4.py` — manual AWS SigV4 signer for Amazon S3 and any S3-compatible endpoint; boto3 path is opportunistic and falls back to the signer when boto3 is missing.
+- A document opened from a remote site is **read-only by default**; the title shows `(from site:path)` so the user always knows where it came from. `Save` on a read-only remote document opens **Save Copy to Remote...** instead of overwriting the remote.
+- Network egress is gated by `quill/tools/network_egress_audit.py`; every transport call site has a written rationale. The audit is a CI gate.
+- All `Save to Remote` writes use the SSH-style tilde backup: a copy of the previous file lives next to the target as `<name>~`, written in the original newline style.
+
 ### 5.28 Format-aware bracket and quote navigation
 
 - `Ctrl+]` and `Ctrl+[` already navigate by block in editor-mode (5.17); when inside a code-aware context (code file, Markdown code fence, HTML tag), they instead jump to the matching bracket, quote, fence, or HTML tag.
@@ -3004,6 +3023,13 @@ quill/
     sqlite_view.py            Read-only schema + sample rows
     ocr.py                    Tesseract bridge
     detect.py                 Format auto-detect by magic + extension + sniff
+    remote_transport.py       ABC + error hierarchy + chunked_copy + merge_headers
+    http_transport.py         HTTPS download (verified TLS, _MAX_BYTES cap, progress)
+    ftp_transport.py          FTP/FTPS open and save
+    sftp_transport.py         SFTP open and save (paramiko, trust-first-use honoured)
+    webdav_transport.py       WebDAV open and save (depth-1 PROPFIND, safe XML)
+    s3_transport.py           Amazon S3 (and any S3-compatible) open and save
+    s3_sigv4.py               Manual AWS SigV4 signer (boto3 fallback)
   ai/
     base.py                   Provider interface
     openai.py azure.py anthropic.py ollama.py
@@ -3143,6 +3169,8 @@ Each feature in section 5 has an engineering spec here. The full table is large;
 | A11y Auditor (5.20) | `core.audit`, `io.*` audit emitters | `markdown-it-py` AST, `beautifulsoup4`, `python-docx`, `pikepdf` | Worker thread | Per-doc ignore list in sidecar | List dialog; severity prefix in text |
 | Table Mode (5.21) | `ui.table_mode`, `io.md` table tokens | `markdown-it-py` tables, BS4 for HTML | UI thread | n/a | Announces column header on entry |
 | Editor essentials (5.22) | `ui.editor`, `core.document` | `charset-normalizer`, stdlib `io` | I/O off-thread | Per-doc prefs in `file-prefs.json` | Encoding/EOL cells in status bar |
+| Open from URL (5.27) | `ui.main_frame.open_url`, `io.http_transport` | `urllib.request`, `quill.core.net.verified_ssl_context` | I/O off-thread; result lands in temp file | Per-session temp file | Confirms host and Content-Length before download; announces on completion |
+| Remote Sites (5.27a) | `ui.remote_sites_dialog`, `core.remote_sites`, `io.remote_transport`, `io.{http,ftp,sftp,webdav,s3,s3_sigv4}_transport` | `urllib` (HTTPS, WebDAV, S3), stdlib `ftplib` (FTP/FTPS), `paramiko` (SFTP), `defusedxml` (S3 + WebDAV XML), `quill.core.safe_xml`, `quill.core.net.verified_ssl_context` | I/O off-thread; UI marshals through `wx.CallAfter` | Sites in `%APPDATA%\Quill\remote-sites.json`; passwords in Windows Credential Manager / DPAPI file / Keychain | Native `wx.ListCtrl` directory pane; announces host and size; read-only by default |
 | Menu bar (5.1a) | `ui.menubar`, `core.commands` | `wx.MenuBar` | UI thread | n/a | Menu items show live keybindings; mnemonics |
 | Status bar (5.1b) | `ui.statusbar`, `ui.accessible.statusbar_cell` | Custom `wx.StatusBar` layout with focusable buttons; `wx.Accessible` subclass | UI thread with debounced events | n/a | Each cell exposes name/role/value/description via MSAA + UIA |
 | Command palette (§7) | `ui.palette`, `core.palette` | `wx.SearchCtrl` + `wx.ListBox`; `rapidfuzz` | Match on UI thread (≤30 ms) | Recents in `palette-recent.json` | Combobox-style; live region for status |
@@ -3201,6 +3229,8 @@ Each feature in section 5 has an engineering spec here. The full table is large;
     <sha1-of-path>.undo     Persistent undo (opt-in)
   notes\
     <sha1-of-path>.md       Per-document scratchpad
+  remote-sites.json         Saved FTP/SFTP/HTTPS/WebDAV/S3 sites
+  credentials\              DPAPI-protected password store fallback
   outline_cache\
     <sha1-of-path>.json     Cached outline; invalidated on document mtime change
   dictionaries\
@@ -3277,9 +3307,10 @@ All JSON files validate against schemas in `quill/core/schemas/`. All writes are
 
 ### 10.11 Security architecture
 
-- **Secrets**: AI provider keys stored via Windows Credential Manager where available, with DPAPI-encrypted fallback (`platform.windows.dpapi`) when vault APIs are unavailable; never in plain text on disk; never logged; never in diagnostics bundles.
+- **Secrets**: AI provider keys and remote site passwords are stored via Windows Credential Manager where available, with DPAPI-encrypted fallback (`platform.windows.dpapi`) when vault APIs are unavailable; never in plain text on disk; never logged; never in diagnostics bundles. macOS builds use the Keychain facade at `platform.macos.keychain`.
 - **Document data**: never leaves the machine without per-action consent.
-- **Network calls**: an internal `ai.safety.consent(action, host, size_estimate)` gate is required before any network call; the call records what was sent (action name, host, size only) in the audit log.
+- **Network calls**: an internal `ai.safety.consent(action, host, size_estimate)` gate is required before any network call; the call records what was sent (action name, host, size only) in the audit log. Remote I/O is inventoried in `quill/tools/network_egress_audit.py`; a new transport call site without a written rationale is a CI failure.
+- **Untrusted XML**: S3 and WebDAV listings are routed through `quill.core.safe_xml.fromstring`. Documents that declare a DTD or custom entity (billion-laughs, XXE) are refused with a friendly `RemoteTransportError` and never reach the parser.
 - **Updates**: manifest signature verified with a pinned Ed25519 public key; artefact SHA-256 verified before install.
 - **File handling**: file dialogs use the OS dialog (`wx.FileDialog`) so the user controls disclosure scope; the trusted-locations system (5.31) prevents silent opening of suspicious files.
 - **Path traversal**: every settings/keymap/plugin path is normalised and validated; no `..` segments accepted.
@@ -3369,10 +3400,13 @@ The engineering choices above add up to the user-visible magic the product promi
 
 - Local first. Nothing leaves the machine without an explicit per-action confirmation.
 - AI provider keys stored via Windows Credential Manager when available, with DPAPI-encrypted fallback; never plain text.
+- **Remote site passwords** (FTP, SFTP, WebDAV, S3) follow the same three-tier ladder: **Windows Credential Manager → DPAPI-protected JSON under `%APPDATA%\Quill\` → macOS Keychain facade**. Plain-text on disk is never the path of last resort.
 - Logs never include document content. Logs include action names and outcomes only.
 - Spell-check learning data stays on disk under the user profile and can be wiped from a single button.
 - Crash reports are opt-in and scrubbed of paths and content.
 - All file dialogs use the OS dialog so the user controls disclosure.
+- **Remote I/O gating.** Every outbound call site is inventoried in `quill/tools/network_egress_audit.py` with a written rationale. A new transport call that is not added to that inventory is a CI failure. Cloud endpoints (S3, HTTPS, WebDAV-over-HTTPS) must use TLS; FTPS is enforced when available. Verified TLS context (`quill.core.net.verified_ssl_context`) is used for every HTTPS request.
+- **Untrusted-XML protection.** S3 and WebDAV listings are parsed through `quill.core.safe_xml.fromstring`, which routes through `defusedxml` and refuses any document that declares a DTD or custom entity. The transport layer translates both parse errors and unsafe-XML refusals into a typed `RemoteTransportError` so the screen reader announces a single, friendly message.
 - Network calls show host, payload size, and estimated cost (where the provider supplies it) before sending.
 - Startup includes a trust/privacy/responsible-AI consent acknowledgement before guided onboarding continues.
 

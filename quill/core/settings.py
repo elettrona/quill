@@ -141,6 +141,10 @@ class Settings:
     announce_punctuation_level: str = "some"
     # SET-4: tunable behavior toggles
     browse_mode_sticky: bool = False
+    quill_key_sound_enter: str = ""
+    quill_key_sound_exit: str = ""
+    quill_key_sound_move: str = ""
+    quill_key_sound_error: str = ""
     confirm_destructive_actions: bool = True
     default_export_preset: str = "html"
     default_new_document_format: str = "markdown"
@@ -439,6 +443,10 @@ class Settings:
             announce_punctuation_level = "some"
         # SET-4: behavior toggles
         browse_mode_sticky = bool(data.get("browse_mode_sticky", False))
+        quill_key_sound_enter = str(data.get("quill_key_sound_enter", "")).strip()
+        quill_key_sound_exit = str(data.get("quill_key_sound_exit", "")).strip()
+        quill_key_sound_move = str(data.get("quill_key_sound_move", "")).strip()
+        quill_key_sound_error = str(data.get("quill_key_sound_error", "")).strip()
         confirm_destructive_actions = bool(data.get("confirm_destructive_actions", True))
         default_export_preset = str(data.get("default_export_preset", "html")).strip().lower()
         if default_export_preset not in {"html", "markdown", "pdf", "docx", "epub", "text"}:
@@ -581,6 +589,10 @@ class Settings:
             announce_spelling=announce_spelling,
             announce_punctuation_level=announce_punctuation_level,
             browse_mode_sticky=browse_mode_sticky,
+            quill_key_sound_enter=quill_key_sound_enter,
+            quill_key_sound_exit=quill_key_sound_exit,
+            quill_key_sound_move=quill_key_sound_move,
+            quill_key_sound_error=quill_key_sound_error,
             confirm_destructive_actions=confirm_destructive_actions,
             default_export_preset=default_export_preset,
             default_new_document_format=default_new_document_format,

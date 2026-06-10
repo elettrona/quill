@@ -58,6 +58,18 @@ or the command palette (`Ctrl+Shift+P`).
 - [ ] Restore Backup: via File menu
 - [ ] Choose Encoding: via File menu
 - [ ] Open from URL: via File menu
+- [ ] Open from Remote...: QUILL key, then `R` (issues #154, #155, #156, #157)
+  - [ ] Site list (saved FTP, SFTP, WebDAV, S3 sites) and directory browser
+  - [ ] New site / Edit site / Delete site buttons
+  - [ ] Open button enabled only when a file is selected
+- [ ] Save to Remote...: QUILL key, then `Shift+R` (issues #154, #155, #156, #157)
+  - [ ] Site list and remote directory browser
+  - [ ] Save button enabled only when a target file is selected
+- [ ] Save Copy to Remote...: via File menu
+- [ ] Manage Remote Sites...: QUILL key, then `M` (issues #154, #155, #156, #157)
+  - [ ] Add / Edit / Delete saved sites
+  - [ ] Site editor sub-dialog with protocol-specific fields (FTP, SFTP, WebDAV, S3)
+  - [ ] Site editor Save button disabled until the required fields are filled
 - [ ] Save Session: via File menu
 - [ ] Open Session: via File menu
 
@@ -256,6 +268,7 @@ parent first.
 - [ ] Update downloaded (from Check for Updates, after a successful download)
 - [ ] Remove Quillin confirm (from Quillins Manager, Remove... button)
 - [ ] Quillin permission request (from running a third-party Quillin that requests a consent-gated capability: fs.read, fs.write, or net)
+- [ ] Site editor sub-dialog (from Manage Remote Sites, New site... or Edit site... button)
 
 ## W. Power Tools and recirculated editor conveniences
 

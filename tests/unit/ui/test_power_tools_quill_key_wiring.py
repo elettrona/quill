@@ -27,5 +27,9 @@ def test_power_tools_mixin_is_wired_into_main_frame() -> None:
 
 
 def test_prefix_message_advertises_markdown_paste() -> None:
-    source = _main_frame_source()
-    assert "M to paste HTML as Markdown" in source
+    from pathlib import Path
+
+    quill_key_source = (
+        Path(__file__).resolve().parents[3] / "quill" / "ui" / "main_frame_quill_key.py"
+    ).read_text(encoding="utf-8")
+    assert "M to paste HTML" in quill_key_source

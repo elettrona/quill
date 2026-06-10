@@ -32,10 +32,6 @@ _EGRESS_CALLEES = frozenset({
 # Reviewed, allowed egress sites: "<relative path>::<enclosing function>" mapped
 # to the reason the call is not silent. Update this when adding a network call.
 _REVIEWED_EGRESS: dict[str, str] = {
-    "ui/main_frame.py::open_url": (
-        "User types a URL in the Open from URL dialog and confirms a 'Download "
-        "from <host> (<size>)?' prompt before any body is fetched."
-    ),
     "core/dectalk_runtime.py::download_dectalk_runtime": (
         "User explicitly installs the optional DECTALK voice runtime; download "
         "runs with a verified TLS context and visible progress."
@@ -94,6 +90,32 @@ _REVIEWED_EGRESS: dict[str, str] = {
     # report_bug() -> FeedbackDialog._on_submit -> create_issue -> urlopen
     # Triggered only by an explicit user action (clicking Submit in the dialog).
     # Falls back to the legacy browser path when feedback_hub is not installed.
+    "io/http_transport.py::download_url": (
+        "Open-from-URL action. Triggered by an explicit user action from the "
+        "Remote Sites dialog (Open from URL); fetches the resource the user "
+        "named with a verified TLS context, default _MAX_BYTES cap, and visible "
+        "progress callback."
+    ),
+    "io/s3_sigv4.py::signed_request": (
+        "S3 transport. Triggered only by an explicit user action from the "
+        "Remote Sites dialog (Open from / Save to / Save Copy to) against a "
+        "user-configured S3 site. Uses AWS Signature V4 over a verified TLS "
+        "context; cloud endpoints are HTTPS-only."
+    ),
+    "io/s3_sigv4.py::signed_streaming_download": (
+        "S3 streaming download. Same gating and TLS guarantees as signed_request; "
+        "streams the response body to a temp file with a visible progress callback."
+    ),
+    "io/webdav_transport.py::_request": (
+        "WebDAV transport. Triggered only by an explicit user action from the "
+        "Remote Sites dialog against a user-configured WebDAV site. Uses "
+        "urllib with a verified TLS context; HTTP allowed only when the user "
+        "explicitly opts in (LAN-only) and HTTPS by default for cloud endpoints."
+    ),
+    "io/webdav_transport.py::download": (
+        "WebDAV file download. Same gating and TLS guarantees as _request; "
+        "streams the response body to a temp file with a visible progress callback."
+    ),
 }
 
 

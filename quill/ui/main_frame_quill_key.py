@@ -118,13 +118,14 @@ class QuillKeyMixin:
                 self._quill_key_prefix_pending = True
                 self._quill_key_prefix_started_at = time.monotonic()
                 message = (
-                    "QUILL key prefix active. Press N for browse mode, G to go to anything, "
-                    "M to paste HTML as Markdown"
+                    "QUILL key prefix active. N for browse mode, press QUILL key again for "
+                    "sticky mode, G for quick nav, M to paste HTML, ? for help"
                 )
                 if self._has_active_selection():
                     message = (
-                        "QUILL key prefix active. Press N for browse mode, G to go to anything, "
-                        "M to paste HTML as Markdown, A for selection actions"
+                        "QUILL key prefix active. N for browse mode, press QUILL key again for "
+                        "sticky mode, G for quick nav, M to paste HTML, A for selection actions, "
+                        "? for help"
                     )
                 self._set_status_quiet(message)
                 self._refresh_statusbar()
@@ -185,11 +186,9 @@ class QuillKeyMixin:
             self._refresh_statusbar()
             return
         self._quill_feedback(
-            "QUILL browse mode active. A links, L lists, I list items, T tables, "
-            "Q block quotes, B bookmarks, apostrophe code blocks, C table of contents, "
-            "P paragraphs, S sentences, H headings, 1 through 6 heading levels, "
-            "right bracket skips forward past list or table, left bracket skips backward, "
-            "Shift+Escape refreshes cache, Escape exits.",
+            "QUILL browse mode active. H headings, A links, L lists, I list items, "
+            "T tables, Q block quotes, B bookmarks, P paragraphs, S sentences, "
+            "1-6 heading levels, period repeats last action, ? for full help, Escape exits.",
             status_message="QUILL browse mode active",
             sound_kind="enter",
         )
@@ -313,9 +312,23 @@ class QuillKeyMixin:
             )
         if key_code in {getattr(wx, "WXK_TAB", 9)}:
             return "browse.block.previous" if shift else "browse.block.next"
+        if key_code == ord(".") and not event.ControlDown() and not event.AltDown() and not shift:
+            return "browse.repeat_last"
         return None
 
     def _run_quill_key_action(self, action: str) -> None:
+        if action == "browse.repeat_last":
+            last = getattr(self, "_last_quill_action", None)
+            if last is None:
+                self._quill_feedback(
+                    "No previous QUILL action to repeat",
+                    status_message="No previous QUILL action",
+                    sound_kind="error",
+                )
+                return
+            self._run_quill_key_action(last)
+            return
+        self._last_quill_action = action
         if action.startswith("browse.heading_level."):
             parts = action.split(".")
             level = int(parts[2])
@@ -477,6 +490,16 @@ class QuillKeyMixin:
             self._play_quill_sound(sound_kind)
 
     def _play_quill_sound(self, kind: str) -> None:
+        custom_path = str(getattr(self.settings, f"quill_key_sound_{kind}", "") or "").strip()
+        if custom_path and _winsound is not None:
+            try:
+                _winsound.PlaySound(
+                    custom_path,
+                    _winsound.SND_FILENAME | _winsound.SND_ASYNC | _winsound.SND_NODEFAULT,
+                )
+                return
+            except Exception:
+                pass
         pattern = {
             "enter": [(880, 45), (1175, 45)],
             "exit": [(660, 70)],

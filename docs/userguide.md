@@ -31,6 +31,17 @@ Quill is also in beta. Expect polish, depth, and real daily utility. Also expect
 - [Profiles, Keyboard Packs, and Customization](#profiles-keyboard-packs-and-customization)
 - [Trust, Recovery, Sessions, and Safety](#trust-recovery-sessions-and-safety)
 - [Working with Different Document Types](#working-with-different-document-types)
+  - [Plain text](#plain-text)
+  - [Markdown](#markdown)
+  - [HTML](#html)
+  - [RTF](#rtf)
+  - [CSV and TSV](#csv-and-tsv)
+  - [Word (.docx and .doc)](#word-docx-and-doc)
+  - [EPUB](#epub)
+  - [PowerPoint (.pptx and .ppt)](#powerpoint-pptx-and-ppt)
+  - [Excel-style spreadsheets (.xlsx and .xls)](#excel-style-spreadsheets-xlsx-and-xls)
+  - [PDF and OCR-derived text](#pdf-and-ocr-derived-text)
+  - [Remote files (FTP, SFTP, HTTPS, WebDAV, S3)](#remote-files-ftp-sftp-https-webdav-s3)
 - [Help, Learning, and Daily Confidence](#help-learning-and-daily-confidence)
 - [Translation and Community Localization](#translation-and-community-localization)
 - [Beta Feedback and Bug Reporting](#beta-feedback-and-bug-reporting)
@@ -191,6 +202,7 @@ The **File** menu is the full document lifecycle.
 - **Open...** opens a document from disk.
 - **Open Recent** returns quickly to recently used files.
 - **Open from URL...** downloads a document or text resource through an explicit safety flow that confirms host and expected size.
+- **Open from Remote**, **Save to Remote**, **Save Copy to Remote**, and **Manage Remote Sites...** (in the *Open from Remote* submenu) open, save, and administer saved sites over **FTP, SFTP, HTTPS, WebDAV, and Amazon S3 (or any S3-compatible service)**. Each remote operation is explicit, runs over a verified TLS context, announces host and expected size, and never writes to disk before you confirm.
 - **Workspace Snapshots** lets you save and reopen groups of documents as a single workspace snapshot, similar to lightweight workspaces in Visual Studio Code.
 - **New from Clipboard** opens a new document seeded with the current clipboard text.
 - **Save** writes the current document.
@@ -713,9 +725,55 @@ Quill adds two especially useful ideas on top of that.
 
 `Ctrl+Shift+C` copies the current selection, then appends a source reference that captures document context. If nothing is selected, Quill uses the current line. This is excellent for notes, review workflows, and evidence gathering.
 
-### Extend Selection Mode and marks
+### Selection bindings
 
-`F8` toggles Extend Selection Mode. This lets you grow selections more deliberately. The mark ring adds an editor-like memory of important places in a document. Set a mark, move, then return or exchange point and mark when you need to re-anchor yourself.
+**F8-based anchor selection (EdSharp model)**
+
+Quill uses an anchor-based selection model compatible with EdSharp:
+
+| Key | Command | Purpose |
+| --- | --- | --- |
+| F8 | Start selection | Sets an invisible anchor at the cursor. |
+| Shift+F8 | Complete selection | Selects from anchor to cursor and announces the span. |
+| Ctrl+Shift+F8 | Reselect | Restores the most recent committed selection. |
+| Alt+Shift+F8 | Go to start of selection | Moves the cursor to the selection start without changing it. |
+| Ctrl+F8 | Copy all | Copies the full document. |
+| Ctrl+Shift+A | Unselect all | Collapses the selection to the cursor. |
+| Alt+F8 | Read all | Reads the document from the beginning. |
+
+**Structural selection**
+
+| Key | Command | Purpose |
+| --- | --- | --- |
+| Ctrl+Alt+P | Select paragraph | Selects the paragraph at the cursor; announces scope and word count. |
+| Ctrl+Shift+B | Select block | Selects the indented block at the cursor. |
+| Alt+Shift+Up | Expand selection | Grows the selection to the next structural unit (line to paragraph to block to document). |
+| Alt+Shift+Down | Shrink selection | Reverses the last expand step. |
+
+**Extend Selection Mode**
+
+Extend Selection Mode makes movement commands extend the selection rather than move the cursor. Toggle it from the Selection menu (no default key; assign one in Preferences > Keyboard). When active, an **EXT** badge appears in the status bar.
+
+**Mark ring**
+
+The mark ring is a rolling stack of temporary jump points for in-session back-and-forth navigation:
+
+| Key | Command | Purpose |
+| --- | --- | --- |
+| Ctrl+Shift+M | Set mark | Places a temporary mark at the cursor. |
+| Ctrl+M | Pop mark | Jumps to the most recent mark and removes it from the ring. |
+| Ctrl+Shift+X | Exchange point and mark | Swaps the cursor and the top mark position. |
+| Alt+M | List marks | Shows all marks with line and column positions. |
+
+**Named marks and review buffer**
+
+Named marks are persistent within a session. Reach them via **Selection > Named Marks**:
+
+- **Set Named Mark**: names and stores the current cursor position; announces line and column.
+- **Jump to Named Mark**: choose from a list showing each mark's name and position; jumps on selection.
+- **Open Review Buffer**: opens the active selection in a read-only dialog for non-destructive screen-reader paging. Requires a selection.
+
+None of these have default key bindings. Assign them in Preferences > Keyboard, or use the Selection menu.
 
 ### Links
 
@@ -774,6 +832,7 @@ While the mode is active:
 - `P` and `Shift+P` move by paragraph.
 - `S` and `Shift+S` move by sentence.
 - `Tab` and `Shift+Tab` move by block.
+- `.` (period) repeats the last browse action.
 - `]` jumps to the next line after the current list or table.
 - `[` jumps to the line above the current list or table.
 - `Esc` exits QUILL Quick Nav mode.
@@ -1117,6 +1176,18 @@ Spreadsheet intake is text-first and structure-aware. Quill extracts sheets into
 ### PDF and OCR-derived text
 
 PDF and OCR work are where Quill's extraction review commands matter most. Treat those commands as quality checks, not optional extras.
+
+### Remote files (FTP, SFTP, HTTPS, WebDAV, S3)
+
+Quill can open, save, and copy to remote hosts the same way it works with local files. Remote I/O is explicit, audible, and reversible:
+
+- **Open from Remote...** lists every site you have saved, lets you browse a remote directory, and downloads a file you choose. The download is announced with the host and expected size, lands in a temp file, and opens in a normal tab titled with a `(from site:path)` suffix. The document is **read-only** until you save it back through **Save Copy to Remote...** or copy it to local storage.
+- **Save to Remote** writes the active document to a remote path you choose, on a site you have configured, with a tilde-backup next to the original. **Save Copy to Remote...** lets you keep the local file and write a copy without changing the source.
+- **Manage Remote Sites...** adds, edits, and deletes saved sites for the five supported protocols. Each site's password is stored in **Windows Credential Manager** when available, then in a DPAPI-protected JSON file, with a macOS Keychain facade for cross-platform parity.
+- All remote traffic uses a **verified TLS context**. Cloud endpoints (S3, HTTPS, WebDAV over HTTPS) must be HTTPS; FTP is allowed because the user opted in for LAN or legacy hosts.
+- All remote operations are wired to the **network egress audit** (`quill/tools/network_egress_audit.py`) with explicit rationales, and S3 and WebDAV XML responses are parsed through `quill.core.safe_xml.fromstring` so an attacker cannot reach an external-entity expansion through a crafted listing.
+
+Default keys: **QUILL key, then `R`** opens from remote; **QUILL key, then `Shift+R`** saves to remote; **QUILL key, then `M`** opens the site manager. All are remappable from Preferences > Keyboard.
 
 ## Help, Learning, and Daily Confidence
 

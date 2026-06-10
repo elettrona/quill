@@ -1,6 +1,31 @@
 from __future__ import annotations
 
 
+class NamedMarks:
+    """Persistent name-to-position mapping for SEL-4 named marks."""
+
+    def __init__(self) -> None:
+        self._marks: dict[str, int] = {}
+
+    def set(self, name: str, position: int) -> None:
+        self._marks[name] = max(0, position)
+
+    def get(self, name: str) -> int | None:
+        return self._marks.get(name)
+
+    def remove(self, name: str) -> bool:
+        if name in self._marks:
+            del self._marks[name]
+            return True
+        return False
+
+    def names(self) -> list[str]:
+        return sorted(self._marks)
+
+    def items(self) -> list[tuple[str, int]]:
+        return sorted(self._marks.items())
+
+
 class MarkRing:
     def __init__(self, max_size: int = 20) -> None:
         self._max_size = max_size

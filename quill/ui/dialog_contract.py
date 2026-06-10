@@ -37,13 +37,34 @@ def apply_modal_ids(
     dialog: object,
     *,
     affirmative_id: int | None = None,
+    affirmative_label: str | None = None,
+    cancel_id: int | None = None,
+    cancel_label: str | None = None,
     escape_id: int | None = None,
 ) -> None:
-    """Apply modal affirmative/escape ids when supported by the dialog."""
+    """Apply modal affirmative/escape ids when supported by the dialog.
+
+    The ``affirmative_label`` / ``cancel_label`` keyword arguments are the
+    recommended way to make the OK/Cancel labels visible in the dialog
+    contract snapshot; :func:`quill.tools.dialog_button_contract` reads the
+    button labels by id to confirm each ``apply_modal_ids`` call has a
+    matching button.
+    """
+
     if affirmative_id is not None and hasattr(dialog, "SetAffirmativeId"):
         dialog.SetAffirmativeId(affirmative_id)
     if escape_id is not None and hasattr(dialog, "SetEscapeId"):
         dialog.SetEscapeId(escape_id)
+    if escape_id is None and cancel_id is not None and hasattr(dialog, "SetEscapeId"):
+        dialog.SetEscapeId(cancel_id)
+    if affirmative_label is not None and hasattr(dialog, "FindWindowById"):
+        button = dialog.FindWindowById(affirmative_id)
+        if button is not None and hasattr(button, "SetLabel"):
+            button.SetLabel(affirmative_label)
+    if cancel_label is not None and hasattr(dialog, "FindWindowById"):
+        button = dialog.FindWindowById(cancel_id) if cancel_id is not None else None
+        if button is not None and hasattr(button, "SetLabel"):
+            button.SetLabel(cancel_label)
 
 
 def _iter_descendant_controls(widget: object) -> Iterable[object]:

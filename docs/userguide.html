@@ -1,3 +1,181 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>userguide</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
 <h1 id="quill-user-guide">Quill User Guide</h1>
 <p><strong>QUILL</strong> stands for <strong>Quality, Usable, Inclusive,
 Lightweight, Literate</strong>.</p>
@@ -47,7 +225,24 @@ Keyboard Packs, and Customization</a></li>
 <li><a href="#trust-recovery-sessions-and-safety">Trust, Recovery,
 Sessions, and Safety</a></li>
 <li><a href="#working-with-different-document-types">Working with
-Different Document Types</a></li>
+Different Document Types</a>
+<ul>
+<li><a href="#plain-text">Plain text</a></li>
+<li><a href="#markdown">Markdown</a></li>
+<li><a href="#html">HTML</a></li>
+<li><a href="#rtf">RTF</a></li>
+<li><a href="#csv-and-tsv">CSV and TSV</a></li>
+<li><a href="#word-docx-and-doc">Word (.docx and .doc)</a></li>
+<li><a href="#epub">EPUB</a></li>
+<li><a href="#powerpoint-pptx-and-ppt">PowerPoint (.pptx and
+.ppt)</a></li>
+<li><a href="#excel-style-spreadsheets-xlsx-and-xls">Excel-style
+spreadsheets (.xlsx and .xls)</a></li>
+<li><a href="#pdf-and-ocr-derived-text">PDF and OCR-derived
+text</a></li>
+<li><a href="#remote-files-ftp-sftp-https-webdav-s3">Remote files (FTP,
+SFTP, HTTPS, WebDAV, S3)</a></li>
+</ul></li>
 <li><a href="#help-learning-and-daily-confidence">Help, Learning, and
 Daily Confidence</a></li>
 <li><a href="#translation-and-community-localization">Translation and
@@ -244,6 +439,13 @@ files.</li>
 <li><strong>Open from URL…</strong> downloads a document or text
 resource through an explicit safety flow that confirms host and expected
 size.</li>
+<li><strong>Open from Remote</strong>, <strong>Save to Remote</strong>,
+<strong>Save Copy to Remote</strong>, and <strong>Manage Remote
+Sites…</strong> (in the <em>Open from Remote</em> submenu) open, save,
+and administer saved sites over <strong>FTP, SFTP, HTTPS, WebDAV, and
+Amazon S3 (or any S3-compatible service)</strong>. Each remote operation
+is explicit, runs over a verified TLS context, announces host and
+expected size, and never writes to disk before you confirm.</li>
 <li><strong>Workspace Snapshots</strong> lets you save and reopen groups
 of documents as a single workspace snapshot, similar to lightweight
 workspaces in Visual Studio Code.</li>
@@ -1022,12 +1224,158 @@ move text</li>
 a source reference that captures document context. If nothing is
 selected, Quill uses the current line. This is excellent for notes,
 review workflows, and evidence gathering.</p>
-<h3 id="extend-selection-mode-and-marks">Extend Selection Mode and
-marks</h3>
-<p><code>F8</code> toggles Extend Selection Mode. This lets you grow
-selections more deliberately. The mark ring adds an editor-like memory
-of important places in a document. Set a mark, move, then return or
-exchange point and mark when you need to re-anchor yourself.</p>
+<h3 id="selection-bindings">Selection bindings</h3>
+<p><strong>F8-based anchor selection (EdSharp model)</strong></p>
+<p>Quill uses an anchor-based selection model compatible with
+EdSharp:</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Key</th>
+<th>Command</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F8</td>
+<td>Start selection</td>
+<td>Sets an invisible anchor at the cursor.</td>
+</tr>
+<tr>
+<td>Shift+F8</td>
+<td>Complete selection</td>
+<td>Selects from anchor to cursor and announces the span.</td>
+</tr>
+<tr>
+<td>Ctrl+Shift+F8</td>
+<td>Reselect</td>
+<td>Restores the most recent committed selection.</td>
+</tr>
+<tr>
+<td>Alt+Shift+F8</td>
+<td>Go to start of selection</td>
+<td>Moves the cursor to the selection start without changing it.</td>
+</tr>
+<tr>
+<td>Ctrl+F8</td>
+<td>Copy all</td>
+<td>Copies the full document.</td>
+</tr>
+<tr>
+<td>Ctrl+Shift+A</td>
+<td>Unselect all</td>
+<td>Collapses the selection to the cursor.</td>
+</tr>
+<tr>
+<td>Alt+F8</td>
+<td>Read all</td>
+<td>Reads the document from the beginning.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Structural selection</strong></p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Key</th>
+<th>Command</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ctrl+Alt+P</td>
+<td>Select paragraph</td>
+<td>Selects the paragraph at the cursor; announces scope and word
+count.</td>
+</tr>
+<tr>
+<td>Ctrl+Shift+B</td>
+<td>Select block</td>
+<td>Selects the indented block at the cursor.</td>
+</tr>
+<tr>
+<td>Alt+Shift+Up</td>
+<td>Expand selection</td>
+<td>Grows the selection to the next structural unit (line to paragraph
+to block to document).</td>
+</tr>
+<tr>
+<td>Alt+Shift+Down</td>
+<td>Shrink selection</td>
+<td>Reverses the last expand step.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Extend Selection Mode</strong></p>
+<p>Extend Selection Mode makes movement commands extend the selection
+rather than move the cursor. Toggle it from the Selection menu (no
+default key; assign one in Preferences &gt; Keyboard). When active, an
+<strong>EXT</strong> badge appears in the status bar.</p>
+<p><strong>Mark ring</strong></p>
+<p>The mark ring is a rolling stack of temporary jump points for
+in-session back-and-forth navigation:</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Key</th>
+<th>Command</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ctrl+Shift+M</td>
+<td>Set mark</td>
+<td>Places a temporary mark at the cursor.</td>
+</tr>
+<tr>
+<td>Ctrl+M</td>
+<td>Pop mark</td>
+<td>Jumps to the most recent mark and removes it from the ring.</td>
+</tr>
+<tr>
+<td>Ctrl+Shift+X</td>
+<td>Exchange point and mark</td>
+<td>Swaps the cursor and the top mark position.</td>
+</tr>
+<tr>
+<td>Alt+M</td>
+<td>List marks</td>
+<td>Shows all marks with line and column positions.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Named marks and review buffer</strong></p>
+<p>Named marks are persistent within a session. Reach them via
+<strong>Selection &gt; Named Marks</strong>:</p>
+<ul>
+<li><strong>Set Named Mark</strong>: names and stores the current cursor
+position; announces line and column.</li>
+<li><strong>Jump to Named Mark</strong>: choose from a list showing each
+mark’s name and position; jumps on selection.</li>
+<li><strong>Open Review Buffer</strong>: opens the active selection in a
+read-only dialog for non-destructive screen-reader paging. Requires a
+selection.</li>
+</ul>
+<p>None of these have default key bindings. Assign them in Preferences
+&gt; Keyboard, or use the Selection menu.</p>
 <h3 id="links">Links</h3>
 <p><code>Ctrl+K</code> inserts a format-aware link.
 <code>Ctrl+Enter</code> follows the link under the caret. In Markdown
@@ -1086,6 +1434,7 @@ previous heading at that specific level.</li>
 <li><code>P</code> and <code>Shift+P</code> move by paragraph.</li>
 <li><code>S</code> and <code>Shift+S</code> move by sentence.</li>
 <li><code>Tab</code> and <code>Shift+Tab</code> move by block.</li>
+<li><code>.</code> (period) repeats the last browse action.</li>
 <li><code>]</code> jumps to the next line after the current list or
 table.</li>
 <li><code>[</code> jumps to the line above the current list or
@@ -1521,6 +1870,41 @@ quality improves for legacy and mixed-format files.</p>
 <h3 id="pdf-and-ocr-derived-text">PDF and OCR-derived text</h3>
 <p>PDF and OCR work are where Quill’s extraction review commands matter
 most. Treat those commands as quality checks, not optional extras.</p>
+<h3 id="remote-files-ftp-sftp-https-webdav-s3">Remote files (FTP, SFTP,
+HTTPS, WebDAV, S3)</h3>
+<p>Quill can open, save, and copy to remote hosts the same way it works
+with local files. Remote I/O is explicit, audible, and reversible:</p>
+<ul>
+<li><strong>Open from Remote…</strong> lists every site you have saved,
+lets you browse a remote directory, and downloads a file you choose. The
+download is announced with the host and expected size, lands in a temp
+file, and opens in a normal tab titled with a
+<code>(from site:path)</code> suffix. The document is
+<strong>read-only</strong> until you save it back through <strong>Save
+Copy to Remote…</strong> or copy it to local storage.</li>
+<li><strong>Save to Remote</strong> writes the active document to a
+remote path you choose, on a site you have configured, with a
+tilde-backup next to the original. <strong>Save Copy to Remote…</strong>
+lets you keep the local file and write a copy without changing the
+source.</li>
+<li><strong>Manage Remote Sites…</strong> adds, edits, and deletes saved
+sites for the five supported protocols. Each site’s password is stored
+in <strong>Windows Credential Manager</strong> when available, then in a
+DPAPI-protected JSON file, with a macOS Keychain facade for
+cross-platform parity.</li>
+<li>All remote traffic uses a <strong>verified TLS context</strong>.
+Cloud endpoints (S3, HTTPS, WebDAV over HTTPS) must be HTTPS; FTP is
+allowed because the user opted in for LAN or legacy hosts.</li>
+<li>All remote operations are wired to the <strong>network egress
+audit</strong> (<code>quill/tools/network_egress_audit.py</code>) with
+explicit rationales, and S3 and WebDAV XML responses are parsed through
+<code>quill.core.safe_xml.fromstring</code> so an attacker cannot reach
+an external-entity expansion through a crafted listing.</li>
+</ul>
+<p>Default keys: <strong>QUILL key, then <code>R</code></strong> opens
+from remote; <strong>QUILL key, then <code>Shift+R</code></strong> saves
+to remote; <strong>QUILL key, then <code>M</code></strong> opens the
+site manager. All are remappable from Preferences &gt; Keyboard.</p>
 <h2 id="help-learning-and-daily-confidence">Help, Learning, and Daily
 Confidence</h2>
 <p>Quill includes several layers of help because confidence does not
@@ -1664,3 +2048,5 @@ Quillin has declared (e.g., filesystem or network access).</p>
 They follow a strict capability model: a Quillin must declare the
 minimum set of permissions it needs, and any sensitive action (like
 writing to a file) is consent-gated at runtime.</p>
+</body>
+</html>

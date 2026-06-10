@@ -232,7 +232,7 @@ from quill.core.link_inventory import collect_link_inventory, render_link_invent
 from quill.core.links import build_link_text, find_link_at_cursor, infer_markup_kind
 from quill.core.locations import LocationRing
 from quill.core.macros import MacroManager
-from quill.core.marks import MarkRing, line_column_for_position
+from quill.core.marks import MarkRing, NamedMarks, line_column_for_position
 from quill.core.menu_customization import (
     MenuCustomization,
     load_menu_customization,
@@ -397,7 +397,7 @@ from quill.core.updates import (
     is_newer_version,
     select_latest,
 )
-from quill.core.url_ops import format_content_length, host_for_url, is_cross_host_redirect
+from quill.core.url_ops import format_content_length
 from quill.core.voice_commands import (
     build_voice_command_aliases,
     resolve_voice_command,
@@ -573,6 +573,8 @@ class _DocumentTab:
     document: Document
     splitter: object = None
     preview: object = None
+    source_label: str = ""
+    read_only_remote: bool = False
 
 
 @dataclass(slots=True)
@@ -798,6 +800,7 @@ class MainFrame(
         "search_term": "Search Term",
         "file_path": "File Path",
         "quill_key_mode": "QUILL Key",
+        "extend_mode": "Extend Mode",
         "sr_name": "Screen Reader",
         "suggestion": "Suggested Action",
     }
@@ -817,6 +820,7 @@ class MainFrame(
         "search_term": 160,
         "file_path": 260,
         "quill_key_mode": 130,
+        "extend_mode": 110,
         "sr_name": 160,
         "suggestion": 220,
     }
@@ -836,6 +840,7 @@ class MainFrame(
         "search_term": "core.search",
         "file_path": "core.file",
         "quill_key_mode": "core.navigate",
+        "extend_mode": "core.edit",
         "sr_name": "core.app",
         "suggestion": "core.app",
     }
@@ -863,6 +868,9 @@ class MainFrame(
         "edit.pop_mark",
         "edit.list_marks",
         "edit.exchange_point_mark",
+        "edit.set_named_mark",
+        "edit.jump_to_named_mark",
+        "edit.open_review_buffer",
         "edit.follow_link",
     }
     _EXTEND_SELECTION_ACTION_COMMAND_PREFIXES: tuple[str, ...] = (
@@ -930,11 +938,13 @@ class MainFrame(
         self._quill_key_mode_active = False
         self._quill_key_prefix_pending = False
         self._quill_key_prefix_started_at = 0.0
+        self._last_quill_action: str | None = None
         self._quill_key_mode_started_at = 0.0
         self._quill_key_mode_timeout_seconds = 1.5
         self._quill_key_mode_sticky = False
         self._notifications = [] if safe_mode else load_notifications()
         self._mark_ring = MarkRing()
+        self._named_marks = NamedMarks()
         self._location_ring = LocationRing()
         self._region_tracker = RegionTracker()
         # The F6 / Shift+F6 region rotation is computed live (see
@@ -2428,6 +2438,24 @@ class MainFrame(
             self._binding_for("edit.shrink_selection"),
         )
         self.commands.register(
+            "edit.set_named_mark",
+            "Set Named Mark",
+            self.set_named_mark,
+            self._binding_for("edit.set_named_mark"),
+        )
+        self.commands.register(
+            "edit.jump_to_named_mark",
+            "Jump to Named Mark",
+            self.jump_to_named_mark,
+            self._binding_for("edit.jump_to_named_mark"),
+        )
+        self.commands.register(
+            "edit.open_review_buffer",
+            "Open Review Buffer",
+            self.open_review_buffer,
+            self._binding_for("edit.open_review_buffer"),
+        )
+        self.commands.register(
             "edit.selection_actions",
             "Selection Actions",
             self.quill_key_selection_actions,
@@ -2883,6 +2911,9 @@ class MainFrame(
             "edit.pop_mark": self._id_pop_mark,
             "edit.exchange_point_mark": self._id_exchange_point_mark,
             "edit.list_marks": self._id_list_marks,
+            "edit.set_named_mark": self._id_set_named_mark,
+            "edit.jump_to_named_mark": self._id_jump_to_named_mark,
+            "edit.open_review_buffer": self._id_open_review_buffer,
             "navigate.go_to_line": self._id_go_to_line,
             "navigate.go_to_page": self._id_go_to_page,
             "navigate.list_bookmarks": self._id_list_bookmarks,
@@ -5351,9 +5382,16 @@ class MainFrame(
         modified_suffix = self._dirty_title_suffix()
         self.frame.SetTitle(f"{self._title_subject()}{modified_suffix} - Quill")
         if self._active_tab_index >= 0 and self._active_tab_index < self.notebook.GetPageCount():
-            page_title = f"{self.document.name}{modified_suffix}"
+            page_title = f"{self.document.name}{self._remote_title_suffix()}{modified_suffix}"
             self._set_tab_page_text(self._active_tab_index, page_title)
         self._refresh_statusbar()
+
+    def _remote_title_suffix(self) -> str:
+        tab = self._active_tab()
+        suffix = getattr(tab, "source_label", "")
+        if not suffix:
+            return ""
+        return f" ({suffix})"
 
     def _title_subject(self) -> str:
         if getattr(self.settings, "title_bar_path_mode", "name") == "full_path":
@@ -6795,6 +6833,9 @@ class MainFrame(
         write_document_as(document, target, plain_text_link_style=link_style)  # type: ignore[arg-type]
 
     def save_file(self) -> None:
+        if self._active_tab().read_only_remote:
+            self.save_copy_remote()
+            return
         if self.document.path is None:
             self.save_file_as()
             return
@@ -7099,11 +7140,8 @@ class MainFrame(
 
     def open_url(self) -> None:
         wx = self._wx
-        # Defer urllib import to avoid pulling 90+ ms of HTTP/SSL machinery
-        # into cold startup for users who never open from URL.
-        from urllib.error import HTTPError, URLError
-        from urllib.parse import urlparse
-        from urllib.request import Request, urlopen
+        from quill.io.http_transport import download_url
+        from quill.io.open_read import read_open_document
 
         with wx.TextEntryDialog(
             self.frame,
@@ -7117,6 +7155,10 @@ class MainFrame(
         if not raw_url:
             self._set_status("Open from URL cancelled")
             return
+
+        from urllib.error import HTTPError, URLError
+        from urllib.parse import urlparse
+
         parsed = urlparse(raw_url)
         if parsed.scheme not in {"http", "https"}:
             self._show_message_box(
@@ -7125,83 +7167,304 @@ class MainFrame(
                 wx.ICON_ERROR | wx.OK,
             )
             return
-        requested_host = parsed.netloc or raw_url
-        resolved_url = raw_url
-        content_length: int | None = None
-
-        from quill.core.net import verified_ssl_context
-
-        def _ssl_for(url: str) -> object | None:
-            return verified_ssl_context() if urlparse(url).scheme == "https" else None
 
         try:
-            request = Request(raw_url, method="HEAD")
-            with urlopen(request, timeout=10, context=_ssl_for(raw_url)) as response:
-                resolved_url = response.geturl()
-                content_length_header = response.headers.get("Content-Length")
-                if content_length_header and content_length_header.isdigit():
-                    content_length = int(content_length_header)
-        except HTTPError as error:
-            if error.code != 405:
-                self._show_message_box(
-                    f"Could not open URL: HTTP {error.code} from {requested_host}.",
-                    "Open from URL",
-                    wx.ICON_ERROR | wx.OK,
-                )
-                return
-        except URLError as error:
+            download = download_url(raw_url)
+        except HTTPError as exc:  # pragma: no cover - exercised through error path
             self._show_message_box(
-                f"Could not open URL: {error.reason}",
+                f"Could not open URL: HTTP {exc.code} from {parsed.netloc or raw_url}.",
+                "Open from URL",
+                wx.ICON_ERROR | wx.OK,
+            )
+            return
+        except URLError as exc:
+            self._show_message_box(
+                f"Could not open URL: {exc.reason}",
                 "Open from URL",
                 wx.ICON_ERROR | wx.OK,
             )
             return
 
-        if is_cross_host_redirect(raw_url, resolved_url):
-            target_host = host_for_url(resolved_url)
-            result = self._show_message_box(
-                f"URL redirects from {requested_host} to {target_host}. Continue?",
-                "Open from URL",
-                wx.ICON_WARNING | wx.YES_NO | wx.NO_DEFAULT,
-            )
-            if result != wx.YES:
-                self._set_status("Open from URL cancelled")
-                return
+        from pathlib import Path
 
-        size_text = format_content_length(content_length)
-        download_host = host_for_url(resolved_url) or requested_host
-        result = self._show_message_box(
-            f"Download from {download_host} ({size_text})?",
-            "Open from URL",
-            wx.ICON_QUESTION | wx.YES_NO | wx.NO_DEFAULT,
-        )
-        if result != wx.YES:
-            self._set_status("Open from URL cancelled")
-            return
+        from quill.io.detect import STRUCTURED_EXTENSIONS, TEXT_EXTENSIONS
+
+        suffix = Path(download.filename).suffix.lower()
+        selected_path = Path(download.local_path)
         try:
-            with urlopen(resolved_url, timeout=15, context=_ssl_for(resolved_url)) as response:
-                body = response.read()
-                resolved_url = response.geturl()
-        except HTTPError as error:
+            if suffix in STRUCTURED_EXTENSIONS or suffix in {".odt", ".rtf", ".pages"}:
+                # Heavy formats use the office-stream path. Run on a worker so
+                # the UI thread does not block on PDF/DOCX parses.
+                from quill.io.open_read import OFFICE_STREAM_SUFFIXES
+
+                if suffix in OFFICE_STREAM_SUFFIXES:
+                    word_mode = (
+                        self._resolve_word_open_mode(selected_path)
+                        if suffix in {".doc", ".docx"}
+                        else None
+                    )
+
+                    def _worker(_progress: object) -> tuple[object, object]:
+                        return read_open_document(selected_path, suffix, word_mode=word_mode)
+
+                    self._run_background_task(
+                        f"Opening {download.filename}",
+                        _worker,
+                        lambda result: self._install_remote_document(result, suffix, download),
+                    )
+                    return
+                loaded, epub_book = read_open_document(selected_path, suffix)
+            elif suffix in TEXT_EXTENSIONS:
+                loaded, epub_book = read_open_document(selected_path, suffix)
+            else:
+                # Unknown extension — treat as text via the new format pipeline.
+                loaded, epub_book = read_open_document(selected_path, suffix or ".txt")
+        except Exception as exc:  # noqa: BLE001 - format dispatch can fail
             self._show_message_box(
-                f"Could not open URL: HTTP {error.code} from {requested_host}.",
+                f"Could not parse downloaded file: {exc}",
                 "Open from URL",
                 wx.ICON_ERROR | wx.OK,
             )
             return
-        except URLError as error:
-            self._show_message_box(
-                f"Could not open URL: {error.reason}",
-                "Open from URL",
-                wx.ICON_ERROR | wx.OK,
-            )
-            return
-        text = body.decode("utf-8", errors="replace")
-        self._create_document_tab(Document(text=text, path=None, modified=False), select=True)
+
+        self._install_remote_document((loaded, epub_book), suffix, download)
+
+    def _install_remote_document(
+        self,
+        result: object,
+        suffix: str,
+        download: object,
+    ) -> None:
+        """Open a downloaded URL document and tag the tab as a remote view."""
+
+        assert isinstance(result, tuple)
+        loaded, epub_book = result
+        self._epub_book = epub_book if suffix == ".epub" else None
+        self._create_document_tab(loaded, select=True)
+        # Tag the tab as remote-sourced; saves go to "Save Copy to Local File..."
+        # rather than the original URL.
+        try:
+            current_tab = self._document_tabs[-1]
+            current_tab.source_label = f"from {getattr(download, 'final_url', '')}"
+            current_tab.read_only_remote = True
+        except (IndexError, AttributeError):
+            pass
         self._location_ring = LocationRing()
         self._location_ring.record(0)
         self._refresh_title()
-        self._set_status(f"Opened URL: {resolved_url}")
+        size_text = format_content_length(getattr(download, "size", 0))
+        self._set_status(
+            f"Opened {getattr(download, 'filename', 'remote document')} "
+            f"({size_text}) from {getattr(download, 'final_url', '')}"
+        )
+
+    # --- Remote Sites (issues #154, #155, #156, #157) -----------------------
+
+    def open_from_remote(self) -> None:
+        from quill.ui.remote_sites_dialog import DialogMode, RemoteSitesDialog
+
+        with RemoteSitesDialog(
+            self.frame, mode=DialogMode.OPEN, title="Open from Remote"
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Open from Remote") != self._wx.ID_OK:
+                self._set_status("Open from Remote cancelled")
+                return
+            result = dialog.result
+        if result is None:
+            return
+        self._download_remote_into_new_tab(result.site, result.path)
+
+    def save_to_remote(self) -> None:
+        from quill.ui.remote_sites_dialog import DialogMode, RemoteSitesDialog
+
+        if self._active_tab().read_only_remote:
+            # The active tab was opened from a URL; nothing to write back.
+            self._show_message_box(
+                "This document was opened from a URL and cannot be saved back to it. "
+                "Use Save Copy to Remote... to write a local copy to a remote site.",
+                "Save to Remote",
+                self._wx.ICON_INFORMATION | self._wx.OK,
+            )
+            return
+        with RemoteSitesDialog(self.frame, mode=DialogMode.SAVE, title="Save to Remote") as dialog:
+            if self._show_modal_dialog(dialog, "Save to Remote") != self._wx.ID_OK:
+                self._set_status("Save to Remote cancelled")
+                return
+            result = dialog.result
+        if result is None:
+            return
+        self._upload_active_document(result.site, result.path)
+
+    def save_copy_to_remote(self) -> None:
+        from quill.ui.remote_sites_dialog import DialogMode, RemoteSitesDialog
+
+        with RemoteSitesDialog(
+            self.frame, mode=DialogMode.SAVE, title="Save Copy to Remote"
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Save Copy to Remote") != self._wx.ID_OK:
+                self._set_status("Save Copy to Remote cancelled")
+                return
+            result = dialog.result
+        if result is None:
+            return
+        self._upload_active_document(result.site, result.path)
+
+    def save_copy_remote(self) -> None:
+        """Local-folder analogue of Save Copy to Remote; used by remote tabs."""
+
+        self.save_copy_to_remote()
+
+    def manage_remote_sites(self) -> None:
+        from quill.ui.remote_sites_dialog import DialogMode, RemoteSitesDialog
+
+        with RemoteSitesDialog(
+            self.frame,
+            mode=DialogMode.OPEN,
+            title="Manage Remote Sites",
+        ) as dialog:
+            self._show_modal_dialog(dialog, "Manage Remote Sites")
+
+    def _download_remote_into_new_tab(self, site, remote_path: str) -> None:
+        from pathlib import Path
+
+        from quill.io.open_read import read_open_document
+
+        self._set_status(f"Downloading {remote_path} from {site.name}...")
+        local_path = self._alloc_remote_temp_path(remote_path)
+        try:
+            self._run_remote_download(site, remote_path, local_path)
+        except Exception as exc:  # noqa: BLE001 - transport errors are surfaced
+            self._show_message_box(
+                f"Could not download from {site.name}: {exc}",
+                "Open from Remote",
+                self._wx.ICON_ERROR | self._wx.OK,
+            )
+            return
+        suffix = Path(remote_path).suffix.lower() or Path(local_path).suffix.lower()
+        self._create_document_tab(
+            Document(text="", path=Path(local_path), modified=False), select=True
+        )
+        existing_index = len(self._document_tabs) - 1
+        from quill.io.open_read import OFFICE_STREAM_SUFFIXES
+
+        if suffix in OFFICE_STREAM_SUFFIXES:
+            self._run_background_task(
+                f"Opening {Path(remote_path).name}",
+                lambda _p: read_open_document(Path(local_path), suffix),
+                lambda result: self._finish_remote_download(
+                    result, suffix, site, remote_path, existing_index
+                ),
+            )
+            return
+        result = read_open_document(Path(local_path), suffix)
+        self._finish_remote_download(result, suffix, site, remote_path, existing_index)
+
+    def _finish_remote_download(
+        self,
+        result: object,
+        suffix: str,
+        site,
+        remote_path: str,
+        existing_index: int,
+    ) -> None:
+        assert isinstance(result, tuple)
+        loaded, epub_book = result
+        if 0 <= existing_index < len(self._document_tabs):
+            tab = self._document_tabs[existing_index]
+            tab.document = loaded
+            tab.editor.ChangeValue(loaded.text)
+            tab.source_label = f"from {site.name}:{remote_path}"
+            tab.read_only_remote = False
+        self._epub_book = epub_book if suffix == ".epub" else None
+        self._select_tab(existing_index)
+        self._refresh_title()
+        self._set_status(f"Downloaded {remote_path} from {site.name}")
+
+    def _upload_active_document(self, site, remote_path: str) -> None:
+        from pathlib import Path
+
+        from quill.core.remote_sites import load_password
+
+        local_path = self._alloc_remote_temp_path(remote_path)
+        Path(local_path).write_text(self.editor.GetValue(), encoding="utf-8")
+        password = load_password(site.id)
+        try:
+            self._run_remote_upload(site, local_path, remote_path, password)
+        except Exception as exc:  # noqa: BLE001
+            self._show_message_box(
+                f"Could not save to {site.name}: {exc}",
+                "Save to Remote",
+                self._wx.ICON_ERROR | self._wx.OK,
+            )
+            return
+        self._set_status(f"Saved {remote_path} to {site.name}")
+
+    def _alloc_remote_temp_path(self, remote_path: str) -> str:
+        import os
+        import tempfile
+
+        base = os.path.basename(remote_path.rstrip("/")) or "remote"
+        suffix = os.path.splitext(base)[1]
+        fd, path = tempfile.mkstemp(prefix="quill-remote-", suffix=suffix)
+        os.close(fd)
+        return path
+
+    def _run_remote_download(self, site, remote_path: str, local_path: str) -> None:
+        """Synchronous download on the calling thread.
+
+        The dialog UI is modal and short-lived; threading is intentionally
+        minimal. The transport still raises :class:`RemoteTransportError` on
+        failure so the caller can present a single error message.
+        """
+
+        from quill.core.remote_sites import load_password
+        from quill.io.ftp_transport import FtpTransport
+        from quill.io.remote_transport import RemoteTransport
+        from quill.io.s3_transport import S3Transport
+        from quill.io.sftp_transport import SftpTransport
+        from quill.io.webdav_transport import WebDavTransport
+
+        password = load_password(site.id)
+        protocol = site.protocol
+        transport: RemoteTransport
+        if protocol == "ftp":
+            transport = FtpTransport(site, password=password)
+        elif protocol == "sftp":
+            transport = SftpTransport(site, password=password)
+        elif protocol == "webdav":
+            transport = WebDavTransport(site, password=password)
+        elif protocol == "s3":
+            transport = S3Transport(site, password=password)
+        else:
+            raise RuntimeError(f"Unsupported protocol: {protocol}")
+        try:
+            transport.download(remote_path, local_path)
+        finally:
+            transport.close()
+
+    def _run_remote_upload(self, site, local_path: str, remote_path: str, password: str) -> None:
+        from quill.io.ftp_transport import FtpTransport
+        from quill.io.remote_transport import RemoteTransport
+        from quill.io.s3_transport import S3Transport
+        from quill.io.sftp_transport import SftpTransport
+        from quill.io.webdav_transport import WebDavTransport
+
+        protocol = site.protocol
+        transport: RemoteTransport
+        if protocol == "ftp":
+            transport = FtpTransport(site, password=password)
+        elif protocol == "sftp":
+            transport = SftpTransport(site, password=password)
+        elif protocol == "webdav":
+            transport = WebDavTransport(site, password=password)
+        elif protocol == "s3":
+            transport = S3Transport(site, password=password)
+        else:
+            raise RuntimeError(f"Unsupported protocol: {protocol}")
+        try:
+            transport.upload(local_path, remote_path)
+        finally:
+            transport.close()
 
     def _record_recent(self, path: Path) -> None:
         self.recent_files = add_recent_file(path, self.settings.recent_files_limit)
@@ -8158,6 +8421,37 @@ class MainFrame(
                         browser_choice_label_for_value(str(v))
                     )
                     control_index[spec.key] = (page_index, choice)
+                    return
+                if spec.key in {
+                    "quill_key_sound_enter",
+                    "quill_key_sound_exit",
+                    "quill_key_sound_move",
+                    "quill_key_sound_error",
+                }:
+                    text = wx.TextCtrl(parent_panel)
+                    text.SetValue(str(current))
+                    text.SetName(spec.label)
+                    browse_btn = wx.Button(parent_panel, label="Browse...")
+                    browse_btn.SetName(f"Browse for {spec.label}")
+                    file_row = wx.BoxSizer(wx.HORIZONTAL)
+                    file_row.Add(text, 1, wx.EXPAND | wx.RIGHT, 8)
+                    file_row.Add(browse_btn, 0, wx.ALIGN_CENTER_VERTICAL)
+
+                    def _on_browse_sound(_evt, _t=text, _pp=parent_panel) -> None:
+                        with wx.FileDialog(
+                            _pp,
+                            "Choose a WAV file",
+                            wildcard="WAV files (*.wav)|*.wav",
+                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+                        ) as fdlg:
+                            if fdlg.ShowModal() == wx.ID_OK:
+                                _t.SetValue(fdlg.GetPath())
+
+                    browse_btn.Bind(wx.EVT_BUTTON, _on_browse_sound)
+                    _add_field_row(parent_panel, sizer, spec.label, file_row, reset_btn)
+                    readers[spec.key] = lambda c=text: str(c.GetValue())
+                    writers[spec.key] = lambda v, c=text: c.SetValue(str(v))
+                    control_index[spec.key] = (page_index, text)
                     return
                 if spec.kind == "bool":
                     cb = wx.CheckBox(parent_panel, label=spec.label)

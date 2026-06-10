@@ -61,6 +61,8 @@ class StatusBarMixin:
         )
         if quill_key_active and "quill_key_mode" not in visible:
             visible.append("quill_key_mode")
+        if getattr(self, "_extend_selection_mode", False) and "extend_mode" not in visible:
+            visible.append("extend_mode")
         editor = getattr(self, "editor", None)
         if editor is None:
             return visible or ["message"]
@@ -177,6 +179,8 @@ class StatusBarMixin:
             if getattr(self, "_quill_key_prefix_pending", False):
                 return "Prefix"
             return "Off"
+        if item == "extend_mode":
+            return "EXT" if getattr(self, "_extend_selection_mode", False) else "Off"
         if item == "sr_name":
             # A11Y live indicator (§8.3): show the detected screen reader name.
             # Cache the result on the instance to avoid re-running tasklist on
@@ -249,6 +253,7 @@ class StatusBarMixin:
             "search_term": "Reopen Find",
             "file_path": "Open containing folder",
             "quill_key_mode": "QUILL key mode state",
+            "extend_mode": "Extend selection mode active. Press F7 to toggle.",
             "sr_name": "Detected screen reader. Press Enter to re-detect.",
             "suggestion": "Frequently used command. Press Enter to run it.",
         }
