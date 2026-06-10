@@ -51,3 +51,18 @@ def test_read_write_document(tmp_path: Path) -> None:
     assert document.text == "# Title\n**strong**"
     assert document.source_metadata["source_kind"] == "rtf"
     assert document.path == source
+
+
+def test_cyrillic_rtf_decoded_with_ansicpg(tmp_path: Path) -> None:
+    # M-13: an RTF file declaring \ansicpg1251 (Cyrillic) must be decoded as
+    # cp1251, not cp1252. The Cyrillic word for "hello" in cp1251 is bytes
+    # \xef\xf0\xe8\xe2\xe5\xf2 which decodes correctly as "привет".
+    cyrillic_word_cp1251 = "привет".encode("cp1251")
+    # Build a minimal RTF header with \ansicpg1251 and embed the word.
+    rtf_bytes = b"{\\rtf1\\ansi\\ansicpg1251\\deff0\\pard " + cyrillic_word_cp1251 + b"\\par}"
+    rtf_file = tmp_path / "cyrillic.rtf"
+    rtf_file.write_bytes(rtf_bytes)
+
+    from quill.io.rtf import _detect_rtf_encoding
+
+    assert _detect_rtf_encoding(rtf_file) == "cp1251"

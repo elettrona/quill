@@ -8,6 +8,10 @@ import wx.grid as wx_grid
 
 from quill.core.document import Document
 
+# Stride large enough to avoid row*stride+col collisions for any realistic
+# spreadsheet (Excel cap is 16384 columns; anything beyond that is unusual).
+_CELL_POSITION_STRIDE = 16384
+
 
 def detect_csv_delimiter(text: str, default: str = ",") -> str:
     sample = text[:8192]
@@ -145,7 +149,7 @@ class CsvGridSurface:
             return self.text_ctrl.GetSelection()
         row = getattr(self.grid, "GetGridCursorRow", lambda: 0)()
         col = getattr(self.grid, "GetGridCursorCol", lambda: 0)()
-        position = max(0, row) * 1000 + max(0, col)
+        position = max(0, row) * _CELL_POSITION_STRIDE + max(0, col)
         return position, position
 
     def SetSelection(self, start: int, end: int) -> None:

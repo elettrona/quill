@@ -169,6 +169,19 @@ def preload() -> None:
     _ensure_loaded()
 
 
+def reset_caches() -> None:
+    """Drop the thesaurus module caches so callers can re-measure cold start.
+
+    N-6: the perf-budget tests previously poked ``_INDEX`` and
+    ``_LOAD_ERROR`` by hand. This public helper is the supported entry
+    point for "make thesaurus cold again".
+    """
+    global _INDEX, _LOAD_ERROR
+    with _LOAD_LOCK:
+        _INDEX = None
+        _LOAD_ERROR = None
+
+
 def lookup(word: str) -> ThesaurusEntry | None:
     """Return the thesaurus entry for *word*, or ``None`` if not found."""
     if not word or not word.strip():

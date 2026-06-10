@@ -18,9 +18,13 @@ from __future__ import annotations
 
 from time import perf_counter
 
+import pytest
+
 from quill.core import spellcheck, thesaurus
 from quill.core.quick_nav import build_nav_index
 from quill.core.sentence_split import sentence_spans
+
+pytestmark = pytest.mark.perf
 
 # Hard ceilings (seconds). Lower is better; never raise these to hide a
 # regression -- fix the regression instead.
@@ -32,20 +36,24 @@ READ_ALOUD_START_BUDGET = 0.5
 
 
 def _reset_spellcheck_cache() -> None:
+    # N-6: kept as a thin shim so any third-party test that still imports
+    # the helper by name keeps working. Prefer ``spellcheck.reset_caches()``.
     spellcheck._WORDLIST_CACHE = None
     spellcheck._ENCHANT_DICT = None
     spellcheck._ENCHANT_TRIED = False
 
 
 def _reset_thesaurus_cache() -> None:
+    # N-6: kept as a thin shim so any third-party test that still imports
+    # the helper by name keeps working. Prefer ``thesaurus.reset_caches()``.
     thesaurus._INDEX = None
     thesaurus._LOAD_ERROR = None
 
 
 def test_startup_lexical_warmup_within_budget() -> None:
     """The off-UI-thread startup warm-up (PERF-1/PERF-2) stays cheap."""
-    _reset_spellcheck_cache()
-    _reset_thesaurus_cache()
+    spellcheck.reset_caches()
+    thesaurus.reset_caches()
     try:
         start = perf_counter()
         spellcheck.preload()
@@ -55,13 +63,13 @@ def test_startup_lexical_warmup_within_budget() -> None:
             f"startup lexical warm-up took {elapsed:.3f}s (budget {STARTUP_LEXICAL_WARMUP_BUDGET}s)"
         )
     finally:
-        _reset_spellcheck_cache()
-        _reset_thesaurus_cache()
+        spellcheck.reset_caches()
+        thesaurus.reset_caches()
 
 
 def test_first_spell_check_within_budget() -> None:
     """After warm-up the first spell check pays no file-load cost."""
-    _reset_spellcheck_cache()
+    spellcheck.reset_caches()
     try:
         spellcheck.preload()
         start = perf_counter()
@@ -71,12 +79,12 @@ def test_first_spell_check_within_budget() -> None:
             f"first spell check took {elapsed:.3f}s (budget {FIRST_SPELL_CHECK_BUDGET}s)"
         )
     finally:
-        _reset_spellcheck_cache()
+        spellcheck.reset_caches()
 
 
 def test_first_thesaurus_lookup_within_budget() -> None:
     """After warm-up the first thesaurus lookup pays no file-load cost."""
-    _reset_thesaurus_cache()
+    thesaurus.reset_caches()
     try:
         thesaurus.preload()
         start = perf_counter()
@@ -86,7 +94,7 @@ def test_first_thesaurus_lookup_within_budget() -> None:
             f"first thesaurus lookup took {elapsed:.3f}s (budget {FIRST_THESAURUS_LOOKUP_BUDGET}s)"
         )
     finally:
-        _reset_thesaurus_cache()
+        thesaurus.reset_caches()
 
 
 def test_quick_nav_prewarm_within_budget() -> None:

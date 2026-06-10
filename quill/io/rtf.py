@@ -12,6 +12,7 @@ survive a round trip: headings, **bold**, *italic*, bullet lists, and links.
 
 from __future__ import annotations
 
+import codecs
 import re
 from pathlib import Path
 
@@ -26,6 +27,22 @@ __all__ = [
 ]
 
 _RTF_ENCODING = "cp1252"
+
+
+def _detect_rtf_encoding(path: Path) -> str:
+    """Return the code page named by \\ansicpg in the RTF header, or cp1252."""
+    with path.open("rb") as fh:
+        header = fh.read(512)
+    match = re.search(rb"\\ansicpg(\d+)", header)
+    if match:
+        cp = int(match.group(1))
+        try:
+            codecs.lookup(f"cp{cp}")
+            return f"cp{cp}"
+        except LookupError:
+            pass
+    return _RTF_ENCODING
+
 
 # Private sentinels used to carry a parsed hyperlink through the tokenizer.
 _LINK_OPEN = "\x01"
@@ -311,7 +328,7 @@ def read_rtf_document(path: Path) -> Document:
     rich surface never receives a dangerous construct. The safety outcome is
     recorded in ``source_metadata`` for the UI to surface.
     """
-    raw = path.read_text(encoding=_RTF_ENCODING, errors="replace")
+    raw = path.read_text(encoding=_detect_rtf_encoding(path), errors="replace")
     safety = scan_rtf_safety(raw)
     metadata: dict[str, object] = {
         "source_kind": "rtf",

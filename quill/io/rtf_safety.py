@@ -41,7 +41,7 @@ _DESTINATION_LABELS: dict[str, str] = {
 }
 
 # Field instructions that fetch remote content; flagged for consent, not auto-run.
-_REMOTE_FIELD_RE = re.compile(r"INCLUDEPICTURE|INCLUDETEXT|DDEAUTO|\bAUTOTEXT\b", re.IGNORECASE)
+_REMOTE_FIELD_RE = re.compile(r"INCLUDEPICTURE|INCLUDETEXT|DDEAUTO", re.IGNORECASE)
 _BIN_RE = re.compile(r"\\bin\d+", re.IGNORECASE)
 
 

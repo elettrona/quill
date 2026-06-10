@@ -184,6 +184,21 @@ def preload() -> None:
     _load_wordlist()
 
 
+def reset_caches() -> None:
+    """Drop the spell-check module caches so callers can re-measure cold start.
+
+    N-6: the perf-budget tests previously poked the private
+    ``_WORDLIST_CACHE`` / ``_ENCHANT_DICT`` / ``_ENCHANT_TRIED`` globals by
+    hand, which is fragile if any of those names change. This public helper
+    is the supported entry point for "make spellcheck cold again".
+    """
+    global _WORDLIST_CACHE, _ENCHANT_DICT, _ENCHANT_TRIED
+    with _BACKEND_LOCK:
+        _WORDLIST_CACHE = None
+        _ENCHANT_DICT = None
+        _ENCHANT_TRIED = False
+
+
 def backend_info() -> BackendInfo:
     """Return information about the currently active spell-check backend."""
     enchant_dict = _try_enchant()

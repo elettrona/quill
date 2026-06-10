@@ -34,6 +34,15 @@ What "passes" means for every dialog (the A11Y-4 contract):
 5. On close, focus returns to the editor.
 6. The dialog does not trap, freeze, or go silent.
 
+Automated companion tests and the manual QA plan:
+
+- **Announcement and SR detection tests** — `tests/accessibility/test_accessibility_suite.py`
+  and `tests/accessibility/test_announcement_grammar.py` cover screen-reader announcement
+  capture, SR detection, and announcement grammar. Run with `pytest tests/accessibility/ -q`.
+- **Manual QA procedure** — `docs/qa/final-qa-test-plan.md` §6 ("Dialog estate pass")
+  describes the full human-executed pass against this checklist, including the SR coverage
+  matrix (NVDA full, JAWS spot, Narrator sanity) and the A11Y-4 sign-off criteria.
+
 Legend: "QUILL key" is the prefix chord, default `Ctrl+Shift+Grave` (backtick).
 "via menu" means there is no default keybinding; reach it through the named menu
 or the command palette (`Ctrl+Shift+P`).

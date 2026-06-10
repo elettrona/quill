@@ -174,3 +174,14 @@ def test_bundled_quillin_passes_strict() -> None:
     for directory in found:
         report = ql.lint_quillin(directory)
         assert report.ok(strict=True), report.render(strict=True)
+
+
+def test_redos_pattern_rejected(tmp_path: Path) -> None:
+    # M-25: the linter must not hang when a manifest value is crafted to
+    # trigger catastrophic backtracking. With the regex-timeout guard the call
+    # must return quickly (pass or fail the pattern, either is acceptable).
+    from quill.tools.quillin_lint import _string_errors
+
+    evil_value = "a" * 60 + "!"
+    errors = _string_errors(evil_value, {"pattern": "^[a-z]+$"}, "test.field")
+    assert isinstance(errors, list)

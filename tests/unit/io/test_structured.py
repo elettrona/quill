@@ -334,3 +334,17 @@ def test_spreadsheet_read_caps_columns_for_very_wide_rows() -> None:
     # The header row holds at most the capped number of columns.
     assert header.count(" | ") <= _SPREADSHEET_MAX_COLS
     assert "r0c499" not in document.text
+
+
+def test_corrupt_xlsx_surfaces_actionable_error(tmp_path: Path) -> None:
+    # M-11: a BadZipFile xlsx must return a message asking the user to repair
+    # the file, not the generic "import not available" message.
+    from quill.io.structured import _format_spreadsheet
+
+    bad_xlsx = tmp_path / "corrupt.xlsx"
+    bad_xlsx.write_bytes(b"this is not a zip file")
+
+    text, meta = _format_spreadsheet(bad_xlsx)
+
+    assert "corrupted" in text.lower() or "not a valid" in text.lower()
+    assert "import not available" not in text

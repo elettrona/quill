@@ -38,7 +38,11 @@ from quill.core.ai.agent import allowed_tools
 from quill.core.autoformat import EM_DASH, is_dash_merge, smart_quote_for
 from quill.core.autosave import autosave_document
 from quill.core.backups import backup_document, list_backups
-from quill.core.bookmarks import bookmark_names, bookmark_position, set_bookmark
+from quill.core.bookmarks import (  # N-13: keep the module as the supported home for these helpers
+    bookmark_names,
+    bookmark_position,
+    set_bookmark,
+)
 from quill.core.browser_preview import (
     available_browser_options,
     browser_choice_label_for_value,

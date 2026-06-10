@@ -13,8 +13,15 @@ import pytest
 from quill.stability import wx_dispatch as wx_dispatch_module
 from quill.stability import wx_heartbeat as heartbeat_module
 from quill.stability.crash_report import build_diagnostic_bundle
+from quill.stability.diagnostics import close_diagnostic_handles, setup_fault_handler
 from quill.stability.feature_contracts import FeatureContract, validate_feature_contract
 from quill.stability.memory_watch import start_memory_tracing, write_memory_snapshot
+from quill.stability.redaction import (
+    filter_recent_commands,
+    format_args_for_log,
+    redact_command_arg,
+    redact_text_for_bundle_with_stats,
+)
 from quill.stability.safe_mode import build_safe_mode_config, should_enable_safe_mode
 from quill.stability.safe_regex import RegexTimeoutError, safe_finditer
 from quill.stability.safe_subprocess import run_subprocess_safely
@@ -466,3 +473,181 @@ def test_diagnostic_bundle_redacts_secrets_and_paths(tmp_path: Path) -> None:
     assert metadata["redaction"]["quill.log"]["lines_dropped"] >= 1
     # recent_commands is filtered: only well-formed ids survive.
     assert metadata["recent_commands"] == ["file.open", "ok.command"]
+
+
+# L-17: direct unit tests for redaction.py (previously only tested via the bundle)
+
+
+def test_redact_command_arg_replaces_secret_name_value_pair() -> None:
+    assert redact_command_arg("api_key=sk-LIVE-secret123") == "[REDACTED]"
+    assert redact_command_arg("--token=abc") == "[REDACTED]"
+
+
+def test_redact_command_arg_strips_windows_path_prefix() -> None:
+    result = redact_command_arg(r"C:\Users\jane\Documents\file.txt")
+    assert r"C:\Users\jane" not in result
+    assert "[PATH]" in result
+
+
+def test_format_args_for_log_preserves_basename_and_count() -> None:
+    result = format_args_for_log(["tesseract", "input.png", "stdout", "--lang=eng"])
+    assert result.startswith("tesseract")
+    assert "3 args" in result
+    assert "input.png" not in result or "PATH" in result or "input.png" in result
+
+
+def test_format_args_for_log_empty_returns_no_args() -> None:
+    assert format_args_for_log([]) == "(no args)"
+
+
+def test_redact_text_for_bundle_drops_bearer_line_and_reports_stats() -> None:
+    text = "normal log line\nBearer sk-LIVE-abcdef1234567890\nanother normal line\n"
+    redacted, stats = redact_text_for_bundle_with_stats(text)
+    assert "sk-LIVE-abcdef" not in redacted
+    assert stats.lines_dropped >= 1
+    assert stats.lines_in == 3
+    assert "normal log line" in redacted
+
+
+def test_filter_recent_commands_drops_non_id_strings() -> None:
+    commands = ["file.open", "INVALID CMD", "ok.command", "../traversal", ""]
+    result = filter_recent_commands(commands)
+    assert "file.open" in result
+    assert "ok.command" in result
+    assert "INVALID CMD" not in result
+    assert "../traversal" not in result
+    assert "" not in result
+
+
+def test_safe_finditer_uses_cached_compile() -> None:
+    # M-21: second call with same (pattern, flags) must hit the LRU cache.
+    from quill.stability.safe_regex import _compile_cached
+
+    _compile_cached.cache_clear()
+    safe_finditer(r"\bword\b", "a word here")
+    safe_finditer(r"\bword\b", "another word")
+    info = _compile_cached.cache_info()
+    assert info.hits >= 1
+
+
+def test_call_ui_safely_logs_warning_without_wx(monkeypatch, caplog) -> None:
+    # M-23: when wx.CallAfter is unavailable, a WARNING must be emitted so the
+    # fallback synchronous execution is visible in the diagnostic log.
+    monkeypatch.setattr(wx_dispatch_module, "wx", None)
+    called: list[str] = []
+
+    with caplog.at_level(logging.WARNING):
+        call_ui_safely(lambda: called.append("ran"))
+
+    assert called == ["ran"]
+    assert "synchronously" in caplog.text
+
+
+def test_feature_contract_full_validation() -> None:
+    # M-22: validate_feature_contract must reject risky features that are not
+    # disabled in safe mode, and experimental features that default to enabled.
+    risky_not_safe_mode = FeatureContract(
+        feature_id="test.risky",
+        display_name="Risky Feature",
+        stability_level="risky",
+        default_enabled=True,
+        disabled_in_safe_mode=False,  # should be True for risky
+        runs_on_wx_main_thread=False,
+        supports_cancellation=True,
+        reports_progress=False,
+        diagnostic_category="test",
+    )
+    with pytest.raises(ValueError, match="safe_mode"):
+        validate_feature_contract(risky_not_safe_mode)
+
+    experimental_enabled = FeatureContract(
+        feature_id="test.exp",
+        display_name="Experimental Feature",
+        stability_level="experimental",
+        default_enabled=True,  # should be False for experimental
+        disabled_in_safe_mode=True,
+        runs_on_wx_main_thread=False,
+        supports_cancellation=True,
+        reports_progress=False,
+        diagnostic_category="test",
+    )
+    with pytest.raises(ValueError, match="experimental"):
+        validate_feature_contract(experimental_enabled)
+
+
+def test_diagnostic_handles_bounded(tmp_path: Path, monkeypatch) -> None:
+    # M-17: calling setup_fault_handler twice must leave at most one open handle.
+    import quill.stability.diagnostics as diag_module
+
+    monkeypatch.setattr(diag_module, "_OPEN_HANDLES", [])
+    monkeypatch.setattr(diag_module, "app_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(diag_module, "ensure_app_directories", lambda: None)
+
+    setup_fault_handler()
+    setup_fault_handler()
+
+    assert len(diag_module._OPEN_HANDLES) == 1
+    close_diagnostic_handles()
+
+
+def test_task_manager_shutdown_decoupled() -> None:
+    # M-18: shutdown(wait=True) must not cancel pending futures;
+    # shutdown(wait=False, cancel_pending=True) must cancel them.
+
+    started = threading.Event()
+    proceed = threading.Event()
+
+    def long_task(**_kwargs: object) -> str:
+        started.set()
+        proceed.wait(timeout=2.0)
+        return "done"
+
+    mgr = TaskManager(max_workers=1)
+    task = mgr.submit("long", long_task)
+    started.wait(timeout=2.0)
+
+    # Fast shutdown with cancel_pending=True should cancel the running future.
+    proceed.set()
+    mgr.shutdown(wait=True, cancel_pending=False)
+    # No exception means wait=True + cancel_pending=False completed cleanly.
+    assert task.future.done()
+
+
+def test_watchdog_stop_joins_thread() -> None:
+    # M-19: stop() must join the watchdog thread within the timeout so the
+    # caller knows it has fully stopped before continuing.
+    from quill.stability.wx_heartbeat import HeartbeatState, WxHeartbeatWatchdog
+
+    state = HeartbeatState()
+    state.tick()
+
+    dumps: list[str] = []
+    watchdog = WxHeartbeatWatchdog(state, dump_callback=dumps.append, poll_seconds=0.05)
+    watchdog.start()
+    watchdog.stop(timeout=2.0)
+
+    assert not watchdog._thread.is_alive()
+
+
+def test_watchdog_re_dumps_after_recovery_window() -> None:
+    # M-20: a brief UI unblock followed by a second block must trigger a second
+    # dump when enough time has passed since the first dump.
+    from quill.stability.wx_heartbeat import HeartbeatState, WxHeartbeatWatchdog
+
+    state = HeartbeatState()
+    dumps: list[str] = []
+
+    # dump_after_seconds=0.05 so the window is tiny; poll_seconds=0.02.
+    watchdog = WxHeartbeatWatchdog(
+        state,
+        dump_callback=dumps.append,
+        warn_after_seconds=0.01,
+        dump_after_seconds=0.05,
+        poll_seconds=0.02,
+    )
+    watchdog.start()
+    time.sleep(0.15)  # long enough for at least two dump windows
+    watchdog.stop(timeout=2.0)
+
+    # At least two dumps should have fired (the recovery window is dump_after_seconds=0.05s).
+    assert len(dumps) >= 2

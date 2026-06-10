@@ -26,6 +26,8 @@ def extract_pdf_text(path: Path) -> PdfExtractionResult:
             result = extractor(path)
         except ModuleNotFoundError:
             continue
+        except Exception:
+            continue
         if result.text.strip():
             return result
     return PdfExtractionResult(

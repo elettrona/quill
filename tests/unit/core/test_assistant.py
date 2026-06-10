@@ -43,3 +43,39 @@ def test_assistant_prompt_rendering_includes_selection_text() -> None:
     prompt = render_assistant_prompt("rewrite", selection_text="hello world")
 
     assert "hello world" in prompt
+
+
+def test_unreachable_provider_announced(monkeypatch, caplog) -> None:
+    # M-16: if the configured provider raises during the probe, a WARNING must
+    # be emitted so the fallback is visible in the diagnostic log.
+    import logging
+
+    from quill.core.ai import assistant as assistant_module
+    from quill.core.ai.assistant import make_default_backend
+
+    class _FakePath:
+        def exists(self) -> bool:
+            return True
+
+    class _BadBackend:
+        def is_available(self) -> tuple[bool, object]:
+            raise ConnectionError("endpoint unreachable")
+
+    monkeypatch.setattr(
+        "quill.core.assistant_ai.assistant_connection_path",
+        lambda: _FakePath(),
+    )
+    monkeypatch.setattr(
+        "quill.core.assistant_ai.load_assistant_connection_settings",
+        lambda: type("S", (), {"provider": "ollama"})(),
+    )
+    monkeypatch.setattr(
+        "quill.core.ai.provider_backend.ProviderChatBackend",
+        lambda _settings: _BadBackend(),
+    )
+
+    with caplog.at_level(logging.WARNING, logger=assistant_module.logger.name):
+        make_default_backend()
+
+    assert caplog.records, "expected at least one log record from make_default_backend"
+    assert any("probe failed" in r.message or "falling back" in r.message for r in caplog.records)

@@ -28,7 +28,8 @@ class FeatureContract:
 
 
 def validate_feature_contract(contract: FeatureContract) -> None:
-    risky = contract.stability_level.lower() in {"beta", "experimental", "risky", "advanced"}
+    level = contract.stability_level.lower()
+    risky = level in {"beta", "experimental", "risky", "advanced"}
     if risky and contract.runs_on_wx_main_thread:
         raise ValueError(
             f"Feature {contract.feature_id!r} is marked risky but runs on the wx main thread."
@@ -36,4 +37,14 @@ def validate_feature_contract(contract: FeatureContract) -> None:
     if contract.requires_timeout and not contract.supports_cancellation:
         raise ValueError(
             f"Feature {contract.feature_id!r} requires a timeout but does not support cancellation."
+        )
+    if level in {"risky", "advanced"} and not contract.disabled_in_safe_mode:
+        raise ValueError(
+            f"Feature {contract.feature_id!r} is {level!r} but disabled_in_safe_mode is False; "
+            "risky features must be disabled in safe_mode."
+        )
+    if level == "experimental" and contract.default_enabled:
+        raise ValueError(
+            f"Feature {contract.feature_id!r} is experimental but default_enabled is True; "
+            "experimental features must default to off."
         )

@@ -56,6 +56,10 @@ def call_ui_safely(func: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
     if callable(call_after):
         call_after(wrapped)
         return
+    logger.warning(
+        "call_ui_safely: wx.CallAfter unavailable; running %s synchronously on caller thread",
+        getattr(func, "__qualname__", repr(func)),
+    )
     wrapped()
 
 

@@ -40,6 +40,14 @@ import argparse
 import json
 import re
 import types
+
+try:
+    import regex as _regex_module
+
+    _REGEX_TIMEOUT: float | None = 0.5
+except ImportError:
+    _regex_module = re  # type: ignore[assignment]
+    _REGEX_TIMEOUT = None
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -187,8 +195,14 @@ def _schema_errors(value: object, schema: dict[str, object], path: str) -> list[
 def _string_errors(value: str, schema: dict[str, object], path: str) -> list[str]:
     errors: list[str] = []
     pattern = schema.get("pattern")
-    if isinstance(pattern, str) and re.search(pattern, value) is None:
-        errors.append(f"{path}: {value!r} does not match pattern '{pattern}'")
+    if isinstance(pattern, str):
+        try:
+            kwargs = {"timeout": _REGEX_TIMEOUT} if _REGEX_TIMEOUT is not None else {}
+            match = _regex_module.search(pattern, value, **kwargs)
+        except Exception:
+            match = None
+        if match is None:
+            errors.append(f"{path}: {value!r} does not match pattern '{pattern}'")
     minimum = schema.get("minLength")
     if isinstance(minimum, int) and len(value) < minimum:
         errors.append(f"{path}: shorter than minLength {minimum}")

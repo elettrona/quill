@@ -197,8 +197,8 @@ class TaskManager:
         with self._lock:
             return list(self._tasks.values())
 
-    def shutdown(self, wait: bool = True) -> None:
-        self._executor.shutdown(wait=wait, cancel_futures=not wait)
+    def shutdown(self, wait: bool = True, cancel_pending: bool = False) -> None:
+        self._executor.shutdown(wait=wait, cancel_futures=cancel_pending)
 
     def _remove_task(self, operation_id: str) -> None:
         with self._lock:

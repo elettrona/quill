@@ -1,3 +1,10 @@
+"""Named bookmark helpers (wx-free domain logic).
+
+Kept as a separate module so the pure dict operations can be unit-tested
+without importing wx. The UI layer (MainFrame) owns the bookmark dict and
+calls these helpers directly.
+"""
+
 from __future__ import annotations
 
 

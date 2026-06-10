@@ -129,8 +129,8 @@ def make_default_backend() -> AIBackend:
                 backend = ProviderChatBackend(settings)
                 if backend.is_available()[0]:
                     return backend
-    except Exception:  # noqa: BLE001 - any failure falls back to the local model
-        pass
+    except Exception as exc:  # noqa: BLE001 - any failure falls back to the local model
+        logger.warning("Configured AI provider probe failed; falling back to local model: %s", exc)
 
     if sys.platform == "darwin":
         try:

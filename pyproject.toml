@@ -104,6 +104,9 @@ python_files = ["test_*.py"]
 timeout = 30
 log_cli = true
 log_level = "INFO"
+markers = [
+    "perf: wall-clock performance budgets; run with RUN_PERF=1 or exclude with -m 'not perf'",
+]
 
 [tool.ruff]
 line-length = 100

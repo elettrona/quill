@@ -45,3 +45,11 @@ def test_nested_object_group_skipped_entirely() -> None:
     report = scan_rtf_safety(rtf)
     assert "nested" not in report.sanitized_rtf
     assert "after" in report.sanitized_rtf
+
+
+def test_autotext_not_flagged_as_remote() -> None:
+    # M-12: AUTOTEXT is a benign boilerplate-insert control word, not a
+    # remote-fetch instruction; it must not trigger the remote-content warning.
+    rtf = r'{\rtf1\ansi {\field{\*\fldinst AUTOTEXT "Yours sincerely"}}}'
+    report = scan_rtf_safety(rtf)
+    assert "remote content references" not in report.warnings

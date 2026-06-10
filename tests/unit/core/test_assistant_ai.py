@@ -204,6 +204,41 @@ def test_verify_assistant_connection_rejects_non_https_cloud_endpoint() -> None:
     assert "Only HTTPS endpoints are allowed" in message
 
 
+def test_verify_assistant_connection_surfaces_unlock_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # L-5: when the on-disk key cannot be unlocked on this device, verify
+    # should short-circuit with the screen-reader-friendly message instead
+    # of the generic "unauthorized" from the provider.
+    monkeypatch.setattr(assistant_ai, "assistant_secret_unlock_failed", lambda: True)
+    settings = assistant_ai.AssistantConnectionSettings(
+        provider="openai",
+        host="https://api.openai.com",
+        model="gpt-4o-mini",
+    )
+    ok, message = assistant_ai.verify_assistant_connection(settings, api_key="")
+    assert ok is False
+    assert "encrypted for a different Windows user" in message
+    assert "Open AI Connection" in message
+
+
+def test_list_assistant_models_surfaces_unlock_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # L-5: same short-circuit for the list-models surface; no network call
+    # is made when the saved key cannot be unlocked.
+    monkeypatch.setattr(assistant_ai, "assistant_secret_unlock_failed", lambda: True)
+    settings = assistant_ai.AssistantConnectionSettings(
+        provider="openai",
+        host="https://api.openai.com",
+        model="gpt-4o-mini",
+    )
+    models, error = assistant_ai.list_assistant_models(settings, api_key="")
+    assert models == []
+    assert error is not None
+    assert "encrypted for a different Windows user" in error
+
+
 def test_verify_assistant_connection_allows_local_custom_http(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

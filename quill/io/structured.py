@@ -241,6 +241,8 @@ def _format_spreadsheet(path: Path) -> tuple[str, dict[str, object]]:
 
     try:
         workbook = load_workbook(str(path), data_only=True, read_only=True)
+    except zipfile.BadZipFile:
+        return _corrupt_spreadsheet_text(path)
     except Exception:
         return _missing_spreadsheet_text(path)
 
@@ -291,6 +293,20 @@ def _rows_to_markdown_table(rows: list[list[str]]) -> list[str]:
     for row in padded[1:]:
         lines.append("| " + " | ".join(row) + " |")
     return lines
+
+
+def _corrupt_spreadsheet_text(path: Path) -> tuple[str, dict[str, object]]:
+    return (
+        (
+            f"({path.name} appears to be corrupted or is not a valid XLSX file.)\n\n"
+            "Try opening and re-saving it in Excel or LibreOffice Calc before importing.\n"
+        ),
+        {
+            "source_kind": path.suffix.lower().lstrip("."),
+            "engine": "unavailable",
+            "quality_score": 0,
+        },
+    )
 
 
 def _missing_spreadsheet_text(path: Path) -> tuple[str, dict[str, object]]:
