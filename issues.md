@@ -161,6 +161,12 @@ now wired through (H-SAFE-1, ✅ FIXED).
   `last_error` dict) so the UI can show
   `"Profile X failed 5 times in a row: PermissionError"`.
 - **Regression test:** `tests/unit/core/test_watch_profiles.py::test_consecutive_errors_tracked_per_profile`.
+- **Status:** ✅ FIXED — `WatchManager` now tracks `last_error` and
+  `consecutive_error_count` per `profile_id`, with successful scans
+  clearing the streak. New regression tests:
+  `test_manager_records_prescan_error_for_profile`,
+  `test_manager_records_scan_error_and_clears_on_recovery`. (See
+  CHANGELOG entry.)
 
 #### M-5 — `core/ai/foundation_models.py:120` and `core/ai/assistant.py:70` — `asyncio.run` per call
 - **File / Category:** `quill/core/ai/foundation_models.py:120`,
@@ -637,15 +643,15 @@ All 7 items below were fixed in Sweep 5.
 8. **M-7** — sandbox `__builtins__` re-binding escape (SECURITY).
 9. **M-6** — manifest HMAC key rotation (SECURITY).
 10. **M-5** — cache the asyncio event loop (PERF, AI providers).
-11. **M-1** ✅ / **M-3 / M-4 / M-16** — watch-action humanization done;
-    allowlist + profile error tracking + provider probe remain (UX,
-    security, BUG).
+11. **M-1** ✅ / **M-4** ✅ / **M-3 / M-16** — watch-action humanization
+    and per-profile error tracking are done; allowlist + provider
+    probe remain (UX, security, BUG).
 12. **M-9 / M-10 / M-11 / M-12 / M-13** — I/O robustness and parsing
     (BUG).
 13. **M-14 / M-15** — read-aloud timeouts (RELIABILITY).
 14. **M-17 / M-18 / M-19 / M-20 / M-21 / M-22 / M-23** — stability
     lifecycle and contracts (LIFECYCLE, TEST_GAP).
-15. **M-24 / M-25 / M-26 / M-27** — tool/audit/doc hardening.
+15. **M-24 / M-25 / M-26** — tool/audit/doc hardening.
 
 ### Tier C — UI polish (1.0 → 1.1)
 
@@ -915,6 +921,7 @@ These four are tracked honestly in `ROADMAP.md` and not marked
 | Sweep 6 (Tier D: all 16 §8 UX delight) | 13 / 13 | 0 / 32 | 3 / 22 | 11 / 16 | **16 / 16** | 2098 passed, 0 failed |
 | Sweep 7 (§6/§7 easiest: L-2,3,4,6,14,16 + N-5 + M-27) | 13 / 13 | **1 / 32** | **9 / 22** | **12 / 16** | 16 / 16 | 73 tools tests passed, 0 failed |
 | Sweep 8 (§6/§7 continued: L-1,7,10,21,22 + N-10) | 13 / 13 | 1 / 32 | **14 / 22** | **13 / 16** | 16 / 16 | 5 paths + 12 quillin lint tests passed, 0 failed |
+| Sweep 9 (§5 watch-action humanization + per-profile errors: M-1, M-4) | 13 / 13 | **3 / 32** | 14 / 22 | 13 / 16 | 16 / 16 | 1554 unit tests passed, 0 failed; ruff clean |
 
 > The "Test suite" column records the pytest outcome of every sweep
 > (no regressions introduced). Sweep 3 also fixed three pre-existing
@@ -927,8 +934,8 @@ These four are tracked honestly in `ROADMAP.md` and not marked
 
 **Tier A — release blockers (HIGH): ALL CLOSED ✅**
 
-**Tier B — defense-in-depth (MEDIUM, 1.0 → 1.1):** 30 open (M-1, M-27 closed).
-Sorted by impact: M-4, M-5 (asyncio loop reuse), M-6 (update manifest signing),
+**Tier B — defense-in-depth (MEDIUM, 1.0 → 1.1):** 30 open (M-1, M-4, M-27 closed).
+Sorted by impact: M-5 (asyncio loop reuse), M-6 (update manifest signing),
 M-7 (sandbox hardening), M-9..M-13 (IO-format robustness), M-14/M-15 (read-aloud),
 M-16..M-23 (stability lifecycle), M-24..M-26, M-28..M-32 (UI dialog / menu
 contract, image capture, sticky notes, csv grid).
