@@ -169,8 +169,16 @@ class BrowseModeMixin:
             self._browse_cache_build_generation += 1
             generation = self._browse_cache_build_generation
 
+            old_cancel = getattr(self, "_browse_cache_cancel_event", None)
+            if old_cancel is not None:
+                old_cancel.set()
+            cancel_event = threading.Event()
+            self._browse_cache_cancel_event = cancel_event
+
             def _worker() -> None:
                 cache = self._build_browse_navigation_cache(text, markup_kind, bookmarks)
+                if cancel_event.is_set():
+                    return
                 self._wx.CallAfter(
                     self._accept_browse_prewarm_cache,
                     generation,

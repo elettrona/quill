@@ -9,7 +9,7 @@ from quill.core.sticky_notes import (
     load_sticky_notes,
     save_sticky_note,
 )
-from quill.ui.dialog_contract import apply_modal_ids, show_modal_dialog
+from quill.ui.dialog_contract import apply_modal_ids, show_message_box, show_modal_dialog
 
 
 class StickyNoteEditorDialog:
@@ -359,7 +359,7 @@ class StickyNotesVaultDialog:
         if note is None:
             return
         if (
-            self._wx.MessageBox(
+            show_message_box(
                 f'Delete sticky note "{note.title}"?',
                 "Delete Sticky Note",
                 self._wx.ICON_WARNING | self._wx.YES_NO | self._wx.NO_DEFAULT,

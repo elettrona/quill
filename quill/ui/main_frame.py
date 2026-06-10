@@ -4663,7 +4663,9 @@ class MainFrame(
 
         try:
             while True:
-                result = self._show_modal_dialog(dialog, "Crash Recovery")
+                result = self._show_modal_dialog(
+                    dialog, "Crash Recovery", restore_editor_focus=False
+                )
                 if result == wx.ID_APPLY:
                     self.open_logs_folder()
                     continue
@@ -5401,7 +5403,9 @@ class MainFrame(
             self._announcement_error_reported = backend_error
             self._record_notification(backend_error, "accessibility")
 
-    def _show_modal_dialog(self, dialog: object, label: str) -> int:
+    def _show_modal_dialog(
+        self, dialog: object, label: str, *, restore_editor_focus: bool = True
+    ) -> int:
         # Land initial focus on the dialog's primary content control rather than
         # its OK button. Only custom wx.Dialog surfaces are adjusted; native
         # dialogs (MessageDialog, FileDialog, RichMessageDialog, ...) manage
@@ -5417,13 +5421,14 @@ class MainFrame(
             enter_region=self._region_tracker.enter,
             exit_region=self._region_tracker.exit,
         )
-        editor = getattr(self, "editor", None)
-        if editor is not None and hasattr(editor, "SetFocus"):
-            call_after = getattr(self._wx, "CallAfter", None)
-            if callable(call_after):
-                call_after(editor.SetFocus)
-            else:
-                editor.SetFocus()
+        if restore_editor_focus:
+            editor = getattr(self, "editor", None)
+            if editor is not None and hasattr(editor, "SetFocus"):
+                call_after = getattr(self._wx, "CallAfter", None)
+                if callable(call_after):
+                    call_after(editor.SetFocus)
+                else:
+                    editor.SetFocus()
         return result
 
     def _show_message_box(self, message: str, caption: str, style: int) -> int:

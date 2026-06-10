@@ -23,15 +23,17 @@ and collects the backing buttons across the right scope:
   to it across ``show`` / handler methods;
 * a **function-local** raw ``wx.Dialog(...)`` is scanned within that function.
 
-Only ``escape_id`` is audited: an unbacked ``affirmative_id`` (Enter) is benign
-because dialogs routinely accept Enter via a char hook, whereas an unbacked
-``escape_id`` with no manual ``WXK_ESCAPE`` handler is a keyboard trap. For each
-standard ``wx.ID_*`` escape id in such a scope, the audit checks that a matching
+Both ``escape_id`` and ``affirmative_id`` are audited. For ``escape_id``, an
+unbacked id is a WCAG 2.1.2 keyboard trap when no ``WXK_ESCAPE`` handler exists.
+For ``affirmative_id``, an unbacked id silently ignores Enter for blind and
+keyboard users when no ``WXK_RETURN``/``WXK_NUMPAD_ENTER`` handler exists. For
+each standard ``wx.ID_*`` id in such a scope, the audit checks that a matching
 button exists -- an explicit ``wx.Button(..., id=wx.ID_*)`` (keyword or
 positional) or a ``CreateButtonSizer`` / ``CreateStdDialogButtonSizer`` /
 ``CreateSeparatedButtonSizer`` flag that synthesizes it -- or that the scope
-handles ``WXK_ESCAPE`` itself. Non-standard ids (custom ``self.ID_*`` constants)
-are skipped because their backing buttons cannot be resolved statically.
+handles the corresponding key itself. Non-standard ids (custom ``self.ID_*``
+constants) are skipped because their backing buttons cannot be resolved
+statically.
 
 The escape-id check can be opted out for a single call by adding a trailing
 ``# noqa: dialog_button_contract`` comment on the ``apply_modal_ids`` line.
@@ -122,8 +124,16 @@ class Violation:
     module: str
     scope: str
     wx_id: str
+    kind: str = "escape_id"
 
     def __str__(self) -> str:
+        if self.kind == "affirmative_id":
+            return (
+                f"{self.module}::{self.scope}: apply_modal_ids affirmative_id="
+                f"wx.{self.wx_id} but the dialog creates no button with that id. "
+                f"Enter will be silently ignored by blind and keyboard users. "
+                f"Add wx.Button(id=wx.{self.wx_id}) or a CreateButtonSizer flag."
+            )
         return (
             f"{self.module}::{self.scope}: apply_modal_ids escape_id="
             f"wx.{self.wx_id} but the dialog neither creates a button with that "
@@ -196,9 +206,13 @@ def _call_has_audit_pragma(source: str, node: ast.Call) -> bool:
     return _pragma_for_call(source, node)
 
 
-def _collect_escape_ids(source: str, bodies: list[ast.AST]) -> list[tuple[str, bool]]:
-    """Return ``(escape_id, has_pragma)`` pairs from ``apply_modal_ids`` calls."""
-    found: list[tuple[str, bool]] = []
+def _collect_modal_id_args(source: str, bodies: list[ast.AST]) -> list[tuple[str, str, bool]]:
+    """Return ``(kwarg_name, wx_id, has_pragma)`` tuples from ``apply_modal_ids`` calls.
+
+    Covers both ``escape_id`` and ``affirmative_id`` so both can be checked for
+    backing buttons.
+    """
+    found: list[tuple[str, str, bool]] = []
     for root in bodies:
         for node in ast.walk(root):
             if not isinstance(node, ast.Call):
@@ -207,9 +221,18 @@ def _collect_escape_ids(source: str, bodies: list[ast.AST]) -> list[tuple[str, b
                 continue
             pragma = _call_has_audit_pragma(source, node)
             for kw in node.keywords:
-                if kw.arg == "escape_id" and (name := _attr_name(kw.value)):
-                    found.append((name, pragma))
+                if kw.arg in {"escape_id", "affirmative_id"} and (name := _attr_name(kw.value)):
+                    found.append((kw.arg, name, pragma))
     return found
+
+
+def _collect_escape_ids(source: str, bodies: list[ast.AST]) -> list[tuple[str, bool]]:
+    """Return ``(escape_id, has_pragma)`` pairs from ``apply_modal_ids`` calls."""
+    return [
+        (wx_id, pragma)
+        for kwarg, wx_id, pragma in _collect_modal_id_args(source, bodies)
+        if kwarg == "escape_id"
+    ]
 
 
 def _handles_escape_manually(bodies: list[ast.AST]) -> bool:
@@ -221,19 +244,38 @@ def _handles_escape_manually(bodies: list[ast.AST]) -> bool:
     return False
 
 
+def _handles_enter_manually(bodies: list[ast.AST]) -> bool:
+    """True when the scope references ``WXK_RETURN`` or ``WXK_NUMPAD_ENTER``."""
+    for root in bodies:
+        for node in ast.walk(root):
+            if isinstance(node, ast.Attribute) and node.attr in (
+                "WXK_RETURN",
+                "WXK_NUMPAD_ENTER",
+            ):
+                return True
+    return False
+
+
 def _audit_scope(module: str, scope: str, source: str, bodies: list[ast.AST]) -> list[Violation]:
-    escape_ids = _collect_escape_ids(source, bodies)
-    if not escape_ids:
-        return []
-    if _handles_escape_manually(bodies):
+    modal_ids = _collect_modal_id_args(source, bodies)
+    if not modal_ids:
         return []
     buttons = _collect_button_ids(bodies)
+    handles_escape = _handles_escape_manually(bodies)
+    handles_enter = _handles_enter_manually(bodies)
     violations: list[Violation] = []
-    for wx_id, has_pragma in escape_ids:
+    for kwarg, wx_id, has_pragma in modal_ids:
         if has_pragma:
             continue
-        if wx_id in _VERIFIABLE_IDS and wx_id not in buttons:
-            violations.append(Violation(module, scope, wx_id))
+        if wx_id not in _VERIFIABLE_IDS:
+            continue
+        if wx_id in buttons:
+            continue
+        if kwarg == "escape_id" and handles_escape:
+            continue
+        if kwarg == "affirmative_id" and handles_enter:
+            continue
+        violations.append(Violation(module, scope, wx_id, kind=kwarg))
     return violations
 
 

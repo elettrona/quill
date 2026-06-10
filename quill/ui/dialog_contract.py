@@ -174,3 +174,29 @@ def show_modal_dialog(
         if exit_region is not None:
             exit_region(label)
     return result
+
+
+def show_message_box(
+    message: str,
+    caption: str,
+    style: int,
+    parent: object = None,
+    *,
+    announce: Callable[[str], None] | None = None,
+) -> int:
+    """Show a wx.MessageBox with enter/exit announcements.
+
+    Drop-in replacement for raw ``wx.MessageBox`` calls that ensures screen
+    readers hear a region-entry cue before the dialog appears and an exit cue
+    after it closes.
+    """
+    import wx
+
+    if announce is not None:
+        announce(f"Entered {caption} dialog")
+    try:
+        result = wx.MessageBox(message, caption, style, parent)
+    finally:
+        if announce is not None:
+            announce(f"Exited {caption} dialog")
+    return result

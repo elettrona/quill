@@ -127,7 +127,7 @@ class RunPythonDialog:
         root.Add(buttons, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
         self.dialog.SetSizer(root)
-        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+        apply_modal_ids(self.dialog, escape_id=wx.ID_CANCEL)
         self.run_button.Bind(wx.EVT_BUTTON, self._on_run)
         self.apply_button.Bind(wx.EVT_BUTTON, self._on_apply)
         self.close_button.Bind(wx.EVT_BUTTON, lambda _e: self.dialog.EndModal(wx.ID_CANCEL))
@@ -141,17 +141,29 @@ class RunPythonDialog:
             self.dialog.Destroy()
 
     def _on_run(self, _event: object) -> None:
-        result = run_python_sandbox(
-            self.code.GetValue(),
-            document_text=self._document_text,
-            selection_text=self._selection_text,
-            outline=self._outline,
-        )
+        self.run_button.Enable(False)
+        self.apply_button.Enable(False)
+        self.status.SetLabel("Running...")
+        code = self.code.GetValue()
+
+        def _do_run() -> None:
+            result = run_python_sandbox(
+                code,
+                document_text=self._document_text,
+                selection_text=self._selection_text,
+                outline=self._outline,
+            )
+            self._wx.CallAfter(self._finish_run, result)
+
+        threading.Thread(target=_do_run, name="quill-python-sandbox", daemon=True).start()
+
+    def _finish_run(self, result: PythonSandboxResult) -> None:
         self._latest_result = result
         self.preview.SetValue(self._render_result(result))
         self.apply_button.Enable(
             result.succeeded and bool((result.result or result.stdout).strip())
         )
+        self.run_button.Enable(True)
         if result.succeeded:
             self.status.SetLabel(f"Completed in {result.elapsed_seconds:.2f}s.")
             return
@@ -304,7 +316,7 @@ class PromptStudioDialog:
         self.use_button.Bind(wx.EVT_BUTTON, self._on_use_prompt_clicked)
         self.preview_button.Bind(wx.EVT_BUTTON, self._on_preview_prompt)
         self.save_button.Bind(wx.EVT_BUTTON, self._on_save_prompt)
-        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+        apply_modal_ids(self.dialog, escape_id=wx.ID_CANCEL)
 
         self._selected_prompt_key = ""
         self._refresh_prompt_list()
@@ -571,7 +583,7 @@ class AccessibilityAgentDialog:
         self.step_list.Bind(wx.EVT_LISTBOX, self._on_step_selected)
         self.apply_button.Bind(wx.EVT_BUTTON, self._on_apply_clicked)
         close_button.Bind(wx.EVT_BUTTON, lambda _e: self.dialog.EndModal(wx.ID_CANCEL))
-        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+        apply_modal_ids(self.dialog, escape_id=wx.ID_CANCEL)
 
         if self.plan.steps:
             self.step_list.SetSelection(0)
@@ -739,7 +751,7 @@ class DiffReviewDialog:
         accept_all_button.Bind(wx.EVT_BUTTON, lambda _e: self._check_all(True))
         reject_all_button.Bind(wx.EVT_BUTTON, lambda _e: self._check_all(False))
         close_button.Bind(wx.EVT_BUTTON, lambda _e: self.dialog.EndModal(wx.ID_CANCEL))
-        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+        apply_modal_ids(self.dialog, escape_id=wx.ID_CANCEL)
 
         if self.review.hunks:
             self.hunk_list.SetSelection(0)
@@ -889,7 +901,7 @@ class AgentCenterDialog:
         self.generate_button.Bind(wx.EVT_BUTTON, self._on_generate_prompt)
         self.use_button.Bind(wx.EVT_BUTTON, self._on_use_prompt_clicked)
         close_button.Bind(wx.EVT_BUTTON, lambda _e: self.dialog.EndModal(wx.ID_CANCEL))
-        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+        apply_modal_ids(self.dialog, escape_id=wx.ID_CANCEL)
         self._on_agent_changed(None)
 
     def show_modal(self) -> None:

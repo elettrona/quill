@@ -15,7 +15,6 @@ that share the same threaded review pipeline.
 from __future__ import annotations
 
 import threading
-import time
 from pathlib import Path
 
 
@@ -170,8 +169,7 @@ class ImageCaptureMixin:
                 keep_going, _ = progress.Update(step, str(progress_state["message"]))
                 if not keep_going:
                     cancel_requested.set()
-                wx.YieldIfNeeded()
-                time.sleep(0.1)
+                wx.MilliSleep(100)
                 step = min(90, step + 4)
             worker.join()
             error = progress_state["error"]
@@ -408,8 +406,7 @@ class ImageCaptureMixin:
             step = 10
             while not progress_state["done"]:
                 progress.Pulse("Asking the model to describe the image...")
-                wx.YieldIfNeeded()
-                time.sleep(0.1)
+                wx.MilliSleep(100)
                 step = min(90, step + 4)
             worker.join()
         finally:

@@ -11,6 +11,7 @@
   "quill/ui/assistant_tools.py::RunPythonDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/assistant_tools.py::SearchableModelPickerDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/assistant_tools.py::WritingAssistantDialog.__init__::wx.Dialog": "hardened_custom",
+  "quill/ui/dialog_contract.py::show_message_box::wx.MessageBox": "native",
   "quill/ui/main_frame.py::MainFrame._build_context_menu_editor_tab._on_rename::wx.TextEntryDialog": "native",
   "quill/ui/main_frame.py::MainFrame._build_menu_items_editor_tab._on_rename::wx.TextEntryDialog": "native",
   "quill/ui/main_frame.py::MainFrame._build_top_menu_editor_tab._on_rename::wx.TextEntryDialog": "native",
