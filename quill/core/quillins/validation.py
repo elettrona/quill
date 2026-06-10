@@ -27,6 +27,9 @@ from quill.core.quillins.model import (
     CONTEXT_WHEN_ALWAYS,
     CONTEXT_WHEN_VALUES,
     MENU_PARENTS,
+    RUNTIME_NODE,
+    RUNTIME_PYTHON,
+    RUNTIMES,
     SCHEMA_ID,
     ContextMenuContribution,
     Contributions,
@@ -40,7 +43,9 @@ from quill.core.quillins.model import (
 _ID_PATTERN = re.compile(r"^[a-z0-9]+([._-][a-z0-9]+)*$")
 _COMMAND_ID_PATTERN = re.compile(r"^ext\.[a-z0-9]+([._-][a-z0-9]+)*$")
 _VERSION_PATTERN = re.compile(r"^\d+\.\d+\.\d+$")
-_MAIN_PATTERN = re.compile(r"^[A-Za-z0-9_./-]+\.py$")
+_MAIN_PYTHON_PATTERN = re.compile(r"^[A-Za-z0-9_./-]+\.py$")
+_MAIN_JS_PATTERN = re.compile(r"^[A-Za-z0-9_./-]+\.js$")
+_MAIN_PATTERN = re.compile(r"^[A-Za-z0-9_./-]+\.(py|js)$")
 
 _TOP_LEVEL_KEYS = frozenset({
     "schema",
@@ -53,6 +58,7 @@ _TOP_LEVEL_KEYS = frozenset({
     "min_quill_version",
     "capabilities",
     "main",
+    "runtime",
     "contributes",
 })
 _CONTRIBUTES_KEYS = frozenset({"commands", "menus", "context_menu", "hotkeys"})
@@ -345,6 +351,14 @@ def validate_manifest(
         if candidate is not None and not _VERSION_PATTERN.match(candidate):
             errors.append("min_quill_version must be MAJOR.MINOR.PATCH")
 
+    runtime = RUNTIME_PYTHON
+    if "runtime" in raw:
+        runtime_raw = raw.get("runtime")
+        if not isinstance(runtime_raw, str) or runtime_raw not in RUNTIMES:
+            errors.append(f"runtime must be one of {sorted(RUNTIMES)} (got {runtime_raw!r})")
+        else:
+            runtime = runtime_raw
+
     capabilities: tuple[str, ...] = ()
     if "capabilities" in raw:
         capabilities = _validate_capabilities(raw.get("capabilities"), errors)
@@ -354,7 +368,11 @@ def validate_manifest(
         candidate = _require_str(raw.get("main"), "main", errors)
         if candidate is not None:
             if not _MAIN_PATTERN.match(candidate):
-                errors.append("main must be a relative '*.py' path")
+                errors.append("main must be a relative '*.py' or '*.js' path")
+            elif runtime == RUNTIME_NODE and not _MAIN_JS_PATTERN.match(candidate):
+                errors.append("node runtime requires main to be a '*.js' path")
+            elif runtime == RUNTIME_PYTHON and not _MAIN_PYTHON_PATTERN.match(candidate):
+                errors.append("python runtime requires main to be a '*.py' path")
             else:
                 main = candidate
 
@@ -367,8 +385,8 @@ def validate_manifest(
         )
         _validate_command_references(contributions, contributed_ids, builtin_command_ids, errors)
 
-    # docs/scripting.md §15 rule 6: a handler command requires both a Python
-    # entry module and the ui.command capability.
+    # docs/scripting.md §15 rule 6: a handler command requires an entry module
+    # (Python or Node) and the ui.command capability.
     if any_handler:
         if main is None:
             errors.append("a command using run.handler requires a top-level 'main' module")
@@ -397,6 +415,10 @@ def parse_manifest(
     capabilities = _validate_capabilities(raw.get("capabilities", []), [])
     main_value = raw.get("main")
     main = main_value if isinstance(main_value, str) else None
+    runtime_raw = raw.get("runtime", RUNTIME_PYTHON)
+    runtime = (
+        runtime_raw if isinstance(runtime_raw, str) and runtime_raw in RUNTIMES else RUNTIME_PYTHON
+    )
 
     return ExtensionManifest(
         id=str(raw["id"]),
@@ -408,5 +430,6 @@ def parse_manifest(
         min_quill_version=str(raw.get("min_quill_version", "")),
         capabilities=capabilities,
         main=main,
+        runtime=runtime,
         contributes=contributions,
     )

@@ -20,6 +20,12 @@ from dataclasses import dataclass, field
 SCHEMA_ID = "quill.extension/1"
 API_VERSION = 1
 
+# Supported handler runtimes. Python (default) runs the bundled host-worker;
+# Node spawns an external Node.js subprocess over the Quillin stdio protocol.
+RUNTIME_PYTHON = "python"
+RUNTIME_NODE = "node"
+RUNTIMES: frozenset[str] = frozenset({RUNTIME_PYTHON, RUNTIME_NODE})
+
 # Capability catalogue (docs/scripting.md §14.1). Default-deny: an extension may
 # only do what it declares, and ``fs.*``/``net`` additionally pass the per-action
 # consent gate at runtime. A pure snippet-only Quillin declares none of these.
@@ -198,13 +204,20 @@ class ExtensionManifest:
     min_quill_version: str = ""
     capabilities: tuple[str, ...] = ()
     main: str | None = None
+    runtime: str = RUNTIME_PYTHON
     contributes: Contributions = field(default_factory=Contributions)
 
     @property
     def is_layer_two(self) -> bool:
-        """True when the manifest ships a Python entry module (Layer 2)."""
+        """True when the manifest ships an entry module (Python or Node, Layer 2)."""
 
         return self.main is not None
+
+    @property
+    def is_node_runtime(self) -> bool:
+        """True when the manifest targets the Node.js runtime."""
+
+        return self.runtime == RUNTIME_NODE
 
     def has_capability(self, capability: str) -> bool:
         return capability in self.capabilities

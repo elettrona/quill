@@ -49,10 +49,15 @@
         ]
       }
     },
+    "runtime": {
+      "type": "string",
+      "description": "Runtime for handler commands. 'python' (default) uses QUILL's embedded Python worker; 'node' spawns a Node.js subprocess speaking the Quillin stdio protocol.",
+      "enum": ["python", "node"]
+    },
     "main": {
       "type": "string",
-      "description": "Relative path to the Python entry module (Layer 2). Omit for snippet-only (Layer 1) extensions.",
-      "pattern": "^[A-Za-z0-9_./-]+\\.py$"
+      "description": "Relative path to the entry module. Python runtime: '*.py'. Node runtime: '*.js'. Omit for snippet-only (Layer 1) extensions.",
+      "pattern": "^[A-Za-z0-9_./-]+\\.(py|js)$"
     },
     "contributes": {
       "type": "object",
@@ -152,7 +157,7 @@
   },
   "allOf": [
     {
-      "$comment": "A handler-based command requires a Python entry module.",
+      "$comment": "A handler-based command requires an entry module (Python or Node.js).",
       "if": {
         "properties": {
           "contributes": {
@@ -165,6 +170,19 @@
         }
       },
       "then": { "required": ["main"] }
+    },
+    {
+      "$comment": "Node runtime requires a JavaScript entry module; Python runtime (default) requires a Python module.",
+      "if": {
+        "properties": { "runtime": { "const": "node" } },
+        "required": ["runtime"]
+      },
+      "then": {
+        "properties": { "main": { "pattern": "^[A-Za-z0-9_./-]+\\.js$" } }
+      },
+      "else": {
+        "properties": { "main": { "pattern": "^[A-Za-z0-9_./-]+\\.py$" } }
+      }
     }
   ]
 }

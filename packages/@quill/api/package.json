@@ -1,0 +1,21 @@
+{
+  "name": "@quill/api",
+  "version": "1.0.0",
+  "description": "TypeScript type definitions and stdio runtime shim for QUILL Quillin extensions.",
+  "main": "runtime.js",
+  "types": "index.d.ts",
+  "license": "MIT",
+  "keywords": ["quill", "quillin", "extension", "accessibility"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/quillapp/quill"
+  },
+  "files": [
+    "index.d.ts",
+    "runtime.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=16"
+  }
+}

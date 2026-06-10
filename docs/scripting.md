@@ -35,6 +35,8 @@ wire/code identifiers; the experience speaks of **Quillins**.
 | Bundled Quillin: Line Tools (6 cursor-aware line operations) | `quill/quillins_bundled/line-tools/` | `tests/unit/core/test_quillins_bundled_line_tools.py` |
 | Bundled Quillin: Text Tools (HTML-to-Markdown + text transforms) | `quill/quillins_bundled/text-tools/` | `tests/unit/core/test_quillins_bundled_text_tools.py`, `test_quillins_bundled_text_tools_html.py` |
 | Extended host API (cursor offsets, status, choices, storage) | `quill/core/quillins/host.py`, `host_worker.py` | `tests/unit/core/test_quillins_host_extended.py` |
+| **Node.js runtime** — `"runtime": "node"` manifest field, node runner, `@quill/api` package (§9, issue #158) | `quill/plugins/node_quillin_runner.py`, `quill/core/quillins/model.py`, `quill/core/quillins/validation.py`, `packages/@quill/api/` | `tests/unit/core/test_quillins_node_runtime.py`, `tests/unit/plugins/test_node_quillin_runner.py` |
+| Bundled Quillin: Word Count (Node) — Layer 2 handler in JavaScript | `quill/quillins_bundled/word-count-node/` | `tests/unit/core/test_quillins_bundled_word_count_node.py`, `tests/unit/tools/test_quillin_lint_node.py` |
 
 A complete, loadable **bundled Quillin** ships in
 [`quill/quillins_bundled/markdown-helpers/`](../quill/quillins_bundled/markdown-helpers/):
@@ -121,8 +123,9 @@ decision below.
 - A live rich-text/RTF editing surface (a standing QUILL design exclusion).
 - Arbitrary native code plugins or replacing core UI widgets.
 - A general-purpose marketplace / auto-update of third-party extensions (later).
-- JavaScript as the *primary* extension language (see §3; a QuickJS **snippet
-  expression evaluator** is noted as optional future work only).
+- JavaScript as the *primary* extension language for deep host integration; Node.js
+  is supported as an alternative handler runtime (see §9), but the rich bidirectional
+  `QuillExtensionApi` (§5, §14.4) remains Python-only.
 
 ## 2. Language decision (resolved)
 
@@ -140,7 +143,7 @@ A comparison of the options considered (Python, embedded JavaScript via
 QuickJS/V8, Lua via `lupa`, WASM via Extism, declarative-only) is retained in
 Appendix A.
 
-## 3. Architecture: two layers
+## 3. Architecture: three layers
 
 ### Layer 1 — Declarative manifest (safe, covers the common ~70%)
 
@@ -157,7 +160,7 @@ except invoke commands QUILL already trusts and insert literal text. Most real
 "add a menu item / bind a key / add a right-click action" requests are satisfied
 here with effectively zero risk.
 
-### Layer 2 — Python extension API (real logic, isolated)
+### Layer 2 — Python extension API (real logic, isolated, bidirectional)
 
 For genuine custom logic, an extension ships a Python entry point that QUILL runs
 **out-of-process** (mirroring the existing OCR worker-process precedent in the
@@ -165,6 +168,31 @@ concurrency model) behind a **capability-gated RPC bridge**. The extension never
 imports `wx` and never touches the editor widget directly; it talks to a narrow,
 versioned API object and all UI effects are marshalled back onto the UI thread
 via `wx.CallAfter`.
+
+Set `"runtime": "python"` (the default when the field is absent) to use this path.
+
+### Layer 3 — Node.js extension runtime ("context in, actions out")
+
+For teams more comfortable with TypeScript/JavaScript, a Quillin may set
+`"runtime": "node"` in its manifest. The `main` field then names a `.js` file
+(compiled from TypeScript by the author). QUILL spawns `node <main.js>` via the
+existing `external_engine.py` allowlist and consent gate, sending one JSONL
+request and receiving one JSONL response:
+
+```text
+  QUILL → Node:  {"method": "handlerName", "params": {"capabilities": [...], "context": {...}}}
+  Node → QUILL:  {"result": null, "actions": [{"type": "announce", "args": ["Done"]}]}
+```
+
+The context is pre-populated with editor state (selection, text, cursor offset).
+The handler queues *actions* — `replace_selection`, `insert_text`, `announce`,
+`set_status`, `open_buffer` — that QUILL dispatches after the process exits. This
+"context in, actions out" model is simpler than the Python bidirectional protocol;
+it works well for stateless text-processing handlers. Interactive handlers that
+need mid-execution prompts or round-trips should use the Python runtime.
+
+The `@quill/api` npm package (`packages/@quill/api/`) provides TypeScript types
+and a `runtime.js` shim that implements the stdio protocol for extension authors.
 
 ```text
 +------------------+        capability-gated RPC         +-----------------------+
@@ -287,13 +315,82 @@ Design rules:
 - The optional QuickJS snippet evaluator (Appendix B) would be the *only* item
   that adds a native dependency, which is why it is deferred and optional.
 
-## 9. Optional future: JavaScript snippet evaluator (QuickJS)
+## 9. Node.js runtime support (shipped, issue #158)
 
-Strictly optional, post-foundation, for literal `.js`-snippet parity:
-embed **QuickJS** (tiny, no ambient I/O by default) as an **expression/snippet
-evaluator** only — e.g. a "Evaluate Expression" command and `.js` snippet tokens.
-It would **not** be the extension
-API. Capabilities would be granted explicitly, identical to the Python layer.
+**Status: implemented and tested.** The `"runtime": "node"` field is in the
+manifest schema, the validator, and the loader. `quill/plugins/node_quillin_runner.py`
+drives node handlers through `external_engine.run_request`.
+
+### 9.1 How Node.js Quillins work
+
+Set `"runtime": "node"` and point `"main"` at a `.js` file. QUILL sends a single
+JSONL request with the method (handler function name), the declared capabilities
+list, and a context dict. The Node process must write exactly one JSONL response:
+
+```json
+{"result": null, "actions": [
+  {"type": "announce",          "args": ["5 words"]},
+  {"type": "replace_selection", "args": ["new text"]},
+  {"type": "insert_text",       "args": ["inserted"]},
+  {"type": "set_text",          "args": ["full replacement"]},
+  {"type": "open_buffer",       "args": ["content", "Title"]},
+  {"type": "set_status",        "args": ["status message"]}
+]}
+```
+
+Or on error:
+
+```json
+{"error": "Something went wrong"}
+```
+
+### 9.2 The `@quill/api` package
+
+Published Quillins use the `@quill/api` npm package (`packages/@quill/api/`):
+
+```typescript
+import { runHandler, QuillinContext } from '@quill/api/runtime';
+
+runHandler({
+  wordCount(ctx: QuillinContext): void {
+    const words = (ctx.getText() || ctx.getSelection()).trim().split(/\s+/).length;
+    ctx.announce(`${words} words`);
+  },
+});
+```
+
+The package ships `index.d.ts` for full TypeScript typing and `runtime.js` for
+the stdio event loop. Bundled Quillins may inline the shim for zero npm dependency
+(see `quill/quillins_bundled/word-count-node/extension.js`).
+
+### 9.3 Consent and security
+
+Node Quillins go through the same `external_engine.py` consent gate as AI
+engines: the master external-engines switch must be on, and `node` must be on
+PATH (or a full path supplied). The executable allowlist is enforced in both
+`configure_engine` and `probe_engine` — a tampered config cannot launch arbitrary
+programs.
+
+If the user does not have Node.js installed, `run_node_command` returns an
+`EngineResult` with `unavailable=True` and a plain-language error; QUILL announces
+it rather than crashing.
+
+### 9.4 Limitations vs. Python Layer 2
+
+- No mid-execution API calls. The handler cannot call `get_text()` during
+  execution; all read state is passed in the context at invocation time.
+- No interactive prompts. `ui.prompt`, `ui.choices` are Python-only in v1.
+- No storage API. The `storage` capability is Python-only in v1.
+- No async-safe cancellation. Long Node handlers block until process exit or
+  the `external_engine` timeout fires.
+
+For anything interactive or that needs mid-execution reads, use `"runtime": "python"`.
+
+### 9.5 QuickJS (not shipped, deferred)
+
+The earlier plan to embed QuickJS as a `.js` snippet evaluator was superseded by
+the Node subprocess model, which covers the TypeScript developer audience more
+directly without adding a native binary dependency.
 
 ## 10. Phasing / milestones
 
@@ -309,7 +406,12 @@ future work. Third-party execution stays gated off for 1.0 (SEC-8).
 3. **M3 — Capabilities + consent: _Done._** `fs.read`/`fs.write`/`net`,
    install-time disclosure, per-action consent gate. (A per-extension audit log
    remains a future enhancement.)
-4. **M4 (optional) — QuickJS snippet evaluator** for `.js` snippet parity.
+4. **M4 — Node.js runtime (Layer 3): _Done_ (issue #158).** `"runtime": "node"` manifest field,
+   `node_quillin_runner.py`, `@quill/api` npm package, bundled `word-count-node` proof Quillin.
+   75 tests. Node is optional and consent-gated; Python remains the default runtime.
+5. **M5 (optional / 1.1+) — QUILL Developer Console (QDC).** Embedded Python REPL plus
+   TypeScript bridge for live introspection and automation. Not yet implemented; see
+   `docs/QUILL Developer Console and Automation.md` for the PRD.
 
 ## 11. Testing strategy
 
@@ -331,6 +433,14 @@ Status note: **this strategy is implemented** — the test files are listed in t
 - Security: explicit tests that an undeclared capability is rejected (in-worker
   and at the dispatcher), that consent defaults to deny, and that diagnostic
   `log` output never reaches user announcements.
+- **Node runtime (issue #158):** 75 new tests across four files:
+  `test_quillins_node_runtime.py` (26 tests — manifest model and schema round-trip),
+  `test_node_quillin_runner.py` (31 tests — dispatch, protocol content, failure modes),
+  `test_quillin_lint_node.py` (11 tests — linter accepts node manifests, rejects
+  mismatched extensions), `test_quillins_bundled_word_count_node.py` (15 tests —
+  manifest correctness + protocol simulation + optional real-Node integration).
+  Two real-node integration tests are `skipif(shutil.which("node") is None)` so
+  they run in environments with Node but never block CI that doesn't have it.
 
 ## 12. Open questions for review
 
@@ -404,10 +514,15 @@ against this before submission.
         ]
       }
     },
+    "runtime": {
+      "type": "string",
+      "enum": ["python", "node"],
+      "description": "Extension runtime. Defaults to 'python'. Use 'node' for Node.js handlers; main must then be a .js file."
+    },
     "main": {
       "type": "string",
-      "description": "Relative path to the Python entry module (Layer 2). Omit for snippet-only (Layer 1) extensions.",
-      "pattern": "^[A-Za-z0-9_./-]+\\.py$"
+      "description": "Relative path to the entry module. .py for python runtime (default); .js for node runtime.",
+      "pattern": "^[A-Za-z0-9_./-]+\\.(py|js)$"
     },
     "contributes": {
       "type": "object",
@@ -446,7 +561,7 @@ against this before submission.
                     "properties": {
                       "handler": {
                         "type": "string",
-                        "description": "Name of a function registered by the Python entry module via api.register_command. Requires main + ui.command capability."
+                        "description": "Name of the handler function. For python runtime: registered via api.register_command. For node runtime: exported function in the runHandler map. Requires main + ui.command capability."
                       }
                     }
                   }
@@ -507,7 +622,7 @@ against this before submission.
   },
   "allOf": [
     {
-      "$comment": "A handler-based command requires a Python entry module.",
+      "$comment": "A handler-based command requires an entry module (main).",
       "if": {
         "properties": {
           "contributes": {
@@ -520,6 +635,15 @@ against this before submission.
         }
       },
       "then": { "required": ["main"] }
+    },
+    {
+      "$comment": "Node runtime requires a .js main; python runtime (default) requires a .py main.",
+      "if": { "properties": { "runtime": { "const": "node" } }, "required": ["runtime"] },
+      "then": { "properties": { "main": { "pattern": "^[A-Za-z0-9_./-]+\\.js$" } } },
+      "else": {
+        "if": { "required": ["main"] },
+        "then": { "properties": { "main": { "pattern": "^[A-Za-z0-9_./-]+\\.py$" } } }
+      }
     }
   ]
 }
@@ -720,6 +844,96 @@ def register(api):
     api.register_command("title_case", title_case)
 ```
 
+### 14.7 Worked example C — Node.js handler (Layer 3)
+
+A Node.js Quillin sets `"runtime": "node"` and `"main"` to a `.js` file.
+QUILL sends a single JSONL request; the process writes one JSONL response with
+a list of actions and exits.
+
+`manifest.json`:
+
+```json
+{
+  "schema": "quill.extension/1",
+  "id": "com.example.shout",
+  "name": "Shout",
+  "version": "1.0.0",
+  "runtime": "node",
+  "capabilities": ["editor.read", "editor.write", "ui.announce", "ui.command"],
+  "main": "extension.js",
+  "contributes": {
+    "commands": [
+      { "id": "ext.shout.run", "title": "Shout Selection",
+        "run": { "handler": "shout" } }
+    ],
+    "menus": [ { "parent": "Format", "command": "ext.shout.run" } ]
+  }
+}
+```
+
+`extension.js` (inline runtime shim, no npm required):
+
+```javascript
+process.stdin.resume();
+process.stdin.setEncoding('utf8');
+let raw = '';
+process.stdin.on('data', chunk => { raw += chunk; });
+process.stdin.on('end', () => {
+  const req = JSON.parse(raw.trim());
+  const method = req.method;
+  const ctx = req.params.context;
+
+  const handlers = {
+    shout(context) {
+      const text = context.selection || context.text || '';
+      if (!text.trim()) {
+        return [{ type: 'announce', args: ['Shout: no text'] }];
+      }
+      return [
+        { type: 'replace_selection', args: [text.toUpperCase()] },
+        { type: 'announce', args: ['Selection converted to upper case'] }
+      ];
+    }
+  };
+
+  if (!handlers[method]) {
+    process.stdout.write(JSON.stringify({ error: `unknown handler: ${method}` }) + '\n');
+    process.exit(1);
+  }
+  const actions = handlers[method](ctx);
+  process.stdout.write(JSON.stringify({ result: null, actions }) + '\n');
+});
+```
+
+Or using the `@quill/api` npm package (for authors who use npm):
+
+```javascript
+const { runHandler } = require('@quill/api/runtime');
+
+runHandler({
+  shout(ctx) {
+    const text = ctx.getSelection() || ctx.getText();
+    if (!text.trim()) {
+      ctx.announce('Shout: no text');
+      return;
+    }
+    ctx.replaceSelection(text.toUpperCase());
+    ctx.announce('Selection converted to upper case');
+  },
+});
+```
+
+**Node.js vs. Python runtime — when to use each:**
+
+| Need | Use |
+| --- | --- |
+| Simple text transform | Either |
+| npm ecosystem (markdown parsers, etc.) | Node |
+| Mid-execution prompts (`show_choices`) | Python |
+| Storage between invocations | Python |
+| TypeScript types and IDE support | Node + `@quill/api` |
+| Existing Python library | Python |
+
 ## 15. AI authoring guide — deterministic generation contract
 
 This section gives an AI agent an unambiguous procedure to generate a valid
@@ -740,10 +954,17 @@ module that loads under §14.4.
    or placeholder in the extension requires it (see §14.1, §14.3, §14.4).
 8. Hotkey `binding` uses the QUILL grammar; prefer the QUILL Key prefix
    (`Ctrl+Shift+Grave, <letter>`) to avoid clashing with built-ins.
-9. The Python entry module defines exactly one top-level `register(api)` and
-   registers every `handler` name referenced by the manifest.
-10. No `wx` import, no direct filesystem/network/subprocess/clipboard access
-    except through the granted `api` methods.
+9. **Python runtime (default):** The entry module defines exactly one top-level
+   `register(api)` and registers every `handler` name referenced by the manifest.
+   No `wx` import; all host access through the granted `api` methods.
+10. **Node.js runtime** (`"runtime": "node"`): `main` must be a `.js` file. The
+    script reads one JSONL line from stdin and writes one JSONL line to stdout,
+    then exits. The response must be `{"result": null, "actions": [...]}` or
+    `{"error": "..."}`. Handler names in `runHandler({...})` must match the
+    `run.handler` values in the manifest.
+11. No direct filesystem/network/subprocess/clipboard access except through the
+    granted API surface (Python: `api` methods; Node: actions only — no fs/net in
+    Node handlers in v1).
 
 **Minimal-capability decision table:**
 
@@ -765,6 +986,7 @@ module that loads under §14.4.
 **Machine-readable contract summary (for prompt embedding):**
 
 ```text
+--- PYTHON RUNTIME (default) ---
 ENTRYPOINT: register(api) -> None              # exactly one, top-level
 HANDLER:    handler(ctx) -> None               # ctx mirrors api read/write/announce
 WRITES:     undoable, via core commands only
@@ -773,6 +995,16 @@ DENY:       no capability => no fs/net/subprocess/clipboard
 NAMESPACE:  command ids must start with "ext."
 CONFLICTS:  hotkey/menu conflicts are rejected + announced, never overridden
 VERSION:    target QuillExtensionApi v1
+
+--- NODE.JS RUNTIME ("runtime": "node") ---
+MANIFEST:   "runtime": "node",  "main": "<file>.js"
+PROTOCOL:   stdin  -> one JSONL line: {"method":"<handler>","params":{"capabilities":[...],"context":{...}}}
+            stdout <- one JSONL line: {"result":null,"actions":[...]} | {"error":"<msg>"}
+ACTIONS:    replace_selection(text), insert_text(text), set_text(text),
+            open_buffer(content, title), announce(message), set_status(message)
+RUNTIME:    process reads stdin, dispatches handler, writes stdout, exits 0
+DENY:       no mid-execution API calls; no fs/net in v1 Node handlers
+NAMESPACE:  same ext.* command id rules apply
 ```
 
 ---

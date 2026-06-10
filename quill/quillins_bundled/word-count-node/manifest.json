@@ -1,0 +1,25 @@
+{
+  "schema": "quill.extension/1",
+  "id": "com.quill.bundled.word-count-node",
+  "name": "Word Count (Node)",
+  "version": "1.0.0",
+  "author": "QUILL Project",
+  "description": "Bundled example of a Node.js Quillin. Counts words in the current selection (or the full document when nothing is selected) and announces the result.",
+  "license": "MIT",
+  "min_quill_version": "1.1.0",
+  "runtime": "node",
+  "capabilities": ["editor.read", "ui.announce", "ui.command"],
+  "main": "extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "id": "ext.wcn.count",
+        "title": "Word Count (Node)",
+        "run": { "handler": "wordCount" }
+      }
+    ],
+    "menus": [
+      { "parent": "Tools", "command": "ext.wcn.count" }
+    ]
+  }
+}

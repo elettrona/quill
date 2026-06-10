@@ -68,9 +68,10 @@ Name: "speechpiper"; Description: "Install bundled Piper voices/models"; Types: 
 Name: "speechmelotts"; Description: "Install bundled MeloTTS voices/models"; Types: full custom; Flags: checkablealone
 Name: "speechchatterbox"; Description: "Install bundled Chatterbox voices/models"; Types: full custom; Flags: checkablealone
 Name: "speechopenvoice"; Description: "Install bundled OpenVoice voices/models"; Types: full custom; Flags: checkablealone
+Name: "nodejs"; Description: "Install portable Node.js runtime for Node Quillins and the Developer Console TypeScript interface (~30 MB); not required for Python Quillins"; Types: custom; Flags: checkablealone
 
 [Files]
-Source: "..\portable\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "docs\announcement-beta.md,docs\QUILL-PRD.md,tools\pandoc\*,tools\speech\dectalk\*,tools\speech\espeak-ng\*,tools\speech\kokoro\*,tools\speech\piper\*,tools\speech\melotts\*,tools\speech\chatterbox\*,tools\speech\openvoice\*"
+Source: "..\portable\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "docs\announcement-beta.md,docs\QUILL-PRD.md,tools\pandoc\*,tools\speech\dectalk\*,tools\speech\espeak-ng\*,tools\speech\kokoro\*,tools\speech\piper\*,tools\speech\melotts\*,tools\speech\chatterbox\*,tools\speech\openvoice\*,tools\nodejs\*"
 Source: "..\portable\tools\pandoc\*"; DestDir: "{app}\tools\pandoc"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: pandoc
 Source: "..\portable\tools\speech\dectalk\*"; DestDir: "{app}\tools\speech\dectalk"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Excludes: "voices\*"; Components: speechdectalk
 Source: "..\portable\tools\speech\dectalk\voices\*"; DestDir: "{app}\tools\speech\dectalk\voices"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\voices\all_voices
@@ -89,6 +90,11 @@ Source: "..\portable\tools\speech\piper\*"; DestDir: "{app}\tools\speech\piper";
 Source: "..\portable\tools\speech\melotts\*"; DestDir: "{app}\tools\speech\melotts"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechmelotts
 Source: "..\portable\tools\speech\chatterbox\*"; DestDir: "{app}\tools\speech\chatterbox"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechchatterbox
 Source: "..\portable\tools\speech\openvoice\*"; DestDir: "{app}\tools\speech\openvoice"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechopenvoice
+; Node.js portable runtime (optional). The build script copies a portable
+; node.exe distribution into portable\tools\nodejs when building with
+; --bundle-nodejs. skipifsourcedoesntexist means a build without bundled
+; Node still works; users are offered WinGet installation in [Code] below.
+Source: "..\portable\tools\nodejs\*"; DestDir: "{app}\tools\nodejs"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: nodejs
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: "-m quill"; WorkingDir: "{app}"; Check: FileExists(ExpandConstant('{app}\python\pythonw.exe'))
@@ -253,6 +259,48 @@ Type: filesandordirs; Name: "{app}\__pycache__"
 Type: filesandordirs; Name: "{app}\python\__pycache__"
 
 [Code]
+// After install: if the nodejs component was selected but the portable
+// node.exe bundle was not included in this build (skipifsourcedoesntexist),
+// offer to install Node.js LTS via Windows Package Manager (winget).
+// winget is built into Windows 11 and available on Windows 10 21H2+.
+// MsgBox and Exec are screen-reader accessible native dialogs.
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  NodePath: String;
+  WingetResult: Integer;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    if WizardIsComponentSelected('nodejs') then
+    begin
+      NodePath := ExpandConstant('{app}\tools\nodejs\node.exe');
+      if not FileExists(NodePath) then
+      begin
+        if MsgBox(
+          'Node.js was not found in the bundled tools.' + #13#10 + #13#10 +
+          'Node.js is needed for Node Quillins and the Developer Console ' +
+          'TypeScript interface. Would you like Quill to install Node.js ' +
+          'LTS via Windows Package Manager (winget)?' + #13#10 + #13#10 +
+          'This requires an internet connection. Choose No to install Node.js ' +
+          'manually later from nodejs.org.',
+          mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+        begin
+          Exec(
+            ExpandConstant('{cmd}'),
+            '/C winget install --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements --silent',
+            '', SW_SHOW, ewWaitUntilTerminated, WingetResult);
+          if WingetResult <> 0 then
+            MsgBox(
+              'Node.js installation did not complete.' + #13#10 +
+              'You can install it manually from https://nodejs.org/ and Quill' +
+              ' will find it automatically.',
+              mbInformation, MB_OK);
+        end;
+      end;
+    end;
+  end;
+end;
+
 // Ask, on uninstall, whether to also remove personal data instead of
 // assuming. 'Yes' wipes %APPDATA%\Quill (settings, dictionaries,
 // autosaves, backups, onboarding/first-run flags, and the IPC lock) so a

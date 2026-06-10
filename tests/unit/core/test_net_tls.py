@@ -41,9 +41,16 @@ def test_no_unverified_ssl_context_in_package() -> None:
 def test_no_check_hostname_or_verify_mode_disabled() -> None:
     # Catch `ctx.check_hostname = False` and `ctx.verify_mode = ssl.CERT_NONE`
     # style assignments via AST so formatting variations cannot hide them.
+    # Prefilter by text before AST parsing to avoid walking every file in the
+    # package; files that don't mention the attribute names can't contain the
+    # violation.
+    _AST_PREFILTER = ("check_hostname", "verify_mode")
     offenders: list[str] = []
     for path in _python_sources():
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        text = path.read_text(encoding="utf-8")
+        if not any(needle in text for needle in _AST_PREFILTER):
+            continue
+        tree = ast.parse(text, filename=str(path))
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign):
                 for target in node.targets:

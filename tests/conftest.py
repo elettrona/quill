@@ -9,6 +9,8 @@ to write to the real ``%APPDATA%\\Quill`` path and fail with stale state.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 
@@ -18,3 +20,17 @@ def _enable_dev_build_for_tests() -> None:
     import quill.core.paths as paths_mod
 
     paths_mod._DEV_BUILD = True
+
+
+@pytest.fixture()
+def quill_data_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Isolated QUILL_DATA_DIR guaranteed to be accepted by paths.app_data_dir().
+
+    With _DEV_BUILD=True (set by the session fixture above), any resolvable
+    path is accepted.  Use this fixture instead of a bare
+    ``monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))`` when the test
+    needs a clean data directory — it wires up the env var and returns the
+    path so test code can inspect written files.
+    """
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    return tmp_path
