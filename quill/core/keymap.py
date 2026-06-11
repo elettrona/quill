@@ -72,7 +72,8 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "edit.replace_all": "Ctrl+Shift+H",
     "edit.insert_link": "Ctrl+K",
     "edit.follow_link": "Ctrl+Enter",
-    "edit.word_prediction": "Ctrl+Space",
+    "edit.word_prediction": "Ctrl+.",  # freed Ctrl+Space for select_chunk (§4.22)
+    "edit.select_chunk": "Ctrl+Space",  # §4.22 EdSharp parity
     "view.preview": "Ctrl+Shift+V",
     "view.browser_preview": "Ctrl+Shift+Grave, V",  # §10.8.2: QUILL-key chord
     "view.split_preview": "Ctrl+Shift+Backslash",
@@ -93,6 +94,10 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "edit.select_to_end_of_line": "Shift+End",
     "edit.select_to_start_of_document": "Ctrl+Shift+Home",
     "edit.select_to_end_of_document": "Ctrl+Shift+End",
+    "edit.quote_lines": "Ctrl+Q",  # §4.22 EdSharp parity
+    "edit.unquote_lines": "Ctrl+Shift+Q",  # §4.22 EdSharp parity
+    "edit.duplicate_selection": "",  # §4.17; no default key to avoid Ctrl+D clash
+    "edit.reverse_lines": "Alt+Shift+Z",  # §4.22 EdSharp parity
     "format.toggle_line_comment": "Ctrl+/",
     "format.toggle_block_comment": "Shift+Alt+A",
     "format.indent": "Ctrl+]",
@@ -112,6 +117,10 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "format.insert_markdown_tag": "Ctrl+Shift+Grave, M",
     "format.insert_snippet": "Ctrl+Shift+Grave, S",
     "format.manage_snippets": "Ctrl+Shift+Grave, Shift+S",
+    "power.insert_special_character": "F2",  # §4.22 EdSharp parity
+    "power.number_lines": "Alt+Shift+N",  # §4.22 Number Items parity
+    "power.trim_blank_lines": "Ctrl+Shift+Enter",  # §4.22 Trim Blanks parity
+    "power.keep_unique_lines": "Alt+Shift+K",  # §4.22 Keep Unique parity
     "quill.quick_nav.heading": "H",
     "quill.quick_nav.link": "A",
     "quill.quick_nav.list": "L",

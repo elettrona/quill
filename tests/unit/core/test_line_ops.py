@@ -1,4 +1,5 @@
 from quill.core.line_ops import (
+    chunk_span,
     delete_line,
     delete_paragraph,
     delete_to_document_end,
@@ -176,3 +177,51 @@ def test_first_non_blank_position() -> None:
 def test_last_non_blank_position() -> None:
     text = "trailing   "
     assert last_non_blank_position(text, 0) == len("trailing")
+
+
+# chunk_span tests (§4.22 EdSharp parity)
+
+
+def test_chunk_span_selects_word() -> None:
+    text = "hello world"
+    start, end = chunk_span(text, 2)
+    assert (start, end) == (0, 5)
+    assert text[start:end] == "hello"
+
+
+def test_chunk_span_selects_word_at_end_boundary() -> None:
+    text = "hello world"
+    start, end = chunk_span(text, 9)
+    assert (start, end) == (6, 11)
+    assert text[start:end] == "world"
+
+
+def test_chunk_span_selects_whitespace_run() -> None:
+    text = "foo   bar"
+    start, end = chunk_span(text, 4)
+    assert (start, end) == (3, 6)
+    assert text[start:end] == "   "
+
+
+def test_chunk_span_selects_punctuation_run() -> None:
+    text = "hello...world"
+    start, end = chunk_span(text, 7)
+    assert (start, end) == (5, 8)
+    assert text[start:end] == "..."
+
+
+def test_chunk_span_empty_text_returns_cursor() -> None:
+    assert chunk_span("", 0) == (0, 0)
+
+
+def test_chunk_span_cursor_past_end_clamps() -> None:
+    text = "abc"
+    start, end = chunk_span(text, 99)
+    assert start == 0
+    assert end == 3
+
+
+def test_chunk_span_underscore_is_word_char() -> None:
+    text = "my_var = 1"
+    start, end = chunk_span(text, 3)
+    assert text[start:end] == "my_var"

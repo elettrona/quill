@@ -17,7 +17,14 @@ from quill.core.format_ops import (
     sort_lines,
     trim_trailing_whitespace,
 )
+from quill.core.format_ops import (
+    quote_lines as _quote_lines,
+)
+from quill.core.format_ops import (
+    unquote_lines as _unquote_lines,
+)
 from quill.core.line_ops import (
+    chunk_span,
     delete_line,
     duplicate_line,
     join_selected_lines,
@@ -131,3 +138,37 @@ class LineCommandsMixin:
             lambda text: convert_indentation_to_tabs(text, self._indent_width()),
             "Converted indentation to tabs",
         )
+
+    def quote_lines(self) -> None:
+        self._apply_text_block_operation(_quote_lines, "Quoted lines")
+
+    def unquote_lines(self) -> None:
+        self._apply_text_block_operation(_unquote_lines, "Unquoted lines")
+
+    def duplicate_selection(self) -> None:
+        start, end = self.editor.GetSelection()
+        if start == end:
+            self._apply_line_operation(duplicate_line, "Duplicated line")
+            return
+        text = self.editor.GetValue()
+        selected = text[start:end]
+        updated = text[:end] + selected + text[end:]
+        self._replace_document_text(updated)
+        self.document.set_text(updated)
+        new_end = end + len(selected)
+        self.editor.SetSelection(end, new_end)
+        self._set_status(f"Duplicated {len(selected)} chars")
+
+    def select_chunk(self) -> None:
+        text = self.editor.GetValue()
+        cursor = self.editor.GetInsertionPoint()
+        chunk_start, chunk_end = chunk_span(text, cursor)
+        self.editor.SetSelection(chunk_start, chunk_end)
+        selected = text[chunk_start:chunk_end]
+        if not selected:
+            self._set_status("Nothing to select at cursor")
+            return
+        if len(selected) <= 40:
+            self._announce(f"Selected {selected}")
+        else:
+            self._announce(f"Selected {len(selected)} characters")

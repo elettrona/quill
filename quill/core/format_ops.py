@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import html
+import random
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -186,6 +188,110 @@ def toggle_line_comment(
 
     merged = text[:line_start] + updated + text[line_end:]
     return merged, line_start, line_start + len(updated)
+
+
+def strip_html_tags(text: str) -> str:
+    """Remove all HTML tags from text, leaving only the inner content."""
+    return re.sub(r"<[^>]+>", "", text)
+
+
+def decode_html_entities(text: str) -> str:
+    """Decode HTML entities such as &amp; and &#034; to their Unicode equivalents."""
+    return html.unescape(text)
+
+
+def encode_html_entities(text: str) -> str:
+    """Encode <, >, &, " and ' as HTML entities."""
+    return html.escape(text)
+
+
+def shuffle_lines(text: str) -> str:
+    """Randomly reorder the lines of text."""
+    lines, terminal_newline = _split_body_lines(text)
+    random.shuffle(lines)
+    return _join_body_lines(lines, terminal_newline)
+
+
+def trim_blank_lines(text: str) -> str:
+    """Remove leading and trailing blank lines."""
+    parts = text.split("\n")
+    while parts and not parts[0].strip():
+        parts.pop(0)
+    while parts and not parts[-1].strip():
+        parts.pop()
+    return "\n".join(parts)
+
+
+def quote_lines(text: str, prefix: str = "> ") -> str:
+    """Prefix every non-empty line with prefix (default: email block-quote style)."""
+    lines, terminal_newline = _split_body_lines(text)
+    updated = [f"{prefix}{line}" if line.strip() else line for line in lines]
+    return _join_body_lines(updated, terminal_newline)
+
+
+def unquote_lines(text: str) -> str:
+    """Remove a leading block-quote prefix ("> " or ">") from each line."""
+    lines, terminal_newline = _split_body_lines(text)
+    updated: list[str] = []
+    for line in lines:
+        if line.startswith("> "):
+            updated.append(line[2:])
+        elif line.startswith(">"):
+            updated.append(line[1:])
+        else:
+            updated.append(line)
+    return _join_body_lines(updated, terminal_newline)
+
+
+_NUMBER_RE = re.compile(r"-?\d+(?:\.\d+)?")
+
+
+def delete_lines_containing(text: str, pattern: str, *, case_sensitive: bool = True) -> str:
+    """Remove every line that contains a match for pattern."""
+    flags = 0 if case_sensitive else re.IGNORECASE
+    compiled = re.compile(pattern, flags)
+    lines, terminal_newline = _split_body_lines(text)
+    updated = [line for line in lines if not compiled.search(line)]
+    return _join_body_lines(updated, terminal_newline)
+
+
+def delete_lines_not_containing(text: str, pattern: str, *, case_sensitive: bool = True) -> str:
+    """Keep only lines that contain a match for pattern (delete the rest)."""
+    flags = 0 if case_sensitive else re.IGNORECASE
+    compiled = re.compile(pattern, flags)
+    lines, terminal_newline = _split_body_lines(text)
+    updated = [line for line in lines if compiled.search(line)]
+    return _join_body_lines(updated, terminal_newline)
+
+
+def sort_lines_numeric(text: str, descending: bool = False) -> str:
+    """Sort lines by the first number found in each line.
+
+    Lines containing no number sort after all numeric lines.
+    """
+    lines, terminal_newline = _split_body_lines(text)
+    numeric: list[tuple[float, str]] = []
+    non_numeric: list[str] = []
+    for line in lines:
+        body, _ = _split_line_ending(line)
+        m = _NUMBER_RE.search(body)
+        if m:
+            try:
+                numeric.append((float(m.group()), line))
+                continue
+            except ValueError:
+                pass
+        non_numeric.append(line)
+    numeric.sort(key=lambda pair: pair[0], reverse=descending)
+    sorted_lines = [line for _, line in numeric] + non_numeric
+    return _join_body_lines(sorted_lines, terminal_newline)
+
+
+def sort_lines_by_length(text: str, descending: bool = False) -> str:
+    """Sort lines by their length, excluding line-ending characters."""
+    lines, terminal_newline = _split_body_lines(text)
+    lines.sort(key=lambda line: len(_split_line_ending(line)[0]), reverse=descending)
+    return _join_body_lines(lines, terminal_newline)
 
 
 def toggle_block_comment(

@@ -2735,13 +2735,37 @@ class MainFrame(
             "edit.reverse_lines",
             "Reverse Lines",
             self.reverse_lines,
-            None,
+            self._binding_for("edit.reverse_lines"),
         )
         self.commands.register(
             "edit.remove_duplicate_lines",
             "Remove Duplicate Lines",
             self.remove_duplicate_lines,
             None,
+        )
+        self.commands.register(
+            "edit.quote_lines",
+            "Quote Lines",
+            self.quote_lines,
+            self._binding_for("edit.quote_lines"),
+        )
+        self.commands.register(
+            "edit.unquote_lines",
+            "Unquote Lines",
+            self.unquote_lines,
+            self._binding_for("edit.unquote_lines"),
+        )
+        self.commands.register(
+            "edit.duplicate_selection",
+            "Duplicate Selection",
+            self.duplicate_selection,
+            None,
+        )
+        self.commands.register(
+            "edit.select_chunk",
+            "Select Chunk",
+            self.select_chunk,
+            self._binding_for("edit.select_chunk"),
         )
         self.commands.register(
             "edit.trim_trailing_whitespace",
@@ -4174,8 +4198,13 @@ class MainFrame(
         )
         menu.Append(paste_id, "Paste")
         menu.AppendSeparator()
+        select_chunk_id = wx.NewIdRef()
         menu.Append(select_all_id, "Select All")
         menu.Append(select_line_id, "Select Line")
+        menu.Append(
+            select_chunk_id,
+            self._menu_label("Select Chunk", "edit.select_chunk"),
+        )
 
         # Disable selection-only actions when there is no selection.
         if not has_selection:
@@ -4199,8 +4228,18 @@ class MainFrame(
         transform_menu.Append(sentence_id, "Sentence case")
         transform_menu.Append(toggle_case_id, "Toggle Case")
         transform_menu.AppendSeparator()
+        quote_id = wx.NewIdRef()
+        unquote_id = wx.NewIdRef()
+        dup_sel_id = wx.NewIdRef()
         transform_menu.Append(sort_asc_id, "Sort Lines Ascending")
         transform_menu.Append(sort_desc_id, "Sort Lines Descending")
+        transform_menu.AppendSeparator()
+        transform_menu.Append(quote_id, self._menu_label("Quote Lines", "edit.quote_lines"))
+        transform_menu.Append(unquote_id, self._menu_label("Unquote Lines", "edit.unquote_lines"))
+        transform_menu.AppendSeparator()
+        transform_menu.Append(
+            dup_sel_id, self._menu_label("Duplicate Selection", "edit.duplicate_selection")
+        )
         transform_menu.Bind(wx.EVT_MENU, lambda _e: self.format_upper_case(), id=upper_id)
         transform_menu.Bind(wx.EVT_MENU, lambda _e: self.format_lower_case(), id=lower_id)
         transform_menu.Bind(wx.EVT_MENU, lambda _e: self.format_title_case(), id=title_id)
@@ -4208,6 +4247,9 @@ class MainFrame(
         transform_menu.Bind(wx.EVT_MENU, lambda _e: self.format_toggle_case(), id=toggle_case_id)
         transform_menu.Bind(wx.EVT_MENU, lambda _e: self.sort_lines_ascending(), id=sort_asc_id)
         transform_menu.Bind(wx.EVT_MENU, lambda _e: self.sort_lines_descending(), id=sort_desc_id)
+        transform_menu.Bind(wx.EVT_MENU, lambda _e: self.quote_lines(), id=quote_id)
+        transform_menu.Bind(wx.EVT_MENU, lambda _e: self.unquote_lines(), id=unquote_id)
+        transform_menu.Bind(wx.EVT_MENU, lambda _e: self.duplicate_selection(), id=dup_sel_id)
         menu.AppendSubMenu(transform_menu, "Transform")
 
         # --- Line submenu. ---
@@ -4348,6 +4390,7 @@ class MainFrame(
             id=select_all_id,
         )
         menu.Bind(wx.EVT_MENU, lambda _e: self.select_line(), id=select_line_id)
+        menu.Bind(wx.EVT_MENU, lambda _e: self.select_chunk(), id=select_chunk_id)
         menu.Bind(wx.EVT_MENU, lambda _e: self.open_spell_check_dialog(), id=spell_id)
         menu.Bind(wx.EVT_MENU, lambda _e: self.next_misspelling(), id=next_spell_id)
         menu.Bind(wx.EVT_MENU, lambda _e: self.go_to_line(), id=go_line_id)

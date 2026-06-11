@@ -300,3 +300,42 @@ def _selected_line_bounds(text: str, start: int, end: int) -> tuple[int, int]:
     last_pos = end - 1 if end > start else end
     last = _line_index(text, max(start, last_pos))
     return first, last
+
+
+def chunk_span(text: str, cursor: int) -> tuple[int, int]:
+    """Return the (start, end) character span of the word-chunk at cursor.
+
+    A chunk is a maximal run of one character class:
+    - word characters (alphanumeric + underscore)
+    - whitespace characters
+    - everything else (punctuation / symbols)
+
+    When the cursor is at the end of the text the last character's chunk is
+    returned. Returns (cursor, cursor) for empty text.
+    """
+    if not text:
+        return cursor, cursor
+    pos = max(0, min(cursor, len(text) - 1))
+    ch = text[pos]
+    if ch.isalnum() or ch == "_":
+
+        def _same(c: str) -> bool:
+            return c.isalnum() or c == "_"
+
+    elif ch.isspace():
+
+        def _same(c: str) -> bool:
+            return c.isspace()
+
+    else:
+
+        def _same(c: str) -> bool:
+            return not (c.isalnum() or c == "_" or c.isspace())
+
+    start = pos
+    while start > 0 and _same(text[start - 1]):
+        start -= 1
+    end = pos + 1
+    while end < len(text) and _same(text[end]):
+        end += 1
+    return start, end

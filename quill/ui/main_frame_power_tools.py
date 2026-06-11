@@ -21,6 +21,7 @@ import webbrowser
 from datetime import datetime
 from pathlib import Path
 
+from quill.core import format_ops as _fmt
 from quill.core.clipboard_collector import append_collected
 from quill.core.cursor_address import (
     describe_cursor_address,
@@ -703,3 +704,70 @@ class PowerToolsActionsMixin:
         if index >= 0:
             self._close_tab(index)
         self._set_status(f"Deleted {path.name}")
+
+    # ----------------------------------------- EDS-21 HTML / entity transforms
+    def strip_html_tags(self) -> None:
+        self._power_tools_transform_selection_or_document(
+            _fmt.strip_html_tags, "Stripped HTML tags"
+        )
+
+    def decode_html_entities(self) -> None:
+        self._power_tools_transform_selection_or_document(
+            _fmt.decode_html_entities, "Decoded HTML entities"
+        )
+
+    def encode_html_entities(self) -> None:
+        self._power_tools_transform_selection_or_document(
+            _fmt.encode_html_entities, "Encoded HTML entities"
+        )
+
+    # -------------------------------------- EDS-22 line-level TextMonkey transforms
+    def trim_blank_lines(self) -> None:
+        self._power_tools_transform_selection_or_document(
+            _fmt.trim_blank_lines, "Trimmed blank lines"
+        )
+
+    def shuffle_lines(self) -> None:
+        self._power_tools_transform_selection_or_document(_fmt.shuffle_lines, "Shuffled lines")
+
+    def sort_lines_numeric(self) -> None:
+        self._power_tools_transform_selection_or_document(
+            _fmt.sort_lines_numeric, "Sorted lines numerically"
+        )
+
+    def sort_lines_by_length(self) -> None:
+        self._power_tools_transform_selection_or_document(
+            _fmt.sort_lines_by_length, "Sorted lines by length"
+        )
+
+    def keep_unique_lines(self) -> None:
+        """Remove duplicate lines (case-sensitive); alias with a discoverable name."""
+        self._power_tools_transform_selection_or_document(
+            _fmt.remove_duplicate_lines, "Kept unique lines (removed duplicates)"
+        )
+
+    def delete_lines_containing(self) -> None:
+        pattern = self._power_tools_prompt_single("Delete Lines Containing", "Regular expression:")
+        if pattern is None:
+            return
+        try:
+            self._power_tools_transform_selection_or_document(
+                lambda text: _fmt.delete_lines_containing(text, pattern),
+                "Deleted lines containing pattern",
+            )
+        except Exception as error:
+            self._set_status(f"Invalid pattern: {error}")
+
+    def delete_lines_not_containing(self) -> None:
+        pattern = self._power_tools_prompt_single(
+            "Delete Lines Not Containing", "Regular expression (keep matching lines):"
+        )
+        if pattern is None:
+            return
+        try:
+            self._power_tools_transform_selection_or_document(
+                lambda text: _fmt.delete_lines_not_containing(text, pattern),
+                "Kept only lines containing pattern",
+            )
+        except Exception as error:
+            self._set_status(f"Invalid pattern: {error}")

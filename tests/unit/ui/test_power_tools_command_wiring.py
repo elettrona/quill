@@ -64,6 +64,17 @@ _POWER_TOOLS_COMMAND_IDS = [
     "power.run_target_at_cursor",
     "power.rename_current_file",
     "power.delete_current_file",
+    # §4.22/§4.23 TextMonkey/EdSharp-parity additions
+    "power.trim_blank_lines",
+    "power.strip_html_tags",
+    "power.decode_html_entities",
+    "power.encode_html_entities",
+    "power.shuffle_lines",
+    "power.sort_lines_numeric",
+    "power.sort_lines_by_length",
+    "power.keep_unique_lines",
+    "power.delete_lines_containing",
+    "power.delete_lines_not_containing",
 ]
 
 

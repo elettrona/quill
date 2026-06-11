@@ -112,7 +112,9 @@ def test_replace_shortcut_is_available() -> None:
 
 
 def test_snippet_shortcuts_are_available() -> None:
-    assert DEFAULT_KEYMAP["edit.word_prediction"] == "Ctrl+Space"
+    # word_prediction moved to Ctrl+. (§4.22); Ctrl+Space freed for select_chunk
+    assert DEFAULT_KEYMAP["edit.word_prediction"] == "Ctrl+."
+    assert DEFAULT_KEYMAP["edit.select_chunk"] == "Ctrl+Space"
     assert DEFAULT_KEYMAP["format.insert_snippet"] == "Ctrl+Shift+Grave, S"
     assert DEFAULT_KEYMAP["format.manage_snippets"] == "Ctrl+Shift+Grave, Shift+S"
 

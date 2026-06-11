@@ -1,18 +1,30 @@
+import re
 from pathlib import Path
 
 from quill.core.format_ops import (
     continue_markdown_list,
     convert_indentation_to_spaces,
     convert_indentation_to_tabs,
+    decode_html_entities,
+    delete_lines_containing,
+    delete_lines_not_containing,
+    encode_html_entities,
     indent_lines,
     normalize_whitespace,
     outdent_lines,
+    quote_lines,
     remove_duplicate_lines,
     reverse_lines,
+    shuffle_lines,
     sort_lines,
+    sort_lines_by_length,
+    sort_lines_numeric,
+    strip_html_tags,
     toggle_block_comment,
     toggle_line_comment,
+    trim_blank_lines,
     trim_trailing_whitespace,
+    unquote_lines,
 )
 
 
@@ -111,3 +123,139 @@ def test_continue_markdown_list_exits_empty_item() -> None:
     assert result.text == ""
     assert result.caret == 0
     assert result.exited_list is True
+
+
+# HTML / entity transforms (§4.22 EDS-21)
+
+
+def test_strip_html_tags_removes_tags() -> None:
+    assert strip_html_tags("<b>bold</b> and <i>italic</i>") == "bold and italic"
+
+
+def test_strip_html_tags_leaves_plain_text_unchanged() -> None:
+    assert strip_html_tags("no tags here") == "no tags here"
+
+
+def test_decode_html_entities_unescapes_common() -> None:
+    assert decode_html_entities("&lt;p&gt;Hello &amp; world&lt;/p&gt;") == "<p>Hello & world</p>"
+
+
+def test_encode_html_entities_escapes_special_chars() -> None:
+    assert encode_html_entities("<p>Hello & world</p>") == "&lt;p&gt;Hello &amp; world&lt;/p&gt;"
+
+
+def test_encode_decode_roundtrip() -> None:
+    original = 'say "hello" & <farewell>'
+    assert decode_html_entities(encode_html_entities(original)) == original
+
+
+# Line-level transforms (§4.22/§4.23 TextMonkey parity)
+
+
+def test_trim_blank_lines_removes_leading_and_trailing() -> None:
+    assert trim_blank_lines("\n\nhello\nworld\n\n") == "hello\nworld"
+
+
+def test_trim_blank_lines_preserves_interior_blanks() -> None:
+    assert trim_blank_lines("\none\n\ntwo\n") == "one\n\ntwo"
+
+
+def test_trim_blank_lines_all_blank_returns_empty() -> None:
+    assert trim_blank_lines("\n\n\n") == ""
+
+
+def test_quote_lines_prefixes_non_blank() -> None:
+    assert quote_lines("hello\nworld") == "> hello\n> world"
+
+
+def test_quote_lines_skips_blank_lines() -> None:
+    assert quote_lines("one\n\ntwo") == "> one\n\n> two"
+
+
+def test_unquote_lines_strips_gt_space() -> None:
+    assert unquote_lines("> hello\n> world") == "hello\nworld"
+
+
+def test_unquote_lines_strips_bare_gt() -> None:
+    assert unquote_lines(">hello") == "hello"
+
+
+def test_unquote_lines_leaves_unquoted_unchanged() -> None:
+    assert unquote_lines("no quote here") == "no quote here"
+
+
+def test_quote_unquote_roundtrip() -> None:
+    original = "alpha\nbeta\ngamma"
+    assert unquote_lines(quote_lines(original)) == original
+
+
+def test_shuffle_lines_preserves_line_set() -> None:
+    text = "a\nb\nc\nd\ne"
+    result = shuffle_lines(text)
+    assert sorted(result.splitlines()) == sorted(text.splitlines())
+
+
+def test_sort_lines_numeric_ascending() -> None:
+    result = sort_lines_numeric("10 items\n2 things\n50 widgets")
+    assert result.splitlines()[0].startswith("2")
+    assert result.splitlines()[-1].startswith("50")
+
+
+def test_sort_lines_numeric_descending() -> None:
+    result = sort_lines_numeric("1\n100\n10", descending=True)
+    assert result.splitlines()[0] == "100"
+    assert result.splitlines()[-1] == "1"
+
+
+def test_sort_lines_numeric_non_numeric_lines_go_last() -> None:
+    result = sort_lines_numeric("hello\n3\n1")
+    lines = result.splitlines()
+    assert lines[0] == "1"
+    assert lines[1] == "3"
+    assert lines[2] == "hello"
+
+
+def test_sort_lines_by_length_ascending() -> None:
+    result = sort_lines_by_length("longline\nhi\nmediumlen")
+    lines = result.splitlines()
+    assert lines[0] == "hi"
+    assert lines[-1] == "mediumlen"
+
+
+def test_sort_lines_by_length_descending() -> None:
+    result = sort_lines_by_length("longline\nhi\nmediumlen", descending=True)
+    assert result.splitlines()[0] == "mediumlen"
+    assert result.splitlines()[-1] == "hi"
+
+
+def test_delete_lines_containing_removes_matching() -> None:
+    text = "keep this\ndelete me\nalso keep"
+    result = delete_lines_containing(text, "delete")
+    assert "delete me" not in result
+    assert "keep this" in result
+    assert "also keep" in result
+
+
+def test_delete_lines_containing_case_insensitive() -> None:
+    result = delete_lines_containing("Hello\nworld", "hello", case_sensitive=False)
+    assert "Hello" not in result
+    assert "world" in result
+
+
+def test_delete_lines_containing_invalid_pattern_raises() -> None:
+    import pytest
+
+    with pytest.raises(re.error):
+        delete_lines_containing("text", "[invalid")
+
+
+def test_delete_lines_not_containing_keeps_matching() -> None:
+    text = "alpha\nbeta\ngamma"
+    result = delete_lines_not_containing(text, "beta")
+    assert result.strip() == "beta"
+
+
+def test_delete_lines_not_containing_case_insensitive() -> None:
+    result = delete_lines_not_containing("Alpha\nbeta", "alpha", case_sensitive=False)
+    assert "Alpha" in result
+    assert "beta" not in result

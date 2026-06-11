@@ -176,6 +176,77 @@ def _build_power_tools_registrar() -> FirstPartyRegistrar:
         group="transform_lines",
         label="&Hard-Wrap Lines...",
     )
+    add(
+        id="power.trim_blank_lines",
+        title="Trim Blank Lines",
+        top_level="Format",
+        group="transform_lines",
+        label="Trim &Blank Lines",
+    )
+    add(
+        id="power.strip_html_tags",
+        title="Strip HTML Tags",
+        top_level="Format",
+        group="transform_lines",
+        label="Strip &HTML Tags",
+        separator_before=True,
+    )
+    add(
+        id="power.decode_html_entities",
+        title="Decode HTML Entities",
+        top_level="Format",
+        group="transform_lines",
+        label="&Decode HTML Entities",
+    )
+    add(
+        id="power.encode_html_entities",
+        title="Encode HTML Entities",
+        top_level="Format",
+        group="transform_lines",
+        label="&Encode HTML Entities",
+    )
+    add(
+        id="power.shuffle_lines",
+        title="Shuffle Lines",
+        top_level="Format",
+        group="transform_lines",
+        label="Shu&ffle Lines",
+    )
+    add(
+        id="power.sort_lines_numeric",
+        title="Sort Lines Numerically",
+        top_level="Format",
+        group="transform_lines",
+        label="Sort Lines &Numerically",
+    )
+    add(
+        id="power.sort_lines_by_length",
+        title="Sort Lines by Length",
+        top_level="Format",
+        group="transform_lines",
+        label="Sort Lines by &Length",
+    )
+    add(
+        id="power.keep_unique_lines",
+        title="Keep Unique Lines",
+        top_level="Format",
+        group="transform_lines",
+        label="&Keep Unique Lines",
+    )
+    add(
+        id="power.delete_lines_containing",
+        title="Delete Lines Containing",
+        top_level="Format",
+        group="transform_lines",
+        label="Delete Lines &Containing...",
+    )
+    add(
+        id="power.delete_lines_not_containing",
+        title="Delete Lines Not Containing",
+        top_level="Format",
+        group="transform_lines",
+        label="Delete Lines &Not Containing...",
+    )
 
     # Navigate menu ------------------------------------------------------
     add(
