@@ -154,5 +154,5 @@ def test_power_tools_pilot_homes_match_phase_four_recirculation() -> None:
     assert parents["power.number_lines"] == "Format"
     assert parents["power.go_to_percent"] == "Navigate"
     assert parents["power.count_regex_matches"] == "Search"
-    assert parents["power.run_current_file"] == "File"
+    assert parents["power.run_current_file"] == "Tools"
     assert parents["power.toggle_read_only_guard"] == "Tools"

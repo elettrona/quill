@@ -50,23 +50,23 @@ def test_ctrl_alt_case_insensitive() -> None:
 def test_required_clusters_present() -> None:
     # All nine required cluster labels in one fake source.
     fake = (
-        '"R&eading && Dictation" "&GLOW" "C&omparison" "&Watch Folder" "AI &Assistant"'
-        ' "&Power Tools" "&Quillins" "A&ccessibility" "&Customize && Support"'
+        '"R&eading && Dictation" "C&omparison" "&Watch Folder" "AI &Assistant"'
+        ' "&Advanced" "&Quillins" "A&ccessibility" "&Customize && Support"'
         ' "&Writing && Language"'
     )
     assert _check_required_clusters(fake) == []
 
 
 def test_required_clusters_missing_reports_error() -> None:
-    fake = '"&GLOW" "C&omparison"'  # most clusters absent
+    fake = '"C&omparison"'  # most clusters absent
     errors = _check_required_clusters(fake)
     assert errors
 
 
 def test_required_clusters_missing_writing_language() -> None:
     fake = (
-        '"R&eading && Dictation" "&GLOW" "C&omparison" "&Watch Folder" "AI &Assistant"'
-        ' "&Power Tools" "&Quillins" "A&ccessibility" "&Customize && Support"'
+        '"R&eading && Dictation" "C&omparison" "&Watch Folder" "AI &Assistant"'
+        ' "&Advanced" "&Quillins" "A&ccessibility" "&Customize && Support"'
     )
     errors = _check_required_clusters(fake)
     assert any("Writing" in e for e in errors)

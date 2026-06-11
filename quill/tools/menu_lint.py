@@ -43,11 +43,10 @@ _CTRL_ALT_ALLOWED: frozenset[str] = frozenset({
 # arguments in main_frame_menu.py.  Checks use substring matching.
 _REQUIRED_CLUSTER_LABELS: tuple[tuple[str, str], ...] = (
     ("Reading & Dictation", "R&eading && Dictation"),
-    ("GLOW", '"&GLOW"'),
     ("Comparison", '"C&omparison"'),
     ("Watch Folder", '"&Watch Folder"'),
     ("AI Assistant", '"AI &Assistant"'),
-    ("Power Tools", '"&Power Tools"'),
+    ("Advanced", '"&Advanced"'),
     ("Quillins", '"&Quillins"'),
     ("Accessibility", '"A&ccessibility"'),
     ("Customize & Support", '"&Customize && Support"'),

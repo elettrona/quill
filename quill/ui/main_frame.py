@@ -4250,7 +4250,7 @@ class MainFrame(
         transform_menu.Bind(wx.EVT_MENU, lambda _e: self.quote_lines(), id=quote_id)
         transform_menu.Bind(wx.EVT_MENU, lambda _e: self.unquote_lines(), id=unquote_id)
         transform_menu.Bind(wx.EVT_MENU, lambda _e: self.duplicate_selection(), id=dup_sel_id)
-        menu.AppendSubMenu(transform_menu, "Transform")
+        menu.AppendSubMenu(transform_menu, "Change &Case")
 
         # --- Line submenu. ---
         line_menu = wx.Menu()
