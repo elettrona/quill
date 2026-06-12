@@ -542,7 +542,7 @@ class AccessibilityAgentDialog:
             wx.LEFT | wx.RIGHT,
             8,
         )
-        self.step_list = wx.CheckListBox(
+        self.step_list = wx.CheckListBox(  # A11Y-SR-1-OK: GLOW steps; pending CheckBox conversion
             panel,
             choices=[self._step_label(step) for step in self.plan.steps],
         )
@@ -710,7 +710,7 @@ class DiffReviewDialog:
         root.Add(self.summary, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
         root.Add(wx.StaticText(panel, label="Changes"), 0, wx.LEFT | wx.RIGHT, 8)
-        self.hunk_list = wx.CheckListBox(
+        self.hunk_list = wx.CheckListBox(  # A11Y-SR-1-OK: diff hunks; pending CheckBox conversion
             panel,
             choices=[hunk.describe() for hunk in self.review.hunks],
         )

@@ -43,6 +43,13 @@ caused real bugs in Quill:
    dialog can ship unregistered or unclassified (the "magical" gating from
    ``zfix.md``).
 
+6. ``wx.CheckListBox`` is banned in ``quill/ui`` (A11Y-SR-1 / issue #161).
+   CheckListBox does not reliably announce checked/unchecked state to NVDA or
+   JAWS when the user navigates with arrow keys — the screen reader hears only
+   the item label, not its toggle state. Use individual ``wx.CheckBox`` controls
+   inside a ``wx.ScrolledWindow`` instead; each checkbox announces its state
+   natively on focus.
+
 Run directly (``python -m quill.tools.check_banned_patterns``) or via pytest
 (``tests/unit/tools/test_check_banned_patterns.py``). Exit code is non-zero when
 any violation is found.
@@ -265,6 +272,48 @@ def _check_dialog_contract(paths: Iterable[Path]) -> list[Violation]:
     return violations
 
 
+def _check_checklistbox(paths: Iterable[Path]) -> list[Violation]:
+    """Ban wx.CheckListBox in quill/ui (A11Y-SR-1 / issue #161).
+
+    CheckListBox does not announce checked state to screen readers on
+    navigation. Use individual wx.CheckBox controls instead.
+
+    Existing call sites that cannot be converted immediately may be exempted
+    with an inline comment on the same source line:
+
+        chooser = wx.CheckListBox(...)  # A11Y-SR-1-OK: <reason>
+
+    The reason is required and must explain why conversion is deferred.
+    """
+    violations: list[Violation] = []
+    for path in paths:
+        source_lines = path.read_text(encoding="utf-8").splitlines()
+        tree = ast.parse("\n".join(source_lines), filename=str(path))
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Attribute)
+                and node.attr == "CheckListBox"
+                and isinstance(node.value, ast.Name)
+                and node.value.id == "wx"
+            ):
+                # Check the opening line and up to 4 continuation lines for
+                # the exemption comment (ruff may place it on the closing paren).
+                window = source_lines[node.lineno - 1 : node.lineno + 4]
+                if any("# A11Y-SR-1-OK:" in ln for ln in window):
+                    continue
+                violations.append(
+                    Violation(
+                        path,
+                        node.lineno,
+                        "wx.CheckListBox is banned (A11Y-SR-1): screen readers do not "
+                        "announce checked state on navigation. Use individual "
+                        "wx.CheckBox controls inside a wx.ScrolledWindow instead. "
+                        "Add '# A11Y-SR-1-OK: <reason>' to exempt an existing site.",
+                    )
+                )
+    return violations
+
+
 def _check_dialog_registry() -> list[Violation]:
     """Every source dialog surface must be registered and classified.
 
@@ -334,6 +383,7 @@ def find_violations() -> list[Violation]:
     violations.extend(_check_bare_wx(_MAIN_FRAME))
     violations.extend(_check_raw_xml(sorted(_PACKAGE_ROOT.rglob("*.py"))))
     violations.extend(_check_dialog_contract(sorted(_UI_ROOT.rglob("*.py"))))
+    violations.extend(_check_checklistbox(sorted(_UI_ROOT.rglob("*.py"))))
     violations.extend(_check_dialog_registry())
     violations.extend(_check_ruff_config())
     return violations

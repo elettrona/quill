@@ -245,7 +245,9 @@ def open_quillin_wizard(
         wx.LEFT | wx.RIGHT,
         8,
     )
-    menu_chooser = wx.CheckListBox(scrolled, choices=_ALL_MENU_PARENTS, size=(-1, 110))
+    menu_chooser = wx.CheckListBox(
+        scrolled, choices=_ALL_MENU_PARENTS, size=(-1, 110)
+    )  # A11Y-SR-1-OK: Quillin menu parent picker; convert to CheckBox list in follow-up
     menu_chooser.SetName("Parent menus")
     detail_box.Add(menu_chooser, 0, wx.ALL | wx.EXPAND, 8)
 

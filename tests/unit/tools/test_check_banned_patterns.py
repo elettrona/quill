@@ -5,6 +5,7 @@ from pathlib import Path
 
 from quill.tools.check_banned_patterns import (
     _BareWxVisitor,
+    _check_checklistbox,
     _check_dialog_contract,
     _check_dialog_registry,
     _check_raw_xml,
@@ -133,3 +134,28 @@ def test_dialog_registry_cross_check_is_clean() -> None:
     # Every dialog surface in source is registered and classified in the
     # committed snapshot; the live tree must have zero registry violations.
     assert _check_dialog_registry() == []
+
+
+def test_checklistbox_is_flagged(tmp_path: Path) -> None:
+    # A11Y-SR-1: wx.CheckListBox does not announce checked state to screen
+    # readers on navigation; new uses must be caught at commit time.
+    module = tmp_path / "dlg.py"
+    module.write_text(
+        "def build(panel):\n    chooser = wx.CheckListBox(panel, choices=['a', 'b'])\n",
+        encoding="utf-8",
+    )
+    violations = _check_checklistbox([module])
+    assert len(violations) == 1
+    assert "A11Y-SR-1" in violations[0].message
+
+
+def test_checklistbox_ok_comment_exempts(tmp_path: Path) -> None:
+    # A known call site with an explanatory comment is allowed through.
+    module = tmp_path / "dlg.py"
+    module.write_text(
+        "def build(panel):\n"
+        "    chooser = wx.CheckListBox(  # A11Y-SR-1-OK: state in label\n"
+        "        panel, choices=['a'])\n",
+        encoding="utf-8",
+    )
+    assert _check_checklistbox([module]) == []

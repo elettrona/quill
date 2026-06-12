@@ -9417,7 +9417,7 @@ class MainFrame(
             base = self._STATUS_BAR_LABELS.get(item, item)
             return f"{base} (shown)" if shown else f"{base} (hidden)"
 
-        chooser = wx.CheckListBox(
+        chooser = wx.CheckListBox(  # A11Y-SR-1-OK: state in label text; pending CheckBox conversion
             dialog,
             choices=[state_label(item, item not in hidden) for item in item_order],
         )
@@ -9587,7 +9587,7 @@ class MainFrame(
             wx.LEFT | wx.RIGHT,
             8,
         )
-        chooser = wx.CheckListBox(
+        chooser = wx.CheckListBox(  # A11Y-SR-1-OK: export picker; pending CheckBox conversion
             panel,
             choices=[f"{offer.title} - {offer.summary}" for offer in offers],
         )
@@ -9738,7 +9738,7 @@ class MainFrame(
         )
         root.Add(preview, 1, wx.ALL | wx.EXPAND, 8)
         root.Add(wx.StaticText(panel, label="Apply these sections:"), 0, wx.LEFT | wx.RIGHT, 8)
-        chooser = wx.CheckListBox(
+        chooser = wx.CheckListBox(  # A11Y-SR-1-OK: import picker; pending CheckBox conversion
             panel,
             choices=[f"{title} - {summary}" for _id, title, summary in sections],
         )
