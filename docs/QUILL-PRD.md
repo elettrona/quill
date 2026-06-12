@@ -2869,6 +2869,33 @@ accept_into: selection
 
 ---
 
+### 5.85 Portable API key store
+
+By default QUILL stores AI provider keys in the Windows Credential Manager, which ties them to the current Windows user account. Portable mode offers an alternative: a DPAPI-encrypted file (`keys.enc`) in the QUILL data directory, activated by setting `QUILL_PORTABLE=1`.
+
+**Motivation.** Some users run QUILL from a self-contained folder on a network share or external drive. They want all QUILL data — settings, data files, and keys — to live in one directory without requiring Credential Manager access on each machine. A DPAPI-encrypted file achieves this: everything stays in the folder, and the file is protected by the Windows user-account key.
+
+**Access priority chain (highest wins):**
+
+1. Environment variable (`QUILL_OPENROUTER_KEY`, `QUILL_OPENAI_KEY`, `QUILL_OLLAMA_KEY`, `QUILL_ASSISTANT_KEY`) — for CI pipelines and developer overrides.
+2. Portable file store (`keys.enc`) — when `QUILL_PORTABLE=1` is set.
+3. Windows Credential Manager — default for standard installations.
+
+**Activation.** Set `QUILL_PORTABLE=1` in the process environment before launching QUILL. No other configuration is needed. The `keys.enc` file is created automatically in `app_data_dir()` on first key save.
+
+**Security properties.** The file is encrypted with Windows DPAPI using a QUILL-specific entropy token. It is decryptable only on the same Windows machine by the same user account that encrypted it. Moving `keys.enc` to a different machine or a different Windows account will fail to decrypt; the user must re-enter their keys.
+
+**Implementation map.**
+
+| File | Role |
+| --- | --- |
+| `quill/platform/windows/credential_store.py` | Unified load/save/delete with env-var, portable file, and Credential Manager backends |
+| `quill/platform/windows/dpapi.py` | DPAPI `protect_secret`/`unprotect_secret` (existing) |
+| `quill/ui/ai_chat_dialog.py` | `_load_api_key`/`_save_api_key` updated to use credential_store |
+| `quill/core/assistant_ai.py` | `_load/save/delete_api_key_from_credential_manager` updated to use credential_store |
+
+---
+
 ## 6. Spell checking deep dive
 
 ### 6.1 The TinySpell question
@@ -4296,3 +4323,4 @@ The governing rules remain the same throughout the roadmap: local-first processi
 - [x] Add `quill/tools/sqp_validator.py`: CLI validator with `--strict` mode.
 - [x] Add bundled `ai-writing-skills` Quillin with 4 sample skills (Accessible Rewrite, Research and Draft, Meeting Notes to Action Items, Argument Strengthener).
 - [x] Add `tests/unit/core/test_skill_pack.py`: 23 tests covering parsing, validation, runner, condition branching, depth limit, and all bundled files.
+- [x] Add `quill/platform/windows/credential_store.py`: unified credential access with env-var, portable DPAPI file, and Credential Manager backends. Activated by `QUILL_PORTABLE=1`. Update `ai_chat_dialog.py` and `assistant_ai.py` to use it.

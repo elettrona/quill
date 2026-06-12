@@ -43,11 +43,14 @@ from quill.core.ai.providers import (
 )
 from quill.core.paths import app_data_dir
 from quill.core.storage import read_json, write_json_atomic
-from quill.platform.windows.credential_manager import (
-    credential_manager_available,
-    delete_generic_credential,
-    load_generic_credential,
-    save_generic_credential,
+from quill.platform.windows.credential_store import (
+    delete_secret as _cs_delete,
+)
+from quill.platform.windows.credential_store import (
+    load_secret as _cs_load,
+)
+from quill.platform.windows.credential_store import (
+    save_secret as _cs_save,
 )
 from quill.platform.windows.dpapi import protect_secret, unprotect_secret
 
@@ -685,32 +688,22 @@ def assistant_secret_unlock_failed() -> bool:
 
 
 def _load_api_key_from_credential_manager() -> str:
-    if not credential_manager_available():
-        return ""
-    credential = load_generic_credential(_ASSISTANT_CREDENTIAL_TARGET)
-    if credential is None:
-        return ""
-    return credential.secret.strip()
+    return _cs_load(_ASSISTANT_CREDENTIAL_TARGET)
 
 
 def _save_api_key_with_credential_manager(api_key: str) -> bool:
     secret = api_key.strip()
-    if not secret or not credential_manager_available():
+    if not secret:
         return False
     try:
-        save_generic_credential(_ASSISTANT_CREDENTIAL_TARGET, secret)
-    except OSError:
+        _cs_save(_ASSISTANT_CREDENTIAL_TARGET, secret)
+        return True
+    except Exception:
         return False
-    return True
 
 
 def _delete_api_key_from_credential_manager() -> None:
-    if not credential_manager_available():
-        return
-    try:
-        delete_generic_credential(_ASSISTANT_CREDENTIAL_TARGET)
-    except OSError:
-        return
+    _cs_delete(_ASSISTANT_CREDENTIAL_TARGET)
 
 
 # --- Chat generation (AI-13, AI-15, AI-17) --------------------------------

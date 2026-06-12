@@ -47,37 +47,25 @@ _PROVIDER_SETUP_ADVICE: dict[str, str] = {
 
 
 def _load_api_key(provider_id: str) -> str:
-    pdef = PROVIDERS.get(provider_id, {})
-    cred_name = pdef.get("credential_name")
+    cred_name = PROVIDERS.get(provider_id, {}).get("credential_name")
     if not cred_name:
         return ""
     try:
-        from quill.platform.windows.credential_manager import (
-            credential_manager_available,
-            load_generic_credential,
-        )
+        from quill.platform.windows.credential_store import load_secret
 
-        if not credential_manager_available():
-            return ""
-        result = load_generic_credential(cred_name)
-        return result.secret if result else ""
+        return load_secret(cred_name)
     except Exception:
         return ""
 
 
 def _save_api_key(provider_id: str, key: str) -> None:
-    pdef = PROVIDERS.get(provider_id, {})
-    cred_name = pdef.get("credential_name")
+    cred_name = PROVIDERS.get(provider_id, {}).get("credential_name")
     if not cred_name:
         return
     try:
-        from quill.platform.windows.credential_manager import (
-            credential_manager_available,
-            save_generic_credential,
-        )
+        from quill.platform.windows.credential_store import save_secret
 
-        if credential_manager_available():
-            save_generic_credential(cred_name, key)
+        save_secret(cred_name, key)
     except Exception:
         pass
 

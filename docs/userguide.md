@@ -1465,7 +1465,7 @@ For developers, Quillins are designed to be "screen-reader-first." They follow a
 
 ## AI Assistant
 
-QUILL includes a built-in AI assistant that works with OpenRouter, OpenAI, and Ollama. All three are optional; QUILL detects which keys you have configured and only shows providers that are available. API keys are stored in Windows Credential Manager and never written to disk in plain text.
+QUILL includes a built-in AI assistant that works with OpenRouter, OpenAI, and Ollama. All three are optional; QUILL detects which keys you have configured and only shows providers that are available. API keys are stored in the Windows Credential Manager by default and never written to disk in plain text.
 
 ### Setting up an AI provider
 
@@ -1474,6 +1474,32 @@ Open **App > Preferences > AI** to configure your provider.
 - **OpenRouter** — paste your API key into the OpenRouter API Key field. OpenRouter gives you access to many models (Claude, GPT-4o, Gemini, and more) with a single key.
 - **OpenAI** — paste your OpenAI API key.
 - **Ollama** — no key needed. Install Ollama on your machine (`ollama serve`) and QUILL detects it automatically at `http://localhost:11434`. Change the Ollama Base URL setting if you run Ollama on a different port or machine.
+
+### Portable mode and key storage
+
+By default QUILL stores AI provider keys in the **Windows Credential Manager**, which ties them to your Windows user account. If you run QUILL from a self-contained folder — for example on a network share or an external drive — you can switch to **portable mode** so all keys live in that same folder alongside your other QUILL data.
+
+**Activating portable mode.** Set the environment variable `QUILL_PORTABLE=1` before starting QUILL. You can do this for the current session:
+
+```powershell
+$env:QUILL_PORTABLE = "1"
+python -m quill
+```
+
+Or add it permanently to your user environment via System Properties > Environment Variables.
+
+When portable mode is on, keys are stored in a file called `keys.enc` inside the QUILL data directory. The file is encrypted with Windows DPAPI, so it is protected by your Windows user-account key.
+
+**Limitations.** The encrypted file is tied to the Windows account that created it. Moving it to a different machine or a different Windows account will fail to decrypt; you will need to re-enter your keys there. Portable mode gives you a self-contained folder on the same machine — it does not give you cross-machine portability.
+
+**Environment-variable overrides (for CI and developers).** You can supply keys directly via environment variables regardless of which mode is active. These always win and are never stored to disk:
+
+| Provider | Environment variable |
+| --- | --- |
+| OpenRouter | `QUILL_OPENROUTER_KEY` |
+| OpenAI | `QUILL_OPENAI_KEY` |
+| Ollama Cloud | `QUILL_OLLAMA_KEY` |
+| AI Assistant | `QUILL_ASSISTANT_KEY` |
 
 You can also set a **Default model for prompt runs** (`ai_prompt_default_model`). Leave it blank to share the same model across Ask AI and the Prompt Library, or set a different model here if you want a more capable model for prompt-library work.
 
