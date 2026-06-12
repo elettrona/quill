@@ -1491,6 +1491,12 @@ class MainFrame(
             None,
         )
         self.commands.register(
+            "tools.skill_library",
+            "Skill Library",
+            self.open_skill_library,
+            None,
+        )
+        self.commands.register(
             "tools.check_grammar_ai",
             "Check Grammar with AI",
             self.check_grammar_with_ai,
@@ -2983,6 +2989,7 @@ class MainFrame(
             "tools.ai_accessibility_agent": self._id_ai_accessibility_agent,
             "tools.ask_ai": self._id_ask_ai,
             "tools.prompt_library": self._id_prompt_library,
+            "tools.skill_library": self._id_skill_library,
             "tools.check_grammar_ai": self._id_check_grammar_ai,
             "tools.ask_quill_chat": self._id_ask_quill_chat,
             "tools.ai_model": self._id_ai_model,
@@ -17802,6 +17809,29 @@ class MainFrame(
         )
         dlg.show()
         dlg.close()
+
+    def open_skill_library(self) -> None:
+        from quill.ui.skill_library_dialog import SkillLibraryDialog
+
+        dlg = SkillLibraryDialog(
+            self.frame,
+            self._get_skill_files(),
+            self.settings,
+            selection=str(self.editor.GetStringSelection()),
+            document=str(self.editor.GetValue()),
+            title_text=self._current_document_title(),
+            on_insert=self._ai_insert_text,
+        )
+        dlg.show()
+        dlg.close()
+
+    def _get_skill_files(self) -> list:
+
+        paths: list[Path] = []
+        for item in self._installed_quillins():
+            for sqp in sorted(item.directory.glob("*.sqp")):
+                paths.append(sqp)
+        return paths
 
     def check_grammar_with_ai(self) -> None:
         import threading

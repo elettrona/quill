@@ -956,6 +956,7 @@ class MenuBuilderMixin:
         self._id_ask_quill_chat = wx.NewIdRef()
         self._id_ask_ai = wx.NewIdRef()
         self._id_prompt_library = wx.NewIdRef()
+        self._id_skill_library = wx.NewIdRef()
         self._id_check_grammar_ai = wx.NewIdRef()
         self._id_ai_enabled = wx.NewIdRef()
         self._id_ai_status_badge = wx.NewIdRef()
@@ -1186,6 +1187,10 @@ class MenuBuilderMixin:
         ai_menu.Append(
             self._id_prompt_library,
             self._menu_label("&Prompt Library...", "tools.prompt_library"),
+        )
+        ai_menu.Append(
+            self._id_skill_library,
+            self._menu_label("S&kill Library...", "tools.skill_library"),
         )
         ai_menu.AppendSeparator()
         ai_menu.Append(
@@ -1731,6 +1736,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.open_prompt_library(),
             id=self._id_prompt_library,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_skill_library(),
+            id=self._id_skill_library,
         )
         self.frame.Bind(
             wx.EVT_MENU,

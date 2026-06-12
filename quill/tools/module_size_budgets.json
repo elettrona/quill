@@ -22,10 +22,10 @@
   "_next_target_main_frame": 15000,
   "_default_cap": 600,
   "budgets": {
-    "quill/ui/main_frame.py": 21167,
+    "quill/ui/main_frame.py": 21197,
     "quill/ui/assistant_tools.py": 1797,
     "quill/ui/main_frame_power_tools.py": 777,
-    "quill/ui/main_frame_menu.py": 2775,
+    "quill/ui/main_frame_menu.py": 2785,
     "quill/core/read_aloud.py": 1243,
     "quill/core/assistant_ai.py": 1230,
     "quill/core/features.py": 949,
@@ -54,5 +54,6 @@
   "_rebaseline_2026_06_11e": "Phase 2 AI chat: main_frame.py +14 for open_ask_ai() and command registration; main_frame_menu.py +11 for _id_ask_ai, menu item, EVT_MENU; settings.py +10 for ai_chat_default_provider/model and ollama_base_url; settings_specs.py +24 for three new AI chat specs. New files: ai_chat.py and ai_chat_dialog.py.",
   "_rebaseline_2026_06_11f": "Phase 2 gap closure + Phase 3 prep: settings.py +3 for ai_prompt_default_model field; settings_specs.py +8 for ai_prompt_default_model spec. copy_tray_dialog.py pin/unpin button fully wired: _on_pin_toggle handler, _update_buttons label, _rebuild_list passes slot.pinned.",
   "_rebaseline_2026_06_11g": "Phase 3 AI Prompt Library: prompt_library.py (364 lines, new), prompt_library_dialog.py (444 lines, new), main_frame.py +78 for open_prompt_library/check_grammar_with_ai/get_prompt_library, main_frame_menu.py +20 for ids/menu items/bindings. Bundled Quillin ai-writing-prompts with 7 prompts. .pqp import/export support. keymap.py +2 for command names. Quillin Manager install_extension() and Install from Folder button. ai_chat_dialog focus improvement.",
-  "_rebaseline_2026_06_11h": "Ruff formatter pass grew several files: import sort fix in main_frame.py (+2), auto-fix passes in ai_chat_dialog.py (+14), prompt_library_dialog.py (+29), settings_specs.py (+3), settings.py (+5), abbreviation_manager_dialog.py (+2), copy_tray_dialog.py (+6), main_frame_quillins.py (+2). All growth is formatter normalization, not new feature code."
+  "_rebaseline_2026_06_11h": "Ruff formatter pass grew several files: import sort fix in main_frame.py (+2), auto-fix passes in ai_chat_dialog.py (+14), prompt_library_dialog.py (+29), settings_specs.py (+3), settings.py (+5), abbreviation_manager_dialog.py (+2), copy_tray_dialog.py (+6), main_frame_quillins.py (+2). All growth is formatter normalization, not new feature code.",
+  "_rebaseline_2026_06_11i": "Skill Library UI: main_frame.py +30 for open_skill_library(), _get_skill_files(), command registration, and command map entry; main_frame_menu.py +10 for _id_skill_library, menu item in AI submenu, and EVT_MENU binding. New file skill_library_dialog.py (SkillLibraryDialog + _SkillParameterDialog + _SkillResultDialog) is well under the 600-line default cap."
 }

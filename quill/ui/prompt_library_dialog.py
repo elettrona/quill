@@ -236,9 +236,9 @@ class PromptLibraryDialog:
         def run() -> None:
             try:
                 from quill.core.ai_chat import send_prompt
-                from quill.platform.windows.credential_manager import get_credential
+                from quill.platform.windows.credential_store import load_secret
 
-                api_key = get_credential(f"quill-{provider_id}-api-key") or ""
+                api_key = load_secret(f"quill-{provider_id}-api-key")
                 result = send_prompt(provider_id, model_id, prompt_text, api_key=api_key)
                 wx.CallAfter(self._on_result, result, model_id, provider_id)
             except Exception as exc:  # noqa: BLE001
