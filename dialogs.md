@@ -73,6 +73,17 @@ or the command palette (`Ctrl+Shift+P`).
 - [ ] Save Session: via File menu
 - [ ] Open Session: via File menu
 
+### A.1. Edit over SSH (issue #139)
+
+- [ ] SSH Quick Connect: File > Open over SSH > Quick Connect... (no default key; command palette `Ctrl+Shift+P`)
+  - [ ] Host / port / username / authentication / password / key file path / start directory
+  - [ ] Private key file field has a Browse button and a tooltip explaining supported formats (OpenSSH, PEM, PuTTY .ppk)
+- [ ] SSH Site Manager: File > Open over SSH > Site Manager... (no default key; command palette)
+  - [ ] Saved-sites list with New / Edit / Delete / Connect / Close
+  - [ ] Site editor sub-dialog: friendly name, host, port, username, authentication, private key file path, default directory
+  - [ ] Site editor Save button disabled until the required fields are filled
+  - [ ] Private key file field has a Browse button and a tooltip explaining supported formats
+
 ## B. Application settings
 
 - [ ] Preferences hub (multi-page book control): `Ctrl+,`

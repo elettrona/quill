@@ -13,7 +13,7 @@ independently testable.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, cast
 
 if TYPE_CHECKING:
     pass
@@ -283,7 +283,7 @@ class QuillScriptAPI:
             )
         doc = getattr(self.__class__, topic, None)
         if doc and doc.__doc__:
-            return doc.__doc__.strip()
+            return cast(str, doc.__doc__).strip()
         return f"No help found for {topic!r}. Try q.list_commands() or q.help()."
 
     def __repr__(self) -> str:

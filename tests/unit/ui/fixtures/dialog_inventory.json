@@ -245,6 +245,7 @@
   "quill/ui/ssh_dialogs.py::QuickConnectDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/ssh_dialogs.py::RemoteBrowserDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/ssh_dialogs.py::SiteEditDialog.__init__::wx.Dialog": "hardened_custom",
+  "quill/ui/ssh_dialogs.py::SiteEditDialog._on_browse_key::wx.FileDialog": "native",
   "quill/ui/ssh_dialogs.py::SiteManagerDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/ssh_dialogs.py::SiteManagerDialog._on_delete::wx.MessageDialog": "native",
   "quill/ui/sticky_notes.py::StickyNoteEditorDialog.__init__::wx.Dialog": "hardened_custom",

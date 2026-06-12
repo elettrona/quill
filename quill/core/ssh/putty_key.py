@@ -18,8 +18,17 @@ import hashlib
 import hmac
 from typing import Any
 
-from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed25519, rsa
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.asymmetric import (  # type: ignore[import-not-found]
+    dsa,
+    ec,
+    ed25519,
+    rsa,
+)
+from cryptography.hazmat.primitives.ciphers import (  # type: ignore[import-not-found]
+    Cipher,
+    algorithms,
+    modes,
+)
 
 _MAC_KEY_MAGIC = b"putty-private-key-file-mac-key"
 _EC_CURVES = {
@@ -118,7 +127,7 @@ def _derive_v2(passphrase: bytes) -> tuple[bytes, bytes]:
 
 
 def _derive_v3(headers: dict[str, str], passphrase: bytes) -> tuple[bytes, bytes, bytes]:
-    from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
+    from cryptography.hazmat.primitives.kdf.argon2 import Argon2id  # type: ignore[import-not-found]
 
     flavour = headers.get("Key-Derivation", "Argon2id")
     if flavour != "Argon2id":

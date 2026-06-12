@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from quill.core import spellcheck
 from quill.core.spellcheck import (
     add_word_to_scope,
     list_misspellings,
@@ -13,6 +14,22 @@ from quill.core.spellcheck import (
     previous_misspelling,
     suggest_words,
 )
+
+
+@pytest.fixture(autouse=True)
+def _isolate_backend_caches(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin a deterministic backend tier for each test in this module.
+
+    The on-host spell-check engine transparently selects between pyenchant, the
+    bundled English wordlist, and a small built-in stub. On CI (windows-latest
+    with no provider dictionaries installed) the enchant import resolves but
+    ``check()`` returns False for every token, which would let ``"the"`` and
+    ``"appears"`` slip through. Forcing the stub tier keeps the assertions
+    independent of whatever backend the host happens to expose.
+    """
+    monkeypatch.setattr(spellcheck, "_ENCHANT_TRIED", True, raising=False)
+    monkeypatch.setattr(spellcheck, "_ENCHANT_DICT", None, raising=False)
+    monkeypatch.setattr(spellcheck, "_WORDLIST_CACHE", frozenset(), raising=False)
 
 
 def test_list_misspellings_detects_unknown_word() -> None:

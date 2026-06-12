@@ -13,7 +13,7 @@ _CONSENT_FILE = "github_consent.json"
 def load_github_consent_complete() -> bool:
     """Return True if the user has already accepted the GitHub access notice."""
     path = _consent_path()
-    data = read_json(path) if path.exists() else {}
+    data = read_json(path, default={}) if path.exists() else {}
     return bool(data.get("accepted", False))
 
 
