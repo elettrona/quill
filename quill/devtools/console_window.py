@@ -43,7 +43,9 @@ class ConsoleWindow:
     created lazily on first ``show()`` to keep startup cost zero.
     """
 
-    def __init__(self, wx: Any, parent: Any, on_execute_python: Any, on_execute_ts: Any) -> None:
+    def __init__(
+        self, wx: Any, parent: Any, on_execute_python: Any, on_execute_ts: Any, announce: Any = None
+    ) -> None:
         self._wx = wx
         self._parent = parent
         self._on_execute_python = on_execute_python
@@ -56,6 +58,7 @@ class ConsoleWindow:
         self._history_cache: list[str] = []
         self._history_index: int = -1
         self._input_saved: str = ""
+        self._announce: Any = announce if announce is not None else (lambda _msg: None)
 
     # ------------------------------------------------------------------
     # Public interface
@@ -83,6 +86,21 @@ class ConsoleWindow:
     def set_status(self, text: str) -> None:
         if self._status_lbl:
             self._status_lbl.SetLabel(text)
+
+    def set_language(self, lang: str) -> None:
+        """Switch the active console language.  Called by open_python_console /
+        open_typescript_console so the Choice control and status reflect the
+        language the user actually wants to execute in (was Bug #3: TS console
+        launched in Python mode, so typed TS code ran as Python and threw
+        syntax errors)."""
+        if self._lang_choice is None:
+            return
+        target = (lang or "").strip()
+        for idx in range(self._lang_choice.GetCount()):
+            if self._lang_choice.GetString(idx) == target:
+                self._lang_choice.SetSelection(idx)
+                self.set_status(f"Ready - {target}")
+                return
 
     def load_history(self, entries: list[str]) -> None:
         self._history_cache = list(entries)
@@ -207,9 +225,15 @@ class ConsoleWindow:
             self._run_input()
             return
         if key == wx.WXK_UP:
+            if not self._caret_on_first_line():
+                event.Skip()
+                return
             self._history_up()
             return
         if key == wx.WXK_DOWN:
+            if not self._caret_on_last_line():
+                event.Skip()
+                return
             self._history_down()
             return
         if key == wx.WXK_ESCAPE:
@@ -239,6 +263,27 @@ class ConsoleWindow:
             self._run_input()
         else:
             event.Skip()
+
+    # ------------------------------------------------------------------
+    # Caret helpers (used by history navigation to avoid replacing text
+    # mid-edit of a multi-line block — Bug #4)
+
+    def _caret_on_first_line(self) -> bool:
+        """True when the caret is on the first line of the multi-line input."""
+        try:
+            caret = self._input.GetInsertionPoint()
+            return "\n" not in self._input.GetValue()[:caret]
+        except Exception:
+            return True
+
+    def _caret_on_last_line(self) -> bool:
+        """True when the caret is on the last line of the multi-line input."""
+        try:
+            value = self._input.GetValue()
+            caret = self._input.GetInsertionPoint()
+            return "\n" not in value[caret:]
+        except Exception:
+            return True
 
     # ------------------------------------------------------------------
     # Execution
@@ -299,8 +344,13 @@ class ConsoleWindow:
             return
         text = self._transcript.GetValue()
         if wx.TheClipboard.Open():
-            wx.TheClipboard.SetData(wx.TextDataObject(text))
-            wx.TheClipboard.Close()
+            try:
+                wx.TheClipboard.SetData(wx.TextDataObject(text))
+            finally:
+                wx.TheClipboard.Close()
+            self._announce("Transcript copied to clipboard.")
+        else:
+            self._announce("Could not open clipboard.")
 
     def _save_transcript(self) -> None:
         wx = self._wx

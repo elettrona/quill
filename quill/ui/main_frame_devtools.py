@@ -58,6 +58,7 @@ class DevToolsMixin:
                 parent=self.frame,
                 on_execute_python=self._dt_on_execute_python,
                 on_execute_ts=self._dt_on_execute_ts,
+                announce=self._announce,
             )
         return self._dev_console_window
 
@@ -153,6 +154,7 @@ class DevToolsMixin:
         if not self._dt_consent_check():
             return
         win = self._dt_window()
+        win.set_language("Python")
         py = self._dt_python_console()
         py.update_namespace(self._dt_snapshot_vars())
         entries = [e.source for e in _history.load(50)]
@@ -165,6 +167,7 @@ class DevToolsMixin:
         if not self._dt_consent_check():
             return
         win = self._dt_window()
+        win.set_language("TypeScript")
         entries = [e.source for e in _history.load(50) if e.language == "typescript"]
         win.load_history(entries)
         win.set_status(f"Ready - TypeScript | {self.console_get_document_name() or 'no document'}")
@@ -179,9 +182,13 @@ class DevToolsMixin:
         summary = api.support.diagnostic_summary()
         wx = self._wx
         if wx.TheClipboard.Open():
-            wx.TheClipboard.SetData(wx.TextDataObject(summary))
-            wx.TheClipboard.Close()
-        self._announce("Diagnostic summary copied to clipboard.")
+            try:
+                wx.TheClipboard.SetData(wx.TextDataObject(summary))
+            finally:
+                wx.TheClipboard.Close()
+            self._announce("Diagnostic summary copied to clipboard.")
+        else:
+            self._announce("Could not open clipboard.")
 
     def restart_typescript_worker(self) -> None:
         self._dt_ts_console()  # ensure created before thread starts
