@@ -51,7 +51,7 @@ UninstallDisplayName={#AppName} {#AppVersion}
 ; the .cmd launcher has none. Falls back gracefully when no bundled
 ; runtime is present (e.g. a dev build).
 UninstallDisplayIcon={app}\python\pythonw.exe
-LicenseFile=..\..\LICENSE
+LicenseFile=LICENSE
 InfoAfterFile=..\portable\README.txt
 SetupLogging=yes
 

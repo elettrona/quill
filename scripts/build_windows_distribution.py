@@ -220,6 +220,12 @@ def build_windows_distribution(
     installer_script.write_text(installer_script_text, encoding="utf-8")
     reference_installer_script.write_text(installer_script_text, encoding="utf-8")
 
+    # Copy LICENSE into the installer dir so ISCC can resolve "LicenseFile=LICENSE"
+    # regardless of where output_dir sits relative to the repo root.
+    repo_license = resolved_source_root / "LICENSE"
+    if repo_license.exists():
+        shutil.copy2(repo_license, installer_dir / "LICENSE")
+
     python_runtime_dir: Path | None = None
     if bundle_python:
         python_runtime_dir = bundle_embedded_python(
@@ -493,7 +499,7 @@ def build_inno_setup_script(version: str) -> str:
         "; the .cmd launcher has none. Falls back gracefully when no bundled",
         "; runtime is present (e.g. a dev build).",
         "UninstallDisplayIcon={app}\\python\\pythonw.exe",
-        "LicenseFile=..\\..\\LICENSE",
+        "LicenseFile=LICENSE",
         "InfoAfterFile=..\\portable\\README.txt",
         "SetupLogging=yes",
         "",
@@ -828,6 +834,20 @@ def bundle_embedded_python(
     )
     subprocess.run([str(python_exe), str(get_pip), "--no-warn-script-location"], check=True)
     get_pip.unlink(missing_ok=True)
+
+    # Embedded Python has no setuptools; install it before any sdist-only packages.
+    subprocess.run(
+        [
+            str(python_exe),
+            "-m",
+            "pip",
+            "install",
+            "--no-warn-script-location",
+            "--no-compile",
+            "setuptools",
+        ],
+        check=True,
+    )
 
     runtime_dependencies = bundled_runtime_dependencies(pyproject)
     print(f"Installing runtime dependencies ({', '.join(runtime_dependencies)})...")
