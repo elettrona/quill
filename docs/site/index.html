@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QUILL &mdash; the screen-reader-first writing environment</title>
-  <meta name="description" content="QUILL is a Quality, Usable, Inclusive, Lightweight, Literate screen-reader-first writing environment for Windows and macOS. Extend it with Quillins &mdash; sandboxed, keyboard-first extensions you can write yourself.">
+  <title>QUILL - Screen-reader-first writing environment</title>
+  <meta name="description" content="QUILL 0.5.0 Beta is available now for Windows. A screen-reader-first writing environment: every command announces its outcome, everything works from the keyboard, and your document never leaves your device without your say-so.">
   <link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
@@ -17,9 +17,9 @@
       </a>
       <nav class="site" aria-label="Primary">
         <ul>
-          <li><a href="https://hub.quillforall.org">Quillin Hub</a></li>
+          <li><a href="https://github.com/Community-Access/quill/releases/download/v0.5.0/Quill-Setup-0.5.0.exe">Download</a></li>
           <li><a href="/docs/userguide.html">User Guide</a></li>
-          <li><a href="/docs/quillins.html">Build a Quillin</a></li>
+          <li><a href="/docs/quillins.html">Quillins</a></li>
           <li><a href="/faq.html">FAQ</a></li>
         </ul>
       </nav>
@@ -27,208 +27,274 @@
   </header>
 
   <main id="main">
+
+    <!-- Hero -->
     <div class="hero">
       <div class="wrap">
-        <h1>Writing software that puts your screen reader first.</h1>
+        <h1>Writing software built around your screen reader.</h1>
         <p class="lede">
-          QUILL is a screen-reader-first writing environment for Windows and macOS. Every
-          action announces its outcome, every surface is keyboard-complete, and
-          nothing reaches the network without your explicit say-so.
+          QUILL is a screen-reader-first writing environment for Windows. Every command announces
+          its outcome. Everything works from the keyboard. Your document never leaves your device
+          without your explicit say-so. Version 0.5.0 Beta is available now.
         </p>
         <p class="acronym">
-          <strong>Q</strong>uality <span aria-hidden="true">&middot;</span> <strong>U</strong>sable <span aria-hidden="true">&middot;</span>
-          <strong>I</strong>nclusive <span aria-hidden="true">&middot;</span> <strong>L</strong>ightweight <span aria-hidden="true">&middot;</span>
+          <strong>Q</strong>uality <span aria-hidden="true">&middot;</span>
+          <strong>U</strong>sable <span aria-hidden="true">&middot;</span>
+          <strong>I</strong>nclusive <span aria-hidden="true">&middot;</span>
+          <strong>L</strong>ightweight <span aria-hidden="true">&middot;</span>
           <strong>L</strong>iterate
         </p>
         <div class="cta">
-          <a class="btn" href="https://hub.quillforall.org">Visit the Quillin Hub</a>
-          <a class="btn secondary" href="/docs/userguide.html">Read the user guide</a>
+          <a class="btn" href="https://github.com/Community-Access/quill/releases/download/v0.5.0/Quill-Setup-0.5.0.exe">Download QUILL 0.5.0 Beta</a>
+          <a class="btn secondary" href="/docs/announcement.html">Read the announcement</a>
+          <a class="btn secondary" href="/docs/userguide.html">User guide</a>
         </div>
+        <p class="req-note">Windows 10 or later, 64-bit. Approximately 70&nbsp;MB. Includes Python runtime - no separate install required.</p>
       </div>
     </div>
 
-    <section class="band" aria-labelledby="features-h">
+    <!-- Office Hours callout - time-sensitive -->
+    <section class="band callout" aria-labelledby="oh-h">
       <div class="wrap">
-        <h2 id="features-h">Built around accessibility, not bolted on</h2>
+        <h2 id="oh-h">QUILL Office Hours - Saturday, June&nbsp;20, 2026</h2>
+        <p>
+          Join the QUILL team live from 1:00&nbsp;PM to 3:00&nbsp;PM Eastern. Ask questions,
+          see the product in action, share feedback, and help shape the road to QUILL&nbsp;1.0.
+          Open to new users, screen-reader users, accessibility advocates, developers, and anyone curious.
+          Registration is free.
+        </p>
+        <div class="cta">
+          <a class="btn" href="https://us06web.zoom.us/meeting/register/m7oKZPRKSD-0SBWsHd0YRA">Register for Office Hours on Zoom</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen-reader-first design -->
+    <section class="band" aria-labelledby="sr-h">
+      <div class="wrap">
+        <h2 id="sr-h">Built for the way you work with a screen reader</h2>
         <p class="intro">
-          QUILL's design rules are non-negotiable, and they shape everything from
-          the editor surface to the extension platform.
+          QUILL does not add accessibility at the end. Screen-reader use shapes every design decision,
+          from focus management to announcement phrasing to keyboard navigation.
         </p>
         <div class="features">
           <div class="feature">
             <h3>Spoken-first</h3>
-            <p>Every command reports a clear, consistent outcome with NVDA, JAWS, and Narrator parity. A silent success is treated as a bug.</p>
+            <p>Every command announces a clear outcome: "Wrapped 3 words in bold", "Nothing selected", "Saved." A command that succeeds silently is treated as a bug. NVDA, JAWS, and Narrator parity is a design requirement, not an afterthought.</p>
           </div>
           <div class="feature">
             <h3>Keyboard-complete</h3>
-            <p>Everything is reachable and operable from the keyboard alone &mdash; no mouse-only affordances, no focus traps.</p>
+            <p>Everything is reachable and operable from the keyboard alone. Dialogs have predictable focus, explicit defaults, and no traps. The command palette gives instant keyboard access to every command in the application.</p>
           </div>
           <div class="feature">
-            <h3>Stock-control editor</h3>
-            <p>The writing surface uses standard, accessible controls and stays plain-text-first, so it behaves the way assistive tech expects.</p>
+            <h3>Selection you can trust</h3>
+            <p>Structured selection tools let you start, extend, complete, and reselect by word, sentence, line, paragraph, or block. Selection is deliberate and reviewable - not dependent on visual feedback.</p>
+          </div>
+          <div class="feature">
+            <h3>Long-document navigation</h3>
+            <p>Move by heading, paragraph, block, list, table, bookmark, code block, link, or search result. The Outline Navigator gives you a structured view of headings, bookmarks, sticky notes, and search matches at any time.</p>
+          </div>
+          <div class="feature">
+            <h3>A status bar that acts</h3>
+            <p>The status bar is an interactive action hub: word count, selection details, spelling state, background tasks, autosave state, copy tray, screen reader detection, and more - each item keyboard-activatable.</p>
           </div>
           <div class="feature">
             <h3>No silent network</h3>
-            <p>Every cloud or AI action is explicit, per-action opt-in, with visible progress and an announced result. Your document never leaves the device without consent.</p>
-          </div>
-          <div class="feature">
-            <h3>Robust by default</h3>
-            <p>Schema-validated stores, atomic writes, and recovery backups keep your work safe.</p>
-          </div>
-          <div class="feature">
-            <h3>Extensible &amp; sandboxed</h3>
-            <p>Quillins add commands, snippets, menus, and hotkeys &mdash; running in a capability-gated sandbox, never with silent access to your files or network.</p>
+            <p>Any feature that would send data shows visible progress and announces the result. You opt in each time. Your document never reaches the network without your explicit, per-action consent.</p>
           </div>
         </div>
       </div>
     </section>
 
+    <!-- The complete writing environment -->
+    <section class="band" aria-labelledby="writing-h">
+      <div class="wrap">
+        <h2 id="writing-h">A complete writing environment</h2>
+        <p class="intro">
+          QUILL is designed for people who live in text. It covers quick notes, daily writing,
+          long-form projects, structured markup, technical authoring, research, document review,
+          and revision-heavy editing.
+        </p>
+        <div class="features">
+          <div class="feature">
+            <h3>Multi-document workspace</h3>
+            <p>Tabbed documents, recent files, save-all, backup recovery, page setup, printing, session restore, and workspace snapshots. Your full working set, ready when you return.</p>
+          </div>
+          <div class="feature">
+            <h3>Discoverable menu system</h3>
+            <p>File, Edit, View, Insert, Format, Navigate, Search, Tools, Window, Help - a familiar structure where every command has a clear home. Menus are part of the accessibility model, not decoration.</p>
+          </div>
+          <div class="feature">
+            <h3>Abbreviations and snippets</h3>
+            <p>Short triggers expand into longer text. Snippets support placeholders, choices, date and time values, and cursor placement. Word prediction and tag assistance built in. Define your own writing toolkit and speed up repetitive work.</p>
+          </div>
+          <div class="feature">
+            <h3>Search and compare</h3>
+            <p>Find, replace, wildcard, and regular expression search with history and find-all reporting. A Regex Helper explains patterns in plain language. Compare tools review a document against another file or clipboard content, designed for keyboard-friendly diff review.</p>
+          </div>
+          <div class="feature">
+            <h3>Read Aloud and preview</h3>
+            <p>Review your writing through spoken playback without leaving the editor. In-app preview, side-by-side preview, and focused preview on an accessible surface. EPUB navigation and rendering built in. Thesaurus support when thesaurus data is available.</p>
+          </div>
+          <div class="feature">
+            <h3>Long-form project tools</h3>
+            <p>Notebooks organize a folder of files into one working environment with entries, bookmarks, snapshots, and optional writing goals. Sticky Notes capture thoughts without losing your place. Macros record and replay command sequences.</p>
+          </div>
+          <div class="feature">
+            <h3>Document intake</h3>
+            <p>Open plain text, Markdown, HTML, CSV, Word documents, EPUB, PowerPoint, spreadsheets, PDF, and more. OCR-assisted paths, Pandoc integration, and intake reporting that explains the confidence and quality of complex extractions.</p>
+          </div>
+          <div class="feature">
+            <h3>Remote files</h3>
+            <p>Optional open and save workflows for FTP, SFTP, WebDAV, S3, HTTPS, and GitHub. Enable only what you need. Remote file features are off by default and never run silently in the background.</p>
+          </div>
+          <div class="feature">
+            <h3>Feature profiles</h3>
+            <p>Choose Essential, Writer, Developer, Accessibility Professional, or Full QUILL. Profiles shape the interface to your needs. Keep QUILL simple, or turn on automation, scripting, AI, remote files, and extension support when you want them.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI -->
+    <section class="band" aria-labelledby="ai-h">
+      <div class="wrap">
+        <h2 id="ai-h">AI assistance that keeps you in control</h2>
+        <p class="intro">
+          AI in QUILL is optional. Turn it off and AI features disappear entirely - nothing runs
+          silently. Turn it on and QUILL uses a review-first model: you see every proposed change before
+          anything is applied.
+        </p>
+        <div class="features">
+          <div class="feature">
+            <h3>Ask Quill</h3>
+            <p>Ask for help writing, editing, summarizing, restructuring, or working with selected text. When an AI action would change your document, QUILL shows you the proposal first. You approve before it applies. No silent edits.</p>
+          </div>
+          <div class="feature">
+            <h3>Your choice of provider</h3>
+            <p>Local model workflows, Ollama, Ollama Cloud, OpenAI, Claude, OpenRouter, Google Gemini, and custom OpenAI-compatible endpoints. Use a local model and nothing leaves your machine at all.</p>
+          </div>
+          <div class="feature">
+            <h3>Trust by design</h3>
+            <p>No silent document changes. No hidden automation. No surprise network behavior. Clear provider and model information at all times. AI should support the writer - not take control away from the writer.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quillins -->
     <section class="band" aria-labelledby="quillins-h">
       <div class="wrap">
-        <h2 id="quillins-h">The Quillin platform &mdash; extend QUILL your way</h2>
+        <h2 id="quillins-h">Quillins - extend QUILL your way</h2>
         <p class="intro">
-          A <strong>Quillin</strong> is a sandboxed extension for QUILL. You can build
-          one with a JSON file and a few lines of Python &mdash; no build tools, no
-          compiled code. Quillins integrate seamlessly into QUILL's menus, keyboard
-          shortcuts, and screen reader announcement engine, so they are
-          indistinguishable from built-in features at the point of use.
+          A Quillin is a sandboxed extension. Build one with a JSON manifest and a few lines of Python
+          or Node.js - no build tools, no compiled code. Every capability is declared upfront and
+          enforced at runtime. A Quillin that crashes cannot affect your editor or your document.
         </p>
-
-        <p class="intro"><strong>Two ways to build:</strong> a JSON-only manifest (Layer 1) for snippets and shortcuts, or a Python handler (Layer 2) for real logic that runs safely in its own process.</p>
         <div class="features">
           <div class="feature">
-            <h3>Layer 1 &mdash; Snippets and shortcuts</h3>
-            <p>Write a single JSON manifest to add menu items, hotkeys, and text snippets that expand placeholders like <code>${selection}</code>, <code>${date}</code>, and <code>${clipboard}</code>. No Python required.</p>
+            <h3>Layer 1 - Snippets and shortcuts</h3>
+            <p>A JSON manifest adds menu items, hotkeys, and text snippets with placeholders like <code>${selection}</code>, <code>${date}</code>, and <code>${clipboard}</code>. No code required. Use the <a href="/quillin-wizard.html">Snippet Wizard</a> to build one interactively.</p>
           </div>
           <div class="feature">
-            <h3>Layer 2 &mdash; Python handlers</h3>
-            <p>Add a Python entry module for genuine custom behaviour. Your code runs in a sandboxed subprocess and only accesses what it explicitly declared in the manifest. A crash in your Quillin cannot affect the editor or your document.</p>
+            <h3>Layer 2 - Python or Node.js handlers</h3>
+            <p>Add a Python or Node.js entry module for genuine custom behavior. Your code runs in a sandboxed subprocess and only accesses what it declared in the manifest. A crash in your Quillin cannot affect the editor or your work.</p>
+          </div>
+          <div class="feature">
+            <h3>Capability and consent</h3>
+            <p>Quillins default to deny. Document access, filesystem, network, clipboard, and storage are each declared upfront and consent-gated at runtime. You see exactly what a Quillin needs before you install it.</p>
+          </div>
+          <div class="feature">
+            <h3>Announce through the screen reader</h3>
+            <p>Any Quillin command can announce its outcome through QUILL's announcement engine with full NVDA, JAWS, and Narrator parity - the same engine built-in commands use. A silent Quillin is treated as a bug.</p>
+          </div>
+          <div class="feature">
+            <h3>Menus, commands, and hotkeys</h3>
+            <p>Quillins attach to any top-level menu and to the right-click context menu. Keyboard shortcuts use QUILL's existing binding grammar. Conflicts are detected and reported, never silently overridden.</p>
+          </div>
+          <div class="feature">
+            <h3>Manage with confidence</h3>
+            <p>The Quillins Manager (Tools menu) lists installed Quillins, shows each one's declared capabilities, and lets you enable, disable, reload, or remove any of them at any time.</p>
           </div>
         </div>
-
-        <p class="intro"><strong>What a Quillin can do</strong> &mdash; every capability is declared in the manifest and disclosed to you at install time. No surprises.</p>
-        <div class="features">
-          <div class="feature">
-            <h3>Read and write your document</h3>
-            <p>A Quillin can read document text, the current selection, and the cursor position, then insert or replace text as an undoable edit. All edits pass through the same undo history as your own typing.</p>
-          </div>
-          <div class="feature">
-            <h3>Speak through the screen reader</h3>
-            <p>Any Quillin command can announce its outcome through QUILL's announcement engine with full NVDA, JAWS, and Narrator parity &mdash; the same engine built-in commands use. A silent Quillin is treated as a bug.</p>
-          </div>
-          <div class="feature">
-            <h3>Add menus, commands, and hotkeys</h3>
-            <p>Quillins attach their commands to any top-level menu and to the right-click context menu. Keyboard shortcuts use QUILL's existing binding grammar. Conflicts are detected and reported, never silently overridden.</p>
-          </div>
-          <div class="feature">
-            <h3>Read and write files (with your permission)</h3>
-            <p>With the filesystem capability, a Quillin can read notes from a folder or write output to a file. You are informed at install time and file access never happens silently.</p>
-          </div>
-          <div class="feature">
-            <h3>Connect to the web (with your permission)</h3>
-            <p>With the network capability, a Quillin can call a web API, trigger a webhook, or fetch content. Every outbound request requires per-action consent &mdash; you see exactly where your data is going before it leaves your device.</p>
-          </div>
-          <div class="feature">
-            <h3>Remember your preferences</h3>
-            <p>The storage capability gives a Quillin a private key-value store. Settings you configure in one session are remembered in the next, without touching the filesystem directly.</p>
-          </div>
-          <div class="feature">
-            <h3>Show choice prompts and status messages</h3>
-            <p>A Quillin can present a native, accessible choice dialog so you pick from a list, and can post progress updates to the status bar &mdash; no custom dialogs, no visual-only feedback.</p>
-          </div>
-          <div class="feature">
-            <h3>Read and write the clipboard</h3>
-            <p>A Quillin can paste content from the clipboard or copy its output to it, so you can chain QUILL work with other apps in your workflow.</p>
-          </div>
-        </div>
-
         <div class="cta">
           <a class="btn" href="/docs/quillins.html">Start the hands-on tutorial</a>
-          <a class="btn secondary" href="/docs/quillins.html">Read the authoring reference</a>
+          <a class="btn secondary" href="/quillin-wizard.html">Open the Snippet Wizard</a>
+          <a class="btn secondary" href="https://hub.quillforall.org">Visit the Quillin Hub</a>
         </div>
       </div>
     </section>
 
-    <section class="band" aria-labelledby="showcase-h">
+    <!-- Reliability -->
+    <section class="band" aria-labelledby="reliable-h">
       <div class="wrap">
-        <h2 id="showcase-h">See what's possible &mdash; showcase Quillins</h2>
+        <h2 id="reliable-h">Reliability is a feature</h2>
         <p class="intro">
-          These four showcase Quillins demonstrate the range of what the platform can do.
-          Each is a complete, working example with full source code and documentation.
+          For QUILL, reliability is part of accessibility. Your work should never be silently lost,
+          and you should be able to trust that the editor will protect it.
         </p>
-        <div class="cards">
-          <div class="card">
-            <h3><a href="https://github.com/Community-Access/quill/tree/main/examples/quillins/showcase/acc_auditor">Accessibility Auditor</a></h3>
-            <p>Scans your document for common accessibility problems: heading levels that skip, image markers without descriptions, and punctuation patterns that create screen reader noise. One command in the Tools menu produces an itemized report inserted at the cursor, with the issue count spoken immediately.</p>
-            <p class="note">Reads document, inserts report, announces result &mdash; no network, no files.</p>
-            <span class="more"><a href="https://github.com/Community-Access/quill/tree/main/examples/quillins/showcase/acc_auditor">View source and documentation <span aria-hidden="true">&rarr;</span></a></span>
+        <div class="features">
+          <div class="feature">
+            <h3>Autosave and backup recovery</h3>
+            <p>QUILL saves in the background and keeps recovery copies. An unexpected shutdown, crash, or power loss should never destroy your work.</p>
           </div>
-          <div class="card">
-            <h3><a href="https://github.com/Community-Access/quill/tree/main/examples/quillins/showcase/ghostwriter_mirror">Ghostwriter's Mirror</a></h3>
-            <p>Transforms your selected text into a different voice persona with one menu action. Choose <em>Legal Formalist</em> to shift casual writing toward formal, precise language, or <em>Victorian Poet</em> for dramatic, romanticized phrasing. The selection is replaced as a single undoable edit; Ctrl+Z restores the original.</p>
-            <p class="note">Reads selection, replaces selection, announces result &mdash; no network, no files.</p>
-            <span class="more"><a href="https://github.com/Community-Access/quill/tree/main/examples/quillins/showcase/ghostwriter_mirror">View source and documentation <span aria-hidden="true">&rarr;</span></a></span>
+          <div class="feature">
+            <h3>Atomic writes</h3>
+            <p>All settings and data are written to a temporary file first, then replaced atomically. A crash mid-write leaves your existing file untouched. Schema-validated stores catch problems before they reach disk.</p>
           </div>
-          <div class="card">
-            <h3><a href="https://github.com/Community-Access/quill/tree/main/examples/quillins/showcase/research_alchemist">Research Alchemist</a></h3>
-            <p>Siphons bullet points and key facts from every text and Markdown file in a folder, tags each item with its source file and line number, and inserts the compiled list into your document. Drop your notes into a designated folder, run one command, and your research is assembled and attributed.</p>
-            <p class="note">Reads files from a folder you designate (disclosed at install time), inserts into document.</p>
-            <span class="more"><a href="https://github.com/Community-Access/quill/tree/main/examples/quillins/showcase/research_alchemist">View source and documentation <span aria-hidden="true">&rarr;</span></a></span>
-          </div>
-          <div class="card">
-            <h3><a href="https://github.com/Community-Access/quill/tree/main/examples/quillins/showcase/zen_bridge">Zen Focus Bridge</a></h3>
-            <p>Marks a focused writing session in your document and bridges to your broader environment &mdash; launching focus music, silencing notifications, or calling any HTTP endpoint &mdash; with a single command from the View menu. Activate and deactivate by keyboard; the screen reader announces each transition.</p>
-            <p class="note">Inserts session markers, makes network calls with per-action consent.</p>
-            <span class="more"><a href="https://github.com/Community-Access/quill/tree/main/examples/quillins/showcase/zen_bridge">View source and documentation <span aria-hidden="true">&rarr;</span></a></span>
+          <div class="feature">
+            <h3>Safe Mode and diagnostics</h3>
+            <p>Launch with <code>--safe-mode</code> to disable AI, watch folder, and Quillin contributions when something goes wrong. Crash report bundles capture diagnostic information without including document content.</p>
           </div>
         </div>
-        <p>
-          Read the full documentation for each showcase Quillin in the
-          <a href="https://hub.quillforall.org">Quillin Hub</a>, or follow the
-          <a href="/docs/quillins.html">tutorial</a> to build your own.
-        </p>
       </div>
     </section>
 
+    <!-- Start here -->
     <section class="band" aria-labelledby="next-h">
       <div class="wrap">
         <h2 id="next-h">Start here</h2>
         <div class="cards">
           <div class="card">
-            <h3><a href="/docs/userguide.html">Using QUILL</a></h3>
-            <p>The complete user guide: writing, navigation, commands, settings, and accessibility features.</p>
+            <h3><a href="https://github.com/Community-Access/quill/releases/download/v0.5.0/Quill-Setup-0.5.0.exe">Download QUILL 0.5.0 Beta</a></h3>
+            <p>Windows 10 or later, 64-bit. Full installer, approximately 70&nbsp;MB. No separate Python installation required.</p>
+            <span class="more"><a href="https://github.com/Community-Access/quill/releases/tag/v0.5.0">View the full release on GitHub <span aria-hidden="true">&rarr;</span></a></span>
+          </div>
+          <div class="card">
+            <h3><a href="/docs/announcement.html">Release announcement</a></h3>
+            <p>The full 0.5.0 Beta announcement: what is included, what is still beta, how to give feedback, and what Office Hours is about.</p>
+            <span class="more"><a href="/docs/announcement.html">Read the announcement <span aria-hidden="true">&rarr;</span></a></span>
+          </div>
+          <div class="card">
+            <h3><a href="/docs/userguide.html">User guide</a></h3>
+            <p>Writing, navigation, commands, settings, and all of QUILL's accessibility features explained.</p>
             <span class="more"><a href="/docs/userguide.html">Open the user guide <span aria-hidden="true">&rarr;</span></a></span>
           </div>
           <div class="card">
             <h3><a href="/docs/quillins.html">Build your first Quillin</a></h3>
-            <p>A hands-on walkthrough that takes you from an empty folder to a working, tested Quillin. No prior experience with QUILL extensions required.</p>
+            <p>A hands-on walkthrough from an empty folder to a working, tested extension. No prior experience required.</p>
             <span class="more"><a href="/docs/quillins.html">Start the tutorial <span aria-hidden="true">&rarr;</span></a></span>
           </div>
           <div class="card">
-            <h3><a href="/quillin-wizard.html">Snippet Wizard</a></h3>
-            <p>Build a snippet-only Quillin interactively, without writing a line of code. Fill in the guided form and download your <code>manifest.json</code> ready to install.</p>
-            <span class="more"><a href="/quillin-wizard.html">Open the wizard <span aria-hidden="true">&rarr;</span></a></span>
-          </div>
-          <div class="card">
-            <h3><a href="/docs/quillins.html">Quillin authoring reference</a></h3>
-            <p>The complete manifest schema, every API method, all capabilities explained, and worked examples for both snippet-only and Python handler Quillins.</p>
-            <span class="more"><a href="/docs/quillins.html">Read the reference <span aria-hidden="true">&rarr;</span></a></span>
-          </div>
-          <div class="card">
-            <h3><a href="https://hub.quillforall.org">Quillin Hub</a></h3>
-            <p>Browse and install Quillins built by the community. Manage installed Quillins, review their declared capabilities, and discover what the platform can do.</p>
-            <span class="more"><a href="https://hub.quillforall.org">Visit the Hub <span aria-hidden="true">&rarr;</span></a></span>
-          </div>
-          <div class="card">
             <h3><a href="/faq.html">Frequently asked questions</a></h3>
-            <p>Answers about accessibility, privacy, the Quillin platform, security, and how QUILL handles your data.</p>
+            <p>Answers about accessibility, privacy, AI, Quillins, security, and how to contribute.</p>
             <span class="more"><a href="/faq.html">Read the FAQ <span aria-hidden="true">&rarr;</span></a></span>
           </div>
           <div class="card">
-            <h3><a href="/docs/privacy.html">Privacy &amp; security</a></h3>
-            <p>How QUILL handles your documents, secrets, and any networked features &mdash; and the responsible-AI stance applied to every AI-assisted command.</p>
+            <h3><a href="https://us06web.zoom.us/meeting/register/m7oKZPRKSD-0SBWsHd0YRA">Office Hours - June&nbsp;20</a></h3>
+            <p>Live Q&amp;A with the QUILL team, Saturday June&nbsp;20, 1:00-3:00&nbsp;PM Eastern. Free to attend.</p>
+            <span class="more"><a href="https://us06web.zoom.us/meeting/register/m7oKZPRKSD-0SBWsHd0YRA">Register on Zoom <span aria-hidden="true">&rarr;</span></a></span>
+          </div>
+          <div class="card">
+            <h3><a href="/quillin-wizard.html">Snippet Wizard</a></h3>
+            <p>Build a snippet-only Quillin interactively, without writing a line of code. Fill in the form and download your <code>manifest.json</code>.</p>
+            <span class="more"><a href="/quillin-wizard.html">Open the wizard <span aria-hidden="true">&rarr;</span></a></span>
+          </div>
+          <div class="card">
+            <h3><a href="/docs.html">All documentation</a></h3>
+            <p>Every published QUILL document: product, privacy, security, Quillins, contributing, and governance.</p>
             <ul class="doc-links">
-              <li><a href="/docs/privacy.html">Privacy policy</a></li>
+              <li><a href="/docs/privacy.html">Privacy</a></li>
               <li><a href="/docs/security.html">Security</a></li>
               <li><a href="/docs/responsible-ai-use.html">Responsible AI use</a></li>
             </ul>
@@ -241,26 +307,35 @@
   <footer class="site">
     <div class="wrap">
       <p class="note">
-        <strong class="quill" style="color:var(--accent)">QUILL</strong> &mdash;
+        <strong class="quill" style="color:var(--accent)">QUILL</strong> -
         Quality, Usable, Inclusive, Lightweight, Literate. A screen-reader-first
-        writing environment for Windows and macOS.
+        writing environment for Windows.
       </p>
       <nav aria-label="Documentation">
         <h4>Documentation</h4>
         <ul>
           <li><a href="/docs/userguide.html">User guide</a></li>
+          <li><a href="/docs/announcement.html">0.5.0 Beta announcement</a></li>
           <li><a href="/docs/quillins.html">Quillin tutorial</a></li>
-          <li><a href="/docs/quillins.html">Authoring reference</a></li>
           <li><a href="/faq.html">FAQ</a></li>
+          <li><a href="/docs.html">All documentation</a></li>
         </ul>
       </nav>
       <nav aria-label="Project">
         <h4>Project</h4>
         <ul>
+          <li><a href="https://github.com/Community-Access/quill/releases/tag/v0.5.0">Download 0.5.0 Beta</a></li>
           <li><a href="https://hub.quillforall.org">Quillin Hub</a></li>
-          <li><a href="/docs/quillins.html">Submit a Quillin</a></li>
           <li><a href="/docs/contributing.html">Contributing</a></li>
           <li><a href="/docs/governance.html">Governance</a></li>
+        </ul>
+      </nav>
+      <nav aria-label="Privacy and security">
+        <h4>Privacy &amp; security</h4>
+        <ul>
+          <li><a href="/docs/privacy.html">Privacy</a></li>
+          <li><a href="/docs/security.html">Security</a></li>
+          <li><a href="/docs/responsible-ai-use.html">Responsible AI use</a></li>
         </ul>
       </nav>
     </div>

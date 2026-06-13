@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Documentation &mdash; QUILL</title>
-  <meta name="description" content="The complete QUILL documentation index: product, the Quillin extension platform, contributing, and project governance.">
+  <title>Documentation - QUILL</title>
+  <meta name="description" content="Every published QUILL document: the 0.5.0 Beta announcement, user guide, Quillin extension platform, contributing, and project governance.">
   <link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
@@ -17,9 +17,9 @@
       </a>
       <nav class="site" aria-label="Primary">
         <ul>
+          <li><a href="https://github.com/Community-Access/quill/releases/download/v0.5.0/Quill-Setup-0.5.0.exe">Download</a></li>
           <li><a href="/docs.html" aria-current="page">Documentation</a></li>
           <li><a href="/docs/quillins.html">Quillins</a></li>
-          <li><a href="/docs/contributing.html">Contribute</a></li>
           <li><a href="/faq.html">FAQ</a></li>
         </ul>
       </nav>
@@ -30,23 +30,33 @@
     <div class="wrap">
       <h1>Documentation</h1>
       <p class="lede">
-        Every published QUILL document, grouped by what you're trying to do.
-        This site hosts documentation only &mdash; there are no downloads here.
+        Every published QUILL document, grouped by topic. New here? Start with the
+        0.5.0 Beta announcement or the user guide.
       </p>
+
+      <h2 id="release">0.5.0 Beta release</h2>
+      <div class="cards">
+        <div class="card">
+          <h3><a href="/docs/announcement.html">Beta announcement</a></h3>
+          <p>The full 0.5.0 Beta announcement: what is included, what is still beta, feedback channels, and Office Hours details.</p>
+          <span class="more"><a href="/docs/announcement.html">Read the announcement <span aria-hidden="true">&rarr;</span></a></span>
+        </div>
+        <div class="card">
+          <h3><a href="https://github.com/Community-Access/quill/releases/tag/v0.5.0">Release on GitHub</a></h3>
+          <p>Release notes, source code, and all release assets including the Windows installer.</p>
+          <span class="more"><a href="https://github.com/Community-Access/quill/releases/download/v0.5.0/Quill-Setup-0.5.0.exe">Download the installer <span aria-hidden="true">&rarr;</span></a></span>
+        </div>
+      </div>
 
       <h2 id="product">Using QUILL</h2>
       <div class="cards">
         <div class="card">
           <h3><a href="/docs/userguide.html">User guide</a></h3>
-          <p>Day-to-day use: writing, navigation, commands, settings, sharing, and the accessibility features that make QUILL what it is.</p>
+          <p>Day-to-day use: writing, navigation, the command palette, settings, document intake, remote files, AI, and the accessibility features that make QUILL what it is.</p>
         </div>
         <div class="card">
           <h3><a href="/docs/QUILL-PRD.html">Product requirements</a></h3>
-          <p>The full product requirements document &mdash; the single source of truth for QUILL's intended architecture and behavior.</p>
-        </div>
-        <div class="card">
-          <h3><a href="/docs/announcement.html">Beta announcement</a></h3>
-          <p>What's in the beta and what it means for early users.</p>
+          <p>The full product requirements document - the single source of truth for QUILL's intended architecture and behavior.</p>
         </div>
       </div>
 
@@ -55,11 +65,11 @@
       <div class="cards">
         <div class="card">
           <h3><a href="/docs/quillins.html">Tutorial</a></h3>
-          <p>Build your first Quillin from scratch &mdash; a Layer 1 snippet that grows into a Layer 2 Python handler, then lint, test, and submit.</p>
+          <p>Build your first Quillin from scratch - a Layer 1 snippet that grows into a Layer 2 Python handler, then lint, test, and submit.</p>
         </div>
         <div class="card">
           <h3><a href="/docs/quillins.html">Authoring reference</a></h3>
-          <p>The full design and authoring reference: the manifest schema, the capability catalogue, the Python API, and the security model.</p>
+          <p>The full design and authoring reference: the manifest schema, the capability catalogue, the Python and Node.js APIs, and the security model.</p>
         </div>
         <div class="card">
           <h3><a href="/docs/quillins.html">Submission guide</a></h3>
@@ -68,6 +78,14 @@
         <div class="card">
           <h3><a href="/docs/quillins.html">Author Covenant</a></h3>
           <p>The code of conduct for Quillin code: accessibility, capability honesty, no silent network, security, and licensing.</p>
+        </div>
+        <div class="card">
+          <h3><a href="/quillin-wizard.html">Snippet Wizard</a></h3>
+          <p>Build a snippet-only Quillin interactively - fill in the guided form and download your <code>manifest.json</code> ready to install. No coding required.</p>
+        </div>
+        <div class="card">
+          <h3><a href="https://hub.quillforall.org">Quillin Hub</a></h3>
+          <p>Browse and install Quillins built by the community. Manage installed Quillins and review their declared capabilities.</p>
         </div>
       </div>
 
@@ -106,29 +124,30 @@
           <p>QUILL's stance on AI features: explicit consent, transparency, and user control.</p>
         </div>
       </div>
-
-      <h2 id="design">Design references</h2>
-      <p>Deeper background for the curious and for contributors.</p>
-      <ul>
-        <li><a href="/docs/quillins.html">Quillin migration plan</a> &mdash; how first-party features move toward the Quillin model.</li>
-        <li><a href="/docs/quillins.html">Quillin conversion roadmap</a> &mdash; the wave-by-wave plan to convert core features into bundled Quillins.</li>
-        <li><a href="/docs/QUILL-PRD.html">Rich-text &amp; editor design notes</a> &mdash; design background for the writing surface.</li>
-      </ul>
     </div>
   </main>
 
   <footer class="site">
     <div class="wrap">
       <p class="note">
-        <strong style="color:var(--accent)">QUILL</strong> &mdash; documentation only.
+        <strong style="color:var(--accent)">QUILL</strong> -
         Quality, Usable, Inclusive, Lightweight, Literate.
       </p>
       <nav aria-label="Documentation">
         <h4>Start here</h4>
         <ul>
+          <li><a href="/docs/announcement.html">0.5.0 Beta announcement</a></li>
           <li><a href="/docs/userguide.html">User guide</a></li>
           <li><a href="/docs/quillins.html">Quillin tutorial</a></li>
           <li><a href="/faq.html">FAQ</a></li>
+        </ul>
+      </nav>
+      <nav aria-label="Project">
+        <h4>Project</h4>
+        <ul>
+          <li><a href="https://github.com/Community-Access/quill/releases/tag/v0.5.0">Download 0.5.0 Beta</a></li>
+          <li><a href="https://hub.quillforall.org">Quillin Hub</a></li>
+          <li><a href="/docs/contributing.html">Contributing</a></li>
         </ul>
       </nav>
     </div>

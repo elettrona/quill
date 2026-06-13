@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FAQ &mdash; QUILL</title>
-  <meta name="description" content="Frequently asked questions about QUILL: accessibility, privacy, AI, the Quillin extension platform, security, and contributing.">
+  <title>FAQ - QUILL</title>
+  <meta name="description" content="Frequently asked questions about QUILL 0.5.0 Beta: accessibility, privacy, AI, the Quillin extension platform, security, and contributing.">
   <link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
@@ -17,9 +17,9 @@
       </a>
       <nav class="site" aria-label="Primary">
         <ul>
+          <li><a href="https://github.com/Community-Access/quill/releases/download/v0.5.0/Quill-Setup-0.5.0.exe">Download</a></li>
           <li><a href="/docs.html">Documentation</a></li>
           <li><a href="/docs/quillins.html">Quillins</a></li>
-          <li><a href="/docs/contributing.html">Contribute</a></li>
           <li><a href="/faq.html" aria-current="page">FAQ</a></li>
         </ul>
       </nav>
@@ -30,14 +30,15 @@
     <div class="wrap">
       <h1>Frequently asked questions</h1>
       <p class="lede">
-        Answers about what QUILL is, how it treats accessibility and privacy, the
-        Quillin extension platform, and how to get involved. Can't find it here?
-        The <a href="/docs.html">documentation</a> goes deeper.
+        Answers about what QUILL is, the 0.5.0 Beta release, accessibility, privacy, AI,
+        the Quillin extension platform, and how to get involved.
+        Can't find it here? The <a href="/docs.html">documentation</a> goes deeper.
       </p>
 
       <nav class="toc" aria-label="FAQ sections">
         <ul>
           <li><a href="#about">About QUILL</a></li>
+          <li><a href="#beta">The 0.5.0 Beta release</a></li>
           <li><a href="#accessibility">Accessibility</a></li>
           <li><a href="#using">Using QUILL</a></li>
           <li><a href="#privacy">Privacy &amp; data</a></li>
@@ -54,10 +55,10 @@
       <details>
         <summary>What is QUILL?</summary>
         <p>
-          QUILL is a screen-reader-first writing environment for Windows. It is
-          designed so that people who use assistive technology are first-class
-          users, not an afterthought: every action announces a clear outcome and
-          everything works from the keyboard.
+          QUILL is a screen-reader-first writing environment for Windows. It is designed so
+          that people who use assistive technology are first-class users, not an afterthought:
+          every action announces a clear outcome, everything works from the keyboard, and nothing
+          reaches the network without your explicit say-so.
         </p>
       </details>
       <details>
@@ -65,33 +66,86 @@
         <p>
           QUILL is <strong>Q</strong>uality, <strong>U</strong>sable,
           <strong>I</strong>nclusive, <strong>L</strong>ightweight,
-          <strong>L</strong>iterate &mdash; the values the whole project is built
-          around.
+          <strong>L</strong>iterate - the values the whole project is built around.
         </p>
       </details>
       <details>
         <summary>Who is QUILL for?</summary>
         <p>
-          Anyone who writes, with a particular focus on screen-reader and
-          keyboard-only users. If you've found mainstream editors noisy,
-          inconsistent, or hard to navigate with assistive tech, QUILL is built
-          for you &mdash; but it's a clean, fast plain-text-first writer for everyone.
+          Anyone who writes, with a particular focus on blind users, screen-reader and
+          keyboard-only users, accessibility professionals, researchers, developers, and
+          students. If you have found mainstream editors noisy, inconsistent, or hard to
+          navigate with assistive technology, QUILL is built for you.
         </p>
       </details>
       <details>
         <summary>What platforms does it run on?</summary>
         <p>
-          QUILL targets Windows, where it integrates with NVDA, JAWS, and
-          Narrator. The core logic is platform-agnostic, but the shipping app and
-          its screen-reader bridges are Windows-specific.
+          QUILL targets Windows, where it integrates with NVDA, JAWS, and Narrator.
+          The 0.5.0 Beta is Windows-only. The core logic is platform-agnostic, but the
+          shipping application and its screen-reader bridges are Windows-specific.
         </p>
       </details>
       <details>
         <summary>Is it free and open source?</summary>
         <p>
-          Yes. QUILL is open source under the MIT license. Contributions are
-          welcome &mdash; see the <a href="/docs/contributing.html">contribution
-          guidelines</a>.
+          Yes. QUILL is open source under the MIT license. Contributions are welcome -
+          see the <a href="/docs/contributing.html">contribution guidelines</a>.
+        </p>
+      </details>
+
+      <h2 id="beta">The 0.5.0 Beta release</h2>
+
+      <details>
+        <summary>Where do I download QUILL 0.5.0 Beta?</summary>
+        <p>
+          From the
+          <a href="https://github.com/Community-Access/quill/releases/tag/v0.5.0">GitHub releases page</a>
+          or directly via the
+          <a href="https://github.com/Community-Access/quill/releases/download/v0.5.0/Quill-Setup-0.5.0.exe">Windows installer link</a>.
+          The installer is approximately 70&nbsp;MB, includes an embedded Python runtime, and requires
+          Windows 10 or later, 64-bit.
+        </p>
+      </details>
+      <details>
+        <summary>What is in 0.5.0 Beta?</summary>
+        <p>
+          A full writing environment: tabbed multi-document workspace, command palette,
+          interactive status bar, selection workflows, long-document navigation, abbreviations and
+          snippets, search and compare tools, Read Aloud, EPUB support, Notebooks, Sticky Notes,
+          Macros, Workspace Snapshots, optional AI (Ask Quill), optional remote files, document
+          intake for many formats, feature profiles, and the Quillin extension platform.
+          The <a href="/docs/announcement.html">full announcement</a> details every section.
+        </p>
+      </details>
+      <details>
+        <summary>What does "beta" mean for daily use?</summary>
+        <p>
+          The foundation is complete and the beta is already capable enough for serious daily work.
+          Some workflows are more polished than others. Some integrations depend on optional local
+          tools. Behavior in certain areas will continue to be refined based on real-world use.
+          The <a href="/docs/announcement.html">announcement</a> explains what the team is most
+          interested in feedback on.
+        </p>
+      </details>
+      <details>
+        <summary>How do I give feedback?</summary>
+        <p>
+          Use <strong>Help, Report a Bug</strong> from inside QUILL. This is the best path because
+          it includes the details the team needs to reproduce and understand issues. Use it for
+          bugs, accessibility issues, confusing workflows, feature requests, screen-reader behavior
+          reports, and general feedback.
+        </p>
+      </details>
+      <details>
+        <summary>What is QUILL Office Hours?</summary>
+        <p>
+          A live Q&amp;A session on Saturday, June&nbsp;20, 2026, from 1:00&nbsp;PM to 3:00&nbsp;PM
+          Eastern. Open to new users, experienced users, accessibility advocates, developers, and
+          anyone curious about QUILL. Meet the team, see the product in action, ask questions, and
+          help shape the road to QUILL&nbsp;1.0.
+          <a href="https://us06web.zoom.us/meeting/register/m7oKZPRKSD-0SBWsHd0YRA">Register on Zoom</a>.
+          Registration is free.
         </p>
       </details>
 
@@ -108,7 +162,7 @@
       <details>
         <summary>What does "spoken-first" actually mean?</summary>
         <p>
-          Every command reports its result as text the screen reader speaks &mdash; for
+          Every command reports its result as text the screen reader speaks - for
           example, "Wrapped 3 words in bold" or "Nothing selected." A command that
           succeeds silently is treated as a bug, not a feature.
         </p>
@@ -116,26 +170,33 @@
       <details>
         <summary>Can I use QUILL with the keyboard only?</summary>
         <p>
-          Yes &mdash; everything is reachable and operable from the keyboard. Dialogs
-          have explicit default actions, predictable focus, and no keyboard traps,
-          and the command palette gives keyboard access to every command.
+          Yes - everything is reachable and operable from the keyboard. Dialogs have
+          explicit default actions, predictable focus, and no keyboard traps. The command
+          palette gives keyboard access to every command in the application.
+        </p>
+      </details>
+      <details>
+        <summary>Does QUILL help with selection, which can be tricky with a screen reader?</summary>
+        <p>
+          Yes. QUILL includes structured selection tools designed around screen-reader use.
+          You can start a selection, extend it, complete it, return to the start, reselect
+          previous text, and expand or shrink selections by word, sentence, line, paragraph,
+          or block. Selection is deliberate and reviewable, not dependent on visual feedback.
         </p>
       </details>
       <details>
         <summary>Does it respect high contrast and reduced motion?</summary>
         <p>
-          Yes. QUILL uses stock, accessible controls and honors your system
-          settings, including high-contrast themes. This documentation site also
-          respects <code>prefers-color-scheme</code> and
-          <code>prefers-reduced-motion</code>.
+          Yes. QUILL uses stock, accessible controls and honors your system settings,
+          including high-contrast themes. This documentation site also respects
+          <code>prefers-color-scheme</code> and <code>prefers-reduced-motion</code>.
         </p>
       </details>
       <details>
         <summary>I found an accessibility problem. What do I do?</summary>
         <p>
-          Please report it &mdash; accessibility issues are a priority. Open an issue
-          using the accessibility template, or from inside the app use
-          the <em>Report a Bug</em> command in the Help menu. Details are in the
+          Please report it - accessibility issues are a priority. Use <strong>Help, Report
+          a Bug</strong> from inside the app. Details are in the
           <a href="/docs/contributing.html">contribution guidelines</a>.
         </p>
       </details>
@@ -145,17 +206,56 @@
       <details>
         <summary>How do I get started?</summary>
         <p>
-          The <a href="/docs/userguide.html">user guide</a> walks through writing,
-          opening and saving files, navigation, the command palette, and settings.
-          It's the best first stop.
+          <a href="https://github.com/Community-Access/quill/releases/download/v0.5.0/Quill-Setup-0.5.0.exe">Download the installer</a>,
+          run it, and QUILL will appear in your Start menu. The
+          <a href="/docs/userguide.html">user guide</a> covers writing, opening and saving files,
+          navigation, the command palette, and settings.
+        </p>
+      </details>
+      <details>
+        <summary>What are feature profiles?</summary>
+        <p>
+          Profiles let you shape the editor around your needs. The available profiles are
+          Essential, Writer, Developer and Power Text, Accessibility Professional, and Full QUILL.
+          Choose a simpler profile for a clean writing experience, or enable a more complete
+          profile for automation, scripting, AI, remote files, and extension support.
         </p>
       </details>
       <details>
         <summary>What file formats can QUILL open and save?</summary>
         <p>
-          QUILL is plain-text-first and supports common text and document formats
-          through its format handlers. The <a href="/docs/userguide.html">user
-          guide</a> lists the supported formats and how import/export behaves.
+          QUILL is plain-text-first and supports plain text, Markdown, HTML, CSV, Word documents,
+          EPUB, PowerPoint, spreadsheets, and PDF through its document intake system. OCR-assisted
+          paths, Pandoc integration, and document intake reporting are available. The
+          <a href="/docs/userguide.html">user guide</a> lists supported formats and how
+          import and export behave.
+        </p>
+      </details>
+      <details>
+        <summary>What are Notebooks?</summary>
+        <p>
+          Notebooks support long-form projects by organizing a folder of files into a single working
+          environment with entries, headings, bookmarks, sticky notes, snapshots, and optional writing
+          goals. For multi-document projects, Notebooks turn QUILL into a dependable workspace, not
+          just a file editor.
+        </p>
+      </details>
+      <details>
+        <summary>What are abbreviations?</summary>
+        <p>
+          Abbreviations let you define short triggers that expand automatically into longer text -
+          common phrases, signatures, accessibility review notes, code patterns, documentation
+          structures, or any text you type repeatedly. Expansion can be turned on or off and
+          managed from within QUILL. For screen-reader users and keyboard-first writers,
+          abbreviations reduce typing effort and improve consistency.
+        </p>
+      </details>
+      <details>
+        <summary>Does QUILL support remote file storage?</summary>
+        <p>
+          Yes, optionally. QUILL can open and save files via FTP, SFTP, WebDAV, S3, HTTPS, and
+          GitHub. These features are off by default and never run silently in the background.
+          Enable only the remote file features you need.
         </p>
       </details>
       <details>
@@ -163,15 +263,15 @@
         <p>
           Under your Windows app-data folder (<code>%APPDATA%\Quill</code>), in
           schema-validated JSON stores written atomically with recovery backups,
-          so a crash or power loss won't corrupt your configuration.
+          so a crash or power loss will not corrupt your configuration.
         </p>
       </details>
       <details>
         <summary>Is my work safe if the app crashes?</summary>
         <p>
-          QUILL uses atomic writes (write-to-temp then replace) and keeps
-          <code>.bak</code>/recovery copies of its stores. The goal is that you
-          never lose configuration or work to an unexpected shutdown.
+          QUILL uses atomic writes (write-to-temp then replace) and keeps recovery copies of
+          its stores. Autosave runs in the background. The goal is that you never lose
+          configuration or work to an unexpected shutdown.
         </p>
       </details>
 
@@ -182,23 +282,22 @@
         <p>
           No. There is no background telemetry, analytics, or tracking. The
           <a href="/docs/privacy.html">privacy document</a> describes exactly what
-          is and isn't collected.
+          is and is not collected.
         </p>
       </details>
       <details>
         <summary>Does my document content ever leave my device?</summary>
         <p>
-          Not without your explicit, per-action consent. QUILL's "no silent
-          network calls" rule means any feature that would send data shows visible
-          progress and announces the outcome, and you opt in each time.
+          Not without your explicit, per-action consent. QUILL's "no silent network calls"
+          rule means any feature that would send data shows visible progress and announces
+          the outcome, and you opt in each time.
         </p>
       </details>
       <details>
         <summary>How are secrets like API keys stored?</summary>
         <p>
-          Secrets are stored in the Windows Credential Manager where available,
-          with a DPAPI-encrypted fallback. Document content is never written to
-          logs or diagnostics.
+          Secrets are stored in the Windows Credential Manager where available, with a
+          DPAPI-encrypted fallback. Document content is never written to logs or diagnostics.
         </p>
       </details>
 
@@ -207,25 +306,43 @@
       <details>
         <summary>Does QUILL use AI, and is it always on?</summary>
         <p>
-          AI features are optional and explicitly opt-in. Nothing AI-related runs
-          silently; every networked AI action is a deliberate, per-action choice
-          with visible progress. See <a href="/docs/responsible-ai-use.html">
-          responsible AI use</a>.
+          AI features are optional and explicitly opt-in. Turn AI off and AI features are hidden
+          entirely - nothing AI-related runs silently. Turn it on and every networked AI
+          action is a deliberate, per-action choice with visible progress. See
+          <a href="/docs/responsible-ai-use.html">responsible AI use</a>.
+        </p>
+      </details>
+      <details>
+        <summary>What is Ask Quill?</summary>
+        <p>
+          Ask Quill is the conversational AI surface inside the editor. You can ask for help
+          writing, editing, summarizing, restructuring, or working with selected text. When an
+          AI operation would change your document, QUILL uses a review-first model: the proposed
+          change is shown to you and must be approved before it is applied. There are no silent
+          edits.
+        </p>
+      </details>
+      <details>
+        <summary>Which AI providers does QUILL support?</summary>
+        <p>
+          Local model workflows, Ollama, Ollama Cloud, OpenAI, Claude, OpenRouter, Google
+          Gemini, and custom OpenAI-compatible endpoints. You can use a local model so that
+          nothing leaves your machine at all.
         </p>
       </details>
       <details>
         <summary>Will an AI feature send my text somewhere without asking?</summary>
         <p>
-          No. The same "no silent network" rule applies: an AI action that needs
-          to send your text asks first, shows what's happening, and announces the
-          result. You're always in control.
+          No. The same "no silent network" rule applies: an AI action that needs to send your
+          text asks first, shows what is happening, and announces the result. You are always
+          in control.
         </p>
       </details>
       <details>
         <summary>Can I use QUILL completely offline?</summary>
         <p>
-          Yes. The core writing experience is fully local. Networked features are
-          opt-in extras, not requirements.
+          Yes. The core writing experience is fully local. Networked features are opt-in extras,
+          not requirements. Use a local AI model and nothing reaches the network at all.
         </p>
       </details>
 
@@ -234,44 +351,43 @@
       <details>
         <summary>What is a Quillin?</summary>
         <p>
-          A Quillin is a small, sandboxed extension that adds commands, snippets,
-          menus, and hotkeys to QUILL. It's described by a <code>manifest.json</code>
-          and comes in two layers: declarative snippets (no code) and Python
-          handlers (real logic, isolated).
+          A Quillin is a small, sandboxed extension that adds commands, snippets, menus, and
+          hotkeys to QUILL. It is described by a <code>manifest.json</code> and comes in two
+          layers: declarative snippets (no code) and Python or Node.js handlers (real logic,
+          isolated in a subprocess).
         </p>
       </details>
       <details>
         <summary>Are Quillins safe to run?</summary>
         <p>
-          Quillins run under a default-deny capability model: a Quillin can only
-          do what it declares, and sensitive capabilities (filesystem and network)
-          additionally pass a per-action consent gate at runtime. Python handlers
-          run out-of-process in a sandbox.
+          Quillins run under a default-deny capability model: a Quillin can only do what it
+          declares, and sensitive capabilities (filesystem and network) additionally pass a
+          per-action consent gate at runtime. Python and Node.js handlers run out-of-process
+          in a sandbox. A crash in a Quillin cannot affect your editor or your document.
         </p>
       </details>
       <details>
         <summary>What's the difference between bundled and third-party Quillins?</summary>
         <p>
-          Bundled Quillins ship with QUILL as trusted, reviewed first-party
-          features and are enabled by default. Third-party Quillins are governed by
-          a separate, locked-off security flag in 1.0 &mdash; they run through the very
-          same sandbox, but a default build doesn't load third-party code.
+          Bundled Quillins ship with QUILL as trusted, reviewed first-party features and are
+          enabled by default. Third-party Quillins run through the same sandbox but are
+          disabled by default. You review, enable, disable, reload, or remove them through
+          the Quillins Manager.
         </p>
       </details>
       <details>
         <summary>Can a Quillin access my files or the internet?</summary>
         <p>
-          Only if it declares the matching capability <em>and</em> you approve each
-          use at runtime. There is no way for a Quillin to silently read files or
-          reach the network.
+          Only if it declares the matching capability <em>and</em> you approve each use at
+          runtime. There is no way for a Quillin to silently read files or reach the network.
         </p>
       </details>
       <details>
         <summary>How do I manage installed Quillins?</summary>
         <p>
-          Through the Quillins Manager (Tools menu), an accessible dialog that
-          lists installed Quillins, shows each one's manifest and granted
-          capabilities, and lets you enable, disable, reload, or remove it.
+          Through the Quillins Manager (Tools menu), an accessible dialog that lists installed
+          Quillins, shows each one's manifest and granted capabilities, and lets you enable,
+          disable, reload, or remove any of them.
         </p>
       </details>
 
@@ -280,48 +396,55 @@
       <details>
         <summary>How do I write my own Quillin?</summary>
         <p>
-          Start with the <a href="/docs/quillins.html">tutorial</a>, which
-          builds one from scratch. The <a href="/docs/quillins.html">authoring
-          reference</a> covers the manifest schema, capability catalogue, and the
-          Python API in full.
+          Start with the <a href="/docs/quillins.html">tutorial</a>, which builds one from
+          scratch. The <a href="/docs/quillins.html">authoring reference</a> covers the
+          manifest schema, capability catalogue, and the Python and Node.js APIs in full.
+          For a snippet-only Quillin, the <a href="/quillin-wizard.html">Snippet Wizard</a>
+          builds the manifest interactively without any coding.
         </p>
       </details>
       <details>
         <summary>Do I need to write code?</summary>
         <p>
-          Not necessarily. Layer 1 Quillins are pure declarative snippets &mdash; text
-          with placeholders like <code>${selection}</code>, <code>${date}</code>,
-          <code>${word_at_cursor}</code>, and <code>${uuid}</code> &mdash; with no
-          code and no capabilities. That covers most needs.
+          Not necessarily. Layer 1 Quillins are pure declarative snippets - text with
+          placeholders like <code>${selection}</code>, <code>${date}</code>,
+          <code>${word_at_cursor}</code>, and <code>${uuid}</code> - with no code and
+          no capabilities. That covers many common needs.
+        </p>
+      </details>
+      <details>
+        <summary>Can I write a Quillin in Node.js?</summary>
+        <p>
+          Yes. Layer 2 Quillins support both Python and Node.js handlers. Your handler runs
+          out-of-process in a sandboxed subprocess under the same capability and consent model
+          as Python handlers.
         </p>
       </details>
       <details>
         <summary>How do I check my Quillin before submitting?</summary>
         <p>
           Run the submission linter:
-          <code>python -m quill.tools.quillin_lint &lt;dir&gt; --strict</code>. It
-          validates your manifest against the published JSON Schema, runs the
-          contract validator the app enforces, and checks submission structure and
-          capability hygiene. A clean <code>--strict</code> run is the bar.
+          <code>python -m quill.tools.quillin_lint &lt;dir&gt; --strict</code>. It validates
+          your manifest against the published JSON Schema, runs the contract validator the app
+          enforces, and checks submission structure and capability hygiene. A clean
+          <code>--strict</code> run is the bar.
         </p>
       </details>
       <details>
         <summary>How do I submit a Quillin?</summary>
         <p>
-          Open the <em>Quillin submission</em> issue (it scaffolds the manifest
-          JSON for you), then open a pull request with the Quillin submission
-          template. The full process and review criteria are in the
-          <a href="/docs/quillins.html">submission guide</a>.
+          Open the <em>Quillin submission</em> issue (it scaffolds the manifest JSON for you),
+          then open a pull request with the Quillin submission template. The full process and
+          review criteria are in the <a href="/docs/quillins.html">submission guide</a>.
         </p>
       </details>
       <details>
         <summary>What are the rules my Quillin has to follow?</summary>
         <p>
-          The <a href="/docs/quillins.html">Quillin Author Covenant</a>:
-          announce every outcome, be keyboard-complete, declare the minimum
-          capabilities, no silent network or telemetry, readable source (no
-          obfuscation or sandbox-escape), and clear licensing. Every submission
-          attests to it.
+          The <a href="/docs/quillins.html">Quillin Author Covenant</a>: announce every
+          outcome, be keyboard-complete, declare the minimum capabilities, no silent network
+          or telemetry, readable source (no obfuscation or sandbox-escape), and clear
+          licensing. Every submission attests to it.
         </p>
       </details>
 
@@ -337,10 +460,9 @@
       <details>
         <summary>How does QUILL keep extensions from doing harm?</summary>
         <p>
-          Capabilities are default-deny, filesystem and network access are
-          consent-gated per action, Python handlers run out-of-process in a
-          sandbox, and every dialog and network egress point is reviewed by
-          automated gates in CI.
+          Capabilities are default-deny, filesystem and network access are consent-gated per
+          action, Python and Node.js handlers run out-of-process in a sandbox, and every
+          dialog and network egress point is reviewed by automated gates in CI.
         </p>
       </details>
 
@@ -349,34 +471,34 @@
       <details>
         <summary>How can I contribute?</summary>
         <p>
-          Code, documentation, accessibility testing, and Quillins are all welcome.
-          Start with the <a href="/docs/contributing.html">contribution
-          guidelines</a> for setup, architecture boundaries, and quality checks.
+          Code, documentation, accessibility testing, and Quillins are all welcome. Start with
+          the <a href="/docs/contributing.html">contribution guidelines</a> for setup,
+          architecture boundaries, and quality checks.
         </p>
       </details>
       <details>
         <summary>What are the project's architectural rules?</summary>
         <p>
-          The core and I/O layers never import the UI toolkit, persistence is
-          atomic and schema-validated, the UI thread owns all widgets, and there
-          are no silent network calls. The
-          <a href="/docs/contributing.html">contribution guidelines</a> and the
+          The core and I/O layers never import the UI toolkit, persistence is atomic and
+          schema-validated, the UI thread owns all widgets, and there are no silent network
+          calls. The <a href="/docs/contributing.html">contribution guidelines</a> and the
           product requirements document spell these out.
         </p>
       </details>
       <details>
         <summary>How is the project governed?</summary>
         <p>
-          See the <a href="/docs/governance.html">governance document</a> for how
-          decisions are made and the <a href="/docs/maintainers.html">maintainers</a>
-          list for who stewards the project.
+          See the <a href="/docs/governance.html">governance document</a> for how decisions
+          are made and the <a href="/docs/maintainers.html">maintainers</a> list for who
+          stewards the project.
         </p>
       </details>
       <details>
         <summary>Where do I ask questions?</summary>
         <p>
-          Use GitHub Discussions for Q&amp;A and early design exploration, and the
-          issue templates for specific bugs or proposals.
+          Use GitHub Discussions for Q&amp;A and early design exploration, and the issue
+          templates for specific bugs or proposals. For live questions, join
+          <a href="https://us06web.zoom.us/meeting/register/m7oKZPRKSD-0SBWsHd0YRA">Office Hours on June&nbsp;20</a>.
         </p>
       </details>
     </div>
@@ -385,15 +507,23 @@
   <footer class="site">
     <div class="wrap">
       <p class="note">
-        <strong style="color:var(--accent)">QUILL</strong> &mdash; documentation only.
+        <strong style="color:var(--accent)">QUILL</strong> -
         Quality, Usable, Inclusive, Lightweight, Literate.
       </p>
       <nav aria-label="Documentation">
         <h4>Start here</h4>
         <ul>
+          <li><a href="/docs/announcement.html">0.5.0 Beta announcement</a></li>
           <li><a href="/docs.html">All documentation</a></li>
           <li><a href="/docs/userguide.html">User guide</a></li>
           <li><a href="/docs/quillins.html">Quillin tutorial</a></li>
+        </ul>
+      </nav>
+      <nav aria-label="Project">
+        <h4>Project</h4>
+        <ul>
+          <li><a href="https://github.com/Community-Access/quill/releases/tag/v0.5.0">Download 0.5.0 Beta</a></li>
+          <li><a href="https://hub.quillforall.org">Quillin Hub</a></li>
         </ul>
       </nav>
     </div>
