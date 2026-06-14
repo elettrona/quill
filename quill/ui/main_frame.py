@@ -1535,7 +1535,7 @@ class MainFrame(
         self.commands.register(
             "app.preferences",
             "Preferences...",
-            self.open_preferences,
+            self.open_general_preferences,
             self._binding_for("app.preferences"),
         )
         self.commands.register(
@@ -8630,11 +8630,11 @@ class MainFrame(
         A single book control hosts one page per settings area. The selector is
         a stock wx book widget so it is keyboard- and screen-reader-accessible
         by construction, with native first-letter type-ahead and arrow-key
-        movement, and the first category is selected on open. The selector chrome
-        is chosen per platform: a left-hand category list (``wx.Listbook``,
-        Edge/Settings style) on Windows and Linux, and a top category toolbar
-        (``wx.Toolbook``, macOS System Settings style) on macOS. Moving across
-        categories immediately swaps the content pane -- no intermediate
+        movement, and the first category is selected on open. The selector is a
+        left-hand category list (``wx.Listbook``, Edge/Settings style) on every
+        platform; macOS does not use ``wx.Toolbook`` because its Cocoa toolbar
+        selector requires a per-page bitmap and segfaults without one. Moving
+        across categories immediately swaps the content pane -- no intermediate
         "choose then press OK" step -- and each page opens its area with an
         explicit button.
         """
@@ -8683,19 +8683,22 @@ class MainFrame(
                 self.install_starter_snippet_packs,
             ),
         ]
-        # macOS users expect a top toolbar selector (System Settings); Windows
-        # and Linux expect a left-hand category list (Edge / Windows Settings).
-        use_toolbook = sys.platform == "darwin"
+        # All platforms use a left-hand category list (wx.Listbook, Edge /
+        # Windows Settings style). macOS deliberately does NOT use wx.Toolbook:
+        # on Cocoa the Toolbook selector is a native wxToolBar that requires a
+        # valid bitmap per tool, and AddPage() below passes no image, so wx
+        # null-derefs in wxToolBarTool::UpdateImages() -> wxBitmap::UseAlpha()
+        # and segfaults the instant Preferences opens (Cmd+,). Listbook needs no
+        # bitmaps, so it keeps a single accessible, screen-reader-tested code
+        # path on every platform. Do not restore the Toolbook without giving
+        # every page a real wx.ImageList, or the macOS crash returns.
         # The handler chosen by the user; run after the hub closes so only one
         # modal is on screen at a time.
         chosen: dict[str, Callable[[], None] | None] = {"handler": None}
 
         with wx.Dialog(self.frame, title="Preferences") as dialog:
             outer = wx.BoxSizer(wx.VERTICAL)
-            if use_toolbook:
-                book = wx.Toolbook(dialog, style=wx.BK_TOP)
-            else:
-                book = wx.Listbook(dialog, style=wx.BK_LEFT)
+            book = wx.Listbook(dialog, style=wx.BK_LEFT)
             book.SetName("Preferences categories")
 
             def _make_open(handler: Callable[[], None]) -> Callable[[object], None]:
@@ -8756,9 +8759,9 @@ class MainFrame(
             dialog.SetSizerAndFit(outer)
             # Land initial focus on the category selector so arrow keys and
             # first-letter type-ahead work the instant the hub opens. The
-            # selector (Listbook list / Toolbook toolbar) is not one of the
-            # generic preferred-focus classes, so opt out of the heuristic and
-            # keep this explicit focus on both platforms.
+            # selector (Listbook list) is not one of the generic preferred-focus
+            # classes, so opt out of the heuristic and keep this explicit focus
+            # on every platform.
             book.SetFocus()
             dialog._quill_keep_initial_focus = True
             self._show_modal_dialog(dialog, "Preferences")
