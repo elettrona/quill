@@ -87,9 +87,14 @@ _REVIEWED_EGRESS: dict[str, str] = {
     ),
     # feedback_hub is an optional external library (not in quill/); its urlopen
     # call is not found by this AST scan but is documented here for auditability.
-    # report_bug() -> FeedbackDialog._on_submit -> create_issue -> urlopen
-    # Triggered only by an explicit user action (clicking Submit in the dialog).
-    # Falls back to the legacy browser path when feedback_hub is not installed.
+    # Two explicit-user-action call sites reach it:
+    #   report_bug() -> FeedbackDialog._on_submit -> create_issue -> urlopen
+    #   _send_crash_report() -> core.issue_submit.submit_crash_issue -> submit
+    #       -> create_issue -> urlopen
+    # The crash-report path requires an explicit consent confirmation, sends
+    # only a REDACTED log summary (stability.redaction), and runs only when a
+    # GitHub token is configured. Both fall back to the legacy browser/manual
+    # path when feedback_hub or a token is absent.
     "io/http_transport.py::download_url": (
         "Open-from-URL action. Triggered by an explicit user action from the "
         "Remote Sites dialog (Open from URL); fetches the resource the user "

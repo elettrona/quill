@@ -5431,6 +5431,79 @@ class MainFrame(
                     continue
         return removed
 
+    def _send_crash_report(self, offer: object, logs_path: Path) -> bool:
+        """File a crash report from the recovery dialog. Returns True to close it.
+
+        The Quill issue tracker is public, so this asks for explicit consent and
+        only sends a redacted log summary. With a stored GitHub token it creates
+        the issue directly, clears the logs, and returns True (close the dialog);
+        without one it opens the manual report form and returns False.
+        """
+        wx = self._wx
+        from quill.core.feedback_token import effective_github_token
+        from quill.core.issue_submit import build_log_summary, submit_crash_issue
+
+        with wx.MessageDialog(
+            self.frame,
+            "This files a report on Quill's PUBLIC issue tracker and includes a "
+            "redacted summary of your most recent log file. Personal data is "
+            "scrubbed, but the issue is visible to anyone. Send it now?",
+            "Send Bug Report",
+            wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
+        ) as consent:
+            if (
+                self._show_modal_dialog(consent, "Send Bug Report", restore_editor_focus=False)
+                != wx.ID_YES
+            ):
+                self._set_status("Bug report cancelled")
+                return False
+
+        if not effective_github_token():
+            self._set_status("No GitHub token: opening the bug report form")
+            self._report_bug_legacy()
+            return False
+
+        body = (
+            "Quill offered crash recovery after an unclean exit. Submitted "
+            "automatically from the Crash Recovery dialog.\n\n" + build_log_summary(logs_path)
+        )
+        issue_url, error = submit_crash_issue(
+            summary="Crash recovery: Quill detected an unclean exit",
+            message=body,
+            app_version=__version__ or "0.0.0",
+            github_token=effective_github_token(),
+            metadata={
+                "session": getattr(offer, "session_id", ""),
+                "snapshot": str(getattr(offer, "snapshot", "")),
+            },
+        )
+        if not issue_url:
+            self._set_status(f"Could not file report: {error}")
+            with wx.MessageDialog(
+                self.frame,
+                f"The report could not be filed automatically:\n{error}\n\n"
+                "Opening the manual report form instead.",
+                "Bug Report",
+                wx.OK | wx.ICON_WARNING,
+            ) as failed:
+                self._show_modal_dialog(failed, "Bug Report", restore_editor_focus=False)
+            self._report_bug_legacy()
+            return False
+
+        self._copy_to_clipboard(issue_url)
+        self._clear_recovery_logs(logs_path)
+        self._record_notification(f"Filed crash report: {issue_url}", "support")
+        self._set_status(f"Filed crash report: {issue_url}")
+        with wx.MessageDialog(
+            self.frame,
+            f"Thanks. Your report was filed and the logs were cleared:\n{issue_url}\n\n"
+            "The link is on your clipboard.",
+            "Bug Report Sent",
+            wx.OK | wx.ICON_INFORMATION,
+        ) as done:
+            self._show_modal_dialog(done, "Bug Report Sent", restore_editor_focus=False)
+        return True
+
     def _offer_crash_recovery(self) -> None:
         if not self._recovery_offers:
             return
@@ -5510,6 +5583,7 @@ class MainFrame(
         open_logs_button = wx.Button(dialog, label="Open Logs Folder")
         clear_logs_button = wx.Button(dialog, label="Clear Logs")
         save_diagnostics_button = wx.Button(dialog, label="Save Diagnostics...")
+        send_report_button = wx.Button(dialog, label="Send Bug Report")
         skip_label = "Discard and Continue" if offer.dismissal_count >= 3 else "Skip Recovery"
         skip_button = wx.Button(dialog, id=wx.ID_NO, label=skip_label)
         buttons = wx.BoxSizer(wx.HORIZONTAL)
@@ -5517,6 +5591,7 @@ class MainFrame(
         buttons.Add(open_logs_button, 0, wx.RIGHT, 6)
         buttons.Add(clear_logs_button, 0, wx.RIGHT, 6)
         buttons.Add(save_diagnostics_button, 0, wx.RIGHT, 6)
+        buttons.Add(send_report_button, 0, wx.RIGHT, 6)
         buttons.AddStretchSpacer(1)
         buttons.Add(skip_button, 0)
         root.Add(buttons, 0, wx.ALL | wx.EXPAND, 8)
@@ -5526,6 +5601,7 @@ class MainFrame(
         open_logs_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_APPLY))
         clear_logs_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CLEAR))
         save_diagnostics_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_SAVE))
+        send_report_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_HELP))
         skip_button.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_NO))
         dialog.SetDefaultItem(restore_button)
         apply_modal_ids(dialog, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO)
@@ -5557,6 +5633,11 @@ class MainFrame(
                     continue
                 if result == wx.ID_SAVE:
                     self.save_diagnostics_bundle()
+                    continue
+                if result == wx.ID_HELP:
+                    if self._send_crash_report(offer, logs_path):
+                        mark_recovery_offer_dismissed(offer)
+                        return
                     continue
                 if result != wx.ID_YES:
                     mark_recovery_offer_dismissed(offer)
