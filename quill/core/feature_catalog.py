@@ -260,6 +260,19 @@ FEATURE_DEFINITIONS: dict[str, FeatureDefinition] = {
         dependencies=("core.file",),
         category="core",
     ),
+    "core.braille": FeatureDefinition(
+        "core.braille",
+        "Braille Mode",
+        aliases=("braille", "brf", "braille reader", "braille mode"),
+        description=(
+            "Open, navigate, and announce BRF / BRL / PEF / UEB braille files. "
+            "Adds the Braille submenu, the braille status-bar cell, and the "
+            "Read Braille Status / Go to Braille Page / Insert Page Break "
+            "commands."
+        ),
+        dependencies=("core.file",),
+        category="core",
+    ),
     "core.remote": FeatureDefinition(
         "core.remote",
         "Remote Access",

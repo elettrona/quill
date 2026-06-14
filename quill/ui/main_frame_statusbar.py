@@ -13,11 +13,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
 
+from quill.core.braille_statusbar import short_form_from_resolver
 from quill.core.marks import line_column_for_position
 from quill.core.metrics import compute_document_stats
 from quill.core.palette import load_palette_usage, top_suggestion
 from quill.core.settings import STATUS_BAR_ITEMS, Settings, save_settings
-from quill.platform.windows.sr_announce import announce
+from quill.platform.sr_announce import announce
 
 
 @dataclass(slots=True)
@@ -85,11 +86,8 @@ class StatusBarMixin:
         # the user's status bar order.
         if "suggestion" not in visible and self._get_action_suggestion() is not None:
             visible.append("suggestion")
-        if getattr(self, "_active_notebook", None) is not None and "notebook_goal" not in visible:
-            nb = self._active_notebook
-            goal = getattr(nb, "goal", None)
-            if goal is not None and getattr(goal, "enabled", False):
-                visible.append("notebook_goal")
+        if "braille" not in visible and self._statusbar_braille_text():
+            visible.append("braille")
         if not visible:
             return ["message"]
         if "message" not in visible:
@@ -219,6 +217,8 @@ class StatusBarMixin:
             if profile is None:
                 return "Plain text"
             return profile.name
+        if item == "braille":
+            return self._statusbar_braille_text()
         if item == "sr_name":
             # A11Y live indicator (§8.3): show the detected screen reader name.
             # Cache the result on the instance to avoid re-running tasklist on
@@ -255,6 +255,32 @@ class StatusBarMixin:
                 return f"Goal reached: {count:,} {unit}"
             return f"{count:,} / {target:,} {unit}"
         return ""
+
+    def _statusbar_braille_text(self) -> str:
+        """Return the short-form braille cell text, or "" if not active.
+
+        Hidden for non-BRF documents and when the active document has no
+        resolved braille state. The cell filter in :meth:`_statusbar_items`
+        is responsible for keeping the cell out of the visible list when
+        this would be empty.
+        """
+        document = getattr(self, "document", None)
+        if document is None:
+            return ""
+        resolver = getattr(document, "_brf_resolver", None)
+        if resolver is None:
+            return ""
+        editor = getattr(self, "editor", None)
+        if editor is None:
+            return ""
+        try:
+            char_offset = editor.GetCurrentPos()
+        except Exception:  # noqa: BLE001
+            return ""
+        try:
+            return short_form_from_resolver(resolver, char_offset)
+        except (ValueError, TypeError):
+            return ""
 
     def _get_action_suggestion(self) -> object | None:
         """Return the Annisuggestion for the current session, or None."""
@@ -310,6 +336,7 @@ class StatusBarMixin:
             "language_profile": "Active language profile. Press Enter to change language.",
             "sr_name": "Detected screen reader. Press Enter to re-detect.",
             "suggestion": "Frequently used command. Press Enter to run it.",
+            "braille": "Braille position. Press Enter for Read Braille Status.",
         }
         return labels.get(item, self._STATUS_BAR_LABELS.get(item, item))
 

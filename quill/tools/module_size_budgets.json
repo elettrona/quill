@@ -41,7 +41,7 @@
     "quill/core/copy_tray.py": 139,
     "quill/ui/main_frame_copy_tray.py": 332,
     "quill/ui/copy_tray_dialog.py": 267,
-    "quill/ui/main_frame_statusbar.py": 558,
+    "quill/ui/main_frame_statusbar.py": 585,
     "quill/core/abbreviations.py": 266,
     "quill/core/multi_press.py": 59,
     "quill/ui/main_frame_abbreviations.py": 202,
@@ -103,5 +103,6 @@
   "_rebaseline_2026_06_15_bugfix": "#209/#210 fixes: setup_wizard_pages.py 632->637 (Profile page -> wx.RadioBox so arrow keys wrap within the group, #209); main_frame.py 22337->22352 (_on_close destroys straggler top-level windows so run-from-source exits, #210).",
   "_rebaseline_2026_06_15_clearlogs": "Crash Recovery dialog: add Clear Logs button + _clear_recovery_logs helper (unlink, truncate in-use files) with a confirmation message dialog showing the count. main_frame.py 22352->22397.",
   "_rebaseline_2026_06_15_close": "#210 (reopened): _on_close guards every shutdown step with _safely() so a failing/slow step (watch worker, ssh, settings write, recovery lock, sound backend) can never throw before event.Skip(), plus an explicit ExitMainLoop fallback. main_frame.py re-measured.",
-  "_rebaseline_2026_06_15_macos_pref": "macOS Preferences crash + snippet a11y (#212 / 6d1bc9e): open_preferences rebinds to open_general_preferences so Cmd+, lands on the settings, the Preferences hub unifies on wx.Listbook (Toolbook's native selector null-derefs in wxToolBarTool::UpdateImages on Cocoa when AddPage omits a bitmap, segfaulting Cmd+,), the abbreviation_backspace_behavior choice spec is fixed to (value, label) pairs, and the snippet editor migrates from four sequential wx.TextEntryDialog prompts to one labelled wx.Dialog (MainFrame._prompt_snippet_editor) with z-order-safe label-then-control field helpers. main_frame.py 22397->22449; main_frame_menu.py 3014->3016 (preferences handler now points at open_general_preferences)."
+  "_rebaseline_2026_06_15_macos_pref": "macOS Preferences crash + snippet a11y (#212 / 6d1bc9e): open_preferences rebinds to open_general_preferences so Cmd+, lands on the settings, the Preferences hub unifies on wx.Listbook (Toolbook's native selector null-derefs in wxToolBarTool::UpdateImages on Cocoa when AddPage omits a bitmap, segfaulting Cmd+,), the abbreviation_backspace_behavior choice spec is fixed to (value, label) pairs, and the snippet editor migrates from four sequential wx.TextEntryDialog prompts to one labelled wx.Dialog (MainFrame._prompt_snippet_editor) with z-order-safe label-then-control field helpers. main_frame.py 22397->22449; main_frame_menu.py 3014->3016 (preferences handler now points at open_general_preferences).",
+  "_rebaseline_2026_06_14_braille_statusbar": "Braille Mode WIP: main_frame_statusbar.py 558->585 for the braille status bar cell wiring (new core/braille_statusbar.py module + feature_catalog/settings_normalizers/main_frame integration). WIP checkpoint to unblock a branch switch; CQ-1 decomposition is the path to lower it."
 }

@@ -826,6 +826,7 @@ class MainFrame(
         "sr_name": "Screen Reader",
         "suggestion": "Suggested Action",
         "notebook_goal": "Notebook Goal",
+        "braille": "Braille",
     }
     _STATUS_BAR_WIDTHS: dict[str, int] = {
         "message": -1,
@@ -850,6 +851,7 @@ class MainFrame(
         "sr_name": 160,
         "suggestion": 220,
         "notebook_goal": 200,
+        "braille": 320,
     }
     _STATUS_BAR_FEATURES: dict[str, str] = {
         "message": "core.app",
@@ -874,6 +876,7 @@ class MainFrame(
         "sr_name": "core.app",
         "suggestion": "core.app",
         "notebook_goal": "core.notebook",
+        "braille": "core.braille",
     }
     _MACRO_CONTROL_COMMANDS: frozenset[str] = frozenset({
         "tools.start_macro_recording",

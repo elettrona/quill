@@ -34,6 +34,10 @@ STATUS_BAR_ITEMS: tuple[str, ...] = (
     "copy_tray_slots",
     # Active language profile for code-aware editing (#181).
     "language_profile",
+    # Braille Mode (BR-010): page / line / cell / print page when a BRF
+    # document is active. Hidden for non-BRF documents so it does not
+    # take up status-bar real estate for sighted/non-braille workflows.
+    "braille",
 )
 
 
@@ -59,6 +63,7 @@ def _default_status_bar_hidden() -> list[str]:
         "abbreviations",
         "copy_tray_slots",
         "language_profile",
+        "braille",
     ]
 
 
