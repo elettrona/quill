@@ -300,6 +300,10 @@ in narrower encodings without silent data loss.</li>
 heading structure when the source contains structure.</li>
 <li><strong>Citation insertion</strong> formats MLA 9, Chicago 17, and
 APA 7 citations from a simple labelled form.</li>
+<li><strong>The Snippet Gallery</strong> (Insert &gt; Snippet Gallery…
+or QUILL key, Shift+G) collects parameterized templates from all enabled
+Quillins into one browseable picker. Smart Insert ships three built-in
+entries.</li>
 <li><strong>The Vision Prompt Library</strong>, contributed by Kelly
 Ford, gives Describe Image with AI twelve evaluated prompt styles and a
 full management dialog.</li>
@@ -1061,6 +1065,31 @@ details, and insertion at the cursor.</p>
 <p>The point is simple: screen-reader users should not be at a
 disadvantage because citation formatting is visual, finicky, and easy to
 get wrong.</p>
+<hr />
+<h2 id="snippet-gallery-parameterized-templates-in-one-place">Snippet
+Gallery: parameterized templates in one place</h2>
+<p>The Snippet Gallery collects reusable, fill-in-the-blank templates
+contributed by Quillins into a single browseable picker. Open it from
+<strong>Insert &gt; Snippet Gallery…</strong> or press <strong>QUILL
+key, Shift+G</strong>.</p>
+<p>A gallery dialog opens showing every available snippet, grouped by
+Quillin. Select one, read the preview, and press
+<strong>Insert</strong>. If the snippet has parameters — a title, a
+date, a subject line — QUILL prompts you for each one in sequence, then
+inserts the completed text at your cursor.</p>
+<p>Smart Insert ships three built-in entries:</p>
+<ul>
+<li><strong>Report Header</strong> — a titled section with an author and
+date line. Prompts: report title, date.</li>
+<li><strong>Meeting Invitation</strong> — subject, date, location, and
+agenda block. Prompts: subject, date/time, location, agenda.</li>
+<li><strong>Bug Report (Markdown)</strong> — a full Markdown bug-report
+skeleton with title, environment, steps to reproduce, expected result,
+and actual result. Prompts: title.</li>
+</ul>
+<p>Any Quillin can contribute gallery entries by adding a
+<code>snippet_gallery</code> block to its manifest. No extra capability
+is required.</p>
 <hr />
 <h2
 id="vision-prompt-library-better-ai-image-descriptions-contributed-by-kelly-ford">Vision

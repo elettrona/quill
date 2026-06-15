@@ -20,6 +20,7 @@ If you are upgrading from QUILL 0.5.0, read **What works differently now** near 
 - **Text encoding tools** help you find non-ASCII characters, jump to them, convert them to HTML entities, and save copies in narrower encodings without silent data loss.
 - **Word and RTF export** lets you save documents as `.docx` or rich text through Pandoc, preserving real Word heading structure when the source contains structure.
 - **Citation insertion** formats MLA 9, Chicago 17, and APA 7 citations from a simple labelled form.
+- **The Snippet Gallery** (Insert > Snippet Gallery... or QUILL key, Shift+G) collects parameterized templates from all enabled Quillins into one browseable picker. Smart Insert ships three built-in entries.
 - **The Vision Prompt Library**, contributed by Kelly Ford, gives Describe Image with AI twelve evaluated prompt styles and a full management dialog.
 - **The Dynamic Keyboard Reference** now reflects the active command registry, your current bindings, and QUILL key layers.
 - **Sound notifications** and **indentation tones** add optional non-speech feedback without making existing setups noisier.
@@ -533,6 +534,22 @@ You choose:
 Then you fill in the facts you know, such as author, title, year, and related fields. QUILL handles the punctuation, ordering, formatting details, and insertion at the cursor.
 
 The point is simple: screen-reader users should not be at a disadvantage because citation formatting is visual, finicky, and easy to get wrong.
+
+---
+
+## Snippet Gallery: parameterized templates in one place
+
+The Snippet Gallery collects reusable, fill-in-the-blank templates contributed by Quillins into a single browseable picker. Open it from **Insert > Snippet Gallery...** or press **QUILL key, Shift+G**.
+
+A gallery dialog opens showing every available snippet, grouped by Quillin. Select one, read the preview, and press **Insert**. If the snippet has parameters — a title, a date, a subject line — QUILL prompts you for each one in sequence, then inserts the completed text at your cursor.
+
+Smart Insert ships three built-in entries:
+
+- **Report Header** — a titled section with an author and date line. Prompts: report title, date.
+- **Meeting Invitation** — subject, date, location, and agenda block. Prompts: subject, date/time, location, agenda.
+- **Bug Report (Markdown)** — a full Markdown bug-report skeleton with title, environment, steps to reproduce, expected result, and actual result. Prompts: title.
+
+Any Quillin can contribute gallery entries by adding a `snippet_gallery` block to its manifest. No extra capability is required.
 
 ---
 
