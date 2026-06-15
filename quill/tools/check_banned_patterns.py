@@ -57,6 +57,13 @@ caused real bugs in Quill:
    inside a ``wx.ScrolledWindow`` instead; each checkbox announces its state
    natively on focus.
 
+8. ``AcceptsFocusFromKeyboard`` returning ``False`` is banned in ``quill/ui``
+   (A11Y-TAB-1). Overriding this method to return ``False`` on a ``wx.Panel``
+   subclass causes wxPython's ``wxControlContainer`` tab traversal to skip the
+   entire panel subtree — every child TextCtrl, ListBox, and CheckBox becomes
+   unreachable by keyboard. Inactive panels should be excluded from the tab
+   chain via ``Hide()`` + ``Disable()`` instead.
+
 Run directly (``python -m quill.tools.check_banned_patterns``) or via pytest
 (``tests/unit/tools/test_check_banned_patterns.py``). Exit code is non-zero when
 any violation is found.
@@ -659,6 +666,61 @@ def _check_dead_region_attrs(paths: Iterable[Path]) -> list[Violation]:
     return violations
 
 
+_GATE_A11Y_TAB_MARKER = "# A11Y-TAB-1-OK:"
+
+
+def _check_accept_focus_from_keyboard(paths: Iterable[Path]) -> list[Violation]:
+    """Ban ``AcceptsFocusFromKeyboard`` returning ``False`` in quill/ui (A11Y-TAB-1).
+
+    Overriding ``AcceptsFocusFromKeyboard() -> False`` on a ``wx.Panel``
+    subclass causes wxPython's ``wxControlContainer`` tab traversal to skip
+    the entire panel subtree, making every child control (TextCtrl, ListBox,
+    CheckBox, etc.) unreachable by keyboard.  This is the exact pattern that
+    broke tab access to all wizard page fields.
+
+    Hidden/inactive pages should be kept out of the tab chain via
+    ``Hide()`` + ``Disable()``, not by blocking focus on the panel itself.
+
+    Add ``# A11Y-TAB-1-OK: <reason>`` on the ``def`` line to exempt a genuine
+    use case (e.g. a read-only display panel that should never be a tab stop).
+    """
+    violations: list[Violation] = []
+    for path in paths:
+        source_lines = path.read_text(encoding="utf-8").splitlines()
+        tree = ast.parse("\n".join(source_lines), filename=str(path))
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.FunctionDef) and node.name == "AcceptsFocusFromKeyboard"):
+                continue
+            # Check whether the function body is a single ``return False``.
+            body = node.body
+            if len(body) != 1:
+                continue
+            stmt = body[0]
+            if not (
+                isinstance(stmt, ast.Return)
+                and isinstance(stmt.value, ast.Constant)
+                and stmt.value.value is False
+            ):
+                continue
+            # Allow an exemption marker on the def line.
+            def_line = source_lines[node.lineno - 1] if node.lineno <= len(source_lines) else ""
+            if _GATE_A11Y_TAB_MARKER in def_line:
+                continue
+            violations.append(
+                Violation(
+                    path,
+                    node.lineno,
+                    "AcceptsFocusFromKeyboard returning False on a Panel blocks "
+                    "wxPython tab traversal for the entire subtree, making child "
+                    "controls (TextCtrl, ListBox, CheckBox) unreachable by keyboard "
+                    "(A11Y-TAB-1). Use Hide()+Disable() to exclude inactive panels "
+                    "from the tab chain instead. "
+                    "Add '# A11Y-TAB-1-OK: <reason>' to exempt a genuine read-only surface.",
+                )
+            )
+    return violations
+
+
 def find_violations() -> list[Violation]:
     ui_files = sorted(_UI_ROOT.rglob("*.py"))
     violations: list[Violation] = []
@@ -670,6 +732,7 @@ def find_violations() -> list[Violation]:
     violations.extend(_check_threading_thread(ui_files))
     violations.extend(_check_wx_message_box(sorted(_PACKAGE_ROOT.rglob("*.py"))))
     violations.extend(_check_show_modal_wrapper(ui_files))
+    violations.extend(_check_accept_focus_from_keyboard(ui_files))
     violations.extend(_check_dialog_registry())
     violations.extend(_check_ruff_config())
     return violations
