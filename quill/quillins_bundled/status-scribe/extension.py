@@ -70,6 +70,16 @@ def on_settings_changed(api, event: dict) -> None:
     _refresh_count(api)
 
 
+def on_timer_refresh(api, event: dict) -> None:
+    """Timer tick: recount the active document so the cell never goes stale.
+
+    ``event`` carries ``timer_id`` and ``interval_seconds``.
+    """
+    interval = event.get("interval_seconds")
+    _refresh_count(api)
+    api.log(f"Status Scribe: timer refresh ({interval}s) -> {_last_count}")
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------

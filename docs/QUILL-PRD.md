@@ -2947,6 +2947,36 @@ By default QUILL stores AI provider keys in the Windows Credential Manager, whic
 
 ---
 
+### 5.87 Timer Events
+
+**Design goals.** Let a Quillin perform periodic, low-frequency background work — refreshing a status cell, polling a watched resource, housekeeping — without polling on the UI thread or observing keystrokes. A Quillin declares a `schedule` contribution: one or more named timers, each with an `interval_seconds` and a handler.
+
+**Interval constraints.** `interval_seconds` is bounded to 60–86400 (one minute to one day). The lower bound keeps timers from becoming a high-frequency surface that could degrade screen-reader predictability or burn CPU; the upper bound keeps the value meaningful (anything longer is better modelled as a lifecycle event).
+
+**Threading model.** Each tick runs its handler in a daemon thread via the out-of-process `ExtensionHost`, so a slow or faulty handler can never block the editor. The timer itself is a `wx.Timer` owned by the host frame; timers start when the Quillin loads, stop on disable/remove/reload, and never run in Safe Mode.
+
+**Error handling.** A handler that raises is caught in the worker thread; the error is marshalled back to the UI thread and shown in the status bar. A timer error never crashes the editor and never stops the timer — the next tick still fires.
+
+### 5.88 File-Type Contributions
+
+**Design goals.** Let a Quillin react to opening a document of a declared file type — announce a braille page count for `.brf`, report CSV headers for `.csv`, timestamp a `.log` — without subscribing to every `document.opened` event and filtering by hand.
+
+**Extension matching.** A `file_types` entry lists lowercase, dot-prefixed extensions (`.csv`, `.brf`). On open, the host looks up the document's suffix (lower-cased) in a per-extension index built at load time and fires every registered handler for that suffix. Because the handler runs real out-of-process code, `file_types` reuses the `document.events` capability and requires a `main` module.
+
+**Dispatch model.** File-type handlers fire immediately after the general `document.opened` event, on a background thread, with a context of `{file_path, extension, filename}`. Dispatch is non-blocking; multiple Quillins may register for the same extension and all fire.
+
+### 5.89 Snippet Gallery
+
+**Design goals.** Give Quillins a way to ship a library of named, parameterized templates that users can browse and insert, without binding each to a command or hotkey. Gallery snippets run no code — pure text expansion — so they need no capability and no `main` module.
+
+**Picker UX.** **Insert → Snippet Gallery...** opens a list of every gallery snippet from every enabled Quillin, grouped by Quillin, with a read-only preview of the selected snippet's body. Insert expands the snippet at the cursor (replacing any selection); Cancel closes the dialog.
+
+**Parameter prompting.** A snippet body may contain `{param_name}` placeholders. Each declared param has a `name` (matching a placeholder), a `label`, and an optional `default`. On insert, QUILL prompts for each param in turn through the shared single-line prompt; cancelling any prompt cancels the whole insertion (nothing is inserted).
+
+**Accessibility requirements.** The gallery is a hardened `wx.Dialog` routed through `_show_modal_dialog`/`apply_modal_ids` for the keyboard contract. The snippet list, preview field, and buttons all carry accessible names; selecting a snippet announces its name and source Quillin; Insert is the default button and Escape cancels. Param prompts are individually labelled and cancellable.
+
+---
+
 ## 6. Spell checking deep dive
 
 ### 6.1 The TinySpell question

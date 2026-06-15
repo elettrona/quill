@@ -217,6 +217,16 @@ QUILL 0.6.0 ships five bundled Quillins that collectively demonstrate every cont
 
 - **Status Scribe** (`com.quill.statusscribe`) — a live word/character/sentence count in the status bar, updated after every save and on tab switch. Demonstrates `status_bar` contribution, `ui.log` developer logging, `quillin.enabled`/`quillin.disabled`/`settings.changed` lifecycle events, and announcement priority. Categories: `writing, productivity, accessibility`.
 
+### What's new in the Quillin platform
+
+- **Timer events (schedule)** — a Quillin can now schedule background work every N seconds (minimum 60, maximum 86400). Timers run in threads so the editor never blocks. Example: Status Scribe refreshes its count cell every 5 minutes.
+
+- **File-type contributions (file_types)** — a Quillin can declare which file extensions it handles. When a matching file opens, the Quillin's handler fires automatically. BRF Tools now announces the braille page count when a `.brf` or `.brl` file opens.
+
+- **Snippet gallery (snippet_gallery)** — a Quillin can contribute named, parameterized templates to a browseable gallery. Open it from **Insert → Snippet Gallery...**, pick a template, fill in any prompts, and the text lands at the cursor. Smart Insert ships three built-in gallery snippets.
+
+- **Document lifecycle events now fire** — the existing 14 declared events (document.opened, document.after_save, quill.shutdown, etc.) now actually dispatch at runtime. Journal Stamp and Status Scribe are live.
+
 ## New: Braille Mode
 
 QUILL can now opens and edit formatted braille text files. The point is to let a braille proofreader move through a transcription the way it is actually laid out, in braille pages and cells, with speech that tells you exactly where you are.

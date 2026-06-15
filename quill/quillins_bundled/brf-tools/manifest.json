@@ -10,9 +10,21 @@
   "categories": ["braille", "accessibility"],
   "capabilities": [
     "settings.own.read",
-    "settings.own.write"
+    "settings.own.write",
+    "document.events",
+    "editor.read",
+    "ui.announce",
+    "ui.status"
   ],
+  "main": "extension.py",
   "contributes": {
+    "file_types": [
+      {
+        "extensions": [".brf", ".brl"],
+        "handler": "on_brf_opened",
+        "description": "Announce that a braille file opened and report its braille page count (form feeds)."
+      }
+    ],
     "preferences": [
       {
         "id": "brftools",

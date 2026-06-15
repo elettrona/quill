@@ -184,6 +184,19 @@ class SessionsMixin:
         self._location_ring.record(0)
         self._refresh_title()
         self._refresh_sessions_menu()
+        # Quillin document.loaded_from_session event (one per restored document).
+        fire = getattr(self, "_fire_quillin_event", None)
+        if callable(fire):
+            for tab in self._document_tabs:
+                doc_path = getattr(tab.document, "path", None)
+                fire(
+                    "document.loaded_from_session",
+                    {
+                        "file_path": str(doc_path) if doc_path is not None else "",
+                        "extension": doc_path.suffix.lower() if doc_path is not None else "",
+                        "title": getattr(tab.document, "name", ""),
+                    },
+                )
 
     def save_session(self, path: Path | None = None) -> None:
         wx = self._wx

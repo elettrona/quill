@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from quill.core.quillins.model import (
     API_VERSION,
+    CAP_SCHEDULE,
     CAPABILITIES,
     CONSENT_GATED_CAPABILITIES,
     SCHEMA_ID,
@@ -14,8 +17,12 @@ from quill.core.quillins.model import (
     Contributions,
     ExtensionCommand,
     ExtensionManifest,
+    FileTypeContribution,
     ManifestError,
     QuillinError,
+    ScheduleContribution,
+    SnippetGalleryEntry,
+    SnippetParam,
 )
 
 
@@ -116,3 +123,38 @@ def test_contributions_carries_new_contribution_fields() -> None:
     assert c.preferences == ()
     assert c.document_events == ()
     assert c.status_bar == ()
+    assert c.schedule == ()
+    assert c.file_types == ()
+    assert c.snippet_gallery == ()
+
+
+def test_schedule_capability_is_registered() -> None:
+    assert CAP_SCHEDULE == "schedule"
+    assert CAP_SCHEDULE in CAPABILITIES
+
+
+def test_schedule_contribution_defaults() -> None:
+    sched = ScheduleContribution(id="refresh", interval_seconds=300, handler="on_tick")
+    assert sched.description == ""
+    assert sched.interval_seconds == 300
+
+
+def test_file_type_contribution_is_frozen() -> None:
+    import dataclasses
+
+    ft = FileTypeContribution(extensions=(".csv",), handler="on_open")
+    assert ft.description == ""
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        ft.handler = "x"  # type: ignore[misc]
+
+
+def test_snippet_gallery_entry_with_params() -> None:
+    entry = SnippetGalleryEntry(
+        id="hdr",
+        name="Header",
+        body="# {title}",
+        params=(SnippetParam(name="title", label="Title", default="Untitled"),),
+    )
+    assert entry.category == ""
+    assert entry.params[0].default == "Untitled"
+    assert entry.params[0].name == "title"

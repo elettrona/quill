@@ -188,6 +188,7 @@ class MenuBuilderMixin:
         self._id_replace_in_files = wx.NewIdRef()
         self._id_insert_link = wx.NewIdRef()
         self._id_insert_citation = wx.NewIdRef()
+        self._id_snippet_gallery = wx.NewIdRef()
         self._id_follow_link = wx.NewIdRef()
         self._id_word_prediction = wx.NewIdRef()
         self._id_select_line = wx.NewIdRef()
@@ -895,6 +896,10 @@ class MenuBuilderMixin:
         insert_menu.Append(
             self._id_insert_citation,
             self._menu_label("Insert &Citation...", "edit.insert_citation"),
+        )
+        insert_menu.Append(
+            self._id_snippet_gallery,
+            self._menu_label("Snippet &Gallery...", "power.open_snippet_gallery"),
         )
         insert_menu.AppendSeparator()
         insert_menu.AppendSubMenu(heading_menu, "&Heading")
@@ -2087,6 +2092,9 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.insert_link(), id=self._id_insert_link)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.insert_citation(), id=self._id_insert_citation)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.open_snippet_gallery(), id=self._id_snippet_gallery
+        )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.follow_link(), id=self._id_follow_link)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.start_selection(), id=self._id_start_selection)
         self.frame.Bind(

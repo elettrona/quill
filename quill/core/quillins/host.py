@@ -348,6 +348,21 @@ class ExtensionHost:
         message = self._pump_until_result()
         return message.get("value")
 
+    def invoke_event(self, handler_name: str, context: dict[str, Any]) -> Any:
+        """Invoke a registered handler by name (event/timer dispatch).
+
+        Works like :meth:`invoke` but takes the handler function name directly
+        rather than resolving it from a command id, because document-event and
+        timer handlers are not registered as commands.
+        """
+
+        if not isinstance(handler_name, str) or not handler_name:
+            raise QuillinError("invoke_event requires a non-empty handler name")
+        self._call_id += 1
+        self._send(protocol.invoke(self._call_id, handler_name, context))
+        message = self._pump_until_result()
+        return message.get("value")
+
     def _handler_for(self, command_id: str) -> str:
         for command in self._manifest.contributes.commands:
             if command.id == command_id:

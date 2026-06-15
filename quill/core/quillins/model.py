@@ -48,6 +48,8 @@ CAP_SETTINGS_CORE_READ = "settings.core.read"
 CAP_SETTINGS_CORE_WRITE = "settings.core.write"
 CAP_DOCUMENT_DIRECTIVES = "document.directives"
 CAP_DOCUMENT_EVENTS = "document.events"
+# schedule lets a Quillin run a handler on a fixed background timer (Part 1).
+CAP_SCHEDULE = "schedule"
 # ui.log routes api.log() calls to the Developer Console (QUILL_DEV_BUILD or
 # via Tools > Developer Console). No user-visible side-effect; no consent gate.
 CAP_UI_LOG = "ui.log"
@@ -72,6 +74,7 @@ CAPABILITIES: frozenset[str] = frozenset({
     CAP_SETTINGS_CORE_WRITE,
     CAP_DOCUMENT_DIRECTIVES,
     CAP_DOCUMENT_EVENTS,
+    CAP_SCHEDULE,
     CAP_UI_LOG,
 })
 
@@ -279,6 +282,61 @@ class StatusBarContribution:
 
 
 @dataclass(frozen=True, slots=True)
+class ScheduleContribution:
+    """A background timer contribution (requires the schedule capability + main).
+
+    ``id`` must be unique within the Quillin. ``interval_seconds`` is the timer
+    period (60-86400). ``handler`` is the function the host invokes on each tick
+    with a context of ``{"timer_id", "interval_seconds"}``.
+    """
+
+    id: str
+    interval_seconds: int
+    handler: str
+    description: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class FileTypeContribution:
+    """A file-type handler fired when a matching document opens.
+
+    ``extensions`` are lowercase, dot-prefixed suffixes (e.g. ``.csv``). When a
+    file with a matching suffix opens, ``handler`` runs with a context of
+    ``{"file_path", "extension", "filename"}``. A specialized document.opened, so
+    it reuses the document.events capability.
+    """
+
+    extensions: tuple[str, ...]
+    handler: str
+    description: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class SnippetParam:
+    """A single fill-in field prompted before a gallery snippet is inserted."""
+
+    name: str
+    label: str
+    default: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class SnippetGalleryEntry:
+    """A named, optionally parameterized template shown in the Snippet Gallery.
+
+    ``body`` may contain ``{param_name}`` placeholders; each ``params`` name must
+    appear in ``body``. No code runs — this is pure text expansion.
+    """
+
+    id: str
+    name: str
+    body: str
+    description: str = ""
+    category: str = ""
+    params: tuple[SnippetParam, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class Contributions:
     """Everything a manifest contributes to the host's accessible surfaces."""
 
@@ -300,6 +358,12 @@ class Contributions:
     document_events: tuple[object, ...] = ()
     # Status bar cells. Each entry is a StatusBarContribution.
     status_bar: tuple[StatusBarContribution, ...] = ()
+    # Background timers. Each entry is a ScheduleContribution (Part 1).
+    schedule: tuple[ScheduleContribution, ...] = ()
+    # File-type handlers. Each entry is a FileTypeContribution (Part 2).
+    file_types: tuple[FileTypeContribution, ...] = ()
+    # Snippet gallery templates. Each entry is a SnippetGalleryEntry (Part 3).
+    snippet_gallery: tuple[SnippetGalleryEntry, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

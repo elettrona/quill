@@ -155,6 +155,7 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "power.paste_html_as_markdown": "Ctrl+Shift+Grave, M",
     "power.non_ascii_jump_to_source": "",  # assign via Keymap Editor; use from Non-ASCII report
     "power.non_ascii_jump_to_report": "",  # assign via Keymap Editor; jump back to report
+    "power.open_snippet_gallery": "",  # assign via Keymap Editor; open from Insert menu
     "format.insert_snippet": "Ctrl+Shift+Grave, S",
     "format.manage_snippets": "Ctrl+Shift+Grave, Shift+S",
     "format.expand_abbreviation": "Ctrl+Shift+Grave, A",

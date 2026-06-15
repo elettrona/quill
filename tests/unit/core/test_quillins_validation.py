@@ -843,3 +843,161 @@ def test_pref_setting_search_keyword_too_long_is_rejected() -> None:
     raw["contributes"]["preferences"][0]["settings"][0]["search_keywords"] = ["x" * 65]  # type: ignore[index]
     errors = validate_manifest(raw)
     assert any("search_keywords" in e for e in errors)
+
+
+# -- schedule (Part 1) -------------------------------------------------------
+
+
+def _schedule_manifest(interval_seconds: int = 60) -> dict[str, object]:
+    return {
+        "schema": "quill.extension/1",
+        "id": "com.example.timer",
+        "name": "Timer",
+        "version": "1.0.0",
+        "capabilities": ["schedule"],
+        "main": "extension.py",
+        "contributes": {
+            "schedule": [{"id": "tick", "interval_seconds": interval_seconds, "handler": "on_tick"}]
+        },
+    }
+
+
+def test_schedule_valid() -> None:
+    assert validate_manifest(_schedule_manifest(60)) == []
+
+
+def test_schedule_too_short() -> None:
+    errors = validate_manifest(_schedule_manifest(59))
+    assert any("interval_seconds" in e for e in errors)
+
+
+def test_schedule_too_long() -> None:
+    errors = validate_manifest(_schedule_manifest(86401))
+    assert any("interval_seconds" in e for e in errors)
+
+
+def test_schedule_requires_capability() -> None:
+    raw = _schedule_manifest(60)
+    raw["capabilities"] = []
+    errors = validate_manifest(raw)
+    assert any("schedule" in e and "capability" in e for e in errors)
+
+
+def test_schedule_requires_main() -> None:
+    raw = _schedule_manifest(60)
+    del raw["main"]
+    errors = validate_manifest(raw)
+    assert any("schedule" in e and "main" in e for e in errors)
+
+
+def test_schedule_duplicate_id_is_rejected() -> None:
+    raw = _schedule_manifest(60)
+    raw["contributes"]["schedule"].append(  # type: ignore[index,union-attr]
+        {"id": "tick", "interval_seconds": 120, "handler": "on_tick2"}
+    )
+    errors = validate_manifest(raw)
+    assert any("duplicate" in e for e in errors)
+
+
+def test_parse_schedule_builds_model() -> None:
+    manifest = parse_manifest(_schedule_manifest(300))
+    assert manifest.contributes.schedule[0].id == "tick"
+    assert manifest.contributes.schedule[0].interval_seconds == 300
+    assert manifest.contributes.schedule[0].handler == "on_tick"
+
+
+# -- file_types (Part 2) -----------------------------------------------------
+
+
+def _file_types_manifest(extensions: object = (".csv",)) -> dict[str, object]:
+    return {
+        "schema": "quill.extension/1",
+        "id": "com.example.ftype",
+        "name": "FileType",
+        "version": "1.0.0",
+        "capabilities": ["document.events"],
+        "main": "extension.py",
+        "contributes": {"file_types": [{"extensions": list(extensions), "handler": "on_open"}]},
+    }
+
+
+def test_file_types_valid() -> None:
+    assert validate_manifest(_file_types_manifest([".csv"])) == []
+
+
+def test_file_types_bad_extension() -> None:
+    errors = validate_manifest(_file_types_manifest(["csv"]))
+    assert any("must start with '.'" in e for e in errors)
+
+
+def test_file_types_requires_document_events_capability() -> None:
+    raw = _file_types_manifest([".csv"])
+    raw["capabilities"] = []
+    errors = validate_manifest(raw)
+    assert any("file_types" in e and "document.events" in e for e in errors)
+
+
+def test_file_types_requires_main() -> None:
+    raw = _file_types_manifest([".csv"])
+    del raw["main"]
+    errors = validate_manifest(raw)
+    assert any("file_types" in e and "main" in e for e in errors)
+
+
+def test_parse_file_types_builds_model() -> None:
+    manifest = parse_manifest(_file_types_manifest([".brf", ".brl"]))
+    ft = manifest.contributes.file_types[0]
+    assert ft.extensions == (".brf", ".brl")
+    assert ft.handler == "on_open"
+
+
+# -- snippet_gallery (Part 3) ------------------------------------------------
+
+
+def _gallery_manifest(
+    body: str = "Hello {name}", params: object | None = None
+) -> dict[str, object]:
+    entry: dict[str, object] = {"id": "greet", "name": "Greeting", "body": body}
+    if params is not None:
+        entry["params"] = params
+    return {
+        "schema": "quill.extension/1",
+        "id": "com.example.gallery",
+        "name": "Gallery",
+        "version": "1.0.0",
+        "contributes": {"snippet_gallery": [entry]},
+    }
+
+
+def test_snippet_gallery_valid() -> None:
+    raw = _gallery_manifest("Hello {name}", [{"name": "name", "label": "Name"}])
+    assert validate_manifest(raw) == []
+
+
+def test_snippet_gallery_param_not_in_body() -> None:
+    raw = _gallery_manifest("Hello there", [{"name": "name", "label": "Name"}])
+    errors = validate_manifest(raw)
+    assert any("placeholder" in e for e in errors)
+
+
+def test_snippet_gallery_duplicate_id() -> None:
+    raw = _gallery_manifest("Hi")
+    raw["contributes"]["snippet_gallery"].append(  # type: ignore[index,union-attr]
+        {"id": "greet", "name": "Other", "body": "Bye"}
+    )
+    errors = validate_manifest(raw)
+    assert any("duplicate" in e for e in errors)
+
+
+def test_snippet_gallery_needs_no_capability() -> None:
+    # Pure snippets run no code, so the gallery requires no capability or main.
+    assert validate_manifest(_gallery_manifest("just text")) == []
+
+
+def test_parse_snippet_gallery_builds_model() -> None:
+    raw = _gallery_manifest("Hello {name}", [{"name": "name", "label": "Name", "default": "x"}])
+    manifest = parse_manifest(raw)
+    entry = manifest.contributes.snippet_gallery[0]
+    assert entry.id == "greet"
+    assert entry.params[0].name == "name"
+    assert entry.params[0].default == "x"

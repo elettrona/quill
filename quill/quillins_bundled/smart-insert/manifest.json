@@ -165,6 +165,45 @@
         "large_insert_threshold": 50
       }
     ],
+    "snippet_gallery": [
+      {
+        "id": "report-header",
+        "name": "Report Header",
+        "category": "Reports",
+        "description": "A titled report header with an author and date line.",
+        "body": "# {title}\n\nDate: {date}\n\n---\n\n",
+        "params": [
+          { "name": "title", "label": "Report title", "default": "Status Report" },
+          { "name": "date", "label": "Date", "default": "" }
+        ]
+      },
+      {
+        "id": "meeting-invite",
+        "name": "Meeting Invitation",
+        "category": "Meetings",
+        "description": "A meeting invitation with subject, date, location, and agenda.",
+        "body": "Subject: {subject}\nWhen: {date}\nWhere: {location}\n\nAgenda:\n{agenda}\n",
+        "params": [
+          { "name": "subject", "label": "Meeting subject", "default": "" },
+          { "name": "date", "label": "Date and time", "default": "" },
+          { "name": "location", "label": "Location", "default": "Online" },
+          { "name": "agenda", "label": "Agenda items", "default": "- " }
+        ]
+      },
+      {
+        "id": "bug-report-md",
+        "name": "Bug Report (Markdown)",
+        "category": "Reports",
+        "description": "A Markdown bug report template with title, build, screen reader, and steps.",
+        "body": "## {title}\n\n- Build: {build}\n- Screen reader: {sr}\n\n### Steps to reproduce\n{steps}\n\n### Expected\n\n### Actual\n",
+        "params": [
+          { "name": "title", "label": "Bug title", "default": "" },
+          { "name": "build", "label": "QUILL build", "default": "" },
+          { "name": "sr", "label": "Screen reader", "default": "" },
+          { "name": "steps", "label": "Steps to reproduce", "default": "1. " }
+        ]
+      }
+    ],
     "preferences": [
       {
         "id": "smartinsert",

@@ -16,6 +16,7 @@
     "ui.command",
     "settings.own.read",
     "settings.own.write",
+    "schedule",
     "ui.log"
   ],
   "main": "extension.py",
@@ -64,6 +65,14 @@
         "handler": "get_count_cell",
         "tooltip": "Live document word count. Updates after every save and when switching tabs.",
         "width": 14
+      }
+    ],
+    "schedule": [
+      {
+        "id": "refresh",
+        "interval_seconds": 300,
+        "handler": "on_timer_refresh",
+        "description": "Recount the active document every five minutes so the status cell never goes stale between saves."
       }
     ],
     "preferences": [

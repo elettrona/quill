@@ -52,6 +52,7 @@
           "settings.core.write",
           "document.directives",
           "document.events",
+          "schedule",
           "ui.log"
         ]
       }
@@ -413,6 +414,101 @@
                 "minimum": 1,
                 "maximum": 40,
                 "description": "Suggested character-width hint for the host's layout engine."
+              }
+            }
+          }
+        },
+        "schedule": {
+          "type": "array",
+          "description": "Background timers. Each entry runs a Python handler every interval_seconds. Requires the schedule capability and a main module. Handlers run on background threads so the editor never blocks.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "interval_seconds", "handler"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Unique timer id within the Quillin."
+              },
+              "interval_seconds": {
+                "type": "integer",
+                "minimum": 60,
+                "maximum": 86400,
+                "description": "Timer period in seconds (60 to 86400)."
+              },
+              "handler": {
+                "type": "string",
+                "description": "Name of the Python function in main that runs on each tick."
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 200,
+                "description": "What this timer does, shown in the Quillin Manager."
+              }
+            }
+          }
+        },
+        "file_types": {
+          "type": "array",
+          "description": "File-type handlers. When a document whose extension matches opens, the handler fires (a specialized document.opened). Requires the document.events capability and a main module.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["extensions", "handler"],
+            "properties": {
+              "extensions": {
+                "type": "array",
+                "minItems": 1,
+                "description": "Lowercase, dot-prefixed file extensions handled, e.g. ['.csv', '.log'].",
+                "items": {
+                  "type": "string",
+                  "pattern": "^\\.[a-z0-9]{1,9}$"
+                }
+              },
+              "handler": {
+                "type": "string",
+                "description": "Name of the Python function in main that runs when a matching file opens."
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 200,
+                "description": "What this handler does, shown in the Quillin Manager."
+              }
+            }
+          }
+        },
+        "snippet_gallery": {
+          "type": "array",
+          "description": "Named, parameterized templates shown in the Snippet Gallery (Insert > Snippet Gallery...). Pure text expansion; no code runs. No capability required.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name", "body"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+              "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+              "body": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4000,
+                "description": "Template text. May contain {param_name} placeholders that match declared params."
+              },
+              "description": { "type": "string", "maxLength": 300 },
+              "category": { "type": "string", "maxLength": 40 },
+              "params": {
+                "type": "array",
+                "description": "Fill-in fields prompted before insertion. Each name must appear as a {name} placeholder in body.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["name", "label"],
+                  "properties": {
+                    "name": { "type": "string", "minLength": 1 },
+                    "label": { "type": "string", "minLength": 1 },
+                    "default": { "type": "string" }
+                  }
+                }
               }
             }
           }

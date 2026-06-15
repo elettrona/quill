@@ -6,10 +6,14 @@ spawning a worker subprocess, so the security gate is tested in isolation.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
-from quill.core.quillins.host import ApiDispatcher
-from quill.core.quillins.model import Contributions, ExtensionManifest
+import pytest
+
+from quill.core.quillins import protocol
+from quill.core.quillins.host import ApiDispatcher, ExtensionHost
+from quill.core.quillins.model import Contributions, ExtensionManifest, QuillinError
 
 
 class _RecordingServices:
@@ -216,3 +220,49 @@ def test_fetch_blocked_when_wildcard_does_not_match_parent() -> None:
     # "example.com" itself does not match "*.example.com"
     result = _call(dispatcher, "fetch", "https://example.com/data")
     assert result["ok"] is False
+
+
+# -- invoke_event (Part 0) ----------------------------------------------------
+
+
+class _NullServices:
+    """Minimal HostServices stand-in; never reached in these transport tests."""
+
+    def __getattr__(self, _name: str) -> Any:  # pragma: no cover - defensive
+        def _stub(*_a: Any, **_k: Any) -> Any:
+            return None
+
+        return _stub
+
+
+def _event_host() -> tuple[ExtensionHost, list[dict[str, Any]]]:
+    host = ExtensionHost(
+        ExtensionManifest(
+            id="com.example.e",
+            name="E",
+            version="1.0.0",
+            main="extension.py",
+            contributes=Contributions(),
+        ),
+        Path("."),
+        _NullServices(),
+    )
+    sent: list[dict[str, Any]] = []
+    host._send = sent.append  # type: ignore[assignment,method-assign]
+    # The worker reports a successful, valueless result for the invoke.
+    host._pump_until_result = lambda: protocol.result_ok(host._call_id)  # type: ignore[assignment,method-assign]
+    return host, sent
+
+
+def test_invoke_event_calls_handler_by_name() -> None:
+    host, sent = _event_host()
+    host.invoke_event("on_after_save", {"file_path": "C:/a.txt"})
+    invoke = next(m for m in sent if m.get("type") == protocol.MSG_INVOKE)
+    assert invoke["command"] == "on_after_save"
+    assert invoke["context"] == {"file_path": "C:/a.txt"}
+
+
+def test_invoke_event_rejects_empty_handler_name() -> None:
+    host, _sent = _event_host()
+    with pytest.raises(QuillinError):
+        host.invoke_event("", {})

@@ -24,6 +24,7 @@ import re
 from quill.core.quillins.model import (
     CAP_DOCUMENT_EVENTS,
     CAP_NET,
+    CAP_SCHEDULE,
     CAP_SETTINGS_OWN_READ,
     CAP_SETTINGS_OWN_WRITE,
     CAP_UI_COMMAND,
@@ -42,10 +43,14 @@ from quill.core.quillins.model import (
     Contributions,
     ExtensionCommand,
     ExtensionManifest,
+    FileTypeContribution,
     HotkeyContribution,
     ManifestError,
     MenuContribution,
     RequiresDependency,
+    ScheduleContribution,
+    SnippetGalleryEntry,
+    SnippetParam,
     StatusBarContribution,
 )
 
@@ -89,8 +94,22 @@ _CONTRIBUTES_KEYS = frozenset({
     "preferences",
     "document_events",
     "status_bar",
+    "schedule",
+    "file_types",
+    "snippet_gallery",
 })
 _COMMAND_KEYS = frozenset({"id", "title", "description", "run"})
+_SCHEDULE_KEYS = frozenset({"id", "interval_seconds", "handler", "description"})
+_FILE_TYPE_KEYS = frozenset({"extensions", "handler", "description"})
+_SNIPPET_GALLERY_KEYS = frozenset({
+    "id",
+    "name",
+    "body",
+    "description",
+    "category",
+    "params",
+})
+_SNIPPET_PARAM_KEYS = frozenset({"name", "label", "default"})
 _STATUS_BAR_KEYS = frozenset({"id", "label", "handler", "tooltip", "width"})
 _REQUIRES_KEYS = frozenset({"id", "min_version"})
 _MENU_KEYS = frozenset({"parent", "command"})
@@ -670,6 +689,211 @@ def _validate_status_bar(raw: object, errors: list[str]) -> tuple[StatusBarContr
     return tuple(result)
 
 
+def _validate_schedule(raw: object, errors: list[str]) -> tuple[ScheduleContribution, ...]:
+    if not isinstance(raw, list):
+        errors.append("contributes.schedule must be an array")
+        return ()
+    result: list[ScheduleContribution] = []
+    seen_ids: set[str] = set()
+    for index, item in enumerate(raw):
+        label = f"contributes.schedule[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{label} must be an object")
+            continue
+        _check_unknown_keys(item, _SCHEDULE_KEYS, label, errors)
+        sched_id = _require_str(item.get("id"), f"{label}.id", errors)
+        if sched_id is not None:
+            if not sched_id:
+                errors.append(f"{label}.id must not be empty")
+                sched_id = None
+            elif sched_id in seen_ids:
+                errors.append(f"{label}.id is a duplicate: '{sched_id}'")
+                sched_id = None
+            else:
+                seen_ids.add(sched_id)
+        interval = item.get("interval_seconds")
+        interval_ok = isinstance(interval, int) and not isinstance(interval, bool)
+        if not interval_ok or not (60 <= int(interval) <= 86400):  # type: ignore[arg-type]
+            errors.append(f"{label}.interval_seconds must be an integer 60-86400")
+            interval_ok = False
+        handler = _require_str(item.get("handler"), f"{label}.handler", errors)
+        if handler is not None and not handler:
+            errors.append(f"{label}.handler must not be empty")
+            handler = None
+        description = ""
+        if "description" in item:
+            desc = _require_str(item.get("description"), f"{label}.description", errors)
+            if desc is not None:
+                if len(desc) > 200:
+                    errors.append(f"{label}.description must be at most 200 characters")
+                else:
+                    description = desc
+        if sched_id is not None and interval_ok and handler is not None:
+            result.append(
+                ScheduleContribution(
+                    id=sched_id,
+                    interval_seconds=int(interval),  # type: ignore[arg-type]
+                    handler=handler,
+                    description=description,
+                )
+            )
+    return tuple(result)
+
+
+def _validate_file_types(raw: object, errors: list[str]) -> tuple[FileTypeContribution, ...]:
+    if not isinstance(raw, list):
+        errors.append("contributes.file_types must be an array")
+        return ()
+    result: list[FileTypeContribution] = []
+    for index, item in enumerate(raw):
+        label = f"contributes.file_types[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{label} must be an object")
+            continue
+        _check_unknown_keys(item, _FILE_TYPE_KEYS, label, errors)
+        raw_exts = item.get("extensions")
+        extensions: list[str] = []
+        if not isinstance(raw_exts, list) or not raw_exts:
+            errors.append(f"{label}.extensions must be a non-empty array")
+        else:
+            for ei, ext in enumerate(raw_exts):
+                elabel = f"{label}.extensions[{ei}]"
+                if not isinstance(ext, str):
+                    errors.append(f"{elabel} must be a string")
+                elif not ext.startswith("."):
+                    errors.append(f"{elabel} must start with '.' (got '{ext}')")
+                elif ext != ext.lower():
+                    errors.append(f"{elabel} must be lowercase (got '{ext}')")
+                elif not (2 <= len(ext) <= 10):
+                    errors.append(f"{elabel} must be 2-10 characters (got '{ext}')")
+                else:
+                    extensions.append(ext)
+        handler = _require_str(item.get("handler"), f"{label}.handler", errors)
+        if handler is not None and not handler:
+            errors.append(f"{label}.handler must not be empty")
+            handler = None
+        description = ""
+        if "description" in item:
+            desc = _require_str(item.get("description"), f"{label}.description", errors)
+            if desc is not None:
+                if len(desc) > 200:
+                    errors.append(f"{label}.description must be at most 200 characters")
+                else:
+                    description = desc
+        if extensions and handler is not None:
+            result.append(
+                FileTypeContribution(
+                    extensions=tuple(extensions),
+                    handler=handler,
+                    description=description,
+                )
+            )
+    return tuple(result)
+
+
+def _validate_snippet_params(
+    raw: object, label: str, body: str, errors: list[str]
+) -> tuple[SnippetParam, ...]:
+    if not isinstance(raw, list):
+        errors.append(f"{label} must be an array")
+        return ()
+    result: list[SnippetParam] = []
+    seen: set[str] = set()
+    for index, item in enumerate(raw):
+        plabel = f"{label}[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{plabel} must be an object")
+            continue
+        _check_unknown_keys(item, _SNIPPET_PARAM_KEYS, plabel, errors)
+        name = _require_str(item.get("name"), f"{plabel}.name", errors)
+        plabel_label = _require_str(item.get("label"), f"{plabel}.label", errors)
+        default = ""
+        if "default" in item:
+            d = _require_str(item.get("default"), f"{plabel}.default", errors)
+            if d is not None:
+                default = d
+        if name is not None:
+            if not name:
+                errors.append(f"{plabel}.name must not be empty")
+                name = None
+            elif name in seen:
+                errors.append(f"{plabel}.name is a duplicate: '{name}'")
+                name = None
+            elif ("{" + name + "}") not in body:
+                errors.append(
+                    f"{plabel}.name '{name}' does not appear as a {{{name}}} placeholder in body"
+                )
+                name = None
+            else:
+                seen.add(name)
+        if name is not None and plabel_label is not None:
+            result.append(SnippetParam(name=name, label=plabel_label, default=default))
+    return tuple(result)
+
+
+def _validate_snippet_gallery(raw: object, errors: list[str]) -> tuple[SnippetGalleryEntry, ...]:
+    if not isinstance(raw, list):
+        errors.append("contributes.snippet_gallery must be an array")
+        return ()
+    result: list[SnippetGalleryEntry] = []
+    seen_ids: set[str] = set()
+    for index, item in enumerate(raw):
+        label = f"contributes.snippet_gallery[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{label} must be an object")
+            continue
+        _check_unknown_keys(item, _SNIPPET_GALLERY_KEYS, label, errors)
+        entry_id = _require_str(item.get("id"), f"{label}.id", errors)
+        if entry_id is not None:
+            if not (1 <= len(entry_id) <= 64):
+                errors.append(f"{label}.id must be 1-64 characters")
+                entry_id = None
+            elif entry_id in seen_ids:
+                errors.append(f"{label}.id is a duplicate: '{entry_id}'")
+                entry_id = None
+            else:
+                seen_ids.add(entry_id)
+        name = _require_str(item.get("name"), f"{label}.name", errors)
+        if name is not None and not (1 <= len(name) <= 80):
+            errors.append(f"{label}.name must be 1-80 characters")
+            name = None
+        body = _require_str(item.get("body"), f"{label}.body", errors)
+        if body is not None and not (1 <= len(body) <= 4000):
+            errors.append(f"{label}.body must be 1-4000 characters")
+            body = None
+        description = ""
+        if "description" in item:
+            desc = _require_str(item.get("description"), f"{label}.description", errors)
+            if desc is not None:
+                if len(desc) > 300:
+                    errors.append(f"{label}.description must be at most 300 characters")
+                else:
+                    description = desc
+        category = ""
+        if "category" in item:
+            cat = _require_str(item.get("category"), f"{label}.category", errors)
+            if cat is not None:
+                if len(cat) > 40:
+                    errors.append(f"{label}.category must be at most 40 characters")
+                else:
+                    category = cat
+        params: tuple[SnippetParam, ...] = ()
+        if "params" in item:
+            params = _validate_snippet_params(item["params"], f"{label}.params", body or "", errors)
+        if entry_id is not None and name is not None and body is not None:
+            result.append(
+                SnippetGalleryEntry(
+                    id=entry_id,
+                    name=name,
+                    body=body,
+                    description=description,
+                    category=category,
+                    params=params,
+                )
+            )
+    return tuple(result)
+
+
 def _validate_requires(raw: object, errors: list[str]) -> tuple[RequiresDependency, ...]:
     if not isinstance(raw, list):
         errors.append("requires must be an array")
@@ -821,6 +1045,18 @@ def _validate_contributes(
     if "status_bar" in raw:
         status_bar = _validate_status_bar(raw["status_bar"], errors)
 
+    schedule: tuple[ScheduleContribution, ...] = ()
+    if "schedule" in raw:
+        schedule = _validate_schedule(raw["schedule"], errors)
+
+    file_types: tuple[FileTypeContribution, ...] = ()
+    if "file_types" in raw:
+        file_types = _validate_file_types(raw["file_types"], errors)
+
+    snippet_gallery: tuple[SnippetGalleryEntry, ...] = ()
+    if "snippet_gallery" in raw:
+        snippet_gallery = _validate_snippet_gallery(raw["snippet_gallery"], errors)
+
     contributions = Contributions(
         commands=tuple(commands),
         menus=menus,
@@ -833,6 +1069,9 @@ def _validate_contributes(
         preferences=preferences,
         document_events=document_events,
         status_bar=status_bar,
+        schedule=schedule,
+        file_types=file_types,
+        snippet_gallery=snippet_gallery,
     )
     return contributions, contributed_ids, any_handler, has_document_events
 
@@ -1011,6 +1250,22 @@ def validate_manifest(
             errors.append("contributes.status_bar requires the 'ui.status' capability")
         if main is None:
             errors.append("contributes.status_bar requires a top-level 'main' module")
+
+    # A schedule contribution runs a handler on a timer, so it requires the
+    # schedule capability and an entry module to host the handler.
+    if contributions.schedule:
+        if CAP_SCHEDULE not in capabilities:
+            errors.append("contributes.schedule requires the 'schedule' capability")
+        if main is None:
+            errors.append("contributes.schedule requires a top-level 'main' module")
+
+    # File-type handlers are a specialized document.opened, so they reuse the
+    # document.events capability and require an entry module.
+    if contributions.file_types:
+        if CAP_DOCUMENT_EVENTS not in capabilities:
+            errors.append("contributes.file_types requires the 'document.events' capability")
+        if main is None:
+            errors.append("contributes.file_types requires a top-level 'main' module")
 
     # net_allowed_hosts is only meaningful when the net capability is declared.
     if net_allowed_hosts and CAP_NET not in capabilities:

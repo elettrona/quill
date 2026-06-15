@@ -138,6 +138,7 @@
   "quill/ui/main_frame.py::MainFrame.open_share_export_dialog::wx.FileDialog": "native",
   "quill/ui/main_frame.py::MainFrame.open_share_import_dialog::wx.Dialog": "hardened_custom",
   "quill/ui/main_frame.py::MainFrame.open_share_import_dialog::wx.FileDialog": "native",
+  "quill/ui/main_frame.py::MainFrame.open_snippet_gallery::wx.Dialog": "hardened_custom",
   "quill/ui/main_frame.py::MainFrame.open_spell_check_dialog::wx.SingleChoiceDialog": "native",
   "quill/ui/main_frame.py::MainFrame.open_spell_check_dialog::wx.SingleChoiceDialog#2": "native",
   "quill/ui/main_frame.py::MainFrame.open_status_bar_settings::wx.Dialog": "hardened_custom",

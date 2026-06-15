@@ -2686,6 +2686,12 @@ class MainFrame(
             self._binding_for("edit.insert_citation"),
         )
         self.commands.register(
+            "power.open_snippet_gallery",
+            "Snippet Gallery...",
+            self.open_snippet_gallery,
+            self._binding_for("power.open_snippet_gallery"),
+        )
+        self.commands.register(
             "edit.follow_link",
             "Follow Link",
             self.follow_link,
@@ -3290,6 +3296,7 @@ class MainFrame(
             "edit.read_all": self._id_read_all,
             "edit.insert_link": self._id_insert_link,
             "edit.insert_citation": self._id_insert_citation,
+            "power.open_snippet_gallery": self._id_snippet_gallery,
             "edit.follow_link": self._id_follow_link,
             "edit.find": self._id_find,
             "edit.find_next": self._id_find_next,
@@ -3895,6 +3902,15 @@ class MainFrame(
         self._refresh_read_only_state()
         self._maybe_auto_side_preview(tab)
         self._start_external_change_watcher()
+        doc_path = self.document.path
+        self._fire_quillin_event(
+            "document.activated",
+            {
+                "file_path": str(doc_path) if doc_path is not None else "",
+                "extension": doc_path.suffix.lower() if doc_path is not None else "",
+                "title": self.document.name,
+            },
+        )
 
     def _maybe_auto_side_preview(self, tab) -> None:
         """Auto-show the side-by-side preview for previewable (Markdown/HTML)
@@ -4056,6 +4072,7 @@ class MainFrame(
         self._refresh_title()
         self._refresh_contextual_menu_items()
         self._set_status(f'Expanded snippet trigger "{snippet.trigger}".')
+        self._fire_quillin_event("smart_trigger.entered", {"trigger": snippet.trigger})
         return True
 
     def _on_editor_caret_activity(self, event: object) -> None:
@@ -5302,6 +5319,10 @@ class MainFrame(
 
                 logging.getLogger(__name__).warning("Shutdown step failed: %s", step, exc_info=True)
 
+        # Quillin quill.shutdown event (best-effort; non-blocking). Fired before
+        # teardown so a Quillin can persist its own state on exit.
+        self._fire_quillin_event("quill.shutdown", {})
+
         def _shutdown_sound_manager() -> None:
             from quill.ui import sound_manager
 
@@ -6428,6 +6449,20 @@ class MainFrame(
             self._announcement_error_reported = backend_error
             self._record_notification(backend_error, "accessibility")
 
+    def _fire_quillin_event(self, event_name: str, context: dict) -> None:
+        """Dispatch a Quillin document-lifecycle event if the mixin is loaded.
+
+        Safe no-op when the Quillins mixin is absent (e.g. Safe Mode); the actual
+        dispatch is non-blocking (background threads inside the mixin).
+        """
+
+        fire = getattr(self, "fire_quillin_event", None)
+        if callable(fire):
+            try:
+                fire(event_name, context)
+            except Exception:  # noqa: BLE001 - a Quillin must never break the editor
+                pass
+
     def _show_modal_dialog(
         self, dialog: object, label: str, *, restore_editor_focus: bool = True
     ) -> int:
@@ -6885,8 +6920,17 @@ class MainFrame(
     def _close_tab(self, index: int) -> None:
         if index < 0 or index >= len(self._document_tabs):
             return
+        closing_doc = self._document_tabs[index].document
+        closing_path = getattr(closing_doc, "path", None)
+        close_context = {
+            "file_path": str(closing_path) if closing_path is not None else "",
+            "extension": closing_path.suffix.lower() if closing_path is not None else "",
+            "title": getattr(closing_doc, "name", ""),
+        }
+        self._fire_quillin_event("document.before_close", close_context)
         self.notebook.DeletePage(index)
         del self._document_tabs[index]
+        self._fire_quillin_event("document.after_close", close_context)
         if not self._document_tabs:
             self._create_document_tab(Document(), select=True)
             self._refresh_sessions_menu()
@@ -6934,6 +6978,10 @@ class MainFrame(
         from quill.ui.sound_manager import post_sound
 
         post_sound(SoundEvent.DOCUMENT_CREATED)
+        self._fire_quillin_event(
+            "document.created",
+            {"file_path": "", "extension": "", "title": self.document.name},
+        )
 
     def _file_dialog_default_dir(self) -> str:
         """Return the best initial directory for a file open/save dialog (#168).
@@ -7134,6 +7182,19 @@ class MainFrame(
         if callable(call_after) and hasattr(self, "editor"):
             call_after(self.editor.SetFocus)
         self._announce(f"Opened {loaded.name or selected_path.name}")
+        # Quillin document.opened event, then any file-type handlers for this suffix.
+        open_context = {
+            "file_path": str(selected_path),
+            "extension": selected_path.suffix.lower(),
+            "title": loaded.name or selected_path.name,
+        }
+        self._fire_quillin_event("document.opened", open_context)
+        fire_file_type = getattr(self, "fire_quillin_file_type_event", None)
+        if callable(fire_file_type):
+            try:
+                fire_file_type(selected_path)
+            except Exception:  # noqa: BLE001 - a Quillin must never break open
+                pass
 
     def _position_editor_at(self, line: int | None = None, column: int | None = None) -> None:
         if line is None and column is None:
@@ -8026,6 +8087,17 @@ class MainFrame(
         # If this file was opened over SSH, upload it back to the remote host
         # with a tilde backup in its original newline style (#139).
         self.maybe_upload_remote_on_save()
+        # Quillin document.after_save event (non-blocking; dispatched async).
+        path = self.document.path
+        if path is not None:
+            self._fire_quillin_event(
+                "document.after_save",
+                {
+                    "file_path": str(path),
+                    "extension": path.suffix.lower(),
+                    "title": self.document.name,
+                },
+            )
 
     def save_all_files(self) -> None:
         for index in range(len(self._document_tabs)):
@@ -18711,6 +18783,133 @@ class MainFrame(
         result = InsertionResult(inserted_text=snippet, caret_offset=len(snippet))
         self._apply_insertion_result(result)
         self._set_status(f"Inserted {style.upper()} citation")
+
+    def open_snippet_gallery(self) -> None:
+        """Browse and insert Quillin-contributed gallery snippets (Part 3)."""
+        wx = self._wx
+        collect = getattr(self, "collect_snippet_gallery", None)
+        entries = collect() if callable(collect) else []
+        if not entries:
+            self._set_status("No gallery snippets are available.")
+            self._announce("No gallery snippets are available.")
+            return
+
+        from quill.ui.dialog_contract import apply_modal_ids
+
+        dialog = wx.Dialog(
+            self.frame,
+            title="Snippet Gallery",
+            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+        )
+        body = wx.BoxSizer(wx.VERTICAL)
+        body.Add(
+            wx.StaticText(
+                dialog,
+                label="Choose a snippet, review its preview, then Insert.",
+            ),
+            0,
+            wx.ALL | wx.EXPAND,
+            8,
+        )
+
+        labels = [
+            f"Snippet: {entry.name} ({quillin_name})" for quillin_name, _qid, entry in entries
+        ]
+        chooser = wx.ListBox(dialog, choices=labels)
+        chooser.SetName("Gallery snippets")
+        chooser.SetSelection(0)
+        body.Add(chooser, 1, wx.ALL | wx.EXPAND, 8)
+
+        body.Add(wx.StaticText(dialog, label="&Preview"), 0, wx.LEFT | wx.RIGHT, 8)
+        preview = wx.TextCtrl(dialog, style=wx.TE_MULTILINE | wx.TE_READONLY)
+        preview.SetName("Snippet preview")
+        body.Add(preview, 1, wx.ALL | wx.EXPAND, 8)
+
+        insert_button = wx.Button(dialog, id=wx.ID_OK, label="&Insert")
+        cancel_button = wx.Button(dialog, id=wx.ID_CANCEL, label="&Cancel")
+        button_sizer = wx.StdDialogButtonSizer()
+        button_sizer.AddButton(insert_button)
+        button_sizer.AddButton(cancel_button)
+        button_sizer.Realize()
+        body.Add(button_sizer, 0, wx.EXPAND | wx.ALL, 8)
+
+        dialog.SetSizerAndFit(body)
+        dialog.SetSize((600, 520))
+        if hasattr(dialog, "CentreOnParent"):
+            dialog.CentreOnParent()
+
+        def selected_entry() -> object | None:
+            index = chooser.GetSelection()
+            if index < 0 or index >= len(entries):
+                return None
+            return entries[index]
+
+        def refresh_preview() -> None:
+            chosen = selected_entry()
+            if chosen is None:
+                preview.SetValue("")
+                return
+            quillin_name, _qid, entry = chosen
+            preview.SetValue(entry.body)
+            self._announce(f"{entry.name} from {quillin_name}")
+
+        chooser.Bind(wx.EVT_LISTBOX, lambda _e: refresh_preview())
+        insert_button.SetDefault()
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+        refresh_preview()
+
+        call_after = getattr(wx, "CallAfter", None)
+        if callable(call_after):
+            call_after(chooser.SetFocus)
+        else:
+            chooser.SetFocus()
+
+        try:
+            if self._show_modal_dialog(dialog, "Snippet Gallery") != wx.ID_OK:
+                return
+            chosen = selected_entry()
+        finally:
+            dialog.Destroy()
+        if chosen is None:
+            return
+        _quillin_name, _qid, entry = chosen
+        if entry.params:
+            text = self._prompt_snippet_params(entry)
+            if text is None:
+                self._set_status("Snippet insertion cancelled")
+                return
+        else:
+            text = entry.body
+        self._insert_gallery_snippet_text(text)
+        self._set_status(f"Inserted snippet {entry.name}")
+
+    def _prompt_snippet_params(self, entry: object) -> str | None:
+        """Prompt for each gallery-snippet param and return the expanded body.
+
+        Returns ``None`` if the user cancels any prompt. Each prompt routes
+        through the shared single-line dialog so it keeps the keyboard/screen
+        reader contract and can be cancelled cleanly (unlike GetTextFromUser,
+        which cannot distinguish Cancel from an empty answer).
+        """
+        values: dict[str, str] = {}
+        for param in entry.params:  # type: ignore[attr-defined]
+            answer = self._power_tools_prompt_single("Snippet Gallery", param.label, param.default)
+            if answer is None:
+                return None
+            values[param.name] = answer
+        body: str = entry.body  # type: ignore[attr-defined]
+        for name, value in values.items():
+            body = body.replace("{" + name + "}", value)
+        return body
+
+    def _insert_gallery_snippet_text(self, text: str) -> None:
+        """Insert gallery text at the cursor (or replace the selection)."""
+        editor = self.editor
+        start, end = editor.GetSelection()
+        if start == end:
+            editor.WriteText(text)
+        else:
+            editor.Replace(start, end, text)
 
     def follow_link(self) -> None:
         text = self.editor.GetValue()

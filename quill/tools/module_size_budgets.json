@@ -24,13 +24,13 @@
   "_next_target_main_frame": 15000,
   "_default_cap": 600,
   "budgets": {
-    "quill/ui/main_frame.py": 22713,
+    "quill/ui/main_frame.py": 22912,
     "quill/ui/main_frame_quill_key.py": 645,
     "quill/ui/main_frame_braille.py": 736,
     "quill/ui/assistant_tools.py": 1877,
     "quill/ui/assistant_panel.py": 725,
     "quill/ui/main_frame_power_tools.py": 863,
-    "quill/ui/main_frame_menu.py": 3020,
+    "quill/ui/main_frame_menu.py": 3028,
     "quill/core/read_aloud.py": 1244,
     "quill/core/assistant_ai.py": 1300,
     "quill/core/features.py": 1029,
@@ -47,20 +47,20 @@
     "quill/ui/main_frame_statusbar.py": 616,
     "quill/core/abbreviations.py": 266,
     "quill/core/multi_press.py": 59,
-    "quill/ui/main_frame_abbreviations.py": 202,
+    "quill/ui/main_frame_abbreviations.py": 205,
     "quill/ui/abbreviation_manager_dialog.py": 401,
     "quill/core/ai_chat.py": 208,
     "quill/ui/ai_chat_dialog.py": 480,
-    "quill/ui/main_frame_quillins.py": 737,
+    "quill/ui/main_frame_quillins.py": 934,
     "quill/core/prompt_library.py": 364,
     "quill/ui/prompt_library_dialog.py": 488,
     "quill/ui/skill_library_dialog.py": 540,
     "quill/ui/setup_wizard_pages.py": 809,
-    "quill/core/keymap.py": 445,
+    "quill/core/keymap.py": 446,
     "quill/core/keymap_packs.py": 285,
     "quill/tools/check_banned_patterns.py": 690,
     "quill/core/language_profile.py": 640,
-    "quill/core/quillins/validation.py": 1069
+    "quill/core/quillins/validation.py": 1324
   },
   "_rebaseline_2026_06_12j": "check_banned_patterns.py grew to 650 lines after GATE-42 addition (_check_show_modal_wrapper AST walk + constant block). Budget added to acknowledge deliberate growth; gate itself is a CI control, not feature code.",
   "_rebaseline_2026_06_11c": "Phase 1+2 abbreviations and multi-press: main_frame.py +15 for AbbreviationsMixin MRO/init/hook; main_frame_menu.py +31 for abbreviation menu items; settings_specs.py +24 for 4 specs; settings.py +11 for 3 fields; main_frame_copy_tray.py +55 for MultiPressDispatcher (peek double, dialog triple); main_frame_statusbar.py +6 for abbreviations cell. New files: abbreviations.py (205), multi_press.py (59), main_frame_abbreviations.py (147), abbreviation_manager_dialog.py (250).",
@@ -122,5 +122,6 @@
   "_rebaseline_2026_06_14_non_ascii_jump": "#197 non-ASCII jump navigation: keymap.py 443->445 for two new empty-binding stubs (power.non_ascii_jump_to_source, power.non_ascii_jump_to_report). main_frame_power_tools.py stays under its 863 budget (858 actual). main_frame_power_tools_menu.py stays under the 600 default cap (597 actual).",
   "_rebaseline_2026_06_15_quillin_events": "validation.py grew past the 600-line default cap to 754 lines after adding deep validation for the four new contribution types introduced in 0.6.0: abbreviations, smart_triggers, preferences (with tabs/sections/settings/condition validators), and document_events. All growth is validator logic required by the new manifest schema; no UI or business logic. Budget entry added to acknowledge deliberate growth. CQ-1 decomposition (e.g. extracting pref and event validators to _validation_prefs.py/_validation_events.py) is the path to lower it.",
   "_rebaseline_2026_06_15_quillin_v2": "validation.py grew from 754 to 1028 lines for Quillin Phase 2 framework features: categories, requires, net_allowed_hosts, status_bar contribution, ui.log capability, 4 new lifecycle events (quillin.enabled/disabled, quill.shutdown, settings.changed), command.description, pref setting search_keywords validators, and cross-checks. All growth is validator/model logic only. CQ-1 decomposition is the path to lower it.",
-  "_rebaseline_2026_06_15_060_release": "0.6.0 release pass: main_frame.py 22619->22690 for _maybe_prompt_braille_pack_install (post-upgrade braille-pack one-time prompt) + _find_cached_quill_installer helper + startup sequence entry. main_frame_braille.py 610->732 for Standard American English translation items (translate_standard_g2, translate_standard_g1) and expanded _braille_translation_items list. main_frame_quillins.py 629->730 for per-event toggle UI (_open_event_toggle_dialog, Configure Events button, detail pane updates). main_frame_quill_key.py 641->644 for minor chord dispatch additions. main_frame_menu.py 3018->3020 for menu wiring of the above. settings.py 750->754 for upgrade_prompt_braille_pack field."
+  "_rebaseline_2026_06_15_060_release": "0.6.0 release pass: main_frame.py 22619->22690 for _maybe_prompt_braille_pack_install (post-upgrade braille-pack one-time prompt) + _find_cached_quill_installer helper + startup sequence entry. main_frame_braille.py 610->732 for Standard American English translation items (translate_standard_g2, translate_standard_g1) and expanded _braille_translation_items list. main_frame_quillins.py 629->730 for per-event toggle UI (_open_event_toggle_dialog, Configure Events button, detail pane updates). main_frame_quill_key.py 641->644 for minor chord dispatch additions. main_frame_menu.py 3018->3020 for menu wiring of the above. settings.py 750->754 for upgrade_prompt_braille_pack field.",
+  "_rebaseline_2026_06_15_quillin_platform_v2": "Quillin Platform v2 (event dispatch foundation + timer events + file-type contributions + snippet gallery). validation.py 1069->1324 for _validate_schedule/_validate_file_types/_validate_snippet_gallery/_validate_snippet_params plus three cross-checks. main_frame_quillins.py 737->934 for the event/timer/file-type dispatch surface (fire_quillin_event, _fire_quillin_lifecycle_event, _run_quillin_event_handler_async, fire_quillin_file_type_event, _start/_stop/_on_quillin_timer, collect_snippet_gallery, and event/file-type/timer index construction in _register_quillin_contributions). main_frame.py 22713->22912 for the 11 fire_quillin_event call sites + _fire_quillin_event guard + open_snippet_gallery/_prompt_snippet_params/_insert_gallery_snippet_text + command registration + command-map entry. main_frame_menu.py 3020->3028 for the Insert > Snippet Gallery item (id, menu entry, EVT_MENU bind). main_frame_abbreviations.py 202->205 for the abbreviation.expanded event fire. keymap.py 445->446 for the power.open_snippet_gallery empty-binding stub. All growth is the new Quillin dispatch/runtime surface; CQ-1 decomposition (e.g. extracting the event/timer dispatch to a dedicated mixin and the validators to _validation_v2.py) is the path to lower these."
 }

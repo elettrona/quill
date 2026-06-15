@@ -3366,6 +3366,165 @@ Four events fire outside the document lifecycle and let a Quillin manage its own
 
 ---
 
+## Timer events (schedule)
+
+A Quillin can run a handler on a fixed background timer by declaring a `schedule` contribution. This is for periodic, low-frequency work — refreshing a status cell, polling a watched resource, or housekeeping — never for tight loops.
+
+Each schedule entry names a unique `id`, an `interval_seconds` between 60 and 86400 (one minute to one day), and a `handler` function. The handler runs on a background thread so the editor never blocks, no matter how slow the work is.
+
+A `schedule` contribution requires the `schedule` capability and a `main` module.
+
+### Handler signature
+
+```python
+def on_tick(api, event: dict) -> None:
+    #   event["timer_id"]        — the schedule entry id
+    #   event["interval_seconds"] — the configured interval
+    ...
+```
+
+### Context dict
+
+| Key | Meaning |
+| --- | --- |
+| `timer_id` | The `id` of the schedule entry that fired |
+| `interval_seconds` | The configured interval, in seconds |
+
+### Use cases
+
+- Refresh a status-bar cell so it never goes stale between saves.
+- Periodically re-scan the document for a long-running metric.
+- Flush an internal cache or write back accumulated state.
+
+### Example manifest
+
+```json
+"capabilities": ["schedule", "ui.status", "editor.read"],
+"main": "extension.py",
+"contributes": {
+  "schedule": [
+    {
+      "id": "refresh",
+      "interval_seconds": 300,
+      "handler": "on_timer_refresh",
+      "description": "Recount the active document every five minutes."
+    }
+  ]
+}
+```
+
+### Example extension.py
+
+```python
+def on_timer_refresh(api, event: dict) -> None:
+    text = api.get_text()
+    api.set_status(f"{len(text.split())} words")
+    api.log(f"timer {event['timer_id']} every {event['interval_seconds']}s")
+```
+
+Timers start when the Quillin loads and are stopped when it is disabled, removed, or reloaded. Timers never run in Safe Mode.
+
+---
+
+## File-type contributions
+
+A Quillin can declare which file extensions it handles. When a document with a matching extension opens, the Quillin's handler fires automatically — a specialized form of `document.opened` scoped to one or more extensions.
+
+Each `file_types` entry lists `extensions` (lowercase, dot-prefixed, e.g. `.csv`, `.brf`), a `handler`, and an optional `description`. Because the handler runs the same out-of-process code as a document event, `file_types` reuses the `document.events` capability and requires a `main` module.
+
+### Handler signature
+
+```python
+def on_file_opened(api, event: dict) -> None:
+    #   event["file_path"]  — absolute path of the opened file
+    #   event["extension"]  — the matched extension, lowercase (".csv")
+    #   event["filename"]   — the file name with extension
+    ...
+```
+
+### Context dict
+
+| Key | Meaning |
+| --- | --- |
+| `file_path` | Absolute path of the opened file |
+| `extension` | The matched extension, lowercase, with the dot |
+| `filename` | The file name (with extension) |
+
+### Use cases
+
+- Announce the braille page count when a `.brf` or `.brl` file opens.
+- Report the column headers when a `.csv` opens.
+- Insert a timestamp when a `.log` file opens.
+
+### Example
+
+```json
+"capabilities": ["document.events", "editor.read", "ui.announce"],
+"main": "extension.py",
+"contributes": {
+  "file_types": [
+    {
+      "extensions": [".brf", ".brl"],
+      "handler": "on_brf_opened",
+      "description": "Announce the braille page count when a braille file opens."
+    }
+  ]
+}
+```
+
+```python
+def on_brf_opened(api, event: dict) -> None:
+    text = api.get_text()
+    pages = text.count("\x0c") + (0 if text.endswith("\x0c") else 1)
+    api.announce(f"{event['extension']} file: {pages} braille pages.")
+```
+
+---
+
+## Snippet gallery
+
+A Quillin can contribute named, parameterized templates to a browseable gallery. Unlike `commands` or `abbreviations`, gallery snippets run no code — they are pure text expansion — so they require **no capability and no `main` module**.
+
+Users open the gallery from **Insert → Snippet Gallery...**, pick a template, fill in any prompts, and the expanded text lands at the cursor (replacing any selection).
+
+Each `snippet_gallery` entry has an `id` (unique within the Quillin), a `name`, a `body`, and optional `description`, `category`, and `params`. The body may contain `{param_name}` placeholders; each declared param's `name` must appear as a `{name}` placeholder in the body.
+
+### Param syntax
+
+Placeholders use single braces: `{title}`, `{date}`. Each param declares a `name` (matching the placeholder), a `label` (shown in the prompt), and an optional `default`. When the user inserts a snippet with params, QUILL prompts for each one in turn; cancelling any prompt cancels the insertion.
+
+### Use cases
+
+- A report header with title and date fields.
+- A meeting invitation with subject, date, location, and agenda.
+- A Markdown bug-report skeleton with title, build, and steps.
+
+### Example manifest
+
+```json
+"contributes": {
+  "snippet_gallery": [
+    {
+      "id": "report-header",
+      "name": "Report Header",
+      "category": "Reports",
+      "description": "A titled report header with a date line.",
+      "body": "# {title}\n\nDate: {date}\n\n---\n\n",
+      "params": [
+        { "name": "title", "label": "Report title", "default": "Status Report" },
+        { "name": "date", "label": "Date", "default": "" }
+      ]
+    }
+  ]
+}
+```
+
+### How users access the gallery
+
+Insert → Snippet Gallery... opens a list of every gallery snippet from every enabled Quillin, grouped by Quillin name. Selecting a snippet shows a read-only preview of its body; Insert expands it (prompting for params first) and Cancel closes the dialog.
+
+---
+
 ## Categories
 
 Quillins may optionally declare one or more category labels for the Quillins Manager filter. Categories are informational — they affect filtering but not validation, capability grants, or loading order.
