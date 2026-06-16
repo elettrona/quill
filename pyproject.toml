@@ -99,7 +99,7 @@ macos = [
 ]
 github = [
     # GitHub repository browser and remote file open/save (File > Open Remote > GitHub).
-    "PyGithub>=2.0",
+    "PyGithub>=2.9.1",
 ]
 dev = [
   "pytest>=9.0.3",
