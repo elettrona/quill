@@ -903,9 +903,52 @@ def bundle_embedded_python(
     shutil.copytree(quill_source, site_packages / "quill", dirs_exist_ok=True)
 
     _install_vendored_glow(python_exe, source_root)
+    _prune_embedded_runtime(site_packages)
 
     archive.unlink(missing_ok=True)
     return target_dir
+
+
+def _prune_embedded_runtime(site_packages: Path) -> None:
+    """Remove packages that are only needed during the build, not at runtime.
+
+    pip and setuptools are bootstrapped to install dependencies, then stripped
+    so they don't bloat the installer.  The pywin32 extras (pythonwin, isapi,
+    adodbapi, PyWin32.chm) and the quill dev/CI sub-packages are also removed.
+    """
+    removable = [
+        # Build tools - used during pip install, not at runtime (~155 MB)
+        "pip",
+        "pip-*",
+        "setuptools",
+        "setuptools-*",
+        "wheel",
+        "wheel-*",
+        "pkg_resources",
+        # pywin32 extras not used by Quill (~21 MB)
+        "pythonwin",
+        "PyWin32.chm",
+        "adodbapi",
+        "isapi",
+        # Quill sub-packages not needed at runtime (~8 MB)
+        "quill/tools",
+        "quill/devtools",
+    ]
+    total_removed = 0
+    for pattern in removable:
+        for path in site_packages.glob(pattern):
+            size = (
+                sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+                if path.is_dir()
+                else path.stat().st_size
+            )
+            if path.is_dir():
+                shutil.rmtree(path)
+            else:
+                path.unlink()
+            total_removed += size
+    mb = total_removed / 1_048_576
+    print(f"Pruned {mb:.0f} MB of build-only packages from the runtime.")
 
 
 def _install_vendored_glow(python_exe: Path, source_root: Path) -> None:
