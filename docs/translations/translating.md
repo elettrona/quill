@@ -156,7 +156,7 @@ pybabel extract \
   --copyright-holder "Blind Information Technology Solutions (BITS) and Community Access" \
   --msgid-bugs-address "https://github.com/Community-Access/quill/issues" \
   -o quill/locale/quill.pot \
-  quill/
+  .
 ```
 
 Commit `quill/locale/quill.pot` whenever source strings are added or changed.

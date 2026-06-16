@@ -14,17 +14,18 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from quill.core.i18n import _, lazy_gettext
 from quill.ui.dialog_contract import apply_modal_ids
 
-_PROVIDER_CHOICES: tuple[tuple[str, str], ...] = (
-    ("off", "Off (AI disabled)"),
-    ("ollama", "Ollama (local, free)"),
-    ("openai", "OpenAI"),
-    ("claude", "Anthropic Claude"),
-    ("gemini", "Google Gemini"),
-    ("openrouter", "OpenRouter"),
-    ("ollama_cloud", "Ollama Cloud"),
-    ("custom", "Custom (OpenAI-compatible)"),
+_PROVIDER_CHOICES: tuple[tuple[str, object], ...] = (
+    ("off", lazy_gettext("Off (AI disabled)")),
+    ("ollama", lazy_gettext("Ollama (local, free)")),
+    ("openai", lazy_gettext("OpenAI")),
+    ("claude", lazy_gettext("Anthropic Claude")),
+    ("gemini", lazy_gettext("Google Gemini")),
+    ("openrouter", lazy_gettext("OpenRouter")),
+    ("ollama_cloud", lazy_gettext("Ollama Cloud")),
+    ("custom", lazy_gettext("Custom (OpenAI-compatible)")),
 )
 
 _DEEPGRAM_KEY_CRED_TARGET = "QUILL_DEEPGRAM_API_KEY"
@@ -135,7 +136,7 @@ class AIHubDialog:
 
         self.dialog = wx.Dialog(
             parent,
-            title="AI Hub",
+            title=_("AI Hub"),
             style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
         )
         self.dialog.SetSize(wx.Size(740, 600))
@@ -152,15 +153,15 @@ class AIHubDialog:
         self._notebook = wx.Notebook(self.dialog)
         root.Add(self._notebook, 1, wx.EXPAND | wx.ALL, 8)
 
-        self._notebook.AddPage(self._build_provider_tab(), "Provider")
-        self._notebook.AddPage(self._build_on_device_tab(), "On-Device")
-        self._notebook.AddPage(self._build_audio_tab(), "Audio Services")
-        self._notebook.AddPage(self._build_instructions_tab(), "Instructions")
-        self._notebook.AddPage(self._build_advanced_tab(), "Advanced")
+        self._notebook.AddPage(self._build_provider_tab(), _("Provider"))
+        self._notebook.AddPage(self._build_on_device_tab(), _("On-Device"))
+        self._notebook.AddPage(self._build_audio_tab(), _("Audio Services"))
+        self._notebook.AddPage(self._build_instructions_tab(), _("Instructions"))
+        self._notebook.AddPage(self._build_advanced_tab(), _("Advanced"))
 
         btn_sizer = wx.StdDialogButtonSizer()
-        ok_btn = wx.Button(self.dialog, wx.ID_OK, label="&OK")
-        cancel_btn = wx.Button(self.dialog, wx.ID_CANCEL, label="Cancel")
+        ok_btn = wx.Button(self.dialog, wx.ID_OK, label=_("&OK"))
+        cancel_btn = wx.Button(self.dialog, wx.ID_CANCEL, label=_("Cancel"))
         ok_btn.SetDefault()
         btn_sizer.AddButton(ok_btn)
         btn_sizer.AddButton(cancel_btn)
@@ -187,7 +188,7 @@ class AIHubDialog:
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Provider selector
-        sizer.Add(wx.StaticText(panel, label="AI provider:"), 0, wx.ALL, 6)
+        sizer.Add(wx.StaticText(panel, label=_("AI provider:")), 0, wx.ALL, 6)
         provider_ids = [pid for pid, _label in _PROVIDER_CHOICES]
         provider_labels = [label for _pid, label in _PROVIDER_CHOICES]
         self._provider_choice = wx.Choice(panel, choices=provider_labels)
@@ -200,7 +201,7 @@ class AIHubDialog:
         sizer.Add(self._provider_choice, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
         # API key
-        sizer.Add(wx.StaticText(panel, label="API key:"), 0, wx.LEFT | wx.TOP, 6)
+        sizer.Add(wx.StaticText(panel, label=_("API key:")), 0, wx.LEFT | wx.TOP, 6)
         key_row = wx.BoxSizer(wx.HORIZONTAL)
         self._key_ctrl = wx.TextCtrl(
             panel,
@@ -208,28 +209,28 @@ class AIHubDialog:
             style=wx.TE_PASSWORD,
         )
         self._key_ctrl.SetName("API key")
-        self._reveal_btn = wx.ToggleButton(panel, label="Show")
+        self._reveal_btn = wx.ToggleButton(panel, label=_("Show"))
         key_row.Add(self._key_ctrl, 1, wx.RIGHT, 4)
         key_row.Add(self._reveal_btn, 0)
         sizer.Add(key_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
         # Host (shown only for Ollama / custom)
         sizer.Add(
-            wx.StaticText(panel, label="Host URL (Ollama/custom only):"), 0, wx.LEFT | wx.TOP, 6
+            wx.StaticText(panel, label=_("Host URL (Ollama/custom only):")), 0, wx.LEFT | wx.TOP, 6
         )
         self._host_ctrl = wx.TextCtrl(panel, value=self._settings.host or "")
         self._host_ctrl.SetName("Host URL")
         sizer.Add(self._host_ctrl, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
         # Model
-        sizer.Add(wx.StaticText(panel, label="Model:"), 0, wx.LEFT | wx.TOP, 6)
+        sizer.Add(wx.StaticText(panel, label=_("Model:")), 0, wx.LEFT | wx.TOP, 6)
         self._model_ctrl = wx.TextCtrl(panel, value=self._settings.model or "")
         self._model_ctrl.SetName("Model")
         sizer.Add(self._model_ctrl, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
         # Test connection button + result
         test_row = wx.BoxSizer(wx.HORIZONTAL)
-        self._test_btn = wx.Button(panel, label="Test &Connection")
+        self._test_btn = wx.Button(panel, label=_("Test &Connection"))
         self._test_label = wx.StaticText(panel, label="")
         test_row.Add(self._test_btn, 0, wx.RIGHT, 8)
         test_row.Add(self._test_label, 1, wx.ALIGN_CENTER_VERTICAL)
@@ -237,7 +238,7 @@ class AIHubDialog:
 
         # Full settings link
         if self._open_advanced is not None:
-            adv_btn = wx.Button(panel, label="Full Connection Settings...")
+            adv_btn = wx.Button(panel, label=_("Full Connection Settings..."))
             sizer.Add(adv_btn, 0, wx.LEFT | wx.BOTTOM, 6)
             adv_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_advanced())
 
@@ -255,7 +256,7 @@ class AIHubDialog:
         panel = wx.Panel(self._notebook)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        intro = (
+        intro = _(
             "QUILL supports on-device AI via Ollama. Ollama runs large language models "
             "locally on your machine — no API key or internet connection needed.\n\n"
             "Install Ollama from https://ollama.com, pull a model "
@@ -266,7 +267,7 @@ class AIHubDialog:
         intro_label.Wrap(620)
         sizer.Add(intro_label, 0, wx.ALL, 8)
 
-        sizer.Add(wx.StaticText(panel, label="Ollama base URL:"), 0, wx.LEFT, 8)
+        sizer.Add(wx.StaticText(panel, label=_("Ollama base URL:")), 0, wx.LEFT, 8)
         self._ollama_url_ctrl = wx.TextCtrl(
             panel,
             value=self._settings.host
@@ -278,7 +279,7 @@ class AIHubDialog:
 
         note = wx.StaticText(
             panel,
-            label=(
+            label=_(
                 "Recommended models (2025):\n"
                 "  llama3.2:1b-instruct-q4_K_M  — fast, 1 GB\n"
                 "  llama3.2:3b-instruct-q4_K_M  — better quality, 2 GB\n"
@@ -301,7 +302,7 @@ class AIHubDialog:
         panel = wx.Panel(self._notebook)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        intro = (
+        intro = _(
             "Audio transcription uses OpenAI Whisper (configure your OpenAI API key on "
             "the Provider tab). Speaker diarization (identifying who said what) uses "
             "Deepgram Nova-3 and requires a separate Deepgram API key."
@@ -312,7 +313,7 @@ class AIHubDialog:
 
         # Deepgram key
         sizer.Add(
-            wx.StaticText(panel, label="Deepgram API key (for speaker diarization):"),
+            wx.StaticText(panel, label=_("Deepgram API key (for speaker diarization):")),
             0,
             wx.LEFT | wx.TOP,
             8,
@@ -324,14 +325,14 @@ class AIHubDialog:
             style=wx.TE_PASSWORD,
         )
         self._deepgram_key_ctrl.SetName("Deepgram API key")
-        self._dg_reveal_btn = wx.ToggleButton(panel, label="Show")
+        self._dg_reveal_btn = wx.ToggleButton(panel, label=_("Show"))
         dg_row.Add(self._deepgram_key_ctrl, 1, wx.RIGHT, 4)
         dg_row.Add(self._dg_reveal_btn, 0)
         sizer.Add(dg_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
         # Max speakers default
         sizer.Add(
-            wx.StaticText(panel, label="Default maximum speakers (2-20):"),
+            wx.StaticText(panel, label=_("Default maximum speakers (2-20):")),
             0,
             wx.LEFT | wx.TOP,
             8,
@@ -347,7 +348,7 @@ class AIHubDialog:
 
         note = wx.StaticText(
             panel,
-            label=(
+            label=_(
                 "Privacy note: audio is sent to Deepgram's cloud for diarization. "
                 "Set this to Off on the Provider tab to keep all processing local. "
                 "Transcription (without diarization) stays within OpenAI."
@@ -370,8 +371,8 @@ class AIHubDialog:
         outer = wx.BoxSizer(wx.VERTICAL)
 
         sub = wx.Notebook(panel)
-        sub.AddPage(self._build_writing_tasks_page(sub), "Writing Tasks")
-        sub.AddPage(self._build_image_styles_page(sub), "Image Styles")
+        sub.AddPage(self._build_writing_tasks_page(sub), _("Writing Tasks"))
+        sub.AddPage(self._build_image_styles_page(sub), _("Image Styles"))
         outer.Add(sub, 1, wx.EXPAND | wx.ALL, 6)
 
         panel.SetSizer(outer)
@@ -387,7 +388,7 @@ class AIHubDialog:
         sizer = wx.BoxSizer(wx.HORIZONTAL)
 
         left = wx.BoxSizer(wx.VERTICAL)
-        left.Add(wx.StaticText(page, label="Task:"), 0, wx.BOTTOM, 4)
+        left.Add(wx.StaticText(page, label=_("Task:")), 0, wx.BOTTOM, 4)
         self._inst_list = wx.ListBox(page, style=wx.LB_SINGLE)
         self._inst_list.SetName("AI tasks")
         self._inst_task_ids: list[str] = []
@@ -400,12 +401,17 @@ class AIHubDialog:
         sizer.Add(wx.StaticLine(page, style=wx.LI_VERTICAL), 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 4)
 
         right = wx.BoxSizer(wx.VERTICAL)
-        self._inst_enabled_chk = wx.CheckBox(page, label="Enable custom instructions for this task")
+        self._inst_enabled_chk = wx.CheckBox(
+            page, label=_("Enable custom instructions for this task")
+        )
         self._inst_enabled_chk.SetName("Enable instructions")
         right.Add(self._inst_enabled_chk, 0, wx.ALL, 6)
 
         right.Add(
-            wx.StaticText(page, label="Instructions (prepended to every AI call for this task):"),
+            wx.StaticText(
+                page,
+                label=_("Instructions (prepended to every AI call for this task):"),
+            ),
             0,
             wx.LEFT | wx.RIGHT | wx.BOTTOM,
             6,
@@ -417,7 +423,7 @@ class AIHubDialog:
 
         right.Add(wx.StaticLine(page), 0, wx.EXPAND | wx.ALL, 6)
         right.Add(
-            wx.StaticText(page, label="Built-in default (shown when editor is empty):"),
+            wx.StaticText(page, label=_("Built-in default (shown when editor is empty):")),
             0,
             wx.LEFT | wx.RIGHT | wx.BOTTOM,
             6,
@@ -428,15 +434,15 @@ class AIHubDialog:
         right.Add(self._default_display, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
         btn_row = wx.BoxSizer(wx.HORIZONTAL)
-        self._inst_reset_btn = wx.Button(page, label="Reset to &Default")
-        self._inst_copy_default_btn = wx.Button(page, label="Copy Default to &Editor")
+        self._inst_reset_btn = wx.Button(page, label=_("Reset to &Default"))
+        self._inst_copy_default_btn = wx.Button(page, label=_("Copy Default to &Editor"))
         btn_row.Add(self._inst_reset_btn, 0, wx.RIGHT, 6)
         btn_row.Add(self._inst_copy_default_btn, 0)
         right.Add(btn_row, 0, wx.LEFT | wx.BOTTOM, 6)
 
         hint = wx.StaticText(
             page,
-            label=(
+            label=_(
                 "Tip: leave the editor empty to use the built-in default. "
                 "A * next to the task name means you have a custom override."
             ),
@@ -471,7 +477,7 @@ class AIHubDialog:
         sizer = wx.BoxSizer(wx.HORIZONTAL)
 
         left = wx.BoxSizer(wx.VERTICAL)
-        left.Add(wx.StaticText(page, label="Style:"), 0, wx.BOTTOM, 4)
+        left.Add(wx.StaticText(page, label=_("Style:")), 0, wx.BOTTOM, 4)
         self._img_list = wx.ListBox(page, style=wx.LB_SINGLE)
         self._img_list.SetName("Image description styles")
         self._img_style_ids: list[str] = []
@@ -487,14 +493,14 @@ class AIHubDialog:
 
         right = wx.BoxSizer(wx.VERTICAL)
         self._img_enabled_chk = wx.CheckBox(
-            page, label="Include this style in the image style picker"
+            page, label=_("Include this style in the image style picker")
         )
         self._img_enabled_chk.SetName("Include in picker")
         right.Add(self._img_enabled_chk, 0, wx.ALL, 6)
 
         right.Add(
             wx.StaticText(
-                page, label="Override prompt text (leave empty to use the built-in default):"
+                page, label=_("Override prompt text (leave empty to use the built-in default):")
             ),
             0,
             wx.LEFT | wx.RIGHT | wx.BOTTOM,
@@ -507,7 +513,7 @@ class AIHubDialog:
 
         right.Add(wx.StaticLine(page), 0, wx.EXPAND | wx.ALL, 6)
         right.Add(
-            wx.StaticText(page, label="Built-in default prompt:"),
+            wx.StaticText(page, label=_("Built-in default prompt:")),
             0,
             wx.LEFT | wx.RIGHT | wx.BOTTOM,
             6,
@@ -518,15 +524,15 @@ class AIHubDialog:
         right.Add(self._img_default_display, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
         btn_row = wx.BoxSizer(wx.HORIZONTAL)
-        self._img_reset_btn = wx.Button(page, label="Reset to &Default")
-        self._img_copy_default_btn = wx.Button(page, label="Copy Default to &Editor")
+        self._img_reset_btn = wx.Button(page, label=_("Reset to &Default"))
+        self._img_copy_default_btn = wx.Button(page, label=_("Copy Default to &Editor"))
         btn_row.Add(self._img_reset_btn, 0, wx.RIGHT, 6)
         btn_row.Add(self._img_copy_default_btn, 0)
         right.Add(btn_row, 0, wx.LEFT | wx.BOTTOM, 6)
 
         hint = wx.StaticText(
             page,
-            label=(
+            label=_(
                 "Tip: leave the editor empty to use the shipped prompt. "
                 "A * means you have a custom override. Manage custom styles via "
                 "Settings > AI > Image Prompt Styles."
@@ -680,7 +686,7 @@ class AIHubDialog:
         panel = wx.Panel(self._notebook)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        consent_text = (
+        consent_text = _(
             "Data sent to cloud AI providers\n"
             "--------------------------------\n"
             "When cloud AI is enabled, QUILL sends your document text or selection "
@@ -702,12 +708,12 @@ class AIHubDialog:
 
         sizer.Add(wx.StaticLine(panel), 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
-        reset_btn = wx.Button(panel, label="&Reset AI Settings to Defaults")
+        reset_btn = wx.Button(panel, label=_("&Reset AI Settings to Defaults"))
         sizer.Add(reset_btn, 0, wx.LEFT | wx.BOTTOM, 8)
 
         safe_mode_label = wx.StaticText(
             panel,
-            label=(
+            label=_(
                 "Safe Mode: Launch with --safe-mode or set QUILL_SAFE_MODE=1 to "
                 "disable all AI features and network calls at startup. "
                 "This is useful for troubleshooting or privacy-sensitive environments."
@@ -727,19 +733,19 @@ class AIHubDialog:
     def _on_reveal_key(self, event: object) -> None:
         if self._reveal_btn.GetValue():
             self._key_ctrl.SetWindowStyleFlag(0)
-            self._reveal_btn.SetLabel("Hide")
+            self._reveal_btn.SetLabel(_("Hide"))
         else:
             self._key_ctrl.SetWindowStyleFlag(self._wx.TE_PASSWORD)
-            self._reveal_btn.SetLabel("Show")
+            self._reveal_btn.SetLabel(_("Show"))
         self._key_ctrl.Refresh()
 
     def _on_reveal_dg_key(self, event: object) -> None:
         if self._dg_reveal_btn.GetValue():
             self._deepgram_key_ctrl.SetWindowStyleFlag(0)
-            self._dg_reveal_btn.SetLabel("Hide")
+            self._dg_reveal_btn.SetLabel(_("Hide"))
         else:
             self._deepgram_key_ctrl.SetWindowStyleFlag(self._wx.TE_PASSWORD)
-            self._dg_reveal_btn.SetLabel("Show")
+            self._dg_reveal_btn.SetLabel(_("Show"))
         self._deepgram_key_ctrl.Refresh()
 
     def _on_advanced(self) -> None:
@@ -755,7 +761,7 @@ class AIHubDialog:
         host = self._host_ctrl.GetValue().strip()
         model = self._model_ctrl.GetValue().strip()
 
-        self._test_label.SetLabel("Testing...")
+        self._test_label.SetLabel(_("Testing..."))
         self._test_btn.Enable(False)
 
         from quill.core.assistant_ai import AssistantConnectionSettings
@@ -776,11 +782,11 @@ class AIHubDialog:
                     timeout_seconds=15.0,
                 )
                 if error:
-                    msg = f"Failed: {error}"
+                    msg = _("Failed: {error}").format(error=error)
                 else:
-                    msg = "Connection OK."
+                    msg = _("Connection OK.")
             except Exception as exc:  # noqa: BLE001
-                msg = f"Error: {exc}"
+                msg = _("Error: {exc}").format(exc=exc)
             _wx.CallAfter(self._on_test_done, msg)
 
         threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: AI bg thread
@@ -792,9 +798,11 @@ class AIHubDialog:
     def _on_reset(self, event: object) -> None:
         wx = self._wx
         result = wx.MessageBox(  # GATE-41-OK: standalone dialog not owned by MainFrame
-            "Reset all AI settings to defaults? This clears the provider, model, and host "
-            "settings (but not stored API keys).",
-            "Reset AI Settings",
+            _(
+                "Reset all AI settings to defaults? This clears the provider, model, and host "
+                "settings (but not stored API keys)."
+            ),
+            _("Reset AI Settings"),
             wx.YES_NO | wx.ICON_WARNING,
             self.dialog,
         )
@@ -806,7 +814,7 @@ class AIHubDialog:
         )
 
         save_assistant_connection_settings(AssistantConnectionSettings())
-        self._announce("AI settings reset to defaults.")
+        self._announce(_("AI settings reset to defaults."))
         self.dialog.EndModal(wx.ID_OK)
 
     def _on_ok(self, event: object) -> None:
@@ -870,7 +878,7 @@ class AIHubDialog:
             _vsettings.vision_default_prompt_style = "accessibility"
         _save_settings(_vsettings)
 
-        self._announce("AI Hub settings saved.")
+        self._announce(_("AI Hub settings saved."))
         self.dialog.EndModal(self._wx.ID_OK)
 
     # ------------------------------------------------------------------

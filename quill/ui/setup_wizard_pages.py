@@ -31,6 +31,7 @@ from quill.core.features import (
     FEATURE_STATE_ON,
     FeatureManager,
 )
+from quill.core.i18n import _, lazy_gettext
 from quill.core.onboarding_profiles import (
     DEFAULT_INTENT_ID,
     IntentProfile,
@@ -65,7 +66,7 @@ class _WizardPage(wx.Panel):
 
 
 class _WelcomePage(_WizardPage):
-    _PREVIEW = (
+    _PREVIEW = lazy_gettext(
         "QUILL is a screen-reader-friendly text editor built from the ground up\n"
         "for people who use NVDA, JAWS, Narrator, or braille displays.\n"
         "\n"
@@ -83,12 +84,12 @@ class _WelcomePage(_WizardPage):
         super().__init__(parent, "Welcome")
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = wx.StaticText(self, label="Welcome to QUILL", name="wizard.welcome_heading")
+        heading = wx.StaticText(self, label=_("Welcome to QUILL"), name="wizard.welcome_heading")
         heading.SetFont(heading.GetFont().Scaled(1.4).Bold())
         sizer.Add(heading, flag=wx.ALL, border=12)
 
         about_label = wx.StaticText(
-            self, label="About this wizard:", name="wizard.welcome_about_label"
+            self, label=_("About this wizard:"), name="wizard.welcome_about_label"
         )
         sizer.Add(about_label, flag=wx.LEFT | wx.RIGHT, border=12)
 
@@ -120,14 +121,14 @@ class _IntentPage(_WizardPage):
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         heading = wx.StaticText(
-            self, label="What kind of writing do you do?", name="wizard.intent_heading"
+            self, label=_("What kind of writing do you do?"), name="wizard.intent_heading"
         )
         heading.SetFont(heading.GetFont().Bold())
         sizer.Add(heading, flag=wx.ALL, border=12)
 
         desc = wx.StaticText(
             self,
-            label=(
+            label=_(
                 "Choose the option that best describes you. "
                 "Arrow up and down to read about each one."
             ),
@@ -146,7 +147,7 @@ class _IntentPage(_WizardPage):
         sizer.Add(self._list, flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, border=12)
 
         about_label = wx.StaticText(
-            self, label="About this choice:", name="wizard.intent_about_label"
+            self, label=_("About this choice:"), name="wizard.intent_about_label"
         )
         sizer.Add(about_label, flag=wx.LEFT | wx.RIGHT, border=12)
 
@@ -203,13 +204,15 @@ class _ExtrasPage(_WizardPage):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = wx.StaticText(self, label="A few optional extras", name="wizard.extras_heading")
+        heading = wx.StaticText(
+            self, label=_("A few optional extras"), name="wizard.extras_heading"
+        )
         heading.SetFont(heading.GetFont().Bold())
         sizer.Add(heading, flag=wx.ALL, border=12)
 
         self._desc = wx.StaticText(
             self,
-            label="Add these to your starting profile. You can change them any time.",
+            label=_("Add these to your starting profile. You can change them any time."),
             name="wizard.extras_desc",
         )
         self._desc.Wrap(440)
@@ -217,7 +220,7 @@ class _ExtrasPage(_WizardPage):
 
         self._ai_check = wx.CheckBox(
             self,
-            label="Include AI writing assistance (Ask Quill, grammar check, prompts)",
+            label=_("Include AI writing assistance (Ask Quill, grammar check, prompts)"),
             name="wizard.extras_ai",
         )
         self._ai_check.Bind(wx.EVT_CHECKBOX, self._on_change)
@@ -225,7 +228,7 @@ class _ExtrasPage(_WizardPage):
 
         self._braille_check = wx.CheckBox(
             self,
-            label="Include Braille Mode (BRF and BRL files, braille status bar)",
+            label=_("Include Braille Mode (BRF and BRL files, braille status bar)"),
             name="wizard.extras_braille",
         )
         self._braille_check.Bind(wx.EVT_CHECKBOX, self._on_change)
@@ -233,13 +236,15 @@ class _ExtrasPage(_WizardPage):
 
         self._auto_check = wx.CheckBox(
             self,
-            label="Include typing automation (Smart Insert templates, abbreviations)",
+            label=_("Include typing automation (Smart Insert templates, abbreviations)"),
             name="wizard.extras_automation",
         )
         self._auto_check.Bind(wx.EVT_CHECKBOX, self._on_change)
         sizer.Add(self._auto_check, flag=wx.LEFT | wx.BOTTOM, border=12)
 
-        what_label = wx.StaticText(self, label="What this adds:", name="wizard.extras_what_label")
+        what_label = wx.StaticText(
+            self, label=_("What this adds:"), name="wizard.extras_what_label"
+        )
         sizer.Add(what_label, flag=wx.LEFT | wx.RIGHT, border=12)
 
         self._preview = wx.TextCtrl(
@@ -281,36 +286,44 @@ class _ExtrasPage(_WizardPage):
         wants_auto = self._auto_check.IsShown() and self._auto_check.GetValue()
 
         if not wants_ai and not wants_braille and not wants_auto:
-            lines.append("No extras selected.\n")
+            lines.append(_("No extras selected.\n"))
             lines.append(
-                "Press Next to continue. You can add any of these later\n"
-                "from Help > Personalise QUILL."
+                _(
+                    "Press Next to continue. You can add any of these later\n"
+                    "from Help > Personalise QUILL."
+                )
             )
         else:
-            lines.append("These extras will be added to your profile:\n")
+            lines.append(_("These extras will be added to your profile:\n"))
             if wants_ai:
                 lines.append(
-                    "AI Writing Assistance:\n"
-                    "  - Ask Quill assistant (Alt+Q)\n"
-                    "  - AI grammar check and rewrite\n"
-                    "  - Writing prompts and skills\n"
-                    "  - Prompt Library\n"
-                    "  (requires an API key from your AI provider)\n"
+                    _(
+                        "AI Writing Assistance:\n"
+                        "  - Ask Quill assistant (Alt+Q)\n"
+                        "  - AI grammar check and rewrite\n"
+                        "  - Writing prompts and skills\n"
+                        "  - Prompt Library\n"
+                        "  (requires an API key from your AI provider)\n"
+                    )
                 )
             if wants_braille:
                 lines.append(
-                    "Braille Mode:\n"
-                    "  - Open and navigate BRF and BRL files\n"
-                    "  - Braille status bar cell\n"
-                    "  - Grade 1 and Grade 2 translation\n"
-                    "  - QUILL Braille Pack integration\n"
+                    _(
+                        "Braille Mode:\n"
+                        "  - Open and navigate BRF and BRL files\n"
+                        "  - Braille status bar cell\n"
+                        "  - Grade 1 and Grade 2 translation\n"
+                        "  - QUILL Braille Pack integration\n"
+                    )
                 )
             if wants_auto:
                 lines.append(
-                    "Typing Automation:\n"
-                    "  - Smart Insert triggers (=bug(), =meeting(), =journal())\n"
-                    "  - Abbreviation expansion (qbug, qmeet, qlog, qtodo)\n"
-                    "  - BRF test content trigger (=brftest())\n"
+                    _(
+                        "Typing Automation:\n"
+                        "  - Smart Insert triggers (=bug(), =meeting(), =journal())\n"
+                        "  - Abbreviation expansion (qbug, qmeet, qlog, qtodo)\n"
+                        "  - BRF test content trigger (=brftest())\n"
+                    )
                 )
         self._preview.SetValue("\n".join(lines))
         self._preview.SetInsertionPoint(0)
@@ -345,13 +358,15 @@ class _AIProviderPage(_WizardPage):
         self._open_ai_hub = open_ai_hub
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = wx.StaticText(self, label="Set up your AI connection", name="wizard.ai_heading")
+        heading = wx.StaticText(
+            self, label=_("Set up your AI connection"), name="wizard.ai_heading"
+        )
         heading.SetFont(heading.GetFont().Bold())
         sizer.Add(heading, flag=wx.ALL, border=12)
 
         desc = wx.StaticText(
             self,
-            label=(
+            label=_(
                 "AI providers, API keys, and models are all managed in AI Hub. "
                 "Open it now to choose your provider, enter your key, and verify "
                 "the connection — or do it any time from Tools > AI Hub after setup."
@@ -361,7 +376,7 @@ class _AIProviderPage(_WizardPage):
         desc.Wrap(440)
         sizer.Add(desc, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM, border=12)
 
-        hub_btn = wx.Button(self, label="Open AI Hub...", name="wizard.open_ai_hub")
+        hub_btn = wx.Button(self, label=_("Open AI Hub..."), name="wizard.open_ai_hub")
         hub_btn.SetName("Open AI Hub to configure provider, API key, and model")
         sizer.Add(hub_btn, flag=wx.LEFT | wx.BOTTOM, border=12)
         hub_btn.Bind(wx.EVT_BUTTON, lambda _e: self._open_ai_hub())
@@ -378,25 +393,25 @@ class _AIProviderPage(_WizardPage):
 
 
 class _KeyboardSoundPage(_WizardPage):
-    _INDENT_TONE_CHOICES: tuple[tuple[str, str], ...] = (
-        ("", "Off"),
-        ("pentatonic", "Pentatonic (no dissonance)"),
-        ("whole_tone", "Whole tone (even steps)"),
-        ("diatonic", "Diatonic C major (familiar)"),
-        ("chromatic", "Chromatic (one semitone per level)"),
+    _INDENT_TONE_CHOICES: tuple[tuple[str, object], ...] = (
+        ("", lazy_gettext("Off")),
+        ("pentatonic", lazy_gettext("Pentatonic (no dissonance)")),
+        ("whole_tone", lazy_gettext("Whole tone (even steps)")),
+        ("diatonic", lazy_gettext("Diatonic C major (familiar)")),
+        ("chromatic", lazy_gettext("Chromatic (one semitone per level)")),
     )
 
     def __init__(self, parent: wx.Window, settings: Settings) -> None:
         super().__init__(parent, "Keyboard and Sound")
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = wx.StaticText(self, label="Keyboard and Sound", name="wizard.kb_heading")
+        heading = wx.StaticText(self, label=_("Keyboard and Sound"), name="wizard.kb_heading")
         heading.SetFont(heading.GetFont().Bold())
         sizer.Add(heading, flag=wx.ALL, border=12)
 
         desc = wx.StaticText(
             self,
-            label=(
+            label=_(
                 "Choose a keyboard layout and whether QUILL plays sound. "
                 "Sound is always optional and never replaces speech."
             ),
@@ -409,9 +424,14 @@ class _KeyboardSoundPage(_WizardPage):
         grid.AddGrowableCol(1, 1)
 
         # Z-order: StaticText before control in every row
-        pack_label = wx.StaticText(self, label="Keyboard pack:", name="wizard.kb_pack_label")
+        pack_label = wx.StaticText(self, label=_("Keyboard pack:"), name="wizard.kb_pack_label")
         self._pack = wx.Choice(self, name="wizard.kb_pack_choice")
-        for label in ("QUILL Default", "JAWS Compatible", "NVDA Compatible", "Narrator Compatible"):
+        for label in (
+            _("QUILL Default"),
+            _("JAWS Compatible"),
+            _("NVDA Compatible"),
+            _("Narrator Compatible"),
+        ):
             self._pack.Append(label)
         idx = self._pack.FindString(settings.keyboard_pack)
         self._pack.SetSelection(idx if idx != wx.NOT_FOUND else 0)
@@ -419,7 +439,7 @@ class _KeyboardSoundPage(_WizardPage):
         grid.Add(self._pack, flag=wx.EXPAND)
 
         self._sound_enabled = wx.CheckBox(
-            self, label="Play sound notifications (earcons)", name="wizard.sound_enabled_check"
+            self, label=_("Play sound notifications (earcons)"), name="wizard.sound_enabled_check"
         )
         self._sound_enabled.SetValue(bool(getattr(settings, "sound_enabled", True)))
         grid.Add(wx.StaticText(self, label=""), flag=wx.ALIGN_CENTER_VERTICAL)
@@ -427,13 +447,15 @@ class _KeyboardSoundPage(_WizardPage):
 
         self._sound_pack_path = str(getattr(settings, "sound_pack_path", "") or "")
         self._pack_row_label = wx.StaticText(
-            self, label="Sound pack:", name="wizard.sound_pack_label"
+            self, label=_("Sound pack:"), name="wizard.sound_pack_label"
         )
         pack_row = wx.BoxSizer(wx.HORIZONTAL)
         self._sound_pack_display = wx.StaticText(
             self, label=self._sound_pack_name(), name="wizard.sound_pack_display"
         )
-        self._choose_pack_btn = wx.Button(self, label="Choose...", name="wizard.sound_pack_choose")
+        self._choose_pack_btn = wx.Button(
+            self, label=_("Choose..."), name="wizard.sound_pack_choose"
+        )
         self._choose_pack_btn.Bind(wx.EVT_BUTTON, self._on_choose_sound_pack)
         pack_row.Add(self._sound_pack_display, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
         pack_row.Add(self._choose_pack_btn, 0)
@@ -441,7 +463,7 @@ class _KeyboardSoundPage(_WizardPage):
         grid.Add(pack_row, flag=wx.EXPAND)
 
         self._indent_label = wx.StaticText(
-            self, label="Indentation tones:", name="wizard.indent_tone_label"
+            self, label=_("Indentation tones:"), name="wizard.indent_tone_label"
         )
         self._indent = wx.Choice(
             self,
@@ -478,7 +500,7 @@ class _KeyboardSoundPage(_WizardPage):
 
     def _sound_pack_name(self) -> str:
         if not self._sound_pack_path:
-            return "Bundled Ink pack (default)"
+            return _("Bundled Ink pack (default)")
         from pathlib import Path
 
         return Path(self._sound_pack_path).name or self._sound_pack_path
@@ -486,7 +508,7 @@ class _KeyboardSoundPage(_WizardPage):
     def _on_choose_sound_pack(self, _event: object) -> None:
         with wx.FileDialog(
             self,
-            "Choose a sound pack (.qsp)",
+            _("Choose a sound pack (.qsp)"),
             wildcard="Sound packs (*.qsp)|*.qsp|All files (*.*)|*.*",
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
         ) as dlg:
@@ -515,12 +537,12 @@ class _SummaryPage(_WizardPage):
         super().__init__(parent, "Summary")
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = wx.StaticText(self, label="You are all set!", name="wizard.summary_heading")
+        heading = wx.StaticText(self, label=_("You are all set!"), name="wizard.summary_heading")
         heading.SetFont(heading.GetFont().Bold())
         sizer.Add(heading, flag=wx.ALL, border=12)
 
         ready_label = wx.StaticText(
-            self, label="Your QUILL is ready:", name="wizard.summary_ready_label"
+            self, label=_("Your QUILL is ready:"), name="wizard.summary_ready_label"
         )
         sizer.Add(ready_label, flag=wx.LEFT | wx.RIGHT, border=12)
 
@@ -534,7 +556,7 @@ class _SummaryPage(_WizardPage):
 
         note = wx.StaticText(
             self,
-            label=(
+            label=_(
                 "Press Finish to start writing. "
                 "Change anything later from Help > Personalise QUILL."
             ),
@@ -553,7 +575,7 @@ class _SummaryPage(_WizardPage):
         wants_auto = overrides.get("_extras_automation") == "on"
 
         lines: list[str] = []
-        lines.append(f"Profile: {intent.name}")
+        lines.append(_("Profile: {name}").format(name=intent.name))
         lines.append("")
 
         # Base preview (first paragraph only, up to first blank line)
@@ -581,13 +603,15 @@ class _SummaryPage(_WizardPage):
             extras.append("  - Typing automation (Smart Insert, abbreviations)")
         if extras:
             lines.append("")
-            lines.append("Extras added:")
+            lines.append(_("Extras added:"))
             lines.extend(extras)
 
         lines.append("")
-        lines.append(f"Keyboard pack: {settings.keyboard_pack}")
+        lines.append(_("Keyboard pack: {pack}").format(pack=settings.keyboard_pack))
         sound_on = bool(getattr(settings, "sound_enabled", True))
-        lines.append(f"Sound notifications: {'On' if sound_on else 'Off'}")
+        lines.append(
+            _("Sound notifications: {state}").format(state=_("On") if sound_on else _("Off"))
+        )
 
         self._summary.SetValue("\n".join(lines))
         self._summary.SetInsertionPoint(0)
@@ -619,7 +643,7 @@ class SetupWizardDialog(wx.Dialog):
     ) -> None:
         super().__init__(
             parent,
-            title="Personalise QUILL",
+            title=_("Personalise QUILL"),
             style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
             name="setup_wizard",
         )
@@ -687,10 +711,10 @@ class SetupWizardDialog(wx.Dialog):
         nav.Add(self._progress, flag=wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border=8)
         nav.AddStretchSpacer()
 
-        self._back_btn = wx.Button(self, label="< Back", name="wizard.back")
-        self._next_btn = wx.Button(self, label="Next >", name="wizard.next")
-        self._finish_btn = wx.Button(self, wx.ID_OK, label="Finish", name="wizard.finish")
-        self._cancel_btn = wx.Button(self, wx.ID_CANCEL, label="Cancel", name="wizard.cancel")
+        self._back_btn = wx.Button(self, label=_("< Back"), name="wizard.back")
+        self._next_btn = wx.Button(self, label=_("Next >"), name="wizard.next")
+        self._finish_btn = wx.Button(self, wx.ID_OK, label=_("Finish"), name="wizard.finish")
+        self._cancel_btn = wx.Button(self, wx.ID_CANCEL, label=_("Cancel"), name="wizard.cancel")
 
         nav.Add(self._back_btn, flag=wx.LEFT, border=4)
         nav.Add(self._next_btn, flag=wx.LEFT, border=4)
@@ -719,7 +743,7 @@ class SetupWizardDialog(wx.Dialog):
         self.Layout()
 
         total = len(self._active)
-        self._progress.SetLabel(f"Step {idx + 1} of {total}")
+        self._progress.SetLabel(_("Step {step} of {total}").format(step=idx + 1, total=total))
         self._back_btn.Enable(idx > 0)
         self._next_btn.Show(idx < total - 1)
         self._finish_btn.Show(idx == total - 1)
