@@ -35,6 +35,7 @@
   "create_sticky_note",
   "cycle_autosave_interval",
   "decrease_heading_level",
+  "enable_braille_mode",
   "exit_app",
   "explain_unavailable_feature",
   "export_keyboard_pack_file",
