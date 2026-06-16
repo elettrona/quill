@@ -6,7 +6,7 @@ User-configurable preferences for braille translation, page handling, and status
 
 ## What it does
 
-BRF Tools contributes a four-tab preferences page under **Preferences → Quillins → BRF Tools**:
+BRF Tools contributes a four-tab preferences page. Open it from **Preferences** (Ctrl+Comma), navigate to **BRF Tools**, and press Enter:
 
 - **Translation** — default translation profile (UEB Grade 2, UEB Grade 1, Standard American Legacy) and back-translation result label behavior.
 - **Page Handling** — cells per line, lines per page, line-length warnings, and line-ending normalization for embossers that require CRLF.

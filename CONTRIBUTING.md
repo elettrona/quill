@@ -205,6 +205,30 @@ documentation to QUILL. Thank you.
 - Becky K ([@BeckyK102125](https://github.com/BeckyK102125))
 - Kelly Ford ([@kellylford](https://github.com/kellylford)) — Vision Prompt Library (#195, #248): 12 IDT-evaluated image description styles, pre-describe picker, retry-in-dialog, VisionPromptManagerDialog, and AI Hub integration; HEIC/HEIF image support (#164, #165). Kelly is also the author of the [Image Description Toolkit](https://github.com/kellylford/Image-Description-Toolkit), a set of experimental tools for accessible image interaction that informed the prompt styles shipped here. His other accessibility-first projects include [QuickMail](https://github.com/kellylford/QuickMail) (accessible IMAP client), [RSSQuick](https://github.com/kellylford/rssquick) (accessible WPF RSS reader), and [ChatViewer](https://github.com/kellylford/ChatViewer) (GitHub Copilot Chat viewer).
 
+## Release process
+
+Releases are cut from `main`. Hotfixes may use short-lived `release/x.y.z` branches when needed.
+
+Before tagging a release:
+
+1. `ruff check .`
+2. `pytest -q`
+3. `python scripts/check_docs_artifacts.py`
+4. Windows packaging workflow readiness (`.github/workflows/windows-release.yml`)
+
+Release notes are prepared in `rel.md` at the repo root and converted to `rel.html` and `rel.epub`
+by Pandoc. `CHANGELOG.md` carries the same content in abbreviated form. All three files should be
+updated and committed before tagging.
+
+Versioning follows semantic intent for user-visible behavior:
+- **Patch**: bug fixes and low-risk changes
+- **Minor**: additive features and workflow improvements
+- **Major**: breaking changes or large platform shifts
+
+`main` is branch-protected with required checks and pull-request reviews. Admin bypass remains
+enabled for emergency direct commits; these must be followed by a post-merge explanation and
+follow-up remediation if needed.
+
 ## License
 
 By contributing, you agree that your contributions are licensed under the

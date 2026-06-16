@@ -40,12 +40,15 @@ def run_setup_wizard(
     feature_manager: FeatureManager,
     *,
     show_modal_fn: Callable[[Any, str], int] | None = None,
-) -> bool:
+) -> tuple[bool, bool]:
     """Open the setup wizard as a modal dialog.
 
-    Returns ``True`` if the user completed or skipped to the end (Finish),
-    ``False`` if they cancelled.  The caller is responsible for saving
-    ``settings`` and ``feature_manager`` after a ``True`` return.
+    Returns ``(completed, aborted)`` where:
+    - ``completed`` is True when the user pressed Finish.
+    - ``aborted`` is True when the user pressed Cancel (first-run use case).
+
+    The caller is responsible for saving ``settings`` and ``feature_manager``
+    after a ``True`` completed return.
 
     Pass ``show_modal_fn`` (typically ``MainFrame._show_modal_dialog``) so the
     dialog gets screen-reader enter/exit announcements and region tracking.
@@ -59,8 +62,9 @@ def run_setup_wizard(
         else:
             result = dlg.ShowModal()
         completed = result == wx.ID_OK
+        aborted = dlg.aborted_first_run
         if completed:
             settings.setup_wizard_completed = True
-        return completed
+        return completed, aborted
     finally:
         dlg.Destroy()

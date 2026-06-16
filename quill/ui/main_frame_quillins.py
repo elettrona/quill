@@ -530,6 +530,72 @@ class QuillinsMenuMixin:
         finally:
             dialog.Destroy()
 
+    # -- Intent profile Quillin configuration --------------------------------
+    def apply_intent_quillin_profile(
+        self,
+        intent_id: str,
+        *,
+        wants_ai: bool = False,
+        wants_braille: bool = False,
+        wants_automation: bool = False,
+    ) -> None:
+        """Enable/disable bundled Quillins to match the chosen intent profile.
+
+        Called by ``run_startup_wizard`` after the dialog closes so that the
+        full MainFrame context (quillin index, reload callback) is available.
+        """
+        from quill.core.onboarding_profiles import get_intent_profile
+
+        intent = get_intent_profile(intent_id)
+        quillins_on = set(intent.quillins_on)
+        quillins_off = set(intent.quillins_off)
+
+        # Apply extras that override the base profile
+        if wants_ai:
+            quillins_on.update({
+                "com.quill.bundled.ai-writing-prompts",
+                "com.quill.bundled.ai-writing-skills",
+            })
+            quillins_off.discard("com.quill.bundled.ai-writing-prompts")
+            quillins_off.discard("com.quill.bundled.ai-writing-skills")
+        if wants_automation:
+            quillins_on.add("com.quill.smartinsert")
+            quillins_off.discard("com.quill.smartinsert")
+        if wants_braille:
+            quillins_on.add("com.quill.brftools")
+            quillins_off.discard("com.quill.brftools")
+
+        for quillin_id in quillins_on:
+            try:
+                set_enabled(quillin_id, True)
+            except Exception:
+                pass
+        for quillin_id in quillins_off:
+            try:
+                set_enabled(quillin_id, False)
+            except Exception:
+                pass
+
+        # Reload contributions so menus and commands reflect new state
+        try:
+            self._register_quillin_contributions()
+        except Exception:
+            pass
+
+    # -- Quillin preferences -------------------------------------------------
+    def _pref_manifests(self) -> list[Any]:
+        """Return enabled manifests that declare ``contributes.preferences``."""
+        return [
+            item.manifest
+            for item in self._installed_quillins()
+            if item.manifest is not None and item.manifest.contributes.preferences
+        ]
+
+    def open_quillin_preferences(self, manifest: Any) -> None:
+        from quill.ui.quillin_prefs_dialog import build_quillin_pref_dialog
+
+        build_quillin_pref_dialog(self.frame, manifest, announce_fn=self._announce)
+
     # -- Quillin Wizard (in-app manifest builder) ----------------------------
     def open_quillin_wizard(self) -> None:
         from quill.ui.quillin_wizard import open_quillin_wizard

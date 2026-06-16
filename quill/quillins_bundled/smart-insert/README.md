@@ -34,7 +34,7 @@ Type any of these alone on a line and press Enter:
 
 ### Settings
 
-Configure in **Preferences → Quillins → Smart Insert**:
+Configure from **Preferences** (Ctrl+Comma) → **Smart Insert**:
 
 - **General** — large-insertion threshold and default to-do list length
 - **Log Mode** — timestamp format and custom strftime pattern

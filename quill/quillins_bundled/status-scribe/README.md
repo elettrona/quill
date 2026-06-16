@@ -16,7 +16,7 @@ A "Words: N" cell appears in the status bar. The cell is refreshed:
 
 ### Count modes
 
-Configure in **Preferences → Quillins → Status Scribe**:
+Configure from **Preferences** (Ctrl+Comma) → **Status Scribe**:
 
 - **Words** — total whitespace-delimited words (default)
 - **Characters** — total character count including spaces

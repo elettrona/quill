@@ -38,8 +38,16 @@ class CommandPaletteDialog:
         self._registry = command_registry
         self._features = feature_manager
         self._announce_fn = announce_fn
-        # Include ALL commands; availability is checked per-item in _refresh_results.
-        self._commands: list[Command] = command_registry.list()
+        # Show only commands whose feature is visible in the current profile.
+        # Commands for OFF features are omitted entirely; the palette should
+        # reflect the user's chosen experience, not the full catalogue.
+        all_commands = command_registry.list()
+        if feature_manager is not None:
+            self._commands: list[Command] = [
+                cmd for cmd in all_commands if feature_manager.is_visible(cmd.feature_id)
+            ]
+        else:
+            self._commands = all_commands
         self._usage = load_palette_usage()
         self._filtered_commands: list[Command] = rank_commands(self._commands, "", self._usage)
 
@@ -150,16 +158,13 @@ class CommandPaletteDialog:
         for command in self._filtered_commands:
             binding = command.keybinding or ""
             label = f"{command.title} [{binding}]" if binding else command.title
-            if not self._is_available(command):
-                label = f"- {label}"
             labels.append(label)
         self.results.Set(labels)
         if labels:
             self.results.SetSelection(0)
             top = self._filtered_commands[0]
-            available_count = sum(1 for cmd in self._filtered_commands if self._is_available(cmd))
             self.status.SetLabel(
-                f"{len(labels)} command(s), {available_count} available. "
+                f"{len(labels)} command(s). "
                 f"Top match: {top.title}. "
                 "Down/Up to navigate, Enter to run."
             )
@@ -229,8 +234,15 @@ class GoToAnythingDialog:
         from quill.core.commands import CommandRegistry
 
         if isinstance(command_registry, CommandRegistry):
-            # Include all commands; availability checked per-item.
-            self._commands = command_registry.list()
+            all_cmds = command_registry.list()
+            if feature_manager is not None:
+                self._commands = [
+                    cmd
+                    for cmd in all_cmds
+                    if feature_manager.is_visible(getattr(cmd, "feature_id", "core.app"))
+                ]
+            else:
+                self._commands = all_cmds
         else:
             self._commands = []
         self._usage = load_palette_usage()
@@ -368,15 +380,12 @@ class GoToAnythingDialog:
             for cmd in ranked:
                 binding = getattr(cmd, "keybinding", "") or ""
                 label = f"{cmd.title} [{binding}]" if binding else cmd.title
-                available = self._cmd_is_available(cmd)
-                if not available:
-                    label = f"- {label}"
                 results.append({
                     "kind": "command",
                     "label": label,
                     "cmd_id": cmd.id,
                     "cmd": cmd,
-                    "available": available,
+                    "available": True,
                 })
 
         self._filtered_results = results

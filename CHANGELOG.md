@@ -4,6 +4,14 @@
 
 See `rel.md` for the full narrative release notes.
 
+### Accessibility fixes
+
+- **JAWS label-buddy Z-order (#249).** Tabbing through Preferences dialogs under JAWS now announces field labels correctly. The fix converts every pre-created labeled control in `open_general_preferences/_make_control`, `open_profiles_and_features_settings`, and `ai_model_panel._build_tier_section` to factory callables so `StaticText` labels are always created before their associated `wx.Choice`/`wx.SpinCtrl`/`wx.TextCtrl` in the Windows child list. `wx.CheckBox` and `wx.Button` are exempt (they carry their own label text). Six gating tests in `tests/unit/ui/test_dialog_label_ordering.py` lock in the correct creation order. The Quillin preferences renderer (`quillin_prefs_dialog.py`) enforces label-first order throughout by construction.
+
+### New features
+
+- **Quillin preferences rendering.** All five bundled Quillins with `contributes.preferences` declarations now have live settings dialogs accessible from the Preferences hub. New `quill/ui/quillin_prefs_dialog.py` renders boolean (CheckBox), integer (SpinCtrl), string (TextCtrl), and choice (Choice) controls from the declarative manifest schema. Conditional `visible_when` and `enabled_when` rules are wired to wx change events so dependent controls update live. `main_frame_quillins.py` gains `_pref_manifests()` and `open_quillin_preferences()`. `open_preferences()` dynamically appends one hub entry per enabled Quillin with preferences.
+
 ## 0.5.1 — Sound Packs, Compare Mode, Code-Aware Editing, Encoding Tools (2026-06-15)
 
 ### New features

@@ -116,8 +116,9 @@ def main() -> int:
         type=Path,
         default=None,
         help=(
-            "Optional local braille pack directory (containing lou_translate.exe, tables/, "
+            "Local braille pack directory (containing lou_translate.exe, tables/, "
             "brf_profiles.json) to bundle under portable\\vendor\\braille-pack. "
+            "Defaults to liblouis/vendor/braille/pack relative to the source root. "
             "Run scripts/build_braille_pack.py first to generate the catalog and profiles."
         ),
     )
@@ -226,7 +227,9 @@ def build_windows_distribution(
     }
     write_json_atomic(manifest_path, manifest)
 
-    braille_pack_staged = _stage_braille_pack(portable_dir, braille_pack_dir)
+    braille_pack_staged = _stage_braille_pack(
+        portable_dir, braille_pack_dir, source_root=resolved_source_root
+    )
 
     installer_script = installer_dir / "quill.iss"
     reference_installer_script = reference_installer_dir / "quill.iss"
@@ -993,10 +996,22 @@ def _stage_distribution_docs(portable_dir: Path, source_root: Path) -> list[Path
     return staged
 
 
-def _stage_braille_pack(portable_dir: Path, braille_pack_dir: Path | None) -> bool:
+def _stage_braille_pack(
+    portable_dir: Path,
+    braille_pack_dir: Path | None,
+    *,
+    source_root: Path | None = None,
+) -> bool:
     """Copy the braille pack into portable/vendor/braille-pack/. Returns True if staged."""
     if braille_pack_dir is None:
-        return False
+        default = (source_root or Path(".")) / "liblouis" / "vendor" / "braille" / "pack"
+        if not default.is_dir():
+            print(
+                f"Warning: braille pack not found at {default}; skipping. "
+                "Run scripts/build_braille_pack.py first or pass --braille-pack-dir."
+            )
+            return False
+        braille_pack_dir = default
     if not braille_pack_dir.is_dir():
         raise RuntimeError(f"Braille pack directory not found: {braille_pack_dir}")
     target = portable_dir / "vendor" / "braille-pack"

@@ -4486,11 +4486,17 @@ class="sourceCode json"><code class="sourceCode json"><span id="cb55-1"><a href=
 <span id="cb55-79"><a href="#cb55-79" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
 <span id="cb55-80"><a href="#cb55-80" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <h3 id="supported-setting-types">Supported setting types</h3>
+<p>The types below are validated by the schema. Types marked
+<strong>live</strong> are rendered by
+<code>quillin_prefs_dialog.py</code> in 0.6.0. Types marked
+<strong>planned</strong> pass validation but are not yet rendered; they
+are reserved for future releases.</p>
 <table>
 <thead>
 <tr>
 <th>Type</th>
 <th>Control</th>
+<th>Status</th>
 <th>Notes</th>
 </tr>
 </thead>
@@ -4498,64 +4504,75 @@ class="sourceCode json"><code class="sourceCode json"><span id="cb55-1"><a href=
 <tr>
 <td><code>boolean</code></td>
 <td>Checkbox</td>
-<td></td>
+<td><strong>live</strong></td>
+<td>Self-labeling; no preceding StaticText needed</td>
 </tr>
 <tr>
 <td><code>choice</code></td>
 <td>Combo box</td>
+<td><strong>live</strong></td>
 <td>Requires <code>choices</code> array with <code>value</code> and
 <code>label</code></td>
 </tr>
 <tr>
-<td><code>radio</code></td>
-<td>Radio button group</td>
-<td>Requires <code>choices</code> array</td>
-</tr>
-<tr>
 <td><code>string</code></td>
 <td>Single-line text field</td>
-<td></td>
-</tr>
-<tr>
-<td><code>text</code></td>
-<td>Multi-line text field</td>
+<td><strong>live</strong></td>
 <td></td>
 </tr>
 <tr>
 <td><code>integer</code></td>
-<td>Numeric field</td>
-<td>Supports <code>minimum</code>, <code>maximum</code>,
-<code>step</code></td>
+<td>Numeric spinner</td>
+<td><strong>live</strong></td>
+<td>Supports <code>minimum</code>, <code>maximum</code></td>
+</tr>
+<tr>
+<td><code>radio</code></td>
+<td>Radio button group</td>
+<td>planned</td>
+<td>Requires <code>choices</code> array</td>
+</tr>
+<tr>
+<td><code>text</code></td>
+<td>Multi-line text field</td>
+<td>planned</td>
+<td></td>
 </tr>
 <tr>
 <td><code>number</code></td>
 <td>Decimal numeric field</td>
+<td>planned</td>
 <td>Supports <code>minimum</code>, <code>maximum</code>,
 <code>step</code></td>
 </tr>
 <tr>
 <td><code>path</code></td>
 <td>File or folder picker</td>
+<td>planned</td>
 <td></td>
 </tr>
 <tr>
 <td><code>password</code></td>
 <td>Masked text field</td>
+<td>planned</td>
 <td>Set <code>sensitive: true</code></td>
 </tr>
 <tr>
 <td><code>list</code></td>
 <td>Editable list</td>
+<td>planned</td>
 <td></td>
 </tr>
 <tr>
 <td><code>action</code></td>
 <td>Button</td>
+<td>planned</td>
 <td></td>
 </tr>
 <tr>
 <td><code>info</code></td>
 <td>Read-only help text</td>
+<td>planned</td>
 <td></td>
 </tr>
 </tbody>
@@ -4572,11 +4589,12 @@ class="sourceCode json"><code class="sourceCode json"><span id="cb56-1"><a href=
 <h3 id="placement">Placement</h3>
 <p>A preferences page may declare a preferred parent area
 (<code>parent</code>) and placement style (<code>placement</code>:
-<code>page</code>, <code>tab</code>, or <code>section</code>). QUILL may
-override placement to avoid clutter. Third-party Quillins are placed
-under <strong>Preferences → Quillins → Quillin Name</strong> by default;
-bundled first-party Quillins may integrate into the Editing or Tools
-areas.</p>
+<code>page</code>, <code>tab</code>, or <code>section</code>). In the
+current release, every enabled Quillin with a <code>preferences</code>
+contribution appears as a direct top-level entry in the Preferences hub
+(opened via Ctrl+Comma), named by the page's <code>title</code> field.
+The <code>parent</code> and <code>placement</code> fields are validated
+and stored but do not yet affect the rendered position.</p>
 <h3 id="required-setting-fields">Required setting fields</h3>
 <p>Every setting must declare <code>key</code>, <code>label</code>,
 <code>type</code>, <code>default</code>, and <code>description</code>.
@@ -4636,31 +4654,62 @@ etc.)</td>
 flags, third-party Quillin enablement) cannot be written by any Quillin
 regardless of capability.</p>
 <h2 id="bundled-examples">Bundled examples</h2>
-<p>Two bundled Quillins ship in 0.6.0 as reference implementations of
-these new features:</p>
+<p>Five bundled Quillins ship in 0.6.0 as reference implementations of
+these new features. All five have live settings dialogs reachable from
+the Preferences hub (Ctrl+Comma → navigate to the Quillin by name →
+Enter):</p>
 <ul>
 <li><strong>Smart Insert</strong> (<code>com.quill.smartinsert</code>) —
-abbreviations, smart triggers, and a five-tab preferences page.
-Handler-based commands for <code>=bug()</code>, <code>=meeting()</code>,
+abbreviations, smart triggers, and a five-tab preferences page (General,
+Log Mode, Smart Triggers, Abbreviations, BRF Testing). Handler-based
+commands for <code>=bug()</code>, <code>=meeting()</code>,
 <code>=journal()</code>, <code>=todo()</code>, <code>=logentry()</code>,
 <code>=brftest()</code>, and <code>=rand()</code>. See
 <code>quill/quillins_bundled/smart-insert/</code>.</li>
 <li><strong>BRF Tools</strong> (<code>com.quill.brftools</code>) —
-declarative preferences only, no handler code. Shows a four-tab settings
-page for translation defaults, page dimensions, status bar display, and
-advanced diagnostics. See
+declarative preferences only, no handler code. Four-tab settings page
+(Translation, Page Handling, Status Bar, Advanced). See
 <code>quill/quillins_bundled/brf-tools/</code>.</li>
+<li><strong>Journal Stamp</strong> (<code>com.quill.journalstamp</code>)
+— three-tab preferences page (Date Header, Word Count, Session Restore).
+Subscribes to <code>document.created</code>,
+<code>document.after_save</code>,
+<code>document.loaded_from_session</code>, <code>quillin.enabled</code>,
+and <code>settings.changed</code>. See
+<code>quill/quillins_bundled/journal-stamp/</code>.</li>
+<li><strong>Document Guardian</strong>
+(<code>com.quill.docguardian</code>) — three-tab preferences page (Close
+Guard, Save Stamp, Save Confirmation). Subscribes to
+<code>document.before_close</code>, <code>document.before_save</code>,
+<code>document.after_save</code>, <code>quillin.enabled</code>,
+<code>quillin.disabled</code>, and <code>quill.shutdown</code>. See
+<code>quill/quillins_bundled/doc-guardian/</code>.</li>
+<li><strong>Status Scribe</strong> (<code>com.quill.statusscribe</code>)
+— two-tab preferences page (Display, Announce). Contributes a live
+status bar cell; subscribes to <code>document.after_save</code>,
+<code>document.activated</code>, <code>quillin.enabled</code>,
+<code>quillin.disabled</code>, and <code>settings.changed</code>; uses
+<code>ui.log</code> developer logging and announcement priority. See
+<code>quill/quillins_bundled/status-scribe/</code>.</li>
 </ul>
 <h2 id="accessibility-rules-for-quillin-preferences">Accessibility rules
 for Quillin Preferences</h2>
 <ul>
-<li>The tab list must be keyboard-reachable and arrow-key
-navigable.</li>
+<li>The tab list must be keyboard-reachable and arrow-key navigable. The
+renderer uses a standard <code>wx.Notebook</code> so arrow keys switch
+tabs and tab names are announced.</li>
 <li>Every control must have a label. The lint gate rejects settings
 without <code>label</code>, <code>type</code>, <code>default</code>, and
 <code>description</code>.</li>
-<li>Search results must identify the Quillin, page, tab, and
-setting.</li>
+<li><code>StaticText</code> labels must be created before their
+associated controls in Windows child order. On Windows, JAWS finds the
+accessible name for a combo box or spin field by searching backward
+through the parent window's child list for the nearest
+<code>StaticText</code>. The renderer
+(<code>quillin_prefs_dialog.py</code>) always adds the label to the
+sizer before the control so Z-order is correct by construction.
+<code>boolean</code> settings use <code>wx.CheckBox</code> which carries
+its own label text and is exempt.</li>
 <li>Focus must return predictably after the page closes.</li>
 <li>No custom-drawn controls. No unlabeled controls. No mouse-only
 interactions.</li>

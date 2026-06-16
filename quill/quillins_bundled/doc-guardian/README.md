@@ -26,7 +26,7 @@ After every save, speaks the file name and size. Useful when saving to a network
 
 ## Settings
 
-Configure in **Preferences → Quillins → Document Guardian**:
+Configure from **Preferences** (Ctrl+Comma) → **Document Guardian**:
 
 - **Close Guard tab** — enable/disable, word count threshold, and TODO marker text.
 - **Save Stamp tab** — enable/disable, and timestamp format (Long, ISO 8601, date-only).

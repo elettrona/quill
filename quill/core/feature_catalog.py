@@ -55,6 +55,24 @@ FEATURE_DEFINITIONS: dict[str, FeatureDefinition] = {
         category="core",
         dependencies=("core.app",),
     ),
+    "core.abbreviations": FeatureDefinition(
+        "core.abbreviations",
+        "Abbreviations and Snippet Packs",
+        aliases=(
+            "abbreviation expansion",
+            "text shortcuts",
+            "snippet packs",
+            "typed shortcuts",
+            "text expansion",
+        ),
+        description=(
+            "Typed abbreviation expansion, the Manage Abbreviations dialog, "
+            "and starter snippet pack installation. Writer-level feature; "
+            "hidden in the Just a Text Editor profile."
+        ),
+        category="text",
+        dependencies=("core.edit",),
+    ),
     "core.search": FeatureDefinition(
         "core.search", "Search", category="core", dependencies=("core.editor",)
     ),

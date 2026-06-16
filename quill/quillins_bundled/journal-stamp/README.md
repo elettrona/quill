@@ -20,7 +20,7 @@ When QUILL restores a document from a crash or previous session, Journal Stamp b
 
 ## Settings
 
-Configure in **Preferences → Quillins → Journal Stamp**:
+Configure from **Preferences** (Ctrl+Comma) → **Journal Stamp**:
 
 - **Date Header tab** — format (Long, ISO, US, Custom), separator style, and folder keyword filter.
 - **Word Count tab** — when to announce (always, only when a goal is set, or never) and daily word goal.

@@ -3130,20 +3130,22 @@ For Quillins with several related setting groups, declare tabs. Each tab contain
 
 ### Supported setting types
 
-| Type | Control | Notes |
-| --- | --- | --- |
-| `boolean` | Checkbox | |
-| `choice` | Combo box | Requires `choices` array with `value` and `label` |
-| `radio` | Radio button group | Requires `choices` array |
-| `string` | Single-line text field | |
-| `text` | Multi-line text field | |
-| `integer` | Numeric field | Supports `minimum`, `maximum`, `step` |
-| `number` | Decimal numeric field | Supports `minimum`, `maximum`, `step` |
-| `path` | File or folder picker | |
-| `password` | Masked text field | Set `sensitive: true` |
-| `list` | Editable list | |
-| `action` | Button | |
-| `info` | Read-only help text | |
+The types below are validated by the schema. Types marked **live** are rendered by `quillin_prefs_dialog.py` in 0.6.0. Types marked **planned** pass validation but are not yet rendered; they are reserved for future releases.
+
+| Type | Control | Status | Notes |
+| --- | --- | --- | --- |
+| `boolean` | Checkbox | **live** | Self-labeling; no preceding StaticText needed |
+| `choice` | Combo box | **live** | Requires `choices` array with `value` and `label` |
+| `string` | Single-line text field | **live** | |
+| `integer` | Numeric spinner | **live** | Supports `minimum`, `maximum` |
+| `radio` | Radio button group | planned | Requires `choices` array |
+| `text` | Multi-line text field | planned | |
+| `number` | Decimal numeric field | planned | Supports `minimum`, `maximum`, `step` |
+| `path` | File or folder picker | planned | |
+| `password` | Masked text field | planned | Set `sensitive: true` |
+| `list` | Editable list | planned | |
+| `action` | Button | planned | |
+| `info` | Read-only help text | planned | |
 
 ### Conditional visibility
 
@@ -3158,7 +3160,7 @@ A setting can declare `visible_when` or `enabled_when` to show or enable itself 
 
 ### Placement
 
-A preferences page may declare a preferred parent area (`parent`) and placement style (`placement`: `page`, `tab`, or `section`). QUILL may override placement to avoid clutter. Third-party Quillins are placed under **Preferences → Quillins → Quillin Name** by default; bundled first-party Quillins may integrate into the Editing or Tools areas.
+A preferences page may declare a preferred parent area (`parent`) and placement style (`placement`: `page`, `tab`, or `section`). In the current release, every enabled Quillin with a `preferences` contribution appears as a direct top-level entry in the Preferences hub (opened via Ctrl+Comma), named by the page's `title` field. The `parent` and `placement` fields are validated and stored but do not yet affect the rendered position.
 
 ### Required setting fields
 
@@ -3192,16 +3194,19 @@ Sensitive QUILL settings (AI credentials, network settings, security flags, thir
 
 ## Bundled examples
 
-Two bundled Quillins ship in 0.6.0 as reference implementations of these new features:
+Five bundled Quillins ship in 0.6.0 as reference implementations of these new features. All five have live settings dialogs reachable from the Preferences hub (Ctrl+Comma → navigate to the Quillin by name → Enter):
 
-- **Smart Insert** (`com.quill.smartinsert`) — abbreviations, smart triggers, and a five-tab preferences page. Handler-based commands for `=bug()`, `=meeting()`, `=journal()`, `=todo()`, `=logentry()`, `=brftest()`, and `=rand()`. See `quill/quillins_bundled/smart-insert/`.
-- **BRF Tools** (`com.quill.brftools`) — declarative preferences only, no handler code. Shows a four-tab settings page for translation defaults, page dimensions, status bar display, and advanced diagnostics. See `quill/quillins_bundled/brf-tools/`.
+- **Smart Insert** (`com.quill.smartinsert`) — abbreviations, smart triggers, and a five-tab preferences page (General, Log Mode, Smart Triggers, Abbreviations, BRF Testing). Handler-based commands for `=bug()`, `=meeting()`, `=journal()`, `=todo()`, `=logentry()`, `=brftest()`, and `=rand()`. See `quill/quillins_bundled/smart-insert/`.
+- **BRF Tools** (`com.quill.brftools`) — declarative preferences only, no handler code. Four-tab settings page (Translation, Page Handling, Status Bar, Advanced). See `quill/quillins_bundled/brf-tools/`.
+- **Journal Stamp** (`com.quill.journalstamp`) — three-tab preferences page (Date Header, Word Count, Session Restore). Subscribes to `document.created`, `document.after_save`, `document.loaded_from_session`, `quillin.enabled`, and `settings.changed`. See `quill/quillins_bundled/journal-stamp/`.
+- **Document Guardian** (`com.quill.docguardian`) — three-tab preferences page (Close Guard, Save Stamp, Save Confirmation). Subscribes to `document.before_close`, `document.before_save`, `document.after_save`, `quillin.enabled`, `quillin.disabled`, and `quill.shutdown`. See `quill/quillins_bundled/doc-guardian/`.
+- **Status Scribe** (`com.quill.statusscribe`) — two-tab preferences page (Display, Announce). Contributes a live status bar cell; subscribes to `document.after_save`, `document.activated`, `quillin.enabled`, `quillin.disabled`, and `settings.changed`; uses `ui.log` developer logging and announcement priority. See `quill/quillins_bundled/status-scribe/`.
 
 ## Accessibility rules for Quillin Preferences
 
-- The tab list must be keyboard-reachable and arrow-key navigable.
+- The tab list must be keyboard-reachable and arrow-key navigable. The renderer uses a standard `wx.Notebook` so arrow keys switch tabs and tab names are announced.
 - Every control must have a label. The lint gate rejects settings without `label`, `type`, `default`, and `description`.
-- Search results must identify the Quillin, page, tab, and setting.
+- `StaticText` labels must be created before their associated controls in Windows child order. On Windows, JAWS finds the accessible name for a combo box or spin field by searching backward through the parent window's child list for the nearest `StaticText`. The renderer (`quillin_prefs_dialog.py`) always adds the label to the sizer before the control so Z-order is correct by construction. `boolean` settings use `wx.CheckBox` which carries its own label text and is exempt.
 - Focus must return predictably after the page closes.
 - No custom-drawn controls. No unlabeled controls. No mouse-only interactions.
 - Screen readers must be able to review every preference without extra effort.
