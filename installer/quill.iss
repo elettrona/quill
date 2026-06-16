@@ -81,14 +81,12 @@ Name: "speechdectalk\voices\rita"; Description: "Rita voice"; Types: full custom
 Name: "speechdectalk\voices\wendy"; Description: "Wendy voice"; Types: full custom; Flags: checkablealone
 Name: "speechdectalk\voices\kit"; Description: "Kit voice"; Types: full custom; Flags: checkablealone
 Name: "speechespeak"; Description: "Install bundled eSpeak-NG runtime"; Types: full custom; Flags: checkablealone
-Name: "speechkokoro"; Description: "Install bundled Kokoro voices/models"; Types: full custom; Flags: checkablealone
-Name: "speechpiper"; Description: "Install bundled Piper voices/models"; Types: full custom; Flags: checkablealone
-Name: "speechopenvoice"; Description: "Install bundled OpenVoice voices/models"; Types: full custom; Flags: checkablealone
+Name: "speechpiper"; Description: "Install bundled Piper neural TTS runtime"; Types: full custom; Flags: checkablealone
 Name: "nodejs"; Description: "Install portable Node.js runtime for Node Quillins and the Developer Console TypeScript interface (~30 MB); not required for Python Quillins"; Types: custom; Flags: checkablealone
 Name: "braillepack"; Description: "Install QUILL Braille Pack (liblouis translation engine, UEB, Standard American English, and international braille profiles, ~15 MB)"; Types: full custom; Flags: checkablealone
 
 [Files]
-Source: "..\portable\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "docs\QUILL-PRD.md,tools\pandoc\*,tools\speech\dectalk\*,tools\speech\espeak-ng\*,tools\speech\kokoro\*,tools\speech\piper\*,tools\speech\openvoice\*,tools\nodejs\*,vendor\braille-pack\*"
+Source: "..\portable\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "docs\QUILL-PRD.md,tools\pandoc\*,tools\speech\dectalk\*,tools\speech\espeak-ng\*,tools\speech\piper\*,tools\nodejs\*,vendor\braille-pack\*"
 ; QUILL Braille Pack: liblouis runtime, translation tables, and BRF profiles.
 ; Installed to vendor\braille-pack so QUILL detects it automatically via QUILL_APP_ROOT.
 Source: "..\portable\vendor\braille-pack\*"; DestDir: "{app}\vendor\braille-pack"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: braillepack
@@ -105,9 +103,7 @@ Source: "..\portable\tools\speech\dectalk\voices\rita\*"; DestDir: "{app}\tools\
 Source: "..\portable\tools\speech\dectalk\voices\wendy\*"; DestDir: "{app}\tools\speech\dectalk\voices\wendy"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\voices\wendy; Check: not WizardIsComponentSelected('speechdectalk\voices\all_voices')
 Source: "..\portable\tools\speech\dectalk\voices\kit\*"; DestDir: "{app}\tools\speech\dectalk\voices\kit"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk\voices\kit; Check: not WizardIsComponentSelected('speechdectalk\voices\all_voices')
 Source: "..\portable\tools\speech\espeak-ng\*"; DestDir: "{app}\tools\speech\espeak-ng"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechespeak
-Source: "..\portable\tools\speech\kokoro\*"; DestDir: "{app}\tools\speech\kokoro"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechkokoro
 Source: "..\portable\tools\speech\piper\*"; DestDir: "{app}\tools\speech\piper"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechpiper
-Source: "..\portable\tools\speech\openvoice\*"; DestDir: "{app}\tools\speech\openvoice"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechopenvoice
 ; Node.js portable runtime (optional). The build script copies a portable
 ; node.exe distribution into portable\tools\nodejs when building with
 ; --bundle-nodejs. skipifsourcedoesntexist means a build without bundled

@@ -61,12 +61,19 @@ ESPEAK_PINNED_VERSION = "1.52.0"
 ESPEAK_PINNED_URL = "https://github.com/espeak-ng/espeak-ng/releases/download/1.52.0/espeak-ng.msi"
 ESPEAK_PINNED_SHA256 = "7f673c709ea5dd579d3b5ebb98688cc575328a6ab7438d2bc405b88cedaeafb9"
 
+# Pinned Piper TTS Windows release. _download_and_stage_piper() tries the
+# latest GitHub release first and falls back to these if the API is unreachable.
+PIPER_PINNED_URL = (
+    "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip"
+)
+PIPER_PINNED_SHA256 = "f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea"
+
 # GLOW is hidden for 0.5.0 (the core.glow feature is locked off), so the heavy
 # `glow` extra (quill-glow-core[glow], not yet on a public index) is NOT bundled
 # in the shipping build. The vendored contract wheel (see _install_vendored_glow)
 # still installs the safe GLOW seam. Re-add "glow" here when GLOW is re-enabled
 # and its wheels are published.
-DEFAULT_BUNDLED_DEPENDENCY_GROUPS = ("ui", "spellcheck", "ocr")
+DEFAULT_BUNDLED_DEPENDENCY_GROUPS = ("ui", "spellcheck", "ocr", "kokoro")
 
 
 def main() -> int:
@@ -200,6 +207,8 @@ def build_windows_distribution(
         )
     if "speech/espeak-ng" not in effective_bundled_tools:
         effective_bundled_tools["speech/espeak-ng"] = _download_and_stage_espeak(portable_dir)
+    if "speech/piper" not in effective_bundled_tools:
+        effective_bundled_tools["speech/piper"] = _download_and_stage_piper(portable_dir)
     bundled_tools = _stage_bundled_tools(portable_dir, effective_bundled_tools)
 
     readme = portable_dir / "README.txt"
@@ -559,7 +568,7 @@ def build_inno_setup_script(version: str, bundle_braille_pack: bool = False) -> 
         'Name: "speechdectalk\\voices\\kit"; Description: "Kit voice"; Types: full custom; Flags: checkablealone',
         'Name: "speechespeak"; Description: "Install bundled eSpeak-NG runtime";'
         " Types: full custom; Flags: checkablealone",
-        'Name: "speechkokoro"; Description: "Install bundled Kokoro voices/models";'
+        'Name: "speechpiper"; Description: "Install bundled Piper neural TTS runtime";'
         " Types: full custom; Flags: checkablealone",
         'Name: "nodejs"; Description: "Install portable Node.js runtime for Node Quillins'
         " and the Developer Console TypeScript interface (~30 MB);"
@@ -573,7 +582,7 @@ def build_inno_setup_script(version: str, bundle_braille_pack: bool = False) -> 
         "[Files]",
         'Source: "..\\portable\\*"; DestDir: "{app}";'
         " Flags: ignoreversion recursesubdirs createallsubdirs;"
-        ' Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\kokoro\\*,tools\\nodejs\\*,vendor\\braille-pack\\*"',
+        ' Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\nodejs\\*,vendor\\braille-pack\\*"',
         "; QUILL Braille Pack: liblouis runtime, translation tables, and BRF profiles.",
         "; Installed to vendor\\braille-pack so QUILL detects it automatically via QUILL_APP_ROOT.",
         'Source: "..\\portable\\vendor\\braille-pack\\*"; DestDir: "{app}\\vendor\\braille-pack";'
@@ -608,9 +617,9 @@ def build_inno_setup_script(version: str, bundle_braille_pack: bool = False) -> 
         'Source: "..\\portable\\tools\\speech\\espeak-ng\\*"; DestDir: "{app}\\tools\\speech\\espeak-ng";'
         " Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist;"
         " Components: speechespeak",
-        'Source: "..\\portable\\tools\\speech\\kokoro\\*"; DestDir: "{app}\\tools\\speech\\kokoro";'
+        'Source: "..\\portable\\tools\\speech\\piper\\*"; DestDir: "{app}\\tools\\speech\\piper";'
         " Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist;"
-        " Components: speechkokoro",
+        " Components: speechpiper",
         "; Node.js portable runtime (optional). The build script copies a portable",
         "; node.exe distribution into portable\\tools\\nodejs when building with",
         "; --bundle-nodejs. skipifsourcedoesntexist means a build without bundled",
@@ -1100,7 +1109,7 @@ def _speech_asset_manifest(
     engine_dirs = {
         "dectalk": "dectalk",
         "espeak": "espeak-ng",
-        "kokoro": "kokoro",
+        "piper": "piper",
     }
     for engine, dir_name in engine_dirs.items():
         engine_dir = speech_root / dir_name
@@ -1214,6 +1223,47 @@ def _download_and_stage_espeak(portable_dir: Path) -> Path:
     shutil.copytree(espeak_root, stage_dir, dirs_exist_ok=True)
     archive.unlink(missing_ok=True)
     print(f"eSpeak-NG staged to {stage_dir}")
+    return stage_dir
+
+
+def _download_and_stage_piper(portable_dir: Path) -> Path:
+    """Download Piper TTS for Windows and return a staging directory for _stage_bundled_tools.
+
+    Tries the latest GitHub release first; falls back to the pinned version.
+    Stages to portable/_tool-download/piper/stage/ so _stage_bundled_tools()
+    copies from there to tools/speech/piper/. Re-uses a prior download.
+    """
+    stage_dir = portable_dir / "_tool-download" / "piper" / "stage"
+    if (stage_dir / "piper.exe").exists():
+        print("Piper already downloaded; skipping.")
+        return stage_dir
+
+    url = (
+        _fetch_latest_github_asset_url("rhasspy", "piper", "_windows_amd64.zip") or PIPER_PINNED_URL
+    )
+    sha256 = PIPER_PINNED_SHA256 if url == PIPER_PINNED_URL else None
+
+    tmp_dir = portable_dir / "_tool-download" / "piper"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    archive = tmp_dir / "piper_windows_amd64.zip"
+    print(f"Downloading Piper from {url}...")
+    _download_with_verification(url, archive, expected_sha256=sha256)
+
+    extract_dir = tmp_dir / "extracted"
+    if extract_dir.exists():
+        shutil.rmtree(extract_dir)
+    extract_dir.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(archive) as zf:
+        zf.extractall(extract_dir)
+
+    exe_candidates = list(extract_dir.rglob("piper.exe"))
+    if not exe_candidates:
+        raise RuntimeError("Piper zip did not contain piper.exe")
+    piper_root = exe_candidates[0].parent
+    stage_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(piper_root, stage_dir, dirs_exist_ok=True)
+    archive.unlink(missing_ok=True)
+    print(f"Piper staged to {stage_dir}")
     return stage_dir
 
 

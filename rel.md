@@ -1,10 +1,10 @@
 # QUILL 0.6.0 Release Notes
 
-QUILL 0.6.0 is a major step forward for screen-reader-first writing, editing, automation, braille, code review, and extension-powered workflows.
+QUILL 0.6.0 is a major step forward for screen-reader-first writing, editing, AI-assisted authorship, automation, braille, code review, and extension-powered workflows.
 
-This release is about speed, confidence, and control. You can type a short trigger and get a full template. You can open a braille file and know exactly where you are by page, line, cell, and progress. You can compare two files without visually scanning a diff. You can move through code by tokens instead of guessing where words begin and end. You can export to Word, inspect encoding problems, generate citations, choose better image-description prompts, and shape the sound layer so QUILL confirms what happened without talking over your screen reader.
+This release is about speed, confidence, and control. You can type a short trigger and get a full template. You can open a braille file and know exactly where you are by page, line, cell, and progress. You can compare two files without visually scanning a diff. You can move through code by tokens instead of guessing where words begin and end. You can export to Word, inspect encoding problems, generate citations, and shape the sound layer so QUILL confirms what happened without talking over your screen reader. And now you can ask the AI to rewrite a paragraph, surface a better word in context, check your grammar, translate a document, or put a question directly to your own text — all from the keyboard, without leaving the editor.
 
-Under the surface, QUILL 0.6.0 also introduces the most important architectural change yet: Quillins are now a real extension platform. They can own settings, contribute live preference dialogs, subscribe to document lifecycle events, contribute status-bar cells, declare dependencies, restrict network access, and initialize or shut down cleanly. The platform is designed so users stay in charge and extension authors cannot accidentally ship something unsafe, noisy, or inaccessible.
+Under the surface, QUILL 0.6.0 also introduces two major architectural expansions. The first is the AI writing layer: a complete, provider-agnostic toolkit covering twelve tasks from spell check to table-of-contents generation, with per-task custom instructions, prompt caching across every supported provider, and support for Anthropic Claude, OpenAI, Google Gemini, OpenRouter, and Ollama. The second is the Quillin extension platform: extensions can now own settings, contribute live preference dialogs, subscribe to document lifecycle events, contribute status-bar cells, declare dependencies, restrict network access, schedule background timers, respond to file-type opens, and initialize or shut down cleanly. Both are designed so you stay in charge and nothing runs silently without your knowledge.
 
 Everything remains keyboard-first and screen-reader-first. Every new view is a real navigable control. Every action is announced, undoable where appropriate, and discoverable. No mouse is required. No visual-only flourish is required. No silent full-file scanning happens behind your back.
 
@@ -15,6 +15,7 @@ If you are upgrading from QUILL 0.5.0, read **What works differently now** near 
 - **Meet People Where They Are** is a complete reimagining of first-run setup. A redesigned startup wizard asks what kind of writing you do and shows a plain-English, screen-reader-readable preview of exactly what you will get. Seven intent profiles replace the old nine technical ones in the wizard. Menus, the Command Palette, and the Go to Anything dialog all reflect your chosen profile instantly - commands for features you have not enabled simply do not appear. Pressing Cancel on first run starts you in the simplest possible editor rather than leaving you with raw defaults.
 - **Insert Automation** turns typed abbreviations, smart triggers, `.LOG` files, document directives, and append anchors into one safe automation system.
 - **The Quillin Extension Platform** now supports settings pages, searchable preferences, tabs, document events, lifecycle events, status-bar cells, dependencies, network allowlists, command descriptions, developer logging, announcement priority, scaffolding tools, and stronger validation.
+- **AI Writing Toolkit** ships a complete, keyboard-first AI writing layer: grammar check, AI Thesaurus (Shift+F8), rewrite, summarize, expand, generate table of contents, Document Q&A, translation, and AI read-aloud. Every feature supports six providers — Anthropic Claude, OpenAI, Google Gemini, OpenRouter, Ollama, and custom endpoints. Custom per-task instructions let you shape how the AI behaves for each task. Prompt caching keeps costs down automatically: Claude marks system prompts as cacheable, OpenAI caches prefixes over 1024 tokens, and local Ollama models cache in-process. No mouse required for any of it.
 - **Braille Mode** opens and edits braille text files while preserving bytes, form feeds, line endings, and layout. It adds braille-aware status, page navigation, page tools, and optional liblouis-powered translation through the QUILL Braille Pack.
 - **Compare Mode** is now a first-class keyboard-driven workflow with difference navigation, speech announcements, and optional sound cues.
 - **Code-aware editing** adds language profiles, token movement, manual language selection, and optional indentation tones.
@@ -399,13 +400,15 @@ QUILL 0.6.0 ships five bundled Quillins. Each is both a useful extension and a r
 - **Document Guardian** (`com.quill.docguardian`) subscribes to `document.before_close`, `document.before_save`, `document.after_save`, `quillin.enabled`, `quillin.disabled`, and `quill.shutdown`. It can warn on unfinished documents, stamp an `Updated:` line, confirm saves with file size, announce and log activation, announce deactivation, and clean up on shutdown. Its categories are `writing` and `productivity`.
 - **Status Scribe** (`com.quill.statusscribe`) adds a live word, character, and sentence count to the status bar. It updates after every save and on tab switch. It demonstrates `status_bar` contribution, `ui.log` developer logging, `quillin.enabled`, `quillin.disabled`, `settings.changed`, lifecycle events, and announcement priority. Its categories are `writing`, `productivity`, and `accessibility`.
 
-### What's new in the Quillin platform
+### Five new Quillin capabilities, live in this release
 
-- **Timer events (schedule)** — a Quillin can now schedule background work every N seconds (minimum 60, maximum 86400). Timers run in dedicated threads so the editor never blocks. Status Scribe uses this to refresh its word-count cell every 5 minutes without a user action.
-- **File-type contributions (file_types)** — a Quillin can declare which file extensions it handles. When a matching file opens, the Quillin's handler fires automatically. BRF Tools announces the braille page count when a `.brf` or `.brl` file opens.
-- **Snippet gallery (snippet_gallery)** — a Quillin can contribute named, parameterized templates to a browseable gallery. Open it from **Insert → Snippet Gallery...**, pick a template, fill in any prompts, and the text lands at the cursor. Smart Insert ships three built-in gallery snippets: a report header, a meeting invite, and a Markdown bug report.
-- **Document lifecycle events now fire** — the 14 declared events (`document.opened`, `document.after_save`, `quill.shutdown`, and the rest) now actually dispatch at runtime. Journal Stamp and Status Scribe are live.
-- **Quillin preferences now render** — all five bundled Quillins with `contributes.preferences` declarations have live settings dialogs in the Preferences hub. The renderer (`quill/ui/quillin_prefs_dialog.py`) handles boolean, integer, string, and choice controls; conditional `visible_when` and `enabled_when` rules wired to change events; and label-first Z-order throughout so JAWS and NVDA announce the right label for every field.
+In previous releases, parts of the Quillin platform existed as declarations: events were defined, schedules were documented, preferences were validated — but the runtime never dispatched them. QUILL 0.6.0 makes the whole surface live. Five capabilities that Quillins could not use before can now be used in production, each demonstrated by at least one bundled extension.
+
+- **Timer events** — a Quillin can schedule background work every N seconds (minimum 60, maximum 86400). Timers run on dedicated threads so the editor never blocks. Status Scribe uses this to refresh its word-count status cell every five minutes without a user action.
+- **File-type contributions** — a Quillin can declare which file extensions it handles. When a matching file opens, the Quillin's handler fires automatically. BRF Tools announces the braille page count when a `.brf` or `.brl` file opens.
+- **Snippet Gallery** — a Quillin can contribute named, parameterized templates to a browseable picker. Open it from **Insert → Snippet Gallery...**, choose a template, fill in any prompts, and the expanded text lands at the cursor. Smart Insert ships three gallery entries: a report header, a meeting invite, and a Markdown bug report.
+- **Document lifecycle events** — the 14 declared events (`document.opened`, `document.after_save`, `quill.shutdown`, and the rest) now actually dispatch at runtime. Journal Stamp and Status Scribe are both live.
+- **Settings pages** — all five bundled Quillins with `contributes.preferences` declarations now have working settings dialogs in the Preferences hub. The renderer handles boolean, integer, string, and choice controls; conditional `visible_when` and `enabled_when` expressions update controls live; and label-first Z-order throughout means JAWS and NVDA announce the right label for every field.
 
 ---
 
@@ -688,7 +691,8 @@ These styles are evaluated and curated, not randomly generated.
 - **Zero disruption by default.** If you never change a setting, Describe Image behaves exactly as before. The default IDT style is applied silently with no extra clicks.
 - **Try a different prompt.** After a description arrives, a **Try a different prompt...** button appears in the review dialog. One click re-runs the description with the next style in the list. No re-uploading, no dialog re-opening, and no extra navigation.
 - **Opt-in pre-describe picker.** Enable the style picker in **Settings -> AI** if you want to choose a prompt style before describing an image. Once enabled, QUILL shows a focused keyboard-navigable list of the twelve styles before every description.
-- **Manage Image Prompts dialog.** Open **AI Hub -> Image Prompt Styles...** to review all built-in styles with a read-only preview pane, toggle styles on or off, set the default, and add custom prompts. Built-in styles are immutable; custom prompts are additive.
+- **Edit built-in prompt text.** Open **AI Hub > Instructions > Image Styles** to edit the prompt text for any of Kelly's twelve built-in styles. The original shipped text is always shown in a read-only reference panel below the editor. Press Reset to Default at any time to restore the shipped version. Enable and disable individual styles from the same tab.
+- **Manage Image Prompts dialog.** Open **AI Hub > Image Prompt Styles...** to toggle styles on or off and add fully custom prompts. Custom prompts are additive — they appear after the built-in styles in every picker.
 - **Settings sync immediately.** A bug where AI Hub changes to vision settings, including picker toggle and default style, did not apply until restart. That is fixed. Changes apply as soon as you save.
 
 Kelly's Image Description Toolkit is worth bookmarking: <https://github.com/kellylford/Image-Description-Toolkit>.
@@ -700,6 +704,115 @@ Kelly also maintains several screen-reader-friendly applications:
 - [ChatViewer](https://github.com/kellylford/ChatViewer), a GitHub Copilot Chat viewer.
 
 Thank you, Kelly, for work that consistently puts screen-reader users first.
+
+---
+
+## AI Writing Assistant: a complete toolkit
+
+QUILL 0.6.0 ships a full AI writing-assistant layer. Every feature in this layer is optional, works with multiple providers, runs entirely on your terms, and is designed so screen-reader users can operate it without a mouse.
+
+### Provider setup: AI Hub
+
+**Tools > AI Hub** (or **AI > AI Hub...**) opens a five-tab settings dialog that replaces the old single-screen AI Connection dialog.
+
+- **Provider tab.** Choose your AI provider: Anthropic Claude, OpenAI, Google Gemini, OpenRouter (access to many models through one key), or Ollama (on-device or self-hosted). Enter your API key once; it is stored in the Windows Credential Manager and never written to disk. Choose a model, set a custom host for self-hosted deployments, and use Test Connection to verify the key and model before leaving the dialog.
+- **On-Device tab.** If you want AI with no cloud traffic at all, point Ollama at a local URL. The tab lists recommended models with size and capability notes so you can choose what fits your hardware.
+- **Audio Services tab.** Enter a Deepgram API key for transcription and set the maximum number of simultaneous speakers the transcription engine should track.
+- **Instructions tab.** Edit or replace the built-in system prompt for any of the twelve AI tasks. See "Custom Instructions" below.
+- **Advanced tab.** View the consent text you agreed to at setup, reset AI settings, and read a note about Safe Mode.
+
+### Grammar and spell checking with AI
+
+**Tools > Check Grammar with AI** sends the document or selection to your configured AI and returns a structured list of grammar issues, each with the original phrasing, a suggested fix, and an explanation. A result dialog presents them as a navigable list. Apply a fix to jump to the location and insert the correction; skip any item you want to keep.
+
+**Tools > Check Spelling with AI** works the same way for spelling. The AI model returns suggestions with context, making it useful for technical documents where a traditional word-list checker produces false positives.
+
+Both checkers fall back gracefully: if AI is not configured, QUILL uses the built-in lexical spell checker.
+
+### Rewrite, Summarize, Expand, and Table of Contents
+
+Four agentic writing tasks operate on your document text and return results through a shared result dialog.
+
+- **AI > Rewrite Selection** (or the full document if nothing is selected) rewrites the text for clarity and flow, preserving meaning and adjusting register.
+- **AI > Summarize Selection** condenses the selected text or document into a tight summary.
+- **AI > Expand Selection** develops the selected text into fuller, well-structured prose.
+- **AI > Generate Table of Contents** analyses the document structure and produces a hierarchical TOC that you can insert at the cursor.
+
+All four commands open a two-part result dialog: a step log at the top (showing what the agent did and any intermediate output) and the final output in a large read-only text area below. From the dialog you can insert the output at the cursor, replace the selection, copy to the clipboard, or re-run the task. Every agent run starts on a background thread; a stop event lets you cancel between steps.
+
+### AI Thesaurus
+
+**Shift+F8** opens the AI Thesaurus. Type a word or use the word already under your cursor; the dialog sends the word and its surrounding sentence to your AI provider and returns a list of synonyms, each with a usage note explaining the register, connotation, or context. Arrow through the list, press Enter or the Replace Word button to substitute the word in your document, or copy a synonym to the clipboard. Double-clicking a synonym replaces it immediately and closes the dialog.
+
+The context sentence is extracted automatically from the line where your cursor rests, giving the AI enough context to distinguish between, for example, "bank" (financial) and "bank" (river).
+
+### Document Q&A
+
+**AI > Document Q&A** opens a multi-turn question-and-answer session grounded in your open document. Ask questions; QUILL sends the document text and your question to the AI and streams an answer into the conversation pane. The pane is a screen-reader-navigable document: each question and answer is a separate section you can jump to by heading. Continue asking follow-up questions; the session retains context for the duration of the dialog.
+
+Document Q&A works on any document up to approximately 80,000 tokens. For longer documents, QUILL trims from the middle to keep the beginning and end within the model's context window.
+
+### Translation
+
+**AI > Translate Document** or **AI > Translate Selection** sends the text to your configured AI and returns a translation into a language you choose. A picker shows the available target languages; the list adjusts based on your provider. The translated text arrives in a result dialog from which you can insert it, replace the selection, or copy it. On-device translation through LibreTranslate is also available when no cloud AI is configured.
+
+### Read Aloud with AI Voice
+
+**Tools > Read Aloud > Read with AI Voice** sends the selected text to the OpenAI TTS API and plays the audio through the system audio output. Choose from six voices in **AI > AI Hub > Audio Services**. The playback can be stopped at any time. You can also export to an MP3 file from the Read Aloud menu for offline listening.
+
+### Custom Instructions
+
+The Instructions tab of AI Hub has two sub-tabs: **Writing Tasks** and **Image Styles**.
+
+**Writing Tasks** lets you replace or supplement the built-in system prompt for any of QUILL's twelve AI writing tasks. Every task ships with a carefully written default; you can edit the user prompt to change tone, language, output format, or any other behaviour. The twelve tasks are: Chat, Spell Check, Grammar Check, Rewrite, Summarize, Expand, Table of Contents, Translate, Thesaurus, Document Q&A, Research, and Accessibility Agent.
+
+**Image Styles** lets you edit the prompt text for any of Kelly Ford's twelve built-in image description styles. The original shipped prompt is shown read-only below the editor so you always have a reference. Enable or disable individual styles from this same tab.
+
+Your customisations are stored in `%APPDATA%\Quill\ai_custom_instructions.json`. The file stores only the fields you have changed; the built-in defaults always live in the application code. This means that when QUILL updates a default in a future release, you automatically pick up the improved version unless you have already customised that task.
+
+To share a custom instruction set, copy the JSON file to another machine or user account.
+
+To reset a single writing task or image style to its default, select it and press Reset to Default. Your override is cleared; the shipped default takes effect immediately.
+
+### Prompt caching: lower cost, same quality
+
+Custom instructions are sent as a separate system message, not merged into the document text. This lets AI providers cache the stable instruction prefix across requests so you are not billed for re-sending the same text on every call.
+
+- **Anthropic Claude.** QUILL marks the system message with `cache_control: ephemeral` and sends the `anthropic-beta: prompt-caching-2024-07-31` header. Claude caches the prefix for five minutes at approximately 10% of the normal input token rate.
+- **OpenAI.** Caching is fully automatic. OpenAI caches prompt prefixes over 1024 tokens at approximately 50% of the normal input rate. Because the system message is always the same stable text, it qualifies for caching whenever the threshold is met.
+- **Ollama.** Caching is handled internally by the model server. No configuration is needed.
+- **Gemini.** System instructions are sent in the dedicated `systemInstruction` field.
+
+No configuration is needed. The caching path is active whenever at least one custom instruction is enabled.
+
+### AI shortcuts at a glance
+
+| Command | Shortcut |
+| --- | --- |
+| Ask Quill chat | Alt+Q |
+| AI Thesaurus | Shift+F8 |
+| Check Grammar with AI | Tools > Check Grammar with AI |
+| Check Spelling with AI | Tools > Check Spelling with AI |
+| Rewrite Selection | AI > Rewrite Selection |
+| Summarize Selection | AI > Summarize Selection |
+| Expand Selection | AI > Expand Selection |
+| Generate Table of Contents | AI > Generate Table of Contents |
+| Document Q&A | AI > Document Q&A |
+| Translate | AI > Translate |
+| Read with AI Voice | Tools > Read Aloud > Read with AI Voice |
+| AI Hub | AI > AI Hub... |
+
+### What data leaves your machine
+
+Every AI feature that sends text to a cloud provider shows this in the consent text you agreed to at setup. The full table is in the user guide under AI Privacy Reference. In summary:
+
+- Grammar check, spell check, rewrite, summarize, expand, TOC, thesaurus, Document Q&A, and translation all send the relevant document text or selection to your configured AI provider.
+- On-device Ollama sends no data outside your machine.
+- AI voice synthesis through OpenAI TTS sends the selected text to OpenAI.
+- Audio transcription through Deepgram sends audio to Deepgram's servers.
+- Custom instructions are stored locally and are never sent to any provider.
+
+If you prefer not to send document content to a cloud provider, use Ollama on-device and a local Deepgram alternative for transcription.
 
 ---
 

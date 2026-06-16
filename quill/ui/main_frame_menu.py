@@ -1105,6 +1105,21 @@ class MenuBuilderMixin:
         self._id_ai_speech_voice = wx.NewIdRef()
         self._id_ai_speech_settings = wx.NewIdRef()
         self._id_ai_speech_generate_audio = wx.NewIdRef()
+        self._id_ai_spell_check = wx.NewIdRef()
+        self._id_ai_spell_check_interactive = wx.NewIdRef()
+        self._id_ai_grammar_style = wx.NewIdRef()
+        self._id_ai_translate_selection = wx.NewIdRef()
+        self._id_ai_translate_document = wx.NewIdRef()
+        self._id_ai_transcribe_audio = wx.NewIdRef()
+        self._id_ai_translate_audio = wx.NewIdRef()
+        self._id_ai_tts_read_selection = wx.NewIdRef()
+        self._id_ai_tts_read_document = wx.NewIdRef()
+        self._id_ai_tts_stop = wx.NewIdRef()
+        self._id_ai_tts_export_mp3 = wx.NewIdRef()
+        self._id_ai_expand_selection = wx.NewIdRef()
+        self._id_ai_generate_toc = wx.NewIdRef()
+        self._id_ai_thesaurus = wx.NewIdRef()
+        self._id_ai_document_qa = wx.NewIdRef()
         self._id_train_style = wx.NewIdRef()
         self._id_writing_instructions = wx.NewIdRef()
         self._id_compare_with_file = wx.NewIdRef()
@@ -1383,6 +1398,14 @@ class MenuBuilderMixin:
             self._menu_label("&Summarize Selection", "tools.ai_summarize_selection"),
         )
         ai_menu.Append(
+            self._id_ai_expand_selection,
+            self._menu_label("E&xpand Selection", "tools.ai_expand_selection"),
+        )
+        ai_menu.Append(
+            self._id_ai_generate_toc,
+            self._menu_label("Generate &Table of Contents", "tools.ai_generate_toc"),
+        )
+        ai_menu.Append(
             self._id_ai_continue_writing,
             self._menu_label("&Continue Writing", "tools.ai_continue_writing"),
         )
@@ -1394,6 +1417,68 @@ class MenuBuilderMixin:
             self._id_check_grammar_ai,
             self._menu_label("Check Grammar with &AI...", "tools.check_grammar_ai"),
         )
+        ai_menu.AppendSeparator()
+        ai_menu.Append(
+            self._id_ai_spell_check,
+            self._menu_label("AI &Spell Check...\tF7", "tools.ai_spell_check"),
+        )
+        ai_menu.Append(
+            self._id_ai_spell_check_interactive,
+            self._menu_label(
+                "AI Spell Check &Interactive...\tShift+F7", "tools.ai_spell_check_interactive"
+            ),
+        )
+        ai_menu.Append(
+            self._id_ai_grammar_style,
+            self._menu_label("AI &Grammar and Style Check...\tF8", "tools.ai_grammar_style"),
+        )
+        ai_menu.AppendSeparator()
+        ai_menu.Append(
+            self._id_ai_translate_selection,
+            self._menu_label(
+                "Translate &Selection...\tCtrl+Shift+T", "tools.ai_translate_selection"
+            ),
+        )
+        ai_menu.Append(
+            self._id_ai_translate_document,
+            self._menu_label("Translate &Document...", "tools.ai_translate_document"),
+        )
+        ai_menu.AppendSeparator()
+        ai_menu.Append(
+            self._id_ai_transcribe_audio,
+            self._menu_label("Transcri&be Audio File...", "tools.ai_transcribe_audio"),
+        )
+        ai_menu.Append(
+            self._id_ai_translate_audio,
+            self._menu_label("&Translate Audio File to English...", "tools.ai_translate_audio"),
+        )
+        ai_menu.AppendSeparator()
+        ai_menu.Append(
+            self._id_ai_tts_read_selection,
+            self._menu_label("Read &Selection Aloud (AI Voice)", "tools.ai_tts_read_selection"),
+        )
+        ai_menu.Append(
+            self._id_ai_tts_read_document,
+            self._menu_label("Read &Document Aloud (AI Voice)", "tools.ai_tts_read_document"),
+        )
+        ai_menu.Append(
+            self._id_ai_tts_stop,
+            self._menu_label("Sto&p AI Reading", "tools.ai_tts_stop"),
+        )
+        ai_menu.Append(
+            self._id_ai_tts_export_mp3,
+            self._menu_label("E&xport Document as MP3...", "tools.ai_tts_export_mp3"),
+        )
+        ai_menu.AppendSeparator()
+        ai_menu.Append(
+            self._id_ai_document_qa,
+            self._menu_label("Document &Q&&A...", "tools.ai_document_qa"),
+        )
+        ai_menu.Append(
+            self._id_ai_thesaurus,
+            self._menu_label("AI &Thesaurus...\tShift+F8", "tools.ai_thesaurus"),
+        )
+        ai_menu.AppendSeparator()
         ai_menu.Append(
             self._id_train_style,
             self._menu_label("&Train Writing Style...", "tools.train_writing_style"),
@@ -1405,7 +1490,9 @@ class MenuBuilderMixin:
         # "Forget API Key" moved into the AI Hub as a per-provider action
         # ("Forget this provider's key"), since a single global forget is
         # ambiguous once each provider keeps its own key.
-        tools_menu.AppendSubMenu(ai_menu, "AI &Assistant")
+        _ai_top_level = self._feature_enabled("future.ai_menu_top_level")
+        if not _ai_top_level:
+            tools_menu.AppendSubMenu(ai_menu, "AI &Assistant")
 
         # BITS Whisperer (conditional, deferred to QUILL 2.0) ----------------
         # "About Whisperer" was folded into the single About Quill dialog.
@@ -1757,6 +1844,8 @@ class MenuBuilderMixin:
         menu_bar.Append(navigate_menu, "&Navigate")
         menu_bar.Append(search_menu, "&Search")
         menu_bar.Append(tools_menu, "&Tools")
+        if _ai_top_level:
+            menu_bar.Append(ai_menu, "&AI")
         menu_bar.Append(window_menu, "&Window")
         menu_bar.Append(help_menu, "&Help")
 
@@ -1941,6 +2030,66 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU,
+            lambda _e: self.ai_spell_check(),
+            id=self._id_ai_spell_check,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.ai_spell_check_interactive(),
+            id=self._id_ai_spell_check_interactive,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.ai_grammar_style_check(),
+            id=self._id_ai_grammar_style,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.ai_translate_selection(),
+            id=self._id_ai_translate_selection,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.ai_translate_document(),
+            id=self._id_ai_translate_document,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.ai_transcribe_audio_file(),
+            id=self._id_ai_transcribe_audio,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.ai_translate_audio_file(),
+            id=self._id_ai_translate_audio,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.ai_tts_read_selection(),
+            id=self._id_ai_tts_read_selection,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.ai_tts_read_document(),
+            id=self._id_ai_tts_read_document,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.ai_tts_stop(),
+            id=self._id_ai_tts_stop,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.ai_tts_export_mp3(),
+            id=self._id_ai_tts_export_mp3,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_ai_document_qa(),
+            id=self._id_ai_document_qa,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
             lambda _e: self.open_ask_quill_chat(),
             id=self._id_ask_quill_chat,
         )
@@ -1984,6 +2133,21 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.open_ai_summarize_selection(),
             id=self._id_ai_summarize_selection,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_ai_expand_selection(),
+            id=self._id_ai_expand_selection,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_ai_toc(),
+            id=self._id_ai_generate_toc,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_ai_thesaurus(),
+            id=self._id_ai_thesaurus,
         )
         self.frame.Bind(
             wx.EVT_MENU,

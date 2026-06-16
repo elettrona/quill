@@ -2977,6 +2977,180 @@ By default QUILL stores AI provider keys in the Windows Credential Manager, whic
 
 ---
 
+### 5.90 AI Writing Toolkit: architecture and feature matrix
+
+This section documents the AI writing layer shipped in QUILL 0.6.0, covering provider abstraction, the connection model, per-feature design, and the data-disclosure posture.
+
+#### 5.90.1 Provider abstraction
+
+All AI features route through `quill/core/assistant_ai.py::generate_assistant_response(connection, api_key, prompt, *, max_tokens, timeout_seconds) -> (text | None, error | None)`. This function:
+
+- Accepts an `AssistantConnectionSettings` dataclass (provider, host, model) and a bare API key string.
+- Dispatches to the appropriate HTTP client (OpenAI-compatible, Anthropic Messages API, Google Gemini, or Foundation Models on macOS).
+- Returns a `(text, None)` tuple on success or `(None, error_string)` on failure.
+- Never raises; all exceptions are caught and returned as the error string.
+- Is imported at module level (not lazily) in every AI module so that test suites can monkeypatch it.
+
+Supported providers:
+
+| Provider ID | Host type | Auth |
+|---|---|---|
+| `openai` | OpenAI cloud | API key (Credential Manager) |
+| `claude` | Anthropic cloud | API key (Credential Manager) |
+| `gemini` | Google cloud | API key (Credential Manager) |
+| `openrouter` | OpenRouter cloud | API key (Credential Manager) |
+| `ollama` | Local or self-hosted | URL only (no key) |
+| `custom` | User-specified endpoint | Optional API key |
+
+#### 5.90.2 Connection settings and AI Hub
+
+Provider, host, and model are stored in `AssistantConnectionSettings` (serialized via `core/storage.py`). The API key is stored separately in the Windows Credential Manager via `platform/windows/credential_manager.py`, keyed per provider.
+
+**AI Hub** (`quill/ui/ai_hub_dialog.py`) is the single entry point for all AI configuration. It is a five-tab `wx.Notebook` dialog:
+
+1. **Provider** — provider choice, API key field, host override, model choice, Test Connection button.
+2. **On-Device** — Ollama URL, recommended model list with size and capability notes.
+3. **Audio Services** — Deepgram API key (with reveal toggle), max speakers (SpinCtrl, 2–20).
+4. **Instructions** — per-task custom system prompt editor. See §5.90.7.
+5. **Advanced** — consent summary, settings reset, safe mode documentation.
+
+All writes in `_on_ok()` are atomic: API keys saved via `credential_manager.credential_save`, settings saved via `write_json_atomic`.
+
+#### 5.90.3 Custom instructions
+
+`quill/core/ai/custom_instructions.py` provides a per-task system-prompt layer.
+
+**Data model:**
+
+```
+InstructionSet(task_id, title, default_prompt, user_prompt="", enabled=True)
+  .active_prompt  -> user_prompt if non-empty, else default_prompt
+  .is_customised() -> user_prompt.strip() != "" and user_prompt != default_prompt
+  .reset_to_default() -> user_prompt = ""
+```
+
+**12 built-in tasks:** `chat`, `spell_check`, `grammar_check`, `rewrite`, `summarize`, `expand`, `toc`, `translate`, `thesaurus`, `document_qa`, `research`, `accessibility_agent`.
+
+**Persistence:** Only user-modified fields (`task_id`, `user_prompt`, `enabled`) are written to `%APPDATA%\Quill\ai_custom_instructions.json`. Built-in defaults always live in code; a QUILL update that improves a default is automatically picked up unless the user has customised that task.
+
+**Application:** `apply_instruction(task_id, base_prompt) -> str` prepends the active system prompt if the task is enabled. It never raises — any failure (missing file, corrupt JSON, unknown task) silently returns `base_prompt` unchanged. This is called at the top of every AI feature's prompt-building path.
+
+#### 5.90.4 AI writing features
+
+| Feature | Shortcut | Module | Dialog |
+|---|---|---|---|
+| AI Thesaurus | Shift+F8 | `core/ai/thesaurus.py` | `ui/ai_thesaurus_dialog.py` |
+| AI Spell Check | F7 | `core/ai/spell_check.py` | `ui/ai_spell_check_dialog.py` |
+| AI Grammar Check | — | `core/ai/grammar_check.py` | `ui/ai_grammar_check_dialog.py` |
+| Rewrite Selection | — | `core/ai/agent_session.py` | `ui/ai_agent_result_dialog.py` |
+| Summarize Selection | — | `core/ai/agent_session.py` | `ui/ai_agent_result_dialog.py` |
+| Expand Selection | — | `core/ai/agent_session.py` | `ui/ai_agent_result_dialog.py` |
+| Generate TOC | — | `core/ai/agent_session.py` | `ui/ai_agent_result_dialog.py` |
+| Document Q&A | — | `core/ai/document_qa.py` | `ui/ai_document_qa_dialog.py` |
+| Translate | Ctrl+Shift+T | `core/ai/translation.py` | `ui/ai_translation_dialog.py` |
+| Transcribe Audio | — | `core/ai/transcription.py` | `ui/ai_transcribe_dialog.py` |
+| Read with AI Voice | — | `core/ai/tts.py` | inline in `main_frame.py` |
+| Ask Quill chat | Alt+Q | `core/ai_chat.py` | `ui/ai_chat_dialog.py` |
+
+#### 5.90.5 Agentic task architecture
+
+Four commands (Rewrite, Summarize, Expand, Generate TOC) share a common agent session architecture in `quill/core/ai/agent_session.py`:
+
+- **`AgentPlan`** — profile (from `assistant_agents.py`) + rendered prompt.
+- **`AgentContext`** — plan + connection + api_key + `threading.Event` (stop_event) + optional `on_progress` callback.
+- **`run_agent(ctx, *, refine=False) -> AgentResult`** — one or two AI calls; step outputs collected into `AgentResult.steps`; optional second refinement pass; refine errors are non-fatal (keeps first draft).
+- **`AgentResult`** — `plan_id`, `steps: list[AgentStep]`, `final_output`, `cancelled`, `error`.
+
+All agent runs are launched on daemon threads via `threading.Thread`; UI updates go through `wx.CallAfter`. The stop event is checked between steps and after each AI call.
+
+**Result dialog** (`ui/ai_agent_result_dialog.py`): two-panel layout — step log (ListCtrl, read-only) and final output (TextCtrl, read-only). Buttons: Insert (cursor), Replace (selection), Copy, Re-Run, Close.
+
+#### 5.90.6 AI Thesaurus
+
+`quill/core/ai/thesaurus.py::get_synonyms(word, connection, api_key, context_sentence) -> list[ThesaurusEntry]`:
+
+- Truncates word to 80 chars and context to 400 chars before including in the prompt.
+- Calls `apply_instruction("thesaurus", prompt)` then `generate_assistant_response` with `max_tokens=512`, `timeout=30s`.
+- Parses the JSON array response via `_parse_response` which strips markdown fences and extracts the first JSON array.
+- Returns `list[ThesaurusEntry(synonym, note)]`.
+
+The context sentence is extracted in `main_frame.py::open_ai_thesaurus()` by searching outward from the caret position to the nearest newlines, giving the model enough context to disambiguate polysemous words (e.g. "bank" financial vs. river).
+
+#### 5.90.7 Custom Instructions UI
+
+The Instructions tab in AI Hub presents:
+
+- **Task list** (`wx.ListBox`): shows all 12 tasks; customised tasks show a `*` suffix.
+- **Enable checkbox**: per-task toggle; when disabled, `apply_instruction` returns the base prompt unchanged.
+- **User prompt editor** (`wx.TextCtrl`, multiline): editable field for the user's override.
+- **Default display** (`wx.TextCtrl`, read-only): shows the built-in default for reference.
+- **Reset to Default button**: clears `user_prompt`; the `*` marker disappears live.
+- **Copy Default to Editor button**: copies the default into the editor as a starting point.
+
+The `*` marker updates live as the user types (via `EVT_TEXT` on the editor). On OK, `save_instructions()` writes only the changed fields.
+
+#### 5.90.8 Data disclosure posture
+
+Every AI feature that transmits data outside the local machine is disclosed in the setup consent screen and in the user guide's AI Privacy Reference table. Summary:
+
+| Data sent | Destination | Feature |
+|---|---|---|
+| Selected text or document text | Configured AI provider | Spell check, grammar check, rewrite, summarize, expand, TOC, thesaurus, translate, Document Q&A |
+| Audio file (up to 25 MB chunks) | Deepgram or OpenAI Whisper | Transcription |
+| Selected text (TTS) | OpenAI TTS API | Read with AI Voice |
+| Document text (up to 80k chars) | Configured AI provider | Document Q&A |
+| Nothing (on-device) | Ollama local | All features when Ollama is the configured provider |
+
+Custom instructions, provider settings, and API keys never leave the local machine.
+
+#### 5.90.9 Safety and safe mode
+
+All AI features are gated behind the `future.ai` feature flag. When `QUILL_SAFE_MODE=1` or `--safe-mode` is passed at startup, `generate_assistant_response` returns an error immediately without making any network calls. The Watch Folder `CloudTranscribeAction` also refuses to run in safe mode.
+
+The AI-enabled gating tuple in `main_frame.py` disables every AI menu item when AI is not configured, so no network call can be triggered from the UI in an unconfigured state.
+
+#### 5.90.10 Test coverage
+
+| Module | Test file | Count |
+|---|---|---|
+| `core/ai/agent_session.py` | `tests/unit/core/ai/test_agent_session.py` | 23 |
+| `core/ai/thesaurus.py` | `tests/unit/core/ai/test_ai_thesaurus.py` | 16 |
+| `core/ai/custom_instructions.py` | `tests/unit/core/ai/test_custom_instructions.py` | 22 |
+| `core/ai/spell_check.py` | `tests/unit/core/ai/test_spell_check.py` | 9 |
+| `core/ai/grammar_check.py` | `tests/unit/core/ai/test_grammar_check.py` | 19 |
+| `core/ai/translation.py` | `tests/unit/core/ai/test_translation.py` | 18 |
+| `core/ai/transcription.py` | `tests/unit/core/ai/test_transcription.py` | 16 |
+| `core/ai/document_qa.py` | `tests/unit/core/ai/test_document_qa.py` | 20 |
+| `core/ai/tts.py` | `tests/unit/core/ai/test_tts.py` | 18 |
+
+All tests follow the module-level import pattern so `generate_assistant_response` can be monkeypatched in tests without live provider credentials.
+
+#### 5.90.11 Prompt caching
+
+**Goal.** Reduce per-request token cost by sending the stable custom-instruction text as a cacheable system prefix rather than re-sending it inline with every call.
+
+**Design.**
+
+`custom_instructions.split_instruction(task_id, base_prompt) -> (str, str)` is the canonical split point. It returns the active system prompt and the user content as separate strings. Every AI module calls `split_instruction` instead of `apply_instruction` and passes the system_prompt through to `generate_assistant_response`.
+
+`generate_assistant_response` accepts `system_prompt: str = ""` and threads it into `build_chat_body` and `build_chat_headers`. `apply_instruction` is preserved as a legacy convenience wrapper (it calls `split_instruction` internally and joins the parts).
+
+**Provider behaviour.**
+
+| Provider | Caching mechanism | Cost effect |
+|---|---|---|
+| Anthropic Claude | `cache_control: {"type": "ephemeral"}` block in the `system` array; `anthropic-beta: prompt-caching-2024-07-31` header | ~10% of normal input rate on cache hit; 5-minute TTL |
+| OpenAI / OpenRouter | `role=system` message; caching is automatic above 1024 tokens | ~50% of normal input rate on cache hit |
+| Gemini | `systemInstruction` field | provider-defined |
+| Ollama | `role=system` message in the chat messages array | model-server internal |
+
+**Invariants.**
+- When `system_prompt` is empty, the request body is identical to the pre-caching form (no extra fields, no extra headers). No regressions for callers that do not pass a system prompt.
+- `apply_instruction` is backward compatible; existing call sites that have not yet migrated continue to work with the combined-string path.
+- The Anthropic beta header is only added when the provider is `claude` AND `system_prompt` is non-empty, so the header never appears for other providers.
+
+---
+
 ## 6. Spell checking deep dive
 
 ### 6.1 The TinySpell question

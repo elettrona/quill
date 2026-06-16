@@ -596,6 +596,292 @@ available here too.
 For release-safe beta validation, Word and CSV open in the normal plain-text
 editor surface; AI connection and chat flows remain available.
 
+### AI Language Tools
+
+QUILL's AI language tools extend the standard AI Assistant with document-aware
+language actions you invoke directly from the AI menu.
+
+#### AI Spell Check (F7 / Shift+F7)
+
+- **AI Spell Check** (`AI > AI Spell Check...`, `F7`) sends your document to
+  your configured AI provider and returns a list of spelling corrections.
+  A review dialog lets you accept, skip, or override each suggestion before
+  any change is made to your document.
+- **AI Spell Check Interactive** (`AI > AI Spell Check Interactive...`,
+  `Shift+F7`) works paragraph by paragraph. Corrections for each paragraph
+  are fetched in the background while you review the previous paragraph,
+  keeping the dialog responsive on long documents.
+
+Both modes require an AI provider to be configured and turned on. No text is
+sent until you invoke the command.
+
+#### AI Grammar and Style Check (F8)
+
+`AI > AI Grammar and Style Check...` (`F8`) analyses the document for grammar,
+punctuation, clarity, style, and word choice. Issues appear in a list grouped
+by category. You can:
+
+- Filter to a single category (Grammar, Punctuation, Clarity, Style, Word Choice).
+- Accept or skip individual issues.
+- Accept or skip an entire category at once.
+- Accept all remaining issues.
+- Press Apply and Close to apply accepted fixes as a single undo step.
+
+#### Translate Selection and Translate Document (Ctrl+Shift+T)
+
+`AI > Translate Selection...` (`Ctrl+Shift+T`) and `AI > Translate Document...`
+translate your text into a language you choose from the dialog.
+
+**Providers:**
+
+- **AI Assistant** (default): uses your configured cloud or local LLM. Works
+  with any provider that can follow instructions (OpenAI, Claude, Gemini,
+  Ollama, and compatible endpoints).
+- **LibreTranslate**: a free, open-source translation engine that can run
+  entirely on your own machine — no internet connection required once installed.
+
+  Install LibreTranslate locally:
+  ```
+  pip install libretranslate
+  libretranslate
+  ```
+  Then enter `http://localhost:5000` as the URL in the translation dialog.
+  This is the most private option: your text never leaves your machine.
+
+After translation:
+- Copy to Clipboard: copies the result without changing your document.
+- Replace Original: replaces the selection or document with the translation.
+- Open as New Document: opens the translation as a new unsaved document tab.
+
+#### Transcribe Audio File
+
+`AI > Transcribe Audio File...` opens a file picker and sends the chosen audio
+file to OpenAI Whisper for transcription. Supported formats: MP3, MP4, M4A,
+WAV, WEBM, OGG, FLAC (maximum 25 MB).
+
+Options:
+
+- **Language**: auto-detect or pick a specific language for better accuracy.
+- **Speaker diarization** (uses Deepgram): identifies who is speaking when.
+  The transcript labels each turn with Speaker 1, Speaker 2, and so on, plus
+  timestamps. Requires a Deepgram API key configured in AI Hub.
+- **Translate to English**: transcribes audio in any language and returns an
+  English translation in one step (Whisper translation mode).
+
+The result appears in a viewer dialog where you can copy, insert at cursor, or
+open as a new document.
+
+`AI > Translate Audio File to English...` goes directly to the Whisper
+translation flow, bypassing the language selection step.
+
+#### Read Aloud with AI Voice (OpenAI TTS)
+
+`AI > Read Selection Aloud (AI Voice)` and `AI > Read Document Aloud (AI Voice)`
+use OpenAI's text-to-speech service to speak your text in a natural, expressive
+voice. This complements the on-device Read Aloud (which uses local voices like
+Piper or DECtalk) with high-quality cloud voices.
+
+Available voices: Alloy, Ash, Coral, Echo, Fable, Nova, Onyx, Sage, Shimmer,
+Verse. You can change the voice and model in AI Hub.
+
+- `AI > Stop AI Reading` cancels playback of the current TTS session.
+- `AI > Export Document as MP3...` renders the full document as an MP3 file
+  and saves it to a location you choose. Useful for creating audio versions of
+  documents.
+
+Privacy: text is sent to `api.openai.com` in ~4000-character chunks. No audio
+is stored by QUILL. See AI Privacy Reference for opt-out options.
+
+#### AI Thesaurus (Shift+F8)
+
+`AI > AI Thesaurus...` (`Shift+F8`) looks up synonyms for the selected word
+using your configured AI provider. Unlike a static thesaurus, it reads the
+sentence the word appears in and returns synonyms that match the actual meaning
+in context.
+
+To use it:
+1. Place the cursor on a word, or select it.
+2. Press Shift+F8 or choose AI > AI Thesaurus.
+3. The dialog opens with the word pre-filled and synonyms loading.
+4. Arrow through the list; each item shows the synonym and a brief usage note.
+5. Press Enter or click Replace Word to substitute the word in your document.
+6. Type a different word in the search box to look up another without closing.
+
+Privacy: only the word (up to 80 characters) and the surrounding sentence (up
+to 400 characters) are sent. The full document is never sent for thesaurus
+lookups.
+
+#### Document Q&A
+
+`AI > Document Q&A...` opens a persistent (non-modal) dialog where you can ask
+questions about your current document or a PDF/text file you choose.
+
+- The dialog stays open while you work. Switch back to your document or other
+  windows at any time.
+- Ask follow-up questions; the conversation accumulates a history of Q&A pairs.
+- The AI answers only from the document text (grounded responses only).
+- Documents longer than 80 000 characters are analysed at the first 80 000;
+  a notice is shown in the dialog.
+- Answers include a source excerpt highlighting where in the document the
+  answer comes from.
+- Copy or Insert inserts the answer text at the cursor.
+
+To analyse a PDF, click Browse File and select the file. The text is extracted
+automatically (no internet connection required for extraction).
+
+#### Agentic Document Tasks
+
+The AI menu includes quick agentic actions that run a one-shot AI task on your
+document or selection and show the result:
+
+| Command | What it does |
+|---------|-------------|
+| AI > Rewrite Selection | Rewrites the selected text for clarity. |
+| AI > Summarize Selection | Produces a concise summary. |
+| AI > Expand Selection | Develops a brief outline or passage into fuller prose. |
+| AI > Generate Table of Contents | Analyses the document and returns a hierarchical TOC in Markdown list format. |
+
+All four open an Agent Result dialog where you can:
+- View the output with a step log (if a refine pass was run).
+- Insert at Cursor: inserts the result without replacing anything.
+- Replace Selection: replaces the current selection with the result.
+- Copy: copies the output to the clipboard.
+- Re-Run: reruns the same task (useful if the first output was not right).
+
+#### AI Hub
+
+`AI > AI Hub...` is the central configuration panel for all AI settings.
+It has four tabs:
+
+- **Provider**: choose your AI provider (Ollama, OpenAI, Claude, Gemini,
+  OpenRouter, or custom), enter your API key, set the model and host URL,
+  and test the connection.
+- **On-Device**: configure Ollama for fully local AI. Includes recommended
+  models and the Ollama base URL.
+- **Audio Services**: enter your Deepgram API key for speaker diarization,
+  and set the default maximum number of speakers.
+- **Advanced**: privacy consent summary listing every action that sends data,
+  safe mode documentation, and a Reset AI Settings button.
+
+For the full provider setup experience (per-provider key management, model
+listing, and verification), use the Full Connection Settings button in the
+Provider tab.
+
+#### Custom Instructions (AI Hub > Instructions tab)
+
+Every AI task in QUILL has a built-in default system prompt that tells the AI
+how to behave. The **Instructions** tab in AI Hub lets you read, customise, and
+share these prompts.
+
+**What custom instructions are:**
+Each instruction set is a plain-text system prompt that is automatically
+prepended to every AI call for that task. For example, the spell check
+instruction tells the AI to preserve technical terms and not flag British
+spellings. You can extend, replace, or turn off these instructions.
+
+**How to edit them:**
+
+1. Open `AI > AI Hub...` and go to the **Instructions** tab.
+2. Select a task from the list on the left (e.g. "AI Spell Check").
+3. The built-in default appears in the lower panel for reference.
+4. Type your custom instructions in the editor above it.
+   - Leave the editor empty to use the built-in default.
+   - Tasks with a custom override show a `*` in the list.
+5. Use **Copy Default to Editor** to start from the built-in default and
+   modify it rather than writing from scratch.
+6. Use **Reset to Default** to discard your changes and go back to the
+   built-in default.
+7. Uncheck **Enable custom instructions for this task** to disable all
+   instruction injection for that task (the AI gets the base prompt only).
+8. Click **OK** to save. Changes take effect immediately.
+
+**Built-in defaults — what each task gets:**
+
+| Task | Default instruction focus |
+|------|--------------------------|
+| Ask Quill / Chat | Calm, direct expert partner; insert-only text returns without preamble |
+| AI Spell Check | Copy editor: genuine errors only, preserve technical terms and consistent spellings |
+| Grammar and Style | Professional editor: actionable issues, preserve author voice |
+| Rewrite | Improve clarity without erasing author voice; no added content |
+| Summarize | One-fifth length, same register, core argument only |
+| Expand | Develop into richer prose, match tone exactly |
+| Table of Contents | Explicit headings only, Markdown hierarchy, no invented structure |
+| Translate | Natural expression over literal fidelity, preserve formatting |
+| AI Thesaurus | Contextual synonyms ranked by interchangeability, register noted |
+| Document Q&A | Grounded answers only; "not in document" stated explicitly |
+| Research Agent | Key points, assumptions, gaps, and suggested next actions |
+| Accessibility Tune-Up | Plain language, short sentences, descriptive text suggestions |
+
+**Sharing instructions:**
+Custom instructions are stored in `<AppData>/Quill/ai_custom_instructions.json`.
+You can copy this file between machines or share individual task prompts with
+other QUILL users.
+
+#### How custom instructions reduce cost: prompt caching
+
+QUILL sends every custom instruction as a separate system message, not mixed
+into the document text. This lets your AI provider cache the stable instruction
+prefix across requests, so you are not billed for re-sending the same
+instructions on every call.
+
+- **Anthropic Claude**: QUILL marks the system message with
+  `cache_control: ephemeral` and sends the required beta header. Claude caches
+  the prefix for five minutes. Each cache hit is billed at approximately 10% of
+  the normal input token cost. If you run several AI tasks in a session, the
+  instruction text is typically served from cache on every call after the first.
+- **OpenAI (GPT-4o and later)**: caching is fully automatic. OpenAI caches
+  prompt prefixes that exceed 1024 tokens and re-uses them within a session
+  at approximately 50% of the normal input cost. Because the system message is
+  always the same stable text, it qualifies for caching whenever the threshold
+  is reached.
+- **Ollama / local models**: caching is handled internally by the model server.
+  No special setup is needed; the system message is sent once per connection.
+- **Gemini**: system instructions are sent via the dedicated
+  `systemInstruction` field. Caching behaviour depends on Google's current
+  context-caching policy.
+
+You do not need to configure anything to benefit from caching. As long as at
+least one custom instruction is enabled (or the built-in defaults are active),
+QUILL automatically uses the caching path for every supported provider.
+
+### AI Privacy Reference
+
+Every AI action in QUILL is explicit — nothing runs in the background without
+your request. This section describes exactly what each action sends and where.
+
+| Action | Data sent | Service | Opt-out |
+|---|---|---|---|
+| AI Spell Check | Document text (chunked at ~60 000 chars) | Your configured AI provider | Do not invoke the action |
+| AI Grammar Check | Document text (chunked at ~40 000 chars) | Your configured AI provider | Do not invoke the action |
+| Translate (AI provider) | Selected text or full document | Your configured AI provider | Use LibreTranslate instead |
+| Translate (LibreTranslate) | Selected text or full document | Your LibreTranslate server (default: localhost) | — |
+| AI Thesaurus | Word being looked up + one sentence of context (no full document) | Your configured AI provider | Do not invoke the action |
+| Rewrite / Summarize / Expand / TOC | Selected text or full document | Your configured AI provider | Do not invoke the action |
+| Document Q&A | Document text (up to 80 000 chars) + question | Your configured AI provider | Do not invoke the action |
+| Read Aloud (OpenAI TTS) | Selected text or document (chunked at ~4 000 chars) | OpenAI (`api.openai.com`) | Use a local voice (Piper, Kokoro, DECtalk) |
+| Transcribe Audio | Audio file bytes (up to 25 MB) | OpenAI Whisper (`api.openai.com`) | Transcribe locally with a Quillin extension |
+| Speaker Diarization | Audio file bytes (up to 2 GB) | Deepgram (`api.deepgram.com`) | Disable diarization in the transcription dialog |
+
+**What QUILL never does:**
+
+- QUILL does not send data in the background. Every AI call is triggered by a
+  specific, intentional user action.
+- QUILL does not log your document content, API keys, or AI responses to any
+  Anthropic or QUILL telemetry endpoint. QUILL has no telemetry.
+- API keys are stored only on your device (Windows Credential Manager with
+  DPAPI fallback). They are never sent to a QUILL server.
+- The crash reporter (Help > Save Diagnostics) redacts API keys, file paths,
+  and any text that looks like a secret before writing the diagnostic bundle.
+
+**On-device alternatives:**
+
+If you prefer to keep your text on your machine entirely:
+- Use **Ollama (local)** as your AI provider. All spell check, grammar, and
+  translation requests go only to your local Ollama instance.
+- Use **LibreTranslate** (local install) for translation.
+- Use **Piper** or **Kokoro** for Read Aloud — these are local voice engines.
+- Avoid the Transcribe and Diarize actions, which require cloud services.
+
 #### Reading & Dictation
 
 - **Read Aloud** submenu for start or pause, stop, and voice selection

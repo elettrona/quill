@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import html
 import json
 import os
 import re
@@ -1759,6 +1758,24 @@ class MainFrame(
             "tools.ai_summarize_selection",
             "Summarize Selection",
             self.open_ai_summarize_selection,
+            None,
+        )
+        self.commands.register(
+            "tools.ai_expand_selection",
+            "Expand Selection",
+            self.open_ai_expand_selection,
+            None,
+        )
+        self.commands.register(
+            "tools.ai_generate_toc",
+            "Generate Table of Contents",
+            self.open_ai_toc,
+            None,
+        )
+        self.commands.register(
+            "tools.ai_thesaurus",
+            "AI Thesaurus",
+            self.open_ai_thesaurus,
             None,
         )
         self.commands.register(
@@ -6881,21 +6898,11 @@ class MainFrame(
         self._status_page_last_announce_signature = signature
 
     def _refresh_help_status_tabs(self) -> None:
-        indexes = self._status_tab_indexes()
-        if not indexes:
+        dlg = getattr(self, "_help_status_dialog", None)
+        if dlg is not None and dlg.is_alive():
+            dlg.refresh(self._build_help_status_data())
+        else:
             self._set_status_page_live_updates(False)
-            return
-        report_html = self._build_help_status_html()
-        selected_index = self._current_tab_index()
-        for index in indexes:
-            if not (0 <= index < len(self._document_tabs)):
-                continue
-            tab = self._document_tabs[index]
-            tab.editor.ChangeValue(report_html)
-            tab.document.set_text(report_html)
-            tab.document.modified = False
-            if index == selected_index and self._browser_preview_session is not None:
-                self._show_side_preview_for(tab)
 
     def _maybe_refresh_live_status_tabs(self) -> None:
         if not self._status_page_live_updates:
@@ -9730,6 +9737,7 @@ class MainFrame(
         ai_value: bool | None = None
         ext_master_value: bool | None = None
         ext_engine_spec: tuple[str, str, bool] | None = None
+        ai_menu_top_level_value: bool | None = None
 
         with wx.Dialog(self.frame, title="Settings") as dialog:
             outer = wx.BoxSizer(wx.VERTICAL)
@@ -10139,6 +10147,16 @@ class MainFrame(
                         _ef.SetValue(bool(_first_engine.enabled) if _first_engine else False)
                         _ps.Add(_ef, 0, wx.ALL, 6)
                         _ai_refs["ext_engine_enabled_cb"] = _ef
+                        _ps.Add(wx.StaticLine(_p), 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 6)
+                        _tl_cb = wx.CheckBox(_p, label="Show AI as a top-level menu")
+                        _tl_cb.SetValue(self._feature_enabled("future.ai_menu_top_level"))
+                        _tl_cb.SetName(
+                            "Show AI as a top-level menu. "
+                            "Promotes AI Assistant from the Tools submenu to its own "
+                            "entry in the menu bar. Takes effect immediately."
+                        )
+                        _ps.Add(_tl_cb, 0, wx.ALL, 6)
+                        _ai_refs["ai_menu_top_level_cb"] = _tl_cb
                         _ps.Add(
                             wx.StaticText(
                                 _p,
@@ -10341,6 +10359,11 @@ class MainFrame(
                             )
                         except ValueError as _ve:
                             self._set_status(str(_ve))
+                _tl_cb2 = _ai_refs.get("ai_menu_top_level_cb")
+                if _tl_cb2 is not None:
+                    self.features.set_feature_enabled(
+                        "future.ai_menu_top_level", bool(_tl_cb2.GetValue())
+                    )
                 self._settings_dialog_apply_refresh("Settings applied")
 
             def _on_apply(_evt: object) -> None:
@@ -10383,6 +10406,9 @@ class MainFrame(
                         str(_cf.GetValue()),
                         bool(_ef.GetValue()) if _ef is not None else False,
                     )
+                _tl_cb = _ai_refs.get("ai_menu_top_level_cb")
+                if _tl_cb is not None:
+                    ai_menu_top_level_value = bool(_tl_cb.GetValue())
 
         mode = action["mode"]
         if mode == "import":
@@ -10422,6 +10448,8 @@ class MainFrame(
                     )
                 except ValueError as error:
                     self._set_status(str(error))
+        if ai_menu_top_level_value is not None:
+            self.features.set_feature_enabled("future.ai_menu_top_level", ai_menu_top_level_value)
         self._settings_dialog_apply_refresh("Updated settings")
 
     def open_ai_preferences(self) -> None:
@@ -11518,24 +11546,20 @@ class MainFrame(
         )
 
     def show_about_quill(self) -> None:
-        from quill.core.browser_preview import render_preview_body
-        from quill.ui.preview_dialog import MarkdownPreviewDialog
+        from quill.ui.info_pages import show_about_quill_native
 
-        body = render_preview_body(self._about_markdown(), "markdown")
-        MarkdownPreviewDialog(self.frame, "About Quill", body).show()
+        show_about_quill_native(
+            self.frame,
+            self._wx,
+            self._about_markdown(),
+            self.open_third_party_notices,
+            self._show_modal_dialog,
+        )
         self._set_status("Opened About Quill")
 
     def show_whisperer_about_page(self) -> None:
-        index = self._open_generated_tab(
-            "About BITS Whisperer",
-            self._build_whisperer_about_html(),
-        )
-        self._select_tab(index)
-        if 0 <= index < len(self._document_tabs):
-            self._show_side_preview_for(self._document_tabs[index])
-        self._set_status("Opened About BITS Whisperer")
+        from quill.ui.info_pages import show_whisperer_about_native
 
-    def _build_whisperer_about_html(self) -> str:
         roadmap_rows = [
             (
                 "Provider and feature-flag gating",
@@ -11568,18 +11592,6 @@ class MainFrame(
                 "Open controlled extension points in Quill once core stability is proven.",
             ),
         ]
-        roadmap_html = "".join(
-            (
-                "<tr>"
-                f"<td>{html.escape(capability)}</td>"
-                f"<td>{html.escape(from_bw)}</td>"
-                f"<td>{html.escape(phase)}</td>"
-                f"<td>{html.escape(notes)}</td>"
-                "</tr>"
-            )
-            for capability, from_bw, phase, notes in roadmap_rows
-        )
-
         principles_rows = [
             (
                 "Accessibility first",
@@ -11589,46 +11601,10 @@ class MainFrame(
             ("Safe rollout", "Feature flags and staged onboarding for predictable adoption."),
             ("Transparent status", "Status pages and notifications for every async operation."),
         ]
-        principles_html = "".join(
-            f"<tr><th scope='row'>{html.escape(name)}</th><td>{html.escape(detail)}</td></tr>"
-            for name, detail in principles_rows
+        show_whisperer_about_native(
+            self.frame, self._wx, roadmap_rows, principles_rows, self._show_modal_dialog
         )
-
-        return (
-            "<h1 id='whisperer-about'>BITS Whisperer and Quill</h1>"
-            "<p>The future is bright. BITS Whisperer patterns are being evaluated "
-            "for selective adoption "
-            "inside Quill to improve accessibility, reliability, and creative flow.</p>"
-            "<h2 id='what-is-coming'>What Is Coming</h2>"
-            "<p>Quill will progressively absorb proven ideas from BITS Whisperer "
-            "in focused phases, "
-            "while preserving Quill's writing-first experience.</p>"
-            "<h2 id='roadmap'>Integration Roadmap</h2>"
-            "<table>"
-            "<caption>Planned feature pull-through from BITS Whisperer into Quill</caption>"
-            "<thead><tr>"
-            "<th scope='col'>Capability</th>"
-            "<th scope='col'>Whisperer Source</th>"
-            "<th scope='col'>Phase</th>"
-            "<th scope='col'>Quill Plan</th>"
-            "</tr></thead>"
-            f"<tbody>{roadmap_html}</tbody>"
-            "</table>"
-            "<h2 id='experience-principles'>Experience Principles</h2>"
-            "<table>"
-            "<caption>User experience principles guiding the integration</caption>"
-            "<thead><tr><th scope='col'>Principle</th>"
-            "<th scope='col'>How it applies</th></tr></thead>"
-            f"<tbody>{principles_html}</tbody>"
-            "</table>"
-            "<h2 id='next-steps'>Next Steps</h2>"
-            "<ol>"
-            "<li>Use Startup Wizard to configure profile, AI, and speech foundation.</li>"
-            "<li>Use Status Page to check on downloads, speech, and what's turned on.</li>"
-            "<li>Iterate in small, accessible milestones with clear release notes.</li>"
-            "</ol>"
-            "<p>It all starts with a whisper that glows and writes with a magical Quill.</p>"
-        )
+        self._set_status("Opened About BITS Whisperer")
 
     def show_external_tools_dialog(self) -> None:
         wx = self._wx
@@ -15615,7 +15591,9 @@ class MainFrame(
         self._show_message_box("\n".join(lines), "BITS Whisperer Readiness", self._wx.OK)
         self._set_status("BITS Whisperer readiness check complete")
 
-    def _build_bw_capability_matrix_html(self) -> str:
+    def show_bw_capability_matrix_page(self) -> None:
+        from quill.ui.info_pages import show_bw_capability_matrix_native
+
         snapshot = self._bw_readiness_snapshot()
         rows = [
             (
@@ -15651,47 +15629,9 @@ class MainFrame(
                 "Cloud and advanced routing behavior is delayed until validation is complete.",
             ),
         ]
-        rows_html = "".join(
-            (
-                "<tr>"
-                f"<th scope='row'>{html.escape(name)}</th>"
-                f"<td>{html.escape(phase)}</td>"
-                f"<td>{html.escape(status)}</td>"
-                f"<td>{html.escape(notes)}</td>"
-                "</tr>"
-            )
-            for name, phase, status, notes in rows
+        show_bw_capability_matrix_native(
+            self.frame, self._wx, rows, snapshot, self._show_modal_dialog
         )
-        return (
-            "<h1 id='bw-capability-matrix'>BITS Whisperer Capability Matrix</h1>"
-            "<p>This matrix shows rollout-safe capabilities currently staged in Quill.</p>"
-            "<table>"
-            "<caption>Capability status by rollout phase</caption>"
-            "<thead><tr>"
-            "<th scope='col'>Capability</th><th scope='col'>Phase</th>"
-            "<th scope='col'>Status</th><th scope='col'>Notes</th>"
-            "</tr></thead>"
-            f"<tbody>{rows_html}</tbody>"
-            "</table>"
-            "<h2 id='current-snapshot'>Current Snapshot</h2>"
-            "<ul>"
-            f"<li>Provider mode: {html.escape(str(snapshot['provider_mode']))}</li>"
-            f"<li>Configured provider: {html.escape(str(snapshot['provider_name']))}</li>"
-            f"<li>Speech model mode: {html.escape(str(snapshot['speech_model_mode']))}</li>"
-            f"<li>Configured speech model: {html.escape(str(snapshot['speech_model_id']))}</li>"
-            f"<li>Downloaded whisper models: {snapshot['downloaded_model_count']} "
-            f"of {snapshot['available_model_count']}</li>"
-            "</ul>"
-        )
-
-    def show_bw_capability_matrix_page(self) -> None:
-        index = self._open_generated_tab(
-            "BITS Whisperer Capability Matrix",
-            self._build_bw_capability_matrix_html(),
-        )
-        self._select_tab(index)
-        if 0 <= index < len(self._document_tabs):
-            self._show_side_preview_for(self._document_tabs[index])
         self._set_status("Opened BITS Whisperer capability matrix")
 
     def _start_bw_model_download(self, spec: object) -> None:
@@ -17158,54 +17098,37 @@ class MainFrame(
             dialog.Destroy()
 
     def show_help_status_page(self) -> None:
+        from quill.ui.status_dialog import HelpStatusDialog
+
         self._ensure_status_page_timer()
-        indexes = self._status_tab_indexes()
-        if indexes:
-            index = indexes[0]
-            self._select_tab(index)
-            self._refresh_help_status_tabs()
+        dlg = getattr(self, "_help_status_dialog", None)
+        if dlg is not None and dlg.is_alive():
+            dlg.refresh(self._build_help_status_data())
+            dlg.show()
         else:
-            report_html = self._build_help_status_html()
-            index = self._open_generated_tab("Application Status", report_html)
-            self._select_tab(index)
-            if 0 <= index < len(self._document_tabs):
-                self._show_side_preview_for(self._document_tabs[index])
-        self._set_status_page_live_updates(True)
-        self._set_status("Opened application status page in HTML preview with live updates")
-
-    def _build_help_status_html(self) -> str:
-        feature_rows: list[str] = []
-        for feature_id, definition in sorted(FEATURE_DEFINITIONS.items()):
-            state = self.features.state_for(feature_id)
-            state_label = {
-                "on": "Enabled",
-                "quiet": "Quiet",
-                "off": "Disabled",
-            }.get(state, state)
-            feature_rows.append(
-                "<tr>"
-                f"<td>{html.escape(feature_id)}</td>"
-                f"<td>{html.escape(definition.name)}</td>"
-                f"<td>{html.escape(definition.category)}</td>"
-                f"<td>{html.escape(state_label)}</td>"
-                "</tr>"
+            self._help_status_dialog = HelpStatusDialog(
+                self.frame, self._wx, self._build_help_status_data()
             )
+            self._help_status_dialog.set_refresh_callback(
+                lambda: self._help_status_dialog.refresh(self._build_help_status_data())
+            )
+            self._help_status_dialog.show()
+        self._set_status_page_live_updates(True)
+        self._set_status("Opened application status page")
 
+    def _build_help_status_data(self) -> dict:
+        """Collect runtime status into a structured dict for HelpStatusDialog."""
         settings = self.settings
-        speech_rows = [
-            ("Engine", settings.read_aloud_engine),
-            ("Voice (pyttsx3)", settings.read_aloud_voice or "(default system)"),
-            ("DECtalk executable", settings.read_aloud_dectalk_executable or "Not configured"),
-            ("DECtalk voice", settings.read_aloud_dectalk_voice),
-            ("Piper model", settings.read_aloud_piper_model or "Not configured"),
-            ("Kokoro voice", settings.read_aloud_kokoro_voice),
-            ("eSpeak executable", settings.read_aloud_espeak_executable or "PATH lookup"),
-            ("eSpeak English voice", settings.read_aloud_espeak_voice),
+        notification_count = len(getattr(self, "_notifications", []))
+        active_tasks = int(getattr(self, "_background_task_count", 0))
+        profile_name = self.features.active_profile.name
+
+        status_rows: list[tuple[str, str, str]] = [
+            ("Overview", "Version", __version__),
+            ("Overview", "Active profile", profile_name),
+            ("Overview", "Background tasks running", str(active_tasks)),
+            ("Overview", "Notifications queued", str(notification_count)),
         ]
-        speech_table_rows = "".join(
-            f"<tr><th scope='row'>{html.escape(name)}</th><td>{html.escape(str(value))}</td></tr>"
-            for name, value in speech_rows
-        )
 
         bw_mode = str(getattr(settings, "bw_provider_mode", "local_first"))
         bw_local_first = bw_mode == "local_first"
@@ -17217,7 +17140,7 @@ class MainFrame(
         bw_models = bw_list_models(include_parakeet=False)
         bw_downloaded = bw_downloaded_model_ids(include_parakeet=False)
         bw_engine_ok, bw_engine_status = faster_whisper_status()
-        bw_rows = [
+        for name, value in [
             ("Provider mode", "Local-first" if bw_local_first else "Cloud-first"),
             ("Configured provider", bw_provider.name if bw_provider else bw_provider_id),
             (
@@ -17236,122 +17159,63 @@ class MainFrame(
             ("faster-whisper engine", "Ready" if bw_engine_ok else "Not installed"),
             ("Engine detail", bw_engine_status),
             ("Last refresh", datetime.now(UTC).isoformat()),
-        ]
-        bw_table_rows = "".join(
-            f"<tr><th scope='row'>{html.escape(name)}</th><td>{html.escape(str(value))}</td></tr>"
-            for name, value in bw_rows
-        )
+        ]:
+            status_rows.append(("BITS Whisperer", name, str(value)))
 
-        bw_download_rows: list[str] = []
+        for name, value in [
+            ("Engine", settings.read_aloud_engine),
+            ("Voice (pyttsx3)", settings.read_aloud_voice or "(default system)"),
+            ("DECtalk executable", settings.read_aloud_dectalk_executable or "Not configured"),
+            ("DECtalk voice", settings.read_aloud_dectalk_voice),
+            ("Piper model", settings.read_aloud_piper_model or "Not configured"),
+            ("Kokoro voice", settings.read_aloud_kokoro_voice),
+            ("eSpeak executable", settings.read_aloud_espeak_executable or "PATH lookup"),
+            ("eSpeak English voice", settings.read_aloud_espeak_voice),
+        ]:
+            status_rows.append(("Speech", name, str(value)))
+
+        task_rows: list[tuple[str, str, str, str, str]] = []
         for entry in sorted(
             self._bw_download_status.values(),
             key=lambda item: str(item.get("started_at", "")),
             reverse=True,
         ):
-            bw_download_rows.append(
-                "<tr>"
-                f"<td>{html.escape(str(entry.get('model', '')))}</td>"
-                f"<td>{html.escape(str(entry.get('status', '')))}</td>"
-                f"<td>{html.escape(str(entry.get('progress', '')))}</td>"
-                f"<td>{html.escape(str(entry.get('started_at', '')))}</td>"
-                f"<td>{html.escape(str(entry.get('finished_at', 'Running')))}</td>"
-                "</tr>"
-            )
-        if not bw_download_rows:
-            bw_download_rows.append(
-                "<tr><td colspan='5'>No BITS Whisperer model downloads "
-                "have run in this session.</td></tr>"
-            )
-
-        task_rows: list[str] = []
+            task_rows.append((
+                str(entry.get("model", "")),
+                str(entry.get("status", "")),
+                str(entry.get("progress", "")),
+                str(entry.get("started_at", "")),
+                str(entry.get("finished_at", "Running")),
+            ))
         for task in reversed(getattr(self, "_background_tasks", [])[-50:]):
-            label = str(task.get("label", ""))
-            status = str(task.get("status", ""))
-            progress = str(task.get("progress", ""))
-            started_at = str(task.get("started_at", ""))
-            finished_at = str(task.get("finished_at", ""))
-            task_rows.append(
-                "<tr>"
-                f"<td>{html.escape(label)}</td>"
-                f"<td>{html.escape(status.title())}</td>"
-                f"<td>{html.escape(progress)}</td>"
-                f"<td>{html.escape(started_at)}</td>"
-                f"<td>{html.escape(finished_at or 'Running')}</td>"
-                "</tr>"
-            )
-        if not task_rows:
-            task_rows.append(
-                "<tr><td colspan='5'>No background tasks have run in this session.</td></tr>"
-            )
+            task_rows.append((
+                str(task.get("label", "")),
+                str(task.get("status", "")).title(),
+                str(task.get("progress", "")),
+                str(task.get("started_at", "")),
+                str(task.get("finished_at", "") or "Running"),
+            ))
 
-        notification_count = len(getattr(self, "_notifications", []))
-        active_tasks = int(getattr(self, "_background_task_count", 0))
-        profile_name = self.features.active_profile.name
+        feature_rows: list[tuple[str, str, str, str]] = []
+        for feature_id, definition in sorted(FEATURE_DEFINITIONS.items()):
+            state = self.features.state_for(feature_id)
+            state_label = {"on": "Enabled", "quiet": "Quiet", "off": "Disabled"}.get(state, state)
+            feature_rows.append((feature_id, definition.name, definition.category, state_label))
 
-        return (
-            "<h1 id='status-page'>Quill Application Status</h1>"
-            "<p>This page reports current runtime status for features, speech setup, "
-            "and background downloads/tasks.</p>"
-            "<h2 id='runtime-overview'>Runtime Overview</h2>"
-            "<table>"
-            "<caption>Current runtime summary</caption>"
-            "<thead><tr><th scope='col'>Item</th><th scope='col'>Value</th></tr></thead>"
-            "<tbody>"
-            f"<tr><th scope='row'>Version</th><td>{html.escape(__version__)}</td></tr>"
-            f"<tr><th scope='row'>Active profile</th><td>{html.escape(profile_name)}</td></tr>"
-            f"<tr><th scope='row'>Background tasks running</th><td>{active_tasks}</td></tr>"
-            f"<tr><th scope='row'>Notifications queued</th><td>{notification_count}</td></tr>"
-            "</tbody></table>"
-            "<h2 id='bw-rollout-status'>BITS Whisperer Rollout Status</h2>"
-            "<table>"
-            "<caption>Provider and model rollout readiness</caption>"
-            "<thead><tr><th scope='col'>Item</th><th scope='col'>Value</th></tr></thead>"
-            f"<tbody>{bw_table_rows}</tbody></table>"
-            "<h2 id='speech-status'>Speech Status</h2>"
-            "<table>"
-            "<caption>Speech engine configuration and downloads</caption>"
-            "<thead><tr><th scope='col'>Setting</th><th scope='col'>Value</th></tr></thead>"
-            f"<tbody>{speech_table_rows}</tbody></table>"
-            "<h2 id='bw-downloads'>BITS Whisperer Model Downloads</h2>"
-            "<table>"
-            "<caption>Asynchronous model acquisition jobs</caption>"
-            "<thead><tr>"
-            "<th scope='col'>Model</th><th scope='col'>Status</th><th scope='col'>Progress</th>"
-            "<th scope='col'>Started</th><th scope='col'>Finished</th>"
-            "</tr></thead>"
-            f"<tbody>{''.join(bw_download_rows)}</tbody></table>"
-            "<h2 id='background-tasks'>Background Tasks and Downloads</h2>"
-            "<table>"
-            "<caption>Recent asynchronous jobs (downloads, generation, indexing)</caption>"
-            "<thead><tr>"
-            "<th scope='col'>Task</th><th scope='col'>Status</th><th scope='col'>Progress</th>"
-            "<th scope='col'>Started</th><th scope='col'>Finished</th>"
-            "</tr></thead>"
-            f"<tbody>{''.join(task_rows)}</tbody></table>"
-            "<h2 id='features'>Feature Status</h2>"
-            "<table>"
-            "<caption>Enabled, quiet, and disabled features</caption>"
-            "<thead><tr>"
-            "<th scope='col'>Feature ID</th>"
-            "<th scope='col'>Feature Name</th>"
-            "<th scope='col'>Category</th>"
-            "<th scope='col'>Status</th>"
-            "</tr></thead>"
-            f"<tbody>{''.join(feature_rows)}</tbody></table>"
-            "<h2 id='recommended-actions'>Recommended Actions</h2>"
-            "<ul>"
-            "<li>Open BITS Whisperer &gt; Providers &gt; Provider Center "
-            "for staged onboarding guidance.</li>"
-            "<li>Open BITS Whisperer &gt; Speech Models to choose "
-            "recommended or manual model setup.</li>"
-            "<li>Open AI &gt; Speech &gt; Settings to configure engine-specific paths.</li>"
-            "<li>Open AI &gt; Speech &gt; Voice to preview voices and variants.</li>"
-            "<li>Open AI &gt; Speech &gt; Generate Audio to run "
-            "asynchronous speech output jobs.</li>"
-            "<li>Open Tools &gt; Support &gt; Show Notifications for "
-            "detailed alerts and outcomes.</li>"
-            "</ul>"
-        )
+        actions = [
+            "Open BITS Whisperer > Providers > Provider Center for staged onboarding guidance.",
+            "Open BITS Whisperer > Speech Models to choose recommended or manual model setup.",
+            "Open AI > Speech > Settings to configure engine-specific paths.",
+            "Open AI > Speech > Voice to preview voices and variants.",
+            "Open AI > Speech > Generate Audio to run asynchronous speech output jobs.",
+            "Open Tools > Support > Show Notifications for detailed alerts and outcomes.",
+        ]
+        return {
+            "status_rows": status_rows,
+            "task_rows": task_rows,
+            "feature_rows": feature_rows,
+            "actions": actions,
+        }
 
     def _update_check_due(self, interval_hours: int = 24) -> bool:
         """True when enough time has passed since the last startup update check.
@@ -17685,12 +17549,17 @@ class MainFrame(
             self._record_notification(f"GLOW update failed: {result.message}", "update")
 
     def _html_info(self, title: str, markdown_text: str) -> None:
-        """Show an informational message in the WebView dialog (with an OK button)."""
-        from quill.ui.preview_dialog import HtmlMessageDialog
+        """Show a plain-text informational message with an OK button."""
+        from quill.ui.info_pages import _md_to_plain
 
-        HtmlMessageDialog(
-            self.frame, title, self._render_html(markdown_text), [("OK", self._wx.ID_OK)]
-        ).show_modal()
+        wx = self._wx
+        dialog = wx.MessageDialog(
+            self.frame, _md_to_plain(markdown_text), title, wx.OK | wx.ICON_INFORMATION
+        )
+        try:
+            self._show_modal_dialog(dialog, title)
+        finally:
+            dialog.Destroy()
 
     def _show_update_available_dialog(self, current_version: str, release: GitHubRelease) -> str:
         """Present an available update. Returns one of ``"download"``,
@@ -17738,27 +17607,27 @@ class MainFrame(
     def _offer_beta_switch(
         self, current_version: str, stable_release: GitHubRelease | None
     ) -> None:
-        from quill.ui.preview_dialog import HtmlMessageDialog
-
         wx = self._wx
         stable_line = (
             f"the latest stable release is {stable_release.version}"
             if stable_release is not None
             else "no stable release is published yet"
         )
-        body = self._render_html(
-            "# You're up to date\n\n"
-            f"You're on the **stable** channel (current version {current_version}; "
+        plain = (
+            f"You're on the stable channel (current version {current_version}; "
             f"{stable_line}).\n\n"
-            "Want earlier features sooner? The **beta** channel delivers prerelease "
-            "builds as soon as they're published.\n"
+            "Want earlier features sooner? The beta channel delivers prerelease "
+            "builds as soon as they're published."
         )
-        result = HtmlMessageDialog(
-            self.frame,
-            "Check for Updates",
-            body,
-            [("Stay on stable", wx.ID_CANCEL), ("Switch to beta...", wx.ID_YES)],
-        ).show_modal()
+        dialog = wx.MessageDialog(
+            self.frame, plain, "Check for Updates", wx.YES_NO | wx.NO_DEFAULT | wx.ICON_INFORMATION
+        )
+        if hasattr(dialog, "SetYesNoLabels"):
+            dialog.SetYesNoLabels("Switch to beta...", "Stay on stable")
+        try:
+            result = self._show_modal_dialog(dialog, "Check for Updates")
+        finally:
+            dialog.Destroy()
         if result == wx.ID_YES and self._confirm_beta_channel():
             self.settings.beta_updates = True
             save_settings(self.settings)
@@ -17790,30 +17659,30 @@ class MainFrame(
             self._skip_update_version(release.version)
 
     def _confirm_beta_channel(self, release: GitHubRelease | None = None) -> bool:
-        """HTML consent gate the user must agree to before beta updates turn on."""
-        from quill.ui.preview_dialog import HtmlMessageDialog
-
+        """Consent gate the user must agree to before beta updates turn on."""
         wx = self._wx
         detected = (
-            f"A beta build (**{release.version}**) is available.\n\n" if release is not None else ""
+            f"A beta build ({release.version}) is available.\n\n" if release is not None else ""
         )
-        body = self._render_html(
-            "# Enable beta updates?\n\n"
+        plain = (
             f"{detected}"
-            "Beta updates are **prerelease** builds. They get new features and fixes "
-            "first, but they **may be unstable** — expect rough edges, and occasional "
+            "Beta updates are prerelease builds. They get new features and fixes "
+            "first, but they may be unstable - expect rough edges, and occasional "
             "bugs that could affect your documents.\n\n"
             "- Beta builds are published as GitHub prereleases.\n"
             "- You can switch back to stable anytime in Settings.\n"
             "- Keep backups of important documents.\n\n"
             "Do you understand and want to receive beta updates?"
         )
-        result = HtmlMessageDialog(
-            self.frame,
-            "Beta updates",
-            body,
-            [("Cancel", wx.ID_CANCEL), ("I understand, enable beta", wx.ID_YES)],
-        ).show_modal()
+        dialog = wx.MessageDialog(
+            self.frame, plain, "Beta updates", wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING
+        )
+        if hasattr(dialog, "SetYesNoLabels"):
+            dialog.SetYesNoLabels("I understand, enable beta", "Cancel")
+        try:
+            result = self._show_modal_dialog(dialog, "Beta updates")
+        finally:
+            dialog.Destroy()
         return result == wx.ID_YES
 
     def _download_update_release(self, release: GitHubRelease) -> None:
@@ -17880,22 +17749,54 @@ class MainFrame(
     def _offer_post_download_actions(self, release: GitHubRelease, target: Path) -> None:
         """After a successful download, let the user install it now or reveal it
         in the folder. Installer launch is offered only for runnable assets."""
-        from quill.ui.preview_dialog import HtmlMessageDialog
+        from quill.ui.dialog_contract import apply_modal_ids
 
         wx = self._wx
         runnable = target.suffix.lower() in {".exe", ".msi"} and sys.platform.startswith("win")
-        buttons = [("Close", wx.ID_CANCEL), ("Open folder", wx.ID_OPEN)]
-        if runnable:
-            buttons.append(("Install now…", wx.ID_OK))
         install_line = (
-            "Select **Install now** to close Quill and run the installer, or " if runnable else ""
+            "Select 'Install now' to close Quill and run the installer, or " if runnable else ""
         )
-        body = self._render_html(
-            f"# Update {release.version} downloaded\n\n"
-            f"Saved to:\n\n`{target}`\n\n"
-            f"{install_line}**Open folder** to find it yourself.\n"
+        plain = (
+            f"Update {release.version} downloaded.\n\n"
+            f"Saved to: {target}\n\n"
+            f"{install_line}Select 'Open folder' to find it."
         )
-        result = HtmlMessageDialog(self.frame, "Update downloaded", body, buttons).show_modal()
+        dialog = wx.Dialog(
+            self.frame, title="Update downloaded", style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER
+        )
+        dialog.SetSize((500, 260))
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        body = wx.TextCtrl(
+            dialog,
+            value=plain,
+            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_AUTO_URL | wx.TE_RICH2,
+            name="update_body",
+        )
+        sizer.Add(body, 1, wx.EXPAND | wx.ALL, 12)
+        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        btn_sizer.AddStretchSpacer()
+        close_btn = wx.Button(dialog, wx.ID_CANCEL, label="Close")
+        folder_btn = wx.Button(dialog, wx.ID_OPEN, label="Open folder")
+        close_btn.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_CANCEL))
+        folder_btn.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_OPEN))
+        btn_sizer.Add(close_btn, 0, wx.RIGHT, 6)
+        btn_sizer.Add(folder_btn, 0, wx.RIGHT, 6)
+        if runnable:
+            install_btn = wx.Button(dialog, wx.ID_OK, label="Install now...")
+            install_btn.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_OK))
+            install_btn.SetDefault()
+            btn_sizer.Add(install_btn, 0)
+        else:
+            close_btn.SetDefault()
+        sizer.Add(btn_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 12)
+        dialog.SetSizer(sizer)
+        affirmative = wx.ID_OK if runnable else wx.ID_OPEN
+        apply_modal_ids(dialog, affirmative_id=affirmative, escape_id=wx.ID_CANCEL)
+        wx.CallAfter(body.SetFocus)
+        try:
+            result = self._show_modal_dialog(dialog, "Update downloaded")
+        finally:
+            dialog.Destroy()
         if result == wx.ID_OPEN:
             self._reveal_in_folder(target)
         elif result == wx.ID_OK and runnable:
@@ -19642,6 +19543,9 @@ class MainFrame(
             self._id_ai_agent_center,
             self._id_ai_rewrite_selection,
             self._id_ai_summarize_selection,
+            self._id_ai_expand_selection,
+            self._id_ai_generate_toc,
+            self._id_ai_thesaurus,
             self._id_ai_continue_writing,
             self._id_ai_fix_grammar,
             self._id_train_style,
@@ -19816,6 +19720,419 @@ class MainFrame(
         )
         dialog.show_modal()
 
+    # ------------------------------------------------------------------
+    # AI language tools: spell check, grammar, translation, transcription
+    # ------------------------------------------------------------------
+
+    def _ai_require_connection(self) -> tuple[object, str] | None:
+        """Return (connection, api_key) or announce an error and return None."""
+        from quill.core.assistant_ai import (
+            load_assistant_api_key,
+            load_assistant_connection_settings,
+        )
+
+        conn = load_assistant_connection_settings()
+        if conn.provider == "off" or not conn.provider:
+            self._set_status("AI is not configured. Open AI Hub (AI menu) to set up a provider.")
+            return None
+        api_key = load_assistant_api_key() or ""
+        return conn, api_key
+
+    def ai_spell_check(self) -> None:
+        result = self._ai_require_connection()
+        if result is None:
+            return
+        conn, api_key = result
+        text = str(self.editor.GetValue())
+        if not text.strip():
+            self._set_status("Document is empty.")
+            return
+
+        self._set_status("AI spell check running...")
+
+        import threading
+
+        def _run() -> None:
+            import wx as _wx
+
+            try:
+                from quill.core.ai.spell_check import ai_spell_check
+
+                corrections = ai_spell_check(text, conn, api_key)
+            except Exception as exc:  # noqa: BLE001
+                _wx.CallAfter(self._set_status, f"AI spell check failed: {exc}")
+                return
+            _wx.CallAfter(self._show_ai_spell_check_dialog, text, corrections)
+
+        threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: AI bg thread
+
+    def _show_ai_spell_check_dialog(self, text: str, corrections: list) -> None:
+        if not corrections:
+            self._set_status("AI spell check: no issues found.")
+            return
+        from quill.ui.ai_spell_check_dialog import AISpellCheckDialog
+
+        dlg = AISpellCheckDialog(self.frame, text, corrections, self._show_modal_dialog)
+        new_text, count = dlg.show()
+        if count > 0:
+            self.editor.SetValue(new_text)
+            self._set_status(f"AI spell check: {count} correction(s) applied.")
+        else:
+            self._set_status("AI spell check: no corrections applied.")
+
+    def ai_spell_check_interactive(self) -> None:
+        result = self._ai_require_connection()
+        if result is None:
+            return
+        conn, api_key = result
+        text = str(self.editor.GetValue())
+        if not text.strip():
+            self._set_status("Document is empty.")
+            return
+        paragraphs = [p for p in text.split("\n\n") if p.strip()]
+        if not paragraphs:
+            paragraphs = [text]
+        from quill.core.ai.spell_check import apply_corrections
+        from quill.ui.ai_spell_check_dialog import AISpellCheckInteractiveDialog
+
+        def _apply_accepted(accepted_corrections: list) -> None:
+            current = str(self.editor.GetValue())
+            new_text, count = apply_corrections(current, accepted_corrections)
+            if count > 0:
+                self.editor.SetValue(new_text)
+                self._set_status(f"AI spell check: {count} correction(s) applied.")
+
+        dlg = AISpellCheckInteractiveDialog(
+            self.frame, paragraphs, conn, api_key, self._show_modal_dialog, _apply_accepted
+        )
+        dlg.run()
+
+    def ai_grammar_style_check(self) -> None:
+        result = self._ai_require_connection()
+        if result is None:
+            return
+        conn, api_key = result
+        text = str(self.editor.GetValue())
+        if not text.strip():
+            self._set_status("Document is empty.")
+            return
+
+        self._set_status("AI grammar check running...")
+
+        import threading
+
+        def _run() -> None:
+            import wx as _wx
+
+            try:
+                from quill.core.ai.grammar_check import ai_grammar_check
+
+                issues = ai_grammar_check(text, conn, api_key)
+            except Exception as exc:  # noqa: BLE001
+                _wx.CallAfter(self._set_status, f"AI grammar check failed: {exc}")
+                return
+            _wx.CallAfter(self._show_ai_grammar_dialog, text, issues)
+
+        threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: AI bg thread
+
+    def _show_ai_grammar_dialog(self, text: str, issues: list) -> None:
+        if not issues:
+            self._set_status("AI grammar check: no issues found.")
+            return
+        from quill.ui.ai_grammar_check_dialog import AIGrammarCheckDialog
+
+        dlg = AIGrammarCheckDialog(self.frame, text, issues, self._show_modal_dialog)
+        new_text, count = dlg.show()
+        if count > 0:
+            self.editor.SetValue(new_text)
+            self._set_status(f"AI grammar check: {count} fix(es) applied.")
+        else:
+            self._set_status("AI grammar check: no fixes applied.")
+
+    def ai_translate_selection(self) -> None:
+        self._ai_translate(selection_only=True)
+
+    def ai_translate_document(self) -> None:
+        self._ai_translate(selection_only=False)
+
+    def _ai_translate(self, selection_only: bool) -> None:
+        result = self._ai_require_connection()
+        if result is None:
+            return
+        conn, api_key = result
+        if selection_only:
+            text = str(self.editor.GetStringSelection())
+            desc = "selection"
+        else:
+            text = str(self.editor.GetValue())
+            desc = "document"
+        if not text.strip():
+            self._set_status(f"No {desc} text to translate.")
+            return
+
+        from quill.core.ai.translation import translate_text
+
+        def _on_translate(t: str, lang: str, provider: str, lt_url: str) -> tuple[str, str]:
+            return translate_text(t, lang, conn, api_key, provider, lt_url)
+
+        def _on_replace(new_text: str) -> None:
+            if selection_only:
+                start, end = self.editor.GetSelection()
+                if start != end:
+                    self.editor.Replace(start, end, new_text)
+            else:
+                self.editor.SetValue(new_text)
+            self._set_status("Translation applied.")
+
+        def _on_new_doc(new_text: str, lang_name: str) -> None:
+            self.new_document(content=new_text, title=f"Translation ({lang_name})")
+
+        from quill.ui.ai_translation_dialog import AITranslationDialog
+
+        dlg = AITranslationDialog(
+            self.frame,
+            text,
+            desc,
+            self._show_modal_dialog,
+            _on_translate,
+            _on_replace,
+            _on_new_doc,
+        )
+        dlg.show()
+
+    def ai_transcribe_audio_file(self) -> None:
+        self._ai_open_transcribe_dialog(translate_to_english=False)
+
+    def ai_translate_audio_file(self) -> None:
+        self._ai_open_transcribe_dialog(translate_to_english=True)
+
+    def _ai_open_transcribe_dialog(self, translate_to_english: bool = False) -> None:
+        import threading
+
+        from quill.ui.ai_transcribe_dialog import (
+            AIProgressDialog,
+            AITranscribeDialog,
+        )
+
+        openai_key = self._get_openai_api_key()
+        if not openai_key:
+            self._set_status("OpenAI API key not configured. Open AI Hub to add your key.")
+            return
+
+        def _on_transcribe(path, lang_code, diarize, max_speakers):
+            progress = AIProgressDialog(
+                self.frame,
+                "Transcribing Audio",
+                f"Transcribing {path.name}...",
+            )
+            progress.show()
+
+            def _run():
+                import wx as _wx
+
+                try:
+                    if diarize:
+                        from quill.core.ai.diarization import diarize_file, format_diarization
+
+                        dr = diarize_file(path, "deepgram", openai_key, max_speakers)
+                        transcript = format_diarization(dr)
+                    elif translate_to_english:
+                        from quill.core.ai.transcription import translate_file
+
+                        transcript = translate_file(path, openai_key)
+                    else:
+                        from quill.core.ai.transcription import transcribe_file
+
+                        transcript = transcribe_file(path, openai_key, language=lang_code)
+                except Exception as exc:  # noqa: BLE001
+                    _wx.CallAfter(progress.close)
+                    _wx.CallAfter(self._set_status, f"Transcription failed: {exc}")
+                    return
+                _wx.CallAfter(progress.close)
+                _wx.CallAfter(self._show_transcription_result, transcript, path.name)
+
+            threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: AI bg thread
+
+        dlg = AITranscribeDialog(self.frame, self._show_modal_dialog, _on_transcribe)
+        if translate_to_english:
+            dlg._translate_cb.SetValue(True)
+        dlg.show()
+
+    def _show_transcription_result(self, transcript: str, file_name: str) -> None:
+        from quill.ui.ai_transcribe_dialog import AITranscriptionResultDialog
+
+        def _on_insert(text: str) -> None:
+            self.editor.WriteText(text)
+
+        def _on_new_doc(text: str) -> None:
+            self.new_document(content=text, title=f"Transcript - {file_name}")
+
+        dlg = AITranscriptionResultDialog(
+            self.frame,
+            transcript,
+            file_name,
+            self._show_modal_dialog,
+            _on_insert,
+            _on_new_doc,
+        )
+        dlg.show()
+
+    def _get_openai_api_key(self) -> str:
+        """Return the first OpenAI-compatible API key from the credential store."""
+        try:
+            from quill.core.assistant_ai import load_assistant_api_key
+
+            return load_assistant_api_key() or ""
+        except Exception:  # noqa: BLE001
+            return ""
+
+    # ------------------------------------------------------------------
+    # AI TTS: Read Aloud via OpenAI TTS provider
+    # ------------------------------------------------------------------
+
+    def ai_tts_read_selection(self) -> None:
+        text = str(self.editor.GetStringSelection()).strip()
+        if not text:
+            self._set_status("No text selected. Select text first, then use Read Selection Aloud.")
+            return
+        self._ai_tts_speak(text, source="selection")
+
+    def ai_tts_read_document(self) -> None:
+        text = str(self.editor.GetValue()).strip()
+        if not text:
+            self._set_status("Document is empty.")
+            return
+        self._ai_tts_speak(text, source="document")
+
+    def ai_tts_stop(self) -> None:
+        stop_evt = getattr(self, "_ai_tts_stop_event", None)
+        if stop_evt is not None:
+            stop_evt.set()
+        self._set_status("AI reading stopped.")
+
+    def _ai_tts_speak(self, text: str, source: str) -> None:
+        import threading
+
+        api_key = self._get_openai_api_key()
+        if not api_key:
+            self._set_status(
+                "OpenAI API key not configured. Open AI Hub to add your key before using AI voice."
+            )
+            return
+
+        # Cancel any in-progress TTS
+        old_stop = getattr(self, "_ai_tts_stop_event", None)
+        if old_stop is not None:
+            old_stop.set()
+
+        stop_event = threading.Event()
+        self._ai_tts_stop_event = stop_event
+
+        from quill.core.ai.tts import DEFAULT_MODEL, DEFAULT_VOICE, TTSError, speak_text
+
+        word_count = len(text.split())
+        self._set_status(f"AI reading {source} ({word_count} words)...")
+
+        def _run() -> None:
+            import wx as _wx
+
+            try:
+                speak_text(
+                    text,
+                    api_key=api_key,
+                    model=DEFAULT_MODEL,
+                    voice=DEFAULT_VOICE,
+                    speed=1.0,
+                    on_chunk_complete=None,
+                    stop_event=stop_event,
+                )
+                if not stop_event.is_set():
+                    _wx.CallAfter(self._set_status, "AI reading complete.")
+            except TTSError as exc:
+                _wx.CallAfter(self._set_status, f"AI reading failed: {exc}")
+
+        threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: AI bg thread
+
+    def ai_tts_export_mp3(self) -> None:
+        import wx
+
+        api_key = self._get_openai_api_key()
+        if not api_key:
+            self._set_status("OpenAI API key not configured. Open AI Hub to add your key.")
+            return
+
+        text = str(self.editor.GetValue()).strip()
+        if not text:
+            self._set_status("Document is empty.")
+            return
+
+        with wx.FileDialog(
+            self.frame,
+            message="Save audio as MP3",
+            wildcard="MP3 files (*.mp3)|*.mp3",
+            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+            defaultFile="document.mp3",
+        ) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:  # GATE-42-OK: wx.FileDialog, not a custom dialog
+                return
+            output_path = dlg.GetPath()
+
+        import threading
+        from pathlib import Path
+
+        from quill.core.ai.tts import DEFAULT_MODEL, DEFAULT_VOICE, TTSError, export_to_mp3
+
+        cancel_event = threading.Event()
+        word_count = len(text.split())
+        self._set_status(f"Exporting {word_count} words to MP3...")
+
+        def _run() -> None:
+            import wx as _wx
+
+            try:
+                export_to_mp3(
+                    text,
+                    output_path=Path(output_path),
+                    api_key=api_key,
+                    model=DEFAULT_MODEL,
+                    voice=DEFAULT_VOICE,
+                    speed=1.0,
+                    cancel_event=cancel_event,
+                    on_progress=None,
+                )
+                _wx.CallAfter(
+                    self._set_status,
+                    f"MP3 exported: {output_path}",
+                )
+            except TTSError as exc:
+                _wx.CallAfter(self._set_status, f"MP3 export failed: {exc}")
+
+        threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: AI bg thread
+
+    # ------------------------------------------------------------------
+    # AI Document Q&A
+    # ------------------------------------------------------------------
+
+    def open_ai_document_qa(self) -> None:
+        result = self._ai_require_connection()
+        if result is None:
+            return
+        conn, api_key = result
+        text = str(self.editor.GetValue())
+        title = getattr(self.document, "title", None) or "Current Document"
+        from quill.ui.ai_document_qa_dialog import AIDocumentQADialog
+
+        dlg = AIDocumentQADialog(
+            self.frame,
+            initial_document_text=text,
+            document_title=str(title),
+            show_modal_dialog=self._show_modal_dialog,
+            connection=conn,
+            api_key=api_key,
+            on_insert_text=self._ai_insert_text,
+        )
+        dlg.show()
+
     def _ai_replace_selection(self, text: str) -> None:
         start, end = self.editor.GetSelection()
         if start != end:
@@ -19826,6 +20143,172 @@ class MainFrame(
 
     def _ai_run_command(self, command_id: str) -> None:
         self.commands.run(command_id)
+
+    # ------------------------------------------------------------------
+    # AI Agentic Tasks: Rewrite, Summarize, Expand, Table of Contents
+    # ------------------------------------------------------------------
+
+    def _paragraph_at_cursor(self) -> str:
+        """Return the paragraph surrounding the insertion point."""
+        text = str(self.editor.GetValue())
+        cursor = self.editor.GetInsertionPoint()
+        start = text.rfind("\n\n", 0, cursor)
+        start = 0 if start < 0 else start + 2
+        end = text.find("\n\n", cursor)
+        end = len(text) if end < 0 else end
+        return text[start:end].strip()
+
+    def _run_agent_task(
+        self,
+        agent_id: str,
+        *,
+        selection_only: bool = False,
+        use_selection_as_source: bool = True,
+    ) -> None:
+        """Run an agent task for the given agent_id and show the result dialog."""
+        import threading
+
+        from quill.core.ai.model_manager import load_ai_enabled
+
+        if not load_ai_enabled():
+            self._set_status(
+                "AI is turned off. Enable 'Use Artificial Intelligence' in Tools > AI Assistant."
+            )
+            return
+
+        selection_text = self._selected_text() if use_selection_as_source else ""
+        document_text = str(self.editor.GetValue()) if not selection_only else ""
+
+        if selection_only and not selection_text:
+            selection_text = self._paragraph_at_cursor()
+            if selection_text:
+                self._set_status("No selection — using current paragraph.")
+            else:
+                self._set_status("Select text first.")
+                return
+        if not selection_text and not document_text.strip():
+            self._set_status("Document is empty.")
+            return
+
+        result = self._ai_require_connection()
+        if result is None:
+            return
+        conn, api_key = result
+
+        from quill.core.assistant_agents import build_agent_plan
+
+        plan = build_agent_plan(
+            agent_id,
+            selection_text=selection_text,
+            document_text=document_text,
+        )
+        if plan is None:
+            self._set_status(f"Unknown agent: {agent_id}")
+            return
+
+        from quill.core.ai.agent_session import AgentContext
+
+        stop_event = __import__("threading").Event()
+        self._ai_agent_stop_event = stop_event
+
+        ctx = AgentContext(
+            plan=plan,
+            connection=conn,
+            api_key=api_key,
+            stop_event=stop_event,
+        )
+
+        profile_title = plan.profile.title
+        self._set_status(f"{profile_title}: generating...")
+
+        def _run() -> None:
+            import wx as _wx
+
+            from quill.core.ai.agent_session import AgentSessionError, run_agent
+
+            try:
+                agent_result = run_agent(ctx)
+            except AgentSessionError as exc:
+                _wx.CallAfter(self._set_status, f"{profile_title} failed: {exc}")
+                return
+            except Exception as exc:  # noqa: BLE001
+                _wx.CallAfter(self._set_status, f"{profile_title} error: {exc}")
+                return
+            _wx.CallAfter(self._show_agent_result, agent_result, profile_title)
+
+        threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: AI bg thread
+
+    def _show_agent_result(self, agent_result: object, title: str) -> None:
+        if agent_result.cancelled:
+            self._set_status(f"{title}: cancelled.")
+            return
+        if not agent_result.succeeded:
+            self._set_status(f"{title}: no output returned.")
+            return
+
+        from quill.ui.ai_agent_result_dialog import AIAgentResultDialog
+
+        dlg = AIAgentResultDialog(
+            self.frame,
+            result=agent_result,
+            title=f"{title} Result",
+            show_modal_dialog=self._show_modal_dialog,
+            on_insert_text=self._ai_insert_text,
+            on_replace_selection=self._ai_replace_selection,
+        )
+        dlg.show()
+        self._set_status(f"{title}: done.")
+
+    def open_ai_rewrite_selection(self) -> None:
+        self._run_agent_task("rewrite", selection_only=True)
+
+    def open_ai_summarize_selection(self) -> None:
+        self._run_agent_task("summarize", use_selection_as_source=True, selection_only=False)
+
+    def open_ai_expand_selection(self) -> None:
+        self._run_agent_task("expand", selection_only=True)
+
+    def open_ai_toc(self) -> None:
+        self._run_agent_task("toc", selection_only=False, use_selection_as_source=False)
+
+    # ------------------------------------------------------------------
+    # AI Thesaurus
+    # ------------------------------------------------------------------
+
+    def open_ai_thesaurus(self) -> None:
+        result = self._ai_require_connection()
+        if result is None:
+            return
+        conn, api_key = result
+
+        # Use selected word; if multi-word or empty, still pass through
+        selection = self._selected_text().strip()
+        # Grab context sentence: the line containing the selection
+        full_text = str(self.editor.GetValue())
+        context_sentence = ""
+        if selection and full_text:
+            pos = full_text.find(selection)
+            if pos >= 0:
+                start = full_text.rfind("\n", 0, pos) + 1
+                end_nl = full_text.find("\n", pos)
+                end = end_nl if end_nl >= 0 else len(full_text)
+                context_sentence = full_text[start:end].strip()
+
+        from quill.core.ai.thesaurus import get_synonyms
+        from quill.ui.ai_thesaurus_dialog import AIThesaurusDialog
+
+        def _lookup(word: str, ctx: str) -> list:
+            return get_synonyms(word, conn, api_key, context_sentence=ctx)
+
+        dlg = AIThesaurusDialog(
+            self.frame,
+            initial_word=selection,
+            context_sentence=context_sentence,
+            show_modal_dialog=self._show_modal_dialog,
+            on_lookup=_lookup,
+            on_replace=self._ai_replace_selection,
+        )
+        dlg.show()
 
     def open_ai_model_settings(self) -> None:
         # Combined AI Model & Connection — the model dialog hosts a button to the
@@ -19881,27 +20364,16 @@ class MainFrame(
         ).show()
 
     def open_ai_hub(self) -> None:
-        # The AI Hub is the single place to configure every provider (key, model,
-        # Test Chat, per-provider Forget) plus on-device model settings. It
-        # absorbed the former "AI Model and Connection" and "AI Connection"
-        # entries (AICONS-1).
-        dialog = AssistantConnectionDialog(
+        from quill.ui.ai_hub_dialog import AIHubDialog
+
+        dlg = AIHubDialog(
             self.frame,
-            open_model_settings=self.open_ai_model_settings,
+            show_modal_dialog=self._show_modal_dialog,
+            announce=self._set_status,
+            open_advanced_connection=self.open_ai_preferences,
         )
-        if dialog.show_modal():
-            self._set_ai_menu_status_badge(
-                dialog.last_verification_ok,
-                dialog.last_verification_message,
-            )
-            detail = self._compact_ai_status_detail(
-                self._plain_language_ai_status_detail(dialog.last_verification_message)
-            )
-            state = "Ready" if dialog.last_verification_ok else "Needs attention"
-            self._set_status(f"Updated AI Hub settings. {state}. {detail}")
-            self._request_menu_refresh()
-        else:
-            self._set_status("AI Hub closed")
+        dlg.show()
+        self._request_menu_refresh()
 
     def open_writing_assistant(self, initial_prompt: str = "") -> None:
         # H-SAFE-1: refuse to even open the AI dialog in safe mode. The
@@ -22719,13 +23191,51 @@ class MainFrame(
         return result == wx.ID_YES
 
     def show_startup_wizard_page(self) -> None:
-        from quill.ui.preview_dialog import MarkdownPreviewDialog
+        from quill.ui.info_pages import show_startup_wizard_page_native
 
-        MarkdownPreviewDialog(
-            self.frame,
-            "Startup Wizard",
-            self._build_startup_wizard_html(),
-        ).show()
+        done = "Done"
+        todo = "Not set up yet"
+        steps = [
+            (
+                "A quick word on privacy",
+                done if load_trust_consent_complete() else todo,
+                "How Quill looks after your writing and uses AI, in plain terms.",
+            ),
+            (
+                "How Quill starts",
+                done if load_onboarding_complete() else todo,
+                "Pick a starting setup that matches how you like to work.",
+            ),
+            (
+                "Writing help",
+                done if load_assistant_onboarding_complete() else todo,
+                "Turn on optional AI writing help and choose its style.",
+            ),
+            (
+                "Accessibility engine (GLOW)",
+                done if load_glow_onboarding_complete() else todo,
+                "GLOW is on by default; optional network features stay off until you turn them on.",
+            ),
+            (
+                "Speech and voices",
+                done if load_speech_onboarding_complete() else todo,
+                "Choose voices and download optional speech only if you want it.",
+            ),
+            (
+                "Speech model preferences",
+                done
+                if bool(getattr(self.settings, "bw_provider_id", ""))
+                and bool(getattr(self.settings, "bw_speech_model_id", ""))
+                else todo,
+                "Pick your preferred speech provider and voice model.",
+            ),
+            (
+                "Open a folder automatically",
+                done if load_watch_folder_onboarding_complete() else todo,
+                "Let Quill open files you drop into one folder for you.",
+            ),
+        ]
+        show_startup_wizard_page_native(self.frame, self._wx, steps, self._show_modal_dialog)
         self._set_status("Opened Startup Wizard overview")
 
     def _show_trust_consent_onboarding(self, force: bool) -> bool:
@@ -22755,83 +23265,6 @@ class MainFrame(
             mark_trust_consent_complete()
             return True
         return False
-
-    def _build_startup_wizard_html(self) -> str:
-        done = "Done"
-        todo = "Not set up yet"
-        setup_steps = [
-            (
-                "A quick word on privacy",
-                done if load_trust_consent_complete() else todo,
-                "How Quill looks after your writing and uses AI, in plain terms.",
-            ),
-            (
-                "How Quill starts",
-                done if load_onboarding_complete() else todo,
-                "Pick a starting setup that matches how you like to work.",
-            ),
-            (
-                "Writing help",
-                done if load_assistant_onboarding_complete() else todo,
-                "Turn on optional AI writing help and choose its style.",
-            ),
-            (
-                "Accessibility engine (GLOW)",
-                done if load_glow_onboarding_complete() else todo,
-                "GLOW is on by default and runs on your computer; optional network "
-                "features stay off until you turn them on.",
-            ),
-            (
-                "Speech and voices",
-                done if load_speech_onboarding_complete() else todo,
-                "Choose voices and download optional speech only if you want it.",
-            ),
-            (
-                "Speech model preferences",
-                (
-                    done
-                    if bool(getattr(self.settings, "bw_provider_id", ""))
-                    and bool(getattr(self.settings, "bw_speech_model_id", ""))
-                    else todo
-                ),
-                "Pick your preferred speech provider and voice model.",
-            ),
-            (
-                "Open a folder automatically",
-                done if load_watch_folder_onboarding_complete() else todo,
-                "Let Quill open files you drop into one folder for you.",
-            ),
-        ]
-        steps_html = "".join(
-            (
-                "<li>"
-                f"<strong>{html.escape(step)}</strong> &mdash; {html.escape(state)}. "
-                f"{html.escape(detail)}"
-                "</li>"
-            )
-            for step, state, detail in setup_steps
-        )
-
-        return (
-            "<h1 id='startup-wizard'>Startup Wizard</h1>"
-            "<p>Welcome to Quill &mdash; a fast, friendly writing app built to work "
-            "beautifully with your screen reader. This short setup gets things ready "
-            "the way you like. You can stop any time and come back later.</p>"
-            "<h2 id='what-youll-set-up'>What you'll set up</h2>"
-            "<p>Each step is optional and takes a moment. Here's what it gives you "
-            "and what you've finished so far:</p>"
-            f"<ul>{steps_html}</ul>"
-            "<h2 id='good-to-know'>Good to know</h2>"
-            "<ul>"
-            "<li>Everything works from the keyboard, and Quill tells you what just happened.</li>"
-            "<li>You can skip a step now and set it up later.</li>"
-            "<li>Nothing is downloaded until you say yes.</li>"
-            "<li>To start over, open Startup Wizard again from the Help menu.</li>"
-            "</ul>"
-            "<h2 id='where-next'>You're all set</h2>"
-            "<p>That's it &mdash; you're ready to write. To check on downloads, "
-            "speech, and what's turned on, open Help &gt; Status Page.</p>"
-        )
 
     def _show_bw_onboarding(self, force: bool) -> None:
         wx = self._wx

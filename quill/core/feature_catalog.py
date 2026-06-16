@@ -371,6 +371,18 @@ FEATURE_DEFINITIONS: dict[str, FeatureDefinition] = {
         privacy="network after confirmation",
         category="future",
     ),
+    "future.ai_menu_top_level": FeatureDefinition(
+        "future.ai_menu_top_level",
+        "AI Top-Level Menu",
+        description=(
+            "Promote the AI submenu from Tools > AI Assistant to a dedicated "
+            "top-level menu bar entry. Requires AI Assistance to be enabled."
+        ),
+        aliases=("ai top level menu", "ai menu top level"),
+        maturity="advanced",
+        category="future",
+        dependencies=("future.ai",),
+    ),
     "core.third_party_plugins": FeatureDefinition(
         "core.third_party_plugins",
         "Third-Party Plugins",

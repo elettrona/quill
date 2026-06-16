@@ -157,13 +157,19 @@ def resolve_prompt_text(
     style_id: str,
     *,
     custom_prompts: list[dict[str, str]] | None = None,
+    overrides: dict[str, str] | None = None,
     fallback: str = PROMPT_ACCESSIBILITY,
 ) -> str:
     """Return the prompt text for *style_id*, falling back gracefully.
 
-    Checks built-in prompts first, then custom prompts.  Returns *fallback*
-    (default: the accessibility prompt) when the style ID is not found.
+    Resolution order: user override -> built-in constant -> custom prompt ->
+    fallback.  Pass *overrides* (from settings.vision_builtin_overrides) so
+    that user-edited built-in text is used instead of the shipped default.
     """
+    if overrides:
+        user_text = overrides.get(style_id, "").strip()
+        if user_text:
+            return user_text
     builtin = BUILTIN_PROMPT_BY_ID.get(style_id)
     if builtin is not None:
         return builtin

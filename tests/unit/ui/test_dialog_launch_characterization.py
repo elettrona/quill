@@ -92,31 +92,26 @@ def test_open_user_guide_falls_back_to_welcome_when_file_missing(monkeypatch) ->
     assert frame._status[-1] == "User guide file not found; opened welcome guide instead."
 
 
-def test_show_startup_wizard_page_opens_preview_surface_and_announces(monkeypatch) -> None:
+def test_show_startup_wizard_page_opens_native_dialog_and_announces(monkeypatch) -> None:
     frame = _build_frame()
-    frame._build_startup_wizard_html = lambda: "<h1>Startup Wizard</h1>"
+    frame.settings = type("Settings", (), {"bw_provider_id": "", "bw_speech_model_id": ""})()
+    frame._wx = None  # not used when show_startup_wizard_page_native is monkeypatched
+    frame._show_modal_dialog = lambda *_a, **_kw: None  # type: ignore[method-assign]
 
-    constructed: list[tuple[object, str, str]] = []
-    shown: list[int] = []
+    calls: list[tuple] = []
 
-    class _FakePreview:
-        def __init__(self, parent, title, body_html) -> None:
-            constructed.append((parent, title, body_html))
+    import quill.ui.info_pages as info_pages_module
 
-        def show(self) -> None:
-            shown.append(1)
-
-    import quill.ui.preview_dialog as preview_dialog_module
-
-    monkeypatch.setattr(preview_dialog_module, "MarkdownPreviewDialog", _FakePreview)
+    monkeypatch.setattr(
+        info_pages_module,
+        "show_startup_wizard_page_native",
+        lambda parent, wx, steps, show_modal_dialog: calls.append((parent, steps)),
+    )
 
     frame.show_startup_wizard_page()
 
-    # The wizard renders through the sanctioned preview (web) surface, titled,
-    # shown once, and announced -- no document tab is opened for it.
-    assert len(constructed) == 1
-    assert constructed[0][1] == "Startup Wizard"
-    assert constructed[0][2] == "<h1>Startup Wizard</h1>"
-    assert shown == [1]
+    # Native dialog called once; no document tab opened; status announced.
+    assert len(calls) == 1
+    assert calls[0][0] is frame.frame
     assert frame._tabs == []
     assert frame._status[-1] == "Opened Startup Wizard overview"

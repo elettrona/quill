@@ -401,6 +401,9 @@ class ImageCaptureMixin:
         picker_enabled = current_settings.vision_prompt_picker_enabled
         disabled_builtins: list[str] = list(current_settings.vision_disabled_builtin_styles)
         custom_prompts: list[dict[str, str]] = list(current_settings.vision_custom_prompts)
+        builtin_overrides: dict[str, str] = dict(
+            getattr(current_settings, "vision_builtin_overrides", {})
+        )
 
         # --- Phase 3: opt-in pre-describe picker ---
         current_style_id = default_style_id
@@ -422,7 +425,9 @@ class ImageCaptureMixin:
         fallback_description: str | None = None
 
         while True:
-            active_prompt = resolve_prompt_text(current_style_id, custom_prompts=custom_prompts)
+            active_prompt = resolve_prompt_text(
+                current_style_id, custom_prompts=custom_prompts, overrides=builtin_overrides
+            )
 
             progress_state: dict[str, object] = {"done": False, "text": None, "error": None}
 

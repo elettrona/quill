@@ -62,13 +62,16 @@ version = "2.4.6"
     )
     assert manifest["version"] == "2.4.6"
     assert manifest["bundledPython"] is False
-    assert manifest["bundledTools"] == []
+    assert sorted(manifest["bundledTools"]) == [
+        "pandoc",
+        "speech/dectalk",
+        "speech/espeak-ng",
+        "speech/piper",
+    ]
     assert manifest["docs"] == [r"docs\userguide.md"]
     assert manifest["speechAssets"]["dectalk"]["downloadable"] is True
     assert manifest["speechAssets"]["espeak"]["downloadable"] is True
-    assert manifest["speechAssets"]["kokoro"]["downloadable"] is True
     assert manifest["speechAssets"]["piper"]["downloadable"] is True
-    assert manifest["speechAssets"]["openvoice"]["downloadable"] is True
 
     assert installer_script.exists()
     assert bundle["installer_script"] == str(installer_script)
@@ -112,13 +115,11 @@ def test_build_inno_setup_script_mentions_portable_bundle() -> None:
     assert 'Name: "speechdectalk\\voices\\wendy"; Description: "Wendy voice";' in script
     assert 'Name: "speechdectalk\\voices\\kit"; Description: "Kit voice";' in script
     assert 'Name: "speechespeak"; Description: "Install bundled eSpeak-NG runtime";' in script
-    assert 'Name: "speechkokoro"; Description: "Install bundled Kokoro voices/models";' in script
-    assert 'Name: "speechpiper"; Description: "Install bundled Piper voices/models";' in script
+    assert 'Name: "speechpiper"; Description: "Install bundled Piper neural TTS runtime";' in script
+    assert "speechkokoro" not in script
+    assert "speechopenvoice" not in script
     assert (
-        'Name: "speechopenvoice"; Description: "Install bundled OpenVoice voices/models";' in script
-    )
-    assert (
-        'Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\kokoro\\*,tools\\speech\\piper\\*,tools\\speech\\openvoice\\*,tools\\nodejs\\*,vendor\\braille-pack\\*"'
+        'Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\nodejs\\*,vendor\\braille-pack\\*"'
         in script
     )
     assert 'Source: "..\\portable\\tools\\pandoc\\*"; DestDir: "{app}\\tools\\pandoc";' in script
@@ -175,22 +176,12 @@ def test_build_inno_setup_script_mentions_portable_bundle() -> None:
         in script
     )
     assert (
-        'Source: "..\\portable\\tools\\speech\\kokoro\\*"; DestDir: "{app}\\tools\\speech\\kokoro";'
-        in script
-    )
-    assert (
         'Source: "..\\portable\\tools\\speech\\piper\\*"; DestDir: "{app}\\tools\\speech\\piper";'
-        in script
-    )
-    assert (
-        'Source: "..\\portable\\tools\\speech\\openvoice\\*"; DestDir: "{app}\\tools\\speech\\openvoice";'
         in script
     )
     assert "Components: speechdectalk" in script
     assert "Components: speechespeak" in script
-    assert "Components: speechkokoro" in script
     assert "Components: speechpiper" in script
-    assert "Components: speechopenvoice" in script
     assert "User Guide" in script
     assert "userguide.html" in script
     assert "python\\pythonw.exe" in script
@@ -299,8 +290,9 @@ version = "3.0.0"
     manifest = json.loads(
         (tmp_path / "dist" / "portable" / "manifest.json").read_text(encoding="utf-8")
     )
-    assert manifest["bundledTools"] == ["pandoc"]
-    assert manifest["speechAssets"]["dectalk"]["bundled"] is False
+    assert "pandoc" in manifest["bundledTools"]
+    assert "speech/piper" in manifest["bundledTools"]
+    assert manifest["speechAssets"]["dectalk"]["bundled"] is True
     assert (tmp_path / "dist" / "portable" / "tools" / "pandoc" / "pandoc.exe").exists()
     assert bundle["portable_dir"] == str(tmp_path / "dist" / "portable")
 

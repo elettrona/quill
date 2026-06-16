@@ -1,4 +1,4 @@
-<h1 id="quill-060-release-notes">QUILL 0.6.0 Release Notes</h1>
+<h1 id="quill-0.6.0-release-notes">QUILL 0.6.0 Release Notes</h1>
 <p>QUILL 0.6.0 is a major step forward for screen-reader-first writing,
 editing, automation, braille, code review, and extension-powered
 workflows.</p>
@@ -63,7 +63,7 @@ in narrower encodings without silent data loss.</li>
 heading structure when the source contains structure.</li>
 <li><strong>Citation insertion</strong> formats MLA 9, Chicago 17, and
 APA 7 citations from a simple labelled form.</li>
-<li><strong>The Snippet Gallery</strong> (Insert &gt; Snippet Gallery...
+<li><strong>The Snippet Gallery</strong> (Insert &gt; Snippet Gallery…
 or QUILL key, Shift+G) collects parameterized templates from all enabled
 Quillins into one browseable picker. Smart Insert ships three built-in
 entries.</li>
@@ -207,7 +207,7 @@ to Writer adds abbreviation tools, snippet packs, sticky notes, the
 Insert menu tools, and the word-count status cell. Switching to Braille
 Professional adds the Braille menu. Switching to Developer adds
 everything else.</p>
-<p>This is what "meeting people where they are" means in practice: start
+<p>This is what “meeting people where they are” means in practice: start
 with what you need, discover the rest when you are ready, and never feel
 lost in a cockpit before you learn to fly.</p>
 <h3 id="the-altshiftp-profile-switcher">The Alt+Shift+P profile
@@ -215,7 +215,7 @@ switcher</h3>
 <p>Press <strong>Alt+Shift+P</strong> at any time to open the quick
 profile switcher. A list of all profiles is shown on the left. As you
 arrow through them, a large read-only description pane on the right
-shows the same plain-English "what you get" text as the wizard. Choose a
+shows the same plain-English “what you get” text as the wizard. Choose a
 profile and press Enter to switch. The menus, palette, and status bar
 update immediately.</p>
 <p>Custom profiles you create in Help &gt; Preferences &gt; Profiles and
@@ -225,7 +225,7 @@ you created them.</p>
 <p>The Profiles and Features dialog (reachable from the Help menu and
 from Preferences) lets you create custom profiles based on any built-in
 starting point. The description field is now a full multi-line editor.
-Write the same kind of plain-English "what you get" summary that the
+Write the same kind of plain-English “what you get” summary that the
 built-in profiles show - it will appear in the Alt+Shift+P switcher
 description pane so you and others can read it before switching.</p>
 <h3 id="preferences-stay-simple-too">Preferences stay simple too</h3>
@@ -248,7 +248,7 @@ feature also enables what it depends on; disabling one turns off the
 features that depend on it.</p>
 <p>The dialog now has a <strong>Show</strong> radio button at the top
 with two choices: <strong>All features</strong> and <strong>Disabled
-features only</strong>. Arrow to "Disabled features only" and the list
+features only</strong>. Arrow to “Disabled features only” and the list
 immediately filters down to just the features that are not currently on.
 You can then tab through that shorter list and turn on exactly what you
 want, one checkbox at a time, without scrolling past everything that is
@@ -278,10 +278,10 @@ abbreviations:</p>
 <li><strong>qbug</strong> inserts a complete bug-report template with
 Title, Build, Screen reader, Windows version, Steps to reproduce,
 Expected result, Actual result, and Notes.</li>
-<li><strong>qmeet</strong> inserts a meeting-notes template with today's
+<li><strong>qmeet</strong> inserts a meeting-notes template with today’s
 date already filled in, plus Attendees, Purpose, Notes, and Action
 Items.</li>
-<li><strong>qlog</strong> inserts today's date and time for a quick
+<li><strong>qlog</strong> inserts today’s date and time for a quick
 timestamped entry.</li>
 <li><strong>qtodo</strong> inserts a short three-item to-do checklist
 ready to fill in.</li>
@@ -409,6 +409,10 @@ events</h3>
 automatically when important moments occur.</p>
 <p>QUILL 0.6.0 supports fourteen events:</p>
 <table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
 <thead>
 <tr>
 <th>Event</th>
@@ -499,7 +503,7 @@ than failing later at runtime.</p>
 <h3 id="status-bar-contributions">Status-bar contributions</h3>
 <p>Quillins can add live cells to the QUILL status bar. A cell has a
 handler that QUILL calls on demand, such as after save, on tab switch,
-or on a timer. The handler's return value becomes the cell text.</p>
+or on a timer. The handler’s return value becomes the cell text.</p>
 <p>Example manifest contribution:</p>
 <div class="sourceCode" id="cb2"><pre
 class="sourceCode json"><code class="sourceCode json"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;status_bar&quot;</span><span class="er">:</span> <span class="ot">[</span></span>
@@ -561,7 +565,7 @@ description appears in the keyboard reference and command palette as a
 one-line explanation that is separate from the menu title.</p>
 <div class="sourceCode" id="cb6"><pre
 class="sourceCode json"><code class="sourceCode json"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;description&quot;</span><span class="er">:</span> <span class="st">&quot;Inserts a bug report skeleton with title, steps, expected, and actual fields.&quot;</span></span></code></pre></div>
-<h3 id="developer-logging-with-apilog">Developer logging with
+<h3 id="developer-logging-with-api.log">Developer logging with
 <code>api.log()</code></h3>
 <p>Quillins with the <code>ui.log</code> capability can call
 <code>api.log(message)</code> to write structured log lines to the QUILL
@@ -579,7 +583,7 @@ keyword argument.</p>
 class="sourceCode python"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>api.announce(<span class="st">&quot;Saved.&quot;</span>, priority<span class="op">=</span><span class="st">&quot;quiet&quot;</span>)</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>api.announce(<span class="st">&quot;File not writable.&quot;</span>, priority<span class="op">=</span><span class="st">&quot;urgent&quot;</span>)</span></code></pre></div>
 <p>Valid values are <code>quiet</code>, <code>normal</code>, and
-<code>urgent</code>. The host maps those values to the screen reader's
+<code>urgent</code>. The host maps those values to the screen reader’s
 urgency channel. Use <code>quiet</code> for informational messages and
 <code>urgent</code> only for errors that need immediate attention.</p>
 <h3 id="quillin-scaffold-tool">Quillin scaffold tool</h3>
@@ -649,7 +653,7 @@ events, status bar, and developer log.</p>
 <p>Each document event subscription includes an
 <code>enabled_by_default</code> field. If it is false, the event starts
 inactive. Users can change this any time from Quillins Manager: select
-the Quillin and choose <strong>Configure Events...</strong> to see each
+the Quillin and choose <strong>Configure Events…</strong> to see each
 event subscription with a checkbox. Turning an event off stops the
 handler from firing; turning it back on resumes it. Per-event state is
 persisted in <code>state.json</code> alongside enable/disable and
@@ -726,7 +730,7 @@ logging, <code>quillin.enabled</code>, <code>quillin.disabled</code>,
 priority. Its categories are <code>writing</code>,
 <code>productivity</code>, and <code>accessibility</code>.</li>
 </ul>
-<h3 id="whats-new-in-the-quillin-platform">What's new in the Quillin
+<h3 id="whats-new-in-the-quillin-platform">What’s new in the Quillin
 platform</h3>
 <ul>
 <li><strong>Timer events (schedule)</strong> — a Quillin can now
@@ -736,12 +740,12 @@ Scribe uses this to refresh its word-count cell every 5 minutes without
 a user action.</li>
 <li><strong>File-type contributions (file_types)</strong> — a Quillin
 can declare which file extensions it handles. When a matching file
-opens, the Quillin's handler fires automatically. BRF Tools announces
+opens, the Quillin’s handler fires automatically. BRF Tools announces
 the braille page count when a <code>.brf</code> or <code>.brl</code>
 file opens.</li>
 <li><strong>Snippet gallery (snippet_gallery)</strong> — a Quillin can
 contribute named, parameterized templates to a browseable gallery. Open
-it from <strong>Insert → Snippet Gallery...</strong>, pick a template,
+it from <strong>Insert → Snippet Gallery…</strong>, pick a template,
 fill in any prompts, and the text lands at the cursor. Smart Insert
 ships three built-in gallery snippets: a report header, a meeting
 invite, and a Markdown bug report.</li>
@@ -767,7 +771,7 @@ Mode: professional braille editing inside QUILL</h2>
 <ul>
 <li>During the startup wizard, choose the <strong>Braille
 Professional</strong> profile.</li>
-<li>At any time, open <strong>Help &gt; Enable Braille Mode...</strong>
+<li>At any time, open <strong>Help &gt; Enable Braille Mode…</strong>
 This shows a brief description of what you get and lets you enable it
 with one keypress. The menu item only appears when Braille Mode is off;
 once you enable it the Braille menu appears instead.</li>
@@ -792,7 +796,7 @@ files</h3>
 <p>Open a braille file the same way you open any other file. QUILL reads
 it as braille text and scans it for any character that is not braille
 ASCII. Nothing is transformed on the way in; the document reflects the
-file's bytes.</p>
+file’s bytes.</p>
 <p>Saving is byte-for-byte. QUILL does not trim trailing spaces,
 normalize line endings, or remove form feeds. Hard page breaks are
 preserved. If the text contains characters outside the braille-ASCII
@@ -825,7 +829,7 @@ you are.</li>
 </ul>
 <p><strong>Navigation</strong> includes:</p>
 <ul>
-<li>Go to Braille Page..., where you type a page number.</li>
+<li>Go to Braille Page…, where you type a page number.</li>
 <li>Next Braille Page.</li>
 <li>Previous Braille Page.</li>
 </ul>
@@ -868,7 +872,7 @@ three sections.</p>
 </ul>
 <p>These use the traditional North American English tables.</p>
 <p><strong>More Languages</strong> is populated automatically from the
-pack's profile catalog. It includes German, French, Spanish, Russian,
+pack’s profile catalog. It includes German, French, Spanish, Russian,
 Korean, and dozens more. Languages with both contracted and uncontracted
 variants appear as their own sub-group.</p>
 <p>When the pack is absent, the Translation submenu is hidden entirely;
@@ -948,12 +952,12 @@ so you receive instant audio confirmation that the prefix is live
 without waiting for speech.</p>
 <p>This earcon is included in all bundled sound packs and can be toggled
 individually in <strong>Tools -&gt; Reading &amp; Dictation -&gt; Sound
-Events...</strong>.</p>
+Events…</strong>.</p>
 <h3 id="per-event-control">Per-event control</h3>
 <p>Open <strong>Tools -&gt; Reading &amp; Dictation -&gt; Sound
-Events...</strong> to switch individual sound events on or off. Events
-are grouped into Earcons, Compare, and Indentation tones, so you can
-keep the cues you like and silence the rest.</p>
+Events…</strong> to switch individual sound events on or off. Events are
+grouped into Earcons, Compare, and Indentation tones, so you can keep
+the cues you like and silence the rest.</p>
 <p><strong>Toggle Sound Notifications</strong> turns all sound
 notifications on or off at once and plays a short on or off cue so you
 know where you landed.</p>
@@ -1006,8 +1010,8 @@ or numeric entities such as <code>&amp;#233;</code> when no named entity
 exists. Ordinary text and existing markup are left alone.</p>
 <p>This is the reliable command when you need to feed text to a tool,
 such as Pandoc, that refuses high characters.</p>
-<h3 id="re-encode-as">Re-encode As...</h3>
-<p><strong>Re-encode As...</strong> saves a copy in the encoding you
+<h3 id="re-encode-as">Re-encode As…</h3>
+<p><strong>Re-encode As…</strong> saves a copy in the encoding you
 choose:</p>
 <ul>
 <li>UTF-8.</li>
@@ -1023,14 +1027,14 @@ Nothing is quietly lost.</p>
 <h2 id="save-as-word-or-rtf">Save as Word or RTF</h2>
 <p>QUILL can now hand your work over as a Word document or rich text
 file.</p>
-<p>Choose <strong>File -&gt; Save As...</strong>, then select
-<strong>Word Document (<code>*.docx</code>)</strong> or <strong>Rich
-Text</strong> from the type list. QUILL converts the document on the way
-out, avoiding the copy-paste-into-Word routine.</p>
+<p>Choose <strong>File -&gt; Save As…</strong>, then select <strong>Word
+Document (<code>*.docx</code>)</strong> or <strong>Rich Text</strong>
+from the type list. QUILL converts the document on the way out, avoiding
+the copy-paste-into-Word routine.</p>
 <p>The conversion is handled through Pandoc with real Word styles. If
 your source has headings, those become actual Word headings, not bold
 text that merely looks like a heading. That keeps the exported file
-navigable for the next person's screen reader.</p>
+navigable for the next person’s screen reader.</p>
 <p>The result reflects the structure of the source. A richly formatted
 Markdown or HTML document exports with that structure. A plain-text file
 exports as a tidy but unadorned document because there was no structure
@@ -1038,8 +1042,8 @@ to carry. QUILL tells you that instead of quietly flattening your
 work.</p>
 <hr />
 <h2 id="citations-without-the-tears">Citations without the tears</h2>
-<p><strong>Insert -&gt; Insert Citation...</strong> opens a plain
-labelled form for creating citations.</p>
+<p><strong>Insert -&gt; Insert Citation…</strong> opens a plain labelled
+form for creating citations.</p>
 <p>You choose:</p>
 <ul>
 <li>Source type: book, journal article, or website.</li>
@@ -1057,7 +1061,7 @@ get wrong.</p>
 Gallery: parameterized templates in one place</h2>
 <p>The Snippet Gallery collects reusable, fill-in-the-blank templates
 contributed by Quillins into a single browseable picker. Open it from
-<strong>Insert &gt; Snippet Gallery...</strong> or press <strong>QUILL
+<strong>Insert &gt; Snippet Gallery…</strong> or press <strong>QUILL
 key, Shift+G</strong>.</p>
 <p>A gallery dialog opens showing every available snippet, grouped by
 Quillin. Select one, read the preview, and press
@@ -1108,7 +1112,7 @@ use case, such as:</p>
 setting, Describe Image behaves exactly as before. The default IDT style
 is applied silently with no extra clicks.</li>
 <li><strong>Try a different prompt.</strong> After a description
-arrives, a <strong>Try a different prompt...</strong> button appears in
+arrives, a <strong>Try a different prompt…</strong> button appears in
 the review dialog. One click re-runs the description with the next style
 in the list. No re-uploading, no dialog re-opening, and no extra
 navigation.</li>
@@ -1118,8 +1122,8 @@ style before describing an image. Once enabled, QUILL shows a focused
 keyboard-navigable list of the twelve styles before every
 description.</li>
 <li><strong>Manage Image Prompts dialog.</strong> Open <strong>AI Hub
--&gt; Image Prompt Styles...</strong> to review all built-in styles with
-a read-only preview pane, toggle styles on or off, set the default, and
+-&gt; Image Prompt Styles…</strong> to review all built-in styles with a
+read-only preview pane, toggle styles on or off, set the default, and
 add custom prompts. Built-in styles are immutable; custom prompts are
 additive.</li>
 <li><strong>Settings sync immediately.</strong> A bug where AI Hub
@@ -1127,8 +1131,9 @@ changes to vision settings, including picker toggle and default style,
 did not apply until restart. That is fixed. Changes apply as soon as you
 save.</li>
 </ul>
-<p>Kelly's Image Description Toolkit is worth bookmarking: <a
-href="https://github.com/kellylford/Image-Description-Toolkit">https://github.com/kellylford/Image-Description-Toolkit</a>.</p>
+<p>Kelly’s Image Description Toolkit is worth bookmarking: <a
+href="https://github.com/kellylford/Image-Description-Toolkit"
+class="uri">https://github.com/kellylford/Image-Description-Toolkit</a>.</p>
 <p>Kelly also maintains several screen-reader-friendly applications:</p>
 <ul>
 <li><a href="https://github.com/kellylford/QuickMail">QuickMail</a>, an
@@ -1141,6 +1146,234 @@ GitHub Copilot Chat viewer.</li>
 <p>Thank you, Kelly, for work that consistently puts screen-reader users
 first.</p>
 <hr />
+<h2 id="ai-writing-assistant-a-complete-toolkit">AI Writing Assistant: a
+complete toolkit</h2>
+<p>QUILL 0.6.0 ships a full AI writing-assistant layer. Every feature in
+this layer is optional, works with multiple providers, runs entirely on
+your terms, and is designed so screen-reader users can operate it
+without a mouse.</p>
+<h3 id="provider-setup-ai-hub">Provider setup: AI Hub</h3>
+<p><strong>Tools &gt; AI Hub</strong> (or <strong>AI &gt; AI
+Hub…</strong>) opens a five-tab settings dialog that replaces the old
+single-screen AI Connection dialog.</p>
+<ul>
+<li><strong>Provider tab.</strong> Choose your AI provider: Anthropic
+Claude, OpenAI, Google Gemini, OpenRouter (access to many models through
+one key), or Ollama (on-device or self-hosted). Enter your API key once;
+it is stored in the Windows Credential Manager and never written to
+disk. Choose a model, set a custom host for self-hosted deployments, and
+use Test Connection to verify the key and model before leaving the
+dialog.</li>
+<li><strong>On-Device tab.</strong> If you want AI with no cloud traffic
+at all, point Ollama at a local URL. The tab lists recommended models
+with size and capability notes so you can choose what fits your
+hardware.</li>
+<li><strong>Audio Services tab.</strong> Enter a Deepgram API key for
+transcription and set the maximum number of simultaneous speakers the
+transcription engine should track.</li>
+<li><strong>Instructions tab.</strong> Edit or replace the built-in
+system prompt for any of the twelve AI tasks. See “Custom Instructions”
+below.</li>
+<li><strong>Advanced tab.</strong> View the consent text you agreed to
+at setup, reset AI settings, and read a note about Safe Mode.</li>
+</ul>
+<h3 id="grammar-and-spell-checking-with-ai">Grammar and spell checking
+with AI</h3>
+<p><strong>Tools &gt; Check Grammar with AI</strong> sends the document
+or selection to your configured AI and returns a structured list of
+grammar issues, each with the original phrasing, a suggested fix, and an
+explanation. A result dialog presents them as a navigable list. Apply a
+fix to jump to the location and insert the correction; skip any item you
+want to keep.</p>
+<p><strong>Tools &gt; Check Spelling with AI</strong> works the same way
+for spelling. The AI model returns suggestions with context, making it
+useful for technical documents where a traditional word-list checker
+produces false positives.</p>
+<p>Both checkers fall back gracefully: if AI is not configured, QUILL
+uses the built-in lexical spell checker.</p>
+<h3 id="rewrite-summarize-expand-and-table-of-contents">Rewrite,
+Summarize, Expand, and Table of Contents</h3>
+<p>Four agentic writing tasks operate on your document text and return
+results through a shared result dialog.</p>
+<ul>
+<li><strong>AI &gt; Rewrite Selection</strong> (or the full document if
+nothing is selected) rewrites the text for clarity and flow, preserving
+meaning and adjusting register.</li>
+<li><strong>AI &gt; Summarize Selection</strong> condenses the selected
+text or document into a tight summary.</li>
+<li><strong>AI &gt; Expand Selection</strong> develops the selected text
+into fuller, well-structured prose.</li>
+<li><strong>AI &gt; Generate Table of Contents</strong> analyses the
+document structure and produces a hierarchical TOC that you can insert
+at the cursor.</li>
+</ul>
+<p>All four commands open a two-part result dialog: a step log at the
+top (showing what the agent did and any intermediate output) and the
+final output in a large read-only text area below. From the dialog you
+can insert the output at the cursor, replace the selection, copy to the
+clipboard, or re-run the task. Every agent run starts on a background
+thread; a stop event lets you cancel between steps.</p>
+<h3 id="ai-thesaurus">AI Thesaurus</h3>
+<p><strong>Shift+F8</strong> opens the AI Thesaurus. Type a word or use
+the word already under your cursor; the dialog sends the word and its
+surrounding sentence to your AI provider and returns a list of synonyms,
+each with a usage note explaining the register, connotation, or context.
+Arrow through the list, press Enter or the Replace Word button to
+substitute the word in your document, or copy a synonym to the
+clipboard. Double-clicking a synonym replaces it immediately and closes
+the dialog.</p>
+<p>The context sentence is extracted automatically from the line where
+your cursor rests, giving the AI enough context to distinguish between,
+for example, “bank” (financial) and “bank” (river).</p>
+<h3 id="document-qa">Document Q&amp;A</h3>
+<p><strong>AI &gt; Document Q&amp;A</strong> opens a multi-turn
+question-and-answer session grounded in your open document. Ask
+questions; QUILL sends the document text and your question to the AI and
+streams an answer into the conversation pane. The pane is a
+screen-reader-navigable document: each question and answer is a separate
+section you can jump to by heading. Continue asking follow-up questions;
+the session retains context for the duration of the dialog.</p>
+<p>Document Q&amp;A works on any document up to approximately 80,000
+tokens. For longer documents, QUILL trims from the middle to keep the
+beginning and end within the model’s context window.</p>
+<h3 id="translation">Translation</h3>
+<p><strong>AI &gt; Translate Document</strong> or <strong>AI &gt;
+Translate Selection</strong> sends the text to your configured AI and
+returns a translation into a language you choose. A picker shows the
+available target languages; the list adjusts based on your provider. The
+translated text arrives in a result dialog from which you can insert it,
+replace the selection, or copy it. On-device translation through
+LibreTranslate is also available when no cloud AI is configured.</p>
+<h3 id="read-aloud-with-ai-voice">Read Aloud with AI Voice</h3>
+<p><strong>Tools &gt; Read Aloud &gt; Read with AI Voice</strong> sends
+the selected text to the OpenAI TTS API and plays the audio through the
+system audio output. Choose from six voices in <strong>AI &gt; AI Hub
+&gt; Audio Services</strong>. The playback can be stopped at any time.
+You can also export to an MP3 file from the Read Aloud menu for offline
+listening.</p>
+<h3 id="custom-instructions">Custom Instructions</h3>
+<p>The Instructions tab of AI Hub lets you replace or supplement the
+built-in system prompt for any of QUILL’s twelve AI tasks. Every task
+ships with a carefully written default; you can edit the user prompt to
+change tone, language, output format, or any other behaviour. Tasks with
+a custom prompt show a small asterisk in the task list so you always
+know what you have changed.</p>
+<p>The twelve tasks you can customise are: Chat, Spell Check, Grammar
+Check, Rewrite, Summarize, Expand, Table of Contents, Translate,
+Thesaurus, Document Q&amp;A, Research, and Accessibility Agent.</p>
+<p>Your customisations are stored in
+<code>%APPDATA%\Quill\ai_custom_instructions.json</code>. The file
+stores only the fields you have changed; the built-in defaults always
+live in the application code. This means that when QUILL updates a
+default in a future release, you automatically pick up the improved
+version unless you have already customised that task.</p>
+<p>To share a custom instruction set, copy the JSON file to another
+machine or user account.</p>
+<p>To reset a single task to its default, select it in the Instructions
+tab and press Reset to Default. Your user prompt is cleared; the
+built-in default takes effect immediately.</p>
+<h3 id="prompt-caching-lower-cost-same-quality">Prompt caching: lower
+cost, same quality</h3>
+<p>Custom instructions are sent as a separate system message, not merged
+into the document text. This lets AI providers cache the stable
+instruction prefix across requests so you are not billed for re-sending
+the same text on every call.</p>
+<ul>
+<li><strong>Anthropic Claude.</strong> QUILL marks the system message
+with <code>cache_control: ephemeral</code> and sends the
+<code>anthropic-beta: prompt-caching-2024-07-31</code> header. Claude
+caches the prefix for five minutes at approximately 10% of the normal
+input token rate.</li>
+<li><strong>OpenAI.</strong> Caching is fully automatic. OpenAI caches
+prompt prefixes over 1024 tokens at approximately 50% of the normal
+input rate. Because the system message is always the same stable text,
+it qualifies for caching whenever the threshold is met.</li>
+<li><strong>Ollama.</strong> Caching is handled internally by the model
+server. No configuration is needed.</li>
+<li><strong>Gemini.</strong> System instructions are sent in the
+dedicated <code>systemInstruction</code> field.</li>
+</ul>
+<p>No configuration is needed. The caching path is active whenever at
+least one custom instruction is enabled.</p>
+<h3 id="ai-shortcuts-at-a-glance">AI shortcuts at a glance</h3>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Shortcut</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ask Quill chat</td>
+<td>Alt+Q</td>
+</tr>
+<tr>
+<td>AI Thesaurus</td>
+<td>Shift+F8</td>
+</tr>
+<tr>
+<td>Check Grammar with AI</td>
+<td>Tools &gt; Check Grammar with AI</td>
+</tr>
+<tr>
+<td>Check Spelling with AI</td>
+<td>Tools &gt; Check Spelling with AI</td>
+</tr>
+<tr>
+<td>Rewrite Selection</td>
+<td>AI &gt; Rewrite Selection</td>
+</tr>
+<tr>
+<td>Summarize Selection</td>
+<td>AI &gt; Summarize Selection</td>
+</tr>
+<tr>
+<td>Expand Selection</td>
+<td>AI &gt; Expand Selection</td>
+</tr>
+<tr>
+<td>Generate Table of Contents</td>
+<td>AI &gt; Generate Table of Contents</td>
+</tr>
+<tr>
+<td>Document Q&amp;A</td>
+<td>AI &gt; Document Q&amp;A</td>
+</tr>
+<tr>
+<td>Translate</td>
+<td>AI &gt; Translate</td>
+</tr>
+<tr>
+<td>Read with AI Voice</td>
+<td>Tools &gt; Read Aloud &gt; Read with AI Voice</td>
+</tr>
+<tr>
+<td>AI Hub</td>
+<td>AI &gt; AI Hub…</td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-data-leaves-your-machine">What data leaves your
+machine</h3>
+<p>Every AI feature that sends text to a cloud provider shows this in
+the consent text you agreed to at setup. The full table is in the user
+guide under AI Privacy Reference. In summary:</p>
+<ul>
+<li>Grammar check, spell check, rewrite, summarize, expand, TOC,
+thesaurus, Document Q&amp;A, and translation all send the relevant
+document text or selection to your configured AI provider.</li>
+<li>On-device Ollama sends no data outside your machine.</li>
+<li>AI voice synthesis through OpenAI TTS sends the selected text to
+OpenAI.</li>
+<li>Audio transcription through Deepgram sends audio to Deepgram’s
+servers.</li>
+<li>Custom instructions are stored locally and are never sent to any
+provider.</li>
+</ul>
+<p>If you prefer not to send document content to a cloud provider, use
+Ollama on-device and a local Deepgram alternative for transcription.</p>
+<hr />
 <h2 id="dynamic-keyboard-reference">Dynamic Keyboard Reference</h2>
 <p>The keyboard reference is no longer a static document. It is
 generated live from the active command registry and your current feature
@@ -1150,7 +1383,7 @@ profile.</p>
 <li>Reflects your actual setup. If you rebind a key or switch to a
 different keyboard pack, the exported HTML reference updates to show
 exactly what is bound.</li>
-<li>Documents QUILL's layered keyboard model, including QUILL key prefix
+<li>Documents QUILL’s layered keyboard model, including QUILL key prefix
 chords and dedicated browse-mode, also called Quick Nav, shortcuts.</li>
 <li>Exports as clean semantic HTML designed for high-performance
 screen-reader review.</li>
@@ -1181,7 +1414,7 @@ position from one argument, which is useful when a linter or search
 result provides a <code>file:line:column</code> string.</p></li>
 <li><p><code>--diff LEFT RIGHT</code> opens two files directly into
 Compare Mode.</p></li>
-<li><p><strong>Help -&gt; Report a Bug...</strong> now opens focused on
+<li><p><strong>Help -&gt; Report a Bug…</strong> now opens focused on
 the Summary field, remembers your name and email after the first entry,
 and asks which screen reader you use. QUILL preselects the screen reader
 it detects so the team can reproduce reader-specific issues.</p></li>
@@ -1214,7 +1447,7 @@ announces Preferences labels correctly (issue #249)</h3>
 <p>In previous builds, tabbing through General Preferences with JAWS
 announced combo box and spin field values but not their labels. The
 cause was Z-order: on Windows, JAWS finds the accessible name for a
-combo box or text field by looking backward through the parent window's
+combo box or text field by looking backward through the parent window’s
 child list for the nearest <code>StaticText</code>. Child windows are
 ordered by creation time, and the code was creating controls before
 calling a helper that internally creates the <code>StaticText</code>
@@ -1250,7 +1483,7 @@ to close it.</p>
 <h3 id="first-run-is-more-reliable">First run is more reliable</h3>
 <p>The first window now comes to the foreground so the trust and privacy
 dialog is reachable. If you skipped the personalization wizard, you can
-re-open it later. The wizard's startup beep and Cancel-button focus are
+re-open it later. The wizard’s startup beep and Cancel-button focus are
 fixed.</p>
 <h3 id="personalize-quill-wizard-is-cleaner">Personalize Quill wizard is
 cleaner</h3>
@@ -1307,7 +1540,7 @@ menu:</p>
 <ul>
 <li><strong>UEB</strong>.</li>
 <li><strong>Standard American English (Legacy)</strong>.</li>
-<li><strong>More Languages</strong>, built from the installed pack's
+<li><strong>More Languages</strong>, built from the installed pack’s
 profiles.</li>
 </ul>
 <p>If you used to reach a translation item by position, check the new
@@ -1336,8 +1569,8 @@ command instead.</p>
 <h3 id="insert-date-and-time-is-now-a-submenu">Insert Date and Time is
 now a submenu</h3>
 <p>The old flat <strong>Date and Time</strong> and <strong>Calculated
-Date...</strong> items have been replaced by one <strong>Insert -&gt;
-Date and Time</strong> submenu.</p>
+Date…</strong> items have been replaced by one <strong>Insert -&gt; Date
+and Time</strong> submenu.</p>
 <p>That submenu includes:</p>
 <ul>
 <li>Insert Date.</li>
@@ -1352,7 +1585,7 @@ Quillins.</p>
 <p>Most earcons are off until you choose a sound pack and enable events.
 Existing setups should not get noisier on upgrade. Turn sound on from
 <strong>Preferences -&gt; Sound</strong> and <strong>Tools -&gt; Reading
-&amp; Dictation -&gt; Sound Events...</strong>.</p>
+&amp; Dictation -&gt; Sound Events…</strong>.</p>
 <h3 id="indentation-tones-default-to-off">Indentation tones default to
 Off</h3>
 <p>Indentation tones do not play until you pick a scale. Code files

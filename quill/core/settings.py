@@ -211,6 +211,7 @@ class Settings:
     vision_prompt_picker_enabled: bool = False
     vision_disabled_builtin_styles: list[str] = field(default_factory=list)
     vision_custom_prompts: list[dict[str, Any]] = field(default_factory=list)
+    vision_builtin_overrides: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Settings:
@@ -564,6 +565,16 @@ class Settings:
             if isinstance(vision_custom_prompts_raw, list)
             else []
         )
+        vision_builtin_overrides_raw = data.get("vision_builtin_overrides")
+        vision_builtin_overrides: dict[str, str] = (
+            {
+                k: str(v)
+                for k, v in vision_builtin_overrides_raw.items()
+                if isinstance(k, str) and isinstance(v, str) and v.strip()
+            }
+            if isinstance(vision_builtin_overrides_raw, dict)
+            else {}
+        )
         if vision_default_prompt_style not in BUILTIN_STYLE_IDS and not any(
             e.get("id") == vision_default_prompt_style for e in vision_custom_prompts
         ):
@@ -735,6 +746,7 @@ class Settings:
             vision_prompt_picker_enabled=vision_prompt_picker_enabled,
             vision_disabled_builtin_styles=vision_disabled_builtin_styles,
             vision_custom_prompts=vision_custom_prompts,
+            vision_builtin_overrides=vision_builtin_overrides,
         )
 
 

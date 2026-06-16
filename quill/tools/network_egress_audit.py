@@ -148,6 +148,31 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "in the unified Read Aloud dialog. Fetches model and voices files from GitHub "
         "releases over HTTPS; no silent background download."
     ),
+    "core/ai/tts.py::request_speech": (
+        "OpenAI TTS speech synthesis. Triggered only by an explicit user action: "
+        "AI > Read Selection Aloud or AI > Read Document Aloud. The user must have "
+        "configured an OpenAI-compatible provider and API key in AI Hub. Request is "
+        "HTTPS-only (TTS_ENDPOINT is a hardcoded openai.com URL); no silent background calls."
+    ),
+    "core/ai/transcription.py::_post_audio": (
+        "OpenAI Whisper audio transcription/translation. Triggered only by an explicit "
+        "user action: AI > Transcribe Audio File or AI > Translate Audio File. The user "
+        "must have configured an OpenAI API key; the file is chosen interactively by the "
+        "user in AITranscribeDialog. HTTPS with a verified TLS context; 25 MB size guard."
+    ),
+    "core/ai/diarization.py::_diarize_deepgram": (
+        "Deepgram Nova-3 speaker diarization. Triggered only when the user explicitly "
+        "enables speaker diarization in AITranscribeDialog and invokes the transcription "
+        "action. A Deepgram API key is required. HTTPS with a verified TLS context; "
+        "no silent background calls."
+    ),
+    "core/ai/translation.py::_translate_libretranslate": (
+        "LibreTranslate local/self-hosted translation. Triggered only when the user "
+        "explicitly selects LibreTranslate as the provider in AI Hub Translation settings "
+        "and invokes an AI > Translate command. Default URL is localhost:5000; the user "
+        "must configure an external URL to make this a remote call, so consent is "
+        "embedded in the provider configuration UI."
+    ),
 }
 
 
