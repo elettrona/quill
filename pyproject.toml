@@ -47,7 +47,7 @@ ui = [
     # in memory before being sent to the vision API.
     "pillow-heif>=0.13.0",
     # HTML-to-text converter for intelligent paste cleaning (AccessibleApps, MIT).
-    "html_to_text>=0.1.0",
+    "html_to_text>=1.0.0",
 ]
 spellcheck = ["pyenchant>=3.3.0"]
 # Cross-platform earcon audio via BASS (Un4seen). Enables true mixing so multiple
