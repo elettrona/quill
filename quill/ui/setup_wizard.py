@@ -40,6 +40,7 @@ def run_setup_wizard(
     feature_manager: FeatureManager,
     *,
     show_modal_fn: Callable[[Any, str], int] | None = None,
+    open_ai_hub: Callable[[], None] | None = None,
 ) -> tuple[bool, bool]:
     """Open the setup wizard as a modal dialog.
 
@@ -55,7 +56,7 @@ def run_setup_wizard(
     """
     from quill.ui.setup_wizard_pages import SetupWizardDialog
 
-    dlg = SetupWizardDialog(parent, settings, feature_manager)
+    dlg = SetupWizardDialog(parent, settings, feature_manager, open_ai_hub=open_ai_hub)
     try:
         if show_modal_fn is not None:
             result = show_modal_fn(dlg, "Setup Wizard")

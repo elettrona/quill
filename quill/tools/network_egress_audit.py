@@ -138,6 +138,16 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "developer running `python -m quill.core.contributors` to refresh that tuple. "
         "There is no silent runtime path."
     ),
+    "ui/main_frame.py::_dl_piper": (
+        "Piper voice model download. Triggered only when the user clicks 'Download "
+        "Piper voice...' in the unified Read Aloud dialog. Fetches .onnx and .onnx.json "
+        "files from HuggingFace piper-voices over HTTPS; no silent background download."
+    ),
+    "ui/main_frame.py::_dl_kokoro": (
+        "Kokoro model download. Triggered only when the user clicks 'Download Kokoro' "
+        "in the unified Read Aloud dialog. Fetches model and voices files from GitHub "
+        "releases over HTTPS; no silent background download."
+    ),
 }
 
 

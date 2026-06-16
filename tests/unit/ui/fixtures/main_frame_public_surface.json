@@ -11,6 +11,7 @@
   "check_grammar_with_ai",
   "choose_announcement_backend",
   "choose_document_encoding",
+  "choose_read_aloud_configuration",
   "choose_read_aloud_settings",
   "choose_read_aloud_voice",
   "clear_recent_files",

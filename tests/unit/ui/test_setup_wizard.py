@@ -84,9 +84,8 @@ def test_extras_page_exists_and_has_ai_braille_automation() -> None:
 def test_ai_provider_page_exists() -> None:
     src = _wizard_pages_source()
     assert "class _AIProviderPage(_WizardPage)" in src
-    assert "wizard.ai_provider_choice" in src
-    assert "wizard.ai_key_field" in src
-    assert "wx.TE_PASSWORD" in src
+    assert "wizard.open_ai_hub" in src
+    assert "Open AI Hub" in src
 
 
 def test_preview_textctrls_are_read_only() -> None:

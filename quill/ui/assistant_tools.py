@@ -1483,7 +1483,12 @@ class AssistantConnectionDialog:
         self.dialog.SetSize((780, 520))
 
         self._settings = load_assistant_connection_settings()
-        self._api_key = load_assistant_api_key()
+        # Prefer the per-provider key for the initial provider so the field
+        # always matches what is selected, even when the legacy active-key store
+        # still holds a different provider's key from a previous session.
+        _initial_provider = self._settings.provider.strip().lower() or "ollama"
+        _per_provider_key = load_provider_api_key(_initial_provider)
+        self._api_key = _per_provider_key or load_assistant_api_key()
         self._api_key_revealed = False
         self.last_verification_ok: bool | None = None
         self.last_verification_message: str = "Not checked"

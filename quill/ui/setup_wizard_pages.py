@@ -23,6 +23,7 @@ is True and the caller should apply the minimal text_editor defaults.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 
 import wx
 
@@ -43,14 +44,6 @@ _log = logging.getLogger(__name__)
 
 _PREVIEW_MIN_HEIGHT = 230
 _PREVIEW_STYLE = wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_WORDWRAP | wx.BORDER_SIMPLE
-
-_AI_PROVIDERS = [
-    ("anthropic", "Anthropic (Claude)"),
-    ("openai", "OpenAI (GPT)"),
-    ("google", "Google (Gemini)"),
-    ("openrouter", "OpenRouter (many models)"),
-    ("ollama", "Ollama (on-device)"),
-]
 
 
 # ---------------------------------------------------------------------------
@@ -347,8 +340,9 @@ class _ExtrasPage(_WizardPage):
 
 
 class _AIProviderPage(_WizardPage):
-    def __init__(self, parent: wx.Window) -> None:
+    def __init__(self, parent: wx.Window, open_ai_hub: Callable[[], None]) -> None:
         super().__init__(parent, "Set up your AI connection")
+        self._open_ai_hub = open_ai_hub
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         heading = wx.StaticText(self, label="Set up your AI connection", name="wizard.ai_heading")
@@ -358,61 +352,24 @@ class _AIProviderPage(_WizardPage):
         desc = wx.StaticText(
             self,
             label=(
-                "To use AI features you need an API key from your AI provider. "
-                "You can skip this and add the key later from Help > Personalise QUILL > AI."
+                "AI providers, API keys, and models are all managed in AI Hub. "
+                "Open it now to choose your provider, enter your key, and verify "
+                "the connection — or do it any time from Tools > AI Hub after setup."
             ),
             name="wizard.ai_desc",
         )
         desc.Wrap(440)
         sizer.Add(desc, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM, border=12)
 
-        grid = wx.FlexGridSizer(cols=2, vgap=10, hgap=8)
-        grid.AddGrowableCol(1, 1)
-
-        # Z-order: StaticText first, then the control
-        provider_label = wx.StaticText(self, label="AI provider:", name="wizard.ai_provider_label")
-        self._provider = wx.Choice(
-            self,
-            choices=[label for _id, label in _AI_PROVIDERS],
-            name="wizard.ai_provider_choice",
-        )
-        self._provider.SetSelection(0)
-        grid.Add(provider_label, flag=wx.ALIGN_CENTER_VERTICAL)
-        grid.Add(self._provider, flag=wx.EXPAND)
-
-        key_label = wx.StaticText(self, label="API key:", name="wizard.ai_key_label")
-        self._key = wx.TextCtrl(
-            self,
-            style=wx.TE_PASSWORD,
-            name="wizard.ai_key_field",
-        )
-        self._key.SetHint("Paste your API key here (optional)")
-        grid.Add(key_label, flag=wx.ALIGN_CENTER_VERTICAL)
-        grid.Add(self._key, flag=wx.EXPAND)
-
-        sizer.Add(grid, flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, border=12)
-
-        note = wx.StaticText(
-            self,
-            label=(
-                "Your key is stored securely in the Windows Credential Manager. "
-                "It is never sent anywhere except to the AI provider you choose. "
-                "Leave blank to set up AI later."
-            ),
-            name="wizard.ai_note",
-        )
-        note.Wrap(440)
-        sizer.Add(note, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM, border=12)
+        hub_btn = wx.Button(self, label="Open AI Hub...", name="wizard.open_ai_hub")
+        hub_btn.SetName("Open AI Hub to configure provider, API key, and model")
+        sizer.Add(hub_btn, flag=wx.LEFT | wx.BOTTOM, border=12)
+        hub_btn.Bind(wx.EVT_BUTTON, lambda _e: self._open_ai_hub())
 
         self.SetSizer(sizer)
 
-    def collect(self, _settings: Settings, overrides: dict) -> None:
-        idx = self._provider.GetSelection()
-        if 0 <= idx < len(_AI_PROVIDERS):
-            overrides["_ai_provider"] = _AI_PROVIDERS[idx][0]
-        key = self._key.GetValue().strip()
-        if key:
-            overrides["_ai_key"] = key
+    def collect(self, _settings: Settings, _overrides: dict) -> None:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -657,6 +614,8 @@ class SetupWizardDialog(wx.Dialog):
         parent: wx.Window,
         settings: Settings,
         feature_manager: FeatureManager,
+        *,
+        open_ai_hub: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(
             parent,
@@ -666,6 +625,7 @@ class SetupWizardDialog(wx.Dialog):
         )
         self._settings = settings
         self._feature_manager = feature_manager
+        self._open_ai_hub = open_ai_hub or (lambda: None)
         self._pending_overrides: dict[str, str] = {}
         self._current_idx = 0
         self.aborted_first_run = False
@@ -688,7 +648,7 @@ class SetupWizardDialog(wx.Dialog):
         welcome = _WelcomePage(self, self._settings)
         intent = _IntentPage(self, self._feature_manager)
         extras = _ExtrasPage(self)
-        ai_provider = _AIProviderPage(self)
+        ai_provider = _AIProviderPage(self, self._open_ai_hub)
         kb_sound = _KeyboardSoundPage(self, self._settings)
         summary = _SummaryPage(self)
         # All pages constructed; hide them all until shown by _show_page.
@@ -880,14 +840,6 @@ class SetupWizardDialog(wx.Dialog):
         self._settings.setup_wizard_wants_ai = ai_on
         self._settings.setup_wizard_wants_braille = braille_on
         self._settings.setup_wizard_wants_automation = automation_on
-
-        # Store AI provider/key for main_frame to persist securely
-        ai_provider = self._pending_overrides.pop("_ai_provider", "")
-        ai_key = self._pending_overrides.pop("_ai_key", "")
-        if ai_provider:
-            self._settings.setup_wizard_ai_provider = ai_provider
-        if ai_key:
-            self._settings.setup_wizard_ai_key = ai_key
 
         # Apply remaining feature overrides (automation affects macros flag)
         if automation_on and "core.macros" in FEATURE_DEFINITIONS:

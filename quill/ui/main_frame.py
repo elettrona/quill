@@ -290,21 +290,19 @@ from quill.core.quick_nav import (
 from quill.core.read_aloud import (
     ReadAloudController,
     ReadAloudUnavailableError,
+    default_piper_model_dir,
     discover_dectalk_executable,
     discover_espeak_executable,
-    discover_openvoice_executable,
     discover_piper_executable,
     list_dectalk_voices,
     list_espeak_english_voices,
     list_kokoro_voices,
-    list_openvoice_english_voices,
-    list_piper_voices,
+    list_piper_catalog_voices,
     list_voices,
     synthesize_to_file_with_dectalk,
     synthesize_to_file_with_pyttsx3,
     synthesize_with_espeak,
     synthesize_with_kokoro,
-    synthesize_with_openvoice,
     synthesize_with_piper,
 )
 from quill.core.read_aloud import (
@@ -9728,11 +9726,6 @@ class MainFrame(
         # the per-setting Reset buttons (SET-6) to restore a single default.
         writers: dict[str, Callable[[object], None]] = {}
         control_index: dict[str, tuple[int, object]] = {}
-        ai_enabled_cb = None  # special-cased: not a Settings field
-        ext_master_cb = None  # special-cased: external-engine master consent
-        ext_name_field = None
-        ext_command_field = None
-        ext_engine_enabled_cb = None
         collected: dict[str, object] = {}
         ai_value: bool | None = None
         ext_master_value: bool | None = None
@@ -9797,8 +9790,9 @@ class MainFrame(
                         _t = wx.TextCtrl(_pp)
                         _t.SetValue(_cur)
                         _t.SetName(_sl)
-                        _b = wx.Button(_pp, label="Browse...")
-                        _b.SetName(f"Browse for {_sl}")
+                        _t.SetHint("e.g. C:\\Users\\YourName\\Documents (blank = last used)")
+                        _b = wx.Button(_pp, label="Choose Default Folder...")
+                        _b.SetName(f"Choose default folder for {_sl}")
 
                         def _on_browse(_evt, __t=_t, __pp=_pp) -> None:
                             with wx.DirDialog(
@@ -9843,8 +9837,11 @@ class MainFrame(
                         _t = wx.TextCtrl(_pp)
                         _t.SetValue(_cur)
                         _t.SetName(_sl)
-                        _b = wx.Button(_pp, label="Browse...")
-                        _b.SetName(f"Browse for {_sl}")
+                        _t.SetHint("blank = default beep")
+                        _b = wx.Button(_pp, label="Choose WAV file...")
+                        _b.SetName(f"Choose WAV file for {_sl}")
+                        _p = wx.Button(_pp, label="Preview")
+                        _p.SetName(f"Preview {_sl}")
 
                         def _on_browse(_evt, __t=_t, __pp=_pp) -> None:
                             with wx.FileDialog(
@@ -9854,15 +9851,22 @@ class MainFrame(
                                 style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
                             ) as fdlg:
                                 if (
-                                    self._show_modal_dialog(fdlg, "Choose Keyboard Sound")
+                                    self._show_modal_dialog(fdlg, "Choose Browse Mode Sound")
                                     == wx.ID_OK
                                 ):
                                     __t.SetValue(fdlg.GetPath())
 
+                        def _on_preview(_evt, __t=_t) -> None:
+                            path = __t.GetValue().strip()
+                            if path:
+                                self._play_preview_asset(Path(path))
+
                         _b.Bind(wx.EVT_BUTTON, _on_browse)
+                        _p.Bind(wx.EVT_BUTTON, _on_preview)
                         _row = wx.BoxSizer(wx.HORIZONTAL)
-                        _row.Add(_t, 1, wx.EXPAND | wx.RIGHT, 8)
-                        _row.Add(_b, 0, wx.ALIGN_CENTER_VERTICAL)
+                        _row.Add(_t, 1, wx.EXPAND | wx.RIGHT, 4)
+                        _row.Add(_b, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
+                        _row.Add(_p, 0, wx.ALIGN_CENTER_VERTICAL)
                         _ref.append(_t)
                         return _row
 
@@ -9872,6 +9876,113 @@ class MainFrame(
                     writers[spec.key] = lambda v, c=text: c.SetValue(str(v))
                     control_index[spec.key] = (page_index, text)
                     return
+                if spec.key == "language":
+
+                    def _make_lang_text(_pp=parent_panel, _cur=str(current), _sl=spec.label):
+                        t = wx.TextCtrl(_pp)
+                        t.SetValue(_cur)
+                        t.SetName(_sl)
+                        t.SetHint("e.g. en, fr, es (blank = OS language)")
+                        return t
+
+                    lang_ctrl = _add_field_row(parent_panel, sizer, spec.label, _make_lang_text)
+                    readers[spec.key] = lambda c=lang_ctrl: str(c.GetValue())
+                    writers[spec.key] = lambda v, c=lang_ctrl: c.SetValue(str(v))
+                    control_index[spec.key] = (page_index, lang_ctrl)
+                    return
+
+                if spec.key == "abbreviation_expansion_sound_file":
+                    _abbr_sound_ref: list = []
+
+                    def _make_abbr_sound_row(
+                        _pp=parent_panel,
+                        _cur=str(current),
+                        _sl=spec.label,
+                        _ref=_abbr_sound_ref,
+                    ):
+                        _t = wx.TextCtrl(_pp)
+                        _t.SetValue(_cur)
+                        _t.SetName(_sl)
+                        _t.SetHint("blank = default system sound")
+                        _b = wx.Button(_pp, label="Choose WAV file...")
+                        _b.SetName(f"Choose WAV file for {_sl}")
+                        _p = wx.Button(_pp, label="Preview")
+                        _p.SetName(f"Preview {_sl}")
+
+                        def _on_browse(_evt, __t=_t, __pp=_pp) -> None:
+                            with wx.FileDialog(
+                                __pp,
+                                "Choose abbreviation expansion sound",
+                                wildcard="WAV files (*.wav)|*.wav",
+                                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+                            ) as fdlg:
+                                if (
+                                    self._show_modal_dialog(fdlg, "Choose Abbreviation Sound")
+                                    == wx.ID_OK
+                                ):
+                                    __t.SetValue(fdlg.GetPath())
+
+                        def _on_preview(_evt, __t=_t) -> None:
+                            path = __t.GetValue().strip()
+                            if path:
+                                self._play_preview_asset(Path(path))
+
+                        _b.Bind(wx.EVT_BUTTON, _on_browse)
+                        _p.Bind(wx.EVT_BUTTON, _on_preview)
+                        _row = wx.BoxSizer(wx.HORIZONTAL)
+                        _row.Add(_t, 1, wx.EXPAND | wx.RIGHT, 4)
+                        _row.Add(_b, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
+                        _row.Add(_p, 0, wx.ALIGN_CENTER_VERTICAL)
+                        _ref.append(_t)
+                        return _row
+
+                    _add_field_row(parent_panel, sizer, spec.label, _make_abbr_sound_row)
+                    abbr_text = _abbr_sound_ref[0]
+                    readers[spec.key] = lambda c=abbr_text: str(c.GetValue())
+                    writers[spec.key] = lambda v, c=abbr_text: c.SetValue(str(v))
+                    control_index[spec.key] = (page_index, abbr_text)
+                    return
+
+                if spec.key == "sound_pack_path":
+                    _sp_ref: list = []
+
+                    def _make_sp_row(
+                        _pp=parent_panel,
+                        _cur=str(current),
+                        _sl=spec.label,
+                        _ref=_sp_ref,
+                    ):
+                        _t = wx.TextCtrl(_pp)
+                        _t.SetValue(_cur)
+                        _t.SetName(_sl)
+                        _t.SetHint("blank = bundled Ink pack")
+                        _b = wx.Button(_pp, label="Choose Sound Pack...")
+                        _b.SetName(f"Choose sound pack folder or file for {_sl}")
+
+                        def _on_browse(_evt, __t=_t, __pp=_pp) -> None:
+                            with wx.DirDialog(
+                                __pp,
+                                "Choose sound pack folder",
+                                defaultPath=__t.GetValue().strip(),
+                                style=wx.DD_DEFAULT_STYLE,
+                            ) as ddlg:
+                                if self._show_modal_dialog(ddlg, "Choose Sound Pack") == wx.ID_OK:
+                                    __t.SetValue(ddlg.GetPath())
+
+                        _b.Bind(wx.EVT_BUTTON, _on_browse)
+                        _row = wx.BoxSizer(wx.HORIZONTAL)
+                        _row.Add(_t, 1, wx.EXPAND | wx.RIGHT, 8)
+                        _row.Add(_b, 0, wx.ALIGN_CENTER_VERTICAL)
+                        _ref.append(_t)
+                        return _row
+
+                    _add_field_row(parent_panel, sizer, spec.label, _make_sp_row)
+                    sp_text = _sp_ref[0]
+                    readers[spec.key] = lambda c=sp_text: str(c.GetValue())
+                    writers[spec.key] = lambda v, c=sp_text: c.SetValue(str(v))
+                    control_index[spec.key] = (page_index, sp_text)
+                    return
+
                 if spec.kind == "bool":
                     cb = wx.CheckBox(parent_panel, label=spec.label)
                     cb.SetValue(bool(current))
@@ -9938,6 +10049,10 @@ class MainFrame(
                             s.SetRange(float(_spec.minimum), float(_spec.maximum))
                         s.SetValue(_cur)
                         s.SetName(_spec.label)
+                        for _child in s.GetChildren():
+                            if isinstance(_child, wx.TextCtrl):
+                                _child.SetName(_spec.label)
+                                break
                         return s
 
                     spin = _add_field_row(parent_panel, sizer, spec.label, _make_spin_float)
@@ -9959,94 +10074,131 @@ class MainFrame(
                 control_index[spec.key] = (page_index, text)
 
             page_index = 0
+            _page_build_fns: list[Callable[[], None]] = []
+            _built_pages: set[int] = set()
+            _ai_refs: dict[str, object] = {}
+
+            def _make_page_builder(
+                _p: object,
+                _ps: object,
+                _pi: int,
+                _sp: list,
+                _g: object,
+                _sa: bool,
+            ) -> Callable[[], None]:
+                def _build() -> None:
+                    if _g.description:
+                        _ps.Add(wx.StaticText(_p, label=_g.description), 0, wx.ALL, 6)
+                    if _sa:
+                        _ai_cb = wx.CheckBox(_p, label="Use Artificial Intelligence")
+                        _ai_cb.SetValue(load_ai_enabled())
+                        _ai_cb.SetName(
+                            "Use Artificial Intelligence. Master switch for all AI features."
+                        )
+                        _ps.Add(_ai_cb, 0, wx.ALL, 6)
+                        _ai_refs["ai_enabled_cb"] = _ai_cb
+                        _hub_btn = wx.Button(_p, label="Open AI Hub...")
+                        _hub_btn.SetName(
+                            "Open AI Hub to configure providers, models, and API connections"
+                        )
+                        _ps.Add(_hub_btn, 0, wx.LEFT | wx.BOTTOM, 6)
+
+                        def _on_hub(_evt: object) -> None:
+                            self.open_ai_hub()
+
+                        _hub_btn.Bind(wx.EVT_BUTTON, _on_hub)
+                        from quill.core.ai.external_engine import (
+                            external_engines_enabled,
+                            list_engine_ids,
+                            load_engine_config,
+                        )
+
+                        _ext_cb = wx.CheckBox(_p, label="Allow external engines")
+                        _ext_cb.SetValue(external_engines_enabled())
+                        _ext_cb.SetName(
+                            "Allow external engines. Off by default. Let QUILL drive a "
+                            "trusted helper program as a local subprocess."
+                        )
+                        _ps.Add(_ext_cb, 0, wx.ALL, 6)
+                        _ai_refs["ext_master_cb"] = _ext_cb
+                        _engine_ids = list_engine_ids()
+                        _first_engine = load_engine_config(_engine_ids[0]) if _engine_ids else None
+                        _nf = _add_field_row(
+                            _p, _ps, "External engine name", lambda pp=_p: wx.TextCtrl(pp)
+                        )
+                        _nf.SetName("External engine name")
+                        _nf.SetValue(_first_engine.engine_id if _first_engine else "")
+                        _ai_refs["ext_name_field"] = _nf
+                        _cf = _add_field_row(
+                            _p, _ps, "External engine command", lambda pp=_p: wx.TextCtrl(pp)
+                        )
+                        _cf.SetName("External engine command")
+                        _cf.SetValue(" ".join(_first_engine.command) if _first_engine else "")
+                        _ai_refs["ext_command_field"] = _cf
+                        _ef = wx.CheckBox(_p, label="Enable this external engine")
+                        _ef.SetValue(bool(_first_engine.enabled) if _first_engine else False)
+                        _ps.Add(_ef, 0, wx.ALL, 6)
+                        _ai_refs["ext_engine_enabled_cb"] = _ef
+                        _ps.Add(
+                            wx.StaticText(
+                                _p,
+                                label="All other AI settings (providers, models, API keys) "
+                                "are managed in the AI Hub.",
+                            ),
+                            0,
+                            wx.ALL,
+                            6,
+                        )
+                        _p.Layout()
+                        return
+                    for spec in _sp:
+                        _make_control(_p, _ps, spec, _pi)
+                    _p.Layout()
+
+                return _build
+
             for group in registry.groups():
                 specs = [
                     spec
                     for spec in registry.specs_for_group(group.id)
                     if not spec.feature_id or self._feature_enabled(spec.feature_id)
                 ]
-                # Surface the AI master toggle on the AI page even though it is
-                # stored outside Settings.
                 show_ai_master = group.id == "ai"
                 if not specs and not show_ai_master:
                     continue
-                page = wx.Panel(notebook, style=wx.TAB_TRAVERSAL)
-                page_sizer = wx.BoxSizer(wx.VERTICAL)
-                if group.description:
-                    intro = wx.StaticText(page, label=group.description)
-                    page_sizer.Add(intro, 0, wx.ALL, 6)
-                if show_ai_master:
-                    ai_enabled_cb = wx.CheckBox(page, label="Use Artificial Intelligence")
-                    ai_enabled_cb.SetValue(load_ai_enabled())
-                    ai_enabled_cb.SetName(
-                        "Use Artificial Intelligence. Master switch for all AI features."
+                _pg = wx.Panel(notebook, style=wx.TAB_TRAVERSAL)
+                _pg.SetSizer(wx.BoxSizer(wx.VERTICAL))
+                notebook.AddPage(_pg, group.title)
+                _page_build_fns.append(
+                    _make_page_builder(
+                        _pg, _pg.GetSizer(), page_index, specs, group, show_ai_master
                     )
-                    page_sizer.Add(ai_enabled_cb, 0, wx.ALL, 6)
-                    # External engines (AI-24): consent + one engine's command,
-                    # folded into the Settings home rather than a separate dialog.
-                    from quill.core.ai.external_engine import (
-                        external_engines_enabled,
-                        list_engine_ids,
-                        load_engine_config,
-                    )
-
-                    ext_master_cb = wx.CheckBox(page, label="Allow external engines")
-                    ext_master_cb.SetValue(external_engines_enabled())
-                    ext_master_cb.SetName(
-                        "Allow external engines. Off by default. Let QUILL drive a "
-                        "trusted helper program as a local subprocess."
-                    )
-                    page_sizer.Add(ext_master_cb, 0, wx.ALL, 6)
-                    _engine_ids = list_engine_ids()
-                    _first_engine = load_engine_config(_engine_ids[0]) if _engine_ids else None
-                    ext_name_field = _add_field_row(
-                        page,
-                        page_sizer,
-                        "External engine name",
-                        lambda p=page: wx.TextCtrl(p),
-                    )
-                    ext_name_field.SetName("External engine name")
-                    ext_name_field.SetValue(_first_engine.engine_id if _first_engine else "")
-                    ext_command_field = _add_field_row(
-                        page,
-                        page_sizer,
-                        "External engine command",
-                        lambda p=page: wx.TextCtrl(p),
-                    )
-                    ext_command_field.SetName("External engine command")
-                    ext_command_field.SetValue(
-                        " ".join(_first_engine.command) if _first_engine else ""
-                    )
-                    ext_engine_enabled_cb = wx.CheckBox(page, label="Enable this external engine")
-                    ext_engine_enabled_cb.SetValue(
-                        bool(_first_engine.enabled) if _first_engine else False
-                    )
-                    page_sizer.Add(ext_engine_enabled_cb, 0, wx.ALL, 6)
-                for spec in specs:
-                    _make_control(page, page_sizer, spec, page_index)
-                page.SetSizer(page_sizer)
-                notebook.AddPage(page, group.title)
+                )
                 page_index += 1
 
+            # Settings Management tab: all Export / Import / Reset / Profile buttons
+            _mgmt_pg = wx.Panel(notebook, style=wx.TAB_TRAVERSAL)
+            _mgmt_sz = wx.BoxSizer(wx.VERTICAL)
+            _mgmt_sz.Add(
+                wx.StaticText(
+                    _mgmt_pg,
+                    label="Export, import, and reset your settings and feature profiles.",
+                ),
+                0,
+                wx.ALL,
+                6,
+            )
+            export_btn = wx.Button(_mgmt_pg, label="&Export settings...")
+            import_btn = wx.Button(_mgmt_pg, label="&Import settings...")
+            reset_btn = wx.Button(_mgmt_pg, label="&Reset to Factory Defaults")
+            export_profile_btn = wx.Button(_mgmt_pg, label="Export &profile...")
+            import_profile_btn = wx.Button(_mgmt_pg, label="Import pro&file...")
+            for _mb in [export_btn, import_btn, reset_btn, export_profile_btn, import_profile_btn]:
+                _mgmt_sz.Add(_mb, 0, wx.ALL, 4)
+            _mgmt_pg.SetSizer(_mgmt_sz)
+            notebook.AddPage(_mgmt_pg, "Settings Management")
+
             outer.Add(notebook, 1, wx.EXPAND | wx.ALL, 8)
-
-            # --- Maintenance buttons (SET-7): Export / Import / Reset ----------
-            maintenance = wx.BoxSizer(wx.HORIZONTAL)
-            export_btn = wx.Button(dialog, label="&Export settings...")
-            import_btn = wx.Button(dialog, label="&Import settings...")
-            reset_btn = wx.Button(dialog, label="&Reset to Factory Defaults")
-            maintenance.Add(export_btn, 0, wx.RIGHT, 8)
-            maintenance.Add(import_btn, 0, wx.RIGHT, 8)
-            maintenance.Add(reset_btn, 0)
-            outer.Add(maintenance, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-
-            # --- Profile buttons (FLAG-4): export / import feature-flag state --
-            profile_row = wx.BoxSizer(wx.HORIZONTAL)
-            export_profile_btn = wx.Button(dialog, label="Export &profile...")
-            import_profile_btn = wx.Button(dialog, label="Import pro&file...")
-            profile_row.Add(export_profile_btn, 0, wx.RIGHT, 8)
-            profile_row.Add(import_profile_btn, 0)
-            outer.Add(profile_row, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
             # action carries the post-dialog instruction: "ok" | "cancel" |
             # "import" | "reset"; imported holds the Settings parsed from a file.
@@ -10148,27 +10300,88 @@ class MainFrame(
             export_profile_btn.Bind(wx.EVT_BUTTON, _on_export_profile)
             import_profile_btn.Bind(wx.EVT_BUTTON, _on_import_profile)
 
-            buttons = dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
-            if buttons is not None:
-                outer.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
+            _ok_btn = wx.Button(dialog, id=wx.ID_OK)
+            _cancel_btn = wx.Button(dialog, id=wx.ID_CANCEL)
+            _apply_btn = wx.Button(dialog, label="&Apply")
+            _apply_btn.SetName("Apply settings without closing")
+            _btn_row = wx.BoxSizer(wx.HORIZONTAL)
+            _btn_row.AddStretchSpacer(1)
+            _btn_row.Add(_ok_btn, 0, wx.RIGHT, 8)
+            _btn_row.Add(_cancel_btn, 0, wx.RIGHT, 8)
+            _btn_row.Add(_apply_btn, 0)
+            outer.Add(_btn_row, 0, wx.EXPAND | wx.ALL, 8)
+
+            def _do_apply() -> None:
+                _c = {k: r() for k, r in readers.items()}
+                upd = self.settings
+                for k, v in _c.items():
+                    upd = registry.set_value(upd, k, v)
+                self.settings = upd
+                _ai_cb2 = _ai_refs.get("ai_enabled_cb")
+                if _ai_cb2 is not None:
+                    save_ai_enabled(bool(_ai_cb2.GetValue()))
+                    self._sync_ai_enabled_menu(bool(_ai_cb2.GetValue()))
+                _ext_cb2 = _ai_refs.get("ext_master_cb")
+                if _ext_cb2 is not None:
+                    from quill.core.ai.external_engine import (
+                        configure_engine,
+                        set_external_engines_enabled,
+                    )
+
+                    set_external_engines_enabled(bool(_ext_cb2.GetValue()))
+                    _nf2 = _ai_refs.get("ext_name_field")
+                    _cf2 = _ai_refs.get("ext_command_field")
+                    _ef2 = _ai_refs.get("ext_engine_enabled_cb")
+                    if _nf2 is not None and _cf2 is not None and str(_nf2.GetValue()).strip():
+                        try:
+                            configure_engine(
+                                str(_nf2.GetValue()),
+                                str(_cf2.GetValue()),
+                                enabled=bool(_ef2.GetValue()) if _ef2 is not None else False,
+                            )
+                        except ValueError as _ve:
+                            self._set_status(str(_ve))
+                self._settings_dialog_apply_refresh("Settings applied")
+
+            def _on_apply(_evt: object) -> None:
+                _do_apply()
+
+            _apply_btn.Bind(wx.EVT_BUTTON, _on_apply)
+
+            def _build_page(idx: int) -> None:
+                if idx in _built_pages or idx >= len(_page_build_fns):
+                    return
+                _built_pages.add(idx)
+                _page_build_fns[idx]()
+
+            if _page_build_fns:
+                _build_page(0)
+
+            def _on_page_changed(_evt: object) -> None:
+                _build_page(notebook.GetSelection())
+
+            notebook.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, _on_page_changed)
+
             apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
-            dialog.SetSizerAndFit(outer)
+            dialog.SetSize(wx.Size(720, 580))
+            dialog.Layout()
 
             result = self._show_modal_dialog(dialog, "Settings")
             if result == wx.ID_OK:
                 action["mode"] = "ok"
                 collected = {key: reader() for key, reader in readers.items()}
-                ai_value = bool(ai_enabled_cb.GetValue()) if ai_enabled_cb is not None else None
-                ext_master_value = (
-                    bool(ext_master_cb.GetValue()) if ext_master_cb is not None else None
-                )
-                if ext_name_field is not None and ext_command_field is not None:
+                _ai_cb = _ai_refs.get("ai_enabled_cb")
+                ai_value = bool(_ai_cb.GetValue()) if _ai_cb is not None else None
+                _ext_cb = _ai_refs.get("ext_master_cb")
+                ext_master_value = bool(_ext_cb.GetValue()) if _ext_cb is not None else None
+                _nf = _ai_refs.get("ext_name_field")
+                _cf = _ai_refs.get("ext_command_field")
+                _ef = _ai_refs.get("ext_engine_enabled_cb")
+                if _nf is not None and _cf is not None:
                     ext_engine_spec = (
-                        str(ext_name_field.GetValue()),
-                        str(ext_command_field.GetValue()),
-                        bool(ext_engine_enabled_cb.GetValue())
-                        if ext_engine_enabled_cb is not None
-                        else False,
+                        str(_nf.GetValue()),
+                        str(_cf.GetValue()),
+                        bool(_ef.GetValue()) if _ef is not None else False,
                     )
 
         mode = action["mode"]
@@ -14291,17 +14504,12 @@ class MainFrame(
                 dectalk_rate=self.settings.read_aloud_dectalk_rate,
                 dectalk_dictionary=self.settings.read_aloud_dectalk_dictionary,
                 end=end,
-                piper_executable=self.settings.read_aloud_piper_executable,
                 piper_model=self.settings.read_aloud_piper_model,
                 kokoro_voice=self.settings.read_aloud_kokoro_voice,
                 kokoro_speed=self.settings.read_aloud_kokoro_speed,
                 espeak_executable=self.settings.read_aloud_espeak_executable,
                 espeak_voice=self.settings.read_aloud_espeak_voice,
                 espeak_rate=self.settings.read_aloud_espeak_rate,
-                openvoice_executable=self.settings.read_aloud_openvoice_executable,
-                openvoice_voice=self.settings.read_aloud_openvoice_voice,
-                openvoice_rate=self.settings.read_aloud_openvoice_rate,
-                openvoice_consent=self.settings.read_aloud_openvoice_consent,
                 sentence_pause_ms=self.settings.read_aloud_sentence_pause_ms,
                 punctuation_level=self.settings.announce_punctuation_level,
                 on_progress=lambda progress_start, progress_end: self._wx.CallAfter(
@@ -14337,7 +14545,6 @@ class MainFrame(
             "dectalk",
             "kokoro",
             "espeak",
-            "openvoice",
         }:
             return True
 
@@ -14420,7 +14627,25 @@ class MainFrame(
         if suffix == ".wav" and _winsound is not None:
             _winsound.PlaySound(str(sample_path), _winsound.SND_FILENAME)
             return
-        raise ReadAloudUnavailableError("Preview sample playback supports WAV files.")
+        # MP3 and other formats: use Windows MCI for in-process synchronous playback.
+        # This avoids opening an external media player.
+        try:
+            import ctypes as _ct
+
+            _winmm = _ct.windll.winmm  # type: ignore[attr-defined]
+            _alias = "quill_preview"
+            _path = str(sample_path).replace('"', "")
+            _winmm.mciSendStringW(f'open "{_path}" type mpegvideo alias {_alias}', None, 0, None)
+            try:
+                _winmm.mciSendStringW(f"play {_alias} wait", None, 0, None)
+            finally:
+                _winmm.mciSendStringW(f"close {_alias}", None, 0, None)
+            return
+        except (AttributeError, OSError):
+            pass
+        import os as _os
+
+        _os.startfile(str(sample_path))
 
     def _preview_voice(self, engine: str, voice_id: str) -> None:
         """Play a short preview of *voice_id* through *engine* on a background thread."""
@@ -14485,21 +14710,6 @@ class MainFrame(
                         voice=voice_id,
                         rate=s.read_aloud_espeak_rate,
                     )
-                elif engine == "openvoice":
-                    if not s.read_aloud_openvoice_consent:
-                        raise ReadAloudUnavailableError(
-                            "OpenVoice requires explicit consent in Read Aloud Settings"
-                        )
-                    exe = discover_openvoice_executable(s.read_aloud_openvoice_executable)
-                    if exe is None:
-                        raise ReadAloudUnavailableError("OpenVoice executable not configured")
-                    synthesize_with_openvoice(
-                        sample,
-                        wav,
-                        executable_path=exe,
-                        voice=voice_id,
-                        rate=s.read_aloud_openvoice_rate,
-                    )
                 else:
                     raise ReadAloudUnavailableError(f"Unknown engine: {engine}")
                 # Play via the existing read-aloud controller so pause/stop work
@@ -14520,19 +14730,12 @@ class MainFrame(
                     dectalk_voice=voice_id if engine == "dectalk" else s.read_aloud_dectalk_voice,
                     dectalk_rate=s.read_aloud_dectalk_rate,
                     dectalk_dictionary=s.read_aloud_dectalk_dictionary,
-                    piper_executable=s.read_aloud_piper_executable,
                     piper_model=voice_id if engine == "piper" else s.read_aloud_piper_model,
                     kokoro_voice=voice_id if engine == "kokoro" else s.read_aloud_kokoro_voice,
                     kokoro_speed=s.read_aloud_kokoro_speed,
                     espeak_executable=s.read_aloud_espeak_executable,
                     espeak_voice=voice_id if engine == "espeak" else s.read_aloud_espeak_voice,
                     espeak_rate=s.read_aloud_espeak_rate,
-                    openvoice_executable=s.read_aloud_openvoice_executable,
-                    openvoice_voice=voice_id
-                    if engine == "openvoice"
-                    else s.read_aloud_openvoice_voice,
-                    openvoice_rate=s.read_aloud_openvoice_rate,
-                    openvoice_consent=s.read_aloud_openvoice_consent,
                     on_state_change=lambda st: done.set() if st in ("idle", "error") else None,
                 )
                 done.wait(timeout=15)
@@ -14549,321 +14752,389 @@ class MainFrame(
             lambda _r: self._set_status("Preview finished"),
         )
 
-    def choose_read_aloud_voice(self) -> None:  # noqa: PLR0912
+    def choose_read_aloud_configuration(self) -> None:  # noqa: PLR0912,PLR0915
+        """Unified Read Aloud dialog: engine selector, voice list, and per-engine settings."""
+        import re as _re
+        import urllib.request as _ureq
+        from pathlib import Path as _Path
+
         wx = self._wx
-        engine = self.settings.read_aloud_engine.strip().lower() or "pyttsx3"
+        _TITLE = "Read Aloud"
 
-        if (
-            engine == "dectalk"
-            and discover_dectalk_executable(self.settings.read_aloud_dectalk_executable) is None
-        ):
-            self._show_message_box(
-                "DECtalk is not installed/configured.",
-                "Read Aloud Voice",
-                wx.ICON_INFORMATION | wx.OK,
-            )
-            return
-        if (
-            engine == "espeak"
-            and discover_espeak_executable(self.settings.read_aloud_espeak_executable) is None
-        ):
-            self._show_message_box(
-                "eSpeak-NG is not installed/configured.",
-                "Read Aloud Voice",
-                wx.ICON_INFORMATION | wx.OK,
-            )
-            return
-
-        if engine == "dectalk":
-            voices = list_dectalk_voices()
-            current_voice_id = self.settings.read_aloud_dectalk_voice
-        elif engine == "piper":
-            voices = list_piper_voices(self.settings.read_aloud_piper_model_dir)
-            if not voices:
-                voices = [
-                    ReadAloudVoiceOption(id=voice_id, name=f"{voice_id} (preview sample)")
-                    for voice_id in self._voice_preview_voice_ids("piper")
-                ]
-            current_voice_id = self.settings.read_aloud_piper_model
-        elif engine == "kokoro":
-            voices = list_kokoro_voices()
-            current_voice_id = self.settings.read_aloud_kokoro_voice
-        elif engine == "espeak":
-            voices = list_espeak_english_voices()
-            current_voice_id = self.settings.read_aloud_espeak_voice
-        elif engine == "openvoice":
-            voices = list_openvoice_english_voices()
-            current_voice_id = self.settings.read_aloud_openvoice_voice
-        else:
-            voices = list_voices()
-            current_voice_id = self.settings.read_aloud_voice
-
-        voices = self._english_only_voices(engine, voices)
-
-        if not voices:
-            self._show_message_box(
-                "No English voices were found for this engine.",
-                "Read Aloud Voice",
-                wx.ICON_INFORMATION | wx.OK,
-            )
-            return
-
-        dialog = wx.Dialog(self.frame, title="Read Aloud Voice", size=(640, 460))
-        root = wx.BoxSizer(wx.VERTICAL)
-        root.Add(
-            wx.StaticText(
-                dialog,
-                label=f"Choose an English voice for {engine}. Use Preview before confirming.",
-            ),
-            0,
-            wx.LEFT | wx.RIGHT | wx.TOP,
-            8,
-        )
-        choices = [v.name for v in voices]
-        list_box = wx.ListBox(dialog, choices=choices, style=wx.LB_SINGLE)
-        current_index = next((i for i, v in enumerate(voices) if v.id == current_voice_id), 0)
-        if choices:
-            list_box.SetSelection(current_index)
-        root.Add(list_box, 1, wx.EXPAND | wx.ALL, 8)
-        button_row = wx.BoxSizer(wx.HORIZONTAL)
-        preview_btn = wx.Button(dialog, label="&Preview")
-        ok_btn = wx.Button(dialog, id=wx.ID_OK)
-        cancel_btn = wx.Button(dialog, id=wx.ID_CANCEL)
-        button_row.AddStretchSpacer(1)
-        button_row.Add(preview_btn, 0, wx.RIGHT, 8)
-        button_row.Add(ok_btn, 0, wx.RIGHT, 8)
-        button_row.Add(cancel_btn, 0)
-        root.Add(button_row, 0, wx.ALL | wx.EXPAND, 8)
-        dialog.SetSizerAndFit(root)
-
-        def _selected_index() -> int:
-            return list_box.GetSelection()
-
-        def _on_preview(_evt: wx.CommandEvent) -> None:
-            idx = _selected_index()
-            if 0 <= idx < len(voices):
-                self._preview_voice(engine, voices[idx].id)
-
-        preview_btn.Bind(wx.EVT_BUTTON, _on_preview)
-        try:
-            apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
-            if self._show_modal_dialog(dialog, "Read Aloud Voice") != wx.ID_OK:
-                self._set_status("Read aloud voice selection cancelled")
-                return
-            selected = _selected_index()
-        finally:
-            dialog.Destroy()
-
-        if selected < 0 or selected >= len(voices):
-            return
-        if engine == "dectalk":
-            self.settings.read_aloud_dectalk_voice = voices[selected].id
-        elif engine == "piper":
-            self.settings.read_aloud_piper_model = voices[selected].id
-        elif engine == "kokoro":
-            self.settings.read_aloud_kokoro_voice = voices[selected].id
-        elif engine == "espeak":
-            self.settings.read_aloud_espeak_voice = voices[selected].id
-        elif engine == "openvoice":
-            self.settings.read_aloud_openvoice_voice = voices[selected].id
-        else:
-            self.settings.read_aloud_voice = voices[selected].id
-        save_settings(self.settings)
-        self._set_status(f"Selected voice: {voices[selected].name}")
-
-    def choose_read_aloud_settings(self) -> None:  # noqa: PLR0912,PLR0915
-        wx = self._wx
-        _TITLE = "Read Aloud Settings"
         dectalk_available = (
             discover_dectalk_executable(self.settings.read_aloud_dectalk_executable) is not None
         )
         espeak_available = (
             discover_espeak_executable(self.settings.read_aloud_espeak_executable) is not None
         )
-        engine_options = [
-            ("Pyttsx3 (System TTS)", "pyttsx3"),
-            ("DECtalk", "dectalk"),
-            ("Piper (neural, offline)", "piper"),
-            ("Kokoro (neural, offline)", "kokoro"),
-            ("eSpeak-NG (English variants)", "espeak"),
-            ("OpenVoice (advanced style module)", "openvoice"),
-        ]
-        engine_options = [
-            option
-            for option in engine_options
-            if option[1] not in {"dectalk", "espeak"}
-            or (option[1] == "dectalk" and dectalk_available)
-            or (option[1] == "espeak" and espeak_available)
-        ]
-        engine_choices = [label for label, _ in engine_options]
-        engine_values = [value for _, value in engine_options]
-        with wx.SingleChoiceDialog(
-            self.frame,
-            "Choose read-aloud engine:",
-            _TITLE,
-            choices=engine_choices,
-        ) as engine_dialog:
-            current_engine = self.settings.read_aloud_engine.strip().lower() or "pyttsx3"
-            if current_engine not in engine_values:
-                current_engine = "pyttsx3"
-            current_index = (
-                engine_values.index(current_engine) if current_engine in engine_values else 0
-            )
-            engine_dialog.SetSelection(current_index)
-            if self._show_modal_dialog(engine_dialog, _TITLE) != wx.ID_OK:
-                self._set_status("Read aloud settings cancelled")
-                return
-            selected_engine = engine_values[engine_dialog.GetSelection()]
-        self.settings.read_aloud_engine = selected_engine
 
-        def _ask_text(prompt: str, current: str) -> str | None:
-            with wx.TextEntryDialog(self.frame, prompt, _TITLE, value=current) as d:
-                if self._show_modal_dialog(d, _TITLE) != wx.ID_OK:
+        engine_options: list[tuple[str, str]] = [("Pyttsx3 (System TTS)", "pyttsx3")]
+        if dectalk_available:
+            engine_options.append(("DECtalk", "dectalk"))
+        engine_options.append(("Piper (neural, offline)", "piper"))
+        engine_options.append(("Kokoro (neural, offline)", "kokoro"))
+        if espeak_available:
+            engine_options.append(("eSpeak-NG (English variants)", "espeak"))
+
+        engine_labels = [lbl for lbl, _ in engine_options]
+        engine_values = [val for _, val in engine_options]
+
+        current_engine = self.settings.read_aloud_engine.strip().lower() or "pyttsx3"
+        if current_engine not in engine_values:
+            current_engine = "pyttsx3"
+
+        _piper_model_dir = default_piper_model_dir()
+
+        def _voices_for_engine(eng: str) -> list[ReadAloudVoiceOption]:
+            if eng == "dectalk":
+                return list_dectalk_voices()
+            if eng == "piper":
+                return list_piper_catalog_voices(_piper_model_dir)
+            if eng == "kokoro":
+                return list_kokoro_voices()
+            if eng == "espeak":
+                return list_espeak_english_voices()
+            return self._english_only_voices("pyttsx3", list_voices())
+
+        def _current_voice_id(eng: str) -> str:
+            if eng == "dectalk":
+                return self.settings.read_aloud_dectalk_voice
+            if eng == "piper":
+                return (
+                    _Path(self.settings.read_aloud_piper_model).stem
+                    if self.settings.read_aloud_piper_model
+                    else ""
+                )
+            if eng == "kokoro":
+                return self.settings.read_aloud_kokoro_voice
+            if eng == "espeak":
+                return self.settings.read_aloud_espeak_voice
+            return self.settings.read_aloud_voice
+
+        dialog = wx.Dialog(self.frame, title=_TITLE, size=(740, 560))
+        outer = wx.BoxSizer(wx.VERTICAL)
+
+        engine_rb = wx.RadioBox(
+            dialog, label="Engine", choices=engine_labels, style=wx.RA_SPECIFY_ROWS
+        )
+        engine_rb.SetName("Engine")
+        engine_rb.SetSelection(
+            engine_values.index(current_engine) if current_engine in engine_values else 0
+        )
+        outer.Add(engine_rb, 0, wx.EXPAND | wx.ALL, 8)
+
+        outer.Add(wx.StaticText(dialog, label="Voice:"), 0, wx.LEFT | wx.RIGHT, 8)
+        voices: list[ReadAloudVoiceOption] = _voices_for_engine(current_engine)
+        voice_lb = wx.ListBox(dialog, choices=[v.name for v in voices], style=wx.LB_SINGLE)
+        voice_lb.SetName("Voice")
+        if voices:
+            cur_vid = _current_voice_id(current_engine)
+            voice_lb.SetSelection(next((i for i, v in enumerate(voices) if v.id == cur_vid), 0))
+        outer.Add(voice_lb, 1, wx.EXPAND | wx.ALL, 8)
+
+        settings_box = wx.StaticBoxSizer(wx.VERTICAL, dialog, "Settings")
+        settings_sb = settings_box.GetStaticBox()
+
+        rate_row = wx.BoxSizer(wx.HORIZONTAL)
+        rate_lbl = wx.StaticText(settings_sb, label="Rate:")
+        rate_spin = wx.SpinCtrl(settings_sb, min=80, max=450, initial=self.settings.read_aloud_rate)
+        rate_spin.SetName("Rate (words per minute)")
+        rate_row.Add(rate_lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        rate_row.Add(rate_spin, 1, wx.EXPAND)
+        settings_box.Add(rate_row, 0, wx.EXPAND | wx.ALL, 4)
+
+        volume_row = wx.BoxSizer(wx.HORIZONTAL)
+        vol_lbl = wx.StaticText(settings_sb, label="Volume (0-100):")
+        vol_spin = wx.SpinCtrl(settings_sb, min=0, max=100, initial=self.settings.read_aloud_volume)
+        vol_spin.SetName("Volume")
+        volume_row.Add(vol_lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        volume_row.Add(vol_spin, 1, wx.EXPAND)
+        settings_box.Add(volume_row, 0, wx.EXPAND | wx.ALL, 4)
+
+        pitch_row = wx.BoxSizer(wx.HORIZONTAL)
+        pitch_lbl = wx.StaticText(settings_sb, label="Pitch (0-100):")
+        pitch_spin = wx.SpinCtrl(
+            settings_sb, min=0, max=100, initial=self.settings.read_aloud_pitch
+        )
+        pitch_spin.SetName("Pitch")
+        pitch_row.Add(pitch_lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        pitch_row.Add(pitch_spin, 1, wx.EXPAND)
+        settings_box.Add(pitch_row, 0, wx.EXPAND | wx.ALL, 4)
+
+        kokoro_row = wx.BoxSizer(wx.HORIZONTAL)
+        kok_lbl = wx.StaticText(settings_sb, label="Speed (0.5-2.0):")
+        kok_spin = wx.SpinCtrlDouble(
+            settings_sb, min=0.5, max=2.0, initial=self.settings.read_aloud_kokoro_speed, inc=0.1
+        )
+        kok_spin.SetName("Speed multiplier")
+        for _kok_child in kok_spin.GetChildren():
+            if isinstance(_kok_child, wx.TextCtrl):
+                _kok_child.SetName("Speed multiplier")
+                break
+        kokoro_row.Add(kok_lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        kokoro_row.Add(kok_spin, 1, wx.EXPAND)
+        settings_box.Add(kokoro_row, 0, wx.EXPAND | wx.ALL, 4)
+
+        outer.Add(settings_box, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+        btn_row = wx.BoxSizer(wx.HORIZONTAL)
+        preview_btn = wx.Button(dialog, label="&Preview")
+        preview_btn.SetName("Preview selected voice")
+        download_btn = wx.Button(dialog, label="&Download voice...")
+        download_btn.SetName("Download selected voice model")
+        ok_btn = wx.Button(dialog, id=wx.ID_OK)
+        cancel_btn = wx.Button(dialog, id=wx.ID_CANCEL)
+        btn_row.Add(preview_btn, 0, wx.RIGHT, 8)
+        btn_row.Add(download_btn, 0, wx.RIGHT, 8)
+        btn_row.AddStretchSpacer(1)
+        btn_row.Add(ok_btn, 0, wx.RIGHT, 8)
+        btn_row.Add(cancel_btn, 0)
+        outer.Add(btn_row, 0, wx.EXPAND | wx.ALL, 8)
+        dialog.SetSizer(outer)
+
+        def _update_for_engine(eng: str) -> None:
+            nonlocal voices
+            voices = _voices_for_engine(eng)
+            voice_lb.Set([v.name for v in voices])
+            if voices:
+                vid = _current_voice_id(eng)
+                voice_lb.SetSelection(next((i for i, vv in enumerate(voices) if vv.id == vid), 0))
+            has_rate = eng in {"pyttsx3", "dectalk", "espeak"}
+            has_vol_pitch = eng == "pyttsx3"
+            has_kokoro = eng == "kokoro"
+            has_settings = has_rate or has_vol_pitch or has_kokoro
+            if eng == "pyttsx3":
+                rate_spin.SetRange(80, 450)
+                rate_spin.SetValue(self.settings.read_aloud_rate)
+            elif eng == "dectalk":
+                rate_spin.SetRange(75, 650)
+                rate_spin.SetValue(self.settings.read_aloud_dectalk_rate)
+            elif eng == "espeak":
+                rate_spin.SetRange(80, 450)
+                rate_spin.SetValue(self.settings.read_aloud_espeak_rate)
+            settings_box.Show(rate_row, has_rate, recursive=True)
+            settings_box.Show(volume_row, has_vol_pitch, recursive=True)
+            settings_box.Show(pitch_row, has_vol_pitch, recursive=True)
+            settings_box.Show(kokoro_row, has_kokoro, recursive=True)
+            settings_sb.Show(has_settings)
+            settings_box.ShowItems(has_settings)
+            show_dl = eng in {"piper", "kokoro"}
+            download_btn.Show(show_dl)
+            if eng == "piper":
+                download_btn.SetLabel("&Download Piper voice...")
+            elif eng == "kokoro":
+                download_btn.SetLabel("&Download Kokoro (~114 MB)...")
+            dialog.Layout()
+
+        _update_for_engine(current_engine)
+
+        def _on_engine_change(_evt: object) -> None:
+            sel = engine_rb.GetSelection()
+            if 0 <= sel < len(engine_values):
+                _update_for_engine(engine_values[sel])
+
+        engine_rb.Bind(wx.EVT_RADIOBOX, _on_engine_change)
+
+        def _on_preview(_evt: object) -> None:
+            eng = engine_values[engine_rb.GetSelection()]
+            idx = voice_lb.GetSelection()
+            if 0 <= idx < len(voices):
+                self._preview_voice(eng, voices[idx].id)
+
+        preview_btn.Bind(wx.EVT_BUTTON, _on_preview)
+
+        def _on_download(_evt: object) -> None:
+            eng = engine_values[engine_rb.GetSelection()]
+            if eng == "piper":
+                idx = voice_lb.GetSelection()
+                if idx < 0 or idx >= len(voices):
+                    return
+                voice_id = voices[idx].id
+                m = _re.match(r"^(en_[A-Z]+)-([^-]+)-(\w+)$", voice_id)
+                if m is None:
+                    self._show_message_box(
+                        f"Cannot determine download URL for: {voice_id}",
+                        _TITLE,
+                        wx.ICON_WARNING | wx.OK,
+                    )
+                    return
+                lang_code, voice_name, quality = m.group(1), m.group(2), m.group(3)
+                lang_family = lang_code.split("_")[0]
+                base = (
+                    "https://huggingface.co/rhasspy/piper-voices/resolve/main"
+                    f"/{lang_family}/{lang_code}/{voice_name}/{quality}"
+                )
+                onnx_url = f"{base}/{voice_id}.onnx"
+                json_url = f"{base}/{voice_id}.onnx.json"
+                onnx_path = _piper_model_dir / f"{voice_id}.onnx"
+                json_path = _piper_model_dir / f"{voice_id}.onnx.json"
+                if onnx_path.exists() and json_path.exists():
+                    self._set_status(f"Already downloaded: {voice_id}")
+                    return
+                _piper_model_dir.mkdir(parents=True, exist_ok=True)
+
+                def _dl_piper(
+                    _progress: Callable[[str, int, int], None],
+                    _ou: str = onnx_url,
+                    _ju: str = json_url,
+                    _op: _Path = onnx_path,
+                    _jp: _Path = json_path,
+                ) -> object:
+                    for url, path in [(_ou, _op), (_ju, _jp)]:
+                        _progress(f"Downloading {path.name}...", 0, 0)
+                        with _ureq.urlopen(url, timeout=120) as resp:  # noqa: S310
+                            total = int(resp.headers.get("Content-Length", 0))
+                            downloaded_bytes = 0
+                            chunks = []
+                            while True:
+                                chunk = resp.read(65536)
+                                if not chunk:
+                                    break
+                                chunks.append(chunk)
+                                downloaded_bytes += len(chunk)
+                                if total:
+                                    _progress(
+                                        f"Downloading {path.name}...",
+                                        downloaded_bytes,
+                                        total,
+                                    )
+                        path.write_bytes(b"".join(chunks))
                     return None
-                return d.GetValue().strip()
 
-        def _ask_int(prompt: str, current: int, lo: int, hi: int) -> int | None:
-            val = _ask_text(f"{prompt} ({lo}–{hi}):", str(current))
-            if val is None:
-                return None
-            try:
-                return max(lo, min(hi, int(val)))
-            except ValueError:
-                return current
+                def _on_piper_done(_result: object, _vid: str = voice_id) -> None:
+                    self._set_status(f"Piper voice {_vid} downloaded.")
+                    refreshed = list_piper_catalog_voices(_piper_model_dir)
+                    voice_lb.Set([v.name for v in refreshed])
+                    voices[:] = refreshed
+                    new_idx = next((i for i, vv in enumerate(refreshed) if vv.id == _vid), 0)
+                    if refreshed:
+                        voice_lb.SetSelection(new_idx)
 
-        def _ask_float(prompt: str, current: float, lo: float, hi: float) -> float | None:
-            val = _ask_text(f"{prompt} ({lo:.1f}–{hi:.1f}):", f"{current:.2f}")
-            if val is None:
-                return None
-            try:
-                return max(lo, min(hi, float(val)))
-            except ValueError:
-                return current
+                self._run_background_task(
+                    f"Downloading Piper voice {voice_id}", _dl_piper, _on_piper_done
+                )
 
-        # ---- per-engine settings ----
-        if selected_engine == "pyttsx3":
-            v = _ask_int("Speaking rate (words per minute)", self.settings.read_aloud_rate, 80, 450)
-            if v is None:
-                self._set_status("Read aloud settings cancelled")
-                return
-            self.settings.read_aloud_rate = v
-            v2 = _ask_int("Volume (0–100)", self.settings.read_aloud_volume, 0, 100)
-            if v2 is None:
-                self._set_status("Read aloud settings cancelled")
-                return
-            self.settings.read_aloud_volume = v2
-            v3 = _ask_int("Pitch (0–100)", self.settings.read_aloud_pitch, 0, 100)
-            if v3 is None:
-                self._set_status("Read aloud settings cancelled")
-                return
-            self.settings.read_aloud_pitch = v3
+            elif eng == "kokoro":
+                from quill.core.read_aloud import (
+                    KOKORO_ONNX_MODEL_FILENAME,
+                    KOKORO_ONNX_MODEL_URL,
+                    KOKORO_ONNX_VOICES_FILENAME,
+                    KOKORO_ONNX_VOICES_URL,
+                    default_kokoro_model_dir,
+                    kokoro_onnx_ready,
+                )
 
-        elif selected_engine == "dectalk":
-            exe = _ask_text(
-                "Path to DECtalk speak.exe:", self.settings.read_aloud_dectalk_executable
-            )
-            if exe is None:
-                self._set_status("Read aloud settings cancelled")
-                return
-            self.settings.read_aloud_dectalk_executable = exe
-            dic = _ask_text(
-                "Optional path to dtalk_us.dic (leave blank to auto-detect):",
-                self.settings.read_aloud_dectalk_dictionary,
-            )
-            if dic is None:
-                self._set_status("Read aloud settings cancelled")
-                return
-            self.settings.read_aloud_dectalk_dictionary = dic
-            v = _ask_int("Speaking rate", self.settings.read_aloud_dectalk_rate, 75, 650)
-            if v is None:
-                self._set_status("Read aloud settings cancelled")
-                return
-            self.settings.read_aloud_dectalk_rate = v
+                dest_dir = default_kokoro_model_dir()
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                model_path = dest_dir / KOKORO_ONNX_MODEL_FILENAME
+                voices_path = dest_dir / KOKORO_ONNX_VOICES_FILENAME
 
-        elif selected_engine == "piper":
-            exe = _ask_text("Path to piper.exe:", self.settings.read_aloud_piper_executable)
-            if exe is None:
-                self._set_status("Read aloud settings cancelled")
-                return
-            self.settings.read_aloud_piper_executable = exe
-            model_dir = _ask_text(
-                "Directory containing Piper .onnx model files (for voice list):",
-                self.settings.read_aloud_piper_model_dir,
-            )
-            if model_dir is None:
-                self._set_status("Read aloud settings cancelled")
-                return
-            self.settings.read_aloud_piper_model_dir = model_dir
+                def _dl_kokoro(_progress: Callable[[str, int, int], None]) -> object:
+                    for url, path in [
+                        (KOKORO_ONNX_VOICES_URL, voices_path),
+                        (KOKORO_ONNX_MODEL_URL, model_path),
+                    ]:
+                        if path.exists():
+                            _progress(f"{path.name} already present; skipping.", 0, 0)
+                            continue
+                        _progress(f"Downloading {path.name}...", 0, 0)
+                        with _ureq.urlopen(url, timeout=300) as resp:  # noqa: S310
+                            total = int(resp.headers.get("Content-Length", 0))
+                            downloaded_bytes = 0
+                            chunks = []
+                            while True:
+                                chunk = resp.read(65536)
+                                if not chunk:
+                                    break
+                                chunks.append(chunk)
+                                downloaded_bytes += len(chunk)
+                                if total:
+                                    _progress(
+                                        f"Downloading {path.name}...", downloaded_bytes, total
+                                    )
+                        path.write_bytes(b"".join(chunks))
+                    return None
 
-        elif selected_engine == "kokoro":
-            v = _ask_float(
-                "Speaking speed multiplier", self.settings.read_aloud_kokoro_speed, 0.5, 2.0
-            )
-            if v is None:
-                self._set_status("Read aloud settings cancelled")
-                return
-            self.settings.read_aloud_kokoro_speed = v
+                def _on_kokoro_done(_result: object) -> None:
+                    if kokoro_onnx_ready():
+                        try:
+                            import kokoro_onnx  # noqa: F401
 
-        elif selected_engine == "espeak":
-            exe = _ask_text(
-                "Path to espeak-ng.exe (leave blank to use PATH):",
-                self.settings.read_aloud_espeak_executable,
-            )
-            if exe is None:
-                self._set_status("Read aloud settings cancelled")
-                return
-            self.settings.read_aloud_espeak_executable = exe
-            v = _ask_int(
-                "Speaking rate (words per minute)", self.settings.read_aloud_espeak_rate, 80, 450
-            )
-            if v is None:
-                self._set_status("Read aloud settings cancelled")
-                return
-            self.settings.read_aloud_espeak_rate = v
+                            self._set_status("Kokoro models ready. Select a voice and click OK.")
+                        except ImportError:
+                            self._set_status(
+                                "Models downloaded. Run 'pip install kokoro-onnx soundfile'"
+                                " to enable synthesis, then restart Quill."
+                            )
+                    else:
+                        self._set_status("Kokoro download failed; check your internet connection.")
 
-        elif selected_engine == "openvoice":
-            exe = _ask_text(
-                "Path to OpenVoice executable:", self.settings.read_aloud_openvoice_executable
-            )
-            if exe is None:
-                self._set_status("Read aloud settings cancelled")
-                return
-            self.settings.read_aloud_openvoice_executable = exe
-            v = _ask_int("Speaking rate", self.settings.read_aloud_openvoice_rate, 80, 450)
-            if v is None:
-                self._set_status("Read aloud settings cancelled")
-                return
-            self.settings.read_aloud_openvoice_rate = v
-            consent = self._show_message_box(
-                "OpenVoice can apply advanced voice style transforms. "
-                "Enable this only if you consent\n"
-                "to advanced style processing workflows for this machine.",
-                _TITLE,
-                wx.YES_NO | wx.ICON_QUESTION,
-            )
-            self.settings.read_aloud_openvoice_consent = consent == wx.YES
+                self._run_background_task("Downloading Kokoro models", _dl_kokoro, _on_kokoro_done)
 
-        # Always offer a preview of the current voice with new settings
-        current_voice = {
-            "pyttsx3": self.settings.read_aloud_voice,
-            "dectalk": self.settings.read_aloud_dectalk_voice,
-            "piper": self.settings.read_aloud_piper_model,
-            "kokoro": self.settings.read_aloud_kokoro_voice,
-            "espeak": self.settings.read_aloud_espeak_voice,
-            "openvoice": self.settings.read_aloud_openvoice_voice,
-        }.get(selected_engine, "")
-        with wx.MessageDialog(
-            self.frame,
-            f"Settings saved for {engine_choices[engine_values.index(selected_engine)]}.\n\n"
-            "Would you like to hear a preview with the current voice?",
-            _TITLE,
-            wx.YES_NO | wx.ICON_QUESTION,
-        ) as confirm:
-            save_settings(self.settings)
-            if self._show_modal_dialog(confirm, _TITLE) == wx.ID_YES:
-                self._preview_voice(selected_engine, current_voice)
-        engine_label = engine_choices[engine_values.index(selected_engine)]
-        self._set_status(f"Read aloud engine set to {engine_label}")
+        download_btn.Bind(wx.EVT_BUTTON, _on_download)
+
+        sel_engine: list[str] = [current_engine]
+        sel_voice_idx: list[int] = [-1]
+
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+        try:
+            result = self._show_modal_dialog(dialog, _TITLE)
+            if result == wx.ID_OK:
+                sel_engine[0] = engine_values[engine_rb.GetSelection()]
+                sel_voice_idx[0] = voice_lb.GetSelection()
+        finally:
+            dialog.Destroy()
+
+        if result != wx.ID_OK:
+            self._set_status("Read aloud configuration cancelled")
+            return
+
+        eng = sel_engine[0]
+        idx = sel_voice_idx[0]
+        self.settings.read_aloud_engine = eng
+
+        if 0 <= idx < len(voices):
+            if eng == "dectalk":
+                self.settings.read_aloud_dectalk_voice = voices[idx].id
+            elif eng == "piper":
+                onnx_path = _piper_model_dir / f"{voices[idx].id}.onnx"
+                if onnx_path.exists():
+                    self.settings.read_aloud_piper_model = str(onnx_path)
+                else:
+                    self._show_message_box(
+                        f"'{voices[idx].name.split(' [')[0]}' is not downloaded yet.\n"
+                        "Use the Download button to fetch it first.",
+                        _TITLE,
+                        wx.ICON_INFORMATION | wx.OK,
+                    )
+                    self.settings.read_aloud_engine = current_engine
+                    return
+            elif eng == "kokoro":
+                self.settings.read_aloud_kokoro_voice = voices[idx].id
+            elif eng == "espeak":
+                self.settings.read_aloud_espeak_voice = voices[idx].id
+            else:
+                self.settings.read_aloud_voice = voices[idx].id
+
+        if eng == "pyttsx3":
+            self.settings.read_aloud_rate = rate_spin.GetValue()
+            self.settings.read_aloud_volume = vol_spin.GetValue()
+            self.settings.read_aloud_pitch = pitch_spin.GetValue()
+        elif eng == "dectalk":
+            self.settings.read_aloud_dectalk_rate = rate_spin.GetValue()
+        elif eng == "espeak":
+            self.settings.read_aloud_espeak_rate = rate_spin.GetValue()
+        elif eng == "kokoro":
+            self.settings.read_aloud_kokoro_speed = kok_spin.GetValue()
+
+        save_settings(self.settings)
+        self._set_status(f"Read aloud configured: {engine_labels[engine_values.index(eng)]}")
+
+    def choose_read_aloud_voice(self) -> None:
+        self.choose_read_aloud_configuration()
+
+    def choose_read_aloud_settings(self) -> None:
+        self.choose_read_aloud_configuration()
 
     def generate_speech_audio(self) -> None:  # noqa: PLR0912,PLR0915
         wx = self._wx
@@ -14894,22 +15165,16 @@ class MainFrame(
 
         # Resolve / prompt for engine-specific paths before background work
         if engine == "piper":
-            exe = discover_piper_executable(s.read_aloud_piper_executable)
+            exe = discover_piper_executable()
             if exe is None:
-                with wx.TextEntryDialog(
-                    self.frame, "Path to piper.exe:", _TITLE, value=s.read_aloud_piper_executable
-                ) as d:
-                    if self._show_modal_dialog(d, _TITLE) != wx.ID_OK:
-                        self._set_status("Speech generation cancelled")
-                        return
-                    exe = discover_piper_executable(d.GetValue().strip())
-                if exe is None:
-                    self._show_message_box(
-                        "Piper executable not found.", _TITLE, wx.ICON_ERROR | wx.OK
-                    )
-                    self._set_status("Speech generation cancelled")
-                    return
-                s.read_aloud_piper_executable = str(exe)
+                self._show_message_box(
+                    "Piper executable was not found. "
+                    "Re-run the Quill installer and select the Piper component.",
+                    _TITLE,
+                    wx.ICON_ERROR | wx.OK,
+                )
+                self._set_status("Speech generation cancelled")
+                return
             model = Path(s.read_aloud_piper_model).expanduser()
             if not s.read_aloud_piper_model or not model.exists():
                 with wx.FileDialog(
@@ -14950,26 +15215,6 @@ class MainFrame(
                 return
             espeak_exe_snap = exe
 
-        elif engine == "openvoice":
-            if not s.read_aloud_openvoice_consent:
-                self._show_message_box(
-                    "OpenVoice requires explicit consent in Read Aloud Settings.",
-                    _TITLE,
-                    wx.ICON_ERROR | wx.OK,
-                )
-                self._set_status("Speech generation cancelled")
-                return
-            exe = discover_openvoice_executable(s.read_aloud_openvoice_executable)
-            if exe is None:
-                self._show_message_box(
-                    "OpenVoice executable not found. Configure it in Read Aloud Settings.",
-                    _TITLE,
-                    wx.ICON_ERROR | wx.OK,
-                )
-                self._set_status("Speech generation cancelled")
-                return
-            openvoice_exe_snap = exe
-
         save_settings(s)
         task_label = f"Generating speech audio ({output_path.name}) via {engine}"
 
@@ -14984,8 +15229,6 @@ class MainFrame(
         _kokoro_speed = s.read_aloud_kokoro_speed
         _espeak_voice = s.read_aloud_espeak_voice
         _espeak_rate = s.read_aloud_espeak_rate
-        _openvoice_voice = s.read_aloud_openvoice_voice
-        _openvoice_rate = s.read_aloud_openvoice_rate
         _out = output_path
 
         def work(progress: Callable[[str, int, int], None]) -> object:
@@ -15018,14 +15261,6 @@ class MainFrame(
                     executable_path=espeak_exe_snap,
                     voice=_espeak_voice,
                     rate=_espeak_rate,
-                )
-            elif _engine == "openvoice":
-                synthesize_with_openvoice(
-                    _out_text,
-                    _out,
-                    executable_path=openvoice_exe_snap,
-                    voice=_openvoice_voice,
-                    rate=_openvoice_rate,
                 )
             progress("Finalizing output", 1, 1)
             return str(_out)
@@ -16962,17 +17197,10 @@ class MainFrame(
             ("Voice (pyttsx3)", settings.read_aloud_voice or "(default system)"),
             ("DECtalk executable", settings.read_aloud_dectalk_executable or "Not configured"),
             ("DECtalk voice", settings.read_aloud_dectalk_voice),
-            ("Piper executable", settings.read_aloud_piper_executable or "Not configured"),
             ("Piper model", settings.read_aloud_piper_model or "Not configured"),
             ("Kokoro voice", settings.read_aloud_kokoro_voice),
             ("eSpeak executable", settings.read_aloud_espeak_executable or "PATH lookup"),
             ("eSpeak English voice", settings.read_aloud_espeak_voice),
-            ("OpenVoice executable", settings.read_aloud_openvoice_executable or "Not configured"),
-            ("OpenVoice voice", settings.read_aloud_openvoice_voice),
-            (
-                "OpenVoice consent",
-                "Enabled" if settings.read_aloud_openvoice_consent else "Disabled",
-            ),
         ]
         speech_table_rows = "".join(
             f"<tr><th scope='row'>{html.escape(name)}</th><td>{html.escape(str(value))}</td></tr>"
@@ -22230,7 +22458,11 @@ class MainFrame(
 
         feature_manager: FeatureManager = self.features
         changed, aborted = run_setup_wizard(
-            self.frame, self.settings, feature_manager, show_modal_fn=self._show_modal_dialog
+            self.frame,
+            self.settings,
+            feature_manager,
+            show_modal_fn=self._show_modal_dialog,
+            open_ai_hub=self.open_ai_hub,
         )
         if changed:
             # Apply Quillin profile from wizard intent choice
@@ -22244,15 +22476,6 @@ class MainFrame(
                 wants_braille=wants_braille,
                 wants_automation=wants_auto,
             )
-            # Persist AI provider/key when provided
-            ai_provider = getattr(self.settings, "setup_wizard_ai_provider", "")
-            ai_key = getattr(self.settings, "setup_wizard_ai_key", "")
-            if ai_provider and ai_key:
-                try:
-                    self.ai.save_provider_api_key(ai_provider, ai_key)
-                    self.ai.set_active_provider(ai_provider)
-                except Exception:
-                    pass
             save_settings(self.settings)
             feature_manager.save()
             self._apply_accelerators()
@@ -22801,8 +23024,7 @@ class MainFrame(
         wx = self._wx
         start_setup = self._show_message_box(
             "Set up speech engines now?\n\n"
-            "You can download/configure DECtalk, eSpeak-NG, Piper, Kokoro, "
-            "and OpenVoice.\n"
+            "You can download/configure DECtalk, eSpeak-NG, Piper, and Kokoro.\n"
             "You can always change these later in AI > Speech > Settings.",
             "Speech Setup",
             wx.ICON_QUESTION | wx.YES_NO,
@@ -22816,9 +23038,8 @@ class MainFrame(
         choices = [
             "Download and configure DECtalk runtime (recommended)",
             "Configure eSpeak-NG path and English variant",
-            "Configure Piper executable and English model folder",
+            "Browse and download Piper voices",
             "Configure Kokoro English voice defaults",
-            "Configure OpenVoice executable, English voice, and consent",
             "Open speech setup docs",
         ]
         with wx.MultiChoiceDialog(
@@ -22885,15 +23106,7 @@ class MainFrame(
                             self.settings.read_aloud_espeak_voice = voices[idx].id
 
         if 2 in selected:
-            exe = _ask_text("Path to piper.exe:", self.settings.read_aloud_piper_executable)
-            if exe is not None:
-                self.settings.read_aloud_piper_executable = exe
-            model_dir = _ask_text(
-                "Folder containing English Piper .onnx models:",
-                self.settings.read_aloud_piper_model_dir,
-            )
-            if model_dir is not None:
-                self.settings.read_aloud_piper_model_dir = model_dir
+            self.choose_read_aloud_configuration()
 
         if 3 in selected:
             voices = list_kokoro_voices()
@@ -22910,32 +23123,6 @@ class MainFrame(
                             self.settings.read_aloud_kokoro_voice = voices[idx].id
 
         if 4 in selected:
-            exe = _ask_text(
-                "Path to OpenVoice executable:", self.settings.read_aloud_openvoice_executable
-            )
-            if exe is not None:
-                self.settings.read_aloud_openvoice_executable = exe
-            voices = list_openvoice_english_voices()
-            if voices:
-                with wx.SingleChoiceDialog(
-                    self.frame,
-                    "Choose default OpenVoice English voice:",
-                    "Speech Setup",
-                    choices=[voice.name for voice in voices],
-                ) as voice_dialog:
-                    if self._show_modal_dialog(voice_dialog, "Speech Setup") == wx.ID_OK:
-                        idx = voice_dialog.GetSelection()
-                        if 0 <= idx < len(voices):
-                            self.settings.read_aloud_openvoice_voice = voices[idx].id
-            consent = self._show_message_box(
-                "Enable OpenVoice advanced style module on this machine?\n\n"
-                "This feature is optional and remains disabled unless you explicitly consent.",
-                "Speech Setup",
-                wx.YES_NO | wx.ICON_QUESTION,
-            )
-            self.settings.read_aloud_openvoice_consent = consent == wx.YES
-
-        if 5 in selected:
             docs_path = app_data_dir().parent / "Quill" / "docs" / "userguide.md"
             webbrowser.open(str(docs_path))
 

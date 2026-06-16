@@ -68,7 +68,6 @@ class Settings:
     read_aloud_dectalk_voice: str = "paul"
     read_aloud_dectalk_rate: int = 180
     read_aloud_dectalk_dictionary: str = ""
-    read_aloud_piper_executable: str = ""
     read_aloud_piper_model: str = ""
     announcement_backend: str = "auto"
     read_aloud_piper_model_dir: str = ""
@@ -77,10 +76,6 @@ class Settings:
     read_aloud_espeak_executable: str = ""
     read_aloud_espeak_voice: str = "en"
     read_aloud_espeak_rate: int = 175
-    read_aloud_openvoice_executable: str = ""
-    read_aloud_openvoice_voice: str = "en-base"
-    read_aloud_openvoice_rate: int = 180
-    read_aloud_openvoice_consent: bool = False
     announcement_trace_enabled: bool = False
     assistant_enabled: bool = False
     assistant_prompt_style: str = "balanced"
@@ -167,7 +162,7 @@ class Settings:
     # time we see a key we silently cache it (paramiko.AutoAddPolicy).
     ssh_trust_first_use: bool = False
     # AI chat (Phase 2): Ask AI dialog provider/model defaults.
-    ai_chat_default_provider: str = "openrouter"
+    ai_chat_default_provider: str = ""
     ai_chat_default_model: str = ""
     ollama_base_url: str = "http://localhost:11434"
     # AI prompts (Phase 3): separate default model for prompt-library runs.
@@ -293,7 +288,6 @@ class Settings:
             "piper",
             "kokoro",
             "espeak",
-            "openvoice",
         }
         if read_aloud_engine not in _valid_engines:
             read_aloud_engine = "pyttsx3"
@@ -323,7 +317,6 @@ class Settings:
         if read_aloud_dectalk_rate > 650:
             read_aloud_dectalk_rate = 650
         read_aloud_dectalk_dictionary = str(data.get("read_aloud_dectalk_dictionary", "")).strip()
-        read_aloud_piper_executable = str(data.get("read_aloud_piper_executable", "")).strip()
         read_aloud_piper_model = str(data.get("read_aloud_piper_model", "")).strip()
         announcement_backend = str(data.get("announcement_backend", "auto")).strip().lower()
         read_aloud_piper_model_dir = str(data.get("read_aloud_piper_model_dir", "")).strip()
@@ -343,18 +336,6 @@ class Settings:
             read_aloud_espeak_rate = 80
         if read_aloud_espeak_rate > 450:
             read_aloud_espeak_rate = 450
-        read_aloud_openvoice_executable = str(
-            data.get("read_aloud_openvoice_executable", "")
-        ).strip()
-        read_aloud_openvoice_voice = (
-            str(data.get("read_aloud_openvoice_voice", "en-base")).strip().lower() or "en-base"
-        )
-        read_aloud_openvoice_rate = int(data.get("read_aloud_openvoice_rate", 180))
-        if read_aloud_openvoice_rate < 80:
-            read_aloud_openvoice_rate = 80
-        if read_aloud_openvoice_rate > 450:
-            read_aloud_openvoice_rate = 450
-        read_aloud_openvoice_consent = bool(data.get("read_aloud_openvoice_consent", False))
         if announcement_backend not in {"auto", "prism", "status_only"}:
             announcement_backend = "auto"
         announcement_trace_enabled = bool(data.get("announcement_trace_enabled", False))
@@ -499,9 +480,7 @@ class Settings:
         glow_pii_redaction_consent = bool(data.get("glow_pii_redaction_consent", False))
         glow_language_processing_consent = bool(data.get("glow_language_processing_consent", False))
         ssh_trust_first_use = bool(data.get("ssh_trust_first_use", False))
-        ai_chat_default_provider = (
-            str(data.get("ai_chat_default_provider", "openrouter")).strip() or "openrouter"
-        )
+        ai_chat_default_provider = str(data.get("ai_chat_default_provider", "")).strip()
         ai_chat_default_model = str(data.get("ai_chat_default_model", ""))
         ollama_base_url = (
             str(data.get("ollama_base_url", "http://localhost:11434")).strip()
@@ -641,7 +620,6 @@ class Settings:
             read_aloud_dectalk_voice=read_aloud_dectalk_voice,
             read_aloud_dectalk_rate=read_aloud_dectalk_rate,
             read_aloud_dectalk_dictionary=read_aloud_dectalk_dictionary,
-            read_aloud_piper_executable=read_aloud_piper_executable,
             read_aloud_piper_model=read_aloud_piper_model,
             announcement_backend=announcement_backend,
             read_aloud_piper_model_dir=read_aloud_piper_model_dir,
@@ -650,10 +628,6 @@ class Settings:
             read_aloud_espeak_executable=read_aloud_espeak_executable,
             read_aloud_espeak_voice=read_aloud_espeak_voice,
             read_aloud_espeak_rate=read_aloud_espeak_rate,
-            read_aloud_openvoice_executable=read_aloud_openvoice_executable,
-            read_aloud_openvoice_voice=read_aloud_openvoice_voice,
-            read_aloud_openvoice_rate=read_aloud_openvoice_rate,
-            read_aloud_openvoice_consent=read_aloud_openvoice_consent,
             announcement_trace_enabled=announcement_trace_enabled,
             assistant_enabled=assistant_enabled,
             assistant_prompt_style=assistant_prompt_style,
