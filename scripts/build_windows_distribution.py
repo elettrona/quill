@@ -106,12 +106,6 @@ def main() -> int:
         help="Optional local Piper voices/models directory to bundle under portable\\tools\\speech\\piper.",
     )
     parser.add_argument(
-        "--openvoice-dir",
-        type=Path,
-        default=None,
-        help="Optional local OpenVoice voices/models directory to bundle under portable\\tools\\speech\\openvoice.",
-    )
-    parser.add_argument(
         "--braille-pack-dir",
         type=Path,
         default=None,
@@ -155,7 +149,6 @@ def main() -> int:
                 "speech/espeak-ng": args.espeak_dir,
                 "speech/kokoro": args.kokoro_dir,
                 "speech/piper": args.piper_dir,
-                "speech/openvoice": args.openvoice_dir,
             }.items()
             if path is not None
         },
@@ -562,8 +555,6 @@ def build_inno_setup_script(version: str, bundle_braille_pack: bool = False) -> 
         " Types: full custom; Flags: checkablealone",
         'Name: "speechpiper"; Description: "Install bundled Piper voices/models";'
         " Types: full custom; Flags: checkablealone",
-        'Name: "speechopenvoice"; Description: "Install bundled OpenVoice voices/models";'
-        " Types: full custom; Flags: checkablealone",
         'Name: "nodejs"; Description: "Install portable Node.js runtime for Node Quillins'
         " and the Developer Console TypeScript interface (~30 MB);"
         ' not required for Python Quillins";'
@@ -576,7 +567,7 @@ def build_inno_setup_script(version: str, bundle_braille_pack: bool = False) -> 
         "[Files]",
         'Source: "..\\portable\\*"; DestDir: "{app}";'
         " Flags: ignoreversion recursesubdirs createallsubdirs;"
-        ' Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\kokoro\\*,tools\\speech\\piper\\*,tools\\speech\\openvoice\\*,tools\\nodejs\\*,vendor\\braille-pack\\*"',
+        ' Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\kokoro\\*,tools\\speech\\piper\\*,tools\\nodejs\\*,vendor\\braille-pack\\*"',
         "; QUILL Braille Pack: liblouis runtime, translation tables, and BRF profiles.",
         "; Installed to vendor\\braille-pack so QUILL detects it automatically via QUILL_APP_ROOT.",
         'Source: "..\\portable\\vendor\\braille-pack\\*"; DestDir: "{app}\\vendor\\braille-pack";'
@@ -617,9 +608,6 @@ def build_inno_setup_script(version: str, bundle_braille_pack: bool = False) -> 
         'Source: "..\\portable\\tools\\speech\\piper\\*"; DestDir: "{app}\\tools\\speech\\piper";'
         " Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist;"
         " Components: speechpiper",
-        'Source: "..\\portable\\tools\\speech\\openvoice\\*"; DestDir: "{app}\\tools\\speech\\openvoice";'
-        " Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist;"
-        " Components: speechopenvoice",
         "; Node.js portable runtime (optional). The build script copies a portable",
         "; node.exe distribution into portable\\tools\\nodejs when building with",
         "; --bundle-nodejs. skipifsourcedoesntexist means a build without bundled",
@@ -1111,7 +1099,6 @@ def _speech_asset_manifest(
         "espeak": "espeak-ng",
         "kokoro": "kokoro",
         "piper": "piper",
-        "openvoice": "openvoice",
     }
     for engine, dir_name in engine_dirs.items():
         engine_dir = speech_root / dir_name
