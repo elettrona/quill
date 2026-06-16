@@ -582,7 +582,7 @@ def build_inno_setup_script(version: str, bundle_braille_pack: bool = False) -> 
         "[Files]",
         'Source: "..\\portable\\*"; DestDir: "{app}";'
         " Flags: ignoreversion recursesubdirs createallsubdirs;"
-        ' Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\nodejs\\*,vendor\\braille-pack\\*"',
+        ' Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\nodejs\\*,vendor\\braille-pack\\*,_tool-download\\*,_speech-download\\*"',
         "; QUILL Braille Pack: liblouis runtime, translation tables, and BRF profiles.",
         "; Installed to vendor\\braille-pack so QUILL detects it automatically via QUILL_APP_ROOT.",
         'Source: "..\\portable\\vendor\\braille-pack\\*"; DestDir: "{app}\\vendor\\braille-pack";'
@@ -683,7 +683,13 @@ def build_inno_setup_script(version: str, bundle_braille_pack: bool = False) -> 
         "; user's data in %APPDATA%\\Quill is decided by an explicit prompt in",
         "; [Code] below -- we never silently keep or wipe it.",
         'Type: filesandordirs; Name: "{app}\\__pycache__"',
-        'Type: filesandordirs; Name: "{app}\\python\\__pycache__"',
+        "; {app}\\python is the bundled embedded runtime: wholly owned by Quill,",
+        "; no user data lives there (that's %APPDATA%\\Quill). Python generates",
+        "; __pycache__ dirs across Lib\\site-packages on first run (the build",
+        "; uses --no-compile), and those nest arbitrarily deep, so the only",
+        "; reliable cleanup is removing the whole tree rather than chasing",
+        "; specific __pycache__ paths.",
+        'Type: filesandordirs; Name: "{app}\\python"',
         "",
         "[Code]",
         "// After install: if the nodejs component was selected but the portable",
@@ -914,7 +920,12 @@ def _prune_embedded_runtime(site_packages: Path) -> None:
 
     pip and setuptools are bootstrapped to install dependencies, then stripped
     so they don't bloat the installer.  The pywin32 extras (pythonwin, isapi,
-    adodbapi, PyWin32.chm) and the quill dev/CI sub-packages are also removed.
+    adodbapi, PyWin32.chm) are also removed.
+
+    ``quill/devtools`` (the in-app Developer Console) and ``quill/tools``
+    (``kqp_validator`` backs the runtime "Import Keyboard Pack" command) are
+    imported by ``quill/ui`` and ``quill/core`` at runtime, so they must ship
+    even though most of ``quill/tools`` is otherwise CI-only.
     """
     removable = [
         # Build tools - used during pip install, not at runtime (~155 MB)
@@ -930,9 +941,6 @@ def _prune_embedded_runtime(site_packages: Path) -> None:
         "PyWin32.chm",
         "adodbapi",
         "isapi",
-        # Quill sub-packages not needed at runtime (~8 MB)
-        "quill/tools",
-        "quill/devtools",
     ]
     total_removed = 0
     for pattern in removable:

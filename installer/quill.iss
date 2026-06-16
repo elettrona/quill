@@ -86,7 +86,7 @@ Name: "nodejs"; Description: "Install portable Node.js runtime for Node Quillins
 Name: "braillepack"; Description: "Install QUILL Braille Pack (liblouis translation engine, UEB, Standard American English, and international braille profiles, ~15 MB)"; Types: full custom; Flags: checkablealone
 
 [Files]
-Source: "..\portable\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "docs\QUILL-PRD.md,tools\pandoc\*,tools\speech\dectalk\*,tools\speech\espeak-ng\*,tools\speech\piper\*,tools\nodejs\*,vendor\braille-pack\*"
+Source: "..\portable\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "docs\QUILL-PRD.md,tools\pandoc\*,tools\speech\dectalk\*,tools\speech\espeak-ng\*,tools\speech\piper\*,tools\nodejs\*,vendor\braille-pack\*,_tool-download\*,_speech-download\*"
 ; QUILL Braille Pack: liblouis runtime, translation tables, and BRF profiles.
 ; Installed to vendor\braille-pack so QUILL detects it automatically via QUILL_APP_ROOT.
 Source: "..\portable\vendor\braille-pack\*"; DestDir: "{app}\vendor\braille-pack"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: braillepack
@@ -287,7 +287,13 @@ Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: postin
 ; user's data in %APPDATA%\Quill is decided by an explicit prompt in
 ; [Code] below -- we never silently keep or wipe it.
 Type: filesandordirs; Name: "{app}\__pycache__"
-Type: filesandordirs; Name: "{app}\python\__pycache__"
+; {app}\python is the bundled embedded runtime: wholly owned by Quill,
+; no user data lives there (that's %APPDATA%\Quill). Python generates
+; __pycache__ dirs across Lib\site-packages on first run (the build
+; uses --no-compile), and those nest arbitrarily deep, so the only
+; reliable cleanup is removing the whole tree rather than chasing
+; specific __pycache__ paths.
+Type: filesandordirs; Name: "{app}\python"
 
 [Code]
 // After install: if the nodejs component was selected but the portable
