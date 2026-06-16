@@ -15,6 +15,7 @@
   "choose_read_aloud_voice",
   "clear_recent_files",
   "close_current_document",
+  "close_other_documents",
   "compare_announce_difference",
   "compare_current_summary",
   "compare_dialog_next",

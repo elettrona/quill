@@ -1572,6 +1572,12 @@ class MainFrame(
             self._binding_for("window.previous_document"),
         )
         self.commands.register(
+            "window.close_other_documents",
+            "Close Other Documents",
+            self.close_other_documents,
+            self._binding_for("window.close_other_documents"),
+        )
+        self.commands.register(
             "navigate.speak_window_title",
             "Speak Window Title",
             self.speak_window_title,
@@ -3260,6 +3266,7 @@ class MainFrame(
             "file.print": self._id_print,
             "window.next_document": self._id_next_document,
             "window.previous_document": self._id_previous_document,
+            "window.close_other_documents": self._id_close_other_documents,
             "view.send_to_tray": self._id_send_to_tray,
             "view.toggle_soft_wrap": self._id_toggle_soft_wrap,
             "view.toggle_find_wrap": self._id_toggle_find_wrap,
@@ -7434,6 +7441,9 @@ class MainFrame(
 
     def previous_document(self) -> None:
         self._switch_document(reverse=True)
+
+    def close_other_documents(self) -> None:
+        self._close_other_tabs(self._active_tab_index)
 
     def close_current_document(self) -> None:
         if not self._prompt_to_save_active_document("Close"):

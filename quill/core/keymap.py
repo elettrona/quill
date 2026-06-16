@@ -51,6 +51,7 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "file.print": "Ctrl+P",
     "window.next_document": "Ctrl+Tab",
     "window.previous_document": "Ctrl+Shift+Tab",
+    "window.close_other_documents": "Ctrl+Shift+F4",
     "navigate.speak_window_title": "Ctrl+Shift+Grave, F",
     "navigate.speak_full_path": "Ctrl+Shift+Grave, P",
     "navigate.speak_status_summary": "Ctrl+Shift+Grave, Q",

@@ -990,6 +990,7 @@ class MenuBuilderMixin:
         insert_menu.AppendSubMenu(date_time_menu, "Date and &Time")
         self._id_next_document = wx.NewIdRef()
         self._id_previous_document = wx.NewIdRef()
+        self._id_close_other_documents = wx.NewIdRef()
         window_menu = wx.Menu()
         window_menu.Append(
             self._id_next_document,
@@ -998,6 +999,12 @@ class MenuBuilderMixin:
         window_menu.Append(
             self._id_previous_document,
             self._menu_label("&Previous Document", "window.previous_document"),
+        )
+        window_menu.Append(
+            self._id_close_other_documents,
+            self._menu_label(
+                "Close &Other Documents\tCtrl+Shift+F4", "window.close_other_documents"
+            ),
         )
         window_menu.AppendSeparator()
         window_menu.Append(
@@ -2105,6 +2112,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.previous_document(),
             id=self._id_previous_document,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.close_other_documents(),
+            id=self._id_close_other_documents,
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.insert_link(), id=self._id_insert_link)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.insert_citation(), id=self._id_insert_citation)
