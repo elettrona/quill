@@ -319,10 +319,13 @@ class AIProgressDialog:
         self._gauge.Pulse()
         root.Add(self._gauge, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 12)
         if on_cancel is not None:
-            cancel_btn = wx.Button(self.dialog, label="&Cancel")
+            cancel_btn = wx.Button(self.dialog, id=wx.ID_CANCEL, label="&Cancel")
             cancel_btn.Bind(wx.EVT_BUTTON, lambda _e: on_cancel())
             root.Add(cancel_btn, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
         self.dialog.SetSizer(root)
+        from quill.ui.dialog_contract import apply_modal_ids
+
+        apply_modal_ids(self.dialog, escape_id=wx.ID_CANCEL)
 
     def update_message(self, message: str) -> None:
         self._wx.CallAfter(self._label.SetLabel, message)

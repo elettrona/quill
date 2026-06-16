@@ -11386,6 +11386,7 @@ class MainFrame(
         be located on disk.
         """
         candidates = [
+            Path(__file__).resolve().parent.parent.parent / "docs" / "user guide" / "userguide.md",
             Path(__file__).resolve().parent.parent.parent / "docs" / "userguide.md",
             Path(__file__).resolve().parent.parent / "docs" / "userguide.md",
             Path.cwd() / "docs" / "userguide.md",

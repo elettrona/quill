@@ -199,7 +199,7 @@ def _diarize_pyannote(path: Path, max_speakers: int) -> DiarizationResult:
     Downloads ~250 MB of model weights on first use.
     """
     try:
-        from pyannote.audio import Pipeline  # type: ignore[import-untyped]
+        from pyannote.audio import Pipeline  # type: ignore[import-not-found,import-untyped]
     except ImportError as exc:
         raise DiarizationError(
             "pyannote.audio is not installed. Install it with: pip install pyannote.audio"

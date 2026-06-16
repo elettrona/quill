@@ -11,6 +11,7 @@ All calls are blocking; run on a background thread with a stop event to cancel.
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -95,7 +96,7 @@ class AgentContext:
     connection: AssistantConnectionSettings
     api_key: str = ""
     stop_event: threading.Event = field(default_factory=threading.Event)
-    on_progress: object = None  # Callable[[str, int, int], None] | None
+    on_progress: Callable[[str, int, int], None] | None = None
 
     def is_cancelled(self) -> bool:
         return self.stop_event.is_set()
@@ -117,7 +118,7 @@ _REFINE_PROMPT = (
 def _emit_progress(ctx: AgentContext, label: str, index: int, total: int) -> None:
     if ctx.on_progress is not None:
         try:
-            ctx.on_progress(label, index, total)  # type: ignore[call-arg]
+            ctx.on_progress(label, index, total)
         except Exception:  # noqa: BLE001
             pass
 

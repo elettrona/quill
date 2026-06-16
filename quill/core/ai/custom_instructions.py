@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -346,7 +347,7 @@ _DEFAULT_MAP: dict[str, InstructionSet] = {inst.task_id: inst for inst in _DEFAU
 # ---------------------------------------------------------------------------
 
 
-def _instructions_path():
+def _instructions_path() -> Path:
     from quill.core.paths import app_data_dir
 
     return app_data_dir() / _INSTRUCTIONS_FILENAME

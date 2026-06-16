@@ -1029,7 +1029,7 @@ def _stage_distribution_docs(portable_dir: Path, source_root: Path) -> list[Path
     docs_dir = portable_dir / "docs"
     docs_dir.mkdir(parents=True, exist_ok=True)
     staged: list[Path] = []
-    for relative in (Path("docs") / "userguide.md",):
+    for relative in (Path("docs") / "user guide" / "userguide.md",):
         source = source_root / relative
         if not source.exists():
             continue
