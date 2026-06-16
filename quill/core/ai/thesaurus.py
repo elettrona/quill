@@ -10,9 +10,13 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from quill.core.ai.custom_instructions import split_instruction
 from quill.core.assistant_ai import generate_assistant_response
+
+if TYPE_CHECKING:
+    from quill.core.assistant_ai import AssistantConnectionSettings
 
 _MAX_WORD_CHARS = 80
 _MAX_CONTEXT_CHARS = 400
@@ -50,7 +54,7 @@ class ThesaurusEmptyError(ThesaurusError):
 
 def get_synonyms(
     word: str,
-    connection: object,
+    connection: AssistantConnectionSettings,
     api_key: str = "",
     context_sentence: str = "",
 ) -> list[ThesaurusEntry]:

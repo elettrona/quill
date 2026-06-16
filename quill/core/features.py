@@ -7,6 +7,7 @@ from typing import Any
 
 from quill.core.feature_catalog import FEATURE_ALIASES, FEATURE_DEFINITIONS, FeatureDefinition
 from quill.core.feature_command_map import COMMAND_FEATURE_MAP
+from quill.core.i18n import lazy_gettext
 from quill.core.paths import app_data_dir
 from quill.core.storage import read_json, write_json_atomic
 
@@ -32,8 +33,8 @@ class FeatureProfile:
 PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
     PROFILE_ESSENTIAL: FeatureProfile(
         id=PROFILE_ESSENTIAL,
-        name="Essential",
-        description="Core editing, file, and navigation features.",
+        name=lazy_gettext("Essential"),
+        description=lazy_gettext("Core editing, file, and navigation features."),
         states={
             "core.app": FEATURE_STATE_ON,
             "core.editor": FEATURE_STATE_ON,
@@ -74,8 +75,8 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
     ),
     PROFILE_WRITER: FeatureProfile(
         id=PROFILE_WRITER,
-        name="Writer",
-        description="Writing, formatting, and cleanup with guided power features.",
+        name=lazy_gettext("Writer"),
+        description=lazy_gettext("Writing, formatting, and cleanup with guided power features."),
         states={
             "core.search.regex": FEATURE_STATE_QUIET,
             "core.format": FEATURE_STATE_ON,
@@ -96,8 +97,8 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
     ),
     "reader_and_student": FeatureProfile(
         id="reader_and_student",
-        name="Reader and Student",
-        description="Reading, highlights, references, and light writing workflows.",
+        name=lazy_gettext("Reader and Student"),
+        description=lazy_gettext("Reading, highlights, references, and light writing workflows."),
         states={
             "core.search.regex": FEATURE_STATE_QUIET,
             "core.format": FEATURE_STATE_QUIET,
@@ -118,8 +119,8 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
     ),
     "office_and_admin": FeatureProfile(
         id="office_and_admin",
-        name="Office and Admin",
-        description="Reliable file work, sessions, cleanup, and printing.",
+        name=lazy_gettext("Office and Admin"),
+        description=lazy_gettext("Reliable file work, sessions, cleanup, and printing."),
         states={
             "core.search.regex": FEATURE_STATE_QUIET,
             "core.format": FEATURE_STATE_ON,
@@ -140,8 +141,10 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
     ),
     PROFILE_DEVELOPER_POWER_TEXT: FeatureProfile(
         id=PROFILE_DEVELOPER_POWER_TEXT,
-        name="Developer and Power Text",
-        description="Regular Expression, cleanup, inspection, and document analysis tools.",
+        name=lazy_gettext("Developer and Power Text"),
+        description=lazy_gettext(
+            "Regular Expression, cleanup, inspection, and document analysis tools."
+        ),
         states={
             "core.search.regex": FEATURE_STATE_ON,
             "core.format": FEATURE_STATE_ON,
@@ -161,8 +164,10 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
     ),
     "low_vision": FeatureProfile(
         id="low_vision",
-        name="Low Vision",
-        description="Higher contrast, larger reading aids, and friendly inspection tools.",
+        name=lazy_gettext("Low Vision"),
+        description=lazy_gettext(
+            "Higher contrast, larger reading aids, and friendly inspection tools."
+        ),
         states={
             "core.search.regex": FEATURE_STATE_QUIET,
             "core.format": FEATURE_STATE_ON,
@@ -183,8 +188,10 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
     ),
     "braille_screen_reader_power_user": FeatureProfile(
         id="braille_screen_reader_power_user",
-        name="Braille and Screen Reader Power User",
-        description="Screen-reader-friendly navigation with advanced text tools surfaced calmly.",
+        name=lazy_gettext("Braille and Screen Reader Power User"),
+        description=lazy_gettext(
+            "Screen-reader-friendly navigation with advanced text tools surfaced calmly."
+        ),
         states={
             "core.search.regex": FEATURE_STATE_QUIET,
             "core.format": FEATURE_STATE_QUIET,
@@ -205,8 +212,8 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
     ),
     PROFILE_ACCESSIBILITY_PROFESSIONAL: FeatureProfile(
         id=PROFILE_ACCESSIBILITY_PROFESSIONAL,
-        name="Accessibility Professional",
-        description="Reading, inspection, trust, and accessibility diagnostics.",
+        name=lazy_gettext("Accessibility Professional"),
+        description=lazy_gettext("Reading, inspection, trust, and accessibility diagnostics."),
         states={
             "core.search.regex": FEATURE_STATE_QUIET,
             "core.format": FEATURE_STATE_QUIET,
@@ -227,8 +234,8 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
     ),
     PROFILE_FULL_QUILL: FeatureProfile(
         id=PROFILE_FULL_QUILL,
-        name="Full Quill",
-        description="Everything visible, including advanced and experimental paths.",
+        name=lazy_gettext("Full Quill"),
+        description=lazy_gettext("Everything visible, including advanced and experimental paths."),
         states={feature_id: FEATURE_STATE_ON for feature_id in FEATURE_DEFINITIONS},
     ),
 }

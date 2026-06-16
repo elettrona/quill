@@ -151,7 +151,7 @@ def request_speech(
     )
     try:
         with urlopen(req, context=_tls_context(), timeout=60) as resp:
-            return resp.read()
+            return bytes(resp.read())
     except HTTPError as exc:
         if exc.code == 401:
             raise TTSAuthError("OpenAI TTS: authentication failed (401).") from exc
@@ -207,8 +207,8 @@ def _play_mp3_bytes(mp3_bytes: bytes, stop_event: threading.Event | None = None)
     import tempfile
 
     try:
-        import sounddevice as sd  # type: ignore[import-untyped]
-        import soundfile as sf  # type: ignore[import-untyped]
+        import sounddevice as sd  # type: ignore[import-not-found,import-untyped]
+        import soundfile as sf  # type: ignore[import-not-found,import-untyped]
 
         buf = io.BytesIO(mp3_bytes)
         data, samplerate = sf.read(buf, dtype="float32")

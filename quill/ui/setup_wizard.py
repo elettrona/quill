@@ -26,11 +26,12 @@ from typing import Any
 import wx
 
 from quill.core.features import FeatureManager
+from quill.core.i18n import _, lazy_gettext
 from quill.core.settings import Settings
 
 _log = logging.getLogger(__name__)
 
-_WIZARD_TITLE = "Personalise QUILL"
+_WIZARD_TITLE = lazy_gettext("Personalise QUILL")
 _PAGE_COUNT = 9
 
 
@@ -59,7 +60,7 @@ def run_setup_wizard(
     dlg = SetupWizardDialog(parent, settings, feature_manager, open_ai_hub=open_ai_hub)
     try:
         if show_modal_fn is not None:
-            result = show_modal_fn(dlg, "Setup Wizard")
+            result = show_modal_fn(dlg, _("Setup Wizard"))
         else:
             result = dlg.ShowModal()
         completed = result == wx.ID_OK

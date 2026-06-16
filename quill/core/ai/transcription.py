@@ -214,4 +214,4 @@ def _post_audio(
             return str(data.get("text", raw))
         except json.JSONDecodeError:
             pass
-    return raw
+    return str(raw)

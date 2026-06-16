@@ -1,16 +1,48 @@
-# QUILL 0.6.0 Release Notes
+# QUILL 0.6.0 Release Notes: Meet You Where You Are
 
-QUILL 0.6.0 is a major step forward for screen-reader-first writing, editing, AI-assisted authorship, automation, braille, code review, and extension-powered workflows.
+QUILL 0.6.0 is a community release in the truest sense of the word.
 
-This release is about speed, confidence, and control. You can type a short trigger and get a full template. You can open a braille file and know exactly where you are by page, line, cell, and progress. You can compare two files without visually scanning a diff. You can move through code by tokens instead of guessing where words begin and end. You can export to Word, inspect encoding problems, generate citations, and shape the sound layer so QUILL confirms what happened without talking over your screen reader. And now you can ask the AI to rewrite a paragraph, surface a better word in context, check your grammar, translate a document, or put a question directly to your own text — all from the keyboard, without leaving the editor.
+Yes, it is a major step forward for screen-reader-first writing, editing, AI-assisted authorship, automation, braille, code review, and extension-powered workflows. But the bigger story is not only what changed. The bigger story is **who is helping QUILL become what it is becoming**.
 
-Under the surface, QUILL 0.6.0 also introduces two major architectural expansions. The first is the AI writing layer: a complete, provider-agnostic toolkit covering twelve tasks from spell check to table-of-contents generation, with per-task custom instructions, prompt caching across every supported provider, and support for Anthropic Claude, OpenAI, Google Gemini, OpenRouter, and Ollama. The second is the Quillin extension platform: extensions can now own settings, contribute live preference dialogs, subscribe to document lifecycle events, contribute status-bar cells, declare dependencies, restrict network access, schedule background timers, respond to file-type opens, and initialize or shut down cleanly. Both are designed so you stay in charge and nothing runs silently without your knowledge.
+Kelly Ford, Taylor Arndt, Shane Popplestone, Michael Babcock, and so many others are helping lift this project into a new place. Some people are testing. Some are contributing code. Some are filing issues, describing real-world workflows, stress-testing accessibility, challenging assumptions, improving design direction, or simply cheering the project on when the work gets hard. All of that matters. All of it counts.
+
+Whether you are writing code, testing with JAWS or NVDA, trying a build and telling us where it hurts, sharing ideas, building Quillins, improving prompts, creating documentation, or encouraging the team from the sidelines: **thank you**.
+
+> “I started QUILL, but the community is lifting it to levels I could never reach alone. This release is about meeting people where they are, then giving them a path to grow.”  
+> — Jeff Bishop
+
+QUILL is being built around a simple promise: a free, cross-platform editor that is usable by all assistive technology, shaped by the people who depend on it, and driven by community need rather than by assumptions about what blind and screen-reader users should want.
+
+The core principle of this release is **Meet You Where You Are**.
+
+That means QUILL should not force every user into the same cockpit. A first-time writer should be able to open a quiet editor and start typing. A braille professional should be able to inspect page, line, and cell position with confidence. A developer should be able to move through code by tokens. A reviewer should be able to compare files without visually scanning a diff. A writer should be able to ask AI for help without leaving the keyboard. A power user should be able to extend the editor through Quillins. Everyone should be able to start at the right level and grow from there.
+
+This release is about speed, confidence, control, and delight. You can type a short trigger and get a full template. You can open a braille file and know exactly where you are by page, line, cell, and progress. You can compare two files without visually scanning a diff. You can move through code by tokens instead of guessing where words begin and end. You can export to Word, inspect encoding problems, generate citations, and shape the sound layer so QUILL confirms what happened without talking over your screen reader. And now you can ask the AI to rewrite a paragraph, surface a better word in context, check your grammar, translate a document, or put a question directly to your own text — all from the keyboard, without leaving the editor.
+
+Under the surface, QUILL 0.6.0 introduces two major architectural expansions. The first is the AI writing layer: a complete, provider-agnostic toolkit covering twelve tasks from spell check to table-of-contents generation, with per-task custom instructions, prompt caching across every supported provider, and support for Anthropic Claude, OpenAI, Google Gemini, OpenRouter, and Ollama. The second is the Quillin extension platform: extensions can now own settings, contribute live preference dialogs, subscribe to document lifecycle events, contribute status-bar cells, declare dependencies, restrict network access, schedule background timers, respond to file-type opens, and initialize or shut down cleanly. Both are designed so you stay in charge and nothing runs silently without your knowledge.
 
 Everything remains keyboard-first and screen-reader-first. Every new view is a real navigable control. Every action is announced, undoable where appropriate, and discoverable. No mouse is required. No visual-only flourish is required. No silent full-file scanning happens behind your back.
 
 If you are upgrading from QUILL 0.5.0, read **What works differently now** near the end. It lists the few places where menus, habits, or installer choices changed.
 
-## Biggest changes at a glance
+## The community story in this release
+
+QUILL 0.6.0 is organized around real user experiences instead of technical checklists. Each major area answers a practical question:
+
+- **How do I start without being overwhelmed?** Meet You Where You Are profiles and the redesigned startup wizard.
+- **How do I write faster without losing control?** Insert Automation, typed abbreviations, smart triggers, `.LOG` compatibility, append anchors, snippets, citations, and export tools.
+- **How do I review and navigate with confidence?** Compare Mode, code-aware editing, dynamic keyboard reference, sound cues, and indentation tones.
+- **How do braille professionals work inside the editor?** Braille Mode, page-aware status, BRF tools, and optional liblouis translation.
+- **How do contributors extend QUILL safely?** The Quillin platform, lifecycle events, settings pages, status-bar cells, dependencies, network safeguards, and live bundled examples.
+- **How does AI help without taking over?** AI Hub, provider choice, custom instructions, prompt caching, grammar, rewrite, translation, Document Q&A, AI Thesaurus, image description, and AI voice.
+- **How do we make daily use smoother?** Accessibility fixes, bug-report improvements, startup reliability, macOS setup, safer guides, and update fixes.
+
+> “A feature is not finished when it exists. It is finished when the person using it feels confident, respected, and in control.”  
+> — Jeff Bishop
+
+## What the community helped lift up in 0.6.0
+
+This is the fast tour. The detailed notes below keep every important implementation detail, but these are the moments users will feel first.
 
 - **Meet People Where They Are** is a complete reimagining of first-run setup. A redesigned startup wizard asks what kind of writing you do and shows a plain-English, screen-reader-readable preview of exactly what you will get. Seven intent profiles replace the old nine technical ones in the wizard. Menus, the Command Palette, and the Go to Anything dialog all reflect your chosen profile instantly - commands for features you have not enabled simply do not appear. Pressing Cancel on first run starts you in the simplest possible editor rather than leaving you with raw defaults.
 - **Insert Automation** turns typed abbreviations, smart triggers, `.LOG` files, document directives, and append anchors into one safe automation system.
@@ -30,7 +62,12 @@ If you are upgrading from QUILL 0.5.0, read **What works differently now** near 
 
 ---
 
-## Meet People Where They Are
+## Experience 1: Meet People Where They Are
+
+This is the heart of the release. QUILL now begins with the person, not the feature list. It asks what kind of work you do, explains what you will get in plain language, and keeps the rest out of your way until you are ready.
+
+> “Meeting people where they are means respecting beginners, professionals, power users, and explorers equally. QUILL should feel welcoming on day one and powerful on day one hundred.”  
+> — Jeff Bishop
 
 QUILL has grown into a serious piece of software. That is a good thing. But first-time users who want a reliable plain-text editor should not have to wade through braille menus, AI panels, regex options, a developer console, and a Snippet Gallery before they type a single word.
 
@@ -126,7 +163,12 @@ Below the list, a read-only description area explains the focused feature before
 
 ---
 
-## Insert Automation: type a trigger, get magic
+## Experience 2: Insert Automation — type a trigger, get magic
+
+Community testers have been clear: speed matters, but surprises are not acceptable. Insert Automation is built for both. It gives you templates, log entries, abbreviations, and smart triggers while keeping every action explicit, announced, and undoable.
+
+> “Delight is not about fireworks. Delight is when the editor does the small helpful thing at exactly the right moment and then gets out of your way.”  
+> — Jeff Bishop
 
 Insert Automation is the daily-workflow feature that changes how QUILL feels in practice. It combines typed shortcuts, templates, log files, smart text generation, document directives, and append anchors into one coherent keyboard-first system.
 
@@ -188,7 +230,12 @@ Insert Automation follows clear safety boundaries:
 
 ---
 
-## The Quillin Extension Platform: extensions become first-class citizens
+## Experience 3: The Quillin Extension Platform — community extensions become first-class citizens
+
+This is where the community story gets especially exciting. QUILL is no longer only an editor with built-in features. It is becoming a platform where contributors can build thoughtful, accessible extensions without sacrificing safety, privacy, or screen-reader quality.
+
+> “The future of QUILL is not one person deciding every feature. It is a community of people building the tools they wish existed, with accessibility baked into the foundation.”  
+> — Jeff Bishop
 
 QUILL 0.6.0 upgrades Quillins from a command-and-snippet mechanism into a full extension platform.
 
@@ -412,7 +459,12 @@ In previous releases, parts of the Quillin platform existed as declarations: eve
 
 ---
 
-## Braille Mode: professional braille editing inside QUILL
+## Experience 4: Braille Mode — professional braille editing inside QUILL
+
+Braille support is not treated as an add-on or a novelty. It is designed around the way braille professionals actually work: page, line, cell, progress, translation choices, preservation of layout, and confidence that the file will not be silently changed.
+
+> “Braille users deserve tools that understand braille workflows, not tools that merely tolerate braille files.”  
+> — Jeff Bishop
 
 ### Enabling Braille Mode
 
@@ -424,7 +476,7 @@ Braille Mode is not enabled by default. To turn it on:
 
 When Braille Mode is enabled and the QUILL Braille Pack is not yet installed, a prompt appears explaining what the pack adds (translation engine, BRF export, braille display support). You can install it, skip it, or choose **Disable Braille Mode** if you do not need braille tools. Choosing Disable Braille Mode turns the feature off and removes the prompt permanently; you can re-enable at any time using Help > Enable Braille Mode.
 
-### Opening and saving braille files
+### What Braille Mode is for
 
 QUILL can now open and edit formatted braille text files. The goal is to let a braille proofreader move through a transcription the way it is actually laid out: by braille pages, lines, cells, hard page breaks, and progress through the document.
 
@@ -510,7 +562,9 @@ Forward translation opens the BRF result in a new document and tells you how man
 
 ---
 
-## Compare Mode: review differences by keyboard and by ear
+## Experience 5: Compare Mode — review differences by keyboard and by ear
+
+Reviewing changes should not require visual scanning. Compare Mode turns file comparison into a spoken, keyboard-driven workflow with optional sound cues for fast orientation.
 
 File comparison is now a first-class keyboard-driven workflow.
 
@@ -527,7 +581,7 @@ If you use a sound pack, Compare Mode also provides distinct cues for opening a 
 
 ---
 
-## Code-aware editing: move through source files more intelligently
+## Experience 6: Code-aware editing — move through source files more intelligently
 
 When you open a source file, QUILL loads a language profile from the file extension. Recognized profiles include:
 
@@ -551,7 +605,7 @@ Paired with indentation tones, code-aware editing lets structure come through as
 
 ---
 
-## Sound notifications and indentation tones: optional audio feedback without extra speech
+## Experience 7: Sound notifications and indentation tones — optional audio feedback without extra speech
 
 QUILL can now play short non-speech audio cues, called earcons, at meaningful moments such as a file save, a successful search, or opening a comparison. The goal is to let your screen reader remain focused on text while a quick sound confirms that something happened.
 
@@ -581,7 +635,7 @@ When enabled, QUILL plays a pitch that rises as your caret moves deeper into ind
 
 ---
 
-## Text encoding tools: find, inspect, convert, and save safely
+## Experience 8: Text encoding tools — find, inspect, convert, and save safely
 
 New commands under **Format -> HTML & Encoding** make character and encoding cleanup accessible from inside QUILL.
 
@@ -625,7 +679,7 @@ Anything that does not fit a narrow target is written as a numeric HTML entity i
 
 ---
 
-## Save as Word or RTF
+## Experience 9: Save as Word or RTF
 
 QUILL can now hand your work over as a Word document or rich text file.
 
@@ -637,7 +691,7 @@ The result reflects the structure of the source. A richly formatted Markdown or 
 
 ---
 
-## Citations without the tears
+## Experience 10: Citations without the tears
 
 **Insert -> Insert Citation...** opens a plain labelled form for creating citations.
 
@@ -653,7 +707,7 @@ The point is simple: screen-reader users should not be at a disadvantage because
 
 ---
 
-## Snippet Gallery: parameterized templates in one place
+## Experience 11: Snippet Gallery — parameterized templates in one place
 
 The Snippet Gallery collects reusable, fill-in-the-blank templates contributed by Quillins into a single browseable picker. Open it from **Insert > Snippet Gallery...** or press **QUILL key, Shift+G**.
 
@@ -669,7 +723,9 @@ Any Quillin can contribute gallery entries by adding a `snippet_gallery` block t
 
 ---
 
-## Vision Prompt Library: better AI image descriptions, contributed by Kelly Ford
+## Community contribution spotlight: Vision Prompt Library by Kelly Ford
+
+Some contributions change a feature. Some contributions change expectations. Kelly Ford's work on image description prompts does both by making AI image description more intentional, more flexible, and more useful to blind users.
 
 QUILL 0.6.0 includes a Vision Prompt Library for **Describe Image with AI**, contributed by [Kelly Ford](https://github.com/kellylford).
 
@@ -703,11 +759,16 @@ Kelly also maintains several screen-reader-friendly applications:
 - [RSSQuick](https://github.com/kellylford/rssquick), an accessible WPF RSS reader.
 - [ChatViewer](https://github.com/kellylford/ChatViewer), a GitHub Copilot Chat viewer.
 
-Thank you, Kelly, for work that consistently puts screen-reader users first.
+Thank you, Kelly, for work that consistently puts screen-reader users first. This is exactly the kind of community contribution QUILL is built to welcome: practical, thoughtful, evaluated, and rooted in the lived experience of screen-reader users.
 
 ---
 
-## AI Writing Assistant: a complete toolkit
+## Experience 12: AI Writing Assistant — a complete toolkit that stays under your control
+
+AI in QUILL is not meant to replace the writer. It is meant to support the writer, explain itself, respect provider choice, and keep the keyboard-first workflow intact.
+
+> “AI should help people express what they mean, not flatten their voice. The goal is confidence, clarity, and control.”  
+> — Jeff Bishop
 
 QUILL 0.6.0 ships a full AI writing-assistant layer. Every feature in this layer is optional, works with multiple providers, runs entirely on your terms, and is designed so screen-reader users can operate it without a mouse.
 
@@ -816,7 +877,7 @@ If you prefer not to send document content to a cloud provider, use Ollama on-de
 
 ---
 
-## Dynamic Keyboard Reference
+## Experience 13: Dynamic Keyboard Reference
 
 The keyboard reference is no longer a static document. It is generated live from the active command registry and your current feature profile.
 
@@ -828,7 +889,9 @@ The reference now:
 
 ---
 
-## Smaller additions worth knowing
+## More community-requested additions worth knowing
+
+Not every contribution becomes a giant headline. Some become the small improvements that make the editor feel more thoughtful every day. This section collects those practical additions.
 
 QUILL 0.6.0 also includes these practical additions:
 
@@ -848,6 +911,8 @@ QUILL 0.6.0 also includes these practical additions:
 ---
 
 ## Fixes that change the day-to-day
+
+A community project gets stronger when people report the rough edges and the team treats those reports as product-shaping feedback. These fixes matter because they remove friction from real daily use.
 
 This release fixes a group of problems that directly affected accessibility, startup reliability, image description, reporting, and platform setup.
 
@@ -912,7 +977,7 @@ The notarized macOS build now signs its bundled image libraries and uses hardene
 
 ## What works differently now
 
-Most habits carry forward, but a few things moved or changed.
+Most habits carry forward, but a few items moved or changed so QUILL can stay cleaner, more discoverable, and easier to grow.
 
 ### Braille commands moved under Tools
 
@@ -962,7 +1027,12 @@ Most earcons are off until you choose a sound pack and enable events. Existing s
 
 Indentation tones do not play until you pick a scale. Code files remain silent unless you ask QUILL for tone feedback.
 
-## Closing summary
+## Closing: community-built, screen-reader-first, and ready for what comes next
+
+QUILL 0.6.0 is more than a list of features. It is proof that accessible software can be joyful, powerful, careful, and community-shaped at the same time.
+
+> “We are building something free, cross-platform, assistive-technology friendly, and community-driven. Wait until you see what contributions are coming next.”  
+> — Jeff Bishop
 
 QUILL 0.6.0 is more than a feature release. It is a statement about what an accessible editor can be when screen-reader users are treated as the primary audience, not an afterthought.
 
@@ -973,3 +1043,5 @@ Underneath those visible improvements, the new Quillin platform gives QUILL a fo
 Just as important, 0.6.0 fixes the kinds of issues that matter deeply in daily use: bug reporting now accepts typing, JAWS announcements are quieter, Describe Image works again, startup is faster, first-run dialogs are reachable, the user guide opens safely, update notifications are more reliable, and macOS builds install and store keys correctly.
 
 The result is a release that feels faster, quieter, more predictable, and more empowering. QUILL 0.6.0 gives writers, braille users, developers, students, accessibility professionals, and screen-reader users of every kind a stronger place to work — one built around keyboard control, spoken feedback, user choice, and the belief that accessible software can also be powerful, elegant, and joyful to use.
+
+And this is only the beginning. To everyone testing, contributing code, suggesting workflows, challenging the design, sharing feedback, building community, and cheering QUILL on: thank you. The product is better because of you. The next contributions are already raising the bar.

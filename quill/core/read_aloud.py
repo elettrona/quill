@@ -339,7 +339,9 @@ def synthesize_with_kokoro(
         try:
             import numpy as _np  # type: ignore[import]
             import soundfile as _sf  # type: ignore[import]
-            from kokoro_onnx import Kokoro as _KokoroOnnx  # type: ignore[import-untyped]
+            from kokoro_onnx import (  # type: ignore[import-not-found,import-untyped]
+                Kokoro as _KokoroOnnx,
+            )
 
             output_path.parent.mkdir(parents=True, exist_ok=True)
             lang = "en-gb" if voice.startswith("b") else "en-us"

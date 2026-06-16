@@ -32,7 +32,7 @@
     "quill/ui/assistant_tools.py": 1987,
     "quill/ui/assistant_panel.py": 725,
     "quill/ui/main_frame_power_tools.py": 863,
-    "quill/ui/main_frame_menu.py": 3221,
+    "quill/ui/main_frame_menu.py": 3249,
     "quill/core/read_aloud.py": 1244,
     "quill/core/assistant_ai.py": 1362,
     "quill/core/features.py": 1029,
@@ -53,8 +53,8 @@
     "quill/ui/main_frame_abbreviations.py": 205,
     "quill/ui/abbreviation_manager_dialog.py": 401,
     "quill/core/ai_chat.py": 208,
-    "quill/ui/ai_chat_dialog.py": 480,
-    "quill/ui/ai_hub_dialog.py": 882,
+    "quill/ui/ai_chat_dialog.py": 481,
+    "quill/ui/ai_hub_dialog.py": 890,
     "quill/ui/main_frame_quillins.py": 1000,
     "quill/core/prompt_library.py": 364,
     "quill/ui/prompt_library_dialog.py": 488,
@@ -140,5 +140,6 @@
   "_rebaseline_2026_06_15_ai_hub_unify": "assistant_tools.py 1982->1987 (+5): initial key load now prefers load_provider_api_key(initial_provider) over the legacy active-key store so the AI Hub field always shows the right key for the selected provider. setup_wizard_pages.py shrinks from 897 to 849 (wizard AI page replaced with note + Open AI Hub button, removing provider choice and key field).",
   "_rebaseline_2026_06_15_read_aloud_prefs_ux": "main_frame.py 23361->23390 (+29 net): unified Read Aloud dialog (choose_read_aloud_configuration: engine RadioBox, 36-voice Piper catalog with download status, Kokoro download, Preview/Download/Apply/OK/Cancel); old choose_read_aloud_voice + choose_read_aloud_settings stubbed to one-liners. Preferences: lazy tab build (EVT_NOTEBOOK_PAGE_CHANGED defers control creation per page), Apply button row replaces CreateButtonSizer, Settings Management tab replaces per-tab Export/Import/Reset/Profile buttons, special cases for language hint / abbreviation_expansion_sound_file Browse+Preview / sound_pack_path browse / quill_key_sound_* Preview buttons + better labels. settings.py: ai_chat_default_provider default '' (was 'openrouter') + normalizer allows empty string. settings_specs.py: ai_chat_default_provider kind='choice' with 7 options; ocr_engine spec removed.",
   "_rebaseline_2026_06_16_image_style_edit": "assistant_ai.py 1300->1362 (+62) for prompt caching. ai_hub_dialog.py 657->835->881 (+46 hook-fixes: GATE-40/41-OK comments on threading+MessageBox; Image Styles page with enable/test/reset UX). main_frame.py 23798->23820 (+22) for _paragraph_at_cursor() and restructured _run_agent_task(). main_frame_image.py 593->598 (+5) for builtin_overrides extraction. main_frame_menu.py 3217->3221 (+4) from AI toolkit menu wiring lint fixes.",
-  "_rebaseline_2026_06_16_ai_toolkit": "AI Writing Toolkit (ai.md Phases 5-7): main_frame.py 23390->23798 (+408) for AI thesaurus (open_ai_thesaurus, context-sentence extraction), four agentic task wrappers (_run_agent_task, _show_agent_result, open_ai_rewrite_selection, open_ai_summarize_selection, open_ai_expand_selection, open_ai_toc), command registrations, AI-enabled gating for three new IDs, and open_ai_hub() routing to the new AIHubDialog. main_frame_menu.py 3057->3217 (+160) for Expand Selection, Generate Table of Contents, and AI Thesaurus (Shift+F8) menu items and EVT_MENU bindings. watch_actions.py 700->789 (+89) for AI task action handling growth. ai_hub_dialog.py is a new 657-line file (new 5-tab AIHubDialog replacing AssistantConnectionDialog as the AI settings surface; explicit budget entry required as it exceeds the 600-line default cap). CQ-1 decomposition is the path to lower main_frame.py and main_frame_menu.py."
+  "_rebaseline_2026_06_16_ai_toolkit": "AI Writing Toolkit (ai.md Phases 5-7): main_frame.py 23390->23798 (+408) for AI thesaurus (open_ai_thesaurus, context-sentence extraction), four agentic task wrappers (_run_agent_task, _show_agent_result, open_ai_rewrite_selection, open_ai_summarize_selection, open_ai_expand_selection, open_ai_toc), command registrations, AI-enabled gating for three new IDs, and open_ai_hub() routing to the new AIHubDialog. main_frame_menu.py 3057->3217 (+160) for Expand Selection, Generate Table of Contents, and AI Thesaurus (Shift+F8) menu items and EVT_MENU bindings. watch_actions.py 700->789 (+89) for AI task action handling growth. ai_hub_dialog.py is a new 657-line file (new 5-tab AIHubDialog replacing AssistantConnectionDialog as the AI settings surface; explicit budget entry required as it exceeds the 600-line default cap). CQ-1 decomposition is the path to lower main_frame.py and main_frame_menu.py.",
+  "_rebaseline_2026_06_16_i18n_sweep": "i18n string sweep (0.6.0 translation infrastructure): main_frame_menu.py 3221->3249 (+28), ai_hub_dialog.py 882->890 (+8), ai_chat_dialog.py 480->481 (+1). Growth is entirely from wrapping user-visible string literals with _(), ngettext(), lazy_gettext() and ruff reformatting multiline calls. Not new feature code. CQ-1 decomposition is the path to lower these."
 }
