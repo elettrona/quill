@@ -4802,6 +4802,11 @@ class MainFrame(
     def _on_editor_context_menu(self, event: object) -> None:
         wx = self._wx
         menu = wx.Menu()
+        features = self.features
+        fmt_on = features.is_enabled("core.format")
+        glow_on = features.is_enabled("core.glow")
+        spell_on = features.is_enabled("core.spellcheck")
+        dict_on = features.is_enabled("core.dictionary")
 
         # Inspect current context so we can offer context-aware actions.
         text = self.editor.GetValue()
@@ -4828,6 +4833,7 @@ class MainFrame(
                 id=copy_link_id,
             )
 
+        # --- Basic editing (always available). ---
         undo_id = wx.NewIdRef()
         redo_id = wx.NewIdRef()
         cut_id = wx.NewIdRef()
@@ -4836,8 +4842,7 @@ class MainFrame(
         paste_id = wx.NewIdRef()
         select_all_id = wx.NewIdRef()
         select_line_id = wx.NewIdRef()
-        spell_id = wx.NewIdRef()
-        next_spell_id = wx.NewIdRef()
+        select_chunk_id = wx.NewIdRef()
 
         menu.Append(undo_id, self._menu_label("Undo", "edit.undo"))
         menu.Append(redo_id, self._menu_label("Redo", "edit.redo"))
@@ -4849,179 +4854,189 @@ class MainFrame(
         )
         menu.Append(paste_id, "Paste")
         menu.AppendSeparator()
-        select_chunk_id = wx.NewIdRef()
         menu.Append(select_all_id, "Select All")
         menu.Append(select_line_id, "Select Line")
-        menu.Append(
-            select_chunk_id,
-            self._menu_label("Select Chunk", "edit.select_chunk"),
-        )
+        menu.Append(select_chunk_id, self._menu_label("Select Chunk", "edit.select_chunk"))
 
-        # Disable selection-only actions when there is no selection.
         if not has_selection:
             cut_item.Enable(False)
             copy_item.Enable(False)
             copy_source_item.Enable(False)
 
-        # --- Transform submenu (case + lines). Always available; some items
-        #     are only meaningful with a selection but still safe to invoke. ---
-        transform_menu = wx.Menu()
-        upper_id = wx.NewIdRef()
-        lower_id = wx.NewIdRef()
-        title_id = wx.NewIdRef()
-        sentence_id = wx.NewIdRef()
-        toggle_case_id = wx.NewIdRef()
-        sort_asc_id = wx.NewIdRef()
-        sort_desc_id = wx.NewIdRef()
-        transform_menu.Append(upper_id, "UPPER CASE")
-        transform_menu.Append(lower_id, "lower case")
-        transform_menu.Append(title_id, "Title Case")
-        transform_menu.Append(sentence_id, "Sentence case")
-        transform_menu.Append(toggle_case_id, "Toggle Case")
-        transform_menu.AppendSeparator()
-        quote_id = wx.NewIdRef()
-        unquote_id = wx.NewIdRef()
-        dup_sel_id = wx.NewIdRef()
-        transform_menu.Append(sort_asc_id, "Sort Lines Ascending")
-        transform_menu.Append(sort_desc_id, "Sort Lines Descending")
-        transform_menu.AppendSeparator()
-        transform_menu.Append(quote_id, self._menu_label("Quote Lines", "edit.quote_lines"))
-        transform_menu.Append(unquote_id, self._menu_label("Unquote Lines", "edit.unquote_lines"))
-        transform_menu.AppendSeparator()
-        transform_menu.Append(
-            dup_sel_id, self._menu_label("Duplicate Selection", "edit.duplicate_selection")
-        )
-        transform_menu.Bind(wx.EVT_MENU, lambda _e: self.format_upper_case(), id=upper_id)
-        transform_menu.Bind(wx.EVT_MENU, lambda _e: self.format_lower_case(), id=lower_id)
-        transform_menu.Bind(wx.EVT_MENU, lambda _e: self.format_title_case(), id=title_id)
-        transform_menu.Bind(wx.EVT_MENU, lambda _e: self.format_sentence_case(), id=sentence_id)
-        transform_menu.Bind(wx.EVT_MENU, lambda _e: self.format_toggle_case(), id=toggle_case_id)
-        transform_menu.Bind(wx.EVT_MENU, lambda _e: self.sort_lines_ascending(), id=sort_asc_id)
-        transform_menu.Bind(wx.EVT_MENU, lambda _e: self.sort_lines_descending(), id=sort_desc_id)
-        transform_menu.Bind(wx.EVT_MENU, lambda _e: self.quote_lines(), id=quote_id)
-        transform_menu.Bind(wx.EVT_MENU, lambda _e: self.unquote_lines(), id=unquote_id)
-        transform_menu.Bind(wx.EVT_MENU, lambda _e: self.duplicate_selection(), id=dup_sel_id)
-        menu.AppendSubMenu(transform_menu, "Change &Case")
+        # --- Transform and line submenus (core.format). ---
+        if fmt_on:
+            transform_menu = wx.Menu()
+            upper_id = wx.NewIdRef()
+            lower_id = wx.NewIdRef()
+            title_id = wx.NewIdRef()
+            sentence_id = wx.NewIdRef()
+            toggle_case_id = wx.NewIdRef()
+            sort_asc_id = wx.NewIdRef()
+            sort_desc_id = wx.NewIdRef()
+            quote_id = wx.NewIdRef()
+            unquote_id = wx.NewIdRef()
+            dup_sel_id = wx.NewIdRef()
+            transform_menu.Append(upper_id, "UPPER CASE")
+            transform_menu.Append(lower_id, "lower case")
+            transform_menu.Append(title_id, "Title Case")
+            transform_menu.Append(sentence_id, "Sentence case")
+            transform_menu.Append(toggle_case_id, "Toggle Case")
+            transform_menu.AppendSeparator()
+            transform_menu.Append(sort_asc_id, "Sort Lines Ascending")
+            transform_menu.Append(sort_desc_id, "Sort Lines Descending")
+            transform_menu.AppendSeparator()
+            transform_menu.Append(quote_id, self._menu_label("Quote Lines", "edit.quote_lines"))
+            transform_menu.Append(
+                unquote_id, self._menu_label("Unquote Lines", "edit.unquote_lines")
+            )
+            transform_menu.AppendSeparator()
+            transform_menu.Append(
+                dup_sel_id, self._menu_label("Duplicate Selection", "edit.duplicate_selection")
+            )
+            transform_menu.Bind(wx.EVT_MENU, lambda _e: self.format_upper_case(), id=upper_id)
+            transform_menu.Bind(wx.EVT_MENU, lambda _e: self.format_lower_case(), id=lower_id)
+            transform_menu.Bind(wx.EVT_MENU, lambda _e: self.format_title_case(), id=title_id)
+            transform_menu.Bind(wx.EVT_MENU, lambda _e: self.format_sentence_case(), id=sentence_id)
+            transform_menu.Bind(
+                wx.EVT_MENU, lambda _e: self.format_toggle_case(), id=toggle_case_id
+            )
+            transform_menu.Bind(wx.EVT_MENU, lambda _e: self.sort_lines_ascending(), id=sort_asc_id)
+            transform_menu.Bind(
+                wx.EVT_MENU, lambda _e: self.sort_lines_descending(), id=sort_desc_id
+            )
+            transform_menu.Bind(wx.EVT_MENU, lambda _e: self.quote_lines(), id=quote_id)
+            transform_menu.Bind(wx.EVT_MENU, lambda _e: self.unquote_lines(), id=unquote_id)
+            transform_menu.Bind(wx.EVT_MENU, lambda _e: self.duplicate_selection(), id=dup_sel_id)
+            menu.AppendSubMenu(transform_menu, "Change &Case")
 
-        # --- Line submenu. ---
-        line_menu = wx.Menu()
-        dup_id = wx.NewIdRef()
-        del_id = wx.NewIdRef()
-        move_up_id = wx.NewIdRef()
-        move_down_id = wx.NewIdRef()
-        join_id = wx.NewIdRef()
-        line_menu.Append(dup_id, self._menu_label("Duplicate Line", "edit.duplicate_line"))
-        line_menu.Append(del_id, self._menu_label("Delete Line", "edit.delete_line"))
-        line_menu.Append(move_up_id, self._menu_label("Move Line Up", "edit.move_line_up"))
-        line_menu.Append(move_down_id, self._menu_label("Move Line Down", "edit.move_line_down"))
-        line_menu.Append(join_id, "Join With Next Line")
-        line_menu.Bind(wx.EVT_MENU, lambda _e: self.duplicate_line(), id=dup_id)
-        line_menu.Bind(wx.EVT_MENU, lambda _e: self.delete_line(), id=del_id)
-        line_menu.Bind(wx.EVT_MENU, lambda _e: self.move_line_up(), id=move_up_id)
-        line_menu.Bind(wx.EVT_MENU, lambda _e: self.move_line_down(), id=move_down_id)
-        line_menu.Bind(wx.EVT_MENU, lambda _e: self.join_lines(), id=join_id)
-        menu.AppendSubMenu(line_menu, "Line")
+            line_menu = wx.Menu()
+            dup_id = wx.NewIdRef()
+            del_id = wx.NewIdRef()
+            move_up_id = wx.NewIdRef()
+            move_down_id = wx.NewIdRef()
+            join_id = wx.NewIdRef()
+            line_menu.Append(dup_id, self._menu_label("Duplicate Line", "edit.duplicate_line"))
+            line_menu.Append(del_id, self._menu_label("Delete Line", "edit.delete_line"))
+            line_menu.Append(move_up_id, self._menu_label("Move Line Up", "edit.move_line_up"))
+            line_menu.Append(
+                move_down_id, self._menu_label("Move Line Down", "edit.move_line_down")
+            )
+            line_menu.Append(join_id, "Join With Next Line")
+            line_menu.Bind(wx.EVT_MENU, lambda _e: self.duplicate_line(), id=dup_id)
+            line_menu.Bind(wx.EVT_MENU, lambda _e: self.delete_line(), id=del_id)
+            line_menu.Bind(wx.EVT_MENU, lambda _e: self.move_line_up(), id=move_up_id)
+            line_menu.Bind(wx.EVT_MENU, lambda _e: self.move_line_down(), id=move_down_id)
+            line_menu.Bind(wx.EVT_MENU, lambda _e: self.join_lines(), id=join_id)
+            menu.AppendSubMenu(line_menu, "Line")
 
-        glow_menu = wx.Menu()
-        glow_audit_document_id = wx.NewIdRef()
-        glow_audit_selection_id = wx.NewIdRef()
-        glow_fix_document_id = wx.NewIdRef()
-        glow_fix_selection_id = wx.NewIdRef()
-        glow_menu.Append(glow_audit_document_id, "GLOW Audit Current Document")
-        glow_menu.Append(glow_audit_selection_id, "GLOW Audit Selection / Paragraph")
-        glow_menu.AppendSeparator()
-        glow_menu.Append(glow_fix_document_id, "GLOW Fix Current Document")
-        glow_menu.Append(glow_fix_selection_id, "GLOW Fix Selection / Paragraph")
-        glow_menu.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.glow_audit_document(),
-            id=glow_audit_document_id,
-        )
-        glow_menu.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.glow_audit_selection(),
-            id=glow_audit_selection_id,
-        )
-        glow_menu.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.glow_fix_document(),
-            id=glow_fix_document_id,
-        )
-        glow_menu.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.glow_fix_selection(),
-            id=glow_fix_selection_id,
-        )
-        menu.AppendSubMenu(glow_menu, "GLOW")
+        # --- GLOW submenu (core.glow). ---
+        if glow_on:
+            glow_menu = wx.Menu()
+            glow_audit_document_id = wx.NewIdRef()
+            glow_audit_selection_id = wx.NewIdRef()
+            glow_fix_document_id = wx.NewIdRef()
+            glow_fix_selection_id = wx.NewIdRef()
+            glow_menu.Append(glow_audit_document_id, "GLOW Audit Current Document")
+            glow_menu.Append(glow_audit_selection_id, "GLOW Audit Selection / Paragraph")
+            glow_menu.AppendSeparator()
+            glow_menu.Append(glow_fix_document_id, "GLOW Fix Current Document")
+            glow_menu.Append(glow_fix_selection_id, "GLOW Fix Selection / Paragraph")
+            glow_menu.Bind(
+                wx.EVT_MENU, lambda _e: self.glow_audit_document(), id=glow_audit_document_id
+            )
+            glow_menu.Bind(
+                wx.EVT_MENU, lambda _e: self.glow_audit_selection(), id=glow_audit_selection_id
+            )
+            glow_menu.Bind(
+                wx.EVT_MENU, lambda _e: self.glow_fix_document(), id=glow_fix_document_id
+            )
+            glow_menu.Bind(
+                wx.EVT_MENU, lambda _e: self.glow_fix_selection(), id=glow_fix_selection_id
+            )
+            menu.AppendSubMenu(glow_menu, "GLOW")
 
         menu.AppendSeparator()
-        menu.Append(spell_id, self._menu_label("Spell Check...", "tools.spell_check_dialog"))
-        menu.Append(next_spell_id, self._menu_label("Next Misspelling", "tools.next_misspelling"))
 
-        # --- Thesaurus lookup (when on/within a word). ---
-        if thesaurus_engine.is_available():
+        # --- Spell check (core.spellcheck): navigation + dialog + suggestions. ---
+        if spell_on:
+            spell_id = wx.NewIdRef()
+            next_spell_id = wx.NewIdRef()
+            prev_spell_id = wx.NewIdRef()
+            menu.Append(spell_id, self._menu_label("Spell Check...", "tools.spell_check_dialog"))
+            menu.Append(
+                next_spell_id,
+                self._menu_label("Next Misspelling\tAlt+F7", "tools.next_misspelling"),
+            )
+            menu.Append(
+                prev_spell_id,
+                self._menu_label(
+                    "Previous Misspelling\tShift+Alt+F7", "tools.previous_misspelling"
+                ),
+            )
+            menu.Bind(wx.EVT_MENU, lambda _e: self.open_spell_check_dialog(), id=spell_id)
+            menu.Bind(wx.EVT_MENU, lambda _e: self.next_misspelling(), id=next_spell_id)
+            menu.Bind(wx.EVT_MENU, lambda _e: self.previous_misspelling(), id=prev_spell_id)
+
+            dictionary = self._spell_dictionary()
+            misspelling = misspelling_at_position(text, caret, dictionary)
+            if misspelling is not None:
+                spelling_menu = wx.Menu()
+                suggestions = suggest_words(misspelling.word, dictionary)
+                if suggestions:
+                    for suggestion in suggestions:
+                        item_id = wx.NewIdRef()
+                        spelling_menu.Append(item_id, suggestion)
+
+                        def _apply_replacement(
+                            _event,
+                            replacement: str = suggestion,
+                            start: int = misspelling.start,
+                            end: int = misspelling.end,
+                            original: str = misspelling.word,
+                        ) -> None:
+                            self.editor.Replace(start, end, replacement)
+                            self.document.set_text(self.editor.GetValue())
+                            self._set_status(f'Replaced "{original}" with "{replacement}"')
+
+                        spelling_menu.Bind(wx.EVT_MENU, _apply_replacement, id=item_id)
+                else:
+                    empty_id = wx.NewIdRef()
+                    item = spelling_menu.Append(empty_id, "(No suggestions)")
+                    item.Enable(False)
+                spelling_menu.AppendSeparator()
+                add_menu = wx.Menu()
+                personal_id = wx.NewIdRef()
+                document_id = wx.NewIdRef()
+                project_id = wx.NewIdRef()
+                add_menu.Append(personal_id, "Personal dictionary")
+                add_menu.Append(document_id, "Document dictionary")
+                add_menu.Append(project_id, "Project dictionary")
+                add_menu.Bind(
+                    wx.EVT_MENU,
+                    lambda _e, word=misspelling.word: self._add_word_to_dictionary_scope(word, 0),
+                    id=personal_id,
+                )
+                add_menu.Bind(
+                    wx.EVT_MENU,
+                    lambda _e, word=misspelling.word: self._add_word_to_dictionary_scope(word, 1),
+                    id=document_id,
+                )
+                add_menu.Bind(
+                    wx.EVT_MENU,
+                    lambda _e, word=misspelling.word: self._add_word_to_dictionary_scope(word, 2),
+                    id=project_id,
+                )
+                spelling_menu.AppendSubMenu(add_menu, "Add to dictionary")
+                menu.AppendSubMenu(spelling_menu, "Spelling Suggestions")
+
+        # --- Thesaurus (core.dictionary). ---
+        if dict_on and thesaurus_engine.is_available():
             thes_id = wx.NewIdRef()
             menu.Append(thes_id, "Look Up in Thesaurus")
             menu.Bind(wx.EVT_MENU, lambda _e: self.show_thesaurus(), id=thes_id)
 
-        dictionary = self._spell_dictionary()
-        misspelling = misspelling_at_position(text, caret, dictionary)
-        if misspelling is not None:
-            spelling_menu = wx.Menu()
-            suggestions = suggest_words(misspelling.word, dictionary)
-            if suggestions:
-                for suggestion in suggestions:
-                    item_id = wx.NewIdRef()
-                    spelling_menu.Append(item_id, suggestion)
-
-                    def _apply_replacement(
-                        _event,
-                        replacement: str = suggestion,
-                        start: int = misspelling.start,
-                        end: int = misspelling.end,
-                        original: str = misspelling.word,
-                    ) -> None:
-                        self.editor.Replace(start, end, replacement)
-                        self.document.set_text(self.editor.GetValue())
-                        self._set_status(f'Replaced "{original}" with "{replacement}"')
-
-                    spelling_menu.Bind(
-                        wx.EVT_MENU,
-                        _apply_replacement,
-                        id=item_id,
-                    )
-            else:
-                empty_id = wx.NewIdRef()
-                item = spelling_menu.Append(empty_id, "(No suggestions)")
-                item.Enable(False)
-            spelling_menu.AppendSeparator()
-            add_menu = wx.Menu()
-            personal_id = wx.NewIdRef()
-            document_id = wx.NewIdRef()
-            project_id = wx.NewIdRef()
-            add_menu.Append(personal_id, "Personal dictionary")
-            add_menu.Append(document_id, "Document dictionary")
-            add_menu.Append(project_id, "Project dictionary")
-            add_menu.Bind(
-                wx.EVT_MENU,
-                lambda _e, word=misspelling.word: self._add_word_to_dictionary_scope(word, 0),
-                id=personal_id,
-            )
-            add_menu.Bind(
-                wx.EVT_MENU,
-                lambda _e, word=misspelling.word: self._add_word_to_dictionary_scope(word, 1),
-                id=document_id,
-            )
-            add_menu.Bind(
-                wx.EVT_MENU,
-                lambda _e, word=misspelling.word: self._add_word_to_dictionary_scope(word, 2),
-                id=project_id,
-            )
-            spelling_menu.AppendSubMenu(add_menu, "Add to dictionary")
-            menu.AppendSubMenu(spelling_menu, "Spelling Suggestions")
-
+        # --- Navigation (always available). ---
         menu.AppendSeparator()
-        # --- Navigation actions. ---
         go_line_id = wx.NewIdRef()
         bookmark_id = wx.NewIdRef()
         palette_id = wx.NewIdRef()
@@ -5042,8 +5057,6 @@ class MainFrame(
         )
         menu.Bind(wx.EVT_MENU, lambda _e: self.select_line(), id=select_line_id)
         menu.Bind(wx.EVT_MENU, lambda _e: self.select_chunk(), id=select_chunk_id)
-        menu.Bind(wx.EVT_MENU, lambda _e: self.open_spell_check_dialog(), id=spell_id)
-        menu.Bind(wx.EVT_MENU, lambda _e: self.next_misspelling(), id=next_spell_id)
         menu.Bind(wx.EVT_MENU, lambda _e: self.go_to_line(), id=go_line_id)
         menu.Bind(wx.EVT_MENU, lambda _e: self.set_bookmark(), id=bookmark_id)
         menu.Bind(wx.EVT_MENU, lambda _e: self.open_palette(), id=palette_id)
