@@ -5,19 +5,33 @@ Covers:
   hotkey, declares correct capabilities.
 - extension.py handler: inline LaTeX, block LaTeX, MathML passthrough,
   selection pre-fill and replace, empty cancel, prompt cancel, mode cancel.
+- Sample corpus: every block equation from docs/math/latex_testing.md is
+  correctly stripped, wrapped, and round-tripped by the handler.
 """
 
 from __future__ import annotations
 
 import json
+import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from quill.core.quillins.loader import bundled_extensions_root
 from quill.core.quillins.registry import build_registry
 from quill.core.quillins.validation import parse_manifest, validate_manifest
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_SAMPLES_FILE = _REPO_ROOT / "docs" / "math" / "latex_testing.md"
+
+
+def _extract_block_equations(path: Path) -> list[str]:
+    """Return the bare LaTeX from every $$...$$ block in the file."""
+    text = path.read_text(encoding="utf-8")
+    return [m.group(1).strip() for m in re.finditer(r"\$\$(.+?)\$\$", text, re.DOTALL)]
+
 
 _DIR = bundled_extensions_root() / "math-equations"
 
@@ -211,3 +225,70 @@ def test_cancel_mode_choice_does_nothing() -> None:
     api.handlers["insert_equation"](ctx)
     assert ctx.inserted == []
     assert ctx.announced == []
+
+
+# -- sample corpus from docs/math/latex_testing.md ----------------------------
+
+
+def test_sample_file_exists_and_has_equations() -> None:
+    assert _SAMPLES_FILE.exists(), f"sample file not found: {_SAMPLES_FILE}"
+    equations = _extract_block_equations(_SAMPLES_FILE)
+    assert len(equations) == 10, f"expected 10 block equations, got {len(equations)}"
+
+
+def test_strip_delimiters_on_all_samples() -> None:
+    """Every $$ block in the sample file must be detected as block mode."""
+    ns: dict[str, Any] = {}
+    exec((_DIR / "extension.py").read_text(encoding="utf-8"), ns)  # noqa: S102
+    strip = ns["_strip_delimiters"]
+    for eq in _extract_block_equations(_SAMPLES_FILE):
+        wrapped = f"$${eq}$$"
+        bare, mode = strip(wrapped)
+        assert mode == "block", f"expected block mode for: {wrapped!r}"
+        assert bare == eq.strip(), f"stripping changed content: {bare!r} != {eq.strip()!r}"
+
+
+def test_handler_round_trips_all_samples_as_block() -> None:
+    """Each sample equation re-inserted in block mode produces the expected snippet."""
+    api = _register_extension()
+    equations = _extract_block_equations(_SAMPLES_FILE)
+    for eq in equations:
+        ctx = _FakeCtx(prompts=[eq], choices=["Block  ($$...$$)"])
+        api.handlers["insert_equation"](ctx)
+        assert ctx.inserted, f"nothing inserted for: {eq!r}"
+        snippet = ctx.inserted[-1]
+        assert snippet.startswith("\n$$\n"), f"block prefix missing for: {eq!r}"
+        assert snippet.endswith("\n$$\n"), f"block suffix missing for: {eq!r}"
+        assert eq in snippet, f"equation content missing in: {snippet!r}"
+
+
+def test_handler_round_trips_all_samples_as_inline() -> None:
+    """Each sample equation re-inserted in inline mode produces $...$."""
+    api = _register_extension()
+    equations = _extract_block_equations(_SAMPLES_FILE)
+    for eq in equations:
+        ctx = _FakeCtx(prompts=[eq], choices=["Inline  ($...$)"])
+        api.handlers["insert_equation"](ctx)
+        assert ctx.inserted, f"nothing inserted for: {eq!r}"
+        snippet = ctx.inserted[-1]
+        assert snippet.startswith("$") and snippet.endswith("$"), (
+            f"inline delimiters missing for: {eq!r}"
+        )
+        assert eq in snippet
+
+
+def test_selection_prefill_preserves_all_sample_content() -> None:
+    """Selecting a $$ block and re-inserting it produces an identical snippet."""
+    api = _register_extension()
+    equations = _extract_block_equations(_SAMPLES_FILE)
+    for eq in equations:
+        selection = f"$${eq}$$"
+        ctx = _FakeCtx(
+            selection=selection,
+            prompts=[eq.strip()],
+            choices=["Block  ($$...$$)"],
+        )
+        api.handlers["insert_equation"](ctx)
+        assert ctx.replaced, f"replace_selection not called for: {eq!r}"
+        snippet = ctx.replaced[-1]
+        assert eq.strip() in snippet, f"content lost in round-trip for: {eq!r}"

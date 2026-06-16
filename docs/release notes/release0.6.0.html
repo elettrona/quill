@@ -161,6 +161,11 @@ entries.</li>
 <li><strong>The Vision Prompt Library</strong>, contributed by Kelly
 Ford, gives Describe Image with AI twelve evaluated prompt styles and a
 full management dialog.</li>
+<li><strong>Math Equations</strong>, contributed by Robert Danaraj, adds
+Insert → Insert Equation… (<code>Ctrl+Shift+E</code>) for LaTeX and
+MathML insertion, with Browser Preview and HTML export rendering via
+MathJax 3. Delivered as a sandboxed Quillin rather than a core
+patch.</li>
 <li><strong>The Dynamic Keyboard Reference</strong> now reflects the
 active command registry, your current bindings, and QUILL key
 layers.</li>
@@ -1559,6 +1564,51 @@ chords and dedicated browse-mode, also called Quick Nav, shortcuts.</li>
 <li>Exports as clean semantic HTML designed for high-performance
 screen-reader review.</li>
 </ul>
+<hr />
+<h2
+id="community-contribution-spotlight-math-equations-by-robert-danaraj">Community
+contribution spotlight: Math Equations by Robert Danaraj</h2>
+<p>Robert Danaraj approached the QUILL team with a working integration
+of LaTeX and MathML equation support — a fork that added
+screen-reader-friendly equation insertion, MathJax rendering in browser
+preview and HTML export, and comprehensive unit tests. The integration
+was thoughtful and well-tested. Rather than merging it as a direct core
+patch, the team worked with Robert to redesign it as a proper sandboxed
+Quillin, which is the right architectural home for optional
+format-specific tools.</p>
+<p><strong>Insert → Insert Equation…</strong> (keyboard shortcut:
+<code>Ctrl+Shift+E</code>) is now a bundled Quillin
+(<code>com.quill.bundled.math-equations</code>).</p>
+<p>The flow is two steps, both keyboard-first:</p>
+<ol type="1">
+<li>A prompt opens for the equation text. If you already have a LaTeX
+equation selected, QUILL strips the delimiters and pre-fills the prompt
+with the bare formula, so you can edit and re-insert without retyping.
+Type in LaTeX notation (for example <code>E=mc^2</code> or
+<code>\int_{a}^{b} f(x) \, dx = F(b) - F(a)</code>) or paste a MathML
+fragment starting with <code>&lt;math</code>.</li>
+<li>For LaTeX, a display-mode step asks whether the equation should
+appear inline (<code>$...$</code>) or as a block on its own line
+(<code>$$...$$</code>). If your selection was block-delimited, the block
+choice is listed first. For MathML, this step is skipped and the
+fragment is inserted verbatim.</li>
+</ol>
+<p>Browser Preview (<code>Ctrl+Shift+V</code>) and HTML export now
+include a MathJax 3 script tag so equations render visually in any
+browser. The document source always contains the raw LaTeX or MathML,
+which is what your screen reader announces directly.</p>
+<p>Ten worked examples spanning algebra and calculus — the quadratic
+formula, binomial theorem, fundamental theorem of calculus, integration
+by parts, Euler’s identity, and more — are in
+<code>docs/math/latex_testing.md</code>.</p>
+<p>Because this lives as a Quillin rather than in the core, it can be
+disabled from Quillins Manager if you prefer to keep the equations as
+raw LaTeX in your document without the Insert Equation dialog. The
+<code>Ctrl+Shift+E</code> binding is released when the Quillin is
+disabled.</p>
+<p>Thank you, Robert, for a contribution that went from a working fork
+all the way to a tested, properly sandboxed extension. This is the
+community contribution model working exactly as intended.</p>
 <hr />
 <h2 id="more-community-requested-additions-worth-knowing">More
 community-requested additions worth knowing</h2>

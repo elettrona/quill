@@ -56,6 +56,7 @@ This is the fast tour. The detailed notes below keep every important implementat
 - **Citation insertion** formats MLA 9, Chicago 17, and APA 7 citations from a simple labelled form.
 - **The Snippet Gallery** (Insert > Snippet Gallery... or QUILL key, Shift+G) collects parameterized templates from all enabled Quillins into one browseable picker. Smart Insert ships three built-in entries.
 - **The Vision Prompt Library**, contributed by Kelly Ford, gives Describe Image with AI twelve evaluated prompt styles and a full management dialog.
+- **Math Equations**, contributed by Robert Danaraj, adds Insert → Insert Equation... (`Ctrl+Shift+E`) for LaTeX and MathML insertion, with Browser Preview and HTML export rendering via MathJax 3. Delivered as a sandboxed Quillin rather than a core patch.
 - **The Dynamic Keyboard Reference** now reflects the active command registry, your current bindings, and QUILL key layers.
 - **Sound notifications** and **indentation tones** add optional non-speech feedback without making existing setups noisier.
 - **Major accessibility and startup fixes** make bug reporting, JAWS focus, image description, first run, the user guide, update notifications, and macOS setup more reliable.
@@ -886,6 +887,27 @@ The reference now:
 - Reflects your actual setup. If you rebind a key or switch to a different keyboard pack, the exported HTML reference updates to show exactly what is bound.
 - Documents QUILL's layered keyboard model, including QUILL key prefix chords and dedicated browse-mode, also called Quick Nav, shortcuts.
 - Exports as clean semantic HTML designed for high-performance screen-reader review.
+
+---
+
+## Community contribution spotlight: Math Equations by Robert Danaraj
+
+Robert Danaraj approached the QUILL team with a working integration of LaTeX and MathML equation support — a fork that added screen-reader-friendly equation insertion, MathJax rendering in browser preview and HTML export, and comprehensive unit tests. The integration was thoughtful and well-tested. Rather than merging it as a direct core patch, the team worked with Robert to redesign it as a proper sandboxed Quillin, which is the right architectural home for optional format-specific tools.
+
+**Insert → Insert Equation...** (keyboard shortcut: `Ctrl+Shift+E`) is now a bundled Quillin (`com.quill.bundled.math-equations`).
+
+The flow is two steps, both keyboard-first:
+
+1. A prompt opens for the equation text. If you already have a LaTeX equation selected, QUILL strips the delimiters and pre-fills the prompt with the bare formula, so you can edit and re-insert without retyping. Type in LaTeX notation (for example `E=mc^2` or `\int_{a}^{b} f(x) \, dx = F(b) - F(a)`) or paste a MathML fragment starting with `<math`.
+2. For LaTeX, a display-mode step asks whether the equation should appear inline (`$...$`) or as a block on its own line (`$$...$$`). If your selection was block-delimited, the block choice is listed first. For MathML, this step is skipped and the fragment is inserted verbatim.
+
+Browser Preview (`Ctrl+Shift+V`) and HTML export now include a MathJax 3 script tag so equations render visually in any browser. The document source always contains the raw LaTeX or MathML, which is what your screen reader announces directly.
+
+Ten worked examples spanning algebra and calculus — the quadratic formula, binomial theorem, fundamental theorem of calculus, integration by parts, Euler's identity, and more — are in `docs/math/latex_testing.md`.
+
+Because this lives as a Quillin rather than in the core, it can be disabled from Quillins Manager if you prefer to keep the equations as raw LaTeX in your document without the Insert Equation dialog. The `Ctrl+Shift+E` binding is released when the Quillin is disabled.
+
+Thank you, Robert, for a contribution that went from a working fork all the way to a tested, properly sandboxed extension. This is the community contribution model working exactly as intended.
 
 ---
 

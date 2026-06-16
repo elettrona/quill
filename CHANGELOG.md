@@ -24,6 +24,8 @@ See `rel.md` for the full narrative release notes.
 
 ### New features
 
+- **Math Equations Quillin (`com.quill.bundled.math-equations`).** `Insert → Insert Equation...` (`Ctrl+Shift+E`) inserts LaTeX or MathML at the caret via two sequential accessible dialogs: a prompt for the equation text (with selection pre-fill and delimiter stripping) and a display-mode choice (Inline `$...$` / Block `$$...$$`). MathML input (`<math ...>`) is detected automatically and inserted verbatim without a mode step. Browser Preview and HTML export now inject MathJax 3 (CDN) so equations render visually. Sample equations in `docs/math/latex_testing.md`. 14 unit tests in `tests/unit/core/test_quillins_bundled_math_equations.py`. Contribution by Robert Danaraj; redesigned as a sandboxed Quillin.
+
 - **Quillin preferences rendering.** All five bundled Quillins with `contributes.preferences` declarations now have live settings dialogs accessible from the Preferences hub. New `quill/ui/quillin_prefs_dialog.py` renders boolean (CheckBox), integer (SpinCtrl), string (TextCtrl), and choice (Choice) controls from the declarative manifest schema. Conditional `visible_when` and `enabled_when` rules are wired to wx change events so dependent controls update live. `main_frame_quillins.py` gains `_pref_manifests()` and `open_quillin_preferences()`. `open_preferences()` dynamically appends one hub entry per enabled Quillin with preferences.
 
 ## 0.5.1 — Sound Packs, Compare Mode, Code-Aware Editing, Encoding Tools (2026-06-15)

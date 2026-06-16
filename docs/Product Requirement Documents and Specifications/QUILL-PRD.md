@@ -4600,6 +4600,7 @@ The governing rules remain the same throughout the roadmap: local-first processi
 - [x] Add bundled `ai-writing-skills` Quillin with 4 sample skills (Accessible Rewrite, Research and Draft, Meeting Notes to Action Items, Argument Strengthener).
 - [x] Add `tests/unit/core/test_skill_pack.py`: 23 tests covering parsing, validation, runner, condition branching, depth limit, and all bundled files.
 - [x] Add `quill/platform/windows/credential_store.py`: unified credential access with env-var, portable DPAPI file, and Credential Manager backends. Activated by `QUILL_PORTABLE=1`. Update `ai_chat_dialog.py` and `assistant_ai.py` to use it.
+- [x] Add bundled Quillin `math-equations` (`com.quill.bundled.math-equations`): `Insert → Insert Equation...` (`Ctrl+Shift+E`) inserts LaTeX or MathML at the caret. Two-step accessible dialog: (1) prompt for equation text with selection pre-fill and delimiter stripping; (2) display-mode choice (Inline `$...$` / Block `$$...$$`). MathML (`<math ...>`) detected automatically and inserted verbatim. `quill/core/browser_preview.py` and `quill/io/export.py` inject MathJax 3 CDN script tag so equations render in Browser Preview and HTML export. Sample equations in `docs/math/latex_testing.md`. 14 unit tests in `tests/unit/core/test_quillins_bundled_math_equations.py`. Original contribution by Robert Danaraj; redesigned as a sandboxed Quillin.
 
 ---
 

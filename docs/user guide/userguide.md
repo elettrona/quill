@@ -345,6 +345,7 @@ The **Insert** menu adds structured content at the cursor.
 - **Insert Code Block**, **Insert Footnote**, **Insert Table...**, **Insert HTML Tag...**, and **Insert Markdown Tag...**.
 - **Insert Snippet...** and **Manage Snippets...** for reusable text with placeholders.
 - **Special Character...**, **Date and Time** submenu, and **File Content...** insert symbols, timestamps (date, time, and date and time), and the contents of another file. The **Date and Time** submenu is provided by the bundled `com.quill.bundled.insert-tools` Quillin.
+- **Insert Equation...** (`Ctrl+Shift+E`) opens a two-step prompt for inserting a LaTeX or MathML equation. Type the formula in LaTeX notation — for example `E=mc^2` or `\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}` — or paste a MathML fragment. If the input is LaTeX, a second step asks whether to display it inline (`$...$`) or as a block (`$$...$$`). If a LaTeX equation is already selected when you press `Ctrl+Shift+E`, the delimiters are stripped and the bare formula pre-fills the prompt. MathML input (starting with `<math`) is inserted verbatim without a mode step. Browser Preview and HTML export render equations using MathJax 3.
 
 Quill treats Markdown and HTML as working surfaces, not special-purpose export formats, so tag insertion lives here beside the structural inserts.
 
@@ -1514,6 +1515,23 @@ Markdown list editing now follows editor-standard behavior: `Enter` continues th
 For heading presentation control, open **Insert -> Heading -> Style Headings...**. You can style either all heading levels or the current heading level, then set font family, point size, and alignment. In Markdown documents, styled headings are written as HTML heading tags so the formatting is preserved.
 
 For structure editing, open **Navigate -> Heading Organizer...** (`Ctrl+Shift+Grave, O`). The organizer lists each heading as level + title, supports keyboard promotion/demotion (`Tab` and `Shift+Tab`), lets you move sections up/down, rename headings, and validates heading order (start level, skipped levels, empty headings) before apply.
+
+### Math Equations
+
+**Insert → Insert Equation...** (`Ctrl+Shift+E`) inserts a mathematical formula at the cursor. The command is provided by the bundled `com.quill.bundled.math-equations` Quillin and supports two input formats.
+
+**LaTeX** is the most common format for typeset mathematics. Type the formula using standard LaTeX notation and choose a display mode:
+
+- **Inline** (`$...$`) — the equation appears within surrounding text. Example: `E=mc^2` becomes `$E=mc^2$`.
+- **Block** (`$$...$$`) — the equation gets its own line with a blank line above and below. Example: `\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}` becomes `$$\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$$`.
+
+**MathML** is an XML-based format used in web publishing and accessible documents. If your input starts with `<math`, QUILL inserts it verbatim and skips the display mode step. Screen readers can read MathML directly without a visual rendering engine.
+
+**Selection pre-fill:** If text is selected when you press `Ctrl+Shift+E`, QUILL checks whether the selection is a LaTeX equation. If it is, it strips the delimiters (`$` for inline, `$$` for block), pre-fills the prompt with the bare formula, and surfaces the detected display mode first in the choice list so you can confirm with one keypress.
+
+**Rendering:** Browser Preview (`Ctrl+Shift+V`) and HTML export inject a MathJax 3 script tag so equations render visually in any browser. The document source always contains the raw LaTeX or MathML, which your screen reader reads directly.
+
+A collection of ten worked examples — quadratic formula, binomial theorem, integration by parts, Euler's identity, and more — is in `docs/math/latex_testing.md`.
 
 ### Tables, code blocks, and tags
 
