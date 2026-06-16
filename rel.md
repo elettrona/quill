@@ -43,7 +43,7 @@ The most important page asks one question: **What kind of writing do you do?** A
 
 After you choose, a second page offers a few optional extras: AI writing assistance, Braille Mode, and typing automation. Only the extras that are not already part of your base choice are shown. Each extra is a single checkbox. Checking one adds a sentence to the preview so you always know what you are committing to.
 
-If you enable AI, a dedicated page collects your provider (Anthropic, OpenAI, Google, OpenRouter, or Ollama) and your API key. The key is stored securely in the Windows Credential Manager, not in a settings file. You can skip this and set the key up later.
+If you enable AI, a dedicated page collects your provider - Anthropic (Claude), OpenAI (GPT), Google (Gemini), OpenRouter (many models), or Ollama (on-device) - and your API key. The key is stored securely in the Windows Credential Manager, not in a settings file. You can skip this and set the key up later.
 
 The final page is a summary in plain text: your profile name, what features are active, which Quillins are enabled, your keyboard pack, and your sound setting. Read it, then press Finish.
 
