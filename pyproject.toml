@@ -109,7 +109,7 @@ dev = [
   "ruff>=0.15.17",
   "mypy>=2.1.0",
   # I18N: string extraction, .po update, .mo compile
-  "Babel>=2.14",
+  "Babel>=2.18.0",
 ]
 
 [project.scripts]
