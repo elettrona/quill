@@ -109,10 +109,15 @@ class QuillKeyMixin:
                     self._refresh_statusbar()
                     self._run_command(chord_command)
                     return True
+                # Unrecognized second key — consume the event so the character
+                # is never typed into the editor. Announce so the user knows
+                # why nothing happened.
                 self._quill_key_prefix_pending = False
                 self._quill_key_prefix_started_at = 0.0
                 self._refresh_statusbar()
-                return False
+                self._set_status_quiet("Unrecognized QUILL key chord. Press ? for help.")
+                self._announce("Unrecognized QUILL key chord")
+                return True
             if self._quill_key_prefix_matches(event):
                 self._quill_key_prefix_pending = True
                 self._quill_key_prefix_started_at = time.monotonic()
