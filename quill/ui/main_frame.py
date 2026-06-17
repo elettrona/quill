@@ -4154,6 +4154,28 @@ class MainFrame(
                 return
             self.compare_next_difference()
             return
+        # Shift+F10 and the dedicated Menu/Apps key both request the context
+        # menu from the keyboard.  wx may not synthesise EVT_CONTEXT_MENU for
+        # these keys inside a TextCtrl, so intercept them here and invoke the
+        # handler directly with a fake event that positions the menu at the
+        # caret (DefaultPosition → wx pops it up near the caret automatically).
+        _f10 = getattr(wx, "WXK_F10", None)
+        _menu_key = getattr(wx, "WXK_WINDOWS_MENU", getattr(wx, "WXK_MENU", None))
+        _kc = event.GetKeyCode()
+        if (
+            _f10 is not None
+            and _kc == _f10
+            and event.ShiftDown()
+            and not event.ControlDown()
+            and not event.AltDown()
+        ) or (_menu_key is not None and _kc == _menu_key):
+
+            class _KeyboardContextEvent:  # noqa: N801
+                def GetPosition(self_inner):  # noqa: N805
+                    return wx.DefaultPosition
+
+            self._on_editor_context_menu(_KeyboardContextEvent())
+            return
         if event.GetKeyCode() == wx.WXK_INSERT:
             if not self._insert_key_down:
                 self._overwrite_mode = not self._overwrite_mode

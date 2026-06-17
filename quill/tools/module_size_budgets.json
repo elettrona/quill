@@ -28,7 +28,7 @@
   "_next_target_main_frame": 15000,
   "_default_cap": 600,
   "budgets": {
-    "quill/ui/main_frame.py": 23893,
+    "quill/ui/main_frame.py": 23915,
     "quill/ui/main_frame_quill_key.py": 650,
     "quill/ui/main_frame_braille.py": 736,
     "quill/ui/assistant_tools.py": 2008,
@@ -155,5 +155,6 @@
   "_rebaseline_2026_06_17_ai_chat_text_actions": "main_frame.py 23825->23851 (+26) for _ai_set_document_text() and _ai_open_new_document() callbacks; assistant_panel.py 725->795 (+70) for three direct text-action buttons (Insert at Cursor, Replace, Open as New Document) with set_text/open_new_document constructor params and three handler methods.",
   "_rebaseline_2026_06_17_bugfix_session": "main_frame.py 23851->23884 (+33): (1) add missing _run_command(command_id) method called by QUILL-key chord dispatcher but never defined — crash fix; (2) Apply button dirty-state (_mark_dirty closure + _apply_btn.Enable(False) init + reset in _do_apply); (3) suppress redundant startup SR re-announcement and replace print() profiling with logging.debug(). Growth is bug-fix and accessibility-required; CQ-1 decomposition is the path to lower the budget.",
   "_rebaseline_2026_06_17_sr_polish": "main_frame.py 23884->23893 (+9): _DocumentTab slot _indent_tone_last_level, BITS Whisperer command gating (feature_id on whisperer.about), gate _build_help_status_data BITS Whisperer rows behind is_enabled('core.bw_whisperer'). main_frame_statusbar.py 616->620 (+4): _statusbar_button_label special-cases for line_column/mode (value-only labels) and _mark_dirty comment. Growth is bug-fix and accessibility polish.",
-  "_rebaseline_2026_06_17_quill_key_chord": "main_frame_quill_key.py 645->650 (+5): consume the event (return True) when no chord matches the second key instead of returning False (which let the character be typed into the editor). Announces 'Unrecognized QUILL key chord' so the user gets feedback."
+  "_rebaseline_2026_06_17_quill_key_chord": "main_frame_quill_key.py 645->650 (+5): consume the event (return True) when no chord matches the second key instead of returning False (which let the character be typed into the editor). Announces 'Unrecognized QUILL key chord' so the user gets feedback.",
+  "_rebaseline_2026_06_17_shift_f10": "main_frame.py 23893->23910 (+17): intercept Shift+F10 and the Windows Menu key in _on_editor_key_down to call _on_editor_context_menu directly, since wx does not reliably synthesize EVT_CONTEXT_MENU for those keys inside a TextCtrl. Positions the menu at DefaultPosition so wx places it near the caret."
 }
