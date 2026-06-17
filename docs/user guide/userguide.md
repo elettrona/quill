@@ -478,7 +478,7 @@ The palette also learns from usage. Commands you use more often rise naturally.
 - **Fix Grammar**
 - **Run Python...**
 
-The Writing Assistant shell ranks Quill commands from your prompt, offers preset prompts for rewrite/summarize/continue/grammar flows, and Run Python executes a sandboxed transform against the current document text and selection. Prompt Studio lets you build reusable custom prompts with template variables, and Agent Center generates guided task plans that you can review before sending to the Writing Assistant.
+The Writing Assistant shell ranks Quill commands from your prompt, offers preset prompts for rewrite/summarize/continue/grammar flows, and **Run Python...** executes a restricted-Python transform against the current document text and selection. This restriction is an import allowlist and resource limits, not a security boundary — only run Python code you trust or wrote yourself. Prompt Studio lets you build reusable custom prompts with template variables, and Agent Center generates guided task plans that you can review before sending to the Writing Assistant.
 
 The quick writing actions work with or without a selection:
 
@@ -2251,9 +2251,9 @@ The best way to understand Quill is to use it on something real: a note you care
 
 Quill is trying to feel like a skilled guide sitting just beside the editor, not standing in front of it. If it succeeds, you will notice something simple: you spend less time wondering what the application can do, and more time deciding what you want to do next.
 
-## Quillins: Sandboxed Extensions
+## Quillins: Extensions
 
-Quill supports **Quillins** — small, sandboxed extensions that add commands, snippets, menus, abbreviations, smart triggers, settings pages, status bar cells, and document event handlers to the editor without requiring a full app restart. QUILL renders every control using accessible, screen-reader-friendly stock widgets — a Quillin never touches wxPython directly.
+Quill supports **Quillins** — extensions that add commands, snippets, menus, abbreviations, smart triggers, settings pages, status bar cells, and document event handlers to the editor without requiring a full app restart. Each Quillin runs in its own worker process, which isolates faults (a runaway extension cannot crash or corrupt the editor) but is not a security sandbox — the worker is a plain Python interpreter, so the real boundary is code review and the Author Covenant, not technical enforcement. QUILL renders every control using accessible, screen-reader-friendly stock widgets — a Quillin never touches wxPython directly.
 
 ### Bundled Quillins
 
@@ -4865,7 +4865,7 @@ A named set of feature flags that controls which QUILL capabilities are visible 
 A built-in tool for creating and saving reusable AI prompt templates with named input variables. A Prompt Studio template might be "Rewrite for Plain Language: ${input:text}" — you fill in the variable each time you run the prompt. Prompts are stored as `.pqp` files and can be imported and exported.
 
 **Quillin (Extension)**
-A sandboxed plug-in for QUILL, also called an extension. Quillins can add new commands, menu items, custom AI prompts, or automation scripts. Each Quillin has a `manifest.json` that describes its capabilities. QUILL ships with several bundled Quillins (word count, AI writing prompts) and supports user-installed ones. The Quillin Manager is in **Preferences → Extensions**.
+A plug-in for QUILL, also called an extension. Quillins run in a separate worker process (fault isolation — a crashed extension cannot take down the editor) but are not a security sandbox; enforcement relies on code review and the Author Covenant. Quillins can add new commands, menu items, custom AI prompts, or automation scripts. Each Quillin has a `manifest.json` that describes its capabilities. QUILL ships with several bundled Quillins (word count, AI writing prompts) and supports user-installed ones. The Quillin Manager is in **Preferences → Extensions**.
 
 **Recovery / Session Recovery**
 QUILL silently auto-saves your work at intervals. If QUILL closes unexpectedly (crash, power loss, accidental close), it detects the unsaved state on next launch and offers to restore the last known version. Recovery files are stored separately from your saved files so a corrupted recovery never overwrites your original. Manage recovery in **File → Recover Document**.
@@ -4901,7 +4901,7 @@ The rendered HTML preview pane that appears alongside the editor when you press 
 A lightweight, profile-aware getting-started document that opens inside QUILL as a document tab. Unlike the full User Guide (which opens in your browser), the Welcome Guide adapts its content to show only the features enabled in your current profile. Open it from **Help → Open Welcome Guide**.
 
 **Writing Assistant**
-QUILL's AI writing panel. The Writing Assistant accepts a goal described in plain language and ranks relevant QUILL commands, offers preset rewrite/summarize/continue/grammar flows, and can execute a sandboxed Python transform against the current document. It runs inside an AI Session and requires an AI provider to be configured in Preferences.
+QUILL's AI writing panel. The Writing Assistant accepts a goal described in plain language and ranks relevant QUILL commands, offers preset rewrite/summarize/continue/grammar flows, and can execute a restricted Python transform (import allowlist and resource limits, not a security boundary) against the current document. It runs inside an AI Session and requires an AI provider to be configured in Preferences.
 
 **QUILL Key**
 The keyboard shortcut `Ctrl+Shift+Grave` (the backtick/grave key above Tab). Pressing it once arms a one-shot prefix; pressing it twice locks Quick Nav Mode on. The QUILL key is the entry point to most of QUILL's power features. Every chord is announced when pressed and is remappable in **Preferences → Keyboard**.

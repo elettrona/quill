@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>quillins</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -256,7 +252,7 @@ build your first Quillin</h1>
 <p>This is a hands-on, build-it-from-scratch tutorial for Quillin
 contributors. By the end you will have authored, linted, tested, and
 prepared a real Quillin for submission — starting from a zero-capability
-snippet and growing into a sandboxed Python handler.</p>
+snippet and growing into an out-of-process Python handler.</p>
 <p>It pairs with three references you'll reach for along the way:</p>
 <ul>
 <li><a href="scripting.md"><code>scripting.md</code></a> — the full
@@ -433,8 +429,9 @@ capabilities. Most Quillins never need more than this.</p>
 <h2 id="4-step-2--a-layer-2-python-handler">4. Step 2 — a Layer 2 Python
 handler</h2>
 <p>Now add real logic: count the words in the selection and announce the
-count. Handlers run <strong>out-of-process</strong>, in a sandbox,
-behind QUILL's capability + consent gate.</p>
+count. Handlers run <strong>out-of-process</strong>, behind QUILL's
+capability + consent gate — see the accuracy note in §4b before you rely
+on that gate for anything security-sensitive.</p>
 <h3 id="4a-declare-what-you-need">4a. Declare what you need</h3>
 <p>A handler command requires two things in the manifest: a top-level
 <code>main</code> module and the <code>ui.command</code> capability. To
@@ -492,9 +489,17 @@ class="sourceCode python"><code class="sourceCode python"><span id="cb9-1"><a hr
 point. It binds the handler name used in the manifest
 (<code>"count_words"</code>) to a Python function.</li>
 <li>The handler receives the
-<strong><code>QuillExtensionApi</code></strong> (<code>api</code>). It
-can only do what your declared capabilities allow — calling something
-you didn't declare is blocked by the sandbox, not by politeness.</li>
+<strong><code>QuillExtensionApi</code></strong> (<code>api</code>).
+Calling an <code>api</code> method you didn't declare a capability for
+is rejected by the host. <strong>This is not the same as a security
+sandbox</strong>: the worker process is plain Python with no import
+restriction, so nothing technically stops a handler from importing
+<code>os</code>/<code>socket</code>/<code>subprocess</code> directly
+instead of going through <code>api</code>. The real enforcement today is
+the linter, human review, and the Author Covenant below — use
+<code>api</code> for everything anyway, because that's the contract
+reviewers check against and what makes a Quillin portable to a real
+sandbox later.</li>
 <li><strong>It announces its outcome in every path</strong> — success
 <em>and</em> the empty-selection case. A silent success is a bug under
 the Author Covenant.</li>
@@ -601,7 +606,7 @@ class="sourceCode python"><code class="sourceCode python"><span id="cb10-1"><a h
 <p>For real confidence, also drive the handler through the
 <strong>out-of-process host</strong> (see <a
 href="../tests/integration/test_quillins_host_integration.py"><code>tests/integration/test_quillins_host_integration.py</code></a>),
-which exercises the actual sandbox, capability gate, and consent
+which exercises the actual worker process, capability gate, and consent
 flow.</p>
 <hr />
 <h2 id="6-lint-then-check-everything">6. Lint, then check
@@ -741,7 +746,8 @@ the experience speaks of <strong>Quillins</strong>.</p>
 <code>tests/integration/test_quillins_host_integration.py</code></td>
 </tr>
 <tr>
-<td>Sandboxed worker + <code>QuillExtensionApi</code> (§5, §14.4)</td>
+<td>Out-of-process worker + <code>QuillExtensionApi</code> (§5,
+§14.4)</td>
 <td><code>quill/core/quillins/host_worker.py</code></td>
 <td><code>tests/integration/test_quillins_host_integration.py</code></td>
 </tr>
@@ -821,8 +827,9 @@ pieces:</p>
 Covenant</a></strong> — the code of conduct for Quillin <em>code</em>:
 accessibility (announce every outcome, keyboard-complete), capability
 minimization and honesty, no silent network or telemetry, privacy,
-security (no obfuscation, no sandbox-escape, no malware), licensing, and
-namespace etiquette. Every submission attests to it.</li>
+security (no obfuscation, no attempts to exceed declared capabilities,
+no malware), licensing, and namespace etiquette. Every submission
+attests to it.</li>
 <li><strong><a href="quillin-submission.md">Submission
 guide</a></strong> — the end-to-end author journey: directory layout,
 manifest authoring, self-lint, tests, the PR template, and the review
@@ -926,11 +933,11 @@ onto:</p>
 <li>text <strong>snippets / templates</strong> (no executable
 code).</li>
 </ul>
-<p>This layer is <strong>non-Turing-complete and fully
-sandboxable</strong> — it can do nothing except invoke commands QUILL
-already trusts and insert literal text. Most real "add a menu item /
-bind a key / add a right-click action" requests are satisfied here with
-effectively zero risk.</p>
+<p>This layer is <strong>non-Turing-complete and safe by
+construction</strong> — there is no code execution at all, so it can do
+nothing except invoke commands QUILL already trusts and insert literal
+text. Most real "add a menu item / bind a key / add a right-click
+action" requests are satisfied here with effectively zero risk.</p>
 <h3
 id="layer-2--python-extension-api-real-logic-isolated-bidirectional">Layer
 2 — Python extension API (real logic, isolated, bidirectional)</h3>
@@ -969,7 +976,7 @@ runtime.</p>
 extension authors.</p>
 <pre class="text"><code>+------------------+        capability-gated RPC         +-----------------------+
 |  QUILL UI thread | &lt;--------------------------------&gt; | Extension host worker |
-|  (wx, main_frame)|   (stdio/pipe, JSON messages)      |  (sandboxed Python)   |
+|  (wx, main_frame)|   (stdio/pipe, JSON messages)      | (out-of-process Python)|
 +------------------+                                     +-----------------------+
         |  registers menu/hotkey/context hooks                   |
         |  marshals results via wx.CallAfter                     | user extension code
@@ -2167,9 +2174,10 @@ workers, platform, announcements)</td>
 <td>Narrow, capability-gated <code>QuillExtensionApi</code> (§5)</td>
 </tr>
 <tr>
-<td>Sandbox</td>
+<td>Isolation</td>
 <td>None needed (trusted code)</td>
-<td>Mandatory (§6)</td>
+<td>Process separation + capability/consent gate (§6); not an OS-level
+sandbox</td>
 </tr>
 <tr>
 <td>Registration</td>
@@ -2179,11 +2187,11 @@ workers, platform, announcements)</td>
 </tbody>
 </table>
 <p>The crucial rule: <strong>first-party features must NOT be routed
-through the sandboxed, out-of-process, capability-gated path.</strong>
-Built-ins need rich, synchronous, in-process access; forcing them across
-the RPC bridge would be a severe downgrade in capability, latency
-(per-keystroke operations!), and complexity for zero security benefit,
-since the code is already trusted.</p>
+through the out-of-process, capability-gated path.</strong> Built-ins
+need rich, synchronous, in-process access; forcing them across the RPC
+bridge would be a severe downgrade in capability, latency (per-keystroke
+operations!), and complexity for zero security benefit, since the code
+is already trusted.</p>
 <h3 id="162-what-this-enables">16.2 What this enables</h3>
 <ul>
 <li>An internal <code>register(host)</code> module interface, where
@@ -2323,7 +2331,7 @@ control" would forfeit the guarantee — so it is not allowed. That
 finiteness <em>is</em> the safety property.</li>
 <li>Genuinely novel custom UI is <strong>out of scope</strong> for
 extensions; it must be a first-party module reviewed against A11Y-4
-(§16.1), not a sandboxed extension.</li>
+(§16.1), not an out-of-process extension.</li>
 <li>Anything sensitive a dialog <em>triggers</em> (network, file write,
 run executable) still passes through capability prompts (§6). An
 accessible dialog never bypasses consent.</li>
@@ -2689,8 +2697,9 @@ options considered</h2>
 <td>No new runtime; whole object model already Python; best
 debugging/docs/stdlib; faithful analogue of scripting a .NET editor in a
 .NET language; easiest to maintain</td>
-<td>In-process sandboxing is weak — must run out-of-process for real
-isolation</td>
+<td>In-process execution would share fate with the UI on a crash;
+running out-of-process at least contains faults, though Python itself
+still has no real language-level sandbox — see §6</td>
 <td><strong>Chosen (Layer 2)</strong></td>
 </tr>
 <tr>
@@ -2728,10 +2737,17 @@ out-of-process</h2>
 <p>QUILL's concurrency model already runs OCR in a separate worker
 process and marshals UI updates through <code>wx.CallAfter</code>.
 Reusing that pattern for the extension host gives real fault isolation
-(a runaway extension can't corrupt the buffer or freeze the editor) and
-is the only way to meaningfully sandbox Python. The UI side remains the
-sole owner of the editor buffer; the extension side only ever sends
-intents over the RPC bridge.</p>
+(a runaway extension can't corrupt the buffer or freeze the editor). It
+does <strong>not</strong> give security isolation: Python has no
+reliable language-level sandbox, and <code>host_worker.py</code> today
+is a plain interpreter process with no import restriction. A handler
+that wanted to bypass <code>api</code> and call
+<code>os</code>/<code>subprocess</code>/<code>socket</code> directly
+could. The real boundary right now is review (linting, the Author
+Covenant, and — until a trust/signing model ships — keeping third-party
+loading <code>locked_off</code>, SEC-8), not a technical sandbox. The UI
+side remains the sole owner of the editor buffer; the extension side
+only ever sends intents over the RPC bridge.</p>
 <hr />
 <!-- Source: docs/quillins.md -->
 
@@ -2753,7 +2769,7 @@ submission attests to it — and the authoring reference in <a
 href="scripting.md"><code>scripting.md</code></a> (§13 schema, §14
 authoring reference, §15 the deterministic AI-authoring contract).</p>
 <h2 id="1-what-a-quillin-is">1. What a Quillin is</h2>
-<p>A Quillin is a small, sandboxed extension described by a
+<p>A Quillin is a small, capability-declared extension described by a
 <code>manifest.json</code> (<code>schema: "quill.extension/1"</code>).
 It comes in two layers:</p>
 <ul>
@@ -2842,8 +2858,8 @@ href="quillin-code-of-conduct.md"><code>quillin-code-of-conduct.md</code></a>
 and confirm your Quillin keeps every promise: accessibility (announce
 outcomes, keyboard-complete), capability minimization and honesty, no
 silent network or telemetry, privacy, security (no obfuscation, no
-sandbox-escape, no malware), licensing, namespace etiquette, and
-maintenance.</p>
+attempts to exceed declared capabilities, no malware), licensing,
+namespace etiquette, and maintenance.</p>
 <h2 id="7-open-the-submission-pr">7. Open the submission PR</h2>
 <ol type="1">
 <li>Add your Quillin directory to the submission area and stage
@@ -2865,8 +2881,8 @@ announce a clear outcome; is it fully keyboard-operable?</li>
 capability genuinely needed and used transparently? Consent-gated
 capabilities get the most scrutiny.</li>
 <li><strong>Security and honesty</strong> — readable source, no
-obfuscation, no sandbox-escape, no silent network, behaviour matches
-description.</li>
+obfuscation, no attempts to exceed declared capabilities, no silent
+network, behaviour matches description.</li>
 <li><strong>Quality</strong> — clear naming, sensible menu/hotkey
 placement, tests present.</li>
 </ul>
@@ -2942,8 +2958,10 @@ minimization</h2>
 you actually use. A snippet-only Quillin declares none.</li>
 <li><strong>No capability laundering.</strong> Do not request a broad
 capability to do a narrow thing, and never attempt to act beyond what
-you declared. The sandbox enforces this; trying to defeat it is grounds
-for immediate removal.</li>
+you declared. The host worker process does not technically prevent this
+today (it is plain Python, not an OS-level sandbox) — that makes this
+rule a matter of trust and review, not enforcement, which is exactly why
+violating it is grounds for immediate removal.</li>
 <li><strong><code>fs.*</code> and <code>net</code> are
 consent-gated.</strong> If you request filesystem or network access,
 expect every use to pass a per-action consent prompt, and design for a

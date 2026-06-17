@@ -88,7 +88,7 @@ class RunPythonDialog:
             wx.StaticText(
                 self.dialog,
                 label=(
-                    "Sandboxed Python can read document_text and selection_text. "
+                    "Restricted Python (allowlist + resource limits; not a security boundary). "
                     "Set result or print output, then apply the transformed text."
                 ),
             ),
