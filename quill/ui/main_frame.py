@@ -486,6 +486,7 @@ from quill.ui.main_frame_browse import BrowseModeMixin
 from quill.ui.main_frame_copy_tray import CopyTrayMixin
 from quill.ui.main_frame_devtools import DevToolsMixin
 from quill.ui.main_frame_github import GitHubRemoteMixin
+from quill.ui.main_frame_hygiene import HygieneMixin
 from quill.ui.main_frame_image import ImageCaptureMixin
 from quill.ui.main_frame_intellisense import IntellisensePopupMixin
 from quill.ui.main_frame_line_commands import LineCommandsMixin
@@ -777,6 +778,7 @@ class MainFrame(
     AbbreviationsMixin,
     AiActionsMixin,
     BrailleCommandsMixin,
+    HygieneMixin,
     ImageCaptureMixin,
     BrowseModeMixin,
     MenuBuilderMixin,

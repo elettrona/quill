@@ -1044,6 +1044,8 @@ class MenuBuilderMixin:
         self._window_menu = window_menu  # doc items appended here dynamically
 
         self._id_word_count = wx.NewIdRef()
+        self._id_quill_eraser = wx.NewIdRef()
+        self._id_quill_eraser_selection = wx.NewIdRef()
         self._id_sticky_notes = wx.NewIdRef()
         self._id_new_sticky_note = wx.NewIdRef()
         self._id_spell_check = wx.NewIdRef()
@@ -1252,6 +1254,15 @@ class MenuBuilderMixin:
                 self._id_glow_fix_selection,
                 self._menu_label(_("GLOW Fix &Selection"), "tools.glow_fix_selection"),
             )
+        writing_menu.AppendSeparator()
+        writing_menu.Append(
+            self._id_quill_eraser,
+            self._menu_label(_("&Quill Eraser..."), "tools.quill_eraser"),
+        )
+        writing_menu.Append(
+            self._id_quill_eraser_selection,
+            self._menu_label(_("Quill Eraser on &Selection..."), "tools.quill_eraser_selection"),
+        )
         tools_menu.AppendSubMenu(writing_menu, _("&Writing && Language"))
 
         # Reading & Dictation (merges Read Aloud, Dictation, OCR) ------------
@@ -2712,6 +2723,16 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.create_sticky_note(),
             id=self._id_new_sticky_note,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_quill_eraser(),
+            id=self._id_quill_eraser,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_quill_eraser_selection(),
+            id=self._id_quill_eraser_selection,
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.show_word_count(), id=self._id_word_count)
         self.frame.Bind(

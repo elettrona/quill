@@ -477,6 +477,8 @@ The palette also learns from usage. Commands you use more often rise naturally.
 - **Continue Writing**
 - **Fix Grammar**
 - **Run Python...**
+- **Quill Eraser...**
+- **Quill Eraser on Selection...**
 
 The Writing Assistant shell ranks Quill commands from your prompt, offers preset prompts for rewrite/summarize/continue/grammar flows, and **Run Python...** executes a restricted-Python transform against the current document text and selection. This restriction is an import allowlist and resource limits, not a security boundary — only run Python code you trust or wrote yourself. Prompt Studio lets you build reusable custom prompts with template variables, and Agent Center generates guided task plans that you can review before sending to the Writing Assistant.
 
@@ -1425,6 +1427,60 @@ A handful of built-in snippets expand without going through the grammar at all: 
 When the active document's file extension is `.css`, all three commands switch to CSS mode and expand a curated set of common shorthand instead — things like `d:f` for `display: flex;`, `pos:a` for `position: absolute;`, and box-model shorthand such as `m10-20` for `margin: 10px 20px;` or `mt-10` for `margin-top: -10px;`.
 
 If an abbreviation can't be parsed, Quill reports exactly what it expected and where, on the status bar, rather than guessing or silently doing nothing.
+
+### Quill Eraser
+
+Quill Eraser (`Tools → Writing & Language → Quill Eraser...`) is a deterministic, rule-based text hygiene checker. It finds common mechanical writing problems — extra spaces, trailing whitespace, missing spaces after punctuation, excessive blank lines, and sentences that start with lowercase — and offers one-click fixes for each finding, with no AI or network call in the loop.
+
+There is also a scoped version: `Quill Eraser on Selection...` runs only on the text you have selected. If nothing is selected, it offers to check the whole document.
+
+#### What Quill Eraser checks
+
+Each finding is reported with a confidence level (High, Medium, or Low) so you can prioritize what to fix.
+
+| Rule | Confidence | What it catches |
+|------|-----------|-----------------|
+| Multiple spaces between words | High | Two or more spaces where one space belongs |
+| Trailing spaces at end of line | High | Spaces or tabs at the end of a line |
+| Space before punctuation | High | A space immediately before `,`, `.`, `!`, `?`, `;`, or `:` |
+| Excessive blank lines | High | More consecutive blank lines than your configured maximum (default: 2) |
+| Missing space after sentence punctuation | Medium | A sentence-ending `.`, `!`, or `?` directly followed by a letter |
+| Missing space after comma, semicolon, or colon | Medium | A `,`, `;`, or `:` directly followed by a letter |
+| Sentence starts with lowercase letter | Medium | A sentence or paragraph that begins with a lowercase character |
+
+Quill Eraser never reports findings inside URLs, email addresses, file paths, code spans, decimal numbers, or times. When checking a Markdown file it also skips fenced code blocks, inline code, front matter, and link URLs.
+
+#### Code files
+
+If you open Quill Eraser on a code file (`.py`, `.js`, `.ts`, `.html`, and so on) a prompt appears. You can run safe trailing-whitespace checks only, or skip the check entirely. All prose-spacing rules are suppressed on code files unless you opt in to safe-only mode.
+
+#### The review dialog
+
+When Quill Eraser finds issues it opens a modeless review dialog. The dialog stays open while you work in the editor.
+
+- The **findings list** shows each issue in order: confidence, type, and line number.
+- Selecting a finding shows its detail in the pane below: what was found, what the fix is, and a plain-English description.
+- **Apply Fix** applies the suggested fix and moves automatically to the next issue.
+- **Ignore** hides the finding for this session without applying a fix.
+- **Go to Issue** moves the cursor in the editor to the exact location so you can decide what to do yourself, with the issue text selected.
+- **Previous / Next** navigate the list by keyboard.
+- **Rescan** re-runs the engine after you have made manual edits.
+- **Close** dismisses the dialog.
+
+Every action is announced so screen-reader users always know what changed.
+
+#### Settings
+
+Four preferences in `Settings → Preferences → General` control Quill Eraser behaviour:
+
+| Setting | Default | What it does |
+|---------|---------|--------------|
+| `hygiene_min_confidence` | `high` | Minimum confidence level to report. Set to `medium` or `low` to see more findings. |
+| `hygiene_allow_double_space_after_period` | off | Suppresses the "multiple spaces" rule when exactly two spaces follow `.`, `!`, or `?` (two-space-after-period style). |
+| `hygiene_max_blank_lines` | 2 | Maximum consecutive blank lines before a finding is raised. |
+| `hygiene_rules_disabled` | (empty) | Comma-separated list of rule IDs to disable (e.g. `prose.lowercase_sentence_start,prose.missing_space_after_comma`). |
+
+Rule IDs for the disabled list: `prose.multiple_spaces`, `prose.trailing_spaces`, `prose.space_before_punctuation`, `prose.excessive_blank_lines`, `prose.missing_space_after_sentence_punct`, `prose.missing_space_after_comma`, `prose.lowercase_sentence_start`.
 
 ## QUILL Quick Nav Mode
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0 — Insert Automation, Quillin Platform, Braille Mode, AI Writing Toolkit (2026-06-17)
+
+### Text hygiene
+
+- **Quill Eraser.** `Tools → Writing & Language → Quill Eraser...` / `Quill Eraser on Selection...`. Deterministic, rule-based text hygiene checker: seven rules covering multiple spaces, trailing whitespace, space before punctuation, excessive blank lines, missing space after sentence/comma/colon punctuation, and lowercase sentence starts. Findings are presented in a modeless, keyboard-navigable review dialog with Apply Fix, Ignore, Go to Issue, Previous/Next, and Rescan actions. All actions are screen-reader-announced. Code files receive a prompt before checking; only safe trailing-space checks run unless you opt in. URLs, emails, file paths, code spans, decimal numbers, times, and (in Markdown) code blocks, front matter, and link URLs are never flagged. Four new preference fields control confidence threshold, two-space-after-period exception, max blank lines, and per-rule disable list. New files: `quill/core/hygiene/` package (findings.py, ignored_ranges.py, rules.py, engine.py), `quill/ui/hygiene_dialog.py`, `quill/ui/main_frame_hygiene.py`. New feature `core.hygiene` in the feature catalog. 41 unit tests in `tests/unit/core/test_hygiene_rules.py`.
+
 ## 0.6.0 — Insert Automation, Quillin Platform, Braille Mode, AI Writing Toolkit (2026-06-16)
 
 See `rel.md` for the full narrative release notes.

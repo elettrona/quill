@@ -215,6 +215,11 @@ class Settings:
     vision_custom_prompts: list[dict[str, Any]] = field(default_factory=list)
     vision_builtin_overrides: dict[str, str] = field(default_factory=dict)
     dev_console_consent_accepted: bool = False
+    # ERASER: Quill Eraser text hygiene checker.
+    hygiene_min_confidence: str = "high"
+    hygiene_allow_double_space_after_period: bool = False
+    hygiene_max_blank_lines: int = 2
+    hygiene_rules_disabled: str = ""  # comma-separated rule IDs
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Settings:
@@ -585,6 +590,17 @@ class Settings:
             vision_default_prompt_style = "accessibility"
         raw_mp = int(data.get("multi_press_window_ms", 400))
         multi_press_window_ms = max(100, min(1000, raw_mp))
+        hygiene_min_confidence = str(data.get("hygiene_min_confidence", "high")).strip().lower()
+        if hygiene_min_confidence not in {"high", "medium", "low"}:
+            hygiene_min_confidence = "high"
+        hygiene_allow_double_space_after_period = bool(
+            data.get("hygiene_allow_double_space_after_period", False)
+        )
+        try:
+            hygiene_max_blank_lines = max(1, min(10, int(data.get("hygiene_max_blank_lines", 2))))
+        except (TypeError, ValueError):
+            hygiene_max_blank_lines = 2
+        hygiene_rules_disabled = str(data.get("hygiene_rules_disabled", "")).strip()
         if recent_files_limit < 1:
             recent_files_limit = 1
         if recent_files_limit > 50:
@@ -752,6 +768,10 @@ class Settings:
             vision_custom_prompts=vision_custom_prompts,
             vision_builtin_overrides=vision_builtin_overrides,
             dev_console_consent_accepted=dev_console_consent_accepted,
+            hygiene_min_confidence=hygiene_min_confidence,
+            hygiene_allow_double_space_after_period=hygiene_allow_double_space_after_period,
+            hygiene_max_blank_lines=hygiene_max_blank_lines,
+            hygiene_rules_disabled=hygiene_rules_disabled,
         )
 
 

@@ -479,6 +479,30 @@ FEATURE_DEFINITIONS: dict[str, FeatureDefinition] = {
         dependencies=("core.app",),
         locked_on=True,
     ),
+    "core.hygiene": FeatureDefinition(
+        "core.hygiene",
+        "Quill Eraser",
+        aliases=(
+            "quill eraser",
+            "text hygiene",
+            "hygiene checker",
+            "mechanical checker",
+            "writing checker",
+            "spacing checker",
+        ),
+        description=(
+            "Quill Eraser: deterministic, rule-based text hygiene checker. "
+            "Detects spacing problems, trailing whitespace, excessive blank lines, "
+            "missing spaces after punctuation, and sentences starting with "
+            "lowercase letters. Review results in an accessible, keyboard-first "
+            "dialog. No AI required. Safe by default: code and structured files "
+            "suppress prose rules automatically."
+        ),
+        maturity="stable",
+        privacy="local only",
+        category="writing",
+        dependencies=("core.editor",),
+    ),
 }
 
 

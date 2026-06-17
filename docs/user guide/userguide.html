@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>userguide</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -971,6 +967,8 @@ naturally.</p>
 <li><strong>Continue Writing</strong></li>
 <li><strong>Fix Grammar</strong></li>
 <li><strong>Run Python...</strong></li>
+<li><strong>Quill Eraser...</strong></li>
+<li><strong>Quill Eraser on Selection...</strong></li>
 </ul>
 <p>The Writing Assistant shell ranks Quill commands from your prompt,
 offers preset prompts for rewrite/summarize/continue/grammar flows, and
@@ -2692,6 +2690,148 @@ shorthand instead — things like <code>d:f</code> for
 <p>If an abbreviation can't be parsed, Quill reports exactly what it
 expected and where, on the status bar, rather than guessing or silently
 doing nothing.</p>
+<h3 id="quill-eraser">Quill Eraser</h3>
+<p>Quill Eraser
+(<code>Tools → Writing &amp; Language → Quill Eraser...</code>) is a
+deterministic, rule-based text hygiene checker. It finds common
+mechanical writing problems — extra spaces, trailing whitespace, missing
+spaces after punctuation, excessive blank lines, and sentences that
+start with lowercase — and offers one-click fixes for each finding, with
+no AI or network call in the loop.</p>
+<p>There is also a scoped version:
+<code>Quill Eraser on Selection...</code> runs only on the text you have
+selected. If nothing is selected, it offers to check the whole
+document.</p>
+<h4 id="what-quill-eraser-checks">What Quill Eraser checks</h4>
+<p>Each finding is reported with a confidence level (High, Medium, or
+Low) so you can prioritize what to fix.</p>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Confidence</th>
+<th>What it catches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Multiple spaces between words</td>
+<td>High</td>
+<td>Two or more spaces where one space belongs</td>
+</tr>
+<tr>
+<td>Trailing spaces at end of line</td>
+<td>High</td>
+<td>Spaces or tabs at the end of a line</td>
+</tr>
+<tr>
+<td>Space before punctuation</td>
+<td>High</td>
+<td>A space immediately before <code>,</code>, <code>.</code>,
+<code>!</code>, <code>?</code>, <code>;</code>, or <code>:</code></td>
+</tr>
+<tr>
+<td>Excessive blank lines</td>
+<td>High</td>
+<td>More consecutive blank lines than your configured maximum (default:
+2)</td>
+</tr>
+<tr>
+<td>Missing space after sentence punctuation</td>
+<td>Medium</td>
+<td>A sentence-ending <code>.</code>, <code>!</code>, or <code>?</code>
+directly followed by a letter</td>
+</tr>
+<tr>
+<td>Missing space after comma, semicolon, or colon</td>
+<td>Medium</td>
+<td>A <code>,</code>, <code>;</code>, or <code>:</code> directly
+followed by a letter</td>
+</tr>
+<tr>
+<td>Sentence starts with lowercase letter</td>
+<td>Medium</td>
+<td>A sentence or paragraph that begins with a lowercase character</td>
+</tr>
+</tbody>
+</table>
+<p>Quill Eraser never reports findings inside URLs, email addresses,
+file paths, code spans, decimal numbers, or times. When checking a
+Markdown file it also skips fenced code blocks, inline code, front
+matter, and link URLs.</p>
+<h4 id="code-files">Code files</h4>
+<p>If you open Quill Eraser on a code file (<code>.py</code>,
+<code>.js</code>, <code>.ts</code>, <code>.html</code>, and so on) a
+prompt appears. You can run safe trailing-whitespace checks only, or
+skip the check entirely. All prose-spacing rules are suppressed on code
+files unless you opt in to safe-only mode.</p>
+<h4 id="the-review-dialog">The review dialog</h4>
+<p>When Quill Eraser finds issues it opens a modeless review dialog. The
+dialog stays open while you work in the editor.</p>
+<ul>
+<li>The <strong>findings list</strong> shows each issue in order:
+confidence, type, and line number.</li>
+<li>Selecting a finding shows its detail in the pane below: what was
+found, what the fix is, and a plain-English description.</li>
+<li><strong>Apply Fix</strong> applies the suggested fix and moves
+automatically to the next issue.</li>
+<li><strong>Ignore</strong> hides the finding for this session without
+applying a fix.</li>
+<li><strong>Go to Issue</strong> moves the cursor in the editor to the
+exact location so you can decide what to do yourself, with the issue
+text selected.</li>
+<li><strong>Previous / Next</strong> navigate the list by keyboard.</li>
+<li><strong>Rescan</strong> re-runs the engine after you have made
+manual edits.</li>
+<li><strong>Close</strong> dismisses the dialog.</li>
+</ul>
+<p>Every action is announced so screen-reader users always know what
+changed.</p>
+<h4 id="settings">Settings</h4>
+<p>Four preferences in <code>Settings → Preferences → General</code>
+control Quill Eraser behaviour:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hygiene_min_confidence</code></td>
+<td><code>high</code></td>
+<td>Minimum confidence level to report. Set to <code>medium</code> or
+<code>low</code> to see more findings.</td>
+</tr>
+<tr>
+<td><code>hygiene_allow_double_space_after_period</code></td>
+<td>off</td>
+<td>Suppresses the "multiple spaces" rule when exactly two spaces follow
+<code>.</code>, <code>!</code>, or <code>?</code>
+(two-space-after-period style).</td>
+</tr>
+<tr>
+<td><code>hygiene_max_blank_lines</code></td>
+<td>2</td>
+<td>Maximum consecutive blank lines before a finding is raised.</td>
+</tr>
+<tr>
+<td><code>hygiene_rules_disabled</code></td>
+<td>(empty)</td>
+<td>Comma-separated list of rule IDs to disable (e.g.
+<code>prose.lowercase_sentence_start,prose.missing_space_after_comma</code>).</td>
+</tr>
+</tbody>
+</table>
+<p>Rule IDs for the disabled list: <code>prose.multiple_spaces</code>,
+<code>prose.trailing_spaces</code>,
+<code>prose.space_before_punctuation</code>,
+<code>prose.excessive_blank_lines</code>,
+<code>prose.missing_space_after_sentence_punct</code>,
+<code>prose.missing_space_after_comma</code>,
+<code>prose.lowercase_sentence_start</code>.</p>
 <h2 id="quill-quick-nav-mode">QUILL Quick Nav Mode</h2>
 <p>QUILL Quick Nav mode is a browse-style, cursor-only navigation layer
 for long documents. It is movement-only: it changes cursor location,
@@ -4114,14 +4254,17 @@ an HTML document you want to make more usable.</p>
 editor, not standing in front of it. If it succeeds, you will notice
 something simple: you spend less time wondering what the application can
 do, and more time deciding what you want to do next.</p>
-<h2 id="quillins-sandboxed-extensions">Quillins: Sandboxed
-Extensions</h2>
-<p>Quill supports <strong>Quillins</strong> — small, sandboxed
-extensions that add commands, snippets, menus, abbreviations, smart
-triggers, settings pages, status bar cells, and document event handlers
-to the editor without requiring a full app restart. QUILL renders every
-control using accessible, screen-reader-friendly stock widgets — a
-Quillin never touches wxPython directly.</p>
+<h2 id="quillins-extensions">Quillins: Extensions</h2>
+<p>Quill supports <strong>Quillins</strong> — extensions that add
+commands, snippets, menus, abbreviations, smart triggers, settings
+pages, status bar cells, and document event handlers to the editor
+without requiring a full app restart. Each Quillin runs in its own
+worker process, which isolates faults (a runaway extension cannot crash
+or corrupt the editor) but is not a security sandbox — the worker is a
+plain Python interpreter, so the real boundary is code review and the
+Author Covenant, not technical enforcement. QUILL renders every control
+using accessible, screen-reader-friendly stock widgets — a Quillin never
+touches wxPython directly.</p>
 <h3 id="bundled-quillins">Bundled Quillins</h3>
 <p>QUILL ships thirteen trusted, first-party Quillins enabled by
 default:</p>
@@ -7281,13 +7424,16 @@ saving reusable AI prompt templates with named input variables. A Prompt
 Studio template might be "Rewrite for Plain Language: ${input:text}" —
 you fill in the variable each time you run the prompt. Prompts are
 stored as <code>.pqp</code> files and can be imported and exported.</p>
-<p><strong>Quillin (Extension)</strong> A sandboxed plug-in for QUILL,
-also called an extension. Quillins can add new commands, menu items,
-custom AI prompts, or automation scripts. Each Quillin has a
-<code>manifest.json</code> that describes its capabilities. QUILL ships
-with several bundled Quillins (word count, AI writing prompts) and
-supports user-installed ones. The Quillin Manager is in
-<strong>Preferences → Extensions</strong>.</p>
+<p><strong>Quillin (Extension)</strong> A plug-in for QUILL, also called
+an extension. Quillins run in a separate worker process (fault isolation
+— a crashed extension cannot take down the editor) but are not a
+security sandbox; enforcement relies on code review and the Author
+Covenant. Quillins can add new commands, menu items, custom AI prompts,
+or automation scripts. Each Quillin has a <code>manifest.json</code>
+that describes its capabilities. QUILL ships with several bundled
+Quillins (word count, AI writing prompts) and supports user-installed
+ones. The Quillin Manager is in <strong>Preferences →
+Extensions</strong>.</p>
 <p><strong>Recovery / Session Recovery</strong> QUILL silently
 auto-saves your work at intervals. If QUILL closes unexpectedly (crash,
 power loss, accidental close), it detects the unsaved state on next
