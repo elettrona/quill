@@ -406,7 +406,7 @@ def test_statusbar_shows_line_and_column() -> None:
     frame._apply_statusbar_layout()
     assert frame.statusbar.fields_count == 6
     assert frame.statusbar.status[1] == "Ln 2, Col 2"
-    assert frame.statusbar.status[2] == "INS"
+    assert frame.statusbar.status[2] == "Insert"
 
 
 def test_statusbar_respects_order_and_hidden_items() -> None:
@@ -416,7 +416,7 @@ def test_statusbar_respects_order_and_hidden_items() -> None:
     frame._apply_statusbar_layout()
     assert frame.statusbar.fields_count == 5
     assert frame.statusbar.status[0] == "Ln 1, Col 2"
-    assert frame.statusbar.status[1] == "INS"
+    assert frame.statusbar.status[1] == "Insert"
 
 
 def test_refresh_title_uses_full_path_when_enabled() -> None:
@@ -659,7 +659,7 @@ def test_insert_key_toggles_overwrite_mode_status() -> None:
     event = _KeyEvent(45)
     frame._wx = type("WX", (), {"WXK_INSERT": 45})()
     frame._on_editor_key_down(event)
-    assert frame.statusbar.status[2] == "OVR"
+    assert frame.statusbar.status[2] == "Overwrite"
 
 
 def test_ctrl_shift_o_opens_outline_navigator_from_editor() -> None:

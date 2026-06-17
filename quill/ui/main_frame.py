@@ -587,6 +587,7 @@ class _DocumentTab:
     preview: object = None
     source_label: str = ""
     read_only_remote: bool = False
+    _indent_tone_last_level: int = -1
 
 
 @dataclass(slots=True)
@@ -806,9 +807,9 @@ class MainFrame(
     }
     _STATUS_BAR_LABELS: dict[str, str] = {
         "message": "Status Message",
-        "line_column": "Line / Column",
+        "line_column": "Position",
         "word_count": "Word Count",
-        "mode": "Insert / Overwrite",
+        "mode": "Keyboard Mode",
         "selection": "Selection Length",
         "encoding": "Encoding",
         "line_endings": "Line Endings",
@@ -2538,6 +2539,7 @@ class MainFrame(
             "About BITS Whisperer",
             self.show_whisperer_about_page,
             None,
+            feature_id="core.bw_whisperer",
         )
         self.commands.register(
             "help.status_page",
@@ -17168,37 +17170,40 @@ class MainFrame(
             ("Overview", "Notifications queued", str(notification_count)),
         ]
 
-        bw_mode = str(getattr(settings, "bw_provider_mode", "local_first"))
-        bw_local_first = bw_mode == "local_first"
-        bw_provider_id = str(getattr(settings, "bw_provider_id", "local_whisper"))
-        bw_provider = bw_get_provider(bw_provider_id, include_cloud=True)
-        bw_recommended_provider = bw_recommended_provider_id(local_first=bw_local_first)
-        bw_recommended_provider_spec = bw_get_provider(bw_recommended_provider, include_cloud=True)
-        bw_ready = bw_provider_readiness(bw_provider_id, local_first=bw_local_first)
-        bw_models = bw_list_models(include_parakeet=False)
-        bw_downloaded = bw_downloaded_model_ids(include_parakeet=False)
-        bw_engine_ok, bw_engine_status = faster_whisper_status()
-        for name, value in [
-            ("Provider mode", "Local-first" if bw_local_first else "Cloud-first"),
-            ("Configured provider", bw_provider.name if bw_provider else bw_provider_id),
-            (
-                "Recommended provider",
-                bw_recommended_provider_spec.name
-                if bw_recommended_provider_spec
-                else bw_recommended_provider,
-            ),
-            ("Provider readiness", "Ready" if bw_ready.ready else "Needs setup"),
-            ("Model mode", str(getattr(settings, "bw_speech_selection_mode", "recommended"))),
-            (
-                "Configured speech model",
-                str(getattr(settings, "bw_speech_model_id", "whisper-base")),
-            ),
-            ("Whisper models downloaded", f"{len(bw_downloaded)} of {len(bw_models)}"),
-            ("faster-whisper engine", "Ready" if bw_engine_ok else "Not installed"),
-            ("Engine detail", bw_engine_status),
-            ("Last refresh", datetime.now(UTC).isoformat()),
-        ]:
-            status_rows.append(("BITS Whisperer", name, str(value)))
+        if self.features.is_enabled("core.bw_whisperer"):
+            bw_mode = str(getattr(settings, "bw_provider_mode", "local_first"))
+            bw_local_first = bw_mode == "local_first"
+            bw_provider_id = str(getattr(settings, "bw_provider_id", "local_whisper"))
+            bw_provider = bw_get_provider(bw_provider_id, include_cloud=True)
+            bw_recommended_provider = bw_recommended_provider_id(local_first=bw_local_first)
+            bw_recommended_provider_spec = bw_get_provider(
+                bw_recommended_provider, include_cloud=True
+            )
+            bw_ready = bw_provider_readiness(bw_provider_id, local_first=bw_local_first)
+            bw_models = bw_list_models(include_parakeet=False)
+            bw_downloaded = bw_downloaded_model_ids(include_parakeet=False)
+            bw_engine_ok, bw_engine_status = faster_whisper_status()
+            for name, value in [
+                ("Provider mode", "Local-first" if bw_local_first else "Cloud-first"),
+                ("Configured provider", bw_provider.name if bw_provider else bw_provider_id),
+                (
+                    "Recommended provider",
+                    bw_recommended_provider_spec.name
+                    if bw_recommended_provider_spec
+                    else bw_recommended_provider,
+                ),
+                ("Provider readiness", "Ready" if bw_ready.ready else "Needs setup"),
+                ("Model mode", str(getattr(settings, "bw_speech_selection_mode", "recommended"))),
+                (
+                    "Configured speech model",
+                    str(getattr(settings, "bw_speech_model_id", "whisper-base")),
+                ),
+                ("Whisper models downloaded", f"{len(bw_downloaded)} of {len(bw_models)}"),
+                ("faster-whisper engine", "Ready" if bw_engine_ok else "Not installed"),
+                ("Engine detail", bw_engine_status),
+                ("Last refresh", datetime.now(UTC).isoformat()),
+            ]:
+                status_rows.append(("BITS Whisperer", name, str(value)))
 
         for name, value in [
             ("Engine", settings.read_aloud_engine),
@@ -17240,9 +17245,13 @@ class MainFrame(
             state_label = {"on": "Enabled", "quiet": "Quiet", "off": "Disabled"}.get(state, state)
             feature_rows.append((feature_id, definition.name, definition.category, state_label))
 
-        actions = [
-            "Open BITS Whisperer > Providers > Provider Center for staged onboarding guidance.",
-            "Open BITS Whisperer > Speech Models to choose recommended or manual model setup.",
+        actions = []
+        if self.features.is_enabled("core.bw_whisperer"):
+            actions += [
+                "Open BITS Whisperer > Providers > Provider Center for staged onboarding guidance.",
+                "Open BITS Whisperer > Speech Models to choose recommended or manual model setup.",
+            ]
+        actions += [
             "Open AI > Speech > Settings to configure engine-specific paths.",
             "Open AI > Speech > Voice to preview voices and variants.",
             "Open AI > Speech > Generate Audio to run asynchronous speech output jobs.",

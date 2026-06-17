@@ -28,7 +28,7 @@
   "_next_target_main_frame": 15000,
   "_default_cap": 600,
   "budgets": {
-    "quill/ui/main_frame.py": 23884,
+    "quill/ui/main_frame.py": 23893,
     "quill/ui/main_frame_quill_key.py": 645,
     "quill/ui/main_frame_braille.py": 736,
     "quill/ui/assistant_tools.py": 2008,
@@ -51,7 +51,7 @@
     "quill/core/copy_tray.py": 139,
     "quill/ui/main_frame_copy_tray.py": 332,
     "quill/ui/copy_tray_dialog.py": 267,
-    "quill/ui/main_frame_statusbar.py": 616,
+    "quill/ui/main_frame_statusbar.py": 620,
     "quill/core/abbreviations.py": 266,
     "quill/core/multi_press.py": 59,
     "quill/ui/main_frame_abbreviations.py": 205,
@@ -153,5 +153,6 @@
   "_rebaseline_2026_06_17_emmet": "Emmet-style abbreviation expansion (MVP): main_frame_power_tools.py 1181->1287 (+106) for expand_abbreviation/preview_abbreviation/explain_abbreviation and the _emmet_mode helper. main_frame_power_tools_menu.py 754->778 (+24) for the matching 3 declarative command entries (Edit menu, reusing the existing 'edit' group). New pure core module emmet.py (parser, multiplier/numbering expansion, HTML renderer, curated CSS abbreviation subset, plain-text explain renderer, canned accessibility snippets), given an explicit 634-line budget entry (over the 600-line default cap) since the grammar, expansion, rendering, CSS table, and explain renderer are one cohesive pure module. New feature core.emmet. CQ-1 decomposition is the path to lower main_frame_power_tools.py and main_frame_power_tools_menu.py.",
   "_rebaseline_2026_06_17_quill_eraser": "Quill Eraser (deterministic text hygiene checker): settings.py 785->796 (+11) for 4 hygiene preference fields (hygiene_min_confidence, hygiene_allow_double_space_after_period, hygiene_max_blank_lines, hygiene_rules_disabled); main_frame.py 23823->23825 (+2) for HygieneMixin in MRO + import; main_frame_menu.py 3254->3277 (+23) for 2 menu IDs, 2 menu items in Writing & Language submenu, and 2 EVT_MENU bindings. New files: quill/core/hygiene/__init__.py, findings.py, ignored_ranges.py, rules.py, engine.py (all under 600-line cap), quill/ui/hygiene_dialog.py (~310 lines, under cap), quill/ui/main_frame_hygiene.py (~190 lines, under cap). Budget re-baselined to current measured sizes.",
   "_rebaseline_2026_06_17_ai_chat_text_actions": "main_frame.py 23825->23851 (+26) for _ai_set_document_text() and _ai_open_new_document() callbacks; assistant_panel.py 725->795 (+70) for three direct text-action buttons (Insert at Cursor, Replace, Open as New Document) with set_text/open_new_document constructor params and three handler methods.",
-  "_rebaseline_2026_06_17_bugfix_session": "main_frame.py 23851->23884 (+33): (1) add missing _run_command(command_id) method called by QUILL-key chord dispatcher but never defined — crash fix; (2) Apply button dirty-state (_mark_dirty closure + _apply_btn.Enable(False) init + reset in _do_apply); (3) suppress redundant startup SR re-announcement and replace print() profiling with logging.debug(). Growth is bug-fix and accessibility-required; CQ-1 decomposition is the path to lower the budget."
+  "_rebaseline_2026_06_17_bugfix_session": "main_frame.py 23851->23884 (+33): (1) add missing _run_command(command_id) method called by QUILL-key chord dispatcher but never defined — crash fix; (2) Apply button dirty-state (_mark_dirty closure + _apply_btn.Enable(False) init + reset in _do_apply); (3) suppress redundant startup SR re-announcement and replace print() profiling with logging.debug(). Growth is bug-fix and accessibility-required; CQ-1 decomposition is the path to lower the budget.",
+  "_rebaseline_2026_06_17_sr_polish": "main_frame.py 23884->23893 (+9): _DocumentTab slot _indent_tone_last_level, BITS Whisperer command gating (feature_id on whisperer.about), gate _build_help_status_data BITS Whisperer rows behind is_enabled('core.bw_whisperer'). main_frame_statusbar.py 616->620 (+4): _statusbar_button_label special-cases for line_column/mode (value-only labels) and _mark_dirty comment. Growth is bug-fix and accessibility polish."
 }
