@@ -201,6 +201,50 @@ def minimum_encoding(text: str, priority: tuple[str, ...] = MINIMUM_ENCODING_PRI
     return "utf-8"
 
 
+def oem_to_ansi(text: str) -> str:
+    """Reinterpret text whose bytes are DOS/OEM (code page 437) as Windows-1252.
+
+    Fixes the classic "DOS text shows garbage in Windows" mojibake: encode the
+    (mis-decoded) text back to its original CP437 bytes, then decode those
+    bytes as Windows-1252.
+    """
+    return text.encode("cp437", errors="replace").decode("cp1252", errors="replace")
+
+
+def ansi_to_oem(text: str) -> str:
+    """The inverse of :func:`oem_to_ansi`: reinterpret Windows-1252 bytes as CP437."""
+    return text.encode("cp1252", errors="replace").decode("cp437", errors="replace")
+
+
+#: Unicode box-drawing characters (U+2500-U+257F) mapped to their plain-ASCII
+#: equivalent for :func:`convert_box_drawing_to_ascii`. Characters not listed
+#: here but still in the box-drawing block fall back to ``+`` (a junction).
+_BOX_DRAWING_HORIZONTAL = set("─━┄┅┈┉═╴╶")
+_BOX_DRAWING_VERTICAL = set("│┃┆┇┊┋║╵╷")
+
+
+def convert_box_drawing_to_ascii(text: str) -> str:
+    """Convert Unicode box-drawing (line-drawing) characters to ``+``, ``-``, ``|``."""
+    out: list[str] = []
+    for ch in text:
+        code = ord(ch)
+        if 0x2500 <= code <= 0x257F:
+            if ch in _BOX_DRAWING_HORIZONTAL:
+                out.append("-")
+            elif ch in _BOX_DRAWING_VERTICAL:
+                out.append("|")
+            else:
+                out.append("+")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def strip_box_drawing(text: str) -> str:
+    """Remove Unicode box-drawing (line-drawing) characters entirely."""
+    return "".join(ch for ch in text if not (0x2500 <= ord(ch) <= 0x257F))
+
+
 def describe_minimum_encoding(text: str, current_encoding: str = "") -> str:
     """Screen-reader-friendly summary of the minimum encoding analysis (#256)."""
     minimum = minimum_encoding(text)

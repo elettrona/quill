@@ -5105,6 +5105,88 @@ free: `html.unescape` leaves unrecognized named entities untouched.
 
 ---
 
+## §29. Emmet-Style Abbreviation Expansion (MVP)
+
+### §29.1 Overview
+
+A community proposal asked for deep Emmet-compatible abbreviation support:
+type a compact shorthand such as `ul>li.item$*3>a[href]{Item $}` and expand
+it into full markup, with the full Emmet operator grammar, CSS shorthand,
+and accessibility-aware boilerplate snippets. The full proposal scoped a
+multi-phase product (placeholder/tab-stop navigation after expansion, a
+snippet manager, suggestions, Quillin extension points, a Markdown
+abbreviation pack, per-language mappings). This release ships the MVP: a
+real, tested expansion engine and three commands, with the rest tracked as
+backlog below rather than half-built.
+
+### §29.2 What shipped
+
+- **`quill/core/emmet.py`** (pure, no `wx`): a recursive-descent parser for
+  the core Emmet grammar — child (`>`), sibling (`+`), climb-up (`^`),
+  grouping (`()`), multiplication (`*N`), numbering (`$`, `$$`, ... with
+  zero-padding), ids (`#id`), classes (`.a.b`), attributes
+  (`[attr="value" bool-attr]`), and text content (`{...}`). Numbering
+  resolves against the *nearest enclosing* multiplier, so
+  `ul>li*3>span.label$` numbers the span 1-3 by its enclosing `li`, not a
+  fixed `1`, matching real Emmet's nested-repetition behavior.
+- **Implicit tags and attributes**: a segment with no explicit tag name
+  defaults sensibly by parent context (`ul>.item` → `ul>li.item`,
+  `table>tr>td` already implicit for `tr`'s children), and common tags pick
+  up helpful default attributes when none are given (`a` → `href=""`,
+  `img` → `src="" alt=""`, `input` → `type="text"`).
+  Void elements (`br`, `img`, `input`, `hr`, ...) render without a closing
+  tag or content.
+  HTML5 boilerplate and accessibility snippets are matched as exact
+  abbreviation strings before grammar parsing: `!` (HTML5 skeleton),
+  `!a11y` (HTML5 with a skip link and `header`/`main`/`footer` landmarks),
+  `skiplink`, `form:a11y` (fieldset/legend, label linked to its input via
+  `for`/`id`), and `table:a11y` (caption, `<th scope="col">` header row).
+- **A curated CSS abbreviation subset**: bare shorthand for common
+  declarations (`d:f` → `display: flex;`, `pos:a` → `position: absolute;`,
+  and ~30 more), plus numeric box-model shorthand (`m10` → `margin: 10px;`,
+  `m10-20` → `margin: 10px 20px;`, `mt-10` → `margin-top: -10px;`). This is
+  a curated common subset, not Emmet's full fuzzy CSS matcher.
+- **Three commands** (Edit menu): **Expand Abbreviation** replaces the
+  current selection — or, with no selection, the non-whitespace token
+  immediately before the cursor — with its expansion in place (one atomic
+  edit, so Undo reverts the whole expansion in a single step, consistent
+  with every other power-tool transform). **Preview Abbreviation...**
+  prompts for an abbreviation (pre-filled from the selection, if any) and
+  opens the expansion in a new buffer without touching the current
+  document. **Explain Abbreviation...** opens a plain-text, indented
+  description of the parsed tree (tag, id, classes, attribute names,
+  repetition count) for reviewing what an abbreviation *means* before
+  committing to it — useful for learning the grammar non-visually.
+- **Mode detection**: when the active document's file extension is `.css`,
+  all three commands treat the input as a CSS abbreviation instead of HTML.
+- **Feature tag**: `core.emmet` (category `"markup"`), depending on
+  `core.editor`. A syntax error in the typed abbreviation reports a clear
+  status-bar message (e.g. *"Could not expand abbreviation: Expected ']' at
+  position 4..."*) rather than raising or silently doing nothing.
+
+### §29.3 Non-goals (this phase — Phase 2/3 backlog)
+
+- **Placeholder/tab-stop navigation** after expansion (jump between empty
+  attribute values and text slots the way snippet engines do).
+- **A snippet manager** for user-defined custom abbreviations/snippets.
+- **Quillin extension points** (an `ExpansionProvider` interface so
+  third-party Quillins can contribute abbreviation packs or override
+  expansion for a language).
+- **Markdown-specific abbreviations** (a Markdown abbreviation pack distinct
+  from the HTML grammar).
+- **Numbering modifiers** `@-` (reverse) and `@N` (custom start) — only
+  ascending numbering from 1 is supported.
+- **Chaining children directly after a multiplied group**
+  (e.g. `(a+b)*2>c`) — rejected with a clear error rather than silently
+  guessing intent.
+- **A full fuzzy CSS abbreviation engine** — only the curated subset in
+  §29.2 is implemented; unrecognized CSS abbreviations return `None` rather
+  than guessing.
+- **Live suggestions/autocomplete** while typing an abbreviation (Tab-trigger
+  style) — expansion is explicit, command-driven.
+
+---
+
 # Appendix: Engineering documentation
 
 _Folded in from the former docs/QUILL-PRD.md on 2026-06-13._

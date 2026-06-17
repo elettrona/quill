@@ -398,7 +398,7 @@ Inline emphasis:
 - Bold
 - Italic
 
-The **Transform Lines** submenu gathers every line and text transform in one place: **Number Lines...**, **Hard-Wrap Lines...**, **Sort Lines Ascending**, **Sort Lines Descending**, **Reverse Lines**, **Remove Duplicate Lines**, **Trim Trailing Whitespace**, **Normalize Whitespace**, **Convert Indentation to Spaces**, and **Convert Indentation to Tabs**.
+The **Transform Lines** submenu gathers every line and text transform in one place: **Number Lines...**, **Number Lines (Advanced)...**, **Hard-Wrap Lines...**, **Sort Lines Ascending**, **Sort Lines Descending**, **Reverse Lines**, **Remove Duplicate Lines**, **Trim Trailing Whitespace**, **Normalize Whitespace**, **Convert Indentation to Spaces**, and **Convert Indentation to Tabs**. **Number Lines (Advanced)...** adds a starting number, increment, digit or Roman-numeral style, zero-padding width, a custom suffix, and left or right alignment, for cases the simple version doesn't cover.
 
 ### Navigate
 
@@ -1410,6 +1410,22 @@ When you open a source file, Quill loads a **language profile** based on the fil
 - **Set the language yourself.** Auto-detection follows the file extension, but you can override it for the current document with **Navigate → Set Document Language** — useful for an unsaved buffer, an unusual extension, or a snippet pasted into a plain file.
 - **Pairs with indentation tones.** Code-aware editing works well alongside the optional indentation tones described under [Sound notifications and earcons](#sound-notifications-and-earcons), so structure is carried by pitch while you move by token.
 
+### Abbreviation expansion (Emmet-style)
+
+Three commands on the **Edit** menu expand compact markup abbreviations into full HTML or CSS, so you can write `ul>li.item$*3>a[href]{Item $}` instead of typing out a three-item list by hand.
+
+- **Expand Abbreviation** expands the current selection in place, or — with no selection — the run of non-whitespace text immediately before the cursor. The expansion replaces that text in a single undo step, so one Undo reverts the whole thing.
+- **Preview Abbreviation...** prompts for an abbreviation (pre-filled from the current selection, if any) and opens the result in a new tab without touching your document — a safe way to try something out.
+- **Explain Abbreviation...** opens a plain-text, indented breakdown of what an abbreviation means — tag, id, classes, attribute names, and repetition counts — before you commit to expanding it. This is the fastest way to learn the grammar by ear rather than by trial and error.
+
+The grammar supports the core Emmet operators: child (`>`), sibling (`+`), climb-up (`^`), grouping (`(...)`), multiplication (`*N`), and numbering (`$`, with `$$` for zero-padded numbers). Ids (`#id`), classes (`.a.b`), attributes (`[attr="value" bool-attr]`), and text content (`{...}`) all work the way you'd expect. Common tags pick up sensible default attributes when you don't specify them — `a` gets an empty `href`, `img` gets `src` and `alt` — and void elements like `br` and `img` never get a closing tag.
+
+A handful of built-in snippets expand without going through the grammar at all: `!` for a full HTML5 skeleton, `!a11y` for an HTML5 skeleton with a skip link and `header`/`main`/`footer` landmarks already in place, `skiplink` for just the skip link, `form:a11y` for a labeled form field inside a fieldset, and `table:a11y` for a table with a caption and properly scoped header cells.
+
+When the active document's file extension is `.css`, all three commands switch to CSS mode and expand a curated set of common shorthand instead — things like `d:f` for `display: flex;`, `pos:a` for `position: absolute;`, and box-model shorthand such as `m10-20` for `margin: 10px 20px;` or `mt-10` for `margin-top: -10px;`.
+
+If an abbreviation can't be parsed, Quill reports exactly what it expected and where, on the status bar, rather than guessing or silently doing nothing.
+
 ## QUILL Quick Nav Mode
 
 QUILL Quick Nav mode is a browse-style, cursor-only navigation layer for long documents. It is movement-only: it changes cursor location, never edits text.
@@ -1564,6 +1580,14 @@ Under **Format → HTML & Encoding**, Quill includes a full set of tools for the
 - **Analyze Encoding Requirements** answers "what is the smallest encoding I could save this in?" without committing to anything. It opens a short report: your current encoding, whether the document still fits it, and — if not — the simplest encoding in the order ASCII, Latin-1 / ISO-8859-1, Windows-1252 / MS-ANSI, UTF-8 that can hold every character losslessly.
 - **Save Using Minimum Required Encoding...** saves a copy using exactly that encoding, so a document that only ever needed Latin-1 does not get forced into UTF-8 just because that is the modern default. You still choose UTF-8 explicitly any time you want it; Quill never switches you to it silently.
 - **Remove Email Quote Markers**, **Strip Low ASCII Characters**, **Strip High ASCII Characters**, and **Convert to Hex Dump** round out the HTML & Encoding tools: the first strips leading `>` quote markers (including `Name>` style prefixes) left over from forwarded email threads; the next two remove control characters or non-ASCII characters respectively; and the hex dump opens a read-only offset/hex/ASCII view of the current selection (or the whole document) for inspecting exactly what bytes are present.
+- **Convert OEM (DOS) to ANSI** and **Convert ANSI to OEM (DOS)** repair the classic codepage-mismatch problem where DOS-era text shows up as garbage in Windows, or the reverse, by reinterpreting the bytes between CP437 and Windows-1252.
+- **Convert Line-Drawing Characters to ASCII** and **Strip Line-Drawing Characters** handle Unicode box-drawing characters (`─`, `│`, `┌`, and the rest of the U+2500–U+257F block) left over from old DOS-art or terminal output: the first maps them to plain `-`, `|`, and `+`; the second removes them outright.
+
+### More search and analysis tools
+
+- **Multi Replace...** under **Search** applies up to four search-and-replace pairs in a single pass, with an optional case-insensitive toggle, instead of repeating Find & Replace four times in a row.
+- **Count Occurrences...** under **Search** reports how many times a string appears in the current selection or the whole document.
+- **Line Statistics** under **Tools** scans the selection or document for lines that hold exactly one number and opens a short report — count, total, average, median, mode, and standard deviation. Lines that aren't plain numbers are skipped rather than causing an error.
 
 ## Tools for Reading, Review, and Inspection
 

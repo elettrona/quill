@@ -711,6 +711,40 @@ Under the hood, this is also the first feature to get its own non-AI feature tag
 
 ---
 
+## Experience 8c: More text-utility power tools — line numbering, codepage fixes, multi-replace, and quick stats
+
+Eight more text-utility commands round out the toolbox started in Experience 8, closing the remaining gaps reported after that release shipped.
+
+### Number Lines (Advanced)
+
+**Format -> Line -> Number Lines (Advanced)...** goes beyond the existing Number Lines command with a small form: starting number, increment, digit or Roman-numeral style, zero-padding width, a custom suffix, and left or right alignment. Blank lines are still skipped, exactly like the simple version.
+
+### Fix DOS and Windows codepage mojibake
+
+Two new commands under **Format -> HTML & Encoding** repair the classic "DOS text shows garbage in Windows" and "Windows text shows garbage in DOS" mismatch:
+
+- **Convert OEM (DOS) to ANSI** reinterprets CP437 bytes as Windows-1252.
+- **Convert ANSI to OEM (DOS)** does the reverse.
+
+### Line-drawing characters
+
+Old DOS-art and terminal output sometimes carries Unicode box-drawing characters (─, │, ┌, and friends) that don't render well everywhere. Two more commands handle them:
+
+- **Convert Line-Drawing Characters to ASCII** maps them to plain `-`, `|`, and `+`.
+- **Strip Line-Drawing Characters** removes them outright.
+
+### Multi Replace and Count Occurrences
+
+**Search -> Multi Replace...** applies up to four search-and-replace pairs in one pass, with an optional case-insensitive toggle, instead of repeating Find & Replace four times.
+
+**Search -> Count Occurrences...** reports how many times a string appears in the selection or document, read aloud as a simple count rather than requiring a manual tally.
+
+### Line Statistics
+
+**Tools -> Line Statistics** scans the selection or document for one number per line and opens a short report: count, total, average, median, mode, and standard deviation. Lines that aren't plain numbers are skipped rather than causing an error.
+
+---
+
 ## Experience 9: Save as Word or RTF
 
 QUILL can now hand your work over as a Word document or rich text file.
@@ -754,6 +788,38 @@ Smart Insert ships three built-in entries:
 - **Bug Report (Markdown)** — a full Markdown bug-report skeleton with title, environment, steps to reproduce, expected result, and actual result. Prompts: title.
 
 Any Quillin can contribute gallery entries by adding a `snippet_gallery` block to its manifest. No extra capability is required.
+
+---
+
+## Experience 11b: Abbreviation expansion — type `ul>li.item$*3>a[href]{Item $}`, get a list
+
+Three new commands on the **Edit** menu bring Emmet-style abbreviation expansion to QUILL: type a compact shorthand, expand it into full HTML or CSS, and never hand-type a repetitive structure again.
+
+**Expand Abbreviation** expands the current selection — or, with no selection, the run of text immediately before the cursor — in place, as a single undo step. Type `ul>li.item$*3>a[href]{Item $}`, run the command, and get:
+
+```html
+<ul>
+  <li class="item1">
+    <a href>Item 1</a>
+  </li>
+  <li class="item2">
+    <a href>Item 2</a>
+  </li>
+  <li class="item3">
+    <a href>Item 3</a>
+  </li>
+</ul>
+```
+
+**Preview Abbreviation...** prompts for an abbreviation and opens the expansion in a new tab without touching your document — a safe way to experiment. **Explain Abbreviation...** opens a plain-text, indented breakdown of what an abbreviation means (tag, id, classes, attribute names, repetition counts) before you commit to it, which is the fastest way to learn the grammar by ear.
+
+The grammar covers the core Emmet operators: child (`>`), sibling (`+`), climb-up (`^`), grouping (`(...)`), multiplication (`*N`), and numbering (`$`, with `$$` for zero-padded numbers). Numbering resolves against the nearest enclosing repetition, so `ul>li*3>span.label$` numbers the span 1 through 3 by its enclosing `li`, the way real Emmet behaves. Common tags pick up sensible default attributes when you don't specify them — `a` gets an empty `href`, `img` gets `src` and `alt` — and void elements like `br` and `img` never get a closing tag they don't need.
+
+A handful of built-in snippets skip the grammar entirely: `!` for a full HTML5 skeleton, `!a11y` for the same skeleton with a skip link and `header`/`main`/`footer` landmarks already in place, `skiplink` on its own, `form:a11y` for a labeled field inside a fieldset, and `table:a11y` for a table with a caption and properly scoped header cells — accessible structure as the default, not an afterthought.
+
+Open a `.css` file and the same three commands switch to CSS mode, expanding a curated set of common shorthand: `d:f` for `display: flex;`, `pos:a` for `position: absolute;`, `m10-20` for `margin: 10px 20px;`, and around thirty more.
+
+This release ships the core engine and the three commands. Placeholder navigation after expansion, a snippet manager, a Quillin extension API for custom expansion providers, and a Markdown-specific abbreviation pack are on the roadmap, not silently missing — see the PRD for the full list.
 
 ---
 

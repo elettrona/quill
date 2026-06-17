@@ -2,15 +2,18 @@ import re
 from pathlib import Path
 
 from quill.core.format_ops import (
+    compute_line_statistics,
     continue_markdown_list,
     convert_indentation_to_spaces,
     convert_indentation_to_tabs,
+    count_occurrences,
     decode_html_entities,
     delete_lines_containing,
     delete_lines_not_containing,
     encode_html_entities,
     hex_dump,
     indent_lines,
+    multi_replace,
     normalize_whitespace,
     outdent_lines,
     quote_lines,
@@ -297,3 +300,52 @@ def test_hex_dump_wraps_at_bytes_per_line() -> None:
     lines = result.splitlines()
     assert len(lines) == 2
     assert lines[1].startswith("00000010")
+
+
+def test_multi_replace_applies_pairs_in_order() -> None:
+    result = multi_replace("a b c", [("a", "1"), ("b", "2"), ("c", "3")])
+    assert result == "1 2 3"
+
+
+def test_multi_replace_skips_empty_search() -> None:
+    assert multi_replace("hello world", [("", "x"), ("world", "there")]) == "hello there"
+
+
+def test_multi_replace_case_insensitive() -> None:
+    result = multi_replace("Hello HELLO", [("hello", "hi")], case_sensitive=False)
+    assert result == "hi hi"
+
+
+def test_multi_replace_case_sensitive_default() -> None:
+    result = multi_replace("Hello hello", [("hello", "hi")])
+    assert result == "Hello hi"
+
+
+def test_count_occurrences_basic() -> None:
+    assert count_occurrences("ababab", "ab") == 3
+
+
+def test_count_occurrences_empty_needle() -> None:
+    assert count_occurrences("text", "") == 0
+
+
+def test_count_occurrences_case_insensitive() -> None:
+    assert count_occurrences("Cat cat CAT", "cat", case_sensitive=False) == 3
+
+
+def test_compute_line_statistics_no_numbers() -> None:
+    assert compute_line_statistics("hello\nworld") == "No numeric lines were found."
+
+
+def test_compute_line_statistics_reports_values() -> None:
+    report = compute_line_statistics("1\n2\n3\n4\n5")
+    assert "Numeric lines: 5" in report
+    assert "Total: 15" in report
+    assert "Average: 3" in report
+    assert "Median: 3" in report
+    assert "Standard deviation" in report
+
+
+def test_compute_line_statistics_single_value_skips_stdev() -> None:
+    report = compute_line_statistics("42")
+    assert "Standard deviation: not enough data" in report

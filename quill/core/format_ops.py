@@ -229,6 +229,72 @@ def strip_high_ascii(text: str) -> str:
     return "".join(ch for ch in text if ord(ch) <= 0x7E or ch in "\t\n\r")
 
 
+def multi_replace(text: str, pairs: list[tuple[str, str]], *, case_sensitive: bool = True) -> str:
+    """Apply up to several search/replace pairs to *text* in one pass.
+
+    Pairs are applied in order, left to right, each over the result of the
+    previous one. Empty search strings are skipped rather than raising.
+    """
+    result = text
+    for search, replacement in pairs:
+        if not search:
+            continue
+        if case_sensitive:
+            result = result.replace(search, replacement)
+        else:
+
+            def _repl(_m: re.Match[str], r: str = replacement) -> str:
+                return r
+
+            result = re.sub(re.escape(search), _repl, result, flags=re.IGNORECASE)
+    return result
+
+
+def count_occurrences(text: str, needle: str, *, case_sensitive: bool = True) -> int:
+    """Count non-overlapping occurrences of *needle* in *text*."""
+    if not needle:
+        return 0
+    if case_sensitive:
+        return text.count(needle)
+    return text.lower().count(needle.lower())
+
+
+def compute_line_statistics(text: str) -> str:
+    """Render count/total/average/median/mode/standard deviation for numeric lines.
+
+    Non-numeric and blank lines are ignored. Designed to be read with a
+    screen reader: one labeled value per line.
+    """
+    import statistics
+
+    values: list[float] = []
+    for line in text.splitlines():
+        candidate = line.strip()
+        if not candidate:
+            continue
+        try:
+            values.append(float(candidate))
+        except ValueError:
+            continue
+    if not values:
+        return "No numeric lines were found."
+    lines = [
+        f"Numeric lines: {len(values)}",
+        f"Total: {sum(values):g}",
+        f"Average: {statistics.mean(values):g}",
+        f"Median: {statistics.median(values):g}",
+    ]
+    try:
+        lines.append(f"Mode: {statistics.mode(values):g}")
+    except statistics.StatisticsError:
+        lines.append("Mode: no unique mode")
+    if len(values) > 1:
+        lines.append(f"Standard deviation: {statistics.stdev(values):g}")
+    else:
+        lines.append("Standard deviation: not enough data")
+    return "\n".join(lines)
+
+
 def hex_dump(text: str, *, bytes_per_line: int = 16) -> str:
     """Render *text* (encoded as UTF-8) as a classic hex + ASCII dump."""
     data = text.encode("utf-8")

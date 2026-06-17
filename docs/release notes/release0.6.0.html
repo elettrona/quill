@@ -1483,6 +1483,53 @@ turning AI off — Safe Mode, or any profile that keeps
 it. The HTML-entity and encoding commands above got the same treatment
 under a new <code>core.text_encoding</code> tag.</p>
 <hr />
+<h2
+id="experience-8c-more-text-utility-power-tools--line-numbering-codepage-fixes-multi-replace-and-quick-stats">Experience
+8c: More text-utility power tools — line numbering, codepage fixes,
+multi-replace, and quick stats</h2>
+<p>Eight more text-utility commands round out the toolbox started in
+Experience 8, closing the remaining gaps reported after that release
+shipped.</p>
+<h3 id="number-lines-advanced">Number Lines (Advanced)</h3>
+<p><strong>Format -&gt; Line -&gt; Number Lines (Advanced)...</strong>
+goes beyond the existing Number Lines command with a small form:
+starting number, increment, digit or Roman-numeral style, zero-padding
+width, a custom suffix, and left or right alignment. Blank lines are
+still skipped, exactly like the simple version.</p>
+<h3 id="fix-dos-and-windows-codepage-mojibake">Fix DOS and Windows
+codepage mojibake</h3>
+<p>Two new commands under <strong>Format -&gt; HTML &amp;
+Encoding</strong> repair the classic "DOS text shows garbage in Windows"
+and "Windows text shows garbage in DOS" mismatch:</p>
+<ul>
+<li><strong>Convert OEM (DOS) to ANSI</strong> reinterprets CP437 bytes
+as Windows-1252.</li>
+<li><strong>Convert ANSI to OEM (DOS)</strong> does the reverse.</li>
+</ul>
+<h3 id="line-drawing-characters">Line-drawing characters</h3>
+<p>Old DOS-art and terminal output sometimes carries Unicode box-drawing
+characters (─, │, ┌, and friends) that don't render well everywhere. Two
+more commands handle them:</p>
+<ul>
+<li><strong>Convert Line-Drawing Characters to ASCII</strong> maps them
+to plain <code>-</code>, <code>|</code>, and <code>+</code>.</li>
+<li><strong>Strip Line-Drawing Characters</strong> removes them
+outright.</li>
+</ul>
+<h3 id="multi-replace-and-count-occurrences">Multi Replace and Count
+Occurrences</h3>
+<p><strong>Search -&gt; Multi Replace...</strong> applies up to four
+search-and-replace pairs in one pass, with an optional case-insensitive
+toggle, instead of repeating Find &amp; Replace four times.</p>
+<p><strong>Search -&gt; Count Occurrences...</strong> reports how many
+times a string appears in the selection or document, read aloud as a
+simple count rather than requiring a manual tally.</p>
+<h3 id="line-statistics">Line Statistics</h3>
+<p><strong>Tools -&gt; Line Statistics</strong> scans the selection or
+document for one number per line and opens a short report: count, total,
+average, median, mode, and standard deviation. Lines that aren't plain
+numbers are skipped rather than causing an error.</p>
+<hr />
 <h2 id="experience-9-save-as-word-or-rtf">Experience 9: Save as Word or
 RTF</h2>
 <p>QUILL can now hand your work over as a Word document or rich text
@@ -1548,6 +1595,69 @@ and actual result. Prompts: title.</li>
 <p>Any Quillin can contribute gallery entries by adding a
 <code>snippet_gallery</code> block to its manifest. No extra capability
 is required.</p>
+<hr />
+<h2
+id="experience-11b-abbreviation-expansion--type-ulliitem3ahrefitem--get-a-list">Experience
+11b: Abbreviation expansion — type
+<code>ul&gt;li.item$*3&gt;a[href]{Item $}</code>, get a list</h2>
+<p>Three new commands on the <strong>Edit</strong> menu bring
+Emmet-style abbreviation expansion to QUILL: type a compact shorthand,
+expand it into full HTML or CSS, and never hand-type a repetitive
+structure again.</p>
+<p><strong>Expand Abbreviation</strong> expands the current selection —
+or, with no selection, the run of text immediately before the cursor —
+in place, as a single undo step. Type
+<code>ul&gt;li.item$*3&gt;a[href]{Item $}</code>, run the command, and
+get:</p>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode html"><code class="sourceCode html"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;</span><span class="kw">ul</span><span class="dt">&gt;</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">li</span><span class="ot"> class</span><span class="op">=</span><span class="st">&quot;item1&quot;</span><span class="dt">&gt;</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">a</span><span class="ot"> href</span><span class="dt">&gt;</span>Item 1<span class="dt">&lt;/</span><span class="kw">a</span><span class="dt">&gt;</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&lt;/</span><span class="kw">li</span><span class="dt">&gt;</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">li</span><span class="ot"> class</span><span class="op">=</span><span class="st">&quot;item2&quot;</span><span class="dt">&gt;</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">a</span><span class="ot"> href</span><span class="dt">&gt;</span>Item 2<span class="dt">&lt;/</span><span class="kw">a</span><span class="dt">&gt;</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&lt;/</span><span class="kw">li</span><span class="dt">&gt;</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">li</span><span class="ot"> class</span><span class="op">=</span><span class="st">&quot;item3&quot;</span><span class="dt">&gt;</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">a</span><span class="ot"> href</span><span class="dt">&gt;</span>Item 3<span class="dt">&lt;/</span><span class="kw">a</span><span class="dt">&gt;</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&lt;/</span><span class="kw">li</span><span class="dt">&gt;</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;/</span><span class="kw">ul</span><span class="dt">&gt;</span></span></code></pre></div>
+<p><strong>Preview Abbreviation...</strong> prompts for an abbreviation
+and opens the expansion in a new tab without touching your document — a
+safe way to experiment. <strong>Explain Abbreviation...</strong> opens a
+plain-text, indented breakdown of what an abbreviation means (tag, id,
+classes, attribute names, repetition counts) before you commit to it,
+which is the fastest way to learn the grammar by ear.</p>
+<p>The grammar covers the core Emmet operators: child
+(<code>&gt;</code>), sibling (<code>+</code>), climb-up
+(<code>^</code>), grouping (<code>(...)</code>), multiplication
+(<code>*N</code>), and numbering (<code>$</code>, with <code>$$</code>
+for zero-padded numbers). Numbering resolves against the nearest
+enclosing repetition, so <code>ul&gt;li*3&gt;span.label$</code> numbers
+the span 1 through 3 by its enclosing <code>li</code>, the way real
+Emmet behaves. Common tags pick up sensible default attributes when you
+don't specify them — <code>a</code> gets an empty <code>href</code>,
+<code>img</code> gets <code>src</code> and <code>alt</code> — and void
+elements like <code>br</code> and <code>img</code> never get a closing
+tag they don't need.</p>
+<p>A handful of built-in snippets skip the grammar entirely:
+<code>!</code> for a full HTML5 skeleton, <code>!a11y</code> for the
+same skeleton with a skip link and
+<code>header</code>/<code>main</code>/<code>footer</code> landmarks
+already in place, <code>skiplink</code> on its own,
+<code>form:a11y</code> for a labeled field inside a fieldset, and
+<code>table:a11y</code> for a table with a caption and properly scoped
+header cells — accessible structure as the default, not an
+afterthought.</p>
+<p>Open a <code>.css</code> file and the same three commands switch to
+CSS mode, expanding a curated set of common shorthand: <code>d:f</code>
+for <code>display: flex;</code>, <code>pos:a</code> for
+<code>position: absolute;</code>, <code>m10-20</code> for
+<code>margin: 10px 20px;</code>, and around thirty more.</p>
+<p>This release ships the core engine and the three commands.
+Placeholder navigation after expansion, a snippet manager, a Quillin
+extension API for custom expansion providers, and a Markdown-specific
+abbreviation pack are on the roadmap, not silently missing — see the PRD
+for the full list.</p>
 <hr />
 <h2
 id="community-contribution-spotlight-vision-prompt-library-by-kelly-ford">Community

@@ -146,9 +146,14 @@ def test_power_tools_manifest_is_consumed_and_conflict_free() -> None:
     # preservation, markdown status, citation style, analyze/save minimum
     # encoding, and the email-quote/low-ASCII/high-ASCII/hex-dump text-utility
     # gap fill)
+    # 0.6.0: +8 for the remaining text-utility parity gaps (advanced line
+    # numbering, OEM/ANSI conversion, line-drawing character conversion/strip,
+    # multi replace, count occurrences, line statistics)
+    # 0.6.0: +3 for Emmet-style abbreviation expansion (expand/preview/explain
+    # abbreviation)
     registry = build_first_party_registry(POWER_TOOLS_COMMANDS)
-    assert len(POWER_TOOLS_COMMANDS) == 59
-    assert len(registry.commands) == 59
+    assert len(POWER_TOOLS_COMMANDS) == 70
+    assert len(registry.commands) == 70
     assert registry.conflicts == ()
     for menu in registry.menus:
         assert menu.parent in FIRST_PARTY_MENU_PARENTS

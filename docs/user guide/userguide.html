@@ -873,12 +873,16 @@ markup-aware editing of existing text.</p>
 </ul>
 <p>The <strong>Transform Lines</strong> submenu gathers every line and
 text transform in one place: <strong>Number Lines...</strong>,
-<strong>Hard-Wrap Lines...</strong>, <strong>Sort Lines
-Ascending</strong>, <strong>Sort Lines Descending</strong>,
-<strong>Reverse Lines</strong>, <strong>Remove Duplicate Lines</strong>,
-<strong>Trim Trailing Whitespace</strong>, <strong>Normalize
-Whitespace</strong>, <strong>Convert Indentation to Spaces</strong>, and
-<strong>Convert Indentation to Tabs</strong>.</p>
+<strong>Number Lines (Advanced)...</strong>, <strong>Hard-Wrap
+Lines...</strong>, <strong>Sort Lines Ascending</strong>, <strong>Sort
+Lines Descending</strong>, <strong>Reverse Lines</strong>,
+<strong>Remove Duplicate Lines</strong>, <strong>Trim Trailing
+Whitespace</strong>, <strong>Normalize Whitespace</strong>,
+<strong>Convert Indentation to Spaces</strong>, and <strong>Convert
+Indentation to Tabs</strong>. <strong>Number Lines
+(Advanced)...</strong> adds a starting number, increment, digit or
+Roman-numeral style, zero-padding width, a custom suffix, and left or
+right alignment, for cases the simple version doesn't cover.</p>
 <h3 id="navigate">Navigate</h3>
 <p>The <strong>Navigate</strong> menu is one of Quill's strongest
 differentiators. It assumes you may need to move through large, dense,
@@ -2635,6 +2639,56 @@ href="#sound-notifications-and-earcons">Sound notifications and
 earcons</a>, so structure is carried by pitch while you move by
 token.</li>
 </ul>
+<h3 id="abbreviation-expansion-emmet-style">Abbreviation expansion
+(Emmet-style)</h3>
+<p>Three commands on the <strong>Edit</strong> menu expand compact
+markup abbreviations into full HTML or CSS, so you can write
+<code>ul&gt;li.item$*3&gt;a[href]{Item $}</code> instead of typing out a
+three-item list by hand.</p>
+<ul>
+<li><strong>Expand Abbreviation</strong> expands the current selection
+in place, or — with no selection — the run of non-whitespace text
+immediately before the cursor. The expansion replaces that text in a
+single undo step, so one Undo reverts the whole thing.</li>
+<li><strong>Preview Abbreviation...</strong> prompts for an abbreviation
+(pre-filled from the current selection, if any) and opens the result in
+a new tab without touching your document — a safe way to try something
+out.</li>
+<li><strong>Explain Abbreviation...</strong> opens a plain-text,
+indented breakdown of what an abbreviation means — tag, id, classes,
+attribute names, and repetition counts — before you commit to expanding
+it. This is the fastest way to learn the grammar by ear rather than by
+trial and error.</li>
+</ul>
+<p>The grammar supports the core Emmet operators: child
+(<code>&gt;</code>), sibling (<code>+</code>), climb-up
+(<code>^</code>), grouping (<code>(...)</code>), multiplication
+(<code>*N</code>), and numbering (<code>$</code>, with <code>$$</code>
+for zero-padded numbers). Ids (<code>#id</code>), classes
+(<code>.a.b</code>), attributes (<code>[attr="value" bool-attr]</code>),
+and text content (<code>{...}</code>) all work the way you'd expect.
+Common tags pick up sensible default attributes when you don't specify
+them — <code>a</code> gets an empty <code>href</code>, <code>img</code>
+gets <code>src</code> and <code>alt</code> — and void elements like
+<code>br</code> and <code>img</code> never get a closing tag.</p>
+<p>A handful of built-in snippets expand without going through the
+grammar at all: <code>!</code> for a full HTML5 skeleton,
+<code>!a11y</code> for an HTML5 skeleton with a skip link and
+<code>header</code>/<code>main</code>/<code>footer</code> landmarks
+already in place, <code>skiplink</code> for just the skip link,
+<code>form:a11y</code> for a labeled form field inside a fieldset, and
+<code>table:a11y</code> for a table with a caption and properly scoped
+header cells.</p>
+<p>When the active document's file extension is <code>.css</code>, all
+three commands switch to CSS mode and expand a curated set of common
+shorthand instead — things like <code>d:f</code> for
+<code>display: flex;</code>, <code>pos:a</code> for
+<code>position: absolute;</code>, and box-model shorthand such as
+<code>m10-20</code> for <code>margin: 10px 20px;</code> or
+<code>mt-10</code> for <code>margin-top: -10px;</code>.</p>
+<p>If an abbreviation can't be parsed, Quill reports exactly what it
+expected and where, on the status bar, rather than guessing or silently
+doing nothing.</p>
 <h2 id="quill-quick-nav-mode">QUILL Quick Nav Mode</h2>
 <p>QUILL Quick Nav mode is a browse-style, cursor-only navigation layer
 for long documents. It is movement-only: it changes cursor location,
@@ -2955,6 +3009,33 @@ forwarded email threads; the next two remove control characters or
 non-ASCII characters respectively; and the hex dump opens a read-only
 offset/hex/ASCII view of the current selection (or the whole document)
 for inspecting exactly what bytes are present.</li>
+<li><strong>Convert OEM (DOS) to ANSI</strong> and <strong>Convert ANSI
+to OEM (DOS)</strong> repair the classic codepage-mismatch problem where
+DOS-era text shows up as garbage in Windows, or the reverse, by
+reinterpreting the bytes between CP437 and Windows-1252.</li>
+<li><strong>Convert Line-Drawing Characters to ASCII</strong> and
+<strong>Strip Line-Drawing Characters</strong> handle Unicode
+box-drawing characters (<code>─</code>, <code>│</code>, <code>┌</code>,
+and the rest of the U+2500–U+257F block) left over from old DOS-art or
+terminal output: the first maps them to plain <code>-</code>,
+<code>|</code>, and <code>+</code>; the second removes them
+outright.</li>
+</ul>
+<h3 id="more-search-and-analysis-tools">More search and analysis
+tools</h3>
+<ul>
+<li><strong>Multi Replace...</strong> under <strong>Search</strong>
+applies up to four search-and-replace pairs in a single pass, with an
+optional case-insensitive toggle, instead of repeating Find &amp;
+Replace four times in a row.</li>
+<li><strong>Count Occurrences...</strong> under <strong>Search</strong>
+reports how many times a string appears in the current selection or the
+whole document.</li>
+<li><strong>Line Statistics</strong> under <strong>Tools</strong> scans
+the selection or document for lines that hold exactly one number and
+opens a short report — count, total, average, median, mode, and standard
+deviation. Lines that aren't plain numbers are skipped rather than
+causing an error.</li>
 </ul>
 <h2 id="tools-for-reading-review-and-inspection">Tools for Reading,
 Review, and Inspection</h2>

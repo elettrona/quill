@@ -404,6 +404,26 @@ FEATURE_DEFINITIONS: dict[str, FeatureDefinition] = {
         category="text",
         dependencies=("core.file",),
     ),
+    "core.emmet": FeatureDefinition(
+        "core.emmet",
+        "Abbreviation Expansion",
+        aliases=(
+            "emmet",
+            "abbreviation",
+            "expand abbreviation",
+            "zen coding",
+            "html shorthand",
+            "css shorthand",
+        ),
+        description=(
+            "Expands compact HTML/CSS markup abbreviations (child/sibling/climb-up "
+            "operators, multiplication, numbering, ids, classes, attributes) into "
+            "full markup, with a Preview and an Explain Abbreviation command for "
+            "reviewing the result before it's inserted. No model in the loop."
+        ),
+        category="markup",
+        dependencies=("core.editor",),
+    ),
     "future.ai": FeatureDefinition(
         "future.ai",
         "AI Assistance",

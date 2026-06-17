@@ -958,12 +958,282 @@ class PowerToolsActionsMixin:
             _fmt.strip_high_ascii, "Stripped high ASCII (non-ASCII) characters"
         )
 
+    def number_lines_advanced(self) -> None:
+        """Auto-number lines with increment, padding, Roman numerals, and alignment."""
+        from quill.core.line_ops import number_lines_advanced as _number_lines_advanced
+        from quill.ui.web_form import show_web_form
+
+        if self._document_is_read_only():
+            self._set_status("Document is read-only")
+            return
+        values = show_web_form(
+            self.frame,
+            self._wx,
+            title="Number Lines (Advanced)",
+            intro="Set the starting number, increment, style, and alignment.",
+            save_label="Number",
+            fields=[
+                {"name": "start", "label": "Start numbering at", "type": "text", "value": "1"},
+                {"name": "increment", "label": "Increment by", "type": "text", "value": "1"},
+                {
+                    "name": "style",
+                    "label": "Number style",
+                    "type": "select",
+                    "value": "digits",
+                    "options": [
+                        ("digits", "Digits (1, 2, 3)"),
+                        ("roman", "Roman numerals (I, II, III)"),
+                    ],
+                },
+                {
+                    "name": "pad_width",
+                    "label": "Zero-pad to width (0 = none)",
+                    "type": "text",
+                    "value": "0",
+                },
+                {"name": "suffix", "label": "Text after the number", "type": "text", "value": ". "},
+                {
+                    "name": "align",
+                    "label": "Justify",
+                    "type": "select",
+                    "value": "left",
+                    "options": [("left", "Left"), ("right", "Right")],
+                },
+            ],
+        )
+        if values is None:
+            self._set_status("Number Lines (Advanced) cancelled")
+            return
+        try:
+            start = int(str(values["start"]).strip() or "1")
+            increment = int(str(values["increment"]).strip() or "1")
+            pad_width = int(str(values["pad_width"]).strip() or "0")
+        except ValueError:
+            self._set_status("Start, increment, and pad width must be whole numbers")
+            return
+        self._power_tools_transform_selection_or_document(
+            lambda text: _number_lines_advanced(
+                text,
+                start=start,
+                increment=increment,
+                style=str(values["style"]),
+                pad_width=pad_width,
+                suffix=str(values["suffix"]),
+                align=str(values["align"]),
+            ),
+            "Numbered lines",
+        )
+
+    def convert_oem_to_ansi(self) -> None:
+        from quill.core.encoding_tools import oem_to_ansi
+
+        self._power_tools_transform_selection_or_document(
+            oem_to_ansi, "Converted OEM (DOS) text to ANSI (Windows-1252)"
+        )
+
+    def convert_ansi_to_oem(self) -> None:
+        from quill.core.encoding_tools import ansi_to_oem
+
+        self._power_tools_transform_selection_or_document(
+            ansi_to_oem, "Converted ANSI (Windows-1252) text to OEM (DOS)"
+        )
+
+    def convert_box_drawing_to_ascii(self) -> None:
+        from quill.core.encoding_tools import convert_box_drawing_to_ascii as _convert
+
+        self._power_tools_transform_selection_or_document(
+            _convert, "Converted line-drawing characters to +, -, and |"
+        )
+
+    def strip_box_drawing(self) -> None:
+        from quill.core.encoding_tools import strip_box_drawing as _strip
+
+        self._power_tools_transform_selection_or_document(
+            _strip, "Stripped line-drawing characters"
+        )
+
+    def multi_replace(self) -> None:
+        """Apply up to four search/replace pairs in one pass."""
+        from quill.ui.web_form import show_web_form
+
+        if self._document_is_read_only():
+            self._set_status("Document is read-only")
+            return
+        values = show_web_form(
+            self.frame,
+            self._wx,
+            title="Multi Replace",
+            intro="Enter up to four search and replace pairs. Empty search fields are skipped.",
+            save_label="Replace",
+            fields=[
+                {"name": "search1", "label": "Search 1", "type": "text", "value": ""},
+                {"name": "replace1", "label": "Replace 1", "type": "text", "value": ""},
+                {"name": "search2", "label": "Search 2", "type": "text", "value": ""},
+                {"name": "replace2", "label": "Replace 2", "type": "text", "value": ""},
+                {"name": "search3", "label": "Search 3", "type": "text", "value": ""},
+                {"name": "replace3", "label": "Replace 3", "type": "text", "value": ""},
+                {"name": "search4", "label": "Search 4", "type": "text", "value": ""},
+                {"name": "replace4", "label": "Replace 4", "type": "text", "value": ""},
+                {
+                    "name": "case_sensitive",
+                    "label": "Case sensitive",
+                    "type": "checkbox",
+                    "value": True,
+                },
+            ],
+        )
+        if values is None:
+            self._set_status("Multi Replace cancelled")
+            return
+        pairs = [(str(values[f"search{i}"]), str(values[f"replace{i}"])) for i in range(1, 5)]
+        case_sensitive = bool(values["case_sensitive"])
+        from quill.core.format_ops import multi_replace as _multi_replace
+
+        self._power_tools_transform_selection_or_document(
+            lambda text: _multi_replace(text, pairs, case_sensitive=case_sensitive),
+            "Applied multi replace",
+        )
+
+    def count_occurrences(self) -> None:
+        from quill.core.format_ops import count_occurrences as _count_occurrences
+
+        needle = self._power_tools_prompt_single("Count Occurrences", "Text to count:")
+        if needle is None:
+            return
+        if not needle:
+            self._set_status("Enter text to count")
+            return
+        text = self.editor.GetValue()
+        start, end = self.editor.GetSelection()
+        if start != end:
+            text = text[start:end]
+        count = _count_occurrences(text, needle)
+        noun = "occurrence" if count == 1 else "occurrences"
+        self._set_status(f'Found {count} {noun} of "{needle}"')
+
+    def compute_line_statistics(self) -> None:
+        from quill.core.format_ops import compute_line_statistics as _compute_line_statistics
+
+        text = self.editor.GetValue()
+        start, end = self.editor.GetSelection()
+        if start != end:
+            text = text[start:end]
+        self._power_tools_open_text_in_new_buffer(
+            _compute_line_statistics(text) + "\n", "Line statistics"
+        )
+
     def hex_dump(self) -> None:
         text = self.editor.GetValue()
         start, end = self.editor.GetSelection()
         if start != end:
             text = text[start:end]
         self._power_tools_open_text_in_new_buffer(_fmt.hex_dump(text) + "\n", "Hex dump")
+
+    # -------------------------------------- Emmet-style abbreviation expansion
+    def _emmet_mode(self) -> str:
+        path = self.document.path
+        if path is not None and path.suffix.lower() == ".css":
+            return "css"
+        return "html"
+
+    def expand_abbreviation(self) -> None:
+        from quill.core.emmet import (
+            EmmetSyntaxError,
+            expand_css_abbreviation,
+            expand_html_abbreviation,
+            extract_abbreviation_before_cursor,
+        )
+
+        if self._document_is_read_only():
+            self._set_status("Document is read-only")
+            return
+        text = self.editor.GetValue()
+        start, end = self.editor.GetSelection()
+        if start == end:
+            start, end = extract_abbreviation_before_cursor(text, start)
+        abbreviation = text[start:end]
+        if not abbreviation.strip():
+            self._set_status("Type an abbreviation before expanding")
+            return
+        if self._emmet_mode() == "css":
+            expanded = expand_css_abbreviation(abbreviation)
+            if expanded is None:
+                self._set_status(f'Unknown CSS abbreviation: "{abbreviation}"')
+                return
+        else:
+            try:
+                expanded = expand_html_abbreviation(abbreviation)
+            except EmmetSyntaxError as exc:
+                self._set_status(f"Could not expand abbreviation: {exc}")
+                return
+        updated = text[:start] + expanded + text[end:]
+        self._replace_document_text(updated)
+        self.document.set_text(updated)
+        new_pos = start + len(expanded)
+        self.editor.SetInsertionPoint(new_pos)
+        self.editor.SetSelection(new_pos, new_pos)
+        self._set_status("Abbreviation expanded")
+
+    def preview_abbreviation(self) -> None:
+        from quill.core.emmet import (
+            EmmetSyntaxError,
+            expand_css_abbreviation,
+            expand_html_abbreviation,
+        )
+
+        start, end = self.editor.GetSelection()
+        default = self.editor.GetValue()[start:end] if start != end else ""
+        abbreviation = self._power_tools_prompt_single(
+            "Preview Abbreviation", "Abbreviation:", default
+        )
+        if abbreviation is None:
+            return
+        if not abbreviation.strip():
+            self._set_status("Enter an abbreviation to preview")
+            return
+        if self._emmet_mode() == "css":
+            expanded = expand_css_abbreviation(abbreviation)
+            if expanded is None:
+                self._set_status(f'Unknown CSS abbreviation: "{abbreviation}"')
+                return
+        else:
+            try:
+                expanded = expand_html_abbreviation(abbreviation)
+            except EmmetSyntaxError as exc:
+                self._set_status(f"Could not expand abbreviation: {exc}")
+                return
+        self._power_tools_open_text_in_new_buffer(expanded + "\n", "Abbreviation preview")
+
+    def explain_abbreviation(self) -> None:
+        from quill.core.emmet import (
+            EmmetSyntaxError,
+            expand_css_abbreviation,
+        )
+        from quill.core.emmet import explain_abbreviation as _explain_abbreviation
+
+        start, end = self.editor.GetSelection()
+        default = self.editor.GetValue()[start:end] if start != end else ""
+        abbreviation = self._power_tools_prompt_single(
+            "Explain Abbreviation", "Abbreviation:", default
+        )
+        if abbreviation is None:
+            return
+        if not abbreviation.strip():
+            self._set_status("Enter an abbreviation to explain")
+            return
+        if self._emmet_mode() == "css":
+            expanded = expand_css_abbreviation(abbreviation)
+            if expanded is None:
+                self._set_status(f'Unknown CSS abbreviation: "{abbreviation}"')
+                return
+            explanation = f"CSS abbreviation '{abbreviation.strip()}' expands to:\n{expanded}"
+        else:
+            try:
+                explanation = _explain_abbreviation(abbreviation)
+            except EmmetSyntaxError as exc:
+                self._set_status(f"Could not explain abbreviation: {exc}")
+                return
+        self._power_tools_open_text_in_new_buffer(explanation + "\n", "Abbreviation explanation")
 
     # -------------------------------------- EDS-22 line-level TextMonkey transforms
     def trim_blank_lines(self) -> None:

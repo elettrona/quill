@@ -10343,6 +10343,108 @@ destroy unknown entities" requirement for free:
 <code>html.unescape</code> leaves unrecognized named entities
 untouched.</p>
 <hr />
+<h2 id="29-emmet-style-abbreviation-expansion-mvp">§29. Emmet-Style
+Abbreviation Expansion (MVP)</h2>
+<h3 id="291-overview">§29.1 Overview</h3>
+<p>A community proposal asked for deep Emmet-compatible abbreviation
+support: type a compact shorthand such as
+<code>ul&gt;li.item$*3&gt;a[href]{Item $}</code> and expand it into full
+markup, with the full Emmet operator grammar, CSS shorthand, and
+accessibility-aware boilerplate snippets. The full proposal scoped a
+multi-phase product (placeholder/tab-stop navigation after expansion, a
+snippet manager, suggestions, Quillin extension points, a Markdown
+abbreviation pack, per-language mappings). This release ships the MVP: a
+real, tested expansion engine and three commands, with the rest tracked
+as backlog below rather than half-built.</p>
+<h3 id="292-what-shipped">§29.2 What shipped</h3>
+<ul>
+<li><strong><code>quill/core/emmet.py</code></strong> (pure, no
+<code>wx</code>): a recursive-descent parser for the core Emmet grammar
+— child (<code>&gt;</code>), sibling (<code>+</code>), climb-up
+(<code>^</code>), grouping (<code>()</code>), multiplication
+(<code>*N</code>), numbering (<code>$</code>, <code>$$</code>, ... with
+zero-padding), ids (<code>#id</code>), classes (<code>.a.b</code>),
+attributes (<code>[attr="value" bool-attr]</code>), and text content
+(<code>{...}</code>). Numbering resolves against the <em>nearest
+enclosing</em> multiplier, so <code>ul&gt;li*3&gt;span.label$</code>
+numbers the span 1-3 by its enclosing <code>li</code>, not a fixed
+<code>1</code>, matching real Emmet's nested-repetition behavior.</li>
+<li><strong>Implicit tags and attributes</strong>: a segment with no
+explicit tag name defaults sensibly by parent context
+(<code>ul&gt;.item</code> → <code>ul&gt;li.item</code>,
+<code>table&gt;tr&gt;td</code> already implicit for <code>tr</code>'s
+children), and common tags pick up helpful default attributes when none
+are given (<code>a</code> → <code>href=""</code>, <code>img</code> →
+<code>src="" alt=""</code>, <code>input</code> →
+<code>type="text"</code>). Void elements (<code>br</code>,
+<code>img</code>, <code>input</code>, <code>hr</code>, ...) render
+without a closing tag or content. HTML5 boilerplate and accessibility
+snippets are matched as exact abbreviation strings before grammar
+parsing: <code>!</code> (HTML5 skeleton), <code>!a11y</code> (HTML5 with
+a skip link and
+<code>header</code>/<code>main</code>/<code>footer</code> landmarks),
+<code>skiplink</code>, <code>form:a11y</code> (fieldset/legend, label
+linked to its input via <code>for</code>/<code>id</code>), and
+<code>table:a11y</code> (caption, <code>&lt;th scope="col"&gt;</code>
+header row).</li>
+<li><strong>A curated CSS abbreviation subset</strong>: bare shorthand
+for common declarations (<code>d:f</code> → <code>display: flex;</code>,
+<code>pos:a</code> → <code>position: absolute;</code>, and ~30 more),
+plus numeric box-model shorthand (<code>m10</code> →
+<code>margin: 10px;</code>, <code>m10-20</code> →
+<code>margin: 10px 20px;</code>, <code>mt-10</code> →
+<code>margin-top: -10px;</code>). This is a curated common subset, not
+Emmet's full fuzzy CSS matcher.</li>
+<li><strong>Three commands</strong> (Edit menu): <strong>Expand
+Abbreviation</strong> replaces the current selection — or, with no
+selection, the non-whitespace token immediately before the cursor — with
+its expansion in place (one atomic edit, so Undo reverts the whole
+expansion in a single step, consistent with every other power-tool
+transform). <strong>Preview Abbreviation...</strong> prompts for an
+abbreviation (pre-filled from the selection, if any) and opens the
+expansion in a new buffer without touching the current document.
+<strong>Explain Abbreviation...</strong> opens a plain-text, indented
+description of the parsed tree (tag, id, classes, attribute names,
+repetition count) for reviewing what an abbreviation <em>means</em>
+before committing to it — useful for learning the grammar
+non-visually.</li>
+<li><strong>Mode detection</strong>: when the active document's file
+extension is <code>.css</code>, all three commands treat the input as a
+CSS abbreviation instead of HTML.</li>
+<li><strong>Feature tag</strong>: <code>core.emmet</code> (category
+<code>"markup"</code>), depending on <code>core.editor</code>. A syntax
+error in the typed abbreviation reports a clear status-bar message (e.g.
+<em>"Could not expand abbreviation: Expected ']' at position 4..."</em>)
+rather than raising or silently doing nothing.</li>
+</ul>
+<h3 id="293-non-goals-this-phase--phase-23-backlog">§29.3 Non-goals
+(this phase — Phase 2/3 backlog)</h3>
+<ul>
+<li><strong>Placeholder/tab-stop navigation</strong> after expansion
+(jump between empty attribute values and text slots the way snippet
+engines do).</li>
+<li><strong>A snippet manager</strong> for user-defined custom
+abbreviations/snippets.</li>
+<li><strong>Quillin extension points</strong> (an
+<code>ExpansionProvider</code> interface so third-party Quillins can
+contribute abbreviation packs or override expansion for a
+language).</li>
+<li><strong>Markdown-specific abbreviations</strong> (a Markdown
+abbreviation pack distinct from the HTML grammar).</li>
+<li><strong>Numbering modifiers</strong> <code>@-</code> (reverse) and
+<code>@N</code> (custom start) — only ascending numbering from 1 is
+supported.</li>
+<li><strong>Chaining children directly after a multiplied group</strong>
+(e.g. <code>(a+b)*2&gt;c</code>) — rejected with a clear error rather
+than silently guessing intent.</li>
+<li><strong>A full fuzzy CSS abbreviation engine</strong> — only the
+curated subset in §29.2 is implemented; unrecognized CSS abbreviations
+return <code>None</code> rather than guessing.</li>
+<li><strong>Live suggestions/autocomplete</strong> while typing an
+abbreviation (Tab-trigger style) — expansion is explicit,
+command-driven.</li>
+</ul>
+<hr />
 <h1 id="appendix-engineering-documentation">Appendix: Engineering
 documentation</h1>
 <p><em>Folded in from the former docs/QUILL-PRD.md on

@@ -208,6 +208,8 @@
   "quill/ui/main_frame_notebook.py::NotebookUIMixin.open_notebook::wx.FileDialog": "native",
   "quill/ui/main_frame_power_tools.py::PowerToolsActionsMixin._power_tools_prompt_single::wx.TextEntryDialog": "native",
   "quill/ui/main_frame_power_tools.py::PowerToolsActionsMixin.insert_file_content::wx.FileDialog": "native",
+  "quill/ui/main_frame_power_tools.py::PowerToolsActionsMixin.multi_replace::show_web_form": "web",
+  "quill/ui/main_frame_power_tools.py::PowerToolsActionsMixin.number_lines_advanced::show_web_form": "web",
   "quill/ui/main_frame_power_tools.py::PowerToolsActionsMixin.reencode_file::wx.FileDialog": "native",
   "quill/ui/main_frame_power_tools.py::PowerToolsActionsMixin.reencode_file::wx.SingleChoiceDialog": "native",
   "quill/ui/main_frame_power_tools.py::PowerToolsActionsMixin.save_minimum_encoding::wx.FileDialog": "native",
