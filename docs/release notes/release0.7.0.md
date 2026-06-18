@@ -1,6 +1,6 @@
-# QUILL 0.6.0 Release Notes: Meet You Where You Are
+# QUILL 0.7.0 Release Notes: Meet You Where You Are
 
-QUILL 0.6.0 is a community release in the truest sense of the word.
+QUILL 0.7.0 is a community release in the truest sense of the word.
 
 Yes, it is a major step forward for screen-reader-first writing, editing, AI-assisted authorship, automation, braille, code review, and extension-powered workflows. But the bigger story is not only what changed. The bigger story is **who is helping QUILL become what it is becoming**.
 
@@ -19,7 +19,7 @@ That means QUILL should not force every user into the same cockpit. A first-time
 
 This release is about speed, confidence, control, and delight. You can type a short trigger and get a full template. You can open a braille file and know exactly where you are by page, line, cell, and progress. You can compare two files without visually scanning a diff. You can move through code by tokens instead of guessing where words begin and end. You can export to Word, inspect encoding problems, generate citations, and shape the sound layer so QUILL confirms what happened without talking over your screen reader. And now you can ask the AI to rewrite a paragraph, surface a better word in context, check your grammar, translate a document, or put a question directly to your own text — all from the keyboard, without leaving the editor.
 
-Under the surface, QUILL 0.6.0 introduces two major architectural expansions. The first is the AI writing layer: a complete, provider-agnostic toolkit covering twelve tasks from spell check to table-of-contents generation, with per-task custom instructions, prompt caching across every supported provider, and support for Anthropic Claude, OpenAI, Google Gemini, OpenRouter, and Ollama. The second is the Quillin extension platform: extensions can now own settings, contribute live preference dialogs, subscribe to document lifecycle events, contribute status-bar cells, declare dependencies, restrict network access, schedule background timers, respond to file-type opens, and initialize or shut down cleanly. Both are designed so you stay in charge and nothing runs silently without your knowledge.
+Under the surface, QUILL 0.7.0 introduces two major architectural expansions. The first is the AI writing layer: a complete, provider-agnostic toolkit covering twelve tasks from spell check to table-of-contents generation, with per-task custom instructions, prompt caching across every supported provider, and support for Anthropic Claude, OpenAI, Google Gemini, OpenRouter, and Ollama. The second is the Quillin extension platform: extensions can now own settings, contribute live preference dialogs, subscribe to document lifecycle events, contribute status-bar cells, declare dependencies, restrict network access, schedule background timers, respond to file-type opens, and initialize or shut down cleanly. Both are designed so you stay in charge and nothing runs silently without your knowledge.
 
 Everything remains keyboard-first and screen-reader-first. Every new view is a real navigable control. Every action is announced, undoable where appropriate, and discoverable. No mouse is required. No visual-only flourish is required. No silent full-file scanning happens behind your back.
 
@@ -27,7 +27,7 @@ If you are upgrading from QUILL 0.5.0, read **What works differently now** near 
 
 ## The community story in this release
 
-QUILL 0.6.0 is organized around real user experiences instead of technical checklists. Each major area answers a practical question:
+QUILL 0.7.0 is organized around real user experiences instead of technical checklists. Each major area answers a practical question:
 
 - **How do I start without being overwhelmed?** Meet You Where You Are profiles and the redesigned startup wizard.
 - **How do I write faster without losing control?** Insert Automation, typed abbreviations, smart triggers, `.LOG` compatibility, append anchors, snippets, citations, and export tools.
@@ -40,7 +40,7 @@ QUILL 0.6.0 is organized around real user experiences instead of technical check
 > “A feature is not finished when it exists. It is finished when the person using it feels confident, respected, and in control.”  
 > — Jeff Bishop
 
-## What the community helped lift up in 0.6.0
+## What the community helped lift up in 0.7.0
 
 This is the fast tour. The detailed notes below keep every important implementation detail, but these are the moments users will feel first.
 
@@ -240,7 +240,7 @@ This is where the community story gets especially exciting. QUILL is no longer o
 > “The future of QUILL is not one person deciding every feature. It is a community of people building the tools they wish existed, with accessibility baked into the foundation.”  
 > — Jeff Bishop
 
-QUILL 0.6.0 upgrades Quillins from a command-and-snippet mechanism into a full extension platform.
+QUILL 0.7.0 upgrades Quillins from a command-and-snippet mechanism into a full extension platform.
 
 Quillins can now subscribe to events, own settings, add searchable preference pages, display live status-bar data, declare dependencies, restrict network access, log to a developer console, and initialize or shut down cleanly. The manifest, validator, JSON schema, API surface, and developer tooling have all been expanded so accessibility and safety are enforced at install and load time.
 
@@ -252,7 +252,7 @@ The Quillin never touches wxPython directly. QUILL handles layout, tab order, fo
 
 Quillins with several groups of settings can declare **tabs** inside their preference page. Tabs are a standard `wx.Notebook` so arrow keys navigate between tabs and the active tab is clearly announced.
 
-All five bundled Quillins ship live preference dialogs in 0.6.0. Open **Preferences** (Ctrl+Comma) and navigate to the Quillin by name:
+All five bundled Quillins ship live preference dialogs in 0.7.0. Open **Preferences** (Ctrl+Comma) and navigate to the Quillin by name:
 
 - **Smart Insert** — five tabs: General, Log Mode, Smart Triggers, Abbreviations, and BRF Testing. Settings include large-insertion confirmation threshold, default to-do list length, custom timestamp format, and per-trigger enable/disable toggles.
 - **BRF Tools** — four tabs: Translation, Page Handling, Status Bar, and Advanced. Settings include default translation profile, cells per line, lines per page, status bar verbosity, and diagnostic timeout.
@@ -268,7 +268,7 @@ Individual settings may include **`search_keywords`**: extra synonyms and techni
 
 Quillins can subscribe to document lifecycle events and run automatically when important moments occur.
 
-QUILL 0.6.0 supports fourteen events:
+QUILL 0.7.0 supports fourteen events:
 
 | Event | When it fires |
 | --- | --- |
@@ -434,7 +434,7 @@ Capability declarations are enforced, not advisory. If a Quillin calls an API it
 
 Third-party Quillins remain locked off for QUILL 1.0. The SEC-8 gate, `core.third_party_plugins`, is `locked_off`. A shipping build never discovers, loads, or executes third-party Quillin code. Quillins Manager still opens and remains fully navigable; it simply reports that third-party Quillins are disabled. This gate will lift when the publishing and review process is ready.
 
-`min_quill_version` is enforced at load time. If a Quillin declares `"min_quill_version": "0.6.0"` and the running QUILL is older, the Quillin is rejected during discovery and listed in the Manager with an explanatory error such as `requires QUILL 0.6.0 (running 0.5.x)`.
+`min_quill_version` is enforced at load time. If a Quillin declares `"min_quill_version": "0.7.0"` and the running QUILL is older, the Quillin is rejected during discovery and listed in the Manager with an explanatory error such as `requires QUILL 0.7.0 (running 0.5.x)`.
 
 `requires` is also enforced at load time. If a Quillin depends on another Quillin that is not installed, or is installed at a version too old to satisfy `min_version`, the dependent Quillin is blocked. The Manager shows the specific dependency error. Circular dependencies are caught during validation.
 
@@ -442,7 +442,7 @@ Third-party Quillins remain locked off for QUILL 1.0. The SEC-8 gate, `core.thir
 
 ### Five bundled Quillins
 
-QUILL 0.6.0 ships five bundled Quillins. Each is both a useful extension and a reference implementation for the framework.
+QUILL 0.7.0 ships five bundled Quillins. Each is both a useful extension and a reference implementation for the framework.
 
 - **Smart Insert** (`com.quill.smartinsert`) provides typed abbreviations and smart triggers for bug reports, meeting notes, log entries, to-do lists, and BRF test documents. It includes five tabs of configurable preferences, categories `writing`, `productivity`, and `formatting`, plus command `description` fields on every command.
 - **BRF Tools** (`com.quill.brftools`) provides preferences for braille translation, page handling, and status-bar display. Its categories are `braille` and `accessibility`.
@@ -452,7 +452,7 @@ QUILL 0.6.0 ships five bundled Quillins. Each is both a useful extension and a r
 
 ### Five new Quillin capabilities, live in this release
 
-In previous releases, parts of the Quillin platform existed as declarations: events were defined, schedules were documented, preferences were validated — but the runtime never dispatched them. QUILL 0.6.0 makes the whole surface live. Five capabilities that Quillins could not use before can now be used in production, each demonstrated by at least one bundled extension.
+In previous releases, parts of the Quillin platform existed as declarations: events were defined, schedules were documented, preferences were validated — but the runtime never dispatched them. QUILL 0.7.0 makes the whole surface live. Five capabilities that Quillins could not use before can now be used in production, each demonstrated by at least one bundled extension.
 
 - **Timer events** — a Quillin can schedule background work every N seconds (minimum 60, maximum 86400). Timers run on dedicated threads so the editor never blocks. Status Scribe uses this to refresh its word-count status cell every five minutes without a user action.
 - **File-type contributions** — a Quillin can declare which file extensions it handles. When a matching file opens, the Quillin's handler fires automatically. BRF Tools announces the braille page count when a `.brf` or `.brl` file opens.
@@ -562,6 +562,56 @@ These use the traditional North American English tables.
 When the pack is absent, the Translation submenu is hidden entirely; you do not see disabled items. The Translation submenu is also hidden in Safe Mode.
 
 Forward translation opens the BRF result in a new document and tells you how many braille pages it produced. Back-translation always opens its result as a clearly labelled draft because automatic back-translation is not authoritative. Translation runs entirely out of process, so a liblouis failure cannot take QUILL down.
+
+### Braille Mode Phase 2: print-page detection and proofing navigation
+
+Braille Mode Phase 2 turns the page map into something a proofreader can act on. Two engineering pieces do the work:
+
+#### Print-page and running-head detection (BR-013)
+
+QUILL now reads the print page (and the chapter running head) directly off the BRF, so a braille proofreader no longer has to keep that map in their head. The new `brf_page_detection.py` engine is pure — it imports nothing from `wx` and is exhaustively unit-tested — and walks the page map once to emit confidence-labelled indicators:
+
+- **High confidence** — a print-page-change separator line of five or more hyphens followed by an anchor (`---------#ab`, `---------#12a`, or `---------#1`); *or* a right-margin page number on line 1 that matches the previous detected page and carries a continuation letter.
+- **Medium confidence** — a right-aligned number on line 1 with no other anchor; *or* a consistent sequence across several pages.
+- **Low confidence** — an ambiguous right-margin number; *or* a short page with multiple candidates.
+
+The detector also produces a `BraillePageMarker` per page (the right-margin number on the last line of each braille page) and a `RunningHead` per page (the leading text of line 1, after stripping the right-margin number). When the detector has no anchor for the caret page, the status bar's print segment still reads `Print ?` so the fallback is visible, not silent.
+
+#### Detailed status and print-page navigation (BR-014)
+
+Six new commands in the Braille menu turn the detector output into something a proofreader can act on:
+
+- **Go to Print Page…** — type a print-page number; QUILL snaps the caret to the start of the braille page that hosts it and announces the result. Default value is the indicator closest to your current caret position.
+- **Next Print Page Change** / **Previous Print Page Change** — step the caret to the next / previous print-page boundary in the detector output. If there is none, QUILL tells you rather than looping.
+- **Announce Running Head** — reads the running head of the caret page aloud (or "No running head detected for this page." when the line-1 text is empty or absent).
+- **Include Running Head in Status** / **Omit Running Head from Status** — toggle the `braille_include_running_head` setting. Detailed status only includes the running head when the setting is on; the menu item is purely a preference, not a one-shot announce.
+
+`Read Detailed Braille Status` now composes the full example string from the spec — print page, continuation letter, running head, proofing state, and detection confidence — pulling live data from the new detector. A typical announcement reads:
+
+> "Braille page 12 of 87. Line 14 of 25. Cell 31 of 40. Print page 7; continuation a; Running head: Chapter 2; Last proofed page: 9; 3 pages marked needs review; detected with high confidence."
+
+`Read Current Print Page` no longer hard-codes "Print page unknown"; it announces the most recent detected print page at or before the caret (or "Print page unknown" when the detector has nothing to report).
+
+Every new command degrades gracefully on non-braille documents — it simply tells you "This is not a braille document" rather than doing anything. Default key bindings are intentionally left unset (matching the Phase 1 convention) so nothing collides with your screen reader or existing editor shortcuts; assign your own in the keyboard customizer, or run the commands from the Command Palette.
+
+#### Where the new code lives
+
+- `quill/core/brf_page_detection.py` — pure detector module; 12 unit tests in `tests/unit/core/test_brf_page_detection.py`, including a real-world corpus test against the 5-page sample at `tests/corpus/braille/one_crazy_night.brf`.
+- `quill/ui/main_frame_braille.py` — the new commands, the new menu items, and the `_compose_detailed_status` helper that wires the detector output into `read_detailed_braille_status`. Source-level wiring tests in `tests/unit/ui/test_braille_print_navigation.py`.
+
+Strict-typed; `mypy --strict` is clean for the new module. The wider braille test suite — status strings, page map, position resolver, translation worker — remains green.
+
+#### What is still on the roadmap
+
+- **Phase 3 (Proofing and Progress)** — the sidecar JSON, the restore-on-open behaviour, and the proofing commands (mark proofed / mark needs review / list proofed / etc.). Tracked in issues #238, #239, #240.
+- **Phase 4 (Validation)** — warning rules that combine the page map and the detector output to catch ambiguous page boundaries.
+- **Phase 6 (Source-to-BRF)** — a workflow that takes a print-text document through the translator and into a clean BRF ready for proofreading.
+
+The detailed design for each of these phases remains in `docs/planning/planning.md` (Feature: Braille Mode), preserved as a reference for the release where they ship.
+
+#### Acknowledgements
+
+Thank you to the screen-reader users and braille proofreaders who filed the issues that drove this phase, and to the maintainers of liblouis and the Universal BRF Pack whose tables make the translation side of Braille Mode possible.
 
 ---
 
@@ -827,7 +877,7 @@ This release ships the core engine and the three commands. Placeholder navigatio
 
 Some contributions change a feature. Some contributions change expectations. Kelly Ford's work on image description prompts does both by making AI image description more intentional, more flexible, and more useful to blind users.
 
-QUILL 0.6.0 includes a Vision Prompt Library for **Describe Image with AI**, contributed by [Kelly Ford](https://github.com/kellylford).
+QUILL 0.7.0 includes a Vision Prompt Library for **Describe Image with AI**, contributed by [Kelly Ford](https://github.com/kellylford).
 
 Kelly independently built and evaluated twelve prompt styles drawn from his [Image Description Toolkit](https://github.com/kellylford/Image-Description-Toolkit), an experimental toolkit for accessible image interaction.
 
@@ -870,7 +920,7 @@ AI in QUILL is not meant to replace the writer. It is meant to support the write
 > “AI should help people express what they mean, not flatten their voice. The goal is confidence, clarity, and control.”  
 > — Jeff Bishop
 
-QUILL 0.6.0 ships a full AI writing-assistant layer. Every feature in this layer is optional, works with multiple providers, runs entirely on your terms, and is designed so screen-reader users can operate it without a mouse.
+QUILL 0.7.0 ships a full AI writing-assistant layer. Every feature in this layer is optional, works with multiple providers, runs entirely on your terms, and is designed so screen-reader users can operate it without a mouse.
 
 ### Provider setup: AI Hub
 
@@ -1059,7 +1109,7 @@ Thank you, Robert, for a contribution that went from a working fork all the way 
 
 Not every contribution becomes a giant headline. Some become the small improvements that make the editor feel more thoughtful every day. This section collects those practical additions.
 
-QUILL 0.6.0 also includes these practical additions:
+QUILL 0.7.0 also includes these practical additions:
 
 - From the QUILL key, press **F** to speak the window title, **P** to speak the full file path, or **Q** to speak a short status summary without leaving the editor.
 - **Ctrl+Tab** switches to the next document, and **Ctrl+Shift+Tab** switches back. **Ctrl+Shift+F4** closes all other open documents and keeps just the current one. The **Window** menu lists every open document by number directly on the menu - no submenu. Press **Alt+W** then a number key to jump straight to that document. The active document is marked. The list updates when files open or close, and renames itself immediately when you save an untitled document.
@@ -1125,7 +1175,7 @@ The user guide now opens as a read-only page in your browser instead of as an ed
 
 The QUILL Braille Pack, which provides braille translation, BRF and BRL export, and liblouis integration, is an optional installer component. Some 0.5.0 users may miss it during upgrade.
 
-On first launch of 0.6.0, QUILL now detects when the pack is absent and offers to run the installer again so you can add it without re-downloading. It uses the copy already in your updates folder. Choose **Not Now** and the prompt goes away permanently. You can still add the pack later by re-running the installer and checking the Braille Pack component.
+On first launch of 0.7.0, QUILL now detects when the pack is absent and offers to run the installer again so you can add it without re-downloading. It uses the copy already in your updates folder. Choose **Not Now** and the prompt goes away permanently. You can still add the pack later by re-running the installer and checking the Braille Pack component.
 
 ### Skipped-update notifications work again
 
@@ -1195,19 +1245,19 @@ Indentation tones do not play until you pick a scale. Code files remain silent u
 
 ## Closing: community-built, screen-reader-first, and ready for what comes next
 
-QUILL 0.6.0 is more than a list of features. It is proof that accessible software can be joyful, powerful, careful, and community-shaped at the same time.
+QUILL 0.7.0 is more than a list of features. It is proof that accessible software can be joyful, powerful, careful, and community-shaped at the same time.
 
 > “We are building something free, cross-platform, assistive-technology friendly, and community-driven. Wait until you see what contributions are coming next.”  
 > — Jeff Bishop
 
-QUILL 0.6.0 is more than a feature release. It is a statement about what an accessible editor can be when screen-reader users are treated as the primary audience, not an afterthought.
+QUILL 0.7.0 is more than a feature release. It is a statement about what an accessible editor can be when screen-reader users are treated as the primary audience, not an afterthought.
 
 This release brings practical power to everyday writing through Insert Automation, typed abbreviations, smart triggers, log mode, citations, Word and RTF export, and better encoding tools. It brings confidence to specialized work through Braille Mode, the optional QUILL Braille Pack, professional translation workflows, page-aware BRF navigation, and status information that speaks the way braille readers actually work. It brings speed to review and development through compare mode, code-aware navigation, indentation tones, dynamic keyboard documentation, and command-line launch options for precise workflows.
 
 Underneath those visible improvements, the new Quillin platform gives QUILL a foundation for growth: accessible preferences, document lifecycle events, status bar contributions, settings search, dependency checks, network safeguards, developer logging, bundled reference Quillins, and strict user control over what extensions can do.
 
-Just as important, 0.6.0 fixes the kinds of issues that matter deeply in daily use: bug reporting now accepts typing, JAWS announcements are quieter, Describe Image works again, startup is faster, first-run dialogs are reachable, the user guide opens safely, update notifications are more reliable, and macOS builds install and store keys correctly.
+Just as important, 0.7.0 fixes the kinds of issues that matter deeply in daily use: bug reporting now accepts typing, JAWS announcements are quieter, Describe Image works again, startup is faster, first-run dialogs are reachable, the user guide opens safely, update notifications are more reliable, and macOS builds install and store keys correctly.
 
-The result is a release that feels faster, quieter, more predictable, and more empowering. QUILL 0.6.0 gives writers, braille users, developers, students, accessibility professionals, and screen-reader users of every kind a stronger place to work — one built around keyboard control, spoken feedback, user choice, and the belief that accessible software can also be powerful, elegant, and joyful to use.
+The result is a release that feels faster, quieter, more predictable, and more empowering. QUILL 0.7.0 gives writers, braille users, developers, students, accessibility professionals, and screen-reader users of every kind a stronger place to work — one built around keyboard control, spoken feedback, user choice, and the belief that accessible software can also be powerful, elegant, and joyful to use.
 
 And this is only the beginning. To everyone testing, contributing code, suggesting workflows, challenging the design, sharing feedback, building community, and cheering QUILL on: thank you. The product is better because of you. The next contributions are already raising the bar.
