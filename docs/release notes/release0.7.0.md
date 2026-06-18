@@ -1156,6 +1156,13 @@ A small internal error was silently stopping **Describe Image with AI** from run
 
 Screen-reader detection now runs in the background instead of stalling the first window. A preview warm-up crash is fixed. The title bar no longer flashes `untitled Quill unavailable` before the app is ready. The preview pane no longer hangs for minutes with no way to close it.
 
+Startup announcements are now opt-in instead of automatic. By default, QUILL speaks only the `QUILL Ready` line at startup; the Document Guardian activation cue and the screen-reader detection result are written to the status bar so sighted and low-vision users still see them, but the screen reader stays quiet unless you ask for more. Two new accessibility settings control the speech:
+
+- **Speech channel (verbosity)** in **Preferences → Accessibility** is the master gate. When off, every spoken announcement from built-in startup events and Quillin extensions is suppressed while the status bar keeps the same text.
+- **Speak screen-reader detection result at startup**, also under **Accessibility**, speaks the `Detected screen reader: <name>. Adaptive hints enabled.` line when both that setting and the verbosity gate are on. The status bar still receives the result regardless.
+
+Document Guardian gains its own per-Quillin toggle, **Speak activation and deactivation cues**, on the Lifecycle Announcements tab of **Preferences → Document Guardian**. The setting defaults to off so first-run is quiet for screen-reader users; flipping it on gives you the activation / deactivation cue when the Quillin starts and stops. The status bar still records every enable and disable event.
+
 ### First run is more reliable
 
 The first window now comes to the foreground so the trust and privacy dialog is reachable. If you skipped the personalization wizard, you can re-open it later. The wizard's startup beep and Cancel-button focus are fixed.

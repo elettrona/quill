@@ -3149,6 +3149,41 @@ All tests follow the module-level import pattern so `generate_assistant_response
 - `apply_instruction` is backward compatible; existing call sites that have not yet migrated continue to work with the combined-string path.
 - The Anthropic beta header is only added when the provider is `claude` AND `system_prompt` is non-empty, so the header never appears for other providers.
 
+### 5.91 Startup-speech gating (verbosity shim)
+
+QUILL's `quill.a11y.announce(...)` funnel (§9.5) is the single code path every spoken line passes through. As of 0.7.0, two startup announcements are gated through user-facing settings so the screen reader stays quiet on first run unless the user opts in:
+
+1. The Document Guardian Quillin activation cue (`Document Guardian is now active.` / `is now inactive.`).
+2. The screen-reader detection result (`Detected screen reader: <name>. Adaptive hints enabled.`).
+
+#### 5.91.1 Settings and defaults
+
+Two new settings live under the **Accessibility** group:
+
+| Setting | Type | Default | Purpose |
+|---|---|---|---|
+| `verbosity_speech_enabled` | bool | `True` | Master gate for the spoken output channel. When off, every spoken announcement from built-in startup events and Quillin extensions is suppressed. The status bar still receives the same text. Acts as the shim for the 0.7.1 verbosity rebuild. |
+| `announce_screen_reader_detected` | bool | `False` | When on, speaks the `Detected screen reader: <name>. Adaptive hints enabled.` line at startup, but only if `verbosity_speech_enabled` is also on. |
+
+Document Guardian adds its own per-Quillin preference under **Preferences → Document Guardian → Lifecycle Announcements**:
+
+| Setting | Type | Default | Purpose |
+|---|---|---|---|
+| `enabled_announcements` | bool | `False` | When on, speaks the activation / deactivation cue from `on_enabled` and `on_disabled`. The Quillin always writes its state to the status bar regardless. |
+
+#### 5.91.2 Enforcement layers
+
+Two layers enforce the gates so a regression in either one cannot re-introduce the spoken line:
+
+1. **Per-Quillin check.** The Quillin reads its own setting before calling `api.announce`. `api.get_setting("enabled_announcements", False)` is the per-Quillin value, defaulting to off.
+2. **Host dispatcher check.** `quill.core.quillins.host.ApiDispatcher._dispatch` checks `services.is_verbosity_speech_enabled()` before forwarding the `announce` method to `services.announce(...)`. The same gate exists in `quill.plugins.node_quillin_runner._dispatch_action` for the Node.js Quillin runtime. The new `HostServices.is_verbosity_speech_enabled` method is implemented by `_EditorHostServices` (the live-frame adapter) and faked in every test double.
+
+The screen-reader detection result flows through `MainFrame._set_status_quiet` (status bar only) unless both `announce_screen_reader_detected` and `verbosity_speech_enabled` are on, in which case it flows through `MainFrame._set_status` (status bar + spoken). The status bar always receives the text, so sighted and low-vision users get the same information regardless of the speech state.
+
+#### 5.91.3 Why two layers
+
+The per-Quillin check exists because the user's preference for the lifecycle cue is **Quillin-local** — it travels with the extension, not with the global app setting. The host-dispatcher check exists because `verbosity_speech_enabled` is a global master gate that should silence every Quillin announcement, not just one. Together they keep the user in control at both levels.
+
 ---
 
 ## 6. Spell checking deep dive
