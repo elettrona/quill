@@ -689,6 +689,7 @@ class MenuBuilderMixin:
         self._id_toggle_abbreviation_expansion = wx.NewIdRef()
         self._id_format_bold = wx.NewIdRef()
         self._id_format_italic = wx.NewIdRef()
+        self._id_format_underline = wx.NewIdRef()
         self._id_heading_1 = wx.NewIdRef()
         self._id_heading_2 = wx.NewIdRef()
         self._id_heading_3 = wx.NewIdRef()
@@ -726,6 +727,10 @@ class MenuBuilderMixin:
         # --- Character formatting (most common) ---
         format_menu.Append(self._id_format_bold, self._menu_label(_("&Bold"), "format.bold"))
         format_menu.Append(self._id_format_italic, self._menu_label(_("&Italic"), "format.italic"))
+        format_menu.Append(
+            self._id_format_underline,
+            self._menu_label(_("&Underline"), "format.underline"),
+        )
         format_menu.AppendSeparator()
 
         # --- Structural formatting ---
@@ -2631,6 +2636,9 @@ class MenuBuilderMixin:
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.unquote_lines(), id=self._id_unquote_lines)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_bold(), id=self._id_format_bold)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_italic(), id=self._id_format_italic)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.format_underline(), id=self._id_format_underline
+        )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_heading(1), id=self._id_heading_1)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_heading(2), id=self._id_heading_2)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_heading(3), id=self._id_heading_3)

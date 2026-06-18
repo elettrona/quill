@@ -2930,6 +2930,12 @@ class MainFrame(
             self._binding_for("format.italic"),
         )
         self.commands.register(
+            "format.underline",
+            "Underline",
+            self.format_underline,
+            self._binding_for("format.underline"),
+        )
+        self.commands.register(
             "format.heading_1",
             "Insert Heading 1",
             lambda: self.format_heading(1),
@@ -3434,6 +3440,7 @@ class MainFrame(
             "format.style_headings": self._id_style_headings,
             "format.bold": self._id_format_bold,
             "format.italic": self._id_format_italic,
+            "format.underline": self._id_format_underline,
             "format.upper_case": self._id_upper_case,
             "format.lower_case": self._id_lower_case,
             "format.heading_1": self._id_heading_1,
@@ -20548,6 +20555,24 @@ class MainFrame(
             result = build_html_insertion("em", selected_text, {})
         self._apply_insertion_result(result)
         self._set_status(f"Applied italic ({surface})")
+
+    def format_underline(self) -> None:
+        # #267: matches bold/italic. Markdown uses inline HTML <u>...</u> since
+        # CommonMark has no native underline; HTML surfaces use the <u> tag.
+        if not self._feature_enabled("core.format"):
+            self._set_status("Underline is unavailable in this profile")
+            return
+        surface = self._active_markup_surface()
+        if surface is None:
+            self._set_status("Underline is only available in Markdown or HTML documents")
+            return
+        selected_text = self.editor.GetStringSelection()
+        if surface == "markdown":
+            result = build_markdown_insertion("Underline", selected_text)
+        else:
+            result = build_html_insertion("u", selected_text, {})
+        self._apply_insertion_result(result)
+        self._set_status(f"Applied underline ({surface})")
 
     def format_heading(self, level: int) -> None:
         if not self._feature_enabled("core.format"):

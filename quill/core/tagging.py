@@ -206,6 +206,14 @@ def build_markdown_insertion(
             text = f"*{selected_text}*"
             return InsertionResult(text, len(text))
         return InsertionResult("**", 1)
+    # Markdown has no native underline syntax. Use inline HTML <u>...</u>,
+    # which every CommonMark viewer that supports raw HTML will render as
+    # underlined text. Surfaces the feature parity with the HTML branch.
+    if kind == "Underline":
+        if selected_text:
+            text = f"<u>{selected_text}</u>"
+            return InsertionResult(text, len(text))
+        return InsertionResult("<u></u>", 3)
     if kind == "Inline Code":
         if selected_text:
             text = f"`{selected_text}`"

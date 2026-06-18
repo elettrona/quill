@@ -74,6 +74,18 @@ def test_build_markdown_italic_without_selection_inserts_pair() -> None:
     assert result.caret_offset == 1
 
 
+def test_build_markdown_underline_uses_inline_html() -> None:
+    # Markdown has no native underline syntax; the insertion uses inline
+    # HTML <u>...</u>, which CommonMark viewers that support raw HTML
+    # render as underlined text.
+    selected = build_markdown_insertion("Underline", "hello")
+    assert selected.inserted_text == "<u>hello</u>"
+    assert selected.caret_offset == len("<u>hello</u>")
+    empty = build_markdown_insertion("Underline", "")
+    assert empty.inserted_text == "<u></u>"
+    assert empty.caret_offset == 3
+
+
 def test_markdown_choices_include_heading_levels_four_to_six() -> None:
     assert "Heading 4" in MARKDOWN_TAG_CHOICES
     assert "Heading 5" in MARKDOWN_TAG_CHOICES

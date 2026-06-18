@@ -241,6 +241,7 @@ COMMAND_FEATURE_MAP: dict[str, str] = {
     "format.insert_markdown_tag": "core.format",
     "format.bold": "core.format",
     "format.italic": "core.format",
+    "format.underline": "core.format",
     "format.heading_1": "core.format",
     "format.heading_2": "core.format",
     "format.heading_3": "core.format",

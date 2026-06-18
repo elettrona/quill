@@ -269,7 +269,7 @@ Quill should stay calm by default and unlock power features intentionally.
 - Soft wrap on by default; toggle with `Alt+Z`.
 - Standard editing: cursor movement, selection, clipboard, undo and redo, all via the native edit control.
 - `Ctrl+Delete` deletes the next word; `Ctrl+Backspace` deletes the previous word; result announced.
-- Case conversion: `Ctrl+U` upper, `Ctrl+L` lower, `Ctrl+Shift+T` title. Selection if present, otherwise whole document.
+- Case conversion: `Ctrl+Shift+U` upper, `Ctrl+L` lower, `Ctrl+Shift+T` title. Selection if present, otherwise whole document.
 - Multiple documents: `Ctrl+Tab` and `Ctrl+Shift+Tab` cycle. Switching announces document name only.
 - Close current document: `Ctrl+W` or `Ctrl+F4`. Prompt to save if modified.
 - Exit: `Alt+F4` or `Ctrl+Q`. Prompts for each modified document.
@@ -2272,7 +2272,7 @@ A folding model designed for screen-reader users: folded ranges are summarised a
   - **Programmer**: also breaks on `_`, `-`, `.`, and case transitions (`getFoo` is three "words": `get`, `Foo`, plus the case boundary). Best for code.
 - The mode affects `Ctrl+Left`/`Right`, `Ctrl+Delete`/`Backspace`, double-click selection, word count, and the spell-check tokeniser.
 - **Trailing whitespace announcement**: when the cursor lands on a line that ends with trailing whitespace, the status bar's Line/Column cell appends `(trailing whitespace)` and a screen-reader-friendly hint is available via Where Am I. No visual highlight; no extra speech while typing.
-- **Case-change announcement guard**: when `Ctrl+U`, `Ctrl+L`, or `Ctrl+Shift+T` apply to the whole document because nothing was selected, the announcement explicitly says so and reminds the user `Press Ctrl+Z to undo full-document case change`.
+- **Case-change announcement guard**: when `Ctrl+Shift+U`, `Ctrl+L`, or `Ctrl+Shift+T` apply to the whole document because nothing was selected, the announcement explicitly says so and reminds the user `Press Ctrl+Z to undo full-document case change`.
 
 ### 5.48 Multi-format export and reading view
 
