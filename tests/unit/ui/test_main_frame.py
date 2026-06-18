@@ -68,3 +68,41 @@ def test_startup_speech_gate_uses_quiet_status() -> None:
     # when announcement_startup_tips_enabled is off.
     assert "announcement_startup_tips_enabled" in SOURCE
     assert "_set_status_quiet" in SOURCE
+
+
+def test_show_about_quill_passes_real_about_info_instance() -> None:
+    # #266: the traceback at line 11615 (`statuses = get_external_tool_statuses()`)
+    # was from pre-#260 code. The current show_about_quill is a thin shim that
+    # calls gather_about_info() and forwards the AboutInfo to
+    # show_about_quill_native. This test pins the type-correct wire so the
+    # native dialog's `isinstance(about_info, AboutInfo)` assert can never
+    # silently go back to receiving a different shape.
+    show_fn = re.search(
+        r"def show_about_quill\(self\).*?(?=^    def |\Z)", SOURCE, re.DOTALL | re.MULTILINE
+    )
+    assert show_fn is not None, "show_about_quill not found"
+    body = show_fn.group(0)
+    assert "from quill.core.about_info import gather_about_info" in body
+    assert "about_info = gather_about_info()" in body
+    assert "show_about_quill_native(" in body
+
+
+def test_close_tab_does_not_hit_undeclared_slot() -> None:
+    # #266 traceback also includes the _DocumentTab slot crash at line 3923
+    # (`tab._language_profile = ...`). That crash was closed by #263 (slots
+    # added), but the close-document path is the user-visible surface that
+    # triggered the dialog. This test asserts the close path lands in
+    # _activate_tab, which is where the slot field is written — guards against
+    # future refactors that re-introduce the regression by skipping the field.
+    assert "def close_current_document(self)" in SOURCE
+    assert "def _close_tab(self" in SOURCE
+    assert "def _select_tab(self" in SOURCE
+    assert "def _activate_tab(self" in SOURCE
+    # The slot write site itself must remain in _activate_tab.
+    activate_block = re.search(
+        r"def _activate_tab\(self.*?(?=^    def |\Z)", SOURCE, re.DOTALL | re.MULTILINE
+    )
+    assert activate_block is not None, "_activate_tab not found"
+    body = activate_block.group(0)
+    assert "_language_profile_pinned" in body
+    assert "_language_profile = get_profile_for_path" in body
