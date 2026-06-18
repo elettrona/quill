@@ -15,11 +15,13 @@ class _Event:
         ctrl: bool = False,
         shift: bool = False,
         alt: bool = False,
+        unicode_key: int | None = None,
     ) -> None:
         self._key_code = key_code
         self._ctrl = ctrl
         self._shift = shift
         self._alt = alt
+        self._unicode_key = unicode_key if unicode_key is not None else key_code
         self.skipped = False
 
     def GetKeyCode(self) -> int:
@@ -34,6 +36,9 @@ class _Event:
     def AltDown(self) -> bool:
         return self._alt
 
+    def GetUnicodeKey(self) -> int:
+        return self._unicode_key
+
     def Skip(self) -> None:
         self.skipped = True
 
@@ -41,7 +46,14 @@ class _Event:
 _BACKTICK = ord("`")
 
 
-def _build_frame(*, binding: str = "Ctrl+Shift+Grave", timeout: float = 1.5) -> MainFrame:
+def _build_frame(
+    *,
+    binding: str = "Ctrl+Shift+Grave",
+    timeout: float = 1.5,
+    browse_followon_timeout: float = 4.0,
+    announce_mode_changes: bool = True,
+    keymap: dict[str, str] | None = None,
+) -> MainFrame:
     frame = MainFrame.__new__(MainFrame)
     frame._wx = SimpleNamespace(
         WXK_BACKTICK=_BACKTICK,
@@ -53,7 +65,10 @@ def _build_frame(*, binding: str = "Ctrl+Shift+Grave", timeout: float = 1.5) -> 
     frame.settings = SimpleNamespace(
         quill_key_binding=binding,
         quill_key_timeout_seconds=timeout,
+        browse_mode_followon_timeout_seconds=browse_followon_timeout,
+        announce_mode_changes=announce_mode_changes,
     )
+    frame.keymap = keymap if keymap is not None else {}
     frame._quill_key_mode_active = False
     frame._quill_key_prefix_pending = False
     frame._quill_key_prefix_started_at = 0.0
@@ -118,7 +133,7 @@ def test_sticky_mode_ignores_timeout() -> None:
 
 
 def test_zero_timeout_disables_browse_expiry() -> None:
-    frame = _build_frame(timeout=0)
+    frame = _build_frame(timeout=0, browse_followon_timeout=0)
     frame._enter_quill_key_mode()
     frame._quill_key_mode_started_at = time.monotonic() - 10
     assert frame._quill_key_mode_timed_out() is False
@@ -263,3 +278,97 @@ def test_prefix_then_g_opens_quick_nav() -> None:
     assert handled is True
     assert opened == ["nav"]
     assert frame._quill_key_mode_active is False
+
+
+def test_prefix_press_announces_quill_key() -> None:
+    # #265: pressing the QUILL key speaks "QUILL key" via _announce when
+    # announce_mode_changes is on. Speech fires before the chord sound.
+    frame = _build_frame()
+    frame._announcements = []  # type: ignore[attr-defined]
+    frame._announce = frame._announcements.append  # type: ignore[method-assign]
+    sounds: list[str] = []
+    frame._post_sound_stub = sounds.append  # type: ignore[attr-defined]
+    handled = frame._handle_quill_key_mode_event(_Event(_BACKTICK, ctrl=True, shift=True))
+    assert handled is True
+    assert frame._announcements  # type: ignore[attr-defined]
+    assert frame._announcements[0] == "QUILL key"  # type: ignore[attr-defined]
+
+
+def test_prefix_press_silent_when_announce_mode_changes_disabled() -> None:
+    # #265: quiet / no-speech profiles keep the prefix silent. Status bar
+    # message still appears; only _announce is gated.
+    frame = _build_frame(announce_mode_changes=False)
+    frame._announcements = []  # type: ignore[attr-defined]
+    frame._announce = frame._announcements.append  # type: ignore[method-assign]
+    frame._handle_quill_key_mode_event(_Event(_BACKTICK, ctrl=True, shift=True))
+    assert frame._announcements == []  # type: ignore[attr-defined]
+    assert frame._quill_key_prefix_pending is True
+
+
+def test_question_mark_via_unicode_key_is_recognized() -> None:
+    # #265: wxPython on some layouts reports neither ord("?") as the keycode
+    # nor Shift+"/". GetUnicodeKey is the third detection strategy so the
+    # cheat sheet remains reachable on those layouts.
+    frame = _build_frame()
+    _wire_help_stubs(frame)
+    frame._handle_quill_key_mode_event(_Event(_BACKTICK, ctrl=True, shift=True))
+    handled = frame._handle_quill_key_mode_event(_Event(ord("/"), shift=True, unicode_key=ord("?")))
+    assert handled is True
+    assert frame._help_shown[0][0] == MODE_PREFIX  # type: ignore[attr-defined]  # noqa: F821
+
+
+def test_browse_mode_uses_separate_followon_timeout() -> None:
+    # #265: browse-mode follow-on timeout is separate from the prefix
+    # timeout. A 4-second follow-on window gives users time to find the
+    # next key after N without expiring at 1.5s.
+    frame = _build_frame(timeout=1.5, browse_followon_timeout=4.0)
+    frame._enter_quill_key_mode()
+    frame._quill_key_mode_started_at = time.monotonic() - 3.0
+    assert frame._browse_mode_timed_out() is False
+    frame._quill_key_mode_started_at = time.monotonic() - 5.0
+    assert frame._browse_mode_timed_out() is True
+
+
+def test_browse_mode_followon_timeout_zero_disables_expiry() -> None:
+    # #265: setting browse_mode_followon_timeout_seconds to 0 disables
+    # the browse-mode timeout entirely.
+    frame = _build_frame(browse_followon_timeout=0.0)
+    frame._enter_quill_key_mode()
+    frame._quill_key_mode_started_at = time.monotonic() - 60
+    assert frame._browse_mode_timed_out() is False
+
+
+def test_browse_mode_followon_timeout_returns_configured_value() -> None:
+    # #265: _browse_mode_timeout() reads the configured
+    # browse_mode_followon_timeout_seconds, clamped to a non-negative value.
+    frame = _build_frame(browse_followon_timeout=3.0)
+    assert frame._browse_mode_timeout() == 3.0
+    frame.settings.browse_mode_followon_timeout_seconds = -5
+    assert frame._browse_mode_timeout() == 0.0
+    frame.settings.browse_mode_followon_timeout_seconds = 120
+    # Out-of-range values are clamped at the settings-loader level; the
+    # accessor returns the configured value as-is.
+    assert frame._browse_mode_timeout() == 120.0
+
+
+def test_quill_key_cheat_sheet_includes_chord_groups() -> None:
+    # #265: the cheat sheet for browse mode surfaces every Ctrl+Shift+Grave
+    # chord command grouped by category. The mixin must pass self.keymap
+    # and the configured quill_key_binding to build_cheat_sheet.
+    frame = _build_frame()
+    _wire_help_stubs(frame)
+    frame.keymap = {  # type: ignore[attr-defined]
+        "navigate.speak_window_title": "Ctrl+Shift+Grave, F",
+        "view.send_to_tray": "Ctrl+Shift+Grave, T",
+        "file.open_from_remote": "Ctrl+Shift+Grave, Shift+O",
+    }
+    frame._binding_for = lambda cid: frame.keymap.get(cid)  # type: ignore[method-assign]
+
+    frame._enter_quill_key_mode()
+    frame._handle_quill_key_mode_event(_Event(ord("?")))
+    mode, text = frame._help_shown[0]  # type: ignore[attr-defined]
+    assert mode == MODE_BROWSE
+    # The chord groups appear at the end of the cheat sheet text.
+    assert "Navigate" in text
+    assert "View" in text
+    assert "File" in text

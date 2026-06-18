@@ -133,6 +133,11 @@ class QuillKeyMixin:
                     )
                 self._set_status_quiet(message)
                 self._refresh_statusbar()
+                # Speak the prefix so screen-reader users hear "QUILL" before
+                # the chord sound. Gated by announce_mode_changes so users in
+                # quiet / no-speech profiles keep the prefix silent.
+                if bool(getattr(self.settings, "announce_mode_changes", True)):
+                    self._announce("QUILL key")
                 from quill.core.sound_events import SoundEvent
                 from quill.ui.sound_manager import post_sound
 
@@ -140,7 +145,7 @@ class QuillKeyMixin:
                 return True
             return False
 
-        if self._quill_key_mode_timed_out():
+        if self._browse_mode_timed_out():
             self._exit_quill_key_mode("QUILL browse mode timed out")
             if self._event_has_modifiers(event):
                 event.Skip()
@@ -217,15 +222,20 @@ class QuillKeyMixin:
         self._quill_feedback(message, status_message=message, sound_kind="exit")
         self._refresh_statusbar()
 
-    def _quill_key_mode_timed_out(self) -> bool:
+    def _browse_mode_timed_out(self) -> bool:
         if not self._quill_key_mode_active:
             return False
         if self._quill_key_mode_sticky:
             return False
-        timeout = self._quill_key_timeout()
+        timeout = self._browse_mode_timeout()
         if timeout <= 0:
             return False
         return (time.monotonic() - self._quill_key_mode_started_at) > timeout
+
+    # Backwards-compatible alias — the prefix-timeout path uses the same name
+    # in callers and was renamed internally to make the role explicit.
+    def _quill_key_mode_timed_out(self) -> bool:
+        return self._browse_mode_timed_out()
 
     def _quill_key_timeout(self) -> float:
         """Return the configured QUILL key timeout in seconds (0 = no timeout)."""
@@ -236,6 +246,22 @@ class QuillKeyMixin:
             value = float(raw)
         except (TypeError, ValueError):
             value = self._quill_key_mode_timeout_seconds
+        return max(value, 0.0)
+
+    def _browse_mode_timeout(self) -> float:
+        """Return the browse-mode follow-on timeout in seconds (0 = no timeout).
+
+        The follow-on timeout governs how long browse mode stays active
+        between follow-on keypresses after entering with N. It is separate
+        from ``_quill_key_timeout`` so the prefix-decision window stays
+        snappy while browse mode gives users a generous window to find the
+        next key.
+        """
+        raw = getattr(self.settings, "browse_mode_followon_timeout_seconds", 4.0)
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            value = 4.0
         return max(value, 0.0)
 
     def _parse_quill_key_binding(self, binding: str | None) -> tuple[bool, bool, bool, int] | None:
@@ -403,7 +429,16 @@ class QuillKeyMixin:
         if key_code == ord("?"):
             return True
         # '?' is Shift+'/' on most layouts; wx reports the '/' virtual key.
-        return bool(event.ShiftDown()) and key_code == ord("/")
+        if bool(event.ShiftDown()) and key_code == ord("/"):
+            return True
+        # Some layouts report neither the shifted key nor the modifier state
+        # cleanly. The Unicode key is the most reliable fallback — wx returns
+        # ord("?") (63) when Shift+Slash produces a question mark regardless
+        # of what GetKeyCode / ShiftDown report.
+        unicode_fn = getattr(event, "GetUnicodeKey", None)
+        if callable(unicode_fn) and int(unicode_fn()) == ord("?"):
+            return True
+        return False
 
     def _event_matches_grave_key(self, event: object) -> bool:
         """Multi-strategy detection for the physical grave/backtick key.
@@ -539,6 +574,8 @@ class QuillKeyMixin:
             counts=counts,
             selection_active=self._has_active_selection(),
             quill_key_label="QUILL key",
+            chord_map=self.keymap,
+            prefix=str(getattr(self.settings, "quill_key_binding", "Ctrl+Shift+Grave")),
         )
 
     def _show_quill_key_cheat_sheet(self, mode: str) -> None:

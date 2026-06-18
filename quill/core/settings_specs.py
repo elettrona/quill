@@ -457,13 +457,29 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
     ),
     SettingSpec(
         "quill_key_timeout_seconds",
-        "QUILL key timeout (seconds)",
+        "QUILL key prefix timeout (seconds)",
         "navigation",
         "float",
-        "How long the QUILL key prefix and browse mode wait before expiring. 0 means no timeout.",
+        (
+            "How long the QUILL key prefix waits for a follow-on key before "
+            "expiring. 0 means no timeout."
+        ),
         minimum=0.0,
         maximum=60.0,
         keywords=("quill key", "timeout", "prefix"),
+    ),
+    SettingSpec(
+        "browse_mode_followon_timeout_seconds",
+        "Browse mode follow-on key timeout (seconds)",
+        "navigation",
+        "float",
+        (
+            "How long browse mode stays active between follow-on keypresses "
+            "after entering with N. 0 means no timeout."
+        ),
+        minimum=0.0,
+        maximum=60.0,
+        keywords=("quill key", "browse", "timeout"),
     ),
     # --- Accessibility -----------------------------------------------------
     # --- External file-change watch and safe reload (FEAT-19) --------------
