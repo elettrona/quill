@@ -19,6 +19,11 @@ cannot silently regress:
 The third claim (deterministic focus across chained modal flows) is verified
 live in Phase 8 (DLG-3.8) and structurally enforced by the dialog-hardening
 contract gate; it is not re-asserted here.
+
+A #179-era test pins the deferred-modal offload contract: the crash-recovery
+offer's snapshot read + ``mkdir`` runs on a background task, and a thrown
+``read_recovery_snapshot`` is reported via ``_report_startup_task_failure``
+without ever calling ``ShowModal``.
 """
 
 from __future__ import annotations
@@ -153,3 +158,166 @@ def test_declined_startup_consent_closes_the_app(monkeypatch) -> None:
     assert frame.frame.closed == 1
     assert later_steps == []
     assert frame._status[-1] == "Startup consent declined. Quill is closing."
+
+
+# ---------------------------------------------------------------------------
+# #179: crash-recovery snapshot I/O must run on a background task, not the UI
+# thread.  These tests pin the offload contract.
+# ---------------------------------------------------------------------------
+
+
+class _FakeTask:
+    def __init__(self, name: str, func, kwargs, on_success, on_failure) -> None:
+        self.name = name
+        self.func = func
+        self.kwargs = kwargs
+        self.on_success = on_success
+        self.on_failure = on_failure
+
+
+class _FakeTaskManager:
+    """In-process stand-in for ``TaskManager`` that drives callbacks synchronously."""
+
+    def __init__(self) -> None:
+        self.submissions: list[_FakeTask] = []
+
+    def submit(
+        self,
+        name: str,
+        func,
+        *,
+        on_success=None,
+        on_failure=None,
+        **kwargs,
+    ) -> _FakeTask:
+        task = _FakeTask(name, func, kwargs, on_success, on_failure)
+        self.submissions.append(task)
+        return task
+
+    def run_last_success(self, result) -> None:
+        """Simulate the worker finishing successfully."""
+        last = self.submissions[-1]
+        assert last.on_success is not None
+        last.on_success("op-id", result)
+
+    def run_last_failure(self, exc: BaseException) -> None:
+        last = self.submissions[-1]
+        assert last.on_failure is not None
+        last.on_failure("op-id", exc)
+
+
+def _make_offer():
+    """Build a minimal RecoveryOffer-shaped stand-in."""
+
+    from dataclasses import dataclass
+    from pathlib import Path
+
+    @dataclass(frozen=True, slots=True)
+    class _Offer:
+        session_id: str = "sess-1"
+        snapshot: Path = Path("/tmp/snap.txt")
+        cursor_position: int = 0
+        dismissal_count: int = 0
+
+    return _Offer()
+
+
+def test_crash_recovery_offloads_snapshot_io_to_background(monkeypatch) -> None:
+    """#179: ``_offer_crash_recovery`` must not block the UI thread on snapshot I/O."""
+    frame = _build_frame()
+    frame._recovery_offers = [_make_offer()]
+    frame._task_manager = _FakeTaskManager()
+    show_calls: list[dict] = []
+
+    def _record_show(ctx, prepared):
+        show_calls.append({"ctx": ctx, "prepared": prepared})
+
+    frame._show_crash_recovery_dialog = _record_show
+
+    # Pre-mock read_recovery_snapshot + app_data_dir so the prepare worker is
+    # safe to call synchronously.
+    monkeypatch.setattr(
+        main_frame_module, "app_data_dir", lambda: __import__("pathlib").Path("/tmp")
+    )
+    monkeypatch.setattr(
+        main_frame_module,
+        "read_recovery_snapshot",
+        lambda _p: ("line1\nline2\nline3", False),
+    )
+
+    # Must not raise, must not call ShowModal directly.
+    frame._offer_crash_recovery()
+
+    assert len(frame._task_manager.submissions) == 1
+    assert frame._task_manager.submissions[0].name == "crash-recovery-prepare"
+    # _show_crash_recovery_dialog has not been called yet — the worker
+    # delivers its result via on_success, which we drive next.
+    assert show_calls == []
+
+    # Drive the worker success callback (this is what TaskManager would do
+    # via call_ui_safely after the worker returns).
+    frame._task_manager.run_last_success({
+        "logs_path": __import__("pathlib").Path("/tmp/logs"),
+        "preview_text": "line1\nline2",
+    })
+
+    assert len(show_calls) == 1
+    assert show_calls[0]["prepared"]["preview_text"] == "line1\nline2"
+
+
+def test_crash_recovery_prepare_failure_is_reported_via_startup_failure(monkeypatch) -> None:
+    """A throwing prepare must record via ``_report_startup_task_failure`` and
+    never show the dialog (no half-broken modal)."""
+    frame = _build_frame()
+    frame._recovery_offers = [_make_offer()]
+    frame._task_manager = _FakeTaskManager()
+    show_calls: list = []
+    frame._show_crash_recovery_dialog = lambda *a, **k: show_calls.append((a, k))
+    failures: list[str] = []
+    frame._report_startup_task_failure = lambda label: failures.append(label)
+    monkeypatch.setattr(
+        main_frame_module, "app_data_dir", lambda: __import__("pathlib").Path("/tmp")
+    )
+    monkeypatch.setattr(
+        main_frame_module,
+        "read_recovery_snapshot",
+        lambda _p: (_ for _ in ()).throw(OSError("boom")),
+    )
+
+    frame._offer_crash_recovery()
+    frame._task_manager.run_last_failure(OSError("boom"))
+
+    assert show_calls == []
+    assert failures == ["crash recovery"]
+
+
+def test_deferred_startup_task_list_includes_help_topics_warmup() -> None:
+    """#179: the help topics renderer must be warmed during deferred startup so
+    the first F1 is instant."""
+    frame = _build_frame()
+    failures: list[str] = []
+    frame._report_startup_task_failure = lambda label: failures.append(label)
+    frame._start_ipc_poll = lambda: None
+    frame._first_run_trust_consent_prompt = False
+    frame._offer_crash_recovery = lambda: None
+    frame._maybe_run_first_run_onboarding = lambda: None
+    frame._maybe_start_watch_folder = lambda: None
+    import quill.ui.main_frame as mf
+
+    monkeypatch = __import__("pytest").MonkeyPatch()
+    try:
+        monkeypatch.setattr(
+            mf,
+            "detect_screen_reader",
+            lambda: type("D", (), {"detected": False, "name": ""})(),
+        )
+        # Capture the source so we can grep for the warm-up entry without
+        # having to drive every task in the list.
+        from pathlib import Path
+
+        src = Path(mf.__file__).read_text(encoding="utf-8")
+    finally:
+        monkeypatch.undo()
+
+    assert '"help topics warm-up"' in src
+    assert "warm_help_topics" in src

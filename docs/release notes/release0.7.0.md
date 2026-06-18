@@ -1196,6 +1196,16 @@ Saving an Ask Quill API key on macOS used to crash. Keys and tokens are now stor
 
 The notarized macOS build now signs its bundled image libraries and uses hardened-runtime entitlements, so the app installs without security warnings.
 
+### Startup no longer blocks the UI thread in crash recovery, F1 help, or first preview (issue #179)
+
+The recovery offer dialog, the first F1 help lookup, and the first WebView2 preview could each freeze QUILL for tens of seconds on slower or first-time Windows installations. The freezes blocked the UI thread long enough for the `wx` heartbeat watchdog to fire and for screen readers to time out.
+
+- The crash-recovery snapshot read and `mkdir` are now submitted to the background task pool. The dialog still opens on the UI thread, but the I/O that used to block it no longer does. A failing prepare is reported through the same startup-task-failure channel so a corrupt snapshot does not break startup.
+- The help topics file is pre-warmed during deferred startup, so the first F1 press is instant.
+- WebView2 dialogs (the update-available dialog and F6 preview) are deferred with a short status nudge when the WebView2 warm-up has not yet finished, so they no longer race the first-time subprocess initialisation.
+
+The dialog-inventory snapshot and dialog-button-contract gates were regenerated as part of the fix; both pass. (#179)
+
 ---
 
 ## What works differently now

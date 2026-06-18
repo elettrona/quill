@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc" />
+  <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>release0.7.0</title>
   <style>
@@ -156,8 +156,12 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: min(4vw, 1.5em);}
-    div.column{flex: auto; overflow-x: auto;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -2393,6 +2397,30 @@ on-device or cloud AI continues to work.</p>
 <p>The notarized macOS build now signs its bundled image libraries and
 uses hardened-runtime entitlements, so the app installs without security
 warnings.</p>
+<h3
+id="startup-no-longer-blocks-the-ui-thread-in-crash-recovery-f1-help-or-first-preview-issue-179">Startup
+no longer blocks the UI thread in crash recovery, F1 help, or first
+preview (issue #179)</h3>
+<p>The recovery offer dialog, the first F1 help lookup, and the first
+WebView2 preview could each freeze QUILL for tens of seconds on slower
+or first-time Windows installations. The freezes blocked the UI thread
+long enough for the <code>wx</code> heartbeat watchdog to fire and for
+screen readers to time out.</p>
+<ul>
+<li>The crash-recovery snapshot read and <code>mkdir</code> are now
+submitted to the background task pool. The dialog still opens on the UI
+thread, but the I/O that used to block it no longer does. A failing
+prepare is reported through the same startup-task-failure channel so a
+corrupt snapshot does not break startup.</li>
+<li>The help topics file is pre-warmed during deferred startup, so the
+first F1 press is instant.</li>
+<li>WebView2 dialogs (the update-available dialog and F6 preview) are
+deferred with a short status nudge when the WebView2 warm-up has not yet
+finished, so they no longer race the first-time subprocess
+initialisation.</li>
+</ul>
+<p>The dialog-inventory snapshot and dialog-button-contract gates were
+regenerated as part of the fix; both pass. (#179)</p>
 <hr />
 <h2 id="what-works-differently-now">What works differently now</h2>
 <p>Most habits carry forward, but a few items moved or changed so QUILL

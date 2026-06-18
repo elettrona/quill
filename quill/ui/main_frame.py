@@ -458,6 +458,7 @@ from quill.platform.windows.sr_announce import (
 )
 from quill.platform.windows.sr_detect import detect_screen_reader
 from quill.stability.memory_watch import should_trace_memory, start_memory_tracing
+from quill.stability.task_manager import TaskManager
 from quill.stability.ui_responsiveness import mark_wx_main_thread
 from quill.stability.wx_heartbeat import HeartbeatState, WxHeartbeatTimer, WxHeartbeatWatchdog
 from quill.ui.ai_model_panel import AIModelDialog
@@ -470,7 +471,7 @@ from quill.ui.assistant_tools import (
     RunPythonDialog,
     WritingAssistantDialog,
 )
-from quill.ui.context_help import ContextHelpMixin
+from quill.ui.context_help import ContextHelpMixin, warm_help_topics
 from quill.ui.csv_grid import CsvGridSurface
 from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control, show_modal_dialog
 from quill.ui.editor_surface import PLAIN, RICH, surface_kind
@@ -1053,6 +1054,11 @@ class MainFrame(
         self._bw_download_status: dict[str, dict[str, object]] = {}
         self._last_intake_report = ""
         self._startup_deferred_ran = False
+        self._webview_warm = False
+        # Background task pool for offloading I/O out of UI-thread modal paths.
+        # Used by _offer_crash_recovery (snapshot read + mkdir) and the deferred
+        # startup task list.  Closed in run_app() shutdown.
+        self._task_manager = TaskManager()
         self._compare_session: _CompareSession | None = None
         self._compare_ignore_trailing_spaces = True
         self._compare_ignore_line_endings = True
@@ -1246,9 +1252,8 @@ class MainFrame(
                 detection = detect_screen_reader()
                 if detection.detected:
                     message = f"Detected screen reader: {detection.name}. Adaptive hints enabled."
-                    if (
-                        getattr(self.settings, "announce_screen_reader_detected", False)
-                        and getattr(self.settings, "verbosity_speech_enabled", True)
+                    if getattr(self.settings, "announce_screen_reader_detected", False) and getattr(
+                        self.settings, "verbosity_speech_enabled", True
                     ):
                         self._wx.CallAfter(self._set_status, message)
                     else:
@@ -1299,6 +1304,11 @@ class MainFrame(
             ("startup profile prompt", self.run_startup_profile_prompt),
             ("watch-folder startup", self._maybe_start_watch_folder),
             ("lexical cache warm-up", start_lexical_preload),
+            # §179: F1 / Shift+F1 sync-decodes ``topics.json`` the first time it
+            # is pressed. On a cold machine this can take a few hundred ms and
+            # trip the wx heartbeat watchdog while a modal is open. Pre-warm
+            # the renderer here so the first F1 is instant.
+            ("help topics warm-up", warm_help_topics),
             # §8.2 TTS-FALLBACK-ANNOUNCE: show status prompt when TTS init failed.
             ("TTS fallback check", self._check_tts_fallback_on_startup),
         ):
@@ -5647,13 +5657,53 @@ class MainFrame(
             self._show_modal_dialog(done, "Bug Report Sent", restore_editor_focus=False)
         return True
 
-    def _offer_crash_recovery(self) -> None:
-        if not self._recovery_offers:
-            return
-        wx = self._wx
-        offer = self._recovery_offers[0]
+    def _prepare_crash_recovery_payload(
+        self,
+        offer: object,
+        cancellation_token: object = None,
+        operation_id: object = None,
+        progress_callback: object = None,
+    ) -> dict[str, object]:
+        """Read the recovery snapshot + ensure the logs dir exist on a worker.
+
+        This is the slow bit that used to block the UI thread for >30s on
+        machines with large autosave files (#179).  No ``wx`` calls happen
+        here, so the result is safe to deliver back through
+        :class:`TaskManager` for the UI thread to render.
+        """
+        from quill.core.recovery import read_recovery_snapshot
+
         logs_path = app_data_dir() / "logs"
         logs_path.mkdir(parents=True, exist_ok=True)
+
+        preview_text = ""
+        try:
+            full, _had_rep = read_recovery_snapshot(offer.snapshot)
+            lines = full.splitlines()
+            preview_text = "\n".join(lines[:30])
+            if len(lines) > 30:
+                preview_text += f"\n\n... ({len(lines) - 30} more lines)"
+        except OSError:
+            preview_text = "(Could not read snapshot preview)"
+
+        return {
+            "logs_path": logs_path,
+            "preview_text": preview_text,
+        }
+
+    def _offer_crash_recovery(self) -> None:
+        """Show the crash-recovery dialog after offloading snapshot I/O.
+
+        The pre-modal ``mkdir`` + ``read_recovery_snapshot`` work is submitted
+        to :class:`TaskManager` so the UI thread stays responsive while the
+        autosave file is being read (#179).  The actual ``wx.Dialog`` +
+        ``ShowModal`` calls still run inside this method (on the UI thread,
+        after the worker delivers its result), so the dialog-inventory
+        qualname ``MainFrame._offer_crash_recovery`` is preserved.
+        """
+        if not self._recovery_offers:
+            return
+        offer = self._recovery_offers[0]
 
         # M-28 / §8.2: adaptive prompt text after repeated dismissals.
         if offer.dismissal_count >= 3:
@@ -5671,16 +5721,44 @@ class MainFrame(
                 "open the logs folder, or save diagnostics before continuing."
             )
 
-        # Pre-read the snapshot so we can show a preview (§8.2 recovery diff).
-        preview_text = ""
-        try:
-            _preview_full, _had_rep = read_recovery_snapshot(offer.snapshot)
-            lines = _preview_full.splitlines()
-            preview_text = "\n".join(lines[:30])
-            if len(lines) > 30:
-                preview_text += f"\n\n... ({len(lines) - 30} more lines)"
-        except OSError:
-            preview_text = "(Could not read snapshot preview)"
+        # Hold a slot so the ``TaskManager`` callback can reach the offer and
+        # intro without re-reading instance state.  The callback runs on the
+        # UI thread (via ``call_ui_safely``), so it is safe to call back into
+        # ``self._show_crash_recovery_dialog`` from inside the modal loop.
+        ctx: dict[str, object] = {"offer": offer, "intro": intro}
+
+        def _on_prepared(_operation_id: str, prepared: object) -> None:
+            if not isinstance(prepared, dict):
+                return
+            self._show_crash_recovery_dialog(ctx, prepared)
+
+        def _on_failed(_operation_id: str, _exc: BaseException) -> None:
+            self._report_startup_task_failure("crash recovery")
+
+        self._task_manager.submit(
+            name="crash-recovery-prepare",
+            func=self._prepare_crash_recovery_payload,
+            on_success=_on_prepared,
+            on_failure=_on_failed,
+            offer=offer,
+        )
+
+    def _show_crash_recovery_dialog(
+        self, ctx: dict[str, object], prepared: dict[str, object]
+    ) -> None:
+        """Build the crash-recovery modal and run the click loop on the UI thread.
+
+        Kept in its own method so the dialog-inventory gate can attribute the
+        ``wx.Dialog`` + ``wx.MessageDialog`` constructions to a stable qualname
+        (``MainFrame._show_crash_recovery_dialog``).  Called by
+        :meth:`_offer_crash_recovery` once ``TaskManager`` reports the
+        snapshot read is done.
+        """
+        wx = self._wx
+        offer = ctx["offer"]
+        intro = ctx["intro"]
+        logs_path = prepared["logs_path"]
+        preview_text = prepared["preview_text"]
 
         dialog = wx.Dialog(self.frame, title="Crash Recovery", size=(780, 520))
         root = wx.BoxSizer(wx.VERTICAL)
@@ -10096,18 +10174,14 @@ class MainFrame(
                     label_for_value = {value: label for value, label in spec.choices}
                     try:
                         custom_current = int(
-                            registry.get_value(
-                                self.settings, "browse_mode_followon_custom_ms"
-                            )
+                            registry.get_value(self.settings, "browse_mode_followon_custom_ms")
                         )
                     except (TypeError, ValueError):
                         custom_current = 4000
 
                     custom_max = int(getattr(custom_spec, "maximum", 60000) or 60000)
                     custom_min = int(getattr(custom_spec, "minimum", 0) or 0)
-                    custom_label = str(
-                        getattr(custom_spec, "label", "Custom value (milliseconds)")
-                    )
+                    custom_label = str(getattr(custom_spec, "label", "Custom value (milliseconds)"))
                     custom_choice_label = value_for_label.get("custom", "Custom...")
 
                     def _make_timeout_row(
@@ -10161,9 +10235,7 @@ class MainFrame(
                         c.SetStringSelection(m.get(str(v), ls[0]))
                     )
                     readers["browse_mode_followon_custom_ms"] = lambda s=spin: int(s.GetValue())
-                    writers["browse_mode_followon_custom_ms"] = lambda v, s=spin: s.SetValue(
-                        int(v)
-                    )
+                    writers["browse_mode_followon_custom_ms"] = lambda v, s=spin: s.SetValue(int(v))
                     control_index[spec.key] = (page_index, choice)
                     control_index["browse_mode_followon_custom_ms"] = (page_index, spin)
                     choice.Bind(wx.EVT_CHOICE, _mark_dirty)
@@ -10202,6 +10274,7 @@ class MainFrame(
                     # chooser above; skip its own row to avoid duplication.
                     if spec.key == "browse_mode_followon_custom_ms":
                         return
+
                     def _make_spin_int(_pp=parent_panel, _spec=spec, _cur=int(current)):
                         s = wx.SpinCtrl(_pp)
                         if _spec.minimum is not None and _spec.maximum is not None:
@@ -17468,7 +17541,14 @@ class MainFrame(
                 self._record_notification(f"Update {target.version} found; downloading", "update")
                 self._download_update_release(target)
                 return
-            action = self._show_update_available_dialog(current_version, target)
+            # #179: defer the WebView2 update dialog if the warm-up has not
+            # finished so the UI thread does not block for tens of seconds.
+            if self._webview_warm:
+                action = self._show_update_available_dialog(current_version, target)
+            else:
+                self._set_status("Preparing update dialog... (one-time WebView2 setup)")
+                self._wx.CallAfter(self._show_update_available_dialog, current_version, target)
+                action = "deferred"
             if action == "download":
                 self._download_update_release(target)
             elif action == "skip":
@@ -17524,7 +17604,12 @@ class MainFrame(
         save_settings(self.settings)
         self._set_status("Switched to the beta update channel")
         self._announce("Beta updates enabled")
-        action = self._show_update_available_dialog(current_version, release)
+        if self._webview_warm:
+            action = self._show_update_available_dialog(current_version, release)
+        else:
+            self._set_status("Preparing update dialog... (one-time WebView2 setup)")
+            self._wx.CallAfter(self._show_update_available_dialog, current_version, release)
+            action = "deferred"
         if action == "download":
             self._download_update_release(release)
         elif action == "skip":
@@ -19305,6 +19390,18 @@ class MainFrame(
         anchor = preview_anchor_for_text(text, tab.editor.GetInsertionPoint(), kind)
         title = f"{tab.document.name or 'Preview'} - Preview"
         body = render_preview_body(text, kind, dark=self._preview_is_dark())
+
+        # #179: WebView2's first ``New()`` call blocks the UI thread for tens
+        # of seconds.  If the deferred warm-up has not finished, defer the
+        # preview with a short status nudge so the editor stays responsive.
+        if not self._webview_warm:
+            self._set_status("Preparing preview... (one-time WebView2 setup)")
+            self._wx.CallLater(500, self._show_preview_in_app, title, body, anchor)
+            return
+
+        self._show_preview_in_app(title, body, anchor)
+
+    def _show_preview_in_app(self, title: str, body: str, anchor: str | None) -> None:
         from quill.ui.preview_dialog import MarkdownPreviewDialog
 
         MarkdownPreviewDialog(self.frame, title, body, anchor).show()
@@ -19447,11 +19544,18 @@ class MainFrame(
                     sentinel.Destroy()
                 except Exception:
                     pass
+                # #179: once the sentinel has loaded (or the 5 s fallback has
+                # fired) the WebView2 subprocess is up.  ``_on_update_fetch_done``
+                # and ``preview_in_app`` read this flag to decide whether to
+                # defer their WebView2 dialog until warm-up completes.
+                self._webview_warm = True
 
             wv.Bind(wx.html2.EVT_WEBVIEW_LOADED, _cleanup)
             self._wx.CallLater(5000, _cleanup)
         except Exception:
-            pass
+            # No wx.html2 — WebView2 is unavailable on this build.  Treat
+            # that as "warm" so we don't keep deferring previews forever.
+            self._webview_warm = True
 
     def _preview_is_dark(self) -> bool:
         """Whether preview surfaces should render with the dark theme (issue #83).
