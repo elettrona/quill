@@ -241,3 +241,24 @@ def test_welcome_page_preview_text_is_a_real_str() -> None:
     assert "value=str(self._PREVIEW)" in match.group(0), (
         "_WelcomePage preview TextCtrl must coerce lazy_gettext proxy to str"
     )
+
+
+def test_keyboard_sound_page_indent_choice_labels_are_str() -> None:
+    # #261 follow-up: wxPython's strict Choice overload checker on Windows
+    # rejects a _LazyString from `lazy_gettext(...)` when passed as `choices=`
+    # (same class of bug as _WelcomePage's preview TextCtrl). The exception
+    # was swallowed inside SetupWizardDialog.__init__ and surfaced as
+    # 'Startup step first-run setup wizard could not run' on every launch.
+    # Pin `str(label)` at the use site while keeping the module-level
+    # constant wrapped with lazy_gettext for Babel extraction.
+    import re
+
+    src = _wizard_pages_source()
+    match = re.search(
+        r"self\._indent\s*=\s*wx\.Choice\((?:[^()]|\([^()]*\))*\)",
+        src,
+    )
+    assert match is not None, "_KeyboardSoundPage indent Choice not found"
+    assert "choices=[str(label) for _value, label in self._INDENT_TONE_CHOICES]" in match.group(
+        0
+    ), "_KeyboardSoundPage indent Choice must coerce lazy_gettext labels to str"

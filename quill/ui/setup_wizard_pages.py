@@ -480,7 +480,7 @@ class _KeyboardSoundPage(_WizardPage):
         self._indent = wx.Choice(
             self,
             name="wizard.indent_tone_choice",
-            choices=[label for _value, label in self._INDENT_TONE_CHOICES],
+            choices=[str(label) for _value, label in self._INDENT_TONE_CHOICES],
         )
         current_scale = str(getattr(settings, "indent_tone_scale", "") or "")
         indent_idx = next(
