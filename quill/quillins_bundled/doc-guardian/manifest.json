@@ -161,6 +161,28 @@
                 ]
               }
             ]
+          },
+          {
+            "id": "lifecycle_announcements",
+            "title": "Lifecycle Announcements",
+            "description": "Speak a brief line when Document Guardian is enabled or disabled.",
+            "order": 3,
+            "sections": [
+              {
+                "id": "lifecycle",
+                "title": "Enable / Disable Spoken Cue",
+                "settings": [
+                  {
+                    "key": "enabled_announcements",
+                    "label": "Speak activation and deactivation cues",
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When on, speaks 'Document Guardian is now active.' on enable and 'is now inactive.' on disable. The status bar always shows the state regardless of this setting, so sighted users always know the Quillin is running. Default off keeps startup quiet for screen-reader users.",
+                    "search_keywords": ["speech", "screen reader", "startup", "quiet", "silent"]
+                  }
+                ]
+              }
+            ]
           }
         ]
       }

@@ -668,6 +668,31 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         feature_id="core.accessibility",
         keywords=("announcement", "startup", "speech", "contrast"),
     ),
+    SettingSpec(
+        "verbosity_speech_enabled",
+        "Speech channel (verbosity)",
+        "accessibility",
+        "bool",
+        "Master gate for the speech output channel. When off, spoken "
+        "announcements from built-in startup events and Quillin extensions "
+        "are suppressed. The status bar still receives the same text so "
+        "sighted and low-vision users see the information. Used as the "
+        "shim for the 0.7.1 verbosity rebuild.",
+        feature_id="core.accessibility",
+        keywords=("speech", "verbosity", "channel", "announcement", "quiet"),
+    ),
+    SettingSpec(
+        "announce_screen_reader_detected",
+        "Speak screen-reader detection result at startup",
+        "accessibility",
+        "bool",
+        "When enabled, speaks 'Detected screen reader: <name>. Adaptive "
+        "hints enabled.' after the screen-reader probe finishes. Off by "
+        "default to keep startup quiet; the result is still placed in the "
+        "status bar.",
+        feature_id="core.accessibility",
+        keywords=("screen reader", "detection", "JAWS", "NVDA", "Narrator"),
+    ),
     # --- Sound notifications (QSP) ----------------------------------------
     SettingSpec(
         "sound_enabled",

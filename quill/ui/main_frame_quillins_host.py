@@ -87,6 +87,12 @@ class _EditorHostServices:
     def announce(self, message: str) -> None:
         self._frame._announce(message)
 
+    def is_verbosity_speech_enabled(self) -> bool:
+        settings = getattr(self._frame, "settings", None)
+        if settings is None:
+            return True
+        return bool(getattr(settings, "verbosity_speech_enabled", True))
+
     def prompt(self, title: str, label: str, default: str) -> str | None:
         return self._frame._power_tools_prompt_single(title, label, default)
 

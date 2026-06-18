@@ -70,6 +70,14 @@ def test_startup_speech_gate_uses_quiet_status() -> None:
     assert "_set_status_quiet" in SOURCE
 
 
+def test_screen_reader_detected_announcement_is_gated() -> None:
+    # The "Detected screen reader: ..." line at the screen-reader probe must
+    # honor the new announce_screen_reader_detected AND verbosity_speech_enabled
+    # gates. The status bar still receives the text in the off branch.
+    assert "announce_screen_reader_detected" in SOURCE
+    assert "verbosity_speech_enabled" in SOURCE
+
+
 def test_show_about_quill_passes_real_about_info_instance() -> None:
     # #266: the traceback at line 11615 (`statuses = get_external_tool_statuses()`)
     # was from pre-#260 code. The current show_about_quill is a thin shim that

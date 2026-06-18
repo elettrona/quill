@@ -1245,10 +1245,14 @@ class MainFrame(
             try:
                 detection = detect_screen_reader()
                 if detection.detected:
-                    self._wx.CallAfter(
-                        self._set_status,
-                        f"Detected screen reader: {detection.name}. Adaptive hints enabled.",
-                    )
+                    message = f"Detected screen reader: {detection.name}. Adaptive hints enabled."
+                    if (
+                        getattr(self.settings, "announce_screen_reader_detected", False)
+                        and getattr(self.settings, "verbosity_speech_enabled", True)
+                    ):
+                        self._wx.CallAfter(self._set_status, message)
+                    else:
+                        self._wx.CallAfter(self._set_status_quiet, message)
                 # No-SR path: "Ready" was already announced in __init__; suppress the repeat.
             except Exception:
                 pass

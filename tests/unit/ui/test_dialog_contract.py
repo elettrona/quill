@@ -61,6 +61,9 @@ def test_show_modal_dialog_calls_accessibility_hooks_in_order() -> None:
     def announce(message: str) -> None:
         events.append(f"announce:{message}")
 
+    def is_verbosity_speech_enabled() -> bool:
+        return True
+
     dialog = _DialogWithIds(result=9)
 
     result = show_modal_dialog(

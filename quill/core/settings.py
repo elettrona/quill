@@ -80,6 +80,8 @@ class Settings:
     read_aloud_espeak_rate: int = 175
     announcement_trace_enabled: bool = False
     announcement_startup_tips_enabled: bool = False
+    verbosity_speech_enabled: bool = True
+    announce_screen_reader_detected: bool = False
     assistant_enabled: bool = False
     assistant_prompt_style: str = "balanced"
     markdown_clipboard_format: str = "html"
@@ -379,6 +381,10 @@ class Settings:
         announcement_trace_enabled = bool(data.get("announcement_trace_enabled", False))
         announcement_startup_tips_enabled = bool(
             data.get("announcement_startup_tips_enabled", False)
+        )
+        verbosity_speech_enabled = bool(data.get("verbosity_speech_enabled", True))
+        announce_screen_reader_detected = bool(
+            data.get("announce_screen_reader_detected", False)
         )
         assistant_enabled = bool(data.get("assistant_enabled", False))
         assistant_prompt_style = str(data.get("assistant_prompt_style", "balanced")).strip().lower()
@@ -695,6 +701,8 @@ class Settings:
             read_aloud_espeak_rate=read_aloud_espeak_rate,
             announcement_trace_enabled=announcement_trace_enabled,
             announcement_startup_tips_enabled=announcement_startup_tips_enabled,
+            verbosity_speech_enabled=verbosity_speech_enabled,
+            announce_screen_reader_detected=announce_screen_reader_detected,
             assistant_enabled=assistant_enabled,
             assistant_prompt_style=assistant_prompt_style,
             markdown_clipboard_format=markdown_clipboard_format,

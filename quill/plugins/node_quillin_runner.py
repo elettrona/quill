@@ -165,6 +165,8 @@ def _dispatch_action(action: dict[str, Any], services: HostServices) -> None:
     elif action_type == "open_buffer":
         services.open_buffer(_arg(0), _arg(1))
     elif action_type == "announce":
+        if not services.is_verbosity_speech_enabled():
+            return
         services.announce(_arg(0))
     elif action_type == "set_status":
         services.set_status(_arg(0))

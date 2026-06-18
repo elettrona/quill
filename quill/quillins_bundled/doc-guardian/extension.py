@@ -101,11 +101,15 @@ def on_after_save(api, event: dict) -> None:
 
 def on_enabled(api, event: dict) -> None:
     api.log("Document Guardian enabled — monitoring closes, saves, and sessions.")
+    if not api.get_setting("enabled_announcements", False):
+        return
     api.announce("Document Guardian is now active.")
 
 
 def on_disabled(api, event: dict) -> None:
     api.log("Document Guardian disabled.")
+    if not api.get_setting("enabled_announcements", False):
+        return
     api.announce("Document Guardian is now inactive.")
 
 

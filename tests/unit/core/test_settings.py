@@ -415,3 +415,55 @@ def test_announcement_startup_tips_setting_is_registered() -> None:
     assert spec.kind == "bool"
     assert spec.group == "accessibility"
     assert "announcement" in spec.keywords
+
+
+def test_settings_defaults_verbosity_speech_to_on(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    loaded = load_settings()
+    assert loaded.verbosity_speech_enabled is True
+
+
+def test_settings_round_trip_verbosity_speech(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    save_settings(Settings(verbosity_speech_enabled=False))
+    loaded = load_settings()
+    assert loaded.verbosity_speech_enabled is False
+
+
+def test_settings_defaults_announce_screen_reader_detected_to_off(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    loaded = load_settings()
+    assert loaded.announce_screen_reader_detected is False
+
+
+def test_settings_round_trip_announce_screen_reader_detected(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    save_settings(Settings(announce_screen_reader_detected=True))
+    loaded = load_settings()
+    assert loaded.announce_screen_reader_detected is True
+
+
+def test_verbosity_speech_setting_is_registered() -> None:
+    from quill.core.settings_registry import find_spec
+
+    spec = find_spec("verbosity_speech_enabled")
+    assert spec is not None
+    assert spec.kind == "bool"
+    assert spec.group == "accessibility"
+
+
+def test_announce_screen_reader_detected_setting_is_registered() -> None:
+    from quill.core.settings_registry import find_spec
+
+    spec = find_spec("announce_screen_reader_detected")
+    assert spec is not None
+    assert spec.kind == "bool"
+    assert spec.group == "accessibility"

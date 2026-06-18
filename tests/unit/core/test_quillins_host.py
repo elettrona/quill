@@ -40,6 +40,9 @@ class _RecordingServices:
     def announce(self, message: str) -> None:
         self.calls.append(("announce", (message,)))
 
+    def is_verbosity_speech_enabled(self) -> bool:
+        return True
+
     def read_file(self, path: str) -> str:
         self.calls.append(("read_file", (path,)))
         return "file contents"
@@ -266,3 +269,34 @@ def test_invoke_event_rejects_empty_handler_name() -> None:
     host, _sent = _event_host()
     with pytest.raises(QuillinError):
         host.invoke_event("", {})
+
+
+# -- verbosity speech gate ----------------------------------------------------
+
+
+class _SpeechGateServices(_RecordingServices):
+    """Variant of _RecordingServices that reports a configurable speech gate."""
+
+    def __init__(self, *, speech_enabled: bool) -> None:
+        super().__init__()
+        self._speech_enabled = speech_enabled
+
+    def is_verbosity_speech_enabled(self) -> bool:
+        return self._speech_enabled
+
+
+def test_announce_passes_through_when_speech_enabled() -> None:
+    services = _SpeechGateServices(speech_enabled=True)
+    dispatcher = ApiDispatcher(_manifest("ui.announce"), services)
+    result = _call(dispatcher, "announce", "Hello.")
+    assert result["ok"] is True
+    assert services.calls == [("announce", ("Hello.",))]
+
+
+def test_announce_is_suppressed_when_speech_disabled() -> None:
+    services = _SpeechGateServices(speech_enabled=False)
+    dispatcher = ApiDispatcher(_manifest("ui.announce"), services)
+    result = _call(dispatcher, "announce", "Hello.")
+    assert result["ok"] is True
+    # No "announce" call was forwarded to the host services — the gate dropped it.
+    assert ("announce", ("Hello.",)) not in services.calls
