@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>QUILL</title>
+  <title>QUILL-PRD</title>
   <style>
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -241,9 +241,6 @@
   </style>
 </head>
 <body>
-<header id="title-block-header">
-<h1 class="title">QUILL</h1>
-</header>
 <h1 id="quill-product-requirements-document">Quill: Product Requirements
 Document</h1>
 <h2
@@ -6423,6 +6420,38 @@ PC keyboards) via bits 16–23 of <code>GetRawKeyFlags()</code></li>
 <code>, </code>) are validated separately from simple bindings: the
 prefix part must be a known modifier+key combination and the second-key
 part must be a parseable single key or modifier+key.</p>
+<h3 id="811-the-ctrlalt-policy-revised-070">8.11 The Ctrl+Alt+ policy
+(revised 0.7.0)</h3>
+<p>Quill's long-standing policy was to forbid <code>Ctrl+Alt+</code>
+bindings outright because NVDA, JAWS, and Windows Speech Recognition
+intercept most of those chords app-globally. The 0.7.0 release (EdSharp
+port) revises the policy to permit a <code>Ctrl+Alt+</code> binding when
+one of two conditions holds:</p>
+<ol type="1">
+<li>The command id is in the <code>_CTRL_ALT_DOCUMENTED</code> allowlist
+in <code>quill/tools/menu_lint.py</code>. Each allowlist entry is paired
+with a screen-reader-binding justification in
+<code>docs/keybinding-standard.md</code>. The historical
+<code>view.send_to_tray</code> and <code>view.toggle_tab_control</code>
+entries predate the relaxation; the new heading entries (1..6) are
+documented because they override NVDA's switch-to-synth-N.</li>
+<li>The binding line in <code>keymap.py</code> ends with the inline
+comment <code># §edsharp-ok — &lt;justification&gt;</code>. The
+per-binding escape hatch lets future one-off bindings enter the keymap
+without a code change in <code>menu_lint.py</code>.</li>
+</ol>
+<p>The rename from <code>_CTRL_ALT_ALLOWED</code> to
+<code>_CTRL_ALT_DOCUMENTED</code> makes the narrower scope explicit: the
+allowlist is "documented exceptions," not a free pass. The gate
+continues to reject every other <code>Ctrl+Alt+</code> binding, and the
+regression test in <code>tests/unit/tools/test_menu_lint.py</code>
+(<code>test_ctrl_alt_uncommented_still_fails</code>) pins the
+contract.</p>
+<p>The full audit lives in the new
+<code>docs/keybinding-standard.md</code> document. The new EdSharp-port
+chord pairs (heading 1..6, list 7/8, section-move Alt+Shift+Up/Down) are
+all documented there with their justification comments and the
+screen-reader bindings they override.</p>
 <hr />
 <h2 id="9-accessibility-wcag-22-aa-conformance-and-certification">9.
 Accessibility, WCAG 2.2 AA conformance, and certification</h2>

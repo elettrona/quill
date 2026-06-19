@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>QUILL</title>
+  <title>release0.7.0</title>
   <style>
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -241,9 +241,6 @@
   </style>
 </head>
 <body>
-<header id="title-block-header">
-<h1 class="title">QUILL</h1>
-</header>
 <h1 id="quill-070-release-notes-meet-you-where-you-are">QUILL 0.7.0
 Release Notes: Meet You Where You Are</h1>
 <p>QUILL 0.7.0 is a community release in the truest sense of the
@@ -2686,6 +2683,72 @@ Existing setups should not get noisier on upgrade. Turn sound on from
 Off</h3>
 <p>Indentation tones do not play until you pick a scale. Code files
 remain silent unless you ask QUILL for tone feedback.</p>
+<h2
+id="experience-15-edsharp-port--screen-reader-safe-heading-shortcuts-section-move-list-toggle-and-a-section-status-cell">Experience
+15: EdSharp port — screen-reader-safe heading shortcuts, section-move,
+list toggle, and a Section status cell</h2>
+<p>The EdSharp <code>s:\edsharp.md</code> review called out two PRs
+whose accessibility patterns are worth carrying forward: PR #2
+(Alt+Shift+Up/Down section-move) and PR #3 (Ctrl+Alt+1..9 heading and
+list shortcuts). Both shipped in 0.7.0 after a careful revision of
+QUILL's longstanding screen-reader-safe keybinding rules.</p>
+<h3 id="move-whole-sections-with-altshiftup-and-altshiftdown">Move whole
+sections with <code>Alt+Shift+Up</code> and
+<code>Alt+Shift+Down</code></h3>
+<p>Pressing <code>Alt+Shift+Down</code> while the caret is on a heading
+moves that heading and its body past the next sibling heading at the
+same level. Pressing <code>Alt+Shift+Up</code> swaps it with the
+previous sibling. The move announces the heading it swapped with
+("Section moved below Meeting Notes") and stays inside the moved section
+so the caret lands on the same column of the new heading.</p>
+<p>Section-move is gated on the active surface. Markdown and HTML
+documents get the chord. Plain text announces "Section move is only
+available in Markdown or HTML documents" and the move is skipped. Fenced
+code blocks are honored: a <code># fake</code> line inside a
+triple-backtick fence is never promoted to a real sibling, so a fenced
+code block cannot become an unexpected target.</p>
+<p>The chord pair displaced the previous
+<code>edit.expand_selection</code> / <code>edit.shrink_selection</code>
+bindings. Those commands now live on the QUILL-key chord
+(<code>Ctrl+Shift+Grave, J</code> and
+<code>Ctrl+Shift+Grave, Shift+J</code>). Saved user keymaps from older
+builds are silently routed through <code>legacy_rebindings</code> so no
+one loses muscle memory on upgrade.</p>
+<h3 id="heading-shortcuts-at-ctrlalt16">Heading shortcuts at
+<code>Ctrl+Alt+1..6</code></h3>
+<p>The six heading shortcuts move from the QUILL-key chord space to
+<code>Ctrl+Alt+1</code> through <code>Ctrl+Alt+6</code> — the Office
+convention called out in EdSharp PR #3. Each chord carries an inline
+<code># §edsharp-ok</code> justification comment naming the
+screen-reader binding it overrides (NVDA's switch-to-synth-1..6), and a
+paired entry in <code>_CTRL_ALT_DOCUMENTED</code> in the menu-lint
+gate.</p>
+<p>Users who want both behaviours can keep the QUILL-key chord in their
+personal keymap; the legacy_rebindings entry rewrites the older
+<code>Ctrl+Shift+Grave, 1..6</code> saved binding to the new
+<code>Ctrl+Alt+1..6</code> automatically on load.</p>
+<h3 id="the-revised-108-ctrlalt-policy">The revised §10.8 Ctrl+Alt+
+policy</h3>
+<p>The original §10.8 policy banned <code>Ctrl+Alt+</code> outright. The
+0.7.0 revision relaxes the rule but keeps the gate strict: a
+<code>Ctrl+Alt+</code> binding may enter <code>DEFAULT_KEYMAP</code>
+when it is in the <code>_CTRL_ALT_DOCUMENTED</code> allowlist
+<strong>or</strong> carries an inline <code># §edsharp-ok</code>
+justification comment naming the screen-reader binding it overrides.
+Unjustified bindings still fail the gate.</p>
+<p>The full audit lives in the new
+<code>docs/keybinding-standard.md</code> document. The escape hatch is
+per-binding so future one-off exceptions do not need a code change in
+<code>menu_lint.py</code>.</p>
+<h3 id="copy-tray-binding-drift-guard">Copy Tray binding drift
+guard</h3>
+<p>A new <code>quill.tools.check_copy_tray_binding</code> gate ensures
+the 12 Copy Tray paste slots (Ctrl+Shift+1..9, Ctrl+Shift+0,
+Ctrl+Shift+-, Ctrl+Shift+=) keep their default bindings. A future change
+that reassigned any of those chords would now fail the gate. The gate is
+automatically delegated from <code>menu_lint</code> so a single
+<code>python -m quill.tools.menu_lint</code> invocation covers all
+keymap and menu structural invariants.</p>
 <h2
 id="closing-community-built-screen-reader-first-and-ready-for-what-comes-next">Closing:
 community-built, screen-reader-first, and ready for what comes next</h2>

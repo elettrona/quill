@@ -1639,6 +1639,12 @@ Quill detects whether the current surface looks like Markdown, HTML, or plain te
 
 The heading tools do more than insert decoration. They help you maintain usable structure. The list tools speed up common authoring patterns without forcing you into a separate composer.
 
+For inline heading control, press `Ctrl+Alt+1` through `Ctrl+Alt+6` to convert the current line to the matching heading level in Markdown and HTML surfaces. Press the same chord again on an already-matching heading to clear the level. The chord is documented in §10.2 of `docs/keybinding-standard.md` and overrides NVDA's switch-to-synth-1..6; if you use NVDA's synth switcher, you can rebind the QUILL heading chord via the Keymap Editor (`Ctrl+Shift+Grave, K`).
+
+For section-level reorganisation in Markdown and HTML, press `Alt+Shift+Down` while the caret is on a heading to swap that section past its next sibling; `Alt+Shift+Up` swaps it with the previous sibling. The chord is gated on Markdown and HTML — plain-text documents announce the chord is unavailable and the move is skipped. Fenced code blocks are honored, so a `# fake` line inside a ``` fence is never promoted to a real sibling.
+
+The previous `Alt+Shift+Up` / `Alt+Shift+Down` bindings (expand/shrink selection) live on `Ctrl+Shift+Grave, J` and `Ctrl+Shift+Grave, Shift+J` now; saved keymaps from older builds migrate automatically.
+
 ### Citations and bibliographies
 
 For research writing, **Insert -> Insert Citation...** builds correctly formatted citations from details you type, so you do not have to wrestle with the punctuation and indentation rules by hand.

@@ -1348,6 +1348,34 @@ Most earcons are off until you choose a sound pack and enable events. Existing s
 
 Indentation tones do not play until you pick a scale. Code files remain silent unless you ask QUILL for tone feedback.
 
+## Experience 15: EdSharp port — screen-reader-safe heading shortcuts, section-move, list toggle, and a Section status cell
+
+The EdSharp `s:\edsharp.md` review called out two PRs whose accessibility patterns are worth carrying forward: PR #2 (Alt+Shift+Up/Down section-move) and PR #3 (Ctrl+Alt+1..9 heading and list shortcuts). Both shipped in 0.7.0 after a careful revision of QUILL's longstanding screen-reader-safe keybinding rules.
+
+### Move whole sections with `Alt+Shift+Up` and `Alt+Shift+Down`
+
+Pressing `Alt+Shift+Down` while the caret is on a heading moves that heading and its body past the next sibling heading at the same level. Pressing `Alt+Shift+Up` swaps it with the previous sibling. The move announces the heading it swapped with ("Section moved below Meeting Notes") and stays inside the moved section so the caret lands on the same column of the new heading.
+
+Section-move is gated on the active surface. Markdown and HTML documents get the chord. Plain text announces "Section move is only available in Markdown or HTML documents" and the move is skipped. Fenced code blocks are honored: a `# fake` line inside a triple-backtick fence is never promoted to a real sibling, so a fenced code block cannot become an unexpected target.
+
+The chord pair displaced the previous `edit.expand_selection` / `edit.shrink_selection` bindings. Those commands now live on the QUILL-key chord (`Ctrl+Shift+Grave, J` and `Ctrl+Shift+Grave, Shift+J`). Saved user keymaps from older builds are silently routed through `legacy_rebindings` so no one loses muscle memory on upgrade.
+
+### Heading shortcuts at `Ctrl+Alt+1..6`
+
+The six heading shortcuts move from the QUILL-key chord space to `Ctrl+Alt+1` through `Ctrl+Alt+6` — the Office convention called out in EdSharp PR #3. Each chord carries an inline `# §edsharp-ok` justification comment naming the screen-reader binding it overrides (NVDA's switch-to-synth-1..6), and a paired entry in `_CTRL_ALT_DOCUMENTED` in the menu-lint gate.
+
+Users who want both behaviours can keep the QUILL-key chord in their personal keymap; the legacy_rebindings entry rewrites the older `Ctrl+Shift+Grave, 1..6` saved binding to the new `Ctrl+Alt+1..6` automatically on load.
+
+### The revised §10.8 Ctrl+Alt+ policy
+
+The original §10.8 policy banned `Ctrl+Alt+` outright. The 0.7.0 revision relaxes the rule but keeps the gate strict: a `Ctrl+Alt+` binding may enter `DEFAULT_KEYMAP` when it is in the `_CTRL_ALT_DOCUMENTED` allowlist **or** carries an inline `# §edsharp-ok` justification comment naming the screen-reader binding it overrides. Unjustified bindings still fail the gate.
+
+The full audit lives in the new `docs/keybinding-standard.md` document. The escape hatch is per-binding so future one-off exceptions do not need a code change in `menu_lint.py`.
+
+### Copy Tray binding drift guard
+
+A new `quill.tools.check_copy_tray_binding` gate ensures the 12 Copy Tray paste slots (Ctrl+Shift+1..9, Ctrl+Shift+0, Ctrl+Shift+-, Ctrl+Shift+=) keep their default bindings. A future change that reassigned any of those chords would now fail the gate. The gate is automatically delegated from `menu_lint` so a single `python -m quill.tools.menu_lint` invocation covers all keymap and menu structural invariants.
+
 ## Closing: community-built, screen-reader-first, and ready for what comes next
 
 QUILL 0.7.0 is more than a list of features. It is proof that accessible software can be joyful, powerful, careful, and community-shaped at the same time.

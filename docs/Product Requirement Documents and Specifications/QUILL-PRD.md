@@ -3515,6 +3515,17 @@ The QUILL key (`Ctrl+Shift+Grave` by default) operates as a two-layer prefix sys
 
 **Keymap Editor validation.** Chord bindings (containing `, `) are validated separately from simple bindings: the prefix part must be a known modifier+key combination and the second-key part must be a parseable single key or modifier+key.
 
+### 8.11 The Ctrl+Alt+ policy (revised 0.7.0)
+
+Quill's long-standing policy was to forbid `Ctrl+Alt+` bindings outright because NVDA, JAWS, and Windows Speech Recognition intercept most of those chords app-globally.  The 0.7.0 release (EdSharp port) revises the policy to permit a `Ctrl+Alt+` binding when one of two conditions holds:
+
+1. The command id is in the `_CTRL_ALT_DOCUMENTED` allowlist in `quill/tools/menu_lint.py`.  Each allowlist entry is paired with a screen-reader-binding justification in `docs/keybinding-standard.md`.  The historical `view.send_to_tray` and `view.toggle_tab_control` entries predate the relaxation; the new heading entries (1..6) are documented because they override NVDA's switch-to-synth-N.
+2. The binding line in `keymap.py` ends with the inline comment `# §edsharp-ok — <justification>`.  The per-binding escape hatch lets future one-off bindings enter the keymap without a code change in `menu_lint.py`.
+
+The rename from `_CTRL_ALT_ALLOWED` to `_CTRL_ALT_DOCUMENTED` makes the narrower scope explicit: the allowlist is "documented exceptions," not a free pass.  The gate continues to reject every other `Ctrl+Alt+` binding, and the regression test in `tests/unit/tools/test_menu_lint.py` (`test_ctrl_alt_uncommented_still_fails`) pins the contract.
+
+The full audit lives in the new `docs/keybinding-standard.md` document.  The new EdSharp-port chord pairs (heading 1..6, list 7/8, section-move Alt+Shift+Up/Down) are all documented there with their justification comments and the screen-reader bindings they override.
+
 ---
 
 ## 9. Accessibility, WCAG 2.2 AA conformance, and certification

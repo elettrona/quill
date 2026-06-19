@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>QUILL</title>
+  <title>userguide</title>
   <style>
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -241,9 +241,6 @@
   </style>
 </head>
 <body>
-<header id="title-block-header">
-<h1 class="title">QUILL</h1>
-</header>
 <h1 id="quill-user-guide">Quill User Guide</h1>
 <p><strong>QUILL</strong> stands for <strong>Quality, Usable, Inclusive,
 Lightweight, Literate</strong>.</p>
@@ -3124,6 +3121,26 @@ commands that make sense in context.</p>
 <p>The heading tools do more than insert decoration. They help you
 maintain usable structure. The list tools speed up common authoring
 patterns without forcing you into a separate composer.</p>
+<p>For inline heading control, press <code>Ctrl+Alt+1</code> through
+<code>Ctrl+Alt+6</code> to convert the current line to the matching
+heading level in Markdown and HTML surfaces. Press the same chord again
+on an already-matching heading to clear the level. The chord is
+documented in §10.2 of <code>docs/keybinding-standard.md</code> and
+overrides NVDA's switch-to-synth-1..6; if you use NVDA's synth switcher,
+you can rebind the QUILL heading chord via the Keymap Editor
+(<code>Ctrl+Shift+Grave, K</code>).</p>
+<p>For section-level reorganisation in Markdown and HTML, press
+<code>Alt+Shift+Down</code> while the caret is on a heading to swap that
+section past its next sibling; <code>Alt+Shift+Up</code> swaps it with
+the previous sibling. The chord is gated on Markdown and HTML —
+plain-text documents announce the chord is unavailable and the move is
+skipped. Fenced code blocks are honored, so a <code># fake</code> line
+inside a ``` fence is never promoted to a real sibling.</p>
+<p>The previous <code>Alt+Shift+Up</code> / <code>Alt+Shift+Down</code>
+bindings (expand/shrink selection) live on
+<code>Ctrl+Shift+Grave, J</code> and
+<code>Ctrl+Shift+Grave, Shift+J</code> now; saved keymaps from older
+builds migrate automatically.</p>
 <h3 id="citations-and-bibliographies">Citations and bibliographies</h3>
 <p>For research writing, <strong>Insert -&gt; Insert
 Citation...</strong> builds correctly formatted citations from details
