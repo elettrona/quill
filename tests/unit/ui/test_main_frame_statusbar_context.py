@@ -118,3 +118,93 @@ def test_statusbar_cell_context_menu_offers_required_actions(frame: MainFrame) -
     assert activated == ["line_column"]
     assert hidden == ["line_column"]
     assert opened == ["settings"]
+
+
+class _DeadButton:
+    """Stand-in for a wx button whose C++ object has been destroyed.
+
+    Every wx attribute/method raises RuntimeError, mimicking the
+    'wrapped C/C++ object of type ... has been deleted' condition that
+    surfaces when ctrl+F4 closes a tab while a caret event is still
+    in the queue (#269)."""
+
+    def __getattr__(self, _name: str) -> object:  # pragma: no cover - always raises
+        raise RuntimeError("wrapped C/C++ object of type TextCtrl has been deleted")
+
+
+class _LiveButton:
+    def __init__(self) -> None:
+        self.label = ""
+        self.help_text = ""
+        self.name = ""
+        self.min_size: tuple[int, int] | None = None
+
+    def SetLabel(self, label: str) -> None:
+        self.label = label
+
+    def SetHelpText(self, text: str) -> None:
+        self.help_text = text
+
+    def SetName(self, name: str) -> None:
+        self.name = name
+
+    def SetMinSize(self, size: tuple[int, int]) -> None:
+        self.min_size = size
+
+
+def test_refresh_statusbar_skips_dead_widget_cell(frame: MainFrame) -> None:
+    """#269: ctrl+F4 leaves a dead C++ button behind; _refresh_statusbar must
+    skip it instead of crashing the whole statusbar refresh."""
+
+    live = _LiveButton()
+    dead = _DeadButton()
+    frame._statusbar_cells = [
+        _StatusBarCell(item="file_path", button=dead),
+        _StatusBarCell(item="line_column", button=live),
+    ]
+
+    class _Statusbar:
+        def Layout(self) -> None:
+            pass
+
+    frame.statusbar = _Statusbar()
+
+    # No exception should bubble out, even though the first cell's button is
+    # already destroyed at the C++ layer.
+    frame._refresh_statusbar()
+
+    # The live cell still gets its label written (skipped cells do not).
+    assert live.label != ""
+
+
+def test_statusbar_text_for_item_returns_empty_when_editor_is_dead() -> None:
+    """#269: closing a tab can leave self.editor pointing at a destroyed
+    C++ TextCtrl. _statusbar_text_for_item must return an empty string
+    instead of letting the RuntimeError crash the statusbar refresh."""
+
+    frame = MainFrame.__new__(MainFrame)
+    frame._wx = _Wx()
+    frame.settings = Settings()
+    frame._status_message = "Ready"
+    frame._read_aloud = None
+    frame._notifications = []
+    frame._autosave_interval = None  # type: ignore[assignment]
+    frame.document = None  # type: ignore[assignment]
+
+    class _DeadEditor:
+        def GetValue(self) -> str:  # pragma: no cover - always raises
+            raise RuntimeError("wrapped C/C++ object of type TextCtrl has been deleted")
+
+        def GetInsertionPoint(self) -> int:  # pragma: no cover - always raises
+            raise RuntimeError("wrapped C/C++ object of type TextCtrl has been deleted")
+
+        def GetSelection(self) -> tuple[int, int]:  # pragma: no cover - always raises
+            raise RuntimeError("wrapped C/C++ object of type TextCtrl has been deleted")
+
+    frame.editor = _DeadEditor()  # type: ignore[assignment]
+
+    # These three items all read from self.editor; they must all return ""
+    # when the underlying C++ object has been deleted.
+    assert frame._statusbar_text_for_item("line_column") == ""
+    assert frame._statusbar_text_for_item("word_count") == ""
+    assert frame._statusbar_text_for_item("selection") == "Sel 0"

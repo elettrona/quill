@@ -130,23 +130,35 @@ class StatusBarMixin:
             document = getattr(self, "document", None)
             if editor is None or document is None:
                 return ""
-            line, column = line_column_for_position(
-                editor.GetValue(),
-                editor.GetInsertionPoint(),
-            )
+            # #269: ctrl+F4 can leave self.editor pointing at a destroyed
+            # C++ TextCtrl. Treat the dead-widget condition as "no editor"
+            # so a queued caret event does not crash the statusbar refresh.
+            try:
+                line, column = line_column_for_position(
+                    editor.GetValue(),
+                    editor.GetInsertionPoint(),
+                )
+            except RuntimeError:
+                return ""
             return f"Ln {line}, Col {column}"
         if item == "word_count":
             editor = getattr(self, "editor", None)
             if editor is None:
                 return ""
-            stats = compute_document_stats(editor.GetValue())
+            try:
+                stats = compute_document_stats(editor.GetValue())
+            except RuntimeError:
+                return ""
             return f"{stats.words:,} words"
         if item == "mode":
             return "Overwrite" if getattr(self, "_overwrite_mode", False) else "Insert"
         if item == "selection":
             editor = getattr(self, "editor", None)
             if editor is not None and hasattr(editor, "GetSelection"):
-                start, end = editor.GetSelection()
+                try:
+                    start, end = editor.GetSelection()
+                except RuntimeError:
+                    return "Sel 0"
                 length = max(0, end - start)
                 return f"Sel {length}"
             return "Sel 0"
@@ -435,9 +447,16 @@ class StatusBarMixin:
             self._build_statusbar_cells()
         for cell in self._statusbar_cells:
             item = cell.item
-            cell.button.SetLabel(self._statusbar_button_label(item))
-            cell.button.SetHelpText(self._statusbar_help_text(item))
-            cell.button.SetName(self._STATUS_BAR_LABELS.get(item, item))
+            try:
+                # The button itself can also be a dead C++ wrapper if the
+                # statusbar was torn down mid-refresh. Treat the dead-widget
+                # condition as a transient skip and let the next refresh
+                # try again (#269).
+                cell.button.SetLabel(self._statusbar_button_label(item))
+                cell.button.SetHelpText(self._statusbar_help_text(item))
+                cell.button.SetName(self._STATUS_BAR_LABELS.get(item, item))
+            except RuntimeError:
+                continue
             try:
                 cell.button.SetMinSize((-1, -1))
                 if item != "message":
@@ -451,6 +470,9 @@ class StatusBarMixin:
         if not hasattr(self, "statusbar"):
             return
         items = self._statusbar_items()
+        # #269: _statusbar_text_for_item returns safe fallbacks if the live
+        # editor's C++ wrapper has been destroyed, so this list comprehension
+        # is now safe even when a tab was just closed.
         texts = [self._statusbar_text_for_item(item) for item in items]
         if hasattr(self.statusbar, "SetFieldsCount"):
             self.statusbar.SetFieldsCount(len(items))

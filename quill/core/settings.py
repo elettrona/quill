@@ -187,6 +187,17 @@ class Settings:
     language: str = ""
     # WIZARD: True once the first-run setup wizard has completed.
     setup_wizard_completed: bool = False
+    # WIZARD: intent profile picked by the user in the first-run setup wizard.
+    # Empty string means "no choice yet" (defaults to the writer of the default
+    # text_editor profile in main_frame.run_startup_wizard). Mirrors the values
+    # that the wizard writes to settings so subsequent reads survive a save/reload.
+    setup_wizard_intent: str = ""
+    # WIZARD: optional extras toggled on by the wizard (used to apply Quillins
+    # after the dialog closes). Defaults match the getattr fallbacks that the
+    # caller historically used when these fields were not persisted.
+    setup_wizard_wants_ai: bool = False
+    setup_wizard_wants_braille: bool = False
+    setup_wizard_wants_automation: bool = False
     # UPGRADE: True once we have shown the post-upgrade braille-pack install prompt.
     upgrade_prompt_braille_pack: bool = False
     # QDC: Developer Console settings.
@@ -551,6 +562,10 @@ class Settings:
         bug_reporter_email = str(data.get("bug_reporter_email", "")).strip()
         language = str(data.get("language", "")).strip()
         setup_wizard_completed = bool(data.get("setup_wizard_completed", False))
+        setup_wizard_intent = str(data.get("setup_wizard_intent", "")).strip()
+        setup_wizard_wants_ai = bool(data.get("setup_wizard_wants_ai", False))
+        setup_wizard_wants_braille = bool(data.get("setup_wizard_wants_braille", False))
+        setup_wizard_wants_automation = bool(data.get("setup_wizard_wants_automation", False))
         upgrade_prompt_braille_pack = bool(data.get("upgrade_prompt_braille_pack", False))
         console_enabled = bool(data.get("console_enabled", True))
         try:
@@ -800,6 +815,10 @@ class Settings:
             multi_press_window_ms=multi_press_window_ms,
             language=language,
             setup_wizard_completed=setup_wizard_completed,
+            setup_wizard_intent=setup_wizard_intent,
+            setup_wizard_wants_ai=setup_wizard_wants_ai,
+            setup_wizard_wants_braille=setup_wizard_wants_braille,
+            setup_wizard_wants_automation=setup_wizard_wants_automation,
             upgrade_prompt_braille_pack=upgrade_prompt_braille_pack,
             console_enabled=console_enabled,
             console_python_timeout=console_python_timeout,

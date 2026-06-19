@@ -47,12 +47,12 @@
     "quill/core/settings_specs.py": 1426,
     "quill/core/watch_actions.py": 789,
     "quill/io/structured.py": 664,
-    "quill/core/settings.py": 856,
+    "quill/core/settings.py": 875,
     "quill/ui/main_frame_image.py": 598,
     "quill/core/copy_tray.py": 139,
     "quill/ui/main_frame_copy_tray.py": 332,
     "quill/ui/copy_tray_dialog.py": 267,
-    "quill/ui/main_frame_statusbar.py": 620,
+    "quill/ui/main_frame_statusbar.py": 642,
     "quill/core/abbreviations.py": 266,
     "quill/core/multi_press.py": 59,
     "quill/ui/main_frame_abbreviations.py": 205,
@@ -162,5 +162,6 @@
   "_rebaseline_2026_06_17_shift_f10": "main_frame.py 23893->23910 (+17): intercept Shift+F10 and the Windows Menu key in _on_editor_key_down to call _on_editor_context_menu directly, since wx does not reliably synthesize EVT_CONTEXT_MENU for those keys inside a TextCtrl. Positions the menu at DefaultPosition so wx places it near the caret.",
   "_rebaseline_2026_06_18_quill_key_265": "main_frame_quill_key.py 650->689 (+39): #265 fixes — _announce('QUILL key') on prefix press, multi-strategy ? detection (GetUnicodeKey fallback), browse-mode follow-on timeout split into _browse_mode_timeout/_browse_mode_timed_out, and cheat-sheet chord_map + prefix passed through to build_cheat_sheet. Growth is bug fix and accessibility polish; CQ-1 decomposition is the path to lower it.",
   "_rebaseline_2026_06_18_settings_265": "settings.py 801->813 (+12) and settings_specs.py 1328->1344 (+16): #265 fixes — new browse_mode_followon_timeout_seconds field (load, clamp, Settings dataclass, SettingSpec). settings.py was already 5 lines over its 796 budget from prior work; settings_specs.py was already 5 lines over its 1323 budget from prior work. Both rebaselined together with this commit to acknowledge the pre-existing overflow plus the #265 addition.",
-  "_rebaseline_2026_06_18_262_pandoc_menu_move": "main_frame_menu.py 3458->3472 (+14) for the user-requested move of the Batch Conversion entry out of the Tools menu and into File > Import and File > Export (one entry in each, both invoking run_batch_conversion_wizard). The change adds two new menu IDs (_id_batch_convert_import, _id_batch_convert_export) in place of the now-removed _id_batch_convert, two new menu items in the Import and Export submenus (each with its own separator), and two new EVT_MENU binds in the binding block. No net change to settings.py or settings_specs.py. The keymap action is renamed from tools.batch_conversion to file.batch_conversion to match the new menu location; the chord (Ctrl+Shift+Grave, B) is unchanged. CQ-1 decomposition is still the path to lower main_frame_menu.py."
+  "_rebaseline_2026_06_18_262_pandoc_menu_move": "main_frame_menu.py 3458->3472 (+14) for the user-requested move of the Batch Conversion entry out of the Tools menu and into File > Import and File > Export (one entry in each, both invoking run_batch_conversion_wizard). The change adds two new menu IDs (_id_batch_convert_import, _id_batch_convert_export) in place of the now-removed _id_batch_convert, two new menu items in the Import and Export submenus (each with its own separator), and two new EVT_MENU binds in the binding block. No net change to settings.py or settings_specs.py. The keymap action is renamed from tools.batch_conversion to file.batch_conversion to match the new menu location; the chord (Ctrl+Shift+Grave, B) is unchanged. CQ-1 decomposition is still the path to lower main_frame_menu.py.",
+  "_rebaseline_2026_06_19_269": "settings.py 856->875 (+19) and main_frame_statusbar.py 620->642 (+22) for the #269 bug fix. settings.py gains four new dataclass fields (setup_wizard_intent, setup_wizard_wants_ai/b/raille/automation) plus the corresponding reads and assignments in Settings.from_dict so the startup wizard's choice survives a save/reload cycle. main_frame_statusbar.py wraps the three live-editor reads in _statusbar_text_for_item (line_column, word_count, selection) with try/except RuntimeError so a queued caret event after Ctrl+F4 does not crash the statusbar refresh when the underlying TextCtrl has been destroyed at the C++ layer; the cell-button writes in _refresh_statusbar gain the same guard. Both files were re-baselined together so the GATE-11 commit can land; CQ-1 decomposition is still the path to lower both budgets."
 }
