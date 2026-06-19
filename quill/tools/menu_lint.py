@@ -16,6 +16,10 @@ Three invariants checked statically against source:
    submenu (passed to ``AppendSubMenu``) *and* itself have ``AppendSubMenu``
    called on it — that would create three-level nesting.
 
+The gate also delegates to :mod:`quill.tools.check_copy_tray_binding` so a
+single ``python -m quill.tools.menu_lint`` invocation enforces that the
+12 Copy Tray paste slots keep their default ``Ctrl+Shift+`` chords.
+
 Run directly (``python -m quill.tools.menu_lint``) or via pytest
 (``tests/unit/tools/test_menu_lint.py``).  Exit code is non-zero when any
 violation is found.
@@ -204,6 +208,15 @@ def run_checks() -> list[str]:
     if depth:
         errors.append("Three-level nesting violations (§10.4 two-level cap):")
         errors.extend(depth)
+
+    # Delegate the Copy Tray binding guard so menu_lint remains a single
+    # one-shot gate for keymap + menu structural issues.
+    from quill.tools.check_copy_tray_binding import run_checks as _copy_tray_checks
+
+    copy_tray = _copy_tray_checks()
+    if copy_tray:
+        errors.append("Copy Tray binding drift:")
+        errors.extend(copy_tray)
 
     return errors
 
