@@ -93,3 +93,79 @@ def test_validate_heading_sequence_reports_issues() -> None:
     assert any("start at H1" in issue for issue in issues)
     assert any("skipped" in issue for issue in issues)
     assert any("empty" in issue for issue in issues)
+
+
+# --- Fence-aware markdown parsing -----------------------------------------
+
+
+def test_parse_markdown_heading_blocks_skips_fenced_backticks() -> None:
+    """A line beginning with ``#`` inside a ``` fence must not be parsed
+    as a heading, even though the regex would match it on its own."""
+    text = (
+        "# Real Heading\n"
+        "Paragraph line.\n"
+        "```python\n"
+        "# not a heading\n"
+        "def f():\n"
+        "    # also not\n"
+        "```\n"
+        "## After Fence\n"
+        "Body\n"
+    )
+    blocks = parse_heading_blocks(text, "markdown")
+    assert [block.title for block in blocks] == ["Real Heading", "After Fence"]
+    assert [block.level for block in blocks] == [1, 2]
+
+
+def test_parse_markdown_heading_blocks_skips_fenced_tildes() -> None:
+    """Tilde fences (~~~) must be recognised with the same fidelity as
+    backtick fences."""
+    text = "# Real\n~~~text\n# not a heading\n~~~ \n## After\n"
+    blocks = parse_heading_blocks(text, "markdown")
+    assert [block.title for block in blocks] == ["Real", "After"]
+
+
+def test_parse_markdown_heading_blocks_handles_unclosed_fence() -> None:
+    """If the document ends inside an open fence, every line from the
+    opening fence to EOF must be treated as code (no headings found after
+    the opening fence)."""
+    text = "# Real\n```\n# not closed\n# still not\n"
+    blocks = parse_heading_blocks(text, "markdown")
+    assert [block.title for block in blocks] == ["Real"]
+
+
+def test_parse_markdown_heading_blocks_resets_fence_on_close() -> None:
+    """A heading on the line *after* the closing fence is recognised again."""
+    text = "# A\n```\n# fenced\n```\n# back outside\n"
+    blocks = parse_heading_blocks(text, "markdown")
+    assert [block.title for block in blocks] == ["A", "back outside"]
+
+
+def test_parse_markdown_heading_blocks_section_end_after_fenced_heading() -> None:
+    """The section_end of a real heading must skip over any fenced code
+    block (the fenced content belongs to the preceding section, not to the
+    heading after it)."""
+    text = "# Top\nPara\n```\n# fake\n```\n## After\nBody\n"
+    blocks = parse_heading_blocks(text, "markdown")
+    assert len(blocks) == 2
+    top, after = blocks
+    assert top.title == "Top"
+    assert after.title == "After"
+    # Top's section must include the fenced block.
+    assert top.section_end == after.start
+
+
+def test_parse_markdown_heading_blocks_indented_fence_close() -> None:
+    """CommonMark allows a closing fence with up to three spaces of indent.
+    A heading inside a fence that closes with leading whitespace must still
+    be excluded."""
+    text = "# Real\n```\n# inside\n   ```\n## After\n"
+    blocks = parse_heading_blocks(text, "markdown")
+    assert [block.title for block in blocks] == ["Real", "After"]
+
+
+def test_parse_markdown_heading_blocks_html_path_unchanged() -> None:
+    """HTML parsing must not regress on the fence-aware refactor."""
+    text = "<h1>A</h1><h2>B</h2>"
+    blocks = parse_heading_blocks(text, "html")
+    assert [block.level for block in blocks] == [1, 2]  # type: ignore[misc]

@@ -825,6 +825,9 @@ class MenuBuilderMixin:
         self._id_outdent = wx.NewIdRef()
         self._id_move_line_up = wx.NewIdRef()
         self._id_move_line_down = wx.NewIdRef()
+        # PR1 (EdSharp port): section-move ids, distinct from move-line.
+        self._id_move_section_up = wx.NewIdRef()
+        self._id_move_section_down = wx.NewIdRef()
         self._id_duplicate_line = wx.NewIdRef()
         self._id_delete_line = wx.NewIdRef()
         self._id_join_lines = wx.NewIdRef()

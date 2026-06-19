@@ -257,6 +257,11 @@ COMMAND_FEATURE_MAP: dict[str, str] = {
     "format.toggle_case": "core.format",
     "format.move_line_up": "core.format",
     "format.move_line_down": "core.format",
+    # PR1 (EdSharp port): section-move pair. Distinct from move_line_up/down —
+    # section-move swaps the entire heading section (heading + body) past its
+    # sibling, while move_line_up/down operate on the caret's line only.
+    "format.move_section_up": "core.format",
+    "format.move_section_down": "core.format",
     "format.duplicate_line": "core.format",
     "format.delete_line": "core.format",
     "format.join_lines": "core.format",

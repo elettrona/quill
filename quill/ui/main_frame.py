@@ -496,6 +496,7 @@ from quill.ui.main_frame_power_tools_menu import PowerToolsMenuMixin
 from quill.ui.main_frame_profile_picker import ProfilePickerMixin
 from quill.ui.main_frame_quill_key import QuillKeyMixin
 from quill.ui.main_frame_quillins import QuillinsMenuMixin
+from quill.ui.main_frame_section_move import SectionMoveMixin
 from quill.ui.main_frame_selection import SelectionMarksMixin
 from quill.ui.main_frame_sessions import SessionsMixin
 from quill.ui.main_frame_ssh import SshEditingMixin
@@ -792,6 +793,7 @@ class MainFrame(
     StatusBarMixin,
     IntellisensePopupMixin,
     LineCommandsMixin,
+    SectionMoveMixin,
     CopyTrayMixin,
     ProfilePickerMixin,
     SshEditingMixin,
@@ -3046,6 +3048,20 @@ class MainFrame(
             self.move_line_down,
             self._binding_for("format.move_line_down"),
         )
+        # PR1 (EdSharp port): section-move pair. Bound to Alt+Shift+Up/Down.
+        # See docs/keybinding-standard.md for the §edsharp-ok justification.
+        self.commands.register(
+            "format.move_section_up",
+            "Move Section Up",
+            self.move_section_up,
+            self._binding_for("format.move_section_up"),
+        )
+        self.commands.register(
+            "format.move_section_down",
+            "Move Section Down",
+            self.move_section_down,
+            self._binding_for("format.move_section_down"),
+        )
         self.commands.register(
             "format.duplicate_line",
             "Duplicate Line",
@@ -3470,6 +3486,9 @@ class MainFrame(
             "format.outdent": self._id_outdent,
             "format.move_line_up": self._id_move_line_up,
             "format.move_line_down": self._id_move_line_down,
+            # PR1 (EdSharp port): section-move command ids.
+            "format.move_section_up": self._id_move_section_up,
+            "format.move_section_down": self._id_move_section_down,
             "format.duplicate_line": self._id_duplicate_line,
             "format.delete_line": self._id_delete_line,
             "format.insert_html_tag": self._id_insert_html_tag,
@@ -4988,6 +5007,9 @@ class MainFrame(
             move_up_id = wx.NewIdRef()
             move_down_id = wx.NewIdRef()
             join_id = wx.NewIdRef()
+            # PR1 (EdSharp port): section-move entries.
+            move_section_up_id = wx.NewIdRef()
+            move_section_down_id = wx.NewIdRef()
             line_menu.Append(dup_id, self._menu_label("Duplicate Line", "edit.duplicate_line"))
             line_menu.Append(del_id, self._menu_label("Delete Line", "edit.delete_line"))
             line_menu.Append(move_up_id, self._menu_label("Move Line Up", "edit.move_line_up"))
@@ -4995,11 +5017,23 @@ class MainFrame(
                 move_down_id, self._menu_label("Move Line Down", "edit.move_line_down")
             )
             line_menu.Append(join_id, "Join With Next Line")
+            line_menu.Append(
+                move_section_up_id,
+                self._menu_label("Move Section Up", "format.move_section_up"),
+            )
+            line_menu.Append(
+                move_section_down_id,
+                self._menu_label("Move Section Down", "format.move_section_down"),
+            )
             line_menu.Bind(wx.EVT_MENU, lambda _e: self.duplicate_line(), id=dup_id)
             line_menu.Bind(wx.EVT_MENU, lambda _e: self.delete_line(), id=del_id)
             line_menu.Bind(wx.EVT_MENU, lambda _e: self.move_line_up(), id=move_up_id)
             line_menu.Bind(wx.EVT_MENU, lambda _e: self.move_line_down(), id=move_down_id)
             line_menu.Bind(wx.EVT_MENU, lambda _e: self.join_lines(), id=join_id)
+            line_menu.Bind(wx.EVT_MENU, lambda _e: self.move_section_up(), id=move_section_up_id)
+            line_menu.Bind(
+                wx.EVT_MENU, lambda _e: self.move_section_down(), id=move_section_down_id
+            )
             menu.AppendSubMenu(line_menu, "Line")
 
         # --- GLOW submenu (core.glow). ---

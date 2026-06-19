@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,6 +22,12 @@ _HTML_HEADING_PATTERN = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
+# Recognise the opening line of a fenced code block.  The closing fence is any
+# line that contains only the same fence character (``` or ~~~), optionally
+# preceded by up to three spaces of indentation and followed by optional
+# trailing whitespace.  We deliberately use a permissive regex here because
+# indented closing fences (CommonMark §4.5) are common in real-world docs.
+_FENCE_PATTERN = re.compile(r"^(?P<indent>[ ]{0,3})(?P<fence>`{3,}|~{3,})[ \t]*(?P<info>.*)$")
 
 
 def parse_heading_blocks(text: str, markup_kind: str) -> list[HeadingBlock]:
@@ -30,6 +36,30 @@ def parse_heading_blocks(text: str, markup_kind: str) -> list[HeadingBlock]:
     if markup_kind == "html":
         return _parse_html_heading_blocks(text)
     return []
+
+
+def _is_fence_close(line: str, open_fence: str) -> bool:
+    """Return True if ``line`` closes the fence opened with ``open_fence``.
+
+    CommonMark §4.5: a closing fence must use the same character (``` or ~~~)
+    as the opening fence and be at least as long.  Indentation up to three
+    spaces is allowed.  Anything after the fence is treated as info-string
+    content and ignored.
+    """
+    stripped = line.lstrip(" ")
+    indent = len(line) - len(stripped)
+    if indent > 3:
+        return False
+    if not stripped.startswith(open_fence[0]):
+        return False
+    char = open_fence[0]
+    count = 0
+    for ch in stripped:
+        if ch == char:
+            count += 1
+        else:
+            break
+    return count >= len(open_fence) and stripped[count:].strip() == ""
 
 
 def validate_heading_sequence(
@@ -120,23 +150,49 @@ def apply_heading_organizer_edits(
 
 
 def _parse_markdown_heading_blocks(text: str) -> list[HeadingBlock]:
-    matches = list(_MD_HEADING_PATTERN.finditer(text))
+    # Walk the document line by line so we can recognise fenced code blocks
+    # (``` or ~~~) and skip any `# ...` lines that appear inside them.
+    # CommonMark §4.5: an opening fence is 3+ backticks or tildes; a closing
+    # fence must use the same character and be at least as long.
     blocks: list[HeadingBlock] = []
-    for index, match in enumerate(matches):
-        start = match.start()
-        end = match.end()
-        section_end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
-        blocks.append(
-            HeadingBlock(
-                source_index=index,
-                level=len(match.group("marker")),
-                title=(match.group("title") or "").strip(),
-                start=start,
-                end=end,
-                section_start=start,
-                section_end=section_end,
-            )
-        )
+    open_fence: str | None = None
+    block_index = 0
+    line_start = 0
+    for line in text.splitlines(keepends=True):
+        stripped = line.lstrip(" ")
+        indent = len(line) - len(stripped)
+        if open_fence is not None:
+            if _is_fence_close(line, open_fence):
+                open_fence = None
+        else:
+            fence_match = _FENCE_PATTERN.match(line) if indent <= 3 else None
+            if fence_match is not None:
+                open_fence = fence_match.group("fence")
+            else:
+                heading_match = _MD_HEADING_PATTERN.match(line)
+                if heading_match is not None:
+                    start = line_start
+                    end = line_start + len(line)
+                    blocks.append(
+                        HeadingBlock(
+                            source_index=block_index,
+                            level=len(heading_match.group("marker")),
+                            title=(heading_match.group("title") or "").strip(),
+                            start=start,
+                            end=end,
+                            section_start=start,
+                            section_end=0,  # filled in once the next block is found
+                        )
+                    )
+                    block_index += 1
+        line_start += len(line)
+    # Fill in section_end for every block: the last block's section runs to
+    # end-of-text; earlier blocks end where the next block begins.
+    for index, block in enumerate(blocks):
+        if index + 1 < len(blocks):
+            blocks[index] = replace(block, section_end=blocks[index + 1].start)
+        else:
+            blocks[index] = replace(block, section_end=len(text))
     return blocks
 
 

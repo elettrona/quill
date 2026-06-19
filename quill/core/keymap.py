@@ -128,8 +128,17 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "edit.list_marks": "Alt+M",
     "edit.select_paragraph": "",  # Ctrl+Alt+P removed (§10.8 screen-reader-hostile)
     "edit.select_block": "Ctrl+Shift+B",
-    "edit.expand_selection": "Alt+Shift+Up",
-    "edit.shrink_selection": "Alt+Shift+Down",
+    # PR1 (EdSharp port): section move takes the Alt+Shift+Up/Down slot. The
+    # previous expand/shrink selection pair migrates to the QUILL-key chord.
+    # PR1 (EdSharp port): section move takes the Alt+Shift+Up/Down slot. The
+    # previous expand/shrink selection pair migrates to the QUILL-key chord.
+    # J and Shift+J were free in the QUILL-key second-key space (verified
+    # against DEFAULT_KEYMAP and both profile JSONs); they sit adjacent to
+    # the existing I/H/G group of navigate/contrast/chord-prefix neighbours.
+    "edit.expand_selection": "Ctrl+Shift+Grave, J",  # was Alt+Shift+Up (§edsharp-ok)
+    "edit.shrink_selection": "Ctrl+Shift+Grave, Shift+J",  # was Alt+Shift+Down (§edsharp-ok)
+    "format.move_section_up": "Alt+Shift+Up",  # §edsharp-ok — markdown/html only
+    "format.move_section_down": "Alt+Shift+Down",  # §edsharp-ok — markdown/html only
     "edit.set_named_mark": "",
     "edit.jump_to_named_mark": "",
     "edit.open_review_buffer": "",
@@ -330,6 +339,13 @@ def merge_keymaps(raw: object) -> dict[str, str]:
         "format.expand_abbreviation": ("", "Ctrl+Shift+Grave, A"),
         "format.manage_abbreviations": ("", "Ctrl+Shift+Grave, Shift+A"),
         "format.toggle_abbreviation_expansion": ("", "Ctrl+Shift+Grave, E"),
+        # PR1 (EdSharp port): users from any pre-0.7.0 build who had the old
+        # Alt+Shift+Up/Down expand/shrink selection bindings saved in their
+        # keymap are migrated to the new QUILL-key chord home for those
+        # commands.  The new format.move_section_up/down defaults take the
+        # Alt+Shift+Up/Down slot.
+        "edit.expand_selection": ("ALT+SHIFT+UP", "Ctrl+Shift+Grave, J"),
+        "edit.shrink_selection": ("ALT+SHIFT+DOWN", "Ctrl+Shift+Grave, Shift+J"),
     }
     legacy_preview_conflict = (
         str(raw.get("view.preview", "")).strip().upper() == "CTRL+SHIFT+P"
