@@ -18,12 +18,13 @@ Implemented:
 
 Validation:
 
-- `ruff format quill\core\publishing_clients.py tests\unit\core\test_publishing.py`
-- `ruff check quill\core\publishing_clients.py tests\unit\core\test_publishing.py`
+- `ruff format quill\core\publishing_validation.py tests\unit\core\test_publishing.py`
+- `ruff check quill\core\publishing_validation.py tests\unit\core\test_publishing.py`
 - `pytest tests\unit\core\test_publishing.py tests\unit\core\test_publishing_framework.py -q --basetemp=.tmp\pytest-provider-validation`
   - result: `20 passed in 0.59s`
 - `pytest tests\unit\core\test_publishing.py tests\unit\core\test_publishing_browse.py tests\unit\core\test_publishing_framework.py -q --basetemp=.tmp\pytest-provider-validation-wide`
-  - result: `39 passed in 3.36s`
+  - result: `39 passed in 3.89s`
+- full `tests/unit` after extraction: `3726 passed, 11 skipped, 54 failed`; remaining failures are outside the touched publishing validation slice and are left for their owning main-side work
 
 Next likely implementation direction:
 

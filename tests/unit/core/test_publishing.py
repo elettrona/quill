@@ -7,6 +7,7 @@ import pytest
 
 import quill.core.publishing as publishing
 import quill.core.publishing_clients as publishing_clients
+import quill.core.publishing_validation as publishing_validation
 from quill.core import paths
 from quill.core.publishing import PublishingConnectionProfile
 from quill.core.publishing_providers import (
@@ -382,13 +383,13 @@ def _register_verify_only_provider(*, operation: str = PUBLISHING_OPERATION_VERI
 
 
 def test_registered_provider_clients_validate_cleanly() -> None:
-    assert publishing_clients.validate_registered_publishing_provider_clients() == ()
+    assert publishing_validation.validate_registered_publishing_provider_clients() == ()
 
 
 def test_provider_validation_reports_missing_client() -> None:
     _register_verify_only_provider()
     try:
-        issues = publishing_clients.validate_registered_publishing_provider_clients()
+        issues = publishing_validation.validate_registered_publishing_provider_clients()
     finally:
         unregister_publishing_provider("verifyonly")
 
@@ -401,7 +402,7 @@ def test_provider_validation_reports_orphan_client() -> None:
     client = _VerifyOnlyClient()
     publishing_clients.register_publishing_provider_client(client)
     try:
-        issues = publishing_clients.validate_registered_publishing_provider_clients()
+        issues = publishing_validation.validate_registered_publishing_provider_clients()
     finally:
         publishing_clients.unregister_publishing_provider_client("verifyonly")
 
@@ -414,7 +415,7 @@ def test_provider_validation_checks_declared_operation_methods() -> None:
     _register_verify_only_provider(operation="browse")
     publishing_clients.register_publishing_provider_client(_VerifyOnlyClient())
     try:
-        issues = publishing_clients.validate_publishing_provider_client("verifyonly")
+        issues = publishing_validation.validate_publishing_provider_client("verifyonly")
     finally:
         publishing_clients.unregister_publishing_provider_client("verifyonly")
         unregister_publishing_provider("verifyonly")

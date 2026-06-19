@@ -6,7 +6,7 @@ Provider/client validation implementation checkpoint:
 
 - user approved committing locally as work proceeds, with no push
 - implemented the planned provider/client registration validation slice
-- added validation API in `quill/core/publishing_clients.py`:
+- added validation API in `quill/core/publishing_validation.py`:
   - `PublishingProviderValidationIssue`
   - `validate_publishing_provider_client(...)`
   - `validate_registered_publishing_provider_clients(...)`
@@ -18,19 +18,27 @@ Provider/client validation implementation checkpoint:
 
 Verification:
 
-- `ruff format quill\core\publishing_clients.py tests\unit\core\test_publishing.py`
-- `ruff check quill\core\publishing_clients.py tests\unit\core\test_publishing.py`
+- `ruff format quill\core\publishing_validation.py tests\unit\core\test_publishing.py`
+- `ruff check quill\core\publishing_validation.py tests\unit\core\test_publishing.py`
   - result: all checks passed
 - `pytest tests\unit\core\test_publishing.py tests\unit\core\test_publishing_framework.py -q --basetemp=.tmp\pytest-provider-validation`
   - result: `20 passed in 0.59s`
 - `pytest tests\unit\core\test_publishing.py tests\unit\core\test_publishing_browse.py tests\unit\core\test_publishing_framework.py -q --basetemp=.tmp\pytest-provider-validation-wide`
-  - result: `39 passed in 3.36s`
+  - result: `39 passed in 3.89s`
 
 Next read:
 
 - provider/client validation is now implemented
 - next work should decide where validation is surfaced for bundled/future providers before any WordPress extraction or live Quillin provider loading
 - no push has been performed
+Full unit-suite follow-up:
+
+- initial full `pytest tests\unit -q --basetemp=.tmp\pytest-unit-full` exposed one in-scope failure: `quill/core/publishing_clients.py` exceeded the GATE-11 module-size budget
+- fixed the in-scope issue by extracting validation into new pure module `quill/core/publishing_validation.py` instead of raising the existing budget
+- reran `tests/unit/tools/test_module_size_budget.py`: `8 passed in 0.64s`
+- reran broader publishing tests after extraction: `39 passed in 3.89s`
+- reran full `tests/unit`: `3726 passed, 11 skipped, 54 failed, 2 warnings in 145.00s`
+- remaining full-suite failures are outside the touched publishing validation slice and include pre-existing/main-side areas such as AI/session settings, BRF page detection, settings/onboarding persistence, devtools history, open-read line endings, and share-dialog offer expectations
 ## 2026-06-18 21:33:40 -04:00
 
 Recovery / branch-state checkpoint:

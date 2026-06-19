@@ -5,7 +5,7 @@ Status: active upstream implementation checkpoint on `feature/publishing-provide
 ## 2026-06-18 provider/client validation
 
 - implemented the planned provider/client registration validation slice
-- added validation helpers in `quill/core/publishing_clients.py`:
+- added validation helpers in `quill/core/publishing_validation.py`:
   - `PublishingProviderValidationIssue`
   - `validate_publishing_provider_client(...)`
   - `validate_registered_publishing_provider_clients(...)`
@@ -13,7 +13,7 @@ Status: active upstream implementation checkpoint on `feature/publishing-provide
 - tests cover clean built-in registration, missing client, orphan client, and operation/client-method drift
 - validation passed:
   - focused: `20 passed in 0.59s`
-  - broader core publishing: `39 passed in 3.36s`
+  - broader core publishing: `39 passed in 3.89s`
 - next likely work should remain extraction-prep focused: decide where this validation is surfaced for bundled/future providers before any WordPress extraction or live Quillin provider loading
 ## 2026-06-18 upstream access and branch recovery
 

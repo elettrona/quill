@@ -13,10 +13,10 @@
   - implemented operation declared without a required callable client method
 - tests added around a fake partial provider/client to pin drift detection before WordPress is moved toward a first-party bundled Quillin boundary
 - verification:
-  - `ruff format quill\core\publishing_clients.py tests\unit\core\test_publishing.py`
-  - `ruff check quill\core\publishing_clients.py tests\unit\core\test_publishing.py` -> all checks passed
+  - `ruff format quill\core\publishing_validation.py tests\unit\core\test_publishing.py`
+  - `ruff check quill\core\publishing_validation.py tests\unit\core\test_publishing.py` -> all checks passed
   - focused publishing/framework tests: `20 passed in 0.59s`
-  - broader core publishing tests: `39 passed in 3.36s`
+  - broader core publishing tests: `39 passed in 3.89s`
 - no push performed
 ## 2026-06-18 Upstream Access Recovery Checkpoint
 

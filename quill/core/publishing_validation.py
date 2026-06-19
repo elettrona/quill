@@ -1,0 +1,114 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from quill.core.publishing_clients import publishing_provider_client
+from quill.core.publishing_providers import (
+    PUBLISHING_OPERATION_BROWSE,
+    PUBLISHING_OPERATION_CREATE,
+    PUBLISHING_OPERATION_LOAD,
+    PUBLISHING_OPERATION_PUBLISH,
+    PUBLISHING_OPERATION_UPDATE,
+    PUBLISHING_OPERATION_VERIFY,
+    available_publishing_providers,
+    provider_implemented_operations,
+    publishing_provider_definition,
+)
+
+_OPERATION_METHODS = {
+    PUBLISHING_OPERATION_VERIFY: "verify_connection",
+    PUBLISHING_OPERATION_BROWSE: "browse_content",
+    PUBLISHING_OPERATION_LOAD: "load_remote_item",
+    PUBLISHING_OPERATION_UPDATE: "update_remote_item",
+    PUBLISHING_OPERATION_CREATE: "create_remote_item",
+    PUBLISHING_OPERATION_PUBLISH: "create_remote_item",
+}
+
+
+@dataclass(frozen=True, slots=True)
+class PublishingProviderValidationIssue:
+    provider_id: str
+    message: str
+
+
+def validate_publishing_provider_client(
+    provider_id: str,
+) -> tuple[PublishingProviderValidationIssue, ...]:
+    normalized = provider_id.strip().lower()
+    definition = publishing_provider_definition(normalized)
+    if definition is None:
+        return (
+            PublishingProviderValidationIssue(
+                normalized,
+                f"{normalized or 'Unknown provider'} publishing provider is not registered.",
+            ),
+        )
+    client = publishing_provider_client(normalized)
+    if client is None:
+        return (
+            PublishingProviderValidationIssue(
+                normalized,
+                f"{definition.name} publishing provider has no registered client.",
+            ),
+        )
+    issues: list[PublishingProviderValidationIssue] = []
+    client_provider_id = str(getattr(client, "provider_id", "")).strip().lower()
+    if client_provider_id != normalized:
+        issues.append(
+            PublishingProviderValidationIssue(
+                normalized,
+                (
+                    f"{definition.name} publishing client id '{client_provider_id}' "
+                    f"does not match provider id '{normalized}'."
+                ),
+            )
+        )
+    for operation in provider_implemented_operations(normalized):
+        clean_operation = operation.strip().lower()
+        method_name = _OPERATION_METHODS.get(clean_operation)
+        if method_name is None:
+            issues.append(
+                PublishingProviderValidationIssue(
+                    normalized,
+                    f"{definition.name} declares unknown publishing operation '{operation}'.",
+                )
+            )
+            continue
+        method = getattr(client, method_name, None)
+        if not callable(method):
+            issues.append(
+                PublishingProviderValidationIssue(
+                    normalized,
+                    (
+                        f"{definition.name} declares {clean_operation} support but its "
+                        f"client has no callable {method_name}."
+                    ),
+                )
+            )
+    return tuple(issues)
+
+
+def validate_registered_publishing_provider_clients() -> tuple[
+    PublishingProviderValidationIssue, ...
+]:
+    issues: list[PublishingProviderValidationIssue] = []
+    definition_ids = {definition.id for definition in available_publishing_providers()}
+    client_ids = set(_registered_provider_client_ids())
+    for provider_id in sorted(definition_ids):
+        issues.extend(validate_publishing_provider_client(provider_id))
+    for provider_id in sorted(client_ids - definition_ids):
+        issues.append(
+            PublishingProviderValidationIssue(
+                provider_id,
+                f"{provider_id} publishing client has no registered provider definition.",
+            )
+        )
+    return tuple(issues)
+
+
+def _registered_provider_client_ids() -> tuple[str, ...]:
+    # Kept private so provider loading policy can change without exposing
+    # the registry as mutable public API.
+    import quill.core.publishing_clients as clients
+
+    return tuple(clients._PUBLISHING_PROVIDER_CLIENTS)
