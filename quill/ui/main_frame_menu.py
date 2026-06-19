@@ -49,6 +49,28 @@ class MenuBuilderMixin:
         self._id_print = wx.NewIdRef()
         self._id_save_plain_text = wx.NewIdRef()
         self._id_clear_recent = wx.NewIdRef()
+        # #262: Pandoc Import / Export menu ids (one per Tier-1 format).
+        # Each id binds through the command registry in main_frame.py.
+        self._id_import_markdown = wx.NewIdRef()
+        self._id_import_html = wx.NewIdRef()
+        self._id_import_docx = wx.NewIdRef()
+        self._id_import_odt = wx.NewIdRef()
+        self._id_import_rtf = wx.NewIdRef()
+        self._id_import_epub = wx.NewIdRef()
+        self._id_import_csv = wx.NewIdRef()
+        self._id_import_latex = wx.NewIdRef()
+        self._id_import_other = wx.NewIdRef()  # "Other Pandoc Format..."
+        self._id_export_markdown = wx.NewIdRef()
+        self._id_export_html = wx.NewIdRef()
+        self._id_export_docx = wx.NewIdRef()
+        self._id_export_odt = wx.NewIdRef()
+        self._id_export_rtf = wx.NewIdRef()
+        self._id_export_epub = wx.NewIdRef()
+        self._id_export_pdf = wx.NewIdRef()
+        self._id_export_plain_text = wx.NewIdRef()
+        self._id_export_other = wx.NewIdRef()  # "Other Pandoc Format..."
+        self._id_batch_convert = wx.NewIdRef()
+        self._id_advanced_pandoc = wx.NewIdRef()  # placeholder for Tier-2/3
         self._sessions_menu = wx.Menu()
         self._open_documents_menu = wx.Menu()
         self._recent_sessions_menu = wx.Menu()
@@ -119,6 +141,88 @@ class MenuBuilderMixin:
         file_menu.Append(self._id_save_as, self._menu_label(_("Save &As..."), "file.save_as"))
         file_menu.Append(self._id_save_all, _("Save A&ll"))
         file_menu.Append(self._id_save_plain_text, _("Save As Plain &Text..."))
+        file_menu.AppendSeparator()
+        # --- Import / Export (issue #262) -----------------------------------
+        import_menu = wx.Menu()
+        import_menu.Append(
+            self._id_import_markdown,
+            self._menu_label(_("&Markdown..."), "file.import_markdown"),
+        )
+        import_menu.Append(
+            self._id_import_html,
+            self._menu_label(_("&HTML..."), "file.import_html"),
+        )
+        import_menu.Append(
+            self._id_import_docx,
+            self._menu_label(_("&Word Document..."), "file.import_docx"),
+        )
+        import_menu.Append(
+            self._id_import_odt,
+            self._menu_label(_("&OpenDocument Text..."), "file.import_odt"),
+        )
+        import_menu.Append(
+            self._id_import_rtf,
+            self._menu_label(_("&Rich Text Format..."), "file.import_rtf"),
+        )
+        import_menu.Append(
+            self._id_import_epub,
+            self._menu_label(_("&EPUB Book..."), "file.import_epub"),
+        )
+        import_menu.Append(
+            self._id_import_csv,
+            self._menu_label(_("CSV / &TSV Table..."), "file.import_csv"),
+        )
+        import_menu.Append(
+            self._id_import_latex,
+            self._menu_label(_("&LaTeX / TeX..."), "file.import_latex"),
+        )
+        import_menu.AppendSeparator()
+        import_menu.Append(
+            self._id_import_other,
+            self._menu_label(_("Other Pandoc Format..."), "file.import_other_pandoc"),
+        )
+        file_menu.AppendSubMenu(import_menu, _("&Import"))
+
+        export_menu = wx.Menu()
+        export_menu.Append(
+            self._id_export_markdown,
+            self._menu_label(_("&Markdown..."), "file.export_markdown"),
+        )
+        export_menu.Append(
+            self._id_export_html,
+            self._menu_label(_("&HTML..."), "file.export_html"),
+        )
+        export_menu.Append(
+            self._id_export_docx,
+            self._menu_label(_("&Word Document..."), "file.export_docx"),
+        )
+        export_menu.Append(
+            self._id_export_odt,
+            self._menu_label(_("&OpenDocument Text..."), "file.export_odt"),
+        )
+        export_menu.Append(
+            self._id_export_rtf,
+            self._menu_label(_("&Rich Text Format..."), "file.export_rtf"),
+        )
+        export_menu.Append(
+            self._id_export_epub,
+            self._menu_label(_("&EPUB Book..."), "file.export_epub"),
+        )
+        export_menu.Append(
+            self._id_export_pdf,
+            self._menu_label(_("&PDF Document..."), "file.export_pdf"),
+        )
+        export_menu.Append(
+            self._id_export_plain_text,
+            self._menu_label(_("Plain &Text..."), "file.export_plain_text"),
+        )
+        export_menu.AppendSeparator()
+        export_menu.Append(
+            self._id_export_other,
+            self._menu_label(_("Other Pandoc Format..."), "file.export_other_pandoc"),
+        )
+        file_menu.AppendSubMenu(export_menu, _("&Export"))
+
         file_menu.AppendSeparator()
         # --- Restore / reload ---
         file_menu.Append(self._id_reload_from_disk, _("&Reload from Disk"))
@@ -1205,6 +1309,14 @@ class MenuBuilderMixin:
             self._id_palette,
             self._menu_label(_("&Command Palette..."), "app.command_palette"),
         )
+        tools_menu.Append(
+            self._id_batch_convert,
+            self._menu_label(_("&Batch Conversion..."), "tools.batch_conversion"),
+        )
+        tools_menu.Append(
+            self._id_advanced_pandoc,
+            self._menu_label(_("&Pandoc Conversion Center..."), "tools.advanced_pandoc"),
+        )
         tools_menu.AppendSeparator()
 
         # Writing & Language -----------------------------------------------
@@ -1966,6 +2078,59 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.save_as_plain_text(),
             id=self._id_save_plain_text,
+        )
+        # #262: Pandoc Import / Export menu bindings.
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.import_document("markdown"), id=self._id_import_markdown
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.import_document("html"), id=self._id_import_html
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.import_document("docx"), id=self._id_import_docx
+        )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.import_document("odt"), id=self._id_import_odt)
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.import_document("rtf"), id=self._id_import_rtf)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.import_document("epub"), id=self._id_import_epub
+        )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.import_document("csv"), id=self._id_import_csv)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.import_document("latex"), id=self._id_import_latex
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.import_document_other(), id=self._id_import_other
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.export_document("markdown"), id=self._id_export_markdown
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.export_document("html"), id=self._id_export_html
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.export_document("docx"), id=self._id_export_docx
+        )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.export_document("odt"), id=self._id_export_odt)
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.export_document("rtf"), id=self._id_export_rtf)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.export_document("epub"), id=self._id_export_epub
+        )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.export_document("pdf"), id=self._id_export_pdf)
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.export_document("plain_text"),
+            id=self._id_export_plain_text,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.export_document_other(), id=self._id_export_other
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.run_batch_conversion_wizard(), id=self._id_batch_convert
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_advanced_pandoc_placeholder(),
+            id=self._id_advanced_pandoc,
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_palette(), id=self._id_palette)
         self.frame.Bind(

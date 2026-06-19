@@ -22,6 +22,8 @@ Quill is also in beta. Expect polish, depth, and real daily utility. Also expect
 - [The Main Window](#the-main-window)
 - [The Menu Bar Reference](#the-menu-bar-reference)
 - [Writing and Editing](#writing-and-editing)
+  - [Import and Export](#import-and-export)
+  - [Batch Conversion](#batch-conversion)
 - [Search, Replace, and Deep Navigation](#search-replace-and-deep-navigation)
 - [QUILL Quick Nav Mode](#quill-quick-nav-mode)
 - [Formatting and Markup Work](#formatting-and-markup-work)
@@ -1176,6 +1178,73 @@ The dialog lists all twelve slots. Each row shows the slot number, an optional l
 - Double-press any paste chord to hear what is in that slot without pasting — useful when navigating your tray by memory.
 - Slots survive restarts. Build a small library of recurring fragments you reach for daily.
 - All bindings are reassignable in the Keymap Editor (`Tools > Customize & Support > Preferences > Keyboard`).
+
+### Import and Export
+
+QUILL can convert between the formats the people around you actually use, without you leaving the editor. **File > Import** brings a non-QUILL document into QUILL as a new tab. **File > Export** saves the current buffer as a different file type. Both routes use Pandoc on a background thread, so the editor never freezes.
+
+**Import (File > Import):** Markdown, CommonMark, GitHub-Flavored Markdown, HTML, Word documents (`.docx`), OpenDocument Text (`.odt`), Rich Text (`.rtf`), plain text, CSV / TSV tables, EPUB books, LaTeX / TeX.
+
+**Export (File > Export):** the same set plus PDF (export only).
+
+A few minutes of muscle memory covers most workflows:
+
+- Pick **File > Import > Word Document**, choose a `.docx`, and a new Markdown tab opens with the document ready to edit.
+- Pick **File > Export > EPUB Book**, choose a folder, and QUILL writes an EPUB next to your current file.
+- Pick **File > Export > PDF** to publish a finished document.
+
+**Single-file keyboard path.** `File > Import` and `File > Export` are regular menu items — open the menu, arrow down, press Enter. There is no single shortcut for the whole list, because the format choice is the whole point of the command. The Command Palette (`Ctrl+Shift+P`) is the fastest path: type `import` or `export` and pick the format from the filtered list.
+
+**Post-conversion prompt.** When the target format is editable in QUILL (Markdown, CommonMark, GFM, HTML, plain text, CSV / TSV) the editor asks whether to open the new file in a new window. Press **Yes** to open, **No** to keep working where you were. PDF, DOCX, EPUB, ODT, and RTF do not prompt because QUILL cannot edit them directly; a confirmation message tells you where the file landed and copies the path to the clipboard so you can paste it into File Explorer.
+
+**Out of scope.** PDF *import* is intentionally not supported — Pandoc cannot do it reliably, and the dedicated braille and DAISY pipelines are the right tools for print-to-braille conversion. For every format Pandoc supports that is not in the Tier-1 list, open **Tools > Pandoc Conversion Center...** for the roadmap note.
+
+### Batch Conversion
+
+When you have a folder full of documents to convert, opening them one at a time is not the right tool. **Tools > Batch Conversion...** (or **QUILL key, B**) opens a four-page wizard that converts a whole folder of files on a background thread.
+
+**The wizard, page by page.**
+
+1. **Introduction.** A short summary, then a live Pandoc version probe. If Pandoc is not installed, the page says so and Start stays disabled until you install Pandoc 3.x from <https://pandoc.org>.
+2. **Folder and options.** A folder picker, an **Include subfolders** checkbox, an **Output layout** radio (Same folder as source, or Output subfolder per source folder), and an **Overwrite** radio (Ask each time, Never, Always). Defaults come from Settings, so the wizard respects your preferences the moment it opens. The last folder you used is remembered for next time.
+3. **Format and profile.** A **Direction** radio (Import into QUILL, or Export from QUILL), a source-format list and a target-format list drawn from the Tier-1 set, and a profile picker for the seven built-in conversion profiles.
+4. **Review and start.** A plain-text summary of the entire plan. Press **Start** to submit the batch and close the wizard.
+
+**Output naming.** QUILL keeps the originating stem and replaces the extension. `report.docx` becomes `report.md` (or `report.html`, `report.epub`, ...). With **Output subfolder per source folder** (the default) the output lands in a new `Output/` folder inside the source folder; with **Same folder as source** it lands next to the input.
+
+**Profiles.** The wizard's profile picker offers seven curated profiles. Each profile is a small set of Pandoc CLI flags plus a plain-language description that the screen reader reads aloud before you click Start.
+
+- **Clean Word Document** — `report.md` becomes a polished Word document with no Markdown scaffolding in the output.
+- **Accessible HTML Page** — a single HTML page with title block and `lang` metadata, ready for an accessibility audit.
+- **EPUB Book** — a personal-publishing-ready EPUB with a table of contents and EPUB-3 metadata.
+- **GitHub README** — GitHub-Flavored Markdown with no wrapper, ready to paste into a repository.
+- **Print PDF** — a PDF with standard PDF metadata; Pandoc picks the right engine for your platform.
+- **Instructor Handout** — a print-ready PDF with 1-inch margins and a numbered top-level section structure.
+- **Plain Text for Screen Readers** — plain text with no HTML wrapper, no smart quotes, fixed 80-column width; the right choice for piping into a TTS engine.
+
+**Overwrite behaviour.** The three-way policy keeps the screen reader out of the per-file prompt loop:
+
+- **Ask each time** — QUILL lists every output that would clobber an existing file and asks once with a single yes/no. If you say no, the rest are skipped.
+- **Never** — existing outputs are skipped automatically. The Status Page shows the count under *skipped* so the total still adds up.
+- **Always** — existing outputs are overwritten without prompting. Useful for re-running a batch with the same plan.
+
+**Live progress and completion announcement.** The batch runs on the background task pool. Open the Status Page (`Help > Status Page` or `F6` to the status bar then `Ctrl+Shift+T`) and the Tasks & Downloads tab shows live rows. The first row is `Batch conversion: scanning <folder>`, then one row per file as the work progresses.
+
+When the batch finishes, QUILL speaks a single completion line through the announcement backend you have configured. The line names the converted / skipped / failed counts and the elapsed time:
+
+> "Batch conversion complete. 12 of 14 files converted in 4.2 seconds. 2 skipped."
+
+The spoken line respects the verbosity settings under **Preferences > Accessibility**; the Status Page row updates regardless so sighted and low-vision users see the same result. A short report dialog lists every file that produced warnings or failed, with the exact error string.
+
+**Settings: defaults the wizard can override.** Three Settings entries let you choose defaults the wizard uses when it opens:
+
+- **Include subfolders in batch conversion** — boolean, default `True`.
+- **Overwrite behaviour for batch conversion** — Ask each time (default), Never, or Always.
+- **Default output layout for batch conversion** — Output subfolder per source folder (default) or Same folder as source.
+
+The wizard can override any of them per run. Preferences is the canonical place to change defaults; the wizard is a one-off override path.
+
+**When to use the wizard, when to use single-file.** Use the single-file Import and Export menus for one document at a time. Use the wizard when you have a folder of documents to convert, when the work is the same for every file, and when you can let it run while you keep writing.
 
 ### Abbreviation Expansion
 

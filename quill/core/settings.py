@@ -113,6 +113,12 @@ class Settings:
     watch_folder_process_existing: bool = False
     watch_folder_auto_start: bool = False
     watch_folder_poll_interval_seconds: int = 5
+    # #262: Pandoc Import / Export batch conversion defaults. The wizard
+    # reads these as starting values; the user can override per batch.
+    import_export_recursive: bool = True
+    import_export_overwrite: str = "ask"
+    import_export_output_layout: str = "subfolder"
+    import_export_last_folder: str = ""
     # SET-2: tunable timing and pacing
     autosave_interval_seconds: int = 30
     quick_nav_debounce_ms: int = 250
@@ -257,9 +263,9 @@ class Settings:
         # (preset token) plus an integer custom-ms override. Unknown tokens
         # fall back to 'unlimited' so the consumer treats them as no
         # timeout. Custom-ms clamps to [0, 60000] ms = [0, 60] s.
-        browse_mode_followon_timeout = str(
-            data.get("browse_mode_followon_timeout", "unlimited")
-        ).strip().lower()
+        browse_mode_followon_timeout = (
+            str(data.get("browse_mode_followon_timeout", "unlimited")).strip().lower()
+        )
         if browse_mode_followon_timeout not in {
             "instant",
             "fast",
@@ -270,9 +276,7 @@ class Settings:
         }:
             browse_mode_followon_timeout = "unlimited"
         try:
-            browse_mode_followon_custom_ms = int(
-                data.get("browse_mode_followon_custom_ms", 4000)
-            )
+            browse_mode_followon_custom_ms = int(data.get("browse_mode_followon_custom_ms", 4000))
         except (TypeError, ValueError):
             browse_mode_followon_custom_ms = 4000
         if browse_mode_followon_custom_ms < 0:
@@ -383,9 +387,7 @@ class Settings:
             data.get("announcement_startup_tips_enabled", False)
         )
         verbosity_speech_enabled = bool(data.get("verbosity_speech_enabled", True))
-        announce_screen_reader_detected = bool(
-            data.get("announce_screen_reader_detected", False)
-        )
+        announce_screen_reader_detected = bool(data.get("announce_screen_reader_detected", False))
         assistant_enabled = bool(data.get("assistant_enabled", False))
         assistant_prompt_style = str(data.get("assistant_prompt_style", "balanced")).strip().lower()
         if assistant_prompt_style not in {"balanced", "concise", "gentle", "technical"}:
@@ -437,6 +439,17 @@ class Settings:
         watch_folder_include_subfolders = bool(data.get("watch_folder_include_subfolders", False))
         watch_folder_process_existing = bool(data.get("watch_folder_process_existing", False))
         watch_folder_auto_start = bool(data.get("watch_folder_auto_start", False))
+        # #262: Pandoc Import / Export defaults.
+        import_export_recursive = bool(data.get("import_export_recursive", True))
+        import_export_overwrite = str(data.get("import_export_overwrite", "ask")).strip()
+        if import_export_overwrite not in {"ask", "never", "always"}:
+            import_export_overwrite = "ask"
+        import_export_output_layout = str(
+            data.get("import_export_output_layout", "subfolder")
+        ).strip()
+        if import_export_output_layout not in {"subfolder", "same_folder"}:
+            import_export_output_layout = "subfolder"
+        import_export_last_folder = str(data.get("import_export_last_folder", "")).strip()
         try:
             watch_folder_poll_interval_seconds = int(
                 data.get("watch_folder_poll_interval_seconds", 5)
@@ -727,6 +740,10 @@ class Settings:
             watch_folder_process_existing=watch_folder_process_existing,
             watch_folder_auto_start=watch_folder_auto_start,
             watch_folder_poll_interval_seconds=watch_folder_poll_interval_seconds,
+            import_export_recursive=import_export_recursive,
+            import_export_overwrite=import_export_overwrite,
+            import_export_output_layout=import_export_output_layout,
+            import_export_last_folder=import_export_last_folder,
             autosave_interval_seconds=autosave_interval_seconds,
             quick_nav_debounce_ms=quick_nav_debounce_ms,
             quick_nav_min_chars=quick_nav_min_chars,

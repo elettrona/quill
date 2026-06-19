@@ -438,6 +438,7 @@ from quill.io.pandoc import (
     PandocConversionError,
     PandocUnavailableError,
     convert_document_with_pandoc,
+    convert_file_with_pandoc,
 )
 from quill.io.text import read_text_document
 from quill.platform.windows.high_contrast import is_high_contrast_enabled
@@ -6941,6 +6942,281 @@ class MainFrame(
             task["finished_at"] = datetime.now(UTC).isoformat()
             break
         self._maybe_refresh_live_status_tabs()
+
+    # ------------------------------------------------------------------
+    # #262: Pandoc Import / Export and Batch Conversion handlers.
+    # ------------------------------------------------------------------
+
+    def import_document(self, format_name: str) -> None:
+        """Import a single file of ``format_name`` into QUILL as a Markdown tab.
+
+        Wires File > Import > {format} menu items. For editable output
+        formats the post-conversion prompt asks the user to open the new
+        file in a new window; for non-editable outputs we just show a
+        "Converted to: {path}" message.
+        """
+
+        from quill.core import pandoc_formats
+
+        wx = self._wx
+        exts = pandoc_formats.extensions_for(format_name)
+        ext_list = ";".join(f"*{ext}" for ext in sorted(exts)) or "*.*"
+        ext_patterns = ";".join(sorted(exts)) or "*.*"
+        format_label = pandoc_formats.get_format(format_name)
+        label = format_label.display_name if format_label else format_name
+        wildcard = f"{label} ({ext_list})|{ext_patterns}|All files (*.*)|*.*"
+
+        with wx.FileDialog(
+            self.frame,
+            f"Import {label}",
+            defaultDir=self._file_dialog_default_dir(),
+            wildcard=wildcard,
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, f"Import {label}") != wx.ID_OK:
+                return
+            source_path = Path(dialog.GetPath())
+
+        self._set_status(f"Importing {source_path.name} via Pandoc...")
+        try:
+            result = convert_document_with_pandoc(
+                source_path,
+                format_name,
+                from_format=format_name,
+            )
+        except (PandocUnavailableError, PandocConversionError, ValueError) as error:
+            self._show_message_box(
+                f"Pandoc import failed: {error}",
+                "Import",
+                wx.ICON_ERROR | wx.OK,
+            )
+            self._set_status("Pandoc import failed")
+            return
+
+        document = Document(
+            text=result.text,
+            path=None,
+            modified=True,
+            encoding="utf-8",
+            line_ending="\n",
+        )
+        self._create_document_tab(document, select=True)
+        self._record_recent(source_path)
+        self._set_status(f"Imported {source_path.name}")
+        self._announce(f"Imported {source_path.name} as Markdown.")
+
+    def import_document_other(self) -> None:
+        """Prompt the user for an arbitrary Tier-1 format name and import.
+
+        The "Other Pandoc Format..." menu entry. Out of scope for Tier-2/3
+        in this PR; this only offers the Tier-1 set the user has not seen
+        on the standard menu.
+        """
+
+        from quill.core import pandoc_formats
+
+        wx = self._wx
+        choices = [fmt.display_name for fmt in pandoc_formats.formats_for_direction("import")]
+        with wx.SingleChoiceDialog(
+            self.frame,
+            "Choose a Tier-1 Pandoc input format",
+            "Other Pandoc Format",
+            choices,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Other Pandoc Format") != wx.ID_OK:
+                return
+            index = dialog.GetSelection()
+        formats = pandoc_formats.formats_for_direction("import")
+        if 0 <= index < len(formats):
+            self.import_document(formats[index].name)
+
+    def export_document(self, format_name: str) -> None:
+        """Export the current buffer to ``format_name`` via Pandoc.
+
+        For editable output formats the post-conversion prompt offers to
+        open the new file; otherwise we just announce the destination.
+        """
+
+        from quill.core import pandoc_formats
+        from quill.ui.single_convert_dialog import prompt_open_in_new_window
+
+        wx = self._wx
+        if not self.editor or not getattr(self, "document", None):
+            self._show_message_box(
+                "Open or create a document before exporting.",
+                "Export",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+
+        if getattr(self.document, "modified", False):
+            self.save_file()
+            if self.document.path is None or self.document.modified:
+                self._set_status("Export cancelled (save required first)")
+                return
+
+        exts = pandoc_formats.extensions_for(format_name)
+        target_ext = next(iter(sorted(exts)), ".out")
+        format_label = pandoc_formats.get_format(format_name)
+        label = format_label.display_name if format_label else format_name
+        wildcard = f"{label} (*{target_ext})|*{target_ext}|All files (*.*)|*.*"
+
+        default_name = (self.document.path.stem if self.document.path else "Untitled") + target_ext
+        with wx.FileDialog(
+            self.frame,
+            f"Export as {label}",
+            defaultDir=self._file_dialog_default_dir(),
+            defaultFile=default_name,
+            wildcard=wildcard,
+            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, f"Export as {label}") != wx.ID_OK:
+                return
+            target = Path(dialog.GetPath())
+
+        self._set_status(f"Exporting to {target.name} via Pandoc...")
+        try:
+            convert_file_with_pandoc(
+                self.document.path or Path(""),
+                target,
+                from_format="gfm",
+                to_format=format_name,
+            )
+        except (PandocUnavailableError, PandocConversionError, ValueError) as error:
+            self._show_message_box(
+                f"Pandoc export failed: {error}",
+                "Export",
+                wx.ICON_ERROR | wx.OK,
+            )
+            self._set_status("Pandoc export failed")
+            return
+
+        self._record_recent(target)
+        self._announce(f"Exported {target.name}")
+
+        if prompt_open_in_new_window(
+            self.frame,
+            output_path=target.name,
+            target_format=format_name,
+            show_modal_fn=self._show_modal_dialog,
+        ):
+            self.open_file(path=target)
+        else:
+            self._set_status(f"Exported to {target}")
+
+    def export_document_other(self) -> None:
+        """Prompt the user for an arbitrary Tier-1 export format."""
+
+        from quill.core import pandoc_formats
+
+        wx = self._wx
+        choices = [fmt.display_name for fmt in pandoc_formats.formats_for_direction("export")]
+        with wx.SingleChoiceDialog(
+            self.frame,
+            "Choose a Tier-1 Pandoc output format",
+            "Other Pandoc Format",
+            choices,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Other Pandoc Format") != wx.ID_OK:
+                return
+            index = dialog.GetSelection()
+        formats = pandoc_formats.formats_for_direction("export")
+        if 0 <= index < len(formats):
+            self.export_document(formats[index].name)
+
+    def run_batch_conversion_wizard(self) -> None:
+        """Open the Batch Conversion wizard and submit the resulting plan."""
+
+        from quill.core.batch_convert import BatchPlan as _BatchPlan
+        from quill.core.batch_convert import BatchReport as _BatchReport
+        from quill.core.batch_convert import OverwriteRequired, run_batch
+        from quill.ui.batch_wizard import run_batch_wizard
+
+        request = run_batch_wizard(
+            self.frame,
+            self.settings,
+            announce_cb=self._announce,
+            show_modal_fn=self._show_modal_dialog,
+        )
+        if request is None:
+            self._set_status("Batch conversion cancelled")
+            return
+
+        plan: _BatchPlan = request.plan
+
+        def _confirm_overwrite_all(paths: tuple) -> bool:
+            """Prompt the user once for a batch of would-overwrite outputs."""
+
+            wx = self._wx
+            listing = "\n".join(str(p) for p in paths[:10])
+            if len(paths) > 10:
+                listing += f"\n... and {len(paths) - 10} more"
+            message = (
+                f"{len(paths)} output file(s) already exist:\n\n{listing}\n\nOverwrite them all?"
+            )
+            with wx.MessageDialog(
+                self.frame,
+                message,
+                "Overwrite files?",
+                style=wx.YES_NO | wx.ICON_QUESTION | wx.NO_DEFAULT,
+            ) as dialog:
+                return self._show_modal_dialog(dialog, "Overwrite files?") == wx.ID_YES
+
+        def _worker(progress) -> object:
+            try:
+                return run_batch(
+                    plan,
+                    progress=progress,
+                    ask_overwrite=_confirm_overwrite_all,
+                )
+            except OverwriteRequired as exc:
+                if not _confirm_overwrite_all(exc.outputs):
+                    return run_batch(
+                        plan,
+                        progress=progress,
+                        ask_overwrite=lambda _p: False,
+                    )
+                return run_batch(
+                    plan,
+                    progress=progress,
+                    ask_overwrite=lambda _p: True,
+                )
+
+        def _on_done(result: object) -> None:
+            if not isinstance(result, _BatchReport):
+                return
+            self._announce(
+                f"Batch conversion complete: {result.converted} of {result.total} files in "
+                f"{result.duration_seconds:.1f} seconds. "
+                f"{result.failed} failed, {result.skipped} skipped."
+            )
+            self._set_status(
+                f"Batch conversion complete: {result.converted} converted, "
+                f"{result.failed} failed, {result.skipped} skipped."
+            )
+            self.show_help_status_page()
+
+        self._run_background_task(
+            "Batch conversion",
+            _worker,
+            _on_done,
+            notify_on_success=True,
+            notify_on_error=True,
+        )
+
+    def open_advanced_pandoc_placeholder(self) -> None:
+        """Placeholder for the Tier-2 / Tier-3 Pandoc Conversion Center (issue #262)."""
+
+        wx = self._wx
+        with wx.MessageDialog(
+            self.frame,
+            "The advanced Pandoc Conversion Center is coming in a future release.\n\n"
+            "For now, File > Import and File > Export cover the Tier-1 format set, "
+            "and Tools > Batch Conversion runs batch jobs over a folder.",
+            "Coming Soon",
+            style=wx.ICON_INFORMATION | wx.OK,
+        ) as dialog:
+            self._show_modal_dialog(dialog, "Coming Soon")
 
     def _status_tab_indexes(self) -> list[int]:
         getter = getattr(self.notebook, "GetPageText", None)

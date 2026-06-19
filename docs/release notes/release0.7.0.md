@@ -53,6 +53,7 @@ This is the fast tour. The detailed notes below keep every important implementat
 - **Code-aware editing** adds language profiles, token movement, manual language selection, and optional indentation tones.
 - **Text encoding tools** help you find non-ASCII characters, jump to them, convert them to HTML entities, and save copies in narrower encodings without silent data loss.
 - **Word and RTF export** lets you save documents as `.docx` or rich text through Pandoc, preserving real Word heading structure when the source contains structure.
+- **Pandoc Import / Export and Batch Conversion (issue #262)** extends that foundation with a curated Tier-1 format list (Markdown, CommonMark, GFM, HTML, DOCX, ODT, RTF, plain text, CSV/TSV, EPUB, LaTeX, plus PDF export), a four-page batch wizard, and live progress in the Status Page.
 - **Citation insertion** formats MLA 9, Chicago 17, and APA 7 citations from a simple labelled form.
 - **The Snippet Gallery** (Insert > Snippet Gallery... or QUILL key, Shift+G) collects parameterized templates from all enabled Quillins into one browseable picker. Smart Insert ships three built-in entries.
 - **The Vision Prompt Library**, contributed by Kelly Ford, gives Describe Image with AI twelve evaluated prompt styles and a full management dialog.
@@ -804,6 +805,93 @@ Choose **File -> Save As...**, then select **Word Document (`*.docx`)** or **Ric
 The conversion is handled through Pandoc with real Word styles. If your source has headings, those become actual Word headings, not bold text that merely looks like a heading. That keeps the exported file navigable for the next person's screen reader.
 
 The result reflects the structure of the source. A richly formatted Markdown or HTML document exports with that structure. A plain-text file exports as a tidy but unadorned document because there was no structure to carry. QUILL tells you that instead of quietly flattening your work.
+
+---
+
+## Experience 9b: Pandoc Import / Export and Batch Conversion (issue #262)
+
+The single-file Word and RTF export added above is a thin slice of a much larger workflow. Community request #262 asked for a real, screen-reader-friendly way to move between QUILL and the documents other people send us — Word, OpenDocument, EPUB, LaTeX, plain text, CSV tables, and the rest of the formats Pandoc understands — without dropping into a shell. This release answers it.
+
+> “Importing and exporting should feel like part of the editor, not a side door you have to leave the keyboard to use.”  
+> — Jeff Bishop
+
+### The Tier-1 format set
+
+The new Import and Export menus each show a curated Tier-1 list rather than every format Pandoc supports, because not every format is a good match for a screen-reader-first editor. The list is the same one issue #262 recommended.
+
+**Import (File -> Import):** Markdown, CommonMark, GitHub-Flavored Markdown, HTML, Word documents (`.docx`), OpenDocument Text (`.odt`), Rich Text (`.rtf`), plain text, CSV / TSV tables, EPUB books, LaTeX / TeX.
+
+**Export (File -> Export):** the same set plus PDF (export only). PDF *import* is intentionally not supported; Pandoc cannot do it reliably, and the dedicated braille and DAISY pipelines are the right tools for print-to-braille conversion.
+
+Every entry on the menus is a real, working converter. There is no placeholder that opens a "Coming soon" dialog mid-list. **Pandoc Conversion Center...** under Tools is the only path to the rest of Pandoc's format catalog in this release; it opens a short notice explaining the roadmap.
+
+### Single-file import and export
+
+Pick **File -> Import -> Word Document** to convert a `.docx` into a Markdown buffer in a new tab. Pick **File -> Export -> EPUB Book** to convert the current buffer to a clean `.epub`. Both routes go through Pandoc, with the conversion happening on a background thread so QUILL never freezes.
+
+When the target format is editable in QUILL — Markdown, CommonMark, GFM, HTML, plain text, CSV / TSV — a short post-conversion prompt asks whether to open the new file in a new window. Press **Yes** to open, **No** to keep working where you were. PDF, DOCX, EPUB, ODT, and RTF do not prompt because QUILL cannot edit them directly; a confirmation message tells you where the file landed and the path is on the clipboard so you can paste it into File Explorer.
+
+### The Batch Conversion wizard
+
+**Tools -> Batch Conversion...** (or **QUILL key, B**) opens a four-page wizard. Each page is keyboard-navigable end to end, every field is labelled in JAWS / NVDA order, and Back / Next / Start / Cancel are stock `wx.Button` controls under the standard modal-id contract.
+
+1. **Introduction.** The first page reads a short summary of what the wizard does, then probes Pandoc. When Pandoc is detected, the version appears live in the page text. When it is not, the page says so and Start stays disabled until Pandoc is installed.
+2. **Folder and options.** A folder picker, an *Include subfolders* checkbox, an output-layout radio (Same folder as source, or Output subfolder per source folder), and an overwrite radio (Ask each time, Never, Always). Defaults are read from Settings so the wizard respects your preferences the moment it opens. The last folder you used is remembered for next time.
+3. **Format and profile.** A direction radio (Import into QUILL, or Export from QUILL), a source-format list and a target-format list drawn from the Tier-1 set, and a profile picker for the seven built-in conversion profiles.
+4. **Review and start.** A human-readable summary of the entire plan. The Start button submits the batch to a background thread and closes the wizard.
+
+Press **Start** and the wizard submits the plan to QUILL's background task pool. The Status Page (Help menu) switches to its Tasks & Downloads tab and starts showing live rows. The first row is labelled `Batch conversion: scanning <folder>`, then one row per file as the conversion runs, with `(file, status, current/total, started, finished)` columns.
+
+### Seven built-in conversion profiles
+
+The wizard's profile picker offers seven profiles curated for common publishing workflows. Each profile is a small set of Pandoc CLI flags plus a plain-language description so the screen reader can read you what you are committing to before you click Start.
+
+- **Clean Word Document** — `--standalone` plus aggressive header/footer stripping. Good for handing Markdown drafts to a Word shop that should not see the scaffolding.
+- **Accessible HTML Page** — `--standalone` with the `title-block` and `lang` metadata. Good for an HTML page that is going through a screen-reader or accessibility audit.
+- **EPUB Book** — `--standalone --toc` plus the EPUB-3 metadata block. Good for personal publishing.
+- **GitHub README** — GitHub-Flavored Markdown with no wrapper. Good for pasting into a repository.
+- **Print PDF** — `--pdf-engine=<default>` plus the standard PDF metadata. Pandoc picks the right engine for your platform; you can change it in Preferences.
+- **Instructor Handout** — `--standalone` with `geometry: margin=1in` and a top-level numbered section structure. Good for printing on Letter.
+- **Plain Text for Screen Readers** — emits plain text with no HTML wrapper, no smart quotes, and a fixed width of 80 columns. The right choice for piping into a TTS engine.
+
+The wizard's summary page reads the profile description aloud so the user knows what they are about to apply before the batch starts.
+
+### Output naming and overwrite behaviour
+
+The issue #262 specification said "keep the originating stem, replace the extension". QUILL does that exactly. `report.docx` becomes `report.md` (or `report.html`, `report.epub`, ...). When you choose **Output subfolder per source folder** (the default) the output lands in a new `Output/` folder inside the source folder, which the batch creates on first write. When you choose **Same folder as source** the output lands next to the input.
+
+The three-way overwrite policy keeps the screen reader out of the per-file prompt loop:
+
+- **Ask each time** — the batch lists every output that would clobber an existing file, asks once with a single yes/no, and skips the rest if you say no.
+- **Never** — existing outputs are skipped automatically. The Status Page shows the count under *skipped* so the total still adds up.
+- **Always** — existing outputs are overwritten without prompting. Useful for re-running a batch with the same plan.
+
+### Live progress and a single, calm completion announcement
+
+The batch runs on the background task pool. The Status Page shows live counts as the work progresses. When the batch finishes, QUILL speaks a single completion line through the announcement backend you have configured (NVDA, JAWS, SAPI5, or a sound pack). The line names the converted / skipped / failed counts and the elapsed time:
+
+> "Batch conversion complete. 12 of 14 files converted in 4.2 seconds. 2 skipped."
+
+The completion announcement respects the verbosity settings under **Preferences -> Accessibility**; the Status Page row updates regardless so sighted and low-vision users see the same result.
+
+A short report dialog lists every file that produced warnings or failed, with the exact error string. Successful files do not appear in the report, so the dialog stays small and quick to read.
+
+### Settings: defaults the wizard can override
+
+Three new Settings entries let you choose defaults that the wizard uses when it opens:
+
+- **Include subfolders in batch conversion** — boolean, default `True`.
+- **Overwrite behaviour for batch conversion** — Ask each time (default), Never, or Always.
+- **Default output layout for batch conversion** — Output subfolder per source folder (default) or Same folder as source.
+
+The wizard can override any of them per run. The Preferences dialog is the canonical place to change defaults; the wizard is a one-off override path. The last folder the wizard used is remembered automatically so the next run lands you back where you left off.
+
+### What is not in this release
+
+- **PDF import.** Pandoc cannot do it reliably, so it is not in the menu. The dedicated braille and DAISY pipelines remain the right tools for print-to-braille conversion.
+- **Tier 2 / Tier 3 formats.** Every format Pandoc supports that is not in the Tier-1 list is reachable through **Tools -> Pandoc Conversion Center...**, which shows a roadmap note in this release. A follow-up issue will replace the placeholder with the full format picker.
+- **MarkItDown.** A follow-up issue; not in this release. MarkItDown is the right tool for some conversions (e.g. PDF and Office formats with embedded images) but its integration belongs in a Quillin so its dependencies stay out of the core.
+- **Per-verb verbosity tokens.** The completion announcement routes through the existing `announce()` -> `_announce()` -> `AnnouncementEngine` path. The per-verb token registry from the verbosity rebuild is not in source yet; that work is tracked separately and the existing settings (`announcement_backend`, `verbosity_speech_enabled`) continue to control the spoken result.
 
 ---
 

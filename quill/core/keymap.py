@@ -107,6 +107,11 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "tools.search_in_files": "Ctrl+Shift+F",
     "tools.replace_in_files": "Ctrl+Shift+R",
     "tools.sticky_note_capture": "Ctrl+Shift+Grave, N",
+    # #262: Batch Conversion wizard. QUILL-key chord (B is free in the
+    # second-key space). The Pandoc Import / Export entries in the File
+    # menu do not have keyboard shortcuts by default — users reach them
+    # via the menu or the Command Palette (Ctrl+Shift+P).
+    "tools.batch_conversion": "Ctrl+Shift+Grave, B",
     "edit.replace_all": "Ctrl+Shift+H",
     "edit.insert_link": "Ctrl+K",
     "edit.follow_link": "Ctrl+Enter",

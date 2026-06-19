@@ -421,6 +421,44 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "Convert a double hyphen to an en or em dash while you type.",
         keywords=("autoformat", "dash", "hyphen", "typography"),
     ),
+    # #262: Pandoc Import / Export batch conversion defaults. These show in
+    # Preferences -> Editing; the wizard reads them as starting values and
+    # lets the user override per batch. ``import_export_last_folder`` is
+    # intentionally not exposed in Preferences (it is a session memory for
+    # the folder picker, not a user-tunable policy).
+    SettingSpec(
+        "import_export_recursive",
+        "Include subfolders in batch conversion",
+        "editing",
+        "bool",
+        "When the Batch Conversion wizard runs over a folder, descend into subfolders.",
+        keywords=("pandoc", "batch", "import", "export", "convert", "recursive", "subfolders"),
+    ),
+    SettingSpec(
+        "import_export_overwrite",
+        "Overwrite behaviour for batch conversion",
+        "editing",
+        "choice",
+        "What to do when an output file already exists during a batch run.",
+        choices=(
+            ("ask", "Ask each time"),
+            ("never", "Never overwrite"),
+            ("always", "Always overwrite"),
+        ),
+        keywords=("pandoc", "batch", "import", "export", "convert", "overwrite"),
+    ),
+    SettingSpec(
+        "import_export_output_layout",
+        "Default output layout for batch conversion",
+        "editing",
+        "choice",
+        "Where the wizard puts converted files by default.",
+        choices=(
+            ("subfolder", "Output subfolder per source folder"),
+            ("same_folder", "Same folder as source"),
+        ),
+        keywords=("pandoc", "batch", "import", "export", "convert", "output", "layout"),
+    ),
     # --- Navigation and QUILL key -----------------------------------------
     SettingSpec(
         "browse_mode_wrap",
@@ -494,10 +532,7 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "Browse mode follow-on timeout — custom value (milliseconds)",
         "navigation",
         "int",
-        (
-            "Used when 'Browse mode follow-on timeout' is set to Custom. "
-            "0 means no timeout."
-        ),
+        ("Used when 'Browse mode follow-on timeout' is set to Custom. 0 means no timeout."),
         minimum=0,
         maximum=60000,
         feature_id="core.navigate",

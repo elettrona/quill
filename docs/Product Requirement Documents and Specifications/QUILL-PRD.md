@@ -414,6 +414,81 @@ Not every format we open is something a user should edit. Quill is explicit abou
 
 Where bundling a large dependency would balloon installer size (Calibre, Ghostscript, Tesseract trained-data packs, MeCab for Japanese, LibreOffice headless for legacy office), Quill ships a thin shim and offers a one-click plugin install from the Format Support page. Plugins announce their license clearly before installing.
 
+#### 5.3a.1 Pandoc Import / Export and Batch Conversion (issue #262)
+
+QUILL ships a curated Tier-1 list of Pandoc-supported formats in the File menu and a four-page batch conversion wizard under Tools. The list is curated rather than exhaustive because not every Pandoc format is a good fit for a screen-reader-first editor; the menu and the wizard show only formats that meet the bar.
+
+**Tier-1 inputs:** Markdown, CommonMark, GitHub-Flavored Markdown, HTML, Word documents (`.docx`), OpenDocument Text (`.odt`), Rich Text (`.rtf`), plain text, CSV / TSV tables, EPUB books, LaTeX / TeX.
+
+**Tier-1 outputs:** the same set plus PDF (export only).
+
+##### 5.3a.1.1 Single-file Import / Export
+
+**File > Import > <format>** converts a single file from disk into a new Markdown buffer in a new tab. **File > Export > <format>** converts the current buffer to the named format on a background thread. Both routes use Pandoc and `quill.stability.safe_subprocess.run_subprocess_safely` so a misbehaving Pandoc cannot take QUILL down.
+
+Post-conversion prompt rule (issue #262): when the target format is editable in QUILL (Markdown, CommonMark, GFM, HTML, plain text, CSV / TSV) the editor asks whether to open the new file in a new window. PDF, DOCX, EPUB, ODT, and RTF do not prompt; the file path is on the clipboard for pasting into File Explorer.
+
+##### 5.3a.1.2 Batch Conversion wizard
+
+**Tools > Batch Conversion...** (or **QUILL key, B**) opens a hand-rolled `wx.Dialog` modeled on `setup_wizard_pages.py`. Four pages: Introduction (with live Pandoc version probe), Folder and options (folder picker, recursive checkbox, output-layout radio, overwrite radio), Format and profile (direction radio, Tier-1 source/target lists, profile picker), Review and start (human-readable summary).
+
+Defaults come from `Settings.import_export_recursive`, `import_export_output_layout`, `import_export_overwrite`, and the wizard-overridable `import_export_last_folder`. The wizard can override any of these per run; the Preferences dialog is the canonical place to change defaults.
+
+The wizard's `_SummaryPage.refresh(choices)` reads the plan aloud through `_announce()` so the user hears what they are about to apply before the batch starts. Back / Next / Start / Cancel are stock `wx.Button` controls under the standard `apply_modal_ids` modal-id contract; the wizard is keyboard-first end to end and never depends on the mouse.
+
+##### 5.3a.1.3 Batch execution
+
+The wizard returns a `BatchRequest` carrying a `BatchPlan` dataclass. The caller submits the plan to `MainFrame._run_background_task` so the work runs on `stability.task_manager.QuillTaskManager` (a `ThreadPoolExecutor` wrapper) instead of the UI thread. Progress is reported through the Status Page (`Help > Status Page > Tasks & Downloads`) with one live `(Task, Status, Progress, Started, Finished)` row per file. The worker honours a `threading.Event` cancel between files and raises `PandocCancelledError` if cancellation fires mid-run.
+
+Output naming follows the issue #262 rule verbatim: keep the originating stem, replace the extension. With `output_layout="subfolder"` (the default) the output lands in an `Output/` subfolder created lazily per file; with `output_layout="same_folder"` the output lands next to the source. The three-way overwrite policy — `ask`, `never`, `always` — is enforced both at the batch level (one prompt per batch for the `ask` policy) and per file (skip on `never`, overwrite on `always`).
+
+##### 5.3a.1.4 Conversion profiles
+
+Seven built-in conversion profiles ship in this release (`quill.core.convert_profiles`):
+
+- **Clean Word Document** — `--standalone` plus aggressive header/footer stripping.
+- **Accessible HTML Page** — `--standalone` with `title-block` and `lang` metadata.
+- **EPUB Book** — `--standalone --toc` plus the EPUB-3 metadata block.
+- **GitHub README** — GitHub-Flavored Markdown with no wrapper.
+- **Print PDF** — `--pdf-engine=<default>` plus the standard PDF metadata.
+- **Instructor Handout** — `--standalone` with `geometry: margin=1in` and a top-level numbered section structure.
+- **Plain Text for Screen Readers** — plain text with no HTML wrapper, no smart quotes, fixed 80-column width.
+
+Each profile is a `ConvertProfile` dataclass holding its CLI flags and a plain-language description. The wizard's profile picker reads each profile aloud so the screen reader can announce what is being applied before the batch starts.
+
+##### 5.3a.1.5 Completion announcement
+
+When the batch finishes, `_announce()` is called with the completion line:
+
+> "Batch conversion complete. <converted> of <total> files converted in <duration> seconds. <skipped> skipped. <failed> failed."
+
+The line routes through the existing `announce()` -> `_announce()` -> `AnnouncementEngine` path, which already honours `announcement_backend` and `verbosity_speech_enabled`. The Status Page row updates regardless of the user's verbosity setting so sighted and low-vision users see the same result.
+
+A short report dialog lists every file that produced warnings or failed, with the exact error string. Successful files do not appear in the report, so the dialog stays small and quick to read.
+
+##### 5.3a.1.6 Settings
+
+Three new `SettingSpec` entries appear in **Preferences > Editing** (issue #262):
+
+- `import_export_recursive` — boolean, default `True`. Label: "Include subfolders in batch conversion".
+- `import_export_overwrite` — choice, default `("ask", "Ask each time")`. Choices: `ask`, `never`, `always`. Label: "Overwrite behaviour for batch conversion".
+- `import_export_output_layout` — choice, default `("subfolder", "Output subfolder per source folder")`. Choices: `subfolder`, `same_folder`. Label: "Default output layout for batch conversion".
+
+A fourth field, `import_export_last_folder` (string, default `""`), is intentionally not exposed in Preferences. The wizard writes it when it starts a batch so the next run lands the user where they left off. All four fields are validated in `Settings.from_dict` against the issue #262 value sets.
+
+##### 5.3a.1.7 Key binding
+
+**QUILL key, B** opens the Batch Conversion wizard. The chord was added to `quill.core.keymap` and is wired through `MainFrame._on_quill_key_b`. The `B` key was chosen because it does not collide with any existing QUILL-key second-key in `main_frame_quill_key.py`.
+
+##### 5.3a.1.8 Out of scope for this release
+
+- **PDF import.** Pandoc cannot do it reliably; the dedicated braille and DAISY pipelines remain the right tools.
+- **Tier 2 / Tier 3 formats.** A future release will replace the **Tools > Pandoc Conversion Center...** placeholder with the full format picker.
+- **MarkItDown integration.** Tracked as a follow-up issue. The integration belongs in a Quillin so its dependencies stay out of the core.
+- **Per-verb verbosity tokens.** The completion announcement routes through the existing `announce()` shim. The per-verb `VerbTokenSpec` registry from the verbosity rebuild is not in source yet; that work is tracked separately.
+
+Cross-links: this section is referenced from `### 5.25b Watch Folder automation` (the Watch Folder Quillin can use the same `BatchPlan` shape when it needs batch-style conversion) and from `§22 Startup Wizard` (the Startup wizard's "What kind of writing do you do?" intent picker exposes the Import / Export and Batch Conversion entries only when the chosen profile warrants them).
+
 ### 5.3b Microsoft Word document support (DOCX / DOC)
 
 This section is the canonical, scoped statement of what Quill 1.0 does with Microsoft Word files (.docx and .doc). Anything not listed here is explicitly out of scope for v1.0 and tracked in the backlog.
@@ -1800,6 +1875,7 @@ partial profile can never start a worker.
 - Watch work runs off the UI thread through `watch_worker`/`watch_queue`; results marshal back through
   `wx.CallAfter` and surface in the status/notification channel. No silent failures.
 - Watch-folder automation is configured from Preferences (Watch Folder Automation). A first-run wizard onboarding step for it is planned (see docs/planning.md).
+- A watch profile can use the same `BatchPlan` shape from `### 5.3a.1` when its action is "convert to QUILL" or "convert from QUILL" - the Watch Service reuses `quill.core.batch_convert.run_batch` so a folder of dropped `.docx` files becomes a folder of opened Markdown tabs without a separate Batch Conversion wizard run. The action field on the watch profile chooses between the inline batch path and the open-in-editor path; both run on the background task pool.
 
 ### 5.25c BITS Whisperer phased transcription rollout
 
@@ -4686,6 +4762,12 @@ Re-run opens the wizard in update mode with all pages pre-filled. Changed flags 
 | `feature_flags_ai` | bool | True | Master switch for all AI features |
 | `feature_flags_remote` | bool | True | Master switch for remote editing |
 | `feature_flags_quillins` | bool | True | Master switch for Quillins |
+| `import_export_recursive` | bool | True | Wizard default: include subfolders in batch conversion (`### 5.3a.1`) |
+| `import_export_overwrite` | choice | `ask` | Wizard default: `ask`, `never`, or `always` |
+| `import_export_output_layout` | choice | `subfolder` | Wizard default: `subfolder` or `same_folder` |
+| `import_export_last_folder` | text | `""` | Wizard-only: remembered last folder; not exposed in Preferences |
+
+The four `import_export_*` fields are documented in full at `### 5.3a.1.6`. They are written by the Startup Wizard when the chosen intent profile enables Pandoc import / export, and by the Batch Conversion wizard on every successful Start click.
 | `feature_flags_power_tools` | bool | True | Master switch for Power Tools |
 | `feature_flags_notebook` | bool | True | Master switch for Notebook workspace |
 | `keymap_profile` | str | "default" | Active keyboard profile name |
