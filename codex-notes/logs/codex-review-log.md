@@ -1,5 +1,28 @@
 # Codex Review Log
 
+## 2026-06-18 22:56:24 -04:00
+
+Provider validation CI/local wiring checkpoint:
+
+- wired the provider validation tool gate into `.pre-commit-config.yaml` as `publishing-provider-registry`
+- wired the same gate into `.github/workflows/pr-ci.yml` under the `internal-gates` job
+- added `tests\unit\tools\test_check_publishing_providers.py` to the PR CI internal-gate unit-test bundle
+- kept the implementation as tooling-only validation; no runtime third-party publishing provider loading was added
+
+Verification:
+
+- `python -m quill.tools.check_publishing_providers`
+  - result: `Publishing provider/client registry is valid.`
+- focused tool tests: `5 passed in 0.37s`
+- PR CI internal-gate unit-test bundle: `56 passed in 11.76s`
+- `pre-commit run publishing-provider-registry --all-files`: passed
+- full `tests/unit`: `3732 passed, 11 skipped, 53 failed, 2 warnings in 100.24s`
+- remaining full-suite failures/skips/warnings are outside the touched CI/local publishing-gate slice and left for their owning main-side areas
+
+Next read:
+
+- provider validation is now implemented, tool-gated, locally hooked, and covered by PR CI internal gates
+- no push has been performed
 ## 2026-06-18 22:35:00 -04:00
 
 Provider validation tool gate checkpoint:

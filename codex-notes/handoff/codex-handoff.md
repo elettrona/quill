@@ -1,5 +1,23 @@
 # Codex Handoff
 
+## 2026-06-18 Provider Validation CI/Local Wiring Slice
+
+- wired the internal publishing provider registry gate into local and CI checks
+- local pre-commit hook added:
+  - `publishing-provider-registry`
+- PR CI internal-gates now runs:
+  - `python -m quill.tools.check_publishing_providers`
+- PR CI internal-gate unit-test bundle now includes:
+  - `tests\unit\tools\test_check_publishing_providers.py`
+- verification:
+  - direct tool command: `Publishing provider/client registry is valid.`
+  - focused tool tests: `5 passed in 0.37s`
+  - internal-gate bundle: `56 passed in 11.76s`
+  - pre-commit hook: passed
+  - full unit suite: `3732 passed, 11 skipped, 53 failed, 2 warnings`
+- remaining full-suite failures are outside this slice and left untouched
+- no push performed
+
 ## 2026-06-18 Provider Validation Tool Gate Slice
 
 - implemented internal provider/client validation gate: `python -m quill.tools.check_publishing_providers`
@@ -11,6 +29,7 @@
   - full unit suite: `3731 passed, 11 skipped, 54 failed, 2 warnings`
 - remaining full-suite failures are outside this slice and left untouched
 - no push performed
+
 ## 2026-06-18 Testing Discipline Checkpoint
 
 - user confirmed the process for future development:
@@ -39,6 +58,7 @@
   - focused publishing/framework tests: `20 passed in 0.59s`
   - broader core publishing tests: `39 passed in 3.89s`
 - no push performed
+
 ## 2026-06-18 Upstream Access Recovery Checkpoint
 
 - user requested a full recovery pass across Codex planning docs, memory files, and working chat logs after the head developer granted push access and resolved conflicts before creating the branch

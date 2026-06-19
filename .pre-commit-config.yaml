@@ -63,6 +63,17 @@ repos:
         files: ^quill/.*\.py$
         require_serial: true
 
+      - id: publishing-provider-registry
+        name: publishing provider registry
+        # Publishing framework: every in-tree provider definition must have a
+        # matching client, and every client must map back to a provider
+        # definition. This does not enable third-party provider loading.
+        entry: python -m quill.tools.check_publishing_providers
+        language: system
+        pass_filenames: false
+        files: ^quill/core/publishing.*\.py$
+        require_serial: true
+
       - id: announce-gap
         name: announce-gap gate (GATE-12)
         # GATE-12: every dialog with a status StaticText updated via SetLabel

@@ -1,5 +1,32 @@
 # Publishing Providers Framework Plan
 
+## 2026-06-18 provider validation CI/local wiring note
+
+The provider validation gate is now wired into the existing local and CI check collections.
+
+Implemented:
+
+- added a `publishing-provider-registry` local pre-commit hook
+- added `python -m quill.tools.check_publishing_providers` to the PR CI `internal-gates` job
+- added `tests\unit\tools\test_check_publishing_providers.py` to the PR CI internal-gate unit-test bundle
+- kept the gate limited to first-party in-tree provider/client registry drift; no runtime third-party publishing provider loading was enabled
+
+Validation:
+
+- `python -m quill.tools.check_publishing_providers`
+  - result: `Publishing provider/client registry is valid.`
+- `pytest tests\unit\tools\test_check_publishing_providers.py -q --basetemp=.tmp\pytest-publishing-provider-ci-wire`
+  - result: `5 passed in 0.37s`
+- PR CI internal-gate unit-test bundle:
+  - result: `56 passed in 11.76s`
+- `pre-commit run publishing-provider-registry --all-files`
+  - result: passed
+- full `tests/unit`: `3732 passed, 11 skipped, 53 failed, 2 warnings`; remaining failures are outside the touched CI/local publishing-gate slice and are left for their owning main-side work
+
+Next likely implementation direction:
+
+- return to the provider-extraction preparation plan after this tooling checkpoint, with no push performed
+
 ## 2026-06-18 provider validation tool gate implementation note
 
 The next provider-extraction preparation slice is implemented.

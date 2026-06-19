@@ -1,7 +1,20 @@
 # Publishing Providers Framework Readiness
 
-Status: active upstream implementation checkpoint on `feature/publishing-providers-framework`, tracking `origin/feature/publishing-providers-framework`, with current upstream `main` at `7a64564`, merge/conflict recovery represented by HEAD `cbe5ed6`, provider registry seam in place, operation capability metadata added, provider/client validation and internal tool gate implemented, remote item editor identity implemented, publish-now and open-remote publish lifecycle actions added, focused validation green, and WordPress extraction direction recorded.
+Status: active upstream implementation checkpoint on `feature/publishing-providers-framework`, tracking `origin/feature/publishing-providers-framework`, with current upstream `main` at `7a64564`, merge/conflict recovery represented by HEAD `cbe5ed6`, provider registry seam in place, operation capability metadata added, provider/client validation implemented and its internal tool gate wired into local pre-commit plus PR CI, remote item editor identity implemented, publish-now and open-remote publish lifecycle actions added, focused validation green, and WordPress extraction direction recorded.
 
+## 2026-06-18 provider validation CI/local wiring
+
+- wired `python -m quill.tools.check_publishing_providers` into the existing local/CI gate collections
+- local hook added: `publishing-provider-registry` in `.pre-commit-config.yaml`
+- PR CI internal-gates job now runs the publishing provider registry gate directly
+- PR CI internal-gate unit-test bundle now includes `tests\unit\tools\test_check_publishing_providers.py`
+- validation passed:
+  - direct tool command: `Publishing provider/client registry is valid.`
+  - focused publishing-provider tool tests: `5 passed in 0.37s`
+  - internal-gate bundle: `56 passed in 11.76s`
+  - `pre-commit run publishing-provider-registry --all-files`: passed
+- full unit suite after this slice: `3732 passed, 11 skipped, 53 failed, 2 warnings`
+- remaining full-suite failures/skips/warnings are outside the touched CI/local publishing-gate slice and remain out of scope
 ## 2026-06-18 provider validation tool gate
 
 - added internal `python -m quill.tools.check_publishing_providers` gate for provider/client registry validation
