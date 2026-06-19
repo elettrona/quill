@@ -49,13 +49,21 @@ def build_session_payload(
     positions = caret_positions or [0] * len(documents)
     if len(positions) < len(documents):
         positions = list(positions) + [0] * (len(documents) - len(positions))
+    # The zip() contract is one-to-one: every document pairs with a
+    # position. The defensive padding above already normalises the lengths
+    # to match, so the assert is a loud guard against future refactors
+    # breaking that invariant; strict=True turns a regression into a
+    # ValueError instead of silently dropping trailing documents.
+    assert len(positions) == len(documents), (
+        f"caret_positions length {len(positions)} must match documents length {len(documents)}"
+    )
     return {
         "version": 1,
         "title": title,
         "saved_at": datetime.now(UTC).isoformat(),
         "active_index": active_index,
         "documents": [
-            _document_payload(doc, pos) for doc, pos in zip(documents, positions, strict=False)
+            _document_payload(doc, pos) for doc, pos in zip(documents, positions, strict=True)
         ],
     }
 
