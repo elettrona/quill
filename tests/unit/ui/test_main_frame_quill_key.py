@@ -215,7 +215,7 @@ def test_prefix_then_a_without_selection_does_not_open_actions() -> None:
 def _wire_help_stubs(frame: MainFrame) -> MainFrame:
     """Stub the dependencies the cheat sheet needs, leaving the real builder."""
     frame._announcements = []  # type: ignore[attr-defined]
-    frame._announce = frame._announcements.append  # type: ignore[method-assign]
+    frame._announce = lambda message, **_kw: frame._announcements.append(message)  # type: ignore[method-assign]
     frame._binding_for = lambda command_id: None  # type: ignore[method-assign]
     frame._help_shown = []  # type: ignore[attr-defined]
     frame._present_quill_key_help = (  # type: ignore[method-assign]
@@ -291,7 +291,7 @@ def test_prefix_press_announces_quill_key() -> None:
     # announce_mode_changes is on. Speech fires before the chord sound.
     frame = _build_frame()
     frame._announcements = []  # type: ignore[attr-defined]
-    frame._announce = frame._announcements.append  # type: ignore[method-assign]
+    frame._announce = lambda message, **_kw: frame._announcements.append(message)  # type: ignore[method-assign]
     sounds: list[str] = []
     frame._post_sound_stub = sounds.append  # type: ignore[attr-defined]
     handled = frame._handle_quill_key_mode_event(_Event(_BACKTICK, ctrl=True, shift=True))
@@ -305,7 +305,7 @@ def test_prefix_press_silent_when_announce_mode_changes_disabled() -> None:
     # message still appears; only _announce is gated.
     frame = _build_frame(announce_mode_changes=False)
     frame._announcements = []  # type: ignore[attr-defined]
-    frame._announce = frame._announcements.append  # type: ignore[method-assign]
+    frame._announce = lambda message, **_kw: frame._announcements.append(message)  # type: ignore[method-assign]
     frame._handle_quill_key_mode_event(_Event(_BACKTICK, ctrl=True, shift=True))
     assert frame._announcements == []  # type: ignore[attr-defined]
     assert frame._quill_key_prefix_pending is True
@@ -410,9 +410,7 @@ def test_browse_mode_slow_preset_expires_at_8s() -> None:
 
 def test_browse_mode_custom_value_used() -> None:
     # #265 follow-up: 'custom' preset reads browse_mode_followon_custom_ms.
-    frame = _build_frame(
-        browse_followon_timeout="custom", browse_followon_custom_ms=2500
-    )
+    frame = _build_frame(browse_followon_timeout="custom", browse_followon_custom_ms=2500)
     frame._enter_quill_key_mode()
     frame._quill_key_mode_started_at = time.monotonic() - 2.0
     assert frame._browse_mode_timed_out() is False

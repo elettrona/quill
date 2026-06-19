@@ -127,7 +127,7 @@ class QuillKeyMixin:
                 self._quill_key_prefix_started_at = 0.0
                 self._refresh_statusbar()
                 self._set_status_quiet("Unrecognized QUILL key chord. Press ? for help.")
-                self._announce("Unrecognized QUILL key chord")
+                self._announce("Unrecognized QUILL key chord", force=True)
                 return True
             if self._quill_key_prefix_matches(event):
                 self._quill_key_prefix_pending = True
@@ -148,7 +148,7 @@ class QuillKeyMixin:
                 # the chord sound. Gated by announce_mode_changes so users in
                 # quiet / no-speech profiles keep the prefix silent.
                 if bool(getattr(self.settings, "announce_mode_changes", True)):
-                    self._announce("QUILL key")
+                    self._announce("QUILL key", force=True)
                 from quill.core.sound_events import SoundEvent
                 from quill.ui.sound_manager import post_sound
 
@@ -279,18 +279,16 @@ class QuillKeyMixin:
           clamped to ``>= 0`` (``0`` means no timeout)
         - ``unlimited`` and any unknown token -> ``0`` (no timeout)
         """
-        token = str(
-            getattr(self.settings, "browse_mode_followon_timeout", "unlimited")
-        ).strip().lower()
+        token = (
+            str(getattr(self.settings, "browse_mode_followon_timeout", "unlimited")).strip().lower()
+        )
         if token == "instant":
             return 0.001
         if token in _BROWSE_TIMEOUT_PRESETS:
             return _BROWSE_TIMEOUT_PRESETS[token]
         if token == "custom":
             try:
-                ms = float(
-                    getattr(self.settings, "browse_mode_followon_custom_ms", 4000)
-                )
+                ms = float(getattr(self.settings, "browse_mode_followon_custom_ms", 4000))
             except (TypeError, ValueError):
                 ms = 4000.0
             return max(ms / 1000.0, 0.0)
@@ -613,7 +611,7 @@ class QuillKeyMixin:
     def _show_quill_key_cheat_sheet(self, mode: str) -> None:
         """Announce and present the live QUILL key cheat sheet (QK-2, QK-9)."""
         groups = self._build_quill_key_cheat_sheet(mode)
-        self._announce(summarize_cheat_sheet(groups))
+        self._announce(summarize_cheat_sheet(groups), force=True)
         self._present_quill_key_help(mode, format_cheat_sheet(groups))
 
     def _present_quill_key_help(self, mode: str, text: str) -> None:
@@ -671,7 +669,7 @@ class QuillKeyMixin:
         status = status_message or message
         announce_modes = bool(getattr(self.settings, "announce_mode_changes", True))
         if mode in {"speech", "both"} and announce_modes:
-            self._announce(message)
+            self._announce(message, force=True)
         else:
             self._set_status_quiet(status)
         if sound_kind and mode in {"sound", "both"}:

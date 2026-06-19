@@ -6684,13 +6684,13 @@ class MainFrame(
         self._set_status(message)
         self._announce(message)
 
-    def _announce(self, message: str) -> None:
+    def _announce(self, message: str, *, force: bool = False) -> None:
         self._status_message = message
         self._refresh_statusbar()
         engine = getattr(self, "_announcement_engine", None)
         if engine is None:
             return
-        backend_error = engine.announce(message)
+        backend_error = engine.announce(message, force_speech=force)
         if backend_error and backend_error != self._announcement_error_reported:
             self._announcement_error_reported = backend_error
             self._record_notification(backend_error, "accessibility")

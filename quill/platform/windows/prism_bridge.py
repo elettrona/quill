@@ -242,7 +242,7 @@ class AnnouncementEngine:
     def state(self) -> AnnouncementBackendState:
         return self._state
 
-    def announce(self, message: str) -> str | None:
+    def announce(self, message: str, *, force_speech: bool = False) -> str | None:
         if self._runtime_backend is None:
             # macOS: hand the announcement to VoiceOver via the accessibility
             # API. Never self-voice with pyttsx3 — that talks over VoiceOver
@@ -259,10 +259,14 @@ class AnnouncementEngine:
             # Windows/Linux: only speak via system TTS when NO screen reader is
             # running — otherwise it talks over Narrator/NVDA/JAWS (the screen
             # reader already reads the UI through the accessibility API).
+            # force_speech bypasses that suppression for callers narrating
+            # internal-only state (e.g. the QUILL key chord prefix) that has
+            # no focus or control change for the screen reader to pick up on
+            # its own, so without this the message is silently dropped.
             if (
                 self._state.requested_backend == "auto"
                 and pyttsx3 is not None
-                and not _screen_reader_active()
+                and (force_speech or not _screen_reader_active())
             ):
                 engine = _get_pyttsx3_engine()
                 if engine is not None:
