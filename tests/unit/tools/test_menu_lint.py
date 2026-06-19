@@ -42,6 +42,43 @@ def test_ctrl_alt_case_insensitive() -> None:
     assert errors
 
 
+def test_ctrl_alt_edsharp_heading_permitted() -> None:
+    """EdSharp PR2: format.heading_1..6 are allowlisted because each
+    binding carries a per-line # §edsharp-ok justification comment
+    naming the screen-reader binding it overrides (NVDA switch-to-synth-N).
+    """
+    src = (
+        "DEFAULT_KEYMAP: dict[str, str] = {\n"
+        '    "format.heading_1": "Ctrl+Alt+1",  # §edsharp-ok — overrides NVDA switch-to-synth-1\n'
+        '    "format.heading_6": "Ctrl+Alt+6",  # §edsharp-ok — overrides NVDA switch-to-synth-6\n'
+        "}\n"
+    )
+    assert _check_ctrl_alt(src) == []
+
+
+def test_ctrl_alt_uncommented_still_fails() -> None:
+    """Regression: the gate still fires for an unlisted Ctrl+Alt+ binding
+    even after the escape-hatch is introduced.  Ensures the per-binding
+    justification comment is required."""
+    src = 'DEFAULT_KEYMAP: dict[str, str] = {\n    "edit.something": "Ctrl+Alt+Q",\n}\n'
+    errors = _check_ctrl_alt(src)
+    assert errors
+    assert any("edit.something" in e for e in errors)
+
+
+def test_ctrl_alt_edsharp_comment_without_allowlist_entry_still_passes() -> None:
+    """The escape hatch is per-binding: a Ctrl+Alt+ binding outside the
+    global allowlist passes if its line carries # §edsharp-ok.  This is
+    the path that lets future EdSharp-style bindings enter the keymap
+    without needing a menu_lint.py edit each time."""
+    src = (
+        "DEFAULT_KEYMAP: dict[str, str] = {\n"
+        '    "format.new_one_off_command": "Ctrl+Alt+Q",  # §edsharp-ok — justifies why\n'
+        "}\n"
+    )
+    assert _check_ctrl_alt(src) == []
+
+
 # ---------------------------------------------------------------------------
 # Required clusters
 # ---------------------------------------------------------------------------

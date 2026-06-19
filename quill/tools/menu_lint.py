@@ -3,10 +3,12 @@
 Three invariants checked statically against source:
 
 1. **Ctrl+Alt policy (§10.8)**: ``DEFAULT_KEYMAP`` in ``quill/core/keymap.py``
-   must contain no ``Ctrl+Alt+`` binding.  The two Windows-shell actions
-   (``view.send_to_tray`` / ``view.toggle_tab_control``) use
-   ``Ctrl+Shift+Grave, T`` chords, not ``Ctrl+Alt+T``; they are exempt by
-   design, not by omission.
+   may contain a ``Ctrl+Alt+`` binding only when (a) the command id is in the
+   :data:`_CTRL_ALT_DOCUMENTED` allowlist, or (b) the binding line ends with
+   the ``# §edsharp-ok`` per-binding justification comment.  The rationale
+   for the relaxation is in ``docs/keybinding-standard.md``; the policy
+   remains that ``Ctrl+Alt+`` is screen-reader-hostile and must be earned
+   with a documented justification.
 
 2. **Required §10.3 clusters**: every Tools-menu cluster name mandated by
    §10.3 must appear in ``main_frame_menu.py``.  A missing name means the
@@ -36,11 +38,24 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _KEYMAP_PATH = _REPO_ROOT / "quill" / "core" / "keymap.py"
 _MENU_PATH = _REPO_ROOT / "quill" / "ui" / "main_frame_menu.py"
 
-# Ctrl+Alt+ bindings explicitly exempted from §10.8 policy: these are
-# Windows-shell registrations that cannot move to a QUILL-key chord.
-_CTRL_ALT_ALLOWED: frozenset[str] = frozenset({
-    "view.send_to_tray",
-    "view.toggle_tab_control",
+# Ctrl+Alt+ bindings that have been earned with a screen-reader-binding
+# justification and are therefore permitted in DEFAULT_KEYMAP.  Each entry
+# must be paired with a justification comment in keymap.py naming the
+# screen-reader chord the binding overrides; see docs/keybinding-standard.md
+# for the full audit.  Entries added in the EdSharp port (PR2/3) come with
+# the per-binding "# §edsharp-ok" comment on the line itself; entries
+# carried from earlier work (view.send_to_tray / view.toggle_tab_control)
+# predate the escape-hatch mechanism but have equivalent justification.
+_CTRL_ALT_DOCUMENTED: frozenset[str] = frozenset({
+    "view.send_to_tray",  # Ctrl+Alt+T — Windows-shell registration
+    "view.toggle_tab_control",  # Ctrl+Alt+Shift+T — Windows-shell registration
+    # EdSharp port: heading shortcuts override NVDA switch-to-synth-N (Ctrl+Alt+1..6).
+    "format.heading_1",
+    "format.heading_2",
+    "format.heading_3",
+    "format.heading_4",
+    "format.heading_5",
+    "format.heading_6",
 })
 
 # §10.3 binding-spec cluster labels that must appear as AppendSubMenu
@@ -59,12 +74,30 @@ _REQUIRED_CLUSTER_LABELS: tuple[tuple[str, str], ...] = (
 
 
 def _check_ctrl_alt(source: str) -> list[str]:
-    """Return error strings for DEFAULT_KEYMAP entries bound to Ctrl+Alt+."""
+    """Return error strings for DEFAULT_KEYMAP entries bound to Ctrl+Alt+.
+
+    A ``Ctrl+Alt+`` binding passes the gate when EITHER:
+
+    * the command id is in :data:`_CTRL_ALT_DOCUMENTED` (the binding is
+      historically permitted and has a documented screen-reader-binding
+      justification in :mod:`docs.keybinding-standard`), OR
+    * the line in ``keymap.py`` ends with the inline justification comment
+      ``# §edsharp-ok`` (the per-binding escape hatch introduced with the
+      EdSharp port; each occurrence must be paired with a justification
+      naming which screen-reader chord the binding overrides).
+
+    The escape-hatch check is line-level so a single DEFAULT_KEYMAP line can
+    be permitted without growing the global allowlist for one-off bindings.
+    """
     errors: list[str] = []
     try:
         tree = ast.parse(source, filename=str(_KEYMAP_PATH))
     except SyntaxError as exc:
         return [f"  SyntaxError parsing keymap.py: {exc}"]
+
+    # Pre-compute line-number -> text lookup so we can verify the per-binding
+    # escape-hatch comment lives on the same line as the binding entry.
+    lines = source.splitlines()
 
     for node in ast.walk(tree):
         # DEFAULT_KEYMAP uses an annotated assignment (dict[str, str] type hint).
@@ -84,15 +117,21 @@ def _check_ctrl_alt(source: str) -> list[str]:
             if not (isinstance(key_node, ast.Constant) and isinstance(val_node, ast.Constant)):
                 continue
             command_id = str(key_node.value)
-            if command_id in _CTRL_ALT_ALLOWED:
-                continue
             binding = str(val_node.value)
-            if re.match(r"(?i)ctrl\+alt\+", binding):
-                errors.append(
-                    f"  {command_id!r}: {binding!r} — "
-                    "Ctrl+Alt+ is screen-reader-hostile (§10.8). "
-                    "Move to a QUILL-key chord or leave unbound."
-                )
+            if not re.match(r"(?i)ctrl\+alt\+", binding):
+                continue
+            if command_id in _CTRL_ALT_DOCUMENTED:
+                continue
+            line_text = lines[val_node.lineno - 1] if 0 < val_node.lineno <= len(lines) else ""
+            if "§edsharp-ok" in line_text:
+                continue
+            errors.append(
+                f"  {command_id!r}: {binding!r} — "
+                "Ctrl+Alt+ is screen-reader-hostile (§10.8). "
+                "Add the binding id to _CTRL_ALT_DOCUMENTED in menu_lint.py, "
+                "or append a '# §edsharp-ok' justification comment naming the "
+                "screen-reader binding it overrides."
+            )
     return errors
 
 

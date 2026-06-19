@@ -157,12 +157,12 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "format.list_manager": "Ctrl+Shift+Grave, L",
     "format.bold": "Ctrl+B",
     "format.italic": "Ctrl+I",
-    "format.heading_1": "Ctrl+Shift+Grave, 1",
-    "format.heading_2": "Ctrl+Shift+Grave, 2",
-    "format.heading_3": "Ctrl+Shift+Grave, 3",
-    "format.heading_4": "Ctrl+Shift+Grave, 4",
-    "format.heading_5": "Ctrl+Shift+Grave, 5",
-    "format.heading_6": "Ctrl+Shift+Grave, 6",
+    "format.heading_1": "Ctrl+Alt+1",  # §edsharp-ok — overrides NVDA switch-to-synth-1
+    "format.heading_2": "Ctrl+Alt+2",  # §edsharp-ok — overrides NVDA switch-to-synth-2
+    "format.heading_3": "Ctrl+Alt+3",  # §edsharp-ok — overrides NVDA switch-to-synth-3
+    "format.heading_4": "Ctrl+Alt+4",  # §edsharp-ok — overrides NVDA switch-to-synth-4
+    "format.heading_5": "Ctrl+Alt+5",  # §edsharp-ok — overrides NVDA switch-to-synth-5
+    "format.heading_6": "Ctrl+Alt+6",  # §edsharp-ok — overrides NVDA switch-to-synth-6
     "format.decrease_heading_level": "Alt+Shift+Left",
     "format.increase_heading_level": "Alt+Shift+Right",
     "format.insert_html_tag": "Ctrl+Shift+Grave, H",
@@ -326,12 +326,12 @@ def merge_keymaps(raw: object) -> dict[str, str]:
         "tools.sticky_note_capture": ("CTRL+ALT+SHIFT+N", "Ctrl+Shift+Grave, N"),
         "view.browser_preview": ("CTRL+ALT+SHIFT+V", "Ctrl+Shift+Grave, V"),
         "format.list_manager": ("CTRL+ALT+L", "Ctrl+Shift+Grave, L"),
-        "format.heading_1": ("CTRL+ALT+1", "Ctrl+Shift+Grave, 1"),
-        "format.heading_2": ("CTRL+ALT+2", "Ctrl+Shift+Grave, 2"),
-        "format.heading_3": ("CTRL+ALT+3", "Ctrl+Shift+Grave, 3"),
-        "format.heading_4": ("CTRL+ALT+4", "Ctrl+Shift+Grave, 4"),
-        "format.heading_5": ("CTRL+ALT+5", "Ctrl+Shift+Grave, 5"),
-        "format.heading_6": ("CTRL+ALT+6", "Ctrl+Shift+Grave, 6"),
+        "format.heading_1": ("CTRL+SHIFT+GRAVE, 1", "Ctrl+Alt+1"),
+        "format.heading_2": ("CTRL+SHIFT+GRAVE, 2", "Ctrl+Alt+2"),
+        "format.heading_3": ("CTRL+SHIFT+GRAVE, 3", "Ctrl+Alt+3"),
+        "format.heading_4": ("CTRL+SHIFT+GRAVE, 4", "Ctrl+Alt+4"),
+        "format.heading_5": ("CTRL+SHIFT+GRAVE, 5", "Ctrl+Alt+5"),
+        "format.heading_6": ("CTRL+SHIFT+GRAVE, 6", "Ctrl+Alt+6"),
         "format.insert_html_tag": ("CTRL+ALT+H", "Ctrl+Shift+Grave, H"),
         "format.insert_markdown_tag": ("CTRL+ALT+M", "Ctrl+Shift+Grave, M"),
         "format.insert_snippet": ("CTRL+ALT+SPACE", "Ctrl+Shift+Grave, S"),
