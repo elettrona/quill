@@ -1,5 +1,18 @@
 # Codex Review Log
 
+## 2026-06-19 00:19:11 -04:00
+
+Framework readiness tightening checkpoint:
+
+- reviewed the active publishing providers framework plan at the user's request
+- confirmed the current framework scope is ready as a branch checkpoint: WordPress is correctly included as the in-tree reference provider, while future WordPress-as-bundled-Quillin extraction remains deferred
+- marked deferred items clearly: WordPress package extraction, schedule publish, local-vs-remote compare/sync, and live third-party publishing provider loading
+- recommendation is to move to review/readiness validation instead of adding more speculative framework machinery
+
+Validation:
+
+- rerun publishing-owned validation battery and provider registry gate before committing this tightening checkpoint
+- no push has been performed
 ## 2026-06-19 00:02:32 -04:00
 
 WordPress extraction-readiness checkpoint:
@@ -23,21 +36,21 @@ Next read:
 
 Provider/client contract validation checkpoint:
 
-- added alidate_publishing_provider_definition(...) for explicit metadata contract validation
+- added `validate_publishing_provider_definition(...)` for explicit metadata contract validation
 - expanded the provider registry gate so metadata is checked before provider-client drift
 - contract validation now catches unsupported implemented auth/content/operation entries, unknown contract ids, and missing content-kind labels
 - kept the slice extraction-prep only: WordPress remains in-tree and no runtime third-party provider loading was added
 
 Verification:
 
-- uff format quill\core\publishing_validation.py tests\unit\core\test_publishing.py
-- uff check quill\core\publishing_validation.py tests\unit\core\test_publishing.py
-- focused publishing core tests: 24 passed in 0.69s
-- focused provider gate tests: 5 passed in 0.21s
-- direct provider gate command: Publishing provider/client registry is valid.
-- wider publishing/tool/module-size slice: 58 passed in 4.23s
-- pre-commit run publishing-provider-registry --all-files: passed
-- full `tests/unit`: 3738 passed, 11 skipped, 53 failed, 2 warnings in 102.09s
+- `ruff format quill\core\publishing_validation.py tests\unit\core\test_publishing.py`
+- `ruff check quill\core\publishing_validation.py tests\unit\core\test_publishing.py`
+- focused publishing core tests: `24 passed in 0.69s`
+- focused provider gate tests: `5 passed in 0.21s`
+- direct provider gate command: `Publishing provider/client registry is valid.`
+- wider publishing/tool/module-size slice: `58 passed in 4.23s`
+- `pre-commit run publishing-provider-registry --all-files`: passed
+- full `tests/unit`: `3738 passed, 11 skipped, 53 failed, 2 warnings in 102.09s`
 - remaining full-suite failures/skips/warnings are outside the touched provider-contract slice and left for their owning main-side areas
 
 Next read:
@@ -45,7 +58,6 @@ Next read:
 - provider extraction readiness now has a sharper metadata/client contract gate
 - next likely work is a WordPress extraction-blocker/packaging expectations note or another small contract-hardening slice
 - no push has been performed
-
 ## 2026-06-18 22:56:24 -04:00
 
 Provider validation CI/local wiring checkpoint:

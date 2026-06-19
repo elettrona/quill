@@ -1,5 +1,40 @@
 # Publishing Providers Framework Plan
 
+## 2026-06-19 framework readiness tightening checkpoint
+
+Current read after reviewing the plan: the approved publishing framework scope is complete enough for a branch readiness checkpoint.
+
+Marked complete for the current framework scope:
+
+- provider metadata and auth model
+- connection profile storage and secure secret handling
+- endpoint security validation
+- WordPress as the in-tree reference provider
+- provider/client registry seam
+- browse/open/create/update/publish lifecycle actions
+- remote item editor identity
+- provider operation capability metadata
+- provider/client and provider metadata validation gates
+- local pre-commit and PR CI wiring for the publishing provider registry gate
+
+Deliberately deferred beyond this framework checkpoint:
+
+- WordPress extraction into a first-party bundled Quillin or equivalent provider package
+- schedule publish
+- local-vs-remote compare and first honest sync model
+- live third-party publishing provider loading
+
+Recommendation:
+
+- treat the current branch as a publishing framework readiness checkpoint
+- do not add more framework machinery unless review identifies a concrete gap
+- continue product work or WordPress-as-bundled-Quillin extraction only as separately approved follow-up phases
+
+Validation plan for this tightening pass:
+
+- publishing-owned validation battery passed: `137 passed in 32.51s`
+- provider registry gate passed: `Publishing provider/client registry is valid.`
+- full-suite baseline remains the latest recorded `3738 passed, 11 skipped, 53 failed, 2 warnings`; unrelated main-side failures remain out of scope
 ## 2026-06-19 WordPress extraction blocker note
 
 The WordPress provider extraction-readiness checkpoint is documented in `codex-notes/notes/wordpress-provider-extraction-readiness-2026-06-19.md`.

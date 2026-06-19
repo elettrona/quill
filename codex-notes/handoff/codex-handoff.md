@@ -1,5 +1,17 @@
 # Codex Handoff
 
+## 2026-06-19 Framework Readiness Tightening
+
+- reviewed `codex-notes/plans/publishing-providers-framework.md`
+- current publishing framework scope is ready for a branch readiness checkpoint
+- WordPress remains included as the in-tree reference provider, which matches the original plan
+- WordPress-as-bundled-Quillin extraction is deferred follow-up, not a blocker for this framework scope
+- later roadmap items remain deferred:
+  - schedule publish
+  - compare/sync local versus remote state
+  - live third-party provider loading
+- next step should be review/readiness validation, not more speculative framework work
+- no push performed
 ## 2026-06-19 WordPress Extraction Readiness Note
 
 - added `codex-notes/notes/wordpress-provider-extraction-readiness-2026-06-19.md`

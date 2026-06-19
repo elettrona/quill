@@ -1,6 +1,16 @@
 # Publishing Providers Framework Readiness
 
-Status: active upstream implementation checkpoint on `feature/publishing-providers-framework`, tracking `origin/feature/publishing-providers-framework`, with current upstream `main` at `7a64564`, merge/conflict recovery represented by HEAD `cbe5ed6`, provider registry seam in place, operation capability metadata added, provider/client validation implemented, provider metadata contract validation added, and the internal tool gate wired into local pre-commit plus PR CI, remote item editor identity implemented, publish-now and open-remote publish lifecycle actions added, focused validation green, and WordPress extraction direction and blocker note recorded.
+## 2026-06-19 framework readiness tightening
+
+- reviewed the active plan and confirmed the current publishing framework scope is ready for a branch readiness checkpoint
+- current scope includes provider metadata, connection/auth model, secure secrets, endpoint validation, provider/client seam, WordPress reference provider, browse/open/create/update/publish lifecycle, remote identity, operation capabilities, and validation gates
+- deferred items are explicitly not blockers for the current framework checkpoint:
+  - WordPress extraction as a first-party bundled Quillin/provider package
+  - schedule publish
+  - local-vs-remote compare/sync model
+  - live third-party publishing provider loading
+- recommendation: stop adding speculative framework machinery and move to review/readiness unless a concrete review gap appears
+Status: active upstream implementation checkpoint on `feature/publishing-providers-framework`, tracking `origin/feature/publishing-providers-framework`, with current upstream `main` at `7a64564`, merge/conflict recovery represented by HEAD `cbe5ed6`, provider registry seam in place, operation capability metadata added, provider/client validation implemented, provider metadata contract validation added, and the internal tool gate wired into local pre-commit plus PR CI, remote item editor identity implemented, publish-now and open-remote publish lifecycle actions added, focused validation green, current framework scope marked ready, and WordPress extraction direction and blocker note recorded as deferred follow-up.
 
 ## 2026-06-19 WordPress extraction blockers
 
