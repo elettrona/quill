@@ -1,5 +1,25 @@
 # Codex Handoff
 
+## 2026-06-18 Provider/Client Contract Validation Slice
+
+- implemented provider metadata contract validation for extraction readiness
+- new validation entry point:
+  - `validate_publishing_provider_definition(...)`
+- provider registry gate now validates provider definitions and clients together
+- checks added for:
+  - implemented auth methods/content kinds/operations that are not listed as supported
+  - unknown auth method ids and operation ids
+  - implemented content kinds missing singular/plural labels
+- WordPress remains in-tree; no third-party provider runtime loading was enabled
+- verification:
+  - focused publishing core tests: `24 passed in 0.69s`
+  - focused provider gate tests: `5 passed in 0.21s`
+  - wider publishing/tool/module-size slice: `58 passed in 4.23s`
+  - direct provider gate command: `Publishing provider/client registry is valid.`
+  - pre-commit hook: passed
+  - full unit suite: `3738 passed, 11 skipped, 53 failed, 2 warnings`
+- remaining full-suite failures are outside this slice and left untouched
+- no push performed
 ## 2026-06-18 Provider Validation CI/Local Wiring Slice
 
 - wired the internal publishing provider registry gate into local and CI checks

@@ -1,5 +1,37 @@
 # Publishing Providers Framework Plan
 
+## 2026-06-18 provider/client contract validation note
+
+The provider extraction preparation slice is implemented.
+
+Implemented:
+
+- added `validate_publishing_provider_definition(...)` to make provider metadata validation explicit
+- expanded the provider registry gate so it now checks provider metadata before checking provider clients
+- validated that implemented auth methods, content kinds, and operations are listed as supported
+- validated that auth methods and operations use known contract ids
+- validated that implemented content kinds have singular and plural labels
+- kept the work as pure contract/tooling validation; WordPress remains in-tree and no third-party provider loading was enabled
+
+Validation:
+
+- `ruff format quill\core\publishing_validation.py tests\unit\core\test_publishing.py`
+- `ruff check quill\core\publishing_validation.py tests\unit\core\test_publishing.py`
+- `pytest tests\unit\core\test_publishing.py -q --basetemp=.tmp\pytest-provider-contract`
+  - result: `24 passed in 0.69s`
+- `pytest tests\unit\tools\test_check_publishing_providers.py -q --basetemp=.tmp\pytest-provider-contract-tool`
+  - result: `5 passed in 0.21s`
+- `python -m quill.tools.check_publishing_providers`
+  - result: `Publishing provider/client registry is valid.`
+- wider publishing/tool/module-size slice:
+  - result: `58 passed in 4.23s`
+- `pre-commit run publishing-provider-registry --all-files`
+  - result: passed
+- full `tests/unit`: `3738 passed, 11 skipped, 53 failed, 2 warnings`; remaining failures are outside the touched provider-contract slice and are left for their owning main-side work
+
+Next likely implementation direction:
+
+- continue extraction readiness by documenting the WordPress extraction blockers or contract packaging expectations, still without moving WordPress or enabling live third-party provider loading
 ## 2026-06-18 provider validation CI/local wiring note
 
 The provider validation gate is now wired into the existing local and CI check collections.

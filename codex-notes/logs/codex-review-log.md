@@ -1,5 +1,31 @@
 # Codex Review Log
 
+## 2026-06-18 23:29:17 -04:00
+
+Provider/client contract validation checkpoint:
+
+- added alidate_publishing_provider_definition(...) for explicit metadata contract validation
+- expanded the provider registry gate so metadata is checked before provider-client drift
+- contract validation now catches unsupported implemented auth/content/operation entries, unknown contract ids, and missing content-kind labels
+- kept the slice extraction-prep only: WordPress remains in-tree and no runtime third-party provider loading was added
+
+Verification:
+
+- uff format quill\core\publishing_validation.py tests\unit\core\test_publishing.py
+- uff check quill\core\publishing_validation.py tests\unit\core\test_publishing.py
+- focused publishing core tests: 24 passed in 0.69s
+- focused provider gate tests: 5 passed in 0.21s
+- direct provider gate command: Publishing provider/client registry is valid.
+- wider publishing/tool/module-size slice: 58 passed in 4.23s
+- pre-commit run publishing-provider-registry --all-files: passed
+- full 	ests/unit: 3738 passed, 11 skipped, 53 failed, 2 warnings in 102.09s
+- remaining full-suite failures/skips/warnings are outside the touched provider-contract slice and left for their owning main-side areas
+
+Next read:
+
+- provider extraction readiness now has a sharper metadata/client contract gate
+- next likely work is a WordPress extraction-blocker/packaging expectations note or another small contract-hardening slice
+- no push has been performed
 ## 2026-06-18 22:56:24 -04:00
 
 Provider validation CI/local wiring checkpoint:

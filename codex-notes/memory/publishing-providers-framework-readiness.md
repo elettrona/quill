@@ -1,7 +1,27 @@
 # Publishing Providers Framework Readiness
 
-Status: active upstream implementation checkpoint on `feature/publishing-providers-framework`, tracking `origin/feature/publishing-providers-framework`, with current upstream `main` at `7a64564`, merge/conflict recovery represented by HEAD `cbe5ed6`, provider registry seam in place, operation capability metadata added, provider/client validation implemented and its internal tool gate wired into local pre-commit plus PR CI, remote item editor identity implemented, publish-now and open-remote publish lifecycle actions added, focused validation green, and WordPress extraction direction recorded.
+Status: active upstream implementation checkpoint on `feature/publishing-providers-framework`, tracking `origin/feature/publishing-providers-framework`, with current upstream `main` at `7a64564`, merge/conflict recovery represented by HEAD `cbe5ed6`, provider registry seam in place, operation capability metadata added, provider/client validation implemented, provider metadata contract validation added, and the internal tool gate wired into local pre-commit plus PR CI, remote item editor identity implemented, publish-now and open-remote publish lifecycle actions added, focused validation green, and WordPress extraction direction recorded.
 
+## 2026-06-18 provider/client contract validation
+
+- added provider metadata contract validation through `validate_publishing_provider_definition(...)`
+- the publishing provider registry gate now checks metadata and clients together
+- contract checks now catch:
+  - implemented auth method not listed as supported
+  - implemented content kind not listed as supported
+  - implemented operation not listed as supported
+  - unknown auth method ids
+  - unknown operation ids
+  - missing singular/plural labels for implemented content kinds
+- WordPress remains the in-tree reference provider; no runtime third-party publishing provider loading was added
+- validation passed:
+  - focused publishing core tests: `24 passed in 0.69s`
+  - focused provider gate tests: `5 passed in 0.21s`
+  - wider publishing/tool/module-size slice: `58 passed in 4.23s`
+  - direct provider gate command: `Publishing provider/client registry is valid.`
+  - `pre-commit run publishing-provider-registry --all-files`: passed
+- full unit suite after this slice: `3738 passed, 11 skipped, 53 failed, 2 warnings`
+- remaining full-suite failures/skips/warnings are outside the touched provider-contract slice and remain out of scope
 ## 2026-06-18 provider validation CI/local wiring
 
 - wired `python -m quill.tools.check_publishing_providers` into the existing local/CI gate collections

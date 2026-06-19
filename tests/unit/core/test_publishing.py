@@ -14,6 +14,7 @@ from quill.core.publishing_providers import (
     AUTH_METHOD_APP_PASSWORD,
     AUTH_METHOD_BROWSER_SESSION,
     AUTH_METHOD_EMAIL_LINK,
+    AUTH_METHOD_PASSWORD,
     PUBLISHING_OPERATION_VERIFY,
     PublishingProviderDefinition,
     provider_auth_methods,
@@ -384,6 +385,146 @@ def _register_verify_only_provider(*, operation: str = PUBLISHING_OPERATION_VERI
 
 def test_registered_provider_clients_validate_cleanly() -> None:
     assert publishing_validation.validate_registered_publishing_provider_clients() == ()
+
+
+def test_provider_definition_metadata_validates_cleanly() -> None:
+    assert publishing_validation.validate_publishing_provider_definition("wordpress") == ()
+
+
+def test_provider_definition_validation_rejects_implemented_auth_not_supported() -> None:
+    register_publishing_provider(
+        PublishingProviderDefinition(
+            id="verifyonly",
+            name="Verify Only",
+            help_text="Provider/client validation fixture.",
+            default_content_format="html",
+            supported_auth_methods=(AUTH_METHOD_APP_PASSWORD,),
+            implemented_auth_methods=(AUTH_METHOD_PASSWORD,),
+            supported_content_kinds=("article",),
+            implemented_content_kinds=("article",),
+            supported_operations=(PUBLISHING_OPERATION_VERIFY,),
+            implemented_operations=(PUBLISHING_OPERATION_VERIFY,),
+            content_kind_labels={"article": "Article"},
+            content_kind_plural_labels={"article": "Articles"},
+        )
+    )
+    try:
+        issues = publishing_validation.validate_publishing_provider_definition("verifyonly")
+    finally:
+        unregister_publishing_provider("verifyonly")
+
+    assert [issue.message for issue in issues] == [
+        "Verify Only implements auth method 'password' but does not list it as supported."
+    ]
+
+
+def test_provider_definition_validation_rejects_unknown_auth_method() -> None:
+    register_publishing_provider(
+        PublishingProviderDefinition(
+            id="verifyonly",
+            name="Verify Only",
+            help_text="Provider/client validation fixture.",
+            default_content_format="html",
+            supported_auth_methods=("token_magic",),
+            implemented_auth_methods=("token_magic",),
+            supported_content_kinds=("article",),
+            implemented_content_kinds=("article",),
+            supported_operations=(PUBLISHING_OPERATION_VERIFY,),
+            implemented_operations=(PUBLISHING_OPERATION_VERIFY,),
+            content_kind_labels={"article": "Article"},
+            content_kind_plural_labels={"article": "Articles"},
+        )
+    )
+    try:
+        issues = publishing_validation.validate_publishing_provider_definition("verifyonly")
+    finally:
+        unregister_publishing_provider("verifyonly")
+
+    assert [issue.message for issue in issues] == [
+        "Verify Only declares unknown publishing auth method 'token_magic'."
+    ]
+
+
+def test_provider_definition_validation_rejects_implemented_content_not_supported() -> None:
+    register_publishing_provider(
+        PublishingProviderDefinition(
+            id="verifyonly",
+            name="Verify Only",
+            help_text="Provider/client validation fixture.",
+            default_content_format="html",
+            supported_auth_methods=(AUTH_METHOD_APP_PASSWORD,),
+            implemented_auth_methods=(AUTH_METHOD_APP_PASSWORD,),
+            supported_content_kinds=("article",),
+            implemented_content_kinds=("note",),
+            supported_operations=(PUBLISHING_OPERATION_VERIFY,),
+            implemented_operations=(PUBLISHING_OPERATION_VERIFY,),
+            content_kind_labels={"note": "Note"},
+            content_kind_plural_labels={"note": "Notes"},
+        )
+    )
+    try:
+        issues = publishing_validation.validate_publishing_provider_definition("verifyonly")
+    finally:
+        unregister_publishing_provider("verifyonly")
+
+    assert [issue.message for issue in issues] == [
+        "Verify Only implements content kind 'note' but does not list it as supported."
+    ]
+
+
+def test_provider_definition_validation_requires_content_kind_labels() -> None:
+    register_publishing_provider(
+        PublishingProviderDefinition(
+            id="verifyonly",
+            name="Verify Only",
+            help_text="Provider/client validation fixture.",
+            default_content_format="html",
+            supported_auth_methods=(AUTH_METHOD_APP_PASSWORD,),
+            implemented_auth_methods=(AUTH_METHOD_APP_PASSWORD,),
+            supported_content_kinds=("article",),
+            implemented_content_kinds=("article",),
+            supported_operations=(PUBLISHING_OPERATION_VERIFY,),
+            implemented_operations=(PUBLISHING_OPERATION_VERIFY,),
+            content_kind_labels={},
+            content_kind_plural_labels={},
+        )
+    )
+    try:
+        issues = publishing_validation.validate_publishing_provider_definition("verifyonly")
+    finally:
+        unregister_publishing_provider("verifyonly")
+
+    assert [issue.message for issue in issues] == [
+        "Verify Only implements content kind 'article' but has no singular label.",
+        "Verify Only implements content kind 'article' but has no plural label.",
+    ]
+
+
+def test_provider_definition_validation_rejects_unknown_operation() -> None:
+    register_publishing_provider(
+        PublishingProviderDefinition(
+            id="verifyonly",
+            name="Verify Only",
+            help_text="Provider/client validation fixture.",
+            default_content_format="html",
+            supported_auth_methods=(AUTH_METHOD_APP_PASSWORD,),
+            implemented_auth_methods=(AUTH_METHOD_APP_PASSWORD,),
+            supported_content_kinds=("article",),
+            implemented_content_kinds=("article",),
+            supported_operations=("syndicate",),
+            implemented_operations=("syndicate",),
+            content_kind_labels={"article": "Article"},
+            content_kind_plural_labels={"article": "Articles"},
+        )
+    )
+    try:
+        issues = publishing_validation.validate_publishing_provider_definition("verifyonly")
+    finally:
+        unregister_publishing_provider("verifyonly")
+
+    assert [issue.message for issue in issues] == [
+        "Verify Only declares unknown publishing operation 'syndicate'."
+    ]
 
 
 def test_provider_validation_reports_missing_client() -> None:

@@ -4,12 +4,14 @@ from dataclasses import dataclass
 
 from quill.core.publishing_clients import publishing_provider_client
 from quill.core.publishing_providers import (
+    AUTH_METHOD_DEFINITIONS,
     PUBLISHING_OPERATION_BROWSE,
     PUBLISHING_OPERATION_CREATE,
     PUBLISHING_OPERATION_LOAD,
     PUBLISHING_OPERATION_PUBLISH,
     PUBLISHING_OPERATION_UPDATE,
     PUBLISHING_OPERATION_VERIFY,
+    PUBLISHING_OPERATIONS,
     available_publishing_providers,
     provider_implemented_operations,
     publishing_provider_definition,
@@ -29,6 +31,93 @@ _OPERATION_METHODS = {
 class PublishingProviderValidationIssue:
     provider_id: str
     message: str
+
+
+def validate_publishing_provider_definition(
+    provider_id: str,
+) -> tuple[PublishingProviderValidationIssue, ...]:
+    normalized = provider_id.strip().lower()
+    definition = publishing_provider_definition(normalized)
+    if definition is None:
+        return (
+            PublishingProviderValidationIssue(
+                normalized,
+                f"{normalized or 'Unknown provider'} publishing provider is not registered.",
+            ),
+        )
+
+    issues: list[PublishingProviderValidationIssue] = []
+    _extend_subset_issues(
+        issues,
+        normalized,
+        definition.name,
+        implemented=definition.implemented_auth_methods,
+        supported=definition.supported_auth_methods,
+        noun="auth method",
+    )
+    _extend_subset_issues(
+        issues,
+        normalized,
+        definition.name,
+        implemented=definition.implemented_content_kinds,
+        supported=definition.supported_content_kinds,
+        noun="content kind",
+    )
+    _extend_subset_issues(
+        issues,
+        normalized,
+        definition.name,
+        implemented=definition.implemented_operations,
+        supported=definition.supported_operations,
+        noun="operation",
+    )
+    _extend_unknown_issues(
+        issues,
+        normalized,
+        definition.name,
+        values=definition.supported_auth_methods + definition.implemented_auth_methods,
+        known=AUTH_METHOD_DEFINITIONS,
+        noun="auth method",
+    )
+    _extend_unknown_issues(
+        issues,
+        normalized,
+        definition.name,
+        values=definition.supported_operations + definition.implemented_operations,
+        known=PUBLISHING_OPERATIONS,
+        noun="operation",
+    )
+    for content_kind in definition.implemented_content_kinds:
+        clean_kind = content_kind.strip().lower()
+        if not clean_kind:
+            issues.append(
+                PublishingProviderValidationIssue(
+                    normalized,
+                    f"{definition.name} declares a blank implemented content kind.",
+                )
+            )
+            continue
+        if clean_kind not in definition.content_kind_labels:
+            issues.append(
+                PublishingProviderValidationIssue(
+                    normalized,
+                    (
+                        f"{definition.name} implements content kind '{clean_kind}' but "
+                        "has no singular label."
+                    ),
+                )
+            )
+        if clean_kind not in definition.content_kind_plural_labels:
+            issues.append(
+                PublishingProviderValidationIssue(
+                    normalized,
+                    (
+                        f"{definition.name} implements content kind '{clean_kind}' but "
+                        "has no plural label."
+                    ),
+                )
+            )
+    return tuple(issues)
 
 
 def validate_publishing_provider_client(
@@ -95,6 +184,7 @@ def validate_registered_publishing_provider_clients() -> tuple[
     definition_ids = {definition.id for definition in available_publishing_providers()}
     client_ids = set(_registered_provider_client_ids())
     for provider_id in sorted(definition_ids):
+        issues.extend(validate_publishing_provider_definition(provider_id))
         issues.extend(validate_publishing_provider_client(provider_id))
     for provider_id in sorted(client_ids - definition_ids):
         issues.append(
@@ -104,6 +194,62 @@ def validate_registered_publishing_provider_clients() -> tuple[
             )
         )
     return tuple(issues)
+
+
+def _extend_subset_issues(
+    issues: list[PublishingProviderValidationIssue],
+    provider_id: str,
+    provider_name: str,
+    *,
+    implemented: tuple[str, ...],
+    supported: tuple[str, ...],
+    noun: str,
+) -> None:
+    supported_set = {value.strip().lower() for value in supported if value.strip()}
+    for value in implemented:
+        clean_value = value.strip().lower()
+        if not clean_value:
+            issues.append(
+                PublishingProviderValidationIssue(
+                    provider_id,
+                    f"{provider_name} declares a blank implemented {noun}.",
+                )
+            )
+        elif clean_value not in supported_set:
+            issues.append(
+                PublishingProviderValidationIssue(
+                    provider_id,
+                    (
+                        f"{provider_name} implements {noun} '{clean_value}' but does "
+                        "not list it as supported."
+                    ),
+                )
+            )
+
+
+def _extend_unknown_issues(
+    issues: list[PublishingProviderValidationIssue],
+    provider_id: str,
+    provider_name: str,
+    *,
+    values: tuple[str, ...],
+    known: object,
+    noun: str,
+) -> None:
+    known_set = {str(value).strip().lower() for value in known}
+    seen: set[str] = set()
+    for value in values:
+        clean_value = value.strip().lower()
+        if not clean_value or clean_value in seen:
+            continue
+        seen.add(clean_value)
+        if clean_value not in known_set:
+            issues.append(
+                PublishingProviderValidationIssue(
+                    provider_id,
+                    f"{provider_name} declares unknown publishing {noun} '{clean_value}'.",
+                )
+            )
 
 
 def _registered_provider_client_ids() -> tuple[str, ...]:
