@@ -1,5 +1,53 @@
 # Codex Review Log
 
+## 2026-06-18 21:33:40 -04:00
+
+Recovery / branch-state checkpoint:
+
+- user requested a full recovery update for Codex planning docs, memory files, and working chat logs
+- user noted the head developer granted push access and resolved conflicts before creating the branch
+- current branch: `feature/publishing-providers-framework`
+- tracking branch: `origin/feature/publishing-providers-framework`
+- remote: `https://github.com/community-access/quill`
+- current HEAD: `cbe5ed6 Merge branch 'features/publishing-providers-framework' of https://github.com/stickbear2015/quill into feature/publishing-providers-framework`
+- current upstream main: `7a64564 chore(docs): drop relocated 0.5.0 release notes and old verbosity plan`
+- working tree was clean before this recovery documentation update
+
+Merge commit evidence reviewed:
+
+- `cbe5ed6` reconciled the publishing branch with `origin/main` at `7a64564`
+- conflict resolution covered:
+  - `quill/tools/module_size_budgets.json` GATE-11 rebaseline for publishing/main-menu growth
+  - `tests/unit/ui/fixtures/dialog_inventory.json` regenerated with publishing dialogs and post-#179 crash-recovery surface
+  - `tests/unit/ui/fixtures/main_frame_public_surface.json` regenerated with 494 public methods
+  - `tests/unit/ui/test_main_frame.py` ruff-formatted after conflict resolution
+  - `tests/unit/ui/test_main_frame_menu_contract.py` restored per-file menu source reads and added `main_frame_power_tools_menu.py`
+  - `quill/ui/main_frame.py` import block fixed by `ruff check --fix`
+  - `tests/unit/ui/test_power_tools_command_wiring.py` slice boundary expanded after publishing growth
+- precommit gates recorded green: ruff format, ruff check, banned-pattern, dialog escape-button contract, module-size budget, announce-gap gate
+- tests recorded by merge author:
+  - `tests/unit/ui/` 690/690 pass
+  - `tests/unit/core/` 2544 pass + 4 skipped + 11 thesaurus timeouts deselected
+  - 12 `test_brf_page_detection.py` failures are documented as pre-existing on `origin/main` and unrelated to this merge
+
+Current hold:
+
+- do not continue into the next plan implementation yet
+- finish tightening recovery/review notes against the merge evidence first
+
+Documentation synchronized:
+
+- `codex-notes/plans/publishing-providers-framework.md`
+- `codex-notes/memory/publishing-providers-framework-readiness.md`
+- `codex-notes/handoff/codex-handoff.md`
+- `codex-notes/logs/codex-review-log.md`
+
+Next read:
+
+- prior fork-only instructions are historical
+- active work should continue on upstream `origin/feature/publishing-providers-framework`
+- use the current merge commit as the baseline for future publishing-provider work
+
 ## 2026-06-18 18:19:27 -04:00
 
 Repository sync / PR checkpoint:

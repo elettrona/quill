@@ -1,6 +1,25 @@
 # Publishing Providers Framework Readiness
 
-Status: active implementation checkpoint with current `origin/main` merged, provider registry seam in place, operation capability metadata added, remote item editor identity implemented, publish-now and open-remote publish lifecycle actions added, focused validation green, fork branch pushed, upstream PR #268 created, and WordPress extraction direction recorded.
+Status: active upstream implementation checkpoint on `feature/publishing-providers-framework`, tracking `origin/feature/publishing-providers-framework`, with current upstream `main` at `7a64564`, merge/conflict recovery represented by HEAD `cbe5ed6`, provider registry seam in place, operation capability metadata added, remote item editor identity implemented, publish-now and open-remote publish lifecycle actions added, focused validation green from the prior checkpoint, and WordPress extraction direction recorded.
+
+## 2026-06-18 upstream access and branch recovery
+
+- user reports the head developer granted push access and resolved conflicts before creating the current branch
+- current remote is upstream: `origin https://github.com/community-access/quill`
+- current active branch: `feature/publishing-providers-framework`
+- current tracking branch: `origin/feature/publishing-providers-framework`
+- current HEAD: `cbe5ed6 Merge branch 'features/publishing-providers-framework' of https://github.com/stickbear2015/quill into feature/publishing-providers-framework`
+- current `origin/main` / `main`: `7a64564 chore(docs): drop relocated 0.5.0 release notes and old verbosity plan`
+- working tree was clean before this recovery documentation update
+- historical fork-only instructions below are preserved as history, but the active branch workflow is now upstream `origin/feature/publishing-providers-framework`
+- merge commit records conflict resolution across module budgets, dialog/public-surface fixtures, menu contract tests, import ordering, and a power-tools wiring slice boundary
+- merge commit records precommit gates green: ruff format, ruff check, banned-pattern, dialog escape-button contract, module-size budget, and announce-gap gate
+- merge commit records test results:
+  - `tests/unit/ui/` 690/690 pass
+  - `tests/unit/core/` 2544 pass + 4 skipped + 11 thesaurus timeouts deselected
+  - 12 `test_brf_page_detection.py` failures are documented as pre-existing on `origin/main` and unrelated to this merge
+- next work should continue from the existing provider-neutral framework plan rather than recreate the old fork branch state
+- do not continue into the next implementation slice yet; tighten docs/review notes around the recovered merge and known residual test state first
 
 ## 2026-06-18 fork push and upstream PR
 

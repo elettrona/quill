@@ -1,5 +1,36 @@
 # Codex Handoff
 
+## 2026-06-18 Upstream Access Recovery Checkpoint
+
+- user requested a full recovery pass across Codex planning docs, memory files, and working chat logs after the head developer granted push access and resolved conflicts before creating the branch
+- current repository state:
+  - branch: `feature/publishing-providers-framework`
+  - tracking: `origin/feature/publishing-providers-framework`
+  - remote: `https://github.com/community-access/quill`
+  - HEAD: `cbe5ed6 Merge branch 'features/publishing-providers-framework' of https://github.com/stickbear2015/quill into feature/publishing-providers-framework`
+  - `main` / `origin/main`: `7a64564 chore(docs): drop relocated 0.5.0 release notes and old verbosity plan`
+- current working tree was clean before this recovery-doc update
+- interpretation:
+  - prior fork-only instructions remain useful as history
+  - active work should now proceed on upstream `origin/feature/publishing-providers-framework`
+  - the latest merge commit is the recovered branch state and should be treated as the current baseline
+- merge commit details reviewed:
+  - reconciled publishing branch with `origin/main` at `7a64564`
+  - rebaselined module-size budgets for publishing/main-menu growth and added explicit entries for the new publishing modules
+  - regenerated dialog inventory and main-frame public-surface fixtures
+  - repaired merge-sensitive UI/menu/power-tools tests after conflict resolution
+  - precommit gates green: ruff format, ruff check, banned-pattern, dialog escape-button contract, module-size budget, announce-gap gate
+  - tests recorded: `tests/unit/ui/` 690/690 pass; `tests/unit/core/` 2544 pass + 4 skipped + 11 thesaurus timeouts deselected
+  - residual noted by merge author: 12 `test_brf_page_detection.py` failures pre-exist on `origin/main` and are unrelated to this merge
+- current instruction:
+  - do not continue into the next plan implementation yet
+  - tighten recovery/review notes and any merge-readiness checklist before selecting the next slice
+- recovery docs updated together:
+  - `codex-notes/plans/publishing-providers-framework.md`
+  - `codex-notes/memory/publishing-providers-framework-readiness.md`
+  - `codex-notes/handoff/codex-handoff.md`
+  - `codex-notes/logs/codex-review-log.md`
+
 ## 2026-06-18 Fork Push and Upstream PR Checkpoint
 
 - pushed `features/publishing-providers-framework` to the fork remote:

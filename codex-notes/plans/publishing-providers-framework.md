@@ -1,5 +1,39 @@
 # Publishing Providers Framework Plan
 
+## 2026-06-18 upstream access recovery checkpoint
+
+The active working branch has been recovered onto the upstream repository after the head developer granted push access and resolved the branch conflicts before creating the current branch.
+
+Current git state:
+
+- active branch: `feature/publishing-providers-framework`
+- tracking branch: `origin/feature/publishing-providers-framework`
+- upstream remote: `https://github.com/community-access/quill`
+- current HEAD: `cbe5ed6 Merge branch 'features/publishing-providers-framework' of https://github.com/stickbear2015/quill into feature/publishing-providers-framework`
+- current main baseline: `7a64564 chore(docs): drop relocated 0.5.0 release notes and old verbosity plan`
+- working tree: clean before this recovery-doc update
+
+Merge validation recorded in HEAD:
+
+- reconciled publishing branch with `origin/main` at `7a64564`
+- rebaselined GATE-11 module-size budgets for publishing/main-menu growth, including explicit entries for `publishing.py`, `publishing_clients.py`, and `publishing_tools.py`
+- regenerated dialog inventory and main-frame public-surface fixtures
+- resolved merge-sensitive test updates in `test_main_frame.py`, `test_main_frame_menu_contract.py`, `main_frame.py`, and `test_power_tools_command_wiring.py`
+- precommit gates green: ruff format, ruff check, banned-pattern, dialog escape-button contract, module-size budget, and announce-gap gate
+- tests recorded by merge author: `tests/unit/ui/` 690/690 pass; `tests/unit/core/` 2544 pass + 4 skipped + 11 thesaurus timeouts deselected
+- known residual from `origin/main`: 12 `test_brf_page_detection.py` failures, described in the merge commit as pre-existing and unrelated to this merge
+
+Planning hold:
+
+- do not continue into the next implementation slice yet
+- first tighten documentation and any review checklist items implied by the merge validation and known residual test state
+
+Recovery interpretation:
+
+- historical notes below that reference `stickbear2015:features/publishing-providers-framework` describe the fork PR checkpoint before upstream push access was granted
+- new work should use `feature/publishing-providers-framework` on `origin`
+- the conflict-resolution state is represented by the current merge commit, so future planning should treat this branch as the active continuation rather than re-opening the old fork-only workflow
+
 ## 2026-06-18 fork PR checkpoint
 
 The publishing framework branch has been pushed to the fork and opened as an upstream PR.
