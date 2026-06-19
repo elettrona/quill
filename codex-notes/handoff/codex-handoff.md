@@ -1,5 +1,16 @@
 # Codex Handoff
 
+## 2026-06-18 Provider Validation Tool Gate Slice
+
+- implemented internal provider/client validation gate: `python -m quill.tools.check_publishing_providers`
+- keeps validation surfaced through tooling only; no runtime third-party publishing provider loading added
+- verification:
+  - tool command: `Publishing provider/client registry is valid.`
+  - focused tool tests: `5 passed in 0.21s`
+  - wide publishing/tool/module-size slice: `52 passed in 3.56s`
+  - full unit suite: `3731 passed, 11 skipped, 54 failed, 2 warnings`
+- remaining full-suite failures are outside this slice and left untouched
+- no push performed
 ## 2026-06-18 Testing Discipline Checkpoint
 
 - user confirmed the process for future development:

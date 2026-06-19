@@ -1,7 +1,15 @@
 # Publishing Providers Framework Readiness
 
-Status: active upstream implementation checkpoint on `feature/publishing-providers-framework`, tracking `origin/feature/publishing-providers-framework`, with current upstream `main` at `7a64564`, merge/conflict recovery represented by HEAD `cbe5ed6`, provider registry seam in place, operation capability metadata added, provider/client validation implemented, remote item editor identity implemented, publish-now and open-remote publish lifecycle actions added, focused validation green, and WordPress extraction direction recorded.
+Status: active upstream implementation checkpoint on `feature/publishing-providers-framework`, tracking `origin/feature/publishing-providers-framework`, with current upstream `main` at `7a64564`, merge/conflict recovery represented by HEAD `cbe5ed6`, provider registry seam in place, operation capability metadata added, provider/client validation and internal tool gate implemented, remote item editor identity implemented, publish-now and open-remote publish lifecycle actions added, focused validation green, and WordPress extraction direction recorded.
 
+## 2026-06-18 provider validation tool gate
+
+- added internal `python -m quill.tools.check_publishing_providers` gate for provider/client registry validation
+- the gate surfaces validation without loading third-party publishing providers or exposing runtime Quillin provider loading
+- focused tool tests passed: `5 passed in 0.21s`
+- wide publishing/tool/module-size slice passed: `52 passed in 3.56s`
+- full unit suite after this slice: `3731 passed, 11 skipped, 54 failed, 2 warnings`
+- remaining full-suite failures/skips/warnings are outside the touched provider-validation/tooling slice and remain out of scope
 ## 2026-06-18 testing discipline
 
 - user set the working rule that every development/code slice must receive focused validation plus the broad available unit-test battery

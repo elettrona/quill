@@ -1,5 +1,33 @@
 # Publishing Providers Framework Plan
 
+## 2026-06-18 provider validation tool gate implementation note
+
+The next provider-extraction preparation slice is implemented.
+
+Implemented:
+
+- `quill.tools.check_publishing_providers`
+- readable validation report formatting for provider/client drift
+- CLI-style `main()` that returns `0` when the registry is valid and `1` when validation issues exist
+- focused tool tests covering:
+  - clean built-in registry output
+  - formatted validation issues
+  - missing provider client
+  - orphan provider client
+
+Validation:
+
+- `python -m quill.tools.check_publishing_providers`
+  - result: `Publishing provider/client registry is valid.`
+- `ruff format quill\tools\check_publishing_providers.py tests\unit\tools\test_check_publishing_providers.py`
+- `ruff check quill\tools\check_publishing_providers.py tests\unit\tools\test_check_publishing_providers.py`
+- focused tool tests: `5 passed in 0.21s`
+- wide publishing/tool/module-size slice: `52 passed in 3.56s`
+- full `tests/unit`: `3731 passed, 11 skipped, 54 failed, 2 warnings`; remaining failures are outside the touched provider-validation/tooling slice and are left for their owning main-side work
+
+Next likely implementation direction:
+
+- decide whether to wire this internal gate into existing local/CI check collections, while still avoiding runtime third-party publishing provider loading
 ## 2026-06-18 testing discipline checkpoint
 
 Working rule for all remaining publishing-provider development:

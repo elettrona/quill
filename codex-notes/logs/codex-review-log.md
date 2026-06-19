@@ -1,5 +1,31 @@
 # Codex Review Log
 
+## 2026-06-18 22:35:00 -04:00
+
+Provider validation tool gate checkpoint:
+
+- implemented `quill.tools.check_publishing_providers`
+- added readable provider/client validation report formatting and CLI-style exit status
+- added unit coverage for clean registry, issue formatting, missing provider client, and orphan provider client
+- kept the surface as an internal tool gate only; no runtime third-party publishing provider loading was added
+
+Verification:
+
+- `python -m quill.tools.check_publishing_providers`
+  - result: `Publishing provider/client registry is valid.`
+- `ruff format quill\tools\check_publishing_providers.py tests\unit\tools\test_check_publishing_providers.py`
+- `ruff check quill\tools\check_publishing_providers.py tests\unit\tools\test_check_publishing_providers.py`
+  - result: all checks passed
+- focused tool tests: `5 passed in 0.21s`
+- wide publishing/tool/module-size slice: `52 passed in 3.56s`
+- full `tests/unit`: `3731 passed, 11 skipped, 54 failed, 2 warnings in 95.28s`
+- remaining full-suite failures/skips/warnings are outside the touched provider-validation/tooling slice and left for their owning main-side areas
+
+Next read:
+
+- provider validation is now surfaced through an internal tool gate
+- next likely work is wiring the gate into existing local/CI check collections, if desired, without enabling runtime third-party publishing provider loading
+- no push has been performed
 ## 2026-06-18 22:30:03 -04:00
 
 Testing discipline checkpoint:
