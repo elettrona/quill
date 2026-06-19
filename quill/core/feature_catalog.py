@@ -432,6 +432,15 @@ FEATURE_DEFINITIONS: dict[str, FeatureDefinition] = {
         privacy="network after confirmation",
         category="future",
     ),
+    "future.publishing": FeatureDefinition(
+        "future.publishing",
+        "Publishing",
+        aliases=("publishing", "publish", "site publishing"),
+        description="Publishing connections and provider-aware remote publishing flows.",
+        maturity="advanced",
+        privacy="network after confirmation",
+        category="future",
+    ),
     "future.ai_menu_top_level": FeatureDefinition(
         "future.ai_menu_top_level",
         "AI Top-Level Menu",

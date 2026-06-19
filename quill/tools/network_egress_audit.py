@@ -78,6 +78,18 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "and Datamuse). Only runs when the user enables online lexical lookups; "
         "HTTPS with a verified TLS context, no API key, graceful offline fallback."
     ),
+    "core/publishing_clients.py::verify_connection": (
+        "User-initiated publishing connection verification from the Publishing "
+        "Connections dialog. Runs only when the user explicitly verifies a saved "
+        "connection; remote endpoints are HTTPS-enforced and HTTPS uses a verified "
+        "TLS context."
+    ),
+    "core/publishing_clients.py::_request_json": (
+        "User-initiated publishing browse/open requests from the Publish menu "
+        "and publishing dialogs. Runs only when the user explicitly loads or "
+        "opens remote content through a saved connection; remote endpoints are "
+        "HTTPS-enforced and HTTPS uses a verified TLS context."
+    ),
     "ui/main_frame_quillins_host.py::fetch": (
         "Quillin host 'net' capability bridge. A Quillin can only reach this "
         "method when its manifest declares the default-deny 'net' capability AND "

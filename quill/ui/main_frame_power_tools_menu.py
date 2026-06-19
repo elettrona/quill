@@ -734,6 +734,20 @@ class PowerToolsMenuMixin:
     def _append_power_tools_edit_items(self, edit_menu: object) -> None:
         self._append_power_tools_group(edit_menu, "edit")
 
+    def _append_power_tools_file_create_items(self, file_menu: object) -> None:
+        """Append file-creation-adjacent power tools to the File menu.
+
+        The menu builder places "New Document from Clipboard" beside File > New
+        even though the command remains in the shared "edit" power-tools group
+        for palette/registration purposes. This small seam keeps the menu split
+        compatible with the existing placement contract from merged ``main``.
+        """
+        self._power_tools_menu_item(
+            file_menu,
+            "power.new_document_from_clipboard",
+            "New Document from Cli&pboard",
+        )
+
     def _append_power_tools_file_ops_items(self, file_menu: object) -> None:
         self._append_power_tools_group(file_menu, "file_ops")
 
