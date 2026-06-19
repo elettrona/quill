@@ -2754,6 +2754,18 @@ the writer navigates away from the chord. All three paths OR together in
 behaviour of one marker on the first item is preserved.
 <code>Ctrl+Alt+9</code> for link insertion is intentionally not added
 because <code>Ctrl+K</code> already covers that command.</p>
+<h3 id="a-new-section-cell-in-the-status-bar">A new “Section” cell in
+the status bar</h3>
+<p>The status bar gains a <code>Section</code> cell that reads
+<code>Section: Heading N (ordinal of total)</code> whenever the caret is
+inside a heading section in a Markdown or HTML document. The cell is
+hidden by default so it does not push other useful cells out of the bar
+for writers who do not work at heading-level granularity; opt in via
+Preferences -&gt; Status Bar and place the <code>Section</code> cell
+where it helps. The cell is a no-op for plain-text documents and for
+carets on a non-heading line, and it inherits the same dead-widget guard
+as the other live-editor cells so a queued caret event after Ctrl+F4
+cannot crash the status-bar refresh.</p>
 <h3 id="the-revised-10.8-ctrlalt-policy">The revised §10.8 Ctrl+Alt+
 policy</h3>
 <p>The original §10.8 policy banned <code>Ctrl+Alt+</code> outright. The

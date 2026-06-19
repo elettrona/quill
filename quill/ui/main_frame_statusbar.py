@@ -14,6 +14,9 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from quill.core.braille_statusbar import short_form_from_resolver
+from quill.core.heading_organizer import parse_heading_blocks
+from quill.core.links import infer_markup_kind
+from quill.core.markdown_sections import current_section_at
 from quill.core.marks import line_column_for_position
 from quill.core.metrics import compute_document_stats
 from quill.core.palette import load_palette_usage, top_suggestion
@@ -266,7 +269,61 @@ class StatusBarMixin:
             if count >= target:
                 return f"Goal reached: {count:,} {unit}"
             return f"{count:,} / {target:,} {unit}"
+        if item == "section_heading":
+            # EdSharp port: "Section: Heading N of M" when the caret is on
+            # a heading in a Markdown or HTML document. Hidden by default
+            # (see _default_status_bar_hidden); the cell silently returns
+            # "" for plain-text documents and for carets not on a heading.
+            return self._statusbar_section_heading_text()
         return ""
+
+    def _statusbar_section_heading_text(self) -> str:
+        """Return "Section: Heading N of M" or "" for the status-bar cell.
+
+        EdSharp port. Returns "" when the editor or document is missing,
+        when the active surface is not Markdown or HTML, when there are no
+        headings at the caret's level, or when the underlying widget has
+        been destroyed (the same dead-widget guard as the other cells).
+        """
+        editor = getattr(self, "editor", None)
+        document = getattr(self, "document", None)
+        if editor is None or document is None:
+            return ""
+        try:
+            surface = infer_markup_kind(document.path)
+        except Exception:  # noqa: BLE001
+            return ""
+        if surface not in {"markdown", "html"}:
+            return ""
+        try:
+            text = editor.GetValue()
+            caret = editor.GetInsertionPoint()
+        except RuntimeError:
+            return ""
+        try:
+            blocks = parse_heading_blocks(text, surface)
+        except Exception:  # noqa: BLE001
+            return ""
+        if not blocks:
+            return ""
+        section = current_section_at(text, caret, markup_kind=surface)
+        if section is None:
+            return ""
+        if section.level <= 0:
+            return ""
+        same_level = [b for b in blocks if b.level == section.level]
+        if not same_level:
+            return ""
+        ordinal = 0
+        for _index, block in enumerate(blocks):
+            if block.level == section.level:
+                ordinal += 1
+            if block.section_start == section.start:
+                break
+        else:
+            ordinal = 1
+        total = len(same_level)
+        return f"Section: Heading {section.level} ({ordinal} of {total})"
 
     def _statusbar_braille_text(self) -> str:
         """Return the short-form braille cell text, or "" if not active.

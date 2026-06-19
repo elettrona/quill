@@ -1372,6 +1372,10 @@ Users who want both behaviours can keep the QUILL-key chord in their personal ke
 
 A new setting, `list_auto_fill_numbers`, controls the numbered-list auto-fill behaviour. When the active document is markdown the inserted list always gets `1. `, `2. `, `3. ` … markers (the markdown surface rule). When the setting is on, auto-fill applies in any markup kind. A third path — pressing `Ctrl+Alt+8` once on a document — sets a per-document five-minute arming flag so subsequent insertions keep filling even when the writer navigates away from the chord. All three paths OR together in `should_auto_fill_numbers()`; outside of them, today's behaviour of one marker on the first item is preserved. `Ctrl+Alt+9` for link insertion is intentionally not added because `Ctrl+K` already covers that command.
 
+### A new "Section" cell in the status bar
+
+The status bar gains a `Section` cell that reads `Section: Heading N (ordinal of total)` whenever the caret is inside a heading section in a Markdown or HTML document. The cell is hidden by default so it does not push other useful cells out of the bar for writers who do not work at heading-level granularity; opt in via Preferences -> Status Bar and place the `Section` cell where it helps. The cell is a no-op for plain-text documents and for carets on a non-heading line, and it inherits the same dead-widget guard as the other live-editor cells so a queued caret event after Ctrl+F4 cannot crash the status-bar refresh.
+
 ### The revised §10.8 Ctrl+Alt+ policy
 
 The original §10.8 policy banned `Ctrl+Alt+` outright. The 0.7.0 revision relaxes the rule but keeps the gate strict: a `Ctrl+Alt+` binding may enter `DEFAULT_KEYMAP` when it is in the `_CTRL_ALT_DOCUMENTED` allowlist **or** carries an inline `# §edsharp-ok` justification comment naming the screen-reader binding it overrides. Unjustified bindings still fail the gate.

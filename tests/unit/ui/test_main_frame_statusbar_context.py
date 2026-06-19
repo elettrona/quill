@@ -208,3 +208,122 @@ def test_statusbar_text_for_item_returns_empty_when_editor_is_dead() -> None:
     assert frame._statusbar_text_for_item("line_column") == ""
     assert frame._statusbar_text_for_item("word_count") == ""
     assert frame._statusbar_text_for_item("selection") == "Sel 0"
+
+
+# ---------------------------------------------------------------------------
+# EdSharp port PR4: status-bar "Section" cell
+# ---------------------------------------------------------------------------
+
+
+class _SectionEditor:
+    def __init__(self, text: str, caret: int) -> None:
+        self._text = text
+        self._caret = caret
+
+    def GetValue(self) -> str:
+        return self._text
+
+    def GetInsertionPoint(self) -> int:
+        return self._caret
+
+    def GetSelection(self) -> tuple[int, int]:
+        return (self._caret, self._caret)
+
+
+class _SectionDocument:
+    def __init__(self, path: str | None) -> None:
+        from pathlib import Path as _Path
+
+        self.path = _Path(path) if path is not None else None
+
+
+def _make_section_frame(text: str, caret: int, path: str | None) -> MainFrame:
+    frame = MainFrame.__new__(MainFrame)
+    frame.settings = Settings()
+    frame.editor = _SectionEditor(text, caret)  # type: ignore[assignment]
+    frame.document = _SectionDocument(path)  # type: ignore[assignment]
+    return frame
+
+
+def test_section_heading_shows_ordinal_when_caret_is_on_h1() -> None:
+    text = "# A\nA body\n# B\nB body\n# C\nC body\n"
+    caret = text.index("# B")
+    frame = _make_section_frame(text, caret, "test.md")
+    assert frame._statusbar_text_for_item("section_heading") == "Section: Heading 1 (2 of 3)"
+
+
+def test_section_heading_uses_h2_level_for_double_hash() -> None:
+    text = "# Top\nTop body\n## Alpha\nAlpha body\n## Beta\nBeta body\n"
+    caret = text.index("## Alpha")
+    frame = _make_section_frame(text, caret, "test.md")
+    assert frame._statusbar_text_for_item("section_heading") == "Section: Heading 2 (1 of 2)"
+
+
+def test_section_heading_returns_empty_for_plain_text() -> None:
+    text = "hello\nworld\n"
+    frame = _make_section_frame(text, 0, "test.txt")
+    assert frame._statusbar_text_for_item("section_heading") == ""
+
+
+def test_section_heading_reports_parent_section_when_caret_is_on_a_body_line() -> None:
+    text = "# A\nbody line\n# B\nB body\n"
+    caret = text.index("body line")
+    frame = _make_section_frame(text, caret, "test.md")
+    # The caret is inside section A (the parent heading), so the cell
+    # reports Heading 1 (1 of 2) — matching how the section-move chord
+    # treats any caret within a section.
+    assert frame._statusbar_text_for_item("section_heading") == "Section: Heading 1 (1 of 2)"
+
+
+def test_section_heading_returns_empty_when_no_headings() -> None:
+    text = "just plain text\nno headings here\n"
+    frame = _make_section_frame(text, 0, "test.md")
+    assert frame._statusbar_text_for_item("section_heading") == ""
+
+
+def test_section_heading_html_reports_parent_section_when_caret_on_body() -> None:
+    text = "<h1>A</h1><p>A body</p><h1>B</h1><p>B body</p>"
+    caret = text.index("<p>A body</p>") + 3
+    frame = _make_section_frame(text, caret, "test.html")
+    # The caret is inside section A (the parent heading), so the cell
+    # reports Heading 1 (1 of 2) — matching how the section-move chord
+    # treats any caret within a section.
+    assert frame._statusbar_text_for_item("section_heading") == "Section: Heading 1 (1 of 2)"
+
+
+def test_section_heading_html_uses_level() -> None:
+    text = "<h1>A</h1><p>A body</p><h1>B</h1><p>B body</p>"
+    caret = text.index("<h1>B</h1>")
+    frame = _make_section_frame(text, caret, "test.html")
+    assert frame._statusbar_text_for_item("section_heading") == "Section: Heading 1 (2 of 2)"
+
+
+def test_section_heading_survives_dead_editor() -> None:
+    class _DeadEditor:
+        def GetValue(self) -> str:
+            raise RuntimeError("wrapped C/C++ object of type TextCtrl has been deleted")
+
+        def GetInsertionPoint(self) -> int:
+            raise RuntimeError("wrapped C/C++ object of type TextCtrl has been deleted")
+
+        def GetSelection(self) -> tuple[int, int]:
+            raise RuntimeError("wrapped C/C++ object of type TextCtrl has been deleted")
+
+    frame = MainFrame.__new__(MainFrame)
+    frame.settings = Settings()
+    frame.editor = _DeadEditor()  # type: ignore[assignment]
+    frame.document = _SectionDocument("test.md")  # type: ignore[assignment]
+    assert frame._statusbar_text_for_item("section_heading") == ""
+
+
+def test_section_heading_hidden_by_default() -> None:
+    from quill.core.settings_normalizers import _default_status_bar_hidden
+
+    hidden = _default_status_bar_hidden()
+    assert "section_heading" in hidden
+
+
+def test_section_heading_in_status_bar_items() -> None:
+    from quill.core.settings_normalizers import STATUS_BAR_ITEMS
+
+    assert "section_heading" in STATUS_BAR_ITEMS

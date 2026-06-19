@@ -38,6 +38,11 @@ STATUS_BAR_ITEMS: tuple[str, ...] = (
     # document is active. Hidden for non-BRF documents so it does not
     # take up status-bar real estate for sighted/non-braille workflows.
     "braille",
+    # EdSharp port: caret-heading context — "Section: Heading N of M"
+    # when the caret is on a heading in a Markdown or HTML document.
+    # Hidden by default; users who work heavily with heading-level
+    # navigation can opt in via Preferences -> Status Bar.
+    "section_heading",
 )
 
 
@@ -64,6 +69,7 @@ def _default_status_bar_hidden() -> list[str]:
         "copy_tray_slots",
         "language_profile",
         "braille",
+        "section_heading",
     ]
 
 

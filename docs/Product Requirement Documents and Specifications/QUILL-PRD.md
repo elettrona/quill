@@ -3538,6 +3538,14 @@ Numbered-list insertion is governed by a new `list_auto_fill_numbers` setting (`
 
 Outside of the three conditions, today's behaviour of one marker on the first item is preserved, so the change is strictly opt-in.  `Ctrl+Alt+9` for link insertion is intentionally not added because `Ctrl+K` already covers that command.
 
+### 8.13 The Section status bar cell (revised 0.7.0)
+
+A new `Section` cell appears in the status bar and reads `Section: Heading N (ordinal of total)` whenever the caret is on a heading in a Markdown or HTML document.  The cell is hidden by default so it does not push other useful cells out of the bar for writers who do not work at heading-level granularity; opt in via Preferences -> Status Bar and place the cell where it helps.
+
+The cell dispatches on `infer_markup_kind(document.path)`.  Plain-text documents and carets on a non-heading line return an empty string.  The cell inherits the same `try / except RuntimeError` dead-widget guard as the other live-editor cells (line_column, word_count, selection) so a queued caret event after Ctrl+F4 cannot crash the status-bar refresh when the underlying C++ TextCtrl has been deleted.
+
+The HTML path reuses the existing fence-aware `parse_heading_blocks` and `current_section_at` from `quill/core/markdown_sections.py`; both already handle `<hN>...</hN>` headings in the same way they handle `#`-prefixed markdown headings.
+
 ---
 
 ## 9. Accessibility, WCAG 2.2 AA conformance, and certification

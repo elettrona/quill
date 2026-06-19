@@ -71,9 +71,16 @@ def _section_for_caret(blocks: list, caret: int) -> tuple[int, int, int, int] | 
 
 
 def current_section_at(text: str, caret: int, *, markup_kind: str = "markdown") -> Section | None:
-    """Return the section containing ``caret``, or ``None`` if no section."""
-    if markup_kind == "markdown":
-        blocks = parse_heading_blocks(text, "markdown")
+    """Return the section containing ``caret``, or ``None`` if no section.
+
+    Markdown and HTML documents share the same fence-aware parser path
+    (HTML uses ``<hN>`` tags; markdown uses ``#``/``##``/etc.).  Plain
+    text falls back to form-feed (``\\f``) delimited blocks.
+    """
+    if markup_kind in {"markdown", "html"}:
+        blocks = parse_heading_blocks(text, markup_kind)
+        if not blocks:
+            return None
         found = _section_for_caret(blocks, caret)
         if found is None:
             return None

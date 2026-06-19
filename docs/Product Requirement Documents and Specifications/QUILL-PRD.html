@@ -6504,6 +6504,26 @@ the chord runs in the document and cleared on document close.</li>
 the first item is preserved, so the change is strictly opt-in.
 <code>Ctrl+Alt+9</code> for link insertion is intentionally not added
 because <code>Ctrl+K</code> already covers that command.</p>
+<h3 id="the-section-status-bar-cell-revised-0.7.0">8.13 The Section
+status bar cell (revised 0.7.0)</h3>
+<p>A new <code>Section</code> cell appears in the status bar and reads
+<code>Section: Heading N (ordinal of total)</code> whenever the caret is
+on a heading in a Markdown or HTML document. The cell is hidden by
+default so it does not push other useful cells out of the bar for
+writers who do not work at heading-level granularity; opt in via
+Preferences -&gt; Status Bar and place the cell where it helps.</p>
+<p>The cell dispatches on <code>infer_markup_kind(document.path)</code>.
+Plain-text documents and carets on a non-heading line return an empty
+string. The cell inherits the same
+<code>try / except RuntimeError</code> dead-widget guard as the other
+live-editor cells (line_column, word_count, selection) so a queued caret
+event after Ctrl+F4 cannot crash the status-bar refresh when the
+underlying C++ TextCtrl has been deleted.</p>
+<p>The HTML path reuses the existing fence-aware
+<code>parse_heading_blocks</code> and <code>current_section_at</code>
+from <code>quill/core/markdown_sections.py</code>; both already handle
+<code>&lt;hN&gt;...&lt;/hN&gt;</code> headings in the same way they
+handle <code>#</code>-prefixed markdown headings.</p>
 <hr />
 <h2 id="accessibility-wcag-2.2-aa-conformance-and-certification">9.
 Accessibility, WCAG 2.2 AA conformance, and certification</h2>

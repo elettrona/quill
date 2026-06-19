@@ -1647,6 +1647,8 @@ The previous `Alt+Shift+Up` / `Alt+Shift+Down` bindings (expand/shrink selection
 
 For list toggling, press `Ctrl+Alt+7` to insert or strip a bullet list, or `Ctrl+Alt+8` to insert or strip a numbered list. The chord inspects the caret's current line: if it is already a list item, the markers are stripped and the line returns to plain text; otherwise a new list is inserted at the caret. Numbered-list insertion honours the `list_auto_fill_numbers` setting (Preferences -> Editing -> Lists) — when the setting is on, every item gets `1. `, `2. `, `3. ` markers; when it is off, only the first item does. The chord is always available in markdown and HTML surfaces; plain-text documents announce the chord is unavailable and the action is skipped.
 
+The status bar's `Section` cell reads `Section: Heading N (ordinal of total)` whenever the caret is on a heading in a Markdown or HTML document. The cell is hidden by default; turn it on via Preferences -> Status Bar. The cell is a no-op for plain-text documents and for carets on a non-heading line, and it inherits the same dead-widget guard as the other live-editor cells.
+
 ### Citations and bibliographies
 
 For research writing, **Insert -> Insert Citation...** builds correctly formatted citations from details you type, so you do not have to wrestle with the punctuation and indentation rules by hand.

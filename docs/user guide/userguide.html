@@ -3177,6 +3177,13 @@ honours the <code>list_auto_fill_numbers</code> setting (Preferences
 off, only the first item does. The chord is always available in markdown
 and HTML surfaces; plain-text documents announce the chord is
 unavailable and the action is skipped.</p>
+<p>The status bar’s <code>Section</code> cell reads
+<code>Section: Heading N (ordinal of total)</code> whenever the caret is
+on a heading in a Markdown or HTML document. The cell is hidden by
+default; turn it on via Preferences -&gt; Status Bar. The cell is a
+no-op for plain-text documents and for carets on a non-heading line, and
+it inherits the same dead-widget guard as the other live-editor
+cells.</p>
 <h3 id="citations-and-bibliographies">Citations and bibliographies</h3>
 <p>For research writing, <strong>Insert -&gt; Insert Citation…</strong>
 builds correctly formatted citations from details you type, so you do
