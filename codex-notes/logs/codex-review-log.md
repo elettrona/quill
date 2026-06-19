@@ -1,5 +1,36 @@
 # Codex Review Log
 
+## 2026-06-18 22:04:10 -04:00
+
+Provider/client validation implementation checkpoint:
+
+- user approved committing locally as work proceeds, with no push
+- implemented the planned provider/client registration validation slice
+- added validation API in `quill/core/publishing_clients.py`:
+  - `PublishingProviderValidationIssue`
+  - `validate_publishing_provider_client(...)`
+  - `validate_registered_publishing_provider_clients(...)`
+- validation detects:
+  - provider definitions with no registered client
+  - registered clients with no provider definition
+  - declared implemented operations without required callable client methods
+- added unit coverage in `tests/unit/core/test_publishing.py` for clean registration, missing client, orphan client, and operation-method drift
+
+Verification:
+
+- `ruff format quill\core\publishing_clients.py tests\unit\core\test_publishing.py`
+- `ruff check quill\core\publishing_clients.py tests\unit\core\test_publishing.py`
+  - result: all checks passed
+- `pytest tests\unit\core\test_publishing.py tests\unit\core\test_publishing_framework.py -q --basetemp=.tmp\pytest-provider-validation`
+  - result: `20 passed in 0.59s`
+- `pytest tests\unit\core\test_publishing.py tests\unit\core\test_publishing_browse.py tests\unit\core\test_publishing_framework.py -q --basetemp=.tmp\pytest-provider-validation-wide`
+  - result: `39 passed in 3.36s`
+
+Next read:
+
+- provider/client validation is now implemented
+- next work should decide where validation is surfaced for bundled/future providers before any WordPress extraction or live Quillin provider loading
+- no push has been performed
 ## 2026-06-18 21:33:40 -04:00
 
 Recovery / branch-state checkpoint:

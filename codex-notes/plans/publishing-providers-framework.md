@@ -1,5 +1,33 @@
 # Publishing Providers Framework Plan
 
+## 2026-06-18 provider/client validation implementation note
+
+The next provider-extraction preparation slice is implemented.
+
+Implemented:
+
+- `PublishingProviderValidationIssue`
+- `validate_publishing_provider_client(...)`
+- `validate_registered_publishing_provider_clients(...)`
+- provider/client registry drift checks for:
+  - registered provider definition without a client
+  - registered client without a provider definition
+  - declared provider operation without the required callable client method
+- operation-to-client-method mapping for verify, browse, load, update, create, and publish
+- regression coverage using a fake partial provider/client so future provider extraction cannot silently drift from declared capability metadata
+
+Validation:
+
+- `ruff format quill\core\publishing_clients.py tests\unit\core\test_publishing.py`
+- `ruff check quill\core\publishing_clients.py tests\unit\core\test_publishing.py`
+- `pytest tests\unit\core\test_publishing.py tests\unit\core\test_publishing_framework.py -q --basetemp=.tmp\pytest-provider-validation`
+  - result: `20 passed in 0.59s`
+- `pytest tests\unit\core\test_publishing.py tests\unit\core\test_publishing_browse.py tests\unit\core\test_publishing_framework.py -q --basetemp=.tmp\pytest-provider-validation-wide`
+  - result: `39 passed in 3.36s`
+
+Next likely implementation direction:
+
+- continue provider extraction preparation by deciding how/where this validation should be surfaced for first-party bundled providers and future Quillin-contributed providers, without exposing live third-party publishing provider loading yet
 ## 2026-06-18 upstream access recovery checkpoint
 
 The active working branch has been recovered onto the upstream repository after the head developer granted push access and resolved the branch conflicts before creating the current branch.

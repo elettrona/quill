@@ -355,6 +355,76 @@ def test_second_provider_capabilities_gate_unimplemented_lifecycle_actions() -> 
     assert document is None
 
 
+class _VerifyOnlyClient:
+    provider_id = "verifyonly"
+
+    def verify_connection(self, *_args, **_kwargs):
+        return True, "Verified."
+
+
+def _register_verify_only_provider(*, operation: str = PUBLISHING_OPERATION_VERIFY) -> None:
+    register_publishing_provider(
+        PublishingProviderDefinition(
+            id="verifyonly",
+            name="Verify Only",
+            help_text="Provider/client validation fixture.",
+            default_content_format="html",
+            supported_auth_methods=(AUTH_METHOD_APP_PASSWORD,),
+            implemented_auth_methods=(AUTH_METHOD_APP_PASSWORD,),
+            supported_content_kinds=("article",),
+            implemented_content_kinds=("article",),
+            supported_operations=(operation,),
+            implemented_operations=(operation,),
+            content_kind_labels={"article": "Article"},
+            content_kind_plural_labels={"article": "Articles"},
+        )
+    )
+
+
+def test_registered_provider_clients_validate_cleanly() -> None:
+    assert publishing_clients.validate_registered_publishing_provider_clients() == ()
+
+
+def test_provider_validation_reports_missing_client() -> None:
+    _register_verify_only_provider()
+    try:
+        issues = publishing_clients.validate_registered_publishing_provider_clients()
+    finally:
+        unregister_publishing_provider("verifyonly")
+
+    assert [issue.message for issue in issues] == [
+        "Verify Only publishing provider has no registered client."
+    ]
+
+
+def test_provider_validation_reports_orphan_client() -> None:
+    client = _VerifyOnlyClient()
+    publishing_clients.register_publishing_provider_client(client)
+    try:
+        issues = publishing_clients.validate_registered_publishing_provider_clients()
+    finally:
+        publishing_clients.unregister_publishing_provider_client("verifyonly")
+
+    assert [issue.message for issue in issues] == [
+        "verifyonly publishing client has no registered provider definition."
+    ]
+
+
+def test_provider_validation_checks_declared_operation_methods() -> None:
+    _register_verify_only_provider(operation="browse")
+    publishing_clients.register_publishing_provider_client(_VerifyOnlyClient())
+    try:
+        issues = publishing_clients.validate_publishing_provider_client("verifyonly")
+    finally:
+        publishing_clients.unregister_publishing_provider_client("verifyonly")
+        unregister_publishing_provider("verifyonly")
+
+    assert provider_implemented_operations("verifyonly") == ()
+    assert [issue.message for issue in issues] == [
+        "Verify Only declares browse support but its client has no callable browse_content."
+    ]
+
+
 def test_unknown_provider_does_not_fall_back_to_wordpress() -> None:
     profile = PublishingConnectionProfile(
         id="pub-unknown",

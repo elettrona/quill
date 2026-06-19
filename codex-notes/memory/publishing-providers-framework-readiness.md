@@ -1,7 +1,20 @@
 # Publishing Providers Framework Readiness
 
-Status: active upstream implementation checkpoint on `feature/publishing-providers-framework`, tracking `origin/feature/publishing-providers-framework`, with current upstream `main` at `7a64564`, merge/conflict recovery represented by HEAD `cbe5ed6`, provider registry seam in place, operation capability metadata added, remote item editor identity implemented, publish-now and open-remote publish lifecycle actions added, focused validation green from the prior checkpoint, and WordPress extraction direction recorded.
+Status: active upstream implementation checkpoint on `feature/publishing-providers-framework`, tracking `origin/feature/publishing-providers-framework`, with current upstream `main` at `7a64564`, merge/conflict recovery represented by HEAD `cbe5ed6`, provider registry seam in place, operation capability metadata added, provider/client validation implemented, remote item editor identity implemented, publish-now and open-remote publish lifecycle actions added, focused validation green, and WordPress extraction direction recorded.
 
+## 2026-06-18 provider/client validation
+
+- implemented the planned provider/client registration validation slice
+- added validation helpers in `quill/core/publishing_clients.py`:
+  - `PublishingProviderValidationIssue`
+  - `validate_publishing_provider_client(...)`
+  - `validate_registered_publishing_provider_clients(...)`
+- validation now reports provider definitions with no clients, clients with no provider definitions, and declared operations whose required client method is missing
+- tests cover clean built-in registration, missing client, orphan client, and operation/client-method drift
+- validation passed:
+  - focused: `20 passed in 0.59s`
+  - broader core publishing: `39 passed in 3.36s`
+- next likely work should remain extraction-prep focused: decide where this validation is surfaced for bundled/future providers before any WordPress extraction or live Quillin provider loading
 ## 2026-06-18 upstream access and branch recovery
 
 - user reports the head developer granted push access and resolved conflicts before creating the current branch

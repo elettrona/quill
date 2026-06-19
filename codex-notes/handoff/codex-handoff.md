@@ -1,5 +1,23 @@
 # Codex Handoff
 
+## 2026-06-18 Provider/Client Validation Slice
+
+- implemented the next extraction-prep slice from the plan
+- new core validation API:
+  - `PublishingProviderValidationIssue`
+  - `validate_publishing_provider_client(...)`
+  - `validate_registered_publishing_provider_clients(...)`
+- validation checks:
+  - provider definition registered without a matching client
+  - client registered without a provider definition
+  - implemented operation declared without a required callable client method
+- tests added around a fake partial provider/client to pin drift detection before WordPress is moved toward a first-party bundled Quillin boundary
+- verification:
+  - `ruff format quill\core\publishing_clients.py tests\unit\core\test_publishing.py`
+  - `ruff check quill\core\publishing_clients.py tests\unit\core\test_publishing.py` -> all checks passed
+  - focused publishing/framework tests: `20 passed in 0.59s`
+  - broader core publishing tests: `39 passed in 3.36s`
+- no push performed
 ## 2026-06-18 Upstream Access Recovery Checkpoint
 
 - user requested a full recovery pass across Codex planning docs, memory files, and working chat logs after the head developer granted push access and resolved conflicts before creating the branch
