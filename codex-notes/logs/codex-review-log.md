@@ -1,5 +1,17 @@
 # Codex Review Log
 
+## 2026-06-19 00:24:11 -04:00
+
+Follow-up phases opened:
+
+- added codex-notes/notes/publishing-follow-up-phases-2026-06-19.md
+- ordered the follow-up phases as WordPress first-party bundled provider package path, schedule publish, local-vs-remote compare/sync, then live third-party provider loading
+- kept live third-party provider loading last because it depends on SEC-8/policy, consent, network capability, conflict handling, and provider validation readiness
+- recommended first slice: define the bundled-provider adapter contract before moving WordPress or enabling third-party provider loading
+
+Validation:
+
+- documentation/planning-only slice; no runtime behavior changed
 ## 2026-06-19 00:19:11 -04:00
 
 Framework readiness tightening checkpoint:

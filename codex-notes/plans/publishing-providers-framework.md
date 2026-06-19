@@ -1,5 +1,25 @@
 # Publishing Providers Framework Plan
 
+## 2026-06-19 follow-up phases opened
+
+The post-framework follow-up phases are now opened in `codex-notes/notes/publishing-follow-up-phases-2026-06-19.md`.
+
+Phase order:
+
+1. WordPress first-party bundled provider package path.
+2. Schedule publish.
+3. Local-vs-remote compare and first honest sync model.
+4. Live third-party publishing provider loading.
+
+Rationale:
+
+- WordPress extraction should prove the trusted first-party bundled-provider path first
+- schedule and compare/sync are product lifecycle work that can continue through the existing provider seam
+- live third-party provider loading is last because it intersects SEC-8, consent, network capability, conflict handling, and provider validation policy
+
+Recommended first slice:
+
+- define the bundled-provider adapter contract before moving WordPress or enabling any live third-party provider loading
 ## 2026-06-19 framework readiness tightening checkpoint
 
 Current read after reviewing the plan: the approved publishing framework scope is complete enough for a branch readiness checkpoint.

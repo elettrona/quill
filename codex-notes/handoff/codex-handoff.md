@@ -1,5 +1,16 @@
 # Codex Handoff
 
+## 2026-06-19 Follow-Up Phases Opened
+
+- added `codex-notes/notes/publishing-follow-up-phases-2026-06-19.md`
+- phases are now ordered:
+  - WordPress first-party bundled provider package path
+  - schedule publish
+  - local-vs-remote compare/sync
+  - live third-party publishing provider loading
+- recommended next slice is the bundled-provider adapter contract
+- no runtime behavior changed
+- no push performed
 ## 2026-06-19 Framework Readiness Tightening
 
 - reviewed `codex-notes/plans/publishing-providers-framework.md`
