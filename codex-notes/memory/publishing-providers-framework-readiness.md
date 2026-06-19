@@ -1,6 +1,21 @@
 # Publishing Providers Framework Readiness
 
-Status: active upstream implementation checkpoint on `feature/publishing-providers-framework`, tracking `origin/feature/publishing-providers-framework`, with current upstream `main` at `7a64564`, merge/conflict recovery represented by HEAD `cbe5ed6`, provider registry seam in place, operation capability metadata added, provider/client validation implemented, provider metadata contract validation added, and the internal tool gate wired into local pre-commit plus PR CI, remote item editor identity implemented, publish-now and open-remote publish lifecycle actions added, focused validation green, and WordPress extraction direction recorded.
+Status: active upstream implementation checkpoint on `feature/publishing-providers-framework`, tracking `origin/feature/publishing-providers-framework`, with current upstream `main` at `7a64564`, merge/conflict recovery represented by HEAD `cbe5ed6`, provider registry seam in place, operation capability metadata added, provider/client validation implemented, provider metadata contract validation added, and the internal tool gate wired into local pre-commit plus PR CI, remote item editor identity implemented, publish-now and open-remote publish lifecycle actions added, focused validation green, and WordPress extraction direction and blocker note recorded.
+
+## 2026-06-19 WordPress extraction blockers
+
+- added `codex-notes/notes/wordpress-provider-extraction-readiness-2026-06-19.md`
+- recorded that WordPress remains the in-tree reference provider for now
+- blockers before extraction:
+  - package-facing provider registration contract
+  - explicit lifecycle bridge from publishing core to bundled provider package
+  - preserved network consent/no-silent-network review
+  - host-owned secret storage/access
+  - provider validation before user-facing exposure
+  - provider-neutral shell/UI wording
+  - SEC-8 third-party loading remains locked off
+  - performance and reliability measurement for provider adapter calls
+- no product runtime behavior changed
 
 ## 2026-06-18 provider/client contract validation
 
@@ -22,6 +37,7 @@ Status: active upstream implementation checkpoint on `feature/publishing-provide
   - `pre-commit run publishing-provider-registry --all-files`: passed
 - full unit suite after this slice: `3738 passed, 11 skipped, 53 failed, 2 warnings`
 - remaining full-suite failures/skips/warnings are outside the touched provider-contract slice and remain out of scope
+
 ## 2026-06-18 provider validation CI/local wiring
 
 - wired `python -m quill.tools.check_publishing_providers` into the existing local/CI gate collections
@@ -35,6 +51,7 @@ Status: active upstream implementation checkpoint on `feature/publishing-provide
   - `pre-commit run publishing-provider-registry --all-files`: passed
 - full unit suite after this slice: `3732 passed, 11 skipped, 53 failed, 2 warnings`
 - remaining full-suite failures/skips/warnings are outside the touched CI/local publishing-gate slice and remain out of scope
+
 ## 2026-06-18 provider validation tool gate
 
 - added internal `python -m quill.tools.check_publishing_providers` gate for provider/client registry validation
@@ -43,6 +60,7 @@ Status: active upstream implementation checkpoint on `feature/publishing-provide
 - wide publishing/tool/module-size slice passed: `52 passed in 3.56s`
 - full unit suite after this slice: `3731 passed, 11 skipped, 54 failed, 2 warnings`
 - remaining full-suite failures/skips/warnings are outside the touched provider-validation/tooling slice and remain out of scope
+
 ## 2026-06-18 testing discipline
 
 - user set the working rule that every development/code slice must receive focused validation plus the broad available unit-test battery

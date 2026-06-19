@@ -1,5 +1,21 @@
 # Codex Handoff
 
+## 2026-06-19 WordPress Extraction Readiness Note
+
+- added `codex-notes/notes/wordpress-provider-extraction-readiness-2026-06-19.md`
+- recorded blockers before WordPress can move into a first-party bundled Quillin or equivalent provider package
+- key blockers:
+  - package-facing provider registration
+  - publishing-core to bundled-provider lifecycle adapter
+  - network consent and no-silent-network review
+  - host-owned secret handling
+  - provider validation before exposure
+  - provider-neutral shell/UI wording
+  - SEC-8 third-party loading remains locked off
+  - performance/reliability measurement
+- no product runtime behavior changed
+- no push performed
+
 ## 2026-06-18 Provider/Client Contract Validation Slice
 
 - implemented provider metadata contract validation for extraction readiness
@@ -20,6 +36,7 @@
   - full unit suite: `3738 passed, 11 skipped, 53 failed, 2 warnings`
 - remaining full-suite failures are outside this slice and left untouched
 - no push performed
+
 ## 2026-06-18 Provider Validation CI/Local Wiring Slice
 
 - wired the internal publishing provider registry gate into local and CI checks

@@ -1,5 +1,23 @@
 # Publishing Providers Framework Plan
 
+## 2026-06-19 WordPress extraction blocker note
+
+The WordPress provider extraction-readiness checkpoint is documented in `codex-notes/notes/wordpress-provider-extraction-readiness-2026-06-19.md`.
+
+Recorded conclusions:
+
+- WordPress should remain the in-tree reference provider for now
+- the provider/client contract is sharper, but extraction still needs an explicit bundled-provider adapter shape
+- provider registration, network consent, host-owned secret access, validation-before-exposure, and UI provider-neutrality are blockers before moving WordPress
+- third-party publishing provider loading remains out of scope while SEC-8 keeps third-party Quillins locked off for QUILL 1.0
+
+Validation:
+
+- documentation-only slice; no product runtime behavior changed
+
+Next likely implementation direction:
+
+- define the bundled-provider adapter shape or continue product lifecycle work through the existing in-tree provider/client seam
 ## 2026-06-18 provider/client contract validation note
 
 The provider extraction preparation slice is implemented.

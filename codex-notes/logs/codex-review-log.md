@@ -1,5 +1,24 @@
 # Codex Review Log
 
+## 2026-06-19 00:02:32 -04:00
+
+WordPress extraction-readiness checkpoint:
+
+- audited the current provider/client seam and Quillins runtime gate
+- added codex-notes/notes/wordpress-provider-extraction-readiness-2026-06-19.md
+- recorded WordPress extraction blockers and minimum bundled-provider package expectations
+- confirmed this is a documentation/planning slice only: WordPress remains in-tree and no third-party publishing provider loading was enabled
+
+Validation:
+
+- documentation-only slice; product runtime behavior unchanged
+
+Next read:
+
+- if continuing extraction readiness, define the bundled-provider adapter shape before moving WordPress
+- if continuing product behavior, keep routing through the existing provider/client seam
+- no push has been performed
+
 ## 2026-06-18 23:29:17 -04:00
 
 Provider/client contract validation checkpoint:
@@ -18,7 +37,7 @@ Verification:
 - direct provider gate command: Publishing provider/client registry is valid.
 - wider publishing/tool/module-size slice: 58 passed in 4.23s
 - pre-commit run publishing-provider-registry --all-files: passed
-- full 	ests/unit: 3738 passed, 11 skipped, 53 failed, 2 warnings in 102.09s
+- full `tests/unit`: 3738 passed, 11 skipped, 53 failed, 2 warnings in 102.09s
 - remaining full-suite failures/skips/warnings are outside the touched provider-contract slice and left for their owning main-side areas
 
 Next read:
@@ -26,6 +45,7 @@ Next read:
 - provider extraction readiness now has a sharper metadata/client contract gate
 - next likely work is a WordPress extraction-blocker/packaging expectations note or another small contract-hardening slice
 - no push has been performed
+
 ## 2026-06-18 22:56:24 -04:00
 
 Provider validation CI/local wiring checkpoint:
@@ -49,6 +69,7 @@ Next read:
 
 - provider validation is now implemented, tool-gated, locally hooked, and covered by PR CI internal gates
 - no push has been performed
+
 ## 2026-06-18 22:35:00 -04:00
 
 Provider validation tool gate checkpoint:
@@ -75,6 +96,7 @@ Next read:
 - provider validation is now surfaced through an internal tool gate
 - next likely work is wiring the gate into existing local/CI check collections, if desired, without enabling runtime third-party publishing provider loading
 - no push has been performed
+
 ## 2026-06-18 22:30:03 -04:00
 
 Testing discipline checkpoint:
