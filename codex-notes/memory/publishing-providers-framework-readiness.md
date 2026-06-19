@@ -2,6 +2,13 @@
 
 Status: active upstream implementation checkpoint on `feature/publishing-providers-framework`, tracking `origin/feature/publishing-providers-framework`, with current upstream `main` at `7a64564`, merge/conflict recovery represented by HEAD `cbe5ed6`, provider registry seam in place, operation capability metadata added, provider/client validation implemented, remote item editor identity implemented, publish-now and open-remote publish lifecycle actions added, focused validation green, and WordPress extraction direction recorded.
 
+## 2026-06-18 testing discipline
+
+- user set the working rule that every development/code slice must receive focused validation plus the broad available unit-test battery
+- in-scope failures must be fixed before committing that slice
+- unrelated failures/skips/warnings from merged main or environment-sensitive areas should be recorded but not fixed unless the current slice touches those areas
+- commit locally as each step is completed; do not push unless explicitly requested
+- latest full unit baseline after provider/client validation extraction: `3726 passed, 11 skipped, 54 failed, 2 warnings`
 ## 2026-06-18 provider/client validation
 
 - implemented the planned provider/client registration validation slice

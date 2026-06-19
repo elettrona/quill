@@ -1,5 +1,19 @@
 # Publishing Providers Framework Plan
 
+## 2026-06-18 testing discipline checkpoint
+
+Working rule for all remaining publishing-provider development:
+
+- every code/development slice must run focused tests for the touched behavior
+- every slice must also run the broad available unit-test battery before being considered complete
+- if the full suite reports failures outside the touched slice, record them clearly and leave merged-main / unrelated areas untouched unless the slice required modifying them
+- if the full suite exposes an in-scope failure, fix it before committing the slice
+- commit locally as work proceeds; do not push unless explicitly requested
+
+Current known full-suite baseline from the provider/client validation slice:
+
+- `tests/unit`: `3726 passed, 11 skipped, 54 failed, 2 warnings`
+- the 54 failures, 11 skips, and 2 warnings are outside the publishing-validation slice and remain owned by their existing main-side areas
 ## 2026-06-18 provider/client validation implementation note
 
 The next provider-extraction preparation slice is implemented.

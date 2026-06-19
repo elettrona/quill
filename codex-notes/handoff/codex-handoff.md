@@ -1,5 +1,15 @@
 # Codex Handoff
 
+## 2026-06-18 Testing Discipline Checkpoint
+
+- user confirmed the process for future development:
+  - run focused tests for each touched behavior
+  - run the full available unit-test battery before considering a development slice complete
+  - fix in-scope failures before committing
+  - record but do not fix unrelated merged-main/environment-sensitive failures unless the slice touches those areas
+  - commit locally as work proceeds
+  - do not push
+- latest full-suite baseline after provider/client validation extraction: `3726 passed, 11 skipped, 54 failed, 2 warnings`
 ## 2026-06-18 Provider/Client Validation Slice
 
 - implemented the next extraction-prep slice from the plan

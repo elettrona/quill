@@ -1,5 +1,15 @@
 # Codex Review Log
 
+## 2026-06-18 22:30:03 -04:00
+
+Testing discipline checkpoint:
+
+- user instructed that all remaining development/code slices must run both focused validation and the full available unit-test battery
+- in-scope failures must be fixed before committing the slice
+- unrelated merged-main or environment-sensitive failures/skips/warnings should be recorded and left untouched unless the current slice modifies those areas
+- continue committing locally as work proceeds
+- do not push
+- current full-suite baseline from the provider/client validation extraction: `3726 passed, 11 skipped, 54 failed, 2 warnings`
 ## 2026-06-18 22:04:10 -04:00
 
 Provider/client validation implementation checkpoint:
