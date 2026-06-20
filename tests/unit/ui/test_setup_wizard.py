@@ -262,3 +262,40 @@ def test_keyboard_sound_page_indent_choice_labels_are_str() -> None:
     assert "choices=[str(label) for _value, label in self._INDENT_TONE_CHOICES]" in match.group(
         0
     ), "_KeyboardSoundPage indent Choice must coerce lazy_gettext labels to str"
+
+
+def test_wizard_nav_button_labels_have_no_chevrons() -> None:
+    # #611: VoiceOver was reading the wizard's Back and Next buttons as
+    # "less than Back" and "Next greater than" because the label
+    # literals had decorative '<' and '>' characters in them. Drop
+    # the chevrons from the accessible name; the visible button is
+    # still styled with its arrow glyph (the wx stock rendered
+    # bitmap is unchanged on platforms that draw one).
+    import re
+
+    src = _wizard_pages_source()
+    back = re.search(
+        r"self\._back_btn\s*=\s*wx\.Button\([^)]*label\s*=\s*_\([^\)]*\)\s*[^,)]*",
+        src,
+        re.DOTALL,
+    )
+    next_btn = re.search(
+        r"self\._next_btn\s*=\s*wx\.Button\([^)]*label\s*=\s*_\([^\)]*\)\s*[^,)]*",
+        src,
+        re.DOTALL,
+    )
+    assert back is not None, "Wizard Back button not found"
+    assert next_btn is not None, "Wizard Next button not found"
+    # The label string literal must not start with a chevron and must
+    # not contain one. Pin the exact post-fix string.
+    assert '"< Back"' not in src, (
+        "Wizard Back button must not contain a literal '< Back' label (#611)"
+    )
+    assert '"Next >"' not in src, (
+        "Wizard Next button must not contain a literal 'Next >' label (#611)"
+    )
+    # And the new clean labels must be present.
+    assert '_("Back")' in back.group(0), "Wizard Back button must be labelled simply 'Back' (#611)"
+    assert '_("Next")' in next_btn.group(0), (
+        "Wizard Next button must be labelled simply 'Next' (#611)"
+    )

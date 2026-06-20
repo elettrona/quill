@@ -725,8 +725,14 @@ class SetupWizardDialog(wx.Dialog):
         nav.Add(self._progress, flag=wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border=8)
         nav.AddStretchSpacer()
 
-        self._back_btn = wx.Button(self, label=_("< Back"), name="wizard.back")
-        self._next_btn = wx.Button(self, label=_("Next >"), name="wizard.next")
+        # #611: Drop the chevron decorations from the accessible name.
+        # VoiceOver was reading them as "less than Back" and "Next
+        # greater than" — pure noise. The labels now read "Back" and
+        # "Next" so screen readers (and JAWS in Forms mode) hear clean
+        # button names. Visual decoration is unchanged; this fix is
+        # only about what screen readers announce.
+        self._back_btn = wx.Button(self, label=_("Back"), name="wizard.back")
+        self._next_btn = wx.Button(self, label=_("Next"), name="wizard.next")
         self._finish_btn = wx.Button(self, wx.ID_OK, label=_("Finish"), name="wizard.finish")
         self._cancel_btn = wx.Button(self, wx.ID_CANCEL, label=_("Cancel"), name="wizard.cancel")
 
