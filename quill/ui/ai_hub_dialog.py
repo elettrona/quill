@@ -190,7 +190,7 @@ class AIHubDialog:
         # Provider selector
         sizer.Add(wx.StaticText(panel, label=_("AI provider:")), 0, wx.ALL, 6)
         provider_ids = [pid for pid, _label in _PROVIDER_CHOICES]
-        provider_labels = [label for _pid, label in _PROVIDER_CHOICES]
+        provider_labels = [str(label) for _pid, label in _PROVIDER_CHOICES]
         self._provider_choice = wx.Choice(panel, choices=provider_labels)
         self._provider_choice.SetName("AI provider")
         try:
@@ -394,7 +394,7 @@ class AIHubDialog:
         self._inst_task_ids: list[str] = []
         for task_id, inst in self._instructions.items():
             marker = " *" if inst.is_customised() else ""
-            self._inst_list.Append(f"{inst.title}{marker}")
+            self._inst_list.Append(f"{str(inst.title)}{marker}")
             self._inst_task_ids.append(task_id)
         left.Add(self._inst_list, 1, wx.EXPAND)
         sizer.Add(left, 0, wx.EXPAND | wx.ALL, 8)
@@ -485,7 +485,7 @@ class AIHubDialog:
             sid = style["id"]
             marker = " *" if sid in self._vision_overrides else ""
             disabled_mark = " [hidden]" if sid in self._vision_disabled else ""
-            self._img_list.Append(f"{style['title']}{marker}{disabled_mark}")
+            self._img_list.Append(f"{str(style['title'])}{marker}{disabled_mark}")
             self._img_style_ids.append(sid)
         left.Add(self._img_list, 1, wx.EXPAND)
         sizer.Add(left, 0, wx.EXPAND | wx.ALL, 8)
