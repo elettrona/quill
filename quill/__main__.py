@@ -83,6 +83,9 @@ def main() -> int:
     _install_excepthook()
     try:
         _bootstrap_storage_mode()
+        from quill.core.publishing_bundled import bootstrap_bundled_publishing_providers
+
+        bootstrap_bundled_publishing_providers()
 
         try:
             from quill.ui.main_frame import run_app

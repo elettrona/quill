@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from inspect import getsource
 from pathlib import Path
 
 import pytest
@@ -70,6 +71,15 @@ def test_launch_configuration_applies_line_and_column_to_first_file(
     assert requests[1].path == second.resolve()
     assert requests[1].line is None
     assert requests[1].column is None
+
+
+def test_normal_startup_bootstraps_bundled_publishing_before_ui_import() -> None:
+    source = getsource(entry.main)
+
+    bootstrap = source.index("bootstrap_bundled_publishing_providers()")
+    ui_import = source.index("from quill.ui.main_frame import run_app")
+
+    assert bootstrap < ui_import
 
 
 def test_main_version_prints_and_exits(

@@ -10,6 +10,7 @@ from quill.core.publishing_adapters import (
     bundled_publishing_provider_adapter,
     register_bundled_publishing_provider,
 )
+from quill.core.publishing_bundled import bootstrap_bundled_publishing_providers
 from quill.core.publishing_bundled.wordpress import wordpress_bundled_provider_adapter
 from quill.core.publishing_providers import (
     AUTH_METHOD_APP_PASSWORD,
@@ -54,6 +55,23 @@ def test_wordpress_can_register_through_bundled_package_adapter() -> None:
     assert adapter.execution == IN_PROCESS_EXECUTION
     assert adapter.network_capability_rationale
     assert publishing_validation.validate_registered_publishing_provider_clients() == ()
+
+
+def test_normal_startup_bootstrap_preserves_wordpress_registry_identity() -> None:
+    original_definition = publishing_provider_definition("wordpress")
+    original_client = publishing_clients.publishing_provider_client("wordpress")
+
+    bootstrap_bundled_publishing_providers()
+    first_adapter = bundled_publishing_provider_adapter("wordpress")
+    bootstrap_bundled_publishing_providers()
+    second_adapter = bundled_publishing_provider_adapter("wordpress")
+
+    assert first_adapter is not None
+    assert second_adapter is not None
+    assert second_adapter.definition is original_definition
+    assert second_adapter.client is original_client
+    assert publishing_provider_definition("wordpress") is original_definition
+    assert publishing_clients.publishing_provider_client("wordpress") is original_client
 
 
 def test_mismatched_adapter_is_rejected_before_registry_exposure() -> None:
