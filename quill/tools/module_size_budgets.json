@@ -31,9 +31,10 @@
   "_rebaseline_2026_06_20_305_reconsent": "main_frame.py 24502->24554 (+52) for #305 trust-consent re-consent flow: new load_trust_consent_status() import, _trust_consent_status attribute, branching in _show_trust_consent_onboarding for the re-consent path, _format_reconsent_deltas helper, and the trust_consent_change_log import; +2 more lines for the lint-fix split of the title ternary. The new code is exclusively onboarding glue; consider extracting into quill/ui/onboarding_consent.py when CQ-1 decomposition resumes.",
   "_rebaseline_2026_06_20_quill_key_branding": "main_frame.py 24554->24569 (+15) and main_frame_quill_key.py 750->753 (+3) for the QUILL Key branding work: _menu_label gap-check warning (logging import + warning call) and the import addition in main_frame.py, plus the f-string title ternary wrap in _present_quill_key_help. Both diffs are surface glue; CQ-1 decomposition is still the path to lower these budgets.",
   "_rebaseline_2026_06_20_603_dead_editor_crash": "main_frame.py 24569->24572 (+3) for #603: _on_editor_caret_activity wraps _maybe_announce_indent/_maybe_play_indent_tone in try/except RuntimeError, guarding against a dead C++ TextCtrl when Ctrl+W closes the document mid-event (same dead-widget condition already guarded in _refresh_statusbar for #269). Bug-fix growth only; CQ-1 decomposition is still the path to lower the budget.",
+  "_rebaseline_2026_06_20_612_phantom_quill_key": "main_frame.py 24572->24585 (+13) for #612: _menu_label no longer puts the QUILL Key chord display string after the literal tab in menu item text, because wx parses that tab-suffix as a real native accelerator and was silently binding bare R/S as real shortcuts. Bug-fix growth only; CQ-1 decomposition is still the path to lower the budget.",
   "_default_cap": 600,
   "budgets": {
-    "quill/ui/main_frame.py": 24572,
+    "quill/ui/main_frame.py": 24585,
     "quill/ui/main_frame_quill_key.py": 753,
     "quill/ui/main_frame_braille.py": 736,
     "quill/ui/assistant_tools.py": 2008,

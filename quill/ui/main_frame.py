@@ -6479,6 +6479,19 @@ class MainFrame(
         # itself is unchanged.
         prefix = getattr(self.settings, "quill_key_binding", "Ctrl+Shift+Grave")
         display = format_binding_for_display(binding, prefix=prefix)
+        if display != binding:
+            # #612: text after a literal tab in a wx menu item label is not
+            # just decorative -- wx parses it as a real native accelerator
+            # (wxGetAccelFromString). "QUILL Key + S" parses as a clean,
+            # modifier-less "S" accelerator because wx ignores the
+            # unrecognized "QUILL Key" modifier token instead of rejecting
+            # the whole string, silently binding bare S/R to menu commands
+            # outside the chord dispatcher. The raw chord grammar
+            # ("Ctrl+Shift+Grave, S") failed to parse for the same reason
+            # the comma broke it, which is what kept this safe before the
+            # display rewrite existed. Keep the friendly label visible but
+            # out of the accelerator-parsed slot.
+            return f"{label} ({display})"
         return f"{label}\t{display}"
 
     def _ensure_menu_customization(self) -> MenuCustomization:
