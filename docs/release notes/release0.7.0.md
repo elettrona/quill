@@ -1294,6 +1294,14 @@ The recovery offer dialog, the first F1 help lookup, and the first WebView2 prev
 
 The dialog-inventory snapshot and dialog-button-contract gates were regenerated as part of the fix; both pass. (#179)
 
+### QUILL browse mode speaks reliably, and you control how much it says
+
+Two related bugs in QUILL browse mode (QUILL key, then **N**) are fixed. Browse mode no longer exits after a single navigation keypress — it now stays active until you press Escape, as designed. And entering and exiting browse mode are announced again: a `pyttsx3`/SAPI5 driver quirk meant the engine spoke the very first announcement of a session and then silently produced nothing on every later one, even though no error was raised. The fix drives the speech engine with its external-loop API instead of repeating `runAndWait()`, which keeps the same driver loop alive for the life of the session. The spoken message when you enter browse mode is also shorter now — it no longer reads every key binding aloud, since **?** already opens the full cheat sheet.
+
+Heading navigation (**H**, and **Ctrl+Alt+1** through **6**) and block navigation previously moved the caret correctly but announced nothing, unlike every other browse-mode element (links, lists, tables, paragraphs, and so on). Heading and block moves now speak through the same path as the rest of browse mode.
+
+A new setting, **QUILL browse move detail** (**Preferences -> Navigation**), controls how much a browse-mode move tells you once it completes: *Line and column* (the default, unchanged from previous releases), *Line only*, or *Say nothing*.
+
 ---
 
 ## What works differently now

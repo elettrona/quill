@@ -1590,6 +1590,7 @@ Behavior rules:
 - It only changes cursor location.
 - If a target does not exist for the active surface, Quill announces that clearly.
 - Find and replace commands return you to normal command flow automatically.
+- After each move, Quill announces where you landed. **QUILL browse move detail**, in `Preferences -> Navigation`, controls how much detail that announcement gives: *Line and column* (default), *Line only*, or *Say nothing*.
 - In `Preferences -> General`, **Preload QUILL browse cache in background** is on by default. If you turn it off, Quill builds the cache the first time you use Quick Nav.
 
 How Quill tracks headings, lists, list items, paragraphs, and sentences:

@@ -408,7 +408,7 @@ class BrowseModeMixin:
         self.editor.SetFocus()
         self._location_ring.record(target)
         line, column = line_column_for_position(text, target)
-        self._browse_feedback_move(f"Moved to {label} {kind} at line {line}, column {column}")
+        self._browse_feedback_move(f"Moved to {label} {kind}", line, column)
 
     def _browse_paragraph(self, *, reverse: bool) -> None:
         positions = [start for start, _end in self._browse_navigation_context()["paragraph_spans"]]
@@ -464,9 +464,16 @@ class BrowseModeMixin:
         self._location_ring.record(target)
         line, column = line_column_for_position(self.editor.GetValue(), target)
         direction = "previous" if reverse else "next"
-        self._browse_feedback_move(f"Moved to {direction} {noun} at line {line}, column {column}")
+        self._browse_feedback_move(f"Moved to {direction} {noun}", line, column)
 
-    def _browse_feedback_move(self, message: str) -> None:
+    def _browse_feedback_move(self, prefix: str, line: int, column: int) -> None:
+        detail = str(getattr(self.settings, "browse_mode_move_detail", "position")).strip().lower()
+        if detail == "none":
+            return
+        if detail == "line":
+            message = f"{prefix} at line {line}"
+        else:
+            message = f"{prefix} at line {line}, column {column}"
         self._quill_feedback(message, status_message=message, sound_kind="move")
 
     def _browse_not_found(self, noun: str, surface: str) -> None:

@@ -498,6 +498,20 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("browse", "feedback", "sound", "speech"),
     ),
     SettingSpec(
+        "browse_mode_move_detail",
+        "QUILL browse move detail",
+        "navigation",
+        "choice",
+        "How much detail is spoken after a browse-mode move completes.",
+        choices=(
+            ("position", "Line and column"),
+            ("line", "Line only"),
+            ("none", "Say nothing"),
+        ),
+        feature_id="core.navigate",
+        keywords=("browse", "move", "detail", "line", "position", "announcement"),
+    ),
+    SettingSpec(
         "browse_mode_preload_cache",
         "Preload QUILL browse cache in background",
         "navigation",

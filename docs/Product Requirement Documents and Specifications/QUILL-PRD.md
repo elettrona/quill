@@ -325,7 +325,7 @@ Performance and invalidation:
 
 Customization:
 
-- Settings include wrap behavior for Quick Nav boundary traversal and feedback mode (`speech`, `sound`, `both`, `none`).
+- Settings include wrap behavior for Quick Nav boundary traversal, feedback mode (`speech`, `sound`, `both`, `none`), and move-announcement detail (`browse_mode_move_detail`: `position`, `line`, `none`) — the latter controls whether a completed move reports line and column, line only, or nothing. Heading and block movement announce through the same path and setting as every other Quick Nav element type.
 - Keyboard manager can reassign Quick Nav actions and leader sequences.
 
 ### 5.3 File operations

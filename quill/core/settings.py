@@ -33,6 +33,7 @@ class Settings:
     wrap_find: bool = True
     browse_mode_wrap: bool = True
     browse_mode_feedback: str = "speech"
+    browse_mode_move_detail: str = "position"
     browse_mode_preload_cache: bool = True
     quill_key_binding: str = "Ctrl+Shift+Grave"
     quill_key_timeout_seconds: float = 2.5
@@ -254,6 +255,11 @@ class Settings:
         browse_mode_feedback = str(data.get("browse_mode_feedback", "speech")).strip().lower()
         if browse_mode_feedback not in {"sound", "speech", "both", "none"}:
             browse_mode_feedback = "speech"
+        browse_mode_move_detail = (
+            str(data.get("browse_mode_move_detail", "position")).strip().lower()
+        )
+        if browse_mode_move_detail not in {"none", "line", "position"}:
+            browse_mode_move_detail = "position"
         browse_mode_preload_cache = bool(
             data.get(
                 "browse_mode_preload_cache",
@@ -683,6 +689,7 @@ class Settings:
             wrap_find=wrap_find,
             browse_mode_wrap=browse_mode_wrap,
             browse_mode_feedback=browse_mode_feedback,
+            browse_mode_move_detail=browse_mode_move_detail,
             browse_mode_preload_cache=browse_mode_preload_cache,
             quill_key_binding=quill_key_binding,
             quill_key_timeout_seconds=quill_key_timeout_seconds,

@@ -13167,11 +13167,12 @@ class MainFrame(
         context = heading_context_at(self.editor.GetValue(), target, markup_kind)
         if context is not None:
             title = context.title or "untitled"
-            self._set_status(
+            prefix = (
                 f"Moved to {label}, H{context.level}, {context.ordinal} of {context.total}: {title}"
             )
         else:
-            self._set_status(f"Moved to {label}")
+            prefix = f"Moved to {label}"
+        self._announce_navigation_move(prefix, target)
 
     def navigate_next_block(self) -> None:
         self._navigate_block(reverse=False)
@@ -13198,7 +13199,18 @@ class MainFrame(
         self.editor.SetSelection(target, target)
         self.editor.SetFocus()
         self._location_ring.record(target)
-        self._set_status(f"Moved to {label}")
+        self._announce_navigation_move(f"Moved to {label}", target)
+
+    def _announce_navigation_move(self, prefix: str, target: int) -> None:
+        detail = str(getattr(self.settings, "browse_mode_move_detail", "position")).strip().lower()
+        if detail == "none":
+            return
+        line, column = line_column_for_position(self.editor.GetValue(), target)
+        if detail == "line":
+            message = f"{prefix} at line {line}"
+        else:
+            message = f"{prefix} at line {line}, column {column}"
+        self._quill_feedback(message, status_message=message, sound_kind="move")
 
     def open_outline_navigator(self) -> None:
         if self.document.path is not None and self.document.path.suffix.lower() == ".epub":
