@@ -27,9 +27,10 @@
   "_rebaseline_2026_06_15_vision_prompt_library": "Merging PR #248 (Vision Prompt Library, contributed by Kelly Ford): assistant_tools.py 1877->1982 (+105 for style picker, describe-again loop, retry button, and settings-reload fix); settings.py 754->785 (+31 for 4 vision prompt fields + upgrade_prompt_braille_pack); settings_specs.py 1290->1323 (+33 for 4 vision SettingSpec entries). main_frame_image.py given an explicit budget entry at 593.",
   "_next_target_main_frame": 15000,
   "_rebaseline_2026_06_18_braille_phase2": "main_frame.py 23915->23917 (+2) for the BraillePhase2CommandsMixin import and MRO insertion. Phase 2 logic lives in main_frame_braille_phase2.py (408 lines, under the 600 default cap) to honour GATE-11; main_frame_braille.py 732->714 after the Phase 2 IDs / items / bindings / handlers / registry entries / _compose_detailed_status helper were extracted back out (this is a net reduction, no budget bump needed). CQ-1 decomposition is the path to lower main_frame.py toward 15000.",
+  "_rebaseline_2026_06_19_snippet_placeholder_errors": "main_frame.py 24494->24502 (+8) for #287: snippets.py's extract_placeholders/render_snippet now raise ValueError on a malformed placeholder instead of silently dropping it, so insert_snippet and _expand_snippet_trigger_if_match each need a try/except around _render_snippet_with_prompts to report the snippet name instead of crashing. A single shared wrapper was considered but the two callers need to distinguish a genuine error from a user cancel for differing status messages.",
   "_default_cap": 600,
   "budgets": {
-    "quill/ui/main_frame.py": 24500,
+    "quill/ui/main_frame.py": 24502,
     "quill/ui/main_frame_quill_key.py": 750,
     "quill/ui/main_frame_braille.py": 736,
     "quill/ui/assistant_tools.py": 2008,

@@ -4153,7 +4153,11 @@ class MainFrame(
         snippet = find_snippet_by_trigger(self._snippet_library.snippets, token)
         if snippet is None:
             return False
-        rendered = self._render_snippet_with_prompts(snippet)
+        try:
+            rendered = self._render_snippet_with_prompts(snippet)
+        except ValueError as exc:
+            self._set_status(f'Snippet "{snippet.name}" has an invalid placeholder: {exc}')
+            return False
         if rendered is None:
             return False
         before = text[:token_start]
@@ -22375,7 +22379,11 @@ class MainFrame(
         if snippet is None:
             self._set_status("No snippets available. Open Manage Snippets to add one.")
             return
-        rendered = self._render_snippet_with_prompts(snippet)
+        try:
+            rendered = self._render_snippet_with_prompts(snippet)
+        except ValueError as exc:
+            self._set_status(f'Snippet "{snippet.name}" has an invalid placeholder: {exc}')
+            return
         if rendered is None:
             self._set_status("Snippet insertion cancelled")
             return
