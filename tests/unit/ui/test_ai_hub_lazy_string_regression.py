@@ -81,6 +81,24 @@ def test_ai_hub_image_listbox_coerces_titles_to_str() -> None:
     )
 
 
+def test_ai_hub_notebook_pages_coerce_labels_to_str() -> None:
+    """#614 follow-up: wx.Notebook.AddPage on Windows also rejects
+    _LazyString proxies — the proxy is the page title, not just a
+    Choice/ListBox choice. Every AddPage call in the AI Hub dialog
+    must wrap its label in ``str(...)`` or the dialog crashes before
+    the first tab is built.
+    """
+    src = _ai_hub_source()
+    # Stronger: at least one str(_(...)) wrapping on the outer notebook.
+    assert re.search(r"self\._notebook\.AddPage\([^,]+,\s*str\(_\(", src), (
+        "AIHubDialog outer Notebook.AddPage must wrap label in str()"
+    )
+    # And on the sub-notebook too.
+    assert re.search(r"sub\.AddPage\([^,]+,\s*str\(_\(", src), (
+        "AIHubDialog sub-Notebook.AddPage must wrap label in str()"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Direct test — _maybe_play_indent_tone must not crash when editor is unset
 # ---------------------------------------------------------------------------

@@ -153,11 +153,17 @@ class AIHubDialog:
         self._notebook = wx.Notebook(self.dialog)
         root.Add(self._notebook, 1, wx.EXPAND | wx.ALL, 8)
 
-        self._notebook.AddPage(self._build_provider_tab(), _("Provider"))
-        self._notebook.AddPage(self._build_on_device_tab(), _("On-Device"))
-        self._notebook.AddPage(self._build_audio_tab(), _("Audio Services"))
-        self._notebook.AddPage(self._build_instructions_tab(), _("Instructions"))
-        self._notebook.AddPage(self._build_advanced_tab(), _("Advanced"))
+        # #614 follow-up: wx.Notebook.AddPage on Windows rejects the
+        # lazy_gettext proxy at the wx boundary (TypeError: Item at
+        # index 0 has type '_LazyString' but a sequence of bytes or
+        # strings is expected). Coerce each tab label to str() so the
+        # proxy never reaches wx. Choice/ListBox/ComboBox labels are
+        # already coerced in their own builders.
+        self._notebook.AddPage(self._build_provider_tab(), str(_("Provider")))
+        self._notebook.AddPage(self._build_on_device_tab(), str(_("On-Device")))
+        self._notebook.AddPage(self._build_audio_tab(), str(_("Audio Services")))
+        self._notebook.AddPage(self._build_instructions_tab(), str(_("Instructions")))
+        self._notebook.AddPage(self._build_advanced_tab(), str(_("Advanced")))
 
         btn_sizer = wx.StdDialogButtonSizer()
         ok_btn = wx.Button(self.dialog, wx.ID_OK, label=_("&OK"))
@@ -371,8 +377,8 @@ class AIHubDialog:
         outer = wx.BoxSizer(wx.VERTICAL)
 
         sub = wx.Notebook(panel)
-        sub.AddPage(self._build_writing_tasks_page(sub), _("Writing Tasks"))
-        sub.AddPage(self._build_image_styles_page(sub), _("Image Styles"))
+        sub.AddPage(self._build_writing_tasks_page(sub), str(_("Writing Tasks")))
+        sub.AddPage(self._build_image_styles_page(sub), str(_("Image Styles")))
         outer.Add(sub, 1, wx.EXPAND | wx.ALL, 6)
 
         panel.SetSizer(outer)
