@@ -3722,12 +3722,64 @@ class MainFrame(
     def _apply_silent_accessible(self, widget: object) -> None:
         """Replace a layout container's built-in accessible so screen readers
         skip it in the ancestor context chain (#170)."""
+        # #616: the silent-accessible shim is an MSAA (Windows) workaround
+        # that returns ROLE_SYSTEM_WINDOW with an empty name. On macOS the
+        # screen reader (VoiceOver) walks the NSAccessibility tree, and
+        # installing a wx.Accessible subclass here would replace the
+        # native NSView's role with a generic one, so VoiceOver no longer
+        # sees the nested NSTextView as a real text area. macOS uses the
+        # native tree as-is; the shim is a no-op there.
+        if sys.platform == "darwin":
+            return
         cls = self._silent_layout_cls
         if cls is not None:
             try:
                 widget.SetAccessible(cls(widget))  # type: ignore[attr-defined]
             except Exception:
                 pass
+
+    def _pin_macos_editor_accessibility_role(self, editor: object) -> None:
+        """#616: pin the editor's NSAccessibility role to NSTextView.
+
+        On macOS, wx's default accessibility shim may report the editor
+        as a generic group rather than a real text area, so VoiceOver
+        does not announce it as editable. Reach the underlying NSView
+        via ``GetHandle()`` and set the AX role explicitly to
+        ``NSTextView`` so the NSAccessibility tree reports the editor
+        as a native text area.
+
+        PyObjC (``AppKit``) is the macOS-only dep we already require for
+        other platform integration. The role-setting calls are wrapped
+        in try/except so an unexpected AppKit API change is a silent
+        no-op rather than a startup crash -- the editor still works,
+        VoiceOver just may not announce the role. py2app builds ship
+        without ``AppKit`` available in some configurations, so we
+        tolerate the import failure as well.
+        """
+        if sys.platform != "darwin":
+            return
+        try:
+            from AppKit import NSAccessibilityRoleTextAreaRole  # type: ignore[import-not-found]
+        except Exception:
+            return
+        handle = getattr(editor, "GetHandle", None)
+        if not callable(handle):
+            return
+        try:
+            ns_view = handle()
+        except Exception:
+            return
+        if ns_view is None:
+            return
+        setter_role = getattr(ns_view, "setAccessibilityRole_", None)
+        setter_label = getattr(ns_view, "setAccessibilityLabel_", None)
+        try:
+            if callable(setter_role):
+                setter_role(NSAccessibilityRoleTextAreaRole)
+            if callable(setter_label):
+                setter_label("Document")
+        except Exception:
+            pass
 
     def _on_container_focus(self, event: object) -> None:
         # Fires when focus lands directly on a layout container (splitter or
@@ -3863,11 +3915,26 @@ class MainFrame(
         splitter.Bind(wx.EVT_SET_FOCUS, self._on_container_focus)
         self._apply_silent_accessible(splitter)
         splitter.SetMinimumPaneSize(160)
-        editor = wx.TextCtrl(
-            splitter,
-            style=wx.TE_MULTILINE | wx.TE_RICH2 | wx.TE_NOHIDESEL,
-        )
+        # #616: TE_RICH2 and TE_NOHIDESEL are Windows-specific. On Windows,
+        # TE_RICH2 forces a RichEdit control whose IAccessible value is
+        # reported correctly to screen readers (see the comment near the
+        # preview Ctrl at line ~5890 for the original justification). On
+        # macOS both flags are ignored by wx, but wx's macOS accessibility
+        # shim can still install a generic role on the editor's NSView.
+        # Drop the Windows-only flags on macOS and let wx map TE_MULTILINE
+        # to the native NSTextView, then pin the AX role so VoiceOver
+        # treats the editor as a real text area rather than a generic
+        # group.
+        if sys.platform == "darwin":
+            editor = wx.TextCtrl(splitter, style=wx.TE_MULTILINE)
+        else:
+            editor = wx.TextCtrl(
+                splitter,
+                style=wx.TE_MULTILINE | wx.TE_RICH2 | wx.TE_NOHIDESEL,
+            )
         editor.SetName("Document")
+        if sys.platform == "darwin":
+            self._pin_macos_editor_accessibility_role(editor)
         splitter.Initialize(editor)
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(splitter, 1, wx.EXPAND)

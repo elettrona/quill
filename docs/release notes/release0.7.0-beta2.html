@@ -393,6 +393,19 @@ wizard. The window now opens with no document tab, the wizard comes up
 first, and a fresh untitled document is created automatically after the
 wizard finishes. Returning QUILL users (anyone who has already run the
 wizard once) see the normal "Untitled" tab on launch as before.</p></li>
+<li><p><strong>VoiceOver now reads the editor as a native text area on
+macOS (#616).</strong> The main document editor is a
+<code>wx.TextCtrl</code> whose <code>TE_RICH2</code> and
+<code>TE_NOHIDESEL</code> styles are Windows-only. On macOS those flags
+are ignored, and the way QUILL wrapped the editor in a custom
+accessibility shim (a Windows/MSAA workaround for the surrounding panel
+and splitter) was overwriting the native NSView role, so VoiceOver
+treated the editor as a generic group rather than a real text area. The
+Windows-only flags are now dropped on macOS, the silent-accessible shim
+is a no-op on macOS, and the editor's NSView has its NSAccessibility
+role pinned to <code>NSTextView</code> so VoiceOver announces it as a
+normal, editable text area with full text-navigation semantics. Windows
+behaviour is unchanged.</p></li>
 </ul>
 </body>
 </html>
