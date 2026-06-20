@@ -198,6 +198,9 @@ class _FakeButton:
     def SetLabel(self, label: str) -> None:  # noqa: N802
         self.label = label
 
+    def SetName(self, name: str) -> None:  # noqa: N802
+        self.name = name
+
 
 class _FakeStatic(_FakeButton):
     pass
