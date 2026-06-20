@@ -14,6 +14,8 @@ Multi-press behaviour (Phase 2):
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import wx
 
 from quill.core.copy_tray import CopyTray
@@ -26,10 +28,16 @@ class _TraySearchDialog:
     Shown via _show_modal_dialog(dlg.dialog, ...) by CopyTrayMixin.search_tray_slots.
     """
 
-    def __init__(self, parent: object, tray: CopyTray) -> None:
+    def __init__(
+        self,
+        parent: object,
+        tray: CopyTray,
+        announce_fn: Callable[[str], None] | None = None,
+    ) -> None:
         self._tray = tray
         self._slot_numbers: list[int] = []
         self._result_slot: int | None = None
+        self._announce_fn = announce_fn
         self.dialog = wx.Dialog(
             parent,
             title="Search Copy Tray Slots",
@@ -100,6 +108,8 @@ class _TraySearchDialog:
         self._results.Set(labels)
         if labels:
             self._results.SetSelection(0)
+            if self._announce_fn is not None:
+                self._announce_fn(labels[0])
 
     def _on_activate(self, _event: object) -> None:
         sel = self._results.GetSelection()
@@ -244,7 +254,7 @@ class CopyTrayMixin:
         if all(s.is_empty() for _, s in tray.all_slots()):
             self._announce("All copy tray slots are empty")
             return
-        dlg = _TraySearchDialog(self.frame, tray)
+        dlg = _TraySearchDialog(self.frame, tray, announce_fn=self._announce)
         result = self._show_modal_dialog(dlg.dialog, "Search Copy Tray Slots")
         n = dlg.selected_slot()
         dlg.close()
