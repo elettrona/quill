@@ -50,8 +50,8 @@ Highlights since 0.5.0 include:
 - Optional Ollama cloud key mode over HTTPS (no local Ollama required for cloud endpoint access).
 - In-App Preview and Side-by-Side Preview with a dedicated Focus Preview command.
 - Heading styling tools to apply font family, size, and alignment to current-level or all headings in Markdown/HTML.
-- Heading Organizer (`Ctrl+Shift+Grave, O`) with keyboard-driven heading level changes, section reordering, and accessibility validation.
-- QUILL Quick Nav mode (browse-style cursor navigation) activated with `Ctrl+Shift+Grave`, with mnemonic single-key movement for links, lists, list items, tables, block quotes, bookmarks, code blocks, table of contents, headings, heading levels (`1` through `6`), paragraphs, sentences, and blocks.
+- Heading Organizer (`Ctrl+Shift+Grave, O` — shown to users as `QUILL Key + O`) with keyboard-driven heading level changes, section reordering, and accessibility validation.
+- QUILL Quick Nav mode (browse-style cursor navigation) activated with the QUILL key (`Ctrl+Shift+Grave` — shown to users as `QUILL Key`), with mnemonic single-key movement for links, lists, list items, tables, block quotes, bookmarks, code blocks, table of contents, headings, heading levels (`1` through `6`), paragraphs, sentences, and blocks.
 - Watch Folder automation under **Tools -> Dictation** to auto-open newly dropped supported files.
 - Unified first-run **Personalise QUILL** wizard (re-runnable from **Help -> Personalise QUILL**) covering keyboard pack, feature profile, remote access, AI, reading/accessibility, writing tools, and startup behaviour.
 - Search menu simplification with replace-all inside the Replace dialog.

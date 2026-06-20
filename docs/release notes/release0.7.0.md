@@ -1428,6 +1428,159 @@ The full audit lives in the new `docs/keybinding-standard.md` document. The esca
 
 A new `quill.tools.check_copy_tray_binding` gate ensures the 12 Copy Tray paste slots (Ctrl+Shift+1..9, Ctrl+Shift+0, Ctrl+Shift+-, Ctrl+Shift+=) keep their default bindings. A future change that reassigned any of those chords would now fail the gate. The gate is automatically delegated from `menu_lint` so a single `python -m quill.tools.menu_lint` invocation covers all keymap and menu structural invariants.
 
+## Experience 16: QUILL Key branding and menu label clarity
+
+The QUILL Key is the editor's signature feature — a `Ctrl+Shift+Grave` prefix that opens the chord language for power-user workflows. In 0.7.0 it gets a brand and a CI guarantee that every menu item shows its keybinding.
+
+### The chord is now `QUILL Key + <key>`
+
+Where 0.6.x showed the raw `Ctrl+Shift+Grave, S` form in menus, the Keyboard Reference page, the QUILL Key Help dialog, the cheat sheet, and the status bar, 0.7.0 shows `QUILL Key + S`. The user-visible string moves; the stored binding does not. `DEFAULT_KEYMAP`, `keymap.json`, the `quill_key_binding` setting, the `legacy_rebindings` comparison table, and any saved `keymap/profile_*.json` still hold the same `Ctrl+Shift+Grave, <key>` grammar. Only the display layer rewrites the prefix, through a single function — `quill.core.keymap_format.format_binding_for_display` — so the entire product speaks the same label.
+
+The constant `QUILL_KEY_LABEL = "QUILL Key"` lives in `quill/branding.py` and is the single source of truth. Status-bar messages, the cheat sheet, the dialog title, the announce message that fires when the prefix is pressed, and the parameter that `build_cheat_sheet` accepts all read from it. Rebrand the product once in `branding.py` and the QUILL Key label follows.
+
+A second helper, `format_quill_key_chord(prefix, second_key)`, composes a chord from a prefix and a second key without inspecting a stored binding string. Power-user status bar code that needs to mention a chord without one in hand can use it directly.
+
+### A 4th `menu_lint` invariant catches binding/label drift
+
+`quill.tools._check_binding_label_consistency` walks the AST of `quill/ui/main_frame_menu.py` and flags three regression classes:
+
+1. **Empty label through `_menu_label`.** `self._menu_label("", "format.bold")` was the kind of line that previously slipped in and produced a menu slot with no readable name. The gate now refuses to allow an empty title literal for any command that has a `DEFAULT_KEYMAP` binding.
+2. **Manual-tab literal drift.** Hand-written labels of the form `<name>\t<binding>` (the wx stock items `Cu&t\tCtrl+X`, `&Copy\tCtrl+C`, `&Paste\tCtrl+V`, `Select &All\tCtrl+A` and the editor's `Close &Other Documents\tCtrl+Shift+F4`, `Help on This &Control\tF1`, `&What Can I Do Here?\tShift+F1`, `Open User &Guide\tCtrl+F1`) are now compared against the `DEFAULT_KEYMAP` entry or the wx stock binding. A drift on either side fails the gate.
+3. **Tab with no binding.** A label literal that ends in `\t` (or contains `\t` with nothing after it) now fails the gate. The user used to see a menu name with a trailing tab and no accelerator.
+
+The runtime gap-check in `MainFrame._menu_label` (a one-shot `logger.warning` per affected item at first menu build) is the safety net for user-customization drift. A user who renames a label through the Customize dialog still gets a custom label; only the silent "blank menu slot" case is reported.
+
+The new check is wired into `python -m quill.tools.menu_lint` and exposed via 12 new test cases in `tests/unit/tools/test_binding_label_consistency.py`. The gate is run as part of CI and a regression anywhere in the binding/label chain now fails the build.
+
+### One source of truth for the product name and publisher
+
+`tools/generate_build_info.py`, `scripts/generate_update_feed.py`, and `scripts/build_windows_distribution.py` no longer hard-code the strings `QUILL for All` and `Community Access`. They import `APP_DISPLAY_NAME` and `APP_ORGANIZATION` from `quill.branding` so a rebrand touches one file. The TOML path still wins when `build/version.toml` provides a value (the installer and feed can be re-branded per release), but the constant is the safety net for older checkouts and dev builds. The 0.7.0 Beta 1 installer, About dialog, and update feed continue to read from `build/version.toml`; the constant is the fallback so a missing TOML no longer produces a hard-coded fallback string inside the tool.
+
+## Running QUILL 0.7.0 from source
+
+Some readers want to look at the code, run a fresh build before it lands on the update channel, fix a bug, or write a Quillin against the live API. This section is for them. Everything below assumes a working Python 3.12 or newer interpreter and a checkout of the repository. QUILL targets Windows and macOS; the source build runs on both.
+
+> “If you are reading this and thinking about contributing, you already are. Running the code on your own machine is the first step.”  
+> — Jeff Bishop
+
+### What you need before you start
+
+- Python 3.12 or newer. Verify with `python --version`.
+- Git, with the QUILL repository cloned locally.
+- A working C/C++ build toolchain is **not** required for the default install. The wheels pulled in by `[ui,dev]` ship pre-compiled binaries for Windows and macOS.
+- About 1.5 GB of free disk space for the virtual environment, downloaded wheels, bundled Quillins, and the dev test dependencies. The default sound pack and bundled Quillins add roughly 100 MB on top of that.
+- Windows 10 or 11, or macOS 12 or newer. Linux is not a supported runtime target in 0.7.0.
+
+### Clone and create a virtual environment
+
+```text
+git clone https://github.com/cse-designs/quill.git
+cd quill
+python -m venv .venv
+
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+
+# macOS / Linux
+source .venv/bin/activate
+```
+
+Always run QUILL inside the activated virtual environment. The `[ui]` extra pulls in `wxPython`, which is a large native wheel that installs in seconds on Windows and macOS; outside a venv it tends to fight with system Python for global package slots.
+
+### Install QUILL in editable mode with the UI and dev extras
+
+```text
+python -m pip install --upgrade pip
+pip install -e ".[ui,dev]"
+```
+
+That command installs QUILL as an editable package (changes to source take effect on the next launch, no reinstall), brings in the wxPython UI layer, the screen-reader bridges (`prismatoid` on Windows, VoiceOver bridge on macOS), the AI on-device runtime, and the full dev toolchain (`pytest`, `pytest-xdist`, `pytest-timeout`, `pytest-cov`, `ruff`, `mypy`, `Babel`).
+
+If you only want to run the editor without the dev extras, use `pip install -e ".[ui]"` instead. If you also write Quillins and want the Quillin scaffold tool, the example showcase, and the lint gates ready to go, `pip install -e ".[ui,dev]"` is the right choice.
+
+Optional extras you may want on top:
+
+- `pip install -e ".[spellcheck]"` for `pyenchant`-backed spell check.
+- `pip install -e ".[ssh]"` for editing files over SSH/SFTP.
+- `pip install -e ".[ocr]"` for native Windows OCR.
+- `pip install -e ".[kokoro]"` for offline neural TTS.
+- `pip install -e ".[github]"` for the GitHub remote-file integration.
+- `pip install -e ".[glow]"` for the GLOW accessibility engine. This extra is not on PyPI yet; until it is, follow the comment in `pyproject.toml` and install it from `vendor/wheels`.
+
+### Launch the editor
+
+```text
+python -m quill
+```
+
+That runs the `quill.__main__:main` entry point defined in `pyproject.toml`. The same script is also exposed as `quill` on `PATH` after the editable install, so `quill` from any shell inside the venv launches the editor.
+
+A few useful launch options:
+
+- `python -m quill --safe-mode` starts QUILL with AI, watch folder, and Quillin contributions disabled. Use this when you are chasing a bug you suspect lives in an extension.
+- `python -m quill --goto FILE:LINE:COL` opens `FILE` and lands the caret at the given line and column. Handy when a linter, grep result, or stack trace hands you a `path:line:column` string.
+- `python -m quill --diff LEFT RIGHT` opens `LEFT` and `RIGHT` directly into Compare Mode.
+- `python -m quill FILE1 FILE2 ...` opens each file in its own tab.
+
+### Run the test suite
+
+```text
+# Fast: unit tests only, single-process
+pytest -q
+
+# Single file
+pytest tests/unit/core/test_paths.py -x -q
+
+# Unit + stability
+pytest tests/unit/ tests/stability/ -q
+
+# Parallel (uses pytest-xdist, one worker per CPU)
+pytest -q -n auto
+```
+
+`tests/conftest.py` sets `quill.core.paths._DEV_BUILD = True` for the whole test session. That is what lets tests redirect `QUILL_DATA_DIR` for isolation; do not remove it. Many tests also depend on the dev extras from `pip install -e ".[ui,dev]"`, so a plain `pip install -e .` will leave the suite red on missing modules.
+
+### Lint and type-check
+
+```text
+# Lint
+ruff check .
+ruff format --check .
+
+# Scoped type-check. Always scoped — never run unscoped mypy.
+mypy quill/core quill/io
+```
+
+The scoped mypy command covers the strictly typed layers (`quill.core` and `quill.io`). The UI layer (`quill.ui`) is excluded by `pyproject.toml`; it is being typed gradually. Running `mypy .` instead will produce a wall of unrelated noise from the untyped UI and is not useful.
+
+### Verify a Quillin before you publish
+
+```text
+python -m quill.tools.quillin_lint path/to/your/quillin --strict
+```
+
+The strict mode flags every lint warning, not just the ones that block install. Run it on your Quillin directory before you open a pull request.
+
+### Developer-only environment switches
+
+Three environment variables matter when you run from source. They are honoured only when `QUILL_DEV_BUILD=1` is set; in a release build they are silently ignored.
+
+- `QUILL_DATA_DIR` — override the per-user data directory. In a dev build the override must still live under `Path.home()`; the editor rejects paths outside your home directory to avoid corrupting a real install.
+- `QUILL_SAFE_MODE=1` — same as `--safe-mode`. Disables AI, watch folder, and Quillin contributions at startup.
+- `QUILL_DEV_BUILD=1` — turns on the developer console (`Tools -> Developer Console`), enables `api.log()` writes from Quillins, and lets `QUILL_DATA_DIR` redirect to a non-default location. Without this flag you are running in release-build behaviour even when launched from a checkout.
+
+### Where to look next
+
+- `CLAUDE.md` at the repository root is the developer quick-reference: architecture, invariants, and the test/lint commands in their canonical form.
+- `docs/QUILL-PRD.md` is the long-form product requirements document.
+- `docs/keybinding-standard.md` documents the keyboard model and the `Ctrl+Alt+` allowlist policy.
+- `docs/planning/` carries the detailed design notes for features that have not shipped yet.
+- The GitHub issue tracker is the right place to file bugs, ask questions, or propose a Quillin: <https://github.com/cse-designs/quill/issues>.
+
+If you find something wrong, **Help -> Report a Bug...** from inside the editor is the friendliest path. The dialog lives in the Help menu now, accepts typing in every field, and submits in the background so the editor does not freeze. Include the output of `python -m quill --version` and, if you can, the crash-report bundle referenced in the dialog.
+
+---
+
 ## Closing: community-built, screen-reader-first, and ready for what comes next
 
 QUILL 0.7.0 is more than a list of features. It is proof that accessible software can be joyful, powerful, careful, and community-shaped at the same time.

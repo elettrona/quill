@@ -122,35 +122,37 @@ See [Context-Sensitive Help (F1)](#context-sensitive-help-f1) for full details.
 
 The **QUILL key** is `Ctrl+Shift+Grave` (the back-tick/grave key above Tab). It is a layered prefix chord that opens most of QUILL's power features without ever leaving the keyboard.
 
+> **Heads up: the chord reads as `QUILL Key + <key>` everywhere you see it.** Menus, the About > Keyboard Reference page, the QUILL Key Help dialog, the cheat sheet, and the status bar all show the chord in the branded form (`QUILL Key + S`, `QUILL Key + Shift+O`, and so on). The stored binding is still `Ctrl+Shift+Grave, <key>` — only the user-visible label moves. The display rewrite is one function (`format_binding_for_display`), so the entire product speaks the same label and a rebrand in `quill/branding.py` follows everywhere.
+
 It operates in two primary layers:
 1. **Prefix Mode (One-shot).** Press it once and QUILL arms a short-lived prefix. The next key you press runs a chord command (like `G` for Go to Anything or `M` for Markdown paste), and then the prefix expires.
 2. **Browse Mode (Locked).** Press the QUILL key twice in a row, and QUILL locks **Quick Nav (Browse) mode** on. In this mode, single-letter keys (like `H` for headings, `P` for paragraphs, or `S` for sentences) move the cursor through the document structure. This mode stays active until you press `Esc`.
 
-The QUILL key is its own tiny language: every chord is data-driven from the keymap, which means every chord is fully remappable in **Preferences → Keyboard → Keymap Editor**. The full cheat sheet is one keystroke away (`Ctrl+Shift+Grave, ?`).
+The QUILL key is its own tiny language: every chord is data-driven from the keymap, which means every chord is fully remappable in **Preferences → Keyboard → Keymap Editor**. The full cheat sheet is one keystroke away (`QUILL Key + ?`).
 
 **QUILL key sound.** When the QUILL key is pressed and the prefix arms, QUILL plays a short two-tone earcon (`quill_key_pressed`) — a quick double-ping distinct from all other sounds — so you get instant audio confirmation without waiting for speech. This earcon is included in all bundled sound packs and can be toggled individually in **Tools → Reading & Dictation → Sound Events...**.
 
 **Detection note.** On some keyboards or drivers, Windows reports the grave/back-tick key differently than expected. QUILL now uses three independent detection strategies (character code, Windows virtual key VK_OEM_3, and physical scan code 0x29) so the key is recognized on any layout.
 
-**Reassigning chord commands.** Open **Preferences → Keyboard → Keymap Editor**, find the command you want to move, and type a new chord binding in the form `Ctrl+Shift+Grave, X` (replacing `X` with the key you want). Conflict detection prevents accidental double-bindings.
+**Reassigning chord commands.** Open **Preferences → Keyboard → Keymap Editor**, find the command you want to move, and type a new chord binding in the form `Ctrl+Shift+Grave, X` (replacing `X` with the key you want). The Keymap Editor stores chords in this `Ctrl+Shift+Grave, X` grammar; menus and the cheat sheet display them as `QUILL Key + X`. Conflict detection prevents accidental double-bindings.
 
 Default QUILL-key chords:
 
-- `Ctrl+Shift+Grave, N` — enter Quick Nav (browse) mode for the next action. If the `browse_mode_sticky` setting is on, the mode stays locked until `Esc`; otherwise it expires on the QUILL-key timeout. Press the QUILL key again (without a chord) to lock it on regardless of the setting.
-- `Ctrl+Shift+Grave` (pressed twice) — lock Quick Nav mode on until `Esc`. This is the most common path: first press arms the prefix, second press locks browse mode.
-- `Ctrl+Shift+Grave, G` — open **Go to Anything** (Quick Nav search).
-- `Ctrl+Shift+Grave, M` — paste the rich HTML clipboard as Markdown at the cursor.
-- `Ctrl+Shift+Grave, V` — open the browser preview for the current document.
-- `Ctrl+Shift+Grave, Shift+O` — open from remote (FTP / SFTP / HTTPS / WebDAV / S3 / GitHub).
-- `Ctrl+Shift+Grave, W` — save to remote.
-- `Ctrl+Shift+Grave, Shift+M` — manage saved remote sites.
-- `Ctrl+Shift+Grave, A` — selection actions when text is selected (also expands an abbreviation manually mid-word).
-- `Ctrl+Shift+Grave, Shift+A` — open the abbreviation manager.
-- `Ctrl+Shift+Grave, E` — toggle abbreviation expansion on or off.
-- `Ctrl+Shift+Grave, X` — open the Copy Tray dialog.
-- `Ctrl+Shift+Grave, Shift+1`–`Shift+9`, `Shift+0`, `Shift+-`, `Shift+=` — copy the selection to slots 1–12 of the Copy Tray.
-- `Ctrl+Shift+Grave, ?` — show the QUILL key cheat sheet.
-- `Ctrl+Shift+Grave, Esc` — cancel the prefix without firing any command.
+- `QUILL Key + N` — enter Quick Nav (browse) mode for the next action. If the `browse_mode_sticky` setting is on, the mode stays locked until `Esc`; otherwise it expires on the QUILL-key timeout. Press the QUILL key again (without a chord) to lock it on regardless of the setting.
+- `QUILL Key` (pressed twice) — lock Quick Nav mode on until `Esc`. This is the most common path: first press arms the prefix, second press locks browse mode.
+- `QUILL Key + G` — open **Go to Anything** (Quick Nav search).
+- `QUILL Key + M` — paste the rich HTML clipboard as Markdown at the cursor.
+- `QUILL Key + V` — open the browser preview for the current document.
+- `QUILL Key + Shift+O` — open from remote (FTP / SFTP / HTTPS / WebDAV / S3 / GitHub).
+- `QUILL Key + W` — save to remote.
+- `QUILL Key + Shift+M` — manage saved remote sites.
+- `QUILL Key + A` — selection actions when text is selected (also expands an abbreviation manually mid-word).
+- `QUILL Key + Shift+A` — open the abbreviation manager.
+- `QUILL Key + E` — toggle abbreviation expansion on or off.
+- `QUILL Key + X` — open the Copy Tray dialog.
+- `QUILL Key + Shift+1`–`Shift+9`, `Shift+0`, `Shift+-`, `Shift+=` — copy the selection to slots 1–12 of the Copy Tray.
+- `QUILL Key + ?` — show the QUILL key cheat sheet.
+- `QUILL Key + Esc` — cancel the prefix without firing any command.
 
 ### Command Palette
 
@@ -5005,7 +5007,7 @@ A short trigger word or phrase that QUILL automatically expands into longer text
 An AI-assisted workflow that generates a multi-step task plan based on a goal you describe. The Agent Center shows you each step before it runs so you can review and approve. Agents build on the Writing Assistant and Prompt Studio infrastructure and require an AI provider to be configured.
 
 **Browse Mode / Quick Nav Mode**
-A temporary navigation state that makes the QUILL key prefix commands available one at a time. Press `Ctrl+Shift+Grave` once to arm Quick Nav for the next key you press. Press it twice to lock Browse Mode on until you press Escape. In Browse Mode, letter keys and arrow keys invoke navigation commands rather than inserting characters, similar to the virtual cursor mode in screen readers.
+A temporary navigation state that makes the QUILL key prefix commands available one at a time. Press the QUILL key (shown as `Ctrl+Shift+Grave` in the keymap grammar, displayed as `QUILL Key` everywhere else) once to arm Quick Nav for the next key you press. Press it twice to lock Browse Mode on until you press Escape. In Browse Mode, letter keys and arrow keys invoke navigation commands rather than inserting characters, similar to the virtual cursor mode in screen readers.
 
 **Command Palette**
 A searchable pop-up listing every registered QUILL command with its current keyboard shortcut. Open with `Ctrl+Shift+P`. Type any part of a command name to filter the list, then press Enter to run it. The fastest way to reach any action without memorising menu paths or key bindings.
@@ -5071,4 +5073,4 @@ A lightweight, profile-aware getting-started document that opens inside QUILL as
 QUILL's AI writing panel. The Writing Assistant accepts a goal described in plain language and ranks relevant QUILL commands, offers preset rewrite/summarize/continue/grammar flows, and can execute a restricted Python transform (import allowlist and resource limits, not a security boundary) against the current document. It runs inside an AI Session and requires an AI provider to be configured in Preferences.
 
 **QUILL Key**
-The keyboard shortcut `Ctrl+Shift+Grave` (the backtick/grave key above Tab). Pressing it once arms a one-shot prefix; pressing it twice locks Quick Nav Mode on. The QUILL key is the entry point to most of QUILL's power features. Every chord is announced when pressed and is remappable in **Preferences → Keyboard**.
+The keyboard shortcut `Ctrl+Shift+Grave` (the backtick/grave key above Tab). Pressing it once arms a one-shot prefix; pressing it twice locks Quick Nav Mode on. The QUILL key is the entry point to most of QUILL's power features. Every chord is announced when pressed and is remappable in **Preferences → Keyboard**. The chord is shown to the user as `QUILL Key + <key>` everywhere in the editor (menus, Keyboard Reference, status bar, cheat sheet). The stored binding is `Ctrl+Shift+Grave, <key>` in `DEFAULT_KEYMAP` / `keymap.json` / the Keymap Editor; only the display layer rewrites the prefix, through `quill.core.keymap_format.format_binding_for_display`. The constant `QUILL_KEY_LABEL` in `quill/branding.py` is the single source of truth for the brand, so a future rebrand touches one file.

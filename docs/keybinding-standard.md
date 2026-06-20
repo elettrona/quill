@@ -20,6 +20,16 @@ Most editor commands bind to one of two kinds of chord:
 The default-second-key is single-character.  Shift variants use the
 `Shift+` prefix on the second key (`Ctrl+Shift+Grave, Shift+J`).
 
+> **Display form.** The chord is shown to the user as `QUILL Key + <key>`
+> in menus, the About > Keyboard Reference page, the QUILL Key Help
+> dialog, the cheat sheet, and the status bar. The stored grammar
+> (`Ctrl+Shift+Grave, <key>`) is unchanged; only the user-visible label
+> moves. The rewrite happens through
+> `quill.core.keymap_format.format_binding_for_display`, and the brand
+> itself is `QUILL_KEY_LABEL` in `quill/branding.py`. This document
+> continues to use the stored grammar so it can serve as the canonical
+> reference for the keymap; the user-facing surfaces use the display form.
+
 ## §10.2 The Ctrl+Alt+ policy (revised 0.7.0)
 
 `Ctrl+Alt+` is screen-reader-hostile because NVDA, JAWS, and Windows

@@ -3548,6 +3548,24 @@ The cell dispatches on `infer_markup_kind(document.path)`.  Plain-text documents
 
 The HTML path reuses the existing fence-aware `parse_heading_blocks` and `current_section_at` from `quill/core/markdown_sections.py`; both already handle `<hN>...</hN>` headings in the same way they handle `#`-prefixed markdown headings.
 
+### 8.14 QUILL Key branding and menu label clarity (0.7.0)
+
+Two changes ship together so the QUILL key is recognizable on first encounter and so every menu item shows its keybinding.
+
+**Branding the chord.** The QUILL key chord is presented to the user as `QUILL Key + <key>` everywhere the editor exposes it: menus, the About > Keyboard Reference page, the QUILL Key Help dialog, the cheat sheet, and the status-bar / announce messages that fire while a chord prefix is pending. The stored binding (`Ctrl+Shift+Grave` in `DEFAULT_KEYMAP`, `keymap.json`, the `quill_key_binding` setting, the `legacy_rebindings` comparison table, and any saved `keymap/profile_*.json`) is unchanged — only the display layer rewrites the prefix. `quill.core.keymap_format.format_binding_for_display` is the single source of truth; `quill.branding.QUILL_KEY_LABEL = "QUILL Key"` is the single constant. Test coverage: 18 cases in `tests/unit/core/test_keymap_format.py`. A second helper, `format_quill_key_chord(prefix, second_key)`, composes a chord without inspecting a stored binding string so power-user status bar code can mention a chord without one in hand.
+
+**Binding/label gap detection.** `quill.tools._check_binding_label_consistency` is the 4th `menu_lint` invariant. The check walks the AST of `quill/ui/main_frame_menu.py` and flags three regression classes:
+
+1. `_menu_label("", "command.with.binding")` — empty title literal routed through the builder for a command that has a keybinding. This is the regression that motivated the gate: a blank title + a bound command produced a menu slot with no readable name.
+2. `<name>\t<binding>` literal drift — hand-written labels (the wx stock items and the editor's own `Close &Other Documents\tCtrl+Shift+F4`, `Help on This &Control\tF1`, `&What Can I Do Here?\tShift+F1`, `Open User &Guide\tCtrl+F1`) whose binding portion disagrees with the `DEFAULT_KEYMAP` entry or the wx stock binding.
+3. Trailing-tab labels — labels that end with `\t` and no binding portion. The user would see a menu name with a trailing tab and no accelerator.
+
+The runtime gap-check in `MainFrame._menu_label` (a one-shot `logger.warning` per affected item at first menu build) is the safety net for user-customization drift — a user who renames a label through the Customize dialog still gets a custom label; only the silent "blank menu slot" case is reported.
+
+The check is wired into `python -m quill.tools.menu_lint` and exposed via 12 new test cases in `tests/unit/tools/test_binding_label_consistency.py`. The gate is part of CI; a regression anywhere in the binding/label chain now fails the build.
+
+**Single source of truth for product name.** `tools/generate_build_info.py`, `scripts/generate_update_feed.py`, and `scripts/build_windows_distribution.py` import `APP_DISPLAY_NAME` and `APP_ORGANIZATION` from `quill.branding` so a rebrand touches one file. The TOML path still wins when `build/version.toml` provides a value (the installer and feed can be re-branded per release); the constant is the safety net for older checkouts and dev builds.
+
 ---
 
 ## 9. Accessibility, WCAG 2.2 AA conformance, and certification
