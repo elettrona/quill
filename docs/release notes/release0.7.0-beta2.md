@@ -195,3 +195,13 @@ utility ever runs.
   it had to close. The tab labels are now plain text, so the AI
   Hub opens cleanly from the wizard on first run and from the
   Tools menu on every later launch.
+
+- **First-run wizard Back and Next buttons were read with stray
+  chevrons by screen readers (#611).** The Back and Next buttons
+  in the setup wizard had decorative `<` and `>` characters
+  baked into the button labels ("`< Back`" and "`Next >`"), and
+  VoiceOver on macOS was reading them as "less than Back" and
+  "Next greater than." JAWS in Forms mode on Windows had the
+  same problem. The buttons now simply read "Back" and "Next,"
+  which is what every screen reader announces, and what every
+  sighted user sees on the face of the button.
