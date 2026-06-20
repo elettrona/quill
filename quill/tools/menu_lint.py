@@ -1,6 +1,6 @@
 """Menu-structure gate (GATE-12).
 
-Three invariants checked statically against source:
+Four invariants checked statically against source:
 
 1. **Ctrl+Alt policy (§10.8)**: ``DEFAULT_KEYMAP`` in ``quill/core/keymap.py``
    may contain a ``Ctrl+Alt+`` binding only when (a) the command id is in the
@@ -17,6 +17,14 @@ Three invariants checked statically against source:
 3. **Two-level cap (§10.4)**: no ``wx.Menu()`` variable may be *both* a child
    submenu (passed to ``AppendSubMenu``) *and* itself have ``AppendSubMenu``
    called on it — that would create three-level nesting.
+
+4. **Binding/label consistency**: every menu item routed through the
+   ``_menu_label`` builder has a non-empty title literal when its command
+   has a binding, and every hand-written ``<name>\\t<binding>`` literal
+   agrees with the binding the matching command (or wx stock id) would
+   resolve.  Catches the regression where ``self._menu_label("",
+   "format.bold")`` silently produces a menu slot with no readable
+   name.  See :mod:`quill.tools._check_binding_label_consistency`.
 
 The gate also delegates to :mod:`quill.tools.check_copy_tray_binding` so a
 single ``python -m quill.tools.menu_lint`` invocation enforces that the
@@ -317,6 +325,17 @@ def run_checks() -> list[str]:
     if depth:
         errors.append("Three-level nesting violations (§10.4 two-level cap):")
         errors.extend(depth)
+
+    # Delegate the binding/label consistency check (4th invariant) so the
+    # gate catches label/binding drift between main_frame_menu.py and
+    # DEFAULT_KEYMAP. The runtime gap-check in MainFrame._menu_label is the
+    # safety net for runtime customization drift.
+    from quill.tools._check_binding_label_consistency import run_checks as _bl_checks
+
+    bl_drift = _bl_checks()
+    if bl_drift:
+        errors.append("Binding/label consistency violations:")
+        errors.extend(bl_drift)
 
     # Delegate the Copy Tray binding guard so menu_lint remains a single
     # one-shot gate for keymap + menu structural issues.

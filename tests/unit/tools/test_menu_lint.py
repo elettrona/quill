@@ -215,3 +215,35 @@ def test_depth_root_menus_ignored() -> None:
 def test_run_checks_passes_on_current_codebase() -> None:
     errors = run_checks()
     assert errors == [], "\n".join(errors)
+
+
+def test_binding_label_consistency_runs_via_menu_lint() -> None:
+    """The 4th invariant (binding/label consistency) is wired into menu_lint.
+
+    Confirmed by stubbing the 4th-check module to record that
+    run_checks() was called from menu_lint's perspective. The actual
+    output of the check is exercised in
+    tests/unit/tools/test_binding_label_consistency.py.
+    """
+    import quill.tools._check_binding_label_consistency as bl_module
+    import quill.tools.menu_lint as ml_module
+
+    called = {"count": 0}
+
+    def _spy() -> list[str]:
+        called["count"] += 1
+        return []
+
+    original = bl_module.run_checks
+    bl_module.run_checks = _spy  # type: ignore[assignment]
+    try:
+        # The menu_lint module imports the function under a private name.
+        # Reset its import-cache entry so the spy is picked up.
+        if hasattr(ml_module, "_bl_checks"):
+            ml_module._bl_checks = _spy  # type: ignore[attr-defined]
+        errors = ml_module.run_checks()
+    finally:
+        bl_module.run_checks = original  # type: ignore[assignment]
+
+    assert called["count"] >= 1
+    assert errors == []
