@@ -181,3 +181,17 @@ utility ever runs.
   saved `keymap.json` that still has the old `Ctrl+Q` on Quote
   Lines is rewritten to the new chord on first launch, and the
   corrected value is persisted back so the next launch is clean.
+
+- **AI Hub crashed when the setup wizard opened it (#614 follow-up).**
+  The first pass at the AI Hub crash fixed the provider dropdown,
+  the instructions list, and the image-style list, but the tab
+  titles of the AI Hub Notebook (Provider, On-Device, Audio
+  Services, Instructions, Advanced) and the on-device sub-notebook
+  (Writing Tasks, Image Styles) were still wrapped in the same
+  translation proxy that the dropdowns and lists were. The first
+  time you opened the AI Hub, the dialog raised
+  `TypeError: Item at index 0 has type '_LazyString' but a
+  sequence of bytes or strings is expected` and QUILL announced
+  it had to close. The tab labels are now plain text, so the AI
+  Hub opens cleanly from the wizard on first run and from the
+  Tools menu on every later launch.
