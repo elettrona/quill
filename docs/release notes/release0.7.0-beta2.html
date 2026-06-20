@@ -335,6 +335,20 @@ ImportError and QUILL announced it had to close. The flattener is back
 in place; Help -&gt; Check for Updates and Check for GLOW Updates both
 open their informational dialog cleanly now, on every launch and every
 channel (stable, beta).</p></li>
+<li><p><strong>Cmd+Q now quits QUILL on macOS (#608).</strong> Earlier
+in the 0.7.0 line, <code>edit.quote_lines</code> was bound to
+<code>Ctrl+Q</code>, and on macOS wxPython maps <code>Ctrl</code>
+accelerators to the <code>Cmd</code> key, so pressing <code>Cmd+Q</code>
+(the universal macOS Quit shortcut) ran Quote Lines instead of quitting.
+There was no working quit shortcut on macOS. Quote Lines has moved to
+<code>Ctrl+Shift+Q</code> and Unquote Lines to
+<code>Ctrl+Shift+K</code>, and QUILL's quit command is now bound to
+<code>Ctrl+Q</code> (which maps to <code>Cmd+Q</code> on macOS).
+<code>Alt+F4</code> still works on Windows via the stock File -&gt; Exit
+accelerator. A saved <code>keymap.json</code> that still has the old
+<code>Ctrl+Q</code> on Quote Lines is rewritten to the new chord on
+first launch, and the corrected value is persisted back so the next
+launch is clean.</p></li>
 </ul>
 </body>
 </html>

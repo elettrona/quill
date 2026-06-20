@@ -168,3 +168,16 @@ utility ever runs.
   back in place; Help -> Check for Updates and Check for GLOW
   Updates both open their informational dialog cleanly now, on
   every launch and every channel (stable, beta).
+
+- **Cmd+Q now quits QUILL on macOS (#608).** Earlier in the 0.7.0
+  line, `edit.quote_lines` was bound to `Ctrl+Q`, and on macOS
+  wxPython maps `Ctrl` accelerators to the `Cmd` key, so pressing
+  `Cmd+Q` (the universal macOS Quit shortcut) ran Quote Lines
+  instead of quitting. There was no working quit shortcut on
+  macOS. Quote Lines has moved to `Ctrl+Shift+Q` and Unquote Lines
+  to `Ctrl+Shift+K`, and QUILL's quit command is now bound to
+  `Ctrl+Q` (which maps to `Cmd+Q` on macOS). `Alt+F4` still
+  works on Windows via the stock File -> Exit accelerator. A
+  saved `keymap.json` that still has the old `Ctrl+Q` on Quote
+  Lines is rewritten to the new chord on first launch, and the
+  corrected value is persisted back so the next launch is clean.
