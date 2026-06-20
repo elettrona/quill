@@ -27,8 +27,6 @@ QUILL 0.7.0 folds the 0.6.0 work and the 0.6.1 Braille Mode Phase 2 work into a 
 
 ## 0.6.0 — Insert Automation, Quillin Platform, Braille Mode, AI Writing Toolkit (2026-06-16)
 
-See `rel.md` for the full narrative release notes.
-
 ### AI writing features
 
 - **AI Hub (5-tab settings dialog).** `quill/ui/ai_hub_dialog.py` replaces the single-screen AI Connection dialog with a tabbed hub: Provider (provider choice, API key, model, test connection), On-Device (Ollama URL and recommended models), Audio Services (Deepgram key, max speakers), Instructions (custom system prompts per task), and Advanced (consent text, reset, safe mode docs). `open_ai_hub()` in `main_frame.py` now opens this dialog.

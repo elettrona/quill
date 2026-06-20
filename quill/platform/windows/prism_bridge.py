@@ -188,7 +188,21 @@ def prewarm_pyttsx3_engine() -> None:
 
 
 def _tts_worker_loop() -> None:
-    _get_pyttsx3_engine()
+    engine = _get_pyttsx3_engine()
+    # The cached engine is a process-wide singleton (H5/H6), reused across
+    # every announcement. Repeated say()/runAndWait() cycles on a reused
+    # SAPI5 engine speak the first utterance and then silently no-op on
+    # every later one (runAndWait() returns normally but nothing is heard)
+    # because each runAndWait() tears down and rebuilds the COM driver
+    # loop. Driving the engine with the external-loop API instead --
+    # startLoop(False) once, then say()+iterate() per message -- keeps the
+    # same driver loop alive for the life of the worker thread, which is
+    # the documented fix for this pyttsx3/SAPI5 reuse bug.
+    if engine is not None:
+        try:
+            engine.startLoop(False)
+        except Exception:  # noqa: BLE001
+            pass
     while True:
         msg = _tts_queue.get()
         if msg is None:
@@ -198,10 +212,17 @@ def _tts_worker_loop() -> None:
         if engine is not None:
             try:
                 engine.say(msg)
-                engine.runAndWait()
+                while engine.isBusy():
+                    engine.iterate()
+                    _time.sleep(0.01)
             except Exception:  # noqa: BLE001
                 pass
         _tts_queue.task_done()
+    if engine is not None:
+        try:
+            engine.endLoop()
+        except Exception:  # noqa: BLE001
+            pass
 
 
 @dataclass(frozen=True, slots=True)

@@ -229,9 +229,7 @@ class QuillKeyMixin:
             self._refresh_statusbar()
             return
         self._quill_feedback(
-            "QUILL browse mode active. H headings, A links, L lists, I list items, "
-            "T tables, Q block quotes, B bookmarks, P paragraphs, S sentences, "
-            "1-6 heading levels, period repeats last action, ? for full help, Escape exits.",
+            "QUILL browse mode active. Press ? for help, Escape to exit.",
             status_message="QUILL browse mode active",
             sound_kind="enter",
         )
