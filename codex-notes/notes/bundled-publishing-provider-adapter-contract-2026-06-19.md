@@ -43,3 +43,7 @@ Normal application startup explicitly calls `bootstrap_bundled_publishing_provid
 This decision does not add package scanning, third-party loading, worker execution, credential access, or network activity. Those boundaries remain unchanged.
 
 Every future adapter/bootstrap slice must run focused publishing tests, relevant unit tests, Ruff, the provider registry gate, and the full unit suite with workspace-local temporary state.
+
+## Phase 1 Contract Finalized - 2026-06-20
+
+The closeout audit accepts this bundled-adapter contract as the completed Phase 1 foundation. Later phases may extend execution and loading policy only in separate reviewed slices; they must not silently weaken identity validation, host-owned secret handling, explicit network action, or validation-before-exposure.
