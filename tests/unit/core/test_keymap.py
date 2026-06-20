@@ -83,6 +83,90 @@ def test_reset_keymap_restores_defaults(tmp_path: Path, monkeypatch: pytest.Monk
     assert load_keymap() == DEFAULT_KEYMAP
 
 
+def test_load_keymap_drops_unknown_command_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A saved binding for a command id that no longer exists is dropped."""
+    store_path = tmp_path / "keymap-store.json"
+    monkeypatch.setattr(keymap_module, "keymap_path", lambda: store_path)
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+
+    save_keymap({"definitely.not.a.command": "Ctrl+Alt+Z"})
+
+    loaded = load_keymap()
+
+    assert "definitely.not.a.command" not in loaded
+    assert loaded == DEFAULT_KEYMAP
+
+
+def test_load_keymap_drops_empty_binding(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A saved binding that is whitespace-only is treated as 'use default'."""
+    store_path = tmp_path / "keymap-store.json"
+    monkeypatch.setattr(keymap_module, "keymap_path", lambda: store_path)
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+
+    save_keymap({"file.save": "   "})
+
+    loaded = load_keymap()
+
+    assert loaded["file.save"] == DEFAULT_KEYMAP["file.save"]
+
+
+def test_load_keymap_persists_cleaned_map(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """When the saved file contains entries that get dropped, the surviving
+    subset is written back to disk so the user sees the cleanup on next open.
+
+    Valid entries survive untouched; invalid entries (unknown command id,
+    conflicting chord, whitespace-only binding) are removed. The on-disk
+    file keeps only the user's surviving delta — not the full
+    DEFAULT_KEYMAP — so a small override file stays small.
+    """
+    store_path = tmp_path / "keymap-store.json"
+    monkeypatch.setattr(keymap_module, "keymap_path", lambda: store_path)
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+
+    # Mix: one valid override, one orphan command id, one conflict.
+    save_keymap({
+        "file.save": "Ctrl+Shift+Alt+S",  # valid override, must survive
+        "definitely.removed.command": "Ctrl+Alt+X",  # unknown id, must be dropped
+        "app.command_palette": "Ctrl+S",  # collides with file.save default
+    })
+
+    loaded = load_keymap()
+
+    # Cleaned map in memory.
+    assert loaded["file.save"] == "Ctrl+Shift+Alt+S"
+    assert "definitely.removed.command" not in loaded
+    assert loaded["app.command_palette"] == DEFAULT_KEYMAP["app.command_palette"]
+
+    # Surviving user overrides persisted to disk for the next launch.
+    # Only the keys the user had on disk and that survived the merge.
+    on_disk = keymap_module.read_json(store_path, default={})
+    assert on_disk == {"file.save": "Ctrl+Shift+Alt+S"}
+    assert "definitely.removed.command" not in on_disk
+    assert "app.command_palette" not in on_disk
+
+
+def test_load_keymap_leaves_clean_file_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When the saved file is already valid, load_keymap does not rewrite it.
+
+    A clean file should not trigger a disk write on every launch — only
+    files that need cleanup do.
+    """
+    store_path = tmp_path / "keymap-store.json"
+    monkeypatch.setattr(keymap_module, "keymap_path", lambda: store_path)
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+
+    save_keymap({"file.save": "Ctrl+Shift+Alt+S"})
+    mtime_before = store_path.stat().st_mtime_ns
+
+    load_keymap()
+
+    assert store_path.stat().st_mtime_ns == mtime_before
+
+
 def test_find_keymap_conflict_matches_existing_command() -> None:
     keymap = {"file.save": "Ctrl+S", "edit.find": "Ctrl+F"}
     conflict = find_keymap_conflict(keymap, "file.open", "Ctrl+S")

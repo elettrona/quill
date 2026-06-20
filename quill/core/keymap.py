@@ -3,6 +3,10 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from quill.core.keymap_format import (
+    format_binding_for_display,
+    format_quill_key_chord,
+)
 from quill.core.keymap_packs import (
     KEYBOARD_PACK_CUSTOM,
     KEYBOARD_PACK_DEFAULT,
@@ -11,10 +15,6 @@ from quill.core.keymap_packs import (
     keyboard_pack_description,
     keyboard_pack_names,
     keyboard_pack_preview,
-)
-from quill.core.keymap_format import (
-    format_binding_for_display,
-    format_quill_key_chord,
 )
 from quill.core.paths import app_data_dir
 from quill.core.storage import read_json, write_json_atomic
@@ -295,8 +295,45 @@ def keymap_path() -> Path:
 
 
 def load_keymap() -> dict[str, str]:
-    raw = read_json(keymap_path(), default={})
-    return merge_keymaps(raw)
+    """Load the user's keymap from disk and return the cleaned merged map.
+
+    The on-disk file is the user's saved overrides. ``merge_keymaps``
+    starts from ``DEFAULT_KEYMAP`` and applies only the saved entries
+    that are still valid (recognized command id, non-empty chord, no
+    conflict with another command). Invalid entries are dropped so the
+    default takes effect.
+
+    If the merge dropped any entries the user had on disk, the cleaned
+    subset is persisted back so the saved file reflects "what was
+    actually honored" on the next startup. Files that are already clean
+    (every saved entry survives the merge) are left untouched, so a
+    small per-user delta file stays small.
+    """
+    path = keymap_path()
+    raw = read_json(path, default={})
+    if not isinstance(raw, dict):
+        return DEFAULT_KEYMAP.copy()
+    cleaned = merge_keymaps(raw)
+    # Compute the set of dropped keys: present in raw but missing from
+    # cleaned, or present in both but with the default value restored.
+    # These are the entries the user had on disk that did not survive the
+    # merge — they need to be persisted out so the file reflects what we
+    # actually honored.
+    dropped = [k for k in raw if k not in cleaned or cleaned.get(k) == DEFAULT_KEYMAP.get(k)]
+    if dropped:
+        # Persist only the user's surviving overrides, not the full
+        # DEFAULT_KEYMAP, so the on-disk file stays a small delta. The
+        # dropped entries have been logged; they will not reappear on
+        # the next launch because they are no longer in the file.
+        surviving = {k: v for k, v in cleaned.items() if k in raw and v != DEFAULT_KEYMAP.get(k)}
+        try:
+            write_json_atomic(path, surviving)
+        except OSError as exc:
+            # Persistence is best-effort: a read-only install or a locked
+            # file should not stop QUILL from launching with the cleaned
+            # map in memory. The cleanup will retry on the next launch.
+            logger.debug("Could not persist cleaned keymap to %s: %s", path, exc)
+    return cleaned
 
 
 def load_keymap_profile(name: str) -> dict[str, str]:
@@ -391,16 +428,30 @@ def merge_keymaps(raw: object) -> dict[str, str]:
     }
     for command_id, binding in raw.items():
         if isinstance(command_id, str) and isinstance(binding, str):
+            # A binding for a command id that no longer ships in DEFAULT_KEYMAP
+            # is no longer valid; drop it so the default (which is to omit it)
+            # takes effect.
+            if command_id not in DEFAULT_KEYMAP:
+                logger.debug("Dropping keymap entry for unknown command: %r", command_id)
+                continue
             normalized = binding
             legacy_binding = legacy_rebindings.get(command_id)
             if legacy_binding is not None and normalized.strip().upper() == legacy_binding[0]:
                 normalized = legacy_binding[1]
+            # An empty binding means "use the default" — drop it so the
+            # default in DEFAULT_KEYMAP takes effect (do not store "" on top).
             if not normalized.strip():
-                merged[command_id] = ""
                 continue
             conflict = find_keymap_conflict(merged, command_id, normalized)
             if conflict is None:
                 merged[command_id] = normalized
+            else:
+                logger.debug(
+                    "Dropping keymap entry for %r: chord %r already taken by %r",
+                    command_id,
+                    normalized,
+                    conflict,
+                )
     return merged
 
 
