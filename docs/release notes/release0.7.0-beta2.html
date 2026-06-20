@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>release0.7.0-beta2</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<h1 id="quill-070-beta-2-release-notes-in-development">QUILL 0.7.0 Beta
+2 Release Notes (in development)</h1>
+<p>This is the draft notes file for the 0.7.0 Beta 2 release. Sections
+here ship into the final release notes when Beta 2 is tagged.</p>
+<p>Beta 2 is the "settings carry-over" release. Most of the visible work
+is in the load path: when a user upgrades from 0.5.0 or 0.7.0 Beta 1,
+their saved settings, keymap, recent files, and feature profile travel
+with them, and any saved entry that has become invalid is cleaned up on
+startup instead of silently ignored.</p>
+<p>A standalone migration utility is still planned. This release covers
+the hot path so a user with a 0.5.0 install does not have to run
+one.</p>
+<h2 id="settings-carry-over">Settings carry-over</h2>
+<h3 id="the-rule">The rule</h3>
+<p>For keyboard shortcuts and any other user-tweakable setting, the
+default is the answer. A user's saved setting is honored only if it is
+still valid for the current build. If the saved setting is no longer
+valid (unknown command id, conflicting chord, removed setting, etc.), it
+is dropped and the default takes effect on the same launch — the user
+does not have to know anything happened.</p>
+<h3 id="how-it-works">How it works</h3>
+<p>The keymap load path (<code>quill.core.keymap.load_keymap</code>) now
+starts from <code>DEFAULT_KEYMAP</code> and applies only the saved
+entries that survive three checks:</p>
+<ol type="1">
+<li>The command id is still a registered command in
+<code>DEFAULT_KEYMAP</code>.</li>
+<li>The chord is non-empty after stripping whitespace.</li>
+<li>The chord does not collide with another command in the merged
+map.</li>
+</ol>
+<p>Saved entries that fail any check are logged at debug level and
+dropped from the loaded keymap. The surviving subset is persisted back
+to the on-disk <code>keymap.json</code> so the file reflects "what was
+actually honored" on the next launch. Files that are already clean
+(every saved entry survives the merge) are left untouched — a small
+per-user delta stays small.</p>
+<p>The same rule applies to settings in general (not just keymap). The
+<code>quill.core.settings_migration</code> module already provides a
+versioned, nested serialization shape with
+<code>SETTINGS_SCHEMA_VERSION</code> and a lossless round-trip between
+<code>from_versioned</code> and <code>to_versioned</code>. The beta-2
+load path is the place where "drop a saved entry whose key no longer
+exists" gets the same treatment as the keymap.</p>
+<h3 id="why-this-matters-for-users">Why this matters for users</h3>
+<p>A user who upgraded from 0.5.0 to 0.7.0 Beta 1 had to reconfigure any
+setting that moved in 0.7.0 — for example, the QUILL Key binding moved
+to a brand-visible label, several headings moved off the QUILL-key
+prefix and onto <code>Ctrl+Alt+1..6</code>, and the legacy preview chord
+was retired. With the carry-over rule, those moved defaults take effect
+automatically on the next launch, and any user entry that became invalid
+is removed from the saved file so it does not cause confusion later.</p>
+<h3 id="what-is-not-a-migration">What is not a migration</h3>
+<ul>
+<li>The on-disk <code>keymap.json</code> is still a small delta of
+overrides, not a full copy of <code>DEFAULT_KEYMAP</code>. The
+carry-over only touches entries the user had on disk.</li>
+<li>The legacy-rebinding table
+(<code>quill.core.keymap.legacy_rebindings</code>) is unchanged. It
+still rewrites the specific named stale bindings (for example
+<code>edit.find: "Ctrl+Shift+Grave, F" -&gt; "Ctrl+F"</code>) on load.
+The carry-over is the safety net for everything else.</li>
+<li>The migration is silent. There is no dialog and no log file. Invalid
+entries are dropped; the user sees the default take effect on the
+affected menu item, key, or setting.</li>
+</ul>
+<h2 id="planned-for-the-migration-utility-beta-3-or-later">Planned for
+the migration utility (Beta 3 or later)</h2>
+<p>A standalone migration utility is still on the roadmap. It will cover
+the cases the carry-over cannot:</p>
+<ul>
+<li><strong>Settings schema upgrade</strong> beyond the
+<code>SETTINGS_SCHEMA_VERSION</code> bump (when fields are renamed,
+retired, or restructured across the group layout that
+<code>settings_migration</code> provides).</li>
+<li><strong>Profile and Quillin import</strong> from earlier betas,
+including the pre-0.7.0 flat keymap profile format and the pre-0.7.0
+Quillin manifest v0 shapes.</li>
+<li><strong>Bulk keymap rebind</strong> when a wholesale change happens
+— for example, if 0.8.0 moves an entire chord family, the utility will
+offer to remap the user's saved bindings as a batch.</li>
+<li><strong>Audit log</strong> of every entry that was dropped,
+persisted alongside the cleaned keymap so the user can review what
+changed.</li>
+</ul>
+<p>The Beta 2 carry-over is the foundation: a user with a clean install
+on Beta 2 has nothing to migrate, and a user with a stale install on
+Beta 2 has their keymap and settings already corrected before the
+utility ever runs.</p>
+<h2 id="bug-fixes">Bug fixes</h2>
+<ul>
+<li><strong>Phantom QUILL Key chord on plain R and S (#612).</strong>
+<code>_menu_label</code> embedded the friendly chord display
+(<code>"QUILL Key + R"</code>) directly after the literal tab character
+in menu item text. wxWidgets parses text after that tab as a real native
+keyboard accelerator, and because <code>"QUILL Key"</code> is not a
+modifier name it recognizes, wx silently bound bare <code>R</code> and
+<code>S</code> as real, modifier-less accelerators for Read Aloud
+Start/Pause and Insert Snippet — firing those commands on every plain
+<code>R</code> or <code>S</code> keystroke, completely outside the QUILL
+Key chord dispatcher. The raw chord grammar
+(<code>"Ctrl+Shift+Grave, R"</code>) never had this problem because the
+comma broke wx's accelerator parser. The chord display now follows the
+label as plain parenthetical text instead of sitting in the
+accelerator-parsed slot; plain (non-chord) shortcuts are
+unaffected.</li>
+</ul>
+</body>
+</html>

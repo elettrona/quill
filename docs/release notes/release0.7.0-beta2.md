@@ -1,0 +1,110 @@
+# QUILL 0.7.0 Beta 2 Release Notes (in development)
+
+This is the draft notes file for the 0.7.0 Beta 2 release. Sections here
+ship into the final release notes when Beta 2 is tagged.
+
+Beta 2 is the "settings carry-over" release. Most of the visible work is
+in the load path: when a user upgrades from 0.5.0 or 0.7.0 Beta 1, their
+saved settings, keymap, recent files, and feature profile travel with
+them, and any saved entry that has become invalid is cleaned up on
+startup instead of silently ignored.
+
+A standalone migration utility is still planned. This release covers the
+hot path so a user with a 0.5.0 install does not have to run one.
+
+## Settings carry-over
+
+### The rule
+
+For keyboard shortcuts and any other user-tweakable setting, the default
+is the answer. A user's saved setting is honored only if it is still
+valid for the current build. If the saved setting is no longer valid
+(unknown command id, conflicting chord, removed setting, etc.), it is
+dropped and the default takes effect on the same launch — the user does
+not have to know anything happened.
+
+### How it works
+
+The keymap load path (`quill.core.keymap.load_keymap`) now starts from
+`DEFAULT_KEYMAP` and applies only the saved entries that survive three
+checks:
+
+1. The command id is still a registered command in `DEFAULT_KEYMAP`.
+2. The chord is non-empty after stripping whitespace.
+3. The chord does not collide with another command in the merged map.
+
+Saved entries that fail any check are logged at debug level and dropped
+from the loaded keymap. The surviving subset is persisted back to the
+on-disk `keymap.json` so the file reflects "what was actually honored"
+on the next launch. Files that are already clean (every saved entry
+survives the merge) are left untouched — a small per-user delta stays
+small.
+
+The same rule applies to settings in general (not just keymap). The
+`quill.core.settings_migration` module already provides a versioned,
+nested serialization shape with `SETTINGS_SCHEMA_VERSION` and a
+lossless round-trip between `from_versioned` and `to_versioned`. The
+beta-2 load path is the place where "drop a saved entry whose key no
+longer exists" gets the same treatment as the keymap.
+
+### Why this matters for users
+
+A user who upgraded from 0.5.0 to 0.7.0 Beta 1 had to reconfigure any
+setting that moved in 0.7.0 — for example, the QUILL Key binding moved
+to a brand-visible label, several headings moved off the QUILL-key
+prefix and onto `Ctrl+Alt+1..6`, and the legacy preview chord was
+retired. With the carry-over rule, those moved defaults take effect
+automatically on the next launch, and any user entry that became
+invalid is removed from the saved file so it does not cause confusion
+later.
+
+### What is not a migration
+
+- The on-disk `keymap.json` is still a small delta of overrides, not a
+  full copy of `DEFAULT_KEYMAP`. The carry-over only touches entries
+  the user had on disk.
+- The legacy-rebinding table (`quill.core.keymap.legacy_rebindings`) is
+  unchanged. It still rewrites the specific named stale bindings (for
+  example `edit.find: "Ctrl+Shift+Grave, F" -> "Ctrl+F"`) on load. The
+  carry-over is the safety net for everything else.
+- The migration is silent. There is no dialog and no log file. Invalid
+  entries are dropped; the user sees the default take effect on the
+  affected menu item, key, or setting.
+
+## Planned for the migration utility (Beta 3 or later)
+
+A standalone migration utility is still on the roadmap. It will cover
+the cases the carry-over cannot:
+
+- **Settings schema upgrade** beyond the `SETTINGS_SCHEMA_VERSION` bump
+  (when fields are renamed, retired, or restructured across the group
+  layout that `settings_migration` provides).
+- **Profile and Quillin import** from earlier betas, including the
+  pre-0.7.0 flat keymap profile format and the pre-0.7.0 Quillin
+  manifest v0 shapes.
+- **Bulk keymap rebind** when a wholesale change happens — for example,
+  if 0.8.0 moves an entire chord family, the utility will offer to
+  remap the user's saved bindings as a batch.
+- **Audit log** of every entry that was dropped, persisted alongside
+  the cleaned keymap so the user can review what changed.
+
+The Beta 2 carry-over is the foundation: a user with a clean install
+on Beta 2 has nothing to migrate, and a user with a stale install on
+Beta 2 has their keymap and settings already corrected before the
+utility ever runs.
+
+## Bug fixes
+
+- **Phantom QUILL Key chord on plain R and S (#612).** `_menu_label`
+  embedded the friendly chord display (`"QUILL Key + R"`) directly
+  after the literal tab character in menu item text. wxWidgets parses
+  text after that tab as a real native keyboard accelerator, and
+  because `"QUILL Key"` is not a modifier name it recognizes, wx
+  silently bound bare `R` and `S` as real, modifier-less accelerators
+  for Read Aloud Start/Pause and Insert Snippet — firing those
+  commands on every plain `R` or `S` keystroke, completely outside the
+  QUILL Key chord dispatcher. The raw chord grammar
+  (`"Ctrl+Shift+Grave, R"`) never had this problem because the comma
+  broke wx's accelerator parser. The chord display now follows the
+  label as plain parenthetical text instead of sitting in the
+  accelerator-parsed slot; plain (non-chord) shortcuts are unaffected.
