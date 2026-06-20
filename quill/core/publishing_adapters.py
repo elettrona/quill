@@ -61,9 +61,7 @@ def register_bundled_publishing_provider(
     _BUNDLED_PUBLISHING_PROVIDER_ADAPTERS[normalized] = adapter
 
 
-def bundled_publishing_provider_adapters() -> tuple[
-    BundledPublishingProviderAdapter, ...
-]:
+def bundled_publishing_provider_adapters() -> tuple[BundledPublishingProviderAdapter, ...]:
     """Return explicitly registered first-party adapters in registration order."""
     return tuple(_BUNDLED_PUBLISHING_PROVIDER_ADAPTERS.values())
 
