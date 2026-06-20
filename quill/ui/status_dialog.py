@@ -34,8 +34,8 @@ class HelpStatusDialog:
         self._status_list = wx.ListCtrl(
             status_panel,
             style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.LC_VRULES,
-            name="status_overview",
         )
+        self._status_list.SetName("status_overview")
         self._status_list.AppendColumn("Section", width=130)
         self._status_list.AppendColumn("Setting", width=220)
         self._status_list.AppendColumn("Value", width=380)
@@ -49,8 +49,8 @@ class HelpStatusDialog:
         self._tasks_list = wx.ListCtrl(
             tasks_panel,
             style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.LC_VRULES,
-            name="status_tasks",
         )
+        self._tasks_list.SetName("status_tasks")
         self._tasks_list.AppendColumn("Task / Model", width=220)
         self._tasks_list.AppendColumn("Status", width=90)
         self._tasks_list.AppendColumn("Progress", width=90)
@@ -66,8 +66,8 @@ class HelpStatusDialog:
         self._features_list = wx.ListCtrl(
             features_panel,
             style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.LC_VRULES,
-            name="status_features",
         )
+        self._features_list.SetName("status_features")
         self._features_list.AppendColumn("Feature ID", width=230)
         self._features_list.AppendColumn("Name", width=210)
         self._features_list.AppendColumn("Category", width=130)
@@ -82,8 +82,8 @@ class HelpStatusDialog:
         self._actions_ctrl = wx.TextCtrl(
             actions_panel,
             style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2,
-            name="status_actions",
         )
+        self._actions_ctrl.SetName("status_actions")
         ap_sizer.Add(self._actions_ctrl, 1, wx.EXPAND | wx.ALL, 6)
         actions_panel.SetSizer(ap_sizer)
         nb.AddPage(actions_panel, "Actions")
@@ -92,7 +92,8 @@ class HelpStatusDialog:
 
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
         btn_sizer.AddStretchSpacer()
-        refresh_btn = wx.Button(self.dialog, label="Refresh", name="status_refresh")
+        refresh_btn = wx.Button(self.dialog, label="Refresh")
+        refresh_btn.SetName("status_refresh")
         close_btn = wx.Button(self.dialog, wx.ID_CLOSE, label="Close")
         close_btn.SetDefault()
         refresh_btn.Bind(wx.EVT_BUTTON, lambda _e: self._request_refresh())
