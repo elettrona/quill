@@ -30,3 +30,23 @@ provider/client identity and behavior if implementing that slice.
 
 Do not begin schedule publish, compare/sync, Quillin worker execution, or live
 third-party provider loading unless the user explicitly expands scope.
+
+## 2026-06-20 Phase 1 Slice B Handoff
+
+- Merged `origin/main` at `3df921ea` in merge commit `a3bec29`.
+- Normal startup now calls `bootstrap_bundled_publishing_providers()` before importing the UI.
+- The explicit bootstrap registers WordPress through its bundled adapter while preserving the existing definition and client objects.
+- Implementation commit: `90a3f6e`.
+
+Validation:
+
+- focused merge-resolution battery: `149 passed`
+- focused publishing/startup/registry/size battery: `77 passed`
+- Ruff: passed
+- provider registry gate: passed
+- full unit suite: `4056 passed, 66 failed, 14 skipped`; no publishing, adapter, startup, size-budget, or provider-gate failures
+- remaining full-suite failures are outside this slice and include current-main repository inconsistencies and state-sensitive fixtures
+
+Going forward, every Phase 1 slice must run focused publishing tests, relevant new unit tests, Ruff, the provider registry gate, and the full unit suite with a workspace-local temporary directory. Record both passes and unrelated baseline failures.
+
+Resume inside Phase 1 only. Do not begin schedule publish, compare/sync, Quillin worker execution, or live third-party loading without explicit approval.

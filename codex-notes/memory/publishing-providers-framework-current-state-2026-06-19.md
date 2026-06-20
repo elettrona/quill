@@ -28,3 +28,11 @@ Implementation commits before the detailed documentation commit:
 - `858d4c8` formatter checkpoint
 
 Resume inside Phase 1 only.
+
+## Phase 1 Slice B Memory - 2026-06-20
+
+`origin/main` at `3df921ea` was merged in `a3bec29`. WordPress now bootstraps through `bootstrap_bundled_publishing_providers()` during normal application startup, before the UI import. The bootstrap uses the existing WordPress definition and client objects, is safe to repeat, and adds no discovery, third-party loading, worker execution, credential change, or network action.
+
+Implementation commit: `90a3f6e`. Focused validation passed with `77 passed`, Ruff, the module-size gate, and the provider registry gate. Final full-unit result was `4056 passed, 66 failed, 14 skipped`; none of the failures touched publishing or this startup slice.
+
+Future slices must include and record focused tests, relevant new unit tests, Ruff, the provider registry gate, and a full unit run with workspace-local temporary state.

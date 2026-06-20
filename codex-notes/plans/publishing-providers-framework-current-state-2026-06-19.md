@@ -31,3 +31,18 @@ Recommended next Phase 1 slice:
 
 Do not begin schedule publish, compare/sync, worker execution, or live
 third-party provider loading without explicit approval.
+
+## Phase 1 Slice B Complete - 2026-06-20
+
+Decision: WordPress should bootstrap through the trusted bundled adapter during normal application startup.
+
+Implemented:
+
+- explicit first-party bootstrap in `quill.core.publishing_bundled`
+- bootstrap call at the application entry point before UI import
+- repeat-safe registration preserving existing provider-definition and client identity
+- no change to credentials, network behavior, commands, menus, dialogs, or user-visible publishing behavior
+
+Required validation for every next slice: focused publishing tests, slice-specific unit tests, Ruff, provider registry gate, and the complete unit suite using a workspace-local temp root. Record any non-slice baseline failures instead of silently omitting the full run.
+
+Phase 1 remains active. The prohibited later-phase work remains out of scope.

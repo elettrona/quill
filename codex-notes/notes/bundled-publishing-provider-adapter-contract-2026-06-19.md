@@ -35,3 +35,11 @@ adapter preserves object identity and user-visible behavior.
 The existing provider registry gate remains authoritative after adapter
 registration. Focused tests prove WordPress passes that gate in package shape
 and malformed adapters are rejected before registry exposure.
+
+## Startup Bootstrap Decision - 2026-06-20
+
+Normal application startup explicitly calls `bootstrap_bundled_publishing_providers()` before importing the UI. WordPress is registered through `wordpress_bundled_provider_adapter()` on this path. Repeated bootstrap replaces only the adapter record; the existing provider definition and client objects retain identity.
+
+This decision does not add package scanning, third-party loading, worker execution, credential access, or network activity. Those boundaries remain unchanged.
+
+Every future adapter/bootstrap slice must run focused publishing tests, relevant unit tests, Ruff, the provider registry gate, and the full unit suite with workspace-local temporary state.

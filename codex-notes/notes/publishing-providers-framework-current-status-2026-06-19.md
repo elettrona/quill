@@ -19,3 +19,9 @@ Still unresolved before deeper extraction:
 - discovery/loading policy beyond explicitly imported first-party packages
 
 SEC-8 remains unchanged. Third-party publishing providers are not enabled.
+
+## 2026-06-20 Status
+
+Phase 1 slice B is complete. WordPress now bootstraps through the trusted bundled adapter in normal application startup while retaining the same provider definition, client, credentials, REST behavior, commands, menus, dialogs, and visible workflows.
+
+The next work must remain within Phase 1. Worker execution and third-party discovery/loading remain unresolved and explicitly unapproved.
