@@ -246,3 +246,23 @@ utility ever runs.
   pinned to `NSTextView` so VoiceOver announces it as a normal,
   editable text area with full text-navigation semantics.
   Windows behaviour is unchanged.
+
+- **Report a Bug dialog now speaks field names on macOS, opens
+  in its own window so you can alt-tab to the editor, and no
+  longer auto-opens a browser after submit (#618).** On macOS,
+  VoiceOver was reading each field in the Report a Bug dialog
+  as a bare "text" or "combo box" with no name, because the
+  Windows MSAA chain that links a label to its input does not
+  exist in macOS NSAccessibility. Every field is now bound to
+  its label via the standard accessibility name, so VoiceOver
+  reads "Summary, edit text" / "What happened, edit text" /
+  etc. when you tab into a field. The dialog now opens in its
+  own non-modal window by default, so you can alt-tab back to
+  the editor to document exact reproduction steps; the editor
+  stays interactive while the form is open. And on submit,
+  QUILL copies the report to your clipboard and stops — the
+  previous behaviour of also opening a GitHub "New Issue" page
+  in your browser is now opt-in via a Settings toggle (Settings
+  -> "After you submit a bug report, automatically open the
+  support form in your default browser"). The report is always
+  on your clipboard regardless.

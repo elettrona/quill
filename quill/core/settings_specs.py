@@ -1063,6 +1063,38 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "Your contact email, pre-filled in the Report a Bug dialog for convenience.",
         keywords=("email", "bug", "report", "contact"),
     ),
+    # #618: open the Report a Bug dialog in a separate, non-modal
+    # window by default so users can alt-tab between the form and
+    # the editor to document exact reproduction steps.
+    SettingSpec(
+        "report_bug_separate_window",
+        "Open Report a Bug in a separate window",
+        "general",
+        "bool",
+        "Open the Report a Bug dialog in its own non-modal window so you "
+        "can alt-tab between the form and the editor to document exact "
+        "reproduction steps. The editor stays interactive while the form "
+        "is open. Turn this off to use the 0.5.0 modal-dialog behaviour.",
+        keywords=("bug", "report", "dialog", "window", "modal", "modeless"),
+    ),
+    # #618: when the user submits a bug report, copy the report to
+    # the clipboard and stop. The 0.5.0 default also opened a
+    # browser to the GitHub "New Issue" page; that step is now
+    # opt-in via this setting.
+    SettingSpec(
+        "report_bug_auto_open_browser",
+        "Auto-open support form in browser after submit",
+        "general",
+        "bool",
+        "After you submit a bug report from inside Quill, automatically "
+        "open the support form in your default browser. The report is "
+        "always copied to the clipboard; enable this if you would like "
+        "Quill to also pop the GitHub 'New Issue' page with the report "
+        "pre-filled. Disabled by default in 0.7.0 because the report is "
+        "already on the clipboard and many users do not want a browser "
+        "window opened on their behalf.",
+        keywords=("bug", "report", "browser", "support", "github", "auto"),
+    ),
     # --- Transcription -----------------------------------------------------
     SettingSpec(
         "bw_provider_mode",

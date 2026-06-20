@@ -185,6 +185,17 @@ class Settings:
     # Bug reporter identity: pre-fill the Report a Bug dialog for speed.
     bug_reporter_name: str = ""
     bug_reporter_email: str = ""
+    # #618: open the Report a Bug dialog in a separate, non-modal
+    # window by default so users can alt-tab between the form and
+    # the editor to document exact reproduction steps. The 0.5.0
+    # default was a modal dialog that blocked the editor.
+    report_bug_separate_window: bool = True
+    # #618: when the user submits a bug report, copy the report to
+    # the clipboard and stop. The 0.5.0 default also opened a
+    # browser to the GitHub "New Issue" page; that step is now
+    # opt-in via this setting (default False) so the upgrade story
+    # is "Quill copies, you decide whether to open the browser."
+    report_bug_auto_open_browser: bool = False
     # I18N: BCP 47 language tag for the UI; empty string means "use OS default".
     language: str = ""
     # WIZARD: True once the first-run setup wizard has completed.
