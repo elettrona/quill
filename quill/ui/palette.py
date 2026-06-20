@@ -65,6 +65,7 @@ class CommandPaletteDialog:
         self.search.ShowSearchButton(True)
         self.search.ShowCancelButton(True)
         self.search.SetDescriptiveText("Type command (>, :, ?, ~ prefixes supported)")
+        self.search.SetHint("Type command (>, :, ?, ~ prefixes supported)")
         root.Add(self.search, 0, wx.EXPAND | wx.ALL, 8)
 
         self.status = wx.StaticText(self.dialog, label="")
@@ -268,6 +269,7 @@ class GoToAnythingDialog:
         self.search.SetDescriptiveText(
             "Type to search commands, headings, settings  (#headings  >commands)"
         )
+        self.search.SetHint("Type to search commands, headings, settings  (#headings  >commands)")
         root.Add(self.search, 0, wx.EXPAND | wx.ALL, 8)
 
         self.status = wx.StaticText(self.dialog, label="")

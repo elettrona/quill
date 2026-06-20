@@ -467,3 +467,49 @@ def test_announce_screen_reader_detected_setting_is_registered() -> None:
     assert spec is not None
     assert spec.kind == "bool"
     assert spec.group == "accessibility"
+
+
+# --- #269: setup-wizard intent + extras fields ---------------------------
+
+
+def test_settings_wizard_intent_fields_have_defaults() -> None:
+    # #269: the wizard dialog writes setup_wizard_intent and the three
+    # setup_wizard_wants_* flags onto the Settings object on Finish. The
+    # dataclass uses slots=True, so any field that is not declared raises
+    # AttributeError on assignment. The defaults below also match the
+    # getattr fallbacks that main_frame.run_startup_wizard historically used
+    # when these fields were not persisted.
+    settings = Settings()
+    assert settings.setup_wizard_intent == ""
+    assert settings.setup_wizard_wants_ai is False
+    assert settings.setup_wizard_wants_braille is False
+    assert settings.setup_wizard_wants_automation is False
+
+
+def test_settings_wizard_intent_round_trip(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    # #269: ensure the wizard's choice survives a save/reload cycle so the
+    # next launch applies the same Quillin profile the user originally picked.
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    save_settings(
+        Settings(
+            setup_wizard_completed=True,
+            setup_wizard_intent="writer",
+            setup_wizard_wants_ai=True,
+            setup_wizard_wants_braille=False,
+            setup_wizard_wants_automation=True,
+        )
+    )
+    loaded = load_settings()
+    assert loaded.setup_wizard_completed is True
+    assert loaded.setup_wizard_intent == "writer"
+    assert loaded.setup_wizard_wants_ai is True
+    assert loaded.setup_wizard_wants_braille is False
+    assert loaded.setup_wizard_wants_automation is True
+
+
+def test_settings_wizard_intent_rejects_non_string_payload() -> None:
+    # #269: a legacy settings.json containing a non-string intent value
+    # (e.g. an int left over from an earlier schema draft) must be coerced
+    # to a string rather than crashing the wizard on the next launch.
+    settings = Settings.from_dict({"setup_wizard_intent": 42})
+    assert settings.setup_wizard_intent == "42"

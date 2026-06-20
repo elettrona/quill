@@ -45,8 +45,16 @@ jobs:
           cp -R docs/site/. site-root/
 
           # 2. Every documentation page already rendered to HTML under docs/.
-          #    The site serves HTML only — no Markdown is published.
-          cp docs/*.html site-root/docs/ 2>/dev/null || true
+          #    The site serves HTML only — no Markdown is published. Files
+          #    nested under docs/<subdir>/ are flattened into site-root/docs/
+          #    so the site can link to them by bare filename (e.g.
+          #    /docs/userguide.html serves docs/user guide/userguide.html).
+          #    docs/site/ is excluded because the hand-built site shell is
+          #    already copied wholesale above.
+          find docs -name '*.html' \
+              -not -path 'docs/site/*' \
+              -not -name 'index.html' \
+              -exec cp {} site-root/docs/ \;
 
           # 3. Render the project's top-level contributor/governance docs to
           #    HTML so the site is self-contained (no links off to raw Markdown).

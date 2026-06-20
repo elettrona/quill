@@ -223,6 +223,7 @@ class SoundEventsDialog(wx.Dialog):
         font = lbl.GetFont()
         font.MakeBold()
         lbl.SetFont(font)
+        lbl.SetName(f"{heading} heading")
         sizer.Add(lbl, 0, wx.LEFT | wx.TOP, 8)
 
         for eid in event_ids:

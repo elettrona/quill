@@ -311,7 +311,18 @@ class SessionsMixin:
         payload = load_session(target)
         documents = documents_from_session(payload)
         caret_positions = caret_positions_from_session(payload)
+        raw_active = payload.get("active_index")
         active_index = active_index_from_session(payload, len(documents))
+        if isinstance(raw_active, int) and len(documents) > 0 and active_index != raw_active:
+            # Saved active index was out of bounds for the current document
+            # count (e.g. documents were deleted from the session file by hand).
+            # Tell the user we repositioned them so the focus shift isn't
+            # surprising — screen-reader users in particular would otherwise
+            # land on an unexpected tab.
+            self._announce(
+                f"Saved active document {raw_active + 1} is unavailable; "
+                f"opened document {active_index + 1} of {len(documents)} instead."
+            )
         self._open_documents_from_session(documents, active_index, caret_positions=caret_positions)
         self._recent_sessions = add_recent_session(target, self.settings.recent_files_limit)
         self._refresh_sessions_menu()

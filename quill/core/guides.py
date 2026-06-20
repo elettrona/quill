@@ -5,6 +5,7 @@ from html import escape
 
 from quill.core.commands import Command
 from quill.core.features import FeatureManager
+from quill.core.keymap_format import format_binding_for_display
 from quill.core.quill_key_help import (
     MODE_BROWSE,
     MODE_PREFIX,
@@ -110,7 +111,11 @@ def build_keyboard_shortcut_html(
         parts.append("<tbody>")
         for command in grouped[section]:
             binding = command.keybinding
-            keystroke = f"<code>{escape(binding)}</code>" if binding else "<em>Unassigned</em>"
+            if binding:
+                display = format_binding_for_display(binding)
+                keystroke = f"<code>{escape(display)}</code>"
+            else:
+                keystroke = "<em>Unassigned</em>"
             parts.append(
                 "<tr>"
                 f"<td>{keystroke}</td>"
@@ -132,7 +137,6 @@ def build_keyboard_shortcut_html(
             mode=mode,
             binding_lookup=binding_lookup,
             counts={},  # Omit counts for static export
-            quill_key_label="QUILL key",
         )
         parts.append(f"<h2>{escape(title)}</h2>")
         for group in groups:

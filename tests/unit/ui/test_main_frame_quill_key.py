@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from types import SimpleNamespace
 
+from quill.branding import QUILL_KEY_LABEL
 from quill.core.quill_key_help import MODE_BROWSE, MODE_PREFIX
 from quill.ui.main_frame import MainFrame
 
@@ -215,7 +216,7 @@ def test_prefix_then_a_without_selection_does_not_open_actions() -> None:
 def _wire_help_stubs(frame: MainFrame) -> MainFrame:
     """Stub the dependencies the cheat sheet needs, leaving the real builder."""
     frame._announcements = []  # type: ignore[attr-defined]
-    frame._announce = frame._announcements.append  # type: ignore[method-assign]
+    frame._announce = lambda message, **_kw: frame._announcements.append(message)  # type: ignore[method-assign]
     frame._binding_for = lambda command_id: None  # type: ignore[method-assign]
     frame._help_shown = []  # type: ignore[attr-defined]
     frame._present_quill_key_help = (  # type: ignore[method-assign]
@@ -260,6 +261,34 @@ def test_question_mark_via_shift_slash_is_recognized() -> None:
     assert frame._help_shown[0][0] == MODE_PREFIX  # type: ignore[attr-defined]
 
 
+def test_bare_shift_keydown_before_question_mark_does_not_clear_prefix() -> None:
+    # Regression: wx fires a separate EVT_CHAR_HOOK for the Shift keydown
+    # itself, ahead of the "?" character it produces. That bare modifier
+    # event was previously read as an unrecognized second key, clearing the
+    # pending prefix before the real "?" arrived.
+    frame = _build_frame()
+    _wire_help_stubs(frame)
+    frame._handle_quill_key_mode_event(_Event(_BACKTICK, ctrl=True, shift=True))
+    bare_shift_handled = frame._handle_quill_key_mode_event(_Event(-11, shift=True))
+    assert bare_shift_handled is True
+    assert frame._quill_key_prefix_pending is True
+    handled = frame._handle_quill_key_mode_event(_Event(ord("?")))
+    assert handled is True
+    assert frame._help_shown[0][0] == MODE_PREFIX  # type: ignore[attr-defined]
+
+
+def test_bare_shift_keydown_in_browse_mode_does_not_exit() -> None:
+    # Regression: the same bare-modifier EVT_CHAR_HOOK was misread as "a
+    # modified key with no matching browse action" and exited browse mode
+    # before e.g. Shift+Tab or Shift+1 ever completed.
+    frame = _build_frame()
+    _wire_help_stubs(frame)
+    frame._enter_quill_key_mode()
+    handled = frame._handle_quill_key_mode_event(_Event(-11, shift=True))
+    assert handled is True
+    assert frame._quill_key_mode_active is True
+
+
 def test_browse_mode_question_mark_shows_browse_cheat_sheet_and_stays() -> None:
     # QK-2/QK-9: inside browse mode, question mark shows the browse cheat sheet
     # with live counts and does not leave browse mode.
@@ -291,13 +320,13 @@ def test_prefix_press_announces_quill_key() -> None:
     # announce_mode_changes is on. Speech fires before the chord sound.
     frame = _build_frame()
     frame._announcements = []  # type: ignore[attr-defined]
-    frame._announce = frame._announcements.append  # type: ignore[method-assign]
+    frame._announce = lambda message, **_kw: frame._announcements.append(message)  # type: ignore[method-assign]
     sounds: list[str] = []
     frame._post_sound_stub = sounds.append  # type: ignore[attr-defined]
     handled = frame._handle_quill_key_mode_event(_Event(_BACKTICK, ctrl=True, shift=True))
     assert handled is True
     assert frame._announcements  # type: ignore[attr-defined]
-    assert frame._announcements[0] == "QUILL key"  # type: ignore[attr-defined]
+    assert frame._announcements[0] == QUILL_KEY_LABEL  # type: ignore[attr-defined]
 
 
 def test_prefix_press_silent_when_announce_mode_changes_disabled() -> None:
@@ -305,7 +334,7 @@ def test_prefix_press_silent_when_announce_mode_changes_disabled() -> None:
     # message still appears; only _announce is gated.
     frame = _build_frame(announce_mode_changes=False)
     frame._announcements = []  # type: ignore[attr-defined]
-    frame._announce = frame._announcements.append  # type: ignore[method-assign]
+    frame._announce = lambda message, **_kw: frame._announcements.append(message)  # type: ignore[method-assign]
     frame._handle_quill_key_mode_event(_Event(_BACKTICK, ctrl=True, shift=True))
     assert frame._announcements == []  # type: ignore[attr-defined]
     assert frame._quill_key_prefix_pending is True
@@ -410,9 +439,7 @@ def test_browse_mode_slow_preset_expires_at_8s() -> None:
 
 def test_browse_mode_custom_value_used() -> None:
     # #265 follow-up: 'custom' preset reads browse_mode_followon_custom_ms.
-    frame = _build_frame(
-        browse_followon_timeout="custom", browse_followon_custom_ms=2500
-    )
+    frame = _build_frame(browse_followon_timeout="custom", browse_followon_custom_ms=2500)
     frame._enter_quill_key_mode()
     frame._quill_key_mode_started_at = time.monotonic() - 2.0
     assert frame._browse_mode_timed_out() is False

@@ -60,7 +60,7 @@ class ProfilePickerDialog:
             wx.LEFT | wx.RIGHT | wx.TOP,
             10,
         )
-        self.listbox = wx.ListBox(self.dialog, choices=[name for _k, _i, name, _d in entries])
+        self.listbox = wx.ListBox(self.dialog, choices=[str(name) for _k, _i, name, _d in entries])
         self.listbox.SetName("Profile — arrow up and down to read about each one")
         active_index = next(
             (index for index, entry in enumerate(entries) if entry[1] == active_profile_id),
@@ -108,7 +108,7 @@ class ProfilePickerDialog:
         if index == self._wx.NOT_FOUND or index < 0 or index >= len(self._entries):
             self.description.SetValue("")
             return
-        self.description.SetValue(self._entries[index][3])
+        self.description.SetValue(str(self._entries[index][3]))
         self.description.SetInsertionPoint(0)
 
     def show(self) -> ProfilePickerResult | None:

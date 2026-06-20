@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from quill.core.keymap_packs import (
@@ -10,6 +11,10 @@ from quill.core.keymap_packs import (
     keyboard_pack_description,
     keyboard_pack_names,
     keyboard_pack_preview,
+)
+from quill.core.keymap_format import (
+    format_binding_for_display,
+    format_quill_key_chord,
 )
 from quill.core.paths import app_data_dir
 from quill.core.storage import read_json, write_json_atomic
@@ -25,6 +30,8 @@ __all__ = [
     "export_keyboard_pack",
     "export_keymap",
     "find_keymap_conflict",
+    "format_binding_for_display",
+    "format_quill_key_chord",
     "import_keyboard_pack",
     "import_keymap",
     "keyboard_pack_description",
@@ -38,6 +45,8 @@ __all__ = [
     "reset_keymap",
     "save_keymap",
 ]
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_KEYMAP: dict[str, str] = {
     "file.new": "Ctrl+N",
@@ -85,6 +94,37 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "tools.dictation_toggle": "Ctrl+Shift+Grave, D",
     "tools.describe_image": "Ctrl+Shift+Grave, I",
     "tools.document_intake_report": "Ctrl+Shift+I",
+    # #357 keymap consolidation: AI commands move from inline F7/Shift+F7/F8/
+    # Shift+F8/Ctrl+Shift+T accelerators (which collided with the selection
+    # bindings at F8/Shift+F8/Ctrl+F8) to Ctrl+Alt+Shift+ chords, matching
+    # the EdSharp port convention. The chord class is reserved for AI so
+    # power users can find them by feel. Justifications name the screen-
+    # reader binding each chord displaces (NVDA review-cursor for the
+    # chord class; F7/F8 selection-start/complete for the displaced
+    # inline accelerators).
+    "tools.ai_spell_check": "Ctrl+Alt+Shift+S",  # §edsharp-ok — AI reserved chord class
+    "tools.ai_spell_check_interactive": "Ctrl+Alt+Shift+I",  # §edsharp-ok — AI reserved chord class
+    "tools.ai_grammar_style": "Ctrl+Alt+Shift+G",  # §edsharp-ok — AI reserved chord class
+    "tools.ai_translate_selection": "Ctrl+Alt+Shift+T",  # §edsharp-ok — AI reserved chord class
+    "tools.ai_thesaurus": "Ctrl+Alt+Shift+H",  # §edsharp-ok — AI reserved chord class
+    # #357 keymap consolidation: compare commands move from inline
+    # F8/Shift+F8/Ctrl+F8 accelerators (colliding with the selection
+    # bindings) to the same Ctrl+Alt+Shift+ chord class as the AI
+    # commands. The compare class also owns Ctrl+Alt+Shift+D for
+    # "Read Current Difference"; Alt+Shift+D stays free for
+    # view.toggle_dark_mode (different modifier stack).
+    "tools.compare_next_difference": (
+        "Ctrl+Alt+Shift+."
+    ),  # §edsharp-ok — compare reserved chord class
+    "tools.compare_previous_difference": (
+        "Ctrl+Alt+Shift+,"
+    ),  # §edsharp-ok — compare reserved chord class
+    "tools.compare_announce_difference": (
+        "Ctrl+Alt+Shift+D"
+    ),  # §edsharp-ok — compare reserved chord class
+    # view.toggle_dark_mode owns Alt+Shift+D, which does not collide with
+    # the Ctrl+Alt+Shift+D compare binding above (different modifier stack).
+    "view.toggle_dark_mode": "Alt+Shift+D",
     "help.switch_feature_profile": "Alt+Shift+P",
     "edit.copy_with_source": "Ctrl+Shift+C",
     "edit.copy_selection_for_email": "Ctrl+Shift+Grave, C",
@@ -107,6 +147,11 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "tools.search_in_files": "Ctrl+Shift+F",
     "tools.replace_in_files": "Ctrl+Shift+R",
     "tools.sticky_note_capture": "Ctrl+Shift+Grave, N",
+    # #262: Batch Conversion wizard. QUILL-key chord (B is free in the
+    # second-key space). The entry moved out of the Tools menu and now
+    # sits in File > Import > Batch Conversion... and File > Export >
+    # Batch Conversion... (one in each, both invoking the same wizard).
+    "file.batch_conversion": "Ctrl+Shift+Grave, B",
     "edit.replace_all": "Ctrl+Shift+H",
     "edit.insert_link": "Ctrl+K",
     "edit.follow_link": "Ctrl+Enter",
@@ -123,8 +168,15 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "edit.list_marks": "Alt+M",
     "edit.select_paragraph": "",  # Ctrl+Alt+P removed (§10.8 screen-reader-hostile)
     "edit.select_block": "Ctrl+Shift+B",
-    "edit.expand_selection": "Alt+Shift+Up",
-    "edit.shrink_selection": "Alt+Shift+Down",
+    # PR1 (EdSharp port): section move takes the Alt+Shift+Up/Down slot. The
+    # previous expand/shrink selection pair migrates to the QUILL-key chord.
+    # J and Shift+J were free in the QUILL-key second-key space (verified
+    # against DEFAULT_KEYMAP and both profile JSONs); they sit adjacent to
+    # the existing I/H/G group of navigate/contrast/chord-prefix neighbours.
+    "edit.expand_selection": "Ctrl+Shift+Grave, J",  # was Alt+Shift+Up (§edsharp-ok)
+    "edit.shrink_selection": "Ctrl+Shift+Grave, Shift+J",  # was Alt+Shift+Down (§edsharp-ok)
+    "format.move_section_up": "Alt+Shift+Up",  # §edsharp-ok — markdown/html only
+    "format.move_section_down": "Alt+Shift+Down",  # §edsharp-ok — markdown/html only
     "edit.set_named_mark": "",
     "edit.jump_to_named_mark": "",
     "edit.open_review_buffer": "",
@@ -143,14 +195,16 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "format.list_manager": "Ctrl+Shift+Grave, L",
     "format.bold": "Ctrl+B",
     "format.italic": "Ctrl+I",
-    "format.heading_1": "Ctrl+Shift+Grave, 1",
-    "format.heading_2": "Ctrl+Shift+Grave, 2",
-    "format.heading_3": "Ctrl+Shift+Grave, 3",
-    "format.heading_4": "Ctrl+Shift+Grave, 4",
-    "format.heading_5": "Ctrl+Shift+Grave, 5",
-    "format.heading_6": "Ctrl+Shift+Grave, 6",
+    "format.heading_1": "Ctrl+Alt+1",  # §edsharp-ok — overrides NVDA switch-to-synth-1
+    "format.heading_2": "Ctrl+Alt+2",  # §edsharp-ok — overrides NVDA switch-to-synth-2
+    "format.heading_3": "Ctrl+Alt+3",  # §edsharp-ok — overrides NVDA switch-to-synth-3
+    "format.heading_4": "Ctrl+Alt+4",  # §edsharp-ok — overrides NVDA switch-to-synth-4
+    "format.heading_5": "Ctrl+Alt+5",  # §edsharp-ok — overrides NVDA switch-to-synth-5
+    "format.heading_6": "Ctrl+Alt+6",  # §edsharp-ok — overrides NVDA switch-to-synth-6
     "format.decrease_heading_level": "Alt+Shift+Left",
     "format.increase_heading_level": "Alt+Shift+Right",
+    "format.toggle_bullet_list": "Ctrl+Alt+7",  # §edsharp-ok — overrides NVDA review-cursor
+    "format.toggle_numbered_list": "Ctrl+Alt+8",  # §edsharp-ok — overrides NVDA review-cursor
     "format.insert_html_tag": "Ctrl+Shift+Grave, H",
     "format.insert_markdown_tag": "",  # M is reserved for paste-HTML-as-Markdown
     "power.paste_html_as_markdown": "Ctrl+Shift+Grave, M",
@@ -275,6 +329,8 @@ def list_keymap_profiles() -> list[str]:
         data = read_json(path, default={})
         if isinstance(data, dict) and "_name" in data:
             profiles.append(str(data["_name"]))
+        else:
+            logger.debug("Dropping malformed keymap profile: %s", path.name)
     return profiles
 
 
@@ -312,12 +368,12 @@ def merge_keymaps(raw: object) -> dict[str, str]:
         "tools.sticky_note_capture": ("CTRL+ALT+SHIFT+N", "Ctrl+Shift+Grave, N"),
         "view.browser_preview": ("CTRL+ALT+SHIFT+V", "Ctrl+Shift+Grave, V"),
         "format.list_manager": ("CTRL+ALT+L", "Ctrl+Shift+Grave, L"),
-        "format.heading_1": ("CTRL+ALT+1", "Ctrl+Shift+Grave, 1"),
-        "format.heading_2": ("CTRL+ALT+2", "Ctrl+Shift+Grave, 2"),
-        "format.heading_3": ("CTRL+ALT+3", "Ctrl+Shift+Grave, 3"),
-        "format.heading_4": ("CTRL+ALT+4", "Ctrl+Shift+Grave, 4"),
-        "format.heading_5": ("CTRL+ALT+5", "Ctrl+Shift+Grave, 5"),
-        "format.heading_6": ("CTRL+ALT+6", "Ctrl+Shift+Grave, 6"),
+        "format.heading_1": ("CTRL+SHIFT+GRAVE, 1", "Ctrl+Alt+1"),
+        "format.heading_2": ("CTRL+SHIFT+GRAVE, 2", "Ctrl+Alt+2"),
+        "format.heading_3": ("CTRL+SHIFT+GRAVE, 3", "Ctrl+Alt+3"),
+        "format.heading_4": ("CTRL+SHIFT+GRAVE, 4", "Ctrl+Alt+4"),
+        "format.heading_5": ("CTRL+SHIFT+GRAVE, 5", "Ctrl+Alt+5"),
+        "format.heading_6": ("CTRL+SHIFT+GRAVE, 6", "Ctrl+Alt+6"),
         "format.insert_html_tag": ("CTRL+ALT+H", "Ctrl+Shift+Grave, H"),
         "format.insert_markdown_tag": ("CTRL+ALT+M", "Ctrl+Shift+Grave, M"),
         "format.insert_snippet": ("CTRL+ALT+SPACE", "Ctrl+Shift+Grave, S"),
@@ -325,18 +381,17 @@ def merge_keymaps(raw: object) -> dict[str, str]:
         "format.expand_abbreviation": ("", "Ctrl+Shift+Grave, A"),
         "format.manage_abbreviations": ("", "Ctrl+Shift+Grave, Shift+A"),
         "format.toggle_abbreviation_expansion": ("", "Ctrl+Shift+Grave, E"),
+        # PR1 (EdSharp port): users from any pre-0.7.0 build who had the old
+        # Alt+Shift+Up/Down expand/shrink selection bindings saved in their
+        # keymap are migrated to the new QUILL-key chord home for those
+        # commands.  The new format.move_section_up/down defaults take the
+        # Alt+Shift+Up/Down slot.
+        "edit.expand_selection": ("ALT+SHIFT+UP", "Ctrl+Shift+Grave, J"),
+        "edit.shrink_selection": ("ALT+SHIFT+DOWN", "Ctrl+Shift+Grave, Shift+J"),
     }
-    legacy_preview_conflict = (
-        str(raw.get("view.preview", "")).strip().upper() == "CTRL+SHIFT+P"
-        and str(raw.get("view.browser_preview", "")).strip().upper() == "CTRL+SHIFT+V"
-    )
     for command_id, binding in raw.items():
         if isinstance(command_id, str) and isinstance(binding, str):
             normalized = binding
-            if legacy_preview_conflict and command_id == "view.preview":
-                normalized = "Ctrl+Shift+V"
-            elif legacy_preview_conflict and command_id == "view.browser_preview":
-                normalized = "Ctrl+Alt+Shift+V"
             legacy_binding = legacy_rebindings.get(command_id)
             if legacy_binding is not None and normalized.strip().upper() == legacy_binding[0]:
                 normalized = legacy_binding[1]
@@ -414,9 +469,9 @@ def import_keyboard_pack(source: Path) -> tuple[str, str, dict[str, str]]:
     # Re-write the parsed payload to a temp buffer and run the same validator
     # the standalone ``quill.tools.kqp_validator`` runs, so the import path
     # uses the same rules as the CLI.
-    from quill.tools.kqp_validator import _validate_file  # local import: avoid cycles
+    from quill.tools.kqp_validator import validate_file  # local import: avoid cycles
 
-    issues = _validate_file(source, strict=False)
+    issues = validate_file(source, strict=False)
     if issues:
         joined = "; ".join(issues)
         raise ValueError(f"{source.name} failed keyboard pack validation: {joined}")

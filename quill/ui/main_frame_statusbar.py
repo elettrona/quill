@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from quill.core.braille_statusbar import short_form_from_resolver
+from quill.core.links import infer_markup_kind
+from quill.core.markdown_sections import current_section_at, parse_heading_blocks
 from quill.core.marks import line_column_for_position
 from quill.core.metrics import compute_document_stats
 from quill.core.palette import load_palette_usage, top_suggestion
@@ -130,23 +132,35 @@ class StatusBarMixin:
             document = getattr(self, "document", None)
             if editor is None or document is None:
                 return ""
-            line, column = line_column_for_position(
-                editor.GetValue(),
-                editor.GetInsertionPoint(),
-            )
+            # #269: ctrl+F4 can leave self.editor pointing at a destroyed
+            # C++ TextCtrl. Treat the dead-widget condition as "no editor"
+            # so a queued caret event does not crash the statusbar refresh.
+            try:
+                line, column = line_column_for_position(
+                    editor.GetValue(),
+                    editor.GetInsertionPoint(),
+                )
+            except RuntimeError:
+                return ""
             return f"Ln {line}, Col {column}"
         if item == "word_count":
             editor = getattr(self, "editor", None)
             if editor is None:
                 return ""
-            stats = compute_document_stats(editor.GetValue())
+            try:
+                stats = compute_document_stats(editor.GetValue())
+            except RuntimeError:
+                return ""
             return f"{stats.words:,} words"
         if item == "mode":
             return "Overwrite" if getattr(self, "_overwrite_mode", False) else "Insert"
         if item == "selection":
             editor = getattr(self, "editor", None)
             if editor is not None and hasattr(editor, "GetSelection"):
-                start, end = editor.GetSelection()
+                try:
+                    start, end = editor.GetSelection()
+                except RuntimeError:
+                    return "Sel 0"
                 length = max(0, end - start)
                 return f"Sel {length}"
             return "Sel 0"
@@ -254,7 +268,61 @@ class StatusBarMixin:
             if count >= target:
                 return f"Goal reached: {count:,} {unit}"
             return f"{count:,} / {target:,} {unit}"
+        if item == "section_heading":
+            # EdSharp port: "Section: Heading N of M" when the caret is on
+            # a heading in a Markdown or HTML document. Hidden by default
+            # (see _default_status_bar_hidden); the cell silently returns
+            # "" for plain-text documents and for carets not on a heading.
+            return self._statusbar_section_heading_text()
         return ""
+
+    def _statusbar_section_heading_text(self) -> str:
+        """Return "Section: Heading N of M" or "" for the status-bar cell.
+
+        EdSharp port. Returns "" when the editor or document is missing,
+        when the active surface is not Markdown or HTML, when there are no
+        headings at the caret's level, or when the underlying widget has
+        been destroyed (the same dead-widget guard as the other cells).
+        """
+        editor = getattr(self, "editor", None)
+        document = getattr(self, "document", None)
+        if editor is None or document is None:
+            return ""
+        try:
+            surface = infer_markup_kind(document.path)
+        except Exception:  # noqa: BLE001
+            return ""
+        if surface not in {"markdown", "html"}:
+            return ""
+        try:
+            text = editor.GetValue()
+            caret = editor.GetInsertionPoint()
+        except RuntimeError:
+            return ""
+        try:
+            blocks = parse_heading_blocks(text, surface)
+        except Exception:  # noqa: BLE001
+            return ""
+        if not blocks:
+            return ""
+        section = current_section_at(text, caret, markup_kind=surface)
+        if section is None:
+            return ""
+        if section.level <= 0:
+            return ""
+        same_level = [b for b in blocks if b.level == section.level]
+        if not same_level:
+            return ""
+        ordinal = 0
+        for _index, block in enumerate(blocks):
+            if block.level == section.level:
+                ordinal += 1
+            if block.section_start == section.start:
+                break
+        else:
+            ordinal = 1
+        total = len(same_level)
+        return f"Section: Heading {section.level} ({ordinal} of {total})"
 
     def _statusbar_braille_text(self) -> str:
         """Return the short-form braille cell text, or "" if not active.
@@ -435,9 +503,16 @@ class StatusBarMixin:
             self._build_statusbar_cells()
         for cell in self._statusbar_cells:
             item = cell.item
-            cell.button.SetLabel(self._statusbar_button_label(item))
-            cell.button.SetHelpText(self._statusbar_help_text(item))
-            cell.button.SetName(self._STATUS_BAR_LABELS.get(item, item))
+            try:
+                # The button itself can also be a dead C++ wrapper if the
+                # statusbar was torn down mid-refresh. Treat the dead-widget
+                # condition as a transient skip and let the next refresh
+                # try again (#269).
+                cell.button.SetLabel(self._statusbar_button_label(item))
+                cell.button.SetHelpText(self._statusbar_help_text(item))
+                cell.button.SetName(self._STATUS_BAR_LABELS.get(item, item))
+            except RuntimeError:
+                continue
             try:
                 cell.button.SetMinSize((-1, -1))
                 if item != "message":
@@ -451,6 +526,9 @@ class StatusBarMixin:
         if not hasattr(self, "statusbar"):
             return
         items = self._statusbar_items()
+        # #269: _statusbar_text_for_item returns safe fallbacks if the live
+        # editor's C++ wrapper has been destroyed, so this list comprehension
+        # is now safe even when a tab was just closed.
         texts = [self._statusbar_text_for_item(item) for item in items]
         if hasattr(self.statusbar, "SetFieldsCount"):
             self.statusbar.SetFieldsCount(len(items))

@@ -15,6 +15,8 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
+from quill.branding import QUILL_KEY_LABEL
+
 #: Cheat-sheet for the prefix-pending state (just after the QUILL key is pressed).
 MODE_PREFIX = "prefix"
 #: Cheat-sheet for browse mode (after the QUILL key, then N).
@@ -83,7 +85,7 @@ def build_cheat_sheet(
     binding_lookup: Callable[[str], str | None],
     counts: Mapping[str, int],
     selection_active: bool = False,
-    quill_key_label: str = "QUILL key",
+    quill_key_label: str = QUILL_KEY_LABEL,
     chord_map: Mapping[str, str] | None = None,
     prefix: str = "Ctrl+Shift+Grave",
 ) -> tuple[KeyHelpGroup, ...]:

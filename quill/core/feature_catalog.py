@@ -342,24 +342,10 @@ FEATURE_DEFINITIONS: dict[str, FeatureDefinition] = {
     "core.ocr": FeatureDefinition(
         "core.ocr", "OCR", category="accessibility", dependencies=("core.file",)
     ),
-    "future.character_inspector": FeatureDefinition(
-        "future.character_inspector",
-        "Character Inspector",
-        aliases=("character inspector", "inspect character"),
-        maturity="advanced",
-        category="power text",
-    ),
     "future.cleanup": FeatureDefinition(
         "future.cleanup",
         "Unicode Cleanup",
         aliases=("cleanup", "unicode cleanup"),
-        maturity="advanced",
-        category="power text",
-    ),
-    "future.regex_library": FeatureDefinition(
-        "future.regex_library",
-        "Regular Expression Library",
-        aliases=("regex library", "regex recipes"),
         maturity="advanced",
         category="power text",
     ),

@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import time
 
+from quill.branding import QUILL_KEY_LABEL
+
 try:
     import winsound as _winsound  # type: ignore[import]
 except ImportError:  # pragma: no cover - non-Windows fallback
@@ -44,10 +46,18 @@ class QuillKeyMixin:
         timeout = self._quill_key_timeout()
         if not self._quill_key_mode_active:
             if self._quill_key_prefix_pending:
+                # A bare modifier keydown (e.g. pressing Shift before the "/"
+                # in Shift+/ to type "?") fires its own EVT_CHAR_HOOK ahead of
+                # the actual character. Without this guard it was treated as
+                # the chord's second key, fell through to "Unrecognized QUILL
+                # key chord", and cleared the pending prefix before the real
+                # follow-on key ever arrived.
+                if self._is_bare_modifier_key(key_code):
+                    return True
                 if timeout > 0 and (time.monotonic() - self._quill_key_prefix_started_at) > timeout:
                     self._quill_key_prefix_pending = False
                     self._quill_key_prefix_started_at = 0.0
-                    self._set_status_quiet("QUILL key timed out")
+                    self._set_status_quiet(f"{QUILL_KEY_LABEL} timed out")
                     self._refresh_statusbar()
                     return False
                 if key_code in {getattr(wx, "WXK_ESCAPE", 27), 27}:
@@ -126,21 +136,22 @@ class QuillKeyMixin:
                 self._quill_key_prefix_pending = False
                 self._quill_key_prefix_started_at = 0.0
                 self._refresh_statusbar()
-                self._set_status_quiet("Unrecognized QUILL key chord. Press ? for help.")
-                self._announce("Unrecognized QUILL key chord")
+                self._set_status_quiet(f"Unrecognized {QUILL_KEY_LABEL} chord. Press ? for help.")
+                self._announce(f"Unrecognized {QUILL_KEY_LABEL} chord", force=True)
                 return True
             if self._quill_key_prefix_matches(event):
                 self._quill_key_prefix_pending = True
                 self._quill_key_prefix_started_at = time.monotonic()
                 message = (
-                    "QUILL key prefix active. N for browse mode, press QUILL key again for "
-                    "sticky mode, G for quick nav, then any configured chord key, ? for help"
+                    f"{QUILL_KEY_LABEL} prefix active. N for browse mode, press "
+                    f"{QUILL_KEY_LABEL} again for sticky mode, G for quick nav, "
+                    "then any configured chord key, ? for help"
                 )
                 if self._has_active_selection():
                     message = (
-                        "QUILL key prefix active. N for browse mode, press QUILL key again for "
-                        "sticky mode, G for quick nav, A for selection actions, "
-                        "then any configured chord key, ? for help"
+                        f"{QUILL_KEY_LABEL} prefix active. N for browse mode, press "
+                        f"{QUILL_KEY_LABEL} again for sticky mode, G for quick nav, "
+                        "A for selection actions, then any configured chord key, ? for help"
                     )
                 self._set_status_quiet(message)
                 self._refresh_statusbar()
@@ -148,7 +159,7 @@ class QuillKeyMixin:
                 # the chord sound. Gated by announce_mode_changes so users in
                 # quiet / no-speech profiles keep the prefix silent.
                 if bool(getattr(self.settings, "announce_mode_changes", True)):
-                    self._announce("QUILL key")
+                    self._announce(QUILL_KEY_LABEL, force=True)
                 from quill.core.sound_events import SoundEvent
                 from quill.ui.sound_manager import post_sound
 
@@ -160,6 +171,13 @@ class QuillKeyMixin:
             self._exit_quill_key_mode("QUILL browse mode timed out")
             if self._event_has_modifiers(event):
                 event.Skip()
+            return True
+
+        # Same bare-modifier issue as the prefix-pending branch above: a lone
+        # Shift keydown ahead of e.g. Shift+Tab or Shift+1 would otherwise
+        # read as "a modified key with no matching action" and exit browse
+        # mode before the real combo ever arrived.
+        if self._is_bare_modifier_key(key_code):
             return True
 
         if key_code in {getattr(wx, "WXK_ESCAPE", 27), 27}:
@@ -214,9 +232,7 @@ class QuillKeyMixin:
             self._refresh_statusbar()
             return
         self._quill_feedback(
-            "QUILL browse mode active. H headings, A links, L lists, I list items, "
-            "T tables, Q block quotes, B bookmarks, P paragraphs, S sentences, "
-            "1-6 heading levels, period repeats last action, ? for full help, Escape exits.",
+            "QUILL browse mode active. Press ? for help, Escape to exit.",
             status_message="QUILL browse mode active",
             sound_kind="enter",
         )
@@ -279,18 +295,16 @@ class QuillKeyMixin:
           clamped to ``>= 0`` (``0`` means no timeout)
         - ``unlimited`` and any unknown token -> ``0`` (no timeout)
         """
-        token = str(
-            getattr(self.settings, "browse_mode_followon_timeout", "unlimited")
-        ).strip().lower()
+        token = (
+            str(getattr(self.settings, "browse_mode_followon_timeout", "unlimited")).strip().lower()
+        )
         if token == "instant":
             return 0.001
         if token in _BROWSE_TIMEOUT_PRESETS:
             return _BROWSE_TIMEOUT_PRESETS[token]
         if token == "custom":
             try:
-                ms = float(
-                    getattr(self.settings, "browse_mode_followon_custom_ms", 4000)
-                )
+                ms = float(getattr(self.settings, "browse_mode_followon_custom_ms", 4000))
             except (TypeError, ValueError):
                 ms = 4000.0
             return max(ms / 1000.0, 0.0)
@@ -350,6 +364,24 @@ class QuillKeyMixin:
 
     def _event_has_modifiers(self, event: object) -> bool:
         return bool(event.ControlDown() or event.AltDown() or event.ShiftDown())
+
+    def _is_bare_modifier_key(self, key_code: int) -> bool:
+        """True when ``key_code`` is a modifier key pressed on its own.
+
+        wx fires EVT_CHAR_HOOK for the modifier keydown itself (e.g. Shift
+        going down just before the "/" that makes "?"), separately from the
+        combo it's part of. Chord/browse-mode dispatch must ignore these or
+        they get misread as an unrecognized second key.
+        """
+        wx = self._wx
+        return key_code in {
+            getattr(wx, "WXK_SHIFT", -11),
+            getattr(wx, "WXK_CONTROL", -10),
+            getattr(wx, "WXK_ALT", -12),
+            getattr(wx, "WXK_RAW_CONTROL", -13),
+            getattr(wx, "WXK_WINDOWS_LEFT", -14),
+            getattr(wx, "WXK_WINDOWS_RIGHT", -15),
+        }
 
     def _quill_key_action_for_event(self, event: object) -> str | None:
         wx = self._wx
@@ -448,7 +480,7 @@ class QuillKeyMixin:
         runner = mapping.get(action)
         if runner is None:
             self._quill_feedback(
-                f"No QUILL key action mapped to {action}",
+                f"No {QUILL_KEY_LABEL} action mapped to {action}",
                 status_message="No browse action mapped",
                 sound_kind="error",
             )
@@ -605,7 +637,7 @@ class QuillKeyMixin:
             binding_lookup=self._binding_for,
             counts=counts,
             selection_active=self._has_active_selection(),
-            quill_key_label="QUILL key",
+            quill_key_label=QUILL_KEY_LABEL,
             chord_map=self.keymap,
             prefix=str(getattr(self.settings, "quill_key_binding", "Ctrl+Shift+Grave")),
         )
@@ -613,13 +645,15 @@ class QuillKeyMixin:
     def _show_quill_key_cheat_sheet(self, mode: str) -> None:
         """Announce and present the live QUILL key cheat sheet (QK-2, QK-9)."""
         groups = self._build_quill_key_cheat_sheet(mode)
-        self._announce(summarize_cheat_sheet(groups))
+        self._announce(summarize_cheat_sheet(groups), force=True)
         self._present_quill_key_help(mode, format_cheat_sheet(groups))
 
     def _present_quill_key_help(self, mode: str, text: str) -> None:
         """Show the cheat sheet in an accessible, read-only dialog."""
         wx = self._wx
-        title = "QUILL Key Help" if mode == MODE_BROWSE else "QUILL Key Prefix Help"
+        title = (
+            f"{QUILL_KEY_LABEL} Help" if mode == MODE_BROWSE else f"{QUILL_KEY_LABEL} Prefix Help"
+        )
         dialog = wx.Dialog(
             self.frame,
             title=title,
@@ -632,7 +666,7 @@ class QuillKeyMixin:
                 wx.StaticText(
                     dialog,
                     label=(
-                        "Follow-on keys for the QUILL key, grouped by purpose. "
+                        f"Follow-on keys for the {QUILL_KEY_LABEL}, grouped by purpose. "
                         "Counts show how many of each element are in this document."
                     ),
                 ),
@@ -671,7 +705,7 @@ class QuillKeyMixin:
         status = status_message or message
         announce_modes = bool(getattr(self.settings, "announce_mode_changes", True))
         if mode in {"speech", "both"} and announce_modes:
-            self._announce(message)
+            self._announce(message, force=True)
         else:
             self._set_status_quiet(status)
         if sound_kind and mode in {"sound", "both"}:

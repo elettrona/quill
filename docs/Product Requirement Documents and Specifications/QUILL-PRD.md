@@ -2,8 +2,10 @@
 
 ## A magical, screen-reader-first writing and document environment, built in wxPython
 
-Status: This document specifies Quill **1.0**. The current shipping build is **0.1.5 Beta**, which implements the v1.0 checklist (section 21.1–21.16) plus the post-1.0 foundation work in section 21.17 and later. Section 21 is the living implementation map and is kept current as features land.
-Owner: Blind Information Technology Solutions (BITS) and Community Access
+Status: This document specifies Quill **1.0**. The current shipping build is **0.7.0 Beta**, which implements the v1.0 checklist (section 21.1–21.16) plus the post-1.0 foundation work in section 21.17 and later. Section 21 is the living implementation map and is kept current as features land.
+Public name: QUILL for All
+Owner: Community Access
+Independence notice: QUILL for All is developed independently of any assistive-technology vendor. Vendor and screen-reader names appear throughout this document for compatibility and certification purposes only; they remain the property of their respective owners.
 Target platform: Windows 10 and Windows 11
 Target screen readers: NVDA (primary), JAWS, Narrator
 UI framework: wxPython (wxWidgets 3.2 or newer)
@@ -325,7 +327,7 @@ Performance and invalidation:
 
 Customization:
 
-- Settings include wrap behavior for Quick Nav boundary traversal and feedback mode (`speech`, `sound`, `both`, `none`).
+- Settings include wrap behavior for Quick Nav boundary traversal, feedback mode (`speech`, `sound`, `both`, `none`), and move-announcement detail (`browse_mode_move_detail`: `position`, `line`, `none`) — the latter controls whether a completed move reports line and column, line only, or nothing. Heading and block movement announce through the same path and setting as every other Quick Nav element type.
 - Keyboard manager can reassign Quick Nav actions and leader sequences.
 
 ### 5.3 File operations
@@ -413,6 +415,81 @@ Not every format we open is something a user should edit. Quill is explicit abou
 #### Plugin escalation
 
 Where bundling a large dependency would balloon installer size (Calibre, Ghostscript, Tesseract trained-data packs, MeCab for Japanese, LibreOffice headless for legacy office), Quill ships a thin shim and offers a one-click plugin install from the Format Support page. Plugins announce their license clearly before installing.
+
+#### 5.3a.1 Pandoc Import / Export and Batch Conversion (issue #262)
+
+QUILL ships a curated Tier-1 list of Pandoc-supported formats in the File menu and a four-page batch conversion wizard under Tools. The list is curated rather than exhaustive because not every Pandoc format is a good fit for a screen-reader-first editor; the menu and the wizard show only formats that meet the bar.
+
+**Tier-1 inputs:** Markdown, CommonMark, GitHub-Flavored Markdown, HTML, Word documents (`.docx`), OpenDocument Text (`.odt`), Rich Text (`.rtf`), plain text, CSV / TSV tables, EPUB books, LaTeX / TeX.
+
+**Tier-1 outputs:** the same set plus PDF (export only).
+
+##### 5.3a.1.1 Single-file Import / Export
+
+**File > Import > <format>** converts a single file from disk into a new Markdown buffer in a new tab. **File > Export > <format>** converts the current buffer to the named format on a background thread. Both routes use Pandoc and `quill.stability.safe_subprocess.run_subprocess_safely` so a misbehaving Pandoc cannot take QUILL down.
+
+Post-conversion prompt rule (issue #262): when the target format is editable in QUILL (Markdown, CommonMark, GFM, HTML, plain text, CSV / TSV) the editor asks whether to open the new file in a new window. PDF, DOCX, EPUB, ODT, and RTF do not prompt; the file path is on the clipboard for pasting into File Explorer.
+
+##### 5.3a.1.2 Batch Conversion wizard
+
+**File > Import > Batch Conversion...** and **File > Export > Batch Conversion...** (or **QUILL key, B**) open a hand-rolled `wx.Dialog` modeled on `setup_wizard_pages.py`. Four pages: Introduction (with live Pandoc version probe), Folder and options (folder picker, recursive checkbox, output-layout radio, overwrite radio), Format and profile (direction radio, Tier-1 source/target lists, profile picker), Review and start (human-readable summary).
+
+Defaults come from `Settings.import_export_recursive`, `import_export_output_layout`, `import_export_overwrite`, and the wizard-overridable `import_export_last_folder`. The wizard can override any of these per run; the Preferences dialog is the canonical place to change defaults.
+
+The wizard's `_SummaryPage.refresh(choices)` reads the plan aloud through `_announce()` so the user hears what they are about to apply before the batch starts. Back / Next / Start / Cancel are stock `wx.Button` controls under the standard `apply_modal_ids` modal-id contract; the wizard is keyboard-first end to end and never depends on the mouse.
+
+##### 5.3a.1.3 Batch execution
+
+The wizard returns a `BatchRequest` carrying a `BatchPlan` dataclass. The caller submits the plan to `MainFrame._run_background_task` so the work runs on `stability.task_manager.QuillTaskManager` (a `ThreadPoolExecutor` wrapper) instead of the UI thread. Progress is reported through the Status Page (`Help > Status Page > Tasks & Downloads`) with one live `(Task, Status, Progress, Started, Finished)` row per file. The worker honours a `threading.Event` cancel between files and raises `PandocCancelledError` if cancellation fires mid-run.
+
+Output naming follows the issue #262 rule verbatim: keep the originating stem, replace the extension. With `output_layout="subfolder"` (the default) the output lands in an `Output/` subfolder created lazily per file; with `output_layout="same_folder"` the output lands next to the source. The three-way overwrite policy — `ask`, `never`, `always` — is enforced both at the batch level (one prompt per batch for the `ask` policy) and per file (skip on `never`, overwrite on `always`).
+
+##### 5.3a.1.4 Conversion profiles
+
+Seven built-in conversion profiles ship in this release (`quill.core.convert_profiles`):
+
+- **Clean Word Document** — `--standalone` plus aggressive header/footer stripping.
+- **Accessible HTML Page** — `--standalone` with `title-block` and `lang` metadata.
+- **EPUB Book** — `--standalone --toc` plus the EPUB-3 metadata block.
+- **GitHub README** — GitHub-Flavored Markdown with no wrapper.
+- **Print PDF** — `--pdf-engine=<default>` plus the standard PDF metadata.
+- **Instructor Handout** — `--standalone` with `geometry: margin=1in` and a top-level numbered section structure.
+- **Plain Text for Screen Readers** — plain text with no HTML wrapper, no smart quotes, fixed 80-column width.
+
+Each profile is a `ConvertProfile` dataclass holding its CLI flags and a plain-language description. The wizard's profile picker reads each profile aloud so the screen reader can announce what is being applied before the batch starts.
+
+##### 5.3a.1.5 Completion announcement
+
+When the batch finishes, `_announce()` is called with the completion line:
+
+> "Batch conversion complete. <converted> of <total> files converted in <duration> seconds. <skipped> skipped. <failed> failed."
+
+The line routes through the existing `announce()` -> `_announce()` -> `AnnouncementEngine` path, which already honours `announcement_backend` and `verbosity_speech_enabled`. The Status Page row updates regardless of the user's verbosity setting so sighted and low-vision users see the same result.
+
+A short report dialog lists every file that produced warnings or failed, with the exact error string. Successful files do not appear in the report, so the dialog stays small and quick to read.
+
+##### 5.3a.1.6 Settings
+
+Three new `SettingSpec` entries appear in **Preferences > Editing** (issue #262):
+
+- `import_export_recursive` — boolean, default `True`. Label: "Include subfolders in batch conversion".
+- `import_export_overwrite` — choice, default `("ask", "Ask each time")`. Choices: `ask`, `never`, `always`. Label: "Overwrite behaviour for batch conversion".
+- `import_export_output_layout` — choice, default `("subfolder", "Output subfolder per source folder")`. Choices: `subfolder`, `same_folder`. Label: "Default output layout for batch conversion".
+
+A fourth field, `import_export_last_folder` (string, default `""`), is intentionally not exposed in Preferences. The wizard writes it when it starts a batch so the next run lands the user where they left off. All four fields are validated in `Settings.from_dict` against the issue #262 value sets.
+
+##### 5.3a.1.7 Key binding
+
+**QUILL key, B** opens the Batch Conversion wizard. The chord was added to `quill.core.keymap` and is wired through `MainFrame._on_quill_key_b`. The `B` key was chosen because it does not collide with any existing QUILL-key second-key in `main_frame_quill_key.py`.
+
+##### 5.3a.1.8 Out of scope for this release
+
+- **PDF import.** Pandoc cannot do it reliably; the dedicated braille and DAISY pipelines remain the right tools.
+- **Tier 2 / Tier 3 formats.** A future release will replace the **Tools > Pandoc Conversion Center...** placeholder with the full format picker.
+- **MarkItDown integration.** Tracked as a follow-up issue. The integration belongs in a Quillin so its dependencies stay out of the core.
+- **Per-verb verbosity tokens.** The completion announcement routes through the existing `announce()` shim. The per-verb `VerbTokenSpec` registry from the verbosity rebuild is not in source yet; that work is tracked separately.
+
+Cross-links: this section is referenced from `### 5.25b Watch Folder automation` (the Watch Folder Quillin can use the same `BatchPlan` shape when it needs batch-style conversion) and from `§22 Startup Wizard` (the Startup wizard's "What kind of writing do you do?" intent picker exposes the Import / Export and Batch Conversion entries only when the chosen profile warrants them).
 
 ### 5.3b Microsoft Word document support (DOCX / DOC)
 
@@ -1800,6 +1877,7 @@ partial profile can never start a worker.
 - Watch work runs off the UI thread through `watch_worker`/`watch_queue`; results marshal back through
   `wx.CallAfter` and surface in the status/notification channel. No silent failures.
 - Watch-folder automation is configured from Preferences (Watch Folder Automation). A first-run wizard onboarding step for it is planned (see docs/planning.md).
+- A watch profile can use the same `BatchPlan` shape from `### 5.3a.1` when its action is "convert to QUILL" or "convert from QUILL" - the Watch Service reuses `quill.core.batch_convert.run_batch` so a folder of dropped `.docx` files becomes a folder of opened Markdown tabs without a separate Batch Conversion wizard run. The action field on the watch profile chooses between the inline batch path and the open-in-editor path; both run on the background task pool.
 
 ### 5.25c BITS Whisperer phased transcription rollout
 
@@ -2687,7 +2765,7 @@ Ask AI is a modal dialog that lets users send a prompt to a configured AI provid
 
 **Motivation.** Screen-reader users frequently need to ask a quick question while writing — define a term, check a fact, explore a phrasing option — and switching to a browser or a separate AI client breaks flow, especially when using NVDA or JAWS where switching applications involves extra navigation. Ask AI keeps the interaction entirely within the QUILL keyboard model.
 
-**Entry point.** `Tools > AI Assistant > Ask AI...` (`Alt+Q` default chord). The Command Palette entry is "Ask AI". The binding is user-reassignable.
+**Entry point.** `AI > Ask AI...` (Command Palette) and `AI > Writing Assistant...` (`Alt+Q` default chord). The Command Palette entry is "Ask AI". The binding is user-reassignable.
 
 **Providers.** Three providers are supported. QUILL detects which keys are configured and only shows available providers.
 
@@ -2760,7 +2838,7 @@ The Prompt Library is a named, user-expandable collection of AI instructions. Ea
 
 **Motivation.** Power users accumulate a personal set of AI instructions they run repeatedly — improve clarity, vary sentence rhythm, convert to bullets, generate an outline. Without a library, these prompts must be retyped or pasted from an external file each time. The Prompt Library turns these into first-class named commands, accessible from the keyboard, the command palette, and the dialog.
 
-**Entry point.** `Tools > AI Assistant > Prompt Library...`. Command Palette: "Prompt Library". User-assignable binding.
+**Entry point.** `AI > Prompt Library...`. Command Palette: "Prompt Library". User-assignable binding.
 
 **Prompt object fields.**
 
@@ -3439,6 +3517,55 @@ The QUILL key (`Ctrl+Shift+Grave` by default) operates as a two-layer prefix sys
 
 **Keymap Editor validation.** Chord bindings (containing `, `) are validated separately from simple bindings: the prefix part must be a known modifier+key combination and the second-key part must be a parseable single key or modifier+key.
 
+### 8.11 The Ctrl+Alt+ policy (revised 0.7.0)
+
+Quill's long-standing policy was to forbid `Ctrl+Alt+` bindings outright because NVDA, JAWS, and Windows Speech Recognition intercept most of those chords app-globally.  The 0.7.0 release (EdSharp port) revises the policy to permit a `Ctrl+Alt+` binding when one of two conditions holds:
+
+1. The command id is in the `_CTRL_ALT_DOCUMENTED` allowlist in `quill/tools/menu_lint.py`.  Each allowlist entry is paired with a screen-reader-binding justification in `docs/keybinding-standard.md`.  The historical `view.send_to_tray` and `view.toggle_tab_control` entries predate the relaxation; the new heading entries (1..6) are documented because they override NVDA's switch-to-synth-N.
+2. The binding line in `keymap.py` ends with the inline comment `# §edsharp-ok — <justification>`.  The per-binding escape hatch lets future one-off bindings enter the keymap without a code change in `menu_lint.py`.
+
+The rename from `_CTRL_ALT_ALLOWED` to `_CTRL_ALT_DOCUMENTED` makes the narrower scope explicit: the allowlist is "documented exceptions," not a free pass.  The gate continues to reject every other `Ctrl+Alt+` binding, and the regression test in `tests/unit/tools/test_menu_lint.py` (`test_ctrl_alt_uncommented_still_fails`) pins the contract.
+
+The full audit lives in the new `docs/keybinding-standard.md` document.  The new EdSharp-port chord pairs (heading 1..6, list 7/8, section-move Alt+Shift+Up/Down) are all documented there with their justification comments and the screen-reader bindings they override.
+
+### 8.12 The list-toggle chord pair (revised 0.7.0)
+
+`Ctrl+Alt+7` and `Ctrl+Alt+8` are the EdSharp-port toggle variants of the existing `format.insert_bullet_list` / `format.insert_numbered_list` commands.  Each chord inspects the caret: if it is on a line that is already a list item, the markers are stripped and the line returns to plain text; otherwise a new list is inserted.  This decision is encoded in the pure helper `is_caret_inside_list` so the toggle behaviour can be tested without spinning up a `MainFrame`.  Plain-text documents announce the chord is unavailable; the action is skipped.
+
+Numbered-list insertion is governed by a new `list_auto_fill_numbers` setting (`SettingsGroup` = "editing", default off) and a per-document five-minute arming flag.  The three OR together in `should_auto_fill_numbers()`:
+
+1. The active document surface is markdown (the default-experience rule — a user who explicitly authored a Markdown file wants filled markers).
+2. The `list_auto_fill_numbers` setting is on.
+3. The user just toggled a numbered list on the active document — the arming flag is set to `time.monotonic() + 300` the first time the chord runs in the document and cleared on document close.
+
+Outside of the three conditions, today's behaviour of one marker on the first item is preserved, so the change is strictly opt-in.  `Ctrl+Alt+9` for link insertion is intentionally not added because `Ctrl+K` already covers that command.
+
+### 8.13 The Section status bar cell (revised 0.7.0)
+
+A new `Section` cell appears in the status bar and reads `Section: Heading N (ordinal of total)` whenever the caret is on a heading in a Markdown or HTML document.  The cell is hidden by default so it does not push other useful cells out of the bar for writers who do not work at heading-level granularity; opt in via Preferences -> Status Bar and place the cell where it helps.
+
+The cell dispatches on `infer_markup_kind(document.path)`.  Plain-text documents and carets on a non-heading line return an empty string.  The cell inherits the same `try / except RuntimeError` dead-widget guard as the other live-editor cells (line_column, word_count, selection) so a queued caret event after Ctrl+F4 cannot crash the status-bar refresh when the underlying C++ TextCtrl has been deleted.
+
+The HTML path reuses the existing fence-aware `parse_heading_blocks` and `current_section_at` from `quill/core/markdown_sections.py`; both already handle `<hN>...</hN>` headings in the same way they handle `#`-prefixed markdown headings.
+
+### 8.14 QUILL Key branding and menu label clarity (0.7.0)
+
+Two changes ship together so the QUILL key is recognizable on first encounter and so every menu item shows its keybinding.
+
+**Branding the chord.** The QUILL key chord is presented to the user as `QUILL Key + <key>` everywhere the editor exposes it: menus, the About > Keyboard Reference page, the QUILL Key Help dialog, the cheat sheet, and the status-bar / announce messages that fire while a chord prefix is pending. The stored binding (`Ctrl+Shift+Grave` in `DEFAULT_KEYMAP`, `keymap.json`, the `quill_key_binding` setting, the `legacy_rebindings` comparison table, and any saved `keymap/profile_*.json`) is unchanged — only the display layer rewrites the prefix. `quill.core.keymap_format.format_binding_for_display` is the single source of truth; `quill.branding.QUILL_KEY_LABEL = "QUILL Key"` is the single constant. Test coverage: 18 cases in `tests/unit/core/test_keymap_format.py`. A second helper, `format_quill_key_chord(prefix, second_key)`, composes a chord without inspecting a stored binding string so power-user status bar code can mention a chord without one in hand.
+
+**Binding/label gap detection.** `quill.tools._check_binding_label_consistency` is the 4th `menu_lint` invariant. The check walks the AST of `quill/ui/main_frame_menu.py` and flags three regression classes:
+
+1. `_menu_label("", "command.with.binding")` — empty title literal routed through the builder for a command that has a keybinding. This is the regression that motivated the gate: a blank title + a bound command produced a menu slot with no readable name.
+2. `<name>\t<binding>` literal drift — hand-written labels (the wx stock items and the editor's own `Close &Other Documents\tCtrl+Shift+F4`, `Help on This &Control\tF1`, `&What Can I Do Here?\tShift+F1`, `Open User &Guide\tCtrl+F1`) whose binding portion disagrees with the `DEFAULT_KEYMAP` entry or the wx stock binding.
+3. Trailing-tab labels — labels that end with `\t` and no binding portion. The user would see a menu name with a trailing tab and no accelerator.
+
+The runtime gap-check in `MainFrame._menu_label` (a one-shot `logger.warning` per affected item at first menu build) is the safety net for user-customization drift — a user who renames a label through the Customize dialog still gets a custom label; only the silent "blank menu slot" case is reported.
+
+The check is wired into `python -m quill.tools.menu_lint` and exposed via 12 new test cases in `tests/unit/tools/test_binding_label_consistency.py`. The gate is part of CI; a regression anywhere in the binding/label chain now fails the build.
+
+**Single source of truth for product name.** `tools/generate_build_info.py`, `scripts/generate_update_feed.py`, and `scripts/build_windows_distribution.py` import `APP_DISPLAY_NAME` and `APP_ORGANIZATION` from `quill.branding` so a rebrand touches one file. The TOML path still wins when `build/version.toml` provides a value (the installer and feed can be re-branded per release); the constant is the safety net for older checkouts and dev builds.
+
 ---
 
 ## 9. Accessibility, WCAG 2.2 AA conformance, and certification
@@ -3671,7 +3798,7 @@ Every dialog in Quill is the single highest-risk accessibility surface in the UI
 
 **High-risk clusters (sequenced first).** The concentration of lifecycle/focus risk is known and drives wave order: (1) `main_frame.py` modal sprawl (largest concentration); (2) `assistant_tools.py` (high interaction complexity, async actions, many custom dialog classes); (3) the startup/onboarding chain (`run_startup_wizard`, first-run prompts, trust consent, web-preview handoff); (4) sticky notes (historical focus-landing issues); and (5) mixed rendering surfaces (native + web + fallback) where behavior parity must be explicitly pinned. Already in place and relied upon: the shared `dialog_contract.py` modal helpers, the banned-pattern gate's existing `wx.ALIGN_RIGHT` and raw-`wx.Dialog` destroy-path checks, and the existing behavior tests for preview, web-form, and onboarding navigation.
 
-**Execution waves.** DLG-3 proceeds as: Phase 0 — authoritative source-generated registry + gates (delivered); Phase 1 — strengthened A11Y-4 static guard (delivered); Phase 2 — native conversion wave for hand-rolled dialogs that are really a single confirm / choice / text prompt, replaced with the stock one-shot equivalent, preserving all user-facing wording and outcomes; Phase 3 — enhanced-native standardization wave converging the genuinely multi-control dialogs onto one focus/default/lifecycle grammar via the shared contract (never flattened into one-shots where that would lose live search, lists, or streaming); Phase 4 — web-surface standardization only where rich rendering or dynamic forms are justified, with native-fallback parity and no raw HTML dumped into document tabs in onboarding/welcome paths; Phase 5 — startup/onboarding hardening (wizard, first-run, trust consent, crash recovery) for deterministic focus across chained modals, preserving the explicit-consent requirements and retiring the screen-reader startup-crash path; Phase 6 — assistant/AI tool dialog consolidation (`assistant_tools.py`, `ai_model_panel.py`, `style_panel.py`, `assistant_panel.py`) onto the same modal/focus/error contract with safe async/"busy" semantics; Phase 7 — CQ-16 characterization expansion around dialog-launch command paths (return values and side effects) before any CQ-1 decomposition; Phase 8 — manual NVDA baseline, JAWS spot (startup, assistant, sticky notes, watch profiles), and Narrator sanity passes across `dialogs.md`, each row carrying pass/fail evidence.
+**Execution waves.** DLG-3 proceeds as: Phase 0 — authoritative source-generated registry + gates (delivered); Phase 1 — strengthened A11Y-4 static guard (delivered); Phase 2 — native conversion wave for hand-rolled dialogs that are really a single confirm / choice / text prompt, replaced with the stock one-shot equivalent, preserving all user-facing wording and outcomes; Phase 3 — enhanced-native standardization wave converging the genuinely multi-control dialogs onto one focus/default/lifecycle grammar via the shared contract (never flattened into one-shots where that would lose live search, lists, or streaming); Phase 4 — web-surface standardization only where rich rendering or dynamic forms are justified, with native-fallback parity and no raw HTML dumped into document tabs in onboarding/welcome paths; Phase 5 — startup/onboarding hardening (wizard, first-run, trust consent, crash recovery) for deterministic focus across chained modals, preserving the explicit-consent requirements and retiring the screen-reader startup-crash path; Phase 6 — assistant/AI tool dialog consolidation (`assistant_tools.py`, `ai_model_panel.py`, `train_style_dialog.py`, `assistant_panel.py`) onto the same modal/focus/error contract with safe async/"busy" semantics; Phase 7 — CQ-16 characterization expansion around dialog-launch command paths (return values and side effects) before any CQ-1 decomposition; Phase 8 — manual NVDA baseline, JAWS spot (startup, assistant, sticky notes, watch profiles), and Narrator sanity passes across `dialogs.md`, each row carrying pass/fail evidence.
 
 **Dialog-by-dialog coverage map (no section exempt).** Every checklist family in `dialogs.md` is in scope with a default disposition: file/session dialogs (native-flow normalization + modal/focus hardening); settings/customization/dialog-launch surfaces (enhanced-native consistency — menu editor, settings, command palette); navigation dialogs (keep stock/input surfaces, harden bookmark/list/tree flows); text-analysis dialogs (normalize spell/lookup/thesaurus list workflows); accessibility-tools dialogs (focus/read-order consistency in results dialogs); intake/report dialogs (standardized preview/report modals); read-aloud/OCR dialogs (keep the OCR review contract, harden nested chooser flows); sticky-notes dialogs (retain web-form where justified, harden vault/list/editor transitions); external-tools/format dialogs (enhanced-native standard patterns); compare dialogs (consistent list/option/preview focus); keymap dialogs (stock controls + predictable nested edit flow); appearance/backup/import dialogs (import/export previews and file-picker transitions hardened); watch-folder dialogs (nested editor/browse/preview paths hardened); notifications dialog (standardized close/default semantics); formatting dialogs (preserve `show_web_form` for Insert Link, harden list/YAML nested flows); macros dialogs (text-entry + management standardization); AI/assistant dialogs (the DLG-2 conversions folded in); BITS speech dialogs (provider/model/status contract hardening); feature/profile dialogs (profile-switch, health, and management consistency); help/startup/support dialogs (wizard/about/diagnostics/report-bug rendering and focus safety); selection-action dialogs (action-chooser semantics hardened); nested/secondary dialogs (explicit coverage for each path launched from a parent); power-tools dialogs (stock prompt/confirm consistency); and startup-only dialogs (crash recovery + untrusted-location remain top-priority hardened native flows).
 
@@ -4346,7 +4473,7 @@ Last updated: 2026-06-02
 
 Todo counts: **160 v1.0 items** | **160 completed** | **0 remaining** (v1.0 scope); post-1.0 foundation work tracked in 21.17+ below.
 
-This is the implementation checklist for v1.0.0 and immediate post-1.0 foundations. It is intentionally granular and is updated in-place as work lands. The current shipping build is **0.1.5 Beta**; it implements the full v1.0 checklist (21.1–21.16) plus the post-1.0 foundation work recorded in 21.17 and later. Items still in progress are listed with `- [ ]`.
+This is the implementation checklist for v1.0.0 and immediate post-1.0 foundations. It is intentionally granular and is updated in-place as work lands. The current shipping build is **0.7.0 Beta**; it implements the full v1.0 checklist (21.1–21.16) plus the post-1.0 foundation work recorded in 21.17 and later. Items still in progress are listed with `- [ ]`.
 
 ### 21.1 Application shell and document lifecycle
 
@@ -4686,6 +4813,12 @@ Re-run opens the wizard in update mode with all pages pre-filled. Changed flags 
 | `feature_flags_ai` | bool | True | Master switch for all AI features |
 | `feature_flags_remote` | bool | True | Master switch for remote editing |
 | `feature_flags_quillins` | bool | True | Master switch for Quillins |
+| `import_export_recursive` | bool | True | Wizard default: include subfolders in batch conversion (`### 5.3a.1`) |
+| `import_export_overwrite` | choice | `ask` | Wizard default: `ask`, `never`, or `always` |
+| `import_export_output_layout` | choice | `subfolder` | Wizard default: `subfolder` or `same_folder` |
+| `import_export_last_folder` | text | `""` | Wizard-only: remembered last folder; not exposed in Preferences |
+
+The four `import_export_*` fields are documented in full at `### 5.3a.1.6`. They are written by the Startup Wizard when the chosen intent profile enables Pandoc import / export, and by the Batch Conversion wizard on every successful Start click.
 | `feature_flags_power_tools` | bool | True | Master switch for Power Tools |
 | `feature_flags_notebook` | bool | True | Master switch for Notebook workspace |
 | `keymap_profile` | str | "default" | Active keyboard profile name |
@@ -4732,12 +4865,13 @@ The dialog is registered in `dialog_inventory.json`. `affirmative_id = wx.ID_CLO
 
 ### §23.4 Topics Coverage
 
-The schema (`quill/core/help/topics.json`) currently contains 109 topics covering:
+The schema (`quill/core/help/topics.json`) currently contains 134 topics covering:
 
 - Main editor surface, status bar, document tabs
 - All major dialogs: Find/Replace, Spell Check, AI Assistant, Remote/SSH, Preferences pages
 - Startup Wizard pages (F1 on any wizard control explains the effect of each choice)
 - Feature profiles, keyboard packs, read-aloud settings, GLOW workflows
+- All 25 braille commands registered in `quill/core/feature_command_map.py` (status, navigation, page tools, translation, back-translation, pack install, line/cell, progress, save-as-clean, line-ending normalize). A regression test in `tests/unit/tools/test_help_coverage.py` (`test_every_braille_command_has_a_help_topic`) walks the command map and fails CI if a new `braille.*` command ships without a topic.
 
 Full coverage target is 250 topics (all `SetName()` calls in `quill/ui/`).
 
@@ -5254,6 +5388,248 @@ backlog below rather than half-built.
 
 ---
 
+## §30. Branding, legal, and trademark policy (0.7.0+)
+
+### §30.1 Public product name
+
+The product ships under the public name **"QUILL for All"**. The legacy short
+name "Quill" remains valid as a programmer-friendly identifier (package name,
+`__init__` symbol, command-line tool name) but is no longer presented to end
+users in product surfaces.
+
+All product-facing strings — window titles, About dialog, support info,
+installer metadata, README, release notes, GitHub release titles — read
+`QUILL for All`. The single source of truth is `quill/branding.py`:
+
+- `APP_DISPLAY_NAME` = `"QUILL for All"`
+- `APP_FULL_NAME` = `"QUILL for All — A screen-reader-first writing environment"`
+- `APP_ORGANIZATION` = `"Community Access"`
+- `APP_DESCRIPTION` — short tagline used in installer metadata and README
+- `APP_COPYRIGHT` — copyright line displayed in About and README
+- `APP_LICENSE_NAME` — license name displayed in About and LICENSE
+- `APP_SHORT_NAME` = `"Quill"` — programmer-friendly identifier
+- `INDEPENDENCE_NOTICE` — explicit statement of independence from any
+  assistive-technology vendor
+
+### §30.2 Independence notice
+
+`INDEPENDENCE_NOTICE` is surfaced in:
+
+- The **About** dialog Legal tab
+- `about_info.support_info()` (the Copy Support Info payload)
+- The README Legal section
+- The Notice file at the repository root
+
+The notice states that QUILL for All is developed independently of any
+assistive-technology vendor and that vendor and screen-reader names appear for
+compatibility purposes only. This is non-negotiable.
+
+### §30.3 Trademark and legal documentation
+
+The repository ships four canonical legal documents. Their content is governed
+by a CI check that asserts each file contains the required notice strings.
+
+| File | Audience | Purpose |
+| --- | --- | --- |
+| `LICENSE` | All | Full license text (project license) |
+| `NOTICE` | All | Attribution notices and the independence statement |
+| `TRADEMARKS.md` | End users, contributors | Trademark acknowledgements and usage rules |
+| `docs/legal/legal-notices.md` | Embedded in About | Short, accessible summary shown in the Legal tab |
+| `docs/legal/trademark-notices.md` | Detailed reference | Full vendor acknowledgements with links |
+
+The `tests/unit/tools/test_legal_docs.py` gate ensures:
+
+1. The independence notice appears verbatim in each surface it is required in.
+2. `TRADEMARKS.md` lists every third-party trademark referenced in the
+   About dialog Dependencies tab.
+3. The product name "QUILL for All" appears consistently across all five
+   files.
+
+### §30.4 Module policy
+
+- No `quill/core`, `quill/io`, or `quill/platform` module may hard-code the
+  string `"QUILL for All"` or `"Community Access"` directly. Use
+  `quill.branding` constants instead.
+- `quill/ui` modules may reference the constants; literal string duplication
+  is discouraged but tolerated where templating would obscure intent.
+- New translations of the About dialog or support info payload must be
+  derived from the branding constants, not from copies of the strings.
+
+---
+
+## §31. Build-number system and single source of truth (0.7.0+)
+
+### §31.1 The drift problem
+
+Prior to 0.7.0, the version string lived in `quill/__init__.py` (`__version__`)
+and was copied — by hand — into `installer/quill.iss`, the CHANGELOG, the
+autoupdate manifest, README, and the GitHub release title. Each of those
+copies was a drift hazard: a version bump in the codebase could leave
+installer metadata, the update feed, and the docs all out of sync.
+
+### §31.2 `build/version.toml` — the canonical source
+
+The single source of truth is `build/version.toml`:
+
+```toml
+[build]
+base_version = "0.7.0"
+channel = "beta"           # dev | alpha | beta | rc | stable
+prerelease_number = 1
+product_name = "QUILL for All"
+publisher = "Community Access"
+website = "https://community-access.github.io/quill/"
+```
+
+The display version is derived as:
+
+- `stable` → `base_version` (e.g. `0.7.0`)
+- `alpha` → `{base_version} Alpha {prerelease_number}` (e.g. `0.7.0 Alpha 1`)
+- `beta` → `{base_version} Beta {prerelease_number}` (e.g. `0.7.0 Beta 1`)
+- `rc` → `{base_version} Release Candidate {prerelease_number}` (e.g. `0.7.0
+  Release Candidate 1`)
+
+### §31.3 Generated artefacts
+
+`tools/generate_build_info.py` reads `build/version.toml` and emits two
+artefacts:
+
+1. **`quill/_build_info.py`** — a small Python module of frozen constants
+   (`BUILD_BASE_VERSION`, `BUILD_CHANNEL`, `BUILD_PRERELEASE_NUMBER`,
+   `BUILD_PRODUCT_NAME`, `BUILD_PUBLISHER`, `BUILD_WEBSITE`,
+   `BUILD_DISPLAY_VERSION`, `BUILD_PEP440_VERSION`, `BUILD_IS_RELEASE_BUILD`).
+   This file is regenerated at packaging time and is the authoritative source
+   read by the About dialog, support info, crash reports, and InnoSetup.
+2. **`build/build-info.txt`** — a plain-text summary used by InnoSetup's
+   pre-build step to substitute `AppName`, `AppPublisher`, `AppVersion`, and
+   `OutputBaseFilename`.
+
+### §31.4 Safe read wrapper
+
+`quill/build_info.py` is a safe read wrapper around `quill/_build_info.py`.
+When the generated module is present it re-exports its constants. When it is
+absent (e.g. during a fresh clone before packaging) it falls back to safe
+dev-build defaults derived from `quill/__version__`:
+
+- `get_display_version()` — `"0.7.0 Beta 1"` form
+- `get_short_version()` — `"0.7.0"` form
+- `get_support_info()` — formatted text payload for the Copy Support Info
+  button
+- `is_release_build()` — `True` only when channel is `stable`
+
+`quill/__init__.py` re-exports both modules and the public helpers so that
+`from quill import build_info` and `from quill import APP_DISPLAY_NAME` work
+without further imports.
+
+### §31.5 The version consistency gate (GATE-VC)
+
+`quill/tools/check_version_consistency.py` is a CI gate. It asserts:
+
+- `pyproject.toml` uses `dynamic = ["version"]` and `[tool.hatch.version]
+  path = "quill/__init__.py"`.
+- `installer/quill.iss` `#define AppVersion` and `OutputBaseFilename` both
+  match the canonical version.
+- `CHANGELOG.md` top version heading matches.
+- All five checks pass together.
+
+The gate is run from `scripts/verify_release_corpus.py` and is included in
+`windows-release.yml`.
+
+### §31.6 The release procedure for version changes
+
+To bump the version:
+
+1. Edit `build/version.toml`.
+2. Run `python -m tools.generate_build_info` to refresh the generated
+   artefacts.
+3. Add a `## <new version>` heading to `CHANGELOG.md`.
+4. Run `pytest -q` and `python -m quill.tools.check_version_consistency`.
+5. Commit, push, tag.
+
+No other file (installer script, About dialog, manifest generator) needs
+editing — they all read from the canonical source.
+
+---
+
+## §32. About dialog (0.7.0+)
+
+The About dialog is a 4-tab `wx.Notebook`:
+
+1. **Overview** — product name, version, copyright, short description.
+2. **Legal** — license name, independence notice, and short legal summary
+   (mirrors `docs/legal/legal-notices.md`).
+3. **Dependencies** — list of third-party packages, license, and version
+   (mirrors the Dependencies section of TRADEMARKS.md).
+4. **Links** — website, source, issue tracker, support.
+
+Title is dynamic: `f"About {about_info.product_name}"`.
+
+The dialog also exposes a **Copy Support Info** button that copies
+`about_info.support_info()` (a single multi-line string containing product
+name, version, install path, build identity, and platform info) to the
+clipboard for inclusion in support emails and bug reports.
+
+`quill/core/about_info.py` is the single source of truth for every field
+the dialog renders. The dialog does no string formatting of its own.
+
+---
+
+## §33. Autoupdate manifest contract (0.7.0+)
+
+The autoupdate manifest at
+`docs/site/updates/.quill-update-feed-v1.json` is published by the
+`windows-release.yml` workflow on every tagged release. The manifest
+schema:
+
+```json
+{
+  "version": "0.7.0 Beta 2",
+  "download_url": "https://github.com/Community-Access/quill/releases/download/v0.7.0-beta2/Quill-for-All-Setup-0.7.0 Beta 2.exe",
+  "published_at": "2026-06-19T12:34:56Z",
+  "notes": "Release notes excerpt.",
+  "signature": "<HMAC-SHA256>"
+}
+```
+
+### §33.1 Invariants
+
+1. `manifest.version` matches the **display version** of the release
+   (e.g. `0.7.0 Beta 2`), not the PEP 440 form. The display form is what
+   `quill/build_info.get_display_version()` returns and what the running
+   build uses for version comparison.
+2. `manifest.download_url` matches the **actual installer filename** the
+   InnoSetup script produces (`Quill-for-All-Setup-<display_version>.exe`).
+   A rename in the installer script without updating the manifest is a
+   gate failure.
+3. `manifest.signature` is HMAC-SHA256 over the canonical JSON form of the
+   payload, signed with the deployment key in `QUILL_UPDATE_MANIFEST_KEY`.
+   The running build rejects manifests whose signature does not verify.
+
+### §33.2 Version comparison
+
+The running build compares its own display version against the manifest
+version using `quill.core.updates._version_tuple()`, which accepts both the
+display form (`0.7.0 Beta 1`) and the PEP 440 form (`0.7.0-beta1`) and
+orders them consistently:
+
+- A final (non-pre-release) build outranks every pre-release of the same
+  `major.minor.patch`.
+- Within pre-releases, RC > beta > alpha.
+- Pre-release digit ordering is monotonic (`beta1 < beta2 < beta3`).
+
+A 0.7.0 beta 1 build sees beta 2 as newer. A 0.7.0 stable build sees beta 1
+as older (so users on stable are not nagged about pre-releases).
+
+### §33.3 Publisher contract
+
+`scripts/generate_update_feed.py` is the only producer of the manifest. It
+reads `build/version.toml` for the version, reads the installer filename
+from `installer/quill.iss` for the download URL, and signs the payload.
+The `windows-release.yml` workflow runs it on every tagged release and
+commits the resulting JSON back to `docs/site/updates/`.
+
+---
+
 # Appendix: Engineering documentation
 
 _Folded in from the former docs/QUILL-PRD.md on 2026-06-13._
@@ -5602,7 +5978,7 @@ sense, already true — the genuine work is **contract hardening**, not rewrites
 | 3 | Enhanced-native contract standardization | **Done** | All 49 wire the shared contract; new AST guard prevents drift. |
 | 4 | Web-surface standardization | **Todo** | Confirm the 5 web surfaces have native-fallback parity and no raw HTML in onboarding tabs. |
 | 5 | Startup/onboarding hardening | **Todo** | Deterministic focus across chained startup modals; consent preserved. |
-| 6 | Assistant/AI dialog consolidation (folds DLG-2) | **Todo** | `assistant_tools.py`/`ai_model_panel.py`/`style_panel.py`/`assistant_panel.py` async/"busy" semantics. |
+| 6 | Assistant/AI dialog consolidation (folds DLG-2) | **Todo** | `assistant_tools.py`/`ai_model_panel.py`/`train_style_dialog.py`/`assistant_panel.py` async/"busy" semantics. |
 | 7 | CQ-16 characterization around dialog-launch paths | **Todo** | Return-value/side-effect regression tests before any CQ-1 split. |
 | 8 | Manual NVDA/JAWS/Narrator SR pass | **Todo** | Requires a live Windows screen-reader runtime; cannot be machine-verified. |
 

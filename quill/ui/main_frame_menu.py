@@ -49,6 +49,29 @@ class MenuBuilderMixin:
         self._id_print = wx.NewIdRef()
         self._id_save_plain_text = wx.NewIdRef()
         self._id_clear_recent = wx.NewIdRef()
+        # #262: Pandoc Import / Export menu ids (one per Tier-1 format).
+        # Each id binds through the command registry in main_frame.py.
+        self._id_import_markdown = wx.NewIdRef()
+        self._id_import_html = wx.NewIdRef()
+        self._id_import_docx = wx.NewIdRef()
+        self._id_import_odt = wx.NewIdRef()
+        self._id_import_rtf = wx.NewIdRef()
+        self._id_import_epub = wx.NewIdRef()
+        self._id_import_csv = wx.NewIdRef()
+        self._id_import_latex = wx.NewIdRef()
+        self._id_import_other = wx.NewIdRef()  # "Other Pandoc Format..."
+        self._id_export_markdown = wx.NewIdRef()
+        self._id_export_html = wx.NewIdRef()
+        self._id_export_docx = wx.NewIdRef()
+        self._id_export_odt = wx.NewIdRef()
+        self._id_export_rtf = wx.NewIdRef()
+        self._id_export_epub = wx.NewIdRef()
+        self._id_export_pdf = wx.NewIdRef()
+        self._id_export_plain_text = wx.NewIdRef()
+        self._id_export_other = wx.NewIdRef()  # "Other Pandoc Format..."
+        self._id_batch_convert_import = wx.NewIdRef()
+        self._id_batch_convert_export = wx.NewIdRef()
+        self._id_advanced_pandoc = wx.NewIdRef()  # placeholder for Tier-2/3
         self._sessions_menu = wx.Menu()
         self._open_documents_menu = wx.Menu()
         self._recent_sessions_menu = wx.Menu()
@@ -176,6 +199,98 @@ class MenuBuilderMixin:
         file_menu.Append(self._id_save_as, self._menu_label(_("Save &As..."), "file.save_as"))
         file_menu.Append(self._id_save_all, _("Save A&ll"))
         file_menu.Append(self._id_save_plain_text, _("Save As Plain &Text..."))
+        file_menu.AppendSeparator()
+        # --- Import / Export (issue #262) -----------------------------------
+        import_menu = wx.Menu()
+        import_menu.Append(
+            self._id_import_markdown,
+            self._menu_label(_("&Markdown..."), "file.import_markdown"),
+        )
+        import_menu.Append(
+            self._id_import_html,
+            self._menu_label(_("&HTML..."), "file.import_html"),
+        )
+        import_menu.Append(
+            self._id_import_docx,
+            self._menu_label(_("&Word Document..."), "file.import_docx"),
+        )
+        import_menu.Append(
+            self._id_import_odt,
+            self._menu_label(_("&OpenDocument Text..."), "file.import_odt"),
+        )
+        import_menu.Append(
+            self._id_import_rtf,
+            self._menu_label(_("&Rich Text Format..."), "file.import_rtf"),
+        )
+        import_menu.Append(
+            self._id_import_epub,
+            self._menu_label(_("&EPUB Book..."), "file.import_epub"),
+        )
+        import_menu.Append(
+            self._id_import_csv,
+            self._menu_label(_("CSV / &TSV Table..."), "file.import_csv"),
+        )
+        import_menu.Append(
+            self._id_import_latex,
+            self._menu_label(_("&LaTeX / TeX..."), "file.import_latex"),
+        )
+        import_menu.AppendSeparator()
+        import_menu.Append(
+            self._id_batch_convert_import,
+            self._menu_label(_("&Batch Conversion..."), "file.batch_conversion_import"),
+        )
+        import_menu.AppendSeparator()
+        import_menu.Append(
+            self._id_import_other,
+            self._menu_label(_("Other Pandoc Format..."), "file.import_other_pandoc"),
+        )
+        file_menu.AppendSubMenu(import_menu, _("&Import"))
+
+        export_menu = wx.Menu()
+        export_menu.Append(
+            self._id_export_markdown,
+            self._menu_label(_("&Markdown..."), "file.export_markdown"),
+        )
+        export_menu.Append(
+            self._id_export_html,
+            self._menu_label(_("&HTML..."), "file.export_html"),
+        )
+        export_menu.Append(
+            self._id_export_docx,
+            self._menu_label(_("&Word Document..."), "file.export_docx"),
+        )
+        export_menu.Append(
+            self._id_export_odt,
+            self._menu_label(_("&OpenDocument Text..."), "file.export_odt"),
+        )
+        export_menu.Append(
+            self._id_export_rtf,
+            self._menu_label(_("&Rich Text Format..."), "file.export_rtf"),
+        )
+        export_menu.Append(
+            self._id_export_epub,
+            self._menu_label(_("&EPUB Book..."), "file.export_epub"),
+        )
+        export_menu.Append(
+            self._id_export_pdf,
+            self._menu_label(_("&PDF Document..."), "file.export_pdf"),
+        )
+        export_menu.Append(
+            self._id_export_plain_text,
+            self._menu_label(_("Plain &Text..."), "file.export_plain_text"),
+        )
+        export_menu.AppendSeparator()
+        export_menu.Append(
+            self._id_batch_convert_export,
+            self._menu_label(_("&Batch Conversion..."), "file.batch_conversion_export"),
+        )
+        export_menu.AppendSeparator()
+        export_menu.Append(
+            self._id_export_other,
+            self._menu_label(_("Other Pandoc Format..."), "file.export_other_pandoc"),
+        )
+        file_menu.AppendSubMenu(export_menu, _("&Export"))
+
         file_menu.AppendSeparator()
         # --- Restore / reload ---
         file_menu.Append(self._id_reload_from_disk, _("&Reload from Disk"))
@@ -657,34 +772,36 @@ class MenuBuilderMixin:
         compare_menu = wx.Menu()
         compare_menu.Append(
             self._id_compare_start_with_file,
-            self._menu_label(_("&Compare with File..."), "compare.start_with_file"),
+            self._menu_label(_("&Compare with File..."), "tools.compare_with_file"),
         )
         compare_menu.AppendSeparator()
+        # #357 keymap consolidation: command ids use the tools.compare_*
+        # namespace and the F8/Shift+F8/Ctrl+F8 inline accelerators were
+        # stripped; the canonical bindings now live in DEFAULT_KEYMAP as
+        # Ctrl+Alt+Shift+> / < / D (see quill/core/keymap.py).
         compare_menu.Append(
             self._id_compare_next,
-            self._menu_label(_("&Next Difference\tF8"), "compare.next_difference"),
+            self._menu_label(_("&Next Difference"), "tools.compare_next_difference"),
         )
         compare_menu.Append(
             self._id_compare_previous,
-            self._menu_label(_("&Previous Difference\tShift+F8"), "compare.previous_difference"),
+            self._menu_label(_("&Previous Difference"), "tools.compare_previous_difference"),
         )
         compare_menu.Append(
             self._id_compare_current,
             self._menu_label(
-                _("Read &Current Difference\tCtrl+F8"),
-                "compare.current_difference_summary",
+                _("Read &Current Difference"),
+                "tools.compare_announce_difference",
             ),
         )
         compare_menu.AppendSeparator()
         compare_menu.Append(
             self._id_compare_toggle_whitespace,
-            self._menu_label(_("Toggle &Ignore Whitespace"), "compare.toggle_ignore_whitespace"),
+            self._menu_label(_("Toggle &Ignore Whitespace"), "tools.compare_toggle_sync"),
         )
         compare_menu.Append(
             self._id_compare_generate_report,
-            self._menu_label(
-                _("&Generate Accessible Report"), "compare.generate_accessible_report"
-            ),
+            self._menu_label(_("&Generate Accessible Report"), "tools.compare_options"),
         )
         navigate_menu.AppendSubMenu(compare_menu, _("&Compare"))
         navigate_menu.AppendSeparator()
@@ -767,6 +884,9 @@ class MenuBuilderMixin:
         self._id_outdent = wx.NewIdRef()
         self._id_move_line_up = wx.NewIdRef()
         self._id_move_line_down = wx.NewIdRef()
+        # PR1 (EdSharp port): section-move ids, distinct from move-line.
+        self._id_move_section_up = wx.NewIdRef()
+        self._id_move_section_down = wx.NewIdRef()
         self._id_duplicate_line = wx.NewIdRef()
         self._id_delete_line = wx.NewIdRef()
         self._id_join_lines = wx.NewIdRef()
@@ -774,6 +894,9 @@ class MenuBuilderMixin:
         self._id_unquote_lines = wx.NewIdRef()
         self._id_insert_bullet_list = wx.NewIdRef()
         self._id_insert_numbered_list = wx.NewIdRef()
+        # EdSharp port: toggle variants that strip or insert based on caret context.
+        self._id_toggle_bullet_list = wx.NewIdRef()
+        self._id_toggle_numbered_list = wx.NewIdRef()
         self._id_insert_task_list = wx.NewIdRef()
         self._id_open_list_manager = wx.NewIdRef()
         self._id_insert_code_block = wx.NewIdRef()
@@ -851,6 +974,14 @@ class MenuBuilderMixin:
         line_menu.Append(
             self._id_move_line_down,
             self._menu_label(_("Move Line &Down"), "format.move_line_down"),
+        )
+        line_menu.Append(
+            self._id_move_section_up,
+            self._menu_label(_("Move Secti&on Up"), "format.move_section_up"),
+        )
+        line_menu.Append(
+            self._id_move_section_down,
+            self._menu_label(_("Move Section Do&wn"), "format.move_section_down"),
         )
         line_menu.AppendSeparator()
         line_menu.Append(
@@ -1004,6 +1135,16 @@ class MenuBuilderMixin:
         list_menu.Append(
             self._id_insert_numbered_list,
             self._menu_label(_("&Numbered"), "format.insert_numbered_list"),
+        )
+        # EdSharp port: toggle variants — strip the list if the caret is
+        # already inside one, otherwise insert.  Bound to Ctrl+Alt+7/8.
+        list_menu.Append(
+            self._id_toggle_bullet_list,
+            self._menu_label(_("Toggle &Bullet"), "format.toggle_bullet_list"),
+        )
+        list_menu.Append(
+            self._id_toggle_numbered_list,
+            self._menu_label(_("Toggle &Numbered"), "format.toggle_numbered_list"),
         )
         list_menu.Append(
             self._id_insert_task_list,
@@ -1252,7 +1393,6 @@ class MenuBuilderMixin:
         self._id_keyboard_trap_snapshot = wx.NewIdRef()
         self._id_accessibility_audit = wx.NewIdRef()
         self._id_yaml_structure_editor = wx.NewIdRef()
-        self._id_whisperer_about = wx.NewIdRef()
         self._id_dev_console_python = wx.NewIdRef()
         self._id_dev_console_ts = wx.NewIdRef()
         self._id_dev_copy_diagnostic = wx.NewIdRef()
@@ -1261,6 +1401,10 @@ class MenuBuilderMixin:
         tools_menu.Append(
             self._id_palette,
             self._menu_label(_("&Command Palette..."), "app.command_palette"),
+        )
+        tools_menu.Append(
+            self._id_advanced_pandoc,
+            self._menu_label(_("&Pandoc Conversion Center..."), "tools.advanced_pandoc"),
         )
         tools_menu.AppendSeparator()
 
@@ -1519,27 +1663,31 @@ class MenuBuilderMixin:
             self._id_check_grammar_ai,
             self._menu_label(_("Check Grammar with &AI..."), "tools.check_grammar_ai"),
         )
+        # #357 keymap consolidation: the F7/Shift+F7/F8/Shift+F8/Ctrl+Shift+T
+        # inline accelerators were stripped; the canonical bindings now live
+        # in DEFAULT_KEYMAP as Ctrl+Alt+Shift+S/I/G/T/H (see
+        # quill/core/keymap.py).  Inline accelerators are kept only where
+        # they remain the canonical binding and no chord keymap entry
+        # exists for the command.
         ai_menu.AppendSeparator()
         ai_menu.Append(
             self._id_ai_spell_check,
-            self._menu_label(_("AI &Spell Check...\tF7"), "tools.ai_spell_check"),
+            self._menu_label(_("AI &Spell Check..."), "tools.ai_spell_check"),
         )
         ai_menu.Append(
             self._id_ai_spell_check_interactive,
             self._menu_label(
-                _("AI Spell Check &Interactive...\tShift+F7"), "tools.ai_spell_check_interactive"
+                _("AI Spell Check &Interactive..."), "tools.ai_spell_check_interactive"
             ),
         )
         ai_menu.Append(
             self._id_ai_grammar_style,
-            self._menu_label(_("AI &Grammar and Style Check...\tF8"), "tools.ai_grammar_style"),
+            self._menu_label(_("AI &Grammar and Style Check..."), "tools.ai_grammar_style"),
         )
         ai_menu.AppendSeparator()
         ai_menu.Append(
             self._id_ai_translate_selection,
-            self._menu_label(
-                _("Translate &Selection...\tCtrl+Shift+T"), "tools.ai_translate_selection"
-            ),
+            self._menu_label(_("Translate &Selection..."), "tools.ai_translate_selection"),
         )
         ai_menu.Append(
             self._id_ai_translate_document,
@@ -1578,7 +1726,7 @@ class MenuBuilderMixin:
         )
         ai_menu.Append(
             self._id_ai_thesaurus,
-            self._menu_label(_("AI &Thesaurus...\tShift+F8"), "tools.ai_thesaurus"),
+            self._menu_label(_("AI &Thesaurus..."), "tools.ai_thesaurus"),
         )
         ai_menu.AppendSeparator()
         ai_menu.Append(
@@ -2024,6 +2172,66 @@ class MenuBuilderMixin:
             lambda _e: self.save_as_plain_text(),
             id=self._id_save_plain_text,
         )
+        # #262: Pandoc Import / Export menu bindings.
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.import_document("markdown"), id=self._id_import_markdown
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.import_document("html"), id=self._id_import_html
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.import_document("docx"), id=self._id_import_docx
+        )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.import_document("odt"), id=self._id_import_odt)
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.import_document("rtf"), id=self._id_import_rtf)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.import_document("epub"), id=self._id_import_epub
+        )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.import_document("csv"), id=self._id_import_csv)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.import_document("latex"), id=self._id_import_latex
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.import_document_other(), id=self._id_import_other
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.export_document("markdown"), id=self._id_export_markdown
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.export_document("html"), id=self._id_export_html
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.export_document("docx"), id=self._id_export_docx
+        )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.export_document("odt"), id=self._id_export_odt)
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.export_document("rtf"), id=self._id_export_rtf)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.export_document("epub"), id=self._id_export_epub
+        )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.export_document("pdf"), id=self._id_export_pdf)
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.export_document("plain_text"),
+            id=self._id_export_plain_text,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.export_document_other(), id=self._id_export_other
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.run_batch_conversion_wizard(),
+            id=self._id_batch_convert_import,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.run_batch_conversion_wizard(),
+            id=self._id_batch_convert_export,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_advanced_pandoc_placeholder(),
+            id=self._id_advanced_pandoc,
+        )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_palette(), id=self._id_palette)
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.open_general_preferences(), id=self._id_preferences
@@ -2138,11 +2346,6 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.run_startup_wizard(),
             id=self._id_profile_onboarding,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.show_whisperer_about_page(),
-            id=self._id_whisperer_about,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -2731,6 +2934,10 @@ class MenuBuilderMixin:
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_outdent(), id=self._id_outdent)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.move_line_up(), id=self._id_move_line_up)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.move_line_down(), id=self._id_move_line_down)
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.move_section_up(), id=self._id_move_section_up)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.move_section_down(), id=self._id_move_section_down
+        )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.duplicate_line(), id=self._id_duplicate_line)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.delete_line(), id=self._id_delete_line)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.join_lines(), id=self._id_join_lines)
@@ -2767,6 +2974,17 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.format_insert_numbered_list(),
             id=self._id_insert_numbered_list,
+        )
+        # EdSharp port: toggle variants bound to Ctrl+Alt+7/8.
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.toggle_bullet_list(),
+            id=self._id_toggle_bullet_list,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.toggle_numbered_list(),
+            id=self._id_toggle_numbered_list,
         )
         self.frame.Bind(
             wx.EVT_MENU,

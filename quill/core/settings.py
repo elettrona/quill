@@ -33,9 +33,10 @@ class Settings:
     wrap_find: bool = True
     browse_mode_wrap: bool = True
     browse_mode_feedback: str = "speech"
+    browse_mode_move_detail: str = "position"
     browse_mode_preload_cache: bool = True
     quill_key_binding: str = "Ctrl+Shift+Grave"
-    quill_key_timeout_seconds: float = 1.5
+    quill_key_timeout_seconds: float = 2.5
     browse_mode_followon_timeout: str = "unlimited"
     browse_mode_followon_custom_ms: int = 4000
     csv_open_mode: str = "prompt"
@@ -88,6 +89,7 @@ class Settings:
     markdown_profile_id: str = "standard"
     citation_style: str = "footnotes"
     auto_clean_html_paste: bool = False
+    list_auto_fill_numbers: bool = False
     abbreviation_expansion: bool = True
     abbreviation_expansion_sound: bool = False
     abbreviation_expansion_sound_file: str = ""
@@ -113,6 +115,12 @@ class Settings:
     watch_folder_process_existing: bool = False
     watch_folder_auto_start: bool = False
     watch_folder_poll_interval_seconds: int = 5
+    # #262: Pandoc Import / Export batch conversion defaults. The wizard
+    # reads these as starting values; the user can override per batch.
+    import_export_recursive: bool = True
+    import_export_overwrite: str = "ask"
+    import_export_output_layout: str = "subfolder"
+    import_export_last_folder: str = ""
     # SET-2: tunable timing and pacing
     autosave_interval_seconds: int = 30
     quick_nav_debounce_ms: int = 250
@@ -181,6 +189,17 @@ class Settings:
     language: str = ""
     # WIZARD: True once the first-run setup wizard has completed.
     setup_wizard_completed: bool = False
+    # WIZARD: intent profile picked by the user in the first-run setup wizard.
+    # Empty string means "no choice yet" (defaults to the writer of the default
+    # text_editor profile in main_frame.run_startup_wizard). Mirrors the values
+    # that the wizard writes to settings so subsequent reads survive a save/reload.
+    setup_wizard_intent: str = ""
+    # WIZARD: optional extras toggled on by the wizard (used to apply Quillins
+    # after the dialog closes). Defaults match the getattr fallbacks that the
+    # caller historically used when these fields were not persisted.
+    setup_wizard_wants_ai: bool = False
+    setup_wizard_wants_braille: bool = False
+    setup_wizard_wants_automation: bool = False
     # UPGRADE: True once we have shown the post-upgrade braille-pack install prompt.
     upgrade_prompt_braille_pack: bool = False
     # QDC: Developer Console settings.
@@ -225,6 +244,14 @@ class Settings:
     hygiene_allow_double_space_after_period: bool = False
     hygiene_max_blank_lines: int = 2
     hygiene_rules_disabled: str = ""  # comma-separated rule IDs
+    # #303: Heading Organizer duplicate-H1 check. When true, the
+    # organizer flags documents that have more than one H1 as an
+    # accessibility warning. The default of False preserves the
+    # pre-#303 behavior (only "must start at H1" and "skipped level"
+    # issues were surfaced). Opt-in so existing users who deliberately
+    # split long works into multiple top-level chapters are not
+    # surprised by a new warning.
+    heading_organizer_warn_duplicate_h1: bool = False
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Settings:
@@ -236,6 +263,11 @@ class Settings:
         browse_mode_feedback = str(data.get("browse_mode_feedback", "speech")).strip().lower()
         if browse_mode_feedback not in {"sound", "speech", "both", "none"}:
             browse_mode_feedback = "speech"
+        browse_mode_move_detail = (
+            str(data.get("browse_mode_move_detail", "position")).strip().lower()
+        )
+        if browse_mode_move_detail not in {"none", "line", "position"}:
+            browse_mode_move_detail = "position"
         browse_mode_preload_cache = bool(
             data.get(
                 "browse_mode_preload_cache",
@@ -246,9 +278,9 @@ class Settings:
         if not quill_key_binding:
             quill_key_binding = "Ctrl+Shift+Grave"
         try:
-            quill_key_timeout_seconds = float(data.get("quill_key_timeout_seconds", 1.5))
+            quill_key_timeout_seconds = float(data.get("quill_key_timeout_seconds", 2.5))
         except (TypeError, ValueError):
-            quill_key_timeout_seconds = 1.5
+            quill_key_timeout_seconds = 2.5
         if quill_key_timeout_seconds < 0:
             quill_key_timeout_seconds = 0.0
         if quill_key_timeout_seconds > 60:
@@ -257,9 +289,9 @@ class Settings:
         # (preset token) plus an integer custom-ms override. Unknown tokens
         # fall back to 'unlimited' so the consumer treats them as no
         # timeout. Custom-ms clamps to [0, 60000] ms = [0, 60] s.
-        browse_mode_followon_timeout = str(
-            data.get("browse_mode_followon_timeout", "unlimited")
-        ).strip().lower()
+        browse_mode_followon_timeout = (
+            str(data.get("browse_mode_followon_timeout", "unlimited")).strip().lower()
+        )
         if browse_mode_followon_timeout not in {
             "instant",
             "fast",
@@ -270,9 +302,7 @@ class Settings:
         }:
             browse_mode_followon_timeout = "unlimited"
         try:
-            browse_mode_followon_custom_ms = int(
-                data.get("browse_mode_followon_custom_ms", 4000)
-            )
+            browse_mode_followon_custom_ms = int(data.get("browse_mode_followon_custom_ms", 4000))
         except (TypeError, ValueError):
             browse_mode_followon_custom_ms = 4000
         if browse_mode_followon_custom_ms < 0:
@@ -383,9 +413,7 @@ class Settings:
             data.get("announcement_startup_tips_enabled", False)
         )
         verbosity_speech_enabled = bool(data.get("verbosity_speech_enabled", True))
-        announce_screen_reader_detected = bool(
-            data.get("announce_screen_reader_detected", False)
-        )
+        announce_screen_reader_detected = bool(data.get("announce_screen_reader_detected", False))
         assistant_enabled = bool(data.get("assistant_enabled", False))
         assistant_prompt_style = str(data.get("assistant_prompt_style", "balanced")).strip().lower()
         if assistant_prompt_style not in {"balanced", "concise", "gentle", "technical"}:
@@ -437,6 +465,17 @@ class Settings:
         watch_folder_include_subfolders = bool(data.get("watch_folder_include_subfolders", False))
         watch_folder_process_existing = bool(data.get("watch_folder_process_existing", False))
         watch_folder_auto_start = bool(data.get("watch_folder_auto_start", False))
+        # #262: Pandoc Import / Export defaults.
+        import_export_recursive = bool(data.get("import_export_recursive", True))
+        import_export_overwrite = str(data.get("import_export_overwrite", "ask")).strip()
+        if import_export_overwrite not in {"ask", "never", "always"}:
+            import_export_overwrite = "ask"
+        import_export_output_layout = str(
+            data.get("import_export_output_layout", "subfolder")
+        ).strip()
+        if import_export_output_layout not in {"subfolder", "same_folder"}:
+            import_export_output_layout = "subfolder"
+        import_export_last_folder = str(data.get("import_export_last_folder", "")).strip()
         try:
             watch_folder_poll_interval_seconds = int(
                 data.get("watch_folder_poll_interval_seconds", 5)
@@ -538,6 +577,10 @@ class Settings:
         bug_reporter_email = str(data.get("bug_reporter_email", "")).strip()
         language = str(data.get("language", "")).strip()
         setup_wizard_completed = bool(data.get("setup_wizard_completed", False))
+        setup_wizard_intent = str(data.get("setup_wizard_intent", "")).strip()
+        setup_wizard_wants_ai = bool(data.get("setup_wizard_wants_ai", False))
+        setup_wizard_wants_braille = bool(data.get("setup_wizard_wants_braille", False))
+        setup_wizard_wants_automation = bool(data.get("setup_wizard_wants_automation", False))
         upgrade_prompt_braille_pack = bool(data.get("upgrade_prompt_braille_pack", False))
         console_enabled = bool(data.get("console_enabled", True))
         try:
@@ -639,6 +682,11 @@ class Settings:
         except (TypeError, ValueError):
             hygiene_max_blank_lines = 2
         hygiene_rules_disabled = str(data.get("hygiene_rules_disabled", "")).strip()
+        # #303: Heading Organizer duplicate-H1 warning opt-in. Default
+        # to False so existing users are not surprised.
+        heading_organizer_warn_duplicate_h1 = bool(
+            data.get("heading_organizer_warn_duplicate_h1", False)
+        )
         if recent_files_limit < 1:
             recent_files_limit = 1
         if recent_files_limit > 50:
@@ -654,6 +702,7 @@ class Settings:
             wrap_find=wrap_find,
             browse_mode_wrap=browse_mode_wrap,
             browse_mode_feedback=browse_mode_feedback,
+            browse_mode_move_detail=browse_mode_move_detail,
             browse_mode_preload_cache=browse_mode_preload_cache,
             quill_key_binding=quill_key_binding,
             quill_key_timeout_seconds=quill_key_timeout_seconds,
@@ -727,6 +776,10 @@ class Settings:
             watch_folder_process_existing=watch_folder_process_existing,
             watch_folder_auto_start=watch_folder_auto_start,
             watch_folder_poll_interval_seconds=watch_folder_poll_interval_seconds,
+            import_export_recursive=import_export_recursive,
+            import_export_overwrite=import_export_overwrite,
+            import_export_output_layout=import_export_output_layout,
+            import_export_last_folder=import_export_last_folder,
             autosave_interval_seconds=autosave_interval_seconds,
             quick_nav_debounce_ms=quick_nav_debounce_ms,
             quick_nav_min_chars=quick_nav_min_chars,
@@ -783,6 +836,10 @@ class Settings:
             multi_press_window_ms=multi_press_window_ms,
             language=language,
             setup_wizard_completed=setup_wizard_completed,
+            setup_wizard_intent=setup_wizard_intent,
+            setup_wizard_wants_ai=setup_wizard_wants_ai,
+            setup_wizard_wants_braille=setup_wizard_wants_braille,
+            setup_wizard_wants_automation=setup_wizard_wants_automation,
             upgrade_prompt_braille_pack=upgrade_prompt_braille_pack,
             console_enabled=console_enabled,
             console_python_timeout=console_python_timeout,
@@ -815,6 +872,7 @@ class Settings:
             hygiene_allow_double_space_after_period=hygiene_allow_double_space_after_period,
             hygiene_max_blank_lines=hygiene_max_blank_lines,
             hygiene_rules_disabled=hygiene_rules_disabled,
+            heading_organizer_warn_duplicate_h1=heading_organizer_warn_duplicate_h1,
         )
 
 

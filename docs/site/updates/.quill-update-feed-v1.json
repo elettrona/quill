@@ -1,7 +1,7 @@
 {
-  "version": "0.5.0",
-  "download_url": "https://github.com/Community-Access/quill/releases/download/v0.5.0/Quill-Setup-0.5.0.exe",
-  "published_at": "2026-05-30T00:00:00Z",
-  "notes": "Quill 0.5.0 Beta: a screen-reader-first writing environment for Windows. Multi-document workspace, command palette, interactive status bar, Read Aloud, Notebooks, Pandoc import, Compare Mode, Find in Files, OCR, Macros, Remote files, feature profiles, and full keyboard and screen-reader coverage.",
-  "signature": "e8b9e9347bda9cdb3a810483ed0a1efac214b8147d410477161025dec9eb65f4"
+  "version": "0.7.0 Beta 1",
+  "download_url": "https://github.com/Community-Access/quill/releases/download/v0.7.0-beta.1/Quill-for-All-Setup-0.7.0.Beta.1.exe",
+  "published_at": "2026-06-20T16:46:34Z",
+  "notes": "",
+  "signature": "a3035e5e6e0cfd17d9f0702deb1b95a9d6015ac88cf35b39285c499799d18a79"
 }

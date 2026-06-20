@@ -216,8 +216,7 @@ Before tagging a release:
 3. `python scripts/check_docs_artifacts.py`
 4. Windows packaging workflow readiness (`.github/workflows/windows-release.yml`)
 
-Release notes are prepared in `rel.md` at the repo root and converted to `rel.html` and `rel.epub`
-by Pandoc. `CHANGELOG.md` carries the same content in abbreviated form. All three files should be
+Release notes are prepared in a release notes file with the version as a part of its naming convention ('release0.7.0.md'). The file is then converted to epub and html file formats for distribution by Pandoc. `CHANGELOG.md` carries the same content in abbreviated form. All three files should be
 updated and committed before tagging.
 
 Versioning follows semantic intent for user-visible behavior:

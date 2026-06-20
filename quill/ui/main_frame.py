@@ -24,7 +24,7 @@ except ImportError:  # pragma: no cover - non-Windows fallback
 if TYPE_CHECKING:  # imports kept out of cold-start path
     from quill.core.epub import EpubBook, EpubChapter
 
-from quill import __version__
+from quill import __version__, build_info
 from quill.core import thesaurus as thesaurus_engine
 from quill.core.a11y_regions import (
     RegionTracker,
@@ -181,13 +181,6 @@ from quill.core.guides import (
     build_keyboard_shortcut_html,
     build_welcome_guide,
 )
-from quill.core.heading_organizer import (
-    HeadingBlock,
-    apply_heading_organizer_edits,
-    heading_context_at,
-    parse_heading_blocks,
-    validate_heading_sequence,
-)
 from quill.core.heading_styles import HeadingStyle, apply_heading_style
 from quill.core.intake import (
     build_bad_extraction_package,
@@ -211,6 +204,7 @@ from quill.core.keymap import (
     export_keyboard_pack,
     export_keymap,
     find_keymap_conflict,
+    format_binding_for_display,
     import_keyboard_pack,
     import_keymap,
     keyboard_pack_description,
@@ -237,6 +231,18 @@ from quill.core.link_inventory import collect_link_inventory, render_link_invent
 from quill.core.links import build_link_text, find_link_at_cursor, infer_markup_kind
 from quill.core.locations import LocationRing
 from quill.core.macros import MacroManager
+from quill.core.markdown_sections import (
+    _LIST_AUTO_FILL_ARM_SECONDS,
+    HeadingBlock,
+    apply_heading_organizer_edits,
+    fill_numbered_markers,
+    heading_context_at,
+    is_caret_inside_list,
+    parse_heading_blocks,
+    should_auto_fill_numbers,
+    strip_list_markers,
+    validate_heading_sequence,
+)
 from quill.core.marks import MarkRing, NamedMarks, line_column_for_position
 from quill.core.menu_customization import (
     MenuCustomization,
@@ -262,6 +268,7 @@ from quill.core.onboarding import (
     load_speech_onboarding_complete,
     load_startup_wizard_prompt_suppressed,
     load_trust_consent_complete,
+    load_trust_consent_status,
     load_watch_folder_onboarding_complete,
     mark_assistant_onboarding_complete,
     mark_glow_onboarding_complete,
@@ -270,6 +277,7 @@ from quill.core.onboarding import (
     mark_startup_wizard_prompt_suppressed,
     mark_trust_consent_complete,
     mark_watch_folder_onboarding_complete,
+    trust_consent_change_log,
 )
 from quill.core.outline import OutlineEntry, extract_outline_entries
 from quill.core.paths import app_data_dir, ensure_app_directories
@@ -444,10 +452,11 @@ from quill.io.pandoc import (
     PandocConversionError,
     PandocUnavailableError,
     convert_document_with_pandoc,
+    convert_file_with_pandoc,
 )
 from quill.io.text import read_text_document
 from quill.platform.windows.high_contrast import is_high_contrast_enabled
-from quill.platform.windows.prism_bridge import AnnouncementEngine
+from quill.platform.windows.prism_bridge import AnnouncementEngine, prewarm_pyttsx3_engine
 from quill.platform.windows.shell_integration import (
     apply_shell_verb_settings,
     build_shell_integration_plan,
@@ -501,6 +510,7 @@ from quill.ui.main_frame_power_tools_menu import PowerToolsMenuMixin
 from quill.ui.main_frame_profile_picker import ProfilePickerMixin
 from quill.ui.main_frame_quill_key import QuillKeyMixin
 from quill.ui.main_frame_quillins import QuillinsMenuMixin
+from quill.ui.main_frame_section_move import SectionMoveMixin
 from quill.ui.main_frame_selection import SelectionMarksMixin
 from quill.ui.main_frame_sessions import SessionsMixin
 from quill.ui.main_frame_ssh import SshEditingMixin
@@ -519,7 +529,7 @@ from quill.ui.share_dialogs import (
     write_export,
 )
 from quill.ui.sticky_notes import StickyNoteEditorDialog, StickyNotesVaultDialog
-from quill.ui.style_panel import TrainStyleDialog
+from quill.ui.train_style_dialog import TrainStyleDialog
 from quill.ui.word_view import WordDocumentSurface
 
 
@@ -798,6 +808,7 @@ class MainFrame(
     StatusBarMixin,
     IntellisensePopupMixin,
     LineCommandsMixin,
+    SectionMoveMixin,
     CopyTrayMixin,
     ProfilePickerMixin,
     SshEditingMixin,
@@ -837,6 +848,7 @@ class MainFrame(
         "suggestion": "Suggested Action",
         "notebook_goal": "Notebook Goal",
         "braille": "Braille",
+        "section_heading": "Section",
     }
     _STATUS_BAR_WIDTHS: dict[str, int] = {
         "message": -1,
@@ -862,6 +874,7 @@ class MainFrame(
         "suggestion": 220,
         "notebook_goal": 200,
         "braille": 320,
+        "section_heading": 220,
     }
     _STATUS_BAR_FEATURES: dict[str, str] = {
         "message": "core.app",
@@ -887,6 +900,7 @@ class MainFrame(
         "suggestion": "core.app",
         "notebook_goal": "core.notebook",
         "braille": "core.braille",
+        "section_heading": "core.format",
     }
     _MACRO_CONTROL_COMMANDS: frozenset[str] = frozenset({
         "tools.start_macro_recording",
@@ -956,6 +970,9 @@ class MainFrame(
         ensure_app_directories()
         self._first_run_profile_prompt = not safe_mode and not load_onboarding_complete()
         self._first_run_trust_consent_prompt = not safe_mode and not load_trust_consent_complete()
+        # Cache the on-disk consent status so the re-consent dialog can branch
+        # between first-install and "your prior consent is out of date" (#305).
+        self._trust_consent_status = load_trust_consent_status()
         self.features = FeatureManager.load(persistent=not safe_mode)
         self.macros = MacroManager.load(persistent=not safe_mode)
         self.settings = load_settings()
@@ -1071,6 +1088,7 @@ class MainFrame(
         self._compare_ignore_line_endings = True
         self._empty_workspace_active = False
         self._announcement_engine = AnnouncementEngine(self.settings.announcement_backend)
+        prewarm_pyttsx3_engine()
         self._announcement_error_reported = ""
         self._read_aloud = ReadAloudController()
         self._dictation = DictationController()
@@ -1151,6 +1169,13 @@ class MainFrame(
         self._active_tab_index = -1
         self._statusbar_cells: list[_StatusBarCell] = []
         self._active_statusbar_cell_index = 0
+        # EdSharp port: per-document arming flag for numbered-list auto-fill.
+        # Set to time.monotonic() + _LIST_AUTO_FILL_ARM_SECONDS the first time
+        # the user toggles a numbered list on the active document; cleared on
+        # document close.  The flag means the three-way auto-fill gate in
+        # should_auto_fill_numbers() returns True even when the surface is
+        # not markdown and the setting is off.
+        self._numbered_list_armed_until = 0.0
         self._documents_sizer.Add(self.notebook, 1, wx.EXPAND)
         self._entries_panel = NotebookEntriesPanel(self._main_splitter, wx)
         self._entries_panel.panel.Bind(wx.EVT_SET_FOCUS, self._on_container_focus)
@@ -3106,6 +3131,20 @@ class MainFrame(
             self.move_line_down,
             self._binding_for("format.move_line_down"),
         )
+        # PR1 (EdSharp port): section-move pair. Bound to Alt+Shift+Up/Down.
+        # See docs/keybinding-standard.md for the §edsharp-ok justification.
+        self.commands.register(
+            "format.move_section_up",
+            "Move Section Up",
+            self.move_section_up,
+            self._binding_for("format.move_section_up"),
+        )
+        self.commands.register(
+            "format.move_section_down",
+            "Move Section Down",
+            self.move_section_down,
+            self._binding_for("format.move_section_down"),
+        )
         self.commands.register(
             "format.duplicate_line",
             "Duplicate Line",
@@ -3135,6 +3174,21 @@ class MainFrame(
             "Insert Numbered List",
             self.format_insert_numbered_list,
             None,
+        )
+        # EdSharp port: list-toggle variants strip an existing list or insert
+        # a new one based on the caret context.  See _toggle_list in this
+        # module for the insert-vs-strip decision.
+        self.commands.register(
+            "format.toggle_bullet_list",
+            "Toggle Bullet List",
+            self.toggle_bullet_list,
+            self._binding_for("format.toggle_bullet_list"),
+        )
+        self.commands.register(
+            "format.toggle_numbered_list",
+            "Toggle Numbered List",
+            self.toggle_numbered_list,
+            self._binding_for("format.toggle_numbered_list"),
         )
         self.commands.register(
             "format.insert_task_list",
@@ -3494,7 +3548,6 @@ class MainFrame(
             "help.status_page": self._id_help_status_page,
             "help.startup_wizard": self._id_profile_onboarding,
             "help.context_help": self._id_announce_context_shortcuts,
-            "whisperer.about": self._id_whisperer_about,
             "whisperer.model_manager": self._id_bw_model_manager,
             "whisperer.model_status": self._id_bw_model_status,
             "whisperer.model_recommend": self._id_bw_model_recommend,
@@ -3530,6 +3583,9 @@ class MainFrame(
             "format.outdent": self._id_outdent,
             "format.move_line_up": self._id_move_line_up,
             "format.move_line_down": self._id_move_line_down,
+            # PR1 (EdSharp port): section-move command ids.
+            "format.move_section_up": self._id_move_section_up,
+            "format.move_section_down": self._id_move_section_down,
             "format.duplicate_line": self._id_duplicate_line,
             "format.delete_line": self._id_delete_line,
             "format.insert_html_tag": self._id_insert_html_tag,
@@ -4163,7 +4219,11 @@ class MainFrame(
         snippet = find_snippet_by_trigger(self._snippet_library.snippets, token)
         if snippet is None:
             return False
-        rendered = self._render_snippet_with_prompts(snippet)
+        try:
+            rendered = self._render_snippet_with_prompts(snippet)
+        except ValueError as exc:
+            self._set_status(f'Snippet "{snippet.name}" has an invalid placeholder: {exc}')
+            return False
         if rendered is None:
             return False
         before = text[:token_start]
@@ -4196,8 +4256,11 @@ class MainFrame(
 
     def _on_editor_caret_activity(self, event: object) -> None:
         self._refresh_statusbar()
-        self._maybe_announce_indent()
-        self._maybe_play_indent_tone()
+        try:
+            self._maybe_announce_indent()
+            self._maybe_play_indent_tone()
+        except RuntimeError:  # #603/#269: editor can be a dead TextCtrl mid-event.
+            pass
         event.Skip()
 
     def _on_editor_key_up(self, event: object) -> None:
@@ -5049,6 +5112,9 @@ class MainFrame(
             move_up_id = wx.NewIdRef()
             move_down_id = wx.NewIdRef()
             join_id = wx.NewIdRef()
+            # PR1 (EdSharp port): section-move entries.
+            move_section_up_id = wx.NewIdRef()
+            move_section_down_id = wx.NewIdRef()
             line_menu.Append(dup_id, self._menu_label("Duplicate Line", "edit.duplicate_line"))
             line_menu.Append(del_id, self._menu_label("Delete Line", "edit.delete_line"))
             line_menu.Append(move_up_id, self._menu_label("Move Line Up", "edit.move_line_up"))
@@ -5056,11 +5122,23 @@ class MainFrame(
                 move_down_id, self._menu_label("Move Line Down", "edit.move_line_down")
             )
             line_menu.Append(join_id, "Join With Next Line")
+            line_menu.Append(
+                move_section_up_id,
+                self._menu_label("Move Section Up", "format.move_section_up"),
+            )
+            line_menu.Append(
+                move_section_down_id,
+                self._menu_label("Move Section Down", "format.move_section_down"),
+            )
             line_menu.Bind(wx.EVT_MENU, lambda _e: self.duplicate_line(), id=dup_id)
             line_menu.Bind(wx.EVT_MENU, lambda _e: self.delete_line(), id=del_id)
             line_menu.Bind(wx.EVT_MENU, lambda _e: self.move_line_up(), id=move_up_id)
             line_menu.Bind(wx.EVT_MENU, lambda _e: self.move_line_down(), id=move_down_id)
             line_menu.Bind(wx.EVT_MENU, lambda _e: self.join_lines(), id=join_id)
+            line_menu.Bind(wx.EVT_MENU, lambda _e: self.move_section_up(), id=move_section_up_id)
+            line_menu.Bind(
+                wx.EVT_MENU, lambda _e: self.move_section_down(), id=move_section_down_id
+            )
             menu.AppendSubMenu(line_menu, "Line")
 
         # --- GLOW submenu (core.glow). ---
@@ -6441,8 +6519,29 @@ class MainFrame(
         label = self._ensure_menu_customization().item_label(command_id, title)
         binding = self.commands.keybinding_for(command_id)
         if binding is None:
+            # Runtime gap check: a menu item that has no binding AND
+            # no visible label produces a blank slot in the menu. The
+            # customization layer can legitimately return a custom
+            # label (we cannot tell that from the resolved label
+            # alone), so we only warn when the original `title` is
+            # empty too. This is loud at first menu build and lets the
+            # CI audit gate (menu_lint) catch the same pattern
+            # statically.
+            if not (title or "").strip():
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    "menu item %r has no binding AND no visible label",
+                    command_id,
+                )
             return label
-        return f"{label}\t{binding}"
+        # Route the binding through the chord-prefix display rewriter
+        # so QUILL Key chords show as "QUILL Key + S" instead of the
+        # raw "Ctrl+Shift+Grave, S" grammar. The stored binding
+        # itself is unchanged.
+        prefix = getattr(self.settings, "quill_key_binding", "Ctrl+Shift+Grave")
+        display = format_binding_for_display(binding, prefix=prefix)
+        return f"{label}\t{display}"
 
     def _ensure_menu_customization(self) -> MenuCustomization:
         """Return the loaded menu customization, loading it on first use."""
@@ -6620,8 +6719,10 @@ class MainFrame(
                 self._id_heading_5,
                 self._id_heading_6,
                 getattr(self, "_id_style_headings", None),
-                self._id_insert_bullet_list,
-                self._id_insert_numbered_list,
+                getattr(self, "_id_insert_bullet_list", None),
+                getattr(self, "_id_insert_numbered_list", None),
+                getattr(self, "_id_toggle_bullet_list", None),
+                getattr(self, "_id_toggle_numbered_list", None),
                 self._id_insert_task_list,
                 getattr(self, "_id_open_list_manager", None),
                 self._id_insert_code_block,
@@ -6677,13 +6778,13 @@ class MainFrame(
         self._set_status(message)
         self._announce(message)
 
-    def _announce(self, message: str) -> None:
+    def _announce(self, message: str, *, force: bool = False) -> None:
         self._status_message = message
         self._refresh_statusbar()
         engine = getattr(self, "_announcement_engine", None)
         if engine is None:
             return
-        backend_error = engine.announce(message)
+        backend_error = engine.announce(message, force_speech=force)
         if backend_error and backend_error != self._announcement_error_reported:
             self._announcement_error_reported = backend_error
             self._record_notification(backend_error, "accessibility")
@@ -7003,6 +7104,281 @@ class MainFrame(
             task["finished_at"] = datetime.now(UTC).isoformat()
             break
         self._maybe_refresh_live_status_tabs()
+
+    # ------------------------------------------------------------------
+    # #262: Pandoc Import / Export and Batch Conversion handlers.
+    # ------------------------------------------------------------------
+
+    def import_document(self, format_name: str) -> None:
+        """Import a single file of ``format_name`` into QUILL as a Markdown tab.
+
+        Wires File > Import > {format} menu items. For editable output
+        formats the post-conversion prompt asks the user to open the new
+        file in a new window; for non-editable outputs we just show a
+        "Converted to: {path}" message.
+        """
+
+        from quill.core import pandoc_formats
+
+        wx = self._wx
+        exts = pandoc_formats.extensions_for(format_name)
+        ext_list = ";".join(f"*{ext}" for ext in sorted(exts)) or "*.*"
+        ext_patterns = ";".join(sorted(exts)) or "*.*"
+        format_label = pandoc_formats.get_format(format_name)
+        label = format_label.display_name if format_label else format_name
+        wildcard = f"{label} ({ext_list})|{ext_patterns}|All files (*.*)|*.*"
+
+        with wx.FileDialog(
+            self.frame,
+            f"Import {label}",
+            defaultDir=self._file_dialog_default_dir(),
+            wildcard=wildcard,
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, f"Import {label}") != wx.ID_OK:
+                return
+            source_path = Path(dialog.GetPath())
+
+        self._set_status(f"Importing {source_path.name} via Pandoc...")
+        try:
+            result = convert_document_with_pandoc(
+                source_path,
+                format_name,
+                from_format=format_name,
+            )
+        except (PandocUnavailableError, PandocConversionError, ValueError) as error:
+            self._show_message_box(
+                f"Pandoc import failed: {error}",
+                "Import",
+                wx.ICON_ERROR | wx.OK,
+            )
+            self._set_status("Pandoc import failed")
+            return
+
+        document = Document(
+            text=result.text,
+            path=None,
+            modified=True,
+            encoding="utf-8",
+            line_ending="\n",
+        )
+        self._create_document_tab(document, select=True)
+        self._record_recent(source_path)
+        self._set_status(f"Imported {source_path.name}")
+        self._announce(f"Imported {source_path.name} as Markdown.")
+
+    def import_document_other(self) -> None:
+        """Prompt the user for an arbitrary Tier-1 format name and import.
+
+        The "Other Pandoc Format..." menu entry. Out of scope for Tier-2/3
+        in this PR; this only offers the Tier-1 set the user has not seen
+        on the standard menu.
+        """
+
+        from quill.core import pandoc_formats
+
+        wx = self._wx
+        choices = [fmt.display_name for fmt in pandoc_formats.formats_for_direction("import")]
+        with wx.SingleChoiceDialog(
+            self.frame,
+            "Choose a Tier-1 Pandoc input format",
+            "Other Pandoc Format",
+            choices,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Other Pandoc Format") != wx.ID_OK:
+                return
+            index = dialog.GetSelection()
+        formats = pandoc_formats.formats_for_direction("import")
+        if 0 <= index < len(formats):
+            self.import_document(formats[index].name)
+
+    def export_document(self, format_name: str) -> None:
+        """Export the current buffer to ``format_name`` via Pandoc.
+
+        For editable output formats the post-conversion prompt offers to
+        open the new file; otherwise we just announce the destination.
+        """
+
+        from quill.core import pandoc_formats
+        from quill.ui.single_convert_dialog import prompt_open_in_new_window
+
+        wx = self._wx
+        if not self.editor or not getattr(self, "document", None):
+            self._show_message_box(
+                "Open or create a document before exporting.",
+                "Export",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+
+        if getattr(self.document, "modified", False):
+            self.save_file()
+            if self.document.path is None or self.document.modified:
+                self._set_status("Export cancelled (save required first)")
+                return
+
+        exts = pandoc_formats.extensions_for(format_name)
+        target_ext = next(iter(sorted(exts)), ".out")
+        format_label = pandoc_formats.get_format(format_name)
+        label = format_label.display_name if format_label else format_name
+        wildcard = f"{label} (*{target_ext})|*{target_ext}|All files (*.*)|*.*"
+
+        default_name = (self.document.path.stem if self.document.path else "Untitled") + target_ext
+        with wx.FileDialog(
+            self.frame,
+            f"Export as {label}",
+            defaultDir=self._file_dialog_default_dir(),
+            defaultFile=default_name,
+            wildcard=wildcard,
+            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, f"Export as {label}") != wx.ID_OK:
+                return
+            target = Path(dialog.GetPath())
+
+        self._set_status(f"Exporting to {target.name} via Pandoc...")
+        try:
+            convert_file_with_pandoc(
+                self.document.path or Path(""),
+                target,
+                from_format="gfm",
+                to_format=format_name,
+            )
+        except (PandocUnavailableError, PandocConversionError, ValueError) as error:
+            self._show_message_box(
+                f"Pandoc export failed: {error}",
+                "Export",
+                wx.ICON_ERROR | wx.OK,
+            )
+            self._set_status("Pandoc export failed")
+            return
+
+        self._record_recent(target)
+        self._announce(f"Exported {target.name}")
+
+        if prompt_open_in_new_window(
+            self.frame,
+            output_path=target.name,
+            target_format=format_name,
+            show_modal_fn=self._show_modal_dialog,
+        ):
+            self.open_file(path=target)
+        else:
+            self._set_status(f"Exported to {target}")
+
+    def export_document_other(self) -> None:
+        """Prompt the user for an arbitrary Tier-1 export format."""
+
+        from quill.core import pandoc_formats
+
+        wx = self._wx
+        choices = [fmt.display_name for fmt in pandoc_formats.formats_for_direction("export")]
+        with wx.SingleChoiceDialog(
+            self.frame,
+            "Choose a Tier-1 Pandoc output format",
+            "Other Pandoc Format",
+            choices,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Other Pandoc Format") != wx.ID_OK:
+                return
+            index = dialog.GetSelection()
+        formats = pandoc_formats.formats_for_direction("export")
+        if 0 <= index < len(formats):
+            self.export_document(formats[index].name)
+
+    def run_batch_conversion_wizard(self) -> None:
+        """Open the Batch Conversion wizard and submit the resulting plan."""
+
+        from quill.core.batch_convert import BatchPlan as _BatchPlan
+        from quill.core.batch_convert import BatchReport as _BatchReport
+        from quill.core.batch_convert import OverwriteRequired, run_batch
+        from quill.ui.batch_wizard import run_batch_wizard
+
+        request = run_batch_wizard(
+            self.frame,
+            self.settings,
+            announce_cb=self._announce,
+            show_modal_fn=self._show_modal_dialog,
+        )
+        if request is None:
+            self._set_status("Batch conversion cancelled")
+            return
+
+        plan: _BatchPlan = request.plan
+
+        def _confirm_overwrite_all(paths: tuple) -> bool:
+            """Prompt the user once for a batch of would-overwrite outputs."""
+
+            wx = self._wx
+            listing = "\n".join(str(p) for p in paths[:10])
+            if len(paths) > 10:
+                listing += f"\n... and {len(paths) - 10} more"
+            message = (
+                f"{len(paths)} output file(s) already exist:\n\n{listing}\n\nOverwrite them all?"
+            )
+            with wx.MessageDialog(
+                self.frame,
+                message,
+                "Overwrite files?",
+                style=wx.YES_NO | wx.ICON_QUESTION | wx.NO_DEFAULT,
+            ) as dialog:
+                return self._show_modal_dialog(dialog, "Overwrite files?") == wx.ID_YES
+
+        def _worker(progress) -> object:
+            try:
+                return run_batch(
+                    plan,
+                    progress=progress,
+                    ask_overwrite=_confirm_overwrite_all,
+                )
+            except OverwriteRequired as exc:
+                if not _confirm_overwrite_all(exc.outputs):
+                    return run_batch(
+                        plan,
+                        progress=progress,
+                        ask_overwrite=lambda _p: False,
+                    )
+                return run_batch(
+                    plan,
+                    progress=progress,
+                    ask_overwrite=lambda _p: True,
+                )
+
+        def _on_done(result: object) -> None:
+            if not isinstance(result, _BatchReport):
+                return
+            self._announce(
+                f"Batch conversion complete: {result.converted} of {result.total} files in "
+                f"{result.duration_seconds:.1f} seconds. "
+                f"{result.failed} failed, {result.skipped} skipped."
+            )
+            self._set_status(
+                f"Batch conversion complete: {result.converted} converted, "
+                f"{result.failed} failed, {result.skipped} skipped."
+            )
+            self.show_help_status_page()
+
+        self._run_background_task(
+            "Batch conversion",
+            _worker,
+            _on_done,
+            notify_on_success=True,
+            notify_on_error=True,
+        )
+
+    def open_advanced_pandoc_placeholder(self) -> None:
+        """Placeholder for the Tier-2 / Tier-3 Pandoc Conversion Center (issue #262)."""
+
+        wx = self._wx
+        with wx.MessageDialog(
+            self.frame,
+            "The advanced Pandoc Conversion Center is coming in a future release.\n\n"
+            "For now, File > Import and File > Export cover the Tier-1 format set, "
+            "and Tools > Batch Conversion runs batch jobs over a folder.",
+            "Coming Soon",
+            style=wx.ICON_INFORMATION | wx.OK,
+        ) as dialog:
+            self._show_modal_dialog(dialog, "Coming Soon")
 
     def _status_tab_indexes(self) -> list[int]:
         getter = getattr(self.notebook, "GetPageText", None)
@@ -13180,11 +13556,12 @@ class MainFrame(
         context = heading_context_at(self.editor.GetValue(), target, markup_kind)
         if context is not None:
             title = context.title or "untitled"
-            self._set_status(
+            prefix = (
                 f"Moved to {label}, H{context.level}, {context.ordinal} of {context.total}: {title}"
             )
         else:
-            self._set_status(f"Moved to {label}")
+            prefix = f"Moved to {label}"
+        self._announce_navigation_move(prefix, target)
 
     def navigate_next_block(self) -> None:
         self._navigate_block(reverse=False)
@@ -13211,7 +13588,18 @@ class MainFrame(
         self.editor.SetSelection(target, target)
         self.editor.SetFocus()
         self._location_ring.record(target)
-        self._set_status(f"Moved to {label}")
+        self._announce_navigation_move(f"Moved to {label}", target)
+
+    def _announce_navigation_move(self, prefix: str, target: int) -> None:
+        detail = str(getattr(self.settings, "browse_mode_move_detail", "position")).strip().lower()
+        if detail == "none":
+            return
+        line, column = line_column_for_position(self.editor.GetValue(), target)
+        if detail == "line":
+            message = f"{prefix} at line {line}"
+        else:
+            message = f"{prefix} at line {line}, column {column}"
+        self._quill_feedback(message, status_message=message, sound_kind="move")
 
     def open_outline_navigator(self) -> None:
         if self.document.path is not None and self.document.path.suffix.lower() == ".epub":
@@ -13533,7 +13921,19 @@ class MainFrame(
             self._set_status("Renamed heading")
 
         def validate(show_success: bool = False) -> bool:
-            issues = validate_heading_sequence(working)
+            # #303: surface the duplicate-H1 warning only when the user
+            # has explicitly opted in. Defaults keep the historical
+            # behavior (only "must start at H1" and "skipped level"
+            # issues fire) so users who deliberately write multi-H1
+            # works are not interrupted by a new warning.
+            issues = validate_heading_sequence(
+                working,
+                require_single_h1=getattr(
+                    self.settings,
+                    "heading_organizer_warn_duplicate_h1",
+                    False,
+                ),
+            )
             if not issues:
                 if show_success:
                     self._show_message_box(
@@ -17765,9 +18165,9 @@ class MainFrame(
             return
 
         wx = self._wx
-        current_version = getattr(getattr(self, "_updates", None), "current_version", "")
-        if not current_version:
-            current_version = __version__ or "0.0.0"
+        current_version = build_info.resolve_running_version(
+            override=getattr(getattr(self, "_updates", None), "current_version", "")
+        )
 
         self.settings.last_update_check = datetime.now(UTC).isoformat()
         try:
@@ -21315,6 +21715,83 @@ class MainFrame(
     def format_insert_numbered_list(self) -> None:
         self._insert_structure("Numbered List", "Inserted numbered list")
 
+    def toggle_bullet_list(self) -> None:
+        """Insert a bullet list, or strip one if the caret is inside it.
+
+        Bound to Ctrl+Alt+7 (EdSharp port).  HTML and plain-text
+        documents announce the chord is unavailable and the action is
+        skipped.  Strip mode reads the current selection (or the whole
+        document when there is no selection) so the writer can collapse
+        a list without leaving the chord.
+        """
+        self._toggle_list("Bullet List", strip_kind="bullet")
+
+    def toggle_numbered_list(self) -> None:
+        """Insert a numbered list with auto-filled markers, or strip one.
+
+        Bound to Ctrl+Alt+8 (EdSharp port).  When the three-way auto-fill
+        gate (markdown surface OR list_auto_fill_numbers setting OR
+        per-document arming flag) holds, the inserted list gets
+        ``1. ``, ``2. ``, ``3. `` ... markers.  Otherwise only the first
+        item gets a marker (today's behaviour).  Toggling also arms the
+        document for 5 minutes so the writer can stay in fill mode
+        without re-pressing the chord.
+        """
+        surface = self._active_markup_surface()
+        if surface is not None:
+            # Arm the document so subsequent insertions auto-fill for
+            # 5 minutes (covers the case where the writer opens the menu,
+            # toggles the chord, and continues typing).
+            self._numbered_list_armed_until = time.monotonic() + _LIST_AUTO_FILL_ARM_SECONDS
+        self._toggle_list("Numbered List", strip_kind="numbered")
+
+    def _toggle_list(self, kind: str, *, strip_kind: str) -> None:
+        if not self._feature_enabled("core.format"):
+            self._set_status(f"{kind} is unavailable in this profile")
+            return
+        surface = self._active_markup_surface()
+        if surface is None:
+            self._set_status(f"{kind} is only available in Markdown or HTML documents")
+            return
+        try:
+            text = self.editor.GetValue()
+            caret = self.editor.GetInsertionPoint()
+        except RuntimeError:
+            return
+        try:
+            inside = is_caret_inside_list(text, caret, markup_kind=surface)
+        except Exception:
+            inside = False
+        if inside:
+            stripped = strip_list_markers(text)
+            try:
+                self.editor.SetValue(stripped)
+                self.editor.SetInsertionPoint(min(caret, len(stripped)))
+                self.editor.SetFocus()
+            except RuntimeError:
+                return
+            self._announce(f"{kind} removed")
+            return
+        # Insert path
+        selected_text = self.editor.GetStringSelection()
+        if surface == "markdown":
+            result = build_markdown_insertion(kind, selected_text)
+            if kind == "Numbered List" and should_auto_fill_numbers(
+                self.settings, surface, armed_until=self._numbered_list_armed_until
+            ):
+                rewritten = fill_numbered_markers(result.inserted_text)
+                result = type(result)(inserted_text=rewritten, caret_offset=result.caret_offset)
+        else:
+            result = self._build_html_structure(kind, selected_text)
+        self._apply_insertion_result(result)
+        if kind == "Numbered List" and surface == "markdown":
+            if should_auto_fill_numbers(
+                self.settings, surface, armed_until=self._numbered_list_armed_until
+            ):
+                self._announce("Numbered list applied (with numbers)")
+                return
+        self._set_status(f"Inserted {kind.lower()} ({surface})")
+
     def format_insert_task_list(self) -> None:
         self._insert_structure("Task List", "Inserted task list")
 
@@ -22300,7 +22777,11 @@ class MainFrame(
         if snippet is None:
             self._set_status("No snippets available. Open Manage Snippets to add one.")
             return
-        rendered = self._render_snippet_with_prompts(snippet)
+        try:
+            rendered = self._render_snippet_with_prompts(snippet)
+        except ValueError as exc:
+            self._set_status(f'Snippet "{snippet.name}" has an invalid placeholder: {exc}')
+            return
         if rendered is None:
             self._set_status("Snippet insertion cancelled")
             return
@@ -23842,6 +24323,8 @@ class MainFrame(
 
     def _show_trust_consent_onboarding(self, force: bool) -> bool:
         wx = self._wx
+        status = getattr(self, "_trust_consent_status", None)
+        reconsent = bool(status is not None and status.accepted and status.needs_reconsent)
         message = (
             "By selecting I accept, you confirm that:\n\n"
             "1. You are responsible for how AI outputs are used, reviewed, and shared.\n"
@@ -23850,6 +24333,16 @@ class MainFrame(
             "4. API keys are stored in Windows Credential Manager when available, "
             "with DPAPI-encrypted fallback storage.\n\n"
             "Do you accept and want to continue?"
+        )
+        if reconsent:
+            deltas = self._format_reconsent_deltas(status.loaded_version)
+            message = (
+                "Your prior trust, privacy, and responsible-AI disclosure is out of "
+                "date.  Please review the changes below before continuing.\n\n"
+                f"Changes since your prior consent:\n\n{deltas}\n\n" + message
+            )
+        title = (
+            "Trust and Privacy Consent" if reconsent else "Trust, Privacy, and Responsible AI Use"
         )
         dialog = wx.MessageDialog(
             self.frame,
@@ -23860,13 +24353,31 @@ class MainFrame(
         if hasattr(dialog, "SetYesNoLabels"):
             dialog.SetYesNoLabels("I accept", "I do not accept")
         try:
-            accepted = self._show_modal_dialog(dialog, "Trust and Privacy Consent") == wx.ID_YES
+            accepted = self._show_modal_dialog(dialog, title) == wx.ID_YES
         finally:
             dialog.Destroy()
         if accepted:
             mark_trust_consent_complete()
+            self._trust_consent_status = load_trust_consent_status()
             return True
         return False
+
+    @staticmethod
+    def _format_reconsent_deltas(loaded_version: int) -> str:
+        """Render the per-version change log as numbered bullet points (#305).
+
+        Returns the deltas for every version strictly greater than
+        ``loaded_version``, in version order.  Empty string when no deltas
+        are recorded (e.g. the change log was wiped in a future cleanup).
+        """
+        lines: list[str] = []
+        for version, delta in sorted(trust_consent_change_log().items()):
+            if version <= loaded_version:
+                continue
+            if not delta:
+                continue
+            lines.append(f"- (version {version}) {delta}")
+        return "\n".join(lines)
 
     def _show_bw_onboarding(self, force: bool) -> None:
         wx = self._wx

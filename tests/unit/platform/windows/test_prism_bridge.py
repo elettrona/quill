@@ -111,6 +111,53 @@ def _counting_init(engine):
     return engine
 
 
+def test_force_speech_bypasses_screen_reader_suppression(monkeypatch) -> None:
+    # The QUILL key prefix/browse-mode chord has no focus or control change for
+    # a screen reader to pick up on its own, so callers narrating that
+    # internal-only state pass force_speech=True to still get spoken even
+    # while JAWS/NVDA/Narrator is running and no Prism backend is active.
+    class _FakeSpeechEngine:
+        def __init__(self) -> None:
+            self.messages: list[str] = []
+            self.init_calls = 0
+
+        def say(self, message: str) -> None:
+            self.messages.append(message)
+
+        def runAndWait(self) -> None:
+            return None
+
+        def stop(self) -> None:
+            return None
+
+    speech_engine = _FakeSpeechEngine()
+    monkeypatch.setattr("quill.platform.windows.prism_bridge.sys.platform", "win32")
+    monkeypatch.setattr(
+        "quill.platform.windows.prism_bridge.pyttsx3",
+        types.SimpleNamespace(init=lambda: _counting_init(speech_engine)),
+    )
+    monkeypatch.setattr(
+        "quill.platform.windows.prism_bridge.import_module",
+        lambda _name: (_ for _ in ()).throw(ImportError),
+    )
+    monkeypatch.setattr(
+        "quill.platform.windows.prism_bridge._screen_reader_active",
+        lambda: True,
+    )
+    from quill.platform.windows import prism_bridge
+
+    prism_bridge.reset_pyttsx3_engine_for_tests()
+
+    engine = AnnouncementEngine("auto")
+    assert engine.announce("quiet while screen reader runs") is None
+    prism_bridge.flush_tts_for_tests()
+    assert speech_engine.messages == []
+
+    assert engine.announce("QUILL key", force_speech=True) is None
+    prism_bridge.flush_tts_for_tests()
+    assert speech_engine.messages == ["QUILL key"]
+
+
 def test_macos_announce_error_logged(monkeypatch, caplog) -> None:
     """H-4-platform: a VoiceOver announce failure is logged, not silently swallowed."""
     import logging

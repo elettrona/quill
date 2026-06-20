@@ -47,7 +47,7 @@ Edit the header block at the top of your `.po` file:
 ```po
 msgid ""
 msgstr ""
-"Project-Id-Version: QUILL 0.6.0\n"
+"Project-Id-Version: QUILL 0.7.0\n"
 "Language: fr\n"
 "Language-Team: French\n"
 "Last-Translator: Your Name <email@example.com>\n"
@@ -284,7 +284,7 @@ The CI gate checks placeholder preservation.
 
 ---
 
-# Appendix: i18n status for 0.6.0
+# Appendix: i18n status for 0.7.0
 
 **What is complete:**
 - `quill/locale/quill.pot` — extraction template, regenerated from source.
@@ -296,7 +296,7 @@ The CI gate checks placeholder preservation.
 - Translation PR template in `.github/PULL_REQUEST_TEMPLATE/translation.md`.
 
 **What is not done yet:**
-- No language-specific `.po` / `.mo` files ship with 0.6.0. The product ships
+- No language-specific `.po` / `.mo` files ship with 0.7.0. The product ships
   English-only with the full translation infrastructure in place.
 - A few low-priority internal modules (diagnostic output, developer console
   strings) still have unwrapped strings. These are not user-facing in normal

@@ -47,12 +47,13 @@ This is the fast tour. The detailed notes below keep every important implementat
 - **Meet People Where They Are** is a complete reimagining of first-run setup. A redesigned startup wizard asks what kind of writing you do and shows a plain-English, screen-reader-readable preview of exactly what you will get. Seven intent profiles replace the old nine technical ones in the wizard. Menus, the Command Palette, and the Go to Anything dialog all reflect your chosen profile instantly - commands for features you have not enabled simply do not appear. Pressing Cancel on first run starts you in the simplest possible editor rather than leaving you with raw defaults.
 - **Insert Automation** turns typed abbreviations, smart triggers, `.LOG` files, document directives, and append anchors into one safe automation system.
 - **The Quillin Extension Platform** now supports settings pages, searchable preferences, tabs, document events, lifecycle events, status-bar cells, dependencies, network allowlists, command descriptions, developer logging, announcement priority, scaffolding tools, and stronger validation.
-- **AI Writing Toolkit** ships a complete, keyboard-first AI writing layer: grammar check, AI Thesaurus (Shift+F8), rewrite, summarize, expand, generate table of contents, Document Q&A, translation, and AI read-aloud. Every feature supports six providers — Anthropic Claude, OpenAI, Google Gemini, OpenRouter, Ollama, and custom endpoints. Custom per-task instructions let you shape how the AI behaves for each task. Prompt caching keeps costs down automatically: Claude marks system prompts as cacheable, OpenAI caches prefixes over 1024 tokens, and local Ollama models cache in-process. No mouse required for any of it.
+- **AI Writing Toolkit** ships a complete, keyboard-first AI writing layer: grammar check, AI Thesaurus (Ctrl+Alt+Shift+H), rewrite, summarize, expand, generate table of contents, Document Q&A, translation, and AI read-aloud. Every feature supports six providers — Anthropic Claude, OpenAI, Google Gemini, OpenRouter, Ollama, and custom endpoints. Custom per-task instructions let you shape how the AI behaves for each task. Prompt caching keeps costs down automatically: Claude marks system prompts as cacheable, OpenAI caches prefixes over 1024 tokens, and local Ollama models cache in-process. No mouse required for any of it.
 - **Braille Mode** opens and edits braille text files while preserving bytes, form feeds, line endings, and layout. It adds braille-aware status, page navigation, page tools, and optional liblouis-powered translation through the QUILL Braille Pack.
 - **Compare Mode** is now a first-class keyboard-driven workflow with difference navigation, speech announcements, and optional sound cues.
 - **Code-aware editing** adds language profiles, token movement, manual language selection, and optional indentation tones.
 - **Text encoding tools** help you find non-ASCII characters, jump to them, convert them to HTML entities, and save copies in narrower encodings without silent data loss.
 - **Word and RTF export** lets you save documents as `.docx` or rich text through Pandoc, preserving real Word heading structure when the source contains structure.
+- **Pandoc Import / Export and Batch Conversion (issue #262)** extends that foundation with a curated Tier-1 format list (Markdown, CommonMark, GFM, HTML, DOCX, ODT, RTF, plain text, CSV/TSV, EPUB, LaTeX, plus PDF export), a four-page batch wizard, and live progress in the Status Page.
 - **Citation insertion** formats MLA 9, Chicago 17, and APA 7 citations from a simple labelled form.
 - **The Snippet Gallery** (Insert > Snippet Gallery... or QUILL key, Shift+G) collects parameterized templates from all enabled Quillins into one browseable picker. Smart Insert ships three built-in entries.
 - **The Vision Prompt Library**, contributed by Kelly Ford, gives Describe Image with AI twelve evaluated prompt styles and a full management dialog.
@@ -76,7 +77,7 @@ This release changes that completely. QUILL now starts you at the right level an
 
 ### The redesigned startup wizard
 
-When you run QUILL for the first time, a short wizard opens. It has five pages and takes about two minutes.
+When you run QUILL for the first time, a short wizard opens. It has six pages (five if you do not enable AI writing assistance on the Extras page) and takes about two minutes.
 
 The most important page asks one question: **What kind of writing do you do?** A list of seven starting points is shown. Arrow up and down through the list. As you move, a large read-only text area below the list updates live to tell you, in plain spoken English, exactly what you will have if you choose that option. There are no feature IDs, no jargon about flags, and no list of what you will not get. Just what you get.
 
@@ -120,7 +121,7 @@ Adds everything in Writer plus Ask Quill (Alt+Q), AI grammar check and rewrite, 
 
 Turns on everything: regular expression search, macro recorder and playback, shell integration, all text and line transformation tools, Smart Insert, BRF Tools, Markdown Helpers, the Character Picker, GitHub remote file access, the Developer Console, Watch Folder automation, and all other Quillins. The full menu structure is visible.
 
-The wizard's seven starting profiles are a curated front door, not the whole catalog. **Profiles and Features...** (Preferences) exposes the full set underneath, including this release's new **Author or Student** profile — table of contents, footnotes, and citations for papers and theses — and the renamed **Casual Writer** (formerly **Writer**; nothing about the feature changed, just the name, to make room for Author or Student alongside it).
+The wizard's seven starting profiles are a curated front door, not the whole catalog. **Profiles and Features...** (Preferences) exposes the full set underneath, including this release's new **Author or Student** profile — table of contents, footnotes, and citations for papers and theses — alongside **Writer**, which keeps its name; nothing about the feature changed.
 
 ### Menus, Command Palette, Go to Anything, and the system tray all respect your profile
 
@@ -440,15 +441,29 @@ Third-party Quillins remain locked off for QUILL 1.0. The SEC-8 gate, `core.thir
 
 `net_allowed_hosts` is enforced at every fetch call. If a Quillin declares `"net_allowed_hosts": ["api.example.com"]` and tries to fetch from another host, QUILL blocks the call before it reaches the network, even if the user has granted the `net` capability. Wildcard patterns such as `*.example.com` allow subdomains but not the bare domain. An empty `net_allowed_hosts` list with the `net` capability preserves the current behavior: any host is reachable with user consent.
 
-### Five bundled Quillins
+### Fourteen bundled Quillins
 
-QUILL 0.7.0 ships five bundled Quillins. Each is both a useful extension and a reference implementation for the framework.
+QUILL 0.7.0 ships fourteen bundled Quillins. Five bundled Quillins are new in 0.7.0 (Smart Insert, BRF Tools, Journal Stamp, Document Guardian, Status Scribe). Nine are carryover from prior releases, for a total of fourteen bundled Quillins. Each is both a useful extension and a reference implementation for the framework.
+
+New in 0.7.0:
 
 - **Smart Insert** (`com.quill.smartinsert`) provides typed abbreviations and smart triggers for bug reports, meeting notes, log entries, to-do lists, and BRF test documents. It includes five tabs of configurable preferences, categories `writing`, `productivity`, and `formatting`, plus command `description` fields on every command.
 - **BRF Tools** (`com.quill.brftools`) provides preferences for braille translation, page handling, and status-bar display. Its categories are `braille` and `accessibility`.
 - **Journal Stamp** (`com.quill.journalstamp`) subscribes to `document.created`, `document.after_save`, `document.loaded_from_session`, `quillin.enabled`, and `settings.changed`. It can insert a date header, announce word count and daily-goal progress after save, announce restored documents, log activation, and hot-reload preferences. Its date-format and daily-goal controls include `search_keywords`. Its categories are `writing` and `productivity`.
 - **Document Guardian** (`com.quill.docguardian`) subscribes to `document.before_close`, `document.before_save`, `document.after_save`, `quillin.enabled`, `quillin.disabled`, and `quill.shutdown`. It can warn on unfinished documents, stamp an `Updated:` line, confirm saves with file size, announce and log activation, announce deactivation, and clean up on shutdown. Its categories are `writing` and `productivity`.
 - **Status Scribe** (`com.quill.statusscribe`) adds a live word, character, and sentence count to the status bar. It updates after every save and on tab switch. It demonstrates `status_bar` contribution, `ui.log` developer logging, `quillin.enabled`, `quillin.disabled`, `settings.changed`, lifecycle events, and announcement priority. Its categories are `writing`, `productivity`, and `accessibility`.
+
+Carryover from prior releases:
+
+- **Text Tools** (`com.quill.bundled.text-tools`) — advanced text transformations: line numbering, hard-wrap, regex match counting, and block filtering.
+- **Insert Tools** (`com.quill.bundled.insert-tools`) — date, time, and date-and-time snippets in the Insert > Date and Time submenu.
+- **Line Tools** (`com.quill.bundled.line-tools`) — cursor-aware line operations.
+- **Markdown Helpers** (`com.quill.bundled.markdown-helpers`) — syntax assistance for Markdown documents.
+- **Insert Character** (`com.quill.bundled.insert-character`) — a searchable character picker for Unicode symbols.
+- **Word Count (Node)** (`com.quill.bundled.word-count-node`) — word count via the Node.js Quillin runtime, demonstrating that Quillins can be written in JavaScript as well as Python.
+- **AI Writing Prompts** (`com.quill.bundled.ai-writing-prompts`) — additional prompt library entries contributed by the Quillin manifest.
+- **AI Writing Skills** (`com.quill.bundled.ai-writing-skills`) — pre-built `.sqp` skill files for rewriting, meeting-notes extraction, and research drafts.
+- **Math Equations** (`com.quill.bundled.math-equations`) — `Insert -> Insert Equation...` (`Ctrl+Shift+E`) for LaTeX and MathML insertion, with Browser Preview and HTML export rendering via MathJax 3. See the community contribution spotlight below.
 
 ### Five new Quillin capabilities, live in this release
 
@@ -497,7 +512,7 @@ While a braille file is active, the status bar includes a braille cell that upda
 BRF Pg 12/87 | Ln 14/25 | Cell 31/40 | Print 7
 ```
 
-That status gives the braille page, line within the page, cell within the line, and print page. Print-page detection arrives in a later phase; until then the print segment reads `Print ?`.
+That status gives the braille page, line within the page, cell within the line, and print page. Print-page detection runs on every open and on every page-map recalculation, so the print segment is always populated when a print-to-braille anchor is available; on documents without anchors it reads `Print ?`.
 
 ### Braille commands
 
@@ -807,6 +822,93 @@ The result reflects the structure of the source. A richly formatted Markdown or 
 
 ---
 
+## Experience 9b: Pandoc Import / Export and Batch Conversion (issue #262)
+
+The single-file Word and RTF export added above is a thin slice of a much larger workflow. Community request #262 asked for a real, screen-reader-friendly way to move between QUILL and the documents other people send us — Word, OpenDocument, EPUB, LaTeX, plain text, CSV tables, and the rest of the formats Pandoc understands — without dropping into a shell. This release answers it.
+
+> “Importing and exporting should feel like part of the editor, not a side door you have to leave the keyboard to use.”  
+> — Jeff Bishop
+
+### The Tier-1 format set
+
+The new Import and Export menus each show a curated Tier-1 list rather than every format Pandoc supports, because not every format is a good match for a screen-reader-first editor. The list is the same one issue #262 recommended.
+
+**Import (File -> Import):** Markdown, CommonMark, GitHub-Flavored Markdown, HTML, Word documents (`.docx`), OpenDocument Text (`.odt`), Rich Text (`.rtf`), plain text, CSV / TSV tables, EPUB books, LaTeX / TeX.
+
+**Export (File -> Export):** the same set plus PDF (export only). PDF *import* is intentionally not supported; Pandoc cannot do it reliably, and the dedicated braille and DAISY pipelines are the right tools for print-to-braille conversion.
+
+Every entry on the menus is a real, working converter. There is no placeholder that opens a "Coming soon" dialog mid-list. **Pandoc Conversion Center...** under Tools is the only path to the rest of Pandoc's format catalog in this release; it opens a short notice explaining the roadmap.
+
+### Single-file import and export
+
+Pick **File -> Import -> Word Document** to convert a `.docx` into a Markdown buffer in a new tab. Pick **File -> Export -> EPUB Book** to convert the current buffer to a clean `.epub`. Both routes go through Pandoc, with the conversion happening on a background thread so QUILL never freezes.
+
+When the target format is editable in QUILL — Markdown, CommonMark, GFM, HTML, plain text, CSV / TSV — a short post-conversion prompt asks whether to open the new file in a new window. Press **Yes** to open, **No** to keep working where you were. PDF, DOCX, EPUB, ODT, and RTF do not prompt because QUILL cannot edit them directly; a confirmation message tells you where the file landed and the path is on the clipboard so you can paste it into File Explorer.
+
+### The Batch Conversion wizard
+
+**File -> Import -> Batch Conversion...** and **File -> Export -> Batch Conversion...** (or **QUILL key, B**) open a four-page wizard. Each page is keyboard-navigable end to end, every field is labelled in JAWS / NVDA order, and Back / Next / Start / Cancel are stock `wx.Button` controls under the standard modal-id contract.
+
+1. **Introduction.** The first page reads a short summary of what the wizard does, then probes Pandoc. When Pandoc is detected, the version appears live in the page text. When it is not, the page says so and Start stays disabled until Pandoc is installed.
+2. **Folder and options.** A folder picker, an *Include subfolders* checkbox, an output-layout radio (Same folder as source, or Output subfolder per source folder), and an overwrite radio (Ask each time, Never, Always). Defaults are read from Settings so the wizard respects your preferences the moment it opens. The last folder you used is remembered for next time.
+3. **Format and profile.** A direction radio (Import into QUILL, or Export from QUILL), a source-format list and a target-format list drawn from the Tier-1 set, and a profile picker for the seven built-in conversion profiles.
+4. **Review and start.** A human-readable summary of the entire plan. The Start button submits the batch to a background thread and closes the wizard.
+
+Press **Start** and the wizard submits the plan to QUILL's background task pool. The Status Page (Help menu) switches to its Tasks & Downloads tab and starts showing live rows. The first row is labelled `Batch conversion: scanning <folder>`, then one row per file as the conversion runs, with `(file, status, current/total, started, finished)` columns.
+
+### Seven built-in conversion profiles
+
+The wizard's profile picker offers seven profiles curated for common publishing workflows. Each profile is a small set of Pandoc CLI flags plus a plain-language description so the screen reader can read you what you are committing to before you click Start.
+
+- **Clean Word Document** — `--standalone` plus aggressive header/footer stripping. Good for handing Markdown drafts to a Word shop that should not see the scaffolding.
+- **Accessible HTML Page** — `--standalone` with the `title-block` and `lang` metadata. Good for an HTML page that is going through a screen-reader or accessibility audit.
+- **EPUB Book** — `--standalone --toc` plus the EPUB-3 metadata block. Good for personal publishing.
+- **GitHub README** — GitHub-Flavored Markdown with no wrapper. Good for pasting into a repository.
+- **Print PDF** — `--pdf-engine=<default>` plus the standard PDF metadata. Pandoc picks the right engine for your platform; you can change it in Preferences.
+- **Instructor Handout** — `--standalone` with `geometry: margin=1in` and a top-level numbered section structure. Good for printing on Letter.
+- **Plain Text for Screen Readers** — emits plain text with no HTML wrapper, no smart quotes, and a fixed width of 80 columns. The right choice for piping into a TTS engine.
+
+The wizard's summary page reads the profile description aloud so the user knows what they are about to apply before the batch starts.
+
+### Output naming and overwrite behaviour
+
+The issue #262 specification said "keep the originating stem, replace the extension". QUILL does that exactly. `report.docx` becomes `report.md` (or `report.html`, `report.epub`, ...). When you choose **Output subfolder per source folder** (the default) the output lands in a new `Output/` folder inside the source folder, which the batch creates on first write. When you choose **Same folder as source** the output lands next to the input.
+
+The three-way overwrite policy keeps the screen reader out of the per-file prompt loop:
+
+- **Ask each time** — the batch lists every output that would clobber an existing file, asks once with a single yes/no, and skips the rest if you say no.
+- **Never** — existing outputs are skipped automatically. The Status Page shows the count under *skipped* so the total still adds up.
+- **Always** — existing outputs are overwritten without prompting. Useful for re-running a batch with the same plan.
+
+### Live progress and a single, calm completion announcement
+
+The batch runs on the background task pool. The Status Page shows live counts as the work progresses. When the batch finishes, QUILL speaks a single completion line through the announcement backend you have configured (NVDA, JAWS, SAPI5, or a sound pack). The line names the converted / skipped / failed counts and the elapsed time:
+
+> "Batch conversion complete. 12 of 14 files converted in 4.2 seconds. 2 skipped."
+
+The completion announcement respects the verbosity settings under **Preferences -> Accessibility**; the Status Page row updates regardless so sighted and low-vision users see the same result.
+
+A short report dialog lists every file that produced warnings or failed, with the exact error string. Successful files do not appear in the report, so the dialog stays small and quick to read.
+
+### Settings: defaults the wizard can override
+
+Three new Settings entries let you choose defaults that the wizard uses when it opens:
+
+- **Include subfolders in batch conversion** — boolean, default `True`.
+- **Overwrite behaviour for batch conversion** — Ask each time (default), Never, or Always.
+- **Default output layout for batch conversion** — Output subfolder per source folder (default) or Same folder as source.
+
+The wizard can override any of them per run. The Preferences dialog is the canonical place to change defaults; the wizard is a one-off override path. The last folder the wizard used is remembered automatically so the next run lands you back where you left off.
+
+### What is not in this release
+
+- **PDF import.** Pandoc cannot do it reliably, so it is not in the menu. The dedicated braille and DAISY pipelines remain the right tools for print-to-braille conversion.
+- **Tier 2 / Tier 3 formats.** Every format Pandoc supports that is not in the Tier-1 list is reachable through **Tools -> Pandoc Conversion Center...**, which shows a roadmap note in this release. A follow-up issue will replace the placeholder with the full format picker.
+- **MarkItDown.** A follow-up issue; not in this release. MarkItDown is the right tool for some conversions (e.g. PDF and Office formats with embedded images) but its integration belongs in a Quillin so its dependencies stay out of the core.
+- **Per-verb verbosity tokens.** The completion announcement routes through the existing `announce()` -> `_announce()` -> `AnnouncementEngine` path. The per-verb token registry from the verbosity rebuild is not in source yet; that work is tracked separately and the existing settings (`announcement_backend`, `verbosity_speech_enabled`) continue to control the spoken result.
+
+---
+
 ## Experience 10: Citations without the tears
 
 **Insert -> Insert Citation...** opens a plain labelled form for creating citations.
@@ -924,7 +1026,7 @@ QUILL 0.7.0 ships a full AI writing-assistant layer. Every feature in this layer
 
 ### Provider setup: AI Hub
 
-**Tools > AI Hub** (or **AI > AI Hub...**) opens a five-tab settings dialog that replaces the old single-screen AI Connection dialog.
+**AI > AI Hub...** opens a five-tab settings dialog that replaces the old single-screen AI Connection dialog.
 
 - **Provider tab.** Choose your AI provider: Anthropic Claude, OpenAI, Google Gemini, OpenRouter (access to many models through one key), or Ollama (on-device or self-hosted). Enter your API key once; it is stored in the Windows Credential Manager and never written to disk. Choose a model, set a custom host for self-hosted deployments, and use Test Connection to verify the key and model before leaving the dialog.
 - **On-Device tab.** If you want AI with no cloud traffic at all, point Ollama at a local URL. The tab lists recommended models with size and capability notes so you can choose what fits your hardware.
@@ -953,7 +1055,7 @@ All four commands open a two-part result dialog: a step log at the top (showing 
 
 ### AI Thesaurus
 
-**Shift+F8** opens the AI Thesaurus. Type a word or use the word already under your cursor; the dialog sends the word and its surrounding sentence to your AI provider and returns a list of synonyms, each with a usage note explaining the register, connotation, or context. Arrow through the list, press Enter or the Replace Word button to substitute the word in your document, or copy a synonym to the clipboard. Double-clicking a synonym replaces it immediately and closes the dialog.
+**Ctrl+Alt+Shift+H** opens the AI Thesaurus. Type a word or use the word already under your cursor; the dialog sends the word and its surrounding sentence to your AI provider and returns a list of synonyms, each with a usage note explaining the register, connotation, or context. Arrow through the list, press Enter or the Replace Word button to substitute the word in your document, or copy a synonym to the clipboard. Double-clicking a synonym replaces it immediately and closes the dialog.
 
 The context sentence is extracted automatically from the line where your cursor rests, giving the AI enough context to distinguish between, for example, "bank" (financial) and "bank" (river).
 
@@ -1001,7 +1103,11 @@ No configuration is needed. The caching path is active whenever at least one cus
 | Command | Shortcut |
 | --- | --- |
 | Ask Quill chat | Alt+Q |
-| AI Thesaurus | Shift+F8 |
+| AI Spell Check | Ctrl+Alt+Shift+S |
+| AI Spell Check Interactive | Ctrl+Alt+Shift+I |
+| AI Grammar and Style | Ctrl+Alt+Shift+G |
+| AI Translate Selection | Ctrl+Alt+Shift+T |
+| AI Thesaurus | Ctrl+Alt+Shift+H |
 | Check Grammar with AI | Tools > Check Grammar with AI |
 | Check Spelling with AI | Tools > Check Spelling with AI |
 | Rewrite Selection | AI > Rewrite Selection |
@@ -1012,6 +1118,14 @@ No configuration is needed. The caching path is active whenever at least one cus
 | Translate | AI > Translate |
 | Read with AI Voice | Tools > Read Aloud > Read with AI Voice |
 | AI Hub | AI > AI Hub... |
+
+The previous inline F7/Shift+F7/F8/Shift+F8/Ctrl+Shift+T accelerators on the
+AI menu collided with the selection bindings `edit.start_selection`
+(F8), `edit.complete_selection` (Shift+F8), and the QUILL-key
+chord for `edit.reselect` (Ctrl+F8). The new chord class is
+`Ctrl+Alt+Shift+<letter>` and is reserved for AI commands so power users
+can find them by feel; the full allowlist is in
+`docs/keybinding-standard.md` §10.2.
 
 ### What data leaves your machine
 
@@ -1206,6 +1320,14 @@ The recovery offer dialog, the first F1 help lookup, and the first WebView2 prev
 
 The dialog-inventory snapshot and dialog-button-contract gates were regenerated as part of the fix; both pass. (#179)
 
+### QUILL browse mode speaks reliably, and you control how much it says
+
+Two related bugs in QUILL browse mode (QUILL key, then **N**) are fixed. Browse mode no longer exits after a single navigation keypress — it now stays active until you press Escape, as designed. And entering and exiting browse mode are announced again: a `pyttsx3`/SAPI5 driver quirk meant the engine spoke the very first announcement of a session and then silently produced nothing on every later one, even though no error was raised. The fix drives the speech engine with its external-loop API instead of repeating `runAndWait()`, which keeps the same driver loop alive for the life of the session. The spoken message when you enter browse mode is also shorter now — it no longer reads every key binding aloud, since **?** already opens the full cheat sheet.
+
+Heading navigation (**H**, and **Ctrl+Alt+1** through **6**) and block navigation previously moved the caret correctly but announced nothing, unlike every other browse-mode element (links, lists, tables, paragraphs, and so on). Heading and block moves now speak through the same path as the rest of browse mode.
+
+A new setting, **QUILL browse move detail** (**Preferences -> Navigation**), controls how much a browse-mode move tells you once it completes: *Line and column* (the default, unchanged from previous releases), *Line only*, or *Say nothing*.
+
 ---
 
 ## What works differently now
@@ -1259,6 +1381,205 @@ Most earcons are off until you choose a sound pack and enable events. Existing s
 ### Indentation tones default to Off
 
 Indentation tones do not play until you pick a scale. Code files remain silent unless you ask QUILL for tone feedback.
+
+### Dictation device picker deferred to 0.7.1
+
+The **Choose Dictation Device** menu entry that earlier 0.7.0 drafts planned to ship has been pulled from this release. The infrastructure for choosing a dictation device is already present (`quill.core.dictation.list_dictation_devices` plus the `dictation_device_index` setting), but the menu surface and dialog contract were not finished in time for a quality release. The picker ships in 0.7.1 with a dedicated dialog under **Tools -> Reading & Dictation**. Until then, QUILL uses the system's default dictation input.
+
+### Translations: POT-only ship
+
+QUILL ships the translations template (`quill/locale/quill.pot`) only. No `.po` source translations or compiled `.mo` binaries are bundled. The POT is regenerated for each release so it stays in lockstep with the strings the source actually emits; verify with `pybabel extract -F babel.cfg -k _ -k "ngettext:1,2" -k lazy_gettext --project QUILL --copyright-holder "BITS" -o quill/locale/quill.pot .`. The translation contribution path is documented in `docs/translating.md` and `MAINTAINERS.md`; new language teams open an issue with the `translation` label to onboard.
+
+## Experience 15: EdSharp port — screen-reader-safe heading shortcuts, section-move, list toggle, and a Section status cell
+
+The EdSharp `s:\edsharp.md` review called out two PRs whose accessibility patterns are worth carrying forward: PR #2 (Alt+Shift+Up/Down section-move) and PR #3 (Ctrl+Alt+1..9 heading and list shortcuts). Both shipped in 0.7.0 after a careful revision of QUILL's longstanding screen-reader-safe keybinding rules.
+
+### Move whole sections with `Alt+Shift+Up` and `Alt+Shift+Down`
+
+Pressing `Alt+Shift+Down` while the caret is on a heading moves that heading and its body past the next sibling heading at the same level. Pressing `Alt+Shift+Up` swaps it with the previous sibling. The move announces the heading it swapped with ("Section moved below Meeting Notes") and stays inside the moved section so the caret lands on the same column of the new heading.
+
+Section-move is gated on the active surface. Markdown and HTML documents get the chord. Plain text announces "Section move is only available in Markdown or HTML documents" and the move is skipped. Fenced code blocks are honored: a `# fake` line inside a triple-backtick fence is never promoted to a real sibling, so a fenced code block cannot become an unexpected target.
+
+The chord pair displaced the previous `edit.expand_selection` / `edit.shrink_selection` bindings. Those commands now live on the QUILL-key chord (`Ctrl+Shift+Grave, J` and `Ctrl+Shift+Grave, Shift+J`). Saved user keymaps from older builds are silently routed through `legacy_rebindings` so no one loses muscle memory on upgrade.
+
+### Heading shortcuts at `Ctrl+Alt+1..6`
+
+The six heading shortcuts move from the QUILL-key chord space to `Ctrl+Alt+1` through `Ctrl+Alt+6` — the Office convention called out in EdSharp PR #3. Each chord carries an inline `# §edsharp-ok` justification comment naming the screen-reader binding it overrides (NVDA's switch-to-synth-1..6), and a paired entry in `_CTRL_ALT_DOCUMENTED` in the menu-lint gate.
+
+Users who want both behaviours can keep the QUILL-key chord in their personal keymap; the legacy_rebindings entry rewrites the older `Ctrl+Shift+Grave, 1..6` saved binding to the new `Ctrl+Alt+1..6` automatically on load.
+
+### List toggle at `Ctrl+Alt+7` and `Ctrl+Alt+8`
+
+`Ctrl+Alt+7` toggles a bullet list and `Ctrl+Alt+8` toggles a numbered list. Each chord inspects the caret: if it is on a line that is already a list item, the markers are stripped and the line returns to plain text; otherwise a new list is inserted. The announcements are short and consistent — "Bullet List removed", "Numbered list applied (with numbers)" — so screen-reader users get immediate confirmation without scanning a long status string.
+
+A new setting, `list_auto_fill_numbers`, controls the numbered-list auto-fill behaviour. When the active document is markdown the inserted list always gets `1. `, `2. `, `3. ` … markers (the markdown surface rule). When the setting is on, auto-fill applies in any markup kind. A third path — pressing `Ctrl+Alt+8` once on a document — sets a per-document five-minute arming flag so subsequent insertions keep filling even when the writer navigates away from the chord. All three paths OR together in `should_auto_fill_numbers()`; outside of them, today's behaviour of one marker on the first item is preserved. `Ctrl+Alt+9` for link insertion is intentionally not added because `Ctrl+K` already covers that command.
+
+### A new "Section" cell in the status bar
+
+The status bar gains a `Section` cell that reads `Section: Heading N (ordinal of total)` whenever the caret is inside a heading section in a Markdown or HTML document. The cell is hidden by default so it does not push other useful cells out of the bar for writers who do not work at heading-level granularity; opt in via Preferences -> Status Bar and place the `Section` cell where it helps. The cell is a no-op for plain-text documents and for carets on a non-heading line, and it inherits the same dead-widget guard as the other live-editor cells so a queued caret event after Ctrl+F4 cannot crash the status-bar refresh.
+
+### The revised §10.8 Ctrl+Alt+ policy
+
+The original §10.8 policy banned `Ctrl+Alt+` outright. The 0.7.0 revision relaxes the rule but keeps the gate strict: a `Ctrl+Alt+` binding may enter `DEFAULT_KEYMAP` when it is in the `_CTRL_ALT_DOCUMENTED` allowlist **or** carries an inline `# §edsharp-ok` justification comment naming the screen-reader binding it overrides. Unjustified bindings still fail the gate.
+
+The full audit lives in the new `docs/keybinding-standard.md` document. The escape hatch is per-binding so future one-off exceptions do not need a code change in `menu_lint.py`.
+
+### Copy Tray binding drift guard
+
+A new `quill.tools.check_copy_tray_binding` gate ensures the 12 Copy Tray paste slots (Ctrl+Shift+1..9, Ctrl+Shift+0, Ctrl+Shift+-, Ctrl+Shift+=) keep their default bindings. A future change that reassigned any of those chords would now fail the gate. The gate is automatically delegated from `menu_lint` so a single `python -m quill.tools.menu_lint` invocation covers all keymap and menu structural invariants.
+
+## Experience 16: QUILL Key branding and menu label clarity
+
+The QUILL Key is the editor's signature feature — a `Ctrl+Shift+Grave` prefix that opens the chord language for power-user workflows. In 0.7.0 it gets a brand and a CI guarantee that every menu item shows its keybinding.
+
+### The chord is now `QUILL Key + <key>`
+
+Where 0.6.x showed the raw `Ctrl+Shift+Grave, S` form in menus, the Keyboard Reference page, the QUILL Key Help dialog, the cheat sheet, and the status bar, 0.7.0 shows `QUILL Key + S`. The user-visible string moves; the stored binding does not. `DEFAULT_KEYMAP`, `keymap.json`, the `quill_key_binding` setting, the `legacy_rebindings` comparison table, and any saved `keymap/profile_*.json` still hold the same `Ctrl+Shift+Grave, <key>` grammar. Only the display layer rewrites the prefix, through a single function — `quill.core.keymap_format.format_binding_for_display` — so the entire product speaks the same label.
+
+The constant `QUILL_KEY_LABEL = "QUILL Key"` lives in `quill/branding.py` and is the single source of truth. Status-bar messages, the cheat sheet, the dialog title, the announce message that fires when the prefix is pressed, and the parameter that `build_cheat_sheet` accepts all read from it. Rebrand the product once in `branding.py` and the QUILL Key label follows.
+
+A second helper, `format_quill_key_chord(prefix, second_key)`, composes a chord from a prefix and a second key without inspecting a stored binding string. Power-user status bar code that needs to mention a chord without one in hand can use it directly.
+
+### A 4th `menu_lint` invariant catches binding/label drift
+
+`quill.tools._check_binding_label_consistency` walks the AST of `quill/ui/main_frame_menu.py` and flags three regression classes:
+
+1. **Empty label through `_menu_label`.** `self._menu_label("", "format.bold")` was the kind of line that previously slipped in and produced a menu slot with no readable name. The gate now refuses to allow an empty title literal for any command that has a `DEFAULT_KEYMAP` binding.
+2. **Manual-tab literal drift.** Hand-written labels of the form `<name>\t<binding>` (the wx stock items `Cu&t\tCtrl+X`, `&Copy\tCtrl+C`, `&Paste\tCtrl+V`, `Select &All\tCtrl+A` and the editor's `Close &Other Documents\tCtrl+Shift+F4`, `Help on This &Control\tF1`, `&What Can I Do Here?\tShift+F1`, `Open User &Guide\tCtrl+F1`) are now compared against the `DEFAULT_KEYMAP` entry or the wx stock binding. A drift on either side fails the gate.
+3. **Tab with no binding.** A label literal that ends in `\t` (or contains `\t` with nothing after it) now fails the gate. The user used to see a menu name with a trailing tab and no accelerator.
+
+The runtime gap-check in `MainFrame._menu_label` (a one-shot `logger.warning` per affected item at first menu build) is the safety net for user-customization drift. A user who renames a label through the Customize dialog still gets a custom label; only the silent "blank menu slot" case is reported.
+
+The new check is wired into `python -m quill.tools.menu_lint` and exposed via 12 new test cases in `tests/unit/tools/test_binding_label_consistency.py`. The gate is run as part of CI and a regression anywhere in the binding/label chain now fails the build.
+
+### One source of truth for the product name and publisher
+
+`tools/generate_build_info.py`, `scripts/generate_update_feed.py`, and `scripts/build_windows_distribution.py` no longer hard-code the strings `QUILL for All` and `Community Access`. They import `APP_DISPLAY_NAME` and `APP_ORGANIZATION` from `quill.branding` so a rebrand touches one file. The TOML path still wins when `build/version.toml` provides a value (the installer and feed can be re-branded per release), but the constant is the safety net for older checkouts and dev builds. The 0.7.0 Beta 1 installer, About dialog, and update feed continue to read from `build/version.toml`; the constant is the fallback so a missing TOML no longer produces a hard-coded fallback string inside the tool.
+
+## Running QUILL 0.7.0 from source
+
+Some readers want to look at the code, run a fresh build before it lands on the update channel, fix a bug, or write a Quillin against the live API. This section is for them. Everything below assumes a working Python 3.12 or newer interpreter and a checkout of the repository. QUILL targets Windows and macOS; the source build runs on both.
+
+> “If you are reading this and thinking about contributing, you already are. Running the code on your own machine is the first step.”  
+> — Jeff Bishop
+
+### What you need before you start
+
+- Python 3.12 or newer. Verify with `python --version`.
+- Git, with the QUILL repository cloned locally.
+- A working C/C++ build toolchain is **not** required for the default install. The wheels pulled in by `[ui,dev]` ship pre-compiled binaries for Windows and macOS.
+- About 1.5 GB of free disk space for the virtual environment, downloaded wheels, bundled Quillins, and the dev test dependencies. The default sound pack and bundled Quillins add roughly 100 MB on top of that.
+- Windows 10 or 11, or macOS 12 or newer. Linux is not a supported runtime target in 0.7.0.
+
+### Clone and create a virtual environment
+
+```text
+git clone https://github.com/community-access/quill.git
+cd quill
+python -m venv .venv
+
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+
+# macOS / Linux
+source .venv/bin/activate
+```
+
+Always run QUILL inside the activated virtual environment. The `[ui]` extra pulls in `wxPython`, which is a large native wheel that installs in seconds on Windows and macOS; outside a venv it tends to fight with system Python for global package slots.
+
+### Install QUILL in editable mode with the UI and dev extras
+
+```text
+python -m pip install --upgrade pip
+pip install -e ".[ui,dev]"
+```
+
+That command installs QUILL as an editable package (changes to source take effect on the next launch, no reinstall), brings in the wxPython UI layer, the screen-reader bridges (`prismatoid` on Windows, VoiceOver bridge on macOS), the AI on-device runtime, and the full dev toolchain (`pytest`, `pytest-xdist`, `pytest-timeout`, `pytest-cov`, `ruff`, `mypy`, `Babel`).
+
+If you only want to run the editor without the dev extras, use `pip install -e ".[ui]"` instead. If you also write Quillins and want the Quillin scaffold tool, the example showcase, and the lint gates ready to go, `pip install -e ".[ui,dev]"` is the right choice.
+
+Optional extras you may want on top:
+
+- `pip install -e ".[spellcheck]"` for `pyenchant`-backed spell check.
+- `pip install -e ".[ssh]"` for editing files over SSH/SFTP.
+- `pip install -e ".[ocr]"` for native Windows OCR.
+- `pip install -e ".[kokoro]"` for offline neural TTS.
+- `pip install -e ".[github]"` for the GitHub remote-file integration.
+- `pip install -e ".[glow]"` for the GLOW accessibility engine. This extra is not on PyPI yet; until it is, follow the comment in `pyproject.toml` and install it from `vendor/wheels`.
+
+### Launch the editor
+
+```text
+python -m quill
+```
+
+That runs the `quill.__main__:main` entry point defined in `pyproject.toml`. The same script is also exposed as `quill` on `PATH` after the editable install, so `quill` from any shell inside the venv launches the editor.
+
+A few useful launch options:
+
+- `python -m quill --safe-mode` starts QUILL with AI, watch folder, and Quillin contributions disabled. Use this when you are chasing a bug you suspect lives in an extension.
+- `python -m quill --goto FILE:LINE:COL` opens `FILE` and lands the caret at the given line and column. Handy when a linter, grep result, or stack trace hands you a `path:line:column` string.
+- `python -m quill --diff LEFT RIGHT` opens `LEFT` and `RIGHT` directly into Compare Mode.
+- `python -m quill FILE1 FILE2 ...` opens each file in its own tab.
+
+### Run the test suite
+
+```text
+# Fast: unit tests only, single-process
+pytest -q
+
+# Single file
+pytest tests/unit/core/test_paths.py -x -q
+
+# Unit + stability
+pytest tests/unit/ tests/stability/ -q
+
+# Parallel (uses pytest-xdist, one worker per CPU)
+pytest -q -n auto
+```
+
+`tests/conftest.py` sets `quill.core.paths._DEV_BUILD = True` for the whole test session. That is what lets tests redirect `QUILL_DATA_DIR` for isolation; do not remove it. Many tests also depend on the dev extras from `pip install -e ".[ui,dev]"`, so a plain `pip install -e .` will leave the suite red on missing modules.
+
+### Lint and type-check
+
+```text
+# Lint
+ruff check .
+ruff format --check .
+
+# Scoped type-check. Always scoped — never run unscoped mypy.
+mypy quill/core quill/io
+```
+
+The scoped mypy command covers the strictly typed layers (`quill.core` and `quill.io`). The UI layer (`quill.ui`) is excluded by `pyproject.toml`; it is being typed gradually. Running `mypy .` instead will produce a wall of unrelated noise from the untyped UI and is not useful.
+
+### Verify a Quillin before you publish
+
+```text
+python -m quill.tools.quillin_lint path/to/your/quillin --strict
+```
+
+The strict mode flags every lint warning, not just the ones that block install. Run it on your Quillin directory before you open a pull request.
+
+### Developer-only environment switches
+
+Three environment variables matter when you run from source. They are honoured only when `QUILL_DEV_BUILD=1` is set; in a release build they are silently ignored.
+
+- `QUILL_DATA_DIR` — override the per-user data directory. In a dev build the override must still live under `Path.home()`; the editor rejects paths outside your home directory to avoid corrupting a real install.
+- `QUILL_SAFE_MODE=1` — same as `--safe-mode`. Disables AI, watch folder, and Quillin contributions at startup.
+- `QUILL_DEV_BUILD=1` — turns on the developer console (`Tools -> Developer Console`), enables `api.log()` writes from Quillins, and lets `QUILL_DATA_DIR` redirect to a non-default location. Without this flag you are running in release-build behaviour even when launched from a checkout.
+
+### Where to look next
+
+- `CLAUDE.md` at the repository root is the developer quick-reference: architecture, invariants, and the test/lint commands in their canonical form.
+- `docs/QUILL-PRD.md` is the long-form product requirements document.
+- `docs/keybinding-standard.md` documents the keyboard model and the `Ctrl+Alt+` allowlist policy.
+- `docs/planning/` carries the detailed design notes for features that have not shipped yet.
+- The GitHub issue tracker is the right place to file bugs, ask questions, or propose a Quillin: <https://github.com/community-access/quill/issues>.
+
+If you find something wrong, **Help -> Report a Bug...** from inside the editor is the friendliest path. The dialog lives in the Help menu now, accepts typing in every field, and submits in the background so the editor does not freeze. Include the output of `python -m quill --version` and, if you can, the crash-report bundle referenced in the dialog.
+
+---
 
 ## Closing: community-built, screen-reader-first, and ready for what comes next
 

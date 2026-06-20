@@ -165,7 +165,44 @@ def _ensure_tts_worker() -> None:
         t.start()
 
 
+def prewarm_pyttsx3_engine() -> None:
+    """Start the TTS worker thread now so it builds its engine ahead of time.
+
+    SAPI/COM voice enumeration is the expensive part of "the first
+    announcement of the session" (hundreds of ms, sometimes much more).
+    Calling this at app startup means that cost is paid before the user
+    ever presses the QUILL key, instead of during it — previously that
+    delay ate into the quill_key_timeout_seconds window and the prefix
+    could expire before the user's next keystroke arrived.
+
+    The engine must be built on the same thread that later calls
+    ``engine.say()``/``runAndWait()``: pyttsx3's sapi5 driver is a
+    COM/STA object, and using it from a thread other than the one that
+    created it deadlocks `runAndWait()` instead of raising. So this just
+    starts the worker thread early rather than constructing the engine on
+    a separate throwaway thread.
+    """
+    if pyttsx3 is None:
+        return
+    _ensure_tts_worker()
+
+
 def _tts_worker_loop() -> None:
+    engine = _get_pyttsx3_engine()
+    # The cached engine is a process-wide singleton (H5/H6), reused across
+    # every announcement. Repeated say()/runAndWait() cycles on a reused
+    # SAPI5 engine speak the first utterance and then silently no-op on
+    # every later one (runAndWait() returns normally but nothing is heard)
+    # because each runAndWait() tears down and rebuilds the COM driver
+    # loop. Driving the engine with the external-loop API instead --
+    # startLoop(False) once, then say()+iterate() per message -- keeps the
+    # same driver loop alive for the life of the worker thread, which is
+    # the documented fix for this pyttsx3/SAPI5 reuse bug.
+    if engine is not None:
+        try:
+            engine.startLoop(False)
+        except Exception:  # noqa: BLE001
+            pass
     while True:
         msg = _tts_queue.get()
         if msg is None:
@@ -175,10 +212,17 @@ def _tts_worker_loop() -> None:
         if engine is not None:
             try:
                 engine.say(msg)
-                engine.runAndWait()
+                while engine.isBusy():
+                    engine.iterate()
+                    _time.sleep(0.01)
             except Exception:  # noqa: BLE001
                 pass
         _tts_queue.task_done()
+    if engine is not None:
+        try:
+            engine.endLoop()
+        except Exception:  # noqa: BLE001
+            pass
 
 
 @dataclass(frozen=True, slots=True)
@@ -242,7 +286,7 @@ class AnnouncementEngine:
     def state(self) -> AnnouncementBackendState:
         return self._state
 
-    def announce(self, message: str) -> str | None:
+    def announce(self, message: str, *, force_speech: bool = False) -> str | None:
         if self._runtime_backend is None:
             # macOS: hand the announcement to VoiceOver via the accessibility
             # API. Never self-voice with pyttsx3 — that talks over VoiceOver
@@ -259,22 +303,29 @@ class AnnouncementEngine:
             # Windows/Linux: only speak via system TTS when NO screen reader is
             # running — otherwise it talks over Narrator/NVDA/JAWS (the screen
             # reader already reads the UI through the accessibility API).
+            # force_speech bypasses that suppression for callers narrating
+            # internal-only state (e.g. the QUILL key chord prefix) that has
+            # no focus or control change for the screen reader to pick up on
+            # its own, so without this the message is silently dropped.
             if (
                 self._state.requested_backend == "auto"
                 and pyttsx3 is not None
-                and not _screen_reader_active()
+                and (force_speech or not _screen_reader_active())
             ):
-                engine = _get_pyttsx3_engine()
-                if engine is not None:
-                    # Queue speech to a worker thread — never block the UI thread.
-                    _ensure_tts_worker()
-                    _tts_queue.put_nowait(message)
-                    self._state = replace(
-                        self._state,
-                        active_backend="speech",
-                        backend_name="System Speech",
-                        last_error="",
-                    )
+                # Queue speech to the worker thread without resolving the
+                # engine here: pyttsx3.init() costs 100-300ms+ the first time
+                # (longer on some machines) and the worker resolves/builds the
+                # singleton engine itself, so calling it here would block the
+                # caller (the UI thread) for that long on the first
+                # announcement of the session.
+                _ensure_tts_worker()
+                _tts_queue.put_nowait(message)
+                self._state = replace(
+                    self._state,
+                    active_backend="speech",
+                    backend_name="System Speech",
+                    last_error="",
+                )
             return None
         speak = getattr(self._runtime_backend, "speak", None)
         if not callable(speak):

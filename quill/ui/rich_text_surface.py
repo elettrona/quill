@@ -101,9 +101,11 @@ class RichTextSurface:
 
         header = wx.BoxSizer(wx.HORIZONTAL)
         self._mode_button = wx.Button(self.panel, label="Edit as Markdown")
+        self._mode_button.SetName("Toggle rich text edit mode")
         self._mode_button.Bind(wx.EVT_BUTTON, self._toggle_mode)
         header.Add(self._mode_button, 0, wx.RIGHT, 8)
         self._mode_label = wx.StaticText(self.panel, label="Rich text lens")
+        self._mode_label.SetName("Rich text mode indicator")
         header.Add(self._mode_label, 0, wx.ALIGN_CENTER_VERTICAL)
         root.Add(header, 0, wx.ALL, 6)
 

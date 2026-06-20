@@ -6,7 +6,7 @@
 
 Quill is a screen-reader-first writing and reading environment for Windows. It is designed to feel calm, predictable, deeply keyboard-friendly, and respectful of your focus. It is also ambitious. Quill is not only a place to write plain text. It is a place to open difficult documents, inspect structure, navigate long material, compare revisions, prepare content for Markdown or HTML, and work with accessibility and extraction issues without leaving the editor.
 
-This guide is aligned to Quill 0.5.0 Beta, built by Blind Information Technology Solutions (BITS) together with Community Access.
+This guide is aligned to Quill 0.7.0 Beta, built by Blind Information Technology Solutions (BITS) together with Community Access.
 
 This guide is written as a companion, not a reference wall. Read it from the beginning if you are new to Quill. Dip into the sections that matter most if you already know what kind of work you want to do.
 
@@ -22,6 +22,8 @@ Quill is also in beta. Expect polish, depth, and real daily utility. Also expect
 - [The Main Window](#the-main-window)
 - [The Menu Bar Reference](#the-menu-bar-reference)
 - [Writing and Editing](#writing-and-editing)
+  - [Import and Export](#import-and-export)
+  - [Batch Conversion](#batch-conversion)
 - [Search, Replace, and Deep Navigation](#search-replace-and-deep-navigation)
 - [QUILL Quick Nav Mode](#quill-quick-nav-mode)
 - [Formatting and Markup Work](#formatting-and-markup-work)
@@ -120,35 +122,37 @@ See [Context-Sensitive Help (F1)](#context-sensitive-help-f1) for full details.
 
 The **QUILL key** is `Ctrl+Shift+Grave` (the back-tick/grave key above Tab). It is a layered prefix chord that opens most of QUILL's power features without ever leaving the keyboard.
 
+> **Heads up: the chord reads as `QUILL Key + <key>` everywhere you see it.** Menus, the About > Keyboard Reference page, the QUILL Key Help dialog, the cheat sheet, and the status bar all show the chord in the branded form (`QUILL Key + S`, `QUILL Key + Shift+O`, and so on). The stored binding is still `Ctrl+Shift+Grave, <key>` — only the user-visible label moves. The display rewrite is one function (`format_binding_for_display`), so the entire product speaks the same label and a rebrand in `quill/branding.py` follows everywhere.
+
 It operates in two primary layers:
 1. **Prefix Mode (One-shot).** Press it once and QUILL arms a short-lived prefix. The next key you press runs a chord command (like `G` for Go to Anything or `M` for Markdown paste), and then the prefix expires.
 2. **Browse Mode (Locked).** Press the QUILL key twice in a row, and QUILL locks **Quick Nav (Browse) mode** on. In this mode, single-letter keys (like `H` for headings, `P` for paragraphs, or `S` for sentences) move the cursor through the document structure. This mode stays active until you press `Esc`.
 
-The QUILL key is its own tiny language: every chord is data-driven from the keymap, which means every chord is fully remappable in **Preferences → Keyboard → Keymap Editor**. The full cheat sheet is one keystroke away (`Ctrl+Shift+Grave, ?`).
+The QUILL key is its own tiny language: every chord is data-driven from the keymap, which means every chord is fully remappable in **Preferences → Keyboard → Keymap Editor**. The full cheat sheet is one keystroke away (`QUILL Key + ?`).
 
 **QUILL key sound.** When the QUILL key is pressed and the prefix arms, QUILL plays a short two-tone earcon (`quill_key_pressed`) — a quick double-ping distinct from all other sounds — so you get instant audio confirmation without waiting for speech. This earcon is included in all bundled sound packs and can be toggled individually in **Tools → Reading & Dictation → Sound Events...**.
 
 **Detection note.** On some keyboards or drivers, Windows reports the grave/back-tick key differently than expected. QUILL now uses three independent detection strategies (character code, Windows virtual key VK_OEM_3, and physical scan code 0x29) so the key is recognized on any layout.
 
-**Reassigning chord commands.** Open **Preferences → Keyboard → Keymap Editor**, find the command you want to move, and type a new chord binding in the form `Ctrl+Shift+Grave, X` (replacing `X` with the key you want). Conflict detection prevents accidental double-bindings.
+**Reassigning chord commands.** Open **Preferences → Keyboard → Keymap Editor**, find the command you want to move, and type a new chord binding in the form `Ctrl+Shift+Grave, X` (replacing `X` with the key you want). The Keymap Editor stores chords in this `Ctrl+Shift+Grave, X` grammar; menus and the cheat sheet display them as `QUILL Key + X`. Conflict detection prevents accidental double-bindings.
 
 Default QUILL-key chords:
 
-- `Ctrl+Shift+Grave, N` — enter Quick Nav (browse) mode for the next action. If the `browse_mode_sticky` setting is on, the mode stays locked until `Esc`; otherwise it expires on the QUILL-key timeout. Press the QUILL key again (without a chord) to lock it on regardless of the setting.
-- `Ctrl+Shift+Grave` (pressed twice) — lock Quick Nav mode on until `Esc`. This is the most common path: first press arms the prefix, second press locks browse mode.
-- `Ctrl+Shift+Grave, G` — open **Go to Anything** (Quick Nav search).
-- `Ctrl+Shift+Grave, M` — paste the rich HTML clipboard as Markdown at the cursor.
-- `Ctrl+Shift+Grave, V` — open the browser preview for the current document.
-- `Ctrl+Shift+Grave, Shift+O` — open from remote (FTP / SFTP / HTTPS / WebDAV / S3 / GitHub).
-- `Ctrl+Shift+Grave, W` — save to remote.
-- `Ctrl+Shift+Grave, Shift+M` — manage saved remote sites.
-- `Ctrl+Shift+Grave, A` — selection actions when text is selected (also expands an abbreviation manually mid-word).
-- `Ctrl+Shift+Grave, Shift+A` — open the abbreviation manager.
-- `Ctrl+Shift+Grave, E` — toggle abbreviation expansion on or off.
-- `Ctrl+Shift+Grave, X` — open the Copy Tray dialog.
-- `Ctrl+Shift+Grave, Shift+1`–`Shift+9`, `Shift+0`, `Shift+-`, `Shift+=` — copy the selection to slots 1–12 of the Copy Tray.
-- `Ctrl+Shift+Grave, ?` — show the QUILL key cheat sheet.
-- `Ctrl+Shift+Grave, Esc` — cancel the prefix without firing any command.
+- `QUILL Key + N` — enter Quick Nav (browse) mode for the next action. If the `browse_mode_sticky` setting is on, the mode stays locked until `Esc`; otherwise it expires on the QUILL-key timeout. Press the QUILL key again (without a chord) to lock it on regardless of the setting.
+- `QUILL Key` (pressed twice) — lock Quick Nav mode on until `Esc`. This is the most common path: first press arms the prefix, second press locks browse mode.
+- `QUILL Key + G` — open **Go to Anything** (Quick Nav search).
+- `QUILL Key + M` — paste the rich HTML clipboard as Markdown at the cursor.
+- `QUILL Key + V` — open the browser preview for the current document.
+- `QUILL Key + Shift+O` — open from remote (FTP / SFTP / HTTPS / WebDAV / S3 / GitHub).
+- `QUILL Key + W` — save to remote.
+- `QUILL Key + Shift+M` — manage saved remote sites.
+- `QUILL Key + A` — selection actions when text is selected (also expands an abbreviation manually mid-word).
+- `QUILL Key + Shift+A` — open the abbreviation manager.
+- `QUILL Key + E` — toggle abbreviation expansion on or off.
+- `QUILL Key + X` — open the Copy Tray dialog.
+- `QUILL Key + Shift+1`–`Shift+9`, `Shift+0`, `Shift+-`, `Shift+=` — copy the selection to slots 1–12 of the Copy Tray.
+- `QUILL Key + ?` — show the QUILL key cheat sheet.
+- `QUILL Key + Esc` — cancel the prefix without firing any command.
 
 ### Command Palette
 
@@ -344,7 +348,9 @@ The **Insert** menu adds structured content at the cursor.
 - **List** submenu: **Bullet**, **Numbered**, **Task**, and **List Manager...**.
 - **Insert Code Block**, **Insert Footnote**, **Insert Table...**, **Insert HTML Tag...**, and **Insert Markdown Tag...**.
 - **Insert Snippet...** and **Manage Snippets...** for reusable text with placeholders.
-- **Special Character...**, **Date and Time** submenu, and **File Content...** insert symbols, timestamps (date, time, and date and time), and the contents of another file. The **Date and Time** submenu is provided by the bundled `com.quill.bundled.insert-tools` Quillin.
+- **Special Character...** opens a symbol picker.
+- **Date and Time** submenu inserts a date, time, or both at the cursor. The bundled `com.quill.bundled.insert-tools` Quillin owns this submenu; it is the canonical home for date and time snippets. See [Date and Time submenu](#date-and-time-submenu) below.
+- **File Content...** inserts the contents of another file at the cursor.
 - **Insert Equation...** (`Ctrl+Shift+E`) opens a two-step prompt for inserting a LaTeX or MathML equation. Type the formula in LaTeX notation — for example `E=mc^2` or `\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}` — or paste a MathML fragment. If the input is LaTeX, a second step asks whether to display it inline (`$...$`) or as a block (`$$...$$`). If a LaTeX equation is already selected when you press `Ctrl+Shift+E`, the delimiters are stripped and the bare formula pre-fills the prompt. MathML input (starting with `<math`) is inserted verbatim without a mode step. Browser Preview and HTML export render equations using MathJax 3.
 
 Quill treats Markdown and HTML as working surfaces, not special-purpose export formats, so tag insertion lives here beside the structural inserts.
@@ -366,7 +372,17 @@ For setup and maintenance:
 
 Snippets support placeholders such as `${input:name}`, `${choice:a|b}`, `${date}`, `${time}`, and `${cursor}`.
 
-### Format
+#### Date and Time submenu
+
+**Insert -> Date and Time** is a submenu, not a single command. The bundled `com.quill.bundled.insert-tools` Quillin owns it and contributes three snippet-backed items:
+
+- **Insert Date** — inserts today's date at the cursor using the project's current `${date}` format.
+- **Insert Time** — inserts the current time at the cursor using `${time}`.
+- **Insert Date and Time** — inserts both, separated by a single space.
+
+The submenu is built by routing Quillin contributions whose `parent` is `Date and Time`. If you disable the bundled `insert-tools` Quillin, the submenu is still present but its items go with it. Enable or disable it from **Preferences -> Quillins** if you want to replace these with your own date/time snippets.
+
+#### Format
 
 The **Format** menu handles presentation and markup-aware editing of existing text.
 
@@ -489,9 +505,9 @@ The quick writing actions work with or without a selection:
 - **Continue Writing** uses your selection as the lead-in if you have one; otherwise it continues from the full document.
 - Quill announces the scope it chose, for example "Rewrite paragraph (42 words)", so you always know what the action will change.
 - If there is nothing to act on, Quill says so (for example "Nothing to rewrite") instead of sending an empty request.
-- If AI is turned off, these actions announce "AI is turned off. Enable 'Use Artificial Intelligence' in Tools > AI Assistant." and do nothing else.
+- If AI is turned off, these actions announce "AI is turned off. Enable 'Use Artificial Intelligence' in the AI menu." and do nothing else.
 
-Use **Tools -> AI Assistant -> AI Hub...** for a single control surface that links provider verification, model discovery, Prompt Studio, Agent Center, and Writing Assistant.
+Use **AI > AI Hub...** for a single control surface that links provider verification, model discovery, Prompt Studio, Agent Center, and Writing Assistant.
 
 Trust and privacy baseline:
 
@@ -508,7 +524,7 @@ AI connection flow:
 4. Use **Verify Connection** to test endpoint and credentials.
 5. Use **List Models** to fetch endpoint models, then use the search box to filter quickly.
 6. Use **Recommend Model** to pick a model profile aligned to your hardware/task framing.
-7. Save settings. Quill auto-runs verification and updates the AI status line in Tools > AI Assistant.
+7. Save settings. Quill auto-runs verification and updates the AI status line in the AI menu.
 
 Most cloud providers are pre-configured with default host URLs so setup is key-first, not URL-first. For advanced OpenAI-compatible endpoints, use Custom and override host/model explicitly.
 
@@ -529,7 +545,7 @@ These help you stay inside the editor instead of breaking flow for small writing
 
 ### Ask Quill Chat setup (on-device AI)
 
-Ask Quill Chat (`Tools -> AI Assistant -> Ask Quill Chat...`) is a message-style assistant that can answer, draft text, propose edits, and run Quill commands with approval before changes are applied.
+Ask Quill Chat (**AI > Writing Assistant...**) is a message-style assistant that can answer, draft text, propose edits, and run Quill commands with approval before changes are applied.
 
 Runtime backends:
 
@@ -540,7 +556,7 @@ Setup:
 
 1. Install dependencies: `pip install -r requirements.txt`
 2. Put a `.gguf` model in `%APPDATA%\\Quill\\models\\` (Windows) or set `QUILL_LLAMA_MODEL` to a full path.
-3. Open `Tools -> AI Assistant -> Ask Quill Chat...` and send a prompt.
+3. Open **AI > Writing Assistant...** and send a prompt.
 
 Accessibility:
 
@@ -563,14 +579,14 @@ Behavior notes:
 - The assistant answers in chat by default; greetings and questions are never turned into document edits.
 - Proposed actions (insert, replace, run a command) use an explicit `Approve` or `Discard` step before anything changes your document.
 - If model/runtime is unavailable, Quill reports this clearly and does not apply destructive changes.
-- **Train Writing Style** (`Tools -> AI Assistant -> Train Writing Style...`) lets you teach the assistant your own writing style from samples or the current document.
+- **Train Writing Style** (**AI > Train Writing Style...**) lets you teach the assistant your own writing style from samples or the current document.
 
 ### The AI Hub (one place to configure every provider)
 
 The **AI Hub** is now the single place to set up and manage AI. The former
 separate **AI Model and Connection** and **Forget API Key** menu items were
 merged into it, so there is one home for providers, models, keys, and testing.
-Open it from `Tools -> AI Assistant -> AI Hub...`.
+Open it from `AI > AI Hub...`.
 
 The Hub lets you work through every provider, each with its own key and default
 model — switching providers never loses another provider's configuration:
@@ -754,7 +770,7 @@ All four open an Agent Result dialog where you can:
 #### AI Hub
 
 `AI > AI Hub...` is the central configuration panel for all AI settings.
-It has four tabs:
+It has five tabs:
 
 - **Provider**: choose your AI provider (Ollama, OpenAI, Claude, Gemini,
   OpenRouter, or custom), enter your API key, set the model and host URL,
@@ -763,6 +779,8 @@ It has four tabs:
   models and the Ollama base URL.
 - **Audio Services**: enter your Deepgram API key for speaker diarization,
   and set the default maximum number of speakers.
+- **Instructions**: read, customise, and share the built-in system prompt for
+  every AI task. See Custom Instructions below.
 - **Advanced**: privacy consent summary listing every action that sends data,
   safe mode documentation, and a Reset AI Settings button.
 
@@ -921,7 +939,7 @@ Status Page behavior:
 - It surfaces asynchronous speech generation and BITS Whisperer download/provider status so users can monitor progress without blocking dialogs.
 - In **Preferences -> General**, you can enable **Auto-open Status Page when BITS Whisperer model downloads start** (default off).
 - In **Preferences -> General**, set **Status page refresh announcements** to **Quiet**, **Normal**, or **Verbose** to control screen-reader announcement cadence.
-- In **Preferences -> General**, use **Use Artificial Intelligence** to mirror the Tools > AI Assistant toggle from one place.
+- In **Preferences -> General**, use **Use Artificial Intelligence** to mirror the AI menu toggle from one place.
 - In **Preferences -> General**, enable **BITS Whisperer safe mode lock** to block download/retry actions while keeping status and onboarding surfaces available.
 
 BITS Whisperer ships with safe defaults applied automatically; runtime routing changes stay off until you opt in from these Preferences surfaces.
@@ -1176,6 +1194,73 @@ The dialog lists all twelve slots. Each row shows the slot number, an optional l
 - Double-press any paste chord to hear what is in that slot without pasting — useful when navigating your tray by memory.
 - Slots survive restarts. Build a small library of recurring fragments you reach for daily.
 - All bindings are reassignable in the Keymap Editor (`Tools > Customize & Support > Preferences > Keyboard`).
+
+### Import and Export
+
+QUILL can convert between the formats the people around you actually use, without you leaving the editor. **File > Import** brings a non-QUILL document into QUILL as a new tab. **File > Export** saves the current buffer as a different file type. Both routes use Pandoc on a background thread, so the editor never freezes.
+
+**Import (File > Import):** Markdown, CommonMark, GitHub-Flavored Markdown, HTML, Word documents (`.docx`), OpenDocument Text (`.odt`), Rich Text (`.rtf`), plain text, CSV / TSV tables, EPUB books, LaTeX / TeX.
+
+**Export (File > Export):** the same set plus PDF (export only).
+
+A few minutes of muscle memory covers most workflows:
+
+- Pick **File > Import > Word Document**, choose a `.docx`, and a new Markdown tab opens with the document ready to edit.
+- Pick **File > Export > EPUB Book**, choose a folder, and QUILL writes an EPUB next to your current file.
+- Pick **File > Export > PDF** to publish a finished document.
+
+**Single-file keyboard path.** `File > Import` and `File > Export` are regular menu items — open the menu, arrow down, press Enter. There is no single shortcut for the whole list, because the format choice is the whole point of the command. The Command Palette (`Ctrl+Shift+P`) is the fastest path: type `import` or `export` and pick the format from the filtered list.
+
+**Post-conversion prompt.** When the target format is editable in QUILL (Markdown, CommonMark, GFM, HTML, plain text, CSV / TSV) the editor asks whether to open the new file in a new window. Press **Yes** to open, **No** to keep working where you were. PDF, DOCX, EPUB, ODT, and RTF do not prompt because QUILL cannot edit them directly; a confirmation message tells you where the file landed and copies the path to the clipboard so you can paste it into File Explorer.
+
+**Out of scope.** PDF *import* is intentionally not supported — Pandoc cannot do it reliably, and the dedicated braille and DAISY pipelines are the right tools for print-to-braille conversion. For every format Pandoc supports that is not in the Tier-1 list, open **Tools > Pandoc Conversion Center...** for the roadmap note.
+
+### Batch Conversion
+
+When you have a folder full of documents to convert, opening them one at a time is not the right tool. **File > Import > Batch Conversion...** (or **File > Export > Batch Conversion...** - both lead to the same wizard) opens a four-page wizard that converts a whole folder of files on a background thread. The chord is **QUILL key, B**.
+
+**The wizard, page by page.**
+
+1. **Introduction.** A short summary, then a live Pandoc version probe. If Pandoc is not installed, the page says so and Start stays disabled until you install Pandoc 3.x from <https://pandoc.org>.
+2. **Folder and options.** A folder picker, an **Include subfolders** checkbox, an **Output layout** radio (Same folder as source, or Output subfolder per source folder), and an **Overwrite** radio (Ask each time, Never, Always). Defaults come from Settings, so the wizard respects your preferences the moment it opens. The last folder you used is remembered for next time.
+3. **Format and profile.** A **Direction** radio (Import into QUILL, or Export from QUILL), a source-format list and a target-format list drawn from the Tier-1 set, and a profile picker for the seven built-in conversion profiles.
+4. **Review and start.** A plain-text summary of the entire plan. Press **Start** to submit the batch and close the wizard.
+
+**Output naming.** QUILL keeps the originating stem and replaces the extension. `report.docx` becomes `report.md` (or `report.html`, `report.epub`, ...). With **Output subfolder per source folder** (the default) the output lands in a new `Output/` folder inside the source folder; with **Same folder as source** it lands next to the input.
+
+**Profiles.** The wizard's profile picker offers seven curated profiles. Each profile is a small set of Pandoc CLI flags plus a plain-language description that the screen reader reads aloud before you click Start.
+
+- **Clean Word Document** — `report.md` becomes a polished Word document with no Markdown scaffolding in the output.
+- **Accessible HTML Page** — a single HTML page with title block and `lang` metadata, ready for an accessibility audit.
+- **EPUB Book** — a personal-publishing-ready EPUB with a table of contents and EPUB-3 metadata.
+- **GitHub README** — GitHub-Flavored Markdown with no wrapper, ready to paste into a repository.
+- **Print PDF** — a PDF with standard PDF metadata; Pandoc picks the right engine for your platform.
+- **Instructor Handout** — a print-ready PDF with 1-inch margins and a numbered top-level section structure.
+- **Plain Text for Screen Readers** — plain text with no HTML wrapper, no smart quotes, fixed 80-column width; the right choice for piping into a TTS engine.
+
+**Overwrite behaviour.** The three-way policy keeps the screen reader out of the per-file prompt loop:
+
+- **Ask each time** — QUILL lists every output that would clobber an existing file and asks once with a single yes/no. If you say no, the rest are skipped.
+- **Never** — existing outputs are skipped automatically. The Status Page shows the count under *skipped* so the total still adds up.
+- **Always** — existing outputs are overwritten without prompting. Useful for re-running a batch with the same plan.
+
+**Live progress and completion announcement.** The batch runs on the background task pool. Open the Status Page (`Help > Status Page` or `F6` to the status bar then `Ctrl+Shift+T`) and the Tasks & Downloads tab shows live rows. The first row is `Batch conversion: scanning <folder>`, then one row per file as the work progresses.
+
+When the batch finishes, QUILL speaks a single completion line through the announcement backend you have configured. The line names the converted / skipped / failed counts and the elapsed time:
+
+> "Batch conversion complete. 12 of 14 files converted in 4.2 seconds. 2 skipped."
+
+The spoken line respects the verbosity settings under **Preferences > Accessibility**; the Status Page row updates regardless so sighted and low-vision users see the same result. A short report dialog lists every file that produced warnings or failed, with the exact error string.
+
+**Settings: defaults the wizard can override.** Three Settings entries let you choose defaults the wizard uses when it opens:
+
+- **Include subfolders in batch conversion** — boolean, default `True`.
+- **Overwrite behaviour for batch conversion** — Ask each time (default), Never, or Always.
+- **Default output layout for batch conversion** — Output subfolder per source folder (default) or Same folder as source.
+
+The wizard can override any of them per run. Preferences is the canonical place to change defaults; the wizard is a one-off override path.
+
+**When to use the wizard, when to use single-file.** Use the single-file Import and Export menus for one document at a time. Use the wizard when you have a folder of documents to convert, when the work is the same for every file, and when you can let it run while you keep writing.
 
 ### Abbreviation Expansion
 
@@ -1521,6 +1606,7 @@ Behavior rules:
 - It only changes cursor location.
 - If a target does not exist for the active surface, Quill announces that clearly.
 - Find and replace commands return you to normal command flow automatically.
+- After each move, Quill announces where you landed. **QUILL browse move detail**, in `Preferences -> Navigation`, controls how much detail that announcement gives: *Line and column* (default), *Line only*, or *Say nothing*.
 - In `Preferences -> General`, **Preload QUILL browse cache in background** is on by default. If you turn it off, Quill builds the cache the first time you use Quick Nav.
 
 How Quill tracks headings, lists, list items, paragraphs, and sentences:
@@ -1569,6 +1655,16 @@ Quill detects whether the current surface looks like Markdown, HTML, or plain te
 ### Headings and lists
 
 The heading tools do more than insert decoration. They help you maintain usable structure. The list tools speed up common authoring patterns without forcing you into a separate composer.
+
+For inline heading control, press `Ctrl+Alt+1` through `Ctrl+Alt+6` to convert the current line to the matching heading level in Markdown and HTML surfaces. Press the same chord again on an already-matching heading to clear the level. The chord is documented in §10.2 of `docs/keybinding-standard.md` and overrides NVDA's switch-to-synth-1..6; if you use NVDA's synth switcher, you can rebind the QUILL heading chord via the Keymap Editor (`Ctrl+Shift+Grave, K`).
+
+For section-level reorganisation in Markdown and HTML, press `Alt+Shift+Down` while the caret is on a heading to swap that section past its next sibling; `Alt+Shift+Up` swaps it with the previous sibling. The chord is gated on Markdown and HTML — plain-text documents announce the chord is unavailable and the move is skipped. Fenced code blocks are honored, so a `# fake` line inside a ``` fence is never promoted to a real sibling.
+
+The previous `Alt+Shift+Up` / `Alt+Shift+Down` bindings (expand/shrink selection) live on `Ctrl+Shift+Grave, J` and `Ctrl+Shift+Grave, Shift+J` now; saved keymaps from older builds migrate automatically.
+
+For list toggling, press `Ctrl+Alt+7` to insert or strip a bullet list, or `Ctrl+Alt+8` to insert or strip a numbered list. The chord inspects the caret's current line: if it is already a list item, the markers are stripped and the line returns to plain text; otherwise a new list is inserted at the caret. Numbered-list insertion honours the `list_auto_fill_numbers` setting (Preferences -> Editing -> Lists) — when the setting is on, every item gets `1. `, `2. `, `3. ` markers; when it is off, only the first item does. The chord is always available in markdown and HTML surfaces; plain-text documents announce the chord is unavailable and the action is skipped.
+
+The status bar's `Section` cell reads `Section: Heading N (ordinal of total)` whenever the caret is on a heading in a Markdown or HTML document. The cell is hidden by default; turn it on via Preferences -> Status Bar. The cell is a no-op for plain-text documents and for carets on a non-heading line, and it inherits the same dead-widget guard as the other live-editor cells.
 
 ### Citations and bibliographies
 
@@ -1757,8 +1853,10 @@ Profiles shape which feature clusters are on, quiet, or off. This helps Quill st
 
 Each profile is a starting point, not a cage — switch any time from **Profiles and Features...**, and fine-tune individual features afterward without losing the rest of the profile's choices.
 
+The first-run Personalise QUILL wizard offers seven of these as curated starting points, each with a plain-English preview of what you get. The full set of ten lives here in **Profiles and Features...**, including profiles the wizard does not surface directly, such as Reader and Student, Office and Admin, and Low Vision.
+
 - **Essential** — the calmest possible editor. Just text, files, and the basics, with everything else a quiet opt-in away.
-- **Casual Writer** — everyday writing, formatting, and cleanup, with guided power features nearby when you reach for them. For papers, citations, and a table of contents, see Author or Student below.
+- **Writer** — everyday writing, formatting, and cleanup, with guided power features nearby when you reach for them. For papers, citations, and a table of contents, see Author or Student below.
 - **Author or Student** — long-form writing with a table of contents, footnotes, and MLA / Chicago / APA citations, built for papers, theses, and class assignments. Choose footnote-style or full academic citations with **Format → Markdown → Select Citation Style...**.
 - **Reader and Student** — reading, highlights, references, and light writing, tuned for working through someone else's material rather than producing your own.
 - **Office and Admin** — reliable file work, sessions, cleanup, and printing for everyday office documents.
@@ -2074,7 +2172,7 @@ QUILL opens and edits formatted braille text files — `.brf`, `.brl`, `.pef`, a
 
 **Saving is byte-for-byte.** When you save a braille file, QUILL preserves it exactly: no trailing-space trimming, no line-ending normalization, and form feeds (the hard page breaks) are kept. If the text contains characters outside the braille-ASCII range, QUILL still saves them as-is and gives you a single, non-blocking spoken warning so nothing is silently changed. This means a round-trip — open, save — gives you back an identical file.
 
-**The braille status cell.** While a braille file is active, the status bar carries a braille cell that updates as you move: it reads like `BRF Pg 12/87 | Ln 14/25 | Cell 31/40 | Print 7`. That is the braille page, the line within the page, the cell within the line, and the print page. Print-page detection arrives in a later phase; until then the print segment reads `Print ?`.
+**The braille status cell.** While a braille file is active, the status bar carries a braille cell that updates as you move: it reads like `BRF Pg 12/87 | Ln 14/25 | Cell 31/40 | Print 7`. That is the braille page, the line within the page, the cell within the line, and the print page. Print-page detection runs on every open and on every page-map recalculation, so the print segment is always populated when a print-to-braille anchor is available; on documents without anchors it reads `Print ?`.
 
 **The Braille menu.** Braille commands live under **Tools > Braille**. Bindings are intentionally left unset so nothing collides with your screen reader or existing editor keys; you can assign your own in the keyboard customizer, or run them from the Command Palette.
 
@@ -2142,21 +2240,18 @@ From the help dialog you can:
 
 The **Personalise QUILL** wizard runs automatically the first time QUILL starts. You can re-run it at any time from **Help → Personalise QUILL**.
 
-The wizard walks you through eight short pages:
+The wizard walks you through six short pages (five if you do not enable AI writing assistance on the Extras page):
 
 1. **Welcome** — an introduction to what the wizard covers.
-2. **Keyboard and Sound** — choose a keyboard pack and whether QUILL plays audio cues. QUILL auto-detects your screen reader and sets accessible defaults.
-3. **Feature Profile** — choose a starting profile: Essential (minimal), Standard (recommended for most users), Power User (all features on), or Accessibility Focus (screen-reader optimised). You can switch profiles later.
-4. **Remote Access** — enable or hide FTP, SFTP, WebDAV, and S3 remote file commands. Disabling this removes the remote-site menu items entirely, keeping the File menu clean.
-5. **AI Assistance** — turn the AI writing assistant on or off. You can add an API key later; QUILL will prompt you when you first use an AI feature.
-6. **Reading and Accessibility** — configure read-aloud behaviour and screen-reader announcement style.
-7. **Writing Tools** — enable or disable spell-check-as-you-type, abbreviation expansion, and the Copy Tray.
-8. **Startup Behaviour** — choose what QUILL opens when it starts and whether to check for updates automatically.
-9. **Summary** — review all your choices before they are applied. Use Back to revise any page. Nothing changes in QUILL until you press Finish.
+2. **Intent** — the most important page. A single question: *What kind of writing do you do?* A list of seven starting points is shown. Arrow up and down through the list. As you move, a large read-only text area below the list updates live to tell you, in plain spoken English, exactly what you will have if you choose that option. There are no feature IDs, no jargon about flags, and no list of what you will not get. Just what you get.
+3. **Extras** — offers a few optional extras such as AI writing assistance, Braille Mode, and typing automation. Only the extras that are not already part of your base choice are shown. Each extra is a single checkbox. Checking one adds a sentence to the preview so you always know what you are committing to.
+4. **AI Provider** — shown only if you enabled AI on the Extras page. Collects your provider and your API key. Supported providers are Anthropic (Claude), OpenAI (GPT), Google Gemini, OpenRouter (many models), and Ollama, which runs models on your own device or connects to an Ollama-compatible cloud host. The key is stored securely in the Windows Credential Manager, not in a settings file. You can skip this and set the key up later.
+5. **Keyboard and Sound** — choose a keyboard pack and whether QUILL plays audio cues. QUILL auto-detects your screen reader and sets accessible defaults.
+6. **Summary** — review all your choices before they are applied. The summary is plain text: your profile name, what features are active, which Quillins are enabled, your keyboard pack, and your sound setting. Use Back to revise any page. Nothing changes in QUILL until you press Finish.
 
 **Important:** The wizard is transactional. Your choices are held in memory until you press Finish. If you close or cancel the wizard, no settings are changed.
 
-**Profiles explained:**
+**Profiles explained:** The four built-in profiles each start you at a different level of feature density and accessibility support. You can switch profiles at any time from **Tools → Customize & Support → Profiles and Features...** or by pressing `Alt+Shift+P`.
 
 | Profile | Best for |
 |---------|----------|
@@ -2164,8 +2259,6 @@ The wizard walks you through eight short pages:
 | Standard | Most users — balanced feature set with AI and tools available |
 | Power User | All features on; suited to advanced writing, extraction, and GLOW workflows |
 | Accessibility Focus | Screen-reader primary; maximises keyboard coverage and announcements |
-
-You can switch profiles at any time from **Tools → Customize & Support → Profiles and Features...** or by pressing `Alt+Shift+P`.
 
 ## Translation and Community Localization
 
@@ -2322,7 +2415,7 @@ Quill supports **Quillins** — extensions that add commands, snippets, menus, a
 
 ### Bundled Quillins
 
-QUILL ships thirteen trusted, first-party Quillins enabled by default:
+QUILL ships fourteen trusted, first-party Quillins enabled by default:
 
 - **Smart Insert** (`com.quill.smartinsert`) — abbreviations and smart text triggers for everyday templates. Contributes `qbug`, `qmeet`, `qlog`, `qtodo`, and `qbrf` abbreviations, as well as `=bug()`, `=meeting()`, `=journal()`, `=todo()`, `=logentry()`, `=brftest()`, and `=rand()` smart triggers. Settings are under **Preferences → Smart Insert**.
 - **BRF Tools** (`com.quill.brftools`) — preferences for braille translation defaults, page handling, status bar display, and diagnostics. Requires the QUILL Braille Pack. Settings under **Preferences → BRF Tools**.
@@ -2337,6 +2430,7 @@ QUILL ships thirteen trusted, first-party Quillins enabled by default:
 - **Word Count (Node)** — word count via the Node.js Quillin runtime, demonstrating that Quillins can be written in JavaScript as well as Python.
 - **AI Writing Prompts** — additional prompt library entries contributed by the Quillin manifest.
 - **AI Writing Skills** — pre-built `.sqp` skill files for rewriting, meeting-notes extraction, and research drafts.
+- **Math Equations** — inserts LaTeX or MathML equations at the cursor via **Insert → Insert Equation...** (`Ctrl+Shift+E`); see Math Equations earlier in this guide.
 
 ### Quillin Preferences
 
@@ -2427,7 +2521,7 @@ QUILL includes a built-in AI assistant. You can run it on-device (llama.cpp with
 
 ### Setting up an AI provider
 
-Open **Tools > AI Assistant > AI Hub...** to configure your providers. The AI Hub is the single place for every provider's key, model, **Test Chat**, and per-provider key removal — the former **AI Model and Connection** and **Forget API Key** menu items were merged into it.
+Open **AI > AI Hub...** to configure your providers. The AI Hub is the single place for every provider's key, model, **Test Chat**, and per-provider key removal — the former **AI Model and Connection** and **Forget API Key** menu items were merged into it.
 
 - **OpenRouter** — paste your API key into the OpenRouter API Key field. OpenRouter gives you access to many models (Claude, GPT-4o, Gemini, and more) with a single key.
 - **OpenAI** — paste your OpenAI API key.
@@ -2463,7 +2557,7 @@ You can also set a **Default model for prompt runs** (`ai_prompt_default_model`)
 
 ### Ask AI (quick one-off question)
 
-`Tools > AI Assistant > Ask AI...` opens a simple dialog where you type a question and read the answer without leaving QUILL. For the full conversational experience — with the active provider/model shown, in-dialog provider and model switching, and inserting replies into your document — use **Ask Quill Chat** on **Alt+Q** (see "Ask Quill Chat setup" above).
+`AI > Writing Assistant...` (Alt+Q) opens the message-style assistant where you can ask questions, draft text, propose edits, and run Quill commands with approval before changes are applied. The active provider and model are shown, and you can switch between providers and models in-dialog. Use **AI > Ask AI...** (Command Palette) for a simpler one-shot prompt-and-response dialog when you do not need insertion or follow-up.
 
 - **Provider** and **Model** choices are pre-filled with the last values you used.
 - If a provider and model are already configured, focus lands directly in the Prompt field so you can start typing immediately. If not yet configured, focus starts on the Provider choice to guide you through setup.
@@ -2479,7 +2573,7 @@ The default grammar instruction is: review the text and list only the correction
 
 ### Prompt Library
 
-`Tools > AI Assistant > Prompt Library...` opens the full prompt management dialog.
+`AI > Prompt Library...` opens the full prompt management dialog.
 
 **What it shows.** A searchable list of all prompts on the left (type in the search field to filter by name or category). The selected prompt's instruction text on the right. An optional input text field where you can type or paste text to use as the selection context.
 
@@ -2533,7 +2627,7 @@ A `.pqp` file is plain JSON with a human-readable structure:
 
 Skills are multi-step AI workflows. Where a prompt is one instruction, a skill is a sequence of steps where each step can use the output of the step before it.
 
-`Tools > AI Assistant > Skill Library...` opens the Skill Library dialog.
+`AI > Skill Library...` opens the Skill Library dialog.
 
 **What a skill looks like.** A skill has a name, a description, and a list of steps. Before running, QUILL shows a parameter dialog if the skill declares any parameters (such as tone, target reading level, or output format). Each step runs in order, sends its prompt to the AI, and stores the response for the next step to use.
 
@@ -2545,7 +2639,7 @@ Skills are multi-step AI workflows. Where a prompt is one instruction, a skill i
 - **Argument Strengthener** — Identifies your argument's logical structure, finds weaknesses and counterarguments, then produces a strengthened version tailored to your chosen audience.
 
 **Running a skill.**
-1. Open `Tools > AI Assistant > Skill Library...`
+1. Open **AI > Skill Library...**
 2. Select a skill from the list.
 3. Press **Run**. If the skill has parameters, a small dialog appears — fill in the choices and press OK.
 4. QUILL announces "Running step 1 of N..." as each step executes.
@@ -4448,7 +4542,7 @@ python -m quill.tools.sqp_validator my-skill.sqp --strict
 A `.sqp` file is a plain text file — share it the same way you share any document.
 
 **Via the Skill Library.** When someone receives your `.sqp` file, they import it
-through `Tools > AI Assistant > Skill Library > Import .sqp`.
+through `AI > Skill Library > Import .sqp`.
 
 **Via a Quillin.** If you maintain a Quillin, add your `.sqp` files to the Quillin
 directory. QUILL discovers them automatically at Skill Library load time.
@@ -4534,6 +4628,11 @@ readability score) where the result is read but not inserted.
 # Appendix: Feature notes (Copy Tray)
 
 _Folded in from the former docs/userguide.md on 2026-06-13._
+
+> **Historical note:** this appendix preserves the original nine-slot Copy
+> Tray design document. Copy Tray now has **twelve** slots and the Open Copy
+> Tray chord is `Ctrl+Shift+Grave, X`; see the "Copy Tray" section above for
+> current behavior and bindings.
 
 # QUILL feature documentation
 
@@ -4700,6 +4799,11 @@ Labels are persisted alongside slot text and survive restarts.
 # Appendix: Copy Tray design notes
 
 _Folded in from the former docs/copy_tray_notes.md on 2026-06-13._
+
+> **Historical note:** this appendix describes Copy Tray as originally built
+> with nine slots. Copy Tray now has **twelve** slots (`Ctrl+Shift+1..9, 0,
+> -, =`); see the "Copy Tray" section above for current behavior and
+> bindings.
 
 # Copy Tray: What Was Built and How It Feels
 
@@ -4903,7 +5007,7 @@ A short trigger word or phrase that QUILL automatically expands into longer text
 An AI-assisted workflow that generates a multi-step task plan based on a goal you describe. The Agent Center shows you each step before it runs so you can review and approve. Agents build on the Writing Assistant and Prompt Studio infrastructure and require an AI provider to be configured.
 
 **Browse Mode / Quick Nav Mode**
-A temporary navigation state that makes the QUILL key prefix commands available one at a time. Press `Ctrl+Shift+Grave` once to arm Quick Nav for the next key you press. Press it twice to lock Browse Mode on until you press Escape. In Browse Mode, letter keys and arrow keys invoke navigation commands rather than inserting characters, similar to the virtual cursor mode in screen readers.
+A temporary navigation state that makes the QUILL key prefix commands available one at a time. Press the QUILL key (shown as `Ctrl+Shift+Grave` in the keymap grammar, displayed as `QUILL Key` everywhere else) once to arm Quick Nav for the next key you press. Press it twice to lock Browse Mode on until you press Escape. In Browse Mode, letter keys and arrow keys invoke navigation commands rather than inserting characters, similar to the virtual cursor mode in screen readers.
 
 **Command Palette**
 A searchable pop-up listing every registered QUILL command with its current keyboard shortcut. Open with `Ctrl+Shift+P`. Type any part of a command name to filter the list, then press Enter to run it. The fastest way to reach any action without memorising menu paths or key bindings.
@@ -4969,4 +5073,4 @@ A lightweight, profile-aware getting-started document that opens inside QUILL as
 QUILL's AI writing panel. The Writing Assistant accepts a goal described in plain language and ranks relevant QUILL commands, offers preset rewrite/summarize/continue/grammar flows, and can execute a restricted Python transform (import allowlist and resource limits, not a security boundary) against the current document. It runs inside an AI Session and requires an AI provider to be configured in Preferences.
 
 **QUILL Key**
-The keyboard shortcut `Ctrl+Shift+Grave` (the backtick/grave key above Tab). Pressing it once arms a one-shot prefix; pressing it twice locks Quick Nav Mode on. The QUILL key is the entry point to most of QUILL's power features. Every chord is announced when pressed and is remappable in **Preferences → Keyboard**.
+The keyboard shortcut `Ctrl+Shift+Grave` (the backtick/grave key above Tab). Pressing it once arms a one-shot prefix; pressing it twice locks Quick Nav Mode on. The QUILL key is the entry point to most of QUILL's power features. Every chord is announced when pressed and is remappable in **Preferences → Keyboard**. The chord is shown to the user as `QUILL Key + <key>` everywhere in the editor (menus, Keyboard Reference, status bar, cheat sheet). The stored binding is `Ctrl+Shift+Grave, <key>` in `DEFAULT_KEYMAP` / `keymap.json` / the Keymap Editor; only the display layer rewrites the prefix, through `quill.core.keymap_format.format_binding_for_display`. The constant `QUILL_KEY_LABEL` in `quill/branding.py` is the single source of truth for the brand, so a future rebrand touches one file.

@@ -1,10 +1,16 @@
-# QUILL
+# QUILL for All
 
 [![Contributors](https://contrib.rocks/image?repo=Community-Access/quill)](https://github.com/Community-Access/quill/graphs/contributors)
 
+**QUILL for All** is an open-source, accessibility-focused editor from
+Community Access.
+
+QUILL for All helps people write, edit, convert, compare, and publish
+documents in a screen-reader-friendly environment.
+
 **QUILL** stands for **Quality, Usable, Inclusive, Lightweight, Literate**.
 
-**QUILL: A quality, usable, inclusive, lightweight, and literate editor built for everyone who writes, codes, learns, and creates.**
+**QUILL for All: A quality, usable, inclusive, lightweight, and literate editor built for everyone who writes, codes, learns, and creates.**
 
 ## The Quillin Hub
 
@@ -25,9 +31,9 @@ Quill is designed to stay focused and useful:
 
 ## Current release line
 
-Current release line: **0.5.0**
+Current release line: **0.7.0**
 
-Highlights in 0.5.0 include:
+Highlights since 0.5.0 include:
 
 - Insert menu with searchable Markdown/HTML insertion.
 - Word Prediction with `Ctrl+.` plus HTML/Markdown tag IntelliSense.
@@ -44,8 +50,8 @@ Highlights in 0.5.0 include:
 - Optional Ollama cloud key mode over HTTPS (no local Ollama required for cloud endpoint access).
 - In-App Preview and Side-by-Side Preview with a dedicated Focus Preview command.
 - Heading styling tools to apply font family, size, and alignment to current-level or all headings in Markdown/HTML.
-- Heading Organizer (`Ctrl+Shift+Grave, O`) with keyboard-driven heading level changes, section reordering, and accessibility validation.
-- QUILL Quick Nav mode (browse-style cursor navigation) activated with `Ctrl+Shift+Grave`, with mnemonic single-key movement for links, lists, list items, tables, block quotes, bookmarks, code blocks, table of contents, headings, heading levels (`1` through `6`), paragraphs, sentences, and blocks.
+- Heading Organizer (`Ctrl+Shift+Grave, O` — shown to users as `QUILL Key + O`) with keyboard-driven heading level changes, section reordering, and accessibility validation.
+- QUILL Quick Nav mode (browse-style cursor navigation) activated with the QUILL key (`Ctrl+Shift+Grave` — shown to users as `QUILL Key`), with mnemonic single-key movement for links, lists, list items, tables, block quotes, bookmarks, code blocks, table of contents, headings, heading levels (`1` through `6`), paragraphs, sentences, and blocks.
 - Watch Folder automation under **Tools -> Dictation** to auto-open newly dropped supported files.
 - Unified first-run **Personalise QUILL** wizard (re-runnable from **Help -> Personalise QUILL**) covering keyboard pack, feature profile, remote access, AI, reading/accessibility, writing tools, and startup behaviour.
 - Search menu simplification with replace-all inside the Replace dialog.
@@ -230,3 +236,15 @@ Community contributions are welcome.
 ## License
 
 MIT. See `LICENSE`.
+
+## Legal and Trademark Notices
+
+QUILL for All is an independent open-source project by Community Access.
+It is not affiliated with, sponsored by, or endorsed by Quill.js,
+QuillBot, Quill.org, or any other similarly named product, project,
+company, or organisation.
+
+All trademarks are the property of their respective owners.
+
+See [TRADEMARKS.md](TRADEMARKS.md), [NOTICE](NOTICE), and
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for more information.

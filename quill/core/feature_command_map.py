@@ -107,6 +107,7 @@ COMMAND_FEATURE_MAP: dict[str, str] = {
     "tools.next_misspelling": "core.spellcheck",
     "tools.misspelling_list": "core.spellcheck",
     "tools.dictionary_status": "core.spellcheck",
+    "tools.thesaurus": "core.dictionary",
     "tools.ocr_image": "core.ocr",
     "tools.ocr_clipboard": "core.ocr",
     "tools.ocr_screen": "core.ocr",
@@ -257,11 +258,20 @@ COMMAND_FEATURE_MAP: dict[str, str] = {
     "format.toggle_case": "core.format",
     "format.move_line_up": "core.format",
     "format.move_line_down": "core.format",
+    # PR1 (EdSharp port): section-move pair. Distinct from move_line_up/down —
+    # section-move swaps the entire heading section (heading + body) past its
+    # sibling, while move_line_up/down operate on the caret's line only.
+    "format.move_section_up": "core.format",
+    "format.move_section_down": "core.format",
     "format.duplicate_line": "core.format",
     "format.delete_line": "core.format",
     "format.join_lines": "core.format",
     "format.insert_bullet_list": "core.format",
     "format.insert_numbered_list": "core.format",
+    # PR3 (EdSharp port): list-toggle variants that strip or insert a list
+    # depending on the caret context, instead of always inserting.
+    "format.toggle_bullet_list": "core.format",
+    "format.toggle_numbered_list": "core.format",
     "format.insert_task_list": "core.format",
     "format.insert_code_block": "core.format",
     "format.insert_footnote": "core.format",
