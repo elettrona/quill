@@ -432,9 +432,9 @@ def import_keyboard_pack(source: Path) -> tuple[str, str, dict[str, str]]:
     # Re-write the parsed payload to a temp buffer and run the same validator
     # the standalone ``quill.tools.kqp_validator`` runs, so the import path
     # uses the same rules as the CLI.
-    from quill.tools.kqp_validator import _validate_file  # local import: avoid cycles
+    from quill.tools.kqp_validator import validate_file  # local import: avoid cycles
 
-    issues = _validate_file(source, strict=False)
+    issues = validate_file(source, strict=False)
     if issues:
         joined = "; ".join(issues)
         raise ValueError(f"{source.name} failed keyboard pack validation: {joined}")
