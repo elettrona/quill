@@ -220,3 +220,15 @@ utility ever runs.
   the document name. The Ctrl+JAWSKey+V path still reports only
   "Version" until a versioned launcher ships, which is a
   packaging follow-up, not a source change.
+
+- **Setup Wizard no longer opens on top of an "Untitled" tab on
+  first launch (#606).** On a fresh install, the editor used to
+  appear with an "Untitled" tab first and then the Setup Wizard
+  modal opened on top of it. VoiceOver on macOS read "Untitled"
+  as soon as the window was shown, so you heard a document name
+  before you ever heard the wizard. The window now opens with
+  no document tab, the wizard comes up first, and a fresh
+  untitled document is created automatically after the wizard
+  finishes. Returning QUILL users (anyone who has already run
+  the wizard once) see the normal "Untitled" tab on launch as
+  before.

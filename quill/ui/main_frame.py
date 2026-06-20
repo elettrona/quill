@@ -989,6 +989,19 @@ class MainFrame(
         self._first_run_watch_folder_prompt = (
             not safe_mode and not load_watch_folder_onboarding_complete()
         )
+        # #606: when the setup wizard will run on this launch, defer the
+        # default "Untitled" document tab until the wizard returns. macOS
+        # VoiceOver announces the focused window's tab name as soon as the
+        # window is shown, so users were hearing "Untitled" before they
+        # ever heard "Setup Wizard." The wizard opens on top of an empty
+        # notebook now; a fresh untitled document is created automatically
+        # after the wizard closes (see _maybe_run_first_run_onboarding).
+        # The `getattr(..., True)` default matches the existing wizard
+        # gate at line 23753 — if the setting key is missing for any
+        # reason, treat the wizard as already complete.
+        self._first_run_wizard_pending = not safe_mode and not getattr(
+            self.settings, "setup_wizard_completed", True
+        )
         # Seed with Documents so the first-ever file dialog doesn't open in
         # the install directory.  Updated to the last-used parent after each
         # successful open or save-as (#168).
@@ -1194,9 +1207,16 @@ class MainFrame(
         self.statusbar.SetSizer(self._statusbar_sizer)
         layout.Add(self.statusbar, 0, wx.EXPAND)
         self.frame.SetSizer(layout)
-        self._create_document_tab(self.document, select=True)
-        self._location_ring.record(0)
-        self._region_tracker.enter("Editor")
+        if not self._first_run_wizard_pending:
+            # #606: skip the default tab when the wizard is about to run,
+            # so the wizard modal opens on an empty notebook rather than
+            # on top of an "Untitled" tab. _maybe_run_first_run_onboarding
+            # creates the tab via new_document() after the wizard
+            # returns, then re-runs the editor-dependent init steps
+            # (location ring + region tracker) that this branch skips.
+            self._create_document_tab(self.document, select=True)
+            self._location_ring.record(0)
+            self._region_tracker.enter("Editor")
         self._apply_theme(self.settings.theme)
 
         self._build_commands()
@@ -23763,6 +23783,25 @@ class MainFrame(
                 "_first_run_watch_folder_prompt",
             ):
                 setattr(self, _flag, False)
+            # #606: if the default "Untitled" tab was deferred at __init__
+            # time, create it now that the wizard has closed. The
+            # wizard's modal grabbed focus while the notebook was
+            # empty; now we hand the user a fresh document.
+            if getattr(self, "_first_run_wizard_pending", False):
+                self._first_run_wizard_pending = False
+                try:
+                    self.new_document()
+                except Exception:
+                    self._report_startup_task_failure("first-run document tab")
+                # Re-run the editor-dependent init steps that __init__
+                # skipped for this branch. new_document() already wired
+                # the tab + editor; these restore the location ring and
+                # accessibility region for the new document.
+                try:
+                    self._location_ring.record(0)
+                    self._region_tracker.enter("Editor")
+                except Exception:
+                    pass
             _focus_editor()
             return
 

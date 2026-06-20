@@ -321,3 +321,76 @@ def test_deferred_startup_task_list_includes_help_topics_warmup() -> None:
 
     assert '"help topics warm-up"' in src
     assert "warm_help_topics" in src
+
+
+def test_first_run_defers_tab_creation_until_wizard_returns() -> None:
+    """#606: on first launch the wizard must open before any document tab.
+
+    __init__ builds the frame without a tab when
+    setup_wizard_completed is False, so macOS screen readers do not
+    announce "Untitled" before the wizard modal grabs focus.
+    _maybe_run_first_run_onboarding creates the tab via
+    new_document() after the wizard returns, so the user lands in
+    a fresh document once the wizard is closed.
+    """
+    frame = _build_frame()
+    frame.settings = type(
+        "Settings", (), {"setup_wizard_completed": False, "auto_check_updates": False}
+    )()
+    frame._first_run_wizard_pending = True
+    frame._document_tabs = []
+    failures: list[str] = []
+    frame._report_startup_task_failure = lambda label: failures.append(label)
+
+    wizard_open_tab_count: list[int] = []
+
+    def _fake_run_startup_wizard(*, first_run: bool = False):
+        # #606: while the wizard is "open" the notebook must be
+        # empty -- no "Untitled" tab should have been built in
+        # __init__ on this branch.
+        wizard_open_tab_count.append(len(frame._document_tabs))
+        return True, False
+
+    frame.run_startup_wizard = _fake_run_startup_wizard  # type: ignore[method-assign]
+
+    def _stub_new_document() -> None:
+        # Mirror the real new_document() side effect for the
+        # assertion: a fresh tab lands in _document_tabs. We
+        # stub _create_document_tab because the production method
+        # requires live wx widgets (Panel, SplitterWindow, TextCtrl)
+        # that the __new__-built frame does not have.
+        class _StubTab:
+            pass
+
+        frame._document_tabs.append(_StubTab())
+
+    frame.new_document = _stub_new_document  # type: ignore[method-assign]
+    frame._location_ring = type("LR", (), {"record": lambda self, n: None})()
+    frame._region_tracker = type("RT", (), {"enter": lambda self, name: None})()
+    frame._focus_editor = lambda: None
+    # Pre-clear the legacy first-run flags the wizard branch writes
+    # to, so we exercise the production path that suppresses them.
+    frame._first_run_profile_prompt = True
+    frame._first_run_assistant_prompt = True
+    frame._first_run_glow_prompt = True
+    frame._first_run_speech_prompt = True
+    frame._first_run_watch_folder_prompt = True
+
+    frame._maybe_run_first_run_onboarding()
+
+    # #606 invariants
+    assert wizard_open_tab_count == [0], "no document tab must exist while the wizard is open"
+    assert len(frame._document_tabs) == 1, (
+        "new_document() must create exactly one tab after the wizard"
+    )
+    assert frame._first_run_wizard_pending is False, (
+        "the pending flag must be cleared once the tab is created"
+    )
+    # The wizard branch suppresses the legacy per-feature prompts.
+    assert frame._first_run_profile_prompt is False
+    assert frame._first_run_assistant_prompt is False
+    assert frame._first_run_glow_prompt is False
+    assert frame._first_run_speech_prompt is False
+    assert frame._first_run_watch_folder_prompt is False
+    # No startup-task failures were reported by this happy path.
+    assert failures == []
