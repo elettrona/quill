@@ -270,6 +270,9 @@ def build_windows_distribution(
         product_name=identity.product_name,
         publisher=identity.publisher,
         bundle_braille_pack=braille_pack_staged,
+        numeric_version=_iss_numeric_version(
+            identity.base_version, identity.channel, identity.prerelease_number
+        ),
     )
     installer_script.write_text(installer_script_text, encoding="utf-8")
     reference_installer_script.write_text(installer_script_text, encoding="utf-8")
@@ -543,6 +546,7 @@ def build_inno_setup_script(
     product_name: str = APP_DISPLAY_NAME,
     publisher: str = APP_ORGANIZATION,
     bundle_braille_pack: bool = False,
+    numeric_version: str | None = None,
 ) -> str:
     """Return a production-quality Inno Setup script for the portable bundle.
 
@@ -573,7 +577,12 @@ def build_inno_setup_script(
         "AppPublisherURL={#AppURL}",
         "AppSupportURL={#AppURL}",
         "AppUpdatesURL={#AppURL}",
-        "VersionInfoVersion={#AppVersion}",
+        # Inno Setup's VersionInfoVersion directive requires a numeric
+        # quadruple (Major.Minor.Build.Revision) for the Windows VERSIONINFO
+        # resource; the user-visible "0.7.0 Beta 1" string cannot be
+        # parsed. Default to <base>.0.0 if the caller did not pass an
+        # explicit numeric_version.
+        f"VersionInfoVersion={numeric_version or '0.0.0.0'}",
         "VersionInfoCompany={#AppPublisher}",
         "VersionInfoDescription={#AppName} accessible writing environment",
         "DefaultDirName={autopf}\\{#AppName}",
@@ -1432,6 +1441,24 @@ def _display_version(base: str, channel: str, pre: int) -> str:
     if channel == "rc":
         return f"{base} Release Candidate {pre}"
     return f"{base} Dev"
+
+
+def _iss_numeric_version(base: str, channel: str, pre: int) -> str:
+    """Return a Major.Minor.Build.Revision quadruple for Inno Setup.
+
+    Inno Setup's ``VersionInfoVersion`` directive (which feeds the
+    Windows VERSIONINFO resource) requires a numeric quadruple, not
+    the user-visible "0.7.0 Beta 1" string. The ``base`` is split on
+    dots; missing segments are filled with zeros; ``pre`` fills the
+    Revision slot for alpha/beta/rc channels so beta 1 is distinguishable
+    from the final 0.7.0 release once a user has both installed.
+    """
+    parts = base.split(".")
+    while len(parts) < 3:
+        parts.append("0")
+    major, minor, build = parts[0], parts[1], parts[2]
+    revision = str(pre) if channel in {"alpha", "beta", "rc"} else "0"
+    return f"{major}.{minor}.{build}.{revision}"
 
 
 @dataclass(frozen=True)

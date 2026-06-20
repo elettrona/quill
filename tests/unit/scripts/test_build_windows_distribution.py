@@ -239,6 +239,7 @@ def test_committed_installer_iss_is_in_sync_with_generator() -> None:
         version,
         product_name=identity.product_name,
         publisher=identity.publisher,
+        numeric_version=f"{identity.base_version}.{identity.prerelease_number}",
     )
     assert committed.strip() == generated.strip(), (
         "installer/quill.iss is out of sync with build_inno_setup_script(); "
