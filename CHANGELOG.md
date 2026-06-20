@@ -34,6 +34,7 @@ QUILL 0.7.0 folds the 0.6.0 work and the 0.6.1 Braille Mode Phase 2 work into a 
 - **F1 help for Copy Tray now matches the shipped 12-slot tray.** `topics.json` described the original nine-slot design (`Ctrl+1..9` paste, `Ctrl+Shift+T` open); updated to the real bindings (`Ctrl+Shift+1..9, 0, -, =` paste, `Ctrl+Shift+Grave, X` open) and regenerated `CONTROL_REFERENCE.md` (#276).
 - **Version stamp swept to 0.7.0.** README, the userguide intro, both QUILL-PRD.md status lines, planning.md, translating.md, and quill.pot's `Project-Id-Version` all still referenced 0.5.0/0.6.0/0.6.1/0.1.5. Also collapsed CHANGELOG.md's two duplicate `## 0.6.0` headers into one (#277).
 - **`Move Section Up`/`Down` menu ids were never wired.** `_id_move_section_up`/`_id_move_section_down` fed the global accelerator table (`Alt+Shift+Up`/`Down`) but had no `Append`/`Bind`, so the documented chord was silently inert outside the right-click context menu (which used its own local ids). Added real Format -> Line menu entries and frame-level bindings, matching the existing Move Line Up/Down pattern (#278).
+- **`menu_lint.py`'s §10.3 required-cluster check now walks the AST instead of substring-matching.** A comment merely mentioning a cluster's label text (e.g. `"AI &Assistant"`) used to satisfy the gate; it now must appear as the label argument of a real `AppendSubMenu(...)` call, matching the rigor `_check_depth` already had (#286).
 
 ## 0.6.0 — Insert Automation, Quillin Platform, Braille Mode, AI Writing Toolkit (2026-06-17)
 

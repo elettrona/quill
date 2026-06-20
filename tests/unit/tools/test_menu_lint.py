@@ -84,29 +84,59 @@ def test_ctrl_alt_edsharp_comment_without_allowlist_entry_still_passes() -> None
 # ---------------------------------------------------------------------------
 
 
+def _fake_menu_source(*labels: str) -> str:
+    """Build a fake main_frame_menu.py body with one AppendSubMenu(...) call
+    per label, matching the real file's `_("...")`-wrapped label argument."""
+    lines = ["from quill.core.i18n import _", ""]
+    for index, label in enumerate(labels):
+        lines.append(f"sub_{index} = wx.Menu()")
+        lines.append(f'parent_menu.AppendSubMenu(sub_{index}, _("{label}"))')
+    return "\n".join(lines)
+
+
 def test_required_clusters_present() -> None:
-    # All nine required cluster labels in one fake source.
-    fake = (
-        '"R&eading && Dictation" "C&omparison" "&Watch Folder" "AI &Assistant"'
-        ' "&Advanced" "&Quillins" "A&ccessibility" "&Customize && Support"'
-        ' "&Writing && Language"'
+    # All nine required cluster labels, each passed to a real AppendSubMenu call.
+    fake = _fake_menu_source(
+        "R&eading && Dictation",
+        "C&omparison",
+        "&Watch Folder",
+        "AI &Assistant",
+        "&Advanced",
+        "&Quillins",
+        "A&ccessibility",
+        "&Customize && Support",
+        "&Writing && Language",
     )
     assert _check_required_clusters(fake) == []
 
 
 def test_required_clusters_missing_reports_error() -> None:
-    fake = '"C&omparison"'  # most clusters absent
+    fake = _fake_menu_source("C&omparison")  # most clusters absent
     errors = _check_required_clusters(fake)
     assert errors
 
 
 def test_required_clusters_missing_writing_language() -> None:
-    fake = (
-        '"R&eading && Dictation" "C&omparison" "&Watch Folder" "AI &Assistant"'
-        ' "&Advanced" "&Quillins" "A&ccessibility" "&Customize && Support"'
+    fake = _fake_menu_source(
+        "R&eading && Dictation",
+        "C&omparison",
+        "&Watch Folder",
+        "AI &Assistant",
+        "&Advanced",
+        "&Quillins",
+        "A&ccessibility",
+        "&Customize && Support",
     )
     errors = _check_required_clusters(fake)
     assert any("Writing" in e for e in errors)
+
+
+def test_required_clusters_comment_mention_does_not_satisfy_gate() -> None:
+    """Regression for #286: the old substring check would pass if a cluster's
+    label text merely appeared in a comment. The AST check must not."""
+    fake = '# TODO: rename the "AI &Assistant" cluster someday\nimport wx\n'
+    errors = _check_required_clusters(fake)
+    assert any("AI Assistant" in e for e in errors)
 
 
 # ---------------------------------------------------------------------------

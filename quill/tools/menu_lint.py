@@ -61,18 +61,20 @@ _CTRL_ALT_DOCUMENTED: frozenset[str] = frozenset({
     "format.toggle_numbered_list",  # Ctrl+Alt+8
 })
 
-# §10.3 binding-spec cluster labels that must appear as AppendSubMenu
-# arguments in main_frame_menu.py.  Checks use substring matching.
+# §10.3 binding-spec cluster labels that must appear as the label argument
+# of an AppendSubMenu(...) call in main_frame_menu.py.  Checks walk the AST
+# (see _check_required_clusters) so a comment mentioning a cluster name
+# cannot satisfy the gate.
 _REQUIRED_CLUSTER_LABELS: tuple[tuple[str, str], ...] = (
     ("Reading & Dictation", "R&eading && Dictation"),
-    ("Comparison", '"C&omparison"'),
-    ("Watch Folder", '"&Watch Folder"'),
-    ("AI Assistant", '"AI &Assistant"'),
-    ("Advanced", '"&Advanced"'),
-    ("Quillins", '"&Quillins"'),
-    ("Accessibility", '"A&ccessibility"'),
-    ("Customize & Support", '"&Customize && Support"'),
-    ("Writing & Language", '"&Writing && Language"'),
+    ("Comparison", "C&omparison"),
+    ("Watch Folder", "&Watch Folder"),
+    ("AI Assistant", "AI &Assistant"),
+    ("Advanced", "&Advanced"),
+    ("Quillins", "&Quillins"),
+    ("Accessibility", "A&ccessibility"),
+    ("Customize & Support", "&Customize && Support"),
+    ("Writing & Language", "&Writing && Language"),
 )
 
 
@@ -138,13 +140,57 @@ def _check_ctrl_alt(source: str) -> list[str]:
     return errors
 
 
+def _label_text(node: ast.expr) -> str | None:
+    """Resolve an AppendSubMenu label argument to its literal text.
+
+    Handles a bare string constant or the ``_("...")`` i18n wrapper used
+    throughout main_frame_menu.py.
+    """
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "_"
+        and node.args
+        and isinstance(node.args[0], ast.Constant)
+        and isinstance(node.args[0].value, str)
+    ):
+        return node.args[0].value
+    return None
+
+
 def _check_required_clusters(menu_source: str) -> list[str]:
-    """Return error strings for §10.3 clusters absent from the menu source."""
+    """Return error strings for §10.3 clusters absent from the menu source.
+
+    Walks the AST for ``AppendSubMenu(menu, label)`` calls the way
+    ``_check_depth`` does, so a comment or docstring mentioning a cluster's
+    label text cannot satisfy the gate (#286).
+    """
     errors: list[str] = []
+    try:
+        tree = ast.parse(menu_source, filename=str(_MENU_PATH))
+    except SyntaxError as exc:
+        return [f"  SyntaxError parsing main_frame_menu.py: {exc}"]
+
+    found_labels: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if not (isinstance(func, ast.Attribute) and func.attr == "AppendSubMenu"):
+            continue
+        if len(node.args) < 2:
+            continue
+        label = _label_text(node.args[1])
+        if label is not None:
+            found_labels.add(label)
+
     for friendly_name, label_fragment in _REQUIRED_CLUSTER_LABELS:
-        if label_fragment not in menu_source:
+        if label_fragment not in found_labels:
             errors.append(
-                f'  "{friendly_name}" cluster ({label_fragment!r}) not found in main_frame_menu.py'
+                f'  "{friendly_name}" cluster ({label_fragment!r}) not found in an '
+                "AppendSubMenu(...) call in main_frame_menu.py"
             )
     return errors
 
