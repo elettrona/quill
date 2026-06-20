@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import html
 import re
 from dataclasses import dataclass
+
+_ALLOWED_TEXT_ALIGN = {"left", "right", "center", "justify"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -13,11 +16,11 @@ class HeadingStyle:
     def declarations(self) -> list[str]:
         declarations: list[str] = []
         if self.font_family:
-            declarations.append(f"font-family: {self.font_family}")
+            declarations.append(f"font-family: {html.escape(self.font_family, quote=True)}")
         if self.font_size_pt is not None and self.font_size_pt > 0:
             declarations.append(f"font-size: {self.font_size_pt}pt")
-        if self.text_align:
-            declarations.append(f"text-align: {self.text_align}")
+        if self.text_align and self.text_align.lower() in _ALLOWED_TEXT_ALIGN:
+            declarations.append(f"text-align: {self.text_align.lower()}")
         return declarations
 
 
