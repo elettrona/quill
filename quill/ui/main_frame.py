@@ -6882,11 +6882,23 @@ class MainFrame(
         if restore_editor_focus:
             editor = getattr(self, "editor", None)
             if editor is not None and hasattr(editor, "SetFocus"):
+
+                def _safe_set_focus() -> None:
+                    # #619: the editor TextCtrl may be destroyed between the
+                    # dialog returning and CallAfter dispatching this callable
+                    # (e.g. the close-path save prompt, where DeletePage runs
+                    # right after the dialog closes). Swallow the RuntimeError
+                    # so the wx event loop does not surface it as a crash.
+                    try:
+                        editor.SetFocus()
+                    except RuntimeError:
+                        return
+
                 call_after = getattr(self._wx, "CallAfter", None)
                 if callable(call_after):
-                    call_after(editor.SetFocus)
+                    call_after(_safe_set_focus)
                 else:
-                    editor.SetFocus()
+                    _safe_set_focus()
         return result
 
     def _show_message_box(self, message: str, caption: str, style: int) -> int:
@@ -6998,6 +7010,8 @@ class MainFrame(
         message: str,
         affirmative_label: str,
         negative_label: str,
+        *,
+        restore_focus: bool = True,
     ) -> int:
         wx = self._wx
         # Use the native message dialog rather than a hand-rolled wx.Dialog.
@@ -7016,7 +7030,7 @@ class MainFrame(
         if hasattr(dialog, "SetYesNoCancelLabels"):
             dialog.SetYesNoCancelLabels(affirmative_label, negative_label, "Cancel")
         try:
-            return self._show_modal_dialog(dialog, title)
+            return self._show_modal_dialog(dialog, title, restore_editor_focus=restore_focus)
         finally:
             dialog.Destroy()
 
@@ -7608,11 +7622,18 @@ class MainFrame(
         if not self.document.modified:
             return True
         wx = self._wx
+        # #619: the close path destroys the editor TextCtrl via DeletePage
+        # right after this prompt returns, so restoring editor focus here
+        # would queue a CallAfter that fires against a dead widget and
+        # raises RuntimeError. The Reload caller
+        # (_confirm_discard_changes) keeps the default restore_focus=True
+        # because reloading does not destroy the editor.
         result = self._prompt_unsaved_changes_action(
             "Unsaved changes",
             f"You have unsaved changes. Save before {action_label}?",
             "Save",
             "Don't Save",
+            restore_focus=False,
         )
         if result == wx.ID_CANCEL:
             return False

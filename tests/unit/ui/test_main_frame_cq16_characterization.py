@@ -190,9 +190,11 @@ def test_prompt_to_save_active_document_decision_table() -> None:
     frame = _bare()
     frame._wx = SimpleNamespace(ID_CANCEL=5101, ID_YES=5103, ID_NO=5104)
     prompt_calls: list[tuple[Any, ...]] = []
+    kwarg_calls: list[dict[str, Any]] = []
 
-    def _prompt(*args: Any) -> int:
+    def _prompt(*args: Any, **_kwargs: Any) -> int:
         prompt_calls.append(args)
+        kwarg_calls.append(_kwargs)
         return frame._next_prompt_result
 
     frame._prompt_unsaved_changes_action = _prompt  # type: ignore[method-assign]
@@ -219,6 +221,13 @@ def test_prompt_to_save_active_document_decision_table() -> None:
     frame._next_prompt_result = frame._wx.ID_NO
     assert frame._prompt_to_save_active_document("closing") is True
     assert frame.document.modified is True
+
+    # #619: the close path must pass restore_focus=False so the queued
+    # editor.SetFocus does not fire after DeletePage destroys the TextCtrl.
+    assert kwarg_calls, "the save prompt must have been invoked at least once"
+    assert all(call.get("restore_focus") is False for call in kwarg_calls), (
+        "#619: every close-path save prompt must pass restore_focus=False"
+    )
 
 
 def test_switch_document_wraps_around_and_guards_single_tab() -> None:

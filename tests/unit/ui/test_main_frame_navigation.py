@@ -580,7 +580,7 @@ def test_prompt_to_save_active_document_saves_when_requested() -> None:
     frame._wx = type("WX", (), {"ID_YES": 1, "ID_CANCEL": 0})()
     actions: list[str] = []
 
-    frame._prompt_unsaved_changes_action = lambda *_args: 1  # type: ignore[method-assign]
+    frame._prompt_unsaved_changes_action = lambda *_a, **_k: 1  # type: ignore[method-assign]
 
     def _save_file() -> None:
         actions.append("saved")
@@ -596,7 +596,7 @@ def test_prompt_to_save_active_document_cancels_when_requested() -> None:
     frame = _build_frame("one", insertion_point=0)
     frame.document.modified = True
     frame._wx = type("WX", (), {"ID_YES": 1, "ID_CANCEL": 0})()
-    frame._prompt_unsaved_changes_action = lambda *_args: 0  # type: ignore[method-assign]
+    frame._prompt_unsaved_changes_action = lambda *_a, **_k: 0  # type: ignore[method-assign]
 
     assert frame._prompt_to_save_active_document("closing") is False
 
@@ -605,7 +605,7 @@ def test_prompt_to_save_active_document_discards_when_requested() -> None:
     frame = _build_frame("one", insertion_point=0)
     frame.document.modified = True
     frame._wx = type("WX", (), {"ID_YES": 1, "ID_CANCEL": 0, "ID_NO": 2})()
-    frame._prompt_unsaved_changes_action = lambda *_args: 2  # type: ignore[method-assign]
+    frame._prompt_unsaved_changes_action = lambda *_a, **_k: 2  # type: ignore[method-assign]
 
     assert frame._prompt_to_save_active_document("closing") is True
 
@@ -613,7 +613,7 @@ def test_prompt_to_save_active_document_discards_when_requested() -> None:
 def test_confirm_discard_changes_accepts_reload_only() -> None:
     frame = _build_frame("one", insertion_point=0)
     frame._wx = type("WX", (), {"ID_YES": 1, "ID_CANCEL": 0})()
-    frame._prompt_unsaved_changes_action = lambda *_args: 1  # type: ignore[method-assign]
+    frame._prompt_unsaved_changes_action = lambda *_a, **_k: 1  # type: ignore[method-assign]
 
     assert frame._confirm_discard_changes() is True
 
@@ -1906,7 +1906,9 @@ def test_prompt_unsaved_changes_action_uses_native_message_dialog() -> None:
     frame._wx = wx
     # Native wx.MessageDialog handles keys itself; we only own the labels and
     # that ShowModal's result is returned unchanged.
-    frame._show_modal_dialog = lambda _dialog, _label: wx.ID_NO  # type: ignore[method-assign]
+    frame._show_modal_dialog = (
+        lambda _dialog, _label, **_kwargs: wx.ID_NO  # type: ignore[method-assign]
+    )
 
     result = frame._prompt_unsaved_changes_action(
         "Unsaved changes",

@@ -423,6 +423,19 @@ your browser is now opt-in via a Settings toggle (Settings -&gt; "After
 you submit a bug report, automatically open the support form in your
 default browser"). The report is always on your clipboard
 regardless.</p></li>
+<li><p><strong>Ctrl+F4 on a dirty document no longer crashes when you
+pick "Don't Save" (#619).</strong> The save-before-close prompt's
+"restore editor focus" step queued an <code>editor.SetFocus</code> via
+<code>CallAfter</code> that fired after the close had already destroyed
+the editor TextCtrl, raising
+<code>RuntimeError: wrapped C/C++ object of type TextCtrl has been deleted</code>
+and surfacing as "QUILL encountered an unexpected error and needs to
+close." The close-path save prompt now passes
+<code>restore_focus=False</code>, and the focus restore in
+<code>_show_modal_dialog</code> swallows the <code>RuntimeError</code>
+defensively for any other teardown-time dialog. Save and Cancel paths
+are unchanged; the Save path still returns focus to the editor as
+before.</p></li>
 </ul>
 </body>
 </html>
