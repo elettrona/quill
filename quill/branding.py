@@ -17,6 +17,13 @@ Constants:
 * :data:`APP_DESCRIPTION` - one-line description.
 * :data:`APP_COPYRIGHT` - copyright line.
 * :data:`APP_LICENSE_NAME` - the project's license name.
+* :data:`QUILL_KEY_LABEL` - user-visible brand name for the QUILL Key
+  chord prefix (``Ctrl+Shift+Grave``). Surfaced in menus, the About >
+  Keyboard Reference page, status bar messages, and the cheat sheet
+  in the form ``"QUILL Key + <second-key>"``. The stored binding
+  grammar (``"Ctrl+Shift+Grave, <X>"``) is unchanged; only the display
+  label moves. See ``quill.core.keymap.format_binding_for_display``
+  for the rewrite helper.
 * :data:`INDEPENDENCE_NOTICE` - the multi-line text asserting that
   QUILL for All is not affiliated with similarly named projects.
 
@@ -36,6 +43,12 @@ APP_DESCRIPTION = "An open-source, accessibility-focused editor."
 APP_COPYRIGHT = "Copyright (c) 2026 Community Access."
 APP_LICENSE_NAME = "MIT License"
 
+#: User-visible brand name for the QUILL Key chord prefix
+#: (``Ctrl+Shift+Grave``). Surfaced in menus, About > Keyboard Reference,
+#: status bar messages, and the cheat sheet as ``"QUILL Key + <key>"``.
+#: The stored binding grammar (``"Ctrl+Shift+Grave, <X>"``) is unchanged.
+QUILL_KEY_LABEL = "QUILL Key"
+
 INDEPENDENCE_NOTICE = (
     f"{APP_DISPLAY_NAME} is an independent open-source project by "
     f"{APP_ORGANIZATION}. It is not affiliated with, sponsored by, or "
@@ -52,5 +65,6 @@ __all__ = [
     "APP_DESCRIPTION",
     "APP_COPYRIGHT",
     "APP_LICENSE_NAME",
+    "QUILL_KEY_LABEL",
     "INDEPENDENCE_NOTICE",
 ]

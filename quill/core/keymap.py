@@ -12,6 +12,10 @@ from quill.core.keymap_packs import (
     keyboard_pack_names,
     keyboard_pack_preview,
 )
+from quill.core.keymap_format import (
+    format_binding_for_display,
+    format_quill_key_chord,
+)
 from quill.core.paths import app_data_dir
 from quill.core.storage import read_json, write_json_atomic
 
@@ -26,6 +30,8 @@ __all__ = [
     "export_keyboard_pack",
     "export_keymap",
     "find_keymap_conflict",
+    "format_binding_for_display",
+    "format_quill_key_chord",
     "import_keyboard_pack",
     "import_keymap",
     "keyboard_pack_description",

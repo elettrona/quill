@@ -16,6 +16,7 @@ from quill.branding import (  # noqa: E402
     APP_ORGANIZATION,
     APP_SHORT_NAME,
     INDEPENDENCE_NOTICE,
+    QUILL_KEY_LABEL,
 )
 from quill.build_info import (  # noqa: E402
     get_display_version,
@@ -42,5 +43,6 @@ __all__ = [
     "APP_SHORT_NAME",
     "APP_COPYRIGHT",
     "APP_LICENSE_NAME",
+    "QUILL_KEY_LABEL",
     "INDEPENDENCE_NOTICE",
 ]
