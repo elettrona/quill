@@ -1837,8 +1837,10 @@ Profiles shape which feature clusters are on, quiet, or off. This helps Quill st
 
 Each profile is a starting point, not a cage — switch any time from **Profiles and Features...**, and fine-tune individual features afterward without losing the rest of the profile's choices.
 
+The first-run Personalise QUILL wizard offers seven of these as curated starting points, each with a plain-English preview of what you get. The full set of ten lives here in **Profiles and Features...**, including profiles the wizard does not surface directly, such as Reader and Student, Office and Admin, and Low Vision.
+
 - **Essential** — the calmest possible editor. Just text, files, and the basics, with everything else a quiet opt-in away.
-- **Casual Writer** — everyday writing, formatting, and cleanup, with guided power features nearby when you reach for them. For papers, citations, and a table of contents, see Author or Student below.
+- **Writer** — everyday writing, formatting, and cleanup, with guided power features nearby when you reach for them. For papers, citations, and a table of contents, see Author or Student below.
 - **Author or Student** — long-form writing with a table of contents, footnotes, and MLA / Chicago / APA citations, built for papers, theses, and class assignments. Choose footnote-style or full academic citations with **Format → Markdown → Select Citation Style...**.
 - **Reader and Student** — reading, highlights, references, and light writing, tuned for working through someone else's material rather than producing your own.
 - **Office and Admin** — reliable file work, sessions, cleanup, and printing for everyday office documents.
@@ -2402,7 +2404,7 @@ Quill supports **Quillins** — extensions that add commands, snippets, menus, a
 
 ### Bundled Quillins
 
-QUILL ships thirteen trusted, first-party Quillins enabled by default:
+QUILL ships fourteen trusted, first-party Quillins enabled by default:
 
 - **Smart Insert** (`com.quill.smartinsert`) — abbreviations and smart text triggers for everyday templates. Contributes `qbug`, `qmeet`, `qlog`, `qtodo`, and `qbrf` abbreviations, as well as `=bug()`, `=meeting()`, `=journal()`, `=todo()`, `=logentry()`, `=brftest()`, and `=rand()` smart triggers. Settings are under **Preferences → Smart Insert**.
 - **BRF Tools** (`com.quill.brftools`) — preferences for braille translation defaults, page handling, status bar display, and diagnostics. Requires the QUILL Braille Pack. Settings under **Preferences → BRF Tools**.
@@ -2417,6 +2419,7 @@ QUILL ships thirteen trusted, first-party Quillins enabled by default:
 - **Word Count (Node)** — word count via the Node.js Quillin runtime, demonstrating that Quillins can be written in JavaScript as well as Python.
 - **AI Writing Prompts** — additional prompt library entries contributed by the Quillin manifest.
 - **AI Writing Skills** — pre-built `.sqp` skill files for rewriting, meeting-notes extraction, and research drafts.
+- **Math Equations** — inserts LaTeX or MathML equations at the cursor via **Insert → Insert Equation...** (`Ctrl+Shift+E`); see Math Equations earlier in this guide.
 
 ### Quillin Preferences
 

@@ -121,7 +121,7 @@ Adds everything in Writer plus Ask Quill (Alt+Q), AI grammar check and rewrite, 
 
 Turns on everything: regular expression search, macro recorder and playback, shell integration, all text and line transformation tools, Smart Insert, BRF Tools, Markdown Helpers, the Character Picker, GitHub remote file access, the Developer Console, Watch Folder automation, and all other Quillins. The full menu structure is visible.
 
-The wizard's seven starting profiles are a curated front door, not the whole catalog. **Profiles and Features...** (Preferences) exposes the full set underneath, including this release's new **Author or Student** profile — table of contents, footnotes, and citations for papers and theses — and the renamed **Casual Writer** (formerly **Writer**; nothing about the feature changed, just the name, to make room for Author or Student alongside it).
+The wizard's seven starting profiles are a curated front door, not the whole catalog. **Profiles and Features...** (Preferences) exposes the full set underneath, including this release's new **Author or Student** profile — table of contents, footnotes, and citations for papers and theses — alongside **Writer**, which keeps its name; nothing about the feature changed.
 
 ### Menus, Command Palette, Go to Anything, and the system tray all respect your profile
 
@@ -441,15 +441,29 @@ Third-party Quillins remain locked off for QUILL 1.0. The SEC-8 gate, `core.thir
 
 `net_allowed_hosts` is enforced at every fetch call. If a Quillin declares `"net_allowed_hosts": ["api.example.com"]` and tries to fetch from another host, QUILL blocks the call before it reaches the network, even if the user has granted the `net` capability. Wildcard patterns such as `*.example.com` allow subdomains but not the bare domain. An empty `net_allowed_hosts` list with the `net` capability preserves the current behavior: any host is reachable with user consent.
 
-### Five bundled Quillins
+### Fourteen bundled Quillins
 
-QUILL 0.7.0 ships five bundled Quillins. Each is both a useful extension and a reference implementation for the framework.
+QUILL 0.7.0 ships fourteen bundled Quillins. Five bundled Quillins are new in 0.7.0 (Smart Insert, BRF Tools, Journal Stamp, Document Guardian, Status Scribe). Nine are carryover from prior releases, for a total of fourteen bundled Quillins. Each is both a useful extension and a reference implementation for the framework.
+
+New in 0.7.0:
 
 - **Smart Insert** (`com.quill.smartinsert`) provides typed abbreviations and smart triggers for bug reports, meeting notes, log entries, to-do lists, and BRF test documents. It includes five tabs of configurable preferences, categories `writing`, `productivity`, and `formatting`, plus command `description` fields on every command.
 - **BRF Tools** (`com.quill.brftools`) provides preferences for braille translation, page handling, and status-bar display. Its categories are `braille` and `accessibility`.
 - **Journal Stamp** (`com.quill.journalstamp`) subscribes to `document.created`, `document.after_save`, `document.loaded_from_session`, `quillin.enabled`, and `settings.changed`. It can insert a date header, announce word count and daily-goal progress after save, announce restored documents, log activation, and hot-reload preferences. Its date-format and daily-goal controls include `search_keywords`. Its categories are `writing` and `productivity`.
 - **Document Guardian** (`com.quill.docguardian`) subscribes to `document.before_close`, `document.before_save`, `document.after_save`, `quillin.enabled`, `quillin.disabled`, and `quill.shutdown`. It can warn on unfinished documents, stamp an `Updated:` line, confirm saves with file size, announce and log activation, announce deactivation, and clean up on shutdown. Its categories are `writing` and `productivity`.
 - **Status Scribe** (`com.quill.statusscribe`) adds a live word, character, and sentence count to the status bar. It updates after every save and on tab switch. It demonstrates `status_bar` contribution, `ui.log` developer logging, `quillin.enabled`, `quillin.disabled`, `settings.changed`, lifecycle events, and announcement priority. Its categories are `writing`, `productivity`, and `accessibility`.
+
+Carryover from prior releases:
+
+- **Text Tools** (`com.quill.bundled.text-tools`) — advanced text transformations: line numbering, hard-wrap, regex match counting, and block filtering.
+- **Insert Tools** (`com.quill.bundled.insert-tools`) — date, time, and date-and-time snippets in the Insert > Date and Time submenu.
+- **Line Tools** (`com.quill.bundled.line-tools`) — cursor-aware line operations.
+- **Markdown Helpers** (`com.quill.bundled.markdown-helpers`) — syntax assistance for Markdown documents.
+- **Insert Character** (`com.quill.bundled.insert-character`) — a searchable character picker for Unicode symbols.
+- **Word Count (Node)** (`com.quill.bundled.word-count-node`) — word count via the Node.js Quillin runtime, demonstrating that Quillins can be written in JavaScript as well as Python.
+- **AI Writing Prompts** (`com.quill.bundled.ai-writing-prompts`) — additional prompt library entries contributed by the Quillin manifest.
+- **AI Writing Skills** (`com.quill.bundled.ai-writing-skills`) — pre-built `.sqp` skill files for rewriting, meeting-notes extraction, and research drafts.
+- **Math Equations** (`com.quill.bundled.math-equations`) — `Insert -> Insert Equation...` (`Ctrl+Shift+E`) for LaTeX and MathML insertion, with Browser Preview and HTML export rendering via MathJax 3. See the community contribution spotlight below.
 
 ### Five new Quillin capabilities, live in this release
 

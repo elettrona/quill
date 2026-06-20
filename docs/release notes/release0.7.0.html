@@ -533,10 +533,9 @@ all other Quillins. The full menu structure is visible.</p>
 the whole catalog. <strong>Profiles and Features...</strong>
 (Preferences) exposes the full set underneath, including this release's
 new <strong>Author or Student</strong> profile — table of contents,
-footnotes, and citations for papers and theses — and the renamed
-<strong>Casual Writer</strong> (formerly <strong>Writer</strong>;
-nothing about the feature changed, just the name, to make room for
-Author or Student alongside it).</p>
+footnotes, and citations for papers and theses — alongside
+<strong>Writer</strong>, which keeps its name; nothing about the feature
+changed.</p>
 <h3
 id="menus-command-palette-go-to-anything-and-the-system-tray-all-respect-your-profile">Menus,
 Command Palette, Go to Anything, and the system tray all respect your
@@ -1070,9 +1069,13 @@ subdomains but not the bare domain. An empty
 <code>net_allowed_hosts</code> list with the <code>net</code> capability
 preserves the current behavior: any host is reachable with user
 consent.</p>
-<h3 id="five-bundled-quillins">Five bundled Quillins</h3>
-<p>QUILL 0.7.0 ships five bundled Quillins. Each is both a useful
-extension and a reference implementation for the framework.</p>
+<h3 id="fourteen-bundled-quillins">Fourteen bundled Quillins</h3>
+<p>QUILL 0.7.0 ships fourteen bundled Quillins. Five bundled Quillins
+are new in 0.7.0 (Smart Insert, BRF Tools, Journal Stamp, Document
+Guardian, Status Scribe). Nine are carryover from prior releases, for a
+total of fourteen bundled Quillins. Each is both a useful extension and
+a reference implementation for the framework.</p>
+<p>New in 0.7.0:</p>
 <ul>
 <li><strong>Smart Insert</strong> (<code>com.quill.smartinsert</code>)
 provides typed abbreviations and smart triggers for bug reports, meeting
@@ -1110,6 +1113,42 @@ logging, <code>quillin.enabled</code>, <code>quillin.disabled</code>,
 <code>settings.changed</code>, lifecycle events, and announcement
 priority. Its categories are <code>writing</code>,
 <code>productivity</code>, and <code>accessibility</code>.</li>
+</ul>
+<p>Carryover from prior releases:</p>
+<ul>
+<li><strong>Text Tools</strong>
+(<code>com.quill.bundled.text-tools</code>) — advanced text
+transformations: line numbering, hard-wrap, regex match counting, and
+block filtering.</li>
+<li><strong>Insert Tools</strong>
+(<code>com.quill.bundled.insert-tools</code>) — date, time, and
+date-and-time snippets in the Insert &gt; Date and Time submenu.</li>
+<li><strong>Line Tools</strong>
+(<code>com.quill.bundled.line-tools</code>) — cursor-aware line
+operations.</li>
+<li><strong>Markdown Helpers</strong>
+(<code>com.quill.bundled.markdown-helpers</code>) — syntax assistance
+for Markdown documents.</li>
+<li><strong>Insert Character</strong>
+(<code>com.quill.bundled.insert-character</code>) — a searchable
+character picker for Unicode symbols.</li>
+<li><strong>Word Count (Node)</strong>
+(<code>com.quill.bundled.word-count-node</code>) — word count via the
+Node.js Quillin runtime, demonstrating that Quillins can be written in
+JavaScript as well as Python.</li>
+<li><strong>AI Writing Prompts</strong>
+(<code>com.quill.bundled.ai-writing-prompts</code>) — additional prompt
+library entries contributed by the Quillin manifest.</li>
+<li><strong>AI Writing Skills</strong>
+(<code>com.quill.bundled.ai-writing-skills</code>) — pre-built
+<code>.sqp</code> skill files for rewriting, meeting-notes extraction,
+and research drafts.</li>
+<li><strong>Math Equations</strong>
+(<code>com.quill.bundled.math-equations</code>) —
+<code>Insert -&gt; Insert Equation...</code> (<code>Ctrl+Shift+E</code>)
+for LaTeX and MathML insertion, with Browser Preview and HTML export
+rendering via MathJax 3. See the community contribution spotlight
+below.</li>
 </ul>
 <h3 id="five-new-quillin-capabilities-live-in-this-release">Five new
 Quillin capabilities, live in this release</h3>
