@@ -4615,6 +4615,11 @@ readability score) where the result is read but not inserted.
 
 _Folded in from the former docs/userguide.md on 2026-06-13._
 
+> **Historical note:** this appendix preserves the original nine-slot Copy
+> Tray design document. Copy Tray now has **twelve** slots and the Open Copy
+> Tray chord is `Ctrl+Shift+Grave, X`; see the "Copy Tray" section above for
+> current behavior and bindings.
+
 # QUILL feature documentation
 
 _Consolidated from the former docs/features/ folder on 2026-06-13. Each section preserves the original document in full._
@@ -4780,6 +4785,11 @@ Labels are persisted alongside slot text and survive restarts.
 # Appendix: Copy Tray design notes
 
 _Folded in from the former docs/copy_tray_notes.md on 2026-06-13._
+
+> **Historical note:** this appendix describes Copy Tray as originally built
+> with nine slots. Copy Tray now has **twelve** slots (`Ctrl+Shift+1..9, 0,
+> -, =`); see the "Copy Tray" section above for current behavior and
+> bindings.
 
 # Copy Tray: What Was Built and How It Feels
 

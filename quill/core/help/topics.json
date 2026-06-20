@@ -466,8 +466,11 @@
   {
     "id": "copy_tray.slot_list",
     "title": "Copy Tray Slots",
-    "body": "The Copy Tray holds up to 12 saved text clips. Arrow through the list to hear each slot's label and preview. Press Enter to paste the selected slot into the editor. Ctrl+1 through Ctrl+9 paste the first nine slots directly.",
-    "keystrokes": ["Ctrl+1..9 - Paste slot 1-9", "Ctrl+Alt+1..9 - Copy to slot 1-9"],
+    "body": "The Copy Tray holds up to 12 saved text clips. Arrow through the list to hear each slot's label and preview. Press Enter to paste the selected slot into the editor. Ctrl+Shift+1 through Ctrl+Shift+9, 0, -, and = paste the twelve slots directly.",
+    "keystrokes": [
+      "Ctrl+Shift+1..9, 0, -, = - Paste slot 1-12",
+      "Ctrl+Shift+Grave, Shift+1..9, 0, -, = - Copy to slot 1-12"
+    ],
     "user_guide_section": "writing-and-editing"
   },
   {
@@ -660,7 +663,10 @@
     "id": "copy_tray",
     "title": "Copy Tray",
     "body": "The Copy Tray holds up to 12 saved text clips that you can paste at any time. Use it as a persistent clipboard for frequently reused text, template snippets, or content you are assembling from multiple sources.",
-    "keystrokes": ["Ctrl+Shift+T - Open Copy Tray", "Ctrl+1..9 - Paste slot 1-9"],
+    "keystrokes": [
+      "Ctrl+Shift+Grave, X - Open Copy Tray",
+      "Ctrl+Shift+1..9, 0, -, = - Paste slot 1-12"
+    ],
     "user_guide_section": "writing-and-editing"
   },
   {
