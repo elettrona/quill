@@ -916,6 +916,14 @@ class MenuBuilderMixin:
             self._id_move_line_down,
             self._menu_label(_("Move Line &Down"), "format.move_line_down"),
         )
+        line_menu.Append(
+            self._id_move_section_up,
+            self._menu_label(_("Move Secti&on Up"), "format.move_section_up"),
+        )
+        line_menu.Append(
+            self._id_move_section_down,
+            self._menu_label(_("Move Section Do&wn"), "format.move_section_down"),
+        )
         line_menu.AppendSeparator()
         line_menu.Append(
             self._id_duplicate_line,
@@ -2818,6 +2826,10 @@ class MenuBuilderMixin:
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_outdent(), id=self._id_outdent)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.move_line_up(), id=self._id_move_line_up)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.move_line_down(), id=self._id_move_line_down)
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.move_section_up(), id=self._id_move_section_up)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.move_section_down(), id=self._id_move_section_down
+        )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.duplicate_line(), id=self._id_duplicate_line)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.delete_line(), id=self._id_delete_line)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.join_lines(), id=self._id_join_lines)

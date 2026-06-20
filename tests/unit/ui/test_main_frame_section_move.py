@@ -7,6 +7,8 @@ The pure section-move logic is exercised in
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from quill.core.settings import Settings
 from quill.ui.main_frame import MainFrame
 
@@ -159,3 +161,16 @@ def test_move_section_ignores_fenced_heading() -> None:
     fence_open = new_text.index("```")
     fence_close = new_text.index("```", fence_open + 3)
     assert fence_open < new_text.index("# fake") < fence_close
+
+
+def test_move_section_menu_ids_are_appended_and_bound() -> None:
+    """Regression for #278: ``_id_move_section_up``/``_id_move_section_down``
+    were declared and fed into the accelerator table, but never ``Append``-ed
+    to a real menu nor ``Bind``-ed to a handler, leaving the documented
+    Alt+Shift+Up/Down accelerator silently inert outside the context menu."""
+    source = (
+        Path(__file__).resolve().parents[3] / "quill" / "ui" / "main_frame_menu.py"
+    ).read_text(encoding="utf-8")
+    for attr in ("_id_move_section_up", "_id_move_section_down"):
+        assert f"self.{attr},\n" in source, f"{attr} is never Append-ed to a real menu"
+        assert f"id=self.{attr}" in source, f"{attr} is never bound to a handler"
