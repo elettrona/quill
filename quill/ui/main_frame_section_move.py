@@ -54,12 +54,19 @@ class SectionMoveMixin:
             label = f"moved above {announce}" if direction == "up" else f"moved below {announce}"
             self._announce(f"Section {label}")
             return
-        # Edge / no-section cases are announced as-is.
+        # Edge / no-section cases are announced as-is. Each branch is
+        # enumerated against the MoveResult enum so a future addition
+        # would surface as an unannounced outcome (we'd see the
+        # "section move did nothing" report in support and know to add
+        # a new branch) rather than silently falling into the
+        # NO_SIBLING arm by accident.
         if result is MoveResult.NO_SECTION:
             self._announce("No section to move")
         elif result is MoveResult.TOP:
             self._announce("Top!")
         elif result is MoveResult.BOTTOM:
             self._announce("Bottom!")
-        else:  # MoveResult.NO_SIBLING
+        elif result is MoveResult.NO_SIBLING:
             self._announce("No sibling to swap with")
+        else:  # pragma: no cover - defensive: unannounced enum member
+            self._announce("Section move could not be performed")
