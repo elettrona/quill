@@ -228,6 +228,32 @@ prefix and onto <code>Ctrl+Alt+1..6</code>, and the legacy preview chord
 was retired. With the carry-over rule, those moved defaults take effect
 automatically on the next launch, and any user entry that became invalid
 is removed from the saved file so it does not cause confusion later.</p>
+<h3 id="what-you-may-notice-on-the-first-launch-after-upgrading">What
+you may notice on the first launch after upgrading</h3>
+<p>The carry-over runs silently, but the behavior change is visible in a
+few shortcuts that moved between 0.5.0 and 0.7.0. If you have been using
+0.7.0 Beta 1, the most likely case is <code>Ctrl+F</code> (Find):</p>
+<ul>
+<li><p><strong>Pressing <code>Ctrl+F</code> did nothing in 0.7.0 Beta
+1.</strong> Earlier in the 0.7.0 line, <code>edit.find</code> defaulted
+to the QUILL-Key chord (<code>Ctrl+Shift+Grave, F</code>) instead of the
+conventional <code>Ctrl+F</code>. Your saved <code>keymap.json</code> on
+disk still records that stale binding, so when you press
+<code>Ctrl+F</code> in 0.7.0 Beta 2, the keystroke reaches the editor
+instead of opening Find — the editor sees it as text input or an
+unhandled key.</p>
+<p>In Beta 2 the load path rewrites the saved entry on first launch, and
+the corrected value is persisted back to <code>keymap.json</code> on the
+same launch. The next time you open QUILL, <code>Ctrl+F</code> opens
+Find as expected and stays that way. No dialog, no settings panel, no
+manual re-bind.</p></li>
+</ul>
+<p>The same one-time rewrite applies to the other bindings that moved
+off the QUILL-Key prefix and back to their conventional shortcuts in
+this release (for example <code>Ctrl+Shift+Grave, T</code> for "Send to
+System Tray", <code>Ctrl+Shift+Grave, R</code> for Read Aloud, and
+<code>Ctrl+Shift+Grave, D</code> for Dictation). After the first launch,
+the menu and the chord display in the status bar match.</p>
 <h3 id="what-is-not-a-migration">What is not a migration</h3>
 <ul>
 <li>The on-disk <code>keymap.json</code> is still a small delta of

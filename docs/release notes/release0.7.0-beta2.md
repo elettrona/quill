@@ -58,6 +58,33 @@ automatically on the next launch, and any user entry that became
 invalid is removed from the saved file so it does not cause confusion
 later.
 
+### What you may notice on the first launch after upgrading
+
+The carry-over runs silently, but the behavior change is visible in
+a few shortcuts that moved between 0.5.0 and 0.7.0. If you have been
+using 0.7.0 Beta 1, the most likely case is `Ctrl+F` (Find):
+
+- **Pressing `Ctrl+F` did nothing in 0.7.0 Beta 1.** Earlier in the
+  0.7.0 line, `edit.find` defaulted to the QUILL-Key chord
+  (`Ctrl+Shift+Grave, F`) instead of the conventional `Ctrl+F`. Your
+  saved `keymap.json` on disk still records that stale binding, so
+  when you press `Ctrl+F` in 0.7.0 Beta 2, the keystroke reaches
+  the editor instead of opening Find — the editor sees it as text
+  input or an unhandled key.
+
+  In Beta 2 the load path rewrites the saved entry on first launch,
+  and the corrected value is persisted back to `keymap.json` on the
+  same launch. The next time you open QUILL, `Ctrl+F` opens Find as
+  expected and stays that way. No dialog, no settings panel, no
+  manual re-bind.
+
+The same one-time rewrite applies to the other bindings that moved
+off the QUILL-Key prefix and back to their conventional shortcuts
+in this release (for example `Ctrl+Shift+Grave, T` for "Send to
+System Tray", `Ctrl+Shift+Grave, R` for Read Aloud, and
+`Ctrl+Shift+Grave, D` for Dictation). After the first launch, the
+menu and the chord display in the status bar match.
+
 ### What is not a migration
 
 - The on-disk `keymap.json` is still a small delta of overrides, not a
