@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>userguide</title>
+  <title>QUILL User Guide</title>
   <style>
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -241,6 +241,692 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">QUILL User Guide</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#quill-user-guide" id="toc-quill-user-guide">Quill User
+Guide</a>
+<ul>
+<li><a href="#table-of-contents" id="toc-table-of-contents">Table of
+Contents</a></li>
+<li><a href="#start-here" id="toc-start-here">Start Here</a></li>
+<li><a href="#what-quill-feels-like" id="toc-what-quill-feels-like">What
+Quill Feels Like</a></li>
+<li><a href="#your-first-session" id="toc-your-first-session">Your First
+Session</a></li>
+<li><a href="#getting-around-quill"
+id="toc-getting-around-quill">Getting Around QUILL</a>
+<ul>
+<li><a href="#f1--help-on-the-focused-control"
+id="toc-f1--help-on-the-focused-control">F1 — help on the focused
+control</a></li>
+<li><a href="#the-quill-key" id="toc-the-quill-key">The QUILL
+key</a></li>
+<li><a href="#command-palette" id="toc-command-palette">Command
+Palette</a></li>
+<li><a href="#navigation-anchors" id="toc-navigation-anchors">Navigation
+anchors</a></li>
+</ul></li>
+<li><a href="#command-line-launching"
+id="toc-command-line-launching">Command-Line Launching</a></li>
+<li><a href="#the-main-window" id="toc-the-main-window">The Main
+Window</a>
+<ul>
+<li><a href="#menu-bar" id="toc-menu-bar">Menu bar</a></li>
+<li><a href="#editor-surface" id="toc-editor-surface">Editor
+surface</a></li>
+<li><a href="#tabs-and-document-switching"
+id="toc-tabs-and-document-switching">Tabs and document
+switching</a></li>
+<li><a href="#status-bar" id="toc-status-bar">Status bar</a></li>
+<li><a href="#region-cycling" id="toc-region-cycling">Region
+cycling</a></li>
+</ul></li>
+<li><a href="#the-menu-bar-reference"
+id="toc-the-menu-bar-reference">The Menu Bar Reference</a>
+<ul>
+<li><a href="#file" id="toc-file">File</a></li>
+<li><a href="#edit" id="toc-edit">Edit</a></li>
+<li><a href="#view" id="toc-view">View</a></li>
+<li><a href="#insert" id="toc-insert">Insert</a></li>
+<li><a href="#navigate" id="toc-navigate">Navigate</a></li>
+<li><a href="#search" id="toc-search">Search</a></li>
+<li><a href="#tools" id="toc-tools">Tools</a></li>
+<li><a href="#ask-quill-chat-setup-on-device-ai"
+id="toc-ask-quill-chat-setup-on-device-ai">Ask Quill Chat setup
+(on-device AI)</a></li>
+<li><a href="#the-ai-hub-one-place-to-configure-every-provider"
+id="toc-the-ai-hub-one-place-to-configure-every-provider">The AI Hub
+(one place to configure every provider)</a></li>
+<li><a href="#ai-language-tools" id="toc-ai-language-tools">AI Language
+Tools</a></li>
+<li><a href="#ai-privacy-reference" id="toc-ai-privacy-reference">AI
+Privacy Reference</a></li>
+<li><a href="#window" id="toc-window">Window</a></li>
+<li><a href="#help" id="toc-help">Help</a></li>
+<li><a href="#how-to-report-a-problem-from-inside-quill"
+id="toc-how-to-report-a-problem-from-inside-quill">How to report a
+problem from inside Quill</a></li>
+</ul></li>
+<li><a href="#writing-and-editing" id="toc-writing-and-editing">Writing
+and Editing</a>
+<ul>
+<li><a href="#everyday-editing" id="toc-everyday-editing">Everyday
+editing</a></li>
+<li><a href="#copy-tray" id="toc-copy-tray">Copy Tray</a></li>
+<li><a href="#import-and-export" id="toc-import-and-export">Import and
+Export</a></li>
+<li><a href="#batch-conversion" id="toc-batch-conversion">Batch
+Conversion</a></li>
+<li><a href="#abbreviation-expansion"
+id="toc-abbreviation-expansion">Abbreviation Expansion</a></li>
+<li><a
+href="#insert-automation-smart-triggers-log-files-and-append-anchors"
+id="toc-insert-automation-smart-triggers-log-files-and-append-anchors">Insert
+Automation: Smart Triggers, Log Files, and Append Anchors</a></li>
+<li><a href="#copy-with-source" id="toc-copy-with-source">Copy With
+Source</a></li>
+<li><a href="#selection-bindings" id="toc-selection-bindings">Selection
+bindings</a></li>
+<li><a href="#links" id="toc-links">Links</a></li>
+</ul></li>
+<li><a href="#search-replace-and-deep-navigation"
+id="toc-search-replace-and-deep-navigation">Search, Replace, and Deep
+Navigation</a>
+<ul>
+<li><a href="#standard-search" id="toc-standard-search">Standard
+search</a></li>
+<li><a href="#search-modes" id="toc-search-modes">Search modes</a></li>
+<li><a href="#navigation-that-understands-documents"
+id="toc-navigation-that-understands-documents">Navigation that
+understands documents</a></li>
+<li><a href="#code-aware-editing" id="toc-code-aware-editing">Code-aware
+editing</a></li>
+<li><a href="#abbreviation-expansion-emmet-style"
+id="toc-abbreviation-expansion-emmet-style">Abbreviation expansion
+(Emmet-style)</a></li>
+<li><a href="#quill-eraser" id="toc-quill-eraser">Quill Eraser</a></li>
+</ul></li>
+<li><a href="#quill-quick-nav-mode" id="toc-quill-quick-nav-mode">QUILL
+Quick Nav Mode</a>
+<ul>
+<li><a href="#quill-key-prefix-actions"
+id="toc-quill-key-prefix-actions">QUILL key prefix actions</a></li>
+</ul></li>
+<li><a href="#formatting-and-markup-work"
+id="toc-formatting-and-markup-work">Formatting and Markup Work</a>
+<ul>
+<li><a href="#markdown-and-html-awareness"
+id="toc-markdown-and-html-awareness">Markdown and HTML
+awareness</a></li>
+<li><a href="#headings-and-lists" id="toc-headings-and-lists">Headings
+and lists</a></li>
+<li><a href="#citations-and-bibliographies"
+id="toc-citations-and-bibliographies">Citations and
+bibliographies</a></li>
+<li><a href="#markdown-profiles-and-table-of-contents"
+id="toc-markdown-profiles-and-table-of-contents">Markdown profiles and
+table of contents</a></li>
+<li><a href="#math-equations" id="toc-math-equations">Math
+Equations</a></li>
+<li><a href="#tables-code-blocks-and-tags"
+id="toc-tables-code-blocks-and-tags">Tables, code blocks, and
+tags</a></li>
+<li><a href="#cleanup-and-normalization"
+id="toc-cleanup-and-normalization">Cleanup and normalization</a></li>
+<li><a href="#character-encoding-tools"
+id="toc-character-encoding-tools">Character encoding tools</a></li>
+<li><a href="#more-search-and-analysis-tools"
+id="toc-more-search-and-analysis-tools">More search and analysis
+tools</a></li>
+</ul></li>
+<li><a href="#tools-for-reading-review-and-inspection"
+id="toc-tools-for-reading-review-and-inspection">Tools for Reading,
+Review, and Inspection</a>
+<ul>
+<li><a href="#read-aloud" id="toc-read-aloud">Read Aloud</a></li>
+<li><a href="#epub-navigator" id="toc-epub-navigator">EPUB
+Navigator</a></li>
+<li><a href="#ocr-image" id="toc-ocr-image">OCR Image</a></li>
+<li><a href="#document-intake-and-extraction-quality"
+id="toc-document-intake-and-extraction-quality">Document intake and
+extraction quality</a></li>
+</ul></li>
+<li><a href="#glow-workflows-inside-quill"
+id="toc-glow-workflows-inside-quill">GLOW Workflows Inside Quill</a>
+<ul>
+<li><a href="#audit-flows" id="toc-audit-flows">Audit flows</a></li>
+<li><a href="#fix-flows" id="toc-fix-flows">Fix flows</a></li>
+<li><a href="#what-glow-is-best-at-today"
+id="toc-what-glow-is-best-at-today">What GLOW is best at today</a></li>
+</ul></li>
+<li><a href="#accessibility-and-low-vision-features"
+id="toc-accessibility-and-low-vision-features">Accessibility and
+Low-Vision Features</a>
+<ul>
+<li><a href="#region-model" id="toc-region-model">Region model</a></li>
+<li><a href="#keyboard-trap-and-accessibility-audit"
+id="toc-keyboard-trap-and-accessibility-audit">Keyboard trap and
+accessibility audit</a></li>
+<li><a href="#contrast-and-theme-behavior"
+id="toc-contrast-and-theme-behavior">Contrast and theme
+behavior</a></li>
+<li><a href="#status-bar-as-an-accessible-control-surface"
+id="toc-status-bar-as-an-accessible-control-surface">Status bar as an
+accessible control surface</a></li>
+<li><a href="#sound-notifications-and-earcons"
+id="toc-sound-notifications-and-earcons">Sound notifications and
+earcons</a></li>
+<li><a href="#startup-speech-is-opt-in-not-automatic"
+id="toc-startup-speech-is-opt-in-not-automatic">Startup speech is
+opt-in, not automatic</a></li>
+</ul></li>
+<li><a href="#quill-on-macos" id="toc-quill-on-macos">Quill on
+macOS</a></li>
+<li><a href="#profiles-keyboard-packs-and-customization"
+id="toc-profiles-keyboard-packs-and-customization">Profiles, Keyboard
+Packs, and Customization</a>
+<ul>
+<li><a href="#feature-profiles" id="toc-feature-profiles">Feature
+profiles</a></li>
+<li><a href="#fine-tuning-individual-features"
+id="toc-fine-tuning-individual-features">Fine-tuning individual
+features</a></li>
+<li><a href="#keyboard-packs" id="toc-keyboard-packs">Keyboard
+packs</a></li>
+<li><a href="#keymap-editor" id="toc-keymap-editor">Keymap
+editor</a></li>
+<li><a href="#keyboard-manager-for-quill-quick-nav"
+id="toc-keyboard-manager-for-quill-quick-nav">Keyboard manager for QUILL
+Quick Nav</a></li>
+<li><a href="#status-bar-settings" id="toc-status-bar-settings">Status
+bar settings</a></li>
+<li><a href="#settings-you-can-change-today"
+id="toc-settings-you-can-change-today">Settings you can change
+today</a></li>
+</ul></li>
+<li><a href="#trust-recovery-sessions-and-safety"
+id="toc-trust-recovery-sessions-and-safety">Trust, Recovery, Sessions,
+and Safety</a>
+<ul>
+<li><a href="#notebooks" id="toc-notebooks">Notebooks</a></li>
+<li><a href="#sessions" id="toc-sessions">Sessions</a></li>
+<li><a href="#marks-vs-bookmarks-and-the-ring"
+id="toc-marks-vs-bookmarks-and-the-ring">Marks vs bookmarks (and the
+ring)</a></li>
+<li><a href="#autosave-and-backups"
+id="toc-autosave-and-backups">Autosave and backups</a></li>
+<li><a href="#recovery" id="toc-recovery">Recovery</a></li>
+<li><a href="#persistent-undo" id="toc-persistent-undo">Persistent
+undo</a></li>
+<li><a href="#trusted-locations" id="toc-trusted-locations">Trusted
+locations</a></li>
+<li><a href="#safe-mode" id="toc-safe-mode">Safe mode</a></li>
+<li><a href="#notifications-and-updates"
+id="toc-notifications-and-updates">Notifications and updates</a></li>
+</ul></li>
+<li><a href="#working-with-different-document-types"
+id="toc-working-with-different-document-types">Working with Different
+Document Types</a>
+<ul>
+<li><a href="#plain-text" id="toc-plain-text">Plain text</a></li>
+<li><a href="#markdown" id="toc-markdown">Markdown</a></li>
+<li><a href="#html" id="toc-html">HTML</a></li>
+<li><a href="#rtf" id="toc-rtf">RTF</a></li>
+<li><a href="#csv-and-tsv" id="toc-csv-and-tsv">CSV and TSV</a></li>
+<li><a href="#word-docx-and-doc" id="toc-word-docx-and-doc">Word (.docx
+and .doc)</a></li>
+<li><a href="#epub" id="toc-epub">EPUB</a></li>
+<li><a href="#powerpoint-pptx-and-ppt"
+id="toc-powerpoint-pptx-and-ppt">PowerPoint (.pptx and .ppt)</a></li>
+<li><a href="#excel-style-spreadsheets-xlsx-and-xls"
+id="toc-excel-style-spreadsheets-xlsx-and-xls">Excel-style spreadsheets
+(.xlsx and .xls)</a></li>
+<li><a href="#pdf-and-ocr-derived-text"
+id="toc-pdf-and-ocr-derived-text">PDF and OCR-derived text</a></li>
+<li><a href="#remote-files-ftp-sftp-https-webdav-s3"
+id="toc-remote-files-ftp-sftp-https-webdav-s3">Remote files (FTP, SFTP,
+HTTPS, WebDAV, S3)</a></li>
+<li><a href="#github-remote-files" id="toc-github-remote-files">GitHub
+Remote Files</a></li>
+</ul></li>
+<li><a href="#braille-mode-brf-brl-pef-ueb"
+id="toc-braille-mode-brf-brl-pef-ueb">Braille Mode (BRF, BRL, PEF,
+UEB)</a></li>
+<li><a href="#help-learning-and-daily-confidence"
+id="toc-help-learning-and-daily-confidence">Help, Learning, and Daily
+Confidence</a>
+<ul>
+<li><a href="#context-sensitive-help-f1"
+id="toc-context-sensitive-help-f1">Context-Sensitive Help (F1)</a></li>
+<li><a href="#personalising-quill"
+id="toc-personalising-quill">Personalising QUILL</a></li>
+</ul></li>
+<li><a href="#translation-and-community-localization"
+id="toc-translation-and-community-localization">Translation and
+Community Localization</a>
+<ul>
+<li><a href="#how-the-translation-pipeline-works"
+id="toc-how-the-translation-pipeline-works">How the Translation Pipeline
+Works</a></li>
+<li><a href="#contributing-translations"
+id="toc-contributing-translations">Contributing Translations</a></li>
+<li><a href="#translation-roles-and-responsibilities"
+id="toc-translation-roles-and-responsibilities">Translation Roles and
+Responsibilities</a></li>
+<li><a href="#speech-string-guidelines"
+id="toc-speech-string-guidelines">Speech String Guidelines</a></li>
+</ul></li>
+<li><a href="#checking-for-updates"
+id="toc-checking-for-updates">Checking for Updates</a>
+<ul>
+<li><a href="#manual-update-check" id="toc-manual-update-check">Manual
+update check</a></li>
+<li><a href="#automatic-update-checks"
+id="toc-automatic-update-checks">Automatic update checks</a></li>
+<li><a href="#update-size-and-speed"
+id="toc-update-size-and-speed">Update size and speed</a></li>
+<li><a href="#staying-on-a-release-channel"
+id="toc-staying-on-a-release-channel">Staying on a release
+channel</a></li>
+</ul></li>
+<li><a href="#beta-feedback-and-bug-reporting"
+id="toc-beta-feedback-and-bug-reporting">Beta Feedback and Bug
+Reporting</a>
+<ul>
+<li><a href="#what-exists-today" id="toc-what-exists-today">What exists
+today</a></li>
+<li><a href="#what-still-needs-to-improve"
+id="toc-what-still-needs-to-improve">What still needs to
+improve</a></li>
+<li><a href="#best-beta-launch-recommendation"
+id="toc-best-beta-launch-recommendation">Best beta-launch
+recommendation</a></li>
+</ul></li>
+<li><a href="#a-fast-shortcut-tour" id="toc-a-fast-shortcut-tour">A Fast
+Shortcut Tour</a></li>
+<li><a href="#closing-thought" id="toc-closing-thought">Closing
+Thought</a></li>
+<li><a href="#quillins-extensions"
+id="toc-quillins-extensions">Quillins: Extensions</a>
+<ul>
+<li><a href="#bundled-quillins" id="toc-bundled-quillins">Bundled
+Quillins</a></li>
+<li><a href="#quillin-preferences" id="toc-quillin-preferences">Quillin
+Preferences</a></li>
+<li><a href="#document-events" id="toc-document-events">Document
+Events</a></li>
+<li><a href="#the-quillins-manager" id="toc-the-quillins-manager">The
+Quillins Manager</a></li>
+<li><a href="#authoring-quillins" id="toc-authoring-quillins">Authoring
+Quillins</a></li>
+</ul></li>
+<li><a href="#ai-assistant" id="toc-ai-assistant">AI Assistant</a>
+<ul>
+<li><a href="#setting-up-an-ai-provider"
+id="toc-setting-up-an-ai-provider">Setting up an AI provider</a></li>
+<li><a href="#portable-mode-and-key-storage"
+id="toc-portable-mode-and-key-storage">Portable mode and key
+storage</a></li>
+<li><a href="#ask-ai-quick-one-off-question"
+id="toc-ask-ai-quick-one-off-question">Ask AI (quick one-off
+question)</a></li>
+<li><a href="#check-grammar-with-ai"
+id="toc-check-grammar-with-ai">Check Grammar with AI</a></li>
+<li><a href="#prompt-library" id="toc-prompt-library">Prompt
+Library</a></li>
+<li><a href="#skill-library-sqp-skills"
+id="toc-skill-library-sqp-skills">Skill Library (.sqp skills)</a></li>
+</ul></li>
+<li><a href="#control-reference" id="toc-control-reference">Control
+Reference</a></li>
+</ul></li>
+<li><a href="#appendix-quill-developer-console"
+id="toc-appendix-quill-developer-console">Appendix: QUILL Developer
+Console</a></li>
+<li><a href="#quill-developer-console-qdc-documentation"
+id="toc-quill-developer-console-qdc-documentation">QUILL Developer
+Console (QDC) documentation</a></li>
+<li><a href="#quill-developer-console-tutorial"
+id="toc-quill-developer-console-tutorial">QUILL Developer Console
+Tutorial</a>
+<ul>
+<li><a href="#what-the-qdc-is" id="toc-what-the-qdc-is">What the QDC
+is</a></li>
+<li><a href="#opening-the-console" id="toc-opening-the-console">Opening
+the console</a></li>
+<li><a href="#console-layout" id="toc-console-layout">Console
+layout</a></li>
+<li><a href="#keyboard-reference" id="toc-keyboard-reference">Keyboard
+reference</a></li>
+<li><a href="#python-console" id="toc-python-console">Python console</a>
+<ul>
+<li><a href="#available-names" id="toc-available-names">Available
+names</a></li>
+<li><a href="#basic-operations" id="toc-basic-operations">Basic
+operations</a></li>
+<li><a href="#inspecting-state" id="toc-inspecting-state">Inspecting
+state</a></li>
+<li><a href="#accessibility-diagnostics"
+id="toc-accessibility-diagnostics">Accessibility diagnostics</a></li>
+<li><a href="#multi-line-blocks" id="toc-multi-line-blocks">Multi-line
+blocks</a></li>
+<li><a href="#macro-recording" id="toc-macro-recording">Macro
+recording</a></li>
+</ul></li>
+<li><a href="#typescript-console" id="toc-typescript-console">TypeScript
+console</a>
+<ul>
+<li><a href="#typescript-prompt-behavior"
+id="toc-typescript-prompt-behavior">TypeScript prompt behavior</a></li>
+<li><a href="#available-globals" id="toc-available-globals">Available
+globals</a></li>
+<li><a href="#basic-operations-1" id="toc-basic-operations-1">Basic
+operations</a></li>
+<li><a href="#inspecting-state-1" id="toc-inspecting-state-1">Inspecting
+state</a></li>
+<li><a href="#multi-line-typescript"
+id="toc-multi-line-typescript">Multi-line TypeScript</a></li>
+<li><a href="#typescript-type-definitions"
+id="toc-typescript-type-definitions">TypeScript type
+definitions</a></li>
+</ul></li>
+<li><a href="#screen-reader-notes"
+id="toc-screen-reader-notes">Screen-reader notes</a></li>
+<li><a href="#console-safety-settings"
+id="toc-console-safety-settings">Console safety settings</a></li>
+<li><a href="#transcript-commands"
+id="toc-transcript-commands">Transcript commands</a></li>
+<li><a href="#for-quillin-authors-testing-your-extension-in-the-qdc"
+id="toc-for-quillin-authors-testing-your-extension-in-the-qdc">For
+Quillin authors: testing your extension in the QDC</a></li>
+<li><a href="#implementation-status-050"
+id="toc-implementation-status-050">Implementation status
+(0.5.0)</a></li>
+</ul></li>
+<li><a href="#quill-developer-console-and-automation-api-prd"
+id="toc-quill-developer-console-and-automation-api-prd">QUILL Developer
+Console and Automation API PRD</a>
+<ul>
+<li><a href="#feature-name" id="toc-feature-name">Feature name</a></li>
+<li><a href="#status" id="toc-status">Status</a></li>
+<li><a href="#owner" id="toc-owner">Owner</a></li>
+<li><a href="#target-platform" id="toc-target-platform">Target
+platform</a></li>
+<li><a href="#target-users" id="toc-target-users">Target users</a></li>
+<li><a href="#1-vision" id="toc-1-vision">1. Vision</a></li>
+<li><a href="#2-problem-statement" id="toc-2-problem-statement">2.
+Problem statement</a></li>
+<li><a href="#3-goals" id="toc-3-goals">3. Goals</a></li>
+<li><a href="#4-non-goals" id="toc-4-non-goals">4. Non-goals</a></li>
+<li><a href="#5-user-stories" id="toc-5-user-stories">5. User
+stories</a>
+<ul>
+<li><a href="#51-developer" id="toc-51-developer">5.1 Developer</a></li>
+<li><a href="#52-accessibility-tester"
+id="toc-52-accessibility-tester">5.2 Accessibility tester</a></li>
+<li><a href="#53-macro-author" id="toc-53-macro-author">5.3 Macro
+author</a></li>
+<li><a href="#54-support-technician" id="toc-54-support-technician">5.4
+Support technician</a></li>
+<li><a href="#55-typescript-user" id="toc-55-typescript-user">5.5
+TypeScript user</a></li>
+</ul></li>
+<li><a href="#6-feature-placement" id="toc-6-feature-placement">6.
+Feature placement</a>
+<ul>
+<li><a href="#tools-menu" id="toc-tools-menu">Tools menu</a></li>
+<li><a href="#command-palette-1" id="toc-command-palette-1">Command
+palette</a></li>
+<li><a href="#feature-profiles-1" id="toc-feature-profiles-1">Feature
+profiles</a></li>
+</ul></li>
+<li><a href="#7-ux-requirements" id="toc-7-ux-requirements">7. UX
+requirements</a>
+<ul>
+<li><a href="#71-console-window-layout"
+id="toc-71-console-window-layout">7.1 Console window layout</a></li>
+<li><a href="#72-keyboard-behavior" id="toc-72-keyboard-behavior">7.2
+Keyboard behavior</a></li>
+<li><a href="#73-screen-reader-behavior"
+id="toc-73-screen-reader-behavior">7.3 Screen-reader behavior</a></li>
+<li><a href="#74-prompt-behavior" id="toc-74-prompt-behavior">7.4 Prompt
+behavior</a></li>
+</ul></li>
+<li><a href="#8-python-console-requirements"
+id="toc-8-python-console-requirements">8. Python console
+requirements</a>
+<ul>
+<li><a href="#81-execution-model" id="toc-81-execution-model">8.1
+Execution model</a></li>
+<li><a href="#82-default-namespace" id="toc-82-default-namespace">8.2
+Default namespace</a></li>
+<li><a href="#83-snapshot-refresh" id="toc-83-snapshot-refresh">8.3
+Snapshot refresh</a></li>
+<li><a href="#84-python-examples" id="toc-84-python-examples">8.4 Python
+examples</a></li>
+</ul></li>
+<li><a href="#9-typescript-console-requirements"
+id="toc-9-typescript-console-requirements">9. TypeScript console
+requirements</a>
+<ul>
+<li><a href="#91-execution-model" id="toc-91-execution-model">9.1
+Execution model</a></li>
+<li><a href="#92-typescript-global-api"
+id="toc-92-typescript-global-api">9.2 TypeScript global API</a></li>
+<li><a href="#93-typescript-examples"
+id="toc-93-typescript-examples">9.3 TypeScript examples</a></li>
+<li><a href="#94-type-definitions" id="toc-94-type-definitions">9.4 Type
+definitions</a></li>
+<li><a href="#95-worker-lifecycle" id="toc-95-worker-lifecycle">9.5
+Worker lifecycle</a></li>
+</ul></li>
+<li><a href="#10-quill-scripting-api"
+id="toc-10-quill-scripting-api">10. QUILL scripting API</a>
+<ul>
+<li><a href="#101-api-principles" id="toc-101-api-principles">10.1 API
+principles</a></li>
+<li><a href="#102-python-api-shape" id="toc-102-python-api-shape">10.2
+Python API shape</a></li>
+<li><a href="#103-typescript-api-shape"
+id="toc-103-typescript-api-shape">10.3 TypeScript API shape</a></li>
+<li><a href="#104-safe-facades" id="toc-104-safe-facades">10.4 Safe
+facades</a></li>
+</ul></li>
+<li><a href="#11-command-registry-integration"
+id="toc-11-command-registry-integration">11. Command registry
+integration</a></li>
+<li><a href="#12-macro-integration" id="toc-12-macro-integration">12.
+Macro integration</a></li>
+<li><a href="#13-security-and-safety"
+id="toc-13-security-and-safety">13. Security and safety</a>
+<ul>
+<li><a href="#131-local-trust-model" id="toc-131-local-trust-model">13.1
+Local trust model</a></li>
+<li><a href="#132-remote-execution" id="toc-132-remote-execution">13.2
+Remote execution</a></li>
+<li><a href="#133-dangerous-operations"
+id="toc-133-dangerous-operations">13.3 Dangerous operations</a></li>
+<li><a href="#134-typescript-worker-limits"
+id="toc-134-typescript-worker-limits">13.4 TypeScript worker
+limits</a></li>
+</ul></li>
+<li><a href="#14-accessibility-requirements"
+id="toc-14-accessibility-requirements">14. Accessibility
+requirements</a></li>
+<li><a href="#15-error-handling" id="toc-15-error-handling">15. Error
+handling</a></li>
+<li><a href="#16-logging-and-transcripts"
+id="toc-16-logging-and-transcripts">16. Logging and transcripts</a></li>
+<li><a href="#17-settings" id="toc-17-settings">17. Settings</a></li>
+<li><a href="#18-data-storage" id="toc-18-data-storage">18. Data
+storage</a></li>
+<li><a href="#19-technical-architecture"
+id="toc-19-technical-architecture">19. Technical architecture</a>
+<ul>
+<li><a href="#191-new-modules" id="toc-191-new-modules">19.1 New
+modules</a></li>
+<li><a href="#192-threading-model" id="toc-192-threading-model">19.2
+Threading model</a></li>
+<li><a href="#193-command-execution-flow"
+id="toc-193-command-execution-flow">19.3 Command execution flow</a></li>
+</ul></li>
+<li><a href="#20-completion-and-help"
+id="toc-20-completion-and-help">20. Completion and help</a></li>
+<li><a href="#21-testing-strategy" id="toc-21-testing-strategy">21.
+Testing strategy</a>
+<ul>
+<li><a href="#211-unit-tests" id="toc-211-unit-tests">21.1 Unit
+tests</a></li>
+<li><a href="#212-integration-tests" id="toc-212-integration-tests">21.2
+Integration tests</a></li>
+<li><a href="#213-accessibility-tests"
+id="toc-213-accessibility-tests">21.3 Accessibility tests</a></li>
+<li><a href="#214-security-tests" id="toc-214-security-tests">21.4
+Security tests</a></li>
+</ul></li>
+<li><a href="#22-success-criteria" id="toc-22-success-criteria">22.
+Success criteria</a></li>
+<li><a href="#23-mvp-scope" id="toc-23-mvp-scope">23. MVP scope</a>
+<ul>
+<li><a href="#mvp-python-developer-console"
+id="toc-mvp-python-developer-console">MVP: Python Developer
+Console</a></li>
+<li><a href="#mvp1-typescript-console"
+id="toc-mvp1-typescript-console">MVP+1: TypeScript Console</a></li>
+<li><a href="#mvp2-macro-and-quillin-authoring"
+id="toc-mvp2-macro-and-quillin-authoring">MVP+2: Macro and Quillin
+authoring</a></li>
+</ul></li>
+<li><a href="#24-open-questions" id="toc-24-open-questions">24. Open
+questions</a></li>
+<li><a href="#25-example-first-run-warning"
+id="toc-25-example-first-run-warning">25. Example first-run
+warning</a></li>
+<li><a href="#26-example-diagnostic-summary-command"
+id="toc-26-example-diagnostic-summary-command">26. Example diagnostic
+summary command</a></li>
+<li><a href="#27-definition-of-done" id="toc-27-definition-of-done">27.
+Definition of done</a></li>
+</ul></li>
+<li><a href="#appendix-skills-tutorial"
+id="toc-appendix-skills-tutorial">Appendix: Skills tutorial</a></li>
+<li><a href="#writing-skills-for-quill--a-tutorial"
+id="toc-writing-skills-for-quill--a-tutorial">Writing Skills for QUILL —
+A Tutorial</a>
+<ul>
+<li><a href="#1-what-is-a-skill" id="toc-1-what-is-a-skill">1. What is a
+skill?</a></li>
+<li><a href="#2-your-first-skill" id="toc-2-your-first-skill">2. Your
+first skill</a></li>
+<li><a href="#3-adding-parameters" id="toc-3-adding-parameters">3.
+Adding parameters</a></li>
+<li><a href="#5-conditional-branching"
+id="toc-5-conditional-branching">5. Conditional branching</a></li>
+</ul></li>
+<li><a href="#step-2-answer-the-question"
+id="toc-step-2-answer-the-question">Step 2: Answer the question</a></li>
+<li><a href="#step-3-expand-the-statement"
+id="toc-step-3-expand-the-statement">Step 3: Expand the
+statement</a></li>
+<li><a href="#step-2-rewrite-for-accessibility"
+id="toc-step-2-rewrite-for-accessibility">Step 2: Rewrite for
+accessibility</a>
+<ul>
+<li><a href="#9-sharing-skills" id="toc-9-sharing-skills">9. Sharing
+skills</a></li>
+<li><a href="#10-skill-authoring-tips"
+id="toc-10-skill-authoring-tips">10. Skill authoring tips</a></li>
+<li><a href="#reference-card" id="toc-reference-card">Reference
+card</a></li>
+</ul></li>
+<li><a href="#appendix-feature-notes-copy-tray"
+id="toc-appendix-feature-notes-copy-tray">Appendix: Feature notes (Copy
+Tray)</a></li>
+<li><a href="#quill-feature-documentation"
+id="toc-quill-feature-documentation">QUILL feature
+documentation</a></li>
+<li><a href="#copy-tray-1" id="toc-copy-tray-1">Copy Tray</a>
+<ul>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#keyboard-access" id="toc-keyboard-access">Keyboard
+Access</a>
+<ul>
+<li><a href="#paste-from-a-slot" id="toc-paste-from-a-slot">Paste from a
+slot</a></li>
+<li><a href="#copy-to-a-slot" id="toc-copy-to-a-slot">Copy to a
+slot</a></li>
+<li><a href="#management" id="toc-management">Management</a></li>
+</ul></li>
+<li><a href="#using-the-edit-menu" id="toc-using-the-edit-menu">Using
+the Edit Menu</a></li>
+<li><a href="#using-the-system-tray-icon"
+id="toc-using-the-system-tray-icon">Using the System Tray Icon</a></li>
+<li><a href="#using-the-dialog" id="toc-using-the-dialog">Using the
+Dialog</a></li>
+<li><a href="#labelling-slots" id="toc-labelling-slots">Labelling
+Slots</a></li>
+<li><a href="#accessibility-notes"
+id="toc-accessibility-notes">Accessibility Notes</a></li>
+<li><a href="#tips" id="toc-tips">Tips</a></li>
+</ul></li>
+<li><a href="#appendix-copy-tray-design-notes"
+id="toc-appendix-copy-tray-design-notes">Appendix: Copy Tray design
+notes</a></li>
+<li><a href="#copy-tray-what-was-built-and-how-it-feels"
+id="toc-copy-tray-what-was-built-and-how-it-feels">Copy Tray: What Was
+Built and How It Feels</a>
+<ul>
+<li><a href="#what-was-built" id="toc-what-was-built">What Was Built</a>
+<ul>
+<li><a href="#core-model-quillcorecopy_traypy"
+id="toc-core-model-quillcorecopy_traypy">Core model
+(<code>quill/core/copy_tray.py</code>)</a></li>
+<li><a href="#ui-mixin-quilluimain_frame_copy_traypy"
+id="toc-ui-mixin-quilluimain_frame_copy_traypy">UI mixin
+(<code>quill/ui/main_frame_copy_tray.py</code>)</a></li>
+<li><a href="#dialog-quilluicopy_tray_dialogpy"
+id="toc-dialog-quilluicopy_tray_dialogpy">Dialog
+(<code>quill/ui/copy_tray_dialog.py</code>)</a></li>
+<li><a href="#keyboard-bindings-quillcorekeymappy"
+id="toc-keyboard-bindings-quillcorekeymappy">Keyboard bindings
+(<code>quill/core/keymap.py</code>)</a></li>
+<li><a href="#menu-integration-quilluimain_frame_menupy"
+id="toc-menu-integration-quilluimain_frame_menupy">Menu integration
+(<code>quill/ui/main_frame_menu.py</code>)</a></li>
+<li><a href="#power-tools-manifest-quilluimain_frame_power_tools_menupy"
+id="toc-power-tools-manifest-quilluimain_frame_power_tools_menupy">Power
+tools manifest
+(<code>quill/ui/main_frame_power_tools_menu.py</code>)</a></li>
+<li><a href="#system-tray-integration-quilluimain_framepy"
+id="toc-system-tray-integration-quilluimain_framepy">System tray
+integration (<code>quill/ui/main_frame.py</code>)</a></li>
+<li><a href="#documentation"
+id="toc-documentation">Documentation</a></li>
+</ul></li>
+<li><a href="#the-user-experience" id="toc-the-user-experience">The User
+Experience</a>
+<ul>
+<li><a href="#first-encounter" id="toc-first-encounter">First
+encounter</a></li>
+<li><a href="#using-labels" id="toc-using-labels">Using labels</a></li>
+<li><a href="#from-the-system-tray" id="toc-from-the-system-tray">From
+the system tray</a></li>
+<li><a href="#screen-reader-workflow"
+id="toc-screen-reader-workflow">Screen reader workflow</a></li>
+</ul></li>
+<li><a href="#future-directions-double-tap-and-beyond"
+id="toc-future-directions-double-tap-and-beyond">Future Directions:
+Double-Tap and Beyond</a></li>
+<li><a href="#acknowledgments"
+id="toc-acknowledgments">Acknowledgments</a></li>
+<li><a href="#glossary-of-quill-terms"
+id="toc-glossary-of-quill-terms">Glossary of QUILL Terms</a></li>
+</ul></li>
+</ul>
+</nav>
 <h1 id="quill-user-guide">Quill User Guide</h1>
 <p><strong>QUILL</strong> stands for <strong>Quality, Usable, Inclusive,
 Lightweight, Literate</strong>.</p>
@@ -4079,8 +4765,10 @@ active, the status bar carries a braille cell that updates as you move:
 it reads like
 <code>BRF Pg 12/87 | Ln 14/25 | Cell 31/40 | Print 7</code>. That is the
 braille page, the line within the page, the cell within the line, and
-the print page. Print-page detection arrives in a later phase; until
-then the print segment reads <code>Print ?</code>.</p>
+the print page. Print-page detection runs on every open and on every
+page-map recalculation, so the print segment is always populated when a
+print-to-braille anchor is available; on documents without anchors it
+reads <code>Print ?</code>.</p>
 <p><strong>The Braille menu.</strong> Braille commands live under
 <strong>Tools &gt; Braille</strong>. Bindings are intentionally left
 unset so nothing collides with your screen reader or existing editor
@@ -4220,37 +4908,47 @@ control.</li>
 <p>The <strong>Personalise QUILL</strong> wizard runs automatically the
 first time QUILL starts. You can re-run it at any time from <strong>Help
 → Personalise QUILL</strong>.</p>
-<p>The wizard walks you through eight short pages:</p>
+<p>The wizard walks you through six short pages (five if you do not
+enable AI writing assistance on the Extras page):</p>
 <ol type="1">
 <li><strong>Welcome</strong> — an introduction to what the wizard
 covers.</li>
+<li><strong>Intent</strong> — the most important page. A single
+question: <em>What kind of writing do you do?</em> A list of seven
+starting points is shown. Arrow up and down through the list. As you
+move, a large read-only text area below the list updates live to tell
+you, in plain spoken English, exactly what you will have if you choose
+that option. There are no feature IDs, no jargon about flags, and no
+list of what you will not get. Just what you get.</li>
+<li><strong>Extras</strong> — offers a few optional extras such as AI
+writing assistance, Braille Mode, and typing automation. Only the extras
+that are not already part of your base choice are shown. Each extra is a
+single checkbox. Checking one adds a sentence to the preview so you
+always know what you are committing to.</li>
+<li><strong>AI Provider</strong> — shown only if you enabled AI on the
+Extras page. Collects your provider and your API key. Supported
+providers are Anthropic (Claude), OpenAI (GPT), Google Gemini,
+OpenRouter (many models), and Ollama, which runs models on your own
+device or connects to an Ollama-compatible cloud host. The key is stored
+securely in the Windows Credential Manager, not in a settings file. You
+can skip this and set the key up later.</li>
 <li><strong>Keyboard and Sound</strong> — choose a keyboard pack and
 whether QUILL plays audio cues. QUILL auto-detects your screen reader
 and sets accessible defaults.</li>
-<li><strong>Feature Profile</strong> — choose a starting profile:
-Essential (minimal), Standard (recommended for most users), Power User
-(all features on), or Accessibility Focus (screen-reader optimised). You
-can switch profiles later.</li>
-<li><strong>Remote Access</strong> — enable or hide FTP, SFTP, WebDAV,
-and S3 remote file commands. Disabling this removes the remote-site menu
-items entirely, keeping the File menu clean.</li>
-<li><strong>AI Assistance</strong> — turn the AI writing assistant on or
-off. You can add an API key later; QUILL will prompt you when you first
-use an AI feature.</li>
-<li><strong>Reading and Accessibility</strong> — configure read-aloud
-behaviour and screen-reader announcement style.</li>
-<li><strong>Writing Tools</strong> — enable or disable
-spell-check-as-you-type, abbreviation expansion, and the Copy Tray.</li>
-<li><strong>Startup Behaviour</strong> — choose what QUILL opens when it
-starts and whether to check for updates automatically.</li>
 <li><strong>Summary</strong> — review all your choices before they are
-applied. Use Back to revise any page. Nothing changes in QUILL until you
+applied. The summary is plain text: your profile name, what features are
+active, which Quillins are enabled, your keyboard pack, and your sound
+setting. Use Back to revise any page. Nothing changes in QUILL until you
 press Finish.</li>
 </ol>
 <p><strong>Important:</strong> The wizard is transactional. Your choices
 are held in memory until you press Finish. If you close or cancel the
 wizard, no settings are changed.</p>
-<p><strong>Profiles explained:</strong></p>
+<p><strong>Profiles explained:</strong> The four built-in profiles each
+start you at a different level of feature density and accessibility
+support. You can switch profiles at any time from <strong>Tools →
+Customize &amp; Support → Profiles and Features...</strong> or by
+pressing <code>Alt+Shift+P</code>.</p>
 <table>
 <thead>
 <tr>
@@ -4279,9 +4977,6 @@ announcements</td>
 </tr>
 </tbody>
 </table>
-<p>You can switch profiles at any time from <strong>Tools → Customize
-&amp; Support → Profiles and Features...</strong> or by pressing
-<code>Alt+Shift+P</code>.</p>
 <h2 id="translation-and-community-localization">Translation and
 Community Localization</h2>
 <p>QUILL uses a standard GNU gettext pipeline
