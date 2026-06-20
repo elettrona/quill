@@ -1708,12 +1708,12 @@ if you have one; otherwise it continues from the full document.</li>
 <li>If there is nothing to act on, Quill says so (for example "Nothing
 to rewrite") instead of sending an empty request.</li>
 <li>If AI is turned off, these actions announce "AI is turned off.
-Enable 'Use Artificial Intelligence' in Tools &gt; AI Assistant." and do
-nothing else.</li>
+Enable 'Use Artificial Intelligence' in the AI menu." and do nothing
+else.</li>
 </ul>
-<p>Use <strong>Tools -&gt; AI Assistant -&gt; AI Hub...</strong> for a
-single control surface that links provider verification, model
-discovery, Prompt Studio, Agent Center, and Writing Assistant.</p>
+<p>Use <strong>AI &gt; AI Hub...</strong> for a single control surface
+that links provider verification, model discovery, Prompt Studio, Agent
+Center, and Writing Assistant.</p>
 <p>Trust and privacy baseline:</p>
 <ul>
 <li>On first run, Quill shows a trust and privacy consent
@@ -1740,7 +1740,7 @@ the search box to filter quickly.</li>
 <li>Use <strong>Recommend Model</strong> to pick a model profile aligned
 to your hardware/task framing.</li>
 <li>Save settings. Quill auto-runs verification and updates the AI
-status line in Tools &gt; AI Assistant.</li>
+status line in the AI menu.</li>
 </ol>
 <p>Most cloud providers are pre-configured with default host URLs so
 setup is key-first, not URL-first. For advanced OpenAI-compatible
@@ -1775,8 +1775,7 @@ Connection and re-enter the key.</li>
 small writing chores.</p>
 <h3 id="ask-quill-chat-setup-on-device-ai">Ask Quill Chat setup
 (on-device AI)</h3>
-<p>Ask Quill Chat
-(<code>Tools -&gt; AI Assistant -&gt; Ask Quill Chat...</code>) is a
+<p>Ask Quill Chat (<strong>AI &gt; Writing Assistant...</strong>) is a
 message-style assistant that can answer, draft text, propose edits, and
 run Quill commands with approval before changes are applied.</p>
 <p>Runtime backends:</p>
@@ -1792,8 +1791,8 @@ run Quill commands with approval before changes are applied.</p>
 <li>Put a <code>.gguf</code> model in
 <code>%APPDATA%\\Quill\\models\\</code> (Windows) or set
 <code>QUILL_LLAMA_MODEL</code> to a full path.</li>
-<li>Open <code>Tools -&gt; AI Assistant -&gt; Ask Quill Chat...</code>
-and send a prompt.</li>
+<li>Open <strong>AI &gt; Writing Assistant...</strong> and send a
+prompt.</li>
 </ol>
 <p>Accessibility:</p>
 <ul>
@@ -1836,10 +1835,9 @@ are never turned into document edits.</li>
 changes your document.</li>
 <li>If model/runtime is unavailable, Quill reports this clearly and does
 not apply destructive changes.</li>
-<li><strong>Train Writing Style</strong>
-(<code>Tools -&gt; AI Assistant -&gt; Train Writing Style...</code>)
-lets you teach the assistant your own writing style from samples or the
-current document.</li>
+<li><strong>Train Writing Style</strong> (<strong>AI &gt; Train Writing
+Style...</strong>) lets you teach the assistant your own writing style
+from samples or the current document.</li>
 </ul>
 <h3 id="the-ai-hub-one-place-to-configure-every-provider">The AI Hub
 (one place to configure every provider)</h3>
@@ -1847,7 +1845,7 @@ current document.</li>
 manage AI. The former separate <strong>AI Model and Connection</strong>
 and <strong>Forget API Key</strong> menu items were merged into it, so
 there is one home for providers, models, keys, and testing. Open it from
-<code>Tools -&gt; AI Assistant -&gt; AI Hub...</code>.</p>
+<code>AI &gt; AI Hub...</code>.</p>
 <p>The Hub lets you work through every provider, each with its own key
 and default model — switching providers never loses another provider's
 configuration:</p>
@@ -2383,8 +2381,8 @@ page refresh announcements</strong> to <strong>Quiet</strong>,
 <strong>Normal</strong>, or <strong>Verbose</strong> to control
 screen-reader announcement cadence.</li>
 <li>In <strong>Preferences -&gt; General</strong>, use <strong>Use
-Artificial Intelligence</strong> to mirror the Tools &gt; AI Assistant
-toggle from one place.</li>
+Artificial Intelligence</strong> to mirror the AI menu toggle from one
+place.</li>
 <li>In <strong>Preferences -&gt; General</strong>, enable <strong>BITS
 Whisperer safe mode lock</strong> to block download/retry actions while
 keeping status and onboarding surfaces available.</li>
@@ -5494,11 +5492,11 @@ explicitly. API keys are stored in the Windows Credential Manager by
 default, with a DPAPI-encrypted fallback, and never written to disk in
 plain text.</p>
 <h3 id="setting-up-an-ai-provider">Setting up an AI provider</h3>
-<p>Open <strong>Tools &gt; AI Assistant &gt; AI Hub...</strong> to
-configure your providers. The AI Hub is the single place for every
-provider's key, model, <strong>Test Chat</strong>, and per-provider key
-removal — the former <strong>AI Model and Connection</strong> and
-<strong>Forget API Key</strong> menu items were merged into it.</p>
+<p>Open <strong>AI &gt; AI Hub...</strong> to configure your providers.
+The AI Hub is the single place for every provider's key, model,
+<strong>Test Chat</strong>, and per-provider key removal — the former
+<strong>AI Model and Connection</strong> and <strong>Forget API
+Key</strong> menu items were merged into it.</p>
 <ul>
 <li><strong>OpenRouter</strong> — paste your API key into the OpenRouter
 API Key field. OpenRouter gives you access to many models (Claude,
@@ -5571,13 +5569,13 @@ model across Ask AI and the Prompt Library, or set a different model
 here if you want a more capable model for prompt-library work.</p>
 <h3 id="ask-ai-quick-one-off-question">Ask AI (quick one-off
 question)</h3>
-<p><code>Tools &gt; AI Assistant &gt; Ask AI...</code> opens a simple
-dialog where you type a question and read the answer without leaving
-QUILL. For the full conversational experience — with the active
-provider/model shown, in-dialog provider and model switching, and
-inserting replies into your document — use <strong>Ask Quill
-Chat</strong> on <strong>Alt+Q</strong> (see "Ask Quill Chat setup"
-above).</p>
+<p><code>AI &gt; Writing Assistant...</code> (Alt+Q) opens the
+message-style assistant where you can ask questions, draft text, propose
+edits, and run Quill commands with approval before changes are applied.
+The active provider and model are shown, and you can switch between
+providers and models in-dialog. Use <strong>AI &gt; Ask AI...</strong>
+(Command Palette) for a simpler one-shot prompt-and-response dialog when
+you do not need insertion or follow-up.</p>
 <ul>
 <li><strong>Provider</strong> and <strong>Model</strong> choices are
 pre-filled with the last values you used.</li>
@@ -5608,8 +5606,8 @@ instruction, open the Prompt Library, find the "Check Grammar" built-in
 prompt, and edit its text — the command picks up your version
 automatically.</p>
 <h3 id="prompt-library">Prompt Library</h3>
-<p><code>Tools &gt; AI Assistant &gt; Prompt Library...</code> opens the
-full prompt management dialog.</p>
+<p><code>AI &gt; Prompt Library...</code> opens the full prompt
+management dialog.</p>
 <p><strong>What it shows.</strong> A searchable list of all prompts on
 the left (type in the search field to filter by name or category). The
 selected prompt's instruction text on the right. An optional input text
@@ -5702,8 +5700,8 @@ not persisted to your library file.</p>
 <p>Skills are multi-step AI workflows. Where a prompt is one
 instruction, a skill is a sequence of steps where each step can use the
 output of the step before it.</p>
-<p><code>Tools &gt; AI Assistant &gt; Skill Library...</code> opens the
-Skill Library dialog.</p>
+<p><code>AI &gt; Skill Library...</code> opens the Skill Library
+dialog.</p>
 <p><strong>What a skill looks like.</strong> A skill has a name, a
 description, and a list of steps. Before running, QUILL shows a
 parameter dialog if the skill declares any parameters (such as tone,
@@ -5731,7 +5729,7 @@ a strengthened version tailored to your chosen audience.</li>
 </ul>
 <p><strong>Running a skill.</strong></p>
 <ol type="1">
-<li>Open <code>Tools &gt; AI Assistant &gt; Skill Library...</code></li>
+<li>Open <strong>AI &gt; Skill Library...</strong></li>
 <li>Select a skill from the list.</li>
 <li>Press <strong>Run</strong>. If the skill has parameters, a small
 dialog appears — fill in the choices and press OK.</li>
@@ -7722,7 +7720,7 @@ matter</td>
 you share any document.</p>
 <p><strong>Via the Skill Library.</strong> When someone receives your
 <code>.sqp</code> file, they import it through
-<code>Tools &gt; AI Assistant &gt; Skill Library &gt; Import .sqp</code>.</p>
+<code>AI &gt; Skill Library &gt; Import .sqp</code>.</p>
 <p><strong>Via a Quillin.</strong> If you maintain a Quillin, add your
 <code>.sqp</code> files to the Quillin directory. QUILL discovers them
 automatically at Skill Library load time.</p>
