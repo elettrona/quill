@@ -22,6 +22,8 @@ QUILL 0.7.0 folds the 0.6.0 work and the 0.6.1 Braille Mode Phase 2 work into a 
 ### Bug fixes (post-review triage)
 
 - **Keymap: dead legacy-preview migration deleted.** `merge_keymaps`'s `legacy_preview_conflict` block checked the new chord defaults instead of the legacy ones, so it never fired for a real saved keymap; `legacy_rebindings` already migrates the same case correctly. Deleted per the locked decision on #274. Also removed an exact-duplicate comment block (#282) and added a debug log when `list_keymap_profiles` drops a malformed profile JSON instead of silently skipping it (#299).
+- **Section move: explicit enum match.** The edge-case announce branch in `_move_section` matched `MoveResult.NO_SIBLING` via a bare `else`; a future enum member would have silently announced the wrong outcome. Now every member is matched explicitly with a defensive fallback (#322).
+- **Screen-reader name/focus gaps closed across five dialogs/panels.** Notebook panel name/goal labels and entry controls gain `SetName` (#327); the rich-text mode toggle button and indicator label gain `SetName` (#326); `SessionBrowserDialog._on_jump` now focuses the branch list after rebuilding it (#324); `status_dialog.py` converts its five `name=` kwargs to post-construction `SetName()` calls for consistency with the rest of the codebase (#320); the Command Palette and Go to Anything search fields gain `SetHint` placeholders in addition to their existing `SetName` (#325).
 
 ## 0.6.0 — Insert Automation, Quillin Platform, Braille Mode, AI Writing Toolkit (2026-06-17)
 
