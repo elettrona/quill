@@ -267,21 +267,38 @@ Beta 2 has their keymap and settings already corrected before the
 utility ever runs.</p>
 <h2 id="bug-fixes">Bug fixes</h2>
 <ul>
-<li><strong>Phantom QUILL Key chord on plain R and S (#612).</strong>
-<code>_menu_label</code> embedded the friendly chord display
-(<code>"QUILL Key + R"</code>) directly after the literal tab character
-in menu item text. wxWidgets parses text after that tab as a real native
-keyboard accelerator, and because <code>"QUILL Key"</code> is not a
-modifier name it recognizes, wx silently bound bare <code>R</code> and
-<code>S</code> as real, modifier-less accelerators for Read Aloud
-Start/Pause and Insert Snippet — firing those commands on every plain
-<code>R</code> or <code>S</code> keystroke, completely outside the QUILL
-Key chord dispatcher. The raw chord grammar
-(<code>"Ctrl+Shift+Grave, R"</code>) never had this problem because the
-comma broke wx's accelerator parser. The chord display now follows the
-label as plain parenthetical text instead of sitting in the
-accelerator-parsed slot; plain (non-chord) shortcuts are
-unaffected.</li>
+<li><p><strong>Read Aloud and Insert Snippet fired on plain R and S
+keystrokes (#612).</strong> The friendly chord label in the Tools and
+Insert menus sat in the slot wxWidgets reads as a real native keyboard
+accelerator, and because the label does not start with a modifier name
+wx recognized, the bare letters <code>R</code> and <code>S</code> got
+bound as modifier-less global shortcuts. Every time you typed a normal
+<code>R</code> or <code>S</code> in any document, Read Aloud started (or
+paused) and Insert Snippet ran — outside the QUILL Key chord dispatcher
+entirely, so the QUILL Key conflict detector never saw the collision.
+The chord label is now shown as plain parenthetical text after the menu
+item name rather than as a wx accelerator, so the letters belong to your
+text again. Plain (non-chord) shortcuts like <code>Ctrl+R</code> were
+never affected.</p></li>
+<li><p><strong>First-run setup could not open the AI Hub, and once it
+did, every later launch crashed on startup (#614).</strong> On a
+brand-new profile the wizard's "Open AI Hub" button raised an internal
+type error before the dialog could draw, leaving the AI Hub unreachable
+until you had already configured a provider elsewhere. And on the next
+launch after that, the editor caret handler crashed silently on every
+keystroke before you had even selected a document, blocking the status
+bar and the indent tone. Both crashes are fixed: the AI Hub now opens
+cleanly on first run from the wizard, and the editor caret handler no
+longer fires before a document is loaded.</p></li>
+<li><p><strong>Importing a profile or backup silently undid your keymap
+customizations (#614 follow-up).</strong> When you accepted an exported
+keymap, the recipient's own overrides for individual chords were
+overwritten by the exporter's defaults, so a keymap you had carefully
+tuned (for example a home-row <code>Ctrl+Shift+B</code> for bold block)
+could be rolled back to the build's default just because you opened a
+colleague's profile. The import now only carries over entries that
+actually differ from the default, so the recipient's customizations are
+preserved.</p></li>
 </ul>
 </body>
 </html>
