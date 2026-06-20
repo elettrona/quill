@@ -389,6 +389,7 @@ from quill.core.tagging import (
     search_html_tag_choices,
     search_markdown_tag_choices,
 )
+from quill.core.text_utils import strip_md_to_plain as _strip_md_to_plain
 from quill.core.token_nav import classify_token, next_token_position, prev_token_position
 from quill.core.transforms import to_lower, to_sentence_case, to_title, to_toggle_case, to_upper
 from quill.core.trust import is_trusted_location, load_trusted_locations, save_trusted_locations
@@ -18141,11 +18142,9 @@ class MainFrame(
 
     def _html_info(self, title: str, markdown_text: str) -> None:
         """Show a plain-text informational message with an OK button."""
-        from quill.ui.info_pages import _md_to_plain
-
         wx = self._wx
         dialog = wx.MessageDialog(
-            self.frame, _md_to_plain(markdown_text), title, wx.OK | wx.ICON_INFORMATION
+            self.frame, _strip_md_to_plain(markdown_text), title, wx.OK | wx.ICON_INFORMATION
         )
         try:
             self._show_modal_dialog(dialog, title)
