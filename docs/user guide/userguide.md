@@ -756,7 +756,7 @@ All four open an Agent Result dialog where you can:
 #### AI Hub
 
 `AI > AI Hub...` is the central configuration panel for all AI settings.
-It has four tabs:
+It has five tabs:
 
 - **Provider**: choose your AI provider (Ollama, OpenAI, Claude, Gemini,
   OpenRouter, or custom), enter your API key, set the model and host URL,
@@ -765,6 +765,8 @@ It has four tabs:
   models and the Ollama base URL.
 - **Audio Services**: enter your Deepgram API key for speaker diarization,
   and set the default maximum number of speakers.
+- **Instructions**: read, customise, and share the built-in system prompt for
+  every AI task. See Custom Instructions below.
 - **Advanced**: privacy consent summary listing every action that sends data,
   safe mode documentation, and a Reset AI Settings button.
 
