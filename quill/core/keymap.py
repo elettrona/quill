@@ -69,7 +69,11 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "view.toggle_tab_control": "Ctrl+Shift+Grave, Shift+T",
     "app.command_palette": "Ctrl+Shift+P",
     "app.preferences": "Ctrl+,",
-    "app.exit": "Alt+F4",
+    # #608: app.exit is bound to Ctrl+Q so it maps to Cmd+Q on macOS
+    # (the conventional Quit shortcut) and Alt+F4 on Windows is also
+    # wired by the wx stock accelerator on the file menu. Quote Lines
+    # was moved to Ctrl+Shift+Q to free up Ctrl+Q.
+    "app.exit": "Ctrl+Q",
     "navigate.go_to_line": "Ctrl+G",
     "navigate.go_to_page": "Ctrl+Shift+G",
     "navigate.next_region": "F6",
@@ -184,8 +188,14 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "edit.select_to_end_of_line": "Shift+End",
     "edit.select_to_start_of_document": "Ctrl+Shift+Home",
     "edit.select_to_end_of_document": "Ctrl+Shift+End",
-    "edit.quote_lines": "Ctrl+Q",  # §4.22 advanced-editor parity
-    "edit.unquote_lines": "Ctrl+Shift+Q",  # §4.22 advanced-editor parity
+    # #608: Quote Lines moved from Ctrl+Q to Ctrl+Shift+Q so Ctrl+Q is
+    # free for the system Quit shortcut on macOS (Cmd+Q maps to Ctrl+Q in
+    # wxPython). Unquote Lines moved from Ctrl+Shift+Q to Ctrl+Shift+K
+    # to keep the two commands as a near-mirror pair (Shift+Q -> Shift+K
+    # to stay in the home row). The legacy_rebinding entries below
+    # rewrite the prior pair on load for users who saved them to disk.
+    "edit.quote_lines": "Ctrl+Shift+Q",  # §4.22 advanced-editor parity; #608
+    "edit.unquote_lines": "Ctrl+Shift+K",  # §4.22 advanced-editor parity; #608
     "edit.duplicate_selection": "",  # §4.17; no default key to avoid Ctrl+D clash
     "edit.reverse_lines": "Alt+Shift+Z",  # §4.22 advanced-editor parity
     "format.toggle_line_comment": "Ctrl+/",
@@ -392,6 +402,12 @@ def merge_keymaps(raw: object) -> dict[str, str]:
         # Find returns to the conventional Ctrl+F. It had briefly defaulted to the
         # QUILL-key prefix; rewrite that stale saved binding on load.
         "edit.find": ("CTRL+SHIFT+GRAVE, F", "Ctrl+F"),
+        # #608: Quote Lines moves from Ctrl+Q to Ctrl+Shift+Q so Cmd+Q
+        # can quit on macOS. Unquote Lines moves from Ctrl+Shift+Q to
+        # Ctrl+Shift+K to stay in the home row and free Ctrl+Q entirely.
+        # Rewrite the prior pair on load for users who saved them.
+        "edit.quote_lines": ("Ctrl+Q", "Ctrl+Shift+Q"),
+        "edit.unquote_lines": ("Ctrl+Shift+Q", "Ctrl+Shift+K"),
         # window.next_document / previous_document: Ctrl+Tab restored as default
         # in #190; no legacy rebinding needed.
         "view.send_to_tray": ("CTRL+ALT+T", "Ctrl+Shift+Grave, T"),
