@@ -274,7 +274,7 @@ Quill should stay calm by default and unlock power features intentionally.
 - Case conversion: `Ctrl+Shift+U` upper, `Ctrl+L` lower, `Ctrl+Shift+T` title. Selection if present, otherwise whole document.
 - Multiple documents: `Ctrl+Tab` and `Ctrl+Shift+Tab` cycle. Switching announces document name only.
 - Close current document: `Ctrl+W` or `Ctrl+F4`. Prompt to save if modified.
-- Exit: `Alt+F4` or `Ctrl+Q`. Prompts for each modified document.
+- Exit: `Alt+F4` on Windows, `Cmd+Q` on macOS. Prompts for each modified document.
 - Quill does not restore previous documents on launch by default. Opt-in setting available.
 
 ### 5.2a QUILL Quick Nav mode
