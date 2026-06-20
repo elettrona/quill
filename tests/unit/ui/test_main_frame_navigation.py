@@ -435,7 +435,7 @@ def test_refresh_title_uses_full_path_when_enabled() -> None:
 
     frame._refresh_title()
 
-    assert frame.frame.title == f"{frame.document.path} * - Quill"
+    assert frame.frame.title == f"{frame.document.path} * - {main_frame_module._APP_TITLE_VERSION}"
 
 
 def test_statusbar_hides_file_path_when_title_uses_full_path() -> None:
@@ -490,7 +490,30 @@ def test_refresh_title_uses_asterisk_text_dirty_style() -> None:
 
     frame._refresh_title()
 
-    assert frame.frame.title == "note.md * [modified] - Quill"
+    assert frame.frame.title == f"note.md * [modified] - {main_frame_module._APP_TITLE_VERSION}"
+
+
+def test_window_title_includes_app_version_for_screen_readers() -> None:
+    """#615: window title must surface the QUILL version so screen readers
+    announcing the focused window (JAWS Insert+T, NVDA+T, Narrator Caps+H)
+    speak the version. The Ctrl+JAWSKey+V path lives in the OS layer and
+    reads the launcher's VersionInfo, which the portable build does not
+    have; the window title is the only in-process channel that reaches
+    every screen reader.
+    """
+    frame = _build_frame("hello", insertion_point=0)
+    frame.settings.title_bar_path_mode = "name"
+    frame.settings.dirty_title_style = "asterisk"
+
+    frame._refresh_title()
+
+    assert main_frame_module._APP_TITLE_VERSION in frame.frame.title
+    assert "QUILL for All" in frame.frame.title
+    # The version string must include a SemVer-style "N.N.N" so JAWS does
+    # not announce only the brand. build_info.get_short_version() returns
+    # "0.7.0 Beta 1"; the major.minor.patch triple "0.7.0" is the part the
+    # screen reader will speak.
+    assert "0.7.0" in main_frame_module._APP_TITLE_VERSION
 
 
 def test_feature_coverage_maps_new_surfaces_to_known_features() -> None:

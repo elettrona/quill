@@ -205,3 +205,18 @@ utility ever runs.
   same problem. The buttons now simply read "Back" and "Next,"
   which is what every screen reader announces, and what every
   sighted user sees on the face of the button.
+
+- **JAWS read "Version" with no number when you pressed
+  Ctrl+JAWSKey+V in the portable build (#615).** The hotkey that
+  asks JAWS to speak the focused window's VersionInfo pulls the
+  value from the launcher's `.exe`, and the portable build is
+  launched by `pythonw.exe`, whose VersionInfo is "Python 3.x.x"
+  rather than QUILL's. JAWS announced the word "Version" and then
+  went silent because the launcher had nothing useful to report.
+  The window title now includes the full QUILL version (for
+  example, "QUILL for All 0.7.0 Beta 1"), so every screen reader
+  that announces the focused window — JAWS Insert+T, NVDA+T,
+  Narrator Caps+H, VoiceOver — now reads the version along with
+  the document name. The Ctrl+JAWSKey+V path still reports only
+  "Version" until a versioned launcher ships, which is a
+  packaging follow-up, not a source change.

@@ -34,9 +34,10 @@
   "_rebaseline_2026_06_20_603_dead_editor_crash": "main_frame.py 24569->24572 (+3) for #603: _on_editor_caret_activity wraps _maybe_announce_indent/_maybe_play_indent_tone in try/except RuntimeError, guarding against a dead C++ TextCtrl when Ctrl+W closes the document mid-event (same dead-widget condition already guarded in _refresh_statusbar for #269). Bug-fix growth only; CQ-1 decomposition is still the path to lower the budget.",
   "_rebaseline_2026_06_20_612_phantom_quill_key": "main_frame.py 24572->24585 (+13) for #612: _menu_label no longer puts the QUILL Key chord display string after the literal tab in menu item text, because wx parses that tab-suffix as a real native accelerator and was silently binding bare R/S as real shortcuts. Bug-fix growth only; CQ-1 decomposition is still the path to lower the budget.",
   "_rebaseline_2026_06_20_614_notebook_pages": "ai_hub_dialog.py 890->896 (+6) for #614 follow-up: wx.Notebook.AddPage on Windows rejects the lazy_gettext proxy at the wx boundary, same class of bug as the wx.Choice and ListBox sites fixed in the first pass. The 5 outer notebook tabs and 2 sub-notebook tabs now wrap their labels in str(_(...)). The +6 is a 5-line comment block plus a one-line adjustment; no new feature code. CQ-1 decomposition is still the path to lower the budget.",
+  "_rebaseline_2026_06_20_615_window_title_version": "main_frame.py 24585->24604 (+19) for #615: surface the QUILL version in the window title so screen readers announcing the focused window (JAWS Insert+T, NVDA+T, Narrator Caps+H) speak the version. New module-level _APP_TITLE_VERSION constant (4 lines + 4-line comment) and an 11-line comment block + 2-line SetTitle change in _refresh_title. The Ctrl+JAWSKey+V path lives in the OS layer (reads the launcher's VersionInfo) and is unchanged; the portable build has no versioned launcher so that hotkey still reports only 'Version'. The window title is the only in-process channel the source repo controls. CQ-1 decomposition is still the path to lower the budget.",
   "_default_cap": 600,
   "budgets": {
-    "quill/ui/main_frame.py": 24585,
+    "quill/ui/main_frame.py": 24604,
     "quill/ui/main_frame_quill_key.py": 753,
     "quill/ui/main_frame_braille.py": 736,
     "quill/ui/assistant_tools.py": 2008,

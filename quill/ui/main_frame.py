@@ -786,6 +786,15 @@ class _IntellisensePopup:
         return self.suggestions[index]
 
 
+# #615: Short product+version label for the window title bar. Read once at
+# import time so every title refresh reuses the same string. This is the
+# in-process channel screen readers announce when the user asks for the
+# focused window title; the Ctrl+JAWSKey+V (version) hotkey lives in the
+# OS layer and reads the launcher's VersionInfo, which the portable build
+# does not have.
+_APP_TITLE_VERSION = f"QUILL for All {build_info.get_short_version()}"
+
+
 class MainFrame(
     AbbreviationsMixin,
     AiActionsMixin,
@@ -6587,8 +6596,18 @@ class MainFrame(
         self.open_file(path)
 
     def _refresh_title(self) -> None:
+        # #615: Surface the QUILL version in the window title so screen
+        # readers announcing the focused window (JAWS Insert+T, NVDA+T,
+        # Narrator Caps+H) read the version along with the document
+        # name. The Ctrl+JAWSKey+V path lives in the OS layer and reads
+        # from the launcher's VersionInfo; for the portable build
+        # there is no versioned launcher, so JAWS reports only
+        # "Version" with no number. The window title is the only
+        # in-process channel we control, and it is reachable from
+        # every screen reader.
         modified_suffix = self._dirty_title_suffix()
-        self.frame.SetTitle(f"{self._title_subject()}{modified_suffix} - Quill")
+        version = _APP_TITLE_VERSION
+        self.frame.SetTitle(f"{self._title_subject()}{modified_suffix} - {version}")
         if self._active_tab_index >= 0 and self._active_tab_index < self.notebook.GetPageCount():
             page_title = f"{self.document.name}{self._remote_title_suffix()}{modified_suffix}"
             self._set_tab_page_text(self._active_tab_index, page_title)
