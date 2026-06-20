@@ -549,8 +549,12 @@ class PowerToolsActionsMixin:
         scale = str(getattr(self.settings, "indent_tone_scale", "") or "")
         if not scale:
             return
-        text = self.editor.GetValue()
-        cursor = self.editor.GetInsertionPoint()
+        # editor binds on tab selection; short-circuit before that (#614)
+        editor = getattr(self, "editor", None)
+        if editor is None:
+            return
+        text = editor.GetValue()
+        cursor = editor.GetInsertionPoint()
         line_start = text.rfind("\n", 0, cursor) + 1
         newline = text.find("\n", cursor)
         line_end = len(text) if newline == -1 else newline
