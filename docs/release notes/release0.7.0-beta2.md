@@ -157,3 +157,14 @@ utility ever runs.
   you opened a colleague's profile. The import now only carries
   over entries that actually differ from the default, so the
   recipient's customizations are preserved.
+
+- **Check for Updates crashed every time you opened it (#605).** The
+  Help menu's Check for Updates and Check for GLOW Updates both
+  rely on a small Markdown flattener to render the release-notes
+  snippet into the dialog body. That flattener was removed in the
+  About dialog rewrite earlier in the 0.7.0 line and the path was
+  never updated, so Help -> Check for Updates raised an internal
+  ImportError and QUILL announced it had to close. The flattener is
+  back in place; Help -> Check for Updates and Check for GLOW
+  Updates both open their informational dialog cleanly now, on
+  every launch and every channel (stable, beta).
