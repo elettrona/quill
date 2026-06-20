@@ -238,6 +238,49 @@ def test_legacy_find_grave_binding_migrates_to_ctrl_f() -> None:
     assert merged["edit.find"] == "Ctrl+F"
 
 
+def test_quote_lines_default_is_ctrl_shift_q() -> None:
+    # #608: Quote Lines moved from Ctrl+Q to Ctrl+Shift+Q so Ctrl+Q is
+    # free for the system Quit shortcut on macOS (Cmd+Q in wxPython).
+    assert DEFAULT_KEYMAP["edit.quote_lines"] == "Ctrl+Shift+Q"
+    # Unquote Lines moves from Ctrl+Shift+Q to Ctrl+Shift+K to keep
+    # the pair on the home row (Q -> K) and free Ctrl+Q entirely.
+    assert DEFAULT_KEYMAP["edit.unquote_lines"] == "Ctrl+Shift+K"
+
+
+def test_app_exit_default_is_ctrl_q_for_macos_quit() -> None:
+    # #608: app.exit is bound to Ctrl+Q so wx maps it to Cmd+Q on
+    # macOS (the conventional Quit shortcut). Alt+F4 still works via
+    # the wx ID_EXIT stock accelerator on the File menu.
+    assert DEFAULT_KEYMAP["app.exit"] == "Ctrl+Q"
+
+
+def test_legacy_quote_lines_ctrl_q_migrates_to_ctrl_shift_q() -> None:
+    # #608: A user who saved Ctrl+Q on edit.quote_lines (the prior default)
+    # has their saved entry rewritten to Ctrl+Shift+Q on load, so they
+    # don't keep the macOS-quit collision after upgrading.
+    merged = keymap_module.merge_keymaps({"edit.quote_lines": "Ctrl+Q"})
+    assert merged["edit.quote_lines"] == "Ctrl+Shift+Q"
+
+
+def test_legacy_unquote_lines_ctrl_shift_q_migrates_to_ctrl_shift_k() -> None:
+    # #608 mirror: A user who saved Ctrl+Shift+Q on edit.unquote_lines
+    # (the prior default) has it rewritten to Ctrl+Shift+K on load.
+    merged = keymap_module.merge_keymaps({"edit.unquote_lines": "Ctrl+Shift+Q"})
+    assert merged["edit.unquote_lines"] == "Ctrl+Shift+K"
+
+
+def test_default_keymap_has_no_ctrl_q_collision() -> None:
+    # #608 pin: no two commands in the default keymap may share Ctrl+Q,
+    # because that chord is now reserved for app.exit (which maps to
+    # Cmd+Q on macOS).
+    collisions = {
+        chord: commands
+        for chord, commands in _duplicates(DEFAULT_KEYMAP).items()
+        if chord == "CTRL+Q"
+    }
+    assert collisions == {}
+
+
 def test_profile_picker_shortcut_is_available() -> None:
     assert DEFAULT_KEYMAP["help.switch_feature_profile"] == "Alt+Shift+P"
 
