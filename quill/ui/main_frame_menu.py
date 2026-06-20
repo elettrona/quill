@@ -1326,7 +1326,6 @@ class MenuBuilderMixin:
         self._id_keyboard_trap_snapshot = wx.NewIdRef()
         self._id_accessibility_audit = wx.NewIdRef()
         self._id_yaml_structure_editor = wx.NewIdRef()
-        self._id_whisperer_about = wx.NewIdRef()
         self._id_dev_console_python = wx.NewIdRef()
         self._id_dev_console_ts = wx.NewIdRef()
         self._id_dev_copy_diagnostic = wx.NewIdRef()
@@ -2231,11 +2230,6 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.run_startup_wizard(),
             id=self._id_profile_onboarding,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.show_whisperer_about_page(),
-            id=self._id_whisperer_about,
         )
         self.frame.Bind(
             wx.EVT_MENU,

@@ -3483,7 +3483,6 @@ class MainFrame(
             "help.status_page": self._id_help_status_page,
             "help.startup_wizard": self._id_profile_onboarding,
             "help.context_help": self._id_announce_context_shortcuts,
-            "whisperer.about": self._id_whisperer_about,
             "whisperer.model_manager": self._id_bw_model_manager,
             "whisperer.model_status": self._id_bw_model_status,
             "whisperer.model_recommend": self._id_bw_model_recommend,
