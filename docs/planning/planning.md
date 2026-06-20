@@ -8,7 +8,7 @@ research) were consolidated into a previous version of this file and are
 preserved in git history — see [Historical planning archive](#historical-planning-archive-pointer)
 at the bottom.
 
-**Target release:** QUILL 1.0. **Current version:** 0.6.1. **Last refreshed:** 2026-06-19.
+**Target release:** QUILL 1.0. **Current version:** 0.7.0. **Last refreshed:** 2026-06-20.
 
 ## How to read this document
 

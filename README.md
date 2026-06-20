@@ -25,9 +25,9 @@ Quill is designed to stay focused and useful:
 
 ## Current release line
 
-Current release line: **0.5.0**
+Current release line: **0.7.0**
 
-Highlights in 0.5.0 include:
+Highlights since 0.5.0 include:
 
 - Insert menu with searchable Markdown/HTML insertion.
 - Word Prediction with `Ctrl+.` plus HTML/Markdown tag IntelliSense.

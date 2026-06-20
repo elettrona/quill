@@ -2,7 +2,7 @@
 
 ## A magical, screen-reader-first writing and document environment, built in wxPython
 
-Status: This document specifies Quill **1.0**. The current shipping build is **0.1.5 Beta**, which implements the v1.0 checklist (section 21.1–21.16) plus the post-1.0 foundation work in section 21.17 and later. Section 21 is the living implementation map and is kept current as features land.
+Status: This document specifies Quill **1.0**. The current shipping build is **0.7.0 Beta**, which implements the v1.0 checklist (section 21.1–21.16) plus the post-1.0 foundation work in section 21.17 and later. Section 21 is the living implementation map and is kept current as features land.
 Owner: Blind Information Technology Solutions (BITS) and Community Access
 Target platform: Windows 10 and Windows 11
 Target screen readers: NVDA (primary), JAWS, Narrator
@@ -4453,7 +4453,7 @@ Last updated: 2026-06-02
 
 Todo counts: **160 v1.0 items** | **160 completed** | **0 remaining** (v1.0 scope); post-1.0 foundation work tracked in 21.17+ below.
 
-This is the implementation checklist for v1.0.0 and immediate post-1.0 foundations. It is intentionally granular and is updated in-place as work lands. The current shipping build is **0.1.5 Beta**; it implements the full v1.0 checklist (21.1–21.16) plus the post-1.0 foundation work recorded in 21.17 and later. Items still in progress are listed with `- [ ]`.
+This is the implementation checklist for v1.0.0 and immediate post-1.0 foundations. It is intentionally granular and is updated in-place as work lands. The current shipping build is **0.7.0 Beta**; it implements the full v1.0 checklist (21.1–21.16) plus the post-1.0 foundation work recorded in 21.17 and later. Items still in progress are listed with `- [ ]`.
 
 ### 21.1 Application shell and document lifecycle
 
