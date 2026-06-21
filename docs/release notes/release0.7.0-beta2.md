@@ -443,3 +443,14 @@ utility ever runs.
   platforms. It now opens the system file manager the right way per
   platform: Explorer on Windows, Finder (`open`/`open -R`) on
   macOS, and the default file browser via the OS on Linux.
+
+- **"Enable system tray mode" in Preferences did nothing on macOS.**
+  The setting constructed a `wx.adv.TaskBarIcon()` unconditionally,
+  which on macOS produces a Dock tile rather than the menu-bar
+  extra Mac users expect when they tick a "tray" checkbox -- the
+  checkbox looked enabled but no icon ever appeared, and closing
+  the window while tray mode was on left QUILL running invisibly in
+  the Dock. QUILL now detects macOS, announces once via the status
+  bar that tray mode is not available there, and lets the close
+  handler fall through to a normal close. Windows and Linux
+  behaviour is unchanged.

@@ -8741,6 +8741,20 @@ class MainFrame(
         wx = self._wx
         if self._tray_icon is not None:
             return
+        # #29: wx.adv.TaskBarIcon constructs without a TaskBarIconType arg works on
+        # Windows/Linux (notification area / status notifier) but on macOS it
+        # produces a Dock tile, not a menu-bar extra, which is what users expect
+        # when they tick "Enable system tray mode". Honouring the checkbox on
+        # macOS would silently misrepresent the behaviour, so refuse the call,
+        # surface the limitation once per session via the status bar, and let
+        # the Hide-on-close path fall through to a normal close.
+        if sys.platform == "darwin":
+            if not getattr(self, "_tray_unsupported_announced", False):
+                self._tray_unsupported_announced = True
+                self._set_status(
+                    "System tray mode is not available on macOS; the window will close instead."
+                )
+            return
         taskbar_icon = wx.adv.TaskBarIcon()
         icon = wx.ArtProvider.GetIcon(wx.ART_INFORMATION, wx.ART_OTHER, (16, 16))
         taskbar_icon.SetIcon(icon, "Quill")
