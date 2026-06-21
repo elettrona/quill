@@ -209,6 +209,10 @@ A Quillin calling the standard "set status" host action could close QUILL with `
 
 Choosing **Tools > Writing > Quill Eraser** on a document that the engine had findings for closed QUILL with `TypeError: Dialog(): argument 1 has unexpected type 'MainFrame'`. The review dialog was being parented to the `MainFrame` mixin instance instead of the real `wx.Frame` it owns, so wxPython's SIP wrapper rejected the parent. The dialog is now parented to the real frame, so the review dialog opens, the focus lands on the findings list, and you can step through fixes with the keyboard as designed.
 
+### First launch with the Setup Wizard pending no longer crashes
+
+On a fresh install where the Setup Wizard still needs to run, the main window used to fail with `AttributeError: 'MainFrame' object has no attribute 'editor'`. The crash happened because `_build_menu()` ran during `__init__` and asked for the active editor's contents, but the editor was not built until after the wizard closed. The contextual menu refresh is now gated by a lifecycle flag (`self._ui_ready`) and falls back to "plain" markup when the editor is not yet present, so the wizard can open on a clean notebook and the menu items settle into the right state once you have a document to edit.
+
 ## Simple File Open dialog
 
 QUILL can now open files through a keyboard-friendly **Simple File Open** dialog in addition to the standard Windows file open dialog. Both dialogs are reached from the same place — **File > Open...** or `Ctrl+O` — so there is still only one File > Open command.

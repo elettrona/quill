@@ -1160,6 +1160,10 @@ class MainFrame(
         self._window_doc_menu_ids: dict[int, int] = {}
         self._menu_open_depth = 0
         self._pending_menu_refresh = False
+        # Lifecycle gate: True once __init__ has finished creating widgets
+        # (notably self.editor). False during construction so menu refreshes
+        # triggered from _build_menu() defer until the editor exists.
+        self._ui_ready = False
         self._recent_sessions = [] if safe_mode else load_recent_sessions()
 
         # Title starts as "Quill" (not "Untitled - Quill") so screen readers
@@ -1257,6 +1261,13 @@ class MainFrame(
                 sound_manager.init(self.settings)
             except Exception:
                 self._report_startup_task_failure("sound manager init")
+        # Construction is complete. Subsequent _refresh_contextual_menu_items
+        # calls can read self.editor, self.notebook, etc. safely. Any refreshes
+        # deferred from inside _build_menu() (e.g. when the first-run wizard
+        # had not yet created the default tab) are flushed now so contextual
+        # menu items reflect the active document.
+        self._ui_ready = True
+        self._flush_pending_menu_refresh()
 
     @property
     def _help_frame(self) -> object:
@@ -6759,7 +6770,16 @@ class MainFrame(
                 return "markdown"
             if suffix in {".html", ".htm", ".xhtml"}:
                 return "html"
-        sample = self.editor.GetValue()[:4000]
+        # During the early phase of __init__ (e.g. fresh install with the
+        # first-run wizard pending, or a multi-document notebook that has no
+        # tab open yet) self.editor may not exist. Fall back to "plain" so
+        # menu items default to a safe state and the refresh path returns.
+        # The contextual refresh is re-queued via _request_menu_refresh and
+        # re-runs once __init__ finishes and an editor is attached.
+        editor = getattr(self, "editor", None)
+        if editor is None:
+            return "plain"
+        sample = editor.GetValue()[:4000]
         if re.search(
             r"<\s*(html|head|body|div|span|p|h[1-6]|section|article)\b", sample, re.IGNORECASE
         ):
@@ -6778,6 +6798,27 @@ class MainFrame(
         return "plain"
 
     def _refresh_contextual_menu_items(self) -> None:
+        # During the early phase of __init__ the editor and a number of
+        # sub-views (notebook, preview pane, status-bar spell-check state)
+        # are not yet constructed. Running the contextual refresh here would
+        # touch attributes that do not exist. Mark the refresh pending so
+        # the final flush in __init__ (and the wizard's post-create flush)
+        # picks it up. We do not call _request_menu_refresh here: that
+        # path flushes immediately, and flushing with the editor still
+        # missing would recurse. The pending flag is idempotent, so
+        # multiple deferrals collapse into a single later flush.
+        #
+        # The default for the gate is True (UI ready) so that tests using
+        # ``MainFrame.__new__`` — which bypass __init__ and therefore do
+        # not set ``_ui_ready`` at all — are unaffected. Only the real
+        # ``__init__`` (which sets ``_ui_ready = False`` at the top) is
+        # gated by this check.
+        if getattr(self, "_ui_ready", True) is False:
+            self._pending_menu_refresh = True
+            return
+        if not hasattr(self, "editor"):
+            self._pending_menu_refresh = True
+            return
         if not self._menu_updates_allowed():
             self._request_menu_refresh()
             return
@@ -11483,7 +11524,13 @@ class MainFrame(
         if not self._menu_updates_allowed():
             self._request_menu_refresh()
             return
-        menu_bar = self.frame.GetMenuBar()
+        # _flush_pending_menu_refresh() may run during __init__ or while
+        # the frame is still being built; guard against the menu bar
+        # being absent (real wx: methods exist; stub _Frame: not).
+        get_menu_bar = getattr(self.frame, "GetMenuBar", None)
+        if not callable(get_menu_bar):
+            return
+        menu_bar = get_menu_bar()
         if menu_bar is None:
             return
         requested = self.settings.announcement_backend
@@ -20593,7 +20640,12 @@ class MainFrame(
         if not self._menu_updates_allowed():
             self._request_menu_refresh()
             return
-        bar = self.frame.GetMenuBar()
+        # Guard against missing menu bar (frame stubbed in tests, or
+        # _flush_pending_menu_refresh running during __init__).
+        get_menu_bar = getattr(self.frame, "GetMenuBar", None)
+        if not callable(get_menu_bar):
+            return
+        bar = get_menu_bar()
         if bar is None:
             return
         enabled = load_ai_enabled()
@@ -24259,6 +24311,12 @@ class MainFrame(
                 except Exception:
                     pass
             _focus_editor()
+            # _build_menu() in __init__ deferred its contextual refresh
+            # because self.editor was not yet created. Now that the tab
+            # has been added and self.editor is wired, flush the pending
+            # refresh so contextual menu items (markup mode, document
+            # name, etc.) reflect the active document.
+            self._request_menu_refresh()
             return
 
         if any((

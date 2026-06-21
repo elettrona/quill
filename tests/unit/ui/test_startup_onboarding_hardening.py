@@ -688,3 +688,100 @@ def test_apply_theme_survives_missing_editor_in_wizard_pending_init() -> None:
     assert frame.statusbar.bg == _Colour(45, 45, 45)
     # The contrast-ratio announce is still scheduled.
     assert len(call_after.calls) == 1
+
+
+# ---------------------------------------------------------------------------
+# Init-order regression: _refresh_contextual_menu_items + _current_markup_context
+# must not raise AttributeError on self.editor during the wizard-pending
+# branch of __init__ (fresh install). The contextual refresh is deferred via
+# _request_menu_refresh(); _current_markup_context falls back to "plain" when
+# the editor is missing. After __init__ finishes, _ui_ready is True and the
+# pending refresh fires once.
+# ---------------------------------------------------------------------------
+
+
+def test_current_markup_context_returns_plain_when_editor_missing() -> None:
+    """Regression for the fresh-install crash: _current_markup_context is
+    called from _refresh_contextual_menu_items during the wizard-pending
+    branch of __init__ (self.editor does not exist yet). The function must
+    fall back to "plain" instead of raising AttributeError on self.editor.
+    """
+    frame = _build_frame()
+    frame.document = type("Document", (), {"path": None})()
+    assert not hasattr(frame, "editor")
+
+    # Must not raise AttributeError on self.editor.
+    assert frame._current_markup_context() == "plain"
+
+
+def test_refresh_contextual_menu_items_defers_during_init() -> None:
+    """Regression for the fresh-install crash: _build_menu calls
+    _refresh_contextual_menu_items during __init__ on the wizard-pending
+    branch. With self.editor unset and _ui_ready False, the refresh must
+    defer by setting _pending_menu_refresh=True and return rather than
+    crash. The deferred refresh is then flushed by the constructor's
+    final flush, or by the wizard's post-create flush.
+    """
+    frame = _build_frame()
+    assert not hasattr(frame, "editor")
+    frame._ui_ready = False
+    frame._pending_menu_refresh = False
+
+    # Must not raise AttributeError on self.editor / self.frame.GetMenuBar.
+    frame._refresh_contextual_menu_items()
+
+    # The refresh was deferred (the pending flag is set) rather than
+    # executed. The constructor's final flush will pick this up.
+    assert frame._pending_menu_refresh is True, (
+        "_refresh_contextual_menu_items must set the pending flag when _ui_ready is False"
+    )
+
+
+def test_refresh_contextual_menu_items_runs_normally_after_init() -> None:
+    """Once __init__ has finished (_ui_ready is True and self.editor is
+    set), _refresh_contextual_menu_items should run normally and not
+    defer. The function only defers during construction, not at steady
+    state.
+    """
+
+    class _Editor:
+        def GetValue(self):
+            return "hello"
+
+    frame = _build_frame()
+    frame.editor = _Editor()  # type: ignore[attr-defined]
+    frame._ui_ready = True
+    frame._pending_menu_refresh = False
+
+    # Steady-state: the function does not defer; it executes against
+    # the (stubbed) menu bar. A bare-metal frame has no GetMenuBar, so
+    # the function returns early after detecting a None menu bar.
+    # The point of this test is that the lifecycle gate does not
+    # intercept the steady-state path.
+    frame._refresh_contextual_menu_items()
+
+    # The function was NOT deferred -- the lifecycle gate let it through.
+    assert frame._pending_menu_refresh is False
+
+
+def test_refresh_contextual_menu_items_runs_when_ui_ready_attr_missing() -> None:
+    """Tests using ``MainFrame.__new__`` do not set ``_ui_ready`` at all.
+    The lifecycle gate must default to 'ready' so these tests are not
+    silently gated. This pins the documented invariant: only the real
+    ``__init__`` (which sets ``_ui_ready = False`` at the top) is
+    intercepted by the gate.
+    """
+
+    class _Editor:
+        def GetValue(self):
+            return "hello"
+
+    frame = _build_frame()
+    frame.editor = _Editor()  # type: ignore[attr-defined]
+    assert not hasattr(frame, "_ui_ready")
+    frame._pending_menu_refresh = False
+
+    frame._refresh_contextual_menu_items()
+
+    # Default (missing attr) means "ready"; the gate let it through.
+    assert frame._pending_menu_refresh is False

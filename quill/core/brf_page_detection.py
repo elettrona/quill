@@ -32,6 +32,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from quill.core.brf_page_map import BRFPageMap
+
 # A print-page-change separator line. Matches:
 #   ---------#12      digit anchor
 #   ---------#12a     digit anchor with continuation letter
@@ -201,7 +203,7 @@ def _detect_for_page(
     return "", None, None
 
 
-def detect_print_pages(text: str, page_map: object) -> list[PageChangeIndicator]:
+def detect_print_pages(text: str, page_map: BRFPageMap) -> list[PageChangeIndicator]:
     """Walk ``text`` and ``page_map`` and return one indicator per boundary.
 
     The walk is sequential: each page's score is informed by the
@@ -233,7 +235,7 @@ def detect_print_pages(text: str, page_map: object) -> list[PageChangeIndicator]
     return out
 
 
-def detect_braille_pages(text: str, page_map: object) -> list[BraillePageMarker]:
+def detect_braille_pages(text: str, page_map: BRFPageMap) -> list[BraillePageMarker]:
     """Return one :class:`BraillePageMarker` per braille page."""
     page_count = int(page_map.page_count)
     out: list[BraillePageMarker] = []
@@ -249,7 +251,9 @@ def detect_braille_pages(text: str, page_map: object) -> list[BraillePageMarker]
     return out
 
 
-def _right_margin_letter_on_page(text: str, page_map: object, one_based_page: int) -> str | None:
+def _right_margin_letter_on_page(
+    text: str, page_map: BRFPageMap, one_based_page: int
+) -> str | None:
     """Return the trailing letter on the right-margin number of line 1
     of ``one_based_page`` (e.g. ``"a"`` for ``7a``), or ``None`` if
     the line has no right-margin number or no trailing letter."""
@@ -264,7 +268,7 @@ def _right_margin_letter_on_page(text: str, page_map: object, one_based_page: in
 
 def detect_continuation_letter(
     text: str,
-    page_map: object,
+    page_map: BRFPageMap,
     current: PageChangeIndicator,
     previous: PageChangeIndicator | None,
 ) -> str | None:
@@ -292,7 +296,7 @@ def detect_continuation_letter(
     return _right_margin_letter_on_page(text, page_map, current.braille_page)
 
 
-def detect_running_head(text: str, page_map: object) -> list[RunningHead]:
+def detect_running_head(text: str, page_map: BRFPageMap) -> list[RunningHead]:
     """Return one :class:`RunningHead` per braille page."""
     page_count = int(page_map.page_count)
     out: list[RunningHead] = []
