@@ -491,6 +491,7 @@ from quill.ui.main_frame_abbreviations import AbbreviationsMixin
 from quill.ui.main_frame_ai_actions import AiActionsMixin
 from quill.ui.main_frame_braille import BrailleCommandsMixin
 from quill.ui.main_frame_braille_phase2 import BraillePhase2CommandsMixin
+from quill.ui.main_frame_braille_phase3 import BrailleProofingCommandsMixin
 from quill.ui.main_frame_browse import BrowseModeMixin
 from quill.ui.main_frame_copy_tray import CopyTrayMixin
 from quill.ui.main_frame_devtools import DevToolsMixin
@@ -800,6 +801,7 @@ _APP_TITLE_VERSION = f"QUILL for All {build_info.get_short_version()}"
 class MainFrame(
     AbbreviationsMixin,
     AiActionsMixin,
+    BrailleProofingCommandsMixin,
     BraillePhase2CommandsMixin,
     BrailleCommandsMixin,
     HygieneMixin,

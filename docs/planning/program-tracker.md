@@ -27,10 +27,10 @@ closed won't-do.
 
 | Status | Count |
 | --- | ---: |
-| ✅ Shipped | 6 (#648, #649, #643, #646, #238, #239) |
+| ✅ Shipped | 7 (#648, #649, #643, #646, #238, #239, #240) |
 | 🚧 In progress | 1 (Speech & Dictation #617: S0 done, S1+ next) |
 | ❌ Out of scope | 3 (Linux/Unix — #520, #565, #589) |
-| ⬜ Planned | 246 |
+| ⬜ Planned | 245 |
 | **Total tracked** | **256** |
 
 ### By bucket (open)
@@ -92,6 +92,7 @@ closed won't-do.
 | 617 | Speech wave **S0** — dictation engine setting made honest (offline/windows/cloud + migration; dead recognizer stub removed). Epic #617 stays open; S1–S5 next. | 🚧 |
 | 238 | Braille BR-015 — `brf_sidecar.py` foundation (atomic per-file sidecar: position, proofing, anchors, notes) | ✅ |
 | 239 | Braille BR-016 — restore last position on open + spoken announcement (`brf_progress.py`) | ✅ |
+| 240 | Braille BR-017 — Proofing submenu (8 commands, sidecar-backed; `brf_proofing.py` + `main_frame_braille_phase3.py`) | ✅ |
 
 ## Out of scope
 
