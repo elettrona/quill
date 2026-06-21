@@ -111,6 +111,12 @@ class Settings:
     watch_folder_enabled: bool = False
     watch_folder_path: str = ""
     startup_folder: str = ""
+    # #620: Simple File Open dialog. When true, File > Open... shows a
+    # keyboard-friendly picker with a small filter, recent locations, and
+    # a hidden-files toggle. The standard Windows file dialog is still
+    # available via the "Use Windows Dialog" button inside the simple
+    # dialog.
+    use_simple_file_dialog: bool = False
     watch_folder_include_subfolders: bool = False
     watch_folder_process_existing: bool = False
     watch_folder_auto_start: bool = False
@@ -473,6 +479,8 @@ class Settings:
         watch_folder_enabled = bool(data.get("watch_folder_enabled", False))
         watch_folder_path = str(data.get("watch_folder_path", "")).strip()
         startup_folder = str(data.get("startup_folder", "")).strip()
+        # #620: Simple File Open dialog opt-in.
+        use_simple_file_dialog = bool(data.get("use_simple_file_dialog", False))
         watch_folder_include_subfolders = bool(data.get("watch_folder_include_subfolders", False))
         watch_folder_process_existing = bool(data.get("watch_folder_process_existing", False))
         watch_folder_auto_start = bool(data.get("watch_folder_auto_start", False))
@@ -783,6 +791,7 @@ class Settings:
             watch_folder_enabled=watch_folder_enabled,
             watch_folder_path=watch_folder_path,
             startup_folder=startup_folder,
+            use_simple_file_dialog=use_simple_file_dialog,
             watch_folder_include_subfolders=watch_folder_include_subfolders,
             watch_folder_process_existing=watch_folder_process_existing,
             watch_folder_auto_start=watch_folder_auto_start,

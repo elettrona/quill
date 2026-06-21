@@ -452,3 +452,93 @@ def test_undeletable_marker_does_not_reopen_wizard_on_next_launch(monkeypatch, t
     frame.settings.setup_wizard_completed = True
     frame._maybe_run_first_run_onboarding()
     assert saved == [False]  # no second reset recorded
+
+
+# ---------------------------------------------------------------------------
+# #606 follow-up: _apply_theme runs from __init__ before _create_document_tab
+# when the Setup Wizard is pending on a fresh install. self.editor does not
+# exist yet, so the three editor.* calls must not raise AttributeError.
+# ---------------------------------------------------------------------------
+
+
+def test_apply_theme_survives_missing_editor_in_wizard_pending_init() -> None:
+    """Regression for the fresh-install crash: AttributeError on self.editor
+    in _apply_theme() during the wizard-pending branch of __init__ (#606
+    follow-up). _apply_theme must guard the editor writes with getattr() and
+    still apply the chrome + statusbar colors so the wizard modal sees the
+    correct palette."""
+    frame = _build_frame()
+
+    class _Colour:
+        def __init__(self, r, g, b) -> None:
+            self.r, self.g, self.b = r, g, b
+
+        def __eq__(self, other):
+            return isinstance(other, _Colour) and (self.r, self.g, self.b) == (
+                other.r,
+                other.g,
+                other.b,
+            )
+
+        def __hash__(self):
+            return hash((self.r, self.g, self.b))
+
+    class _StatusBar:
+        def __init__(self) -> None:
+            self.fg = None
+            self.bg = None
+
+        def SetForegroundColour(self, colour):  # noqa: N802
+            self.fg = colour
+            return True
+
+        def SetBackgroundColour(self, colour):  # noqa: N802
+            self.bg = colour
+            return True
+
+    class _Frame:
+        def __init__(self) -> None:
+            self.fg = None
+            self.bg = None
+
+        def SetForegroundColour(self, colour):  # noqa: N802
+            self.fg = colour
+            return True
+
+        def SetBackgroundColour(self, colour):  # noqa: N802
+            self.bg = colour
+            return True
+
+        def Refresh(self):
+            pass
+
+    class _CallAfter:
+        def __init__(self):
+            self.calls = []
+
+        def __call__(self, fn, *args):
+            self.calls.append((fn, args))
+
+    wx_stub = _Wx()
+    wx_stub.Colour = _Colour
+    call_after = _CallAfter()
+    wx_stub.CallAfter = call_after  # type: ignore[attr-defined]
+    frame._wx = wx_stub
+    frame.frame = _Frame()  # type: ignore[assignment]
+    frame.statusbar = _StatusBar()  # type: ignore[attr-defined]
+    # Note: no frame.editor -- the wizard-pending branch never calls
+    # _create_document_tab, so self.editor is unset.
+    assert not hasattr(frame, "editor")
+    # Use "dark" so the test does not need a real SystemSettings stub.
+    frame.settings = type("Settings", (), {"theme": "dark"})()
+
+    # Must not raise AttributeError on self.editor.
+    frame._apply_theme("dark")
+
+    # The chrome + statusbar colors still apply so the wizard sees them.
+    assert frame.frame.fg == _Colour(230, 230, 230)
+    assert frame.frame.bg == _Colour(45, 45, 45)
+    assert frame.statusbar.fg == _Colour(230, 230, 230)
+    assert frame.statusbar.bg == _Colour(45, 45, 45)
+    # The contrast-ratio announce is still scheduled.
+    assert len(call_after.calls) == 1

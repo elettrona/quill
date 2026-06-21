@@ -199,6 +199,25 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("startup folder", "default folder", "open folder", "file dialog", "start folder"),
     ),
     SettingSpec(
+        "use_simple_file_dialog",
+        "Use simple file open dialog",
+        "general",
+        "bool",
+        "When enabled, File > Open... opens a keyboard-friendly file picker "
+        "with a small filter, recent locations, and a hidden-files toggle, "
+        "instead of the standard Windows file open dialog. The simple "
+        "dialog includes a Use Windows Dialog button for edge cases.",
+        keywords=(
+            "simple",
+            "open",
+            "dialog",
+            "file",
+            "screen reader",
+            "accessibility",
+            "keyboard",
+        ),
+    ),
+    SettingSpec(
         "default_new_document_format",
         "Default new-document format",
         "general",

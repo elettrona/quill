@@ -509,6 +509,7 @@ from quill.ui.main_frame_quillins import QuillinsMenuMixin
 from quill.ui.main_frame_section_move import SectionMoveMixin
 from quill.ui.main_frame_selection import SelectionMarksMixin
 from quill.ui.main_frame_sessions import SessionsMixin
+from quill.ui.main_frame_simple_open import SimpleOpenMixin
 from quill.ui.main_frame_ssh import SshEditingMixin
 from quill.ui.main_frame_statusbar import StatusBarMixin, _StatusBarCell
 from quill.ui.notebook_panel import NotebookEntriesPanel
@@ -802,6 +803,7 @@ class MainFrame(
     BraillePhase2CommandsMixin,
     BrailleCommandsMixin,
     HygieneMixin,
+    SimpleOpenMixin,
     ImageCaptureMixin,
     BrowseModeMixin,
     MenuBuilderMixin,
@@ -6130,13 +6132,21 @@ class MainFrame(
             foreground = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT)
             background = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW)
             chrome_background = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DFACE)
-        self.editor.SetForegroundColour(foreground)
-        self.editor.SetBackgroundColour(background)
+        # #606: on a fresh install the default "Untitled" tab is deferred
+        # until the Setup Wizard returns, so self.editor may not exist when
+        # _apply_theme runs from __init__. Guard the editor writes with
+        # getattr() (the same pattern used in show() and _focus_editor()).
+        # The chrome + statusbar writes always apply, so the wizard still
+        # sees the correct chrome even before the first document tab.
+        editor = getattr(self, "editor", None)
+        if editor is not None:
+            editor.SetForegroundColour(foreground)
+            editor.SetBackgroundColour(background)
+            editor.Refresh()
         self.frame.SetForegroundColour(foreground)
         self.frame.SetBackgroundColour(chrome_background)
         self.statusbar.SetForegroundColour(foreground)
         self.statusbar.SetBackgroundColour(chrome_background)
-        self.editor.Refresh()
         self.frame.Refresh()
         # §8.1 live contrast checker: announce the resulting contrast ratio after
         # every theme application so the user knows whether the palette is readable.
@@ -7731,44 +7741,15 @@ class MainFrame(
         column: int | None = None,
     ) -> None:
         self._clear_empty_workspace_state()
-        wx = self._wx
         selected_path = path
         if selected_path is None:
-            with wx.FileDialog(
-                self.frame,
-                "Open text file",
-                defaultDir=self._file_dialog_default_dir(),
-                wildcard=(
-                    "Supported files"
-                    " (*.txt;*.md;*.html;*.htm;*.xhtml;*.json;*.yaml;*.yml;"
-                    "*.toml;*.xml;*.csv;*.tsv;*.ipynb;*.sqlite;*.db;"
-                    "*.doc;*.docx;*.ppt;*.pptx;*.epub;*.pages;*.pdf;*.odt;*.rtf;"
-                    "*.py;*.js;*.jsx;*.ts;*.tsx;*.kt;*.kts;*.go;*.rs;*.c;*.cpp;"
-                    "*.h;*.hpp;*.java;*.swift;*.cs;*.rb;*.php;*.sh;*.ps1;*.lua;"
-                    "*.css;*.scss;*.less;*.sql;*.log;*.diff;*.patch;*.ini;*.cfg;*.conf;"
-                    "*.gradle;*.properties;*.gitignore;*.env)|"
-                    "*.txt;*.md;*.html;*.htm;*.xhtml;*.json;*.yaml;*.yml;"
-                    "*.toml;*.xml;*.csv;*.tsv;*.ipynb;*.sqlite;*.db;"
-                    "*.doc;*.docx;*.ppt;*.pptx;*.epub;*.pages;*.pdf;*.odt;*.rtf;"
-                    "*.py;*.js;*.jsx;*.ts;*.tsx;*.kt;*.kts;*.go;*.rs;*.c;*.cpp;"
-                    "*.h;*.hpp;*.java;*.swift;*.cs;*.rb;*.php;*.sh;*.ps1;*.lua;"
-                    "*.css;*.scss;*.less;*.sql;*.log;*.diff;*.patch;*.ini;*.cfg;*.conf;"
-                    "*.gradle;*.properties;*.gitignore;*.env|"
-                    "Documents (*.txt;*.md;*.html;*.htm;*.docx;*.odt;*.rtf;*.pdf;*.epub)|"
-                    "*.txt;*.md;*.html;*.htm;*.docx;*.odt;*.rtf;*.pdf;*.epub|"
-                    "Source code"
-                    " (*.py;*.js;*.jsx;*.ts;*.tsx;*.kt;*.kts;*.go;*.rs;*.c;*.cpp;"
-                    "*.h;*.hpp;*.java;*.swift;*.cs;*.rb;*.php;*.sh;*.ps1;*.lua)|"
-                    "*.py;*.js;*.jsx;*.ts;*.tsx;*.kt;*.kts;*.go;*.rs;*.c;*.cpp;"
-                    "*.h;*.hpp;*.java;*.swift;*.cs;*.rb;*.php;*.sh;*.ps1;*.lua|"
-                    "All files (*.*)|*.*"
-                ),
-                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
-            ) as dialog:
-                if self._show_modal_dialog(dialog, "Open text file") != wx.ID_OK:
-                    return
-                selected_path = Path(dialog.GetPath())
-                self._last_file_dir = str(selected_path.parent)
+            # #620: when ``Settings.use_simple_file_dialog`` is on, show the
+            # keyboard-friendly picker; otherwise show the standard
+            # ``wx.FileDialog``. The simple dialog can also route us back to
+            # the native dialog for one invocation if the user clicks the
+            # "Use Windows Dialog" button. ``_prompt_for_open_path`` is
+            # defined on :class:`SimpleOpenMixin`.
+            selected_path = self._prompt_for_open_path()
         if selected_path is None:
             return
         existing_index = self._find_tab_index(selected_path)
