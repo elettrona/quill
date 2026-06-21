@@ -1,493 +1,244 @@
-# QUILL 0.7.0 Beta 2 Release Notes (in development)
+# QUILL 0.7.0 Beta 2 Release Notes
 
-This is the draft notes file for the 0.7.0 Beta 2 release. Sections here
-ship into the final release notes when Beta 2 is tagged.
+QUILL 0.7.0 Beta 2 is focused on helping you upgrade with less disruption. Your settings, keyboard shortcuts, recent files, and feature choices should follow you forward whenever they are still compatible. When an older setting is no longer usable, QUILL safely returns to the current default instead of leaving you with a feature or shortcut that appears not to work.
 
-Beta 2 is the "settings carry-over" release. Most of the visible work is
-in the load path: when a user upgrades from 0.5.0 or 0.7.0 Beta 1, their
-saved settings, keymap, recent files, and feature profile travel with
-them, and any saved entry that has become invalid is cleaned up on
-startup instead of silently ignored.
+This release also includes a substantial collection of accessibility, reliability, portable-use, and macOS improvements. Setup is easier to follow, common keyboard commands behave more naturally, screen readers receive clearer information, and several crashes and focus problems have been corrected.
 
-It is also a substantial accessibility and macOS polish release: the
-setup wizard now focuses the page heading first, the editor caret
-handler is resilient to a destroyed widget on close, Option+Left /
-Option+Right are no longer hijacked by Back / Forward Location on
-macOS, and the Help menu is registered as the macOS system Help menu
-so the conventional `Cmd+?` shortcut works. See Bug fixes below for
-the full list.
+## Highlights
 
-A standalone migration utility is still planned. This release covers the
-hot path so a user with a 0.5.0 install does not have to run one.
+- Your compatible settings and keyboard customizations carry forward automatically.
+- You can choose where QUILL stores your settings, dictionaries, recovery files, and logs.
+- The portable Windows edition now starts with a double-click on `quill.exe`, identifies itself as QUILL rather than Python, and stores its data in a sibling `data/` folder.
+- Setup and the AI Hub work more reliably on a new installation.
+- VoiceOver support and standard macOS keyboard behavior have been significantly improved.
+- Closing documents, checking for updates, opening help, and reporting bugs are more dependable.
 
-## New: configurable data location (#615)
+## A smoother upgrade experience
 
-Where QUILL stores settings, dictionaries, autosaves, recovery files, and
-logs is now a choice instead of a fixed `%APPDATA%\Quill`:
+When you upgrade from QUILL 0.5.0 or 0.7.0 Beta 1, QUILL now checks your saved settings and keyboard shortcuts as it starts.
 
-- **The first-run Setup Wizard** has a new "Where QUILL stores your
-  data?" page. AppData is still the recommended default. Running QUILL
-  from a portable bundle (a folder with `run-quill.cmd` in it) also
-  offers "Next to QUILL, on this portable drive" — your data folder
-  moves with the USB stick or managed-machine folder, not your Windows
-  profile. A third option lets you choose any folder, including one you
-  create on the spot.
-- **Preferences > General** has the same choice for changing your mind
-  later, with an Open Folder dialog that can create a new folder. A
-  change here is not applied immediately: moving real settings, undo
-  history, and recovery data while QUILL is running is not safe, so the
-  move happens automatically the next time QUILL starts, and a dialog
-  offers to restart right away.
-- Portable detection only trusts a folder that actually contains
-  `run-quill.cmd` — never a bare environment variable — so this does not
-  reopen the security hardening from the L-9 fix (a tampered environment
-  variable still cannot redirect your data).
+QUILL keeps a saved choice when it still works with the current release. When an older choice refers to a command that no longer exists, uses an empty shortcut, or conflicts with another command, QUILL removes that unusable entry and uses the current default instead.
 
-## New: portable build has its own `quill.exe` launcher (#615)
+For most people, this happens quietly. You should not need to reset your preferences, edit configuration files, or manually repair older shortcuts.
 
-The portable Windows build (the folder you copy to a USB stick or a
-managed-machine share) used to be launched by a renamed `pythonw.exe`,
-whose VersionInfo resource reads "Python 3.x.x" instead of QUILL's.
-Screen readers that report the focused window's VersionInfo (JAWS
-Ctrl+JAWSKey+V, Narrator Caps+V) read the word "Version" and then
-went silent because the launcher had nothing QUILL-specific to
-report; the file's metadata on disk also showed the wrong product
-name, version, and publisher.
+### Keyboard shortcuts return to familiar behavior
 
-The portable build now launches through a dedicated `quill.exe` that
-the build script stamps with QUILL's own VersionInfo — product name
-"QUILL for All", the real QUILL version, and "Community Access" as
-the publisher. Ctrl+JAWSKey+V (and the same shortcut in NVDA and
-Narrator) now reads the real QUILL version along with the document
-name. The versioned `quill.exe` only ships in the portable build;
-installed builds continue to launch through the standard Python
-interpreter and are unaffected.
+Several shortcuts changed during the 0.7.0 development cycle. Beta 2 automatically repairs known older bindings so the menus, status information, and keyboard behavior agree again.
 
-## Settings carry-over
+For example, `Ctrl+F` once used a QUILL Key sequence in an earlier beta. Beta 2 repairs that saved binding during the upgrade process so `Ctrl+F` returns to opening Find without requiring you to reassign it manually.
 
-### The rule
+The same cleanup applies to other commands whose defaults changed, including Send to System Tray, Read Aloud, and Dictation.
 
-For keyboard shortcuts and any other user-tweakable setting, the default
-is the answer. A user's saved setting is honored only if it is still
-valid for the current build. If the saved setting is no longer valid
-(unknown command id, conflicting chord, removed setting, etc.), it is
-dropped and the default takes effect on the same launch — the user does
-not have to know anything happened.
+### Your personal customizations are respected
 
-### How it works
+QUILL starts with the current defaults and then applies your compatible personal changes. It does not replace your configuration with a complete copy of someone else’s settings.
 
-The keymap load path (`quill.core.keymap.load_keymap`) now starts from
-`DEFAULT_KEYMAP` and applies only the saved entries that survive three
-checks:
+When you import a profile or backup, only meaningful customizations from that file are imported. Your own unrelated keyboard choices are preserved.
 
-1. The command id is still a registered command in `DEFAULT_KEYMAP`.
-2. The chord is non-empty after stripping whitespace.
-3. The chord does not collide with another command in the merged map.
+### Nothing extra to run
 
-Saved entries that fail any check are logged at debug level and dropped
-from the loaded keymap. The surviving subset is persisted back to the
-on-disk `keymap.json` so the file reflects "what was actually honored"
-on the next launch. Files that are already clean (every saved entry
-survives the merge) are left untouched — a small per-user delta stays
-small.
+A separate migration utility is still planned for more complex future upgrades. Beta 2 handles the most common upgrade needs automatically, so people moving from 0.5.0 or Beta 1 should not need a separate tool.
 
-The same rule applies to settings in general (not just keymap). The
-`quill.core.settings_migration` module already provides a versioned,
-nested serialization shape with `SETTINGS_SCHEMA_VERSION` and a
-lossless round-trip between `from_versioned` and `to_versioned`. The
-beta-2 load path is the place where "drop a saved entry whose key no
-longer exists" gets the same treatment as the keymap.
+A future migration utility is expected to help with:
 
-### Why this matters for users
+- larger settings-format changes;
+- profiles and Quillins created by older beta releases;
+- moving an entire family of customized shortcuts at once; and
+- providing a reviewable record of settings that were changed or removed.
 
-A user who upgraded from 0.5.0 to 0.7.0 Beta 1 had to reconfigure any
-setting that moved in 0.7.0 — for example, the QUILL Key binding moved
-to a brand-visible label, several headings moved off the QUILL-key
-prefix and onto `Ctrl+Alt+1..6`, and the legacy preview chord was
-retired. With the carry-over rule, those moved defaults take effect
-automatically on the next launch, and any user entry that became
-invalid is removed from the saved file so it does not cause confusion
-later.
+## Portable Installation Enhancements and Changes
 
-### What you may notice on the first launch after upgrading
+As we always do, we listened to the community and made a number of very strategic changes in the way your data and the way that the installation is handled for QUILL when installing in portable mode.
 
-The carry-over runs silently, but the behavior change is visible in
-a few shortcuts that moved between 0.5.0 and 0.7.0. If you have been
-using 0.7.0 Beta 1, the most likely case is `Ctrl+F` (Find):
+QUILL no longer requires everyone to store application data in `%APPDATA%\Quill`.
 
-- **Pressing `Ctrl+F` did nothing in 0.7.0 Beta 1.** Earlier in the
-  0.7.0 line, `edit.find` defaulted to the QUILL-Key chord
-  (`Ctrl+Shift+Grave, F`) instead of the conventional `Ctrl+F`. Your
-  saved `keymap.json` on disk still records that stale binding, so
-  when you press `Ctrl+F` in 0.7.0 Beta 2, the keystroke reaches
-  the editor instead of opening Find — the editor sees it as text
-  input or an unhandled key.
+During first-time setup, the new **Where QUILL stores your data** page offers choices designed for different ways people use QUILL:
 
-  In Beta 2 the load path rewrites the saved entry on first launch,
-  and the corrected value is persisted back to `keymap.json` on the
-  same launch. The next time you open QUILL, `Ctrl+F` opens Find as
-  expected and stays that way. No dialog, no settings panel, no
-  manual re-bind.
+- **Use the recommended AppData location.** This is the best choice for most installed copies of QUILL.
+- **Keep the data beside portable QUILL.** When QUILL is running from a recognized portable bundle, your settings and recovery information can travel with the USB drive or managed folder.
+- **Choose another folder.** You may select an existing folder or create a new one.
 
-The same one-time rewrite applies to the other bindings that moved
-off the QUILL-Key prefix and back to their conventional shortcuts
-in this release (for example `Ctrl+Shift+Grave, T` for "Send to
-System Tray", `Ctrl+Shift+Grave, R` for Read Aloud, and
-`Ctrl+Shift+Grave, D` for Dictation). After the first launch, the
-menu and the chord display in the status bar match.
+You can change this later under **Preferences > General**. Because settings, recovery data, and undo information may be in use while QUILL is open, the move takes place safely the next time QUILL starts. QUILL will offer to restart for you.
 
-### What is not a migration
+Portable mode is only offered when QUILL confirms that it is running from a real portable bundle: a folder containing `quill.exe` with a sibling `data/` folder. This is filesystem evidence of a deliberate portable install — not an environment-variable say-so — so an untrusted setting cannot redirect your data location.
 
-- The on-disk `keymap.json` is still a small delta of overrides, not a
-  full copy of `DEFAULT_KEYMAP`. The carry-over only touches entries
-  the user had on disk.
-- The legacy-rebinding table (`quill.core.keymap.legacy_rebindings`) is
-  unchanged. It still rewrites the specific named stale bindings (for
-  example `edit.find: "Ctrl+Shift+Grave, F" -> "Ctrl+F"`) on load. The
-  carry-over is the safety net for everything else.
-- The migration is silent. There is no dialog and no log file. Invalid
-  entries are dropped; the user sees the default take effect on the
-  affected menu item, key, or setting.
+## Portable bundle: `quill.exe` + `data/` (no more `run-quill.cmd`)
 
-## Planned for the migration utility (Beta 3 or later)
+The portable bundle is now double-clickable. The launcher is `quill.exe` at the bundle root, and detection is driven by the presence of a `data/` folder next to it — the same pattern VSCode uses to identify a portable install.
 
-A standalone migration utility is still on the roadmap. It will cover
-the cases the carry-over cannot:
+- **Double-click to launch.** `quill.exe` at the bundle root starts QUILL with no environment setup. The previous `run-quill.cmd` wrapper is gone.
 
-- **Settings schema upgrade** beyond the `SETTINGS_SCHEMA_VERSION` bump
-  (when fields are renamed, retired, or restructured across the group
-  layout that `settings_migration` provides).
-- **Profile and Quillin import** from earlier betas, including the
-  pre-0.7.0 flat keymap profile format and the pre-0.7.0 Quillin
-  manifest v0 shapes.
-- **Bulk keymap rebind** when a wholesale change happens — for example,
-  if 0.8.0 moves an entire chord family, the utility will offer to
-  remap the user's saved bindings as a batch.
-- **Audit log** of every entry that was dropped, persisted alongside
-  the cleaned keymap so the user can review what changed.
+- **Detection is filesystem evidence.** A folder is treated as a portable install only when it contains `quill.exe` **and** a `data/` folder as siblings. A bare `QUILL_PORTABLE=1` environment variable is no longer sufficient. The Setup Wizard's portable radio button appears automatically when the bundle is verified.
 
-The Beta 2 carry-over is the foundation: a user with a clean install
-on Beta 2 has nothing to migrate, and a user with a stale install on
-Beta 2 has their keymap and settings already corrected before the
-utility ever runs.
+- **Zero-setup from first launch.** The build script ships an empty `data/` folder inside the bundle, so the install is recognised as portable from the first time you double-click `quill.exe`. You do not need to create the folder yourself unless you are converting an installed build into a portable one.
 
-## Bug fixes
+- **Legacy bundles keep working.** A beta-1 portable bundle that still ships `run-quill.cmd` is accepted as back-compat evidence, so users upgrading from beta 1 do not need to take any action.
+- **AI keys follow the bundle.** The DPAPI-encrypted `keys.enc` AI key store is activated automatically for verified portable installs — no environment variable to set.
 
-- **Read Aloud and Insert Snippet fired on plain R and S keystrokes
-  (#612).** The friendly chord label in the Tools and Insert menus
-  sat in the slot wxWidgets reads as a real native keyboard
-  accelerator, and because the label does not start with a modifier
-  name wx recognized, the bare letters `R` and `S` got bound as
-  modifier-less global shortcuts. Every time you typed a normal `R`
-  or `S` in any document, Read Aloud started (or paused) and Insert
-  Snippet ran — outside the QUILL Key chord dispatcher entirely, so
-  the QUILL Key conflict detector never saw the collision. The chord
-  label is now shown as plain parenthetical text after the menu item
-  name rather than as a wx accelerator, so the letters belong to
-  your text again. Plain (non-chord) shortcuts like `Ctrl+R` were
-  never affected.
+The new launcher also identifies the product as **QUILL for All**, includes the actual QUILL version, and lists **Community Access** as the publisher. Screen-reader commands that report application or window version information (JAWS's Ctrl+JAWSKey+V, NVDA's Python-version readout, and similar) can now provide useful QUILL information instead of identifying the launcher as Python or speaking only the word “Version.” Installed editions continue to start normally and are not affected by this change.
 
-- **First-run setup could not open the AI Hub, and once it did,
-  every later launch crashed on startup (#614).** On a brand-new
-  profile the wizard's "Open AI Hub" button raised an internal
-  type error before the dialog could draw, leaving the AI Hub
-  unreachable until you had already configured a provider elsewhere.
-  And on the next launch after that, the editor caret handler
-  crashed silently on every keystroke before you had even selected
-  a document, blocking the status bar and the indent tone. Both
-  crashes are fixed: the AI Hub now opens cleanly on first run from
-  the wizard, and the editor caret handler no longer fires before a
-  document is loaded.
+The installer also keeps the desktop shortcut in sync on upgrade: a previous beta-1 install may have placed a `Quill.lnk` on your desktop pointing at the now-removed `run-quill.cmd`. Beta 2 removes that stale shortcut before writing the new one, so the desktop icon always launches the current launcher.
 
-- **Importing a profile or backup silently undid your keymap
-  customizations (#614 follow-up).** When you accepted an exported
-  keymap, the recipient's own overrides for individual chords were
-  overwritten by the exporter's defaults, so a keymap you had
-  carefully tuned (for example a home-row `Ctrl+Shift+B` for bold
-  block) could be rolled back to the build's default just because
-  you opened a colleague's profile. The import now only carries
-  over entries that actually differ from the default, so the
-  recipient's customizations are preserved.
+## Accessibility and screen-reader improvements
 
-- **Check for Updates crashed every time you opened it (#605).** The
-  Help menu's Check for Updates and Check for GLOW Updates both
-  rely on a small Markdown flattener to render the release-notes
-  snippet into the dialog body. That flattener was removed in the
-  About dialog rewrite earlier in the 0.7.0 line and the path was
-  never updated, so Help -> Check for Updates raised an internal
-  ImportError and QUILL announced it had to close. The flattener is
-  back in place; Help -> Check for Updates and Check for GLOW
-  Updates both open their informational dialog cleanly now, on
-  every launch and every channel (stable, beta).
+### Setup starts in the right place (#610)
 
-- **Cmd+Q now quits QUILL on macOS (#608).** Earlier in the 0.7.0
-  line, `edit.quote_lines` was bound to `Ctrl+Q`, and on macOS
-  wxPython maps `Ctrl` accelerators to the `Cmd` key, so pressing
-  `Cmd+Q` (the universal macOS Quit shortcut) ran Quote Lines
-  instead of quitting. There was no working quit shortcut on
-  macOS. Quote Lines has moved to `Ctrl+Shift+Q` and Unquote Lines
-  to `Ctrl+Shift+K`, and QUILL's quit command is now bound to
-  `Ctrl+Q` (which maps to `Cmd+Q` on macOS). `Alt+F4` still
-  works on Windows via the stock File -> Exit accelerator. A
-  saved `keymap.json` that still has the old `Ctrl+Q` on Quote
-  Lines is rewritten to the new chord on first launch, and the
-  corrected value is persisted back so the next launch is clean.
+Each Setup Wizard page now places focus on the page heading first. Screen-reader users hear the purpose of the page before moving into its controls or preview.
 
-- **AI Hub crashed when the setup wizard opened it (#614 follow-up).**
-  The first pass at the AI Hub crash fixed the provider dropdown,
-  the instructions list, and the image-style list, but the tab
-  titles of the AI Hub Notebook (Provider, On-Device, Audio
-  Services, Instructions, Advanced) and the on-device sub-notebook
-  (Writing Tasks, Image Styles) were still wrapped in the same
-  translation proxy that the dropdowns and lists were. The first
-  time you opened the AI Hub, the dialog raised
-  `TypeError: Item at index 0 has type '_LazyString' but a
-  sequence of bytes or strings is expected` and QUILL announced
-  it had to close. The tab labels are now plain text, so the AI
-  Hub opens cleanly from the wizard on first run and from the
-  Tools menu on every later launch.
+The preview is also presented as readable content rather than an editable text field. Sighted users continue to receive the styled visual preview.
 
-- **First-run wizard Back and Next buttons were read with stray
-  chevrons by screen readers (#611).** The Back and Next buttons
-  in the setup wizard had decorative `<` and `>` characters
-  baked into the button labels ("`< Back`" and "`Next >`"), and
-  VoiceOver on macOS was reading them as "less than Back" and
-  "Next greater than." JAWS in Forms mode on Windows had the
-  same problem. The buttons now simply read "Back" and "Next,"
-  which is what every screen reader announces, and what every
-  sighted user sees on the face of the button.
+### Simpler Back and Next buttons (#611)
 
-- **JAWS read "Version" with no number when you pressed
-  Ctrl+JAWSKey+V in the portable build (#615).** The hotkey that
-  asks JAWS to speak the focused window's VersionInfo pulls the
-  value from the launcher's `.exe`, and the portable build is
-  launched by `pythonw.exe`, whose VersionInfo is "Python 3.x.x"
-  rather than QUILL's. JAWS announced the word "Version" and then
-  went silent because the launcher had nothing useful to report.
-  The window title now includes the full QUILL version (for
-  example, "QUILL for All 0.7.0 Beta 1"), so every screen reader
-  that announces the focused window — JAWS Insert+T, NVDA+T,
-  Narrator Caps+H, VoiceOver — now reads the version along with
-  the document name. The portable build's launcher is now a
-  dedicated `quill.exe` with QUILL's own VersionInfo resource
-  stamped in at build time (see "New: portable build has its own
-  `quill.exe` launcher" above), so Ctrl+JAWSKey+V also reports the
-  real QUILL version, not just the word "Version."
+The Setup Wizard buttons now read simply **Back** and **Next**. Decorative angle characters have been removed, so screen readers no longer announce phrases such as “less than Back” or “Next greater than.”
 
-- **Setup Wizard no longer opens on top of an "Untitled" tab on
-  first launch (#606).** On a fresh install, the editor used to
-  appear with an "Untitled" tab first and then the Setup Wizard
-  modal opened on top of it. VoiceOver on macOS read "Untitled"
-  as soon as the window was shown, so you heard a document name
-  before you ever heard the wizard. The window now opens with
-  no document tab, the wizard comes up first, and a fresh
-  untitled document is created automatically after the wizard
-  finishes. Returning QUILL users (anyone who has already run
-  the wizard once) see the normal "Untitled" tab on launch as
-  before.
+### A cleaner first launch (#606)
 
-- **VoiceOver now reads the editor as a native text area on macOS
-  (#616).** The main document editor is a `wx.TextCtrl` whose
-  `TE_RICH2` and `TE_NOHIDESEL` styles are Windows-only. On macOS
-  those flags are ignored, and the way QUILL wrapped the editor
-  in a custom accessibility shim (a Windows/MSAA workaround for
-  the surrounding panel and splitter) was overwriting the native
-  NSView role, so VoiceOver treated the editor as a generic
-  group rather than a real text area. The Windows-only flags are
-  now dropped on macOS, the silent-accessible shim is a no-op on
-  macOS, and the editor's NSView has its NSAccessibility role
-  pinned to `NSTextView` so VoiceOver announces it as a normal,
-  editable text area with full text-navigation semantics.
-  Windows behaviour is unchanged.
+On a fresh installation, QUILL now opens the Setup Wizard before creating an Untitled document. This prevents a screen reader from announcing an unrelated document tab before setup begins.
 
-- **Report a Bug dialog now speaks field names on macOS, opens
-  in its own window so you can alt-tab to the editor, and no
-  longer auto-opens a browser after submit (#618).** On macOS,
-  VoiceOver was reading each field in the Report a Bug dialog
-  as a bare "text" or "combo box" with no name, because the
-  Windows MSAA chain that links a label to its input does not
-  exist in macOS NSAccessibility. Every field is now bound to
-  its label via the standard accessibility name, so VoiceOver
-  reads "Summary, edit text" / "What happened, edit text" /
-  etc. when you tab into a field. The dialog now opens in its
-  own non-modal window by default, so you can alt-tab back to
-  the editor to document exact reproduction steps; the editor
-  stays interactive while the form is open. And on submit,
-  QUILL copies the report to your clipboard and stops — the
-  previous behaviour of also opening a GitHub "New Issue" page
-  in your browser is now opt-in via a Settings toggle (Settings
-  -> "After you submit a bug report, automatically open the
-  support form in your default browser"). The report is always
-  on your clipboard regardless.
+After setup is complete, QUILL creates a new blank document automatically. Returning users continue to receive the familiar Untitled tab at startup.
 
-- **Ctrl+F4 on a dirty document no longer crashes when you pick
-  "Don't Save" (#619).** The save-before-close prompt's
-  "restore editor focus" step queued an `editor.SetFocus` via
-  `CallAfter` that fired after the close had already destroyed
-  the editor TextCtrl, raising `RuntimeError: wrapped C/C++
-  object of type TextCtrl has been deleted` and surfacing as
-  "QUILL encountered an unexpected error and needs to close."
-  The close-path save prompt now passes
-  `restore_focus=False`, and the focus restore in
-  `_show_modal_dialog` swallows the `RuntimeError`
-  defensively for any other teardown-time dialog. Save and
-  Cancel paths are unchanged; the Save path still returns
-  focus to the editor as before.
+### VoiceOver recognizes the editor on macOS (#616)
 
-- **Closing the last document no longer crashes the caret
-  handler (#603).** The editor caret-activity handler can fire
-  after the underlying `TextCtrl` has been destroyed at the
-  C++ layer — for example, when you press `Ctrl+W` on a dirty
-  document, pick "Don't Save" on the prompt, and the next
-  caret event is still queued. The helper that reads the
-  editor's value to play the indent tone was calling
-  `editor.GetValue()` and `editor.GetInsertionPoint()` on the
-  dead widget, raising `RuntimeError: wrapped C/C++ object of
-  type TextCtrl has been deleted` and surfacing as
-  "QUILL encountered an unexpected error and needs to close."
-  The read is now wrapped in a `try/except RuntimeError` so
-  the event handler swallows the dead-widget error cleanly,
-  the next caret movement gets its tone, and the window
-  closes without an error dialog.
+VoiceOver now identifies the main editor as a native, editable text area rather than a generic group. This provides more predictable text navigation and announcements on macOS.
 
-- **Option+Left / Option+Right are no longer hijacked by
-  Back / Forward Location on macOS (#609).** On macOS,
-  `Option+Left` and `Option+Right` are the system-standard
-  word-by-word cursor movement chords (and VoiceOver uses
-  them for word-by-word reading), but `Back` and `Forward`
-  Location were bound to `Alt+Left` and `Alt+Right`, which
-  wxPython maps to the Option key. Pressing Option+Left in
-  the editor jumped to the previous location instead of moving
-  the cursor by one word, and VoiceOver's word-by-word
-  reading never fired. The macOS default for Back / Forward
-  Location is now `Cmd+[` and `Cmd+]` (the conventional macOS
-  back / forward chord, matching Safari, Finder, and most
-  other Mac apps). Windows users keep the existing
-  `Alt+Left` and `Alt+Right`. A pre-#609 macOS user whose
-  saved `keymap.json` still records the Windows chord has it
-  rewritten to the new macOS chord on first launch, and the
-  corrected value is persisted back so the next launch is
-  clean.
+Windows behavior is unchanged.
 
-- **Setup Wizard page heading is the first focusable element,
-  and the preview is no longer announced as "edit text" by
-  VoiceOver (#610).** On every wizard page, the page heading
-  was a plain `wx.StaticText`, which cannot accept keyboard
-  focus, so the wizard's focus helper skipped past it and
-  landed on the first focusable child — the read-only preview
-  `TextCtrl`. VoiceOver on macOS announced the preview as an
-  "edit text" field regardless of `TE_READONLY` (macOS
-  NSAccessibility does not change the role for a read-only
-  TextCtrl), so a screen-reader user heard the preview before
-  the page name. The heading is now a no-border `wx.Button`
-  styled to look like a heading, which gives it a real
-  focusable role; the focus helper now lands on the heading
-  first. The preview widget is replaced with an adaptive
-  renderer: a `SidePreview` (webview) for sighted users, and
-  a multi-line `wx.StaticText` for screen-reader users, both
-  of which VoiceOver announces as a document or static text
-  rather than an editable field. Sighted users see the same
-  styled preview they had before.
+### Bug-report fields have useful names on macOS (#618)
 
-- **Help menu is now recognised as the macOS system Help menu
-  (#613).** wxPython on macOS auto-generates the application
-  menu and tries to detect the Help menu by its title; without
-  the `SetHelpMenu` hint, macOS left the Help menu in the slot
-  the menu bar gave it (still last, but not flagged as the
-  system Help menu), so the AppKit `APP_NAME > Help` shortcut
-  did not work and VoiceOver's "Open the Help menu" gesture
-  (`VO+Cmd+?`) did not focus the Help menu. After the menu
-  bar is built, the macOS code path now calls
-  `menu_bar.SetHelpMenu(help_menu)` (with a `hasattr` +
-  `try/except` fallback to the classic `MacSetHelpMenuTitle`
-  for older wx builds) so macOS recognises the Help menu as
-  the system Help menu and the conventional `Cmd+?` shortcut
-  works. Windows and Linux behaviour is unchanged.
+VoiceOver now announces the name and purpose of each field in the Report a Bug window, including fields such as Summary and What happened.
 
-- **Print-page detector now classifies a right-margin continuation
-  as high confidence and surfaces the trailing letter (BR-013).**
-  The Phase 2 print-page detector in `quill/core/brf_page_detection.py`
-  previously scored every right-margin number on line 1 as
-  `medium` confidence, even when a previous page's right-margin
-  number carried the same digits and the current line added a
-  trailing letter (`7` on braille page 1, `7a` on braille page 2).
-  That left the braille continuation path in limbo: the
-  `detect_continuation_letter` helper had no way to distinguish
-  a real continuation from a coincidence, so it returned `None`
-  and the print-page status string read `Print 7` instead of
-  `Print 7a`. The detector now threads the previous page's
-  indicator through the walk; a right-margin number with a
-  trailing letter whose digits match the previous indicator's
-  print page (and whose previous confidence is not `low`) is
-  classified as `high`, the trailing letter is captured as
-  part of the indicator, and the helper walks the text via
-  `page_map.page_offset()` to extract the letter for the status
-  string. The detailed braille status command now reads the
-  full `Print 7a` form when a continuation letter is present,
-  and the BR-013 unit-test suite has no skips remaining.
+The report window is now non-modal, which means you can switch back to the editor while writing your report. This makes it easier to check the document, repeat a problem, or capture the exact steps that caused it.
 
-- **The User Guide and other one-shot pages reloaded every second
-  until you pressed Escape.** Help -> Open User Guide shares its
-  HTML renderer with the live Browser Preview, which intentionally
-  refreshes once a second so an open tab tracks your edits as you
-  type. The User Guide reused the same refresh tag even though
-  nothing in it ever changes, so the tab reloaded forever and stole
-  focus back from wherever you had moved it. One-shot pages (the
-  User Guide and any future static preview) no longer carry the
-  auto-refresh tag; only the live Browser Preview does.
+When you submit a bug report, QUILL copies it to the clipboard. It no longer opens a browser automatically unless you enable that option in Settings.
 
-- **The first-run Setup Wizard could reopen on every single launch
-  after an elevated install.** A new install drops a marker file
-  that tells QUILL to show the wizard again even if `%APPDATA%`
-  says it already ran -- needed so a fresh install always gets the
-  wizard. Consuming that marker deletes it, but if QUILL was
-  installed with admin rights into a folder your everyday account
-  can't write to (for example after accepting a UAC prompt during
-  setup), the delete silently failed and the wizard reset itself
-  again on every subsequent launch, reopening forever. QUILL now
-  separately remembers which marker it already consumed, so a
-  delete failure no longer reopens the wizard a second time.
+### The macOS Help menu works like a system Help menu (#613)
 
-- **The macOS application menu showed "Hide Mac_OS_app" and "Quit
-  Mac_OS_app" instead of QUILL's name.** QUILL never told wxWidgets
-  its application name, so macOS fell back to the name of the
-  running executable for the standard Hide/Quit menu items. The
-  app now sets its name explicitly on startup, so those items read
-  "Hide QUILL" and "Quit QUILL" like every other well-behaved
-  macOS app.
+macOS now recognizes QUILL’s Help menu as the application’s standard Help menu. The conventional `Cmd+?` shortcut works, and VoiceOver’s Help-menu command can move focus there as expected.
 
-- **Tools -> Open Log Folder failed with "Explorer could not be
-  found" on macOS and Linux.** The folder-reveal helper behind Open
-  Log Folder, View Startup Logs, and Open Diagnostics Folder always
-  shelled out to Windows' `explorer`, which doesn't exist on other
-  platforms. It now opens the system file manager the right way per
-  platform: Explorer on Windows, Finder (`open`/`open -R`) on
-  macOS, and the default file browser via the OS on Linux.
+Windows and Linux behavior is unchanged.
 
-- **"Enable system tray mode" in Preferences did nothing on macOS.**
-  The setting constructed a `wx.adv.TaskBarIcon()` unconditionally,
-  which on macOS produces a Dock tile rather than the menu-bar
-  extra Mac users expect when they tick a "tray" checkbox -- the
-  checkbox looked enabled but no icon ever appeared, and closing
-  the window while tray mode was on left QUILL running invisibly in
-  the Dock. QUILL now detects macOS, announces once via the status
-  bar that tray mode is not available there, and lets the close
-  handler fall through to a normal close. Windows and Linux
-  behaviour is unchanged.
+## More natural keyboard behavior
 
-- **Press `Y` or `N` to answer the unsaved-changes dialog (#23).**
-  When you tried to close a document with unsaved edits, the
-  prompt asked "Save before closing?" and offered "Save" and
-  "Don't Save" buttons (along with "Cancel"). Those custom
-  button labels also disabled the platform's built-in `Y` /
-  `N` / `Esc` keyboard accelerators on at least macOS Cocoa,
-  so you had to Tab to a button and press Space to answer --
-  the very shortcut every native Yes/No dialog teaches you
-  was silently gone. The prompt now uses the platform's native
-  Yes / No / Cancel buttons without overriding labels, so `Y`
-  triggers Save, `N` triggers Don't Save, and `Esc` cancels the
-  close exactly the way every other native confirmation dialog
-  on your system does. The dialog title still reads "Unsaved
-  changes" and the body still asks the question in plain
-  English, so screen-reader users hear the meaning, not just
-  the button text.
+### Typing R and S no longer launches commands (#612)
+
+Typing a normal `R` or `S` in a document no longer starts Read Aloud or opens Insert Snippet.
+
+QUILL’s friendly shortcut descriptions are now displayed as menu information rather than being mistaken for single-letter system shortcuts. Your letters stay in your document, where they belong.
+
+Regular shortcuts that include modifiers, such as `Ctrl+R`, were not affected.
+
+### `Cmd+Q` quits QUILL on macOS (#608)
+
+`Cmd+Q` now performs the standard macOS Quit action.
+
+Quote Lines has moved to `Ctrl+Shift+Q`, and Unquote Lines has moved to `Ctrl+Shift+K`. QUILL repairs the older saved binding automatically when needed.
+
+Windows users may continue to use `Alt+F4` or **File > Exit**.
+
+### Word navigation works normally on macOS (#609)
+
+`Option+Left` and `Option+Right` once triggered Back Location and Forward Location, preventing standard word-by-word cursor movement and interfering with VoiceOver reading commands.
+
+On macOS, Back Location and Forward Location now use `Cmd+[` and `Cmd+]`. Windows continues to use `Alt+Left` and `Alt+Right`.
+
+Older macOS bindings are corrected automatically during startup.
+
+### Use Y, N, or Escape when closing an unsaved document (#23)
+
+The unsaved-changes prompt now uses the operating system’s standard **Yes**, **No**, and **Cancel** choices.
+
+You can press:
+
+- `Y` to save;
+- `N` to close without saving; or
+- `Esc` to cancel and return to the document.
+
+You may still Tab to the buttons and activate them normally.
+
+## Setup and AI Hub reliability
+
+### The AI Hub opens during first-time setup (#614)
+
+The **Open AI Hub** button in the Setup Wizard now works on a brand-new profile. You can configure an AI provider during setup without first visiting another part of QUILL.
+
+The AI Hub’s tabs, provider choices, instructions, and image-style choices now load correctly. The Hub opens reliably both from the Setup Wizard and later from the Tools menu.
+
+### A new profile no longer causes startup typing failures (#614)
+
+QUILL no longer runs editor caret features before a document is ready. The status bar and indent tone can begin working normally after setup without causing a startup failure.
+
+### The Setup Wizard no longer reappears forever after an elevated installation
+
+When QUILL was installed with administrator approval into a protected folder, the everyday user account could sometimes be unable to remove the “show setup” marker. This caused the Setup Wizard to reopen on every launch.
+
+QUILL now remembers that the marker has already been handled, even when the protected file cannot be deleted. Setup appears when it is needed and stays out of the way afterward.
+
+## Stability and reliability fixes
+
+### Check for Updates opens normally (#605)
+
+**Help > Check for Updates** and **Check for GLOW Updates** no longer close QUILL with an internal error. Both commands now open their information dialogs correctly in stable and beta channels.
+
+### Closing an unsaved document no longer crashes QUILL (#619)
+
+Choosing **Don’t Save** after pressing `Ctrl+F4` no longer causes QUILL to close unexpectedly while it tries to return focus to an editor that has already been closed.
+
+Save and Cancel continue to return you to the appropriate place.
+
+### Closing the last document is safer (#603)
+
+A delayed caret event could occasionally arrive after the final editor had already closed, causing an unexpected error. QUILL now safely ignores that outdated event and closes the document normally.
+
+### Imported profiles preserve your keyboard choices (#614)
+
+Importing another person’s profile or a backup no longer replaces your personal shortcuts with that file’s default values. QUILL imports the actual customizations while keeping your unrelated choices in place.
+
+### Saving settings no longer crashes QUILL
+
+Selecting **OK** in Preferences, choosing **Reset to Factory Defaults**, or importing a settings file could close QUILL with `'MainFrame' object has no attribute 'set_theme'`. The routine that applies your settings after these actions was calling several methods that did not exist. All of these calls now reach the correct, existing code, so theme, spell-check, soft wrap, and dirty-title-style preferences apply immediately and reliably whenever you save settings.
+
+## Help, diagnostics, and everyday usability
+
+### The User Guide stays open and keeps its place
+
+The User Guide and other static information pages no longer refresh every second. They remain stable, do not repeatedly reclaim focus, and stay open until you close them.
+
+The live Browser Preview still refreshes automatically while you edit because that page is designed to follow your changes.
+
+### Log and diagnostics folders open on every supported platform
+
+**Open Log Folder**, **View Startup Logs**, and **Open Diagnostics Folder** now use the correct file manager for your operating system:
+
+- File Explorer on Windows;
+- Finder on macOS; and
+- the default file browser on Linux.
+
+### macOS menus now use the QUILL name
+
+The application menu on macOS now says **Hide QUILL** and **Quit QUILL** instead of displaying the name of the underlying executable.
+
+### System tray mode is handled honestly on macOS
+
+macOS does not provide the same system-tray behavior used by the Windows and Linux versions of QUILL. When tray mode is selected on macOS, QUILL now explains that it is unavailable and closes normally instead of appearing to remain active without a usable icon.
+
+Windows and Linux tray behavior is unchanged.
+
+## Braille improvements
+
+### Continuation page letters are announced correctly (BR-013)
+
+QUILL now recognizes print-page continuation labels such as `7a` when they appear in a BRF document. The detailed braille status information reports the complete page label instead of shortening it to `7`.
+
+This makes it easier to understand exactly where you are when a print page continues across multiple braille pages.
+
+## What you need to do
+
+For most people, nothing special is required:
+
+1. Install or start QUILL 0.7.0 Beta 2.
+2. Let QUILL check and update compatible settings during startup.
+3. Continue working with your familiar files and preferences.
+
+When QUILL needs to replace an outdated or conflicting setting, it uses the current default so the related feature continues to work. You do not need to edit `keymap.json` or manually rebuild your preferences.
+
+Because this is a beta release, please continue to report anything that feels confusing, inaccessible, unreliable, or harder than it should be. QUILL is being built to meet people where they are, and that includes making setup, upgrades, everyday writing, and problem reporting as welcoming as possible.

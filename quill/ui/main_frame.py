@@ -9790,20 +9790,18 @@ class MainFrame(
         tabbed Settings dialog so each one leaves the app in a consistent state.
         """
         save_settings(self.settings)
-        self.set_theme(self.settings.theme)
-        self._set_spellcheck_mode(self.settings.spellcheck_as_you_type)
+        self._apply_theme(self.settings.theme)
+        self.toggle_spellcheck_as_you_type(self.settings.spellcheck_as_you_type)
         self._autosave_interval = timedelta(
             seconds=int(getattr(self.settings, "autosave_interval_seconds", 30))
         )
         self._apply_ai_menu_enabled()
         self._refresh_ai_status()
-        self._apply_soft_wrap_setting()
+        self._apply_soft_wrap(self.settings.soft_wrap)
         self._rebuild_tab_host(self.settings.show_tab_control)
         self._build_menu()
-        self._apply_dirty_title_style_setting()
+        self.set_dirty_title_style(self.settings.dirty_title_style)
         self._refresh_title()
-        self._refresh_view_menu_checks()
-        self._clear_navigation_issue_state()
         try:
             from quill.ui import sound_manager
 
@@ -20974,7 +20972,9 @@ class MainFrame(
             self._set_status("Translation applied.")
 
         def _on_new_doc(new_text: str, lang_name: str) -> None:
-            self.new_document(content=new_text, title=f"Translation ({lang_name})")
+            self._power_tools_open_text_in_new_buffer(
+                new_text, f"Opened translation ({lang_name}) in new document"
+            )
 
         from quill.ui.ai_translation_dialog import AITranslationDialog
 
@@ -21054,7 +21054,9 @@ class MainFrame(
             self.editor.WriteText(text)
 
         def _on_new_doc(text: str) -> None:
-            self.new_document(content=text, title=f"Transcript - {file_name}")
+            self._power_tools_open_text_in_new_buffer(
+                text, f"Opened transcript ({file_name}) in new document"
+            )
 
         dlg = AITranscriptionResultDialog(
             self.frame,
@@ -24245,13 +24247,13 @@ class MainFrame(
             if getattr(self, "_first_run_wizard_pending", False):
                 self._first_run_wizard_pending = False
                 try:
-                    self.new_document()
+                    self._create_document_tab(Document())
                 except Exception:
                     self._report_startup_task_failure("first-run document tab")
                 # Re-run the editor-dependent init steps that __init__
-                # skipped for this branch. new_document() already wired
-                # the tab + editor; these restore the location ring and
-                # accessibility region for the new document.
+                # skipped for this branch. _create_document_tab() already
+                # wired the tab + editor; these restore the location ring
+                # and accessibility region for the new document.
                 try:
                     self._location_ring.record(0)
                     self._region_tracker.enter("Editor")

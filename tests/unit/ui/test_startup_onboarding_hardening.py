@@ -353,18 +353,18 @@ def test_first_run_defers_tab_creation_until_wizard_returns() -> None:
 
     frame.run_startup_wizard = _fake_run_startup_wizard  # type: ignore[method-assign]
 
-    def _stub_new_document() -> None:
-        # Mirror the real new_document() side effect for the
-        # assertion: a fresh tab lands in _document_tabs. We
-        # stub _create_document_tab because the production method
-        # requires live wx widgets (Panel, SplitterWindow, TextCtrl)
-        # that the __new__-built frame does not have.
+    def _stub_create_document_tab(document: object, select: bool = True) -> None:
+        # Mirror the real _create_document_tab() side effect for the
+        # assertion: a fresh tab lands in _document_tabs. We stub it
+        # because the production method requires live wx widgets
+        # (Panel, SplitterWindow, TextCtrl) that the __new__-built
+        # frame does not have.
         class _StubTab:
             pass
 
         frame._document_tabs.append(_StubTab())
 
-    frame.new_document = _stub_new_document  # type: ignore[method-assign]
+    frame._create_document_tab = _stub_create_document_tab  # type: ignore[method-assign]
     frame._location_ring = type("LR", (), {"record": lambda self, n: None})()
     frame._region_tracker = type("RT", (), {"enter": lambda self, name: None})()
     frame._focus_editor = lambda: None
@@ -381,7 +381,7 @@ def test_first_run_defers_tab_creation_until_wizard_returns() -> None:
     # #606 invariants
     assert wizard_open_tab_count == [0], "no document tab must exist while the wizard is open"
     assert len(frame._document_tabs) == 1, (
-        "new_document() must create exactly one tab after the wizard"
+        "_create_document_tab() must create exactly one tab after the wizard"
     )
     assert frame._first_run_wizard_pending is False, (
         "the pending flag must be cleared once the tab is created"
