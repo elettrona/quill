@@ -29,9 +29,21 @@ closed won't-do.
 | --- | ---: |
 | ✅ Shipped | 9 (#648, #649, #643, #646, #238, #239, #240, #241, #242) |
 | 🚧 In progress | 1 (Speech & Dictation #617: S0 done, S1+ next) |
+| 🧹 Resolved (bookkeeping) | 2 (#600, #601 — braille design captured in docs) |
+| 🚫 Blocked | 1 (#246 — source-to-BRF linking; see note) |
 | ❌ Out of scope | 3 (Linux/Unix — #520, #565, #589) |
-| ⬜ Planned | 243 |
+| ⬜ Planned | 240 |
 | **Total tracked** | **256** |
+
+> **#246 blocked (source-to-BRF linking).** Anchor recording is feasible today
+> (the sidecar already models anchors), but the headline payoff commands —
+> `compareBackTranslationWithSource` and `listUnlinkedSourcePages` — depend on (a)
+> a stable cross-format Source-Position model (TXT/RTF/DOCX/EPUB/PDF) that does not
+> exist in v1.0 and (b) a liblouis back-translation confidence signal not in
+> current liblouis releases. The #246 spec itself warns that a partial "linked vs
+> unlinked" UI would confuse users. Per "simplicity for the user is king," we are
+> **not** shipping a partial version; #246 stays open until the Source-Position
+> effort lands. This is the documented "big reason not to" exception to ship-all.
 
 ### By bucket (open)
 

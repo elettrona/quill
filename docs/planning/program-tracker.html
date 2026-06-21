@@ -227,12 +227,22 @@ won't-do.</p>
 S1+ next)</td>
 </tr>
 <tr>
+<td>🧹 Resolved (bookkeeping)</td>
+<td style="text-align: right;">2 (#600, #601 — braille design captured
+in docs)</td>
+</tr>
+<tr>
+<td>🚫 Blocked</td>
+<td style="text-align: right;">1 (#246 — source-to-BRF linking; see
+note)</td>
+</tr>
+<tr>
 <td>❌ Out of scope</td>
 <td style="text-align: right;">3 (Linux/Unix — #520, #565, #589)</td>
 </tr>
 <tr>
 <td>⬜ Planned</td>
-<td style="text-align: right;">243</td>
+<td style="text-align: right;">240</td>
 </tr>
 <tr>
 <td><strong>Total tracked</strong></td>
@@ -240,6 +250,20 @@ S1+ next)</td>
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>#246 blocked (source-to-BRF linking).</strong> Anchor
+recording is feasible today (the sidecar already models anchors), but
+the headline payoff commands —
+<code>compareBackTranslationWithSource</code> and
+<code>listUnlinkedSourcePages</code> — depend on (a) a stable
+cross-format Source-Position model (TXT/RTF/DOCX/EPUB/PDF) that does not
+exist in v1.0 and (b) a liblouis back-translation confidence signal not
+in current liblouis releases. The #246 spec itself warns that a partial
+"linked vs unlinked" UI would confuse users. Per "simplicity for the
+user is king," we are <strong>not</strong> shipping a partial version;
+#246 stays open until the Source-Position effort lands. This is the
+documented "big reason not to" exception to ship-all.</p>
+</blockquote>
 <h3 id="by-bucket-open">By bucket (open)</h3>
 <table>
 <thead>
