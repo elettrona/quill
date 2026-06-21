@@ -27,10 +27,10 @@ closed won't-do.
 
 | Status | Count |
 | --- | ---: |
-| ✅ Shipped | 7 (#648, #649, #643, #646, #238, #239, #240) |
+| ✅ Shipped | 8 (#648, #649, #643, #646, #238, #239, #240, #241) |
 | 🚧 In progress | 1 (Speech & Dictation #617: S0 done, S1+ next) |
 | ❌ Out of scope | 3 (Linux/Unix — #520, #565, #589) |
-| ⬜ Planned | 245 |
+| ⬜ Planned | 244 |
 | **Total tracked** | **256** |
 
 ### By bucket (open)
@@ -93,6 +93,7 @@ closed won't-do.
 | 238 | Braille BR-015 — `brf_sidecar.py` foundation (atomic per-file sidecar: position, proofing, anchors, notes) | ✅ |
 | 239 | Braille BR-016 — restore last position on open + spoken announcement (`brf_progress.py`) | ✅ |
 | 240 | Braille BR-017 — Proofing submenu (8 commands, sidecar-backed; `brf_proofing.py` + `main_frame_braille_phase3.py`) | ✅ |
+| 241 | Braille BR-018 — `brf_validator.py` layout validator (10 warning categories, read-only) | ✅ |
 
 ## Out of scope
 
