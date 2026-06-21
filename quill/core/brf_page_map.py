@@ -111,6 +111,17 @@ class BRFPageMap:
         idx = max(0, min(one_based_page - 1, len(self.pages) - 1))
         return self.pages[idx]
 
+    def page_offset(self, one_based_page: int) -> tuple[int, int]:
+        """Return ``(start_offset, end_offset)`` for the 1-based page.
+
+        Clamps to the valid range when ``one_based_page`` falls outside the
+        document (the first or last page is returned). Used by the page-
+        detection helpers in :mod:`quill.core.brf_page_detection` to slice
+        the document text without re-walking the page list.
+        """
+        page = self.page_index_for(one_based_page)
+        return page.start_offset, page.end_offset
+
 
 def _split_on_form_feeds(doc: BRFDocument) -> list[BRFPage]:
     """Form-feed aware split. The FF is part of the prior page (it is the
