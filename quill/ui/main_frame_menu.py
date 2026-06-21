@@ -1389,6 +1389,12 @@ class MenuBuilderMixin:
             self._id_dictionary_status,
             self._menu_label(_("Dictionary &Status..."), "tools.dictionary_status"),
         )
+        writing_menu.AppendSeparator()
+        self._id_display_language = wx.NewIdRef()
+        writing_menu.Append(
+            self._id_display_language,
+            self._menu_label(_("Change &Display Language..."), "app.display_language"),
+        )
         # GLOW is hidden for now (core.glow is locked off pending completion).
         # When re-enabled, these audit/fix items reappear automatically.
         if self._feature_enabled("core.glow"):
@@ -3072,6 +3078,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.show_dictionary_status(),
             id=self._id_dictionary_status,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.change_display_language(),
+            id=self._id_display_language,
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.ocr_image_file(), id=self._id_ocr_image)
         self.frame.Bind(

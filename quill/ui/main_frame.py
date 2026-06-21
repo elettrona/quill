@@ -1979,6 +1979,12 @@ class MainFrame(
             self._binding_for("navigate.set_language"),
         )
         self.commands.register(
+            "app.display_language",
+            "Change Display Language...",
+            self.change_display_language,
+            self._binding_for("app.display_language"),
+        )
+        self.commands.register(
             "navigate.match_bracket",
             "Match Bracket",
             self.match_bracket,
@@ -14256,6 +14262,67 @@ class MainFrame(
         name = profile.name if profile else "Plain text"
         self._set_status(f"Language set to {name}")
         self._announce(f"Language: {name}")
+
+    def change_display_language(self, language: str | None = None) -> None:
+        """Choose the language for QUILL's menus, dialogs, and messages (#i18n).
+
+        ``language`` may be passed directly (a locale tag, or ``""`` for the OS
+        default) to set the display language without prompting; otherwise a
+        chooser lists every language that has a compiled translation installed,
+        plus "System default". The choice is saved to settings and applied to
+        runtime announcements immediately; menus and already-built dialogs pick
+        it up after a restart.
+        """
+        from quill.core.i18n import (
+            _,
+            available_languages,
+            init_locale,
+            language_display_name,
+        )
+
+        wx = self._wx
+        available = available_languages()
+
+        if language is None:
+            if not available:
+                self._show_message_box(
+                    _(
+                        "QUILL is currently available in English only. When community "
+                        "translations are installed, they will appear here so you can "
+                        "switch the display language."
+                    ),
+                    _("No translations installed yet"),
+                    wx.OK | wx.ICON_INFORMATION,
+                )
+                return
+            tags = [""] + available
+            labels = [_("System default")] + [language_display_name(t) for t in available]
+            with wx.SingleChoiceDialog(
+                self.frame,
+                _("Choose the language for menus, dialogs, and messages:"),
+                _("Change Display Language"),
+                labels,
+            ) as dlg:
+                current = getattr(self.settings, "language", "") or ""
+                try:
+                    dlg.SetSelection(tags.index(current))
+                except ValueError:
+                    dlg.SetSelection(0)
+                if self._show_modal_dialog(dlg, "Change Display Language") != wx.ID_OK:
+                    return
+                tag = tags[dlg.GetSelection()]
+        else:
+            tag = language.strip()
+
+        self.settings.language = tag
+        save_settings(self.settings)
+        self._active_language = init_locale(tag or None)
+        name = _("System default") if not tag else language_display_name(tag)
+        message = _(
+            "Display language set to {name}. Restart QUILL to update all menus and dialogs."
+        ).format(name=name)
+        self._set_status(message)
+        self._announce(message)
 
     def format_auto_indent_newline(self) -> None:
         """Insert a newline with language-aware indentation."""

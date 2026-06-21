@@ -107,6 +107,7 @@
   "quill/ui/main_frame.py::MainFrame._show_yaml_structure_editor.prompt_label::wx.TextEntryDialog": "native",
   "quill/ui/main_frame.py::MainFrame._show_yaml_structure_editor::wx.Dialog": "hardened_custom",
   "quill/ui/main_frame.py::MainFrame.ai_tts_export_mp3::wx.FileDialog": "native",
+  "quill/ui/main_frame.py::MainFrame.change_display_language::wx.SingleChoiceDialog": "native",
   "quill/ui/main_frame.py::MainFrame.choose_announcement_backend::wx.SingleChoiceDialog": "native",
   "quill/ui/main_frame.py::MainFrame.choose_document_encoding::wx.SingleChoiceDialog": "native",
   "quill/ui/main_frame.py::MainFrame.choose_read_aloud_configuration::wx.Dialog": "hardened_custom",
