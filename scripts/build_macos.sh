@@ -38,7 +38,17 @@ else
 fi
 
 echo "==> Creating DMG"
-hdiutil create -volname Quill -srcfolder "$APP" -ov -format UDZO "$DMG"
+# Stage the volume contents so the DMG includes an "Applications" alias next to
+# the app. Without this the volume holds only Quill.app and there is nothing to
+# drag onto, forcing users to open Applications by hand (issue #662). The alias
+# is the standard drag-to-install convention shipped by most macOS DMGs.
+STAGE="dist/dmg-stage"
+rm -rf "$STAGE"
+mkdir -p "$STAGE"
+cp -R "$APP" "$STAGE/Quill.app"
+ln -s /Applications "$STAGE/Applications"
+hdiutil create -volname Quill -srcfolder "$STAGE" -ov -format UDZO "$DMG"
+rm -rf "$STAGE"
 
 # Notarize the DMG. Prefer `asc` (Apple Notary API v2, App Store Connect API
 # key auth); fall back to a notarytool keychain profile when NOTARY_PROFILE is
