@@ -191,14 +191,21 @@ framing is dropped); track work as individual issues; execute in
 <strong>buckets</strong> via <strong>small, low-risk commits</strong>;
 update release notes + user guide + PRD + CHANGELOG with each landed
 bucket; <strong>simplicity for the user is king</strong>.</p>
-<p><em>Snapshot: 252 open issues + 4 already shipped on this branch.
-Issue #617 is included (it now ships).</em></p>
+<p><em>Live status is the <strong>By status</strong> table below. The
+per-bucket / priority / rating tables are the original portfolio
+baseline snapshot (252 open) kept for proportions. Issue #617 is in
+scope (it now ships); Linux/Unix is out of scope.</em></p>
 <h2 id="status-legend">Status legend</h2>
 <ul>
 <li>✅ Shipped — merged on this branch, acceptance met.</li>
 <li>🚧 In progress — actively being implemented.</li>
 <li>⬜ Planned — not started.</li>
+<li>❌ Out of scope — will not ship (reason recorded).</li>
 </ul>
+<p><strong>Platform scope:</strong> Windows (primary) and macOS
+(supported). <strong>Linux/Unix is out of scope and not a shipping
+target</strong> — the Linux roadmap issues (#520, #565, #589) are closed
+won't-do.</p>
 <h2 id="dashboard">Dashboard</h2>
 <h3 id="by-status">By status</h3>
 <table>
@@ -211,7 +218,8 @@ Issue #617 is included (it now ships).</em></p>
 <tbody>
 <tr>
 <td>✅ Shipped</td>
-<td style="text-align: right;">6</td>
+<td style="text-align: right;">6 (#648, #649, #643, #646, #238,
+#239)</td>
 </tr>
 <tr>
 <td>🚧 In progress</td>
@@ -219,12 +227,16 @@ Issue #617 is included (it now ships).</em></p>
 S1+ next)</td>
 </tr>
 <tr>
+<td>❌ Out of scope</td>
+<td style="text-align: right;">3 (Linux/Unix — #520, #565, #589)</td>
+</tr>
+<tr>
 <td>⬜ Planned</td>
-<td style="text-align: right;">250</td>
+<td style="text-align: right;">246</td>
 </tr>
 <tr>
 <td><strong>Total tracked</strong></td>
-<td style="text-align: right;"><strong>257</strong></td>
+<td style="text-align: right;"><strong>256</strong></td>
 </tr>
 </tbody>
 </table>
@@ -401,26 +413,31 @@ benefit; Effort = engineering size.</p>
 (lowest-hanging first)</h2>
 <ol type="1">
 <li><strong>Wave 0 — done:</strong> text round-trip + VoiceOver names
-(#648/#649/#643/#646).</li>
-<li><strong>Wave 1 — Speech S0 honesty fix + Braille self-contained
-wins</strong> (#239 restore position, #240 Proofing submenu): small,
-low-risk, high user value.</li>
-<li><strong>Wave 2 — Verbosity core</strong> (#271, #361–#366) on top of
-the existing announcement plumbing; the §5–§46 spec issues (#367–#404)
-close as their implementation lands.</li>
+(#648/#649/#643/#646). ✅</li>
+<li><strong>Wave 1 — Speech S0 + complete Braille proofing &amp;
+validation.</strong> Speech S0 honesty fix ✅; Braille sidecar #238 ✅,
+restore-position #239 ✅; then the Proofing submenu (#240) and the
+validator + Warnings List (#241/#242) so <strong>braille ships complete
+in this wave</strong>. Small, low-risk, high user value.</li>
+<li><strong>Wave 2 — Verbosity &amp; Polish</strong> (combined): the
+core (#271, #361–#366) and the §5–§46 spec (#367–#404)
+<strong>plus</strong> the addenda polish set (#405–#504) shipped
+together as one verbosity workstream — keep the high-value knobs, fold
+or fast-track the rest, close each as it lands. (Formerly split across
+Waves 2 and 8; merged because it is all one workstream with no
+cross-wave risk.)</li>
 <li><strong>Wave 3 — Speech foundation S1–S2</strong> (#617): provider
 registry, model manager, offline WAV transcription.</li>
-<li><strong>Wave 4 — Braille validator + captions/dictation</strong>
-(#241/#242/#238/#246; Speech S3).</li>
+<li><strong>Wave 4 — Captions &amp; dictation</strong> (#617 Speech S3)
+and #246 source-to-BRF linking.</li>
 <li><strong>Wave 5 — AI &amp; Agentic</strong> (#507–#512, #523/#524)
 and the agentic-AI PRD.</li>
 <li><strong>Wave 6 — Navigation/editor + GLOW + Publishing</strong>
 (#513/#514/#521, #528–#534, #251 DAISY, #140 publishing).</li>
-<li><strong>Wave 7 — Platform &amp; Distribution</strong> (#506,
-#516–#520) and Docs/Content (#505, #535–#564).</li>
-<li><strong>Wave 8 — Verbosity long tail</strong> (addenda #405–#504):
-keep the high-value knobs, fold or fast-track the rest; close each as
-decided.</li>
+<li><strong>Wave 7 — Platform &amp; Distribution</strong> (#506, #516,
+#517, #518 macOS, #519) and Docs/Content (#505, #535–#564).
+<strong>Linux/Unix excluded</strong> (#520/#565/#589 are out of
+scope).</li>
 </ol>
 <h2 id="shipped">Shipped</h2>
 <table>
@@ -464,6 +481,39 @@ removed). Epic #617 stays open; S1–S5 next.</td>
 <td>Braille BR-015 — <code>brf_sidecar.py</code> foundation (atomic
 per-file sidecar: position, proofing, anchors, notes)</td>
 <td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">239</td>
+<td>Braille BR-016 — restore last position on open + spoken announcement
+(<code>brf_progress.py</code>)</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
+<h2 id="out-of-scope">Out of scope</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">#</th>
+<th>Title</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">520</td>
+<td>O17 — Linux platform layer</td>
+<td>Linux/Unix is not a shipping target (macOS yes, Linux no)</td>
+</tr>
+<tr>
+<td style="text-align: right;">565</td>
+<td>Tier-6 LINUX-2</td>
+<td>Linux/Unix out of scope</td>
+</tr>
+<tr>
+<td style="text-align: right;">589</td>
+<td>LINUX-1 spike</td>
+<td>Linux/Unix out of scope</td>
 </tr>
 </tbody>
 </table>
@@ -1757,7 +1807,7 @@ Effort High)</h3>
 <tr>
 <td style="text-align: right;">520</td>
 <td style="text-align: center;">P2</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">❌</td>
 <td>[Planning] O17 — Linux platform layer</td>
 </tr>
 <tr>
@@ -1769,13 +1819,13 @@ Effort High)</h3>
 <tr>
 <td style="text-align: right;">565</td>
 <td style="text-align: center;">P2</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">❌</td>
 <td>[Planning] Tier 6 / 1.0 backlog: LINUX-2</td>
 </tr>
 <tr>
 <td style="text-align: right;">589</td>
 <td style="text-align: center;">P2</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">❌</td>
 <td>[Planning] QUILL 2.0 deferred: LINUX-1 — LINUX-1 spike — deferred to
 QUILL 2.0</td>
 </tr>

@@ -47,27 +47,39 @@ What you notice:
   review, about 10 percent complete"), list proofed or flagged pages, and export a
   plain-text proofing report — all by keyboard. Your progress is saved beside the
   file and never alters the braille itself. (#240, built on the #238 sidecar) 🚧
+- A braille **validator** flags likely formatting problems, with an accessible
+  **Warnings List** you can step through entirely by keyboard. (#241/#242) ⬜
 
-Accessibility win: braille transcribers get real proofing workflow support with
-spoken progress, and dictation stops over-promising.
+This wave makes **braille proofing and validation complete**.
+
+Accessibility win: braille transcribers get a real proofing-and-validation
+workflow with spoken progress, and dictation stops over-promising.
 
 ---
 
-## Wave 2 — Say exactly as much as I want ⬜
+## Wave 2 — Say exactly as much as I want (Verbosity & Polish) ⬜
 
-**The promise:** "QUILL speaks at my level — not too much, not too little."
+**The promise:** "QUILL speaks at my level — not too much, not too little — and the
+small touches feel crafted."
+
+This wave delivers the **whole verbosity workstream in one go** — the core engine
+*and* the polish set (formerly a separate "long tail" wave), because it is all one
+system and splitting it added no safety.
 
 What you notice:
 - A real verbosity system: choose a profile (Beginner, Normal, Expert, Quiet) and
   QUILL adjusts how much it announces for each kind of action.
 - **Quiet Mode** and **Meeting Mode** you can toggle with a keystroke when you need
   silence fast, plus a Quiet Undo.
-- Announcements stop repeating themselves, and you can ask "Where am I?" or "What
-  changed?" on demand instead of being told constantly. (#271, #361–#366, with the
-  §5–§46 design behind them)
+- Announcements stop repeating themselves; you can ask "Where am I?" or "What
+  changed?" on demand instead of being told constantly. (#271, #361–#366, §5–§46)
+- The polish layer: announcement budgets, repetition collapse, typing-echo
+  controls, per-category detail levels, destructive-action and undo-available cues,
+  and the rest of the high-value knobs — with speculative extras folded in or set
+  aside deliberately. (#405–#504)
 
 Accessibility win: the single biggest comfort lever for daily screen-reader use —
-control over the firehose of speech.
+full control over the firehose of speech, plus a thousand small reductions in noise.
 
 ---
 
@@ -88,19 +100,20 @@ Accessibility win: private, offline transcription with an accessible model manag
 
 ---
 
-## Wave 4 — Catch braille errors + speak into the page ⬜
+## Wave 4 — Speak into the page + captions ⬜
 
-**The promise:** "QUILL helps me find problems and lets me dictate straight into
-my document."
+**The promise:** "QUILL lets me dictate straight into my document and turn
+recordings into captions."
 
 What you notice:
-- A braille **validator** flags likely formatting problems, with an accessible
-  Warnings List you can step through by keyboard. (#241/#242)
 - **Dictate at the cursor**: start dictation, speak, and text drops in where you
   are, as one undoable step, with a spoken "inserted N words." (#617 S3)
 - **Captions**: turn a recording into SRT or VTT subtitles you can review and save.
 
-Accessibility win: proofing and dictation become first-class, keyboard-first, and
+(The braille validator + Warnings List moved up to **Wave 1** so braille ships
+complete earlier.)
+
+Accessibility win: dictation becomes first-class, keyboard-first, and
 screen-reader-clear.
 
 ---
@@ -134,30 +147,19 @@ Accessibility win: faster keyboard navigation and accessible publishing formats.
 
 ---
 
-## Wave 7 — Solid on every machine ⬜
+## Wave 7 — Solid on Windows and macOS ⬜
 
-**The promise:** "QUILL installs cleanly and works the same wherever I run it."
+**The promise:** "QUILL installs cleanly and works the same on Windows and macOS."
 
 What you notice:
 - Verified installer behavior on Windows 10/11, progress toward shipping-quality
-  macOS and Linux, native RTF editing, and a Quillin (extension) hub. (#506,
-  #516–#520)
+  **macOS**, native RTF editing, and a Quillin (extension) hub. (#506, #516–#519)
 - Better docs, tutorials, and learning material. (#505, #535–#564)
 
-Accessibility win: a dependable, well-documented product on more platforms.
+Platform scope: Windows (primary) and macOS (supported). **Linux/Unix is out of
+scope** and not a shipping target.
 
----
-
-## Wave 8 — Polish the long tail ⬜
-
-**The promise:** "The little touches that make it feel crafted."
-
-What you notice:
-- The high-value verbosity refinements (announcement budgets, repetition collapse,
-  typing-echo controls, destructive-action and undo-available cues, and more),
-  with the speculative extras folded in or set aside deliberately. (#405–#504)
-
-Accessibility win: a thousand small reductions in friction and noise.
+Accessibility win: a dependable, well-documented product on its supported platforms.
 
 ---
 

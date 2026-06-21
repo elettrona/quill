@@ -13,7 +13,8 @@ This is the consolidated roadmap previously tracked as individual [Planning] iss
 ## Triage summary (product judgment)
 
 - **Near-term, real product value:** O1 live-installer smoke (#506), O5/O5b Ask-QUILL action buttons + unifying the two AI stacks (#507/#508 — overlaps the agentic-AI PRD in this folder), O6 AI Hub two-pane settings (#509), O7 decide Azure provider (#510), O10 Quick-Nav (#513), O11 un-gate structured Word/CSV (#514), O20 extract main_frame_statusbar (#521).
-- **Strategic / larger:** GLOW family (#528–#534), macOS to shipping quality (#518), plugin signing + marketplace (#519), Linux layer (#520/#565/#589), native RTF editing (#516), Quillin Hub (#517).
+- **Strategic / larger:** GLOW family (#528–#534), macOS to shipping quality (#518), plugin signing + marketplace (#519), native RTF editing (#516), Quillin Hub (#517).
+- **Out of scope (won't ship):** Linux/Unix platform work (#520, #565, #589). Platform scope is Windows (primary) and macOS (supported); there is no Linux/Unix target.
 - **Larger items, later waves (all shipping — the 2.0 framing is dropped):** the BITS Whisperer set (#566–#577) folds into the Speech & Dictation plan; AI-11/12/18 and FEAT-12–18 (#579–#588) and localization/collaboration/accessibility-agents (#590–#599) schedule into their buckets. The Tier-6 DOC/POD/TUT backlog (#535–#564) is content work scheduled per release wave.
 
 

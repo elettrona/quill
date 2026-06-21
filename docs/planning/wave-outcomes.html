@@ -231,14 +231,25 @@ complete"), list proofed or flagged pages, and export a plain-text
 proofing report — all by keyboard. Your progress is saved beside the
 file and never alters the braille itself. (#240, built on the #238
 sidecar) 🚧</li>
+<li>A braille <strong>validator</strong> flags likely formatting
+problems, with an accessible <strong>Warnings List</strong> you can step
+through entirely by keyboard. (#241/#242) ⬜</li>
 </ul>
-<p>Accessibility win: braille transcribers get real proofing workflow
-support with spoken progress, and dictation stops over-promising.</p>
+<p>This wave makes <strong>braille proofing and validation
+complete</strong>.</p>
+<p>Accessibility win: braille transcribers get a real
+proofing-and-validation workflow with spoken progress, and dictation
+stops over-promising.</p>
 <hr />
-<h2 id="wave-2--say-exactly-as-much-as-i-want-white_large_square">Wave 2
-— Say exactly as much as I want ⬜</h2>
+<h2
+id="wave-2--say-exactly-as-much-as-i-want-verbosity--polish-white_large_square">Wave
+2 — Say exactly as much as I want (Verbosity &amp; Polish) ⬜</h2>
 <p><strong>The promise:</strong> "QUILL speaks at my level — not too
-much, not too little."</p>
+much, not too little — and the small touches feel crafted."</p>
+<p>This wave delivers the <strong>whole verbosity workstream in one
+go</strong> — the core engine <em>and</em> the polish set (formerly a
+separate "long tail" wave), because it is all one system and splitting
+it added no safety.</p>
 <p>What you notice:</p>
 <ul>
 <li>A real verbosity system: choose a profile (Beginner, Normal, Expert,
@@ -247,12 +258,17 @@ action.</li>
 <li><strong>Quiet Mode</strong> and <strong>Meeting Mode</strong> you
 can toggle with a keystroke when you need silence fast, plus a Quiet
 Undo.</li>
-<li>Announcements stop repeating themselves, and you can ask "Where am
-I?" or "What changed?" on demand instead of being told constantly.
-(#271, #361–#366, with the §5–§46 design behind them)</li>
+<li>Announcements stop repeating themselves; you can ask "Where am I?"
+or "What changed?" on demand instead of being told constantly. (#271,
+#361–#366, §5–§46)</li>
+<li>The polish layer: announcement budgets, repetition collapse,
+typing-echo controls, per-category detail levels, destructive-action and
+undo-available cues, and the rest of the high-value knobs — with
+speculative extras folded in or set aside deliberately. (#405–#504)</li>
 </ul>
 <p>Accessibility win: the single biggest comfort lever for daily
-screen-reader use — control over the firehose of speech.</p>
+screen-reader use — full control over the firehose of speech, plus a
+thousand small reductions in noise.</p>
 <hr />
 <h2
 id="wave-3--dictate-and-transcribe-privately-white_large_square">Wave 3
@@ -271,24 +287,22 @@ immediately. (#617 S1–S2)</li>
 <p>Accessibility win: private, offline transcription with an accessible
 model manager — no cloud account, no jargon.</p>
 <hr />
-<h2
-id="wave-4--catch-braille-errors--speak-into-the-page-white_large_square">Wave
-4 — Catch braille errors + speak into the page ⬜</h2>
-<p><strong>The promise:</strong> "QUILL helps me find problems and lets
-me dictate straight into my document."</p>
+<h2 id="wave-4--speak-into-the-page--captions-white_large_square">Wave 4
+— Speak into the page + captions ⬜</h2>
+<p><strong>The promise:</strong> "QUILL lets me dictate straight into my
+document and turn recordings into captions."</p>
 <p>What you notice:</p>
 <ul>
-<li>A braille <strong>validator</strong> flags likely formatting
-problems, with an accessible Warnings List you can step through by
-keyboard. (#241/#242)</li>
 <li><strong>Dictate at the cursor</strong>: start dictation, speak, and
 text drops in where you are, as one undoable step, with a spoken
 "inserted N words." (#617 S3)</li>
 <li><strong>Captions</strong>: turn a recording into SRT or VTT
 subtitles you can review and save.</li>
 </ul>
-<p>Accessibility win: proofing and dictation become first-class,
-keyboard-first, and screen-reader-clear.</p>
+<p>(The braille validator + Warnings List moved up to <strong>Wave
+1</strong> so braille ships complete earlier.)</p>
+<p>Accessibility win: dictation becomes first-class, keyboard-first, and
+screen-reader-clear.</p>
 <hr />
 <h2
 id="wave-5--an-ai-that-helps-without-taking-over-white_large_square">Wave
@@ -321,34 +335,23 @@ publishing options. (#251, #140)</li>
 <p>Accessibility win: faster keyboard navigation and accessible
 publishing formats.</p>
 <hr />
-<h2 id="wave-7--solid-on-every-machine-white_large_square">Wave 7 —
-Solid on every machine ⬜</h2>
+<h2 id="wave-7--solid-on-windows-and-macos-white_large_square">Wave 7 —
+Solid on Windows and macOS ⬜</h2>
 <p><strong>The promise:</strong> "QUILL installs cleanly and works the
-same wherever I run it."</p>
+same on Windows and macOS."</p>
 <p>What you notice:</p>
 <ul>
 <li>Verified installer behavior on Windows 10/11, progress toward
-shipping-quality macOS and Linux, native RTF editing, and a Quillin
-(extension) hub. (#506, #516–#520)</li>
+shipping-quality <strong>macOS</strong>, native RTF editing, and a
+Quillin (extension) hub. (#506, #516–#519)</li>
 <li>Better docs, tutorials, and learning material. (#505,
 #535–#564)</li>
 </ul>
-<p>Accessibility win: a dependable, well-documented product on more
-platforms.</p>
-<hr />
-<h2 id="wave-8--polish-the-long-tail-white_large_square">Wave 8 — Polish
-the long tail ⬜</h2>
-<p><strong>The promise:</strong> "The little touches that make it feel
-crafted."</p>
-<p>What you notice:</p>
-<ul>
-<li>The high-value verbosity refinements (announcement budgets,
-repetition collapse, typing-echo controls, destructive-action and
-undo-available cues, and more), with the speculative extras folded in or
-set aside deliberately. (#405–#504)</li>
-</ul>
-<p>Accessibility win: a thousand small reductions in friction and
-noise.</p>
+<p>Platform scope: Windows (primary) and macOS (supported).
+<strong>Linux/Unix is out of scope</strong> and not a shipping
+target.</p>
+<p>Accessibility win: a dependable, well-documented product on its
+supported platforms.</p>
 <hr />
 <h2 id="how-to-read-progress">How to read progress</h2>
 <ul>

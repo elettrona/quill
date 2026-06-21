@@ -6,7 +6,7 @@
 **Operating rules:** everything ships (2.0 deferral framing is dropped); track work as individual issues; execute in **buckets** via **small, low-risk commits**; update release notes + user guide + PRD + CHANGELOG with each landed bucket; **simplicity for the user is king**.
 
 
-_Snapshot: 252 open issues + 4 already shipped on this branch. Issue #617 is included (it now ships)._
+_Live status is the **By status** table below. The per-bucket / priority / rating tables are the original portfolio baseline snapshot (252 open) kept for proportions. Issue #617 is in scope (it now ships); Linux/Unix is out of scope._
 
 
 ## Status legend
@@ -14,6 +14,11 @@ _Snapshot: 252 open issues + 4 already shipped on this branch. Issue #617 is inc
 - ✅ Shipped — merged on this branch, acceptance met.
 - 🚧 In progress — actively being implemented.
 - ⬜ Planned — not started.
+- ❌ Out of scope — will not ship (reason recorded).
+
+**Platform scope:** Windows (primary) and macOS (supported). **Linux/Unix is out of
+scope and not a shipping target** — the Linux roadmap issues (#520, #565, #589) are
+closed won't-do.
 
 
 ## Dashboard
@@ -22,10 +27,11 @@ _Snapshot: 252 open issues + 4 already shipped on this branch. Issue #617 is inc
 
 | Status | Count |
 | --- | ---: |
-| ✅ Shipped | 6 |
+| ✅ Shipped | 6 (#648, #649, #643, #646, #238, #239) |
 | 🚧 In progress | 1 (Speech & Dictation #617: S0 done, S1+ next) |
-| ⬜ Planned | 250 |
-| **Total tracked** | **257** |
+| ❌ Out of scope | 3 (Linux/Unix — #520, #565, #589) |
+| ⬜ Planned | 246 |
+| **Total tracked** | **256** |
 
 ### By bucket (open)
 
@@ -65,15 +71,14 @@ _Snapshot: 252 open issues + 4 already shipped on this branch. Issue #617 is inc
 
 ## Execution waves (lowest-hanging first)
 
-1. **Wave 0 — done:** text round-trip + VoiceOver names (#648/#649/#643/#646).
-2. **Wave 1 — Speech S0 honesty fix + Braille self-contained wins** (#239 restore position, #240 Proofing submenu): small, low-risk, high user value.
-3. **Wave 2 — Verbosity core** (#271, #361–#366) on top of the existing announcement plumbing; the §5–§46 spec issues (#367–#404) close as their implementation lands.
+1. **Wave 0 — done:** text round-trip + VoiceOver names (#648/#649/#643/#646). ✅
+2. **Wave 1 — Speech S0 + complete Braille proofing & validation.** Speech S0 honesty fix ✅; Braille sidecar #238 ✅, restore-position #239 ✅; then the Proofing submenu (#240) and the validator + Warnings List (#241/#242) so **braille ships complete in this wave**. Small, low-risk, high user value.
+3. **Wave 2 — Verbosity & Polish** (combined): the core (#271, #361–#366) and the §5–§46 spec (#367–#404) **plus** the addenda polish set (#405–#504) shipped together as one verbosity workstream — keep the high-value knobs, fold or fast-track the rest, close each as it lands. (Formerly split across Waves 2 and 8; merged because it is all one workstream with no cross-wave risk.)
 4. **Wave 3 — Speech foundation S1–S2** (#617): provider registry, model manager, offline WAV transcription.
-5. **Wave 4 — Braille validator + captions/dictation** (#241/#242/#238/#246; Speech S3).
+5. **Wave 4 — Captions & dictation** (#617 Speech S3) and #246 source-to-BRF linking.
 6. **Wave 5 — AI & Agentic** (#507–#512, #523/#524) and the agentic-AI PRD.
 7. **Wave 6 — Navigation/editor + GLOW + Publishing** (#513/#514/#521, #528–#534, #251 DAISY, #140 publishing).
-8. **Wave 7 — Platform & Distribution** (#506, #516–#520) and Docs/Content (#505, #535–#564).
-9. **Wave 8 — Verbosity long tail** (addenda #405–#504): keep the high-value knobs, fold or fast-track the rest; close each as decided.
+8. **Wave 7 — Platform & Distribution** (#506, #516, #517, #518 macOS, #519) and Docs/Content (#505, #535–#564). **Linux/Unix excluded** (#520/#565/#589 are out of scope).
 
 
 ## Shipped
@@ -86,6 +91,15 @@ _Snapshot: 252 open issues + 4 already shipped on this branch. Issue #617 is inc
 | 646 | AI Hub tab group accessible name (VoiceOver) | ✅ |
 | 617 | Speech wave **S0** — dictation engine setting made honest (offline/windows/cloud + migration; dead recognizer stub removed). Epic #617 stays open; S1–S5 next. | 🚧 |
 | 238 | Braille BR-015 — `brf_sidecar.py` foundation (atomic per-file sidecar: position, proofing, anchors, notes) | ✅ |
+| 239 | Braille BR-016 — restore last position on open + spoken announcement (`brf_progress.py`) | ✅ |
+
+## Out of scope
+
+| # | Title | Reason |
+| ---: | --- | --- |
+| 520 | O17 — Linux platform layer | Linux/Unix is not a shipping target (macOS yes, Linux no) |
+| 565 | Tier-6 LINUX-2 | Linux/Unix out of scope |
+| 589 | LINUX-1 spike | Linux/Unix out of scope |
 
 ## Open work by bucket
 
@@ -310,10 +324,10 @@ _Snapshot: 252 open issues + 4 already shipped on this branch. Issue #617 is inc
 | 517 | P2 | ⬜ | [Planning] O14 — Quillin Hub launch |
 | 518 | P2 | ⬜ | [Planning] O15 — macOS port to shipping quality (#42) |
 | 519 | P2 | ⬜ | [Planning] O16 — Plugin capability, signing, marketplace |
-| 520 | P2 | ⬜ | [Planning] O17 — Linux platform layer |
+| 520 | P2 | ❌ | [Planning] O17 — Linux platform layer |
 | 525 | P1 | ⬜ | [Planning] In flight: SHELL-3 Windows 11 primary menu |
-| 565 | P2 | ⬜ | [Planning] Tier 6 / 1.0 backlog: LINUX-2 |
-| 589 | P2 | ⬜ | [Planning] QUILL 2.0 deferred: LINUX-1 — LINUX-1 spike — deferred to QUILL 2.0 |
+| 565 | P2 | ❌ | [Planning] Tier 6 / 1.0 backlog: LINUX-2 |
+| 589 | P2 | ❌ | [Planning] QUILL 2.0 deferred: LINUX-1 — LINUX-1 spike — deferred to QUILL 2.0 |
 | 599 | P2 | ⬜ | [Planning] QUILL 2.0 deferred: PKG-1 — Packaging freezing evaluation PKG-1 — deferred to QUILL 2.0 |
 
 ### Navigation & Editor  (11 issues · Risk Low · Impact Med · Value Med · Effort Med)
