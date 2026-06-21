@@ -27,21 +27,24 @@ closed won't-do.
 
 | Status | Count |
 | --- | ---: |
-| ✅ Shipped | 16 (#648, #649, #643, #646, #238, #239, #240, #241, #242, #246, #251, #617, #361, #368, #374, #377) |
-| 🚧 In progress | 4 (verbosity foundation partials: #367 §5, #369 §7, #375 §13, #376 §14 — core landed, UI/engine halves open) |
+| ✅ Shipped | 18 (#648, #649, #643, #646, #238, #239, #240, #241, #242, #246, #251, #617, #361, #368, #374, #377, #362, #392) |
+| 🚧 In progress | 14 (verbosity partials, core landed/UI pending: #367 §5, #369 §7, #375 §13, #376 §14, #371 §9, #372 §10, #373 §11, #386 §24, #387 §25, #388 §26, #389 §27, #391 §29, #393 §31, #397 §35) |
 | 🧹 Resolved (bookkeeping) | 2 (#600, #601 — braille design captured in docs) |
 | ❌ Out of scope | 3 (Linux/Unix — #520, #565, #589) |
-| ⬜ Planned | 232 (incl. new #663 — Speech S5 offline voice commands) |
+| ⬜ Planned | 220 (incl. new #663 — Speech S5 offline voice commands) |
 | **Total tracked** | **257** |
 
-> **Wave 2 (Verbosity) started — core foundation shipped.** Sub-PR 1.1 (#361)
-> landed the wx-free `quill/core/verbosity/` package (channels, tokens + 12
-> filters, strict parser/validator, profiles + CustomProfile, the 34-verb §15
-> catalog + registry, data-order model, JSON schemas); 102 tests, parser
-> coverage 99%. This closes the fully-delivered spec sections §6 (#368), §12
-> (#374), and §15 (#377); §5/§7/§13/§14 (#367/#369/#375/#376) are partially done
-> (core in, UI/engine pending). Next: sub-PR 1.2 (engine, Quiet/Meeting, history,
-> explain) — #362.
+> **Wave 2 (Verbosity) — foundation + engine shipped (sub-PRs 1.1 and 1.2).**
+> 1.1 (#361) landed the pure-domain foundation; 1.2 (#362) added the routing
+> **engine** (`engine.py`) plus Quiet/Meeting modes, the undo stack, mastery,
+> announcement history, the explanation trace, Safe Mode + scoped resets,
+> feedback tuning, task-profile suggestions, profile import/export, and atomic
+> `verbosity_custom.json` storage — all wx-free, 180 verbosity tests, engine
+> coverage 96%. The engine is reachable from the assistant-panel and AI-Hub
+> announce paths via a no-op passthrough. Fully closed: §6 #368, §12 #374, §15
+> #377, §30 #392. Everything else listed under "In progress" has its core in and
+> its chord/badge/dialog half pending. **Next: sub-PR 1.3 — QVP packs, template
+> library, preview (#363); then 1.4 UI (#364), 1.5 call-site migration (#365).**
 
 > **#246 completed via back-translation (source-to-BRF).** The deliverable is
 > braille→text **back-translation**, now selection-aware (Braille > Translation >
@@ -121,6 +124,8 @@ closed won't-do.
 | 368 | Verbosity §6 — Profile model (Beginner/Normal/Expert/Quiet + CustomProfile round-trip) | ✅ |
 | 374 | Verbosity §12 — Token system (TokenSpec + the 12 engine filters; no custom filters) | ✅ |
 | 377 | Verbosity §15 — Verb registry (VerbSpec + Severity + 34-verb catalog + VerbRegistry) | ✅ |
+| 362 | Verbosity Sub-PR 1.2 — routing engine + Quiet/Meeting/undo, mastery, history, explain, safe mode, feedback, task profiles, import/export, storage; engine reachable via no-op passthrough; 180 tests, engine cov 96% | ✅ |
+| 392 | Verbosity §30 — profile import/export (`.quill-verbosity-profile.json`); data-only, schema-checked, no code-execution path | ✅ |
 
 ## Out of scope
 
@@ -158,7 +163,7 @@ closed won't-do.
 | ---: | :---: | :---: | --- |
 | 271 | P0 | ⬜ | [P0] Verbosity rebuild: implement per-verb token registry from docs/planning/verbosity.md |
 | 361 | P0 | ✅ | [Verbosity] Sub-PR 1.1 — Core foundation: channels, profiles, tokens, parser (shipped: `quill/core/verbosity/`, 102 tests) |
-| 362 | P0 | ⬜ | [Verbosity] Sub-PR 1.2 — Engine, quiet, meeting, mastery, history, explain, safe mode |
+| 362 | P0 | ✅ | [Verbosity] Sub-PR 1.2 — Engine, quiet, meeting, mastery, history, explain, safe mode (shipped: engine.py + 10 companion modules, 180 tests, engine cov 96%) |
 | 363 | P0 | ⬜ | [Verbosity] Sub-PR 1.3 — QVP, library, preview, schema validation |
 | 364 | P0 | ⬜ | [Verbosity] Sub-PR 1.4 — UI: preferences, token editor, library, history, preview lab, about dialog |
 | 365 | P0 | ⬜ | [Verbosity] Sub-PR 1.5 — Engine call-site migration, keymap, main_frame wiring |
@@ -167,9 +172,9 @@ closed won't-do.
 | 368 | P0 | ✅ | Verbosity: §6 Profile model (Beginner / Normal / Expert / Quiet + CustomProfile) |
 | 369 | P0 | 🚧 | Verbosity: §7 Channel system (Channel enum + routing) — enum + routing + floor shipped; per-channel prefs UI pending |
 | 370 | P0 | ⬜ | Verbosity: §8 Sound design (master + per-event gating) |
-| 371 | P0 | ⬜ | Verbosity: §9 Quiet Mode (controller + chords) |
-| 372 | P0 | ⬜ | Verbosity: §10 Meeting Mode (controller + chords) |
-| 373 | P0 | ⬜ | Verbosity: §11 Quiet Undo (Ctrl+Shift+Z) |
+| 371 | P0 | 🚧 | Verbosity: §9 Quiet Mode (controller + chords) — controller + phrasing shipped; chord/badge UI pending |
+| 372 | P0 | 🚧 | Verbosity: §10 Meeting Mode (controller + chords) — controller shipped; chord/badge UI pending |
+| 373 | P0 | 🚧 | Verbosity: §11 Quiet Undo (Ctrl+Shift+Z) — bounded undo stack shipped; chord binding pending |
 | 374 | P0 | ✅ | Verbosity: §12 Token system (TokenSpec + filters) |
 | 375 | P0 | 🚧 | Verbosity: §13 Template validation (strict allowlist + type checking) — parser-side validation + spoken summary shipped; token-editor UI (Save-disabled, Ctrl+T/Ctrl+Shift+P) pending |
 | 376 | P0 | 🚧 | Verbosity: §14 Data ordering model + editor — frozen DataOrder model shipped; editor UI + persistence pending |
@@ -182,18 +187,18 @@ closed won't-do.
 | 383 | P0 | ⬜ | Verbosity: §21 QVP install flow (file picker + validate + announce) |
 | 384 | P0 | ⬜ | Verbosity: §22 Profile preview on switch (replay last 3) |
 | 385 | P0 | ⬜ | Verbosity: §23 Preview Lab (scenario-based renderer) |
-| 386 | P0 | ⬜ | Verbosity: §24 Announcement history (record + replay + filter) |
-| 387 | P0 | ⬜ | Verbosity: §25 Why did QUILL say that? (explanation trace) |
-| 388 | P0 | ⬜ | Verbosity: §26 Too Much / Too Little / Just Right (feedback tuning) |
-| 389 | P0 | ⬜ | Verbosity: §27 Mastery-based step down (per-verb threshold + 10-second timeout) |
+| 386 | P0 | 🚧 | Verbosity: §24 Announcement history (record + replay + filter) — history.py (record/filter/redact) shipped; chords + viewer UI pending |
+| 387 | P0 | 🚧 | Verbosity: §25 Why did QUILL say that? (explanation trace) — ExplanationTrace + to_text() shipped; Explain command UI pending |
+| 388 | P0 | 🚧 | Verbosity: §26 Too Much / Too Little / Just Right (feedback tuning) — FeedbackStore + suggestion shipped; chords pending |
+| 389 | P0 | 🚧 | Verbosity: §27 Mastery-based step down (per-verb threshold + 10-second timeout) — MasteryTracker shipped; offer dialog/timer UI pending |
 | 390 | P0 | ⬜ | Verbosity: §28 Channel-specific templates (speech / braille / visual / sound_event) |
-| 391 | P0 | ⬜ | Verbosity: §29 Safe Mode and Reset (per-verb / per-chord / profile / QVP) |
-| 392 | P0 | ⬜ | Verbosity: §30 Import / Export (`.quill-verbosity-profile.json`) |
-| 393 | P0 | ⬜ | Verbosity: §31 Task-aware profiles (Markdown / Code / Braille / Review / etc.) |
+| 391 | P0 | 🚧 | Verbosity: §29 Safe Mode and Reset (per-verb / per-chord / profile / QVP) — VerbositySafeMode + env detection + scoped resets shipped; engine integration + UI pending |
+| 392 | P0 | ✅ | Verbosity: §30 Import / Export (`.quill-verbosity-profile.json`) — data-only, schema-checked, no-exec, round-trip tested |
+| 393 | P0 | 🚧 | Verbosity: §31 Task-aware profiles (Markdown / Code / Braille / Review / etc.) — TaskProfileSuggester (default off) shipped; file-open suggestion UI pending |
 | 394 | P0 | ⬜ | Verbosity: §32 First-run Verbosity Tour (setup wizard page) |
 | 395 | P0 | ⬜ | Verbosity: §33 Keyboard Manager integration (Verbosity tab) |
 | 396 | P0 | ⬜ | Verbosity: §34 Hotkey plan (chords + conflict resolution) |
-| 397 | P0 | ⬜ | Verbosity: §35 Storage (VerbositySettings + verbosity_custom.json) |
+| 397 | P0 | 🚧 | Verbosity: §35 Storage (VerbositySettings + verbosity_custom.json) — atomic verbosity_custom.json read/write shipped; the 16 VerbositySettings fields deferred to #365 |
 | 398 | P0 | ⬜ | Verbosity: §40 Accessibility requirements (screen-reader-first contract) |
 | 399 | P0 | ⬜ | Verbosity: §41 Testing plan (core + UI + golden) |
 | 400 | P0 | ⬜ | Verbosity: §42 Golden announcement tests (tests/golden/verbosity/) |

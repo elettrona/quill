@@ -6270,6 +6270,26 @@ The full verbosity rebuild (`docs/planning/verbosity-system.md`) replaces the si
 
 Tested by `tests/unit/core/test_verbosity_*.py` (102 cases; parser coverage 99%).
 
+#### 5.91.5 Verbosity rebuild — engine and runtime modes (sub-PR 1.2)
+
+Sub-PR 1.2 adds the routing layer on top of the foundation, still wx-free and in `mypy` scope. No user-facing surface yet (chords, status-bar badges, and dialogs land with the UI sub-PR), but the full decision layer exists and `VerbosityEngine.speak()` is reachable from the assistant-panel and AI-Hub announce paths through a no-op `speak_legacy_text()` passthrough.
+
+| Module | Responsibility |
+|---|---|
+| `engine.py` | `VerbosityEngine.speak(verb_id, ctx, *, quiet, meeting, chord, trigger)` returns a `RenderedAnnouncement` (per-channel text, sound event, channels, profile, severity, template source, suppressed flag, and an `ExplanationTrace`). Template precedence: per-chord override → per-verb override → QVP → default. Channels are routed with the always-on visual floor; Quiet drops speech+sound, Meeting drops sound; the profile&#39;s `suppress_routine` hides routine confirmations (errors always speak); sound follows the profile&#39;s all / errors-only / off policy. |
+| `quiet.py` | `QuietMode` (enter/exit/toggle + phrasing) and `VerbosityUndoStack` — the bounded §11 undo stack of reversible verbosity transitions. |
+| `meeting.py` | `MeetingMode` controller (hard-mute sound, reduced speech, braille+visual remain). |
+| `mastery.py` | `MasteryTracker` — per-verb success counter that signals a step-down offer exactly once at threshold (default 25), then resets so it never nags; per-verb and global disable. |
+| `history.py` | `AnnouncementHistory` — bounded ring buffer of `HistoryEntry` records with filter-by verb/profile/severity/warnings; `redact_text` (on by default) keeps raw token values out of the record, storing only the user-facing rendered text. |
+| `explain.py` | `ExplanationTrace` — the full &quot;Why did QUILL say that?&quot; account (verb, trigger, profile, channels, template source, per-channel output, suppression reason, mode/override/QVP flags) rendered to plain copyable text. |
+| `safe_mode.py` | `VerbositySafeMode` (toggle + `QUILL_SAFE_MODE` / `QUILL_VERBOSITY_SAFE_MODE` env detection) and non-destructive `reset_verb` / `reset_chord` / `restore_builtin` helpers that return a new `CustomProfile`. |
+| `feedback_tuning.py` | `FeedbackStore` — local Too Much / Too Little / Just Right tallies per verb with a gentle one-shot suggestion; declined verbs never re-suggest. No telemetry. |
+| `task_profiles.py` | `TaskProfileSuggester` — opt-in, **off by default**, per-extension profile suggestions with accept/reject memory. |
+| `import_export.py` | `.quill-verbosity-profile.json` import/export. Strictly data: structure is validated by hand and nothing from the file is executed (no `exec`/`eval`/`__import__` path), verified by test. |
+| `storage.py` | Atomic `verbosity_custom.json` read/write via `write_json_atomic`; a corrupt file loads as empty defaults plus a load error for a nonblocking warning, never throwing the user out. |
+
+Tested by 11 more `tests/unit/core/test_verbosity_*.py` modules (180 verbosity cases total; engine coverage 96%). The 16 `VerbositySettings` fields and the chord/badge/dialog surfaces are deferred to the call-site-migration and UI sub-PRs.
+
 ---
 
 ## 6. Spell checking deep dive

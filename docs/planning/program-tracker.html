@@ -218,14 +218,16 @@ won't-do.</p>
 <tbody>
 <tr>
 <td>✅ Shipped</td>
-<td style="text-align: right;">16 (#648, #649, #643, #646, #238, #239,
-#240, #241, #242, #246, #251, #617, #361, #368, #374, #377)</td>
+<td style="text-align: right;">18 (#648, #649, #643, #646, #238, #239,
+#240, #241, #242, #246, #251, #617, #361, #368, #374, #377, #362,
+#392)</td>
 </tr>
 <tr>
 <td>🚧 In progress</td>
-<td style="text-align: right;">4 (verbosity foundation partials: #367
-§5, #369 §7, #375 §13, #376 §14 — core landed, UI/engine halves
-open)</td>
+<td style="text-align: right;">14 (verbosity partials, core landed/UI
+pending: #367 §5, #369 §7, #375 §13, #376 §14, #371 §9, #372 §10, #373
+§11, #386 §24, #387 §25, #388 §26, #389 §27, #391 §29, #393 §31, #397
+§35)</td>
 </tr>
 <tr>
 <td>🧹 Resolved (bookkeeping)</td>
@@ -238,7 +240,7 @@ in docs)</td>
 </tr>
 <tr>
 <td>⬜ Planned</td>
-<td style="text-align: right;">232 (incl. new #663 — Speech S5 offline
+<td style="text-align: right;">220 (incl. new #663 — Speech S5 offline
 voice commands)</td>
 </tr>
 <tr>
@@ -248,15 +250,20 @@ voice commands)</td>
 </tbody>
 </table>
 <blockquote>
-<p><strong>Wave 2 (Verbosity) started — core foundation
-shipped.</strong> Sub-PR 1.1 (#361) landed the wx-free
-<code>quill/core/verbosity/</code> package (channels, tokens + 12
-filters, strict parser/validator, profiles + CustomProfile, the 34-verb
-§15 catalog + registry, data-order model, JSON schemas); 102 tests,
-parser coverage 99%. This closes the fully-delivered spec sections §6
-(#368), §12 (#374), and §15 (#377); §5/§7/§13/§14 (#367/#369/#375/#376)
-are partially done (core in, UI/engine pending). Next: sub-PR 1.2
-(engine, Quiet/Meeting, history, explain) — #362.</p>
+<p><strong>Wave 2 (Verbosity) — foundation + engine shipped (sub-PRs 1.1
+and 1.2).</strong> 1.1 (#361) landed the pure-domain foundation; 1.2
+(#362) added the routing <strong>engine</strong>
+(<code>engine.py</code>) plus Quiet/Meeting modes, the undo stack,
+mastery, announcement history, the explanation trace, Safe Mode + scoped
+resets, feedback tuning, task-profile suggestions, profile
+import/export, and atomic <code>verbosity_custom.json</code> storage —
+all wx-free, 180 verbosity tests, engine coverage 96%. The engine is
+reachable from the assistant-panel and AI-Hub announce paths via a no-op
+passthrough. Fully closed: §6 #368, §12 #374, §15 #377, §30 #392.
+Everything else listed under "In progress" has its core in and its
+chord/badge/dialog half pending. <strong>Next: sub-PR 1.3 — QVP packs,
+template library, preview (#363); then 1.4 UI (#364), 1.5 call-site
+migration (#365).</strong></p>
 </blockquote>
 <blockquote>
 <p><strong>#246 completed via back-translation (source-to-BRF).</strong>
@@ -597,6 +604,21 @@ custom filters)</td>
 + VerbRegistry)</td>
 <td>✅</td>
 </tr>
+<tr>
+<td style="text-align: right;">362</td>
+<td>Verbosity Sub-PR 1.2 — routing engine + Quiet/Meeting/undo, mastery,
+history, explain, safe mode, feedback, task profiles, import/export,
+storage; engine reachable via no-op passthrough; 180 tests, engine cov
+96%</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">392</td>
+<td>Verbosity §30 — profile import/export
+(<code>.quill-verbosity-profile.json</code>); data-only, schema-checked,
+no code-execution path</td>
+<td>✅</td>
+</tr>
 </tbody>
 </table>
 <h2 id="out-of-scope">Out of scope</h2>
@@ -772,9 +794,10 @@ tests)</td>
 <tr>
 <td style="text-align: right;">362</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">✅</td>
 <td>[Verbosity] Sub-PR 1.2 — Engine, quiet, meeting, mastery, history,
-explain, safe mode</td>
+explain, safe mode (shipped: engine.py + 10 companion modules, 180
+tests, engine cov 96%)</td>
 </tr>
 <tr>
 <td style="text-align: right;">363</td>
@@ -835,20 +858,23 @@ routing + floor shipped; per-channel prefs UI pending</td>
 <tr>
 <td style="text-align: right;">371</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
-<td>Verbosity: §9 Quiet Mode (controller + chords)</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §9 Quiet Mode (controller + chords) — controller +
+phrasing shipped; chord/badge UI pending</td>
 </tr>
 <tr>
 <td style="text-align: right;">372</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
-<td>Verbosity: §10 Meeting Mode (controller + chords)</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §10 Meeting Mode (controller + chords) — controller
+shipped; chord/badge UI pending</td>
 </tr>
 <tr>
 <td style="text-align: right;">373</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
-<td>Verbosity: §11 Quiet Undo (Ctrl+Shift+Z)</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §11 Quiet Undo (Ctrl+Shift+Z) — bounded undo stack
+shipped; chord binding pending</td>
 </tr>
 <tr>
 <td style="text-align: right;">374</td>
@@ -929,28 +955,32 @@ announce)</td>
 <tr>
 <td style="text-align: right;">386</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
-<td>Verbosity: §24 Announcement history (record + replay + filter)</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §24 Announcement history (record + replay + filter) —
+history.py (record/filter/redact) shipped; chords + viewer UI
+pending</td>
 </tr>
 <tr>
 <td style="text-align: right;">387</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
-<td>Verbosity: §25 Why did QUILL say that? (explanation trace)</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §25 Why did QUILL say that? (explanation trace) —
+ExplanationTrace + to_text() shipped; Explain command UI pending</td>
 </tr>
 <tr>
 <td style="text-align: right;">388</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
-<td>Verbosity: §26 Too Much / Too Little / Just Right (feedback
-tuning)</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §26 Too Much / Too Little / Just Right (feedback tuning)
+— FeedbackStore + suggestion shipped; chords pending</td>
 </tr>
 <tr>
 <td style="text-align: right;">389</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">🚧</td>
 <td>Verbosity: §27 Mastery-based step down (per-verb threshold +
-10-second timeout)</td>
+10-second timeout) — MasteryTracker shipped; offer dialog/timer UI
+pending</td>
 </tr>
 <tr>
 <td style="text-align: right;">390</td>
@@ -962,23 +992,26 @@ tuning)</td>
 <tr>
 <td style="text-align: right;">391</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">🚧</td>
 <td>Verbosity: §29 Safe Mode and Reset (per-verb / per-chord / profile /
-QVP)</td>
+QVP) — VerbositySafeMode + env detection + scoped resets shipped; engine
+integration + UI pending</td>
 </tr>
 <tr>
 <td style="text-align: right;">392</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">✅</td>
 <td>Verbosity: §30 Import / Export
-(<code>.quill-verbosity-profile.json</code>)</td>
+(<code>.quill-verbosity-profile.json</code>) — data-only,
+schema-checked, no-exec, round-trip tested</td>
 </tr>
 <tr>
 <td style="text-align: right;">393</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">🚧</td>
 <td>Verbosity: §31 Task-aware profiles (Markdown / Code / Braille /
-Review / etc.)</td>
+Review / etc.) — TaskProfileSuggester (default off) shipped; file-open
+suggestion UI pending</td>
 </tr>
 <tr>
 <td style="text-align: right;">394</td>
@@ -1001,9 +1034,10 @@ Review / etc.)</td>
 <tr>
 <td style="text-align: right;">397</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
-<td>Verbosity: §35 Storage (VerbositySettings +
-verbosity_custom.json)</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §35 Storage (VerbositySettings + verbosity_custom.json) —
+atomic verbosity_custom.json read/write shipped; the 16
+VerbositySettings fields deferred to #365</td>
 </tr>
 <tr>
 <td style="text-align: right;">398</td>

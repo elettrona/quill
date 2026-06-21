@@ -109,7 +109,13 @@ class AIHubDialog:
 
         self._wx = wx
         self._show_modal = show_modal_dialog
-        self._announce = announce or (lambda _m: None)
+        # Route announcements through the verbosity engine's legacy passthrough
+        # (a no-op for the user today) so engine.speak() is reachable from this
+        # call site as the verbosity rebuild migrates paths onto it.
+        from quill.core.verbosity.engine import speak_legacy_text
+
+        _base_announce = announce or (lambda _m: None)
+        self._announce = lambda message: _base_announce(speak_legacy_text(message))
         self._open_advanced = open_advanced_connection
 
         from quill.core.assistant_ai import (

@@ -19,6 +19,23 @@ from quill.core.verbosity.channels import (
     route_channels,
 )
 from quill.core.verbosity.data_order import DataOrder
+from quill.core.verbosity.engine import (
+    RenderedAnnouncement,
+    VerbosityEngine,
+    speak_legacy_text,
+)
+from quill.core.verbosity.explain import ExplanationTrace
+from quill.core.verbosity.feedback_tuning import FeedbackSignal, FeedbackStore
+from quill.core.verbosity.history import AnnouncementHistory, HistoryEntry
+from quill.core.verbosity.import_export import (
+    ProfileImportError,
+    export_profile,
+    from_json,
+    import_profile,
+    to_json,
+)
+from quill.core.verbosity.mastery import MasteryTracker
+from quill.core.verbosity.meeting import MeetingMode
 from quill.core.verbosity.parser import (
     ParseResult,
     TemplateError,
@@ -41,12 +58,27 @@ from quill.core.verbosity.profiles import (
     active_profile,
     profile_for_announcement_verbosity,
 )
+from quill.core.verbosity.quiet import QuietMode, VerbosityUndoStack
 from quill.core.verbosity.registry import (
     DuplicateVerbError,
     VerbRegistry,
     default_registry,
 )
+from quill.core.verbosity.safe_mode import (
+    VerbositySafeMode,
+    reset_chord,
+    reset_verb,
+    restore_builtin,
+)
 from quill.core.verbosity.schema import SCHEMAS, schema_for
+from quill.core.verbosity.storage import (
+    LoadResult,
+    VerbosityCustomData,
+    load_custom,
+    save_custom,
+    verbosity_custom_path,
+)
+from quill.core.verbosity.task_profiles import TaskProfileSuggester
 from quill.core.verbosity.tokens import (
     FILTERS,
     FilterSpec,
@@ -105,4 +137,38 @@ __all__ = [
     # schema
     "SCHEMAS",
     "schema_for",
+    # engine
+    "VerbosityEngine",
+    "RenderedAnnouncement",
+    "speak_legacy_text",
+    "ExplanationTrace",
+    # runtime modes
+    "QuietMode",
+    "VerbosityUndoStack",
+    "MeetingMode",
+    # mastery / feedback / history
+    "MasteryTracker",
+    "FeedbackStore",
+    "FeedbackSignal",
+    "AnnouncementHistory",
+    "HistoryEntry",
+    # safe mode
+    "VerbositySafeMode",
+    "reset_verb",
+    "reset_chord",
+    "restore_builtin",
+    # task profiles
+    "TaskProfileSuggester",
+    # import / export
+    "export_profile",
+    "import_profile",
+    "to_json",
+    "from_json",
+    "ProfileImportError",
+    # storage
+    "VerbosityCustomData",
+    "LoadResult",
+    "load_custom",
+    "save_custom",
+    "verbosity_custom_path",
 ]
