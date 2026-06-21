@@ -27,11 +27,11 @@ closed won't-do.
 
 | Status | Count |
 | --- | ---: |
-| ✅ Shipped | 18 (#648, #649, #643, #646, #238, #239, #240, #241, #242, #246, #251, #617, #361, #368, #374, #377, #362, #392) |
-| 🚧 In progress | 14 (verbosity partials, core landed/UI pending: #367 §5, #369 §7, #375 §13, #376 §14, #371 §9, #372 §10, #373 §11, #386 §24, #387 §25, #388 §26, #389 §27, #391 §29, #393 §31, #397 §35) |
+| ✅ Shipped | 20 (#648, #649, #643, #646, #238, #239, #240, #241, #242, #246, #251, #617, #361, #368, #374, #377, #362, #392, #363, #382) |
+| 🚧 In progress | 17 (verbosity partials, core landed/UI pending: #367 §5, #369 §7, #375 §13, #376 §14, #371 §9, #372 §10, #373 §11, #386 §24, #387 §25, #388 §26, #389 §27, #391 §29, #393 §31, #397 §35, #381 §19, #383 §21, #385 §23) |
 | 🧹 Resolved (bookkeeping) | 2 (#600, #601 — braille design captured in docs) |
 | ❌ Out of scope | 3 (Linux/Unix — #520, #565, #589) |
-| ⬜ Planned | 220 (incl. new #663 — Speech S5 offline voice commands) |
+| ⬜ Planned | 215 (incl. new #663 — Speech S5 offline voice commands) |
 | **Total tracked** | **257** |
 
 > **Wave 2 (Verbosity) — foundation + engine shipped (sub-PRs 1.1 and 1.2).**
@@ -40,11 +40,15 @@ closed won't-do.
 > announcement history, the explanation trace, Safe Mode + scoped resets,
 > feedback tuning, task-profile suggestions, profile import/export, and atomic
 > `verbosity_custom.json` storage — all wx-free, 180 verbosity tests, engine
-> coverage 96%. The engine is reachable from the assistant-panel and AI-Hub
+> coverage 96%. 1.3 (#363) added QVP packs (qvp.py + qvp.json, hand-validated,
+> no code-exec), the template library (library.py), and the scenario preview
+> renderer (preview.py) with golden snapshots under tests/golden/verbosity/ — 220
+> verbosity tests. The engine is reachable from the assistant-panel and AI-Hub
 > announce paths via a no-op passthrough. Fully closed: §6 #368, §12 #374, §15
-> #377, §30 #392. Everything else listed under "In progress" has its core in and
-> its chord/badge/dialog half pending. **Next: sub-PR 1.3 — QVP packs, template
-> library, preview (#363); then 1.4 UI (#364), 1.5 call-site migration (#365).**
+> #377, §30 #392, §20 #382. Everything under "In progress" has its core in and
+> its chord/badge/dialog half pending. **Next: sub-PR 1.4 — the wxPython UI
+> (prefs panel, token editor, library, history, preview lab, about) (#364); then
+> 1.5 call-site migration + the 16 VerbositySettings fields (#365), 1.6 (#366).**
 
 > **#246 completed via back-translation (source-to-BRF).** The deliverable is
 > braille→text **back-translation**, now selection-aware (Braille > Translation >
@@ -126,6 +130,8 @@ closed won't-do.
 | 377 | Verbosity §15 — Verb registry (VerbSpec + Severity + 34-verb catalog + VerbRegistry) | ✅ |
 | 362 | Verbosity Sub-PR 1.2 — routing engine + Quiet/Meeting/undo, mastery, history, explain, safe mode, feedback, task profiles, import/export, storage; engine reachable via no-op passthrough; 180 tests, engine cov 96% | ✅ |
 | 392 | Verbosity §30 — profile import/export (`.quill-verbosity-profile.json`); data-only, schema-checked, no code-execution path | ✅ |
+| 363 | Verbosity Sub-PR 1.3 — QVP pack loader/validator/install flow (qvp.py + qvp.json), template library (library.py), scenario preview (preview.py); golden tests; 220 verbosity tests | ✅ |
+| 382 | Verbosity §20 — `.qvp.json` format + hand-validating loader (no jsonschema runtime dep; no code-execution path) | ✅ |
 
 ## Out of scope
 
@@ -164,7 +170,7 @@ closed won't-do.
 | 271 | P0 | ⬜ | [P0] Verbosity rebuild: implement per-verb token registry from docs/planning/verbosity.md |
 | 361 | P0 | ✅ | [Verbosity] Sub-PR 1.1 — Core foundation: channels, profiles, tokens, parser (shipped: `quill/core/verbosity/`, 102 tests) |
 | 362 | P0 | ✅ | [Verbosity] Sub-PR 1.2 — Engine, quiet, meeting, mastery, history, explain, safe mode (shipped: engine.py + 10 companion modules, 180 tests, engine cov 96%) |
-| 363 | P0 | ⬜ | [Verbosity] Sub-PR 1.3 — QVP, library, preview, schema validation |
+| 363 | P0 | ✅ | [Verbosity] Sub-PR 1.3 — QVP, library, preview, schema validation (shipped: qvp.py + qvp.json + library.py + preview.py, golden tests, 220 verbosity tests) |
 | 364 | P0 | ⬜ | [Verbosity] Sub-PR 1.4 — UI: preferences, token editor, library, history, preview lab, about dialog |
 | 365 | P0 | ⬜ | [Verbosity] Sub-PR 1.5 — Engine call-site migration, keymap, main_frame wiring |
 | 366 | P0 | ⬜ | [Verbosity] Sub-PR 1.6 — Section 53 addendum (100-item UX polish) |
@@ -182,11 +188,11 @@ closed won't-do.
 | 378 | P0 | ⬜ | Verbosity: §16 Per-verb preferences UI |
 | 379 | P0 | ⬜ | Verbosity: §17 Verbosity Preferences UI (top-level panel) |
 | 380 | P0 | ⬜ | Verbosity: §18 Token editor UI (Simple + Advanced) |
-| 381 | P0 | ⬜ | Verbosity: §19 Templates library (CRUD + cross-verb behavior) |
-| 382 | P0 | ⬜ | Verbosity: §20 QVP file format (`.qvp.json` schema) |
-| 383 | P0 | ⬜ | Verbosity: §21 QVP install flow (file picker + validate + announce) |
+| 381 | P0 | 🚧 | Verbosity: §19 Templates library (CRUD + cross-verb behavior) — TemplateLibrary (save/rename/delete + cross-verb apply) shipped; list/confirm/persist UI pending |
+| 382 | P0 | ✅ | Verbosity: §20 QVP file format (`.qvp.json` schema) — qvp.json + hand-validating loader, no code-exec path |
+| 383 | P0 | 🚧 | Verbosity: §21 QVP install flow (file picker + validate + announce) — install_pack() runs steps 2-12 with QVPInstallResult + spoken sequence (golden-tested); file picker + modal install dialog pending (#364) |
 | 384 | P0 | ⬜ | Verbosity: §22 Profile preview on switch (replay last 3) |
-| 385 | P0 | ⬜ | Verbosity: §23 Preview Lab (scenario-based renderer) |
+| 385 | P0 | 🚧 | Verbosity: §23 Preview Lab (scenario-based renderer) — preview.py renderer + 14 scenarios + golden tests shipped; the side-by-side Lab dialog pending (#364) |
 | 386 | P0 | 🚧 | Verbosity: §24 Announcement history (record + replay + filter) — history.py (record/filter/redact) shipped; chords + viewer UI pending |
 | 387 | P0 | 🚧 | Verbosity: §25 Why did QUILL say that? (explanation trace) — ExplanationTrace + to_text() shipped; Explain command UI pending |
 | 388 | P0 | 🚧 | Verbosity: §26 Too Much / Too Little / Just Right (feedback tuning) — FeedbackStore + suggestion shipped; chords pending |

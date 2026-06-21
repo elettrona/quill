@@ -117,10 +117,13 @@ def test_severities_are_valid() -> None:
 
 def test_schema_registry_complete() -> None:
     assert set(SCHEMAS) == {"settings", "custom_profile", "qvp", "profile_io"}
-    assert schema_for("qvp")["required"]  # QVP requires its metadata fields
-    assert "name" in schema_for("qvp")["required"]
+    # The QVP schema is the canonical .qvp.json (§20): nested pack metadata.
+    required = schema_for("qvp")["required"]
+    assert "pack" in required and "templates" in required
+    assert "name" in schema_for("qvp")["properties"]["pack"]["required"]
 
 
 def test_qvp_schema_forbids_unknown_fields() -> None:
     # Data-only contract: no room for an executable/code field to sneak in.
     assert schema_for("qvp")["additionalProperties"] is False
+    assert schema_for("qvp")["properties"]["kind"]["const"] == "quill-verbosity-pack"

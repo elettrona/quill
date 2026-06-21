@@ -3366,6 +3366,19 @@ Sub-PR 1.2 adds the routing layer on top of the foundation, still wx-free and in
 
 Tested by 11 more `tests/unit/core/test_verbosity_*.py` modules (180 verbosity cases total; engine coverage 96%). The 16 `VerbositySettings` fields and the chord/badge/dialog surfaces are deferred to the call-site-migration and UI sub-PRs.
 
+#### 5.91.6 Verbosity rebuild — QVP packs, library, and preview (sub-PR 1.3)
+
+Sub-PR 1.3 adds the shareable-pack and preview core, still wx-free.
+
+| Module | Responsibility |
+|---|---|
+| `quill/core/schemas/qvp.json` | The canonical `.qvp.json` schema (§20): nested `pack` metadata, a `templates` array, `kind` fixed to `quill-verbosity-pack`, `additionalProperties:false`. For humans/tools — validation is by hand (no jsonschema runtime dep). |
+| `qvp.py` | Loads and validates packs by hand (structured errors, never executing pack content — no `exec`/`eval`/`__import__`, test-asserted) and runs the §21 install flow: JSON → schema → kind → `min_quill_version` gate → metadata → unique template ids → namespace-collision check → dependency check (missing deps warn) → validate each template against its target verb → install → announce. Returns `QVPInstallResult(accepted, rejected_templates, warnings, spoken_sequence, errors)`. |
+| `library.py` | `TemplateLibrary` — a flat collection across built-in / user / QVP sources with save / rename / delete CRUD (read-only built-ins and QVP entries) and cross-verb `apply()`, which strips tokens the target verb doesn't track and reports them. |
+| `preview.py` | The fourteen built-in Preview Lab scenarios and `preview_scenario` / `preview_all`, which render each through a `VerbosityEngine` and surface per-channel output plus profile, template source, channel mix, and suppressed content. |
+
+Tested by `test_verbosity_qvp.py`, `test_verbosity_library.py`, `test_verbosity_preview.py`, and golden snapshots under `tests/golden/verbosity/` (220 verbosity cases total; qvp coverage 95%). The Library CRUD UI, the QVP install dialog, and the Preview Lab dialog are deferred to the UI sub-PR.
+
 ---
 
 ## 6. Spell checking deep dive

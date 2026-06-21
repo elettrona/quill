@@ -1,10 +1,12 @@
-"""QUILL verbosity system — pure-domain foundation (verbosity sub-PR 1.1).
+"""QUILL verbosity system — pure-domain core (wx-free).
 
-This package holds the wx-free building blocks of the verbosity rebuild:
-channels, profiles, the token system and strict template parser/validator, the
-data-ordering model, the verb catalog and registry, and the JSON data schemas.
-The routing engine, runtime modes (Quiet/Meeting), history, and UI build on top
-of these in later sub-PRs.
+This package holds the building blocks of the verbosity rebuild: channels,
+profiles, the token system and strict template parser/validator, the data-order
+model, the verb catalog and registry, JSON data schemas, the routing engine and
+its runtime modes (Quiet/Meeting, mastery, history, explain, safe mode, feedback,
+task profiles), profile import/export, custom-data storage, and the QVP pack
+loader, template library, and scenario preview renderer. The wxPython UI builds
+on these in a later sub-PR.
 
 See ``docs/planning/verbosity-system.md`` for the full design.
 """
@@ -34,6 +36,13 @@ from quill.core.verbosity.import_export import (
     import_profile,
     to_json,
 )
+from quill.core.verbosity.library import (
+    ApplyResult,
+    LibraryTemplate,
+    TemplateLibrary,
+    TemplateSource,
+    apply_template_to_verb,
+)
 from quill.core.verbosity.mastery import MasteryTracker
 from quill.core.verbosity.meeting import MeetingMode
 from quill.core.verbosity.parser import (
@@ -44,6 +53,13 @@ from quill.core.verbosity.parser import (
     parse,
     render_template,
     validate,
+)
+from quill.core.verbosity.preview import (
+    BUILTIN_SCENARIOS,
+    PreviewOutput,
+    Scenario,
+    preview_all,
+    preview_scenario,
 )
 from quill.core.verbosity.profiles import (
     BEGINNER,
@@ -59,6 +75,18 @@ from quill.core.verbosity.profiles import (
     profile_for_announcement_verbosity,
 )
 from quill.core.verbosity.quiet import QuietMode, VerbosityUndoStack
+from quill.core.verbosity.qvp import (
+    KIND as QVP_KIND,
+)
+from quill.core.verbosity.qvp import (
+    QVPError,
+    QVPInstallResult,
+    QVPPack,
+    QVPTemplate,
+    install_pack,
+    load_pack,
+    parse_pack,
+)
 from quill.core.verbosity.registry import (
     DuplicateVerbError,
     VerbRegistry,
@@ -171,4 +199,25 @@ __all__ = [
     "load_custom",
     "save_custom",
     "verbosity_custom_path",
+    # QVP packs
+    "QVP_KIND",
+    "QVPPack",
+    "QVPTemplate",
+    "QVPInstallResult",
+    "QVPError",
+    "parse_pack",
+    "load_pack",
+    "install_pack",
+    # template library
+    "TemplateLibrary",
+    "LibraryTemplate",
+    "TemplateSource",
+    "ApplyResult",
+    "apply_template_to_verb",
+    # preview lab
+    "Scenario",
+    "PreviewOutput",
+    "BUILTIN_SCENARIOS",
+    "preview_scenario",
+    "preview_all",
 ]

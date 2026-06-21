@@ -218,16 +218,16 @@ won't-do.</p>
 <tbody>
 <tr>
 <td>✅ Shipped</td>
-<td style="text-align: right;">18 (#648, #649, #643, #646, #238, #239,
-#240, #241, #242, #246, #251, #617, #361, #368, #374, #377, #362,
-#392)</td>
+<td style="text-align: right;">20 (#648, #649, #643, #646, #238, #239,
+#240, #241, #242, #246, #251, #617, #361, #368, #374, #377, #362, #392,
+#363, #382)</td>
 </tr>
 <tr>
 <td>🚧 In progress</td>
-<td style="text-align: right;">14 (verbosity partials, core landed/UI
+<td style="text-align: right;">17 (verbosity partials, core landed/UI
 pending: #367 §5, #369 §7, #375 §13, #376 §14, #371 §9, #372 §10, #373
 §11, #386 §24, #387 §25, #388 §26, #389 §27, #391 §29, #393 §31, #397
-§35)</td>
+§35, #381 §19, #383 §21, #385 §23)</td>
 </tr>
 <tr>
 <td>🧹 Resolved (bookkeeping)</td>
@@ -240,7 +240,7 @@ in docs)</td>
 </tr>
 <tr>
 <td>⬜ Planned</td>
-<td style="text-align: right;">220 (incl. new #663 — Speech S5 offline
+<td style="text-align: right;">215 (incl. new #663 — Speech S5 offline
 voice commands)</td>
 </tr>
 <tr>
@@ -257,13 +257,17 @@ and 1.2).</strong> 1.1 (#361) landed the pure-domain foundation; 1.2
 mastery, announcement history, the explanation trace, Safe Mode + scoped
 resets, feedback tuning, task-profile suggestions, profile
 import/export, and atomic <code>verbosity_custom.json</code> storage —
-all wx-free, 180 verbosity tests, engine coverage 96%. The engine is
-reachable from the assistant-panel and AI-Hub announce paths via a no-op
-passthrough. Fully closed: §6 #368, §12 #374, §15 #377, §30 #392.
-Everything else listed under "In progress" has its core in and its
-chord/badge/dialog half pending. <strong>Next: sub-PR 1.3 — QVP packs,
-template library, preview (#363); then 1.4 UI (#364), 1.5 call-site
-migration (#365).</strong></p>
+all wx-free, 180 verbosity tests, engine coverage 96%. 1.3 (#363) added
+QVP packs (qvp.py + qvp.json, hand-validated, no code-exec), the
+template library (library.py), and the scenario preview renderer
+(preview.py) with golden snapshots under tests/golden/verbosity/ — 220
+verbosity tests. The engine is reachable from the assistant-panel and
+AI-Hub announce paths via a no-op passthrough. Fully closed: §6 #368,
+§12 #374, §15 #377, §30 #392, §20 #382. Everything under "In progress"
+has its core in and its chord/badge/dialog half pending. <strong>Next:
+sub-PR 1.4 — the wxPython UI (prefs panel, token editor, library,
+history, preview lab, about) (#364); then 1.5 call-site migration + the
+16 VerbositySettings fields (#365), 1.6 (#366).</strong></p>
 </blockquote>
 <blockquote>
 <p><strong>#246 completed via back-translation (source-to-BRF).</strong>
@@ -619,6 +623,19 @@ storage; engine reachable via no-op passthrough; 180 tests, engine cov
 no code-execution path</td>
 <td>✅</td>
 </tr>
+<tr>
+<td style="text-align: right;">363</td>
+<td>Verbosity Sub-PR 1.3 — QVP pack loader/validator/install flow
+(qvp.py + qvp.json), template library (library.py), scenario preview
+(preview.py); golden tests; 220 verbosity tests</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">382</td>
+<td>Verbosity §20 — <code>.qvp.json</code> format + hand-validating
+loader (no jsonschema runtime dep; no code-execution path)</td>
+<td>✅</td>
+</tr>
 </tbody>
 </table>
 <h2 id="out-of-scope">Out of scope</h2>
@@ -802,9 +819,10 @@ tests, engine cov 96%)</td>
 <tr>
 <td style="text-align: right;">363</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
-<td>[Verbosity] Sub-PR 1.3 — QVP, library, preview, schema
-validation</td>
+<td style="text-align: center;">✅</td>
+<td>[Verbosity] Sub-PR 1.3 — QVP, library, preview, schema validation
+(shipped: qvp.py + qvp.json + library.py + preview.py, golden tests, 220
+verbosity tests)</td>
 </tr>
 <tr>
 <td style="text-align: right;">364</td>
@@ -924,21 +942,25 @@ shipped; editor UI + persistence pending</td>
 <tr>
 <td style="text-align: right;">381</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
-<td>Verbosity: §19 Templates library (CRUD + cross-verb behavior)</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §19 Templates library (CRUD + cross-verb behavior) —
+TemplateLibrary (save/rename/delete + cross-verb apply) shipped;
+list/confirm/persist UI pending</td>
 </tr>
 <tr>
 <td style="text-align: right;">382</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
-<td>Verbosity: §20 QVP file format (<code>.qvp.json</code> schema)</td>
+<td style="text-align: center;">✅</td>
+<td>Verbosity: §20 QVP file format (<code>.qvp.json</code> schema) —
+qvp.json + hand-validating loader, no code-exec path</td>
 </tr>
 <tr>
 <td style="text-align: right;">383</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
-<td>Verbosity: §21 QVP install flow (file picker + validate +
-announce)</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §21 QVP install flow (file picker + validate + announce)
+— install_pack() runs steps 2-12 with QVPInstallResult + spoken sequence
+(golden-tested); file picker + modal install dialog pending (#364)</td>
 </tr>
 <tr>
 <td style="text-align: right;">384</td>
@@ -949,8 +971,10 @@ announce)</td>
 <tr>
 <td style="text-align: right;">385</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
-<td>Verbosity: §23 Preview Lab (scenario-based renderer)</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §23 Preview Lab (scenario-based renderer) — preview.py
+renderer + 14 scenarios + golden tests shipped; the side-by-side Lab
+dialog pending (#364)</td>
 </tr>
 <tr>
 <td style="text-align: right;">386</td>

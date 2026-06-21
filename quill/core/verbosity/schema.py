@@ -11,6 +11,8 @@ Pure and wx-free.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 __all__ = [
@@ -67,28 +69,24 @@ CUSTOM_PROFILE_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
 }
 
-QVP_SCHEMA: dict[str, Any] = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "QUILL Verbosity Pack",
-    "type": "object",
-    "required": ["name", "author", "description", "version", "license", "templates"],
-    "properties": {
-        "name": {"type": "string", "minLength": 1},
-        "author": {"type": "string", "minLength": 1},
-        "description": {"type": "string"},
-        "version": {"type": "string", "minLength": 1},
-        "license": {"type": "string", "minLength": 1},
-        "min_quill_version": {"type": "string"},
-        "preview": {"type": "string"},
-        "tags": {"type": "array", "items": {"type": "string"}},
-        "dependencies": {"type": "array", "items": {"type": "string"}},
-        "templates": {
-            "type": "object",
-            "additionalProperties": {"type": "string"},
-        },
-    },
-    "additionalProperties": False,
-}
+
+def _load_qvp_schema() -> dict[str, Any]:
+    """Load the canonical QVP schema from ``quill/core/schemas/qvp.json``.
+
+    The ``.qvp.json`` format is defined once, in that file, and validated by hand
+    in :mod:`quill.core.verbosity.qvp` (QUILL ships no jsonschema runtime
+    dependency). Exposing it here keeps a single source of truth.
+    """
+    schema_path = Path(__file__).resolve().parents[1] / "schemas" / "qvp.json"
+    try:
+        loaded = json.loads(schema_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):  # pragma: no cover - shipped asset
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+#: The canonical ``.qvp.json`` pack schema (loaded from the shipped JSON file).
+QVP_SCHEMA: dict[str, Any] = _load_qvp_schema()
 
 PROFILE_IO_SCHEMA: dict[str, Any] = {
     "$schema": "http://json-schema.org/draft-07/schema#",
