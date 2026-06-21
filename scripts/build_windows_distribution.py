@@ -147,6 +147,16 @@ def main() -> int:
         help="Optional local Kokoro voices/models directory to bundle under portable\\tools\\speech\\kokoro.",
     )
     parser.add_argument(
+        "--whisper-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Optional local whisper.cpp directory (containing whisper-cli.exe and its "
+            "DLLs) to bundle under portable\\tools\\speech\\whispercpp for the offline "
+            "speech engine (#617). Installed via the 'speechwhisper' component."
+        ),
+    )
+    parser.add_argument(
         "--braille-pack-dir",
         type=Path,
         default=None,
@@ -183,6 +193,7 @@ def main() -> int:
                 "speech/dectalk": args.dectalk_dir,
                 "speech/espeak-ng": args.espeak_dir,
                 "speech/kokoro": args.kokoro_dir,
+                "speech/whispercpp": args.whisper_dir,
             }.items()
             if path is not None
         },

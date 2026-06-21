@@ -57,3 +57,12 @@ def test_describe_models_marks_installed_and_sizes() -> None:
     assert by_id["large-v3"].installed is False
     assert "Not installed" in by_id["large-v3"].label
     assert "3.1 GB download" in by_id["large-v3"].label
+
+
+def test_input_device_round_trip(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(service, "app_data_dir", lambda: tmp_path)
+    assert service.load_input_device() == -1  # default
+    service.save_input_device(3)
+    assert service.load_input_device() == 3
+    service.save_input_device(-1)
+    assert service.load_input_device() == -1

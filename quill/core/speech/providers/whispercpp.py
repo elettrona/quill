@@ -131,16 +131,46 @@ def build_whisper_command(
     return args
 
 
+def engine_search_dirs() -> list[Path]:
+    """QUILL-managed locations where a bundled/downloaded whisper.cpp may live.
+
+    1. ``{QUILL_APP_ROOT}/tools/speech/whispercpp`` — the optional installer
+       component (InnoSetup) / portable bundle, mirroring the DECtalk/Piper layout.
+    2. ``<data>/speech-engine`` — an engine downloaded at runtime.
+    """
+    dirs: list[Path] = []
+    app_root = os.environ.get("QUILL_APP_ROOT", "").strip()
+    if app_root:
+        dirs.append(Path(app_root) / "tools" / "speech" / "whispercpp")
+    dirs.append(models.app_data_dir() / "speech-engine")
+    return dirs
+
+
 def resolve_whisper_executable(configured_path: str | None = None) -> str | None:
     """Find an allowed whisper.cpp executable, or None if not installed.
 
-    A configured path is honored only if its basename is on the allowlist and it
-    exists; otherwise the system PATH is searched for the allowed basenames.
+    Resolution order: a configured path, then the QUILL-managed engine locations
+    (installer component / portable bundle / downloaded engine), then the system
+    PATH. In every case the basename must be on the security allowlist, so QUILL
+    only ever launches a known whisper.cpp executable.
     """
     if configured_path:
         candidate = Path(configured_path)
         if candidate.name.lower() in _ALLOWED_BASENAMES and candidate.is_file():
             return str(candidate)
+    bundled_names = (
+        "whisper-cli.exe",
+        "whisper-cli",
+        "main.exe",
+        "main",
+        "whisper.exe",
+        "whisper",
+    )
+    for directory in engine_search_dirs():
+        for name in bundled_names:
+            probe = directory / name
+            if probe.is_file() and probe.name.lower() in _ALLOWED_BASENAMES:
+                return str(probe)
     for name in ("whisper-cli", "whisper", "main"):
         found = shutil.which(name)
         if found and Path(found).name.lower() in _ALLOWED_BASENAMES:
@@ -181,8 +211,9 @@ class WhisperCppProvider:
             return ProviderInstallStatus(
                 installed=False,
                 detail=(
-                    "The whisper.cpp program was not found. "
-                    "Install it and put whisper-cli on your PATH."
+                    "The offline speech engine is not installed. Re-run the QUILL "
+                    "installer and enable the offline speech engine component, or "
+                    "place whisper-cli under tools/speech/whispercpp."
                 ),
             )
         return ProviderInstallStatus(installed=True, detail=exe)

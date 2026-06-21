@@ -70,6 +70,30 @@ def test_resolve_executable_rejects_disallowed_basename(tmp_path: Path) -> None:
     assert whispercpp.resolve_whisper_executable(str(evil)) is None
 
 
+def test_resolve_executable_finds_bundled_under_app_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(whispercpp.shutil, "which", lambda _name: None)
+    bundled = tmp_path / "app" / "tools" / "speech" / "whispercpp"
+    bundled.mkdir(parents=True)
+    exe = bundled / "whisper-cli.exe"
+    exe.write_text("", encoding="utf-8")
+    monkeypatch.setenv("QUILL_APP_ROOT", str(tmp_path / "app"))
+    assert whispercpp.resolve_whisper_executable() == str(exe)
+
+
+def test_resolve_executable_finds_downloaded_engine(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(whispercpp.shutil, "which", lambda _name: None)
+    monkeypatch.delenv("QUILL_APP_ROOT", raising=False)
+    engine_dir = tmp_path / "speech-engine"
+    engine_dir.mkdir(parents=True)
+    exe = engine_dir / "whisper-cli"
+    exe.write_text("", encoding="utf-8")
+    assert whispercpp.resolve_whisper_executable() == str(exe)
+
+
 def test_resolve_executable_uses_path(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         whispercpp.shutil,

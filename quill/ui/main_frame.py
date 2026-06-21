@@ -3351,6 +3351,7 @@ class MainFrame(
         self._register_power_tools_commands()
         self._register_quillins_commands()
         self._register_braille_commands()
+        self._register_speech_commands()
 
     def _apply_accelerators(self) -> None:
         wx = self._wx

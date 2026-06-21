@@ -101,6 +101,7 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "tools.read_aloud_start_pause": "Ctrl+Shift+Grave, R",  # §10.8.2: P→R
     "tools.read_aloud_stop": "Ctrl+Shift+Grave, Shift+R",  # §10.8.2: Shift+P→Shift+R
     "tools.dictation_toggle": "Ctrl+Shift+Grave, D",
+    "tools.speech_dictate": "Ctrl+Shift+Grave, Shift+D",
     "tools.describe_image": "Ctrl+Shift+Grave, I",
     "tools.document_intake_report": "Ctrl+Shift+I",
     # #357 keymap consolidation: AI commands move from inline F7/Shift+F7/F8/

@@ -724,12 +724,24 @@ and without uploading your audio. These commands live under **AI > Speech**:
   transcribes it locally, then opens the result as an editable draft document.
   The work runs in the background so you can keep editing; QUILL announces when it
   is done and how many words were produced.
+- **Generate Captions (Offline)...** transcribes a file with timestamps and saves
+  the result as **SRT** or **VTT** caption files.
+- **Dictate (Offline)** speaks straight into your document. Run it (or press
+  **QUILL Key + Shift + D**) to start: QUILL plays a distinct start tone and shows
+  "Dictation listening" in the status bar. Run it again to stop; QUILL plays a stop
+  tone, transcribes what you said in the background, and inserts the text at your
+  cursor as a single undoable edit (the status bar shows the word count).
+- **Dictation Microphone...** chooses which microphone dictation uses, or the
+  system default.
 
-Offline transcription requires the free **whisper.cpp** program to be installed
-with `whisper-cli` on your PATH, plus one downloaded model. If no model is
-installed yet, the Transcribe command offers to open Manage Speech Models for you.
-Because automatic transcription is never perfect, the result is always a draft to
-review.
+The offline speech **engine ships with QUILL**: enable the *offline speech engine
+(whisper.cpp)* component in the installer, or place the executable under
+`tools\speech\whispercpp` in a portable copy — you do not need to install anything
+separately or change your PATH. Then download a model from Manage Speech Models.
+Offline **dictation** also needs microphone-capture support (the optional
+`sounddevice` package); if it is missing, QUILL tells you and you can still use
+Windows dictation. Because automatic transcription is never perfect, results are
+always a draft to review.
 
 #### Read Aloud with AI Voice (OpenAI TTS)
 

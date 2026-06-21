@@ -62,6 +62,10 @@ ssh = ["paramiko>=3.4"]
 # a GGUF model (e.g. Phi-4-mini Q4) goes in <app data>/models or QUILL_LLAMA_MODEL.
 ai = ["llama-cpp-python>=0.3.30"]
 dictation = ["SpeechRecognition>=3.16.1"]
+# Offline speech-to-text (#617). The whisper.cpp executable + GGML models are
+# managed out-of-band (AI > Speech > Manage Speech Models); this optional extra
+# adds microphone capture for offline dictate-at-cursor via PortAudio.
+speech = ["sounddevice>=0.4"]
 # Native Windows OCR (OCR-1): a thin pip wheel projecting the Windows.Media.Ocr
 # WinRT APIs that ship inside Windows 10/11. The OCR engine itself is a built-in
 # OS component, so end users install nothing extra — bundling this wheel makes
@@ -213,6 +217,7 @@ module = [
     "enchant",
     "keynote_parser.*",
     "faster_whisper",
+    "sounddevice",
     "kokoro",
     "openpyxl",
     # Optional runtime dependencies that are not installed in the scoped-typing

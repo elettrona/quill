@@ -1275,6 +1275,9 @@ class MenuBuilderMixin:
         self._id_ai_session_browser = wx.NewIdRef()
         self._id_speech_models = wx.NewIdRef()
         self._id_speech_transcribe = wx.NewIdRef()
+        self._id_speech_captions = wx.NewIdRef()
+        self._id_speech_dictate = wx.NewIdRef()
+        self._id_speech_microphone = wx.NewIdRef()
         self._id_ai_connection = wx.NewIdRef()
         self._id_ai_forget_key = wx.NewIdRef()
         self._id_ai_rewrite_selection = wx.NewIdRef()
@@ -1576,6 +1579,18 @@ class MenuBuilderMixin:
             self._menu_label(
                 _("&Transcribe Audio or Video (Offline)..."), "tools.speech_transcribe"
             ),
+        )
+        speech_menu.Append(
+            self._id_speech_captions,
+            self._menu_label(_("Generate &Captions (Offline)..."), "tools.speech_captions"),
+        )
+        speech_menu.Append(
+            self._id_speech_dictate,
+            self._menu_label(_("&Dictate (Offline)"), "tools.speech_dictate"),
+        )
+        speech_menu.Append(
+            self._id_speech_microphone,
+            self._menu_label(_("Dictation &Microphone..."), "tools.speech_microphone"),
         )
         ai_menu.AppendSubMenu(speech_menu, _("&Speech"))
         ai_menu.AppendSeparator()
@@ -2424,6 +2439,19 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.transcribe_audio_offline(),
             id=self._id_speech_transcribe,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.generate_captions_offline(),
+            id=self._id_speech_captions,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.dictate_offline_toggle(), id=self._id_speech_dictate
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.choose_dictation_microphone(),
+            id=self._id_speech_microphone,
         )
         self.frame.Bind(
             wx.EVT_MENU,

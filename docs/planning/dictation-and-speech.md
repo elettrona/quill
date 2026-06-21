@@ -5,10 +5,15 @@
 **Principle:** Bold, offline-first architecture underneath; **simplicity for the user is king** on top.
 
 **Status (2026-06-21):** S0 ✅ (dictation setting made honest), S1 ✅ (offline STT
-foundation — `quill/core/speech/`: provider protocol, formatters, model store,
-registry, catalog), S2 ✅ (whisper.cpp provider + offline file transcription + an
-accessible model manager and Transcribe command under **AI > Speech**, with
-Hugging Face Hub model downloads). Next: S3 (live dictate-at-cursor + captions).
+foundation — `quill/core/speech/`), S2 ✅ (whisper.cpp provider + offline file
+transcription + accessible model manager + Transcribe under **AI > Speech**, with
+Hugging Face Hub model downloads), S3 ✅ (offline **captions** SRT/VTT, **dictate
+at the cursor** push-to-talk with distinct start/stop earcons + status-bar state +
+**QUILL Key + Shift+D** hotkey, **microphone selection**, and the whisper.cpp
+engine made a **distributable installer component** — InnoSetup `speechwhisper` +
+build `--whisper-dir` staging + runtime resolution from `tools/speech/whispercpp`,
+so no manual PATH setup). Mic capture is the optional `quill[speech]` extra.
+Remaining: S4 (Faster Whisper optional provider), S5 (experimental voice commands).
 
 ---
 

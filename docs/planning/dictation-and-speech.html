@@ -188,11 +188,19 @@ reengineering. <strong>Date:</strong> 2026-06-21
 <strong>simplicity for the user is king</strong> on top.</p>
 <p><strong>Status (2026-06-21):</strong> S0 ✅ (dictation setting made
 honest), S1 ✅ (offline STT foundation —
-<code>quill/core/speech/</code>: provider protocol, formatters, model
-store, registry, catalog), S2 ✅ (whisper.cpp provider + offline file
-transcription + an accessible model manager and Transcribe command under
-<strong>AI &gt; Speech</strong>, with Hugging Face Hub model downloads).
-Next: S3 (live dictate-at-cursor + captions).</p>
+<code>quill/core/speech/</code>), S2 ✅ (whisper.cpp provider + offline
+file transcription + accessible model manager + Transcribe under
+<strong>AI &gt; Speech</strong>, with Hugging Face Hub model downloads),
+S3 ✅ (offline <strong>captions</strong> SRT/VTT, <strong>dictate at the
+cursor</strong> push-to-talk with distinct start/stop earcons +
+status-bar state + <strong>QUILL Key + Shift+D</strong> hotkey,
+<strong>microphone selection</strong>, and the whisper.cpp engine made a
+<strong>distributable installer component</strong> — InnoSetup
+<code>speechwhisper</code> + build <code>--whisper-dir</code> staging +
+runtime resolution from <code>tools/speech/whispercpp</code>, so no
+manual PATH setup). Mic capture is the optional
+<code>quill[speech]</code> extra. Remaining: S4 (Faster Whisper optional
+provider), S5 (experimental voice commands).</p>
 <hr />
 <h2 id="1-where-dictation-is-today-grounded-in-code">1. Where dictation
 is today (grounded in code)</h2>

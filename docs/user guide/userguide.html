@@ -1368,13 +1368,29 @@ audio or video file and transcribes it locally, then opens the result as
 an editable draft document. The work runs in the background so you can
 keep editing; QUILL announces when it is done and how many words were
 produced.</li>
+<li><strong>Generate Captions (Offline)...</strong> transcribes a file
+with timestamps and saves the result as <strong>SRT</strong> or
+<strong>VTT</strong> caption files.</li>
+<li><strong>Dictate (Offline)</strong> speaks straight into your
+document. Run it (or press <strong>QUILL Key + Shift + D</strong>) to
+start: QUILL plays a distinct start tone and shows "Dictation listening"
+in the status bar. Run it again to stop; QUILL plays a stop tone,
+transcribes what you said in the background, and inserts the text at
+your cursor as a single undoable edit (the status bar shows the word
+count).</li>
+<li><strong>Dictation Microphone...</strong> chooses which microphone
+dictation uses, or the system default.</li>
 </ul>
-<p>Offline transcription requires the free <strong>whisper.cpp</strong>
-program to be installed with <code>whisper-cli</code> on your PATH, plus
-one downloaded model. If no model is installed yet, the Transcribe
-command offers to open Manage Speech Models for you. Because automatic
-transcription is never perfect, the result is always a draft to
-review.</p>
+<p>The offline speech <strong>engine ships with QUILL</strong>: enable
+the <em>offline speech engine (whisper.cpp)</em> component in the
+installer, or place the executable under
+<code>tools\speech\whispercpp</code> in a portable copy — you do not
+need to install anything separately or change your PATH. Then download a
+model from Manage Speech Models. Offline <strong>dictation</strong> also
+needs microphone-capture support (the optional <code>sounddevice</code>
+package); if it is missing, QUILL tells you and you can still use
+Windows dictation. Because automatic transcription is never perfect,
+results are always a draft to review.</p>
 <h4 id="read-aloud-with-ai-voice-openai-tts">Read Aloud with AI Voice
 (OpenAI TTS)</h4>
 <p><code>AI &gt; Read Selection Aloud (AI Voice)</code> and
