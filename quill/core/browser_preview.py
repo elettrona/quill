@@ -149,7 +149,9 @@ def render_preview_body(text: str, kind: str, dark: bool = False) -> str:
     return _maybe_dark(f"<pre>{html.escape(text)}</pre>", dark)
 
 
-def render_preview_html(title: str, text: str, kind: str, start_anchor: str | None = None) -> str:
+def render_preview_html(
+    title: str, text: str, kind: str, start_anchor: str | None = None, *, live: bool = False
+) -> str:
     body = render_preview_body(text, kind)
     anchor_script = ""
     if start_anchor:
@@ -161,10 +163,11 @@ def render_preview_html(title: str, text: str, kind: str, start_anchor: str | No
             "});"
             "</script>"
         )
+    refresh_tag = '<meta http-equiv="refresh" content="1">' if live else ""
     return (
         '<!doctype html><html><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        '<meta http-equiv="refresh" content="1">'
+        f"{refresh_tag}"
         f"<title>{html.escape(title)}</title>"
         "<style>"
         ":root{color-scheme:light dark;}"

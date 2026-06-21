@@ -405,3 +405,41 @@ utility ever runs.
   string. The detailed braille status command now reads the
   full `Print 7a` form when a continuation letter is present,
   and the BR-013 unit-test suite has no skips remaining.
+
+- **The User Guide and other one-shot pages reloaded every second
+  until you pressed Escape.** Help -> Open User Guide shares its
+  HTML renderer with the live Browser Preview, which intentionally
+  refreshes once a second so an open tab tracks your edits as you
+  type. The User Guide reused the same refresh tag even though
+  nothing in it ever changes, so the tab reloaded forever and stole
+  focus back from wherever you had moved it. One-shot pages (the
+  User Guide and any future static preview) no longer carry the
+  auto-refresh tag; only the live Browser Preview does.
+
+- **The first-run Setup Wizard could reopen on every single launch
+  after an elevated install.** A new install drops a marker file
+  that tells QUILL to show the wizard again even if `%APPDATA%`
+  says it already ran -- needed so a fresh install always gets the
+  wizard. Consuming that marker deletes it, but if QUILL was
+  installed with admin rights into a folder your everyday account
+  can't write to (for example after accepting a UAC prompt during
+  setup), the delete silently failed and the wizard reset itself
+  again on every subsequent launch, reopening forever. QUILL now
+  separately remembers which marker it already consumed, so a
+  delete failure no longer reopens the wizard a second time.
+
+- **The macOS application menu showed "Hide Mac_OS_app" and "Quit
+  Mac_OS_app" instead of QUILL's name.** QUILL never told wxWidgets
+  its application name, so macOS fell back to the name of the
+  running executable for the standard Hide/Quit menu items. The
+  app now sets its name explicitly on startup, so those items read
+  "Hide QUILL" and "Quit QUILL" like every other well-behaved
+  macOS app.
+
+- **Tools -> Open Log Folder failed with "Explorer could not be
+  found" on macOS and Linux.** The folder-reveal helper behind Open
+  Log Folder, View Startup Logs, and Open Diagnostics Folder always
+  shelled out to Windows' `explorer`, which doesn't exist on other
+  platforms. It now opens the system file manager the right way per
+  platform: Explorer on Windows, Finder (`open`/`open -R`) on
+  macOS, and the default file browser via the OS on Linux.

@@ -394,3 +394,61 @@ def test_first_run_defers_tab_creation_until_wizard_returns() -> None:
     assert frame._first_run_watch_folder_prompt is False
     # No startup-task failures were reported by this happy path.
     assert failures == []
+
+
+# ---------------------------------------------------------------------------
+# #44: an undeletable new-install marker must not force the wizard to reopen
+# on every subsequent launch.
+# ---------------------------------------------------------------------------
+
+
+class _UndeletableMarker:
+    """A marker path stand-in whose unlink() always fails, like a marker
+    written into an elevated install directory the running user can't
+    write to."""
+
+    def __init__(self, mtime: float) -> None:
+        self._mtime = mtime
+        self.unlink_attempts = 0
+
+    def exists(self) -> bool:
+        return True
+
+    def stat(self):
+        return type("Stat", (), {"st_mtime": self._mtime})()
+
+    def unlink(self) -> None:
+        self.unlink_attempts += 1
+        raise OSError("Access is denied")
+
+
+def test_undeletable_marker_does_not_reopen_wizard_on_next_launch(monkeypatch, tmp_path) -> None:
+    import quill.core.paths as paths_module
+
+    frame = _build_frame()
+    frame.settings = type("Settings", (), {"setup_wizard_completed": True})()
+    frame.run_startup_wizard = lambda **kwargs: None
+    marker = _UndeletableMarker(mtime=12345.0)
+    monkeypatch.setattr(paths_module, "new_install_marker_path", lambda: marker)
+    monkeypatch.setattr(paths_module, "app_data_dir", lambda: tmp_path)
+
+    saved: list[bool] = []
+    import quill.core.settings as settings_module
+
+    monkeypatch.setattr(
+        settings_module, "save_settings", lambda s: saved.append(s.setup_wizard_completed)
+    )
+
+    # First launch: marker exists and hasn't been consumed before, so the
+    # wizard flag resets even though the delete itself fails.
+    frame._maybe_run_first_run_onboarding()
+    assert marker.unlink_attempts == 1
+    assert saved == [False]
+
+    # Second launch: same undeleted marker, same mtime. Before the fix this
+    # would reset setup_wizard_completed to False again every single launch,
+    # reopening the wizard forever. The sentinel recorded under app_data_dir()
+    # must recognize this marker as already consumed and skip the reset.
+    frame.settings.setup_wizard_completed = True
+    frame._maybe_run_first_run_onboarding()
+    assert saved == [False]  # no second reset recorded

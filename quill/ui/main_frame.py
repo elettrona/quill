@@ -25,6 +25,7 @@ if TYPE_CHECKING:  # imports kept out of cold-start path
     from quill.core.epub import EpubBook, EpubChapter
 
 from quill import __version__, build_info
+from quill.branding import APP_SHORT_NAME
 from quill.core import thesaurus as thesaurus_engine
 from quill.core.a11y_regions import (
     RegionTracker,
@@ -5483,21 +5484,36 @@ class MainFrame(
         self._set_status(f"Closed {closed} tab(s) to the right")
 
     def _reveal_in_explorer(self, path: Path) -> None:
+        # #25: this used to unconditionally shell out to "explorer", which
+        # doesn't exist on macOS/Linux. Mirror _reveal_in_folder's platform
+        # branching instead of assuming Windows.
         import subprocess
 
         try:
             if not path.exists():
                 self._set_status(f"Path no longer exists: {path}")
                 return
-            if path.is_dir():
-                subprocess.Popen(["explorer", str(path)])  # noqa: S603,S607
-                self._set_status(f"Opened {path.name} folder in Explorer")
-                return
-            # /select, highlights the file in Windows Explorer.
-            subprocess.Popen(["explorer", f"/select,{path}"])  # noqa: S603,S607
-            self._set_status(f"Revealing {path.name} in Explorer")
+            if sys.platform.startswith("win"):
+                if path.is_dir():
+                    subprocess.Popen(["explorer", str(path)])  # noqa: S603,S607
+                    self._set_status(f"Opened {path.name} folder in Explorer")
+                    return
+                # /select, highlights the file in Windows Explorer.
+                subprocess.Popen(["explorer", f"/select,{path}"])  # noqa: S603,S607
+                self._set_status(f"Revealing {path.name} in Explorer")
+            elif sys.platform == "darwin":
+                if path.is_dir():
+                    subprocess.Popen(["open", str(path)])  # noqa: S603,S607
+                    self._set_status(f"Opened {path.name} folder in Finder")
+                    return
+                subprocess.Popen(["open", "-R", str(path)])  # noqa: S603,S607
+                self._set_status(f"Revealing {path.name} in Finder")
+            else:
+                target = path if path.is_dir() else path.parent
+                webbrowser.open(target.as_uri())
+                self._set_status(f"Opened {target.name} folder")
         except OSError as error:
-            self._set_status(f"Could not open Explorer: {error}")
+            self._set_status(f"Could not open file manager: {error}")
 
     def open_logs_folder(self) -> None:
         logs_path = app_data_dir() / "logs"
@@ -20212,7 +20228,7 @@ class MainFrame(
             re.sub(r"[^a-zA-Z0-9]+", "-", tab.document.name or "preview").strip("-") or "preview"
         )
         preview_path = preview_dir / f"{tab_index}-{safe_name}.html"
-        payload = render_preview_html(title, text, kind, anchor)
+        payload = render_preview_html(title, text, kind, anchor, live=True)
         temp_path = preview_path.with_suffix(".tmp")
         temp_path.write_text(payload, encoding="utf-8")
         os.replace(temp_path, preview_path)
@@ -24156,22 +24172,40 @@ class MainFrame(
         self.run_startup_wizard()
 
     def _maybe_run_first_run_onboarding(self) -> None:
-        from quill.core.paths import new_install_marker_path
+        from quill.core.paths import app_data_dir, new_install_marker_path
         from quill.core.settings import save_settings as _save_settings
+        from quill.core.storage import read_json, write_json_atomic
 
         # Consume the new-install marker dropped by the installer.  The marker
         # is written to {app} on every install (including upgrades) so that
         # setup_wizard_completed in %APPDATA% — which survives reinstalls — does
         # not silently suppress the first-run wizard after a fresh install.
+        #
+        # Deleting the marker can fail (#44) when Quill was installed elevated
+        # into a directory the running user cannot write to — e.g. Program
+        # Files after accepting a UAC prompt at install time. If the delete is
+        # silently swallowed without recording that this marker was already
+        # consumed, every subsequent launch re-enters this branch and force-
+        # resets setup_wizard_completed, reopening the wizard forever. Instead,
+        # remember the marker's mtime in a sentinel under app_data_dir() (always
+        # writable per-user) so a marker we've already consumed is recognized
+        # even when it could not be deleted; a genuinely new marker (a later
+        # reinstall) has a different mtime and is still consumed normally.
         marker = new_install_marker_path()
         if marker is not None and marker.exists():
+            marker_mtime = marker.stat().st_mtime
+            consumed_marker_path = app_data_dir() / "new-install-marker-consumed.json"
+            consumed = read_json(consumed_marker_path, {})
+            already_consumed = consumed.get("mtime") == marker_mtime
+            if not already_consumed:
+                if getattr(self.settings, "setup_wizard_completed", False):
+                    self.settings.setup_wizard_completed = False
+                    _save_settings(self.settings)
+                write_json_atomic(consumed_marker_path, {"mtime": marker_mtime})
             try:
                 marker.unlink()
             except OSError:
                 pass
-            if getattr(self.settings, "setup_wizard_completed", False):
-                self.settings.setup_wizard_completed = False
-                _save_settings(self.settings)
 
         def _focus_editor() -> None:
             editor = getattr(self, "editor", None)
@@ -25017,6 +25051,10 @@ def run_app(
     import wx
 
     app = wx.App(False)
+    # #27: without an explicit app name, wx falls back to the running
+    # executable/script's name for the macOS application-menu Hide/Quit
+    # items ("Hide Mac_OS_app" / "Quit Mac_OS_app") instead of "QUILL".
+    app.SetAppName(APP_SHORT_NAME)
     mark_wx_main_thread()
     if diagnostics_mode or should_trace_memory():
         start_memory_tracing()
