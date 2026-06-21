@@ -660,6 +660,16 @@ the setting, or the dialog itself raised), the existing native
 always sees the path to the local crash file.</li>
 </ul>
 <h2 id="braille-improvements">Braille improvements</h2>
+<h3 id="quill-remembers-your-place-in-braille-files">QUILL remembers
+your place in braille files</h3>
+<p>When you reopen a braille file (<code>.brf</code>, <code>.brl</code>,
+<code>.pef</code>, <code>.ueb</code>), QUILL now returns your cursor to
+where you left off and tells you exactly where that is — for example,
+"BRF file opened. 87 braille pages detected. Last position: braille page
+12, line 14, cell 31." Your place is saved in a small companion file
+beside the braille file, so the braille file itself is never changed.
+Restore is skipped in safe mode or when sidecar saving is turned
+off.</p>
 <h3
 id="continuation-page-letters-are-announced-correctly-br-013">Continuation
 page letters are announced correctly (BR-013)</h3>

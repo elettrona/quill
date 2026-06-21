@@ -7900,7 +7900,7 @@ class MainFrame(
         call_after = getattr(self._wx, "CallAfter", None)
         if callable(call_after) and hasattr(self, "editor"):
             call_after(self.editor.SetFocus)
-        self._announce(f"Opened {loaded.name or selected_path.name}")
+        self._announce(self._brf_open_message(loaded, selected_path))
         # Quillin document.opened event, then any file-type handlers for this suffix.
         open_context = {
             "file_path": str(selected_path),

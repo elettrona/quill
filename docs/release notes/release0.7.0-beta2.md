@@ -282,6 +282,10 @@ When an unhandled exception closes QUILL, a new dialog now appears (during the b
 
 ## Braille improvements
 
+### QUILL remembers your place in braille files
+
+When you reopen a braille file (`.brf`, `.brl`, `.pef`, `.ueb`), QUILL now returns your cursor to where you left off and tells you exactly where that is — for example, "BRF file opened. 87 braille pages detected. Last position: braille page 12, line 14, cell 31." Your place is saved in a small companion file beside the braille file, so the braille file itself is never changed. Restore is skipped in safe mode or when sidecar saving is turned off.
+
 ### Continuation page letters are announced correctly (BR-013)
 
 QUILL now recognizes print-page continuation labels such as `7a` when they appear in a BRF document. The detailed braille status information reports the complete page label instead of shortening it to `7`.
