@@ -205,6 +205,10 @@ A Quillin calling the standard "set status" host action could close QUILL with `
 
 `q.get_document_name()` in the Developer Console always returned an empty string because it called a method that never existed. It now returns the actual file name of the document you are editing.
 
+### Quill Eraser opens correctly on documents with problems (#624)
+
+Choosing **Tools > Writing > Quill Eraser** on a document that the engine had findings for closed QUILL with `TypeError: Dialog(): argument 1 has unexpected type 'MainFrame'`. The review dialog was being parented to the `MainFrame` mixin instance instead of the real `wx.Frame` it owns, so wxPython's SIP wrapper rejected the parent. The dialog is now parented to the real frame, so the review dialog opens, the focus lands on the findings list, and you can step through fixes with the keyboard as designed.
+
 ## Help, diagnostics, and everyday usability
 
 ### The User Guide stays open and keeps its place

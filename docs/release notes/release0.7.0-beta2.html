@@ -176,7 +176,10 @@
   </style>
 </head>
 <body>
-<h1 id="quill-070-beta-2-release-notes">QUILL 0.7.0 Beta 2 Release
+<header id="title-block-header">
+<h1 class="title">release0.7.0-beta2</h1>
+</header>
+<h1 id="quill-0.7.0-beta-2-release-notes">QUILL 0.7.0 Beta 2 Release
 Notes</h1>
 <p>QUILL 0.7.0 Beta 2 is focused on helping you upgrade with less
 disruption. Your settings, keyboard shortcuts, recent files, and feature
@@ -274,7 +277,7 @@ from a real portable bundle: a folder containing <code>quill.exe</code>
 with a sibling <code>data/</code> folder. This is filesystem evidence of
 a deliberate portable install — not an environment-variable say-so — so
 an untrusted setting cannot redirect your data location.</p>
-<h2 id="portable-bundle-quillexe--data-no-more-run-quillcmd">Portable
+<h2 id="portable-bundle-quill.exe-data-no-more-run-quill.cmd">Portable
 bundle: <code>quill.exe</code> + <code>data/</code> (no more
 <code>run-quill.cmd</code>)</h2>
 <p>The portable bundle is now double-clickable. The launcher is
@@ -289,7 +292,7 @@ at the bundle root starts QUILL with no environment setup. The previous
 treated as a portable install only when it contains
 <code>quill.exe</code> <strong>and</strong> a <code>data/</code> folder
 as siblings. A bare <code>QUILL_PORTABLE=1</code> environment variable
-is no longer sufficient. The Setup Wizard's portable radio button
+is no longer sufficient. The Setup Wizard’s portable radio button
 appears automatically when the bundle is verified.</p></li>
 <li><p><strong>Zero-setup from first launch.</strong> The build script
 ships an empty <code>data/</code> folder inside the bundle, so the
@@ -308,8 +311,8 @@ verified portable installs — no environment variable to set.</p></li>
 <p>The new launcher also identifies the product as <strong>QUILL for
 All</strong>, includes the actual QUILL version, and lists
 <strong>Community Access</strong> as the publisher. Screen-reader
-commands that report application or window version information (JAWS's
-Ctrl+JAWSKey+V, NVDA's Python-version readout, and similar) can now
+commands that report application or window version information (JAWS’s
+Ctrl+JAWSKey+V, NVDA’s Python-version readout, and similar) can now
 provide useful QUILL information instead of identifying the launcher as
 Python or speaking only the word “Version.” Installed editions continue
 to start normally and are not affected by this change.</p>
@@ -467,7 +470,7 @@ dirty-title-style preferences apply immediately and reliably whenever
 you save settings.</p>
 <h3 id="quillins-reporting-status-no-longer-crash-quill">Quillins
 reporting status no longer crash QUILL</h3>
-<p>A Quillin calling the standard "set status" host action could close
+<p>A Quillin calling the standard “set status” host action could close
 QUILL with
 <code>'MainFrame' object has no attribute '_set_status_text'</code>. The
 host adapter was calling a method that never existed; it now reaches the
@@ -479,6 +482,18 @@ Developer Console correctly reports the active document name</h3>
 <p><code>q.get_document_name()</code> in the Developer Console always
 returned an empty string because it called a method that never existed.
 It now returns the actual file name of the document you are editing.</p>
+<h3
+id="quill-eraser-opens-correctly-on-documents-with-problems-624">Quill
+Eraser opens correctly on documents with problems (#624)</h3>
+<p>Choosing <strong>Tools &gt; Writing &gt; Quill Eraser</strong> on a
+document that the engine had findings for closed QUILL with
+<code>TypeError: Dialog(): argument 1 has unexpected type 'MainFrame'</code>.
+The review dialog was being parented to the <code>MainFrame</code> mixin
+instance instead of the real <code>wx.Frame</code> it owns, so
+wxPython’s SIP wrapper rejected the parent. The dialog is now parented
+to the real frame, so the review dialog opens, the focus lands on the
+findings list, and you can step through fixes with the keyboard as
+designed.</p>
 <h2 id="help-diagnostics-and-everyday-usability">Help, diagnostics, and
 everyday usability</h2>
 <h3 id="the-user-guide-stays-open-and-keeps-its-place">The User Guide
