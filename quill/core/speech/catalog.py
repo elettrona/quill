@@ -12,6 +12,16 @@ from quill.core.speech.provider import SpeechModelInfo
 
 RECOMMENDED_MODEL_ID = "small"
 
+# whisper.cpp GGML models are published on Hugging Face. URLs are data-driven so
+# a release/mirror can override them; sha256 is left None until the pipeline pins
+# verified hashes (download verifies only when a hash is present — #617 section 8).
+_HF_BASE = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main"
+
+
+def _ggml_url(name: str) -> str:
+    return f"{_HF_BASE}/ggml-{name}.bin"
+
+
 WHISPER_CPP_MODELS: tuple[SpeechModelInfo, ...] = (
     SpeechModelInfo(
         id="tiny",
@@ -21,6 +31,8 @@ WHISPER_CPP_MODELS: tuple[SpeechModelInfo, ...] = (
         accuracy_tier="low",
         speed_tier="fast",
         recommended_use="Smallest download. Good for testing and simple voice commands.",
+        download_url=_ggml_url("tiny"),
+        license_name="MIT",
     ),
     SpeechModelInfo(
         id="base",
@@ -30,6 +42,8 @@ WHISPER_CPP_MODELS: tuple[SpeechModelInfo, ...] = (
         accuracy_tier="low",
         speed_tier="fast",
         recommended_use="Small download. Better than Tiny; good for quick notes.",
+        download_url=_ggml_url("base"),
+        license_name="MIT",
     ),
     SpeechModelInfo(
         id="small",
@@ -39,6 +53,8 @@ WHISPER_CPP_MODELS: tuple[SpeechModelInfo, ...] = (
         accuracy_tier="medium",
         speed_tier="medium",
         recommended_use="Recommended starting point: solid transcription without a huge download.",
+        download_url=_ggml_url("small"),
+        license_name="MIT",
     ),
     SpeechModelInfo(
         id="medium",
@@ -48,6 +64,8 @@ WHISPER_CPP_MODELS: tuple[SpeechModelInfo, ...] = (
         accuracy_tier="high",
         speed_tier="slow",
         recommended_use="Higher accuracy. Larger download and slower on older computers.",
+        download_url=_ggml_url("medium"),
+        license_name="MIT",
     ),
     SpeechModelInfo(
         id="large-v3",
@@ -57,6 +75,8 @@ WHISPER_CPP_MODELS: tuple[SpeechModelInfo, ...] = (
         accuracy_tier="highest",
         speed_tier="slow",
         recommended_use="Best local quality. Very large download and storage requirement.",
+        download_url=_ggml_url("large-v3"),
+        license_name="MIT",
     ),
 )
 

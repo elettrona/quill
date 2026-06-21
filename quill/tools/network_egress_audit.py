@@ -70,6 +70,12 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "an explicit assistant action, with HTTPS enforced for cloud endpoints by "
         "_validate_endpoint_security and a verified TLS context."
     ),
+    "core/speech/providers/whispercpp.py::_download_to_file": (
+        "User-initiated offline speech-model download (#617) from the Hugging Face "
+        "Hub whisper.cpp repo; HTTPS enforced (refuses non-https URLs), verified TLS "
+        "context, visible progress, blocked in Safe Mode, sha256-verified when a hash "
+        "is known. No silent background downloads."
+    ),
     "core/ai/model_manager.py::_download": (
         "User-initiated local AI model download; verified TLS for HTTPS, visible progress callback."
     ),
