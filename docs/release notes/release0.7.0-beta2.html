@@ -714,9 +714,8 @@ it to <code>7</code>.</p>
 page continues across multiple braille pages.</p>
 <h2 id="private-offline-transcription-early">Private, offline
 transcription (early)</h2>
-<p>QUILL is growing a privacy-first speech engine that runs entirely on
-your computer. The first piece is here under a new <strong>AI →
-Speech</strong> menu:</p>
+<p>QUILL has a privacy-first speech engine that runs entirely on your
+computer. It lives under a new <strong>AI → Speech</strong> menu:</p>
 <ul>
 <li><strong>Manage Speech Models...</strong> lets you download a local
 speech model (sizes are shown; the Small model is recommended to start).
@@ -726,11 +725,26 @@ and stored on your computer; downloading is disabled in Safe Mode.</li>
 recording into text on your own machine — no cloud account, and your
 audio is not uploaded. The transcript opens as an editable draft, and
 QUILL works in the background so the editor stays responsive.</li>
+<li><strong>Generate Captions (Offline)...</strong> transcribes a file
+with timestamps and saves it as <strong>SRT</strong> or
+<strong>VTT</strong> captions.</li>
+<li><strong>Dictate (Offline)</strong> lets you speak directly into your
+document. Press the command (or <strong>QUILL Key + Shift + D</strong>)
+to start — QUILL plays a distinct start tone and shows "Dictation
+listening" in the status bar — then press it again to stop; QUILL plays
+a stop tone, transcribes what you said, and inserts it at the cursor as
+one undoable edit.</li>
+<li><strong>Dictation Microphone...</strong> lets you choose which
+microphone dictation uses (or the system default).</li>
 </ul>
-<p>This requires the free whisper.cpp program to be installed (with
-<code>whisper-cli</code> on your PATH) plus a downloaded model.
-Dictating directly into a document and caption export are coming
-next.</p>
+<p>The offline speech <strong>engine is provided by QUILL</strong>:
+choose the <em>"offline speech engine (whisper.cpp)"</em> component in
+the installer (or drop the executable into
+<code>tools\speech\whispercpp</code> in a portable copy) — you no longer
+need to install anything separately or edit your PATH. Then download a
+model from Manage Speech Models. Dictation also needs microphone-capture
+support (the optional <code>sounddevice</code> package); if it is
+missing, QUILL tells you and you can still use Windows dictation.</p>
 <h2 id="what-is-coming-next">What is coming next</h2>
 <p>QUILL's roadmap is now organized into clear workstreams that are all
 targeted to ship, with the work tracked openly:</p>
