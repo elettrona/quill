@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>dictation-and-speech</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<h1 id="quill-speech--dictation--reengineering-plan">QUILL Speech &amp;
+Dictation — Reengineering Plan</h1>
+<p><strong>Status:</strong> Active plan (shipping). Folds in issue #617
+(Offline Speech-to-Text Provider Architecture) and the dictation
+reengineering. <strong>Date:</strong> 2026-06-21
+<strong>Principle:</strong> Bold, offline-first architecture underneath;
+<strong>simplicity for the user is king</strong> on top.</p>
+<hr />
+<h2 id="1-where-dictation-is-today-grounded-in-code">1. Where dictation
+is today (grounded in code)</h2>
+<p>A candid read of the shipping code, because the plan must build on
+what exists:</p>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Module(s)</th>
+<th>Reality today</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dictation control</td>
+<td><code>quill/core/dictation.py</code>
+(<code>DictationController</code>)</td>
+<td>On Windows, <code>start()</code> and <code>stop()</code>
+<strong>both</strong> just call <code>launch_windows_dictation()</code>
+— i.e. they toggle the OS dictation panel (Win+H). QUILL captures
+nothing itself.</td>
+</tr>
+<tr>
+<td>"Local engines"</td>
+<td><code>dictation.py._transcribe_audio</code></td>
+<td>References <code>recognizer.recognize_whisper</code> /
+<code>recognize_vosk</code>, but there is <strong>no audio capture
+loop</strong>, no recognizer wired in, and
+<code>list_dictation_devices()</code> returns <code>[]</code>. These are
+dead stubs.</td>
+</tr>
+<tr>
+<td>Settings</td>
+<td><code>quill/core/settings.py</code></td>
+<td><code>dictation_engine</code> (vosk/whisper),
+<code>dictation_language</code>, <code>dictation_model</code>,
+<code>dictation_device_index</code> exist and validate, but the
+controller ignores them and launches Windows dictation regardless.
+<strong>The settings promise local engines the code does not
+deliver.</strong></td>
+</tr>
+<tr>
+<td>Commands / UI</td>
+<td><code>quill/ui/main_frame.py</code></td>
+<td><code>tools.dictation_toggle</code> → <code>toggle_dictation</code>;
+<code>toggle_dictation_voice_commands</code>;
+<code>_on_dictation_state_change</code>,
+<code>_on_dictation_error</code>. Keymap: <code>Ctrl+Alt+V</code> (and a
+QUILL-Key chord).</td>
+</tr>
+<tr>
+<td>File transcription</td>
+<td><code>quill/core/ai/transcription.py</code></td>
+<td><strong>Cloud only</strong> — OpenAI Whisper-1, 25 MB cap,
+<code>urlopen</code> (GATE-9 audited).</td>
+</tr>
+<tr>
+<td>Diarization</td>
+<td><code>quill/core/ai/diarization.py</code></td>
+<td><strong>Cloud only</strong> — Deepgram Nova-3 (2 GB cap).</td>
+</tr>
+<tr>
+<td>Offline suite</td>
+<td><code>feature_catalog.py</code> <code>core.bw_whisperer</code> (+
+<code>bw_transcription</code>, <code>bw_parakeet</code>)</td>
+<td>"BITS Whisperer" master flag, <strong>locked_off</strong>, was
+framed as 2.0. Per current direction it <strong>ships</strong>.</td>
+</tr>
+<tr>
+<td>Model download UX precedent</td>
+<td><code>quill/ui/main_frame.py</code> read-aloud (Kokoro/Piper),
+<code>quill/core/ai/model_manager.py</code>,
+<code>model_tiers.py</code></td>
+<td>QUILL already downloads models with accessible progress and tiering
+— proven patterns to reuse, not reinvent.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The core problem:</strong> dictation is a thin shim to the OS
+panel, the local-engine settings are a promise the code breaks, and
+transcription/diarization are cloud-only — which contradicts QUILL's
+privacy-first, offline, accessible mission. #617 is the right
+destination; this plan gets there while keeping the everyday experience
+trivially simple.</p>
+<hr />
+<h2 id="2-product-vision">2. Product vision</h2>
+<blockquote>
+<p><strong>You press one key, speak, and your words appear where your
+cursor is — privately, on your computer, with your screen reader telling
+you exactly what is happening. The same engine transcribes a recording
+or makes captions. Nothing leaves your machine unless you choose a cloud
+option on purpose.</strong></p>
+</blockquote>
+<p>Two user-facing verbs, nothing more:</p>
+<ul>
+<li><strong>Dictate</strong> — speak into the current document (live, at
+the cursor).</li>
+<li><strong>Transcribe</strong> — turn an audio/video file into text
+(new document or captions).</li>
+</ul>
+<p>Everything else (providers, models, CTranslate2, quantization,
+push-to-talk grammars) lives <em>under</em> an Advanced fold and is
+never required to get started.</p>
+<hr />
+<h2 id="3-architecture-bold-underneath">3. Architecture (bold
+underneath)</h2>
+<p>One offline-first <strong>Speech engine</strong> with a provider
+registry, mirroring the proven shape of QUILL's existing AI
+provider/backend split (<code>quill/core/ai/provider_backend.py</code>,
+<code>availability.py</code>, <code>model_manager.py</code>).</p>
+<pre><code>quill/core/speech/                      [NEW package]
+  provider.py        SpeechToTextProvider protocol (#617 §8.1), data objects
+  registry.py        provider registry + availability (lazy import; never crashes startup)
+  models.py          SpeechModelInfo, InstalledSpeechModel, model store (JSON, atomic)
+  capture.py         microphone capture (push-to-talk + continuous), device list
+  formatters.py      TXT / SRT / VTT / JSON exporters (pure, unit-tested)
+  voice_commands.py  push-to-talk phrase -&gt; command, constrained to SAFE_TOOL_IDS
+  providers/
+    windows.py       WindowsDictationProvider  (wraps today&#39;s launch_windows_dictation — zero-download fallback)
+    whispercpp.py    WhisperCppProvider        (DEFAULT offline; pywhispercpp or bundled whisper-cli subprocess)
+    cloud_whisper.py CloudWhisperProvider      (wraps existing ai/transcription.py)
+    faster_whisper.py FasterWhisperProvider    (OPTIONAL advanced; CTranslate2; lazy)</code></pre>
+<p>Reuse, don't rebuild:</p>
+<ul>
+<li><strong>Threading:</strong>
+<code>stability/task_manager.QuillTaskManager</code> +
+<code>wx.CallAfter</code> (never block the UI thread; #617 §8.2).</li>
+<li><strong>Model download/progress:</strong> the read-aloud
+Kokoro/Piper download pattern + <code>ai/model_manager.py</code>
+tiering.</li>
+<li><strong>Storage:</strong>
+<code>core/storage.write_json_atomic</code>; models under the data dir,
+portable-aware (respects <code>QUILL_DATA_DIR</code> rules); model
+metadata JSON per #617 §8.3.</li>
+<li><strong>Secrets / cloud:</strong> existing
+<code>credential_manager</code>/DPAPI for any cloud key;
+<strong>every</strong> new outbound call added to
+<code>tools/network_egress_audit.py</code>.</li>
+<li><strong>Safe Mode:</strong> the whole speech surface respects
+<code>QUILL_SAFE_MODE</code> (no network, no model download) exactly
+like the assistant does.</li>
+<li><strong>Dialogs:</strong> <code>_show_modal_dialog</code> +
+<code>apply_modal_ids</code>; pass the dialog-inventory and
+button-contract gates.</li>
+<li><strong>Voice-command safety:</strong> reuse the agent's
+<code>SAFE_TOOL_IDS</code> allowlist from
+<code>quill/core/ai/agent.py</code> so voice can only ever trigger the
+same curated, non-destructive command set — with confirmation for
+anything destructive.</li>
+<li><strong>Budgets:</strong> new modules stay under the GATE-11 default
+cap; optional providers get explicit budget entries with dated
+notes.</li>
+</ul>
+<p>Capability model (so the UI never lies the way today's vosk setting
+does): each provider reports <code>is_available()</code>, install
+status, supported models, and supported input formats. The UI only shows
+what a provider can actually do.</p>
+<hr />
+<h2 id="4-the-simple-surface-king">4. The simple surface (king)</h2>
+<h3 id="41-first-run-one-friendly-choice">4.1 First run (one friendly
+choice)</h3>
+<p>On first <strong>Dictate</strong>, if no offline model is
+installed:</p>
+<blockquote>
+<p>"To dictate privately on this computer, QUILL needs a small speech
+model (Recommended: Small, about 250 MB). Download it now? You can also
+use Windows dictation with no download."</p>
+</blockquote>
+<p>Buttons: <strong>Download Recommended</strong> · <strong>Use Windows
+dictation</strong> · <strong>Not now</strong>. One recommended path,
+plain language, no jargon (#617 §6, §16).</p>
+<h3 id="42-everyday-dictation">4.2 Everyday dictation</h3>
+<ul>
+<li><code>Ctrl+Alt+V</code> (unchanged keymap) starts/stops. Announce:
+"Listening." → words stream in at the cursor → "Dictation off. Inserted
+42 words. Ctrl+Z to undo."</li>
+<li>Each utterance is one undo step (same one-undo discipline as the AI
+edit path: <code>_record_persistent_undo_state</code>).</li>
+<li>Focus returns to the editor every time.</li>
+</ul>
+<h3 id="43-transcribe-a-file">4.3 Transcribe a file</h3>
+<p><strong>File &gt; Import &gt; Transcribe Audio or Video</strong> →
+pick file → (model prompt if needed) → background transcribe with
+accessible progress → result opens in a new document with an optional
+metadata header (#617 §7.1).</p>
+<h3 id="44-captions">4.4 Captions</h3>
+<p><strong>Tools &gt; Speech and Transcription &gt; Generate
+Captions</strong> → SRT/VTT/both → review document → save.</p>
+<h3 id="45-settings-minimal-advanced-hidden">4.5 Settings (minimal;
+Advanced hidden)</h3>
+<p>Speech &amp; Transcription page: <strong>Engine</strong> (Offline –
+recommended / Windows / Cloud), <strong>Model</strong> (Recommended),
+<strong>Language</strong>, <strong>Microphone</strong>. Everything else
+(provider internals, timestamps default, keep-model-loaded, voice
+commands, push-to-talk key, model storage path) lives behind
+<strong>Advanced</strong>.</p>
+<hr />
+<h2 id="5-what-we-replace--retire">5. What we replace / retire</h2>
+<ul>
+<li><strong>Retire the dead vosk/whisper recognizer stubs</strong> in
+<code>dictation.py</code> and the settings that imply them. The
+<code>dictation_engine</code> setting is re-pointed at the new provider
+registry (<code>offline</code> / <code>windows</code> /
+<code>cloud</code>) with a migration so existing
+<code>vosk</code>/<code>whisper</code> values map to
+<code>offline</code>.</li>
+<li><strong>Keep</strong> <code>launch_windows_dictation</code> — it
+becomes <code>WindowsDictationProvider</code>, the zero-download
+fallback, so nobody loses today's behavior.</li>
+<li><strong>Promote</strong> <code>core.bw_whisperer</code> from
+locked_off to shipping (the offline suite is the default story
+now).</li>
+<li><strong>Fold</strong> <code>ai/transcription.py</code> (cloud)
+behind <code>CloudWhisperProvider</code> so all three paths share one
+dialog, one progress model, one output formatter set.</li>
+</ul>
+<hr />
+<h2 id="6-buckets--waves-small-low-risk-commits">6. Buckets &amp; waves
+(small, low-risk commits)</h2>
+<p>Each wave is independently shippable, lands behind feature gating
+where useful, and is one or a few small commits. Lowest-hanging
+first.</p>
+<table>
+<thead>
+<tr>
+<th>Wave</th>
+<th>Scope</th>
+<th>Risk</th>
+<th>Why first</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>S0 — Honesty fix</strong></td>
+<td>Make settings truthful: map <code>vosk</code>/<code>whisper</code> →
+<code>offline</code>; document that dictation currently launches Windows
+dictation; remove dead <code>_transcribe_audio</code> stub or guard it.
+Pure cleanup + tests.</td>
+<td>Very low</td>
+<td>Stops the UI from promising what it can't do; unblocks the
+rename.</td>
+</tr>
+<tr>
+<td><strong>S1 — Foundation</strong></td>
+<td><code>speech/</code> package: provider protocol, registry (lazy,
+availability), model metadata schema + store, TXT/SRT/VTT/JSON
+formatters (pure, fully unit-tested), accessible Speech &amp;
+Transcription dialog skeleton. No engine yet.</td>
+<td>Low</td>
+<td>Pure, testable core; no heavy deps; no UI risk.</td>
+</tr>
+<tr>
+<td><strong>S2 — Offline transcription</strong></td>
+<td><code>WhisperCppProvider</code> (subprocess-first for isolation),
+model manager download/remove/verify (reuse read-aloud pattern), WAV
+file → new document, TXT export, cancellation, network-audit
+entries.</td>
+<td>Medium</td>
+<td>Delivers the headline offline value on a reliable format (WAV).</td>
+</tr>
+<tr>
+<td><strong>S3 — Captions + dictation</strong></td>
+<td>Segment/timestamp model, SRT/VTT export, mic capture
+(<code>capture.py</code>), insert-at-cursor live dictation with
+one-undo/utterance, language selection.</td>
+<td>Medium</td>
+<td>Builds on S1/S2; the "press one key and speak" moment.</td>
+</tr>
+<tr>
+<td><strong>S4 — Cloud + advanced</strong></td>
+<td><code>CloudWhisperProvider</code> (wrap existing transcription),
+<code>FasterWhisperProvider</code> (optional, lazy, isolated failure),
+more input formats once packaging is proven.</td>
+<td>Low–Med</td>
+<td>Pure additions behind the same UI; no effect on offline path.</td>
+</tr>
+<tr>
+<td><strong>S5 — Voice commands (experimental, off by
+default)</strong></td>
+<td>Push-to-talk phrase→command via <code>SAFE_TOOL_IDS</code>
+allowlist, destructive-action confirmation, editable phrase map
+later.</td>
+<td>Med (gated)</td>
+<td>Conservative, opt-in, reuses the agent safety floor.</td>
+</tr>
+</tbody>
+</table>
+<p>Acceptance criteria, model tiers/sizes, privacy copy, and error
+wording are taken verbatim from #617 §11–§12 and §16.</p>
+<hr />
+<h2 id="7-risk-controls-low-risk-by-construction">7. Risk controls
+(low-risk by construction)</h2>
+<ul>
+<li><strong>No model in the installer</strong>, ever (#617 §5.3). Base
+install stays lean; models are an explicit, consented download.</li>
+<li><strong>Lazy imports</strong>: optional providers (Faster Whisper,
+pywhispercpp) are imported only on activation; a missing/broken one
+never breaks startup or the other providers (#617 §8.2, §17).</li>
+<li><strong>Subprocess-first</strong> whisper.cpp for dependency
+isolation; Python binding only if packaging proves stable.</li>
+<li><strong>Privacy by default</strong>: local providers never upload;
+temp audio deleted after use; transcript text never logged; Safe Mode
+disables network + downloads (#617 §10).</li>
+<li><strong>Accessibility is a gate, not a hope</strong>: keyboard-only
++ NVDA/JAWS/Narrator pass required before each wave closes; progress
+announced without chatter; focus restored (#617 §6.4, §12.4).</li>
+<li><strong>Everything tracked</strong>: each wave updates the release
+notes, user guide, PRD speech section, and CHANGELOG, and closes its
+issue(s) only when its acceptance criteria are green.</li>
+</ul>
+<hr />
+<h2 id="8-mapping-to-issues">8. Mapping to issues</h2>
+<ul>
+<li><strong>#617</strong> is this plan's spine (provider architecture,
+model manager, captions, dictation, voice commands, packaging,
+testing).</li>
+<li>Dictation reengineering (S0/S3) and the offline-suite promotion
+(<code>core.bw_whisperer</code>) are folded in here rather than tracked
+as scattered stubs.</li>
+<li>New focused issues should be filed per wave (S0–S5) so each is a
+small, reviewable unit; #617 becomes the epic that closes when S0–S4
+ship (S5 may trail as experimental).</li>
+</ul>
+</body>
+</html>
