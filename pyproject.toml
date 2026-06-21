@@ -143,6 +143,9 @@ packages = ["quill"]
 "quill/core/schemas/sound_pack.json" = "quill/core/schemas/sound_pack.json"
 "quill/assets/sound_packs" = "quill/assets/sound_packs"
 "quill/quillins_bundled" = "quill/quillins_bundled"
+# I18N: ship the gettext template and any compiled translation catalogs so the
+# display-language switcher can find them in installed builds.
+"quill/locale" = "quill/locale"
 
 [tool.pytest.ini_options]
 # Pin pythonpath so the worktree's `quill` package wins over the parent

@@ -126,7 +126,7 @@
     "id": "app.display_language",
     "title": "Change Display Language",
     "body": "Choose the language QUILL uses for its menus, dialogs, and spoken messages. The list shows every language with a translation installed, plus System default (follow your operating system). Your choice is saved; restart QUILL so all menus and dialogs pick up the new language.",
-    "user_guide_section": "language-and-translation"
+    "user_guide_section": "translation-and-community-localization"
   },
   {
     "id": "braille.back_translate",

@@ -2484,6 +2484,16 @@ QUILL uses a standard GNU gettext pipeline (`POT → PO → MO`) for all user-vi
 
 Speech strings — text that will be read aloud by a screen reader rather than displayed visually — are marked with a `# SPEECH:` comment in the source code. Translators should preserve the natural spoken rhythm of these strings, not just their semantic meaning.
 
+### Switching QUILL's Display Language
+
+Once a translation is installed, you can switch the language QUILL uses for its menus, dialogs, and spoken messages from inside the app:
+
+1. Open **Tools > Writing and Language > Change Display Language...**
+2. Choose a language from the list, or **System default** to follow your operating system. Only languages with a compiled translation (`.mo`) appear, so you never pick one that has nothing to show.
+3. QUILL saves your choice and applies it to new spoken messages right away. Restart QUILL so every menu and dialog reloads in the chosen language.
+
+If no translations are installed yet, QUILL tells you it is English-only for now; the command starts offering languages as soon as community translations ship.
+
 ### Contributing Translations
 
 To contribute a translation:
