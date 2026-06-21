@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -267,6 +268,55 @@ def test_legacy_unquote_lines_ctrl_shift_q_migrates_to_ctrl_shift_k() -> None:
     # (the prior default) has it rewritten to Ctrl+Shift+K on load.
     merged = keymap_module.merge_keymaps({"edit.unquote_lines": "Ctrl+Shift+Q"})
     assert merged["edit.unquote_lines"] == "Ctrl+Shift+K"
+
+
+# ---------------------------------------------------------------------------
+# #609: macOS Option+Left/Right no longer hijacked by Back/Forward Location.
+# ---------------------------------------------------------------------------
+
+
+def test_default_keymap_uses_alt_left_on_windows() -> None:
+    """#609: the Windows default for back/forward location stays
+    Alt+Left / Alt+Right (the conventional Windows chord)."""
+    if sys.platform == "darwin":
+        # Skip on macOS so the assertion is unambiguous.
+        return
+    from quill.core.keymap import DEFAULT_KEYMAP
+
+    assert DEFAULT_KEYMAP["navigate.back_location"] == "Alt+Left"
+    assert DEFAULT_KEYMAP["navigate.forward_location"] == "Alt+Right"
+
+
+def test_default_keymap_uses_cmd_brackets_on_macos() -> None:
+    """#609: the macOS default for back/forward location is Cmd+[ /
+    Cmd+], the conventional macOS chord, so the Alt+Left / Alt+Right
+    slot is free for the system word-by-word movement."""
+    if sys.platform != "darwin":
+        return
+    from quill.core.keymap import DEFAULT_KEYMAP
+
+    assert DEFAULT_KEYMAP["navigate.back_location"] == "Cmd+["
+    assert DEFAULT_KEYMAP["navigate.forward_location"] == "Cmd+]"
+
+
+def test_legacy_macos_alt_left_back_location_rewritten_to_cmd_open_bracket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """#609: a pre-#609 macOS user who saved Alt+Left for back location
+    has it rewritten to Cmd+[ on first load."""
+    monkeypatch.setattr(sys, "platform", "darwin")
+    merged = keymap_module.merge_keymaps({"navigate.back_location": "Alt+Left"})
+    assert merged["navigate.back_location"] == "Cmd+["
+
+
+def test_legacy_macos_alt_right_forward_location_rewritten_to_cmd_close_bracket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """#609: a pre-#609 macOS user who saved Alt+Right for forward
+    location has it rewritten to Cmd+] on first load."""
+    monkeypatch.setattr(sys, "platform", "darwin")
+    merged = keymap_module.merge_keymaps({"navigate.forward_location": "Alt+Right"})
+    assert merged["navigate.forward_location"] == "Cmd+]"
 
 
 def test_default_keymap_has_no_ctrl_q_collision() -> None:

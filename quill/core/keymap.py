@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from pathlib import Path
 
 from quill.core.keymap_format import (
@@ -78,8 +79,12 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "navigate.go_to_page": "Ctrl+Shift+G",
     "navigate.next_region": "F6",
     "navigate.previous_region": "Shift+F6",
-    "navigate.back_location": "Alt+Left",
-    "navigate.forward_location": "Alt+Right",
+    # #609: on macOS, Alt+Left / Alt+Right collide with the system-standard
+    # Option+Left / Option+Right word-by-word movement (and with
+    # VoiceOver's word-by-word reading). Use Cmd+[ / Cmd+] on macOS,
+    # which is the conventional macOS back/forward chord.
+    "navigate.back_location": "Cmd+[" if sys.platform == "darwin" else "Alt+Left",
+    "navigate.forward_location": "Cmd+]" if sys.platform == "darwin" else "Alt+Right",
     "navigate.outline_navigator": "Ctrl+Shift+O",
     "navigate.match_bracket": "Ctrl+Shift+\\",
     "navigate.next_structure": "Alt+Down",
@@ -442,6 +447,13 @@ def merge_keymaps(raw: object) -> dict[str, str]:
         "edit.expand_selection": ("ALT+SHIFT+UP", "Ctrl+Shift+Grave, J"),
         "edit.shrink_selection": ("ALT+SHIFT+DOWN", "Ctrl+Shift+Grave, Shift+J"),
     }
+    # #609: on macOS, a user who saved Alt+Left / Alt+Right for
+    # back/forward location on a pre-#609 build has a saved entry that
+    # now collides with the system word-by-word shortcut. Rewrite it to
+    # the new macOS chord (Cmd+[ / Cmd+]) on first load.
+    if sys.platform == "darwin":
+        legacy_rebindings["navigate.back_location"] = ("Alt+Left", "Cmd+[")
+        legacy_rebindings["navigate.forward_location"] = ("Alt+Right", "Cmd+]")
     for command_id, binding in raw.items():
         if isinstance(command_id, str) and isinstance(binding, str):
             # A binding for a command id that no longer ships in DEFAULT_KEYMAP
@@ -452,7 +464,10 @@ def merge_keymaps(raw: object) -> dict[str, str]:
                 continue
             normalized = binding
             legacy_binding = legacy_rebindings.get(command_id)
-            if legacy_binding is not None and normalized.strip().upper() == legacy_binding[0]:
+            if (
+                legacy_binding is not None
+                and normalized.strip().upper() == legacy_binding[0].upper()
+            ):  # noqa: E501
                 normalized = legacy_binding[1]
             # An empty binding means "use the default" — drop it so the
             # default in DEFAULT_KEYMAP takes effect (do not store "" on top).

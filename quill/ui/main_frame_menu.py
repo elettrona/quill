@@ -10,6 +10,8 @@ reaches every menu id, submenu, label helper, and refresh routine through
 
 from __future__ import annotations
 
+import platform
+
 from quill.core.i18n import _
 
 
@@ -2050,6 +2052,27 @@ class MenuBuilderMixin:
             menu_bar.Append(ai_menu, _("&AI"))
         menu_bar.Append(window_menu, _("&Window"))
         menu_bar.Append(help_menu, _("&Help"))
+
+        # #613: on macOS, tell wx that the "Help" menu is the system
+        # Help menu so the OS moves it to the rightmost position (where
+        # macOS users expect it) instead of leaving it in the slot wx
+        # gave it (the menu bar's tail, but wx only respects the
+        # SetHelpMenu hint for the system Help menu). Without this,
+        # VoiceOver users see a top-level menu order that does not
+        # match the macOS AppKit convention. Wrapped in hasattr +
+        # try/except so a wx build without the API degrades gracefully
+        # (and the dialog_inventory / module_size gates do not see an
+        # attribute error).
+        if platform.system() == "Darwin":
+            try:
+                if hasattr(menu_bar, "SetHelpMenu"):
+                    menu_bar.SetHelpMenu(help_menu)
+                elif hasattr(menu_bar, "MacSetHelpMenuTitle"):
+                    menu_bar.MacSetHelpMenuTitle(_("&Help"))
+            except Exception:  # noqa: BLE001
+                # Help-menu hint is best-effort; do not break menu
+                # construction if the wx build rejects the call.
+                pass
 
         self._apply_menu_customization(menu_bar)
         self.frame.SetMenuBar(menu_bar)
