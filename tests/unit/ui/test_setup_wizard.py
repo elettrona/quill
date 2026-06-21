@@ -30,7 +30,7 @@ def _wizard_source() -> str:
 # ---------------------------------------------------------------------------
 
 
-def test_wizard_pages_module_has_six_page_classes() -> None:
+def test_wizard_pages_module_has_seven_page_classes() -> None:
     src = _wizard_pages_source()
     import re
 
@@ -41,6 +41,7 @@ def test_wizard_pages_module_has_six_page_classes() -> None:
         "_ExtrasPage",
         "_AIProviderPage",
         "_KeyboardSoundPage",
+        "_DataLocationPage",
         "_SummaryPage",
     }
     found = {m.split("(")[0].replace("class ", "") for m in pages}

@@ -3025,6 +3025,40 @@ By default QUILL stores AI provider keys in the Windows Credential Manager, whic
 
 ---
 
+### 5.86 Configurable data location (#615)
+
+Where QUILL stores its data directory (`app_data_dir()` — settings, recovery, undo history, logs, and everything else under it) is a user choice, not a hardcoded path, satisfying the "Portable mode clarity" goal in §5.
+
+**Storage modes.** `quill/core/storage_mode.py` persists one of three modes to `storage-mode.json`:
+
+1. `appdata` (default) — `%APPDATA%\Quill`.
+2. `portable` — `<app root>/data`, only available when the running install is verified portable.
+3. `custom` — any user-chosen folder, stored alongside the mode as a `path` field.
+
+**Portable detection without reopening L-9.** A prior security fix (commit `a4fec36`) gated `QUILL_PORTABLE_ROOT` behind `_DEV_BUILD` because trusting an attacker-controlled environment variable's *value* could redirect a user's data directory. That fix stands: this feature never trusts an env var's value directly, in any build. `storage_mode._resolve_app_root()` derives a candidate anchor from `QUILL_APP_ROOT` or by walking up from `sys.executable`, then only treats it as a real portable install if `run-quill.cmd` actually exists at that anchor — filesystem evidence, not the env var's say-so. `tests/unit/core/test_storage_mode.py::test_arbitrary_quill_app_root_alone_does_not_redirect_data` is a regression test mirroring the original L-9 threat model.
+
+**Where it's surfaced.**
+- The first-run Setup Wizard's new Data Location page (`quill/ui/setup_wizard_pages.py::_DataLocationPage`) offers AppData, Portable (when available), or a custom folder via `wx.DirDialog`. On Finish this writes `storage-mode.json` directly — there is nothing to migrate yet on a fresh install.
+- **Preferences → General** has the same three-way choice (`quill/ui/main_frame.py::_build_data_location_block`), for changing the location on an existing install.
+
+**Restart-deferred migration.** A live move is unsafe: `CopyTray` caches its data directory at construction, `Settings` is loaded once at startup, and Windows has no atomic directory-move primitive that's safe against transient file locks. `quill/core/data_location.py` instead:
+1. `request_data_location_change(mode, custom_path=None)` validates the target and writes a `pending-data-location.json` marker into the *current* data directory. Nothing moves yet; the current install keeps working normally until restart.
+2. `apply_pending_data_location_migration()` runs first in `quill/__main__.py::main()`, before `ensure_app_directories()`. If a marker is present, it moves the old directory's contents to the new location (per-entry, via `core.storage.retry_on_transient_lock` for Windows' transient `EACCES`/`EAGAIN`/`EBUSY` locks), writes the new `storage-mode.json` at the destination, and leaves a one-time migration notice. On failure, the old location is left untouched and the notice explains what went wrong — data is never silently lost.
+3. Preferences shows a "Restart Now" / "Later" prompt (`MainFrame._confirm_restart_for_data_location`) immediately after a change is requested, since the move only takes effect on the next launch.
+
+**Implementation map.**
+
+| File | Role |
+| --- | --- |
+| `quill/core/storage_mode.py` | Mode persistence; trusted-anchor + filesystem-evidence portable detection |
+| `quill/core/data_location.py` | Pending-migration marker, restart-deferred move, migration notice |
+| `quill/core/paths.py` | `app_data_dir()` resolves `appdata`/`portable`/`custom` via `storage_mode` |
+| `quill/core/storage.py` | `retry_on_transient_lock` (shared by atomic JSON writes and directory moves) |
+| `quill/ui/setup_wizard_pages.py` | `_DataLocationPage` (first-run choice) |
+| `quill/ui/main_frame.py` | Preferences control, restart prompt, relaunch |
+
+---
+
 ### 5.87 Timer Events
 
 **Design goals.** Let a Quillin perform periodic, low-frequency background work — refreshing a status cell, polling a watched resource, housekeeping — without polling on the UI thread or observing keystrokes. A Quillin declares a `schedule` contribution: one or more named timers, each with an `interval_seconds` and a handler.

@@ -9787,6 +9787,41 @@ class MainFrame(
             pass
         self._set_status(status)
 
+    def _confirm_restart_for_data_location(self, target_dir: object) -> None:
+        """Offer to restart now after a data-location change is queued (#615).
+
+        The move itself happens in ``data_location.apply_pending_data_location_migration``
+        at the start of the *next* launch (see ``quill.__main__.main``) -- a
+        live move is not safe (Settings is loaded once at startup, CopyTray
+        caches its path). This dialog only offers a convenient relaunch.
+        """
+        wx = self._wx
+        dialog = wx.MessageDialog(
+            self.frame,
+            f"QUILL's data will move to:\n{target_dir}\n\nThis takes effect the next time "
+            "QUILL starts. Restart now?",
+            "Data Location Changed",
+            wx.YES_NO | wx.ICON_INFORMATION,
+        )
+        dialog.SetYesNoLabels("Restart Now", "Later")
+        apply_modal_ids(dialog, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO)
+        result = self._show_modal_dialog(dialog, "Data Location Changed")
+        dialog.Destroy()
+        if result == wx.ID_YES:
+            self._relaunch_quill()
+
+    def _relaunch_quill(self) -> None:
+        """Spawn a new QUILL process with the same arguments, then close this one."""
+        import subprocess
+        import sys
+
+        try:
+            subprocess.Popen([sys.executable, *sys.argv])
+        except OSError as error:
+            self._set_status(f"Could not restart automatically: {error}. Please restart QUILL.")
+            return
+        self.frame.Close()
+
     def open_menu_editor(self) -> None:
         """Open the accessible Menu Editor for reordering, hiding, and renaming
         top-level menus, menu items, and context menu items, with one Reset to
@@ -10399,6 +10434,7 @@ class MainFrame(
         ext_master_value: bool | None = None
         ext_engine_spec: tuple[str, str, bool] | None = None
         ai_menu_top_level_value: bool | None = None
+        data_location_choice: tuple[str, str] | None = None
 
         with wx.Dialog(self.frame, title="Settings") as dialog:
             outer = wx.BoxSizer(wx.VERTICAL)
@@ -10844,6 +10880,88 @@ class MainFrame(
             _page_build_fns: list[Callable[[], None]] = []
             _built_pages: set[int] = set()
             _ai_refs: dict[str, object] = {}
+            _data_location_refs: dict[str, object] = {}
+
+            def _build_data_location_block(_p: object, _ps: object) -> None:
+                # #615: lives outside the Settings/registry mechanism on
+                # purpose -- settings.json is itself stored under
+                # app_data_dir(), so "where is app_data_dir()" cannot be a
+                # Settings field without being circular. storage_mode.py's
+                # separate storage-mode.json is the single source of truth;
+                # this block only displays it and queues a change via
+                # core.data_location (applied on next restart, see the OK
+                # handler below).
+                from quill.core import storage_mode as _storage_mode
+                from quill.core.data_location import resolve_target as _resolve_target
+                from quill.core.paths import app_data_dir as _app_data_dir
+
+                _ps.Add(wx.StaticLine(_p), 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 6)
+                _ps.Add(wx.StaticText(_p, label="Data location"), 0, wx.LEFT | wx.TOP, 6)
+
+                _portable_root = _storage_mode.portable_root_dir()
+                _mode_labels = ["In my Windows user profile (recommended)"]
+                _mode_values = ["appdata"]
+                if _portable_root is not None:
+                    _mode_labels.append("Next to QUILL, on this portable drive")
+                    _mode_values.append("portable")
+                _mode_labels.append("Custom folder")
+                _mode_values.append("custom")
+
+                _current_mode = _storage_mode.load_storage_mode() or "appdata"
+                if _current_mode not in _mode_values:
+                    _current_mode = "appdata"
+                _current_custom = _storage_mode.custom_path()
+
+                def _make_mode_choice(_pp=_p):
+                    c = wx.Choice(_pp, choices=_mode_labels)
+                    c.SetName("Data location")
+                    c.SetSelection(_mode_values.index(_current_mode))
+                    return c
+
+                mode_choice = _add_field_row(
+                    _p, _ps, "Store QUILL's data:", lambda: _make_mode_choice()
+                )
+
+                _path_row = wx.BoxSizer(wx.HORIZONTAL)
+                _path_display = wx.StaticText(_p, label=str(_current_custom or app_data_dir()))
+                _choose_btn = wx.Button(_p, label="Choose Folder...")
+                _choose_btn.SetName("Choose custom data folder")
+                _path_row.Add(_path_display, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+                _path_row.Add(_choose_btn, 0, wx.ALIGN_CENTER_VERTICAL)
+                _ps.Add(_path_row, 0, wx.EXPAND | wx.ALL, 6)
+
+                _custom_holder: list[str] = [str(_current_custom or "")]
+
+                def _apply_enabled_state(_c=mode_choice, _b=_choose_btn) -> None:
+                    _b.Enable(_mode_values[_c.GetSelection()] == "custom")
+
+                def _on_choose(_evt: object, _pp=_p) -> None:
+                    with wx.DirDialog(
+                        _pp,
+                        "Choose a folder for QUILL's data",
+                        defaultPath=_custom_holder[0],
+                        style=wx.DD_DEFAULT_STYLE,
+                    ) as ddlg:
+                        if self._show_modal_dialog(ddlg, "Choose Data Folder") == wx.ID_OK:
+                            _custom_holder[0] = ddlg.GetPath()
+                            _path_display.SetLabel(_custom_holder[0])
+                            _p.Layout()
+
+                def _on_mode_choice(_e: object) -> None:
+                    _apply_enabled_state()
+                    _mark_dirty(_e)
+
+                mode_choice.Bind(wx.EVT_CHOICE, _on_mode_choice)
+                _choose_btn.Bind(wx.EVT_BUTTON, _on_choose)
+                _apply_enabled_state()
+
+                def _read_data_location() -> tuple[str, str]:
+                    selected_mode = _mode_values[mode_choice.GetSelection()]
+                    return selected_mode, _custom_holder[0]
+
+                _data_location_refs["read"] = _read_data_location
+                _data_location_refs["resolve_target"] = _resolve_target
+                _data_location_refs["current"] = _app_data_dir()
 
             def _make_page_builder(
                 _p: object,
@@ -10852,6 +10970,7 @@ class MainFrame(
                 _sp: list,
                 _g: object,
                 _sa: bool,
+                _show_data_location: bool = False,
             ) -> Callable[[], None]:
                 def _build() -> None:
                     if _g.description:
@@ -10930,6 +11049,8 @@ class MainFrame(
                         return
                     for spec in _sp:
                         _make_control(_p, _ps, spec, _pi)
+                    if _show_data_location:
+                        _build_data_location_block(_p, _ps)
                     _p.Layout()
 
                 return _build
@@ -10941,14 +11062,21 @@ class MainFrame(
                     if not spec.feature_id or self._feature_enabled(spec.feature_id)
                 ]
                 show_ai_master = group.id == "ai"
-                if not specs and not show_ai_master:
+                show_data_location = group.id == "general"
+                if not specs and not show_ai_master and not show_data_location:
                     continue
                 _pg = wx.Panel(notebook, style=wx.TAB_TRAVERSAL)
                 _pg.SetSizer(wx.BoxSizer(wx.VERTICAL))
                 notebook.AddPage(_pg, group.title)
                 _page_build_fns.append(
                     _make_page_builder(
-                        _pg, _pg.GetSizer(), page_index, specs, group, show_ai_master
+                        _pg,
+                        _pg.GetSizer(),
+                        page_index,
+                        specs,
+                        group,
+                        show_ai_master,
+                        show_data_location,
                     )
                 )
                 page_index += 1
@@ -11177,6 +11305,9 @@ class MainFrame(
                 _tl_cb = _ai_refs.get("ai_menu_top_level_cb")
                 if _tl_cb is not None:
                     ai_menu_top_level_value = bool(_tl_cb.GetValue())
+                _read_data_location = _data_location_refs.get("read")
+                if _read_data_location is not None:
+                    data_location_choice = _read_data_location()
 
         mode = action["mode"]
         if mode == "import":
@@ -11218,6 +11349,28 @@ class MainFrame(
                     self._set_status(str(error))
         if ai_menu_top_level_value is not None:
             self.features.set_feature_enabled("future.ai_menu_top_level", ai_menu_top_level_value)
+        if data_location_choice is not None:
+            chosen_mode, chosen_custom = data_location_choice
+            resolve_target_fn = _data_location_refs.get("resolve_target")
+            current_dir = _data_location_refs.get("current")
+            if resolve_target_fn is not None and current_dir is not None:
+                custom_arg = (
+                    Path(chosen_custom) if chosen_mode == "custom" and chosen_custom else None
+                )
+                try:
+                    target_dir = resolve_target_fn(chosen_mode, custom_arg)
+                except ValueError as error:
+                    self._set_status(str(error))
+                else:
+                    if target_dir != current_dir:
+                        from quill.core.data_location import request_data_location_change
+
+                        try:
+                            request_data_location_change(chosen_mode, custom_arg)
+                        except (ValueError, OSError) as error:
+                            self._set_status(f"Could not change data location: {error}")
+                        else:
+                            self._confirm_restart_for_data_location(target_dir)
         self._settings_dialog_apply_refresh("Updated settings")
 
     def open_ai_preferences(self) -> None:

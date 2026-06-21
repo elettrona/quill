@@ -1,186 +1,8 @@
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-  <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>release0.7.0-beta2</title>
-  <style>
-    /* Default styles provided by pandoc.
-    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
-    */
-    html {
-      color: #1a1a1a;
-      background-color: #fdfdfd;
-    }
-    body {
-      margin: 0 auto;
-      max-width: 36em;
-      padding-left: 50px;
-      padding-right: 50px;
-      padding-top: 50px;
-      padding-bottom: 50px;
-      hyphens: auto;
-      overflow-wrap: break-word;
-      text-rendering: optimizeLegibility;
-      font-kerning: normal;
-    }
-    @media (max-width: 600px) {
-      body {
-        font-size: 0.9em;
-        padding: 12px;
-      }
-      h1 {
-        font-size: 1.8em;
-      }
-    }
-    @media print {
-      html {
-        background-color: white;
-      }
-      body {
-        background-color: transparent;
-        color: black;
-        font-size: 12pt;
-      }
-      p, h2, h3 {
-        orphans: 3;
-        widows: 3;
-      }
-      h2, h3, h4 {
-        page-break-after: avoid;
-      }
-    }
-    p {
-      margin: 1em 0;
-    }
-    a {
-      color: #1a1a1a;
-    }
-    a:visited {
-      color: #1a1a1a;
-    }
-    img {
-      max-width: 100%;
-    }
-    svg {
-      height: auto;
-      max-width: 100%;
-    }
-    h1, h2, h3, h4, h5, h6 {
-      margin-top: 1.4em;
-    }
-    h5, h6 {
-      font-size: 1em;
-      font-style: italic;
-    }
-    h6 {
-      font-weight: normal;
-    }
-    ol, ul {
-      padding-left: 1.7em;
-      margin-top: 1em;
-    }
-    li > ol, li > ul {
-      margin-top: 0;
-    }
-    blockquote {
-      margin: 1em 0 1em 1.7em;
-      padding-left: 1em;
-      border-left: 2px solid #e6e6e6;
-      color: #606060;
-    }
-    code {
-      white-space: pre-wrap;
-      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
-      font-size: 85%;
-      margin: 0;
-      hyphens: manual;
-    }
-    pre {
-      margin: 1em 0;
-      overflow: auto;
-    }
-    pre code {
-      padding: 0;
-      overflow: visible;
-      overflow-wrap: normal;
-    }
-    .sourceCode {
-     background-color: transparent;
-     overflow: visible;
-    }
-    hr {
-      border: none;
-      border-top: 1px solid #1a1a1a;
-      height: 1px;
-      margin: 1em 0;
-    }
-    table {
-      margin: 1em 0;
-      border-collapse: collapse;
-      width: 100%;
-      overflow-x: auto;
-      display: block;
-      font-variant-numeric: lining-nums tabular-nums;
-    }
-    table caption {
-      margin-bottom: 0.75em;
-    }
-    tbody {
-      margin-top: 0.5em;
-      border-top: 1px solid #1a1a1a;
-      border-bottom: 1px solid #1a1a1a;
-    }
-    th {
-      border-top: 1px solid #1a1a1a;
-      padding: 0.25em 0.5em 0.25em 0.5em;
-    }
-    td {
-      padding: 0.125em 0.5em 0.25em 0.5em;
-    }
-    header {
-      margin-bottom: 4em;
-      text-align: center;
-    }
-    #TOC li {
-      list-style: none;
-    }
-    #TOC ul {
-      padding-left: 1.3em;
-    }
-    #TOC > ul {
-      padding-left: 0;
-    }
-    #TOC a:not(:hover) {
-      text-decoration: none;
-    }
-    span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
-    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-    /* The extra [class] is a hack that increases specificity enough to
-       override a similar rule in reveal.js */
-    ul.task-list[class]{list-style: none;}
-    ul.task-list li input[type="checkbox"] {
-      font-size: inherit;
-      width: 0.8em;
-      margin: 0 0.8em 0.2em -1.6em;
-      vertical-align: middle;
-    }
-    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
-  </style>
-</head>
-<body>
-<h1 id="quill-070-beta-2-release-notes-in-development">QUILL 0.7.0 Beta
-2 Release Notes (in development)</h1>
+<h1 id="quill-0.7.0-beta-2-release-notes-in-development">QUILL 0.7.0
+Beta 2 Release Notes (in development)</h1>
 <p>This is the draft notes file for the 0.7.0 Beta 2 release. Sections
 here ship into the final release notes when Beta 2 is tagged.</p>
-<p>Beta 2 is the "settings carry-over" release. Most of the visible work
+<p>Beta 2 is the “settings carry-over” release. Most of the visible work
 is in the load path: when a user upgrades from 0.5.0 or 0.7.0 Beta 1,
 their saved settings, keymap, recent files, and feature profile travel
 with them, and any saved entry that has become invalid is cleaned up on
@@ -195,10 +17,34 @@ the full list.</p>
 <p>A standalone migration utility is still planned. This release covers
 the hot path so a user with a 0.5.0 install does not have to run
 one.</p>
+<h2 id="new-configurable-data-location-615">New: configurable data
+location (#615)</h2>
+<p>Where QUILL stores settings, dictionaries, autosaves, recovery files,
+and logs is now a choice instead of a fixed
+<code>%APPDATA%\Quill</code>:</p>
+<ul>
+<li><strong>The first-run Setup Wizard</strong> has a new “Where QUILL
+stores your data?” page. AppData is still the recommended default.
+Running QUILL from a portable bundle (a folder with
+<code>run-quill.cmd</code> in it) also offers “Next to QUILL, on this
+portable drive” — your data folder moves with the USB stick or
+managed-machine folder, not your Windows profile. A third option lets
+you choose any folder, including one you create on the spot.</li>
+<li><strong>Preferences &gt; General</strong> has the same choice for
+changing your mind later, with an Open Folder dialog that can create a
+new folder. A change here is not applied immediately: moving real
+settings, undo history, and recovery data while QUILL is running is not
+safe, so the move happens automatically the next time QUILL starts, and
+a dialog offers to restart right away.</li>
+<li>Portable detection only trusts a folder that actually contains
+<code>run-quill.cmd</code> — never a bare environment variable — so this
+does not reopen the security hardening from the L-9 fix (a tampered
+environment variable still cannot redirect your data).</li>
+</ul>
 <h2 id="settings-carry-over">Settings carry-over</h2>
 <h3 id="the-rule">The rule</h3>
 <p>For keyboard shortcuts and any other user-tweakable setting, the
-default is the answer. A user's saved setting is honored only if it is
+default is the answer. A user’s saved setting is honored only if it is
 still valid for the current build. If the saved setting is no longer
 valid (unknown command id, conflicting chord, removed setting, etc.), it
 is dropped and the default takes effect on the same launch — the user
@@ -216,8 +62,8 @@ map.</li>
 </ol>
 <p>Saved entries that fail any check are logged at debug level and
 dropped from the loaded keymap. The surviving subset is persisted back
-to the on-disk <code>keymap.json</code> so the file reflects "what was
-actually honored" on the next launch. Files that are already clean
+to the on-disk <code>keymap.json</code> so the file reflects “what was
+actually honored” on the next launch. Files that are already clean
 (every saved entry survives the merge) are left untouched — a small
 per-user delta stays small.</p>
 <p>The same rule applies to settings in general (not just keymap). The
@@ -225,8 +71,8 @@ per-user delta stays small.</p>
 versioned, nested serialization shape with
 <code>SETTINGS_SCHEMA_VERSION</code> and a lossless round-trip between
 <code>from_versioned</code> and <code>to_versioned</code>. The beta-2
-load path is the place where "drop a saved entry whose key no longer
-exists" gets the same treatment as the keymap.</p>
+load path is the place where “drop a saved entry whose key no longer
+exists” gets the same treatment as the keymap.</p>
 <h3 id="why-this-matters-for-users">Why this matters for users</h3>
 <p>A user who upgraded from 0.5.0 to 0.7.0 Beta 1 had to reconfigure any
 setting that moved in 0.7.0 — for example, the QUILL Key binding moved
@@ -257,8 +103,8 @@ manual re-bind.</p></li>
 </ul>
 <p>The same one-time rewrite applies to the other bindings that moved
 off the QUILL-Key prefix and back to their conventional shortcuts in
-this release (for example <code>Ctrl+Shift+Grave, T</code> for "Send to
-System Tray", <code>Ctrl+Shift+Grave, R</code> for Read Aloud, and
+this release (for example <code>Ctrl+Shift+Grave, T</code> for “Send to
+System Tray”, <code>Ctrl+Shift+Grave, R</code> for Read Aloud, and
 <code>Ctrl+Shift+Grave, D</code> for Dictation). After the first launch,
 the menu and the chord display in the status bar match.</p>
 <h3 id="what-is-not-a-migration">What is not a migration</h3>
@@ -289,7 +135,7 @@ including the pre-0.7.0 flat keymap profile format and the pre-0.7.0
 Quillin manifest v0 shapes.</li>
 <li><strong>Bulk keymap rebind</strong> when a wholesale change happens
 — for example, if 0.8.0 moves an entire chord family, the utility will
-offer to remap the user's saved bindings as a batch.</li>
+offer to remap the user’s saved bindings as a batch.</li>
 <li><strong>Audit log</strong> of every entry that was dropped,
 persisted alongside the cleaned keymap so the user can review what
 changed.</li>
@@ -315,7 +161,7 @@ text again. Plain (non-chord) shortcuts like <code>Ctrl+R</code> were
 never affected.</p></li>
 <li><p><strong>First-run setup could not open the AI Hub, and once it
 did, every later launch crashed on startup (#614).</strong> On a
-brand-new profile the wizard's "Open AI Hub" button raised an internal
+brand-new profile the wizard’s “Open AI Hub” button raised an internal
 type error before the dialog could draw, leaving the AI Hub unreachable
 until you had already configured a provider elsewhere. And on the next
 launch after that, the editor caret handler crashed silently on every
@@ -325,15 +171,15 @@ cleanly on first run from the wizard, and the editor caret handler no
 longer fires before a document is loaded.</p></li>
 <li><p><strong>Importing a profile or backup silently undid your keymap
 customizations (#614 follow-up).</strong> When you accepted an exported
-keymap, the recipient's own overrides for individual chords were
-overwritten by the exporter's defaults, so a keymap you had carefully
+keymap, the recipient’s own overrides for individual chords were
+overwritten by the exporter’s defaults, so a keymap you had carefully
 tuned (for example a home-row <code>Ctrl+Shift+B</code> for bold block)
-could be rolled back to the build's default just because you opened a
-colleague's profile. The import now only carries over entries that
-actually differ from the default, so the recipient's customizations are
+could be rolled back to the build’s default just because you opened a
+colleague’s profile. The import now only carries over entries that
+actually differ from the default, so the recipient’s customizations are
 preserved.</p></li>
 <li><p><strong>Check for Updates crashed every time you opened it
-(#605).</strong> The Help menu's Check for Updates and Check for GLOW
+(#605).</strong> The Help menu’s Check for Updates and Check for GLOW
 Updates both rely on a small Markdown flattener to render the
 release-notes snippet into the dialog body. That flattener was removed
 in the About dialog rewrite earlier in the 0.7.0 line and the path was
@@ -349,7 +195,7 @@ accelerators to the <code>Cmd</code> key, so pressing <code>Cmd+Q</code>
 (the universal macOS Quit shortcut) ran Quote Lines instead of quitting.
 There was no working quit shortcut on macOS. Quote Lines has moved to
 <code>Ctrl+Shift+Q</code> and Unquote Lines to
-<code>Ctrl+Shift+K</code>, and QUILL's quit command is now bound to
+<code>Ctrl+Shift+K</code>, and QUILL’s quit command is now bound to
 <code>Ctrl+Q</code> (which maps to <code>Cmd+Q</code> on macOS).
 <code>Alt+F4</code> still works on Windows via the stock File -&gt; Exit
 accelerator. A saved <code>keymap.json</code> that still has the old
@@ -372,34 +218,36 @@ Tools menu on every later launch.</p></li>
 stray chevrons by screen readers (#611).</strong> The Back and Next
 buttons in the setup wizard had decorative <code>&lt;</code> and
 <code>&gt;</code> characters baked into the button labels
-("<code>&lt; Back</code>" and "<code>Next &gt;</code>"), and VoiceOver
-on macOS was reading them as "less than Back" and "Next greater than."
+(“<code>&lt; Back</code>” and “<code>Next &gt;</code>”), and VoiceOver
+on macOS was reading them as “less than Back” and “Next greater than.”
 JAWS in Forms mode on Windows had the same problem. The buttons now
-simply read "Back" and "Next," which is what every screen reader
+simply read “Back” and “Next,” which is what every screen reader
 announces, and what every sighted user sees on the face of the
 button.</p></li>
-<li><p><strong>JAWS read "Version" with no number when you pressed
+<li><p><strong>JAWS read “Version” with no number when you pressed
 Ctrl+JAWSKey+V in the portable build (#615).</strong> The hotkey that
-asks JAWS to speak the focused window's VersionInfo pulls the value from
-the launcher's <code>.exe</code>, and the portable build is launched by
-<code>pythonw.exe</code>, whose VersionInfo is "Python 3.x.x" rather
-than QUILL's. JAWS announced the word "Version" and then went silent
+asks JAWS to speak the focused window’s VersionInfo pulls the value from
+the launcher’s <code>.exe</code>, and the portable build is launched by
+<code>pythonw.exe</code>, whose VersionInfo is “Python 3.x.x” rather
+than QUILL’s. JAWS announced the word “Version” and then went silent
 because the launcher had nothing useful to report. The window title now
-includes the full QUILL version (for example, "QUILL for All 0.7.0 Beta
-1"), so every screen reader that announces the focused window — JAWS
+includes the full QUILL version (for example, “QUILL for All 0.7.0 Beta
+1”), so every screen reader that announces the focused window — JAWS
 Insert+T, NVDA+T, Narrator Caps+H, VoiceOver — now reads the version
-along with the document name. The Ctrl+JAWSKey+V path still reports only
-"Version" until a versioned launcher ships, which is a packaging
-follow-up, not a source change.</p></li>
-<li><p><strong>Setup Wizard no longer opens on top of an "Untitled" tab
+along with the document name. The portable build’s launcher is now a
+dedicated <code>quill.exe</code> with QUILL’s own VersionInfo resource
+stamped in at build time (instead of a renamed
+<code>pythonw.exe</code>), so Ctrl+JAWSKey+V also reports the real QUILL
+version, not just the word “Version.”</p></li>
+<li><p><strong>Setup Wizard no longer opens on top of an “Untitled” tab
 on first launch (#606).</strong> On a fresh install, the editor used to
-appear with an "Untitled" tab first and then the Setup Wizard modal
-opened on top of it. VoiceOver on macOS read "Untitled" as soon as the
+appear with an “Untitled” tab first and then the Setup Wizard modal
+opened on top of it. VoiceOver on macOS read “Untitled” as soon as the
 window was shown, so you heard a document name before you ever heard the
 wizard. The window now opens with no document tab, the wizard comes up
 first, and a fresh untitled document is created automatically after the
 wizard finishes. Returning QUILL users (anyone who has already run the
-wizard once) see the normal "Untitled" tab on launch as before.</p></li>
+wizard once) see the normal “Untitled” tab on launch as before.</p></li>
 <li><p><strong>VoiceOver now reads the editor as a native text area on
 macOS (#616).</strong> The main document editor is a
 <code>wx.TextCtrl</code> whose <code>TE_RICH2</code> and
@@ -409,35 +257,35 @@ accessibility shim (a Windows/MSAA workaround for the surrounding panel
 and splitter) was overwriting the native NSView role, so VoiceOver
 treated the editor as a generic group rather than a real text area. The
 Windows-only flags are now dropped on macOS, the silent-accessible shim
-is a no-op on macOS, and the editor's NSView has its NSAccessibility
+is a no-op on macOS, and the editor’s NSView has its NSAccessibility
 role pinned to <code>NSTextView</code> so VoiceOver announces it as a
 normal, editable text area with full text-navigation semantics. Windows
 behaviour is unchanged.</p></li>
 <li><p><strong>Report a Bug dialog now speaks field names on macOS,
 opens in its own window so you can alt-tab to the editor, and no longer
 auto-opens a browser after submit (#618).</strong> On macOS, VoiceOver
-was reading each field in the Report a Bug dialog as a bare "text" or
-"combo box" with no name, because the Windows MSAA chain that links a
+was reading each field in the Report a Bug dialog as a bare “text” or
+“combo box” with no name, because the Windows MSAA chain that links a
 label to its input does not exist in macOS NSAccessibility. Every field
 is now bound to its label via the standard accessibility name, so
-VoiceOver reads "Summary, edit text" / "What happened, edit text" / etc.
+VoiceOver reads “Summary, edit text” / “What happened, edit text” / etc.
 when you tab into a field. The dialog now opens in its own non-modal
 window by default, so you can alt-tab back to the editor to document
 exact reproduction steps; the editor stays interactive while the form is
 open. And on submit, QUILL copies the report to your clipboard and stops
-— the previous behaviour of also opening a GitHub "New Issue" page in
-your browser is now opt-in via a Settings toggle (Settings -&gt; "After
+— the previous behaviour of also opening a GitHub “New Issue” page in
+your browser is now opt-in via a Settings toggle (Settings -&gt; “After
 you submit a bug report, automatically open the support form in your
-default browser"). The report is always on your clipboard
+default browser”). The report is always on your clipboard
 regardless.</p></li>
 <li><p><strong>Ctrl+F4 on a dirty document no longer crashes when you
-pick "Don't Save" (#619).</strong> The save-before-close prompt's
-"restore editor focus" step queued an <code>editor.SetFocus</code> via
+pick “Don’t Save” (#619).</strong> The save-before-close prompt’s
+“restore editor focus” step queued an <code>editor.SetFocus</code> via
 <code>CallAfter</code> that fired after the close had already destroyed
 the editor TextCtrl, raising
 <code>RuntimeError: wrapped C/C++ object of type TextCtrl has been deleted</code>
-and surfacing as "QUILL encountered an unexpected error and needs to
-close." The close-path save prompt now passes
+and surfacing as “QUILL encountered an unexpected error and needs to
+close.” The close-path save prompt now passes
 <code>restore_focus=False</code>, and the focus restore in
 <code>_show_modal_dialog</code> swallows the <code>RuntimeError</code>
 defensively for any other teardown-time dialog. Save and Cancel paths
@@ -447,13 +295,13 @@ before.</p></li>
 handler (#603).</strong> The editor caret-activity handler can fire
 after the underlying <code>TextCtrl</code> has been destroyed at the C++
 layer — for example, when you press <code>Ctrl+W</code> on a dirty
-document, pick "Don't Save" on the prompt, and the next caret event is
-still queued. The helper that reads the editor's value to play the
+document, pick “Don’t Save” on the prompt, and the next caret event is
+still queued. The helper that reads the editor’s value to play the
 indent tone was calling <code>editor.GetValue()</code> and
 <code>editor.GetInsertionPoint()</code> on the dead widget, raising
 <code>RuntimeError: wrapped C/C++ object of type TextCtrl has been deleted</code>
-and surfacing as "QUILL encountered an unexpected error and needs to
-close." The read is now wrapped in a
+and surfacing as “QUILL encountered an unexpected error and needs to
+close.” The read is now wrapped in a
 <code>try/except RuntimeError</code> so the event handler swallows the
 dead-widget error cleanly, the next caret movement gets its tone, and
 the window closes without an error dialog.</p></li>
@@ -465,7 +313,7 @@ them for word-by-word reading), but <code>Back</code> and
 <code>Forward</code> Location were bound to <code>Alt+Left</code> and
 <code>Alt+Right</code>, which wxPython maps to the Option key. Pressing
 Option+Left in the editor jumped to the previous location instead of
-moving the cursor by one word, and VoiceOver's word-by-word reading
+moving the cursor by one word, and VoiceOver’s word-by-word reading
 never fired. The macOS default for Back / Forward Location is now
 <code>Cmd+[</code> and <code>Cmd+]</code> (the conventional macOS back /
 forward chord, matching Safari, Finder, and most other Mac apps).
@@ -475,12 +323,12 @@ Windows users keep the existing <code>Alt+Left</code> and
 rewritten to the new macOS chord on first launch, and the corrected
 value is persisted back so the next launch is clean.</p></li>
 <li><p><strong>Setup Wizard page heading is the first focusable element,
-and the preview is no longer announced as "edit text" by VoiceOver
+and the preview is no longer announced as “edit text” by VoiceOver
 (#610).</strong> On every wizard page, the page heading was a plain
 <code>wx.StaticText</code>, which cannot accept keyboard focus, so the
-wizard's focus helper skipped past it and landed on the first focusable
+wizard’s focus helper skipped past it and landed on the first focusable
 child — the read-only preview <code>TextCtrl</code>. VoiceOver on macOS
-announced the preview as an "edit text" field regardless of
+announced the preview as an “edit text” field regardless of
 <code>TE_READONLY</code> (macOS NSAccessibility does not change the role
 for a read-only TextCtrl), so a screen-reader user heard the preview
 before the page name. The heading is now a no-border
@@ -498,7 +346,7 @@ and tries to detect the Help menu by its title; without the
 <code>SetHelpMenu</code> hint, macOS left the Help menu in the slot the
 menu bar gave it (still last, but not flagged as the system Help menu),
 so the AppKit <code>APP_NAME &gt; Help</code> shortcut did not work and
-VoiceOver's "Open the Help menu" gesture (<code>VO+Cmd+?</code>) did not
+VoiceOver’s “Open the Help menu” gesture (<code>VO+Cmd+?</code>) did not
 focus the Help menu. After the menu bar is built, the macOS code path
 now calls <code>menu_bar.SetHelpMenu(help_menu)</code> (with a
 <code>hasattr</code> + <code>try/except</code> fallback to the classic
@@ -511,16 +359,16 @@ continuation as high confidence and surfaces the trailing letter
 (BR-013).</strong> The Phase 2 print-page detector in
 <code>quill/core/brf_page_detection.py</code> previously scored every
 right-margin number on line 1 as <code>medium</code> confidence, even
-when a previous page's right-margin number carried the same digits and
+when a previous page’s right-margin number carried the same digits and
 the current line added a trailing letter (<code>7</code> on braille page
 1, <code>7a</code> on braille page 2). That left the braille
 continuation path in limbo: the <code>detect_continuation_letter</code>
 helper had no way to distinguish a real continuation from a coincidence,
 so it returned <code>None</code> and the print-page status string read
 <code>Print 7</code> instead of <code>Print 7a</code>. The detector now
-threads the previous page's indicator through the walk; a right-margin
+threads the previous page’s indicator through the walk; a right-margin
 number with a trailing letter whose digits match the previous
-indicator's print page (and whose previous confidence is not
+indicator’s print page (and whose previous confidence is not
 <code>low</code>) is classified as <code>high</code>, the trailing
 letter is captured as part of the indicator, and the helper walks the
 text via <code>page_map.page_offset()</code> to extract the letter for
@@ -528,5 +376,3 @@ the status string. The detailed braille status command now reads the
 full <code>Print 7a</code> form when a continuation letter is present,
 and the BR-013 unit-test suite has no skips remaining.</p></li>
 </ul>
-</body>
-</html>

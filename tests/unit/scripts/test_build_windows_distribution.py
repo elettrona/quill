@@ -47,11 +47,14 @@ version = "2.4.6"
     assert "set QUILL_PORTABLE=1" in launcher
     assert "set QUILL_APP_ROOT=%~dp0" in launcher
     assert "set QUILL_PORTABLE_ROOT=%~dp0data" in launcher
-    # Launcher defaults to pythonw and supports --console for diagnostics.
+    # Launcher prefers the VersionInfo-stamped quill.exe (issue #615), then
+    # plain pythonw, and supports --console for diagnostics.
     assert "QUILL_BUNDLED_PYTHON" in launcher
     assert "QUILL_BUNDLED_PYTHONW" in launcher
+    assert "QUILL_BUNDLED_QUILLEXE" in launcher
     assert "python\\python.exe" in launcher
     assert "python\\pythonw.exe" in launcher
+    assert "python\\quill.exe" in launcher
     assert '"--console"' in launcher
 
     readme_text = (portable_dir / "README.txt").read_text(encoding="utf-8")
@@ -154,10 +157,18 @@ def test_build_inno_setup_script_mentions_portable_bundle() -> None:
     assert "Components: speechpiper" in script
     assert "User Guide" in script
     assert "userguide.html" in script
-    assert "python\\pythonw.exe" in script
     assert 'Parameters: "-m quill"' in script
-    assert "Check: FileExists(ExpandConstant('{app}\\python\\pythonw.exe'))" in script
-    assert "Check: not FileExists(ExpandConstant('{app}\\python\\pythonw.exe'))" in script
+    # Bundled-launcher resolution (issue #615): quill.exe (VersionInfo-stamped
+    # pythonw.exe) preferred, falling back to plain pythonw.exe, via the
+    # BundledLauncherPath/HasBundledLauncher [Code] functions.
+    assert "function BundledLauncherPath(Param: String): String;" in script
+    assert "function HasBundledLauncher(): Boolean;" in script
+    assert "{app}\\python\\quill.exe" in script
+    assert "{app}\\python\\pythonw.exe" in script
+    assert "{code:BundledLauncherPath}" in script
+    assert "Check: HasBundledLauncher" in script
+    assert "Check: not HasBundledLauncher" in script
+    assert "UninstallDisplayIcon={code:BundledLauncherPath}" in script
     assert "Beta Announcement" not in script
     assert "Product Requirements" not in script
     # File-association registry entries use HKCU only (never overwrite defaults).

@@ -8,9 +8,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from quill import __version__
+from quill.core.data_location import apply_pending_data_location_migration
 from quill.core.features import reset_feature_profile_store
 from quill.core.paths import app_data_dir, ensure_app_directories
-from quill.core.storage_mode import load_storage_mode, portable_root_dir, save_storage_mode
 from quill.stability.diagnostics import dump_all_thread_stacks, setup_fault_handler
 from quill.stability.logging_config import configure_logging
 
@@ -77,13 +77,15 @@ def main() -> int:
         print(__version__)
         return 0
 
+    # #615: apply a pending data-location move (Preferences > General >
+    # Data location) before anything resolves app_data_dir() for real, so
+    # logs/settings/recovery land in the new location from this launch on.
+    apply_pending_data_location_migration()
     ensure_app_directories()
     log_listener = configure_logging(app_data_dir() / "logs")
     setup_fault_handler()
     _install_excepthook()
     try:
-        _bootstrap_storage_mode()
-
         try:
             from quill.ui.main_frame import run_app
         except ModuleNotFoundError as exc:
@@ -134,53 +136,6 @@ def main() -> int:
     finally:
         log_listener.stop()
     return 0
-
-
-def _bootstrap_storage_mode() -> None:
-    if os.environ.get("QUILL_PORTABLE") != "1":
-        return
-    if os.environ.get("QUILL_DATA_DIR"):
-        return
-    root = portable_root_dir()
-    if root is None:
-        return
-    mode = load_storage_mode()
-    if mode == "portable":
-        os.environ["QUILL_DATA_DIR"] = str(root)
-        return
-    if mode == "appdata":
-        return
-
-    try:
-        import wx
-    except ModuleNotFoundError:
-        return
-
-    app = wx.App(False)
-    try:
-        with wx.SingleChoiceDialog(
-            None,
-            "Where should Quill store its settings and other local data?",
-            "Quill Storage Location",
-            choices=[
-                "AppData (recommended)",
-                "Portable folder next to Quill",
-            ],
-        ) as dialog:
-            selection = dialog.ShowModal()
-            if selection != wx.ID_OK:
-                choice = "appdata"
-            elif dialog.GetSelection() == 1:
-                choice = "portable"
-            else:
-                choice = "appdata"
-    finally:
-        app.Destroy()
-
-    save_storage_mode(choice)
-    if choice == "portable":
-        root.mkdir(parents=True, exist_ok=True)
-        os.environ["QUILL_DATA_DIR"] = str(root)
 
 
 def _parse_cli_arguments(arguments: list[str]) -> Namespace:

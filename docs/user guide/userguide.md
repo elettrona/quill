@@ -1090,7 +1090,7 @@ The **Help** menu is where Quill becomes a guide.
 - **What Can I Do Here?** gives context-aware assistance.
 - **Why Don't I See a Feature?** explains profile-driven feature visibility.
 - **Feature Profiles** commands let you switch profile, run health checks, undo the last profile change, reset to Essential, and run onboarding.
-- **Personalise QUILL...** (the first-run setup wizard) can be rerun at any time to adjust your keyboard pack, feature profile, remote access, AI, reading and accessibility, writing tools, and startup behaviour.
+- **Personalise QUILL...** (the first-run setup wizard) can be rerun at any time to adjust your keyboard pack, feature profile, remote access, AI, reading and accessibility, writing tools, data location, and startup behaviour.
 - **Report a Bug...** opens an in-app review screen, copies the environment summary to the clipboard, and then opens the Community Access support-hub issue form.
 - **Check for Updates...** verifies the signed update manifest, opens the installer download page, and can close Quill so setup can run immediately.
 - **About Quill** shows version, publisher details, and linked third-party dependency attribution with license and version metadata.

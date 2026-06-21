@@ -47,10 +47,13 @@ WizardStyle=modern
 CloseApplications=force
 RestartApplications=no
 UninstallDisplayName={#AppName} {#AppVersion}
-; pythonw.exe carries a real icon so Add/Remove Programs shows one;
-; the .cmd launcher has none. Falls back gracefully when no bundled
-; runtime is present (e.g. a dev build).
-UninstallDisplayIcon={app}\python\pythonw.exe
+; The bundled launcher carries a real icon so Add/Remove Programs shows
+; one; the .cmd launcher has none. BundledLauncherPath (see [Code])
+; prefers python\quill.exe -- a VERSIONINFO-stamped copy of pythonw.exe,
+; see _stamp_launcher_version_info -- falling back to plain pythonw.exe,
+; and gracefully returns blank when no bundled runtime is present (e.g.
+; a dev build), in which case no icon is shown.
+UninstallDisplayIcon={code:BundledLauncherPath}
 LicenseFile=LICENSE
 InfoAfterFile=README-installer.txt
 SetupLogging=yes
@@ -98,13 +101,13 @@ Source: "..\portable\tools\speech\piper\*"; DestDir: "{app}\tools\speech\piper";
 Source: "..\portable\tools\nodejs\*"; DestDir: "{app}\tools\nodejs"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: nodejs
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: "-m quill"; WorkingDir: "{app}"; Check: FileExists(ExpandConstant('{app}\python\pythonw.exe'))
-Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Check: not FileExists(ExpandConstant('{app}\python\pythonw.exe'))
+Name: "{group}\{#AppName}"; Filename: "{code:BundledLauncherPath}"; Parameters: "-m quill"; WorkingDir: "{app}"; Check: HasBundledLauncher
+Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Check: not HasBundledLauncher
 Name: "{group}\{#AppName} README"; Filename: "{app}\README.txt"
 Name: "{group}\{#AppName} User Guide"; Filename: "{app}\docs\userguide.html"
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: "-m quill"; WorkingDir: "{app}"; Tasks: desktopicon; Check: FileExists(ExpandConstant('{app}\python\pythonw.exe'))
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon; Check: not FileExists(ExpandConstant('{app}\python\pythonw.exe'))
+Name: "{autodesktop}\{#AppName}"; Filename: "{code:BundledLauncherPath}"; Parameters: "-m quill"; WorkingDir: "{app}"; Tasks: desktopicon; Check: HasBundledLauncher
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon; Check: not HasBundledLauncher
 
 [Registry]
 ; Register Quill in the OpenWithList for common text formats. We
@@ -266,8 +269,8 @@ Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\Quill.re
 [Run]
 Filename: "{app}\README.txt"; Description: "View the Quill README"; Flags: postinstall shellexec skipifsilent unchecked
 Filename: "{app}\docs\userguide.html"; Description: "View the User Guide"; Flags: postinstall shellexec skipifsilent unchecked
-Filename: "{app}\python\pythonw.exe"; Parameters: "-m quill"; Description: "Launch {#AppName}"; Flags: postinstall nowait skipifsilent unchecked; Check: FileExists(ExpandConstant('{app}\python\pythonw.exe'))
-Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: postinstall nowait skipifsilent unchecked; Check: not FileExists(ExpandConstant('{app}\python\pythonw.exe'))
+Filename: "{code:BundledLauncherPath}"; Parameters: "-m quill"; Description: "Launch {#AppName}"; Flags: postinstall nowait skipifsilent unchecked; Check: HasBundledLauncher
+Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: postinstall nowait skipifsilent unchecked; Check: not HasBundledLauncher
 
 [UninstallDelete]
 ; Always remove install-dir build junk. Whether to also remove the
@@ -283,6 +286,28 @@ Type: filesandordirs; Name: "{app}\__pycache__"
 Type: filesandordirs; Name: "{app}\python"
 
 [Code]
+// -- Bundled launcher resolution ------------------------------------------------
+// python\quill.exe is a copy of the embedded runtime's pythonw.exe whose
+// VERSIONINFO has been stamped with the Quill product identity (see
+// _stamp_launcher_version_info in build_windows_distribution.py), so JAWS's
+// Ctrl+JAWSKey+V reports the real Quill version instead of "Python 3.x.x"
+// (issue #615). Older bundles and dev builds may only have plain pythonw.exe,
+// or neither, so every call site falls back gracefully.
+function BundledLauncherPath(Param: String): String;
+begin
+  if FileExists(ExpandConstant('{app}\python\quill.exe')) then
+    Result := ExpandConstant('{app}\python\quill.exe')
+  else if FileExists(ExpandConstant('{app}\python\pythonw.exe')) then
+    Result := ExpandConstant('{app}\python\pythonw.exe')
+  else
+    Result := '';
+end;
+
+function HasBundledLauncher(): Boolean;
+begin
+  Result := BundledLauncherPath('') <> '';
+end;
+
 // -- Skip component page for full installs ------------------------------------
 // Full install: skip component selection (everything is pre-selected).
 function ShouldSkipPage(PageID: Integer): Boolean;

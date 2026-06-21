@@ -10,7 +10,8 @@ Pages (in presentation order):
   2 - Extras (AI / Braille / Automation)
   3 - AI Provider (shown only when AI is wanted)
   4 - Keyboard and Sound
-  5 - Summary
+  5 - Data Location (#615)
+  6 - Summary
 
 Feature toggles are held in ``_pending_overrides: dict[str, str]`` inside
 the dialog and applied to the ``FeatureManager`` only when the user clicks
@@ -28,6 +29,8 @@ from collections.abc import Callable
 
 import wx
 
+from quill.core import storage_mode
+from quill.core.data_location import request_data_location_change, resolve_target
 from quill.core.features import (
     FEATURE_STATE_ON,
     FeatureManager,
@@ -204,19 +207,6 @@ def _focusable_heading(
     btn.SetFont(base.Scaled(scale).Bold())
     # Tab moves on; Enter/Space do nothing. We do NOT bind EVT_BUTTON.
     return btn
-
-
-_PAGE_TITLES = [
-    "Welcome",
-    "Keyboard and Sound",
-    "Feature Profile",
-    "Remote Access",
-    "AI Assistance",
-    "Reading and Accessibility",
-    "Writing Tools",
-    "Startup Behaviour",
-    "Summary",
-]
 
 
 # ---------------------------------------------------------------------------
@@ -716,7 +706,127 @@ class _KeyboardSoundPage(_WizardPage):
 
 
 # ---------------------------------------------------------------------------
-# Page 5 - Summary
+# Page 5 - Data Location (#615)
+# ---------------------------------------------------------------------------
+
+
+class _DataLocationPage(_WizardPage):
+    """Where QUILL stores settings, autosaves, and other local data.
+
+    A change here is applied through ``request_data_location_change``
+    (restart-deferred, see ``core.data_location``) rather than written
+    directly, so re-running this wizard on an existing install (Help >
+    Personalise QUILL) never moves real data out from under a running
+    session -- only a true first run, where the target already equals the
+    untouched default, applies immediately.
+    """
+
+    def __init__(self, parent: wx.Window) -> None:
+        super().__init__(parent, "Where QUILL stores your data")
+        self._portable_root = storage_mode.portable_root_dir()
+        self._custom_path = ""
+        self._pending_summary = ""
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+
+        heading = _focusable_heading(
+            self,
+            label=_("Where should QUILL store your data?"),
+            name="wizard.data_location_heading",
+        )
+        sizer.Add(heading, flag=wx.ALL, border=12)
+
+        desc = wx.StaticText(
+            self,
+            label=_(
+                "Settings, dictionaries, autosaves, and recovery files go here. "
+                "You can change this later from Help > Personalise QUILL or Preferences."
+            ),
+            name="wizard.data_location_desc",
+        )
+        desc.Wrap(440)
+        sizer.Add(desc, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM, border=12)
+
+        self._appdata_radio = wx.RadioButton(
+            self,
+            label=_("In my Windows user profile (recommended)"),
+            name="wizard.data_location_appdata",
+            style=wx.RB_GROUP,
+        )
+        self._appdata_radio.SetValue(True)
+        sizer.Add(self._appdata_radio, flag=wx.LEFT | wx.BOTTOM, border=12)
+
+        self._portable_radio = wx.RadioButton(
+            self,
+            label=_("Next to QUILL, on this portable drive"),
+            name="wizard.data_location_portable",
+        )
+        self._portable_radio.Show(self._portable_root is not None)
+        sizer.Add(self._portable_radio, flag=wx.LEFT | wx.BOTTOM, border=12)
+
+        self._custom_radio = wx.RadioButton(
+            self,
+            label=_("Choose a folder:"),
+            name="wizard.data_location_custom",
+        )
+        sizer.Add(self._custom_radio, flag=wx.LEFT | wx.BOTTOM, border=4)
+
+        # #610: a StaticText display (not a TextCtrl) so VoiceOver does not
+        # announce this as an editable field -- the path is only ever set
+        # via the Choose dialog, mirroring _KeyboardSoundPage's sound-pack
+        # picker above.
+        custom_row = wx.BoxSizer(wx.HORIZONTAL)
+        self._custom_display = wx.StaticText(
+            self, label=_("No folder chosen"), name="wizard.data_location_custom_path"
+        )
+        self._choose_btn = wx.Button(self, label=_("Choose..."), name="wizard.data_location_choose")
+        self._choose_btn.Bind(wx.EVT_BUTTON, self._on_choose_folder)
+        custom_row.Add(self._custom_display, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        custom_row.Add(self._choose_btn, 0, wx.ALIGN_CENTER_VERTICAL)
+        sizer.Add(custom_row, flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, border=12)
+
+        self.SetSizer(sizer)
+
+    def _on_choose_folder(self, _event: object) -> None:
+        with wx.DirDialog(
+            self,
+            _("Choose a folder for QUILL's data"),
+            defaultPath=self._custom_path,
+            style=wx.DD_DEFAULT_STYLE,
+        ) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            self._custom_path = dlg.GetPath()
+        self._custom_display.SetLabel(self._custom_path)
+        self.Layout()
+        self._custom_radio.SetValue(True)
+
+    def collect(self, _settings: Settings, overrides: dict) -> None:
+        from pathlib import Path
+
+        if self._custom_radio.GetValue() and self._custom_path:
+            mode = "custom"
+            custom_path = Path(self._custom_path)
+        elif self._portable_radio.GetValue() and self._portable_root is not None:
+            mode = "portable"
+            custom_path = None
+        else:
+            mode = "appdata"
+            custom_path = None
+
+        try:
+            target = resolve_target(mode, custom_path)
+            request_data_location_change(mode, custom_path)
+        except (ValueError, OSError) as error:
+            _log.warning("Could not record data-location choice %s: %s", mode, error)
+            overrides["_data_location_summary"] = ""
+            return
+
+        overrides["_data_location_summary"] = _("Data location: {target}").format(target=target)
+
+
+# ---------------------------------------------------------------------------
+# Page 6 - Summary
 # ---------------------------------------------------------------------------
 
 
@@ -805,6 +915,10 @@ class _SummaryPage(_WizardPage):
             _("Sound notifications: {state}").format(state=_("On") if sound_on else _("Off"))
         )
 
+        data_location_summary = overrides.get("_data_location_summary")
+        if data_location_summary:
+            lines.append(str(data_location_summary))
+
         self._summary.update_html(_render_preview_html("\n".join(lines)))
 
     def collect(self, _settings: Settings, _overrides: dict) -> None:
@@ -867,9 +981,10 @@ class SetupWizardDialog(wx.Dialog):
         extras = _ExtrasPage(self)
         ai_provider = _AIProviderPage(self, self._open_ai_hub)
         kb_sound = _KeyboardSoundPage(self, self._settings)
+        data_location = _DataLocationPage(self)
         summary = _SummaryPage(self)
         # All pages constructed; hide them all until shown by _show_page.
-        return [welcome, intent, extras, ai_provider, kb_sound, summary]
+        return [welcome, intent, extras, ai_provider, kb_sound, data_location, summary]
 
     def _rebuild_active(self) -> None:
         """Rebuild the visible page sequence based on current overrides."""
@@ -882,7 +997,8 @@ class SetupWizardDialog(wx.Dialog):
         if want_ai:
             pages.append(self._all_pages[3])  # AI Provider
         pages.append(self._all_pages[4])  # Keyboard & Sound
-        pages.append(self._all_pages[5])  # Summary
+        pages.append(self._all_pages[5])  # Data Location
+        pages.append(self._all_pages[6])  # Summary
         self._active = pages
 
     # -- UI ------------------------------------------------------------------
@@ -947,7 +1063,12 @@ class SetupWizardDialog(wx.Dialog):
         self._next_btn.Show(idx < total - 1)
         self._finish_btn.Show(idx == total - 1)
 
-        title = _PAGE_TITLES[idx] if idx < len(_PAGE_TITLES) else f"Step {idx + 1}"
+        # Use the page's own name rather than a separately indexed title
+        # list: the active page sequence varies (the AI Provider page only
+        # appears when wanted), so a position-indexed list drifts out of
+        # sync with what is actually shown. Every page already sets a
+        # human-readable name via _WizardPage.__init__.
+        title = page.GetName() or f"Step {idx + 1}"
         self._announce(f"Step {idx + 1} of {total}: {title}")
 
         if idx == total - 1:

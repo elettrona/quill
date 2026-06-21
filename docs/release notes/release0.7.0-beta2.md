@@ -20,6 +20,29 @@ the full list.
 A standalone migration utility is still planned. This release covers the
 hot path so a user with a 0.5.0 install does not have to run one.
 
+## New: configurable data location (#615)
+
+Where QUILL stores settings, dictionaries, autosaves, recovery files, and
+logs is now a choice instead of a fixed `%APPDATA%\Quill`:
+
+- **The first-run Setup Wizard** has a new "Where QUILL stores your
+  data?" page. AppData is still the recommended default. Running QUILL
+  from a portable bundle (a folder with `run-quill.cmd` in it) also
+  offers "Next to QUILL, on this portable drive" — your data folder
+  moves with the USB stick or managed-machine folder, not your Windows
+  profile. A third option lets you choose any folder, including one you
+  create on the spot.
+- **Preferences > General** has the same choice for changing your mind
+  later, with an Open Folder dialog that can create a new folder. A
+  change here is not applied immediately: moving real settings, undo
+  history, and recovery data while QUILL is running is not safe, so the
+  move happens automatically the next time QUILL starts, and a dialog
+  offers to restart right away.
+- Portable detection only trusts a folder that actually contains
+  `run-quill.cmd` — never a bare environment variable — so this does not
+  reopen the security hardening from the L-9 fix (a tampered environment
+  variable still cannot redirect your data).
+
 ## Settings carry-over
 
 ### The rule
@@ -225,9 +248,11 @@ utility ever runs.
   example, "QUILL for All 0.7.0 Beta 1"), so every screen reader
   that announces the focused window — JAWS Insert+T, NVDA+T,
   Narrator Caps+H, VoiceOver — now reads the version along with
-  the document name. The Ctrl+JAWSKey+V path still reports only
-  "Version" until a versioned launcher ships, which is a
-  packaging follow-up, not a source change.
+  the document name. The portable build's launcher is now a
+  dedicated `quill.exe` with QUILL's own VersionInfo resource
+  stamped in at build time (instead of a renamed `pythonw.exe`),
+  so Ctrl+JAWSKey+V also reports the real QUILL version, not just
+  the word "Version."
 
 - **Setup Wizard no longer opens on top of an "Untitled" tab on
   first launch (#606).** On a fresh install, the editor used to
