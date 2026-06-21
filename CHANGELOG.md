@@ -27,6 +27,7 @@ First pre-release of the 0.7.0 line. Tagged off `release/0.7.0-verbosity` once t
 ### Speech and dictation
 
 - **Dictation engine setting made honest (Speech wave S0, #617).** `settings.dictation_engine` moved to the `offline`/`windows`/`cloud` model with default `windows` (the only functional engine today); legacy `vosk`/`whisper` values migrate to `offline` to preserve local-engine intent. The dead `_transcribe_audio` local-recognizer stub (no audio capture was ever wired up) was removed, and `quill/core/dictation.py` now documents plainly that dictation drives the OS dictation panel until the offline engine lands. No change to dictation behavior; `settings.py` stayed at its GATE-11 budget. Tests in `tests/unit/core/test_dictation.py` and `test_settings_migration.py`.
+- **Offline speech-to-text foundation (Speech wave S1, #617).** New pure, wx-free `quill/core/speech/` package: a typed provider protocol + data model (`provider.py` — `SpeechToTextProvider`, model/segment/result records), TXT/SRT/VTT/JSON output formatters (`formatters.py`), an atomic installed-model store (`models.py`), a lazy provider registry that skips unavailable/broken providers (`registry.py`), and a curated whisper.cpp model catalog with accessible size/accuracy/speed descriptions (`catalog.py`, recommending the Small model). No heavy dependencies and nothing imported at startup; the whisper.cpp provider, model-manager UI, and transcription/dictation flows build on this in S2–S3. Tests in `tests/unit/core/speech/`.
 
 ### Build and naming
 
