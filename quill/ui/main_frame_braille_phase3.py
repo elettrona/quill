@@ -36,6 +36,11 @@ class BrailleProofingCommandsMixin:
         self._id_braille_list_proofed = wx.NewIdRef()
         self._id_braille_list_review = wx.NewIdRef()
         self._id_braille_export_report = wx.NewIdRef()
+        # Validation (BR-019, #242).
+        self._id_braille_validate = wx.NewIdRef()
+        self._id_braille_next_warning = wx.NewIdRef()
+        self._id_braille_prev_warning = wx.NewIdRef()
+        self._id_braille_warning_summary = wx.NewIdRef()
 
     def _append_proofing_submenu(self, menu: object) -> None:
         wx = self._wx
@@ -74,6 +79,27 @@ class BrailleProofingCommandsMixin:
         )
         menu.AppendSubMenu(proofing, "Proo&fing")
 
+    def _append_validation_submenu(self, menu: object) -> None:
+        wx = self._wx
+        validation = wx.Menu()
+        validation.Append(
+            self._id_braille_validate,
+            self._menu_label("&Validate BRF Layout...", "braille.validate_layout"),
+        )
+        validation.Append(
+            self._id_braille_next_warning,
+            self._menu_label("&Next Warning", "braille.next_warning"),
+        )
+        validation.Append(
+            self._id_braille_prev_warning,
+            self._menu_label("&Previous Warning", "braille.previous_warning"),
+        )
+        validation.Append(
+            self._id_braille_warning_summary,
+            self._menu_label("Warnings &Summary", "braille.warnings_summary"),
+        )
+        menu.AppendSubMenu(validation, "Va&lidation")
+
     def _bind_phase3_braille_items(self) -> None:
         wx = self._wx
         pairs = (
@@ -85,6 +111,10 @@ class BrailleProofingCommandsMixin:
             (self._id_braille_list_proofed, self.list_proofed_pages),
             (self._id_braille_list_review, self.list_pages_needing_review),
             (self._id_braille_export_report, self.export_proofing_report),
+            (self._id_braille_validate, self.validate_braille_file),
+            (self._id_braille_next_warning, self.next_validation_warning),
+            (self._id_braille_prev_warning, self.previous_validation_warning),
+            (self._id_braille_warning_summary, self.read_validation_summary),
         )
         for id_ref, handler in pairs:
             self.frame.Bind(wx.EVT_MENU, lambda _e, h=handler: h(), id=id_ref)
@@ -127,6 +157,18 @@ class BrailleProofingCommandsMixin:
                 "Export Proofing Report",
                 self.export_proofing_report,
             ),
+            ("braille.validate_layout", "Validate BRF Layout", self.validate_braille_file),
+            ("braille.next_warning", "Next Braille Layout Warning", self.next_validation_warning),
+            (
+                "braille.previous_warning",
+                "Previous Braille Layout Warning",
+                self.previous_validation_warning,
+            ),
+            (
+                "braille.warnings_summary",
+                "Braille Layout Warnings Summary",
+                self.read_validation_summary,
+            ),
         ]
 
     # --- MRO overrides ------------------------------------------------------
@@ -135,6 +177,7 @@ class BrailleProofingCommandsMixin:
         menu = super()._build_braille_menu()  # type: ignore[misc]
         self._mint_phase3_braille_ids()
         self._append_proofing_submenu(menu)
+        self._append_validation_submenu(menu)
         return menu
 
     def _bind_braille_menu(self) -> None:  # type: ignore[override]
@@ -318,3 +361,96 @@ class BrailleProofingCommandsMixin:
             target = Path(dialog.GetPath())
         target.write_text(report, encoding="utf-8", newline="\n")
         self._say(f"Proofing report saved to {target.name}.")
+
+    # --- validation commands (BR-019, #242) ---------------------------------
+
+    def validate_braille_file(self) -> None:
+        from quill.core.brf_validator import ValidatorOptions, validate_brf
+
+        resolver = self._active_brf_resolver()
+        editor = getattr(self, "editor", None)
+        if resolver is None or editor is None:
+            self._announce_not_braille()
+            return
+        settings = getattr(self, "settings", None)
+        options = ValidatorOptions(
+            cells_per_line=int(getattr(settings, "braille_cells_per_line", 40)),
+            lines_per_page=int(getattr(settings, "braille_lines_per_page", 25)),
+            use_form_feeds=bool(getattr(settings, "braille_use_form_feeds", True)),
+        )
+        warnings = validate_brf(editor.GetValue(), options)
+        self._brf_validation_warnings = warnings
+        self._brf_validation_index = -1
+        if not warnings:
+            self._say("No braille layout warnings found.")
+            return
+        self._show_warnings_list(warnings)
+
+    def _show_warnings_list(self, warnings: list[object]) -> None:
+        wx = self._wx
+        choices = [
+            f"Line {w.line}, page {w.page}, {w.severity}: {w.message}"  # type: ignore[attr-defined]
+            for w in warnings
+        ]
+        with wx.SingleChoiceDialog(
+            self.frame,
+            f"{len(warnings)} layout warning(s). Choose one to go to:",
+            "Braille Layout Warnings",
+            choices,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Braille Layout Warnings") != wx.ID_OK:
+                return
+            selection = dialog.GetSelection()
+        if 0 <= selection < len(warnings):
+            self._brf_validation_index = selection
+            self._jump_to_warning(warnings[selection])
+
+    def _jump_to_warning(self, warning: object) -> None:
+        editor = getattr(self, "editor", None)
+        if editor is None:
+            return
+        self._record_location_before_jump()
+        self._move_point(warning.offset)  # type: ignore[attr-defined]
+        editor.SetFocus()
+        self._location_ring.record(warning.offset)  # type: ignore[attr-defined]
+        total = len(getattr(self, "_brf_validation_warnings", []))
+        position = self._brf_validation_index + 1
+        self._say(f"Warning {position} of {total}: {warning.message}")  # type: ignore[attr-defined]
+
+    def next_validation_warning(self) -> None:
+        self._step_validation_warning(1)
+
+    def previous_validation_warning(self) -> None:
+        self._step_validation_warning(-1)
+
+    def _step_validation_warning(self, delta: int) -> None:
+        warnings = getattr(self, "_brf_validation_warnings", [])
+        if not warnings:
+            self._say("No warnings. Run Validate BRF Layout first.")
+            return
+        index = getattr(self, "_brf_validation_index", -1) + delta
+        if index < 0:
+            self._say("No previous warning.")
+            return
+        if index >= len(warnings):
+            self._say("No next warning.")
+            return
+        self._brf_validation_index = index
+        self._jump_to_warning(warnings[index])
+
+    def read_validation_summary(self) -> None:
+        from collections import Counter
+
+        warnings = getattr(self, "_brf_validation_warnings", None)
+        if warnings is None:
+            self._say("No validation run yet. Run Validate BRF Layout first.")
+            return
+        if not warnings:
+            self._say("No braille layout warnings found.")
+            return
+        counts = Counter(w.kind for w in warnings)  # type: ignore[attr-defined]
+        top = ", ".join(
+            f"{kind.replace('_', ' ')} ({count})" for kind, count in counts.most_common(3)
+        )
+        plural = "s" if len(warnings) != 1 else ""
+        self._say(f"{len(warnings)} layout warning{plural}. Top categories: {top}.")

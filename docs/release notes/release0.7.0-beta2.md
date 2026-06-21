@@ -290,6 +290,10 @@ When you reopen a braille file (`.brf`, `.brl`, `.pef`, `.ueb`), QUILL now retur
 
 A new **Braille → Proofing** menu lets you keep track of proofreading without ever changing the braille file. You can mark the current braille page as proofed, needs review, or clear its mark; add a note to a page; hear a spoken progress summary (how many pages are proofed, how many need review, and your estimated completion); list proofed pages or pages needing review and jump straight to one; and export a plain-text proofing report. Your progress is saved in a small companion file beside the braille file, so it travels with your document and the braille itself is never modified.
 
+### Check a braille file's layout
+
+A new **Braille → Validation** menu checks a braille file for common layout problems — lines or pages that are too long, pages that look stuck, missing page breaks, mixed line endings, stray non-braille characters, malformed or missing page indicators, page-numbering gaps or duplicates, inconsistent running heads, and files that are Unicode braille rather than NABCC. **Validate BRF Layout** lists everything it finds so you can choose a warning and jump straight to it; **Next Warning** and **Previous Warning** step you through them with spoken position and detail; and **Warnings Summary** tells you the total and the most common issues. Validation only reads your file — it never changes it.
+
 ### Continuation page letters are announced correctly (BR-013)
 
 QUILL now recognizes print-page continuation labels such as `7a` when they appear in a BRF document. The detailed braille status information reports the complete page label instead of shortening it to `7`.

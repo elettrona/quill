@@ -4247,6 +4247,18 @@ Export a Proofing Report to a plain-text file. Progress is stored in a
 small companion file next to the braille file, so it travels with the
 document and never alters it. These commands tell you to save the file
 first if it has not been saved yet.</li>
+<li><strong>Validation</strong> — check the layout of a braille file.
+<strong>Validate BRF Layout</strong> scans for ten kinds of problem —
+lines or pages that are too long, pages that look stuck (too short),
+missing page breaks, mixed line endings, characters that are not braille
+ASCII, malformed or missing page indicators, gaps or duplicates in page
+numbering, inconsistent running heads, and files that are Unicode
+braille rather than NABCC — and opens a Warnings List you can step
+through; choosing a warning takes you to it. <strong>Next
+Warning</strong> and <strong>Previous Warning</strong> move through the
+findings and announce "Warning N of M" with the message, and
+<strong>Warnings Summary</strong> speaks the total and the most common
+categories. Validation only reads the file; it never changes it.</li>
 </ul>
 <p>Every status and navigation command is safe to run on a non-braille
 document — it simply tells you "This is not a braille document" rather

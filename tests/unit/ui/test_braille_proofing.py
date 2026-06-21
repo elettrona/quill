@@ -135,7 +135,7 @@ def test_unsaved_document_hints_to_save() -> None:
     assert host.said[-1] == "Save the braille file before tracking proofing."
 
 
-def test_phase3_registers_eight_commands(tmp_path: Path) -> None:
+def test_phase3_registers_proofing_and_validation_commands(tmp_path: Path) -> None:
     host = _Host(tmp_path / "notes.brf")
     ids = [cid for cid, _label, _handler in host._phase3_braille_commands()]
     assert ids == [
@@ -147,6 +147,10 @@ def test_phase3_registers_eight_commands(tmp_path: Path) -> None:
         "braille.list_proofed_pages",
         "braille.list_pages_needing_review",
         "braille.export_proofing_report",
+        "braille.validate_layout",
+        "braille.next_warning",
+        "braille.previous_warning",
+        "braille.warnings_summary",
     ]
 
 
