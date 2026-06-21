@@ -288,6 +288,17 @@ QUILL now recognizes print-page continuation labels such as `7a` when they appea
 
 This makes it easier to understand exactly where you are when a print page continues across multiple braille pages.
 
+## What is coming next
+
+QUILL's roadmap is now organized into clear workstreams that are all targeted to ship, with the work tracked openly:
+
+- **Offline dictation and transcription.** A privacy-first speech engine that runs on your computer: press one key and speak text into your document, transcribe a recording, or generate captions — no cloud account required, with your screen reader guiding every step.
+- **Verbosity controls.** Fine-grained, screen-reader-first control over what QUILL announces and when, including Quiet and Meeting modes.
+- **Braille Mode, continued.** Restore-your-place-on-open, a proofing menu, and a validator for braille documents.
+- **More publishing and export options**, including a DAISY talking-book export.
+
+These are tracked as individual issues and in the planning documents under `docs/planning/`. Because this is a beta, your feedback directly shapes the order in which they arrive.
+
 ## What you need to do
 
 For most people, nothing special is required:

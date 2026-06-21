@@ -4,6 +4,17 @@
 
 First pre-release of the 0.7.0 line. Tagged off `release/0.7.0-verbosity` once the remaining waves (#271 verbosity rebuild, #238-#246 braille phase 3-4, #300-#359 polish, planning-folder retirement) merge. The GitHub Pages update feed remains pointed at 0.5.0 so testers checking for updates do not see a phantom bump until 0.7.0 ships as a stable release. See `RELEASE.md` for the tag-time flip step and the full pre-tag checklist.
 
+### Text-file round-trip and accessibility fixes
+
+- **UTF-8 BOM no longer leaks into the buffer (#648).** `quill.io.text.read_text_document` reads raw bytes, detects a UTF-8 BOM, decodes with `utf-8-sig` (so no editable `U+FEFF`), and stores `utf-8-sig` as the encoding so the BOM is re-added byte-for-byte on save. Byte-exact round-trip tests in `tests/unit/io/test_text.py`.
+- **CRLF and blank-line runs preserved on save (#649).** Line endings are now detected from the raw bytes (the previous `path.read_text()` translated CRLF→LF before detection, so it always mis-detected LF). `quill.io.export.write_document_as` writes `.txt`/`.text` verbatim instead of routing them through `markdown_to_plain_text`, which collapsed runs of 3+ newlines to 2; the explicit **Save As Plain Text** command still flattens markup on purpose.
+- **AI Hub tab group has an accessible name (#643/#646).** The `AIHubDialog` notebook now sets an explicit accessible name so VoiceOver announces the settings dialog's tab group (best-effort; macOS verification pending). GATE-11 budget rebaselined accordingly.
+
+### Planning and program management
+
+- **Issue tracker consolidated into shipping workstreams.** The full text of every open planning/design issue was gathered into consolidated workstream specs under `docs/planning/` (`verbosity-system.md`, `roadmap.md`, `braille-mode-backlog.md`, `feature-backlog.md`) with no content loss; the issues remain open and individually tracked. `docs/planning/program-tracker.md` is the living tracker — buckets, per-bucket risk/impact/value/effort, priority totals, status, and execution waves — driving every open issue to closure by **shipping** it.
+- **Offline speech & dictation plan (#617).** `docs/planning/dictation-and-speech.md` grounds the offline speech-to-text provider architecture in the current code (today dictation only shells out to Windows dictation; the vosk/whisper settings are dead stubs) and lays out a bold-but-simple reengineering: one offline-first speech engine, two user verbs (Dictate / Transcribe), an accessible model manager, captions, and gated voice commands that reuse the agent `SAFE_TOOL_IDS` allowlist.
+
 ### Build and naming
 
 - **Public name is now QUILL for All.** The 0.7.0 release adopts `QUILL for All` as the user-visible project name in the About dialog, installer, crash reports, support bundles, and the repository README. The old `Quill` short name remains as `APP_SHORT_NAME` for legacy menu and shell-verb entries so the right-click "Open in Quill" verbs keep working. The new public name is paired with a one-paragraph Independence Notice that names Quill.js, QuillBot, and Quill.org so a first-time user can tell the project apart from similarly named products.

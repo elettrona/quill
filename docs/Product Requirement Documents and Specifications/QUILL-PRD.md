@@ -4390,6 +4390,8 @@ Right-to-left UI; additional languages; optional split view (still standard cont
 
 ## 17. Backlog and deferred items
 
+> **Live program tracker.** The authoritative, continuously-updated view of all open work — bucketed into workstreams with per-bucket risk/impact/value/effort, priority totals, status, and execution waves — lives in [`docs/planning/program-tracker.md`](../../planning/program-tracker.md). The full design text for each workstream is consolidated in the companion specs: [`verbosity-system.md`](../../planning/verbosity-system.md), [`dictation-and-speech.md`](../../planning/dictation-and-speech.md) (offline speech-to-text, #617), [`braille-mode-backlog.md`](../../planning/braille-mode-backlog.md), [`roadmap.md`](../../planning/roadmap.md), and [`feature-backlog.md`](../../planning/feature-backlog.md). The current direction is that these items **ship** (the older 2.0-deferral framing is dropped); the tables below are retained as the format-support reference.
+
 Everything below is intentionally out of v1.0. Each item is either yellow (achievable but requires more engineering than the v1.0 quality bar permits in time) or red (depends on unstable third-party formats, large native dependencies, or research-flavoured uplift we will not promise without measurement).
 
 The organising principle is simple: **v1.0 ships only Confidence A. Confidence B and C land in v1.1–1.3 behind opt-in plugins and feature flags, with quality grades shown to the user.**
