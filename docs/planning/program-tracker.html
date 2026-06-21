@@ -232,13 +232,9 @@ S1+ next)</td>
 in docs)</td>
 </tr>
 <tr>
-<td>🚫 Blocked</td>
-<td style="text-align: right;">1 (#246 — source-to-BRF linking; see
-note)</td>
-</tr>
-<tr>
 <td>❌ Out of scope</td>
-<td style="text-align: right;">3 (Linux/Unix — #520, #565, #589)</td>
+<td style="text-align: right;">4 (Linux/Unix #520/#565/#589;
+source-to-BRF linking #246)</td>
 </tr>
 <tr>
 <td>⬜ Planned</td>
@@ -251,18 +247,16 @@ note)</td>
 </tbody>
 </table>
 <blockquote>
-<p><strong>#246 blocked (source-to-BRF linking).</strong> Anchor
-recording is feasible today (the sidecar already models anchors), but
-the headline payoff commands —
-<code>compareBackTranslationWithSource</code> and
-<code>listUnlinkedSourcePages</code> — depend on (a) a stable
-cross-format Source-Position model (TXT/RTF/DOCX/EPUB/PDF) that does not
-exist in v1.0 and (b) a liblouis back-translation confidence signal not
-in current liblouis releases. The #246 spec itself warns that a partial
-"linked vs unlinked" UI would confuse users. Per "simplicity for the
-user is king," we are <strong>not</strong> shipping a partial version;
-#246 stays open until the Source-Position effort lands. This is the
-documented "big reason not to" exception to ship-all.</p>
+<p><strong>#246 descoped (source-to-BRF linking).</strong>
+Back-translation (braille→text) and Compare mode both already ship, so a
+"Compare Back-Translation with Source" command was feasible — but per
+maintainer decision the <strong>comparison piece is removed from the
+plan</strong>. The only remaining part, per-page source linking
+(<code>listUnlinkedSourcePages</code>), depends on a cross-format
+Source-Position model that is not in scope. With the comparison removed
+there is no valuable, non-confusing slice left to ship now, so #246 is
+closed out of scope. (Existing standalone Back-Translate (draft) under
+Braille &gt; Translation is unaffected.)</p>
 </blockquote>
 <h3 id="by-bucket-open">By bucket (open)</h3>
 <table>
@@ -452,8 +446,9 @@ Waves 2 and 8; merged because it is all one workstream with no
 cross-wave risk.)</li>
 <li><strong>Wave 3 — Speech foundation S1–S2</strong> (#617): provider
 registry, model manager, offline WAV transcription.</li>
-<li><strong>Wave 4 — Captions &amp; dictation</strong> (#617 Speech S3)
-and #246 source-to-BRF linking.</li>
+<li><strong>Wave 4 — Captions &amp; dictation</strong> (#617 Speech S3).
+(Braille source-to-BRF linking #246 was descoped — the comparison piece
+is out of the plan.)</li>
 <li><strong>Wave 5 — AI &amp; Agentic</strong> (#507–#512, #523/#524)
 and the agentic-AI PRD.</li>
 <li><strong>Wave 6 — Navigation/editor + GLOW + Publishing</strong>
@@ -557,6 +552,13 @@ dialog</td>
 <td style="text-align: right;">589</td>
 <td>LINUX-1 spike</td>
 <td>Linux/Unix out of scope</td>
+</tr>
+<tr>
+<td style="text-align: right;">246</td>
+<td>BR-023 source-to-BRF linking</td>
+<td>Comparison piece removed from the plan; remaining per-page source
+linking needs a cross-format Source-Position model that is out of
+scope</td>
 </tr>
 </tbody>
 </table>
@@ -1597,51 +1599,51 @@ Mode (8 issues · Risk Low · Impact Med · Value High · Effort Med)</h3>
 <tr>
 <td style="text-align: right;">238</td>
 <td style="text-align: center;">—</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">✅</td>
 <td>[BR-015] brf_sidecar.py (Braille Mode P3)</td>
 </tr>
 <tr>
 <td style="text-align: right;">239</td>
 <td style="text-align: center;">—</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">✅</td>
 <td>[BR-016] brf_progress.py: restore last position on open (Braille
 Mode P3)</td>
 </tr>
 <tr>
 <td style="text-align: right;">240</td>
 <td style="text-align: center;">—</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">✅</td>
 <td>[BR-017] Braille &gt; Proofing submenu (Braille Mode P3)</td>
 </tr>
 <tr>
 <td style="text-align: right;">241</td>
 <td style="text-align: center;">—</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">✅</td>
 <td>[BR-018] brf_validator.py (Braille Mode P4)</td>
 </tr>
 <tr>
 <td style="text-align: right;">242</td>
 <td style="text-align: center;">—</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">✅</td>
 <td>[BR-019] Validation commands + Warnings List dialog (Braille Mode
 P4)</td>
 </tr>
 <tr>
 <td style="text-align: right;">246</td>
 <td style="text-align: center;">—</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">❌</td>
 <td>[BR-023] Source-to-BRF linking (Braille Mode P6, v1.1)</td>
 </tr>
 <tr>
 <td style="text-align: right;">600</td>
 <td style="text-align: center;">P1</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">🧹</td>
 <td>[Planning] Braille Mode Phases 3/4/6 — tracked by #238-#246</td>
 </tr>
 <tr>
 <td style="text-align: right;">601</td>
 <td style="text-align: center;">—</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">🧹</td>
 <td>[Planning Archive] Braille Mode design reference - Phases 3/4/6
 deferred from 0.7.0</td>
 </tr>

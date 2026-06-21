@@ -30,20 +30,18 @@ closed won't-do.
 | ✅ Shipped | 9 (#648, #649, #643, #646, #238, #239, #240, #241, #242) |
 | 🚧 In progress | 1 (Speech & Dictation #617: S0 done, S1+ next) |
 | 🧹 Resolved (bookkeeping) | 2 (#600, #601 — braille design captured in docs) |
-| 🚫 Blocked | 1 (#246 — source-to-BRF linking; see note) |
-| ❌ Out of scope | 3 (Linux/Unix — #520, #565, #589) |
+| ❌ Out of scope | 4 (Linux/Unix #520/#565/#589; source-to-BRF linking #246) |
 | ⬜ Planned | 240 |
 | **Total tracked** | **256** |
 
-> **#246 blocked (source-to-BRF linking).** Anchor recording is feasible today
-> (the sidecar already models anchors), but the headline payoff commands —
-> `compareBackTranslationWithSource` and `listUnlinkedSourcePages` — depend on (a)
-> a stable cross-format Source-Position model (TXT/RTF/DOCX/EPUB/PDF) that does not
-> exist in v1.0 and (b) a liblouis back-translation confidence signal not in
-> current liblouis releases. The #246 spec itself warns that a partial "linked vs
-> unlinked" UI would confuse users. Per "simplicity for the user is king," we are
-> **not** shipping a partial version; #246 stays open until the Source-Position
-> effort lands. This is the documented "big reason not to" exception to ship-all.
+> **#246 descoped (source-to-BRF linking).** Back-translation (braille→text) and
+> Compare mode both already ship, so a "Compare Back-Translation with Source"
+> command was feasible — but per maintainer decision the **comparison piece is
+> removed from the plan**. The only remaining part, per-page source linking
+> (`listUnlinkedSourcePages`), depends on a cross-format Source-Position model that
+> is not in scope. With the comparison removed there is no valuable, non-confusing
+> slice left to ship now, so #246 is closed out of scope. (Existing standalone
+> Back-Translate (draft) under Braille > Translation is unaffected.)
 
 ### By bucket (open)
 
@@ -87,7 +85,7 @@ closed won't-do.
 2. **Wave 1 — Speech S0 + complete Braille proofing & validation.** Speech S0 honesty fix ✅; Braille sidecar #238 ✅, restore-position #239 ✅; then the Proofing submenu (#240) and the validator + Warnings List (#241/#242) so **braille ships complete in this wave**. Small, low-risk, high user value.
 3. **Wave 2 — Verbosity & Polish** (combined): the core (#271, #361–#366) and the §5–§46 spec (#367–#404) **plus** the addenda polish set (#405–#504) shipped together as one verbosity workstream — keep the high-value knobs, fold or fast-track the rest, close each as it lands. (Formerly split across Waves 2 and 8; merged because it is all one workstream with no cross-wave risk.)
 4. **Wave 3 — Speech foundation S1–S2** (#617): provider registry, model manager, offline WAV transcription.
-5. **Wave 4 — Captions & dictation** (#617 Speech S3) and #246 source-to-BRF linking.
+5. **Wave 4 — Captions & dictation** (#617 Speech S3). (Braille source-to-BRF linking #246 was descoped — the comparison piece is out of the plan.)
 6. **Wave 5 — AI & Agentic** (#507–#512, #523/#524) and the agentic-AI PRD.
 7. **Wave 6 — Navigation/editor + GLOW + Publishing** (#513/#514/#521, #528–#534, #251 DAISY, #140 publishing).
 8. **Wave 7 — Platform & Distribution** (#506, #516, #517, #518 macOS, #519) and Docs/Content (#505, #535–#564). **Linux/Unix excluded** (#520/#565/#589 are out of scope).
@@ -115,6 +113,7 @@ closed won't-do.
 | 520 | O17 — Linux platform layer | Linux/Unix is not a shipping target (macOS yes, Linux no) |
 | 565 | Tier-6 LINUX-2 | Linux/Unix out of scope |
 | 589 | LINUX-1 spike | Linux/Unix out of scope |
+| 246 | BR-023 source-to-BRF linking | Comparison piece removed from the plan; remaining per-page source linking needs a cross-format Source-Position model that is out of scope |
 
 ## Open work by bucket
 
@@ -292,14 +291,14 @@ closed won't-do.
 
 | # | Priority | Status | Title |
 | ---: | :---: | :---: | --- |
-| 238 | — | ⬜ | [BR-015] brf_sidecar.py (Braille Mode P3) |
-| 239 | — | ⬜ | [BR-016] brf_progress.py: restore last position on open (Braille Mode P3) |
-| 240 | — | ⬜ | [BR-017] Braille > Proofing submenu (Braille Mode P3) |
-| 241 | — | ⬜ | [BR-018] brf_validator.py (Braille Mode P4) |
-| 242 | — | ⬜ | [BR-019] Validation commands + Warnings List dialog (Braille Mode P4) |
-| 246 | — | ⬜ | [BR-023] Source-to-BRF linking (Braille Mode P6, v1.1) |
-| 600 | P1 | ⬜ | [Planning] Braille Mode Phases 3/4/6 — tracked by #238-#246 |
-| 601 | — | ⬜ | [Planning Archive] Braille Mode design reference - Phases 3/4/6 deferred from 0.7.0 |
+| 238 | — | ✅ | [BR-015] brf_sidecar.py (Braille Mode P3) |
+| 239 | — | ✅ | [BR-016] brf_progress.py: restore last position on open (Braille Mode P3) |
+| 240 | — | ✅ | [BR-017] Braille > Proofing submenu (Braille Mode P3) |
+| 241 | — | ✅ | [BR-018] brf_validator.py (Braille Mode P4) |
+| 242 | — | ✅ | [BR-019] Validation commands + Warnings List dialog (Braille Mode P4) |
+| 246 | — | ❌ | [BR-023] Source-to-BRF linking (Braille Mode P6, v1.1) |
+| 600 | P1 | 🧹 | [Planning] Braille Mode Phases 3/4/6 — tracked by #238-#246 |
+| 601 | — | 🧹 | [Planning Archive] Braille Mode design reference - Phases 3/4/6 deferred from 0.7.0 |
 
 ### AI & Agentic  (17 issues · Risk Med · Impact High · Value High · Effort High)
 
