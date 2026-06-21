@@ -1884,6 +1884,17 @@ partial profile can never start a worker.
 Quill integrates BITS Whisperer speech capabilities in phased increments to minimize regression risk
 and preserve accessibility reliability.
 
+> **Offline speech & dictation reengineering (#617).** The full provider-architecture
+> plan — one offline-first speech engine (whisper.cpp default, with Windows, cloud, and
+> Faster Whisper providers), two user verbs (Dictate / Transcribe), an accessible model
+> manager, captions, and gated voice commands — lives in
+> [`docs/planning/dictation-and-speech.md`](../../planning/dictation-and-speech.md) and is
+> sequenced into small waves S0–S5. **Wave S0 (shipped):** the `dictation_engine` setting
+> was made honest — it now uses the `offline`/`windows`/`cloud` model (default `windows`,
+> the only functional engine today), legacy `vosk`/`whisper` values migrate to `offline`,
+> and the dead local-recognizer stub was removed. Dictation behavior is unchanged: it still
+> drives the OS dictation panel until the offline engine lands in S2–S3.
+
 Phase 1 scope:
 
 - Keep current dictation behavior stable while introducing BITS Whisperer speech model management.

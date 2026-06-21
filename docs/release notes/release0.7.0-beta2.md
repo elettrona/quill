@@ -292,7 +292,7 @@ This makes it easier to understand exactly where you are when a print page conti
 
 QUILL's roadmap is now organized into clear workstreams that are all targeted to ship, with the work tracked openly:
 
-- **Offline dictation and transcription.** A privacy-first speech engine that runs on your computer: press one key and speak text into your document, transcribe a recording, or generate captions — no cloud account required, with your screen reader guiding every step.
+- **Offline dictation and transcription.** A privacy-first speech engine that runs on your computer: press one key and speak text into your document, transcribe a recording, or generate captions — no cloud account required, with your screen reader guiding every step. (Groundwork is underway in this beta; until the offline engine arrives, dictation continues to use Windows' built-in dictation.)
 - **Verbosity controls.** Fine-grained, screen-reader-first control over what QUILL announces and when, including Quiet and Meeting modes.
 - **Braille Mode, continued.** Restore-your-place-on-open, a proofing menu, and a validator for braille documents.
 - **More publishing and export options**, including a DAISY talking-book export.

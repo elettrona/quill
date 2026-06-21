@@ -22,10 +22,10 @@ _Snapshot: 252 open issues + 4 already shipped on this branch. Issue #617 is inc
 
 | Status | Count |
 | --- | ---: |
-| ✅ Shipped | 4 |
-| 🚧 In progress | 0 |
-| ⬜ Planned | 252 |
-| **Total tracked** | **256** |
+| ✅ Shipped | 5 |
+| 🚧 In progress | 1 (Speech & Dictation #617: S0 done, S1+ next) |
+| ⬜ Planned | 251 |
+| **Total tracked** | **257** |
 
 ### By bucket (open)
 
@@ -84,6 +84,7 @@ _Snapshot: 252 open issues + 4 already shipped on this branch. Issue #617 is inc
 | 649 | Text round-trip: CRLF + blank-line runs preserved on save | ✅ |
 | 643 | AI Hub notebook accessible name (VoiceOver) | ✅ |
 | 646 | AI Hub tab group accessible name (VoiceOver) | ✅ |
+| 617 | Speech wave **S0** — dictation engine setting made honest (offline/windows/cloud + migration; dead recognizer stub removed). Epic #617 stays open; S1–S5 next. | 🚧 |
 
 ## Open work by bucket
 
