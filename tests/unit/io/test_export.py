@@ -170,11 +170,14 @@ def test_write_plain_text_honors_link_style(tmp_path: Path) -> None:
     assert target.read_text(encoding="utf-8") == "site (https://example.com)"
 
 
-def test_write_document_as_passes_link_style_to_plain(tmp_path: Path) -> None:
+def test_write_document_as_txt_is_verbatim_regardless_of_link_style(tmp_path: Path) -> None:
+    # A normal save to .txt round-trips the source verbatim; Markdown stripping
+    # (and link-style handling) only happens via the explicit "Save as plain
+    # text" command, which calls write_plain_text_document directly (#649).
     doc = _doc("[site](https://example.com)")
     target = tmp_path / "out.txt"
     write_document_as(doc, target, plain_text_link_style="url")
-    assert target.read_text(encoding="utf-8") == "https://example.com"
+    assert target.read_text(encoding="utf-8") == "[site](https://example.com)"
 
 
 def test_write_html_document_writes_html(tmp_path: Path) -> None:
@@ -207,11 +210,13 @@ def test_dispatch_by_extension(tmp_path: Path, name: str, expected_marker: str) 
     assert expected_marker in target.read_text(encoding="utf-8", errors="replace")
 
 
-def test_dispatch_txt_strips_markup(tmp_path: Path) -> None:
+def test_dispatch_txt_writes_verbatim(tmp_path: Path) -> None:
+    # Normal save to .txt no longer strips Markup; it writes the buffer verbatim
+    # so opening then saving a plain-text file does not mangle it (#649).
     doc = _doc("**Bold**")
     target = tmp_path / "a.txt"
     write_document_as(doc, target)
-    assert target.read_text(encoding="utf-8") == "Bold"
+    assert target.read_text(encoding="utf-8") == "**Bold**"
 
 
 def test_dispatch_md_is_verbatim(tmp_path: Path) -> None:
@@ -275,3 +280,27 @@ def test_write_document_as_docx_produces_a_word_file(tmp_path: Path) -> None:
     # A .docx is an OOXML zip; the body lives in word/document.xml.
     with zipfile.ZipFile(target) as archive:
         assert "word/document.xml" in archive.namelist()
+
+
+# --------------------------------------------------------------------------- #
+# write_document_as: .txt saves verbatim, not through Markdown stripping (#649)
+# --------------------------------------------------------------------------- #
+def test_write_document_as_txt_preserves_blank_lines(tmp_path: Path) -> None:
+    target = tmp_path / "notes.txt"
+    # Three+ consecutive line breaks and a Markdown-looking line must survive a
+    # normal save to .txt unchanged (the bug collapsed them and stripped markup).
+    text = "para one\n\n\n\npara two\n# not a heading here\n"
+    document = Document(text=text, path=target, line_ending="\n", encoding="utf-8")
+
+    write_document_as(document, target)
+
+    assert target.read_bytes() == text.encode("utf-8")
+
+
+def test_write_document_as_txt_preserves_crlf(tmp_path: Path) -> None:
+    target = tmp_path / "crlf.txt"
+    document = Document(text="a\nb\n\n\nc\n", path=target, line_ending="\r\n", encoding="utf-8")
+
+    write_document_as(document, target)
+
+    assert target.read_bytes() == b"a\r\nb\r\n\r\n\r\nc\r\n"

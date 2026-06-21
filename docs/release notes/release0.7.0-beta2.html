@@ -176,6 +176,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">release0.7.0-beta2</h1>
+</header>
 <h1 id="quill-070-beta-2-release-notes">QUILL 0.7.0 Beta 2 Release
 Notes</h1>
 <p>QUILL 0.7.0 Beta 2 is focused on helping you upgrade with less
@@ -507,6 +510,40 @@ menu refresh is now gated by a lifecycle flag
 editor is not yet present, so the wizard can open on a clean notebook
 and the menu items settle into the right state once you have a document
 to edit.</p>
+<h2 id="opening-and-saving-plain-text-files">Opening and saving plain
+text files</h2>
+<h3 id="a-byte-order-mark-no-longer-appears-as-a-stray-character">A byte
+order mark no longer appears as a stray character</h3>
+<p>Some programs save UTF-8 files with a leading byte order mark (BOM).
+When you opened such a file, an invisible <code>U+FEFF</code> character
+used to sit before the first real character, where it could be read by a
+screen reader, land under the cursor, and get caught up in editing or
+searching.</p>
+<p>QUILL now recognizes a UTF-8 BOM when opening a file and keeps it out
+of the editable text, so the document starts at its real first
+character. If the original file had a BOM, QUILL preserves it when you
+save, so the saved file still matches what other programs expect.
+(#648)</p>
+<h3 id="opening-and-immediately-saving-keeps-the-file-intact">Opening
+and immediately saving keeps the file intact</h3>
+<p>Opening a text file and saving it straight away now reproduces the
+original file faithfully.</p>
+<ul>
+<li><strong>Windows line endings are kept.</strong> A file that used
+Windows-style <code>CRLF</code> line endings is saved with
+<code>CRLF</code> again, instead of being quietly converted to
+Unix-style <code>LF</code>. QUILL now detects the original line ending
+from the file on disk rather than after the editor has normalized it.
+(#649)</li>
+<li><strong>Blank lines are preserved exactly.</strong> Saving a
+plain-text (<code>.txt</code>) file no longer collapses runs of three or
+more consecutive line breaks down to two, and no longer rewrites lines
+that happen to look like Markdown. Plain-text files are now written
+through verbatim. (#649)</li>
+</ul>
+<p>If you specifically want to flatten QUILL's Markdown-style markup to
+clean plain text, use <strong>File &gt; Save As Plain Text</strong>,
+which still strips formatting on purpose.</p>
 <h2 id="simple-file-open-dialog">Simple File Open dialog</h2>
 <p>QUILL can now open files through a keyboard-friendly <strong>Simple
 File Open</strong> dialog in addition to the standard Windows file open

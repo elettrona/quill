@@ -151,6 +151,10 @@ class AIHubDialog:
         root = wx.BoxSizer(wx.VERTICAL)
 
         self._notebook = wx.Notebook(self.dialog)
+        # #643/#646: give the tab control an explicit accessible name so
+        # VoiceOver (macOS) announces the settings dialog's purpose and the tab
+        # group when focus lands here, rather than reading an unnamed group.
+        self._notebook.SetName(str(_("AI settings sections")))
         root.Add(self._notebook, 1, wx.EXPAND | wx.ALL, 8)
 
         # #614 follow-up: wx.Notebook.AddPage on Windows rejects the

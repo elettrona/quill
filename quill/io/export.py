@@ -259,8 +259,11 @@ def write_document_as(
         return write_docx_document(document, target)
     if suffix in _HTML_SUFFIXES:
         return write_html_document(document, target)
-    if suffix in _PLAIN_SUFFIXES:
-        return write_plain_text_document(document, target, link_style=plain_text_link_style)
+    # A plain-text file the user opened (or saves to by extension) must round-trip
+    # verbatim: no Markdown stripping and, critically, no collapsing of blank-line
+    # runs (#649). The explicit "Save as plain text" command (save_as_plain_text)
+    # still routes through write_plain_text_document for users who want their
+    # Markdown markup flattened.
     return write_text_document(document, target)
 
 

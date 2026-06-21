@@ -213,6 +213,23 @@ Choosing **Tools > Writing > Quill Eraser** on a document that the engine had fi
 
 On a fresh install where the Setup Wizard still needs to run, the main window used to fail with `AttributeError: 'MainFrame' object has no attribute 'editor'`. The crash happened because `_build_menu()` ran during `__init__` and asked for the active editor's contents, but the editor was not built until after the wizard closed. The contextual menu refresh is now gated by a lifecycle flag (`self._ui_ready`) and falls back to "plain" markup when the editor is not yet present, so the wizard can open on a clean notebook and the menu items settle into the right state once you have a document to edit.
 
+## Opening and saving plain text files
+
+### A byte order mark no longer appears as a stray character
+
+Some programs save UTF-8 files with a leading byte order mark (BOM). When you opened such a file, an invisible `U+FEFF` character used to sit before the first real character, where it could be read by a screen reader, land under the cursor, and get caught up in editing or searching.
+
+QUILL now recognizes a UTF-8 BOM when opening a file and keeps it out of the editable text, so the document starts at its real first character. If the original file had a BOM, QUILL preserves it when you save, so the saved file still matches what other programs expect. (#648)
+
+### Opening and immediately saving keeps the file intact
+
+Opening a text file and saving it straight away now reproduces the original file faithfully.
+
+- **Windows line endings are kept.** A file that used Windows-style `CRLF` line endings is saved with `CRLF` again, instead of being quietly converted to Unix-style `LF`. QUILL now detects the original line ending from the file on disk rather than after the editor has normalized it. (#649)
+- **Blank lines are preserved exactly.** Saving a plain-text (`.txt`) file no longer collapses runs of three or more consecutive line breaks down to two, and no longer rewrites lines that happen to look like Markdown. Plain-text files are now written through verbatim. (#649)
+
+If you specifically want to flatten QUILL's Markdown-style markup to clean plain text, use **File > Save As Plain Text**, which still strips formatting on purpose.
+
 ## Simple File Open dialog
 
 QUILL can now open files through a keyboard-friendly **Simple File Open** dialog in addition to the standard Windows file open dialog. Both dialogs are reached from the same place — **File > Open...** or `Ctrl+O` — so there is still only one File > Open command.

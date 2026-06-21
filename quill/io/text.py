@@ -32,14 +32,41 @@ def _emit_save_warning(message: str) -> None:
         pass
 
 
+_UTF8_BOM = b"\xef\xbb\xbf"
+
+
 def read_text_document(path: Path, encoding: str = "utf-8") -> Document:
-    text = path.read_text(encoding=encoding)
-    line_ending = "\r\n" if "\r\n" in text else "\n"
+    # Read raw bytes so we can (a) detect the original line ending before
+    # Python's universal-newline translation rewrites every CRLF to LF (#649)
+    # and (b) recognise and transparently strip a UTF-8 BOM (#648). Reading via
+    # ``path.read_text`` did both invisibly: CRLF files were always mis-detected
+    # as LF, and a leading BOM showed up as an editable U+FEFF at the cursor.
+    raw = path.read_bytes()
+
+    had_bom = raw.startswith(_UTF8_BOM)
+    is_utf8 = encoding.replace("-", "").replace("_", "").lower() == "utf8"
+    if had_bom and is_utf8:
+        # Decode with utf-8-sig so the BOM is dropped from the editable text,
+        # and remember it via the encoding so the writer re-adds it on save:
+        # opening a BOM file and saving it must round-trip byte-for-byte (#649).
+        decode_encoding = "utf-8-sig"
+        stored_encoding = "utf-8-sig"
+    else:
+        decode_encoding = encoding
+        stored_encoding = encoding
+    text = raw.decode(decode_encoding)
+
+    # Detect the original line ending from the raw bytes, then hand the editor
+    # LF-only text (wx normalises to LF anyway); the writer converts back to the
+    # stored line ending on save.
+    line_ending = "\r\n" if b"\r\n" in raw else "\n"
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+
     return Document(
         text=text,
         path=path,
         modified=False,
-        encoding=encoding,
+        encoding=stored_encoding,
         line_ending=line_ending,
         source_metadata={"source_kind": "text", "engine": "plain text", "quality_score": 100},
     )
