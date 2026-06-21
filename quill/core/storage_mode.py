@@ -9,29 +9,61 @@ from quill.core.storage import read_json, write_json_atomic
 _VALID_MODES = {"appdata", "portable", "custom"}
 
 
+def _has_portable_evidence(anchor: Path) -> bool:
+    """Return True when *anchor* looks like a portable QUILL bundle.
+
+    The portable bundle layout is now ``quill.exe`` at the anchor root
+    plus a sibling ``data/`` folder the build script creates for the
+    user. The ``data/`` folder is the L-9-equivalent evidence: it is a
+    deliberate filesystem action by the user (or by the build, which
+    only stages files in the bundle directory it controls), not an
+    attacker-injectable env-var value.
+
+    ``run-quill.cmd`` is also accepted as back-compat evidence so a
+    beta-1 portable bundle (which had the .cmd but no ``data/`` folder)
+    keeps working until the user upgrades to a bundle that ships the
+    ``data/`` folder.
+    """
+    if not anchor.is_dir():
+        return False
+    has_exe = (anchor / "quill.exe").is_file()
+    has_data = (anchor / "data").is_dir()
+    if has_exe and has_data:
+        return True
+    has_cmd = (anchor / "run-quill.cmd").is_file()
+    return has_cmd
+
+
 def _resolve_app_root() -> Path | None:
     """Return the verified portable-install root, or None.
 
     Mirrors ``paths.py::new_install_marker_path()``'s anchor-resolution
     chain (duplicated rather than imported to avoid a circular import,
     since ``paths.py`` imports this module): ``QUILL_APP_ROOT`` (set
-    unconditionally by ``run-quill.cmd``), falling back to walking up from
-    ``sys.executable`` for a Start-Menu-style launch straight into
-    ``python\\pythonw.exe``.
+    unconditionally by the launcher at startup) is accepted as a hint,
+    then we walk up from ``sys.executable`` for a Start-Menu-style
+    launch straight into ``python\\pythonw.exe`` or the hoisted
+    ``quill.exe`` at the bundle root.
 
-    L-9: a bare env var value is never trusted on its own. A candidate is
-    only accepted when ``run-quill.cmd`` actually exists there, proving
-    this is a real portable bundle rather than an arbitrary path injected
-    via a tampered environment.
+    L-9: a bare env var value is never trusted on its own. A candidate
+    is only accepted when ``_has_portable_evidence`` returns True --
+    either ``quill.exe`` + ``data/`` (the new layout) or the legacy
+    ``run-quill.cmd`` marker.
     """
     env_root = os.environ.get("QUILL_APP_ROOT")
     if env_root:
         candidate = Path(env_root).expanduser().resolve()
-        if (candidate / "run-quill.cmd").exists():
+        if _has_portable_evidence(candidate):
             return candidate
     exe = Path(sys.executable).resolve()
-    for candidate in (exe.parent, exe.parent.parent):
-        if (candidate / "run-quill.cmd").exists():
+    # Walk up to three levels: bundle root, bundle/python/ (where the
+    # embedded runtime lives), and one more in case the launcher was
+    # started via a wrapper that lives a level deeper than the bundle.
+    parents: list[Path] = [exe.parent, exe.parent.parent]
+    if exe.parent.parent != exe.parent:
+        parents.append(exe.parent.parent.parent)
+    for candidate in parents:
+        if _has_portable_evidence(candidate):
             return candidate
     return None
 

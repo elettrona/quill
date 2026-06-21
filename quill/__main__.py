@@ -15,6 +15,31 @@ from quill.stability.diagnostics import dump_all_thread_stacks, setup_fault_hand
 from quill.stability.logging_config import configure_logging
 
 
+def _propagate_portable_environment() -> None:
+    """Set QUILL_APP_ROOT and QUILL_PORTABLE when running from a portable bundle.
+
+    The portable bundle's primary entry point is ``quill.exe`` at the bundle
+    root, next to a ``data/`` folder -- the evidence rules in
+    :func:`quill.core.storage_mode._resolve_app_root` apply here too. When
+    the host process can resolve a verified portable anchor, mirror the
+    fact into the env so the legacy ``QUILL_APP_ROOT`` consumers (braille
+    pack, bundled tool paths, read-aloud assets, AI key DPAPI fallback)
+    keep working without each doing its own walk-up from ``sys.executable``.
+
+    Skipped when the env vars are already set -- the launcher or a test
+    harness may have set them deliberately.
+    """
+    from quill.core.storage_mode import _resolve_app_root
+
+    if os.environ.get("QUILL_APP_ROOT") or os.environ.get("QUILL_PORTABLE"):
+        return
+    anchor = _resolve_app_root()
+    if anchor is None:
+        return
+    os.environ["QUILL_APP_ROOT"] = str(anchor)
+    os.environ["QUILL_PORTABLE"] = "1"
+
+
 def _install_excepthook() -> None:
     """Install sys.excepthook so unhandled crashes show an accessible dialog.
 
@@ -81,6 +106,7 @@ def main() -> int:
     # Data location) before anything resolves app_data_dir() for real, so
     # logs/settings/recovery land in the new location from this launch on.
     apply_pending_data_location_migration()
+    _propagate_portable_environment()
     ensure_app_directories()
     log_listener = configure_logging(app_data_dir() / "logs")
     setup_fault_handler()

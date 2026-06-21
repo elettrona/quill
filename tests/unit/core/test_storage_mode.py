@@ -10,13 +10,26 @@ from quill.core.storage_mode import custom_path, load_storage_mode, save_storage
 
 
 def _make_portable_bundle(tmp_path: Path) -> Path:
-    """Create a minimal portable-bundle layout: a run-quill.cmd at the root.
+    """Create the *new* portable-bundle layout: quill.exe + data/ at the root.
 
-    Mirrors what scripts/build_windows_distribution.py actually ships, and
-    is the structural evidence portable_root_dir() requires -- a bare env
-    var value is never trusted on its own (L-9).
+    The portable bundle ships quill.exe (the hoisted launcher) and an empty
+    ``data/`` folder next to it. Both must be present for detection -- the
+    data/ folder is the user's deliberate opt-in, not an env-var say-so.
     """
     root = tmp_path / "QuillPortable"
+    root.mkdir()
+    (root / "quill.exe").write_bytes(b"MZ\x00\x00")
+    (root / "data").mkdir()
+    return root
+
+
+def _make_legacy_portable_bundle(tmp_path: Path) -> Path:
+    """Create a beta-1 portable bundle: only run-quill.cmd at the root.
+
+    Back-compat evidence: a beta-1 user upgrading to a 0.7.0 bundle that
+    still ships run-quill.cmd but no data/ folder must keep working.
+    """
+    root = tmp_path / "QuillPortableLegacy"
     root.mkdir()
     (root / "run-quill.cmd").write_text("@echo off\r\n", encoding="utf-8")
     return root
@@ -55,8 +68,62 @@ def test_portable_root_resolves_with_verified_bundle(
     monkeypatch.setenv("QUILL_APP_ROOT", str(root))
     resolved = storage_mode.portable_root_dir()
     assert resolved == (root / "data").resolve()
-    # The data folder need not exist yet -- created on demand when chosen.
+    # The data folder is created by the build, not at first run.
+    assert resolved.is_dir()
+
+
+def test_legacy_run_quill_cmd_bundle_still_resolves_as_portable(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A beta-1 portable bundle (run-quill.cmd, no data/) keeps working.
+
+    The detection contract accepts run-quill.cmd as back-compat evidence
+    so a user upgrading from a beta-1 portable bundle isn't broken.
+    """
+    root = _make_legacy_portable_bundle(tmp_path)
+    monkeypatch.setenv("QUILL_APP_ROOT", str(root))
+    resolved = storage_mode.portable_root_dir()
+    assert resolved == (root / "data").resolve()
+    # data/ does not yet exist on a legacy bundle; the helper just
+    # returns the path the user can opt into.
     assert not resolved.exists()
+
+
+def test_quill_exe_alone_without_data_folder_is_not_portable(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A folder with quill.exe but no data/ is NOT a portable install.
+
+    The data/ folder is the user's deliberate opt-in. A bundle freshly
+    copied from a zip that missed the data/ folder must not silently
+    route settings to the wrong place.
+    """
+    _pin_executable_away_from_any_real_bundle(monkeypatch, tmp_path)
+    root = tmp_path / "QuillNoData"
+    root.mkdir()
+    (root / "quill.exe").write_bytes(b"MZ\x00\x00")
+    monkeypatch.setenv("QUILL_APP_ROOT", str(root))
+    monkeypatch.setenv("APPDATA", str(tmp_path / "appdata"))
+    assert storage_mode.portable_root_dir() is None
+    assert app_data_dir() == (tmp_path / "appdata" / "Quill").resolve()
+
+
+def test_data_folder_alone_without_quill_exe_is_not_portable(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A data/ folder without quill.exe is NOT a portable install.
+
+    Some third-party tools create data/ folders as part of their own
+    layout. We do not mistake those for a portable QUILL install.
+    """
+    _pin_executable_away_from_any_real_bundle(monkeypatch, tmp_path)
+    root = tmp_path / "NotAQuillBundle"
+    root.mkdir()
+    (root / "data").mkdir()
+    monkeypatch.setenv("QUILL_APP_ROOT", str(root))
+    monkeypatch.setenv("APPDATA", str(tmp_path / "appdata"))
+    assert storage_mode.portable_root_dir() is None
+    assert app_data_dir() == (tmp_path / "appdata" / "Quill").resolve()
 
 
 def test_storage_mode_uses_portable_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

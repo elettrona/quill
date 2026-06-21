@@ -5,7 +5,7 @@
 #define AppVersion "0.7.0 Beta 1"
 #define AppPublisher "Community Access"
 #define AppURL "https://github.com/Community-Access/quill"
-#define AppExeName "run-quill.cmd"
+#define AppExeName "quill.exe"
 
 [Setup]
 AppId={{6E0A1C52-4A90-4C6E-A8A1-3C2A16E2B7F2}
@@ -47,12 +47,12 @@ WizardStyle=modern
 CloseApplications=force
 RestartApplications=no
 UninstallDisplayName={#AppName} {#AppVersion}
-; The bundled launcher carries a real icon so Add/Remove Programs shows
-; one; the .cmd launcher has none. BundledLauncherPath (see [Code])
-; prefers python\quill.exe -- a VERSIONINFO-stamped copy of pythonw.exe,
-; see _stamp_launcher_version_info -- falling back to plain pythonw.exe,
-; and gracefully returns blank when no bundled runtime is present (e.g.
-; a dev build), in which case no icon is shown.
+; The bundled launcher carries a real icon so Add/Remove Programs
+; shows one. BundledLauncherPath (see [Code]) prefers quill.exe at
+; the bundle root -- a VERSIONINFO-stamped copy of pythonw.exe, see
+; _stamp_quill_launcher -- then python\quill.exe, then plain
+; pythonw.exe, and gracefully returns blank when no bundled runtime
+; is present (e.g. a dev build), in which case no icon is shown.
 UninstallDisplayIcon={code:BundledLauncherPath}
 LicenseFile=LICENSE
 InfoAfterFile=README-installer.txt
@@ -62,7 +62,6 @@ SetupLogging=yes
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a &Desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 Name: "fileassoc"; Description: "Register Quill in the Open With menu for common text formats (.txt, .md, .rst, .log, .csv, .json)"; GroupDescription: "File associations:"; Flags: unchecked
 Name: "shellverbs"; Description: "Add ""Send to Quill"" actions (OCR, Open, Read aloud) to the file right-click menu"; GroupDescription: "File associations:"; Flags: unchecked
 
@@ -106,8 +105,8 @@ Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"
 Name: "{group}\{#AppName} README"; Filename: "{app}\README.txt"
 Name: "{group}\{#AppName} User Guide"; Filename: "{app}\docs\userguide.html"
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{code:BundledLauncherPath}"; Parameters: "-m quill"; WorkingDir: "{app}"; Tasks: desktopicon; Check: HasBundledLauncher
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon; Check: not HasBundledLauncher
+Name: "{autodesktop}\{#AppName}"; Filename: "{code:BundledLauncherPath}"; Parameters: "-m quill"; WorkingDir: "{app}"; Check: HasBundledLauncher
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Check: not HasBundledLauncher
 
 [Registry]
 ; Register Quill in the OpenWithList for common text formats. We
@@ -287,15 +286,20 @@ Type: filesandordirs; Name: "{app}\python"
 
 [Code]
 // -- Bundled launcher resolution ------------------------------------------------
-// python\quill.exe is a copy of the embedded runtime's pythonw.exe whose
-// VERSIONINFO has been stamped with the Quill product identity (see
-// _stamp_launcher_version_info in build_windows_distribution.py), so JAWS's
-// Ctrl+JAWSKey+V reports the real Quill version instead of "Python 3.x.x"
-// (issue #615). Older bundles and dev builds may only have plain pythonw.exe,
-// or neither, so every call site falls back gracefully.
+// quill.exe at the bundle root is a copy of the embedded runtime's
+// pythonw.exe whose VERSIONINFO has been stamped with the Quill
+// product identity (see _stamp_quill_launcher in
+// build_windows_distribution.py), so JAWS's Ctrl+JAWSKey+V reports
+// the real Quill version instead of "Python 3.x.x" (issue #615).
+// BundledLauncherPath tries the hoisted quill.exe first, then the
+// older python\quill.exe (kept for back-compat with bundles from
+// before the hoist landed), then plain python\pythonw.exe, and
+// finally '' so every call site falls back gracefully.
 function BundledLauncherPath(Param: String): String;
 begin
-  if FileExists(ExpandConstant('{app}\python\quill.exe')) then
+  if FileExists(ExpandConstant('{app}\quill.exe')) then
+    Result := ExpandConstant('{app}\quill.exe')
+  else if FileExists(ExpandConstant('{app}\python\quill.exe')) then
     Result := ExpandConstant('{app}\python\quill.exe')
   else if FileExists(ExpandConstant('{app}\python\pythonw.exe')) then
     Result := ExpandConstant('{app}\python\pythonw.exe')
@@ -326,7 +330,18 @@ procedure CurStepChanged(CurStep: TSetupStep);
 var
   NodePath: String;
   WingetResult: Integer;
+  StaleShortcut: String;
 begin
+  if CurStep = ssInstall then
+  begin
+    // Drop any pre-existing desktop shortcut before Inno writes the
+    // new one. A beta-1 install created a shortcut pointing at
+    // run-quill.cmd; removing it here guarantees the new shortcut
+    // launches quill.exe, not the obsolete launcher.
+    StaleShortcut := ExpandConstant('{autodesktop}\{#AppName}.lnk');
+    if FileExists(StaleShortcut) then
+      DeleteFile(StaleShortcut);
+  end;
   if CurStep = ssPostInstall then
   begin
     SaveStringToFile(ExpandConstant('{app}\quill-new-install.txt'), 'new-install', False);

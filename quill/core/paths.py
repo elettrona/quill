@@ -88,18 +88,27 @@ def new_install_marker_path() -> Path | None:
     """
     import os
 
+    from quill.core.storage_mode import _has_portable_evidence
+
     marker_name = "quill-new-install.txt"
 
-    # Primary: QUILL_APP_ROOT exported by run-quill.cmd.
+    # Primary: QUILL_APP_ROOT exported by the launcher at startup. The
+    # launcher sets it whenever a portable anchor is detected.
     app_root_env = os.environ.get("QUILL_APP_ROOT")
     if app_root_env:
-        return Path(app_root_env) / marker_name
+        candidate = Path(app_root_env).expanduser().resolve()
+        if _has_portable_evidence(candidate):
+            return candidate / marker_name
 
-    # Fallback: Start Menu shortcut calls pythonw.exe directly; pythonw.exe
-    # lives at {app}\python\, so the install root is one or two levels up.
-    exe = Path(sys.executable)
-    for candidate in (exe.parent, exe.parent.parent):
-        if (candidate / "run-quill.cmd").exists():
+    # Fallback: Start Menu shortcut calls quill.exe (or pythonw.exe for
+    # legacy bundles) directly; the exe lives at the bundle root or at
+    # {app}\python\, so the install root is one or two levels up.
+    exe = Path(sys.executable).resolve()
+    parents: list[Path] = [exe.parent, exe.parent.parent]
+    if exe.parent.parent != exe.parent:
+        parents.append(exe.parent.parent.parent)
+    for candidate in parents:
+        if _has_portable_evidence(candidate):
             return candidate / marker_name
 
     return None

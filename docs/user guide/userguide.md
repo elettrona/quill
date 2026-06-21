@@ -2665,16 +2665,11 @@ Open **AI > AI Hub...** to configure your providers. The AI Hub is the single pl
 
 ### Portable mode and key storage
 
-By default QUILL stores AI provider keys in the **Windows Credential Manager**, which ties them to your Windows user account. If you run QUILL from a self-contained folder — for example on a network share or an external drive — you can switch to **portable mode** so all keys live in that same folder alongside your other QUILL data.
+By default QUILL stores AI provider keys in the **Windows Credential Manager**, which ties them to your Windows user account. If you run QUILL from a self-contained folder — for example on a network share or an external drive — portable mode puts all of your keys in that same folder alongside your other QUILL data.
 
-**Activating portable mode.** Set the environment variable `QUILL_PORTABLE=1` before starting QUILL. You can do this for the current session:
+**Activating portable mode.** The portable bundle ships with an empty `data\` folder next to `quill.exe`, and QUILL recognises that folder as the portable opt-in. No environment variable to set, no checkbox to tick — just run `quill.exe` from the bundle root. The Setup Wizard's **Data location** page detects the portable install and offers the portable radio button automatically. If you want to convert an installed build into a portable one, copy the install folder to a USB drive and create an empty `data\` folder at its root; QUILL will switch to portable mode the next time it starts from that folder.
 
-```powershell
-$env:QUILL_PORTABLE = "1"
-python -m quill
-```
-
-Or add it permanently to your user environment via System Properties > Environment Variables.
+The previous activation mechanism (`QUILL_PORTABLE=1`) is no longer required and is ignored: portable mode is a property of the bundle, not of the running environment.
 
 When portable mode is on, keys are stored in a file called `keys.enc` inside the QUILL data directory. The file is encrypted with Windows DPAPI, so it is protected by your Windows user-account key.
 

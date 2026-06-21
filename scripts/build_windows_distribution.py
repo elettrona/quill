@@ -218,8 +218,11 @@ def build_windows_distribution(
     installer_dir.mkdir(parents=True, exist_ok=True)
     reference_installer_dir.mkdir(parents=True, exist_ok=True)
 
-    launcher = portable_dir / "run-quill.cmd"
-    launcher.write_text(_render_launcher_script(), encoding="utf-8")
+    # The portable bundle ships an empty ``data/`` folder so the install is
+    # recognised as portable from first launch with zero setup. ``data/`` is
+    # the user's deliberate opt-in: a folder with quill.exe but no data/ is
+    # not portable (see quill.core.storage_mode._has_portable_evidence).
+    (portable_dir / "data").mkdir(exist_ok=True)
 
     staged_docs = _stage_distribution_docs(portable_dir, resolved_source_root)
     effective_bundled_tools = dict(bundled_tool_dirs or {})
@@ -260,7 +263,7 @@ def build_windows_distribution(
         "channel": identity.channel,
         "prereleaseNumber": identity.prerelease_number,
         "publisher": identity.publisher,
-        "portableLauncher": str(launcher),
+        "portableEntry": str(portable_dir / "quill.exe"),
         "installerScript": str(installer_dir / "quill.iss"),
         "bundledPython": bool(bundle_python),
         "embeddedPythonVersion": EMBEDDED_PYTHON_VERSION if bundle_python else None,
@@ -311,6 +314,17 @@ def build_windows_distribution(
             launcher_file_version=iss_numeric_version,
             build_cache_dir=output_dir / "_build-tools",
         )
+        # Hoist the stamped quill.exe from python/ to the bundle root so
+        # double-clicking quill.exe at the bundle root launches the app,
+        # matching the detection contract in storage_mode._has_portable_evidence
+        # (the portable anchor is the folder that contains quill.exe + data/).
+        stamped = python_runtime_dir / "quill.exe"
+        if stamped.exists():
+            shutil.copy2(stamped, portable_dir / "quill.exe")
+        else:
+            print(
+                f"Warning: stamped launcher {stamped} not found; bundle-root quill.exe not written."
+            )
 
     result = {
         "portable_dir": str(portable_dir),
@@ -329,80 +343,6 @@ def build_windows_distribution(
     return result
 
 
-def _render_launcher_script() -> str:
-    """Return the contents of ``run-quill.cmd``.
-
-    The launcher prefers a Python interpreter shipped alongside it
-    (``python\\quill.exe`` -- a copy of ``pythonw.exe`` whose VERSIONINFO
-    has been stamped with the Quill identity, see ``_stamp_launcher_version_info``
-    -- falling back to plain ``python\\pythonw.exe`` for normal windowed launch,
-    and ``python\\python.exe`` with ``--console``) so the typical end user
-    never has to install Python. If no bundled interpreter is present we
-    fall back to one on ``PATH`` and, failing that, print a clear
-    screen-reader-friendly error.
-    """
-
-    return (
-        "@echo off\r\n"
-        "setlocal\r\n"
-        "set QUILL_PORTABLE=1\r\n"
-        "set QUILL_APP_ROOT=%~dp0\r\n"
-        "set QUILL_PORTABLE_ROOT=%~dp0data\r\n"
-        "set QUILL_CONSOLE_MODE=0\r\n"
-        'if /I "%~1"=="--console" (\r\n'
-        "    set QUILL_CONSOLE_MODE=1\r\n"
-        "    shift\r\n"
-        ")\r\n"
-        'if /I "%~1"=="--no-console" (\r\n'
-        "    set QUILL_CONSOLE_MODE=0\r\n"
-        "    shift\r\n"
-        ")\r\n"
-        ":: Prefer the bundled embedded Python that ships with the installer.\r\n"
-        'set "QUILL_BUNDLED_PYTHON=%~dp0python\\python.exe"\r\n'
-        'set "QUILL_BUNDLED_PYTHONW=%~dp0python\\pythonw.exe"\r\n'
-        'set "QUILL_BUNDLED_QUILLEXE=%~dp0python\\quill.exe"\r\n'
-        'if "%QUILL_CONSOLE_MODE%"=="0" (\r\n'
-        '    if exist "%QUILL_BUNDLED_QUILLEXE%" (\r\n'
-        '        start "" "%QUILL_BUNDLED_QUILLEXE%" -m quill %*\r\n'
-        "        exit /b 0\r\n"
-        "    )\r\n"
-        '    if exist "%QUILL_BUNDLED_PYTHONW%" (\r\n'
-        '        start "" "%QUILL_BUNDLED_PYTHONW%" -m quill %*\r\n'
-        "        exit /b 0\r\n"
-        "    )\r\n"
-        "    where pythonw >nul 2>nul\r\n"
-        "    if errorlevel 1 goto :run_console\r\n"
-        '    start "" pythonw -m quill %*\r\n'
-        "    exit /b 0\r\n"
-        ")\r\n"
-        ":run_console\r\n"
-        'if exist "%QUILL_BUNDLED_PYTHON%" (\r\n'
-        '    "%QUILL_BUNDLED_PYTHON%" -m quill %*\r\n'
-        "    goto :after_run\r\n"
-        ")\r\n"
-        ":: Fallback: a system-wide Python on PATH (developer / dev-build mode).\r\n"
-        "where python >nul 2>nul\r\n"
-        "if errorlevel 1 (\r\n"
-        "    echo.\r\n"
-        "    echo Quill could not find its bundled Python runtime, and no Python\r\n"
-        "    echo interpreter is available on PATH.\r\n"
-        "    echo.\r\n"
-        "    echo If you installed Quill from the official installer, please\r\n"
-        "    echo reinstall: this build is missing the bundled runtime.\r\n"
-        "    echo.\r\n"
-        "    pause\r\n"
-        "    exit /b 1\r\n"
-        ")\r\n"
-        "python -m quill %*\r\n"
-        ":after_run\r\n"
-        "if errorlevel 1 (\r\n"
-        "    echo.\r\n"
-        "    echo Quill exited with an error. See the messages above.\r\n"
-        "    pause\r\n"
-        ")\r\n"
-    )
-
-
 def _render_readme(
     version: str,
     bundle_python: bool,
@@ -416,14 +356,14 @@ def _render_readme(
         runtime_paragraph = (
             "This bundle ships a private Python runtime in the python\\ folder,\n"
             "so you do NOT need to install Python, pip, wxPython, or anything\n"
-            "else. Just run run-quill.cmd and start writing."
+            "else. Just double-click quill.exe and start writing."
         )
     else:
         runtime_paragraph = (
             "This bundle does not include a Python runtime. To run it,\n"
             "install Python 3.12+ from https://www.python.org/downloads/windows/\n"
             "and run:  pip install wxPython pyttsx3\n"
-            "Then double-click run-quill.cmd."
+            "Then double-click quill.exe."
         )
 
     docs_paragraph = ""
@@ -492,9 +432,10 @@ def build_shell_verb_registry_lines(
     default association. Every key is gated behind the opt-in ``shellverbs`` task
     and tagged ``uninsdeletekey`` so a full uninstall removes the verbs cleanly.
 
-    The launch command is ``"{app}\\run-quill.cmd" --action <action> "%1"``;
-    ``run-quill.cmd`` forwards ``%*`` to ``python -m quill``, so the selected
-    file path and verb reach the same dispatch used by the in-app menu.
+    The launch command is ``"{app}\\{#AppExeName}" --action <action> "%1"``;
+    quill.exe is the bundled launcher (a stamped copy of pythonw.exe), so
+    the selected file path and verb reach the same dispatch used by the
+    in-app menu.
     """
 
     selected = tuple(verbs) if verbs is not None else default_shell_verbs()
@@ -589,7 +530,7 @@ def build_inno_setup_script(
         f'#define AppVersion "{version}"',
         f'#define AppPublisher "{publisher}"',
         '#define AppURL "https://github.com/Community-Access/quill"',
-        '#define AppExeName "run-quill.cmd"',
+        '#define AppExeName "quill.exe"',
         "",
         "[Setup]",
         "AppId={{6E0A1C52-4A90-4C6E-A8A1-3C2A16E2B7F2}",
@@ -636,12 +577,12 @@ def build_inno_setup_script(
         "CloseApplications=force",
         "RestartApplications=no",
         "UninstallDisplayName={#AppName} {#AppVersion}",
-        "; The bundled launcher carries a real icon so Add/Remove Programs shows",
-        "; one; the .cmd launcher has none. BundledLauncherPath (see [Code])",
-        "; prefers python\\quill.exe -- a VERSIONINFO-stamped copy of pythonw.exe,",
-        "; see _stamp_launcher_version_info -- falling back to plain pythonw.exe,",
-        "; and gracefully returns blank when no bundled runtime is present (e.g.",
-        "; a dev build), in which case no icon is shown.",
+        "; The bundled launcher carries a real icon so Add/Remove Programs",
+        "; shows one. BundledLauncherPath (see [Code]) prefers quill.exe at",
+        "; the bundle root -- a VERSIONINFO-stamped copy of pythonw.exe, see",
+        "; _stamp_quill_launcher -- then python\\quill.exe, then plain",
+        "; pythonw.exe, and gracefully returns blank when no bundled runtime",
+        "; is present (e.g. a dev build), in which case no icon is shown.",
         "UninstallDisplayIcon={code:BundledLauncherPath}",
         "LicenseFile=LICENSE",
         "InfoAfterFile=README-installer.txt",
@@ -651,8 +592,6 @@ def build_inno_setup_script(
         'Name: "english"; MessagesFile: "compiler:Default.isl"',
         "",
         "[Tasks]",
-        'Name: "desktopicon"; Description: "Create a &Desktop shortcut";'
-        ' GroupDescription: "Additional shortcuts:"; Flags: unchecked',
         'Name: "fileassoc"; Description: "Register Quill in the Open With menu'
         ' for common text formats (.txt, .md, .rst, .log, .csv, .json)";'
         ' GroupDescription: "File associations:"; Flags: unchecked',
@@ -725,9 +664,9 @@ def build_inno_setup_script(
         ('Name: "{group}\\{#AppName} User Guide"; Filename: "{app}\\docs\\userguide.html"'),
         'Name: "{group}\\Uninstall {#AppName}"; Filename: "{uninstallexe}"',
         'Name: "{autodesktop}\\{#AppName}"; Filename: "{code:BundledLauncherPath}"; Parameters: "-m quill";'
-        ' WorkingDir: "{app}"; Tasks: desktopicon; Check: HasBundledLauncher',
+        ' WorkingDir: "{app}"; Check: HasBundledLauncher',
         'Name: "{autodesktop}\\{#AppName}"; Filename: "{app}\\{#AppExeName}";'
-        ' WorkingDir: "{app}"; Tasks: desktopicon; Check: not HasBundledLauncher',
+        ' WorkingDir: "{app}"; Check: not HasBundledLauncher',
         "",
         "[Registry]",
         "; Register Quill in the OpenWithList for common text formats. We",
@@ -783,15 +722,20 @@ def build_inno_setup_script(
         "",
         "[Code]",
         "// -- Bundled launcher resolution ------------------------------------------------",
-        "// python\\quill.exe is a copy of the embedded runtime's pythonw.exe whose",
-        "// VERSIONINFO has been stamped with the Quill product identity (see",
-        "// _stamp_launcher_version_info in build_windows_distribution.py), so JAWS's",
-        '// Ctrl+JAWSKey+V reports the real Quill version instead of "Python 3.x.x"',
-        "// (issue #615). Older bundles and dev builds may only have plain pythonw.exe,",
-        "// or neither, so every call site falls back gracefully.",
+        "// quill.exe at the bundle root is a copy of the embedded runtime's",
+        "// pythonw.exe whose VERSIONINFO has been stamped with the Quill",
+        "// product identity (see _stamp_quill_launcher in",
+        "// build_windows_distribution.py), so JAWS's Ctrl+JAWSKey+V reports",
+        '// the real Quill version instead of "Python 3.x.x" (issue #615).',
+        "// BundledLauncherPath tries the hoisted quill.exe first, then the",
+        "// older python\\quill.exe (kept for back-compat with bundles from",
+        "// before the hoist landed), then plain python\\pythonw.exe, and",
+        "// finally '' so every call site falls back gracefully.",
         "function BundledLauncherPath(Param: String): String;",
         "begin",
-        "  if FileExists(ExpandConstant('{app}\\python\\quill.exe')) then",
+        "  if FileExists(ExpandConstant('{app}\\quill.exe')) then",
+        "    Result := ExpandConstant('{app}\\quill.exe')",
+        "  else if FileExists(ExpandConstant('{app}\\python\\quill.exe')) then",
         "    Result := ExpandConstant('{app}\\python\\quill.exe')",
         "  else if FileExists(ExpandConstant('{app}\\python\\pythonw.exe')) then",
         "    Result := ExpandConstant('{app}\\python\\pythonw.exe')",
@@ -822,7 +766,18 @@ def build_inno_setup_script(
         "var",
         "  NodePath: String;",
         "  WingetResult: Integer;",
+        "  StaleShortcut: String;",
         "begin",
+        "  if CurStep = ssInstall then",
+        "  begin",
+        "    // Drop any pre-existing desktop shortcut before Inno writes the",
+        "    // new one. A beta-1 install created a shortcut pointing at",
+        "    // run-quill.cmd; removing it here guarantees the new shortcut",
+        "    // launches quill.exe, not the obsolete launcher.",
+        "    StaleShortcut := ExpandConstant('{autodesktop}\\{#AppName}.lnk');",
+        "    if FileExists(StaleShortcut) then",
+        "      DeleteFile(StaleShortcut);",
+        "  end;",
         "  if CurStep = ssPostInstall then",
         "  begin",
         "    SaveStringToFile(ExpandConstant('{app}\\quill-new-install.txt'), 'new-install', False);",

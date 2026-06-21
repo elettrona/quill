@@ -3000,17 +3000,17 @@ accept_into: selection
 
 ### 5.85 Portable API key store
 
-By default QUILL stores AI provider keys in the Windows Credential Manager, which ties them to the current Windows user account. Portable mode offers an alternative: a DPAPI-encrypted file (`keys.enc`) in the QUILL data directory, activated by setting `QUILL_PORTABLE=1`.
+By default QUILL stores AI provider keys in the Windows Credential Manager, which ties them to the current Windows user account. Portable mode offers an alternative: a DPAPI-encrypted file (`keys.enc`) in the QUILL data directory, activated by the presence of a `data/` folder next to `quill.exe` in the portable bundle.
 
 **Motivation.** Some users run QUILL from a self-contained folder on a network share or external drive. They want all QUILL data — settings, data files, and keys — to live in one directory without requiring Credential Manager access on each machine. A DPAPI-encrypted file achieves this: everything stays in the folder, and the file is protected by the Windows user-account key.
 
 **Access priority chain (highest wins):**
 
 1. Environment variable (`QUILL_OPENROUTER_KEY`, `QUILL_OPENAI_KEY`, `QUILL_OLLAMA_KEY`, `QUILL_ASSISTANT_KEY`) — for CI pipelines and developer overrides.
-2. Portable file store (`keys.enc`) — when `QUILL_PORTABLE=1` is set.
+2. Portable file store (`keys.enc`) — used automatically when the running install is recognised as portable (a verified bundle anchor with `quill.exe` + `data/`).
 3. Windows Credential Manager — default for standard installations.
 
-**Activation.** Set `QUILL_PORTABLE=1` in the process environment before launching QUILL. No other configuration is needed. The `keys.enc` file is created automatically in `app_data_dir()` on first key save.
+**Activation.** Portable mode is a property of the bundle, not of the running environment. The portable build ships `quill.exe` at the bundle root and an empty `data/` folder next to it; that folder is the deliberate filesystem opt-in. No environment variable to set. If you want to convert an installed build into a portable one, copy the install folder to a USB drive and create an empty `data/` folder at its root; QUILL will switch to portable mode automatically. The previous `QUILL_PORTABLE=1` activation mechanism is no longer required and is ignored — detection is filesystem-driven. The `keys.enc` file is created automatically in `app_data_dir()` on first key save.
 
 **Security properties.** The file is encrypted with Windows DPAPI using a QUILL-specific entropy token. It is decryptable only on the same Windows machine by the same user account that encrypted it. Moving `keys.enc` to a different machine or a different Windows account will fail to decrypt; the user must re-enter their keys.
 
@@ -3035,7 +3035,7 @@ Where QUILL stores its data directory (`app_data_dir()` — settings, recovery, 
 2. `portable` — `<app root>/data`, only available when the running install is verified portable.
 3. `custom` — any user-chosen folder, stored alongside the mode as a `path` field.
 
-**Portable detection without reopening L-9.** A prior security fix (commit `a4fec36`) gated `QUILL_PORTABLE_ROOT` behind `_DEV_BUILD` because trusting an attacker-controlled environment variable's *value* could redirect a user's data directory. That fix stands: this feature never trusts an env var's value directly, in any build. `storage_mode._resolve_app_root()` derives a candidate anchor from `QUILL_APP_ROOT` or by walking up from `sys.executable`, then only treats it as a real portable install if `run-quill.cmd` actually exists at that anchor — filesystem evidence, not the env var's say-so. `tests/unit/core/test_storage_mode.py::test_arbitrary_quill_app_root_alone_does_not_redirect_data` is a regression test mirroring the original L-9 threat model.
+**Portable detection without reopening L-9.** A prior security fix (commit `a4fec36`) gated `QUILL_PORTABLE_ROOT` behind `_DEV_BUILD` because trusting an attacker-controlled environment variable's *value* could redirect a user's data directory. That fix stands: this feature never trusts an env var's value directly, in any build. `storage_mode._resolve_app_root()` derives a candidate anchor from `QUILL_APP_ROOT` or by walking up from `sys.executable`, then only treats it as a real portable install when `quill.exe` and a sibling `data/` folder both exist at that anchor — filesystem evidence, not the env var's say-so. `run-quill.cmd` is accepted as back-compat evidence so a beta-1 portable bundle without a `data/` folder keeps working. `tests/unit/core/test_storage_mode.py::test_arbitrary_quill_app_root_alone_does_not_redirect_data` is a regression test mirroring the original L-9 threat model, and `test_quill_exe_alone_without_data_folder_is_not_portable` and `test_data_folder_alone_without_quill_exe_is_not_portable` lock in the new evidence rule.
 
 **Where it's surfaced.**
 - The first-run Setup Wizard's new Data Location page (`quill/ui/setup_wizard_pages.py::_DataLocationPage`) offers AppData, Portable (when available), or a custom folder via `wx.DirDialog`. On Finish this writes `storage-mode.json` directly — there is nothing to migrate yet on a fresh install.
@@ -4795,7 +4795,7 @@ The governing rules remain the same throughout the roadmap: local-first processi
 - [x] Add `quill/tools/sqp_validator.py`: CLI validator with `--strict` mode.
 - [x] Add bundled `ai-writing-skills` Quillin with 4 sample skills (Accessible Rewrite, Research and Draft, Meeting Notes to Action Items, Argument Strengthener).
 - [x] Add `tests/unit/core/test_skill_pack.py`: 23 tests covering parsing, validation, runner, condition branching, depth limit, and all bundled files.
-- [x] Add `quill/platform/windows/credential_store.py`: unified credential access with env-var, portable DPAPI file, and Credential Manager backends. Activated by `QUILL_PORTABLE=1`. Update `ai_chat_dialog.py` and `assistant_ai.py` to use it.
+- [x] Add `quill/platform/windows/credential_store.py`: unified credential access with env-var, portable DPAPI file, and Credential Manager backends. Activated by portable-mode detection (filesystem evidence: `quill.exe` + `data/` at the bundle anchor). Update `ai_chat_dialog.py` and `assistant_ai.py` to use it.
 - [x] Add bundled Quillin `math-equations` (`com.quill.bundled.math-equations`): `Insert → Insert Equation...` (`Ctrl+Shift+E`) inserts LaTeX or MathML at the caret. Two-step accessible dialog: (1) prompt for equation text with selection pre-fill and delimiter stripping; (2) display-mode choice (Inline `$...$` / Block `$$...$$`). MathML (`<math ...>`) detected automatically and inserted verbatim. `quill/core/browser_preview.py` and `quill/io/export.py` inject MathJax 3 CDN script tag so equations render in Browser Preview and HTML export. Sample equations in `docs/math/latex_testing.md`. 14 unit tests in `tests/unit/core/test_quillins_bundled_math_equations.py`. Original contribution by Robert Danaraj; redesigned as a sandboxed Quillin.
 
 ---
@@ -6070,8 +6070,9 @@ From `scripts/build_windows_distribution.py` and the portable bundle layout:
 - A private embedded Python runtime (`python/`, amd64, pinned 3.12.x) with
   wxPython, pyttsx3, and the other runtime wheels preinstalled, plus the
   vendored `quill-glow-core` contract wheel. End users install no Python.
-- The `quill` package source, the `run-quill.cmd` launcher, `manifest.json`,
-  `README.txt`.
+- The `quill` package source, the hoisted `quill.exe` launcher (a stamped
+  copy of `pythonw.exe`), an empty `data/` folder (the portable opt-in),
+  `manifest.json`, `README.txt`.
 - Docs: `docs/userguide.html` and `docs/userguide.md` (PRD and engineering docs
   are published to GitHub Pages instead of bundled).
 - Optional tools under `tools/`, included only when the build was run with the
@@ -6532,7 +6533,7 @@ reg query "HKCU\Software\Classes\SystemFileAssociations\.png\shell\Quill.ocr\com
 ```
 
 The `\command` default value should be:
-`"<install>\run-quill.cmd" --action ocr "%1"`.
+`"<install>\quill.exe" -m quill --action ocr "%1"`.
 
 #### Step 5 — Uninstall and confirm clean removal
 
