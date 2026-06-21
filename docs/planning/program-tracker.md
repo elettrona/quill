@@ -22,9 +22,9 @@ _Snapshot: 252 open issues + 4 already shipped on this branch. Issue #617 is inc
 
 | Status | Count |
 | --- | ---: |
-| ✅ Shipped | 5 |
+| ✅ Shipped | 6 |
 | 🚧 In progress | 1 (Speech & Dictation #617: S0 done, S1+ next) |
-| ⬜ Planned | 251 |
+| ⬜ Planned | 250 |
 | **Total tracked** | **257** |
 
 ### By bucket (open)
@@ -85,6 +85,7 @@ _Snapshot: 252 open issues + 4 already shipped on this branch. Issue #617 is inc
 | 643 | AI Hub notebook accessible name (VoiceOver) | ✅ |
 | 646 | AI Hub tab group accessible name (VoiceOver) | ✅ |
 | 617 | Speech wave **S0** — dictation engine setting made honest (offline/windows/cloud + migration; dead recognizer stub removed). Epic #617 stays open; S1–S5 next. | 🚧 |
+| 238 | Braille BR-015 — `brf_sidecar.py` foundation (atomic per-file sidecar: position, proofing, anchors, notes) | ✅ |
 
 ## Open work by bucket
 
