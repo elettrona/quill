@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>wave-outcomes</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<h1 id="quill-program--user-experience-outcomes-by-wave">QUILL Program —
+User-Experience Outcomes by Wave</h1>
+<blockquote>
+<p>Companion to <a
+href="program-tracker.md"><code>program-tracker.md</code></a>. The
+tracker says <em>what</em> ships and <em>when</em>; this document says
+<em>what changes for the person using QUILL</em>. Every outcome is
+written from the user's chair, in plain language, with the screen-reader
+experience first. Each wave lists the concrete moments a user will
+notice, the accessibility wins, and the issues behind them.</p>
+</blockquote>
+<p>Legend: ✅ shipped · 🚧 in progress · ⬜ planned.</p>
+<hr />
+<h2 id="wave-0--trust-the-basics-white_check_mark">Wave 0 — Trust the
+basics ✅</h2>
+<p><strong>The promise:</strong> "When I open a file and save it, I get
+my file back — exactly."</p>
+<p>What you notice:</p>
+<ul>
+<li>A text file you saved with a byte order mark opens cleanly. No stray
+invisible character sits before your first word, so your screen reader
+doesn't read a phantom symbol and your cursor starts in the right place.
+(#648)</li>
+<li>Open a Windows text file and save it — it stays a Windows text file.
+Your line endings are preserved, and blank lines you deliberately left
+in are still there (no silent "tidying" that collapses three blank lines
+into two, and no Markdown characters getting mangled). (#649)</li>
+<li>In the AI Hub, VoiceOver now announces the settings tabs as a named
+group instead of an unlabeled cluster, so you can tell where you are.
+(#643/#646)</li>
+</ul>
+<p>Accessibility win: fewer surprises. The editor stops doing invisible
+things to your document, and a settings dialog names itself.</p>
+<hr />
+<h2 id="wave-1--honest-dictation--braille-proofing-construction">Wave 1
+— Honest dictation + braille proofing 🚧</h2>
+<p><strong>The promise:</strong> "QUILL tells me the truth about what it
+can do, and it remembers where I was in my braille document."</p>
+<p>What you notice:</p>
+<ul>
+<li>The dictation settings no longer promise a local engine that never
+actually ran. Today dictation uses Windows' own dictation; QUILL now
+says so plainly, and the groundwork for a real offline engine has begun.
+(#617 S0) ✅</li>
+<li>Reopen a braille (BRF) file and QUILL puts your cursor back where
+you left off and tells you: "BRF file opened. 87 braille pages detected.
+Last position: braille page 12, line 14, cell 31." No more hunting for
+your place. (#239) 🚧</li>
+<li>A new <strong>Braille → Proofing</strong> menu lets you mark a
+braille page proofed or needing review, add a note to a page, hear a
+progress summary ("9 pages proofed, 3 need review, about 10 percent
+complete"), list proofed or flagged pages, and export a plain-text
+proofing report — all by keyboard. Your progress is saved beside the
+file and never alters the braille itself. (#240, built on the #238
+sidecar) 🚧</li>
+</ul>
+<p>Accessibility win: braille transcribers get real proofing workflow
+support with spoken progress, and dictation stops over-promising.</p>
+<hr />
+<h2 id="wave-2--say-exactly-as-much-as-i-want-white_large_square">Wave 2
+— Say exactly as much as I want ⬜</h2>
+<p><strong>The promise:</strong> "QUILL speaks at my level — not too
+much, not too little."</p>
+<p>What you notice:</p>
+<ul>
+<li>A real verbosity system: choose a profile (Beginner, Normal, Expert,
+Quiet) and QUILL adjusts how much it announces for each kind of
+action.</li>
+<li><strong>Quiet Mode</strong> and <strong>Meeting Mode</strong> you
+can toggle with a keystroke when you need silence fast, plus a Quiet
+Undo.</li>
+<li>Announcements stop repeating themselves, and you can ask "Where am
+I?" or "What changed?" on demand instead of being told constantly.
+(#271, #361–#366, with the §5–§46 design behind them)</li>
+</ul>
+<p>Accessibility win: the single biggest comfort lever for daily
+screen-reader use — control over the firehose of speech.</p>
+<hr />
+<h2
+id="wave-3--dictate-and-transcribe-privately-white_large_square">Wave 3
+— Dictate and transcribe, privately ⬜</h2>
+<p><strong>The promise:</strong> "I press one key, speak, and my words
+appear — on my computer, without sending audio anywhere."</p>
+<p>What you notice:</p>
+<ul>
+<li>Pick a speech model once (a friendly, plain-language prompt
+recommends a small one), then <strong>transcribe an audio or video
+file</strong> into a new document, fully offline.</li>
+<li>Clear, non-chatty progress your screen reader can follow, the
+ability to cancel at any time, and a result you can read and edit
+immediately. (#617 S1–S2)</li>
+</ul>
+<p>Accessibility win: private, offline transcription with an accessible
+model manager — no cloud account, no jargon.</p>
+<hr />
+<h2
+id="wave-4--catch-braille-errors--speak-into-the-page-white_large_square">Wave
+4 — Catch braille errors + speak into the page ⬜</h2>
+<p><strong>The promise:</strong> "QUILL helps me find problems and lets
+me dictate straight into my document."</p>
+<p>What you notice:</p>
+<ul>
+<li>A braille <strong>validator</strong> flags likely formatting
+problems, with an accessible Warnings List you can step through by
+keyboard. (#241/#242)</li>
+<li><strong>Dictate at the cursor</strong>: start dictation, speak, and
+text drops in where you are, as one undoable step, with a spoken
+"inserted N words." (#617 S3)</li>
+<li><strong>Captions</strong>: turn a recording into SRT or VTT
+subtitles you can review and save.</li>
+</ul>
+<p>Accessibility win: proofing and dictation become first-class,
+keyboard-first, and screen-reader-clear.</p>
+<hr />
+<h2
+id="wave-5--an-ai-that-helps-without-taking-over-white_large_square">Wave
+5 — An AI that helps without taking over ⬜</h2>
+<p><strong>The promise:</strong> "I choose the AI, pick an agent, and I
+always see and control what changes."</p>
+<p>What you notice:</p>
+<ul>
+<li>One coherent AI Hub instead of several overlapping dialogs, with
+per-message action buttons in Ask QUILL and a single, unified provider
+setup. (#507–#509)</li>
+<li>Agents that read your selection and propose edits you preview and
+undo in one step — never silent changes. (agentic-AI plan)</li>
+</ul>
+<p>Accessibility win: powerful help that stays reviewable, undoable, and
+spoken.</p>
+<hr />
+<h2 id="wave-6--move-faster--publish-further-white_large_square">Wave 6
+— Move faster + publish further ⬜</h2>
+<p><strong>The promise:</strong> "Getting around and getting my work out
+is quicker."</p>
+<p>What you notice:</p>
+<ul>
+<li>Quick Navigation enhancements and structured Word / CSV views
+ungated for everyday use. (#513/#514)</li>
+<li>Export to a <strong>DAISY</strong> talking book, and broader
+publishing options. (#251, #140)</li>
+<li>GLOW family improvements across the experience. (#528–#534)</li>
+</ul>
+<p>Accessibility win: faster keyboard navigation and accessible
+publishing formats.</p>
+<hr />
+<h2 id="wave-7--solid-on-every-machine-white_large_square">Wave 7 —
+Solid on every machine ⬜</h2>
+<p><strong>The promise:</strong> "QUILL installs cleanly and works the
+same wherever I run it."</p>
+<p>What you notice:</p>
+<ul>
+<li>Verified installer behavior on Windows 10/11, progress toward
+shipping-quality macOS and Linux, native RTF editing, and a Quillin
+(extension) hub. (#506, #516–#520)</li>
+<li>Better docs, tutorials, and learning material. (#505,
+#535–#564)</li>
+</ul>
+<p>Accessibility win: a dependable, well-documented product on more
+platforms.</p>
+<hr />
+<h2 id="wave-8--polish-the-long-tail-white_large_square">Wave 8 — Polish
+the long tail ⬜</h2>
+<p><strong>The promise:</strong> "The little touches that make it feel
+crafted."</p>
+<p>What you notice:</p>
+<ul>
+<li>The high-value verbosity refinements (announcement budgets,
+repetition collapse, typing-echo controls, destructive-action and
+undo-available cues, and more), with the speculative extras folded in or
+set aside deliberately. (#405–#504)</li>
+</ul>
+<p>Accessibility win: a thousand small reductions in friction and
+noise.</p>
+<hr />
+<h2 id="how-to-read-progress">How to read progress</h2>
+<ul>
+<li>Status and counts live in <a
+href="program-tracker.md"><code>program-tracker.md</code></a>.</li>
+<li>Each wave's user-facing outcomes are echoed into the <strong>release
+notes</strong> as the wave ships, the <strong>user guide</strong> when
+behavior changes, and the <strong>PRD</strong> / workstream specs for
+design detail — updated continuously, not at the end.</li>
+</ul>
+</body>
+</html>
