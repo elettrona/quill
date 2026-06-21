@@ -94,7 +94,7 @@ class Settings:
     abbreviation_expansion_sound: bool = False
     abbreviation_expansion_sound_file: str = ""
     multi_press_window_ms: int = 400
-    dictation_engine: str = "vosk"
+    dictation_engine: str = "windows"
     dictation_language: str = "en-US"
     dictation_model: str = "base"
     dictation_device_index: int = -1
@@ -447,9 +447,9 @@ class Settings:
         )
         if markdown_clipboard_format not in {"html", "rtf"}:
             markdown_clipboard_format = "html"
-        dictation_engine = str(data.get("dictation_engine", "vosk")).strip().lower()
-        if dictation_engine not in {"vosk", "whisper"}:
-            dictation_engine = "vosk"
+        engine = str(data.get("dictation_engine", "windows")).strip().lower()
+        engine = "offline" if engine in {"vosk", "whisper"} else engine  # #617 migrate
+        dictation_engine = engine if engine in {"offline", "windows", "cloud"} else "windows"
         dictation_language = str(data.get("dictation_language", "en-US")).strip() or "en-US"
         dictation_model = str(data.get("dictation_model", "base")).strip() or "base"
         dictation_device_index = int(data.get("dictation_device_index", -1))
