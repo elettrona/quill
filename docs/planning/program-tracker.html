@@ -218,8 +218,14 @@ won't-do.</p>
 <tbody>
 <tr>
 <td>✅ Shipped</td>
-<td style="text-align: right;">12 (#648, #649, #643, #646, #238, #239,
-#240, #241, #242, #246, #251, #617)</td>
+<td style="text-align: right;">16 (#648, #649, #643, #646, #238, #239,
+#240, #241, #242, #246, #251, #617, #361, #368, #374, #377)</td>
+</tr>
+<tr>
+<td>🚧 In progress</td>
+<td style="text-align: right;">4 (verbosity foundation partials: #367
+§5, #369 §7, #375 §13, #376 §14 — core landed, UI/engine halves
+open)</td>
 </tr>
 <tr>
 <td>🧹 Resolved (bookkeeping)</td>
@@ -232,7 +238,7 @@ in docs)</td>
 </tr>
 <tr>
 <td>⬜ Planned</td>
-<td style="text-align: right;">240 (incl. new #663 — Speech S5 offline
+<td style="text-align: right;">232 (incl. new #663 — Speech S5 offline
 voice commands)</td>
 </tr>
 <tr>
@@ -241,6 +247,17 @@ voice commands)</td>
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Wave 2 (Verbosity) started — core foundation
+shipped.</strong> Sub-PR 1.1 (#361) landed the wx-free
+<code>quill/core/verbosity/</code> package (channels, tokens + 12
+filters, strict parser/validator, profiles + CustomProfile, the 34-verb
+§15 catalog + registry, data-order model, JSON schemas); 102 tests,
+parser coverage 99%. This closes the fully-delivered spec sections §6
+(#368), §12 (#374), and §15 (#377); §5/§7/§13/§14 (#367/#369/#375/#376)
+are partially done (core in, UI/engine pending). Next: sub-PR 1.2
+(engine, Quiet/Meeting, history, explain) — #362.</p>
+</blockquote>
 <blockquote>
 <p><strong>#246 completed via back-translation (source-to-BRF).</strong>
 The deliverable is braille→text <strong>back-translation</strong>, now
@@ -547,6 +564,39 @@ DAISY Talking Book; wx-free <code>quill/io/daisy.py</code> writes
 ncc.html + content.html + book.smil)</td>
 <td>✅</td>
 </tr>
+<tr>
+<td style="text-align: right;">617</td>
+<td>Offline speech-to-text S0–S4 (foundation, whisper.cpp + Faster
+Whisper, transcription, captions, dictation, model manager); closed as
+delivered, S5 voice commands split to #663</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">361</td>
+<td>Verbosity Sub-PR 1.1 — core foundation
+(<code>quill/core/verbosity/</code>: channels, tokens + 12 filters,
+strict parser/validator, profiles + CustomProfile, 34-verb catalog +
+registry, data-order, schemas); 102 tests, parser cov 99%</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">368</td>
+<td>Verbosity §6 — Profile model (Beginner/Normal/Expert/Quiet +
+CustomProfile round-trip)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">374</td>
+<td>Verbosity §12 — Token system (TokenSpec + the 12 engine filters; no
+custom filters)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">377</td>
+<td>Verbosity §15 — Verb registry (VerbSpec + Severity + 34-verb catalog
++ VerbRegistry)</td>
+<td>✅</td>
+</tr>
 </tbody>
 </table>
 <h2 id="out-of-scope">Out of scope</h2>
@@ -714,9 +764,10 @@ docs/planning/verbosity.md</td>
 <tr>
 <td style="text-align: right;">361</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">✅</td>
 <td>[Verbosity] Sub-PR 1.1 — Core foundation: channels, profiles,
-tokens, parser</td>
+tokens, parser (shipped: <code>quill/core/verbosity/</code>, 102
+tests)</td>
 </tr>
 <tr>
 <td style="text-align: right;">362</td>
@@ -756,21 +807,24 @@ polish)</td>
 <tr>
 <td style="text-align: right;">367</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
-<td>Verbosity: §5 Locked design decisions (12 decisions)</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §5 Locked design decisions (12 decisions) — core-testable
+decisions done (channels floor, profile ladder, default Normal);
+QVP/token-editor/library decisions pending UI</td>
 </tr>
 <tr>
 <td style="text-align: right;">368</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">✅</td>
 <td>Verbosity: §6 Profile model (Beginner / Normal / Expert / Quiet +
 CustomProfile)</td>
 </tr>
 <tr>
 <td style="text-align: right;">369</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
-<td>Verbosity: §7 Channel system (Channel enum + routing)</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §7 Channel system (Channel enum + routing) — enum +
+routing + floor shipped; per-channel prefs UI pending</td>
 </tr>
 <tr>
 <td style="text-align: right;">370</td>
@@ -799,26 +853,28 @@ CustomProfile)</td>
 <tr>
 <td style="text-align: right;">374</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">✅</td>
 <td>Verbosity: §12 Token system (TokenSpec + filters)</td>
 </tr>
 <tr>
 <td style="text-align: right;">375</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">🚧</td>
 <td>Verbosity: §13 Template validation (strict allowlist + type
-checking)</td>
+checking) — parser-side validation + spoken summary shipped;
+token-editor UI (Save-disabled, Ctrl+T/Ctrl+Shift+P) pending</td>
 </tr>
 <tr>
 <td style="text-align: right;">376</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
-<td>Verbosity: §14 Data ordering model + editor</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §14 Data ordering model + editor — frozen DataOrder model
+shipped; editor UI + persistence pending</td>
 </tr>
 <tr>
 <td style="text-align: right;">377</td>
 <td style="text-align: center;">P0</td>
-<td style="text-align: center;">⬜</td>
+<td style="text-align: center;">✅</td>
 <td>Verbosity: §15 Verb registry (VerbSpec + initial verb catalog)</td>
 </tr>
 <tr>

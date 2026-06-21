@@ -489,7 +489,7 @@ A fourth field, `import_export_last_folder` (string, default `""`), is intention
 - **PDF import.** Pandoc cannot do it reliably; the dedicated braille and DAISY pipelines remain the right tools.
 - **Tier 2 / Tier 3 formats.** A future release will replace the **Tools > Pandoc Conversion Center...** placeholder with the full format picker.
 - **MarkItDown integration.** Tracked as a follow-up issue. The integration belongs in a Quillin so its dependencies stay out of the core.
-- **Per-verb verbosity tokens.** The completion announcement routes through the existing `announce()` shim. The per-verb `VerbTokenSpec` registry from the verbosity rebuild is not in source yet; that work is tracked separately.
+- **Per-verb verbosity tokens.** The completion announcement routes through the existing `announce()` shim. The pure-domain foundation of the per-verb verbosity rebuild now exists in source (`quill/core/verbosity/`, see §5.91.2), but the routing engine and call-site migration are still tracked separately; this completion path has not yet been migrated onto it. See §5.91.4.
 
 Cross-links: this section is referenced from `### 5.25b Watch Folder automation` (the Watch Folder Quillin can use the same `BatchPlan` shape when it needs batch-style conversion) and from `§22 Startup Wizard` (the Startup wizard's "What kind of writing do you do?" intent picker exposes the Import / Export and Batch Conversion entries only when the chosen profile warrants them).
 
@@ -3329,6 +3329,22 @@ The screen-reader detection result flows through `MainFrame._set_status_quiet` (
 #### 5.91.3 Why two layers
 
 The per-Quillin check exists because the user's preference for the lifecycle cue is **Quillin-local** — it travels with the extension, not with the global app setting. The host-dispatcher check exists because `verbosity_speech_enabled` is a global master gate that should silence every Quillin announcement, not just one. Together they keep the user in control at both levels.
+
+#### 5.91.4 Verbosity rebuild — core foundation (sub-PR 1.1)
+
+The full verbosity rebuild (`docs/planning/verbosity-system.md`) replaces the single `announcement_verbosity` knob with a per-verb, channel-aware, user-customizable announcement system. Its **pure-domain foundation** now lives in `quill/core/verbosity/` (wx-free, strict-typed, in `mypy` scope). No user-facing behavior changes yet — the routing engine, runtime modes, and UI land in later sub-PRs — so there is nothing new for a user to see or do; this subsection records the contract the rest of the rebuild builds on.
+
+| Module | Responsibility |
+|---|---|
+| `channels.py` | `Channel(Flag)` — SPEECH, BRAILLE, SOUND, VISUAL. `route_channels()` always folds in the VISUAL floor, which can never be disabled (the accessibility floor). |
+| `tokens.py` | `TokenSpec` (name, type, description, derive, per-token filter allowlist) and the **twelve** engine filters (`upper`, `lower`, `title`, `ordinal`, `pad`, `pluralize`, `singular`, `duration_human`, `date_long`, `date_short`, `time`, `truncate`). No custom filters exist — the security boundary that keeps templates and QVP packs data-only. |
+| `parser.py` | Strict template parser for `{name}`, `${filter:name}`, `${filter:arg:name}`; returns structured errors, never raises. `validate()` enforces the §13 contract (token allowlist, filter existence, type compatibility, per-token allowlist, argument rules) and produces the spoken summary. |
+| `profiles.py` | Built-in `Beginner` / `Normal` / `Expert` / `Quiet` profiles + `CustomProfile` (JSON round-trip). `profile_for_announcement_verbosity()` / `active_profile()` give the legacy `announcement_verbosity` knob (`minimal`→Expert, `normal`→Normal, `verbose`→Beginner) its first real consumer. |
+| `verbs.py` / `registry.py` | `VerbSpec` + `Severity` and the initial verb catalog (the 34 verbs enumerated in §15, across `nav.*`, `edit.*`, `doc.*`, `search.*`, `system.*`, and `_legacy`); `VerbRegistry` with duplicate-id protection and id-sorted `all()`. |
+| `data_order.py` | Frozen, hashable `DataOrder` (verb id, ordered fields, separator) with move-up/down/reset/render. When both a custom template and a custom data order exist for a verb, the template wins. |
+| `schema.py` | Draft-07 JSON schemas for verbosity settings, the custom-profile store, QVP packs (`additionalProperties: false`, required metadata), and profile import/export — the data contracts the later sub-PRs validate against. |
+
+Tested by `tests/unit/core/test_verbosity_*.py` (102 cases; parser coverage 99%).
 
 ---
 

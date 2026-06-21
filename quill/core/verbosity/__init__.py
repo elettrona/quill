@@ -1,0 +1,108 @@
+"""QUILL verbosity system — pure-domain foundation (verbosity sub-PR 1.1).
+
+This package holds the wx-free building blocks of the verbosity rebuild:
+channels, profiles, the token system and strict template parser/validator, the
+data-ordering model, the verb catalog and registry, and the JSON data schemas.
+The routing engine, runtime modes (Quiet/Meeting), history, and UI build on top
+of these in later sub-PRs.
+
+See ``docs/planning/verbosity-system.md`` for the full design.
+"""
+
+from __future__ import annotations
+
+from quill.core.verbosity.channels import (
+    ALWAYS_ON_CHANNELS,
+    DEFAULT_CHANNELS,
+    VISUAL_ALWAYS_ON_NAME,
+    Channel,
+    route_channels,
+)
+from quill.core.verbosity.data_order import DataOrder
+from quill.core.verbosity.parser import (
+    ParseResult,
+    TemplateError,
+    ValidationIssue,
+    ValidationReport,
+    parse,
+    render_template,
+    validate,
+)
+from quill.core.verbosity.profiles import (
+    BEGINNER,
+    BUILTIN_PROFILES,
+    DEFAULT_PROFILE,
+    EXPERT,
+    NORMAL,
+    QUIET,
+    CustomProfile,
+    SoundPolicy,
+    VerbosityProfile,
+    active_profile,
+    profile_for_announcement_verbosity,
+)
+from quill.core.verbosity.registry import (
+    DuplicateVerbError,
+    VerbRegistry,
+    default_registry,
+)
+from quill.core.verbosity.schema import SCHEMAS, schema_for
+from quill.core.verbosity.tokens import (
+    FILTERS,
+    FilterSpec,
+    TokenSpec,
+    TokenType,
+    apply_filter,
+    filter_allowed_for_type,
+    get_filter,
+)
+from quill.core.verbosity.verbs import BUILTIN_VERBS, Severity, VerbSpec
+
+__all__ = [
+    # channels
+    "Channel",
+    "DEFAULT_CHANNELS",
+    "ALWAYS_ON_CHANNELS",
+    "VISUAL_ALWAYS_ON_NAME",
+    "route_channels",
+    # tokens
+    "TokenType",
+    "TokenSpec",
+    "FilterSpec",
+    "FILTERS",
+    "get_filter",
+    "filter_allowed_for_type",
+    "apply_filter",
+    # parser
+    "ParseResult",
+    "TemplateError",
+    "ValidationIssue",
+    "ValidationReport",
+    "parse",
+    "validate",
+    "render_template",
+    # data order
+    "DataOrder",
+    # profiles
+    "VerbosityProfile",
+    "CustomProfile",
+    "SoundPolicy",
+    "BEGINNER",
+    "NORMAL",
+    "EXPERT",
+    "QUIET",
+    "BUILTIN_PROFILES",
+    "DEFAULT_PROFILE",
+    "profile_for_announcement_verbosity",
+    "active_profile",
+    # verbs / registry
+    "Severity",
+    "VerbSpec",
+    "BUILTIN_VERBS",
+    "VerbRegistry",
+    "DuplicateVerbError",
+    "default_registry",
+    # schema
+    "SCHEMAS",
+    "schema_for",
+]

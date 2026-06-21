@@ -27,11 +27,21 @@ closed won't-do.
 
 | Status | Count |
 | --- | ---: |
-| ✅ Shipped | 12 (#648, #649, #643, #646, #238, #239, #240, #241, #242, #246, #251, #617) |
+| ✅ Shipped | 16 (#648, #649, #643, #646, #238, #239, #240, #241, #242, #246, #251, #617, #361, #368, #374, #377) |
+| 🚧 In progress | 4 (verbosity foundation partials: #367 §5, #369 §7, #375 §13, #376 §14 — core landed, UI/engine halves open) |
 | 🧹 Resolved (bookkeeping) | 2 (#600, #601 — braille design captured in docs) |
 | ❌ Out of scope | 3 (Linux/Unix — #520, #565, #589) |
-| ⬜ Planned | 240 (incl. new #663 — Speech S5 offline voice commands) |
+| ⬜ Planned | 232 (incl. new #663 — Speech S5 offline voice commands) |
 | **Total tracked** | **257** |
+
+> **Wave 2 (Verbosity) started — core foundation shipped.** Sub-PR 1.1 (#361)
+> landed the wx-free `quill/core/verbosity/` package (channels, tokens + 12
+> filters, strict parser/validator, profiles + CustomProfile, the 34-verb §15
+> catalog + registry, data-order model, JSON schemas); 102 tests, parser
+> coverage 99%. This closes the fully-delivered spec sections §6 (#368), §12
+> (#374), and §15 (#377); §5/§7/§13/§14 (#367/#369/#375/#376) are partially done
+> (core in, UI/engine pending). Next: sub-PR 1.2 (engine, Quiet/Meeting, history,
+> explain) — #362.
 
 > **#246 completed via back-translation (source-to-BRF).** The deliverable is
 > braille→text **back-translation**, now selection-aware (Braille > Translation >
@@ -106,6 +116,11 @@ closed won't-do.
 | 242 | Braille BR-019 — Validation submenu (4 commands) + Warnings List dialog | ✅ |
 | 246 | Braille BR-023 — selection-aware back-translation (braille→text source recovery); compare + per-page linking descoped | ✅ |
 | 251 | DAISY 2.02 text-only talking-book export (File > Export > DAISY Talking Book; wx-free `quill/io/daisy.py` writes ncc.html + content.html + book.smil) | ✅ |
+| 617 | Offline speech-to-text S0–S4 (foundation, whisper.cpp + Faster Whisper, transcription, captions, dictation, model manager); closed as delivered, S5 voice commands split to #663 | ✅ |
+| 361 | Verbosity Sub-PR 1.1 — core foundation (`quill/core/verbosity/`: channels, tokens + 12 filters, strict parser/validator, profiles + CustomProfile, 34-verb catalog + registry, data-order, schemas); 102 tests, parser cov 99% | ✅ |
+| 368 | Verbosity §6 — Profile model (Beginner/Normal/Expert/Quiet + CustomProfile round-trip) | ✅ |
+| 374 | Verbosity §12 — Token system (TokenSpec + the 12 engine filters; no custom filters) | ✅ |
+| 377 | Verbosity §15 — Verb registry (VerbSpec + Severity + 34-verb catalog + VerbRegistry) | ✅ |
 
 ## Out of scope
 
@@ -142,23 +157,23 @@ closed won't-do.
 | # | Priority | Status | Title |
 | ---: | :---: | :---: | --- |
 | 271 | P0 | ⬜ | [P0] Verbosity rebuild: implement per-verb token registry from docs/planning/verbosity.md |
-| 361 | P0 | ⬜ | [Verbosity] Sub-PR 1.1 — Core foundation: channels, profiles, tokens, parser |
+| 361 | P0 | ✅ | [Verbosity] Sub-PR 1.1 — Core foundation: channels, profiles, tokens, parser (shipped: `quill/core/verbosity/`, 102 tests) |
 | 362 | P0 | ⬜ | [Verbosity] Sub-PR 1.2 — Engine, quiet, meeting, mastery, history, explain, safe mode |
 | 363 | P0 | ⬜ | [Verbosity] Sub-PR 1.3 — QVP, library, preview, schema validation |
 | 364 | P0 | ⬜ | [Verbosity] Sub-PR 1.4 — UI: preferences, token editor, library, history, preview lab, about dialog |
 | 365 | P0 | ⬜ | [Verbosity] Sub-PR 1.5 — Engine call-site migration, keymap, main_frame wiring |
 | 366 | P0 | ⬜ | [Verbosity] Sub-PR 1.6 — Section 53 addendum (100-item UX polish) |
-| 367 | P0 | ⬜ | Verbosity: §5 Locked design decisions (12 decisions) |
-| 368 | P0 | ⬜ | Verbosity: §6 Profile model (Beginner / Normal / Expert / Quiet + CustomProfile) |
-| 369 | P0 | ⬜ | Verbosity: §7 Channel system (Channel enum + routing) |
+| 367 | P0 | 🚧 | Verbosity: §5 Locked design decisions (12 decisions) — core-testable decisions done (channels floor, profile ladder, default Normal); QVP/token-editor/library decisions pending UI |
+| 368 | P0 | ✅ | Verbosity: §6 Profile model (Beginner / Normal / Expert / Quiet + CustomProfile) |
+| 369 | P0 | 🚧 | Verbosity: §7 Channel system (Channel enum + routing) — enum + routing + floor shipped; per-channel prefs UI pending |
 | 370 | P0 | ⬜ | Verbosity: §8 Sound design (master + per-event gating) |
 | 371 | P0 | ⬜ | Verbosity: §9 Quiet Mode (controller + chords) |
 | 372 | P0 | ⬜ | Verbosity: §10 Meeting Mode (controller + chords) |
 | 373 | P0 | ⬜ | Verbosity: §11 Quiet Undo (Ctrl+Shift+Z) |
-| 374 | P0 | ⬜ | Verbosity: §12 Token system (TokenSpec + filters) |
-| 375 | P0 | ⬜ | Verbosity: §13 Template validation (strict allowlist + type checking) |
-| 376 | P0 | ⬜ | Verbosity: §14 Data ordering model + editor |
-| 377 | P0 | ⬜ | Verbosity: §15 Verb registry (VerbSpec + initial verb catalog) |
+| 374 | P0 | ✅ | Verbosity: §12 Token system (TokenSpec + filters) |
+| 375 | P0 | 🚧 | Verbosity: §13 Template validation (strict allowlist + type checking) — parser-side validation + spoken summary shipped; token-editor UI (Save-disabled, Ctrl+T/Ctrl+Shift+P) pending |
+| 376 | P0 | 🚧 | Verbosity: §14 Data ordering model + editor — frozen DataOrder model shipped; editor UI + persistence pending |
+| 377 | P0 | ✅ | Verbosity: §15 Verb registry (VerbSpec + initial verb catalog) |
 | 378 | P0 | ⬜ | Verbosity: §16 Per-verb preferences UI |
 | 379 | P0 | ⬜ | Verbosity: §17 Verbosity Preferences UI (top-level panel) |
 | 380 | P0 | ⬜ | Verbosity: §18 Token editor UI (Simple + Advanced) |
