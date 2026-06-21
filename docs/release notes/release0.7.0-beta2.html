@@ -506,6 +506,27 @@ now calls <code>menu_bar.SetHelpMenu(help_menu)</code> (with a
 recognises the Help menu as the system Help menu and the conventional
 <code>Cmd+?</code> shortcut works. Windows and Linux behaviour is
 unchanged.</p></li>
+<li><p><strong>Print-page detector now classifies a right-margin
+continuation as high confidence and surfaces the trailing letter
+(BR-013).</strong> The Phase 2 print-page detector in
+<code>quill/core/brf_page_detection.py</code> previously scored every
+right-margin number on line 1 as <code>medium</code> confidence, even
+when a previous page's right-margin number carried the same digits and
+the current line added a trailing letter (<code>7</code> on braille page
+1, <code>7a</code> on braille page 2). That left the braille
+continuation path in limbo: the <code>detect_continuation_letter</code>
+helper had no way to distinguish a real continuation from a coincidence,
+so it returned <code>None</code> and the print-page status string read
+<code>Print 7</code> instead of <code>Print 7a</code>. The detector now
+threads the previous page's indicator through the walk; a right-margin
+number with a trailing letter whose digits match the previous
+indicator's print page (and whose previous confidence is not
+<code>low</code>) is classified as <code>high</code>, the trailing
+letter is captured as part of the indicator, and the helper walks the
+text via <code>page_map.page_offset()</code> to extract the letter for
+the status string. The detailed braille status command now reads the
+full <code>Print 7a</code> form when a continuation letter is present,
+and the BR-013 unit-test suite has no skips remaining.</p></li>
 </ul>
 </body>
 </html>

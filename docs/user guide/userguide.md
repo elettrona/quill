@@ -2377,6 +2377,24 @@ user-facing detail. The full list is in the [release notes](../release%20notes/r
   after the close had already destroyed the editor TextCtrl.
   The Save and Cancel paths are unchanged; the Save path still
   returns focus to the editor as before.
+- **BR-013 follow-on — Print-page detector now classifies a
+  right-margin continuation as high confidence and surfaces
+  the trailing letter.** When a braille document uses a
+  right-margin print-page number on line 1 and the next page
+  carries the same digits with a trailing continuation letter
+  (for example `7` on braille page 1 and `7a` on braille page
+  2), the print page has not actually changed — the letter is
+  the braille continuation marker. The Phase 2 detector used
+  to score that pattern as `medium` confidence and silently
+  drop the letter, so the detailed status read `Print 7`
+  instead of `Print 7a`. The detector now matches the previous
+  page's right-margin digits, classifies the boundary as
+  `high` confidence, and reads the trailing letter back
+  through to the status string. In practice: open a braille
+  document with right-margin print-page numbers, move the
+  caret across a continuation, and the status bar (and
+  "Read Detailed Braille Status") reads the full `7a` form
+  rather than just `7`.
 
 ## Translation and Community Localization
 

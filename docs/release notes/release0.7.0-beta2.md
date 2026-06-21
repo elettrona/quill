@@ -358,3 +358,25 @@ utility ever runs.
   for older wx builds) so macOS recognises the Help menu as
   the system Help menu and the conventional `Cmd+?` shortcut
   works. Windows and Linux behaviour is unchanged.
+
+- **Print-page detector now classifies a right-margin continuation
+  as high confidence and surfaces the trailing letter (BR-013).**
+  The Phase 2 print-page detector in `quill/core/brf_page_detection.py`
+  previously scored every right-margin number on line 1 as
+  `medium` confidence, even when a previous page's right-margin
+  number carried the same digits and the current line added a
+  trailing letter (`7` on braille page 1, `7a` on braille page 2).
+  That left the braille continuation path in limbo: the
+  `detect_continuation_letter` helper had no way to distinguish
+  a real continuation from a coincidence, so it returned `None`
+  and the print-page status string read `Print 7` instead of
+  `Print 7a`. The detector now threads the previous page's
+  indicator through the walk; a right-margin number with a
+  trailing letter whose digits match the previous indicator's
+  print page (and whose previous confidence is not `low`) is
+  classified as `high`, the trailing letter is captured as
+  part of the indicator, and the helper walks the text via
+  `page_map.page_offset()` to extract the letter for the status
+  string. The detailed braille status command now reads the
+  full `Print 7a` form when a continuation letter is present,
+  and the BR-013 unit-test suite has no skips remaining.
