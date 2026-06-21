@@ -1137,6 +1137,21 @@ Use this path when Quill is behaving unexpectedly or when you want to send the t
 
 This unified flow keeps support reporting in one place. If you only need diagnostics, **Help -> Save Diagnostics...** remains available as a standalone export command.
 
+### When QUILL crashes: the new crash-submit dialog
+
+When an unhandled exception closes QUILL, a dialog now appears during the beta phase so you can review a redacted summary and choose whether to send it to the developers.
+
+1. A native dialog appears with the heading **Report Crash**.
+2. The dialog opens with a read-only **Report preview** panel showing the redacted summary: the last 10 commands you ran, the active document's name and encoding, the platform and screen-reader information, and the last 12 frames of the traceback. Personal data and credential-shaped strings are scrubbed before the preview is rendered.
+3. Three free-text fields are ready to type into: **What were you doing when this happened?**, **What command do you think triggered it?**, and **Expected behaviour**. Each field is redacted before the report is built, so a path or token you paste by accident never leaves your machine.
+4. Three buttons:
+   - **Don't send** (the default button) -- close the dialog, leave the local crash file in place, send nothing. Escape is also bound to this button.
+   - **Copy to clipboard** -- put the same redacted summary on the system clipboard so you can paste it into a manual report.
+   - **Send report** -- submit the redacted summary to the project's public issue tracker. This requires a configured GitHub token; if the token is absent the report is copied to the clipboard instead, and nothing is submitted silently.
+5. The local crash file is always saved to `app_data_dir()/crash-reports/`, regardless of which button you choose. You can find it later from **Help -> Open Diagnostics Folder**.
+
+If you do not want the dialog at all, turn it off in **Preferences -> General -> Offer to send crash reports automatically**. The local crash file is still saved; the dialog is the only opt-in here.
+
 ## Writing and Editing
 
 Quill's editing model is fast once you stop thinking of it as only a textbox.

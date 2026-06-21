@@ -95,6 +95,22 @@ _REVIEWED_EGRESS: dict[str, str] = {
     # only a REDACTED log summary (stability.redaction), and runs only when a
     # GitHub token is configured. Both fall back to the legacy browser/manual
     # path when feedback_hub or a token is absent.
+    # #622: the crash-submit flow adds a third path:
+    #   sys.excepthook -> quill.__main__._install_excepthook
+    #       -> _try_offer_crash_submit (builds the redacted payload via
+    #          stability.crash_submit.build_crash_report_payload)
+    #       -> wx.CallAfter(schedule) -> CrashReportDialog.show()
+    #       -> on Send: quill.core.issue_submit.submit_crash_issue -> submit
+    #          -> create_issue -> urlopen
+    # The dialog path runs only when (a) wx is alive, (b) the user has the
+    # `auto_ask_crash_submit` setting enabled (default True during the beta
+    # phase), and (c) the user explicitly clicks **Send report** after
+    # reviewing the redacted preview. The default button is **Don't send**
+    # so an accidental dialog open does not send anything. When the GitHub
+    # token is absent the report is copied to the clipboard instead. The
+    # local crash file is always saved regardless of the user's choice.
+    # Every step is wrapped in try/except so the handler can never prevent
+    # the standard interpreter traceback from firing.
     "io/http_transport.py::download_url": (
         "Open-from-URL action. Triggered by an explicit user action from the "
         "Remote Sites dialog (Open from URL); fetches the resource the user "

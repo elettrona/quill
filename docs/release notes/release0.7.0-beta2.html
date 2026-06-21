@@ -320,35 +320,35 @@ removes that stale shortcut before writing the new one, so the desktop
 icon always launches the current launcher.</p>
 <h2 id="accessibility-and-screen-reader-improvements">Accessibility and
 screen-reader improvements</h2>
-<h3 id="setup-starts-in-the-right-place-610">Setup starts in the right
-place (#610)</h3>
+<h3 id="setup-starts-in-the-right-place">Setup starts in the right
+place</h3>
 <p>Each Setup Wizard page now places focus on the page heading first.
 Screen-reader users hear the purpose of the page before moving into its
 controls or preview.</p>
 <p>The preview is also presented as readable content rather than an
 editable text field. Sighted users continue to receive the styled visual
 preview.</p>
-<h3 id="simpler-back-and-next-buttons-611">Simpler Back and Next buttons
-(#611)</h3>
+<h3 id="simpler-back-and-next-buttons">Simpler Back and Next
+buttons</h3>
 <p>The Setup Wizard buttons now read simply <strong>Back</strong> and
 <strong>Next</strong>. Decorative angle characters have been removed, so
 screen readers no longer announce phrases such as “less than Back” or
 “Next greater than.”</p>
-<h3 id="a-cleaner-first-launch-606">A cleaner first launch (#606)</h3>
+<h3 id="a-cleaner-first-launch">A cleaner first launch</h3>
 <p>On a fresh installation, QUILL now opens the Setup Wizard before
 creating an Untitled document. This prevents a screen reader from
 announcing an unrelated document tab before setup begins.</p>
 <p>After setup is complete, QUILL creates a new blank document
 automatically. Returning users continue to receive the familiar Untitled
 tab at startup.</p>
-<h3 id="voiceover-recognizes-the-editor-on-macos-616">VoiceOver
-recognizes the editor on macOS (#616)</h3>
+<h3 id="voiceover-recognizes-the-editor-on-macos">VoiceOver recognizes
+the editor on macOS</h3>
 <p>VoiceOver now identifies the main editor as a native, editable text
 area rather than a generic group. This provides more predictable text
 navigation and announcements on macOS.</p>
 <p>Windows behavior is unchanged.</p>
-<h3 id="bug-report-fields-have-useful-names-on-macos-618">Bug-report
-fields have useful names on macOS (#618)</h3>
+<h3 id="bug-report-fields-have-useful-names-on-macos">Bug-report fields
+have useful names on macOS</h3>
 <p>VoiceOver now announces the name and purpose of each field in the
 Report a Bug window, including fields such as Summary and What
 happened.</p>
@@ -359,16 +359,16 @@ it.</p>
 <p>When you submit a bug report, QUILL copies it to the clipboard. It no
 longer opens a browser automatically unless you enable that option in
 Settings.</p>
-<h3 id="the-macos-help-menu-works-like-a-system-help-menu-613">The macOS
-Help menu works like a system Help menu (#613)</h3>
+<h3 id="the-macos-help-menu-works-like-a-system-help-menu">The macOS
+Help menu works like a system Help menu</h3>
 <p>macOS now recognizes QUILL’s Help menu as the application’s standard
 Help menu. The conventional <code>Cmd+?</code> shortcut works, and
 VoiceOver’s Help-menu command can move focus there as expected.</p>
 <p>Windows and Linux behavior is unchanged.</p>
 <h2 id="more-natural-keyboard-behavior">More natural keyboard
 behavior</h2>
-<h3 id="typing-r-and-s-no-longer-launches-commands-612">Typing R and S
-no longer launches commands (#612)</h3>
+<h3 id="typing-r-and-s-no-longer-launches-commands">Typing R and S no
+longer launches commands</h3>
 <p>Typing a normal <code>R</code> or <code>S</code> in a document no
 longer starts Read Aloud or opens Insert Snippet.</p>
 <p>QUILL’s friendly shortcut descriptions are now displayed as menu
@@ -376,16 +376,16 @@ information rather than being mistaken for single-letter system
 shortcuts. Your letters stay in your document, where they belong.</p>
 <p>Regular shortcuts that include modifiers, such as
 <code>Ctrl+R</code>, were not affected.</p>
-<h3 id="cmdq-quits-quill-on-macos-608"><code>Cmd+Q</code> quits QUILL on
-macOS (#608)</h3>
+<h3 id="cmdq-quits-quill-on-macos"><code>Cmd+Q</code> quits QUILL on
+macOS</h3>
 <p><code>Cmd+Q</code> now performs the standard macOS Quit action.</p>
 <p>Quote Lines has moved to <code>Ctrl+Shift+Q</code>, and Unquote Lines
 has moved to <code>Ctrl+Shift+K</code>. QUILL repairs the older saved
 binding automatically when needed.</p>
 <p>Windows users may continue to use <code>Alt+F4</code> or <strong>File
 &gt; Exit</strong>.</p>
-<h3 id="word-navigation-works-normally-on-macos-609">Word navigation
-works normally on macOS (#609)</h3>
+<h3 id="word-navigation-works-normally-on-macos">Word navigation works
+normally on macOS</h3>
 <p><code>Option+Left</code> and <code>Option+Right</code> once triggered
 Back Location and Forward Location, preventing standard word-by-word
 cursor movement and interfering with VoiceOver reading commands.</p>
@@ -393,8 +393,8 @@ cursor movement and interfering with VoiceOver reading commands.</p>
 <code>Cmd+[</code> and <code>Cmd+]</code>. Windows continues to use
 <code>Alt+Left</code> and <code>Alt+Right</code>.</p>
 <p>Older macOS bindings are corrected automatically during startup.</p>
-<h3 id="use-y-n-or-escape-when-closing-an-unsaved-document-23">Use Y, N,
-or Escape when closing an unsaved document (#23)</h3>
+<h3 id="use-y-n-or-escape-when-closing-an-unsaved-document">Use Y, N, or
+Escape when closing an unsaved document</h3>
 <p>The unsaved-changes prompt now uses the operating system’s standard
 <strong>Yes</strong>, <strong>No</strong>, and <strong>Cancel</strong>
 choices.</p>
@@ -406,16 +406,16 @@ choices.</p>
 </ul>
 <p>You may still Tab to the buttons and activate them normally.</p>
 <h2 id="setup-and-ai-hub-reliability">Setup and AI Hub reliability</h2>
-<h3 id="the-ai-hub-opens-during-first-time-setup-614">The AI Hub opens
-during first-time setup (#614)</h3>
+<h3 id="the-ai-hub-opens-during-first-time-setup">The AI Hub opens
+during first-time setup</h3>
 <p>The <strong>Open AI Hub</strong> button in the Setup Wizard now works
 on a brand-new profile. You can configure an AI provider during setup
 without first visiting another part of QUILL.</p>
 <p>The AI Hub’s tabs, provider choices, instructions, and image-style
 choices now load correctly. The Hub opens reliably both from the Setup
 Wizard and later from the Tools menu.</p>
-<h3 id="a-new-profile-no-longer-causes-startup-typing-failures-614">A
-new profile no longer causes startup typing failures (#614)</h3>
+<h3 id="a-new-profile-no-longer-causes-startup-typing-failures">A new
+profile no longer causes startup typing failures</h3>
 <p>QUILL no longer runs editor caret features before a document is
 ready. The status bar and indent tone can begin working normally after
 setup without causing a startup failure.</p>
@@ -428,29 +428,32 @@ folder, the everyday user account could sometimes be unable to remove
 the “show setup” marker. This caused the Setup Wizard to reopen on every
 launch.</p>
 <p>QUILL now remembers that the marker has already been handled, even
-when the protected file cannot be deleted. Setup appears when it is
-needed and stays out of the way afterward.</p>
+when the protected file cannot be deleted. The marker’s resolved path is
+the stable identity, so antivirus tools, filesystem mtime drift, or
+other processes that touch the marker file no longer fool the launch
+check into reopening the Setup Wizard. Setup appears when it is needed
+and stays out of the way afterward.</p>
 <h2 id="stability-and-reliability-fixes">Stability and reliability
 fixes</h2>
-<h3 id="check-for-updates-opens-normally-605">Check for Updates opens
-normally (#605)</h3>
+<h3 id="check-for-updates-opens-normally">Check for Updates opens
+normally</h3>
 <p><strong>Help &gt; Check for Updates</strong> and <strong>Check for
 GLOW Updates</strong> no longer close QUILL with an internal error. Both
 commands now open their information dialogs correctly in stable and beta
 channels.</p>
-<h3 id="closing-an-unsaved-document-no-longer-crashes-quill-619">Closing
-an unsaved document no longer crashes QUILL (#619)</h3>
+<h3 id="closing-an-unsaved-document-no-longer-crashes-quill">Closing an
+unsaved document no longer crashes QUILL</h3>
 <p>Choosing <strong>Don’t Save</strong> after pressing
 <code>Ctrl+F4</code> no longer causes QUILL to close unexpectedly while
 it tries to return focus to an editor that has already been closed.</p>
 <p>Save and Cancel continue to return you to the appropriate place.</p>
-<h3 id="closing-the-last-document-is-safer-603">Closing the last
-document is safer (#603)</h3>
+<h3 id="closing-the-last-document-is-safer">Closing the last document is
+safer</h3>
 <p>A delayed caret event could occasionally arrive after the final
 editor had already closed, causing an unexpected error. QUILL now safely
 ignores that outdated event and closes the document normally.</p>
-<h3 id="imported-profiles-preserve-your-keyboard-choices-614">Imported
-profiles preserve your keyboard choices (#614)</h3>
+<h3 id="imported-profiles-preserve-your-keyboard-choices">Imported
+profiles preserve your keyboard choices</h3>
 <p>Importing another person’s profile or a backup no longer replaces
 your personal shortcuts with that file’s default values. QUILL imports
 the actual customizations while keeping your unrelated choices in
@@ -479,9 +482,8 @@ Developer Console correctly reports the active document name</h3>
 <p><code>q.get_document_name()</code> in the Developer Console always
 returned an empty string because it called a method that never existed.
 It now returns the actual file name of the document you are editing.</p>
-<h3
-id="quill-eraser-opens-correctly-on-documents-with-problems-624">Quill
-Eraser opens correctly on documents with problems (#624)</h3>
+<h3 id="quill-eraser-opens-correctly-on-documents-with-problems">Quill
+Eraser opens correctly on documents with problems</h3>
 <p>Choosing <strong>Tools &gt; Writing &gt; Quill Eraser</strong> on a
 document that the engine had findings for closed QUILL with
 <code>TypeError: Dialog(): argument 1 has unexpected type 'MainFrame'</code>.
@@ -491,7 +493,7 @@ wxPython’s SIP wrapper rejected the parent. The dialog is now parented
 to the real frame, so the review dialog opens, the focus lands on the
 findings list, and you can step through fixes with the keyboard as
 designed.</p>
-<h2 id="simple-file-open-dialog-620">Simple File Open dialog (#620)</h2>
+<h2 id="simple-file-open-dialog">Simple File Open dialog</h2>
 <p>QUILL can now open files through a keyboard-friendly <strong>Simple
 File Open</strong> dialog in addition to the standard Windows file open
 dialog. Both dialogs are reached from the same place — <strong>File &gt;
@@ -565,6 +567,47 @@ Windows and Linux versions of QUILL. When tray mode is selected on
 macOS, QUILL now explains that it is unavailable and closes normally
 instead of appearing to remain active without a usable icon.</p>
 <p>Windows and Linux tray behavior is unchanged.</p>
+<h2 id="crash-reports-offer-to-submit">Crash reports offer to
+submit</h2>
+<p>When an unhandled exception closes QUILL, a new dialog now appears
+(during the beta phase, by default) so the user can review a redacted
+summary of the report and choose whether to send it to the
+developers.</p>
+<ul>
+<li><strong>The dialog shows what will be sent.</strong> A redacted
+preview lists the most recent commands, the active document’s name and
+encoding, the platform and screen-reader information, and the last
+frames of the traceback. Personal data and credential-shaped strings are
+scrubbed before the preview is rendered.</li>
+<li><strong>Three user-controlled outcomes.</strong> Send report submits
+the redacted summary to the project’s public issue tracker (only with a
+configured GitHub token). Copy to clipboard puts the same redacted
+summary on the system clipboard. Don’t send preserves the local crash
+file in <code>app_data_dir()/crash-reports/</code> and submits
+nothing.</li>
+<li><strong>Don’t send is the default.</strong> The dialog opens with
+the <strong>Don’t send</strong> button as the default action so a user
+who opens it by accident does not accidentally send anything. Escape is
+bound to <strong>Don’t send</strong>.</li>
+<li><strong>Three free-text fields.</strong> What were you doing? What
+command triggered it? Expected behaviour? Every field is redacted before
+the report is built, so an accidentally pasted path or token never
+leaves the machine.</li>
+<li><strong>Always saves the local file.</strong> The local traceback
+file is always written to <code>app_data_dir()/crash-reports/</code>,
+regardless of the user’s choice in the dialog, so the user has a record
+of every crash.</li>
+<li><strong>Opt out in Preferences.</strong> Settings &gt; General &gt;
+Offer to send crash reports automatically lets you turn the dialog off
+and return to the previous local-only path. The setting defaults to on
+during the beta phase so the team can hear about crashes without forcing
+you to opt in every time.</li>
+<li><strong>Works with the existing local fallback.</strong> When QUILL
+cannot show the dialog (because wx is not yet alive, the user disabled
+the setting, or the dialog itself raised), the existing native
+<code>MessageBoxW</code> from finding #51 still fires, so the user
+always sees the path to the local crash file.</li>
+</ul>
 <h2 id="braille-improvements">Braille improvements</h2>
 <h3
 id="continuation-page-letters-are-announced-correctly-br-013">Continuation

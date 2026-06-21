@@ -2238,6 +2238,15 @@ A dedicated menu surfacing transforms that are otherwise reachable via Tools or 
   - basic environment info (Windows build, Python build, wxPython build, locale).
 - Nothing leaves the machine. The user chooses where to save the zip and what to do with it.
 
+#### 5.33a Crash reports offer to submit (#622)
+
+- When an unhandled exception closes QUILL, the excepthook writes the traceback to a timestamped file under `app_data_dir()/crash-reports/`, then schedules a crash-submit dialog on the UI thread via `wx.CallAfter`. The dialog shows a redacted preview (the last 10 commands, the active document's name and encoding, the platform and screen-reader information, the last 12 traceback frames), three free-text fields ("What were you doing?", "What command triggered it?", "Expected behaviour"), and three buttons: **Send report**, **Copy to clipboard**, **Don't send**.
+- The default button is **Don't send** so a user who opens the dialog by accident does not accidentally send anything. Escape is bound to **Don't send**. Initial focus lands on the **What were you doing** field so the screen reader announces the first input first, not the buttons.
+- `Send report` calls `quill.core.issue_submit.submit_crash_issue` with the redacted body and metadata. A configured GitHub token is required; if the token is absent the report is copied to the clipboard instead, and nothing is submitted silently.
+- Every step is wrapped in `try/except` so a misbehaving dialog path can never prevent the local crash file from being saved or the standard interpreter traceback from firing. The native `ctypes.windll.user32.MessageBoxW` from finding #51 remains the always-on fallback when wx is unavailable, no `wx.App` is running yet, the user turned the setting off, or the dialog path raised.
+- `Settings > General > Offer to send crash reports automatically` (`auto_ask_crash_submit`) controls whether the dialog appears; the default is `True` during the beta phase so the team can hear about crashes without forcing the user to opt in every time. The local crash file is always written regardless of the setting.
+- The dialog is added to the dialog inventory and follows the same `apply_modal_ids` + `_show_modal_dialog` contract as every other modal in QUILL. The dialog's parent is the real `wx.Frame` (`MainFrame.frame`), not the `MainFrame` mixin, per the #624 fix in `quill/ui/main_frame_hygiene.py`.
+
 ### 5.34 Welcome and Keyboard Reference
 
 - **Welcome** opens a tutorial document in a new tab that walks new users through the editor, command palette, outline navigator, find/F3, spell check, and accessibility audit. The document is editable; users can save their own annotated copy.

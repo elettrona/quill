@@ -24178,22 +24178,40 @@ class MainFrame(
         # Files after accepting a UAC prompt at install time. If the delete is
         # silently swallowed without recording that this marker was already
         # consumed, every subsequent launch re-enters this branch and force-
-        # resets setup_wizard_completed, reopening the wizard forever. Instead,
-        # remember the marker's mtime in a sentinel under app_data_dir() (always
-        # writable per-user) so a marker we've already consumed is recognized
-        # even when it could not be deleted; a genuinely new marker (a later
-        # reinstall) has a different mtime and is still consumed normally.
+        # resets setup_wizard_completed, reopening the wizard forever.
+        #
+        # The sentinel under app_data_dir() (always writable per-user) records
+        # the marker's resolved path so a marker we have already consumed is
+        # recognized even when it could not be deleted (#647). The marker's
+        # mtime alone is not a reliable identity — antivirus tools, filesystem
+        # mtime drift, or other processes touching the file can change it
+        # between launches, which caused the wizard to keep re-opening. The
+        # path is stable for a given install, so a marker at a path the
+        # sentinel already knows is treated as already consumed regardless of
+        # mtime. A marker at a different path is a genuinely new install
+        # (portable bundle moved, custom install location, etc.) and resets
+        # the wizard as before.
         marker = new_install_marker_path()
         if marker is not None and marker.exists():
+            try:
+                marker_resolved = str(marker.resolve())
+            except OSError:
+                # The marker is visible to .exists() but not resolvable —
+                # treat the current path as the identity so we still record
+                # a sentinel and don't reopen the wizard on every launch.
+                marker_resolved = str(marker)
             marker_mtime = marker.stat().st_mtime
             consumed_marker_path = app_data_dir() / "new-install-marker-consumed.json"
             consumed = read_json(consumed_marker_path, {})
-            already_consumed = consumed.get("mtime") == marker_mtime
+            already_consumed = consumed.get("path") == marker_resolved
             if not already_consumed:
                 if getattr(self.settings, "setup_wizard_completed", False):
                     self.settings.setup_wizard_completed = False
                     _save_settings(self.settings)
-                write_json_atomic(consumed_marker_path, {"mtime": marker_mtime})
+                write_json_atomic(
+                    consumed_marker_path,
+                    {"path": marker_resolved, "mtime": marker_mtime},
+                )
             try:
                 marker.unlink()
             except OSError:

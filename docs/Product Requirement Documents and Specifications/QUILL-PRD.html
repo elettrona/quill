@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>QUILL-PRD</title>
+  <title>QUILL Product Requirements</title>
   <style>
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -241,6 +241,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">QUILL Product Requirements</h1>
+</header>
 <h1 id="quill-product-requirements-document">Quill: Product Requirements
 Document</h1>
 <h2
@@ -4236,6 +4239,49 @@ locale).</li>
 </ul></li>
 <li>Nothing leaves the machine. The user chooses where to save the zip
 and what to do with it.</li>
+</ul>
+<h4 id="a-crash-reports-offer-to-submit-622">5.33a Crash reports offer
+to submit (#622)</h4>
+<ul>
+<li>When an unhandled exception closes QUILL, the excepthook writes the
+traceback to a timestamped file under
+<code>app_data_dir()/crash-reports/</code>, then schedules a
+crash-submit dialog on the UI thread via <code>wx.CallAfter</code>. The
+dialog shows a redacted preview (the last 10 commands, the active
+document’s name and encoding, the platform and screen-reader
+information, the last 12 traceback frames), three free-text fields
+(“What were you doing?”, “What command triggered it?”, “Expected
+behaviour”), and three buttons: <strong>Send report</strong>,
+<strong>Copy to clipboard</strong>, <strong>Don’t send</strong>.</li>
+<li>The default button is <strong>Don’t send</strong> so a user who
+opens the dialog by accident does not accidentally send anything. Escape
+is bound to <strong>Don’t send</strong>. Initial focus lands on the
+<strong>What were you doing</strong> field so the screen reader
+announces the first input first, not the buttons.</li>
+<li><code>Send report</code> calls
+<code>quill.core.issue_submit.submit_crash_issue</code> with the
+redacted body and metadata. A configured GitHub token is required; if
+the token is absent the report is copied to the clipboard instead, and
+nothing is submitted silently.</li>
+<li>Every step is wrapped in <code>try/except</code> so a misbehaving
+dialog path can never prevent the local crash file from being saved or
+the standard interpreter traceback from firing. The native
+<code>ctypes.windll.user32.MessageBoxW</code> from finding #51 remains
+the always-on fallback when wx is unavailable, no <code>wx.App</code> is
+running yet, the user turned the setting off, or the dialog path
+raised.</li>
+<li><code>Settings &gt; General &gt; Offer to send crash reports automatically</code>
+(<code>auto_ask_crash_submit</code>) controls whether the dialog
+appears; the default is <code>True</code> during the beta phase so the
+team can hear about crashes without forcing the user to opt in every
+time. The local crash file is always written regardless of the
+setting.</li>
+<li>The dialog is added to the dialog inventory and follows the same
+<code>apply_modal_ids</code> + <code>_show_modal_dialog</code> contract
+as every other modal in QUILL. The dialog’s parent is the real
+<code>wx.Frame</code> (<code>MainFrame.frame</code>), not the
+<code>MainFrame</code> mixin, per the #624 fix in
+<code>quill/ui/main_frame_hygiene.py</code>.</li>
 </ul>
 <h3 id="welcome-and-keyboard-reference">5.34 Welcome and Keyboard
 Reference</h3>

@@ -202,6 +202,13 @@ class Settings:
     # opt-in via this setting (default False) so the upgrade story
     # is "Quill copies, you decide whether to open the browser."
     report_bug_auto_open_browser: bool = False
+    # STABILITY: when True, an unhandled exception shows the crash-submit
+    # dialog so the user can review a redacted preview and choose whether
+    # to send the report to the developers. When False, the local-only
+    # path runs (file is still saved to app_data_dir()/crash-reports).
+    # Default is True during the beta phase so the team can hear about
+    # crashes without forcing the user to opt in every time.
+    auto_ask_crash_submit: bool = True
     # I18N: BCP 47 language tag for the UI; empty string means "use OS default".
     language: str = ""
     # WIZARD: True once the first-run setup wizard has completed.
@@ -602,6 +609,7 @@ class Settings:
         setup_wizard_wants_automation = bool(data.get("setup_wizard_wants_automation", False))
         upgrade_prompt_braille_pack = bool(data.get("upgrade_prompt_braille_pack", False))
         console_enabled = bool(data.get("console_enabled", True))
+        auto_ask_crash_submit = bool(data.get("auto_ask_crash_submit", True))
         try:
             console_python_timeout = int(data.get("console_python_timeout", 30))
         except (TypeError, ValueError):
@@ -862,6 +870,7 @@ class Settings:
             setup_wizard_wants_automation=setup_wizard_wants_automation,
             upgrade_prompt_braille_pack=upgrade_prompt_braille_pack,
             console_enabled=console_enabled,
+            auto_ask_crash_submit=auto_ask_crash_submit,
             console_python_timeout=console_python_timeout,
             console_typescript_timeout=console_typescript_timeout,
             sound_enabled=sound_enabled,

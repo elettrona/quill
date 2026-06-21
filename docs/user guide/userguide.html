@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>userguide</title>
+  <title>QUILL User Guide</title>
   <style>
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -241,6 +241,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">QUILL User Guide</h1>
+</header>
 <h1 id="quill-user-guide">Quill User Guide</h1>
 <p><strong>QUILL</strong> stands for <strong>Quality, Usable, Inclusive,
 Lightweight, Literate</strong>.</p>
@@ -2041,6 +2044,46 @@ what you expected, and what actually happened.</li>
 <p>This unified flow keeps support reporting in one place. If you only
 need diagnostics, <strong>Help -&gt; Save Diagnostics…</strong> remains
 available as a standalone export command.</p>
+<h3 id="when-quill-crashes-the-new-crash-submit-dialog">When QUILL
+crashes: the new crash-submit dialog</h3>
+<p>When an unhandled exception closes QUILL, a dialog now appears during
+the beta phase so you can review a redacted summary and choose whether
+to send it to the developers.</p>
+<ol type="1">
+<li>A native dialog appears with the heading <strong>Report
+Crash</strong>.</li>
+<li>The dialog opens with a read-only <strong>Report preview</strong>
+panel showing the redacted summary: the last 10 commands you ran, the
+active document’s name and encoding, the platform and screen-reader
+information, and the last 12 frames of the traceback. Personal data and
+credential-shaped strings are scrubbed before the preview is
+rendered.</li>
+<li>Three free-text fields are ready to type into: <strong>What were you
+doing when this happened?</strong>, <strong>What command do you think
+triggered it?</strong>, and <strong>Expected behaviour</strong>. Each
+field is redacted before the report is built, so a path or token you
+paste by accident never leaves your machine.</li>
+<li>Three buttons:
+<ul>
+<li><strong>Don’t send</strong> (the default button) – close the dialog,
+leave the local crash file in place, send nothing. Escape is also bound
+to this button.</li>
+<li><strong>Copy to clipboard</strong> – put the same redacted summary
+on the system clipboard so you can paste it into a manual report.</li>
+<li><strong>Send report</strong> – submit the redacted summary to the
+project’s public issue tracker. This requires a configured GitHub token;
+if the token is absent the report is copied to the clipboard instead,
+and nothing is submitted silently.</li>
+</ul></li>
+<li>The local crash file is always saved to
+<code>app_data_dir()/crash-reports/</code>, regardless of which button
+you choose. You can find it later from <strong>Help -&gt; Open
+Diagnostics Folder</strong>.</li>
+</ol>
+<p>If you do not want the dialog at all, turn it off in
+<strong>Preferences -&gt; General -&gt; Offer to send crash reports
+automatically</strong>. The local crash file is still saved; the dialog
+is the only opt-in here.</p>
 <h2 id="writing-and-editing">Writing and Editing</h2>
 <p>Quill’s editing model is fast once you stop thinking of it as only a
 textbox.</p>

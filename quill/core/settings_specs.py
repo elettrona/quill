@@ -1114,6 +1114,27 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "window opened on their behalf.",
         keywords=("bug", "report", "browser", "support", "github", "auto"),
     ),
+    # #622: when an unhandled exception crashes QUILL, offer a dialog
+    # that lets the user review a redacted preview and choose whether
+    # to send the report to the developers. When disabled the local
+    # crash file is still saved to app_data_dir()/crash-reports; the
+    # dialog is the only opt-in here.
+    SettingSpec(
+        "auto_ask_crash_submit",
+        "Offer to send crash reports automatically",
+        "general",
+        "bool",
+        "When an unhandled exception closes Quill, show a dialog that "
+        "lets you review a redacted summary (recent commands, "
+        "environment, last frames of the traceback) and choose whether "
+        "to send it to the developers. Your personal data is scrubbed "
+        "before it leaves the machine, and nothing is sent unless you "
+        "explicitly choose Send. The local crash file is always saved "
+        "even when this option is off. Enabled by default during the "
+        "beta phase so the team can hear about crashes without you "
+        "having to opt in every time.",
+        keywords=("crash", "report", "submit", "send", "diagnostics", "beta"),
+    ),
     # --- Transcription -----------------------------------------------------
     SettingSpec(
         "bw_provider_mode",

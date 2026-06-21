@@ -37,6 +37,7 @@
   "quill/ui/assistant_tools.py::WritingAssistantDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/compare_dialog.py::CompareDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/copy_tray_dialog.py::CopyTrayDialog.__init__::wx.Dialog": "hardened_custom",
+  "quill/ui/crash_report_dialog.py::CrashReportDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/dialog_contract.py::show_message_box::wx.MessageBox": "native",
   "quill/ui/github_dialogs.py::GitHubConsentDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/github_dialogs.py::GitHubManageAccountsDialog.__init__::wx.Dialog": "hardened_custom",

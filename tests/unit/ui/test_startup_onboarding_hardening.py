@@ -407,8 +407,13 @@ class _UndeletableMarker:
     written into an elevated install directory the running user can't
     write to."""
 
-    def __init__(self, mtime: float) -> None:
+    def __init__(
+        self,
+        mtime: float,
+        path: str = "C:/Program Files/Quill/quill-new-install.txt",
+    ) -> None:
         self._mtime = mtime
+        self._path = path
         self.unlink_attempts = 0
 
     def exists(self) -> bool:
@@ -416,6 +421,11 @@ class _UndeletableMarker:
 
     def stat(self):
         return type("Stat", (), {"st_mtime": self._mtime})()
+
+    def resolve(self):
+        # Real Path.resolve() returns a Path; the production code only uses
+        # ``str(resolved)`` so a string-shaped stand-in is fine.
+        return self._path
 
     def unlink(self) -> None:
         self.unlink_attempts += 1
@@ -449,6 +459,142 @@ def test_undeletable_marker_does_not_reopen_wizard_on_next_launch(monkeypatch, t
     # would reset setup_wizard_completed to False again every single launch,
     # reopening the wizard forever. The sentinel recorded under app_data_dir()
     # must recognize this marker as already consumed and skip the reset.
+    frame.settings.setup_wizard_completed = True
+    frame._maybe_run_first_run_onboarding()
+    assert saved == [False]  # no second reset recorded
+
+
+# ---------------------------------------------------------------------------
+# #647: the sentinel must treat a marker at a path it has already seen as
+# consumed, even when the marker's mtime changes between launches. Antivirus
+# tools, filesystem mtime drift, and other processes touching the marker file
+# can update its mtime without rewriting its content; comparing only on mtime
+# (the #44 fix) made the wizard reopen on every launch in that case. The
+# marker's resolved path is the stable identity for a given install.
+# ---------------------------------------------------------------------------
+
+
+def test_undeletable_marker_with_changed_mtime_does_not_reopen_wizard(
+    monkeypatch, tmp_path
+) -> None:
+    """#647: same marker path, but mtime has changed between launches. The
+    sentinel must still recognize the marker as already consumed -- the wizard
+    must NOT reopen just because the mtime drifted."""
+    import quill.core.paths as paths_module
+
+    frame = _build_frame()
+    frame.settings = type("Settings", (), {"setup_wizard_completed": True})()
+    frame.run_startup_wizard = lambda **kwargs: None
+    marker = _UndeletableMarker(
+        mtime=1000.0,
+        path="C:/Program Files/Quill/quill-new-install.txt",
+    )
+    monkeypatch.setattr(paths_module, "new_install_marker_path", lambda: marker)
+    monkeypatch.setattr(paths_module, "app_data_dir", lambda: tmp_path)
+
+    saved: list[bool] = []
+    import quill.core.settings as settings_module
+
+    monkeypatch.setattr(
+        settings_module, "save_settings", lambda s: saved.append(s.setup_wizard_completed)
+    )
+
+    # First launch: marker consumed, wizard flag reset, sentinel written with
+    # the marker's resolved path + the original mtime.
+    frame._maybe_run_first_run_onboarding()
+    assert marker.unlink_attempts == 1
+    assert saved == [False]
+
+    # Second launch: AV or filesystem has bumped the marker's mtime to a
+    # different value. Same path, so the sentinel should still recognize
+    # it as already consumed and skip the reset (#647).
+    marker._mtime = 2000.0
+    frame.settings.setup_wizard_completed = True
+    frame._maybe_run_first_run_onboarding()
+    assert marker.unlink_attempts == 2  # unlink was retried
+    assert saved == [False]  # no second reset recorded
+
+
+def test_marker_at_different_path_is_treated_as_new_install(monkeypatch, tmp_path) -> None:
+    """#647: a marker at a different resolved path means a genuinely new
+    install (portable bundle moved, custom install location, etc.). The
+    wizard flag must reset in that case."""
+    import quill.core.paths as paths_module
+
+    frame = _build_frame()
+    frame.settings = type("Settings", (), {"setup_wizard_completed": True})()
+    frame.run_startup_wizard = lambda **kwargs: None
+    marker = _UndeletableMarker(
+        mtime=1000.0,
+        path="C:/Program Files/Quill/quill-new-install.txt",
+    )
+    monkeypatch.setattr(paths_module, "new_install_marker_path", lambda: marker)
+    monkeypatch.setattr(paths_module, "app_data_dir", lambda: tmp_path)
+
+    saved: list[bool] = []
+    import quill.core.settings as settings_module
+
+    monkeypatch.setattr(
+        settings_module, "save_settings", lambda s: saved.append(s.setup_wizard_completed)
+    )
+
+    # First install at one location.
+    frame._maybe_run_first_run_onboarding()
+    assert saved == [False]
+
+    # Second install at a different location (e.g., user uninstalled and
+    # reinstalled into D:/Quill). The path differs, so the sentinel must
+    # treat this as a new install and reset the wizard flag.
+    marker._path = "D:/Quill/quill-new-install.txt"
+    frame.settings.setup_wizard_completed = True
+    frame._maybe_run_first_run_onboarding()
+    assert saved == [False, False]
+
+
+def test_legacy_mtime_only_sentinel_is_not_misread_as_new_install(monkeypatch, tmp_path) -> None:
+    """#647: a sentinel written by an older QUILL build (mtime-only, before
+    the path-aware fix shipped) must still be honored -- the legacy sentinel
+    simply lacks a ``path`` key, which does not match any current marker's
+    resolved path, so the wizard would reset on the first launch after
+    upgrade. That is acceptable: a one-time wizard reopen on the first launch
+    after upgrading to the path-aware build is far better than the previous
+    behaviour of reopening forever."""
+    import json
+
+    import quill.core.paths as paths_module
+
+    legacy_sentinel = tmp_path / "new-install-marker-consumed.json"
+    legacy_sentinel.write_text(
+        json.dumps({"mtime": 999.0}),  # legacy format: no "path" key
+        encoding="utf-8",
+    )
+
+    frame = _build_frame()
+    frame.settings = type("Settings", (), {"setup_wizard_completed": True})()
+    frame.run_startup_wizard = lambda **kwargs: None
+    marker = _UndeletableMarker(
+        mtime=1234.0,
+        path="C:/Program Files/Quill/quill-new-install.txt",
+    )
+    monkeypatch.setattr(paths_module, "new_install_marker_path", lambda: marker)
+    monkeypatch.setattr(paths_module, "app_data_dir", lambda: tmp_path)
+
+    saved: list[bool] = []
+    import quill.core.settings as settings_module
+
+    monkeypatch.setattr(
+        settings_module, "save_settings", lambda s: saved.append(s.setup_wizard_completed)
+    )
+
+    # Legacy sentinel has no "path" key, so the check sees the marker as
+    # new and resets the wizard flag once. After this launch, the sentinel
+    # is rewritten in the new path-aware format and subsequent launches
+    # will recognize the marker correctly.
+    frame._maybe_run_first_run_onboarding()
+    assert saved == [False]
+
+    # Second launch: the rewritten sentinel now has the path, so the
+    # marker is correctly treated as already consumed.
     frame.settings.setup_wizard_completed = True
     frame._maybe_run_first_run_onboarding()
     assert saved == [False]  # no second reset recorded
