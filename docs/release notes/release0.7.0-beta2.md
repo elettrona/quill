@@ -209,6 +209,18 @@ A Quillin calling the standard "set status" host action could close QUILL with `
 
 Choosing **Tools > Writing > Quill Eraser** on a document that the engine had findings for closed QUILL with `TypeError: Dialog(): argument 1 has unexpected type 'MainFrame'`. The review dialog was being parented to the `MainFrame` mixin instance instead of the real `wx.Frame` it owns, so wxPython's SIP wrapper rejected the parent. The dialog is now parented to the real frame, so the review dialog opens, the focus lands on the findings list, and you can step through fixes with the keyboard as designed.
 
+## Simple File Open dialog (#620)
+
+QUILL can now open files through a keyboard-friendly **Simple File Open** dialog in addition to the standard Windows file open dialog. Both dialogs are reached from the same place — **File > Open...** or `Ctrl+O` — so there is still only one File > Open command.
+
+- **Opt-in via Settings.** The new setting **Settings > General > Use simple file open dialog** controls which dialog QUILL shows. It is off by default; turn it on if you prefer a minimal, screen-reader-friendly picker.
+- **A focused list and a small filter.** The Simple File Open dialog shows folders at the top of the list with a `[dir]` prefix and the current folder's files below. The **Filter** dropdown starts at **Supported files** (`.txt`, `.md`, `.html`, `.htm`, `.rtf`) and offers per-type filters and an **All files** option.
+- **Keyboard-first navigation.** `Ctrl+L` focuses the path field. `Enter` in the path field navigates into a folder or opens a file. `Enter` in the file list activates the highlighted entry. `Backspace` in the list goes up one folder. `Ctrl+H` toggles hidden files. `Escape` cancels.
+- **Recent locations and hidden files.** The **Recent** button opens a popup listing recently opened files for one-click re-open. The **Hidden** toggle shows or hides files whose names start with a dot or whose Windows hidden attribute is set.
+- **Windows dialog fallback inside the dialog.** The **Use Windows Dialog** button opens the standard `wx.FileDialog` for one invocation. The setting does not change; the next time you press `Ctrl+O` you are back in the simple dialog. Use this when an edge case (a long file path, a custom file association) calls for the native picker.
+- **Accessible error messages.** The status line below the file list shows the current directory, the number of visible entries, and any error. Permission-denied and not-a-directory errors keep the dialog open so you can correct the path and try again.
+- **No new File menu items.** File > Open... remains the only File > Open command. The setting is the only switch.
+
 ## Help, diagnostics, and everyday usability
 
 ### The User Guide stays open and keeps its place

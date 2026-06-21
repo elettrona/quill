@@ -96,7 +96,7 @@ You launch the app. There is no splash screen. The window appears quickly, with 
 
 From there, a natural first session looks like this:
 
-1. Open a file with `Ctrl+O` or create one with `Ctrl+N`.
+1. Open a file with `Ctrl+O` or create one with `Ctrl+N`. Turn on **Settings > General > Use simple file open dialog** if you prefer a smaller, screen-reader-friendly file picker.
 2. Read or write in the editor.
 3. Use `Ctrl+Shift+P` to explore commands without memorizing everything.
 4. Use the **Navigate** menu to jump by line, heading, block, region, or page.
@@ -166,6 +166,22 @@ The status bar (`F6` to focus it) is a working surface, not decoration. Each cel
 Reach any menu from the keyboard: `Alt+F` for File, `Alt+E` for Edit, `Alt+V` for View, `Alt+T` for Tools, `Alt+H` for Help. All menu items have keyboard mnemonics.
 
 The Navigate menu groups document-level movement: go to line, go to heading, go to entry in notebook, heading organizer, outline navigator, back and forward location history, and structural next/previous. When you need to move across a large document, start there.
+
+### The Simple File Open dialog
+
+QUILL can open files through either the standard Windows file open dialog or a keyboard-friendly **Simple File Open** dialog that lists files in a focused list, with a small filter, recent locations, and a hidden-files toggle. Both dialogs are reached from the same place — **File > Open...** or `Ctrl+O` — and the active dialog is chosen by **Settings > General > Use simple file open dialog**. The setting is off by default; turn it on if you prefer a minimal, screen-reader-friendly picker.
+
+The Simple File Open dialog has:
+
+- A **Path** field at the top showing the current folder. Type a path and press Enter to navigate (folders) or open (files). Use **Ctrl+L** to focus the path field from anywhere in the dialog.
+- A **Filter** dropdown with the file types the dialog will show. The default, **Supported files**, includes plain text, Markdown, HTML, and Rich Text. Switch to **Plain text**, **Markdown**, **HTML**, or **Rich Text** to narrow further, or to **All files** to see everything.
+- A **Files** list of folders and files in the current directory. Folders are prefixed with `[dir]`. Use the **Up** button (or press Backspace in the list) to go to the parent folder.
+- A **Hidden** toggle to show or hide files whose names start with a dot or whose Windows hidden attribute is set. **Ctrl+H** toggles this from the path field or the file list.
+- A **Recent** button that opens a popup listing recently opened files for one-click re-open.
+- A **Use Windows Dialog** button that opens the standard Windows file dialog for one invocation. The setting does not change; the next time you press `Ctrl+O` you are back in the simple dialog. Use this when an edge case (a long file path, a custom file association) calls for the native picker.
+- An **Open** button and a **Cancel** button. Press Enter to open the selected file, Escape to cancel.
+
+The status line below the list announces the current directory, the number of visible entries, and any errors. Permission-denied and not-a-directory errors keep the dialog open so you can correct the path and try again.
 
 ## Command-Line Launching
 

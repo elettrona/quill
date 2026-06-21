@@ -333,7 +333,7 @@ Customization:
 ### 5.3 File operations
 
 - `Ctrl+N` new blank document.
-- `Ctrl+O` open via standard `wx.FileDialog`. Quill aims to be the most catholic accessible reader on Windows; the full supported list is in [section 5.3a](#53a-extended-format-support). The headline groups are:
+- `Ctrl+O` open via the user-selected dialog. When **Settings > General > Use simple file open dialog** is on, QUILL shows a keyboard-friendly picker (issue #620) with a path field, a small file-type filter, a recent-locations list, a hidden-files toggle, and a `Use Windows Dialog` button that opens the standard picker for one invocation. When the setting is off, QUILL shows the standard `wx.FileDialog` directly. The setting is off by default; the simple dialog is opt-in. The full supported list is in [section 5.3a](#53a-extended-format-support). The headline groups are:
   - **Plain text and config**: `txt`, `log`, `cue`, `ini`, `json`, `jsonc`, `json5`, `xml`, `csv`, `tsv`, `yaml`, `yml`, `toml`, `nfo`, `env`, `properties`, `conf`, `cfg`, `dotenv`.
   - **Markdown family**: `md`, `markdown`, `mdx`, `mdown`, `mdwn`, `mkd`, `mkdn`, `mkdown`, `ronn`, `qmd` (Quarto), `rmd` (R Markdown).
   - **Lightweight markup**: `rst` (reStructuredText), `adoc`/`asciidoc`, `textile`, `org` (Org-mode), `wiki`/`mediawiki`, `bbcode`, `tex`/`latex`, `bib`/`bibtex`, `typ` (Typst).

@@ -176,9 +176,6 @@
   </style>
 </head>
 <body>
-<header id="title-block-header">
-<h1 class="title">release0.7.0-beta2</h1>
-</header>
 <h1 id="quill-0.7.0-beta-2-release-notes">QUILL 0.7.0 Beta 2 Release
 Notes</h1>
 <p>QUILL 0.7.0 Beta 2 is focused on helping you upgrade with less
@@ -494,6 +491,48 @@ wxPython’s SIP wrapper rejected the parent. The dialog is now parented
 to the real frame, so the review dialog opens, the focus lands on the
 findings list, and you can step through fixes with the keyboard as
 designed.</p>
+<h2 id="simple-file-open-dialog-620">Simple File Open dialog (#620)</h2>
+<p>QUILL can now open files through a keyboard-friendly <strong>Simple
+File Open</strong> dialog in addition to the standard Windows file open
+dialog. Both dialogs are reached from the same place — <strong>File &gt;
+Open…</strong> or <code>Ctrl+O</code> — so there is still only one File
+&gt; Open command.</p>
+<ul>
+<li><strong>Opt-in via Settings.</strong> The new setting
+<strong>Settings &gt; General &gt; Use simple file open dialog</strong>
+controls which dialog QUILL shows. It is off by default; turn it on if
+you prefer a minimal, screen-reader-friendly picker.</li>
+<li><strong>A focused list and a small filter.</strong> The Simple File
+Open dialog shows folders at the top of the list with a
+<code>[dir]</code> prefix and the current folder’s files below. The
+<strong>Filter</strong> dropdown starts at <strong>Supported
+files</strong> (<code>.txt</code>, <code>.md</code>, <code>.html</code>,
+<code>.htm</code>, <code>.rtf</code>) and offers per-type filters and an
+<strong>All files</strong> option.</li>
+<li><strong>Keyboard-first navigation.</strong> <code>Ctrl+L</code>
+focuses the path field. <code>Enter</code> in the path field navigates
+into a folder or opens a file. <code>Enter</code> in the file list
+activates the highlighted entry. <code>Backspace</code> in the list goes
+up one folder. <code>Ctrl+H</code> toggles hidden files.
+<code>Escape</code> cancels.</li>
+<li><strong>Recent locations and hidden files.</strong> The
+<strong>Recent</strong> button opens a popup listing recently opened
+files for one-click re-open. The <strong>Hidden</strong> toggle shows or
+hides files whose names start with a dot or whose Windows hidden
+attribute is set.</li>
+<li><strong>Windows dialog fallback inside the dialog.</strong> The
+<strong>Use Windows Dialog</strong> button opens the standard
+<code>wx.FileDialog</code> for one invocation. The setting does not
+change; the next time you press <code>Ctrl+O</code> you are back in the
+simple dialog. Use this when an edge case (a long file path, a custom
+file association) calls for the native picker.</li>
+<li><strong>Accessible error messages.</strong> The status line below
+the file list shows the current directory, the number of visible
+entries, and any error. Permission-denied and not-a-directory errors
+keep the dialog open so you can correct the path and try again.</li>
+<li><strong>No new File menu items.</strong> File &gt; Open… remains the
+only File &gt; Open command. The setting is the only switch.</li>
+</ul>
 <h2 id="help-diagnostics-and-everyday-usability">Help, diagnostics, and
 everyday usability</h2>
 <h3 id="the-user-guide-stays-open-and-keeps-its-place">The User Guide
