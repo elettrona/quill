@@ -19,11 +19,60 @@ class SpeechCommandsMixin:
     # _show_message_box, _run_background_task, _create_document_tab, _announce,
     # _set_status.
 
-    def _speech_provider(self) -> object:
-        from quill.core.speech.service import DEFAULT_PROVIDER_ID, default_registry
+    def _speech_registry(self) -> object:
+        from quill.core.speech.service import default_registry
 
         configured = str(getattr(self.settings, "speech_whisper_path", "") or "") or None
-        return default_registry(configured).get(DEFAULT_PROVIDER_ID)
+        return default_registry(configured)
+
+    def _speech_provider(self) -> object:
+        from quill.core.speech.service import DEFAULT_PROVIDER_ID
+
+        registry = self._speech_registry()
+        chosen = str(getattr(self.settings, "speech_provider", "") or "")
+        if chosen:
+            provider = registry.get(chosen)  # type: ignore[attr-defined]
+            try:
+                if provider is not None and provider.is_available():
+                    return provider
+            except Exception:  # noqa: BLE001 - fall back to the bundled engine
+                pass
+        return registry.get(DEFAULT_PROVIDER_ID)  # type: ignore[attr-defined]
+
+    def _choose_speech_engine(self) -> object | None:
+        """Let the user pick the speech engine when more than one is available.
+
+        Persists the choice to ``settings.speech_provider`` so transcription,
+        captions, and dictation all use it. Returns the chosen provider, or None
+        to fall back to the default (including when only one engine exists).
+        """
+        from quill.core.settings import save_settings
+
+        wx = self._wx
+        registry = self._speech_registry()
+        providers = registry.available()  # type: ignore[attr-defined]
+        if len(providers) <= 1:
+            return None
+        labels = [p.display_name for p in providers]
+        current = str(getattr(self.settings, "speech_provider", "") or "")
+        selected = next((i for i, p in enumerate(providers) if p.id == current), 0)
+        with wx.SingleChoiceDialog(
+            self.frame, "Choose the speech engine to use:", "Speech Engine", labels
+        ) as dialog:
+            dialog.SetSelection(selected)
+            if self._show_modal_dialog(dialog, "Speech Engine") != wx.ID_OK:
+                return None
+            choice = dialog.GetSelection()
+        if not (0 <= choice < len(providers)):
+            return None
+        provider = providers[choice]
+        self.settings.speech_provider = provider.id
+        try:
+            save_settings(self.settings)
+        except Exception:  # noqa: BLE001 - a save failure must not block model management
+            pass
+        self._announce(f"Speech engine set to {provider.display_name}.")
+        return provider
 
     # -- model manager ---------------------------------------------------- #
 
@@ -31,7 +80,7 @@ class SpeechCommandsMixin:
         from quill.core.speech.service import describe_models
 
         wx = self._wx
-        provider = self._speech_provider()
+        provider = self._choose_speech_engine() or self._speech_provider()
         rows = describe_models(provider)  # type: ignore[arg-type]
         labels = [row.label for row in rows]
         with wx.SingleChoiceDialog(

@@ -176,9 +176,6 @@
   </style>
 </head>
 <body>
-<header id="title-block-header">
-<h1 class="title">dictation-and-speech</h1>
-</header>
 <h1 id="quill-speech--dictation--reengineering-plan">QUILL Speech &amp;
 Dictation — Reengineering Plan</h1>
 <p><strong>Status:</strong> Active plan (shipping). Folds in issue #617
@@ -204,8 +201,13 @@ attribution</strong> ("Speaker 1/2…") is produced offline via
 whisper.cpp tinydiarize (the <code>small.en-tdrz</code> model + the
 <code>-tdrz</code> flag + <code>[SPEAKER_TURN]</code> parsing).
 <code>sounddevice</code> is now <strong>bundled</strong> in the Windows
-build, so offline dictation works out of the box. Remaining: S4 (Faster
-Whisper optional provider), S5 (experimental voice commands).</p>
+build, so offline dictation works out of the box. <strong>S4
+shipped</strong>: the optional <strong>Faster Whisper</strong> provider
+(<code>fasterwhisper</code> extra) is a GPU-aware, CTranslate2-based
+engine that registers only when its library imports; a <strong>Speech
+Engine</strong> chooser in Manage Speech Models and the
+<code>speech_provider</code> setting let users pick it (whisper.cpp
+stays the default). Remaining: S5 (experimental voice commands).</p>
 <hr />
 <h2 id="1-where-dictation-is-today-grounded-in-code">1. Where dictation
 is today (grounded in code)</h2>

@@ -16,8 +16,12 @@ so no manual PATH setup). Transcripts can be exported as **plain text, Markdown,
 or HTML** (plus SRT/VTT captions), and **speaker attribution** ("Speaker 1/2…")
 is produced offline via whisper.cpp tinydiarize (the `small.en-tdrz` model + the
 `-tdrz` flag + `[SPEAKER_TURN]` parsing). `sounddevice` is now **bundled** in the
-Windows build, so offline dictation works out of the box. Remaining: S4 (Faster
-Whisper optional provider), S5 (experimental voice commands).
+Windows build, so offline dictation works out of the box. **S4 shipped**: the
+optional **Faster Whisper** provider (`fasterwhisper` extra) is a GPU-aware,
+CTranslate2-based engine that registers only when its library imports; a
+**Speech Engine** chooser in Manage Speech Models and the `speech_provider`
+setting let users pick it (whisper.cpp stays the default). Remaining: S5
+(experimental voice commands).
 
 ---
 

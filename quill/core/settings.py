@@ -98,6 +98,9 @@ class Settings:
     dictation_language: str = "en-US"
     dictation_model: str = "base"
     dictation_device_index: int = -1
+    # Offline speech engine: "" = bundled whisper.cpp; "fasterwhisper" opts into
+    # the Faster Whisper (CTranslate2) engine on machines that have it.
+    speech_provider: str = ""
     bw_speech_selection_mode: str = "recommended"
     bw_speech_model_id: str = "whisper-base"
     bw_enable_parakeet_models: bool = False
@@ -455,6 +458,9 @@ class Settings:
         dictation_device_index = int(data.get("dictation_device_index", -1))
         if dictation_device_index < -1:
             dictation_device_index = -1
+        speech_provider = str(data.get("speech_provider", "")).strip().lower()
+        if speech_provider not in {"", "whispercpp", "fasterwhisper"}:
+            speech_provider = ""
         bw_speech_selection_mode = (
             str(data.get("bw_speech_selection_mode", "recommended")).strip().lower()
             or "recommended"
@@ -786,6 +792,7 @@ class Settings:
             dictation_language=dictation_language,
             dictation_model=dictation_model,
             dictation_device_index=dictation_device_index,
+            speech_provider=speech_provider,
             bw_speech_selection_mode=bw_speech_selection_mode,
             bw_speech_model_id=bw_speech_model_id,
             bw_enable_parakeet_models=bw_enable_parakeet_models,

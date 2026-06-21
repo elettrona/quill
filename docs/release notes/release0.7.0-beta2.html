@@ -176,9 +176,6 @@
   </style>
 </head>
 <body>
-<header id="title-block-header">
-<h1 class="title">release0.7.0-beta2</h1>
-</header>
 <h1 id="quill-070-beta-2-release-notes">QUILL 0.7.0 Beta 2 Release
 Notes</h1>
 <p>QUILL 0.7.0 Beta 2 is focused on helping you upgrade with less
@@ -741,6 +738,16 @@ a stop tone, transcribes what you said, and inserts it at the cursor as
 one undoable edit.</li>
 <li><strong>Dictation Microphone...</strong> lets you choose which
 microphone dictation uses (or the system default).</li>
+<li><strong>Choose your speech engine.</strong> The bundled
+<strong>whisper.cpp</strong> engine is the default and needs nothing
+extra. On machines that have it, you can opt into <strong>Faster
+Whisper</strong> — a higher-throughput engine that uses your
+<strong>GPU</strong> when one is available — by installing QUILL's
+optional <code>fasterwhisper</code> dependency. Manage Speech Models
+then offers a <strong>Speech Engine</strong> chooser; your choice is
+remembered and used for transcription, captions, and dictation. (Faster
+Whisper does not label speakers; for speaker attribution use the
+whisper.cpp speaker-detection model.)</li>
 </ul>
 <p>The offline speech <strong>engine is provided by QUILL</strong>:
 choose the <em>"offline speech engine (whisper.cpp)"</em> component in

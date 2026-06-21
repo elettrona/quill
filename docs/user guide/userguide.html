@@ -1385,6 +1385,19 @@ count).</li>
 <li><strong>Dictation Microphone...</strong> chooses which microphone
 dictation uses, or the system default.</li>
 </ul>
+<p><strong>Choosing a speech engine.</strong> QUILL ships with the
+<strong>whisper.cpp</strong> engine and uses it by default — nothing
+extra to install. If you install QUILL's optional
+<code>fasterwhisper</code> dependency, a second engine, <strong>Faster
+Whisper</strong>, becomes available. Faster Whisper runs in-process and
+uses your <strong>GPU</strong> automatically when one is present, which
+can be considerably faster on capable machines. When more than one
+engine is available, <strong>Manage Speech Models</strong> first asks
+which <strong>Speech Engine</strong> to use; QUILL remembers your choice
+and applies it to transcription, captions, and dictation. Each engine
+has its own models, so download a model after switching. Note that
+Faster Whisper does not label speakers — for speaker attribution, use
+the whisper.cpp speaker-detection model.</p>
 <p>The offline speech <strong>engine ships with QUILL</strong>: enable
 the <em>offline speech engine (whisper.cpp)</em> component in the
 installer, or place the executable under

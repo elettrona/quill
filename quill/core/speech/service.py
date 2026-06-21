@@ -43,11 +43,26 @@ def save_input_device(index: int) -> None:
 
 
 def default_registry(executable_path: str | None = None) -> SpeechProviderRegistry:
-    """Return a registry with the built-in providers registered (lazy import)."""
+    """Return a registry with the built-in providers registered (lazy import).
+
+    The bundled whisper.cpp provider is always registered. The optional Faster
+    Whisper provider registers only when its library imports successfully, so an
+    uninstalled engine simply never appears in the engine chooser.
+    """
     registry = SpeechProviderRegistry()
     from quill.core.speech.providers.whispercpp import WhisperCppProvider
 
     registry.register(WhisperCppProvider(executable_path))
+
+    try:
+        from quill.core.speech.providers.fasterwhisper import FasterWhisperProvider
+
+        provider = FasterWhisperProvider()
+        if provider.is_available():
+            registry.register(provider)
+    except Exception:  # noqa: BLE001 - an optional engine must never break the registry
+        pass
+
     return registry
 
 

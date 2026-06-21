@@ -1894,6 +1894,18 @@ and preserve accessibility reliability.
 > the only functional engine today), legacy `vosk`/`whisper` values migrate to `offline`,
 > and the dead local-recognizer stub was removed. Dictation behavior is unchanged: it still
 > drives the OS dictation panel until the offline engine lands in S2–S3.
+>
+> **Waves S1–S4 (shipped).** The offline engine landed: a whisper.cpp provider with an
+> accessible model manager (Hugging Face Hub downloads, Safe-Mode gated), **Transcribe**
+> (plain text / Markdown / HTML), **Generate Captions** (SRT / VTT), push-to-talk
+> **Dictate at the cursor** (distinct earcons, status-bar state, microphone picker,
+> QUILL Key + Shift+D), and **speaker attribution** via the whisper.cpp speaker-detection
+> model. The whisper.cpp engine ships as an installer component, and `sounddevice` is
+> bundled for capture. **S4 added Faster Whisper** as an optional, GPU-aware second engine
+> (`fasterwhisper` extra): when present it appears in a **Speech Engine** chooser, the
+> choice is saved in `speech_provider`, and it is used for transcription, captions, and
+> dictation. whisper.cpp remains the default and needs nothing extra; Faster Whisper does
+> not attribute speakers.
 
 Phase 1 scope:
 
