@@ -347,3 +347,60 @@ def _close_frame_no_patch() -> tuple[MainFrame, _RecordingWx]:
     frame._wx = recording  # type: ignore[assignment]
     frame.frame = object()
     return frame, recording
+
+
+# ---------------------------------------------------------------------------
+# #603: closing the last document must not crash the caret handler.
+# ---------------------------------------------------------------------------
+
+
+class _DeadEditor:
+    """A minimal editor stub whose reads raise the exact RuntimeError a
+    destroyed C++ TextCtrl would raise (#603).
+
+    The test asserts that ``_maybe_play_indent_tone`` and the editor
+    caret-activity dispatch swallow that error cleanly, so the close
+    path completes without surfacing a "QUILL encountered an
+    unexpected error" dialog.
+    """
+
+    def GetValue(self) -> str:
+        raise RuntimeError("wrapped C/C++ object of type TextCtrl has been deleted")
+
+    def GetInsertionPoint(self) -> int:
+        raise RuntimeError("wrapped C/C++ object of type TextCtrl has been deleted")
+
+
+def test_maybe_play_indent_tone_swallows_runtime_error_from_dead_editor() -> None:
+    """#603: when the editor's C++ TextCtrl is gone, _maybe_play_indent_tone
+    must return silently instead of propagating a RuntimeError that would
+    surface as a "QUILL encountered an unexpected error" dialog."""
+
+    from quill.ui.main_frame_power_tools import PowerToolsActionsMixin
+
+    frame = MainFrame.__new__(MainFrame)
+    frame.settings = SimpleNamespace(indent_tone_scale="pentatonic")
+    frame.editor = _DeadEditor()  # type: ignore[assignment]
+
+    # Drive the mixin method directly. It must return None and not raise.
+    result = PowerToolsActionsMixin._maybe_play_indent_tone(frame)
+
+    assert result is None, "#603: dead-editor reads must be swallowed, not raised"
+
+
+def test_on_editor_caret_activity_swallows_runtime_error() -> None:
+    """#603: _on_editor_caret_activity must not surface a RuntimeError raised
+    by the underlying C++ widget, even when the dead editor fires the
+    indent-tone path. The outer try/except guarantees the close path
+    completes cleanly and the next caret movement still gets its tone."""
+
+    frame = MainFrame.__new__(MainFrame)
+    frame.settings = SimpleNamespace(indent_tone_scale="pentatonic")
+    frame.editor = _DeadEditor()  # type: ignore[assignment]
+    frame._refresh_statusbar = lambda: None  # type: ignore[method-assign]
+    frame._maybe_announce_indent = lambda: None  # type: ignore[method-assign]
+
+    event = SimpleNamespace(Skip=lambda: None)
+    # Drive the caret handler directly. It must return without raising,
+    # even though the dead editor raises from _maybe_play_indent_tone.
+    MainFrame._on_editor_caret_activity(frame, event)  # type: ignore[arg-type]
