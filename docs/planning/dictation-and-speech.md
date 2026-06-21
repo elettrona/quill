@@ -12,8 +12,12 @@ at the cursor** push-to-talk with distinct start/stop earcons + status-bar state
 **QUILL Key + Shift+D** hotkey, **microphone selection**, and the whisper.cpp
 engine made a **distributable installer component** — InnoSetup `speechwhisper` +
 build `--whisper-dir` staging + runtime resolution from `tools/speech/whispercpp`,
-so no manual PATH setup). Mic capture is the optional `quill[speech]` extra.
-Remaining: S4 (Faster Whisper optional provider), S5 (experimental voice commands).
+so no manual PATH setup). Transcripts can be exported as **plain text, Markdown,
+or HTML** (plus SRT/VTT captions), and **speaker attribution** ("Speaker 1/2…")
+is produced offline via whisper.cpp tinydiarize (the `small.en-tdrz` model + the
+`-tdrz` flag + `[SPEAKER_TURN]` parsing). `sounddevice` is now **bundled** in the
+Windows build, so offline dictation works out of the box. Remaining: S4 (Faster
+Whisper optional provider), S5 (experimental voice commands).
 
 ---
 

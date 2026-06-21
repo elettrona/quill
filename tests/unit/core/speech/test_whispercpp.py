@@ -168,3 +168,32 @@ def test_transcribe_runs_and_parses(monkeypatch: pytest.MonkeyPatch, tmp_path: P
     result = provider.transcribe_file(TranscriptionRequest(source_path=audio, model_id="small"))
     assert result.full_text == "Hello world second line"
     assert result.model_id == "small"
+
+
+def test_build_command_adds_tdrz_when_diarize(tmp_path: Path) -> None:
+    request = TranscriptionRequest(
+        source_path=tmp_path / "a.wav", model_id="small.en-tdrz", diarize=True
+    )
+    args = whispercpp.build_whisper_command(
+        "whisper-cli", tmp_path / "m.bin", tmp_path / "a.wav", tmp_path / "out", request
+    )
+    assert "-tdrz" in args
+
+
+def test_parse_assigns_speakers_on_turn_markers() -> None:
+    payload = json.dumps({
+        "result": {"language": "en"},
+        "transcription": [
+            {"offsets": {"from": 0, "to": 1000}, "text": " Hello there [SPEAKER_TURN]"},
+            {"offsets": {"from": 1000, "to": 2000}, "text": " Hi back"},
+        ],
+    })
+    result = whispercpp.parse_whisper_json(payload)
+    assert result.segments[0].speaker == "Speaker 1"
+    assert result.segments[0].text == "Hello there"  # marker stripped
+    assert result.segments[1].speaker == "Speaker 2"
+
+
+def test_parse_without_markers_has_no_speakers() -> None:
+    result = whispercpp.parse_whisper_json(_SAMPLE_JSON)
+    assert all(seg.speaker == "" for seg in result.segments)

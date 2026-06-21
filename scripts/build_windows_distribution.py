@@ -88,7 +88,10 @@ PIPER_PINNED_SHA256 = "f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc808
 # in the shipping build. The vendored contract wheel (see _install_vendored_glow)
 # still installs the safe GLOW seam. Re-add "glow" here when GLOW is re-enabled
 # and its wheels are published.
-DEFAULT_BUNDLED_DEPENDENCY_GROUPS = ("ui", "spellcheck", "ocr", "kokoro")
+# "speech" bundles sounddevice (PortAudio) so offline dictation works out of the
+# box (#617) without a separate pip install. The whisper.cpp engine itself is a
+# separate InnoSetup component (tools/speech/whispercpp), not a pip wheel.
+DEFAULT_BUNDLED_DEPENDENCY_GROUPS = ("ui", "spellcheck", "ocr", "kokoro", "speech")
 
 # Pinned rcedit release (electron/rcedit). Build-tool only -- never copied into
 # the portable bundle or the installer payload. Used to stamp the bundled

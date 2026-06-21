@@ -74,6 +74,7 @@ class TranscriptionRequest:
     translate_to_english: bool = False
     initial_prompt: str | None = None
     temperature: float | None = None
+    diarize: bool = False  # mark speaker turns (needs a diarization-capable model)
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,11 +88,16 @@ class RecordingTranscriptionRequest:
 
 @dataclass(frozen=True, slots=True)
 class TranscriptionSegment:
-    """One timestamped span of transcribed text."""
+    """One timestamped span of transcribed text.
+
+    ``speaker`` is a human-facing label ("Speaker 1") when speaker attribution
+    (diarization) is available, else an empty string.
+    """
 
     start_seconds: float
     end_seconds: float
     text: str
+    speaker: str = ""
 
 
 @dataclass(frozen=True, slots=True)

@@ -11,6 +11,8 @@ from __future__ import annotations
 from quill.core.speech.provider import SpeechModelInfo
 
 RECOMMENDED_MODEL_ID = "small"
+# A model that supports whisper.cpp tinydiarize (-tdrz) speaker-turn detection.
+DIARIZATION_MODEL_ID = "small.en-tdrz"
 
 # whisper.cpp GGML models are published on Hugging Face. URLs are data-driven so
 # a release/mirror can override them; sha256 is left None until the pipeline pins
@@ -57,6 +59,19 @@ WHISPER_CPP_MODELS: tuple[SpeechModelInfo, ...] = (
         license_name="MIT",
     ),
     SpeechModelInfo(
+        id="small.en-tdrz",
+        display_name="Small English with speaker detection",
+        language_mode="english",
+        approximate_size_mb=465,
+        accuracy_tier="medium",
+        speed_tier="medium",
+        recommended_use=(
+            "English only, and marks who is speaking when (speaker turns) in transcripts."
+        ),
+        download_url=_ggml_url("small.en-tdrz"),
+        license_name="MIT",
+    ),
+    SpeechModelInfo(
         id="medium",
         display_name="Medium",
         language_mode="multilingual",
@@ -87,6 +102,11 @@ def model_by_id(model_id: str) -> SpeechModelInfo | None:
         if model.id == model_id:
             return model
     return None
+
+
+def is_diarization_model(model_id: str) -> bool:
+    """True when a model supports speaker-turn detection (whisper.cpp tinydiarize)."""
+    return model_id.endswith("-tdrz")
 
 
 def recommended_model() -> SpeechModelInfo:

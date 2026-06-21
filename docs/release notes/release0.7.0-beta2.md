@@ -309,7 +309,8 @@ This makes it easier to understand exactly where you are when a print page conti
 QUILL has a privacy-first speech engine that runs entirely on your computer. It lives under a new **AI → Speech** menu:
 
 - **Manage Speech Models...** lets you download a local speech model (sizes are shown; the Small model is recommended to start). Models are fetched over a secure connection from the Hugging Face Hub and stored on your computer; downloading is disabled in Safe Mode.
-- **Transcribe Audio or Video (Offline)...** turns a recording into text on your own machine — no cloud account, and your audio is not uploaded. The transcript opens as an editable draft, and QUILL works in the background so the editor stays responsive.
+- **Transcribe Audio or Video (Offline)...** turns a recording into text on your own machine — no cloud account, and your audio is not uploaded. You choose the transcript format — **plain text, Markdown, or HTML** — and it opens as an editable draft while QUILL works in the background.
+- **Speaker attribution.** Install the "Small English with speaker detection" model and transcripts mark **who is speaking when** ("Speaker 1", "Speaker 2", …) as labelled turns.
 - **Generate Captions (Offline)...** transcribes a file with timestamps and saves it as **SRT** or **VTT** captions.
 - **Dictate (Offline)** lets you speak directly into your document. Press the command (or **QUILL Key + Shift + D**) to start — QUILL plays a distinct start tone and shows "Dictation listening" in the status bar — then press it again to stop; QUILL plays a stop tone, transcribes what you said, and inserts it at the cursor as one undoable edit.
 - **Dictation Microphone...** lets you choose which microphone dictation uses (or the system default).
@@ -318,12 +319,11 @@ The offline speech **engine is provided by QUILL**: choose the *"offline speech 
 
 ## What is coming next
 
-QUILL's roadmap is now organized into clear workstreams that are all targeted to ship, with the work tracked openly:
+QUILL's roadmap is organized into clear workstreams that are all targeted to ship, with the work tracked openly. **Landed in this beta:** Braille Mode proofing, validation, restore-your-place, and back-translation; and the offline speech suite above (transcription, captions, dictation, speaker attribution, and a bundled engine). **Coming next:**
 
-- **Offline dictation and transcription.** A privacy-first speech engine that runs on your computer: press one key and speak text into your document, transcribe a recording, or generate captions — no cloud account required, with your screen reader guiding every step. (Groundwork is underway in this beta; until the offline engine arrives, dictation continues to use Windows' built-in dictation.)
-- **Verbosity controls.** Fine-grained, screen-reader-first control over what QUILL announces and when, including Quiet and Meeting modes.
-- **Braille Mode, continued.** Restore-your-place-on-open, a proofing menu, and a validator for braille documents.
+- **Verbosity controls.** Fine-grained, screen-reader-first control over what QUILL announces and when, including Quiet and Meeting modes — the next major workstream.
 - **More publishing and export options**, including a DAISY talking-book export.
+- **More speech engines**, such as an optional high-performance provider, and experimental voice commands.
 
 These are tracked as individual issues and in the planning documents under `docs/planning/`. Because this is a beta, your feedback directly shapes the order in which they arrive.
 

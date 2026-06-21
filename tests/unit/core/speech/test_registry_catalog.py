@@ -52,7 +52,13 @@ def test_catalog_has_recommended_small_model() -> None:
     assert catalog.model_by_id("nope") is None
 
 
-def test_catalog_models_have_increasing_size() -> None:
+def test_catalog_models_have_non_decreasing_size() -> None:
     sizes = [m.approximate_size_mb for m in catalog.WHISPER_CPP_MODELS]
     assert sizes == sorted(sizes)
-    assert len(catalog.WHISPER_CPP_MODELS) == 5
+    assert len(catalog.WHISPER_CPP_MODELS) == 6
+
+
+def test_diarization_model_detected() -> None:
+    assert catalog.is_diarization_model(catalog.DIARIZATION_MODEL_ID) is True
+    assert catalog.is_diarization_model("small") is False
+    assert catalog.model_by_id(catalog.DIARIZATION_MODEL_ID) is not None

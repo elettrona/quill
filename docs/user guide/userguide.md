@@ -720,10 +720,16 @@ and without uploading your audio. These commands live under **AI > Speech**:
   Small model is recommended to start); choose an installed model to remove it.
   Models are downloaded over a secure connection from the Hugging Face Hub and
   stored on your computer. Downloading is disabled in Safe Mode.
-- **Transcribe Audio or Video (Offline)...** asks for an audio or video file and
-  transcribes it locally, then opens the result as an editable draft document.
-  The work runs in the background so you can keep editing; QUILL announces when it
-  is done and how many words were produced.
+- **Transcribe Audio or Video (Offline)...** asks for an audio or video file and a
+  transcript format — **plain text, Markdown, or HTML** — then transcribes locally
+  and opens the result as an editable draft document. The work runs in the
+  background so you can keep editing; QUILL announces when it is done and how many
+  words were produced.
+- **Speaker attribution.** If you download the "Small English with speaker
+  detection" model (in Manage Speech Models), QUILL marks **who is speaking when**
+  — each turn is labelled "Speaker 1", "Speaker 2", and so on in the transcript
+  (shown in bold in Markdown and HTML). Speaker detection identifies separate
+  turns; it does not name the people.
 - **Generate Captions (Offline)...** transcribes a file with timestamps and saves
   the result as **SRT** or **VTT** caption files.
 - **Dictate (Offline)** speaks straight into your document. Run it (or press

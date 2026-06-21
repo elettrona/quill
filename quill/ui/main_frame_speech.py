@@ -93,26 +93,42 @@ class SpeechCommandsMixin:
 
     # -- transcription ---------------------------------------------------- #
 
-    def transcribe_audio_offline(self) -> None:
-        from quill.core.speech.catalog import RECOMMENDED_MODEL_ID
+    _TRANSCRIPT_FORMATS = (
+        ("Plain text", "text"),
+        ("Markdown", "markdown"),
+        ("HTML", "html"),
+    )
 
+    def _select_model_and_diarize(self, installed: list) -> tuple[str, bool]:
+        """Prefer an installed speaker-detection model (enables diarization)."""
+        from quill.core.speech.catalog import is_diarization_model
+
+        for model in installed:
+            if is_diarization_model(model.id):
+                return model.id, True
+        return self._default_model_id(installed), False
+
+    def _choose_transcript_format(self, title: str) -> str | None:
+        wx = self._wx
+        labels = [label for label, _key in self._TRANSCRIPT_FORMATS]
+        with wx.SingleChoiceDialog(self.frame, "Transcript format:", title, labels) as dialog:
+            if self._show_modal_dialog(dialog, title) != wx.ID_OK:
+                return None
+            choice = dialog.GetSelection()
+        if 0 <= choice < len(self._TRANSCRIPT_FORMATS):
+            return self._TRANSCRIPT_FORMATS[choice][1]
+        return "text"
+
+    def transcribe_audio_offline(self) -> None:
         wx = self._wx
         provider = self._speech_provider()
-        installed = provider.list_installed_models()  # type: ignore[attr-defined]
-        if not installed:
-            offer = self._show_message_box(
-                "No offline speech model is installed yet. Open Manage Speech Models "
-                "to download one?",
-                "Transcribe Audio or Video",
-                wx.ICON_INFORMATION | wx.YES_NO,
-            )
-            if offer == wx.YES:
-                self.open_speech_models()
+        installed = self._installed_or_prompt(provider, "Transcribe Audio or Video")
+        if installed is None:
             return
-        installed_ids = [m.id for m in installed]
-        model_id = (
-            RECOMMENDED_MODEL_ID if RECOMMENDED_MODEL_ID in installed_ids else installed_ids[0]
-        )
+        model_id, diarize = self._select_model_and_diarize(installed)
+        fmt = self._choose_transcript_format("Transcribe Audio or Video")
+        if fmt is None:
+            return
 
         with wx.FileDialog(
             self.frame,
@@ -130,7 +146,7 @@ class SpeechCommandsMixin:
         from quill.core.speech.provider import TranscriptionRequest
 
         request = TranscriptionRequest(
-            source_path=source, model_id=model_id, output_timestamps=True
+            source_path=source, model_id=model_id, output_timestamps=True, diarize=diarize
         )
 
         def _work(progress):
@@ -139,19 +155,29 @@ class SpeechCommandsMixin:
 
             return provider.transcribe_file(request, _on_progress)  # type: ignore[attr-defined]
 
-        def _done(result: object) -> None:
-            self._open_transcription_result(result, source)
+        self._run_background_task(
+            f"Transcribing {source.name}",
+            _work,
+            lambda result: self._open_transcription_result(result, fmt),
+        )
 
-        self._run_background_task(f"Transcribing {source.name}", _work, _done)
-
-    def _open_transcription_result(self, result: object, source: Path) -> None:
+    def _open_transcription_result(self, result: object, fmt: str = "text") -> None:
         from quill.core.document import Document
+        from quill.core.speech import formatters
 
-        text = getattr(result, "full_text", "") or ""
-        header = f"Transcript of {source.name}\n\n"
-        self._create_document_tab(Document(text=header + text), select=True)
-        words = len(text.split())
-        self._announce(f"Transcription complete. {words} words. Review the draft transcript.")
+        if fmt == "markdown":
+            text = formatters.to_markdown(result)  # type: ignore[arg-type]
+        elif fmt == "html":
+            text = formatters.to_html(result)  # type: ignore[arg-type]
+        else:
+            text = formatters.to_plain_text(result)  # type: ignore[arg-type]
+        self._create_document_tab(Document(text=text), select=True)
+        words = len((getattr(result, "full_text", "") or "").split())
+        has_speakers = any(getattr(s, "speaker", "") for s in getattr(result, "segments", ()))
+        extra = " with speaker labels" if has_speakers else ""
+        self._announce(
+            f"Transcription complete{extra}. {words} words. Review the draft transcript."
+        )
 
     def _installed_or_prompt(self, provider: object, title: str) -> list | None:
         """Return installed models, or None after offering to open the manager."""

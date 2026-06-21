@@ -7,14 +7,70 @@ write the returned string.
 
 from __future__ import annotations
 
+import html
 import json
 
 from quill.core.speech.provider import TranscriptionResult, TranscriptionSegment
 
 
+def _turns(result: TranscriptionResult) -> list[tuple[str, str]]:
+    """Group segments into ``(speaker, text)`` turns (merging consecutive speakers).
+
+    Falls back to a single empty-speaker turn carrying ``full_text`` when there
+    are no segments.
+    """
+    if not result.segments:
+        return [("", result.full_text.strip())]
+    turns: list[list[str]] = []
+    speakers: list[str] = []
+    for seg in result.segments:
+        text = seg.text.strip()
+        if not text:
+            continue
+        if turns and speakers[-1] == seg.speaker:
+            turns[-1].append(text)
+        else:
+            turns.append([text])
+            speakers.append(seg.speaker)
+    return [(spk, " ".join(parts)) for spk, parts in zip(speakers, turns, strict=True)]
+
+
+def _has_speakers(result: TranscriptionResult) -> bool:
+    return any(seg.speaker for seg in result.segments)
+
+
 def to_plain_text(result: TranscriptionResult) -> str:
-    """The transcript as plain text (one trailing newline)."""
+    """The transcript as plain text (with "Speaker N:" prefixes when available)."""
+    if _has_speakers(result):
+        lines = [f"{spk}: {text}" if spk else text for spk, text in _turns(result)]
+        return "\n".join(lines).strip() + "\n"
     return result.full_text.strip() + "\n"
+
+
+def to_markdown(result: TranscriptionResult) -> str:
+    """The transcript as Markdown (speaker turns in bold when available)."""
+    parts = ["# Transcript", ""]
+    for spk, text in _turns(result):
+        parts.append(f"**{spk}:** {text}" if spk else text)
+        parts.append("")
+    return "\n".join(parts).rstrip() + "\n"
+
+
+def to_html(result: TranscriptionResult) -> str:
+    """The transcript as a minimal standalone HTML document."""
+    body: list[str] = []
+    for spk, text in _turns(result):
+        escaped = html.escape(text)
+        if spk:
+            body.append(f"<p><strong>{html.escape(spk)}:</strong> {escaped}</p>")
+        else:
+            body.append(f"<p>{escaped}</p>")
+    return (
+        '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+        "<title>Transcript</title>\n</head>\n<body>\n<h1>Transcript</h1>\n"
+        + "\n".join(body)
+        + "\n</body>\n</html>\n"
+    )
 
 
 def to_srt(segments: tuple[TranscriptionSegment, ...]) -> str:

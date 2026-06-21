@@ -52,3 +52,52 @@ def test_json_is_structured_and_round_trips() -> None:
 def test_negative_time_clamps_to_zero() -> None:
     srt = formatters.to_srt((TranscriptionSegment(-1.0, 1.0, "x"),))
     assert "00:00:00,000 --> 00:00:01,000" in srt
+
+
+_DIARIZED = TranscriptionResult(
+    full_text="Hi there how are you",
+    segments=(
+        TranscriptionSegment(0.0, 1.0, "Hi there", speaker="Speaker 1"),
+        TranscriptionSegment(1.0, 2.0, "how are you", speaker="Speaker 2"),
+    ),
+)
+
+
+def test_plain_text_includes_speakers() -> None:
+    assert formatters.to_plain_text(_DIARIZED) == "Speaker 1: Hi there\nSpeaker 2: how are you\n"
+
+
+def test_plain_text_without_speakers_uses_full_text() -> None:
+    result = TranscriptionResult(full_text="  just text  ")
+    assert formatters.to_plain_text(result) == "just text\n"
+
+
+def test_markdown_has_heading_and_bold_speakers() -> None:
+    md = formatters.to_markdown(_DIARIZED)
+    assert md.startswith("# Transcript\n")
+    assert "**Speaker 1:** Hi there" in md
+    assert "**Speaker 2:** how are you" in md
+
+
+def test_html_escapes_and_marks_speakers() -> None:
+    result = TranscriptionResult(
+        full_text="a & b",
+        segments=(TranscriptionSegment(0.0, 1.0, "a & b", speaker="Speaker 1"),),
+    )
+    out = formatters.to_html(result)
+    assert out.startswith("<!doctype html>")
+    assert "<strong>Speaker 1:</strong> a &amp; b" in out
+
+
+def test_turns_merge_consecutive_same_speaker() -> None:
+    result = TranscriptionResult(
+        full_text="one two three",
+        segments=(
+            TranscriptionSegment(0.0, 1.0, "one", speaker="Speaker 1"),
+            TranscriptionSegment(1.0, 2.0, "two", speaker="Speaker 1"),
+            TranscriptionSegment(2.0, 3.0, "three", speaker="Speaker 2"),
+        ),
+    )
+    md = formatters.to_markdown(result)
+    assert "**Speaker 1:** one two" in md
+    assert "**Speaker 2:** three" in md

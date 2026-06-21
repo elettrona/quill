@@ -77,20 +77,31 @@ def parse_whisper_json(text: str) -> TranscriptionResult:
         raise SpeechError(f"Could not read the transcription output: {exc}") from exc
     if not isinstance(data, dict):
         raise SpeechError("Transcription output was not in the expected format.")
+    raw_items = [item for item in (data.get("transcription") or []) if isinstance(item, dict)]
+    # whisper.cpp tinydiarize (-tdrz) appends "[SPEAKER_TURN]" at each turn change.
+    # Only label speakers when such markers are present (i.e. diarization ran).
+    diarized = any("[SPEAKER_TURN]" in str(item.get("text", "")) for item in raw_items)
     segments: list[TranscriptionSegment] = []
-    for item in data.get("transcription", []) or []:
-        if not isinstance(item, dict):
-            continue
+    speaker_number = 1
+    for item in raw_items:
         offsets = item.get("offsets", {}) if isinstance(item.get("offsets"), dict) else {}
-        start_ms = offsets.get("from", 0)
-        end_ms = offsets.get("to", 0)
-        seg_text = str(item.get("text", "")).strip()
+        raw_text = str(item.get("text", ""))
+        turn_after = "[SPEAKER_TURN]" in raw_text
+        seg_text = raw_text.replace("[SPEAKER_TURN]", "").strip()
+        speaker = f"Speaker {speaker_number}" if diarized else ""
         try:
             segments.append(
-                TranscriptionSegment(float(start_ms) / 1000.0, float(end_ms) / 1000.0, seg_text)
+                TranscriptionSegment(
+                    float(offsets.get("from", 0)) / 1000.0,
+                    float(offsets.get("to", 0)) / 1000.0,
+                    seg_text,
+                    speaker=speaker,
+                )
             )
         except (TypeError, ValueError):
             continue
+        if turn_after:
+            speaker_number += 1
     full_text = " ".join(seg.text for seg in segments if seg.text).strip()
     language = None
     result_block = data.get("result")
@@ -128,6 +139,8 @@ def build_whisper_command(
         args += ["-l", request.language]
     if request.translate_to_english:
         args.append("-tr")
+    if request.diarize:
+        args.append("-tdrz")  # whisper.cpp tinydiarize: mark speaker turns
     return args
 
 

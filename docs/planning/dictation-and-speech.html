@@ -198,9 +198,14 @@ status-bar state + <strong>QUILL Key + Shift+D</strong> hotkey,
 <strong>distributable installer component</strong> — InnoSetup
 <code>speechwhisper</code> + build <code>--whisper-dir</code> staging +
 runtime resolution from <code>tools/speech/whispercpp</code>, so no
-manual PATH setup). Mic capture is the optional
-<code>quill[speech]</code> extra. Remaining: S4 (Faster Whisper optional
-provider), S5 (experimental voice commands).</p>
+manual PATH setup). Transcripts can be exported as <strong>plain text,
+Markdown, or HTML</strong> (plus SRT/VTT captions), and <strong>speaker
+attribution</strong> ("Speaker 1/2…") is produced offline via
+whisper.cpp tinydiarize (the <code>small.en-tdrz</code> model + the
+<code>-tdrz</code> flag + <code>[SPEAKER_TURN]</code> parsing).
+<code>sounddevice</code> is now <strong>bundled</strong> in the Windows
+build, so offline dictation works out of the box. Remaining: S4 (Faster
+Whisper optional provider), S5 (experimental voice commands).</p>
 <hr />
 <h2 id="1-where-dictation-is-today-grounded-in-code">1. Where dictation
 is today (grounded in code)</h2>
