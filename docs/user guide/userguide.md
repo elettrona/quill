@@ -1288,13 +1288,15 @@ QUILL can convert between the formats the people around you actually use, withou
 
 **Import (File > Import):** Markdown, CommonMark, GitHub-Flavored Markdown, HTML, Word documents (`.docx`), OpenDocument Text (`.odt`), Rich Text (`.rtf`), plain text, CSV / TSV tables, EPUB books, LaTeX / TeX.
 
-**Export (File > Export):** the same set plus PDF (export only).
+**Export (File > Export):** the same set plus PDF and a **DAISY Talking Book** (both export only).
 
 A few minutes of muscle memory covers most workflows:
 
 - Pick **File > Import > Word Document**, choose a `.docx`, and a new Markdown tab opens with the document ready to edit.
 - Pick **File > Export > EPUB Book**, choose a folder, and QUILL writes an EPUB next to your current file.
 - Pick **File > Export > PDF** to publish a finished document.
+
+**DAISY Talking Book export.** **File > Export > DAISY Talking Book** saves the current document as a DAISY 2.02 text-only talking book — the accessible book format read by DAISY software and by hardware players such as the Victor Reader Stream, Plextalk, and APH units. A DAISY book is a *folder* rather than a single file, so the name you choose becomes a folder holding `ncc.html`, `content.html`, and `book.smil`. Your headings become the player's navigation points, and Markdown styling is flattened to clean readable text. The book carries no audio, so a player reads it with its own text-to-speech; you can also open the folder in APH Book Wizard Producer to record or synthesize a full text-and-audio book. This export reads what is on screen, so you do not have to save first.
 
 **Single-file keyboard path.** `File > Import` and `File > Export` are regular menu items — open the menu, arrow down, press Enter. There is no single shortcut for the whole list, because the format choice is the whole point of the command. The Command Palette (`Ctrl+Shift+P`) is the fastest path: type `import` or `export` and pick the format from the filtered list.
 

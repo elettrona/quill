@@ -1435,6 +1435,23 @@ Markdown, HTML, Word documents (<code>.docx</code>), OpenDocument Text
 TSV tables, EPUB books, LaTeX / TeX.</p>
 <p><strong>Tier-1 outputs:</strong> the same set plus PDF (export
 only).</p>
+<p><strong>Non-Pandoc export — DAISY talking book (#251):</strong>
+<strong>File &gt; Export &gt; DAISY Talking Book</strong> writes a DAISY
+2.02 text-only talking book. This export does not go through Pandoc; the
+wx-free, strict-typed <code>quill/io/daisy.py</code>
+(<code>write_daisy_textonly</code>) renders the live buffer directly.
+Because a DAISY book is a folder rather than a single file, the chosen
+name becomes a folder holding <code>ncc.html</code> (Navigation Control
+Center: <code>dc:</code>/<code>ncc:</code> metadata,
+<code>multimediaType=textNCX</code>, and heading links),
+<code>content.html</code> (XHTML 1.0 with an <code>id</code> on every
+readable element), and <code>book.smil</code> (SMIL 1.0 reading-order
+container with zero-duration <code>&lt;par&gt;</code>s, since the book
+carries no audio). Headings become player navigation points; a document
+with no <code>h1</code> gets a synthetic title heading so navigation is
+well-formed. The output opens in DAISY software readers and hardware
+players (Victor Reader Stream, Plextalk, APH units) and in APH Book
+Wizard Producer for adding TTS audio.</p>
 <h5 id="53a11-single-file-import--export">5.3a.1.1 Single-file Import /
 Export</h5>
 <p><strong>File &gt; Import &gt; <format></strong> converts a single

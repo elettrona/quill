@@ -7433,6 +7433,69 @@ class MainFrame(
         if 0 <= index < len(formats):
             self.export_document(formats[index].name)
 
+    def export_daisy(self) -> None:
+        """Export the current buffer as a DAISY 2.02 text-only talking book (#251).
+
+        DAISY books are a *folder* of files, not a single file, so the chosen name
+        becomes a folder that the three book files are written into. Unlike the
+        Pandoc exports this reads the live editor buffer, so no save is required
+        first. The result opens in DAISY readers and hardware players that read
+        text-only books with their own text-to-speech.
+        """
+        from quill.io.daisy import NCC_FILENAME, write_daisy_textonly
+
+        wx = self._wx
+        if not self.editor or not getattr(self, "document", None):
+            self._show_message_box(
+                "Open or create a document before exporting.",
+                "Export",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+
+        text = self.editor.GetValue()
+        stem = self.document.path.stem if self.document.path else (self.document.name or "Untitled")
+        title = stem or "Untitled"
+        with wx.FileDialog(
+            self.frame,
+            "Export as DAISY talking book",
+            defaultDir=self._file_dialog_default_dir(),
+            defaultFile=f"{stem} (DAISY)",
+            wildcard="DAISY talking book folder|*",
+            style=wx.FD_SAVE,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Export as DAISY talking book") != wx.ID_OK:
+                return
+            book_dir = Path(dialog.GetPath())
+
+        # The picker hands back a file-style path; treat it as the book folder.
+        if book_dir.suffix:
+            book_dir = book_dir.with_suffix("")
+        if book_dir.exists() and any(book_dir.iterdir()):
+            confirm = self._show_message_box(
+                f"The folder {book_dir.name} already exists and is not empty. "
+                "Write the DAISY book into it anyway?",
+                "Folder exists",
+                wx.ICON_QUESTION | wx.YES_NO | wx.NO_DEFAULT,
+            )
+            if confirm != wx.ID_YES:
+                self._set_status("DAISY export cancelled")
+                return
+
+        try:
+            write_daisy_textonly(text, book_dir, title=title)
+        except OSError as error:
+            self._show_message_box(
+                f"DAISY export failed: {error}",
+                "Export",
+                wx.ICON_ERROR | wx.OK,
+            )
+            self._set_status("DAISY export failed")
+            return
+
+        self._announce(f"Exported DAISY talking book {book_dir.name}")
+        self._set_status(f"Exported DAISY talking book to {book_dir / NCC_FILENAME}")
+
     def run_batch_conversion_wizard(self) -> None:
         """Open the Batch Conversion wizard and submit the resulting plan."""
 

@@ -2324,8 +2324,8 @@ freezes.</p>
 GitHub-Flavored Markdown, HTML, Word documents (<code>.docx</code>),
 OpenDocument Text (<code>.odt</code>), Rich Text (<code>.rtf</code>),
 plain text, CSV / TSV tables, EPUB books, LaTeX / TeX.</p>
-<p><strong>Export (File &gt; Export):</strong> the same set plus PDF
-(export only).</p>
+<p><strong>Export (File &gt; Export):</strong> the same set plus PDF and
+a <strong>DAISY Talking Book</strong> (both export only).</p>
 <p>A few minutes of muscle memory covers most workflows:</p>
 <ul>
 <li>Pick <strong>File &gt; Import &gt; Word Document</strong>, choose a
@@ -2336,6 +2336,19 @@ folder, and QUILL writes an EPUB next to your current file.</li>
 <li>Pick <strong>File &gt; Export &gt; PDF</strong> to publish a
 finished document.</li>
 </ul>
+<p><strong>DAISY Talking Book export.</strong> <strong>File &gt; Export
+&gt; DAISY Talking Book</strong> saves the current document as a DAISY
+2.02 text-only talking book — the accessible book format read by DAISY
+software and by hardware players such as the Victor Reader Stream,
+Plextalk, and APH units. A DAISY book is a <em>folder</em> rather than a
+single file, so the name you choose becomes a folder holding
+<code>ncc.html</code>, <code>content.html</code>, and
+<code>book.smil</code>. Your headings become the player's navigation
+points, and Markdown styling is flattened to clean readable text. The
+book carries no audio, so a player reads it with its own text-to-speech;
+you can also open the folder in APH Book Wizard Producer to record or
+synthesize a full text-and-audio book. This export reads what is on
+screen, so you do not have to save first.</p>
 <p><strong>Single-file keyboard path.</strong>
 <code>File &gt; Import</code> and <code>File &gt; Export</code> are
 regular menu items — open the menu, arrow down, press Enter. There is no

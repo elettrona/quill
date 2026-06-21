@@ -424,6 +424,8 @@ QUILL ships a curated Tier-1 list of Pandoc-supported formats in the File menu a
 
 **Tier-1 outputs:** the same set plus PDF (export only).
 
+**Non-Pandoc export — DAISY talking book (#251):** **File > Export > DAISY Talking Book** writes a DAISY 2.02 text-only talking book. This export does not go through Pandoc; the wx-free, strict-typed `quill/io/daisy.py` (`write_daisy_textonly`) renders the live buffer directly. Because a DAISY book is a folder rather than a single file, the chosen name becomes a folder holding `ncc.html` (Navigation Control Center: `dc:`/`ncc:` metadata, `multimediaType=textNCX`, and heading links), `content.html` (XHTML 1.0 with an `id` on every readable element), and `book.smil` (SMIL 1.0 reading-order container with zero-duration `<par>`s, since the book carries no audio). Headings become player navigation points; a document with no `h1` gets a synthetic title heading so navigation is well-formed. The output opens in DAISY software readers and hardware players (Victor Reader Stream, Plextalk, APH units) and in APH Book Wizard Producer for adding TTS audio.
+
 ##### 5.3a.1.1 Single-file Import / Export
 
 **File > Import > <format>** converts a single file from disk into a new Markdown buffer in a new tab. **File > Export > <format>** converts the current buffer to the named format on a background thread. Both routes use Pandoc and `quill.stability.safe_subprocess.run_subprocess_safely` so a misbehaving Pandoc cannot take QUILL down.

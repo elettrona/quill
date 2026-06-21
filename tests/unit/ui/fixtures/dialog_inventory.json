@@ -114,6 +114,7 @@
   "quill/ui/main_frame.py::MainFrame.compare_start_with_file::wx.FileDialog": "native",
   "quill/ui/main_frame.py::MainFrame.compare_with_file::wx.FileDialog": "native",
   "quill/ui/main_frame.py::MainFrame.enable_braille_mode::wx.MessageDialog": "native",
+  "quill/ui/main_frame.py::MainFrame.export_daisy::wx.FileDialog": "native",
   "quill/ui/main_frame.py::MainFrame.export_document::wx.FileDialog": "native",
   "quill/ui/main_frame.py::MainFrame.export_document_other::wx.SingleChoiceDialog": "native",
   "quill/ui/main_frame.py::MainFrame.export_keyboard_pack_file::wx.Dialog": "hardened_custom",

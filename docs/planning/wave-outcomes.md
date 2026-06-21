@@ -9,24 +9,22 @@
 Legend: ✅ shipped · 🚧 in progress · ⬜ planned.
 
 > **2026-06-21 reorganisation:** the earlier "waves" were consolidated. The
-> completed work — trust-the-basics, the braille suite, dictation honesty, and
-> the whole offline speech stack (formerly Waves 0, 1, 3, and 4) — is now
-> **Phase 1**, with DAISY export as its single remaining item. Everything still
-> planned moved forward by one: Verbosity & Polish is Phase 2, the AI Hub is
-> Phase 3, faster navigation and publishing is Phase 4, and platform polish is
-> Phase 5.
+> completed work — trust-the-basics, the braille suite, dictation honesty, the
+> whole offline speech stack, and DAISY export (formerly Waves 0, 1, 3, and 4) —
+> is now **Phase 1, complete**. Everything still planned moved forward by one:
+> Verbosity & Polish is Phase 2, the AI Hub is Phase 3, faster navigation and
+> publishing is Phase 4, and platform polish is Phase 5.
 
 ---
 
-## Phase 1 — Trust, braille, and private speech 🚧 (DAISY export next)
+## Phase 1 — Trust, braille, and private speech ✅ (complete)
 
 **The promise:** "When I open and save a file I get it back exactly; QUILL tells
 me the truth about what it can do; and I can dictate or transcribe entirely on
 my own computer."
 
-This phase folds together everything that has already shipped (formerly Waves 0,
-1, 3, and 4). The **one remaining item is DAISY export (#251)** — the next thing
-on the list to complete.
+This phase folds together everything that has shipped (formerly Waves 0, 1, 3,
+and 4). With DAISY export (#251) landed, **Phase 1 is complete.**
 
 ### Trust the basics (was Wave 0) ✅
 
@@ -75,10 +73,14 @@ on the list to complete.
   status-bar indicator, and a chosen microphone. (#617 S3)
 - **Captions**: turn a recording into SRT or VTT subtitles you can review and save.
 
-### Remaining in Phase 1
+### DAISY talking-book export (#251) ✅
 
-- **DAISY talking-book export** — save your document as a DAISY 2.02 text-only
-  talking book so it opens in DAISY readers and players. (#251) ⬜ **NEXT**
+- **Export to a DAISY 2.02 text-only talking book** — File > Export > DAISY
+  Talking Book turns the document into a DAISY book folder (`ncc.html`,
+  `content.html`, `book.smil`) that opens in DAISY software readers and on
+  hardware players such as the Victor Reader Stream, Plextalk, and APH units, or
+  in APH Book Wizard Producer to add TTS audio. Your headings become player
+  navigation points; inline markup is flattened to clean readable text.
 
 Accessibility win: the editor stops doing invisible things to your document,
 braille transcribers get a real proofing-and-validation workflow with spoken

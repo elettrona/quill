@@ -70,6 +70,7 @@ class MenuBuilderMixin:
         self._id_export_epub = wx.NewIdRef()
         self._id_export_pdf = wx.NewIdRef()
         self._id_export_plain_text = wx.NewIdRef()
+        self._id_export_daisy = wx.NewIdRef()  # DAISY 2.02 text-only talking book (#251)
         self._id_export_other = wx.NewIdRef()  # "Other Pandoc Format..."
         self._id_batch_convert_import = wx.NewIdRef()
         self._id_batch_convert_export = wx.NewIdRef()
@@ -223,6 +224,10 @@ class MenuBuilderMixin:
         export_menu.Append(
             self._id_export_plain_text,
             self._menu_label(_("Plain &Text..."), "file.export_plain_text"),
+        )
+        export_menu.Append(
+            self._id_export_daisy,
+            self._menu_label(_("&DAISY Talking Book..."), "file.export_daisy"),
         )
         export_menu.AppendSeparator()
         export_menu.Append(
@@ -2217,6 +2222,7 @@ class MenuBuilderMixin:
             lambda _e: self.export_document("plain_text"),
             id=self._id_export_plain_text,
         )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.export_daisy(), id=self._id_export_daisy)
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.export_document_other(), id=self._id_export_other
         )

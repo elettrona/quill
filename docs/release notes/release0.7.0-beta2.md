@@ -318,13 +318,23 @@ QUILL has a privacy-first speech engine that runs entirely on your computer. It 
 
 The offline speech **engine is provided by QUILL**: choose the *"offline speech engine (whisper.cpp)"* component in the installer (or drop the executable into `tools\speech\whispercpp` in a portable copy) — you no longer need to install anything separately or edit your PATH. Then download a model from Manage Speech Models. Dictation also needs microphone-capture support (the optional `sounddevice` package); if it is missing, QUILL tells you and you can still use Windows dictation.
 
+## DAISY talking-book export
+
+QUILL can now save your document as a **DAISY 2.02 text-only talking book** — the accessible book format read by DAISY software and by hardware players such as the Victor Reader Stream, Plextalk, and APH units. Choose **File → Export → DAISY Talking Book**.
+
+- **It reads what is on screen.** The export uses your current document text, so you do not have to save first.
+- **A DAISY book is a folder, not a single file.** The name you choose becomes a folder containing the three files a DAISY player expects (`ncc.html`, `content.html`, and `book.smil`). If the folder already exists and is not empty, QUILL asks before writing into it.
+- **Your headings become navigation points.** A player can jump heading to heading just as it would in any DAISY book. If your document has no headings, QUILL adds a title heading so navigation still works.
+- **Clean, readable text.** Markdown styling is flattened to plain readable text, and the book is exported text-only — it carries no recorded audio, so a player reads it with its own text-to-speech.
+- **Add audio later if you want.** Because the export is a standard DAISY 2.02 book, you can open the folder in a tool such as APH Book Wizard Producer to record or synthesize a full text-and-audio talking book.
+
 ## What is coming next
 
-QUILL's roadmap is organized into clear workstreams that are all targeted to ship, with the work tracked openly. **Landed in this beta:** Braille Mode proofing, validation, restore-your-place, and back-translation; and the offline speech suite above (transcription, captions, dictation, speaker attribution, and a bundled engine). **Coming next:**
+QUILL's roadmap is organized into clear workstreams that are all targeted to ship, with the work tracked openly. **Landed in this beta:** Braille Mode proofing, validation, restore-your-place, and back-translation; the offline speech suite above (transcription, captions, dictation, speaker attribution, a bundled engine, and the optional Faster Whisper engine); and DAISY talking-book export. **Coming next:**
 
 - **Verbosity controls.** Fine-grained, screen-reader-first control over what QUILL announces and when, including Quiet and Meeting modes — the next major workstream.
-- **More publishing and export options**, including a DAISY talking-book export.
-- **More speech engines**, such as an optional high-performance provider, and experimental voice commands.
+- **More publishing and export options**, such as direct publishing to external platforms.
+- **Experimental offline voice commands** — drive QUILL hands-free with spoken commands, built on the offline speech engine (#663).
 
 These are tracked as individual issues and in the planning documents under `docs/planning/`. Because this is a beta, your feedback directly shapes the order in which they arrive.
 

@@ -27,12 +27,11 @@ closed won't-do.
 
 | Status | Count |
 | --- | ---: |
-| ✅ Shipped | 10 (#648, #649, #643, #646, #238, #239, #240, #241, #242, #246) |
-| 🚧 In progress | 1 (Speech & Dictation #617: S0 done, S1+ next) |
+| ✅ Shipped | 12 (#648, #649, #643, #646, #238, #239, #240, #241, #242, #246, #251, #617) |
 | 🧹 Resolved (bookkeeping) | 2 (#600, #601 — braille design captured in docs) |
 | ❌ Out of scope | 3 (Linux/Unix — #520, #565, #589) |
-| ⬜ Planned | 240 |
-| **Total tracked** | **256** |
+| ⬜ Planned | 240 (incl. new #663 — Speech S5 offline voice commands) |
+| **Total tracked** | **257** |
 
 > **#246 completed via back-translation (source-to-BRF).** The deliverable is
 > braille→text **back-translation**, now selection-aware (Braille > Translation >
@@ -82,7 +81,7 @@ closed won't-do.
 ## Execution waves (lowest-hanging first)
 
 1. **Wave 0 — done:** text round-trip + VoiceOver names (#648/#649/#643/#646). ✅
-2. **Wave 1 — Speech S0 + complete Braille + DAISY export.** Speech S0 honesty fix ✅; Braille #238/#239/#240/#241/#242 ✅ and back-translation #246 ✅ — braille proofing, validation, and back-translation all ship. **Remaining (next up): DAISY 2.02 text-only export (#251).**
+2. **Wave 1 — Speech S0 + complete Braille + DAISY export. ✅ Complete.** Speech S0 honesty fix ✅; Braille #238/#239/#240/#241/#242 ✅ and back-translation #246 ✅ — braille proofing, validation, and back-translation all ship; **DAISY 2.02 text-only export #251 ✅** (File > Export > DAISY Talking Book writes an `ncc.html` + `content.html` + `book.smil` folder readable on Victor Stream / Plextalk / APH players and in Book Wizard Producer).
 3. **Wave 2 — Verbosity & Polish** (combined): the core (#271, #361–#366) and the §5–§46 spec (#367–#404) **plus** the addenda polish set (#405–#504) shipped together as one verbosity workstream — keep the high-value knobs, fold or fast-track the rest, close each as it lands. (Formerly split across Waves 2 and 8; merged because it is all one workstream with no cross-wave risk.)
 4. **Wave 3 — Speech foundation S1–S2** (#617): provider registry, model manager, offline WAV transcription.
 5. **Wave 4 — Captions & dictation** (#617 Speech S3).
@@ -99,13 +98,14 @@ closed won't-do.
 | 649 | Text round-trip: CRLF + blank-line runs preserved on save | ✅ |
 | 643 | AI Hub notebook accessible name (VoiceOver) | ✅ |
 | 646 | AI Hub tab group accessible name (VoiceOver) | ✅ |
-| 617 | Speech **S0–S3** done: dictation setting honest; offline STT foundation; whisper.cpp provider + offline transcription + model manager (HF-Hub); **transcript formats (plain/Markdown/HTML)** + **captions (SRT/VTT)**; **speaker attribution** (tinydiarize); **offline dictate-at-cursor** (QUILL Key+Shift+D, start/stop earcons, status bar); **mic selection**; whisper.cpp as a **distributable installer component** + **`sounddevice` bundled**. Epic #617 stays open for S4 (Faster Whisper) / S5 (voice commands). | 🚧 |
+| 617 | Speech **S0–S4** done and epic **closed as delivered**: dictation setting honest; offline STT foundation; whisper.cpp provider + offline transcription + model manager (HF-Hub); **transcript formats (plain/Markdown/HTML)** + **captions (SRT/VTT)**; **speaker attribution** (tinydiarize); **offline dictate-at-cursor** (QUILL Key+Shift+D, start/stop earcons, status bar); **mic selection**; whisper.cpp as a **distributable installer component** + **`sounddevice` bundled**; **optional Faster Whisper engine + Speech Engine chooser (S4)**. The one remaining capability, **S5 offline voice commands**, is split out to **#663**. | ✅ |
 | 238 | Braille BR-015 — `brf_sidecar.py` foundation (atomic per-file sidecar: position, proofing, anchors, notes) | ✅ |
 | 239 | Braille BR-016 — restore last position on open + spoken announcement (`brf_progress.py`) | ✅ |
 | 240 | Braille BR-017 — Proofing submenu (8 commands, sidecar-backed; `brf_proofing.py` + `main_frame_braille_phase3.py`) | ✅ |
 | 241 | Braille BR-018 — `brf_validator.py` layout validator (10 warning categories, read-only) | ✅ |
 | 242 | Braille BR-019 — Validation submenu (4 commands) + Warnings List dialog | ✅ |
 | 246 | Braille BR-023 — selection-aware back-translation (braille→text source recovery); compare + per-page linking descoped | ✅ |
+| 251 | DAISY 2.02 text-only talking-book export (File > Export > DAISY Talking Book; wx-free `quill/io/daisy.py` writes ncc.html + content.html + book.smil) | ✅ |
 
 ## Out of scope
 
@@ -134,7 +134,8 @@ closed won't-do.
 | 575 | P2 | ⬜ | [Planning] QUILL 2.0 deferred: BW-9 — BITS Whisperer BW-9 — deferred to QUILL 2.0 |
 | 576 | P2 | ⬜ | [Planning] QUILL 2.0 deferred: BW-10 — BITS Whisperer BW-10 — deferred to QUILL 2.0 |
 | 577 | P2 | ⬜ | [Planning] QUILL 2.0 deferred: WATCH-9 — BITS Whisperer WATCH-9 — deferred to QUILL 2.0 |
-| 617 | — | ⬜ | Offline Speech-to-Text Provider Architecture |
+| 617 | — | ✅ | Offline Speech-to-Text Provider Architecture (S0–S4 shipped; closed as delivered) |
+| 663 | — | ⬜ | Offline voice commands (Speech S5, split from #617) |
 
 ### Verbosity System  (146 issues · Risk Med · Impact High · Value High · Effort High)
 
@@ -327,7 +328,7 @@ closed won't-do.
 | # | Priority | Status | Title |
 | ---: | :---: | :---: | --- |
 | 140 | — | ⬜ | Support Direct Publishing to WordPress and Other Publishing Platforms. |
-| 251 | — | ⬜ | Suggestion: Export to DAISY talking book |
+| 251 | — | ✅ | Suggestion: Export to DAISY talking book |
 
 ### Platform & Distribution  (10 issues · Risk High · Impact High · Value High · Effort High)
 
