@@ -97,7 +97,7 @@ class _EditorHostServices:
         return self._frame._power_tools_prompt_single(title, label, default)
 
     def set_status(self, message: str) -> None:
-        self._frame._set_status_text(message)
+        self._frame._set_status(message)
 
     def show_choices(self, title: str, items: list[str]) -> str | None:
         wx = self._frame._wx if hasattr(self._frame, "_wx") else None

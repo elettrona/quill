@@ -197,6 +197,14 @@ Importing another person’s profile or a backup no longer replaces your persona
 
 Selecting **OK** in Preferences, choosing **Reset to Factory Defaults**, or importing a settings file could close QUILL with `'MainFrame' object has no attribute 'set_theme'`. The routine that applies your settings after these actions was calling several methods that did not exist. All of these calls now reach the correct, existing code, so theme, spell-check, soft wrap, and dirty-title-style preferences apply immediately and reliably whenever you save settings.
 
+### Quillins reporting status no longer crash QUILL
+
+A Quillin calling the standard "set status" host action could close QUILL with `'MainFrame' object has no attribute '_set_status_text'`. The host adapter was calling a method that never existed; it now reaches the real status-bar update, so Quillins can report progress and results without crashing the app.
+
+### The Developer Console correctly reports the active document name
+
+`q.get_document_name()` in the Developer Console always returned an empty string because it called a method that never existed. It now returns the actual file name of the document you are editing.
+
 ## Help, diagnostics, and everyday usability
 
 ### The User Guide stays open and keeps its place
