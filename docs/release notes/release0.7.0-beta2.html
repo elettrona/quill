@@ -185,6 +185,13 @@ is in the load path: when a user upgrades from 0.5.0 or 0.7.0 Beta 1,
 their saved settings, keymap, recent files, and feature profile travel
 with them, and any saved entry that has become invalid is cleaned up on
 startup instead of silently ignored.</p>
+<p>It is also a substantial accessibility and macOS polish release: the
+setup wizard now focuses the page heading first, the editor caret
+handler is resilient to a destroyed widget on close, Option+Left /
+Option+Right are no longer hijacked by Back / Forward Location on macOS,
+and the Help menu is registered as the macOS system Help menu so the
+conventional <code>Cmd+?</code> shortcut works. See Bug fixes below for
+the full list.</p>
 <p>A standalone migration utility is still planned. This release covers
 the hot path so a user with a 0.5.0 install does not have to run
 one.</p>
@@ -436,6 +443,69 @@ close." The close-path save prompt now passes
 defensively for any other teardown-time dialog. Save and Cancel paths
 are unchanged; the Save path still returns focus to the editor as
 before.</p></li>
+<li><p><strong>Closing the last document no longer crashes the caret
+handler (#603).</strong> The editor caret-activity handler can fire
+after the underlying <code>TextCtrl</code> has been destroyed at the C++
+layer — for example, when you press <code>Ctrl+W</code> on a dirty
+document, pick "Don't Save" on the prompt, and the next caret event is
+still queued. The helper that reads the editor's value to play the
+indent tone was calling <code>editor.GetValue()</code> and
+<code>editor.GetInsertionPoint()</code> on the dead widget, raising
+<code>RuntimeError: wrapped C/C++ object of type TextCtrl has been deleted</code>
+and surfacing as "QUILL encountered an unexpected error and needs to
+close." The read is now wrapped in a
+<code>try/except RuntimeError</code> so the event handler swallows the
+dead-widget error cleanly, the next caret movement gets its tone, and
+the window closes without an error dialog.</p></li>
+<li><p><strong>Option+Left / Option+Right are no longer hijacked by Back
+/ Forward Location on macOS (#609).</strong> On macOS,
+<code>Option+Left</code> and <code>Option+Right</code> are the
+system-standard word-by-word cursor movement chords (and VoiceOver uses
+them for word-by-word reading), but <code>Back</code> and
+<code>Forward</code> Location were bound to <code>Alt+Left</code> and
+<code>Alt+Right</code>, which wxPython maps to the Option key. Pressing
+Option+Left in the editor jumped to the previous location instead of
+moving the cursor by one word, and VoiceOver's word-by-word reading
+never fired. The macOS default for Back / Forward Location is now
+<code>Cmd+[</code> and <code>Cmd+]</code> (the conventional macOS back /
+forward chord, matching Safari, Finder, and most other Mac apps).
+Windows users keep the existing <code>Alt+Left</code> and
+<code>Alt+Right</code>. A pre-#609 macOS user whose saved
+<code>keymap.json</code> still records the Windows chord has it
+rewritten to the new macOS chord on first launch, and the corrected
+value is persisted back so the next launch is clean.</p></li>
+<li><p><strong>Setup Wizard page heading is the first focusable element,
+and the preview is no longer announced as "edit text" by VoiceOver
+(#610).</strong> On every wizard page, the page heading was a plain
+<code>wx.StaticText</code>, which cannot accept keyboard focus, so the
+wizard's focus helper skipped past it and landed on the first focusable
+child — the read-only preview <code>TextCtrl</code>. VoiceOver on macOS
+announced the preview as an "edit text" field regardless of
+<code>TE_READONLY</code> (macOS NSAccessibility does not change the role
+for a read-only TextCtrl), so a screen-reader user heard the preview
+before the page name. The heading is now a no-border
+<code>wx.Button</code> styled to look like a heading, which gives it a
+real focusable role; the focus helper now lands on the heading first.
+The preview widget is replaced with an adaptive renderer: a
+<code>SidePreview</code> (webview) for sighted users, and a multi-line
+<code>wx.StaticText</code> for screen-reader users, both of which
+VoiceOver announces as a document or static text rather than an editable
+field. Sighted users see the same styled preview they had
+before.</p></li>
+<li><p><strong>Help menu is now recognised as the macOS system Help menu
+(#613).</strong> wxPython on macOS auto-generates the application menu
+and tries to detect the Help menu by its title; without the
+<code>SetHelpMenu</code> hint, macOS left the Help menu in the slot the
+menu bar gave it (still last, but not flagged as the system Help menu),
+so the AppKit <code>APP_NAME &gt; Help</code> shortcut did not work and
+VoiceOver's "Open the Help menu" gesture (<code>VO+Cmd+?</code>) did not
+focus the Help menu. After the menu bar is built, the macOS code path
+now calls <code>menu_bar.SetHelpMenu(help_menu)</code> (with a
+<code>hasattr</code> + <code>try/except</code> fallback to the classic
+<code>MacSetHelpMenuTitle</code> for older wx builds) so macOS
+recognises the Help menu as the system Help menu and the conventional
+<code>Cmd+?</code> shortcut works. Windows and Linux behaviour is
+unchanged.</p></li>
 </ul>
 </body>
 </html>

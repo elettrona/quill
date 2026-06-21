@@ -50,6 +50,7 @@ Quill is also in beta. Expect polish, depth, and real daily utility. Also expect
 - [Help, Learning, and Daily Confidence](#help-learning-and-daily-confidence)
   - [Context-Sensitive Help (F1)](#context-sensitive-help-f1)
   - [Personalising QUILL](#personalising-quill)
+  - [Recent Fixes in 0.7.0 Beta 2](#recent-fixes-in-070-beta-2)
 - [Translation and Community Localization](#translation-and-community-localization)
   - [How the Translation Pipeline Works](#how-the-translation-pipeline-works)
   - [Contributing Translations](#contributing-translations)
@@ -424,8 +425,8 @@ Core location commands:
 
 - **Go To Line...**
 - **Go To Page...**
-- **Back Location**
-- **Forward Location**
+- **Back Location** (default: `Alt+Left` on Windows, `Cmd+[` on macOS — see [Recent Fixes](#recent-fixes-in-070-beta-2) for why the macOS chord changed in 0.7.0 Beta 2)
+- **Forward Location** (default: `Alt+Right` on Windows, `Cmd+]` on macOS — see [Recent Fixes](#recent-fixes-in-070-beta-2))
 
 Structural movement commands:
 
@@ -1098,6 +1099,11 @@ The **Help** menu is where Quill becomes a guide.
 If you only remember one thing about Help, remember this: it is a working surface, not a dead-end menu. The welcome guide teaches the basics, the keyboard reference reflects your live bindings, the user guide gives the full map, diagnostics package the current state, and the bug-report action turns that state into a support-ready starting point.
 
 Menu stability note: Quill now defers internal menu-state updates while native menus are open, then applies them after menu close. This prevents rapid-arrow navigation churn and keeps Help menu navigation stable.
+
+> **0.7.0 Beta 2 (macOS):** the **Help** menu is now registered as
+> the macOS system Help menu, so the conventional `Cmd+?` shortcut
+> works. See [Recent Fixes](#recent-fixes-in-070-beta-2) for the full
+> list.
 
 ### How to report a problem from inside Quill
 
@@ -1838,6 +1844,8 @@ Quill runs on **macOS** as well as Windows, from one codebase, with feature pari
 - **VoiceOver-first.** On macOS, Quill routes its announcements to **VoiceOver** and never speaks over it. Headings, regions, and result messages behave the way they do on Windows with NVDA/JAWS.
 - **On-device AI.** Ask Quill uses **Apple Foundation Models** (Apple Intelligence) on a supported Mac — no model download and no cloud. The on-device GGUF/llama.cpp picker is hidden on macOS because Apple's model is used instead; you can still connect Ollama or a cloud endpoint if you prefer.
 - **Standard Mac behaviors.** Preferences and About use the standard macOS menu locations (`Quill -> Settings`, `Quill -> About Quill`).
+- **Help menu registered as system Help.** The Help menu is registered as the macOS system Help menu, so the conventional `Cmd+?` Help shortcut works as expected (#613).
+- **Back / Forward Location on macOS** uses `Cmd+[` and `Cmd+]` so it does not collide with VoiceOver's word-by-word `Option+Left` / `Option+Right` reading (#609). Windows keeps `Alt+Left` / `Alt+Right`.
 - **Signed and notarized.** Release Mac builds are code-signed with a Developer ID certificate and notarized by Apple, so Gatekeeper opens them without warnings. The app ships as a `.app` (and disk image).
 - **The accessible WebView** that powers the chat, the Markdown/HTML preview, the About box, and the update dialogs reads correctly under VoiceOver, just as it does under NVDA and JAWS on Windows.
 
@@ -2249,6 +2257,11 @@ The wizard walks you through six short pages (five if you do not enable AI writi
 5. **Keyboard and Sound** — choose a keyboard pack and whether QUILL plays audio cues. QUILL auto-detects your screen reader and sets accessible defaults.
 6. **Summary** — review all your choices before they are applied. The summary is plain text: your profile name, what features are active, which Quillins are enabled, your keyboard pack, and your sound setting. Use Back to revise any page. Nothing changes in QUILL until you press Finish.
 
+> **0.7.0 Beta 2:** every wizard page now starts with a focusable
+> heading, and the preview block is rendered as a read-only document
+> so VoiceOver does not announce it as an editable text field. See
+> [Recent Fixes](#recent-fixes-in-070-beta-2) for the full list.
+
 **Important:** The wizard is transactional. Your choices are held in memory until you press Finish. If you close or cancel the wizard, no settings are changed.
 
 **Profiles explained:** The four built-in profiles each start you at a different level of feature density and accessibility support. You can switch profiles at any time from **Tools → Customize & Support → Profiles and Features...** or by pressing `Alt+Shift+P`.
@@ -2259,6 +2272,111 @@ The wizard walks you through six short pages (five if you do not enable AI writi
 | Standard | Most users — balanced feature set with AI and tools available |
 | Power User | All features on; suited to advanced writing, extraction, and GLOW workflows |
 | Accessibility Focus | Screen-reader primary; maximises keyboard coverage and announcements |
+
+### Recent Fixes in 0.7.0 Beta 2
+
+The Beta 2 release includes a sweep of accessibility, macOS, and
+crash-resistance fixes. Where the fix is invisible to the user, the
+note says so; where the fix is user-visible, the note gives the
+user-facing detail. The full list is in the [release notes](../release%20notes/release0.7.0-beta2.md).
+
+- **#603 — closing the last document no longer crashes the caret
+  handler.** Bug-fix; nothing to change. The crash surfaced as
+  "QUILL encountered an unexpected error and needs to close" when
+  you pressed `Ctrl+W` on a dirty document, picked "Don't Save,"
+  and the next caret event was still queued against the destroyed
+  editor widget. The fix is a defensive guard on the editor-read
+  helper; you will not see the error dialog any more.
+- **#605 — Help → Check for Updates opens cleanly.** Bug-fix; the
+  dialog had a stale `ImportError` that surfaced as
+  "QUILL encountered an unexpected error." Open Help → Check for
+  Updates and the update channel selector appears as before.
+- **#606 — Setup Wizard opens on a clean window, not on top of
+  an "Untitled" tab.** Returning users (anyone who has already
+  run the wizard) see the normal "Untitled" tab on launch;
+  first-run users see the wizard on an empty notebook and an
+  untitled document is created automatically after the wizard
+  finishes.
+- **#608 — `Cmd+Q` now quits QUILL on macOS.** The new default is
+  `Ctrl+Q` (which maps to `Cmd+Q` on macOS), and Quote Lines has
+  moved from `Ctrl+Q` to `Ctrl+Shift+Q` to make room.
+  Unquote Lines moved from `Ctrl+Shift+Q` to `Ctrl+Shift+K` to
+  keep the pair on the home row. A saved `keymap.json` that
+  still has the old chords is rewritten on first launch, and the
+  corrected value is persisted back so the next launch is clean.
+- **#609 — `Option+Left` / `Option+Right` are no longer hijacked
+  by Back / Forward Location on macOS.** On macOS, the new
+  default for Back / Forward Location is `Cmd+[` and `Cmd+]`
+  (the conventional macOS back / forward chord, matching Safari,
+  Finder, and most other Mac apps). Windows users keep the
+  existing `Alt+Left` / `Alt+Right`. A pre-#609 macOS user whose
+  saved `keymap.json` still records the Windows chord has it
+  rewritten to the new macOS chord on first launch, and the
+  corrected value is persisted back so the next launch is clean.
+- **#610 — Setup Wizard page heading is the first focusable
+  element, and the preview is no longer announced as
+  "edit text" by VoiceOver.** A screen-reader user now lands on
+  the page heading on every wizard page, not on the read-only
+  preview block. The preview itself is rendered as a read-only
+  document (not a `TextCtrl`), so VoiceOver announces it as a
+  document or static text rather than as an editable text field.
+  Sighted users see the same styled preview they had before.
+- **#611 — wizard Back and Next buttons are simply "Back" and
+  "Next."** VoiceOver on macOS was reading the old labels
+  ("`< Back`" and "`Next >`") as "less than Back" and "Next
+  greater than." The buttons now read "Back" and "Next," which
+  is what every screen reader announces and what every sighted
+  user sees on the face of the button.
+- **#612 — Read Aloud and Insert Snippet no longer fire on bare
+  `R` and `S` keystrokes.** Bug-fix; the friendly chord label
+  in the Tools and Insert menus was being parsed by wx as a
+  real native keyboard accelerator, so the bare letters `R` and
+  `S` got bound as modifier-less global shortcuts. The chord
+  label is now shown as plain parenthetical text after the menu
+  item name rather than as a wx accelerator, so the letters
+  belong to your text again.
+- **#613 — the Help menu is now recognised as the macOS system
+  Help menu.** Bug-fix; the macOS `Cmd+?` Help shortcut now
+  works (it was already wired in wx, but the OS only honours it
+  for menus that are flagged as the system Help menu). Windows
+  and Linux behaviour is unchanged.
+- **#614 — AI Hub opens cleanly from the wizard and the editor
+  caret handler no longer fires before a document is loaded.**
+  Bug-fix; the AI Hub's tab labels and the first-run AI Hub
+  button were both affected by the same `lazy_gettext` proxy
+  issue, and the caret handler crashed silently on every
+  keystroke before you had even selected a document.
+- **#615 — JAWS, NVDA, Narrator, and VoiceOver now announce the
+  QUILL version.** The window title now includes the full
+  QUILL version (for example, "QUILL for All 0.7.0 Beta 2"),
+  so every screen reader that announces the focused window —
+  JAWS `Insert+T`, NVDA `+T`, Narrator `Caps+H`, VoiceOver —
+  reads the version along with the document name. The
+  `Ctrl+JAWSKey+V` path still reports only "Version" until a
+  versioned launcher ships; the window title is the change you
+  can hear today.
+- **#616 — VoiceOver now reads the editor as a native text area
+  on macOS.** Bug-fix; the editor's NSView now has its
+  NSAccessibility role pinned to `NSTextView` so VoiceOver
+  announces it as a normal, editable text area with full
+  text-navigation semantics. Windows behaviour is unchanged.
+- **#618 — Report a Bug dialog now speaks field names on macOS,
+  opens in its own window so you can alt-tab to the editor, and
+  no longer auto-opens a browser after submit.** Every field is
+  bound to its label via the standard accessibility name, so
+  VoiceOver reads "Summary, edit text" / "What happened, edit
+  text" / etc. when you tab into a field. The dialog opens in a
+  non-modal window by default. The report is always on your
+  clipboard after submit; the auto-open-browser behaviour is
+  now opt-in via Settings (Settings → "After you submit a bug
+  report, automatically open the support form in your default
+  browser").
+- **#619 — `Ctrl+F4` on a dirty document no longer crashes when
+  you pick "Don't Save."** Bug-fix; the close-path save prompt
+  was queuing an `editor.SetFocus` via `CallAfter` that fired
+  after the close had already destroyed the editor TextCtrl.
+  The Save and Cancel paths are unchanged; the Save path still
+  returns focus to the editor as before.
 
 ## Translation and Community Localization
 
