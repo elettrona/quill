@@ -60,15 +60,13 @@ def test_high_confidence_separator_line_with_continuation_letter() -> None:
 
 
 def test_high_confidence_repeated_print_page_with_continuation_letter() -> None:
-    """Right-margin page number on line 1 that matches the previous page (continuation).
+    """Right-margin page number on line 1 that matches the previous page is high.
 
-    The current detector scores right-margin-only anchors as "medium"
-    confidence; a real "high" classification would require an explicit
-    separator line (e.g. "--------- 7"). This test is therefore a
-    regression fence: when the detector is taught to classify
-    right-margin continuation as high confidence, the indicator must
-    carry the previous page's print number so the continuation-letter
-    helper can pair the two.
+    Page 1's right-margin "7" anchors the print page; page 2's right-margin
+    "7a" carries the same digits plus a trailing continuation letter, which
+    is the signature of a high-confidence right-margin continuation
+    boundary (the print page has not changed; the letter is the braille
+    continuation marker).
     """
     page1_line1 = "chapter 1                                7"
     rest1 = ["x" * 30] * 24
@@ -81,18 +79,11 @@ def test_high_confidence_repeated_print_page_with_continuation_letter() -> None:
     page_map = build_page_map(doc)
     assert page_map.page_count == 2
     indicators = detect_print_pages(text, page_map)
-    # The second page's line-1 number matches page 1's and carries a
-    # letter. The detector currently scores it as "medium"; we assert
-    # the indicator exists with the right print page so a future
-    # "high" confidence branch has nothing to break.
     page2_indicator = next(
         (i for i in indicators if i.braille_page == 2 and i.detected_print_page == 7), None
     )
     assert page2_indicator is not None, f"expected continuation indicator, got {indicators}"
-    # Today: "medium". Tomorrow (when right-margin continuation becomes
-    # a high-confidence boundary): this assertion is the one to relax
-    # to "high".
-    assert page2_indicator.confidence in {"medium", "high"}
+    assert page2_indicator.confidence == "high"
 
 
 # ----------------------------------------------------------------------------
@@ -187,20 +178,21 @@ def test_continuation_letter_extracted_from_high_confidence_indicator() -> None:
     assert page_map.page_count == 2
     indicators = detect_print_pages(text, page_map)
     high = [i for i in indicators if i.confidence == "high"]
-    # Right-margin-only anchors (no separator line of dashes) are scored
-    # "medium" by detect_print_pages; only explicit separator lines of the
-    # form ---- 7 reach "high" confidence. The continuation-letter helper
-    # only acts on high-confidence indicators. This test is therefore a
-    # regression fence: when the high-confidence branch is ever wired in
-    # (e.g. recognising "---- 7" page-change lines), the helper must
-    # extract the trailing "a" from the next page's right margin.
-    if not high:
-        pytest.skip(
-            "detect_print_pages does not yet classify right-margin-only "
-            "anchors as high confidence; detect_continuation_letter's "
-            "text-walk is intentionally a no-op until that path lands"
-        )
-    letter = detect_continuation_letter(text, high[0], None)
+    assert high, (
+        "expected the right-margin continuation (7 -> 7a) to reach "
+        f"high confidence; got {indicators}"
+    )
+    # Both pages should score "high": page 1's right-margin "7" matches
+    # nothing before it (the test starts there), so it stays at the
+    # medium path -- only page 2's "7a" reaches "high" because page 1
+    # gave it a matching right-margin anchor. Find page 2's indicator.
+    page2_indicator = next(i for i in high if i.braille_page == 2)
+    assert page2_indicator.detected_print_page == 7
+    # Page 1's right-margin "7" indicator (medium) is the previous
+    # boundary; the helper pairs them and walks line 1 of page 2 to
+    # pull the trailing "a".
+    page1_indicator = next(i for i in indicators if i.braille_page == 1)
+    letter = detect_continuation_letter(text, page_map, page2_indicator, page1_indicator)
     assert letter == "a"
 
 
@@ -215,13 +207,13 @@ def test_continuation_letter_returns_none_for_new_print_page() -> None:
     page_map = build_page_map(doc)
     indicators = detect_print_pages(text, page_map)
     if len(indicators) >= 2:
-        letter = detect_continuation_letter(text, indicators[1], indicators[0])
+        letter = detect_continuation_letter(text, page_map, indicators[1], indicators[0])
         assert letter is None
 
 
 def test_continuation_letter_returns_none_for_non_high_confidence() -> None:
     indicator = PageChangeIndicator(braille_page=1, detected_print_page=5, confidence="low")
-    assert detect_continuation_letter("anything", indicator, None) is None
+    assert detect_continuation_letter("anything", None, indicator, None) is None
 
 
 # ----------------------------------------------------------------------------
