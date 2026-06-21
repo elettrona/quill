@@ -1873,18 +1873,25 @@ def test_prompt_untrusted_location_uses_single_checkbox_dialog() -> None:
     assert captured["checkbox"] == "Trust this folder for future opens"
 
 
-def test_prompt_unsaved_changes_action_uses_native_message_dialog() -> None:
+def test_prompt_unsaved_changes_action_uses_native_yes_no_cancel() -> None:
+    # #23: the dialog must use the platform's native Yes/No/Cancel buttons
+    # without overriding labels, so the built-in Y/N/Esc keyboard
+    # accelerators fire on every platform (overriding labels with
+    # SetYesNoCancelLabels disables them on at least macOS Cocoa).
     frame = _build_frame("hello")
     captured: dict[str, object] = {}
+    dialogs: list[_MessageDialog] = []
 
     class _MessageDialog:
         def __init__(self, _parent: object, message: str, title: str, style: int) -> None:
             captured["message"] = message
             captured["title"] = title
             captured["style"] = style
+            self.set_label_calls: list[tuple[str, str, str]] = []
+            dialogs.append(self)
 
         def SetYesNoCancelLabels(self, yes: str, no: str, cancel: str) -> bool:
-            captured["labels"] = (yes, no, cancel)
+            self.set_label_calls.append((yes, no, cancel))
             return True
 
         def Destroy(self) -> None:
@@ -1904,8 +1911,9 @@ def test_prompt_unsaved_changes_action_uses_native_message_dialog() -> None:
         },
     )()
     frame._wx = wx
-    # Native wx.MessageDialog handles keys itself; we only own the labels and
-    # that ShowModal's result is returned unchanged.
+    # Native wx.MessageDialog handles keys itself; we only own ShowModal's
+    # return value. _show_modal_dialog gets routed through the stub below
+    # so we can return a deterministic result without running the real one.
     frame._show_modal_dialog = (
         lambda _dialog, _label, **_kwargs: wx.ID_NO  # type: ignore[method-assign]
     )
@@ -1913,12 +1921,15 @@ def test_prompt_unsaved_changes_action_uses_native_message_dialog() -> None:
     result = frame._prompt_unsaved_changes_action(
         "Unsaved changes",
         "You have unsaved changes. Save before closing?",
-        "Save",
-        "Don't Save",
     )
 
     assert result == wx.ID_NO
-    assert captured["labels"] == ("Save", "Don't Save", "Cancel")
+    # Native labels = native accelerators; we MUST NOT call
+    # SetYesNoCancelLabels, because that override is what was disabling Y/N.
+    assert dialogs[0].set_label_calls == []
+    # Style must still request YES_NO + CANCEL + ICON_WARNING so the
+    # platform synthesises the three buttons (and their accelerators).
+    assert captured["style"] == wx.YES_NO | wx.CANCEL | wx.ICON_WARNING
 
 
 def test_prompt_table_shape_reprompts_invalid_values() -> None:

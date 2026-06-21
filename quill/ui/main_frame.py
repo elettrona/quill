@@ -7024,27 +7024,26 @@ class MainFrame(
         self,
         title: str,
         message: str,
-        affirmative_label: str,
-        negative_label: str,
         *,
         restore_focus: bool = True,
     ) -> int:
         wx = self._wx
-        # Use the native message dialog rather than a hand-rolled wx.Dialog.
-        # The custom version wired each button to EndModal() by hand and layered
-        # a CHAR_HOOK on top; on macOS that machinery could swallow the Save /
-        # Don't Save activations so every button behaved like Cancel. The native
-        # dialog has rock-solid button handling and is read directly by VoiceOver
-        # / NVDA, and ShowModal() returns exactly wx.ID_YES / wx.ID_NO /
-        # wx.ID_CANCEL — the contract both callers depend on.
+        # #23: use the platform's native Yes / No / Cancel buttons (no
+        # SetYesNoCancelLabels override). On at least one platform — macOS
+        # Cocoa per user report — overriding the labels with "Save" /
+        # "Don't Save" / "Cancel" also disables the built-in Y / N / Esc
+        # keyboard accelerators that wx.MessageDialog normally wires up
+        # against its synthesised buttons, so users had to Tab to a
+        # button and press Space. Native labels = native accelerators, and
+        # the title ("Unsaved changes") and body text still ask the
+        # question in plain English so screen-reader users hear the
+        # meaning, not just the button text.
         dialog = wx.MessageDialog(
             self.frame,
             message,
             title,
             wx.YES_NO | wx.CANCEL | wx.ICON_WARNING,
         )
-        if hasattr(dialog, "SetYesNoCancelLabels"):
-            dialog.SetYesNoCancelLabels(affirmative_label, negative_label, "Cancel")
         try:
             return self._show_modal_dialog(dialog, title, restore_editor_focus=restore_focus)
         finally:
@@ -7057,8 +7056,6 @@ class MainFrame(
         result = self._prompt_unsaved_changes_action(
             "Unsaved changes",
             "You have unsaved changes. Reload and discard them?",
-            "Reload",
-            "Keep Editing",
         )
         return result == wx.ID_YES
 
@@ -7647,8 +7644,6 @@ class MainFrame(
         result = self._prompt_unsaved_changes_action(
             "Unsaved changes",
             f"You have unsaved changes. Save before {action_label}?",
-            "Save",
-            "Don't Save",
             restore_focus=False,
         )
         if result == wx.ID_CANCEL:

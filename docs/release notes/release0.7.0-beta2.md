@@ -43,6 +43,26 @@ logs is now a choice instead of a fixed `%APPDATA%\Quill`:
   reopen the security hardening from the L-9 fix (a tampered environment
   variable still cannot redirect your data).
 
+## New: portable build has its own `quill.exe` launcher (#615)
+
+The portable Windows build (the folder you copy to a USB stick or a
+managed-machine share) used to be launched by a renamed `pythonw.exe`,
+whose VersionInfo resource reads "Python 3.x.x" instead of QUILL's.
+Screen readers that report the focused window's VersionInfo (JAWS
+Ctrl+JAWSKey+V, Narrator Caps+V) read the word "Version" and then
+went silent because the launcher had nothing QUILL-specific to
+report; the file's metadata on disk also showed the wrong product
+name, version, and publisher.
+
+The portable build now launches through a dedicated `quill.exe` that
+the build script stamps with QUILL's own VersionInfo — product name
+"QUILL for All", the real QUILL version, and "Community Access" as
+the publisher. Ctrl+JAWSKey+V (and the same shortcut in NVDA and
+Narrator) now reads the real QUILL version along with the document
+name. The versioned `quill.exe` only ships in the portable build;
+installed builds continue to launch through the standard Python
+interpreter and are unaffected.
+
 ## Settings carry-over
 
 ### The rule
@@ -250,9 +270,9 @@ utility ever runs.
   Narrator Caps+H, VoiceOver — now reads the version along with
   the document name. The portable build's launcher is now a
   dedicated `quill.exe` with QUILL's own VersionInfo resource
-  stamped in at build time (instead of a renamed `pythonw.exe`),
-  so Ctrl+JAWSKey+V also reports the real QUILL version, not just
-  the word "Version."
+  stamped in at build time (see "New: portable build has its own
+  `quill.exe` launcher" above), so Ctrl+JAWSKey+V also reports the
+  real QUILL version, not just the word "Version."
 
 - **Setup Wizard no longer opens on top of an "Untitled" tab on
   first launch (#606).** On a fresh install, the editor used to
@@ -454,3 +474,20 @@ utility ever runs.
   bar that tray mode is not available there, and lets the close
   handler fall through to a normal close. Windows and Linux
   behaviour is unchanged.
+
+- **Press `Y` or `N` to answer the unsaved-changes dialog (#23).**
+  When you tried to close a document with unsaved edits, the
+  prompt asked "Save before closing?" and offered "Save" and
+  "Don't Save" buttons (along with "Cancel"). Those custom
+  button labels also disabled the platform's built-in `Y` /
+  `N` / `Esc` keyboard accelerators on at least macOS Cocoa,
+  so you had to Tab to a button and press Space to answer --
+  the very shortcut every native Yes/No dialog teaches you
+  was silently gone. The prompt now uses the platform's native
+  Yes / No / Cancel buttons without overriding labels, so `Y`
+  triggers Save, `N` triggers Don't Save, and `Esc` cancels the
+  close exactly the way every other native confirmation dialog
+  on your system does. The dialog title still reads "Unsaved
+  changes" and the body still asks the question in plain
+  English, so screen-reader users hear the meaning, not just
+  the button text.

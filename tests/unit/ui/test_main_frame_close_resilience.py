@@ -250,14 +250,10 @@ def test_close_path_save_prompt_passes_restore_focus_false() -> None:
     def fake_prompt(
         title: str,
         message: str,
-        affirmative_label: str,
-        negative_label: str,
         *,
         restore_focus: bool = True,
     ) -> int:
         captured["title"] = title
-        captured["affirmative_label"] = affirmative_label
-        captured["negative_label"] = negative_label
         captured["restore_focus"] = restore_focus
         return recording.ID_NO
 
@@ -272,8 +268,6 @@ def test_close_path_save_prompt_passes_restore_focus_false() -> None:
     frame.close_current_document()
 
     assert captured["title"] == "Unsaved changes"
-    assert captured["affirmative_label"] == "Save"
-    assert captured["negative_label"] == "Don't Save"
     assert captured["restore_focus"] is False, (
         "#619: close-path save prompt must pass restore_focus=False "
         "so the queued SetFocus does not fire on a destroyed TextCtrl"

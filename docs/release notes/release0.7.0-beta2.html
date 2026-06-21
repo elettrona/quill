@@ -41,6 +41,24 @@ a dialog offers to restart right away.</li>
 does not reopen the security hardening from the L-9 fix (a tampered
 environment variable still cannot redirect your data).</li>
 </ul>
+<h2 id="new-portable-build-has-its-own-quill.exe-launcher-615">New:
+portable build has its own <code>quill.exe</code> launcher (#615)</h2>
+<p>The portable Windows build (the folder you copy to a USB stick or a
+managed-machine share) used to be launched by a renamed
+<code>pythonw.exe</code>, whose VersionInfo resource reads “Python
+3.x.x” instead of QUILL’s. Screen readers that report the focused
+window’s VersionInfo (JAWS Ctrl+JAWSKey+V, Narrator Caps+V) read the
+word “Version” and then went silent because the launcher had nothing
+QUILL-specific to report; the file’s metadata on disk also showed the
+wrong product name, version, and publisher.</p>
+<p>The portable build now launches through a dedicated
+<code>quill.exe</code> that the build script stamps with QUILL’s own
+VersionInfo — product name “QUILL for All”, the real QUILL version, and
+“Community Access” as the publisher. Ctrl+JAWSKey+V (and the same
+shortcut in NVDA and Narrator) now reads the real QUILL version along
+with the document name. The versioned <code>quill.exe</code> only ships
+in the portable build; installed builds continue to launch through the
+standard Python interpreter and are unaffected.</p>
 <h2 id="settings-carry-over">Settings carry-over</h2>
 <h3 id="the-rule">The rule</h3>
 <p>For keyboard shortcuts and any other user-tweakable setting, the
@@ -236,9 +254,9 @@ includes the full QUILL version (for example, “QUILL for All 0.7.0 Beta
 Insert+T, NVDA+T, Narrator Caps+H, VoiceOver — now reads the version
 along with the document name. The portable build’s launcher is now a
 dedicated <code>quill.exe</code> with QUILL’s own VersionInfo resource
-stamped in at build time (instead of a renamed
-<code>pythonw.exe</code>), so Ctrl+JAWSKey+V also reports the real QUILL
-version, not just the word “Version.”</p></li>
+stamped in at build time (see “New: portable build has its own
+<code>quill.exe</code> launcher” above), so Ctrl+JAWSKey+V also reports
+the real QUILL version, not just the word “Version.”</p></li>
 <li><p><strong>Setup Wizard no longer opens on top of an “Untitled” tab
 on first launch (#606).</strong> On a fresh install, the editor used to
 appear with an “Untitled” tab first and then the Setup Wizard modal
@@ -419,4 +437,19 @@ QUILL running invisibly in the Dock. QUILL now detects macOS, announces
 once via the status bar that tray mode is not available there, and lets
 the close handler fall through to a normal close. Windows and Linux
 behaviour is unchanged.</p></li>
+<li><p><strong>Press <code>Y</code> or <code>N</code> to answer the
+unsaved-changes dialog (#23).</strong> When you tried to close a
+document with unsaved edits, the prompt asked “Save before closing?” and
+offered “Save” and “Don’t Save” buttons (along with “Cancel”). Those
+custom button labels also disabled the platform’s built-in
+<code>Y</code> / <code>N</code> / <code>Esc</code> keyboard accelerators
+on at least macOS Cocoa, so you had to Tab to a button and press Space
+to answer – the very shortcut every native Yes/No dialog teaches you was
+silently gone. The prompt now uses the platform’s native Yes / No /
+Cancel buttons without overriding labels, so <code>Y</code> triggers
+Save, <code>N</code> triggers Don’t Save, and <code>Esc</code> cancels
+the close exactly the way every other native confirmation dialog on your
+system does. The dialog title still reads “Unsaved changes” and the body
+still asks the question in plain English, so screen-reader users hear
+the meaning, not just the button text.</p></li>
 </ul>
