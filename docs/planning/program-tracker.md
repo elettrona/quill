@@ -82,12 +82,12 @@ closed won't-do.
 ## Execution waves (lowest-hanging first)
 
 1. **Wave 0 — done:** text round-trip + VoiceOver names (#648/#649/#643/#646). ✅
-2. **Wave 1 — Speech S0 + complete Braille proofing & validation.** Speech S0 honesty fix ✅; Braille sidecar #238 ✅, restore-position #239 ✅; then the Proofing submenu (#240) and the validator + Warnings List (#241/#242) so **braille ships complete in this wave**. Small, low-risk, high user value.
+2. **Wave 1 — Speech S0 + complete Braille + DAISY export.** Speech S0 honesty fix ✅; Braille #238/#239/#240/#241/#242 ✅ and back-translation #246 ✅ — braille proofing, validation, and back-translation all ship. **Remaining (next up): DAISY 2.02 text-only export (#251).**
 3. **Wave 2 — Verbosity & Polish** (combined): the core (#271, #361–#366) and the §5–§46 spec (#367–#404) **plus** the addenda polish set (#405–#504) shipped together as one verbosity workstream — keep the high-value knobs, fold or fast-track the rest, close each as it lands. (Formerly split across Waves 2 and 8; merged because it is all one workstream with no cross-wave risk.)
 4. **Wave 3 — Speech foundation S1–S2** (#617): provider registry, model manager, offline WAV transcription.
 5. **Wave 4 — Captions & dictation** (#617 Speech S3).
 6. **Wave 5 — AI & Agentic** (#507–#512, #523/#524) and the agentic-AI PRD.
-7. **Wave 6 — Navigation/editor + GLOW + Publishing** (#513/#514/#521, #528–#534, #251 DAISY, #140 publishing).
+7. **Wave 6 — Navigation/editor + GLOW + Publishing** (#513/#514/#521, #528–#534, #140 publishing). (DAISY #251 moved to Wave 1.)
 8. **Wave 7 — Platform & Distribution** (#506, #516, #517, #518 macOS, #519) and Docs/Content (#505, #535–#564). **Linux/Unix excluded** (#520/#565/#589 are out of scope).
 
 
@@ -99,7 +99,7 @@ closed won't-do.
 | 649 | Text round-trip: CRLF + blank-line runs preserved on save | ✅ |
 | 643 | AI Hub notebook accessible name (VoiceOver) | ✅ |
 | 646 | AI Hub tab group accessible name (VoiceOver) | ✅ |
-| 617 | Speech **S0–S3** done: dictation setting honest; offline STT foundation; whisper.cpp provider + offline transcription + model manager (HF-Hub); **captions (SRT/VTT)**, **offline dictate-at-cursor** (QUILL Key+Shift+D, start/stop earcons, status bar), **mic selection**, and whisper.cpp as a **distributable installer component**. Epic #617 stays open for S4 (Faster Whisper) / S5 (voice commands). | 🚧 |
+| 617 | Speech **S0–S3** done: dictation setting honest; offline STT foundation; whisper.cpp provider + offline transcription + model manager (HF-Hub); **transcript formats (plain/Markdown/HTML)** + **captions (SRT/VTT)**; **speaker attribution** (tinydiarize); **offline dictate-at-cursor** (QUILL Key+Shift+D, start/stop earcons, status bar); **mic selection**; whisper.cpp as a **distributable installer component** + **`sounddevice` bundled**. Epic #617 stays open for S4 (Faster Whisper) / S5 (voice commands). | 🚧 |
 | 238 | Braille BR-015 — `brf_sidecar.py` foundation (atomic per-file sidecar: position, proofing, anchors, notes) | ✅ |
 | 239 | Braille BR-016 — restore last position on open + spoken announcement (`brf_progress.py`) | ✅ |
 | 240 | Braille BR-017 — Proofing submenu (8 commands, sidecar-backed; `brf_proofing.py` + `main_frame_braille_phase3.py`) | ✅ |

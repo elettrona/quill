@@ -176,9 +176,6 @@
   </style>
 </head>
 <body>
-<header id="title-block-header">
-<h1 class="title">program-tracker</h1>
-</header>
 <h1 id="quill-program-tracker--path-to-zero-open-issues">QUILL Program
 Tracker — Path to Zero Open Issues</h1>
 <blockquote>
@@ -434,11 +431,11 @@ benefit; Effort = engineering size.</p>
 <ol type="1">
 <li><strong>Wave 0 — done:</strong> text round-trip + VoiceOver names
 (#648/#649/#643/#646). ✅</li>
-<li><strong>Wave 1 — Speech S0 + complete Braille proofing &amp;
-validation.</strong> Speech S0 honesty fix ✅; Braille sidecar #238 ✅,
-restore-position #239 ✅; then the Proofing submenu (#240) and the
-validator + Warnings List (#241/#242) so <strong>braille ships complete
-in this wave</strong>. Small, low-risk, high user value.</li>
+<li><strong>Wave 1 — Speech S0 + complete Braille + DAISY
+export.</strong> Speech S0 honesty fix ✅; Braille
+#238/#239/#240/#241/#242 ✅ and back-translation #246 ✅ — braille
+proofing, validation, and back-translation all ship. <strong>Remaining
+(next up): DAISY 2.02 text-only export (#251).</strong></li>
 <li><strong>Wave 2 — Verbosity &amp; Polish</strong> (combined): the
 core (#271, #361–#366) and the §5–§46 spec (#367–#404)
 <strong>plus</strong> the addenda polish set (#405–#504) shipped
@@ -453,7 +450,8 @@ S3).</li>
 <li><strong>Wave 5 — AI &amp; Agentic</strong> (#507–#512, #523/#524)
 and the agentic-AI PRD.</li>
 <li><strong>Wave 6 — Navigation/editor + GLOW + Publishing</strong>
-(#513/#514/#521, #528–#534, #251 DAISY, #140 publishing).</li>
+(#513/#514/#521, #528–#534, #140 publishing). (DAISY #251 moved to Wave
+1.)</li>
 <li><strong>Wave 7 — Platform &amp; Distribution</strong> (#506, #516,
 #517, #518 macOS, #519) and Docs/Content (#505, #535–#564).
 <strong>Linux/Unix excluded</strong> (#520/#565/#589 are out of
@@ -493,11 +491,14 @@ scope).</li>
 <td style="text-align: right;">617</td>
 <td>Speech <strong>S0–S3</strong> done: dictation setting honest;
 offline STT foundation; whisper.cpp provider + offline transcription +
-model manager (HF-Hub); <strong>captions (SRT/VTT)</strong>,
-<strong>offline dictate-at-cursor</strong> (QUILL Key+Shift+D,
-start/stop earcons, status bar), <strong>mic selection</strong>, and
-whisper.cpp as a <strong>distributable installer component</strong>.
-Epic #617 stays open for S4 (Faster Whisper) / S5 (voice commands).</td>
+model manager (HF-Hub); <strong>transcript formats
+(plain/Markdown/HTML)</strong> + <strong>captions (SRT/VTT)</strong>;
+<strong>speaker attribution</strong> (tinydiarize); <strong>offline
+dictate-at-cursor</strong> (QUILL Key+Shift+D, start/stop earcons,
+status bar); <strong>mic selection</strong>; whisper.cpp as a
+<strong>distributable installer component</strong> +
+<strong><code>sounddevice</code> bundled</strong>. Epic #617 stays open
+for S4 (Faster Whisper) / S5 (voice commands).</td>
 <td>🚧</td>
 </tr>
 <tr>
