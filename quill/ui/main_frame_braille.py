@@ -670,15 +670,22 @@ class BrailleCommandsMixin:
         )
 
     def back_translate_ueb(self) -> None:
+        # Back-translate the selected braille passage when there is a selection,
+        # otherwise the whole document, so a proofreader can recover the source
+        # text of just one passage (BR-023/#246 back-translation).
         editor = getattr(self, "editor", None)
         if editor is None:
             return
+        selection = editor.GetStringSelection()
+        source = selection if selection.strip() else editor.GetValue()
+        scope = "selection" if selection.strip() else "document"
         self._translate_and_open(
-            source=editor.GetValue(),
+            source=source,
             table="en-ueb-g2",
             draft=True,
             label=lambda result: (
-                f"Back-translation draft. {len(result.split())} words. Review against the BRF."
+                f"Back-translation draft from {scope}. {len(result.split())} words. "
+                "Review against the BRF."
             ),
         )
 

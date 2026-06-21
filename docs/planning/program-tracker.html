@@ -176,6 +176,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">program-tracker</h1>
+</header>
 <h1 id="quill-program-tracker--path-to-zero-open-issues">QUILL Program
 Tracker — Path to Zero Open Issues</h1>
 <blockquote>
@@ -218,8 +221,8 @@ won't-do.</p>
 <tbody>
 <tr>
 <td>✅ Shipped</td>
-<td style="text-align: right;">9 (#648, #649, #643, #646, #238, #239,
-#240, #241, #242)</td>
+<td style="text-align: right;">10 (#648, #649, #643, #646, #238, #239,
+#240, #241, #242, #246)</td>
 </tr>
 <tr>
 <td>🚧 In progress</td>
@@ -233,8 +236,7 @@ in docs)</td>
 </tr>
 <tr>
 <td>❌ Out of scope</td>
-<td style="text-align: right;">4 (Linux/Unix #520/#565/#589;
-source-to-BRF linking #246)</td>
+<td style="text-align: right;">3 (Linux/Unix — #520, #565, #589)</td>
 </tr>
 <tr>
 <td>⬜ Planned</td>
@@ -247,16 +249,16 @@ source-to-BRF linking #246)</td>
 </tbody>
 </table>
 <blockquote>
-<p><strong>#246 descoped (source-to-BRF linking).</strong>
-Back-translation (braille→text) and Compare mode both already ship, so a
-"Compare Back-Translation with Source" command was feasible — but per
-maintainer decision the <strong>comparison piece is removed from the
-plan</strong>. The only remaining part, per-page source linking
-(<code>listUnlinkedSourcePages</code>), depends on a cross-format
-Source-Position model that is not in scope. With the comparison removed
-there is no valuable, non-confusing slice left to ship now, so #246 is
-closed out of scope. (Existing standalone Back-Translate (draft) under
-Braille &gt; Translation is unaffected.)</p>
+<p><strong>#246 completed via back-translation (source-to-BRF).</strong>
+The deliverable is braille→text <strong>back-translation</strong>, now
+selection-aware (Braille &gt; Translation &gt; Back-Translate (draft)
+back-translates the selected passage, else the whole document) so a
+proofreader can recover the source text of one passage. The "compare
+back-translation with source" feature was <strong>descoped</strong> per
+maintainer decision, and per-page source linking
+(<code>listUnlinkedSourcePages</code>) remains out of scope (it needs a
+cross-format Source-Position model). #246 is closed as completed on the
+back-translation deliverable.</p>
 </blockquote>
 <h3 id="by-bucket-open">By bucket (open)</h3>
 <table>
@@ -446,9 +448,8 @@ Waves 2 and 8; merged because it is all one workstream with no
 cross-wave risk.)</li>
 <li><strong>Wave 3 — Speech foundation S1–S2</strong> (#617): provider
 registry, model manager, offline WAV transcription.</li>
-<li><strong>Wave 4 — Captions &amp; dictation</strong> (#617 Speech S3).
-(Braille source-to-BRF linking #246 was descoped — the comparison piece
-is out of the plan.)</li>
+<li><strong>Wave 4 — Captions &amp; dictation</strong> (#617 Speech
+S3).</li>
 <li><strong>Wave 5 — AI &amp; Agentic</strong> (#507–#512, #523/#524)
 and the agentic-AI PRD.</li>
 <li><strong>Wave 6 — Navigation/editor + GLOW + Publishing</strong>
@@ -526,6 +527,12 @@ warning categories, read-only)</td>
 dialog</td>
 <td>✅</td>
 </tr>
+<tr>
+<td style="text-align: right;">246</td>
+<td>Braille BR-023 — selection-aware back-translation (braille→text
+source recovery); compare + per-page linking descoped</td>
+<td>✅</td>
+</tr>
 </tbody>
 </table>
 <h2 id="out-of-scope">Out of scope</h2>
@@ -552,13 +559,6 @@ dialog</td>
 <td style="text-align: right;">589</td>
 <td>LINUX-1 spike</td>
 <td>Linux/Unix out of scope</td>
-</tr>
-<tr>
-<td style="text-align: right;">246</td>
-<td>BR-023 source-to-BRF linking</td>
-<td>Comparison piece removed from the plan; remaining per-page source
-linking needs a cross-format Source-Position model that is out of
-scope</td>
 </tr>
 </tbody>
 </table>
@@ -1631,8 +1631,9 @@ P4)</td>
 <tr>
 <td style="text-align: right;">246</td>
 <td style="text-align: center;">—</td>
-<td style="text-align: center;">❌</td>
-<td>[BR-023] Source-to-BRF linking (Braille Mode P6, v1.1)</td>
+<td style="text-align: center;">✅</td>
+<td>[BR-023] Source-to-BRF linking — back-translation (compare/linking
+descoped)</td>
 </tr>
 <tr>
 <td style="text-align: right;">600</td>

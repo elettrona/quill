@@ -4289,9 +4289,12 @@ Korean, and dozens more.</li>
 </ul>
 <p>Forward translation opens the BRF result in a new document and tells
 you how many braille pages it produced. Back-translation always opens
-its result as a clearly labeled <strong>draft</strong>
-("Back-translation draft. N words. Review against the BRF.") because no
-automatic back-translation is authoritative. Translation runs entirely
+its result as a clearly labeled <strong>draft</strong> because no
+automatic back-translation is authoritative; it back-translates your
+<strong>selection</strong> when you have one selected (so you can
+recover the source text of a single passage) and the whole document
+otherwise, telling you which it used ("Back-translation draft from
+selection. N words. Review against the BRF."). Translation runs entirely
 out of process, so a liblouis failure can never take QUILL down; if it
 fails, QUILL announces the reason and does not open an empty document.
 The Translation submenu is also hidden in Safe Mode.</p>

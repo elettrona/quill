@@ -27,21 +27,21 @@ closed won't-do.
 
 | Status | Count |
 | --- | ---: |
-| ✅ Shipped | 9 (#648, #649, #643, #646, #238, #239, #240, #241, #242) |
+| ✅ Shipped | 10 (#648, #649, #643, #646, #238, #239, #240, #241, #242, #246) |
 | 🚧 In progress | 1 (Speech & Dictation #617: S0 done, S1+ next) |
 | 🧹 Resolved (bookkeeping) | 2 (#600, #601 — braille design captured in docs) |
-| ❌ Out of scope | 4 (Linux/Unix #520/#565/#589; source-to-BRF linking #246) |
+| ❌ Out of scope | 3 (Linux/Unix — #520, #565, #589) |
 | ⬜ Planned | 240 |
 | **Total tracked** | **256** |
 
-> **#246 descoped (source-to-BRF linking).** Back-translation (braille→text) and
-> Compare mode both already ship, so a "Compare Back-Translation with Source"
-> command was feasible — but per maintainer decision the **comparison piece is
-> removed from the plan**. The only remaining part, per-page source linking
-> (`listUnlinkedSourcePages`), depends on a cross-format Source-Position model that
-> is not in scope. With the comparison removed there is no valuable, non-confusing
-> slice left to ship now, so #246 is closed out of scope. (Existing standalone
-> Back-Translate (draft) under Braille > Translation is unaffected.)
+> **#246 completed via back-translation (source-to-BRF).** The deliverable is
+> braille→text **back-translation**, now selection-aware (Braille > Translation >
+> Back-Translate (draft) back-translates the selected passage, else the whole
+> document) so a proofreader can recover the source text of one passage. The
+> "compare back-translation with source" feature was **descoped** per maintainer
+> decision, and per-page source linking (`listUnlinkedSourcePages`) remains out of
+> scope (it needs a cross-format Source-Position model). #246 is closed as
+> completed on the back-translation deliverable.
 
 ### By bucket (open)
 
@@ -85,7 +85,7 @@ closed won't-do.
 2. **Wave 1 — Speech S0 + complete Braille proofing & validation.** Speech S0 honesty fix ✅; Braille sidecar #238 ✅, restore-position #239 ✅; then the Proofing submenu (#240) and the validator + Warnings List (#241/#242) so **braille ships complete in this wave**. Small, low-risk, high user value.
 3. **Wave 2 — Verbosity & Polish** (combined): the core (#271, #361–#366) and the §5–§46 spec (#367–#404) **plus** the addenda polish set (#405–#504) shipped together as one verbosity workstream — keep the high-value knobs, fold or fast-track the rest, close each as it lands. (Formerly split across Waves 2 and 8; merged because it is all one workstream with no cross-wave risk.)
 4. **Wave 3 — Speech foundation S1–S2** (#617): provider registry, model manager, offline WAV transcription.
-5. **Wave 4 — Captions & dictation** (#617 Speech S3). (Braille source-to-BRF linking #246 was descoped — the comparison piece is out of the plan.)
+5. **Wave 4 — Captions & dictation** (#617 Speech S3).
 6. **Wave 5 — AI & Agentic** (#507–#512, #523/#524) and the agentic-AI PRD.
 7. **Wave 6 — Navigation/editor + GLOW + Publishing** (#513/#514/#521, #528–#534, #251 DAISY, #140 publishing).
 8. **Wave 7 — Platform & Distribution** (#506, #516, #517, #518 macOS, #519) and Docs/Content (#505, #535–#564). **Linux/Unix excluded** (#520/#565/#589 are out of scope).
@@ -105,6 +105,7 @@ closed won't-do.
 | 240 | Braille BR-017 — Proofing submenu (8 commands, sidecar-backed; `brf_proofing.py` + `main_frame_braille_phase3.py`) | ✅ |
 | 241 | Braille BR-018 — `brf_validator.py` layout validator (10 warning categories, read-only) | ✅ |
 | 242 | Braille BR-019 — Validation submenu (4 commands) + Warnings List dialog | ✅ |
+| 246 | Braille BR-023 — selection-aware back-translation (braille→text source recovery); compare + per-page linking descoped | ✅ |
 
 ## Out of scope
 
@@ -113,7 +114,6 @@ closed won't-do.
 | 520 | O17 — Linux platform layer | Linux/Unix is not a shipping target (macOS yes, Linux no) |
 | 565 | Tier-6 LINUX-2 | Linux/Unix out of scope |
 | 589 | LINUX-1 spike | Linux/Unix out of scope |
-| 246 | BR-023 source-to-BRF linking | Comparison piece removed from the plan; remaining per-page source linking needs a cross-format Source-Position model that is out of scope |
 
 ## Open work by bucket
 
@@ -296,7 +296,7 @@ closed won't-do.
 | 240 | — | ✅ | [BR-017] Braille > Proofing submenu (Braille Mode P3) |
 | 241 | — | ✅ | [BR-018] brf_validator.py (Braille Mode P4) |
 | 242 | — | ✅ | [BR-019] Validation commands + Warnings List dialog (Braille Mode P4) |
-| 246 | — | ❌ | [BR-023] Source-to-BRF linking (Braille Mode P6, v1.1) |
+| 246 | — | ✅ | [BR-023] Source-to-BRF linking — back-translation (compare/linking descoped) |
 | 600 | P1 | 🧹 | [Planning] Braille Mode Phases 3/4/6 — tracked by #238-#246 |
 | 601 | — | 🧹 | [Planning Archive] Braille Mode design reference - Phases 3/4/6 deferred from 0.7.0 |
 

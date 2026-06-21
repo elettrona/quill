@@ -241,6 +241,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">braille-mode-backlog</h1>
+</header>
 <h1 id="quill-braille-mode--phases-346-backlog-archive">QUILL Braille
 Mode — Phases 3/4/6 Backlog Archive</h1>
 <blockquote>
@@ -515,9 +518,30 @@ staged with the change.</li>
 Validation). Tracked in session todos as
 <code>br-validation-commands</code>. Depends on #241 (BR-018).</p>
 <hr />
-<h2 id="246--br-023-source-to-brf-linking-braille-mode-p6-v11">#246 —
-[BR-023] Source-to-BRF linking (Braille Mode P6, v1.1)</h2>
-<p><strong>Labels:</strong> enhancement</p>
+<h2 id="246--br-023-braille-back-translation-source-recovery">#246 —
+[BR-023] Braille back-translation (source recovery)</h2>
+<p><strong>Labels:</strong> enhancement <strong>Status (2026-06-21):
+COMPLETED via back-translation.</strong> The shipped deliverable is
+braille→text <strong>back-translation</strong>, now selection-aware:
+**Braille &gt; Translation</p>
+<blockquote>
+<p>Back-Translate (draft)** back-translates the selected braille passage
+when there is a selection (recovering the source text of one passage)
+and the whole document otherwise, announcing which it used. Built on the
+existing liblouis worker
+(<code>braille_worker_client.back_translate</code>); requires the
+optional QUILL Braille Pack. Tests:
+<code>tests/unit/ui/test_braille_translation.py</code>,
+<code>tests/unit/core/test_braille_worker_client.py</code>.
+<strong>Descoped:</strong> the "Compare Back-Translation with Source"
+command (removed per maintainer decision). <strong>Out of
+scope:</strong> per-page source linking
+(<code>listUnlinkedSourcePages</code>) — it needs a stable cross-format
+Source-Position model (TXT/RTF/DOCX/EPUB/PDF) that is not planned.</p>
+</blockquote>
+<hr />
+<p><em>Original BR-023 scope (for historical reference; the linking
+parts below are out of scope):</em></p>
 <p>[P6] Source-to-BRF linking — anchors, cross-linked progress, and a
 Compare Back-Translation with Source command. <strong>Deferred to QUILL
 1.1.</strong></p>

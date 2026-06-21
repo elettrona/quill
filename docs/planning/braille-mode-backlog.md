@@ -174,9 +174,25 @@ Each `BRFWarning` has `offset`, `line`, `page`, `kind` (one of the categories ab
 
 ---
 
-## #246 — [BR-023] Source-to-BRF linking (Braille Mode P6, v1.1)
+## #246 — [BR-023] Braille back-translation (source recovery)
 
 **Labels:** enhancement
+**Status (2026-06-21): COMPLETED via back-translation.** The shipped deliverable
+is braille→text **back-translation**, now selection-aware: **Braille > Translation
+> Back-Translate (draft)** back-translates the selected braille passage when there
+is a selection (recovering the source text of one passage) and the whole document
+otherwise, announcing which it used. Built on the existing liblouis worker
+(`braille_worker_client.back_translate`); requires the optional QUILL Braille Pack.
+Tests: `tests/unit/ui/test_braille_translation.py`,
+`tests/unit/core/test_braille_worker_client.py`. **Descoped:** the "Compare
+Back-Translation with Source" command (removed per maintainer decision). **Out of
+scope:** per-page source linking (`listUnlinkedSourcePages`) — it needs a stable
+cross-format Source-Position model (TXT/RTF/DOCX/EPUB/PDF) that is not planned.
+
+---
+
+_Original BR-023 scope (for historical reference; the linking parts below are out
+of scope):_
 
 [P6] Source-to-BRF linking — anchors, cross-linked progress, and a Compare Back-Translation with Source command. **Deferred to QUILL 1.1.**
 
