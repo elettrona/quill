@@ -511,6 +511,7 @@ from quill.ui.main_frame_section_move import SectionMoveMixin
 from quill.ui.main_frame_selection import SelectionMarksMixin
 from quill.ui.main_frame_sessions import SessionsMixin
 from quill.ui.main_frame_simple_open import SimpleOpenMixin
+from quill.ui.main_frame_speech import SpeechCommandsMixin
 from quill.ui.main_frame_ssh import SshEditingMixin
 from quill.ui.main_frame_statusbar import StatusBarMixin, _StatusBarCell
 from quill.ui.notebook_panel import NotebookEntriesPanel
@@ -801,6 +802,7 @@ _APP_TITLE_VERSION = f"QUILL for All {build_info.get_short_version()}"
 class MainFrame(
     AbbreviationsMixin,
     AiActionsMixin,
+    SpeechCommandsMixin,
     BrailleProofingCommandsMixin,
     BraillePhase2CommandsMixin,
     BrailleCommandsMixin,

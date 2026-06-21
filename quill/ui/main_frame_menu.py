@@ -1273,6 +1273,8 @@ class MenuBuilderMixin:
         self._id_ai_status_detail = wx.NewIdRef()
         self._id_ai_model = wx.NewIdRef()
         self._id_ai_session_browser = wx.NewIdRef()
+        self._id_speech_models = wx.NewIdRef()
+        self._id_speech_transcribe = wx.NewIdRef()
         self._id_ai_connection = wx.NewIdRef()
         self._id_ai_forget_key = wx.NewIdRef()
         self._id_ai_rewrite_selection = wx.NewIdRef()
@@ -1562,6 +1564,20 @@ class MenuBuilderMixin:
             self._id_ai_session_browser,
             self._menu_label(_("Session &Branches..."), "tools.ai_session_browser"),
         )
+        # Offline speech (#617): privacy-first, on-device transcription. Surfaced
+        # here in the AI menu so model setup is discoverable, not buried.
+        speech_menu = wx.Menu()
+        speech_menu.Append(
+            self._id_speech_models,
+            self._menu_label(_("&Manage Speech Models..."), "tools.speech_models"),
+        )
+        speech_menu.Append(
+            self._id_speech_transcribe,
+            self._menu_label(
+                _("&Transcribe Audio or Video (Offline)..."), "tools.speech_transcribe"
+            ),
+        )
+        ai_menu.AppendSubMenu(speech_menu, _("&Speech"))
         ai_menu.AppendSeparator()
         ai_menu.Append(
             self._id_ai_assistant,
@@ -2398,6 +2414,16 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.open_ai_session_browser(),
             id=self._id_ai_session_browser,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_speech_models(),
+            id=self._id_speech_models,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.transcribe_audio_offline(),
+            id=self._id_speech_transcribe,
         )
         self.frame.Bind(
             wx.EVT_MENU,

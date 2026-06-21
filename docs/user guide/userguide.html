@@ -1351,6 +1351,30 @@ cursor, or open as a new document.</p>
 <p><code>AI &gt; Translate Audio File to English...</code> goes directly
 to the Whisper translation flow, bypassing the language selection
 step.</p>
+<h3 id="offline-transcription-ai--speech">Offline transcription (AI &gt;
+Speech)</h3>
+<p>QUILL can also transcribe <strong>entirely on your computer</strong>,
+with no cloud account and without uploading your audio. These commands
+live under <strong>AI &gt; Speech</strong>:</p>
+<ul>
+<li><strong>Manage Speech Models...</strong> lists local speech models
+with their download size, accuracy, and speed. Choose a model that is
+not installed to download it (the Small model is recommended to start);
+choose an installed model to remove it. Models are downloaded over a
+secure connection from the Hugging Face Hub and stored on your computer.
+Downloading is disabled in Safe Mode.</li>
+<li><strong>Transcribe Audio or Video (Offline)...</strong> asks for an
+audio or video file and transcribes it locally, then opens the result as
+an editable draft document. The work runs in the background so you can
+keep editing; QUILL announces when it is done and how many words were
+produced.</li>
+</ul>
+<p>Offline transcription requires the free <strong>whisper.cpp</strong>
+program to be installed with <code>whisper-cli</code> on your PATH, plus
+one downloaded model. If no model is installed yet, the Transcribe
+command offers to open Manage Speech Models for you. Because automatic
+transcription is never perfect, the result is always a draft to
+review.</p>
 <h4 id="read-aloud-with-ai-voice-openai-tts">Read Aloud with AI Voice
 (OpenAI TTS)</h4>
 <p><code>AI &gt; Read Selection Aloud (AI Voice)</code> and

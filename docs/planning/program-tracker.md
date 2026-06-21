@@ -99,7 +99,7 @@ closed won't-do.
 | 649 | Text round-trip: CRLF + blank-line runs preserved on save | ✅ |
 | 643 | AI Hub notebook accessible name (VoiceOver) | ✅ |
 | 646 | AI Hub tab group accessible name (VoiceOver) | ✅ |
-| 617 | Speech **S0** (dictation setting honest) + **S1** (offline STT foundation: provider protocol, formatters, model store, registry, catalog — `quill/core/speech/`). Epic #617 stays open; S2 (whisper.cpp + transcription) next. | 🚧 |
+| 617 | Speech **S0** (dictation setting honest) + **S1** (offline STT foundation) + **S2** (whisper.cpp provider, offline file transcription, AI > Speech model manager + Transcribe, HF-Hub downloads). Epic #617 stays open; S3 (dictate-at-cursor + captions) next. | 🚧 |
 | 238 | Braille BR-015 — `brf_sidecar.py` foundation (atomic per-file sidecar: position, proofing, anchors, notes) | ✅ |
 | 239 | Braille BR-016 — restore last position on open + spoken announcement (`brf_progress.py`) | ✅ |
 | 240 | Braille BR-017 — Proofing submenu (8 commands, sidecar-backed; `brf_proofing.py` + `main_frame_braille_phase3.py`) | ✅ |

@@ -176,6 +176,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">dictation-and-speech</h1>
+</header>
 <h1 id="quill-speech--dictation--reengineering-plan">QUILL Speech &amp;
 Dictation — Reengineering Plan</h1>
 <p><strong>Status:</strong> Active plan (shipping). Folds in issue #617
@@ -183,6 +186,13 @@ Dictation — Reengineering Plan</h1>
 reengineering. <strong>Date:</strong> 2026-06-21
 <strong>Principle:</strong> Bold, offline-first architecture underneath;
 <strong>simplicity for the user is king</strong> on top.</p>
+<p><strong>Status (2026-06-21):</strong> S0 ✅ (dictation setting made
+honest), S1 ✅ (offline STT foundation —
+<code>quill/core/speech/</code>: provider protocol, formatters, model
+store, registry, catalog), S2 ✅ (whisper.cpp provider + offline file
+transcription + an accessible model manager and Transcribe command under
+<strong>AI &gt; Speech</strong>, with Hugging Face Hub model downloads).
+Next: S3 (live dictate-at-cursor + captions).</p>
 <hr />
 <h2 id="1-where-dictation-is-today-grounded-in-code">1. Where dictation
 is today (grounded in code)</h2>

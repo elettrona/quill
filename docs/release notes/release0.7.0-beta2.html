@@ -712,6 +712,25 @@ status information reports the complete page label instead of shortening
 it to <code>7</code>.</p>
 <p>This makes it easier to understand exactly where you are when a print
 page continues across multiple braille pages.</p>
+<h2 id="private-offline-transcription-early">Private, offline
+transcription (early)</h2>
+<p>QUILL is growing a privacy-first speech engine that runs entirely on
+your computer. The first piece is here under a new <strong>AI →
+Speech</strong> menu:</p>
+<ul>
+<li><strong>Manage Speech Models...</strong> lets you download a local
+speech model (sizes are shown; the Small model is recommended to start).
+Models are fetched over a secure connection from the Hugging Face Hub
+and stored on your computer; downloading is disabled in Safe Mode.</li>
+<li><strong>Transcribe Audio or Video (Offline)...</strong> turns a
+recording into text on your own machine — no cloud account, and your
+audio is not uploaded. The transcript opens as an editable draft, and
+QUILL works in the background so the editor stays responsive.</li>
+</ul>
+<p>This requires the free whisper.cpp program to be installed (with
+<code>whisper-cli</code> on your PATH) plus a downloaded model.
+Dictating directly into a document and caption export are coming
+next.</p>
 <h2 id="what-is-coming-next">What is coming next</h2>
 <p>QUILL's roadmap is now organized into clear workstreams that are all
 targeted to ship, with the work tracked openly:</p>

@@ -304,6 +304,15 @@ QUILL now recognizes print-page continuation labels such as `7a` when they appea
 
 This makes it easier to understand exactly where you are when a print page continues across multiple braille pages.
 
+## Private, offline transcription (early)
+
+QUILL is growing a privacy-first speech engine that runs entirely on your computer. The first piece is here under a new **AI → Speech** menu:
+
+- **Manage Speech Models...** lets you download a local speech model (sizes are shown; the Small model is recommended to start). Models are fetched over a secure connection from the Hugging Face Hub and stored on your computer; downloading is disabled in Safe Mode.
+- **Transcribe Audio or Video (Offline)...** turns a recording into text on your own machine — no cloud account, and your audio is not uploaded. The transcript opens as an editable draft, and QUILL works in the background so the editor stays responsive.
+
+This requires the free whisper.cpp program to be installed (with `whisper-cli` on your PATH) plus a downloaded model. Dictating directly into a document and caption export are coming next.
+
 ## What is coming next
 
 QUILL's roadmap is now organized into clear workstreams that are all targeted to ship, with the work tracked openly:

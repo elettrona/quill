@@ -4,6 +4,12 @@
 **Date:** 2026-06-21
 **Principle:** Bold, offline-first architecture underneath; **simplicity for the user is king** on top.
 
+**Status (2026-06-21):** S0 ✅ (dictation setting made honest), S1 ✅ (offline STT
+foundation — `quill/core/speech/`: provider protocol, formatters, model store,
+registry, catalog), S2 ✅ (whisper.cpp provider + offline file transcription + an
+accessible model manager and Transcribe command under **AI > Speech**, with
+Hugging Face Hub model downloads). Next: S3 (live dictate-at-cursor + captions).
+
 ---
 
 ## 1. Where dictation is today (grounded in code)
