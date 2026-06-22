@@ -248,6 +248,12 @@ where your data lives.
   they're portable from the first launch; older Beta 1 bundles that still ship
   `run-quill.cmd` keep working. AI keys (DPAPI-encrypted) travel with a verified
   portable bundle automatically.
+- **No more console window flashing at startup.** QUILL now launches through
+  `quill.exe`, a windowed launcher, instead of the old `run-quill.cmd` batch
+  file — so the brief black command window some people saw when starting QUILL is
+  gone. This applies to **both the installer and the portable edition**; upgrading
+  replaces any old Start-menu or desktop shortcut that still pointed at the batch
+  launcher, so the flash does not come back.
 - **Honest identity.** The launcher reports itself as **QUILL for All** with the
   real version and **Community Access** as publisher, so screen-reader
   "what version" commands say something useful instead of "Python." On upgrade,

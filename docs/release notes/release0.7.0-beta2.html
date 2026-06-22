@@ -469,6 +469,13 @@ empty <code>data/</code> folder so they're portable from the first
 launch; older Beta 1 bundles that still ship <code>run-quill.cmd</code>
 keep working. AI keys (DPAPI-encrypted) travel with a verified portable
 bundle automatically.</li>
+<li><strong>No more console window flashing at startup.</strong> QUILL
+now launches through <code>quill.exe</code>, a windowed launcher,
+instead of the old <code>run-quill.cmd</code> batch file — so the brief
+black command window some people saw when starting QUILL is gone. This
+applies to <strong>both the installer and the portable edition</strong>;
+upgrading replaces any old Start-menu or desktop shortcut that still
+pointed at the batch launcher, so the flash does not come back.</li>
 <li><strong>Honest identity.</strong> The launcher reports itself as
 <strong>QUILL for All</strong> with the real version and
 <strong>Community Access</strong> as publisher, so screen-reader "what
