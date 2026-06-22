@@ -16,6 +16,12 @@ if TYPE_CHECKING:
 
 HOST_OWNED_SECRET_ACCESS = "host_owned"
 IN_PROCESS_EXECUTION = "in_process"
+# Declared but not yet implemented: no untrusted publishing provider exists
+# yet to validate a real subprocess/IPC worker boundary against (third-party
+# provider loading remains locked off). Registration explicitly rejects this
+# value below rather than silently accepting it, so the contract stays
+# honest about what actually runs versus what is only planned.
+WORKER_EXECUTION = "worker"
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +56,8 @@ def register_bundled_publishing_provider(
         raise ValueError("Bundled publishing provider network capability rationale is required.")
     if adapter.secret_access != HOST_OWNED_SECRET_ACCESS:
         raise ValueError("Bundled publishing provider secrets must remain host-owned.")
+    if adapter.execution == WORKER_EXECUTION:
+        raise ValueError("Worker-boundary bundled publishing providers are not implemented yet.")
     if adapter.execution != IN_PROCESS_EXECUTION:
         raise ValueError("Only trusted in-process bundled publishing providers are supported.")
 

@@ -7,7 +7,7 @@ import quill.core.publishing as publishing
 import quill.core.publishing_clients as publishing_clients
 from quill.core.publishing import PublishingConnectionProfile
 from quill.core.publishing_clients import PublishingRemoteDocument, publishing_provider_client
-from quill.core.publishing_providers import AUTH_METHOD_APP_PASSWORD
+from quill.core.publishing_providers import AUTH_METHOD_APP_PASSWORD, PublishingOperationCancelled
 
 
 class _FakeResponse:
@@ -152,6 +152,84 @@ def test_browse_publishing_content_returns_partial_results_when_one_kind_times_o
         "Pages: Connection timed out. Check the site URL and try again. "
         "Try again with a narrower content scope."
     )
+
+
+def test_browse_publishing_content_raises_cancelled_before_any_request(monkeypatch) -> None:
+    calls: list[str] = []
+
+    def _urlopen(request, **_kwargs):
+        calls.append(request.full_url)
+        raise AssertionError("No network call should happen when already cancelled.")
+
+    monkeypatch.setattr(publishing_clients, "urlopen", _urlopen)
+    profile = PublishingConnectionProfile(
+        id="pub-one",
+        label="Site one",
+        provider_id="wordpress",
+        site_url="https://example.com",
+        auth_method=AUTH_METHOD_APP_PASSWORD,
+        account_identifier="writer",
+    )
+
+    try:
+        publishing.browse_publishing_content(
+            profile,
+            "secret",
+            content_kinds=("post", "page"),
+            is_cancelled=lambda: True,
+        )
+    except PublishingOperationCancelled:
+        pass
+    else:
+        raise AssertionError("Expected PublishingOperationCancelled to propagate.")
+
+    assert calls == []
+
+
+def test_browse_publishing_content_cancels_before_second_kind(monkeypatch) -> None:
+    calls: list[str] = []
+
+    def _urlopen(request, **_kwargs):
+        calls.append(request.full_url)
+        return _FakeResponse([
+            {
+                "id": 11,
+                "link": "https://example.com/posts/hello",
+                "title": {"rendered": "Hello post"},
+                "status": "publish",
+                "modified_gmt": "2026-06-08T04:00:00",
+                "type": "post",
+            }
+        ])
+
+    monkeypatch.setattr(publishing_clients, "urlopen", _urlopen)
+    profile = PublishingConnectionProfile(
+        id="pub-one",
+        label="Site one",
+        provider_id="wordpress",
+        site_url="https://example.com",
+        auth_method=AUTH_METHOD_APP_PASSWORD,
+        account_identifier="writer",
+    )
+
+    def _is_cancelled() -> bool:
+        # Cancel once the loop reaches the second requested content kind.
+        return len(calls) >= 1
+
+    try:
+        publishing.browse_publishing_content(
+            profile,
+            "secret",
+            content_kinds=("post", "page"),
+            is_cancelled=_is_cancelled,
+        )
+    except PublishingOperationCancelled:
+        pass
+    else:
+        raise AssertionError("Expected PublishingOperationCancelled to propagate.")
+
+    assert len(calls) == 1
+    assert "/posts?" in calls[0]
 
 
 def test_load_publishing_remote_item_returns_remote_document(monkeypatch) -> None:

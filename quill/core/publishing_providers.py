@@ -21,6 +21,11 @@ PUBLISHING_OPERATIONS = (
     PUBLISHING_OPERATION_SCHEDULE,
 )
 
+
+class PublishingOperationCancelled(Exception):
+    """Raised when a caller-supplied cancellation check stops an in-flight operation."""
+
+
 AUTH_METHOD_APP_PASSWORD = "app_password"
 AUTH_METHOD_PASSWORD = "password"
 AUTH_METHOD_BROWSER_SESSION = "browser_session"

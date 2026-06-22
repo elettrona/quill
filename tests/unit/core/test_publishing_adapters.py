@@ -94,7 +94,8 @@ def test_mismatched_adapter_is_rejected_before_registry_exposure() -> None:
     [
         ({"network_capability_rationale": ""}, "rationale is required"),
         ({"secret_access": "provider_owned"}, "secrets must remain host-owned"),
-        ({"execution": "worker"}, "Only trusted in-process"),
+        ({"execution": "cloud_function"}, "Only trusted in-process"),
+        ({"execution": "worker"}, "Worker-boundary .* not implemented yet"),
     ],
 )
 def test_adapter_rejects_unsupported_security_or_runtime_shape(changes, message) -> None:

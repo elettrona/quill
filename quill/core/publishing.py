@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -297,6 +298,7 @@ def browse_publishing_content(
     content_kinds: tuple[str, ...] | None = None,
     statuses: tuple[str, ...] | None = None,
     timeout_seconds: float = 10.0,
+    is_cancelled: Callable[[], bool] | None = None,
 ) -> tuple[bool, str, list[PublishingRemoteItemSummary]]:
     normalized = _normalized_profile(profile)
     if not normalized.site_url:
@@ -339,6 +341,7 @@ def browse_publishing_content(
         content_kinds=filtered_kinds,
         statuses=statuses or ("publish", "draft"),
         timeout_seconds=timeout_seconds,
+        is_cancelled=is_cancelled,
     )
 
 

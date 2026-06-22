@@ -5,6 +5,7 @@ import html
 import json
 import re
 import ssl
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Protocol
@@ -15,6 +16,7 @@ from urllib.request import Request, urlopen
 from quill.core.net import verified_ssl_context
 from quill.core.publishing_providers import (
     WORDPRESS_PROVIDER_ID,
+    PublishingOperationCancelled,
     provider_content_kind_label,
     publishing_provider_display_name,
 )
@@ -68,6 +70,7 @@ class PublishingProviderClient(Protocol):
         content_kinds: tuple[str, ...],
         statuses: tuple[str, ...],
         timeout_seconds: float,
+        is_cancelled: Callable[[], bool] | None = None,
     ) -> tuple[bool, str, list[PublishingRemoteItemSummary]]: ...
 
     def load_remote_item(
@@ -179,6 +182,7 @@ class WordPressPublishingClient:
         content_kinds: tuple[str, ...],
         statuses: tuple[str, ...],
         timeout_seconds: float,
+        is_cancelled: Callable[[], bool] | None = None,
     ) -> tuple[bool, str, list[PublishingRemoteItemSummary]]:
         account_identifier = str(getattr(profile, "account_identifier", "")).strip()
         site_url = str(getattr(profile, "site_url", "")).strip()
@@ -191,6 +195,8 @@ class WordPressPublishingClient:
         failures: list[str] = []
         requested_statuses = _normalized_statuses(statuses)
         for content_kind in content_kinds:
+            if is_cancelled is not None and is_cancelled():
+                raise PublishingOperationCancelled("Browse publishing content cancelled.")
             endpoint = _wordpress_collection_endpoint(
                 site_url,
                 content_kind,
