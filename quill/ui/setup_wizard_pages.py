@@ -60,8 +60,9 @@ def _is_sr_active() -> bool:
     """Return True if a screen reader is currently running.
 
     Used to choose between a richer webview preview (sighted users) and a
-    plain ``wx.StaticText`` preview (screen-reader users, where a TextCtrl
-    is announced as an editable text field even with ``TE_READONLY``).
+    read-only multi-line ``wx.TextCtrl`` preview (screen-reader users, who can
+    arrow through it line by line on both Windows and macOS, like the About
+    window).
     """
     global _SR_DETECTED
     if _SR_DETECTED is None:
@@ -82,24 +83,26 @@ def _is_sr_active() -> bool:
 class _WizardPreview:
     """Adaptive preview block used by every wizard page.
 
-    #610: VoiceOver (macOS) announces a ``wx.TextCtrl`` even with
-    ``TE_READONLY`` as an "edit text" field, which is misleading: the
-    preview is not editable. The fix is to swap the TextCtrl for a widget
-    whose accessibility role is "document" or "static text".
+    Screen-reader users get a **read-only multi-line ``wx.TextCtrl``** — the same
+    surface the About window uses (``info_pages.py``). It is the only control
+    that lets *both* NVDA/JAWS on Windows **and** VoiceOver on macOS arrow
+    through the text line by line. (#610 had replaced it with a ``wx.StaticText``
+    to avoid VoiceOver's "edit text, read only" announcement, but a StaticText is
+    not keyboard-focusable, so Windows screen-reader users could not reach or
+    arrow through the text at all — they only landed on the heading. The
+    read-only TextCtrl is navigable everywhere; the "read only" announcement is
+    accurate and matches the About window, so it is the right trade-off.)
 
-    When no screen reader is active, we render the preview as a
-    ``SidePreview`` (a styled HTML preview with the system font and
-    good contrast). When a screen reader is active we fall back to a
-    multi-line ``wx.StaticText`` (announced as static text / a
-    document, never as an editable text field). If ``SidePreview`` is
-    not importable we fall back to the StaticText on every platform.
+    When no screen reader is active, a sighted user still gets the styled
+    ``SidePreview`` (HTML webview). If the webview is unavailable, everyone gets
+    the read-only TextCtrl, which renders the text fine visually too.
     """
 
     def __init__(self, parent: wx.Window, *, name: str, content_html: str) -> None:
         self._parent = parent
         self._content_html = content_html
         self._webview = None
-        self._static_text: wx.StaticText | None = None
+        self._text_ctrl: wx.TextCtrl | None = None
         self.control: wx.Window
         if not _is_sr_active():
             self._webview = self._try_make_side_preview(parent)
@@ -107,8 +110,8 @@ class _WizardPreview:
             self.control = self._webview.control
             self._webview.update(content_html)
         else:
-            self._static_text = self._make_static_text(parent, name)
-            self.control = self._static_text
+            self._text_ctrl = self._make_readonly_text(parent, name)
+            self.control = self._text_ctrl
 
     @staticmethod
     def _try_make_side_preview(parent: wx.Window):
@@ -124,9 +127,15 @@ class _WizardPreview:
             return None
         return preview
 
-    def _make_static_text(self, parent: wx.Window, name: str) -> wx.StaticText:
+    def _make_readonly_text(self, parent: wx.Window, name: str) -> wx.TextCtrl:
+        """A read-only, arrow-navigable text field (NVDA/JAWS + VoiceOver)."""
         text = self._html_to_text(self._content_html)
-        ctrl = wx.StaticText(parent, label=text, name=name)
+        ctrl = wx.TextCtrl(
+            parent,
+            value=text,
+            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_WORDWRAP,
+            name=name,
+        )
         ctrl.SetMinSize((-1, _PREVIEW_MIN_HEIGHT))
         return ctrl
 
@@ -153,9 +162,11 @@ class _WizardPreview:
         if self._webview is not None:
             self._webview.update(content_html)
             return
-        if self._static_text is not None:
-            self._static_text.SetLabel(self._html_to_text(content_html))
-            self._static_text.GetParent().Layout()
+        if self._text_ctrl is not None:
+            # ChangeValue (not SetValue) so no EVT_TEXT fires and the control
+            # stays read-only/clean.
+            self._text_ctrl.ChangeValue(self._html_to_text(content_html))
+            self._text_ctrl.GetParent().Layout()
 
 
 def _render_preview_html(plain_text: str) -> str:
@@ -263,10 +274,11 @@ class _WelcomePage(_WizardPage):
         )
         sizer.Add(about_label, flag=wx.LEFT | wx.RIGHT, border=12)
 
-        # #610: preview rendered as a SidePreview (webview) for sighted
-        # users, or a multi-line StaticText for screen-reader users.
-        # Replaces a read-only wx.TextCtrl, which VoiceOver announces
-        # as an editable text field.
+        # Preview is a styled SidePreview (webview) for sighted users, or a
+        # read-only multi-line wx.TextCtrl for screen-reader users — arrow-
+        # navigable on Windows (NVDA/JAWS) and macOS (VoiceOver), like the
+        # About window. (Reverts the #610 StaticText, which Windows screen
+        # readers could not focus or arrow through.)
         preview = _WizardPreview(
             self,
             name="wizard.welcome_preview",
@@ -325,9 +337,8 @@ class _IntentPage(_WizardPage):
         )
         sizer.Add(about_label, flag=wx.LEFT | wx.RIGHT, border=12)
 
-        # #610: adaptive preview (SidePreview / StaticText) replaces the
-        # read-only TextCtrl so VoiceOver does not announce it as an
-        # editable text field.
+        # Adaptive preview: styled webview for sighted users, read-only
+        # arrow-navigable wx.TextCtrl for screen-reader users (both platforms).
         self._preview = _WizardPreview(
             self,
             name="wizard.intent_preview",

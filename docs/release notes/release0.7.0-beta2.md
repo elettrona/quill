@@ -192,10 +192,12 @@ where your data lives.
 
 ## Accessibility and screen-reader refinements
 
-- **Setup starts on the heading.** Each Setup Wizard page focuses its heading
-  first, so you hear the page's purpose before its controls; the preview is
-  readable content, not an editable field; and the buttons read plainly as
-  **Back** and **Next** (no "less than Back").
+- **Setup starts on the heading**, and its text is readable. Each Setup Wizard
+  page focuses its heading first, so you hear the page's purpose before its
+  controls; the explanatory text sits in a **read-only field you can arrow
+  through line by line**, exactly like the About window, for both Windows screen
+  readers and VoiceOver; and the buttons read plainly as **Back** and **Next**
+  (no "less than Back").
 - **A cleaner first launch.** On a fresh install the Setup Wizard opens before any
   Untitled document, so a screen reader doesn't announce a stray tab first; a
   blank document is created after setup.
