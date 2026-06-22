@@ -122,8 +122,10 @@ formats — MP3, M4A, AAC, FLAC, OGG, Opus, WMA, WAV, MP4, M4V, MOV, MKV, WebM,
 and AVI. When **ffmpeg** is available on your computer, QUILL converts the file
 automatically before transcribing, so you no longer have to prepare a WAV first.
 (Without ffmpeg, the offline Whisper engine still reads 16 kHz mono WAV files;
-the Faster Whisper engine reads the other formats on its own. QUILL does not
-bundle ffmpeg — install it once, e.g. `winget install Gyan.FFmpeg`.)
+the Faster Whisper engine reads the other formats on its own.) QUILL does not
+bundle ffmpeg, but it can fetch it for you: **Tools > Speech > Whisperer >
+Download FFmpeg...** downloads the official build and sets it up — or install it
+yourself once with `winget install Gyan.FFmpeg`.
 
 ### Captions
 **Generate Captions (Offline)...** transcribes a file with timestamps and saves
@@ -387,10 +389,13 @@ For most people, nothing special:
   portable copy you can drop it into `tools\speech\whispercpp`. Then download a
   model from **Tools > Speech > Whisperer > Manage Speech Models**.
 - **ffmpeg, for transcribing anything but WAV.** To transcribe or caption MP3,
-  M4A, MP4, MOV, MKV, and other formats, install **ffmpeg** and make sure it is on
-  your PATH (for example, `winget install Gyan.FFmpeg`). QUILL does not bundle
-  ffmpeg — it uses the copy on your computer — so without it the offline engine
-  reads only 16 kHz mono WAV files. No ffmpeg is needed for typing, editing, or
+  M4A, MP4, MOV, MKV, and other formats you need **ffmpeg**. The easiest way is
+  **Tools > Speech > Whisperer > Download FFmpeg...**, which fetches the official
+  build and sets it up for you; or install it yourself (for example,
+  `winget install Gyan.FFmpeg`) and QUILL finds it on your PATH. QUILL does not
+  bundle ffmpeg — it uses the copy on your computer — so without it the offline
+  engine reads only 16 kHz mono WAV files. No ffmpeg is needed for typing,
+  editing, or
   any non-speech feature.
 - **Faster Whisper (advanced, GPU).** On capable machines you can install the
   optional `faster-whisper` package to add a higher-throughput engine; QUILL then

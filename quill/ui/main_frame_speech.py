@@ -144,6 +144,88 @@ class SpeechCommandsMixin:
         self._announce(message)
         self._set_status(message)
 
+    def download_ffmpeg(self) -> None:
+        """Download an official ffmpeg build so any audio/video format transcribes.
+
+        ffmpeg is GPL/LGPL and QUILL does not bundle it; this fetches it from the
+        official builder on an explicit action, into the QUILL tools folder the
+        resolver searches. Runs on a worker thread behind a cancelable percentage.
+        """
+        import threading
+
+        from quill.core.speech.ffmpeg import ffmpeg_available
+        from quill.core.speech.ffmpeg_install import (
+            FFmpegInstallError,
+            ffmpeg_install_supported,
+            install_ffmpeg,
+        )
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
+
+        wx = self._wx
+        if not ffmpeg_install_supported():
+            self._show_message_box(
+                "Automatic ffmpeg download is Windows-only. On macOS install it with "
+                "Homebrew (brew install ffmpeg); on Linux use your package manager.",
+                "Download FFmpeg",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        if ffmpeg_available():
+            again = self._show_message_box(
+                "ffmpeg is already available on this computer. Download QUILL's own "
+                "managed copy anyway?",
+                "Download FFmpeg",
+                wx.ICON_QUESTION | wx.YES_NO,
+            )
+            if again != wx.YES:
+                return
+        confirm = self._show_message_box(
+            "Download ffmpeg (about 110 MB) from the official Gyan.dev build so QUILL "
+            "can transcribe MP3, M4A, MP4, and other formats? ffmpeg is open-source "
+            "(GPL/LGPL) and is fetched directly from the builder; QUILL does not bundle "
+            "it.",
+            "Download FFmpeg",
+            wx.ICON_QUESTION | wx.YES_NO,
+        )
+        if confirm != wx.YES:
+            return
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            self.frame,
+            "Downloading FFmpeg",
+            "Preparing to download ffmpeg...",
+            on_cancel=cancel.set,
+        )
+        progress.show()
+        self._announce("Downloading ffmpeg.")
+
+        def _on_progress(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise FFmpegInstallError("Download cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            progress.set_progress(percent, f"{message} {percent}%")
+
+        def _run() -> None:
+            try:
+                install_ffmpeg(_on_progress)
+            except Exception as exc:  # noqa: BLE001 - surface a clean message
+                wx.CallAfter(progress.close)
+                if cancel.is_set():
+                    wx.CallAfter(self._set_status, "ffmpeg download cancelled.")
+                    wx.CallAfter(self._announce, "ffmpeg download cancelled.")
+                else:
+                    wx.CallAfter(self._set_status, f"Could not install ffmpeg: {exc}")
+                    wx.CallAfter(self._announce, f"Could not install ffmpeg. {exc}")
+                return
+            wx.CallAfter(progress.close)
+            done = "ffmpeg installed. You can now transcribe more audio and video formats."
+            wx.CallAfter(self._set_status, done)
+            wx.CallAfter(self._announce, done)
+
+        threading.Thread(  # GATE-40-OK: ffmpeg download worker.
+            target=_run, daemon=True
+        ).start()
+
     def _choose_model_action(self, row: object) -> str | None:
         """Ask what to do with the chosen model. Returns 'download', 'remove', or None.
 
@@ -718,6 +800,7 @@ class SpeechCommandsMixin:
             ),
             ("tools.speech_dictate", "Dictate (Offline)", self.dictate_offline_toggle),
             ("tools.speech_microphone", "Dictation Microphone", self.choose_dictation_microphone),
+            ("tools.speech_ffmpeg", "Download FFmpeg", self.download_ffmpeg),
             ("tools.speech_hf_token", "Hugging Face Token", self.set_huggingface_token),
         ]
         for command_id, title, handler in specs:

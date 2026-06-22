@@ -321,9 +321,11 @@ MP4, M4V, MOV, MKV, WebM, and AVI. When <strong>ffmpeg</strong> is
 available on your computer, QUILL converts the file automatically before
 transcribing, so you no longer have to prepare a WAV first. (Without
 ffmpeg, the offline Whisper engine still reads 16 kHz mono WAV files;
-the Faster Whisper engine reads the other formats on its own. QUILL does
-not bundle ffmpeg — install it once, e.g.
-<code>winget install Gyan.FFmpeg</code>.)</p>
+the Faster Whisper engine reads the other formats on its own.) QUILL
+does not bundle ffmpeg, but it can fetch it for you: <strong>Tools &gt;
+Speech &gt; Whisperer &gt; Download FFmpeg...</strong> downloads the
+official build and sets it up — or install it yourself once with
+<code>winget install Gyan.FFmpeg</code>.</p>
 <h3 id="captions">Captions</h3>
 <p><strong>Generate Captions (Offline)...</strong> transcribes a file
 with timestamps and saves it as <strong>SRT</strong> or
@@ -635,12 +637,15 @@ is included in a Full install). In a portable copy you can drop it into
 <strong>Tools &gt; Speech &gt; Whisperer &gt; Manage Speech
 Models</strong>.</li>
 <li><strong>ffmpeg, for transcribing anything but WAV.</strong> To
-transcribe or caption MP3, M4A, MP4, MOV, MKV, and other formats,
-install <strong>ffmpeg</strong> and make sure it is on your PATH (for
-example, <code>winget install Gyan.FFmpeg</code>). QUILL does not bundle
-ffmpeg — it uses the copy on your computer — so without it the offline
-engine reads only 16 kHz mono WAV files. No ffmpeg is needed for typing,
-editing, or any non-speech feature.</li>
+transcribe or caption MP3, M4A, MP4, MOV, MKV, and other formats you
+need <strong>ffmpeg</strong>. The easiest way is <strong>Tools &gt;
+Speech &gt; Whisperer &gt; Download FFmpeg...</strong>, which fetches
+the official build and sets it up for you; or install it yourself (for
+example, <code>winget install Gyan.FFmpeg</code>) and QUILL finds it on
+your PATH. QUILL does not bundle ffmpeg — it uses the copy on your
+computer — so without it the offline engine reads only 16 kHz mono WAV
+files. No ffmpeg is needed for typing, editing, or any non-speech
+feature.</li>
 <li><strong>Faster Whisper (advanced, GPU).</strong> On capable machines
 you can install the optional <code>faster-whisper</code> package to add
 a higher-throughput engine; QUILL then offers a Speech Engine

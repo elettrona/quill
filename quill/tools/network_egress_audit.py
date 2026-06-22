@@ -76,6 +76,12 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "context, visible progress, blocked in Safe Mode, sha256-verified when a hash "
         "is known. No silent background downloads."
     ),
+    "core/speech/ffmpeg_install.py::_download_zip": (
+        "User-initiated optional ffmpeg download (#617) from the official Gyan.dev "
+        "Windows build linked by ffmpeg.org; HTTPS enforced (refuses non-https), "
+        "verified TLS context, visible progress, blocked in Safe Mode. ffmpeg is not "
+        "bundled (GPL/LGPL); QUILL only downloads it on an explicit action."
+    ),
     "core/ai/model_manager.py::_download": (
         "User-initiated local AI model download; verified TLS for HTTPS, visible progress callback."
     ),

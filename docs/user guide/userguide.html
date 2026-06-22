@@ -1388,11 +1388,15 @@ were produced.</li>
 FLAC, OGG, Opus, WMA, WAV, MP4, M4V, MOV, MKV, WebM, or AVI. If
 <strong>ffmpeg</strong> is installed, QUILL converts the file
 automatically before transcribing — you do not have to make a WAV
-yourself. QUILL does not ship ffmpeg; install it once (for example,
-<code>winget install Gyan.FFmpeg</code>) and QUILL finds it on your
-PATH. Without ffmpeg, the whisper.cpp engine needs a 16 kHz mono WAV,
-while the Faster Whisper engine handles the other formats on its
-own.</li>
+yourself. QUILL does not ship ffmpeg, but it can fetch it for you:
+<strong>Tools &gt; Speech &gt; Whisperer &gt; Download
+FFmpeg...</strong> downloads the official build (about 110 MB, with a
+cancelable progress bar) and sets it up; or install it yourself once
+(for example, <code>winget install Gyan.FFmpeg</code>) and QUILL finds
+it on your PATH. ffmpeg is open-source (GPL/LGPL) and fetched directly
+from the official builder; QUILL never bundles or redistributes it.
+Without ffmpeg, the whisper.cpp engine needs a 16 kHz mono WAV, while
+the Faster Whisper engine handles the other formats on its own.</li>
 <li><strong>Speaker attribution.</strong> If you download the "Small
 English with speaker detection" model (in Manage Speech Models), QUILL
 marks <strong>who is speaking when</strong> — each turn is labelled
