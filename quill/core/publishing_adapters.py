@@ -3,6 +3,18 @@
 Bundled adapters are imported explicitly by Quill. This module does not scan
 packages, load third-party code, persist secrets, or perform network requests.
 It only pairs reviewed provider metadata with its in-process client.
+
+This module also defines the third-party publishing provider adapter shape
+(``ThirdPartyPublishingProviderAdapter``) so the contract — id-conflict
+checking, host-owned secrets, required worker execution — exists and is
+tested ahead of time. Registering one always fails: live third-party
+provider loading is not implemented. That is independent of this module —
+third-party Quillin *code execution* in general remains locked off by the
+``core.third_party_plugins`` feature flag (SEC-8, see
+``quill/core/feature_catalog.py``) for QUILL 1.0, and the publishing-specific
+contract here does not loosen, bypass, or duplicate that lock. Implementing
+real loading is a separate, explicit product decision, not an engineering
+detail to infer from this contract's shape.
 """
 
 from __future__ import annotations
@@ -78,3 +90,57 @@ def bundled_publishing_provider_adapter(
     provider_id: str,
 ) -> BundledPublishingProviderAdapter | None:
     return _BUNDLED_PUBLISHING_PROVIDER_ADAPTERS.get(provider_id.strip().lower())
+
+
+@dataclass(frozen=True, slots=True)
+class ThirdPartyPublishingProviderAdapter:
+    """A would-be contribution from a third-party publishing provider.
+
+    Unlike :class:`BundledPublishingProviderAdapter`, ``secret_access`` and
+    ``execution`` have no trusted defaults — a third-party adapter must state
+    its policy explicitly rather than inherit one meant for reviewed code.
+    """
+
+    provider_id: str
+    definition: PublishingProviderDefinition
+    client: PublishingProviderClient
+    network_capability_rationale: str
+    secret_access: str
+    execution: str
+
+
+def register_third_party_publishing_provider(
+    adapter: ThirdPartyPublishingProviderAdapter,
+) -> None:
+    """Validate a third-party adapter contract. Registration always fails.
+
+    Every structural and security check below runs and is independently
+    tested, so the contract is provably ready, but this function never adds
+    anything to the live provider/client registries: live third-party
+    publishing provider loading is not implemented yet.
+    """
+    normalized = adapter.provider_id.strip().lower()
+    definition_id = adapter.definition.id.strip().lower()
+    client_id = adapter.client.provider_id.strip().lower()
+    if not normalized:
+        raise ValueError("Third-party publishing provider id is required.")
+    if definition_id != normalized:
+        raise ValueError("Third-party publishing provider definition id must match adapter id.")
+    if client_id != normalized:
+        raise ValueError("Third-party publishing provider client id must match adapter id.")
+    if not adapter.network_capability_rationale.strip():
+        raise ValueError(
+            "Third-party publishing provider network capability rationale is required."
+        )
+    if adapter.secret_access != HOST_OWNED_SECRET_ACCESS:
+        raise ValueError("Third-party publishing provider secrets must remain host-owned.")
+    if adapter.execution != WORKER_EXECUTION:
+        raise ValueError(
+            "Third-party publishing providers must declare worker execution; "
+            "in-process execution is reserved for trusted bundled providers."
+        )
+    if bundled_publishing_provider_adapter(normalized) is not None:
+        raise ValueError(
+            f"Provider id '{normalized}' conflicts with an existing bundled publishing provider."
+        )
+    raise ValueError("Live third-party publishing provider loading is not implemented yet.")

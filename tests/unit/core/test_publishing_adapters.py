@@ -6,9 +6,12 @@ from quill.core import publishing_clients, publishing_validation
 from quill.core.publishing_adapters import (
     HOST_OWNED_SECRET_ACCESS,
     IN_PROCESS_EXECUTION,
+    WORKER_EXECUTION,
     BundledPublishingProviderAdapter,
+    ThirdPartyPublishingProviderAdapter,
     bundled_publishing_provider_adapter,
     register_bundled_publishing_provider,
+    register_third_party_publishing_provider,
 )
 from quill.core.publishing_bundled import bootstrap_bundled_publishing_providers
 from quill.core.publishing_bundled.wordpress import wordpress_bundled_provider_adapter
@@ -16,6 +19,7 @@ from quill.core.publishing_providers import (
     AUTH_METHOD_APP_PASSWORD,
     PUBLISHING_OPERATION_VERIFY,
     PublishingProviderDefinition,
+    available_publishing_providers,
     publishing_provider_definition,
 )
 
@@ -112,3 +116,67 @@ def test_adapter_rejects_unsupported_security_or_runtime_shape(changes, message)
 
     assert publishing_provider_definition("packagecms") is None
     assert publishing_clients.publishing_provider_client("packagecms") is None
+
+
+def _third_party_values(**overrides: object) -> dict[str, object]:
+    values: dict[str, object] = {
+        "provider_id": "thirdpartycms",
+        "definition": _definition("thirdpartycms"),
+        "client": type("ThirdPartyClient", (), {"provider_id": "thirdpartycms"})(),
+        "network_capability_rationale": "User-initiated third-party requests.",
+        "secret_access": HOST_OWNED_SECRET_ACCESS,
+        "execution": WORKER_EXECUTION,
+    }
+    values.update(overrides)
+    return values
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"network_capability_rationale": ""}, "rationale is required"),
+        ({"secret_access": "provider_owned"}, "secrets must remain host-owned"),
+        ({"execution": IN_PROCESS_EXECUTION}, "must declare worker execution"),
+        ({"execution": "cloud_function"}, "must declare worker execution"),
+    ],
+)
+def test_third_party_adapter_rejects_malformed_shape_before_the_blanket_lock(
+    overrides, message
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        register_third_party_publishing_provider(
+            ThirdPartyPublishingProviderAdapter(**_third_party_values(**overrides))
+        )
+
+    assert publishing_provider_definition("thirdpartycms") is None
+    assert publishing_clients.publishing_provider_client("thirdpartycms") is None
+
+
+def test_third_party_adapter_rejects_id_mismatch() -> None:
+    values = _third_party_values(client=type("ThirdPartyClient", (), {"provider_id": "other"})())
+
+    with pytest.raises(ValueError, match="client id must match"):
+        register_third_party_publishing_provider(ThirdPartyPublishingProviderAdapter(**values))
+
+
+def test_third_party_adapter_rejects_id_conflicting_with_bundled_provider() -> None:
+    values = _third_party_values(
+        provider_id="wordpress",
+        definition=_definition("wordpress"),
+        client=type("ThirdPartyClient", (), {"provider_id": "wordpress"})(),
+    )
+
+    with pytest.raises(ValueError, match="conflicts with an existing bundled publishing provider"):
+        register_third_party_publishing_provider(ThirdPartyPublishingProviderAdapter(**values))
+
+
+def test_well_formed_third_party_adapter_is_still_rejected_and_never_exposed() -> None:
+    """Proves the blanket lock: even a fully valid contract registers nothing."""
+    adapter = ThirdPartyPublishingProviderAdapter(**_third_party_values())
+
+    with pytest.raises(ValueError, match="not implemented yet"):
+        register_third_party_publishing_provider(adapter)
+
+    assert publishing_provider_definition("thirdpartycms") is None
+    assert publishing_clients.publishing_provider_client("thirdpartycms") is None
+    assert "thirdpartycms" not in {item.id for item in available_publishing_providers()}
