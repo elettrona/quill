@@ -75,16 +75,15 @@ def test_docs_are_in_their_expected_homes() -> None:
     docs = _REPO_ROOT / "docs"
     # Quillin scripting contract lives under docs/quillins/ alongside generated epub/html.
     assert (docs / "quillins" / "quillins.md").is_file(), "missing docs/quillins/quillins.md"
-    # The 0.7.0 release scope locked "merge planning files into the main docs,
-    # then delete the docs/planning/ folder". All planning material (roadmap,
-    # braille spec, screen-reader-first design, verbosity system framing) has
-    # been merged into the QUILL-PRD, the user guide, and the release notes;
-    # docs/planning/ is therefore deleted and must not be reintroduced.
-    assert not (docs / "planning").is_dir(), (
-        "docs/planning/ was deleted as part of the 0.7.0 release scope; "
-        "planning material lives in the QUILL-PRD, the user guide, and the "
-        "release notes. Do not recreate the folder."
-    )
+    # docs/planning/ is retained as the home for active planning, backlog, and
+    # naming/branding material (roadmap, feature/braille backlogs, the consolidated
+    # 1.0 tracker, the TINDRA naming plan, ...). The earlier 0.7.0 "merge then
+    # delete the planning folder" scope was superseded by keeping it as a living
+    # home for in-flight planning, so guard that the folder and its anchor file
+    # exist rather than forbidding them.
+    planning = docs / "planning"
+    assert planning.is_dir(), "missing docs/planning/ (the home for planning docs)"
+    assert (planning / "roadmap.md").is_file(), "missing docs/planning/roadmap.md"
     # User guide lives under docs/user guide/
     assert (docs / "user guide" / "userguide.md").is_file(), "missing docs/user guide/userguide.md"
     # PRD lives under docs/Product Requirement Documents and Specifications/
