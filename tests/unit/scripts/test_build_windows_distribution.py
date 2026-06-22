@@ -128,10 +128,15 @@ def test_build_inno_setup_script_mentions_portable_bundle() -> None:
     assert "ShouldInstallPaulVoice" not in script
     assert 'Name: "speechespeak"; Description: "Install bundled eSpeak-NG runtime";' in script
     assert 'Name: "speechpiper"; Description: "Install bundled Piper neural TTS runtime";' in script
+    # The offline whisper.cpp speech engine ships as its own optional component
+    # (#617), gated payload under tools\speech\whispercpp, surfaced under
+    # Tools > Speech > Whisperer.
+    assert 'Name: "speechwhisper"; Description: "Install the offline speech engine' in script
+    assert "(Tools > Speech > Whisperer)" in script
     assert "speechkokoro" not in script
     assert "speechopenvoice" not in script
     assert (
-        'Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\nodejs\\*,vendor\\braille-pack\\*,_tool-download\\*,_speech-download\\*"'
+        'Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\speech\\whispercpp\\*,tools\\nodejs\\*,vendor\\braille-pack\\*,_tool-download\\*,_speech-download\\*"'
         in script
     )
     assert 'Source: "..\\portable\\tools\\pandoc\\*"; DestDir: "{app}\\tools\\pandoc";' in script
@@ -153,9 +158,14 @@ def test_build_inno_setup_script_mentions_portable_bundle() -> None:
         'Source: "..\\portable\\tools\\speech\\piper\\*"; DestDir: "{app}\\tools\\speech\\piper";'
         in script
     )
+    assert (
+        'Source: "..\\portable\\tools\\speech\\whispercpp\\*";'
+        ' DestDir: "{app}\\tools\\speech\\whispercpp";' in script
+    )
     assert "Components: speechdectalk" in script
     assert "Components: speechespeak" in script
     assert "Components: speechpiper" in script
+    assert "Components: speechwhisper" in script
     assert "User Guide" in script
     assert "userguide.html" in script
     assert 'Parameters: "-m quill"' in script
