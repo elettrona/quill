@@ -119,11 +119,19 @@ class FasterWhisperProvider:
     # -- availability ----------------------------------------------------- #
 
     def is_available(self) -> bool:
+        # Probe by locating the module, NOT by importing it: ``import
+        # faster_whisper`` pulls in CTranslate2 and can take tens of seconds on
+        # first load. is_available() runs on the UI thread (registry build,
+        # engine chooser, model manager), so a real import here freezes the
+        # whole app. The heavy import stays in ``_ensure_model`` (transcription),
+        # which runs on a background task. A broken install surfaces there as a
+        # clean, speakable SpeechError instead of a UI hang.
+        import importlib.util
+
         try:
-            import faster_whisper  # noqa: F401
-        except Exception:  # noqa: BLE001 - any import failure means unavailable
+            return importlib.util.find_spec("faster_whisper") is not None
+        except Exception:  # noqa: BLE001 - any probing failure means unavailable
             return False
-        return True
 
     def get_install_status(self) -> ProviderInstallStatus:
         if not self.is_available():
