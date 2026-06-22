@@ -303,6 +303,7 @@ COMMAND_FEATURE_MAP: dict[str, str] = {
     "publishing.update_remote_item": "future.publishing",
     "publishing.publish_remote_item": "future.publishing",
     "publishing.schedule_publish": "future.publishing",
+    "publishing.compare_remote_item": "future.publishing",
     "tools.open_python_console": "core.developer_console",
     "tools.open_typescript_console": "core.developer_console.typescript",
     "tools.copy_diagnostic_summary": "core.developer_console",

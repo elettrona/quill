@@ -872,3 +872,120 @@ def test_update_publishing_remote_item_rejects_naive_scheduled_time(monkeypatch)
     assert ok is False
     assert message == "Choose a time zone for the scheduled publish time."
     assert document is None
+
+
+def test_compare_publishing_remote_item_reports_no_differences(monkeypatch) -> None:
+    def _urlopen(request, **_kwargs):
+        return _FakeResponse({
+            "id": 22,
+            "link": "https://example.com/about",
+            "title": {"rendered": "About page"},
+            "status": "publish",
+            "modified_gmt": "2026-06-18T12:00:00",
+            "type": "page",
+            "content": {"rendered": "<p>About body</p>"},
+        })
+
+    monkeypatch.setattr(publishing_clients, "urlopen", _urlopen)
+    profile = PublishingConnectionProfile(
+        id="pub-one",
+        label="Site one",
+        provider_id="wordpress",
+        site_url="https://example.com",
+        auth_method=AUTH_METHOD_APP_PASSWORD,
+        account_identifier="writer",
+    )
+
+    ok, _message, comparison = publishing.compare_publishing_remote_item(
+        profile,
+        "secret",
+        content_kind="page",
+        remote_id="22",
+        local_title="About page",
+        local_document_text="<p>About body</p>",
+        local_authoring_surface="html",
+        local_status="publish",
+        last_known_updated_at="2026-06-18T12:00:00",
+    )
+
+    assert ok is True
+    assert comparison is not None
+    assert comparison.title_differs is False
+    assert comparison.body_differs is False
+    assert comparison.status_differs is False
+    assert comparison.remote_changed_since_last_known is False
+
+
+def test_compare_publishing_remote_item_reports_remote_change_honestly(monkeypatch) -> None:
+    def _urlopen(request, **_kwargs):
+        return _FakeResponse({
+            "id": 22,
+            "link": "https://example.com/about",
+            "title": {"rendered": "About page, edited remotely"},
+            "status": "publish",
+            "modified_gmt": "2026-06-20T09:00:00",
+            "type": "page",
+            "content": {"rendered": "<p>About body</p>"},
+        })
+
+    monkeypatch.setattr(publishing_clients, "urlopen", _urlopen)
+    profile = PublishingConnectionProfile(
+        id="pub-one",
+        label="Site one",
+        provider_id="wordpress",
+        site_url="https://example.com",
+        auth_method=AUTH_METHOD_APP_PASSWORD,
+        account_identifier="writer",
+    )
+
+    ok, message, comparison = publishing.compare_publishing_remote_item(
+        profile,
+        "secret",
+        content_kind="page",
+        remote_id="22",
+        local_title="About page",
+        local_document_text="<p>About body</p>",
+        local_authoring_surface="html",
+        local_status="publish",
+        last_known_updated_at="2026-06-18T12:00:00",
+    )
+
+    assert ok is True
+    assert message == "Opened publishing content from example.com."
+    assert comparison is not None
+    assert comparison.title_differs is True
+    assert comparison.remote_changed_since_last_known is True
+    report = publishing.publishing_comparison_message(comparison)
+    assert "Title: differs" in report
+    assert "Remote changed since you last synced" in report
+
+
+def test_compare_publishing_remote_item_propagates_load_failure(monkeypatch) -> None:
+    def _urlopen(request, **_kwargs):
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(publishing_clients, "urlopen", _urlopen)
+    profile = PublishingConnectionProfile(
+        id="pub-one",
+        label="Site one",
+        provider_id="wordpress",
+        site_url="https://example.com",
+        auth_method=AUTH_METHOD_APP_PASSWORD,
+        account_identifier="writer",
+    )
+
+    ok, message, comparison = publishing.compare_publishing_remote_item(
+        profile,
+        "secret",
+        content_kind="page",
+        remote_id="22",
+        local_title="About page",
+        local_document_text="<p>About body</p>",
+        local_authoring_surface="html",
+        local_status="publish",
+        last_known_updated_at="2026-06-18T12:00:00",
+    )
+
+    assert ok is False
+    assert message == "Connection timed out. Check the site URL and try again."
+    assert comparison is None

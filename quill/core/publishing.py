@@ -14,6 +14,7 @@ from quill.core.publishing_clients import (
     PublishingRemoteItemSummary,
     publishing_provider_client,
 )
+from quill.core.publishing_compare import PublishingComparison, build_publishing_comparison
 from quill.core.publishing_providers import (
     AUTH_METHOD_APP_PASSWORD,
     PUBLISHING_OPERATION_BROWSE,
@@ -392,6 +393,39 @@ def load_publishing_remote_item(
     )
 
 
+def compare_publishing_remote_item(
+    profile: PublishingConnectionProfile,
+    secret: str,
+    *,
+    content_kind: str,
+    remote_id: str,
+    local_title: str,
+    local_document_text: str,
+    local_authoring_surface: str,
+    local_status: str,
+    last_known_updated_at: str,
+    timeout_seconds: float = 10.0,
+) -> tuple[bool, str, PublishingComparison | None]:
+    ok, message, remote_document = load_publishing_remote_item(
+        profile,
+        secret,
+        content_kind=content_kind,
+        remote_id=remote_id,
+        timeout_seconds=timeout_seconds,
+    )
+    if not ok or remote_document is None:
+        return False, message, None
+    local_body_html = _publishing_update_body_html(local_document_text, local_authoring_surface)
+    comparison = build_publishing_comparison(
+        remote_document,
+        local_title=local_title,
+        local_body_html=local_body_html,
+        local_status=local_status,
+        last_known_updated_at=last_known_updated_at,
+    )
+    return True, message, comparison
+
+
 def update_publishing_remote_item(
     profile: PublishingConnectionProfile,
     secret: str,
@@ -579,6 +613,34 @@ def publishing_result_message(action: str, document: PublishingRemoteDocument) -
     if scheduled_for:
         lines.append(f"Scheduled for: {scheduled_for} UTC")
     remote_url = document.remote_url.strip()
+    if remote_url:
+        lines.append(f"Link: {remote_url}")
+    return "\n".join(lines)
+
+
+def publishing_comparison_message(comparison: PublishingComparison) -> str:
+    content_kind = provider_content_kind_label(
+        comparison.provider_id, comparison.content_kind
+    ).lower()
+    host = _display_host(comparison.site_url)
+    lines = [f"Compared this {content_kind} with {host}."]
+    lines.append("Title: matches" if not comparison.title_differs else "Title: differs")
+    if comparison.status_differs:
+        lines.append(
+            "Status: differs "
+            f"(local {_display_status(comparison.local_status)}, "
+            f"remote {_display_status(comparison.remote_status)})"
+        )
+    else:
+        lines.append(f"Status: matches ({_display_status(comparison.remote_status)})")
+    lines.append("Body: matches" if not comparison.body_differs else "Body: differs")
+    if comparison.remote_changed_since_last_known:
+        lines.append(
+            "Remote changed since you last synced "
+            f"(now {_display_status(comparison.remote_status)}, "
+            f"updated {comparison.remote_updated_at})."
+        )
+    remote_url = comparison.remote_url.strip()
     if remote_url:
         lines.append(f"Link: {remote_url}")
     return "\n".join(lines)
