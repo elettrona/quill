@@ -6303,6 +6303,25 @@ Sub-PR 1.3 adds the shareable-pack and preview core, still wx-free.
 
 Tested by `test_verbosity_qvp.py`, `test_verbosity_library.py`, `test_verbosity_preview.py`, and golden snapshots under `tests/golden/verbosity/` (220 verbosity cases total; qvp coverage 95%). The Library CRUD UI, the QVP install dialog, and the Preview Lab dialog are deferred to the UI sub-PR.
 
+#### 5.91.7 Verbosity rebuild — the wxPython UI (sub-PR 1.4)
+
+Sub-PR 1.4 adds the user-facing surfaces under `quill/ui/`, each A11Y-4 hardened (label-then-control via mnemonics, `SetName`/`SetHint`, `apply_modal_ids`, deterministic focus, no icon-only buttons, registered in the dialog inventory) and wired to the already-tested pure core. The dialogs are not yet menu/chord-reachable — that is sub-PR 1.5.
+
+| Surface | Responsibility |
+|---|---|
+| `verbosity_prefs.py` | The embeddable `wx.Panel`: profile picker, the four-channel mix (Visual checked + disabled — the always-on floor), validation-mode and mastery boxes, tool buttons (Preview Lab / History / Templates / Safe Mode / Import-Export), and a filterable verb table (master list + detail) whose Edit-announcement / Data-order buttons launch the editors. Initial focus is the filter. |
+| `verbosity_token_editor.py` | Simple/Advanced **RadioBox** (not a notebook, §5 decision 6) over one template field; `Ctrl+T` validates and speaks the §13 summary, `Ctrl+Shift+P` previews (via `EVT_CHAR_HOOK`); Save is disabled with a tooltip while blocking errors exist; Insert-token and Speak-current-template. |
+| `verbosity_data_order.py` | Move Up / Down / Reset / Preview over a verb&#39;s field order. |
+| `verbosity_chord_editor.py` | Per-chord template overrides, validated against the chord&#39;s verb. |
+| `verbosity_library.py` | Template CRUD (Save/Rename/Delete, read-only built-ins &amp; QVP) + Install QVP. |
+| `verbosity_qvp_install.py` | Browse → validate → install a `.qvp.json`, reading back the spoken sequence, accepted templates, rejected (with reasons), and dependency warnings; Install is disabled until a valid pack is selected. |
+| `verbosity_history.py` | Review / replay / copy / explain recent announcements with a live filter; the explanation pane shows the full trace. |
+| `verbosity_preview_lab.py` | The 14 scenarios with per-channel output (speech/braille/visual/sound), profile, template source, channel mix, and suppressed content. |
+| `verbosity_safe_mode.py` | Scoped, non-destructive resets (disable custom / reset verb / reset chord / restore built-ins) with export-first. |
+| `verbosity_import_export.py` | Data-only `.quill-verbosity-profile.json` import/export. |
+
+The 3-tab About dialog already ships (About Quill, §&quot;About&quot;). Tested by `tests/unit/ui/test_verbosity_ui.py` (62 source-contract cases); the A11Y-4 banned-pattern, dialog-button-contract, escape-z-order, and GATE-11 gates pass, and `dialog_inventory.json` was regenerated with 12 new hardened surfaces.
+
 ---
 
 ## 6. Spell checking deep dive

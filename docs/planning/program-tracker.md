@@ -37,19 +37,19 @@ closed won't-do.
 
 ### By status
 
-**Open issues on GitHub: 80** (down from 232 before the 2026-06-21 consolidation). **Shipped this program: 20.**
+**Open issues on GitHub: 68** (down from 232 before the 2026-06-21 consolidation). **Shipped this program: 33.**
 
 | Status | Count |
 | --- | ---: |
-| ✅ Shipped | 20 (#648, #649, #643, #646, #238, #239, #240, #241, #242, #246, #251, #617 core S0–S4, #361, #368, #374, #377, #362, #392, #363, #382) |
-| 🚧 In progress | Verbosity (Phase 2): sub-PRs #364/#365/#366 + the §-section partials with core landed / UI pending (#367, #369, #371–#373, #375, #376, #381, #383, #385, #386–#389, #391, #393, #397) |
+| ✅ Shipped | 33 — including verbosity 1.1 (#361/#368/#374/#377), 1.2 (#362/#392), 1.3 (#363/#382), **1.4 UI (#364)** and the §-sections it completes (#369 §7, #375 §13, #376 §14, #378 §16, #379 §17, #380 §18, #381 §19, #383 §21, #385 §23, #386 §24, #387 §25); plus #648/#649/#643/#646, braille #238–#242/#246, #251 DAISY, #617 speech core |
+| 🚧 In progress | Verbosity (Phase 2): sub-PRs #365 (call-site migration + chords/badges) and #366 (polish), plus the §-section partials whose chord/dialog half rides on 1.5 (#367, #371–#373, #388, #389, #391, #393, #397) |
 | 🧹 Resolved (bookkeeping) | 2 (#600, #601 — braille design captured in docs) |
 
 ### Open by workstream (per [`roadmap.md`](roadmap.md))
 
 | Workstream | Open issues |
 | --- | --- |
-| Verbosity (Phase 2, in progress) | sub-PRs #364/#365/#366 + the §-section partials above (+ epic #271) |
+| Verbosity (Phase 2, in progress) | sub-PRs #365/#366 + the §-section partials above (+ epic #271). 1.1–1.4 shipped. |
 | Speech & Dictation — BITS Whisperer | #617, #663, and the BW consolidation backlog #515, #566–#577 |
 | GLOW integration | family #528–#534; Accessibility Agents #593–#598 |
 | Platform & Distribution | #506, #516, #517, #518, #519, #521, #525, #599 (packaging/freeze) |
