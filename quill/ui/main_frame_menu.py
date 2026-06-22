@@ -1485,38 +1485,6 @@ class MenuBuilderMixin:
             _("Hey QUILL &Commands (in Settings)..."),
         )
         reading_menu.AppendSubMenu(dictation_submenu, _("&Dictation"))
-        # Offline, on-device speech (#617): transcription, captions, dictate, and
-        # voice commands. These need no AI provider or keys and work with AI fully
-        # off, so they live here in Reading & Dictation rather than under the AI
-        # menu (where their placement wrongly implied an AI dependency).
-        speech_menu = wx.Menu()
-        speech_menu.Append(
-            self._id_speech_models,
-            self._menu_label(_("&Manage Speech Models..."), "tools.speech_models"),
-        )
-        speech_menu.Append(
-            self._id_speech_transcribe,
-            self._menu_label(
-                _("&Transcribe Audio or Video (Offline)..."), "tools.speech_transcribe"
-            ),
-        )
-        speech_menu.Append(
-            self._id_speech_captions,
-            self._menu_label(_("Generate &Captions (Offline)..."), "tools.speech_captions"),
-        )
-        speech_menu.Append(
-            self._id_speech_dictate,
-            self._menu_label(_("&Dictate (Offline)"), "tools.speech_dictate"),
-        )
-        speech_menu.Append(
-            self._id_speech_voice_command,
-            self._menu_label(_("&Voice Command (Offline)"), "tools.voice_command"),
-        )
-        speech_menu.Append(
-            self._id_speech_microphone,
-            self._menu_label(_("Dictation &Microphone..."), "tools.speech_microphone"),
-        )
-        reading_menu.AppendSubMenu(speech_menu, _("Speech (&Offline)"))
         reading_menu.AppendSeparator()
         reading_menu.Append(
             self._id_toggle_sound,
@@ -1543,7 +1511,41 @@ class MenuBuilderMixin:
             self._id_describe_image,
             self._menu_label(_("&Describe Image..."), "tools.describe_image"),
         )
-        tools_menu.AppendSubMenu(reading_menu, _("&Speech, Reading && Dictation"))
+        tools_menu.AppendSubMenu(reading_menu, _("R&eading && Dictation"))
+        # Offline, on-device speech (#617): Tools > Speech > Whisperer. These
+        # need no AI provider or keys and work with AI fully off, so they live
+        # under their own Speech menu — not the AI menu, which wrongly implied an
+        # AI dependency. "Whisperer" is the BITS Whisperer speech engine brand.
+        whisperer_menu = wx.Menu()
+        whisperer_menu.Append(
+            self._id_speech_models,
+            self._menu_label(_("&Manage Speech Models..."), "tools.speech_models"),
+        )
+        whisperer_menu.Append(
+            self._id_speech_transcribe,
+            self._menu_label(
+                _("&Transcribe Audio or Video (Offline)..."), "tools.speech_transcribe"
+            ),
+        )
+        whisperer_menu.Append(
+            self._id_speech_captions,
+            self._menu_label(_("Generate &Captions (Offline)..."), "tools.speech_captions"),
+        )
+        whisperer_menu.Append(
+            self._id_speech_dictate,
+            self._menu_label(_("&Dictate (Offline)"), "tools.speech_dictate"),
+        )
+        whisperer_menu.Append(
+            self._id_speech_voice_command,
+            self._menu_label(_("&Voice Command (Offline)"), "tools.voice_command"),
+        )
+        whisperer_menu.Append(
+            self._id_speech_microphone,
+            self._menu_label(_("Dictation &Microphone..."), "tools.speech_microphone"),
+        )
+        speech_menu = wx.Menu()
+        speech_menu.AppendSubMenu(whisperer_menu, _("&Whisperer"))
+        tools_menu.AppendSubMenu(speech_menu, _("&Speech"))
 
         # Comparison (was Compare Documents) ----------------------------------
         compare_menu = wx.Menu()

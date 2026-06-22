@@ -68,7 +68,7 @@ already controls.
 ## Speak and listen: private, offline speech
 
 QUILL has a privacy-first speech engine that runs entirely on your computer,
-under **Tools > Speech, Reading & Dictation**. It needs **no AI account, key, or
+under **Tools > Speech > Whisperer**. It needs **no AI account, key, or
 provider** — you do not have to turn on Artificial Intelligence to use any of it
 (that is why it no longer lives under the AI menu). The engine ships with QUILL
 (choose the *offline

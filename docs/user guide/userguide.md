@@ -710,12 +710,12 @@ open as a new document.
 `AI > Translate Audio File to English...` goes directly to the Whisper
 translation flow, bypassing the language selection step.
 
-### Offline transcription (Tools > Speech, Reading & Dictation)
+### Offline transcription (Tools > Speech > Whisperer)
 
 QUILL can also transcribe **entirely on your computer**, with no cloud account
 and without uploading your audio. **No AI account or key is required** — you do
 not need to enable Artificial Intelligence to use these features. They live under
-**Tools > Speech, Reading & Dictation > Speech (Offline)**:
+**Tools > Speech > Whisperer**:
 
 - **Manage Speech Models...** lists local speech models with their download size,
   accuracy, and speed. Choose a model that is not installed to download it (the

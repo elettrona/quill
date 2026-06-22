@@ -90,7 +90,7 @@ _CTRL_ALT_DOCUMENTED: frozenset[str] = frozenset({
 # (see _check_required_clusters) so a comment mentioning a cluster name
 # cannot satisfy the gate.
 _REQUIRED_CLUSTER_LABELS: tuple[tuple[str, str], ...] = (
-    ("Speech, Reading & Dictation", "&Speech, Reading && Dictation"),
+    ("Reading & Dictation", "R&eading && Dictation"),
     ("Comparison", "C&omparison"),
     ("Watch Folder", "&Watch Folder"),
     ("AI Assistant", "AI &Assistant"),
