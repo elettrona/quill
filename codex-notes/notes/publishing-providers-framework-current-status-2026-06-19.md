@@ -35,3 +35,7 @@ The user's post-closeout approval unblocks the later roadmap phases. Current ord
 ## Schedule Publishing Complete - 2026-06-21
 
 Schedule publishing is implemented and closed out. WordPress can now schedule a new post/page or an already-open remote item via `status="future"` + UTC `date_gmt`, behind one provider-neutral command/menu entry and one accessible dialog. Compare/sync, Quillin worker execution, and live third-party loading remain unresolved and explicitly unapproved-for-implementation until separately reviewed. Current order: compare/sync next, then Quillin worker execution, then live third-party loading.
+
+## Compare With Remote Complete - 2026-06-21
+
+Compare is implemented and closed out. Users can request an honest comparison of an already-open remote publishing item against its current remote state (title/body/status, plus a "remote changed since you last synced" signal) without any automatic overwrite or merge. Cross-session linkage persistence was explicitly deferred — `source_metadata` does not survive a local save/reopen, and building a durable registry remains a separate, unscheduled piece of work. Quillin worker execution and live third-party loading remain unresolved and explicitly unapproved-for-implementation until separately reviewed. Current order: Quillin worker execution next, then live third-party loading.

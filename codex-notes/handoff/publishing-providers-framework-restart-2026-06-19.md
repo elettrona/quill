@@ -72,4 +72,19 @@ Implemented state:
 
 Validation: focused core (`61 passed`), combined publishing/accessibility/governance battery (`153 passed`), Ruff, provider registry gate, and a full-suite run (`4074 passed, 66 failed, 14 skipped`) — the 66 failures match the pre-existing baseline exactly; no regressions.
 
-Committed locally in two checkpoints (core, then UI+governance); **not pushed**, per this session's explicit instruction. Resume by verifying the local branch state (it will be ahead of `origin/feature/publishing-providers-framework`) before continuing into the next roadmap phase: local-versus-remote compare and the first honest sync model.
+Committed locally in two checkpoints (core, then UI+governance); the user then explicitly asked for these to be pushed, which was done (`af28e198`). A subsequent push returned a GitHub "repository moved" notice; `origin` was updated to `https://github.com/Community-Access/quill.git` (see `codex-handoff.md`, 2026-06-21 entry).
+
+## 2026-06-21 Compare With Remote Handoff
+
+Continued in the same session as the schedule-publishing work. Implemented the local-versus-remote compare phase as the smallest slice satisfying the Phase 3 "Initial slices" list, after confirming `Document.source_metadata` does not survive a local save-and-reopen cycle (`quill/io/export.py` never serializes it; `quill/io/open_read.py` rebuilds it fresh on open). Decision: compare against the open tab's `source_metadata` only for this slice; the durable file-path-keyed linkage registry from this plan's "Remote identity" section remains explicitly deferred, not built.
+
+Implemented state:
+
+- `quill/core/publishing_compare.py` defines `PublishingComparison` and `build_publishing_comparison`.
+- `quill/core/publishing.py`'s `compare_publishing_remote_item` delegates entirely to the existing `load_publishing_remote_item` (no new provider operation, no new client method) and `publishing_comparison_message` formats the plain-language report.
+- `quill/core/feature_command_map.py` maps `publishing.compare_remote_item` to `future.publishing`.
+- `quill/ui/main_frame_menu.py` and `quill/ui/main_frame.py` wire the command, a `File > Publish > Compare With Remote...` menu item ahead of `Update Remote Content...`, and the `_compare_publishing_remote_item` handler, which reuses the existing connection-match guards and the existing native message-box reporting pattern — no new dialog surface was added.
+
+Validation: focused battery (`86 passed`), Ruff, the provider registry gate, and a full-suite run (`4083 passed, 66 failed, 14 skipped`) — the 66 failures match the pre-existing baseline exactly; no regressions.
+
+Committed locally in two checkpoints (core, then UI+governance); **not pushed** pending explicit request, consistent with the standing repo convention. Resume by verifying local branch state before continuing into the next roadmap phase: Quillin worker execution boundaries and lifecycle behavior.

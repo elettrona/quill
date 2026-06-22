@@ -84,3 +84,24 @@ Validation:
 - full unit suite: `4074 passed, 66 failed, 14 skipped` — the 66 failures are the identical pre-existing set from the `4056 passed, 66 failed, 14 skipped` baseline; the +18 passing delta is exactly the new tests added in this slice
 
 No compare/sync, Quillin worker execution, or live third-party loading work was performed. Committed locally as two checkpoints; not pushed (this session's explicit instruction, matching the standing repo convention).
+
+## 2026-06-21 - Compare With Remote Implementation
+
+Continued in the same session immediately after the schedule-publishing phase, plus a small housekeeping detour: the next push returned a GitHub "repository moved" notice, so `origin` was updated to `https://github.com/Community-Access/quill.git` (recorded separately in `codex-handoff.md`) and the schedule-publishing checkpoints were pushed at the user's explicit request.
+
+Before implementing, researched whether `Document.source_metadata` (the in-memory carrier of all `publishing_*` linkage fields) survives a local save-and-reopen cycle, since the phase's "Initial slices" list opens with "define remote identity/linkage source of truth." Confirmed via `quill/io/export.py` and `quill/io/open_read.py` that it does not — metadata is rebuilt from file-format detection on open, never serialized on save. Decided to scope this slice to the open tab's `source_metadata` as the linkage source of truth and explicitly defer the durable file-path-keyed registry, rather than build that larger, separable piece now.
+
+Work completed in two commits:
+
+- Core checkpoint: new `quill/core/publishing_compare.py` (`PublishingComparison` dataclass, `build_publishing_comparison`); `compare_publishing_remote_item` and `publishing_comparison_message` added to `quill/core/publishing.py`; `publishing.compare_remote_item` added to `feature_command_map.py`. New `tests/unit/core/test_publishing_compare.py` (6 tests) plus 3 new tests added to `test_publishing_browse.py` (no-difference, remote-changed, and load-failure-propagation cases against a fake WordPress response) and one command id added to both list-based assertions in `test_publishing_framework.py`.
+- UI + governance checkpoint: menu id/item/binding for `publishing.compare_remote_item` placed ahead of `Update Remote Content...`; command registration; `_compare_publishing_remote_item` handler in `main_frame.py` reusing the exact connection-match guard logic already in the update/publish-remote handler. Extended `test_main_frame_menu_contract.py`'s publishing menu assertion. Bumped `module_size_budgets.json` for `publishing.py`/`main_frame.py`/`main_frame_menu.py` growth with a dated rebaseline comment. No dialog-inventory, `dialogs.md`, or network-egress-audit changes — no new dialog surface or network call site.
+
+Validation:
+
+- focused battery (core + menu contract + module-size + network-egress): `86 passed`
+- Ruff: passed (both checkpoints)
+- provider registry gate: passed
+- scoped `mypy quill/core quill/io`: unchanged from before this slice (same 7 pre-existing findings)
+- full unit suite: `4083 passed, 66 failed, 14 skipped` — identical pre-existing failure set; +9 passing delta matches the new tests added
+
+No Quillin worker execution or live third-party loading work was performed. Committed locally as two checkpoints; not pushed pending explicit request.

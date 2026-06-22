@@ -60,3 +60,11 @@ Implemented as the smallest coherent slice: one new `schedule` provider operatio
 Validation: core focused battery `61 passed`; combined publishing/accessibility/governance battery `153 passed`; Ruff and the provider registry gate passed; full unit suite `4074 passed, 66 failed, 14 skipped`, the 66 failures matching the pre-existing baseline exactly with no new failures.
 
 Next roadmap phase: local-versus-remote compare and the first honest sync model.
+
+## Compare With Remote Complete - 2026-06-21
+
+Implemented as the smallest coherent slice: `build_publishing_comparison` (pure diff model), `compare_publishing_remote_item` (reuses `load_publishing_remote_item`/`PUBLISHING_OPERATION_LOAD`, no new provider operation or client method), `publishing_comparison_message`, and one command/menu entry reporting through the existing native message-box pattern (no new dialog surface). Cross-session linkage persistence (a durable local registry so compare/update still works after closing and reopening a locally-saved publishing document) was explicitly deferred — `source_metadata` does not survive save/reopen today, and building that registry is a separable, larger concern than this phase's actual scope required.
+
+Validation: focused battery `86 passed`; Ruff and the provider registry gate passed; full unit suite `4083 passed, 66 failed, 14 skipped`, the 66 failures matching the pre-existing baseline exactly.
+
+Next roadmap phase: Quillin worker execution boundaries and lifecycle behavior.

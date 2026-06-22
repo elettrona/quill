@@ -2244,3 +2244,24 @@ Validation: core focused battery `61 passed`; combined publishing/accessibility/
 Committed locally as two checkpoints (core, then UI+governance); not pushed, per this session's explicit instruction to keep work local until the user pushes.
 
 Next roadmap phase per the Phase 1 closeout authorization: local-versus-remote compare and the first honest sync model.
+
+## 2026-06-21 Compare With Remote Implemented
+
+The local-versus-remote compare phase is complete, scoped to the smallest slice that satisfies every "Initial slices" bullet in `codex-notes/notes/publishing-follow-up-phases-2026-06-19.md`'s Phase 3 definition.
+
+Research finding that shaped scope: `Document.source_metadata` (which carries every `publishing_*` linkage field) is in-memory only — `quill/io/export.py` never serializes it and `quill/io/open_read.py` rebuilds it fresh from file-format detection on reopen. That means a publishing-remote tab's linkage to its remote item currently survives only for the life of that open tab, not across a save-to-local-file-and-reopen cycle.
+
+Decision: build compare against the open tab's `source_metadata` as the linkage source of truth for this slice, and explicitly defer the durable file-path-keyed "Quill-local linkage record" sketched under this document's "Remote identity" section. This is a deliberate scope cut, not an oversight — it mirrors every prior phase's choice to defer that same registry, and it still satisfies the phase's actual "Done when" criteria (clear comparison on request, honest unknown/stale reporting, no automatic overwrite). Building the cross-session registry remains available as a future follow-up if product wants compare/update to work after closing and reopening a locally-saved publishing document.
+
+Implemented:
+
+- `quill.core.publishing_compare.build_publishing_comparison`: pure diff of title/body/status between a freshly-fetched `PublishingRemoteDocument` and the local side, plus a `remote_changed_since_last_known` signal computed by comparing the remote's `updated_at` against the `publishing_updated_at` the open tab last cached.
+- `compare_publishing_remote_item` in `quill/core/publishing.py`: delegates entirely to the existing `load_publishing_remote_item` for fetching and validation (reuses `PUBLISHING_OPERATION_LOAD` — no new provider operation, no new client method, no new network-egress audit entry), then builds the comparison.
+- `publishing_comparison_message`: plain-language report (title/body/status match-or-differs lines, an explicit "Remote changed since you last synced" line only when true, the remote link) — no diff-algorithm output, no jargon.
+- One command/menu entry, `publishing.compare_remote_item` / `File > Publish > Compare With Remote...`, placed ahead of `Update Remote Content...`. The handler reuses the exact connection-match guard logic from the existing update/publish-remote handler and reports through the existing native message-box pattern — no new dialog surface, no dialog-inventory change.
+
+Validation: focused battery `86 passed`; Ruff and the provider registry gate passed; scoped `mypy quill/core quill/io` unchanged (same 7 pre-existing findings); full unit suite `4083 passed, 66 failed, 14 skipped` — identical pre-existing failure set, +9 passing delta matching the new tests added.
+
+Committed locally as two checkpoints (core, then UI+governance); not pushed pending explicit request.
+
+Next roadmap phase: Quillin worker execution boundaries and lifecycle behavior.

@@ -52,3 +52,13 @@ Added `tzdata` as a base dependency (not a `ui` extra) because Windows has no sy
 Validated with the core focused battery (`61 passed`), the combined publishing/accessibility/governance battery (`153 passed`), Ruff, the provider registry gate, and a full-suite run (`4074 passed, 66 failed, 14 skipped`) matching the pre-existing baseline failure set exactly. Committed locally in two checkpoints; not pushed.
 
 Next roadmap phase: local-versus-remote compare and the first honest sync model.
+
+## Compare With Remote Memory - 2026-06-21
+
+Compare is implemented and complete. `quill.core.publishing_compare.build_publishing_comparison` is the pure diff model (title/body/status match-or-differs, plus `remote_changed_since_last_known` from comparing the freshly-fetched remote `updated_at` against the open tab's cached `publishing_updated_at`). `compare_publishing_remote_item` (`quill/core/publishing.py`) is a thin wrapper around the existing `load_publishing_remote_item` — deliberately reuses `PUBLISHING_OPERATION_LOAD` rather than adding a new operation, since comparing is just "fetch and diff," not a new provider capability. `publishing_comparison_message` formats the plain-language report. One command/menu entry (`publishing.compare_remote_item`, `File > Publish > Compare With Remote...`) reports through the existing native message-box pattern — zero new dialog-governance surface.
+
+Important scope decision recorded here for future sessions: `Document.source_metadata` does not survive a local save+reopen (confirmed by reading `quill/io/export.py` and `quill/io/open_read.py` — metadata is rebuilt fresh on open, never serialized on save). This phase deliberately compares against the *currently open tab's* metadata only, and defers the durable file-path-keyed linkage registry sketched in the plan's "Remote identity" section. If a future session is asked to make compare/update work after closing and reopening a locally-saved publishing document, that registry is the prerequisite — it does not exist yet.
+
+Validated with the focused battery (`86 passed`), Ruff, the provider registry gate, and a full-suite run (`4083 passed, 66 failed, 14 skipped`) matching the pre-existing baseline failure set exactly. Committed locally in two checkpoints; not pushed.
+
+Next roadmap phase: Quillin worker execution boundaries and lifecycle behavior.
