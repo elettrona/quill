@@ -159,6 +159,17 @@ class Settings:
     announce_mode_changes: bool = True
     announce_spelling: bool = True
     announce_punctuation_level: str = "some"
+    # Verbosity system (rebuild) — scalar prefs. Collection-typed state
+    # (custom profiles, per-verb/chord overrides, QVP packs) persists separately
+    # in verbosity_custom.json via quill.core.verbosity.storage.
+    verbosity_mastery_enabled: bool = True
+    verbosity_mastery_threshold: int = 25
+    verbosity_validation_mode: str = "on_button"
+    verbosity_history_enabled: bool = True
+    verbosity_history_limit: int = 100
+    verbosity_history_clear_on_exit: bool = False
+    verbosity_task_profile_suggestions: bool = False
+    verbosity_safe_mode_enabled: bool = False
     # SET-4: tunable behavior toggles
     browse_mode_sticky: bool = False
     quill_key_sound_enter: str = ""
@@ -568,6 +579,25 @@ class Settings:
         )
         if announce_punctuation_level not in {"none", "some", "most", "all"}:
             announce_punctuation_level = "some"
+        # Verbosity system (rebuild) scalar prefs.
+        verbosity_mastery_enabled = bool(data.get("verbosity_mastery_enabled", True))
+        verbosity_mastery_threshold = _clamp_int(
+            data.get("verbosity_mastery_threshold", 25), 25, 1, 1000
+        )
+        verbosity_validation_mode = (
+            str(data.get("verbosity_validation_mode", "on_button")).strip().lower()
+        )
+        if verbosity_validation_mode not in {"on_button", "on_focus", "live"}:
+            verbosity_validation_mode = "on_button"
+        verbosity_history_enabled = bool(data.get("verbosity_history_enabled", True))
+        verbosity_history_limit = _clamp_int(
+            data.get("verbosity_history_limit", 100), 100, 1, 10000
+        )
+        verbosity_history_clear_on_exit = bool(data.get("verbosity_history_clear_on_exit", False))
+        verbosity_task_profile_suggestions = bool(
+            data.get("verbosity_task_profile_suggestions", False)
+        )
+        verbosity_safe_mode_enabled = bool(data.get("verbosity_safe_mode_enabled", False))
         # SET-4: behavior toggles
         browse_mode_sticky = bool(data.get("browse_mode_sticky", False))
         quill_key_sound_enter = str(data.get("quill_key_sound_enter", "")).strip()
@@ -839,6 +869,14 @@ class Settings:
             announce_mode_changes=announce_mode_changes,
             announce_spelling=announce_spelling,
             announce_punctuation_level=announce_punctuation_level,
+            verbosity_mastery_enabled=verbosity_mastery_enabled,
+            verbosity_mastery_threshold=verbosity_mastery_threshold,
+            verbosity_validation_mode=verbosity_validation_mode,
+            verbosity_history_enabled=verbosity_history_enabled,
+            verbosity_history_limit=verbosity_history_limit,
+            verbosity_history_clear_on_exit=verbosity_history_clear_on_exit,
+            verbosity_task_profile_suggestions=verbosity_task_profile_suggestions,
+            verbosity_safe_mode_enabled=verbosity_safe_mode_enabled,
             browse_mode_sticky=browse_mode_sticky,
             quill_key_sound_enter=quill_key_sound_enter,
             quill_key_sound_exit=quill_key_sound_exit,

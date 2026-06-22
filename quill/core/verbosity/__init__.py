@@ -20,6 +20,7 @@ from quill.core.verbosity.channels import (
     Channel,
     route_channels,
 )
+from quill.core.verbosity.controller import AnnouncementOutcome, VerbosityController
 from quill.core.verbosity.data_order import DataOrder
 from quill.core.verbosity.engine import (
     RenderedAnnouncement,
@@ -220,4 +221,7 @@ __all__ = [
     "BUILTIN_SCENARIOS",
     "preview_scenario",
     "preview_all",
+    # runtime controller (1.5 wiring)
+    "VerbosityController",
+    "AnnouncementOutcome",
 ]
