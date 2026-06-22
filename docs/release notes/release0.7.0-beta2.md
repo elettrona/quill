@@ -1,374 +1,299 @@
 # QUILL 0.7.0 Beta 2 Release Notes
 
-QUILL 0.7.0 Beta 2 is focused on helping you upgrade with less disruption. Your settings, keyboard shortcuts, recent files, and feature choices should follow you forward whenever they are still compatible. When an older setting is no longer usable, QUILL safely returns to the current default instead of leaving you with a feature or shortcut that appears not to work.
+Beta 2 is the release where QUILL really starts to *talk with you* — and listen.
+You can now decide exactly how much QUILL says and when, transcribe and caption
+audio entirely on your own computer, dictate and even run commands by voice
+offline, save accessible talking books, and work through a real braille
+proofreading workflow. Around those headline features sit a smoother upgrade, a
+double-clickable portable edition, stronger macOS and screen-reader support, and
+a long list of reliability fixes.
 
-This release also includes a substantial collection of accessibility, reliability, portable-use, and macOS improvements. Setup is easier to follow, common keyboard commands behave more naturally, screen readers receive clearer information, and several crashes and focus problems have been corrected.
+Everything new here follows the same promises: it is **optional**, it is
+**screen-reader-first**, and your content stays **on your machine** unless you
+explicitly choose otherwise. QUILL launches, edits, and saves with all of it
+turned off.
 
-## Highlights
+## At a glance
 
-- Your compatible settings and keyboard customizations carry forward automatically.
-- You can choose where QUILL stores your settings, dictionaries, recovery files, and logs.
-- The portable Windows edition now starts with a double-click on `quill.exe`, identifies itself as QUILL rather than Python, and stores its data in a sibling `data/` folder.
-- Setup and the AI Hub work more reliably on a new installation.
-- VoiceOver support and standard macOS keyboard behavior have been significantly improved.
-- Closing documents, checking for updates, opening help, and reporting bugs are more dependable.
+- **Verbosity controls.** Choose how quiet or talkative QUILL is, per action,
+  with Quiet and Meeting modes for shared rooms.
+- **Private, offline speech.** Transcribe audio/video, make SRT/VTT captions,
+  dictate into your document, and run commands by voice — all on-device, nothing
+  uploaded.
+- **DAISY talking-book export.** Save any document as a DAISY 2.02 text-only
+  talking book for Victor Reader Stream, Plextalk, APH players, and DAISY apps.
+- **Braille proofreading workflow.** Restore-your-place, a proofing tracker,
+  layout validation, and selection-aware back-translation.
+- **A smoother upgrade** that carries your compatible settings and shortcuts
+  forward automatically, and a **double-clickable portable edition**.
+- **Stronger macOS + screen-reader behavior**, and many crash, focus, and
+  file-fidelity fixes.
 
-## A smoother upgrade experience
+---
 
-When you upgrade from QUILL 0.5.0 or 0.7.0 Beta 1, QUILL now checks your saved settings and keyboard shortcuts as it starts.
+## Control what QUILL says: the Verbosity system
 
-QUILL keeps a saved choice when it still works with the current release. When an older choice refers to a command that no longer exists, uses an empty shortcut, or conflicts with another command, QUILL removes that unusable entry and uses the current default instead.
+QUILL now lets you decide how much it announces and when — from full, friendly
+context for every action down to near silence — without fighting your screen
+reader. Open **Verbosity Preferences** from the command palette
+(`Ctrl+Shift+P`, then type "verbosity").
 
-For most people, this happens quietly. You should not need to reset your preferences, edit configuration files, or manually repair older shortcuts.
+- **Four profiles.** Pick a level: **Beginner** (full context for everything),
+  **Normal** (informative, the default), **Expert** (routine confirmations are
+  suppressed, but errors always speak), or **Quiet** (speech and earcons off,
+  leaving braille and the on-screen status bar). Switching profiles is announced
+  so you hear the change.
+- **Quiet Mode and Meeting Mode.** `QUILL key + Q` toggles Quiet Mode and
+  `QUILL key + Shift + Q` toggles Meeting Mode for a call or a shared room. The
+  status bar keeps updating, a `[Q]` or `[M]` indicator shows the mode, and
+  `Ctrl+Shift+Z` undoes the last verbosity change.
+- **Channels you control.** Speech, Braille, and Sound can each be turned on or
+  off; the **Visual** status bar is always on and cannot be disabled, so you
+  never lose the on-screen status of an action.
+- **Make it say exactly what you want.** Advanced users can edit what each action
+  announces using simple tokens like `{line}` and filters like `${ordinal:line}`,
+  with live validation and a preview before you commit. Save wordings to a
+  template **library**, **import/export** your setup as a file, or install a
+  community **QUILL Verbosity Pack** — all data-only, never code.
+- **Understand and tune it.** A **Preview Lab** lets you hear how a profile sounds
+  against everyday scenarios; an **announcement History** lets you replay, copy,
+  or ask **"why did QUILL say that?"**; and **Safe Mode** instantly restores the
+  built-in announcements if a custom setup ever misbehaves — without deleting your
+  work.
 
-### Keyboard shortcuts return to familiar behavior
+QUILL speaks *alongside* your screen reader, never instead of it, so it does not
+duplicate the typing echo, speech rate, or punctuation level your screen reader
+already controls.
 
-Several shortcuts changed during the 0.7.0 development cycle. Beta 2 automatically repairs known older bindings so the menus, status information, and keyboard behavior agree again.
+## Speak and listen: private, offline speech
 
-For example, `Ctrl+F` once used a QUILL Key sequence in an earlier beta. Beta 2 repairs that saved binding during the upgrade process so `Ctrl+F` returns to opening Find without requiring you to reassign it manually.
+QUILL has a privacy-first speech engine that runs entirely on your computer,
+under the **AI > Speech** menu. The engine ships with QUILL (choose the *offline
+speech engine (whisper.cpp)* installer component, or drop it into
+`tools\speech\whispercpp` in a portable copy) — no separate install, no PATH
+editing. Then download a model from **Manage Speech Models** (sizes and
+trade-offs are shown; the Small model is a good start; downloads come over a
+secure connection and are disabled in Safe Mode).
 
-The same cleanup applies to other commands whose defaults changed, including Send to System Tray, Read Aloud, and Dictation.
+### Transcribe audio and video
+**Transcribe Audio or Video (Offline)...** turns a recording into text on your
+own machine — no cloud account, and your audio is never uploaded. Choose the
+output format (**plain text, Markdown, or HTML**); it opens as an editable draft
+while QUILL works in the background. With the speaker-detection model installed,
+transcripts label **who is speaking when** ("Speaker 1", "Speaker 2", ...).
 
-### Your personal customizations are respected
+### Captions
+**Generate Captions (Offline)...** transcribes a file with timestamps and saves
+it as **SRT** or **VTT** subtitles you can review and ship.
 
-QUILL starts with the current defaults and then applies your compatible personal changes. It does not replace your configuration with a complete copy of someone else’s settings.
+### Dictate into your document
+**Dictate (Offline)** lets you speak directly into the editor. Press the command
+(or `QUILL key + Shift + D`) to start — you hear a start tone and "Dictation
+listening" in the status bar — then press again to stop; QUILL inserts what you
+said at the cursor as a single undoable edit. **Dictation Microphone...** picks
+which microphone to use.
 
-When you import a profile or backup, only meaningful customizations from that file are imported. Your own unrelated keyboard choices are preserved.
+### Run commands by voice (new)
+**Voice Command (Offline)** lets you drive QUILL hands-free. Run it, say a
+command — "save", "bold", "next heading", "word count", "command palette" — and
+run it again to act. Recognition is on-device, and voice can only invoke a
+curated, **safe set of commands**, so a misheard phrase can never trigger
+something destructive. It is off by default (turn it on in Settings) and always
+disabled in Safe Mode. Say "cancel" or "never mind" to dismiss without acting.
 
-### Nothing extra to run
+### Choose your engine
+The bundled **whisper.cpp** engine needs nothing extra. On capable machines you
+can opt into **Faster Whisper**, a higher-throughput engine that uses your **GPU**
+when one is available, by installing QUILL's optional `fasterwhisper` dependency;
+**Manage Speech Models** then offers a **Speech Engine** chooser, and your choice
+is used for transcription, captions, and dictation. (For speaker labels, use the
+whisper.cpp speaker-detection model.)
 
-A separate migration utility is still planned for more complex future upgrades. Beta 2 handles the most common upgrade needs automatically, so people moving from 0.5.0 or Beta 1 should not need a separate tool.
+## Read and proof braille
 
-A future migration utility is expected to help with:
+Braille Mode gained a real proofreading and quality workflow, and it never
+changes your braille file — progress and notes live in a small companion file
+beside it.
 
-- larger settings-format changes;
-- profiles and Quillins created by older beta releases;
-- moving an entire family of customized shortcuts at once; and
-- providing a reviewable record of settings that were changed or removed.
+- **QUILL remembers your place.** Reopen a `.brf`, `.brl`, `.pef`, or `.ueb`
+  file and your cursor returns to where you left off, announced precisely — for
+  example, "BRF file opened. 87 braille pages detected. Last position: braille
+  page 12, line 14, cell 31."
+- **Track proofreading.** A **Braille > Proofing** menu lets you mark a page
+  proofed or needs-review, add notes, hear a spoken progress summary, jump to
+  pages that still need work, and export a plain-text proofing report.
+- **Validate layout.** A **Braille > Validation** menu flags common problems —
+  over-long lines or pages, missing page breaks, mixed line endings, stray
+  non-braille characters, malformed page indicators, numbering gaps, inconsistent
+  running heads, and Unicode-vs-NABCC mismatches — then steps you through each
+  finding with spoken position and detail. It only reads your file.
+- **Recover source text.** **Braille > Translation > Back-Translate (draft)**
+  back-translates a selected passage (or the whole file) to draft text, so you
+  can check the source wording of a paragraph. Requires the optional QUILL
+  Braille Pack.
+- **Continuation pages read correctly.** Print-page continuation labels such as
+  `7a` are now reported in full instead of being shortened to `7`.
 
-## Portable Installation Enhancements and Changes
+## Save accessible talking books (DAISY)
 
-As we always do, we listened to the community and made a number of very strategic changes in the way your data and the way that the installation is handled for QUILL when installing in portable mode.
+**File > Export > DAISY Talking Book** saves your document as a **DAISY 2.02
+text-only talking book** — the accessible format read by DAISY software and by
+hardware players such as the Victor Reader Stream, Plextalk, and APH units.
 
-QUILL no longer requires everyone to store application data in `%APPDATA%\Quill`.
+- It exports what is on screen, so you do not have to save first.
+- A DAISY book is a *folder* (the name you choose), holding the three files a
+  player expects; QUILL asks before writing into a folder that already has files.
+- Your headings become the player's navigation points; a document with no
+  headings gets a title heading so navigation still works.
+- The book is text-only, so a player reads it with its own text-to-speech — and
+  because it is a standard DAISY book, you can open the folder in a tool like APH
+  Book Wizard Producer to add recorded or synthesized audio later.
 
-During first-time setup, the new **Where QUILL stores your data** page offers choices designed for different ways people use QUILL:
+---
 
-- **Use the recommended AppData location.** This is the best choice for most installed copies of QUILL.
-- **Keep the data beside portable QUILL.** When QUILL is running from a recognized portable bundle, your settings and recovery information can travel with the USB drive or managed folder.
-- **Choose another folder.** You may select an existing folder or create a new one.
+## A smoother upgrade
 
-You can change this later under **Preferences > General**. Because settings, recovery data, and undo information may be in use while QUILL is open, the move takes place safely the next time QUILL starts. QUILL will offer to restart for you.
+When you upgrade from QUILL 0.5.0 or Beta 1, QUILL checks your saved settings and
+keyboard shortcuts as it starts and carries forward everything that still works.
+If an older choice points at a command that no longer exists, has an empty
+shortcut, or conflicts with another command, QUILL quietly drops just that entry
+and uses the current default — so a feature never silently appears "broken."
 
-Portable mode is only offered when QUILL confirms that it is running from a real portable bundle: a folder containing `quill.exe` with a sibling `data/` folder. This is filesystem evidence of a deliberate portable install — not an environment-variable say-so — so an untrusted setting cannot redirect your data location.
+- **Familiar shortcuts come back.** Bindings that drifted during 0.7.0
+  development (for example `Ctrl+F` for Find, plus Send to System Tray, Read
+  Aloud, and Dictation) are repaired automatically.
+- **Your customizations are respected.** QUILL starts from the current defaults
+  and layers your compatible changes on top; importing someone's profile brings
+  in only their real customizations and leaves your unrelated shortcuts alone.
+- **Nothing extra to run.** Beta 2 handles the common upgrade needs on its own. A
+  fuller migration utility (for larger format changes, older-beta profiles and
+  Quillins, and a reviewable record of what changed) is still planned.
 
-## Portable bundle: `quill.exe` + `data/` (no more `run-quill.cmd`)
+## Portable QUILL: just double-click
 
-The portable bundle is now double-clickable. The launcher is `quill.exe` at the bundle root, and detection is driven by the presence of a `data/` folder next to it — the same pattern VSCode uses to identify a portable install.
+The portable edition is now double-clickable: `quill.exe` at the bundle root
+starts QUILL with no setup, and the old `run-quill.cmd` wrapper is gone. A folder
+is treated as portable only when it contains `quill.exe` **and** a sibling
+`data/` folder — real filesystem evidence, so an untrusted setting can't redirect
+where your data lives.
 
-- **Double-click to launch.** `quill.exe` at the bundle root starts QUILL with no environment setup. The previous `run-quill.cmd` wrapper is gone.
+- **Choose where your data lives.** A first-run **Where QUILL stores your data**
+  page offers the recommended AppData location, beside a portable bundle, or a
+  folder you pick; change it later under **Preferences > General** (QUILL moves it
+  safely on the next restart).
+- **Zero-setup and back-compatible.** New bundles ship an empty `data/` folder so
+  they're portable from the first launch; older Beta 1 bundles that still ship
+  `run-quill.cmd` keep working. AI keys (DPAPI-encrypted) travel with a verified
+  portable bundle automatically.
+- **Honest identity.** The launcher reports itself as **QUILL for All** with the
+  real version and **Community Access** as publisher, so screen-reader
+  "what version" commands say something useful instead of "Python." On upgrade,
+  a stale desktop shortcut pointing at the old launcher is replaced.
 
-- **Detection is filesystem evidence.** A folder is treated as a portable install only when it contains `quill.exe` **and** a `data/` folder as siblings. A bare `QUILL_PORTABLE=1` environment variable is no longer sufficient. The Setup Wizard's portable radio button appears automatically when the bundle is verified.
+## Accessibility and screen-reader refinements
 
-- **Zero-setup from first launch.** The build script ships an empty `data/` folder inside the bundle, so the install is recognised as portable from the first time you double-click `quill.exe`. You do not need to create the folder yourself unless you are converting an installed build into a portable one.
-
-- **Legacy bundles keep working.** A beta-1 portable bundle that still ships `run-quill.cmd` is accepted as back-compat evidence, so users upgrading from beta 1 do not need to take any action.
-- **AI keys follow the bundle.** The DPAPI-encrypted `keys.enc` AI key store is activated automatically for verified portable installs — no environment variable to set.
-
-The new launcher also identifies the product as **QUILL for All**, includes the actual QUILL version, and lists **Community Access** as the publisher. Screen-reader commands that report application or window version information (JAWS's Ctrl+JAWSKey+V, NVDA's Python-version readout, and similar) can now provide useful QUILL information instead of identifying the launcher as Python or speaking only the word “Version.” Installed editions continue to start normally and are not affected by this change.
-
-The installer also keeps the desktop shortcut in sync on upgrade: a previous beta-1 install may have placed a `Quill.lnk` on your desktop pointing at the now-removed `run-quill.cmd`. Beta 2 removes that stale shortcut before writing the new one, so the desktop icon always launches the current launcher.
-
-## Accessibility and screen-reader improvements
-
-### Setup starts in the right place
-
-Each Setup Wizard page now places focus on the page heading first. Screen-reader users hear the purpose of the page before moving into its controls or preview.
-
-The preview is also presented as readable content rather than an editable text field. Sighted users continue to receive the styled visual preview.
-
-### Simpler Back and Next buttons
-
-The Setup Wizard buttons now read simply **Back** and **Next**. Decorative angle characters have been removed, so screen readers no longer announce phrases such as “less than Back” or “Next greater than.”
-
-### A cleaner first launch
-
-On a fresh installation, QUILL now opens the Setup Wizard before creating an Untitled document. This prevents a screen reader from announcing an unrelated document tab before setup begins.
-
-After setup is complete, QUILL creates a new blank document automatically. Returning users continue to receive the familiar Untitled tab at startup.
-
-### VoiceOver recognizes the editor on macOS
-
-VoiceOver now identifies the main editor as a native, editable text area rather than a generic group. This provides more predictable text navigation and announcements on macOS.
-
-Windows behavior is unchanged.
-
-### Bug-report fields have useful names on macOS
-
-VoiceOver now announces the name and purpose of each field in the Report a Bug window, including fields such as Summary and What happened.
-
-The report window is now non-modal, which means you can switch back to the editor while writing your report. This makes it easier to check the document, repeat a problem, or capture the exact steps that caused it.
-
-When you submit a bug report, QUILL copies it to the clipboard. It no longer opens a browser automatically unless you enable that option in Settings.
-
-### The macOS Help menu works like a system Help menu
-
-macOS now recognizes QUILL’s Help menu as the application’s standard Help menu. The conventional `Cmd+?` shortcut works, and VoiceOver’s Help-menu command can move focus there as expected.
-
-Windows and Linux behavior is unchanged.
+- **Setup starts on the heading.** Each Setup Wizard page focuses its heading
+  first, so you hear the page's purpose before its controls; the preview is
+  readable content, not an editable field; and the buttons read plainly as
+  **Back** and **Next** (no "less than Back").
+- **A cleaner first launch.** On a fresh install the Setup Wizard opens before any
+  Untitled document, so a screen reader doesn't announce a stray tab first; a
+  blank document is created after setup.
+- **macOS / VoiceOver.** VoiceOver now identifies the editor as a real editable
+  text area; the Report a Bug fields have proper names and the window is
+  non-modal (switch back to your document while writing it); and the Help menu is
+  recognized as the system Help menu (`Cmd+?` works).
 
 ## More natural keyboard behavior
 
-### Typing R and S no longer launches commands
+- **Typing `R` or `S` types `R` or `S`.** Friendly single-letter shortcut hints
+  no longer get mistaken for system shortcuts, so your letters stay in your
+  document. Modifier shortcuts like `Ctrl+R` are unaffected.
+- **macOS standards.** `Cmd+Q` quits; word movement (`Option+Left/Right`) works
+  normally; Back/Forward Location use `Cmd+[` and `Cmd+]`. Quote/Unquote Lines
+  moved to `Ctrl+Shift+Q` / `Ctrl+Shift+K`. Older bindings are repaired on
+  startup.
+- **Closing an unsaved document.** The prompt uses the standard Yes/No/Cancel:
+  press `Y` to save, `N` to discard, or `Esc` to cancel — or Tab to the buttons.
 
-Typing a normal `R` or `S` in a document no longer starts Read Aloud or opens Insert Snippet.
+## Opening and saving files faithfully
 
-QUILL’s friendly shortcut descriptions are now displayed as menu information rather than being mistaken for single-letter system shortcuts. Your letters stay in your document, where they belong.
+### Plain-text fidelity
+- **No stray byte-order mark.** A UTF-8 BOM is kept out of the editable text (so
+  it can't sit under your cursor or be read aloud) and re-added on save if the
+  original had one.
+- **Round-trip exactness.** Open and save and you get the same file back: Windows
+  `CRLF` line endings stay `CRLF`, and runs of blank lines (and Markdown-looking
+  lines) are preserved verbatim. Use **File > Save As Plain Text** when you
+  *want* to flatten formatting.
 
-Regular shortcuts that include modifiers, such as `Ctrl+R`, were not affected.
-
-### `Cmd+Q` quits QUILL on macOS
-
-`Cmd+Q` now performs the standard macOS Quit action.
-
-Quote Lines has moved to `Ctrl+Shift+Q`, and Unquote Lines has moved to `Ctrl+Shift+K`. QUILL repairs the older saved binding automatically when needed.
-
-Windows users may continue to use `Alt+F4` or **File > Exit**.
-
-### Word navigation works normally on macOS
-
-`Option+Left` and `Option+Right` once triggered Back Location and Forward Location, preventing standard word-by-word cursor movement and interfering with VoiceOver reading commands.
-
-On macOS, Back Location and Forward Location now use `Cmd+[` and `Cmd+]`. Windows continues to use `Alt+Left` and `Alt+Right`.
-
-Older macOS bindings are corrected automatically during startup.
-
-### Use Y, N, or Escape when closing an unsaved document
-
-The unsaved-changes prompt now uses the operating system’s standard **Yes**, **No**, and **Cancel** choices.
-
-You can press:
-
-- `Y` to save;
-- `N` to close without saving; or
-- `Esc` to cancel and return to the document.
-
-You may still Tab to the buttons and activate them normally.
+### Simple File Open dialog
+An opt-in, keyboard-friendly picker (turn on **Settings > General > Use simple
+file open dialog**), reached from the same **File > Open...** / `Ctrl+O`:
+folders first with a `[dir]` prefix, a small **Filter** dropdown, `Ctrl+L` to
+focus the path, `Enter` to open or descend, `Backspace` to go up, `Ctrl+H` for
+hidden files, a **Recent** popup, and a **Use Windows Dialog** button for the
+native picker when you need it. Accessible error messages keep the dialog open so
+you can fix a path and retry.
 
 ## Setup and AI Hub reliability
 
-### The AI Hub opens during first-time setup
-
-The **Open AI Hub** button in the Setup Wizard now works on a brand-new profile. You can configure an AI provider during setup without first visiting another part of QUILL.
-
-The AI Hub’s tabs, provider choices, instructions, and image-style choices now load correctly. The Hub opens reliably both from the Setup Wizard and later from the Tools menu.
-
-### A new profile no longer causes startup typing failures
-
-QUILL no longer runs editor caret features before a document is ready. The status bar and indent tone can begin working normally after setup without causing a startup failure.
-
-### The Setup Wizard no longer reappears forever after an elevated installation
-
-When QUILL was installed with administrator approval into a protected folder, the everyday user account could sometimes be unable to remove the “show setup” marker. This caused the Setup Wizard to reopen on every launch.
-
-QUILL now remembers that the marker has already been handled, even when the protected file cannot be deleted. The marker's resolved path is the stable identity, so antivirus tools, filesystem mtime drift, or other processes that touch the marker file no longer fool the launch check into reopening the Setup Wizard. Setup appears when it is needed and stays out of the way afterward.
-
-## Stability and reliability fixes
-
-### Check for Updates opens normally
-
-**Help > Check for Updates** and **Check for GLOW Updates** no longer close QUILL with an internal error. Both commands now open their information dialogs correctly in stable and beta channels.
-
-### Closing an unsaved document no longer crashes QUILL
-
-Choosing **Don’t Save** after pressing `Ctrl+F4` no longer causes QUILL to close unexpectedly while it tries to return focus to an editor that has already been closed.
-
-Save and Cancel continue to return you to the appropriate place.
-
-### Closing the last document is safer
-
-A delayed caret event could occasionally arrive after the final editor had already closed, causing an unexpected error. QUILL now safely ignores that outdated event and closes the document normally.
-
-### Imported profiles preserve your keyboard choices
-
-Importing another person’s profile or a backup no longer replaces your personal shortcuts with that file’s default values. QUILL imports the actual customizations while keeping your unrelated choices in place.
-
-### Saving settings no longer crashes QUILL
-
-Selecting **OK** in Preferences, choosing **Reset to Factory Defaults**, or importing a settings file could close QUILL with `'MainFrame' object has no attribute 'set_theme'`. The routine that applies your settings after these actions was calling several methods that did not exist. All of these calls now reach the correct, existing code, so theme, spell-check, soft wrap, and dirty-title-style preferences apply immediately and reliably whenever you save settings.
-
-### Quillins reporting status no longer crash QUILL
-
-A Quillin calling the standard "set status" host action could close QUILL with `'MainFrame' object has no attribute '_set_status_text'`. The host adapter was calling a method that never existed; it now reaches the real status-bar update, so Quillins can report progress and results without crashing the app.
-
-### The Developer Console correctly reports the active document name
-
-`q.get_document_name()` in the Developer Console always returned an empty string because it called a method that never existed. It now returns the actual file name of the document you are editing.
-
-### Quill Eraser opens correctly on documents with problems
-
-Choosing **Tools > Writing > Quill Eraser** on a document that the engine had findings for closed QUILL with `TypeError: Dialog(): argument 1 has unexpected type 'MainFrame'`. The review dialog was being parented to the `MainFrame` mixin instance instead of the real `wx.Frame` it owns, so wxPython's SIP wrapper rejected the parent. The dialog is now parented to the real frame, so the review dialog opens, the focus lands on the findings list, and you can step through fixes with the keyboard as designed.
-
-### First launch with the Setup Wizard pending no longer crashes
-
-On a fresh install where the Setup Wizard still needs to run, the main window used to fail with `AttributeError: 'MainFrame' object has no attribute 'editor'`. The crash happened because `_build_menu()` ran during `__init__` and asked for the active editor's contents, but the editor was not built until after the wizard closed. The contextual menu refresh is now gated by a lifecycle flag (`self._ui_ready`) and falls back to "plain" markup when the editor is not yet present, so the wizard can open on a clean notebook and the menu items settle into the right state once you have a document to edit.
-
-## Opening and saving plain text files
-
-### A byte order mark no longer appears as a stray character
-
-Some programs save UTF-8 files with a leading byte order mark (BOM). When you opened such a file, an invisible `U+FEFF` character used to sit before the first real character, where it could be read by a screen reader, land under the cursor, and get caught up in editing or searching.
-
-QUILL now recognizes a UTF-8 BOM when opening a file and keeps it out of the editable text, so the document starts at its real first character. If the original file had a BOM, QUILL preserves it when you save, so the saved file still matches what other programs expect. (#648)
-
-### Opening and immediately saving keeps the file intact
-
-Opening a text file and saving it straight away now reproduces the original file faithfully.
-
-- **Windows line endings are kept.** A file that used Windows-style `CRLF` line endings is saved with `CRLF` again, instead of being quietly converted to Unix-style `LF`. QUILL now detects the original line ending from the file on disk rather than after the editor has normalized it. (#649)
-- **Blank lines are preserved exactly.** Saving a plain-text (`.txt`) file no longer collapses runs of three or more consecutive line breaks down to two, and no longer rewrites lines that happen to look like Markdown. Plain-text files are now written through verbatim. (#649)
-
-If you specifically want to flatten QUILL's Markdown-style markup to clean plain text, use **File > Save As Plain Text**, which still strips formatting on purpose.
-
-## Simple File Open dialog
-
-QUILL can now open files through a keyboard-friendly **Simple File Open** dialog in addition to the standard Windows file open dialog. Both dialogs are reached from the same place — **File > Open...** or `Ctrl+O` — so there is still only one File > Open command.
-
-- **Opt-in via Settings.** The new setting **Settings > General > Use simple file open dialog** controls which dialog QUILL shows. It is off by default; turn it on if you prefer a minimal, screen-reader-friendly picker.
-- **A focused list and a small filter.** The Simple File Open dialog shows folders at the top of the list with a `[dir]` prefix and the current folder's files below. The **Filter** dropdown starts at **Supported files** (`.txt`, `.md`, `.html`, `.htm`, `.rtf`) and offers per-type filters and an **All files** option.
-- **Keyboard-first navigation.** `Ctrl+L` focuses the path field. `Enter` in the path field navigates into a folder or opens a file. `Enter` in the file list activates the highlighted entry. `Backspace` in the list goes up one folder. `Ctrl+H` toggles hidden files. `Escape` cancels.
-- **Recent locations and hidden files.** The **Recent** button opens a popup listing recently opened files for one-click re-open. The **Hidden** toggle shows or hides files whose names start with a dot or whose Windows hidden attribute is set.
-- **Windows dialog fallback inside the dialog.** The **Use Windows Dialog** button opens the standard `wx.FileDialog` for one invocation. The setting does not change; the next time you press `Ctrl+O` you are back in the simple dialog. Use this when an edge case (a long file path, a custom file association) calls for the native picker.
-- **Accessible error messages.** The status line below the file list shows the current directory, the number of visible entries, and any error. Permission-denied and not-a-directory errors keep the dialog open so you can correct the path and try again.
-- **No new File menu items.** File > Open... remains the only File > Open command. The setting is the only switch.
-
-## Help, diagnostics, and everyday usability
-
-### The User Guide stays open and keeps its place
-
-The User Guide and other static information pages no longer refresh every second. They remain stable, do not repeatedly reclaim focus, and stay open until you close them.
-
-The live Browser Preview still refreshes automatically while you edit because that page is designed to follow your changes.
-
-### Log and diagnostics folders open on every supported platform
-
-**Open Log Folder**, **View Startup Logs**, and **Open Diagnostics Folder** now use the correct file manager for your operating system:
-
-- File Explorer on Windows;
-- Finder on macOS; and
-- the default file browser on Linux.
-
-### macOS menus now use the QUILL name
-
-The application menu on macOS now says **Hide QUILL** and **Quit QUILL** instead of displaying the name of the underlying executable.
-
-### System tray mode is handled honestly on macOS
-
-macOS does not provide the same system-tray behavior used by the Windows and Linux versions of QUILL. When tray mode is selected on macOS, QUILL now explains that it is unavailable and closes normally instead of appearing to remain active without a usable icon.
-
-Windows and Linux tray behavior is unchanged.
-
-## Crash reports offer to submit
-
-When an unhandled exception closes QUILL, a new dialog now appears (during the beta phase, by default) so the user can review a redacted summary of the report and choose whether to send it to the developers.
-
-- **The dialog shows what will be sent.** A redacted preview lists the most recent commands, the active document's name and encoding, the platform and screen-reader information, and the last frames of the traceback. Personal data and credential-shaped strings are scrubbed before the preview is rendered.
-- **Three user-controlled outcomes.** Send report submits the redacted summary to the project's public issue tracker (only with a configured GitHub token). Copy to clipboard puts the same redacted summary on the system clipboard. Don't send preserves the local crash file in `app_data_dir()/crash-reports/` and submits nothing.
-- **Don't send is the default.** The dialog opens with the **Don't send** button as the default action so a user who opens it by accident does not accidentally send anything. Escape is bound to **Don't send**.
-- **Three free-text fields.** What were you doing? What command triggered it? Expected behaviour? Every field is redacted before the report is built, so an accidentally pasted path or token never leaves the machine.
-- **Always saves the local file.** The local traceback file is always written to `app_data_dir()/crash-reports/`, regardless of the user's choice in the dialog, so the user has a record of every crash.
-- **Opt out in Preferences.** Settings > General > Offer to send crash reports automatically lets you turn the dialog off and return to the previous local-only path. The setting defaults to on during the beta phase so the team can hear about crashes without forcing you to opt in every time.
-- **Works with the existing local fallback.** When QUILL cannot show the dialog (because wx is not yet alive, the user disabled the setting, or the dialog itself raised), the existing native `MessageBoxW` from finding #51 still fires, so the user always sees the path to the local crash file.
-
-## Braille improvements
-
-### QUILL remembers your place in braille files
-
-When you reopen a braille file (`.brf`, `.brl`, `.pef`, `.ueb`), QUILL now returns your cursor to where you left off and tells you exactly where that is — for example, "BRF file opened. 87 braille pages detected. Last position: braille page 12, line 14, cell 31." Your place is saved in a small companion file beside the braille file, so the braille file itself is never changed. Restore is skipped in safe mode or when sidecar saving is turned off.
-
-### Track your braille proofreading progress
-
-A new **Braille → Proofing** menu lets you keep track of proofreading without ever changing the braille file. You can mark the current braille page as proofed, needs review, or clear its mark; add a note to a page; hear a spoken progress summary (how many pages are proofed, how many need review, and your estimated completion); list proofed pages or pages needing review and jump straight to one; and export a plain-text proofing report. Your progress is saved in a small companion file beside the braille file, so it travels with your document and the braille itself is never modified.
-
-### Recover source text from a braille passage
-
-**Braille → Translation → Back-Translate (draft)** now works on a selection: highlight part of a braille file and QUILL back-translates just that passage to draft text (it still back-translates the whole file when nothing is selected), telling you which it used. This makes it easy to recover the source wording of a single paragraph for review. Back-translation requires the optional QUILL Braille Pack.
-
-### Check a braille file's layout
-
-A new **Braille → Validation** menu checks a braille file for common layout problems — lines or pages that are too long, pages that look stuck, missing page breaks, mixed line endings, stray non-braille characters, malformed or missing page indicators, page-numbering gaps or duplicates, inconsistent running heads, and files that are Unicode braille rather than NABCC. **Validate BRF Layout** lists everything it finds so you can choose a warning and jump straight to it; **Next Warning** and **Previous Warning** step you through them with spoken position and detail; and **Warnings Summary** tells you the total and the most common issues. Validation only reads your file — it never changes it.
-
-### Continuation page letters are announced correctly (BR-013)
-
-QUILL now recognizes print-page continuation labels such as `7a` when they appear in a BRF document. The detailed braille status information reports the complete page label instead of shortening it to `7`.
-
-This makes it easier to understand exactly where you are when a print page continues across multiple braille pages.
-
-## Private, offline transcription (early)
-
-QUILL has a privacy-first speech engine that runs entirely on your computer. It lives under a new **AI → Speech** menu:
-
-- **Manage Speech Models...** lets you download a local speech model (sizes are shown; the Small model is recommended to start). Models are fetched over a secure connection from the Hugging Face Hub and stored on your computer; downloading is disabled in Safe Mode.
-- **Transcribe Audio or Video (Offline)...** turns a recording into text on your own machine — no cloud account, and your audio is not uploaded. You choose the transcript format — **plain text, Markdown, or HTML** — and it opens as an editable draft while QUILL works in the background.
-- **Speaker attribution.** Install the "Small English with speaker detection" model and transcripts mark **who is speaking when** ("Speaker 1", "Speaker 2", …) as labelled turns.
-- **Generate Captions (Offline)...** transcribes a file with timestamps and saves it as **SRT** or **VTT** captions.
-- **Dictate (Offline)** lets you speak directly into your document. Press the command (or **QUILL Key + Shift + D**) to start — QUILL plays a distinct start tone and shows "Dictation listening" in the status bar — then press it again to stop; QUILL plays a stop tone, transcribes what you said, and inserts it at the cursor as one undoable edit.
-- **Dictation Microphone...** lets you choose which microphone dictation uses (or the system default).
-- **Choose your speech engine.** The bundled **whisper.cpp** engine is the default and needs nothing extra. On machines that have it, you can opt into **Faster Whisper** — a higher-throughput engine that uses your **GPU** when one is available — by installing QUILL's optional `fasterwhisper` dependency. Manage Speech Models then offers a **Speech Engine** chooser; your choice is remembered and used for transcription, captions, and dictation. (Faster Whisper does not label speakers; for speaker attribution use the whisper.cpp speaker-detection model.)
-
-The offline speech **engine is provided by QUILL**: choose the *"offline speech engine (whisper.cpp)"* component in the installer (or drop the executable into `tools\speech\whispercpp` in a portable copy) — you no longer need to install anything separately or edit your PATH. Then download a model from Manage Speech Models. Dictation also needs microphone-capture support (the optional `sounddevice` package); if it is missing, QUILL tells you and you can still use Windows dictation.
-
-## DAISY talking-book export
-
-QUILL can now save your document as a **DAISY 2.02 text-only talking book** — the accessible book format read by DAISY software and by hardware players such as the Victor Reader Stream, Plextalk, and APH units. Choose **File → Export → DAISY Talking Book**.
-
-- **It reads what is on screen.** The export uses your current document text, so you do not have to save first.
-- **A DAISY book is a folder, not a single file.** The name you choose becomes a folder containing the three files a DAISY player expects (`ncc.html`, `content.html`, and `book.smil`). If the folder already exists and is not empty, QUILL asks before writing into it.
-- **Your headings become navigation points.** A player can jump heading to heading just as it would in any DAISY book. If your document has no headings, QUILL adds a title heading so navigation still works.
-- **Clean, readable text.** Markdown styling is flattened to plain readable text, and the book is exported text-only — it carries no recorded audio, so a player reads it with its own text-to-speech.
-- **Add audio later if you want.** Because the export is a standard DAISY 2.02 book, you can open the folder in a tool such as APH Book Wizard Producer to record or synthesize a full text-and-audio talking book.
-
-## Verbosity controls
-
-QUILL now lets you decide how quiet or talkative the editor is, with a
-screen-reader-first verbosity system. Open **Verbosity Preferences** from the
-command palette (`Ctrl+Shift+P`, type "verbosity").
-
-- **Four profiles** — Beginner, Normal, Expert, Quiet — set the overall level;
-  Expert suppresses routine confirmations but always speaks errors, and Quiet
-  leaves only braille and the on-screen status bar.
-- **Quiet Mode** (`QUILL key + Q`) and **Meeting Mode** (`QUILL key + Shift + Q`)
-  silence speech/earcons for a shared room; the status bar keeps updating and a
-  `[Q]` / `[M]` indicator shows the mode. **Verbosity Undo** is `Ctrl+Shift+Z`.
-- **Channels** — Speech, Braille, Sound — are individually controllable; the
-  Visual status bar is always on and can't be turned off.
-- **Advanced**: edit exactly what each action announces with tokens and filters
-  (with live validation and preview), save templates to a library, import/export
-  profiles, install data-only QUILL Verbosity Packs, preview profiles in the
-  Preview Lab, review announcement History (with "why did QUILL say that?"), and
-  fall back to Safe Mode if a custom setup misbehaves.
-
-QUILL speaks alongside your screen reader rather than replacing it, so it does
-not duplicate the typing echo or punctuation level your screen reader already
-controls.
+- The **Open AI Hub** button works on a brand-new profile, and the Hub's tabs,
+  provider choices, instructions, and image styles all load correctly — from the
+  Setup Wizard or the Tools menu.
+- A new profile no longer triggers a startup typing failure.
+- The Setup Wizard no longer reopens on every launch after an elevated install
+  into a protected folder: QUILL remembers that setup is done even when it cannot
+  delete the marker file.
+
+## Stability and crash reporting
+
+Several crashes and rough edges are fixed: **Check for Updates** and **Check for
+GLOW Updates** open correctly; choosing **Don't Save** after `Ctrl+F4` no longer
+crashes; closing the last document is safe from a late caret event; **saving
+settings** (OK, Reset to Factory Defaults, or importing) applies theme,
+spell-check, soft-wrap, and title-style cleanly; a Quillin reporting status no
+longer crashes the app; the Developer Console reports the real document name;
+**Quill Eraser** opens its review dialog correctly; and a fresh install with the
+Setup Wizard pending no longer crashes on startup.
+
+When an unexpected error does close QUILL, a new **crash-report dialog** (on by
+default during the beta) shows a **redacted preview** of what would be sent —
+recent commands, the document name and encoding, platform and screen-reader info,
+and the last traceback frames, with personal data and credential-shaped strings
+scrubbed first. You choose: **Send** (to the public issue tracker, only with a
+configured token), **Copy to clipboard**, or **Don't send** (the default; Escape
+triggers it). A local copy is always saved to your crash-reports folder, and you
+can turn the dialog off in **Settings > General**.
+
+Everyday housekeeping also improved: the User Guide and other static pages stay
+put instead of refreshing every second (the live Browser Preview still follows
+your edits); **Open Log Folder**, **View Startup Logs**, and **Open Diagnostics
+Folder** use the right file manager per platform; the macOS app menu says **Hide
+QUILL** / **Quit QUILL**; and macOS explains honestly that system-tray mode is
+unavailable there rather than pretending to run.
 
 ## What is coming next
 
-QUILL's roadmap is organized into clear workstreams that are all targeted to ship, with the work tracked openly. **Landed in this beta:** Braille Mode proofing, validation, restore-your-place, and back-translation; the offline speech suite above (transcription, captions, dictation, speaker attribution, a bundled engine, and the optional Faster Whisper engine); DAISY talking-book export; and the screen-reader-first verbosity system above. **Coming next:**
+QUILL's roadmap is tracked openly, and every workstream is targeted to ship.
+**Landed in this beta:** the verbosity system; the offline speech suite
+(transcription, captions, dictation, speaker labels, voice commands, and the
+optional Faster Whisper engine); DAISY talking-book export; and the braille
+proofing, validation, restore-your-place, and back-translation workflow.
 
-- **More publishing and export options**, such as direct publishing to external platforms.
-- **Experimental offline voice commands** — drive QUILL hands-free with spoken commands, built on the offline speech engine (#663).
-
-These are tracked as individual issues and in the planning documents under `docs/planning/`. Because this is a beta, your feedback directly shapes the order in which they arrive.
+**Coming next:** broader publishing options (including direct publishing to
+external platforms and chaptered audiobook export), a unified agentic AI hub, and
+deeper accessibility-checking tools — all optional and screen-reader-first.
 
 ## What you need to do
 
-For most people, nothing special is required:
+For most people, nothing special:
 
 1. Install or start QUILL 0.7.0 Beta 2.
-2. Let QUILL check and update compatible settings during startup.
-3. Continue working with your familiar files and preferences.
+2. Let QUILL check and carry forward your compatible settings at startup.
+3. Keep working with your familiar files and preferences.
 
-When QUILL needs to replace an outdated or conflicting setting, it uses the current default so the related feature continues to work. You do not need to edit `keymap.json` or manually rebuild your preferences.
-
-Because this is a beta release, please continue to report anything that feels confusing, inaccessible, unreliable, or harder than it should be. QUILL is being built to meet people where they are, and that includes making setup, upgrades, everyday writing, and problem reporting as welcoming as possible.
+You should not need to edit `keymap.json` or rebuild your preferences by hand.
+Because this is a beta, please keep telling us anything that feels confusing,
+inaccessible, unreliable, or harder than it should be — your feedback shapes what
+ships next.
