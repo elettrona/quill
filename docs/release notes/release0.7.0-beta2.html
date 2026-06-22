@@ -183,9 +183,9 @@ you</em> — and listen. You can now decide exactly how much QUILL says
 and when, transcribe and caption audio entirely on your own computer,
 dictate and even run commands by voice offline, save accessible talking
 books, and work through a real braille proofreading workflow. Around
-those headline features sit a smoother upgrade, a double-clickable
-portable edition, stronger macOS and screen-reader support, and a long
-list of reliability fixes.</p>
+those headline features sit a smoother upgrade, a cleaner startup with
+no console window for both installed and portable copies, stronger macOS
+and screen-reader support, and a long list of reliability fixes.</p>
 <p>Everything new here follows the same promises: it is
 <strong>optional</strong>, it is <strong>screen-reader-first</strong>,
 and your content stays <strong>on your machine</strong> unless you
@@ -206,8 +206,9 @@ APH players, and DAISY apps.</li>
 a proofing tracker, layout validation, and selection-aware
 back-translation.</li>
 <li><strong>A smoother upgrade</strong> that carries your compatible
-settings and shortcuts forward automatically, and a
-<strong>double-clickable portable edition</strong>.</li>
+settings and shortcuts forward automatically, and a <strong>cleaner
+startup</strong> — no console window flashing, for both installed and
+portable copies.</li>
 <li><strong>Stronger macOS + screen-reader behavior</strong>, and many
 crash, focus, and file-fidelity fixes.</li>
 </ul>
@@ -449,38 +450,42 @@ upgrade needs on its own. A fuller migration utility (for larger format
 changes, older-beta profiles and Quillins, and a reviewable record of
 what changed) is still planned.</li>
 </ul>
-<h2 id="portable-quill-just-double-click">Portable QUILL: just
-double-click</h2>
-<p>The portable edition is now double-clickable: <code>quill.exe</code>
-at the bundle root starts QUILL with no setup, and the old
-<code>run-quill.cmd</code> wrapper is gone. A folder is treated as
-portable only when it contains <code>quill.exe</code>
-<strong>and</strong> a sibling <code>data/</code> folder — real
-filesystem evidence, so an untrusted setting can't redirect where your
-data lives.</p>
+<h2 id="how-quill-starts-installer-and-portable">How QUILL starts:
+installer and portable</h2>
+<p>QUILL now starts the same clean way whether you used the
+<strong>Windows installer</strong> or the <strong>portable</strong>
+edition: both run through <code>quill.exe</code>, a proper windowed
+launcher. However you open QUILL — pressing Enter on the Start-menu or
+desktop shortcut after an install, or opening <code>quill.exe</code> in
+a portable folder — you get the same behaviour described here.</p>
 <ul>
-<li><strong>Choose where your data lives.</strong> A first-run
-<strong>Where QUILL stores your data</strong> page offers the
-recommended AppData location, beside a portable bundle, or a folder you
-pick; change it later under <strong>Preferences &gt; General</strong>
-(QUILL moves it safely on the next restart).</li>
-<li><strong>Zero-setup and back-compatible.</strong> New bundles ship an
-empty <code>data/</code> folder so they're portable from the first
-launch; older Beta 1 bundles that still ship <code>run-quill.cmd</code>
-keep working. AI keys (DPAPI-encrypted) travel with a verified portable
-bundle automatically.</li>
-<li><strong>No more console window flashing at startup.</strong> QUILL
-now launches through <code>quill.exe</code>, a windowed launcher,
-instead of the old <code>run-quill.cmd</code> batch file — so the brief
-black command window some people saw when starting QUILL is gone. This
-applies to <strong>both the installer and the portable edition</strong>;
-upgrading replaces any old Start-menu or desktop shortcut that still
-pointed at the batch launcher, so the flash does not come back.</li>
+<li><strong>No more console window flashing at startup.</strong> The old
+<code>run-quill.cmd</code> batch launcher is gone, replaced by the
+windowed <code>quill.exe</code>. That removes the brief black command
+window some people saw when QUILL started — for <strong>both installed
+and portable</strong> copies. Upgrading also replaces any old Start-menu
+or desktop shortcut that still pointed at the batch file, so the flash
+does not return.</li>
 <li><strong>Honest identity.</strong> The launcher reports itself as
 <strong>QUILL for All</strong> with the real version and
-<strong>Community Access</strong> as publisher, so screen-reader "what
-version" commands say something useful instead of "Python." On upgrade,
-a stale desktop shortcut pointing at the old launcher is replaced.</li>
+<strong>Community Access</strong> as the publisher, so a screen reader's
+"what is this window / what version" commands say something useful
+instead of "Python." On upgrade, a stale shortcut pointing at the old
+launcher is replaced.</li>
+<li><strong>Choose where QUILL stores your data.</strong> A first-run
+<strong>Where QUILL stores your data</strong> page offers the
+recommended AppData location, a spot beside a portable bundle, or a
+folder you choose; change it later under <strong>Preferences &gt;
+General</strong> and QUILL moves your data there safely on the next
+restart. A folder counts as portable only when it contains both
+<code>quill.exe</code> <strong>and</strong> a sibling <code>data/</code>
+folder — real evidence on disk, so a stray setting can never redirect
+where your work lives.</li>
+<li><strong>Zero-setup and backward-compatible.</strong> New portable
+bundles ship an empty <code>data/</code> folder so they work from the
+first launch; older Beta 1 bundles that still include
+<code>run-quill.cmd</code> keep working. AI keys (DPAPI-encrypted)
+travel with a verified portable bundle automatically.</li>
 </ul>
 <h2 id="accessibility-and-screen-reader-refinements">Accessibility and
 screen-reader refinements</h2>

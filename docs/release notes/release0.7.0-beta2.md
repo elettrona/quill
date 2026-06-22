@@ -5,8 +5,8 @@ You can now decide exactly how much QUILL says and when, transcribe and caption
 audio entirely on your own computer, dictate and even run commands by voice
 offline, save accessible talking books, and work through a real braille
 proofreading workflow. Around those headline features sit a smoother upgrade, a
-double-clickable portable edition, stronger macOS and screen-reader support, and
-a long list of reliability fixes.
+cleaner startup with no console window for both installed and portable copies,
+stronger macOS and screen-reader support, and a long list of reliability fixes.
 
 Everything new here follows the same promises: it is **optional**, it is
 **screen-reader-first**, and your content stays **on your machine** unless you
@@ -25,7 +25,8 @@ turned off.
 - **Braille proofreading workflow.** Restore-your-place, a proofing tracker,
   layout validation, and selection-aware back-translation.
 - **A smoother upgrade** that carries your compatible settings and shortcuts
-  forward automatically, and a **double-clickable portable edition**.
+  forward automatically, and a **cleaner startup** — no console window flashing,
+  for both installed and portable copies.
 - **Stronger macOS + screen-reader behavior**, and many crash, focus, and
   file-fidelity fixes.
 
@@ -232,32 +233,34 @@ and uses the current default — so a feature never silently appears "broken."
   fuller migration utility (for larger format changes, older-beta profiles and
   Quillins, and a reviewable record of what changed) is still planned.
 
-## Portable QUILL: just double-click
+## How QUILL starts: installer and portable
 
-The portable edition is now double-clickable: `quill.exe` at the bundle root
-starts QUILL with no setup, and the old `run-quill.cmd` wrapper is gone. A folder
-is treated as portable only when it contains `quill.exe` **and** a sibling
-`data/` folder — real filesystem evidence, so an untrusted setting can't redirect
-where your data lives.
+QUILL now starts the same clean way whether you used the **Windows installer** or
+the **portable** edition: both run through `quill.exe`, a proper windowed
+launcher. However you open QUILL — pressing Enter on the Start-menu or desktop
+shortcut after an install, or opening `quill.exe` in a portable folder — you get
+the same behaviour described here.
 
-- **Choose where your data lives.** A first-run **Where QUILL stores your data**
-  page offers the recommended AppData location, beside a portable bundle, or a
-  folder you pick; change it later under **Preferences > General** (QUILL moves it
-  safely on the next restart).
-- **Zero-setup and back-compatible.** New bundles ship an empty `data/` folder so
-  they're portable from the first launch; older Beta 1 bundles that still ship
-  `run-quill.cmd` keep working. AI keys (DPAPI-encrypted) travel with a verified
-  portable bundle automatically.
-- **No more console window flashing at startup.** QUILL now launches through
-  `quill.exe`, a windowed launcher, instead of the old `run-quill.cmd` batch
-  file — so the brief black command window some people saw when starting QUILL is
-  gone. This applies to **both the installer and the portable edition**; upgrading
-  replaces any old Start-menu or desktop shortcut that still pointed at the batch
-  launcher, so the flash does not come back.
+- **No more console window flashing at startup.** The old `run-quill.cmd` batch
+  launcher is gone, replaced by the windowed `quill.exe`. That removes the brief
+  black command window some people saw when QUILL started — for **both installed
+  and portable** copies. Upgrading also replaces any old Start-menu or desktop
+  shortcut that still pointed at the batch file, so the flash does not return.
 - **Honest identity.** The launcher reports itself as **QUILL for All** with the
-  real version and **Community Access** as publisher, so screen-reader
-  "what version" commands say something useful instead of "Python." On upgrade,
-  a stale desktop shortcut pointing at the old launcher is replaced.
+  real version and **Community Access** as the publisher, so a screen reader's
+  "what is this window / what version" commands say something useful instead of
+  "Python." On upgrade, a stale shortcut pointing at the old launcher is replaced.
+- **Choose where QUILL stores your data.** A first-run **Where QUILL stores your
+  data** page offers the recommended AppData location, a spot beside a portable
+  bundle, or a folder you choose; change it later under **Preferences > General**
+  and QUILL moves your data there safely on the next restart. A folder counts as
+  portable only when it contains both `quill.exe` **and** a sibling `data/`
+  folder — real evidence on disk, so a stray setting can never redirect where your
+  work lives.
+- **Zero-setup and backward-compatible.** New portable bundles ship an empty
+  `data/` folder so they work from the first launch; older Beta 1 bundles that
+  still include `run-quill.cmd` keep working. AI keys (DPAPI-encrypted) travel
+  with a verified portable bundle automatically.
 
 ## Accessibility and screen-reader refinements
 
