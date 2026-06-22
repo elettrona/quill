@@ -3649,6 +3649,48 @@ beside it.</p>
 <p>The 1.0 roadmap expands this into findings navigation,
 export-readiness workflows, and richer extraction-aware review for PDF
 and EPUB.</p>
+<h2 id="verbosity-and-announcements">Verbosity and Announcements</h2>
+<p>QUILL lets you control what it announces and when, so the editor is
+as quiet or as talkative as you want. Open <strong>Verbosity
+Preferences</strong> from the command palette
+(<code>Ctrl+Shift+P</code>, type "verbosity") or assign it a shortcut in
+the Keyboard Manager.</p>
+<ul>
+<li><strong>Profiles.</strong> Pick a talkativeness level:
+<strong>Beginner</strong> (full context for every action),
+<strong>Normal</strong> (informative, the default),
+<strong>Expert</strong> (routine confirmations are suppressed, but
+errors always speak), or <strong>Quiet</strong> (speech and earcons off,
+leaving braille and the on-screen status bar). Switching profiles is
+announced.</li>
+<li><strong>Channels.</strong> Choose which channels carry announcements
+— Speech, Braille, Sound — while <strong>Visual</strong> (the status
+bar) is always on and cannot be turned off, so you never lose the
+on-screen status of an action.</li>
+<li><strong>Quiet Mode</strong> (<code>QUILL key + Q</code>) silences
+speech and earcons for a meeting or a shared room; <strong>Meeting
+Mode</strong> (<code>QUILL key + Shift + Q</code>) hard-mutes sound. A
+<code>[Q]</code> or <code>[M]</code> indicator shows when a mode is
+active, and the status bar keeps updating either way. <strong>Verbosity
+Undo</strong> (<code>Ctrl+Shift+Z</code>) steps back the last verbosity
+change.</li>
+<li><strong>Per-action templates.</strong> Advanced users can edit
+exactly what each action says, using tokens like <code>{line}</code> and
+filters like <code>${ordinal:line}</code>, with live validation and
+preview. Templates can be saved to a library, shared as
+<code>.quill-verbosity-profile.json</code> files, or installed from a
+QUILL Verbosity Pack (<code>.qvp.json</code>) — all data-only, never
+code.</li>
+<li><strong>Preview Lab and History.</strong> Preview how a profile
+sounds against canned scenarios before committing, and review, replay,
+copy, or ask "why did QUILL say that?" about recent announcements.</li>
+<li><strong>Safe Mode.</strong> If a custom setup ever misbehaves, Safe
+Mode restores the built-in announcements without deleting your
+customizations.</li>
+</ul>
+<p>These controls are screen-reader-first: QUILL speaks alongside your
+screen reader, it does not replace it, so it never duplicates the typing
+echo or punctuation settings your screen reader already provides.</p>
 <h2 id="accessibility-and-low-vision-features">Accessibility and
 Low-Vision Features</h2>
 <p>Quill is designed so accessibility is visible, not hidden.</p>

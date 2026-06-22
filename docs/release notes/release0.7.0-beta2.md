@@ -328,11 +328,34 @@ QUILL can now save your document as a **DAISY 2.02 text-only talking book** — 
 - **Clean, readable text.** Markdown styling is flattened to plain readable text, and the book is exported text-only — it carries no recorded audio, so a player reads it with its own text-to-speech.
 - **Add audio later if you want.** Because the export is a standard DAISY 2.02 book, you can open the folder in a tool such as APH Book Wizard Producer to record or synthesize a full text-and-audio talking book.
 
+## Verbosity controls
+
+QUILL now lets you decide how quiet or talkative the editor is, with a
+screen-reader-first verbosity system. Open **Verbosity Preferences** from the
+command palette (`Ctrl+Shift+P`, type "verbosity").
+
+- **Four profiles** — Beginner, Normal, Expert, Quiet — set the overall level;
+  Expert suppresses routine confirmations but always speaks errors, and Quiet
+  leaves only braille and the on-screen status bar.
+- **Quiet Mode** (`QUILL key + Q`) and **Meeting Mode** (`QUILL key + Shift + Q`)
+  silence speech/earcons for a shared room; the status bar keeps updating and a
+  `[Q]` / `[M]` indicator shows the mode. **Verbosity Undo** is `Ctrl+Shift+Z`.
+- **Channels** — Speech, Braille, Sound — are individually controllable; the
+  Visual status bar is always on and can't be turned off.
+- **Advanced**: edit exactly what each action announces with tokens and filters
+  (with live validation and preview), save templates to a library, import/export
+  profiles, install data-only QUILL Verbosity Packs, preview profiles in the
+  Preview Lab, review announcement History (with "why did QUILL say that?"), and
+  fall back to Safe Mode if a custom setup misbehaves.
+
+QUILL speaks alongside your screen reader rather than replacing it, so it does
+not duplicate the typing echo or punctuation level your screen reader already
+controls.
+
 ## What is coming next
 
-QUILL's roadmap is organized into clear workstreams that are all targeted to ship, with the work tracked openly. **Landed in this beta:** Braille Mode proofing, validation, restore-your-place, and back-translation; the offline speech suite above (transcription, captions, dictation, speaker attribution, a bundled engine, and the optional Faster Whisper engine); and DAISY talking-book export. **Coming next:**
+QUILL's roadmap is organized into clear workstreams that are all targeted to ship, with the work tracked openly. **Landed in this beta:** Braille Mode proofing, validation, restore-your-place, and back-translation; the offline speech suite above (transcription, captions, dictation, speaker attribution, a bundled engine, and the optional Faster Whisper engine); DAISY talking-book export; and the screen-reader-first verbosity system above. **Coming next:**
 
-- **Verbosity controls.** Fine-grained, screen-reader-first control over what QUILL announces and when, including Quiet and Meeting modes — the next major workstream.
 - **More publishing and export options**, such as direct publishing to external platforms.
 - **Experimental offline voice commands** — drive QUILL hands-free with spoken commands, built on the offline speech engine (#663).
 

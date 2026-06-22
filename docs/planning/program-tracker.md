@@ -37,19 +37,19 @@ closed won't-do.
 
 ### By status
 
-**Open issues on GitHub: 68** (down from 232 before the 2026-06-21 consolidation). **Shipped this program: 33.**
+**Open issues on GitHub: 60** (down from 232 before the 2026-06-21 consolidation). **Shipped this program: 41.**
 
 | Status | Count |
 | --- | ---: |
-| ✅ Shipped | 33 — including verbosity 1.1 (#361/#368/#374/#377), 1.2 (#362/#392), 1.3 (#363/#382), **1.4 UI (#364)** and the §-sections it completes (#369 §7, #375 §13, #376 §14, #378 §16, #379 §17, #380 §18, #381 §19, #383 §21, #385 §23, #386 §24, #387 §25); plus #648/#649/#643/#646, braille #238–#242/#246, #251 DAISY, #617 speech core |
-| 🚧 In progress | Verbosity (Phase 2): sub-PRs #365 (call-site migration + chords/badges) and #366 (polish), plus the §-section partials whose chord/dialog half rides on 1.5 (#367, #371–#373, #388, #389, #391, #393, #397) |
+| ✅ Shipped | 41 — **the verbosity rebuild is essentially complete:** 1.1 foundation (#361/#368/#374/#377), 1.2 engine+modes (#362/#392), 1.3 packs/library/preview (#363/#382), 1.4 UI (#364 + §7/§13/§14/§16–§19/§21/§23–§25), **1.5 wiring (#365) and §5/§9/§10/§11/§29/§35 (#367/#371/#372/#373/#391/#397)**, and **1.6 consolidated (#366)** into the polish backlog; plus #648/#649/#643/#646, braille #238–#242/#246, #251 DAISY, #617 speech core |
+| 🚧 In progress | Verbosity polish partials whose chord/dialog half is still unwired: §26 feedback tuning (#388), §27 mastery offer dialog (#389), §31 task-profile on-open suggestion (#393). The themed survivors of the 100 addenda are tracked in the verbosity-system.md polish backlog. |
 | 🧹 Resolved (bookkeeping) | 2 (#600, #601 — braille design captured in docs) |
 
 ### Open by workstream (per [`roadmap.md`](roadmap.md))
 
 | Workstream | Open issues |
 | --- | --- |
-| Verbosity (Phase 2, in progress) | sub-PRs #365/#366 + the §-section partials above (+ epic #271). 1.1–1.4 shipped. |
+| Verbosity (Phase 2 — essentially complete) | 1.1–1.6 shipped (#361–#366); polish partials #388/#389/#393 + the verbosity-system.md polish backlog remain (+ epic #271). |
 | Speech & Dictation — BITS Whisperer | #617, #663, and the BW consolidation backlog #515, #566–#577 |
 | GLOW integration | family #528–#534; Accessibility Agents #593–#598 |
 | Platform & Distribution | #506, #516, #517, #518, #519, #521, #525, #599 (packaging/freeze) |

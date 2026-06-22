@@ -1879,6 +1879,41 @@ The first native slice is strongest with:
 
 The 1.0 roadmap expands this into findings navigation, export-readiness workflows, and richer extraction-aware review for PDF and EPUB.
 
+## Verbosity and Announcements
+
+QUILL lets you control what it announces and when, so the editor is as quiet or
+as talkative as you want. Open **Verbosity Preferences** from the command palette
+(`Ctrl+Shift+P`, type "verbosity") or assign it a shortcut in the Keyboard
+Manager.
+
+- **Profiles.** Pick a talkativeness level: **Beginner** (full context for every
+  action), **Normal** (informative, the default), **Expert** (routine
+  confirmations are suppressed, but errors always speak), or **Quiet** (speech
+  and earcons off, leaving braille and the on-screen status bar). Switching
+  profiles is announced.
+- **Channels.** Choose which channels carry announcements — Speech, Braille,
+  Sound — while **Visual** (the status bar) is always on and cannot be turned
+  off, so you never lose the on-screen status of an action.
+- **Quiet Mode** (`QUILL key + Q`) silences speech and earcons for a meeting or a
+  shared room; **Meeting Mode** (`QUILL key + Shift + Q`) hard-mutes sound. A
+  `[Q]` or `[M]` indicator shows when a mode is active, and the status bar keeps
+  updating either way. **Verbosity Undo** (`Ctrl+Shift+Z`) steps back the last
+  verbosity change.
+- **Per-action templates.** Advanced users can edit exactly what each action
+  says, using tokens like `{line}` and filters like `${ordinal:line}`, with live
+  validation and preview. Templates can be saved to a library, shared as
+  `.quill-verbosity-profile.json` files, or installed from a QUILL Verbosity Pack
+  (`.qvp.json`) — all data-only, never code.
+- **Preview Lab and History.** Preview how a profile sounds against canned
+  scenarios before committing, and review, replay, copy, or ask "why did QUILL
+  say that?" about recent announcements.
+- **Safe Mode.** If a custom setup ever misbehaves, Safe Mode restores the
+  built-in announcements without deleting your customizations.
+
+These controls are screen-reader-first: QUILL speaks alongside your screen
+reader, it does not replace it, so it never duplicates the typing echo or
+punctuation settings your screen reader already provides.
+
 ## Accessibility and Low-Vision Features
 
 Quill is designed so accessibility is visible, not hidden.
