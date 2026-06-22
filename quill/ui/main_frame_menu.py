@@ -1021,6 +1021,26 @@ class MenuBuilderMixin:
         self._append_power_tools_markdown_profiles_items(markdown_menu)
         format_menu.AppendSubMenu(markdown_menu, _("&Markdown"))
 
+        # --- Document Language submenu (#181): pin the editing language so a
+        # plain .txt can be written as HTML/Markdown/code and get those
+        # characteristics. Radio items show and switch the active profile;
+        # "Auto-detect" clears the override. The dialog (Ctrl+Shift+L, also in
+        # Navigate) remains for type-ahead selection.
+        from quill.core.language_profile import all_profiles as _all_lang_profiles
+
+        language_menu = wx.Menu()
+        self._language_menu_item_ids: dict[int, str] = {}
+        auto_item = language_menu.AppendRadioItem(wx.ID_ANY, _("&Auto-detect from file"))
+        self._language_menu_item_ids[auto_item.GetId()] = ""
+        for _profile in _all_lang_profiles():
+            radio = language_menu.AppendRadioItem(wx.ID_ANY, _profile.name)
+            self._language_menu_item_ids[radio.GetId()] = _profile.name
+        plain_item = language_menu.AppendRadioItem(wx.ID_ANY, _("Plain text"))
+        self._language_menu_item_ids[plain_item.GetId()] = "Plain text"
+        for _lang_id in self._language_menu_item_ids:
+            self.frame.Bind(wx.EVT_MENU, self._on_document_language_menu, id=_lang_id)
+        format_menu.AppendSubMenu(language_menu, _("Document &Language"))
+
         # Quillin-contributed Format items
         self._append_quillin_menu_items(format_menu, "Format")
 

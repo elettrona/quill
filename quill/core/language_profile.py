@@ -24,6 +24,11 @@ class LanguageProfile:
     block_comment_end: str = ""
     bracket_pairs: tuple[tuple[str, str], ...] = (("(", ")"), ("[", "]"), ("{", "}"))
     keywords: tuple[str, ...] = field(default_factory=tuple)
+    # Which rich-text "surface" this language edits as: "html", "markdown", or
+    # "plain". Drives the markup-aware features (bold/italic insertion, the
+    # heading/table/tag menu items, heading navigation, Emmet, and live preview)
+    # so a pinned profile gives those characteristics regardless of file name.
+    markup_kind: str = "plain"
 
 
 _PROFILES: tuple[LanguageProfile, ...] = (
@@ -200,6 +205,7 @@ _PROFILES: tuple[LanguageProfile, ...] = (
         block_comment_start="<!--",
         block_comment_end="-->",
         bracket_pairs=(("<", ">"), ("(", ")"), ("[", "]")),
+        markup_kind="html",
     ),
     LanguageProfile(
         "CSS",
@@ -529,6 +535,7 @@ _PROFILES: tuple[LanguageProfile, ...] = (
         block_comment_start="<!--",
         block_comment_end="-->",
         bracket_pairs=(("[", "]"), ("(", ")"), ("<", ">")),
+        markup_kind="markdown",
     ),
     LanguageProfile(
         "JSON",

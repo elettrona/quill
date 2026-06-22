@@ -30,6 +30,7 @@
     "navigate.next_structure": "Alt+Down",
     "navigate.previous_structure": "Alt+Up",
     "navigate.heading_organizer": "Ctrl+Shift+Grave, O",
+    "navigate.set_language": "Ctrl+Shift+L",
     "navigate.list_bookmarks": "Alt+Shift+B",
     "tools.ask_quill_chat": "Alt+Q",
     "tools.word_count": "Ctrl+Shift+W",

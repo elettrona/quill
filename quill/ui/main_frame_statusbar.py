@@ -228,9 +228,12 @@ class StatusBarMixin:
         if item == "language_profile":
             tab = getattr(self, "_current_tab", None)
             profile = getattr(tab, "_language_profile", None)
-            if profile is None:
-                return "Plain text"
-            return profile.name
+            name = profile.name if profile is not None else "Plain text"
+            # Distinguish a user-pinned override ("(set)") from auto-detection, so
+            # it is clear the choice came from the user and not the file name.
+            if getattr(tab, "_language_profile_pinned", False):
+                return f"{name} (set)"
+            return name
         if item == "braille":
             return self._statusbar_braille_text()
         if item == "sr_name":

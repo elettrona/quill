@@ -165,11 +165,12 @@ def toggle_line_comment(
     start: int,
     end: int,
     path: Path | None,
+    profile: object | None = None,
 ) -> tuple[str, int, int]:
     line_start, line_end = _line_bounds(text, start, end)
     original = text[line_start:line_end]
     lines = _split_lines_keepends(original)
-    style = _line_comment_style(path)
+    style = _line_comment_style(path, profile)
 
     if style == "html":
         all_commented = _all_html_commented(lines)
@@ -402,8 +403,9 @@ def toggle_block_comment(
     start: int,
     end: int,
     path: Path | None,
+    profile: object | None = None,
 ) -> tuple[str, int, int]:
-    opening, closing = _block_comment_tokens(path)
+    opening, closing = _block_comment_tokens(path, profile)
     selected = text[start:end]
     if selected:
         stripped = selected.strip()
@@ -514,7 +516,17 @@ def _outdent_single_line(line: str, indent_unit: str) -> tuple[str, int]:
     return line[remove_count:], remove_count
 
 
-def _line_comment_style(path: Path | None) -> str:
+def _line_comment_style(path: Path | None, profile: object | None = None) -> str:
+    # A user-pinned language profile wins over the file name, so e.g. a .txt set
+    # to Python comments with "# " and one set to HTML comments with <!-- -->.
+    if profile is not None:
+        if getattr(profile, "markup_kind", "") in {"html", "markdown"}:
+            return "html"
+        prefix = getattr(profile, "comment_prefix", "")
+        if prefix:
+            return prefix
+        return "// "
+
     kind = infer_markup_kind(path)
     if kind in {"html", "markdown"}:
         return "html"
@@ -527,7 +539,16 @@ def _line_comment_style(path: Path | None) -> str:
     return "// "
 
 
-def _block_comment_tokens(path: Path | None) -> tuple[str, str]:
+def _block_comment_tokens(path: Path | None, profile: object | None = None) -> tuple[str, str]:
+    if profile is not None:
+        if getattr(profile, "markup_kind", "") in {"html", "markdown"}:
+            return "<!-- ", " -->"
+        start = getattr(profile, "block_comment_start", "")
+        end = getattr(profile, "block_comment_end", "")
+        if start and end:
+            return f"{start} ", f" {end}"
+        return "/* ", " */"
+
     style = _line_comment_style(path)
     if style == "html":
         return "<!-- ", " -->"

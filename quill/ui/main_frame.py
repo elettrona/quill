@@ -4537,7 +4537,7 @@ class MainFrame(
         event.Skip()
 
     def _handle_markdown_list_return(self) -> bool:
-        if infer_markup_kind(self.document.path) not in {"markdown", "plain"}:
+        if self._effective_markup_kind() not in {"markdown", "plain"}:
             return False
         start, end = self.editor.GetSelection()
         if start != end:
@@ -4558,7 +4558,7 @@ class MainFrame(
         return True
 
     def _is_caret_on_markdown_list_item(self) -> bool:
-        if infer_markup_kind(self.document.path) not in {"markdown", "plain"}:
+        if self._effective_markup_kind() not in {"markdown", "plain"}:
             return False
         selection_start, selection_end = self.editor.GetSelection()
         if selection_start != selection_end:
@@ -6831,7 +6831,37 @@ class MainFrame(
             return " * [modified]"
         return " [modified]"
 
+    def _pinned_markup_kind(self) -> str | None:
+        """Markup kind from a user-pinned language profile, or None for auto-detect.
+
+        When the user explicitly sets a Document Language (e.g. HTML on a .txt),
+        that choice — not the file name — decides the markup surface. Returns one
+        of "markdown"/"html"/"plain" when pinned, or None to fall back to the
+        path/content auto-detection below.
+        """
+        tab = getattr(self, "_current_tab", None)
+        if tab is None or not getattr(tab, "_language_profile_pinned", False):
+            return None
+        kind = getattr(getattr(tab, "_language_profile", None), "markup_kind", None)
+        return kind if kind in {"markdown", "html", "plain"} else None
+
+    def _effective_markup_kind(self) -> str:
+        """Markup kind honoring a pinned profile, else inferred from the path.
+
+        Drop-in replacement for the old infer_markup_kind(path) calls at the
+        feature sites (heading/structure navigation, outline, preview, link
+        insertion) so they follow the user's Document Language choice. Unpinned
+        behaviour is identical to the path-based inference (including "yaml").
+        """
+        pinned = self._pinned_markup_kind()
+        if pinned is not None:
+            return pinned
+        return infer_markup_kind(self.document.path)
+
     def _current_markup_context(self) -> str:
+        pinned = self._pinned_markup_kind()
+        if pinned is not None:
+            return pinned
         path = self.document.path
         if path is not None:
             suffix = path.suffix.lower()
@@ -6938,6 +6968,7 @@ class MainFrame(
             menu_item = menu_bar.FindItemById(item_id)
             if menu_item is not None:
                 menu_item.Enable(html_only)
+        self._refresh_language_menu_radio(menu_bar)
 
     def _set_status(self, message: str) -> None:
         self._status_message = message
@@ -13837,7 +13868,7 @@ class MainFrame(
         self._navigate_heading(reverse=True)
 
     def _navigate_heading(self, reverse: bool) -> None:
-        markup_kind = infer_markup_kind(self.document.path)
+        markup_kind = self._effective_markup_kind()
         if markup_kind not in {"markdown", "html"}:
             self._set_status("Heading navigation is available in Markdown or HTML documents")
             return
@@ -13911,7 +13942,7 @@ class MainFrame(
         if self.document.path is not None and self.document.path.suffix.lower() == ".epub":
             self.open_epub_navigator()
             return
-        markup_kind = infer_markup_kind(self.document.path)
+        markup_kind = self._effective_markup_kind()
         if markup_kind == "plain":
             self._set_status("Outline is not available for plain text files")
             return
@@ -14080,7 +14111,7 @@ class MainFrame(
             self.editor.SetFocus()
 
     def open_heading_organizer(self) -> None:
-        markup_kind = infer_markup_kind(self.document.path)
+        markup_kind = self._effective_markup_kind()
         if markup_kind not in {"markdown", "html"}:
             self._set_status("Heading Organizer is only available for Markdown or HTML documents")
             return
@@ -14318,7 +14349,7 @@ class MainFrame(
         return working
 
     def open_yaml_structure_editor(self) -> None:
-        if infer_markup_kind(self.document.path) != "yaml":
+        if self._effective_markup_kind() != "yaml":
             self._set_status("YAML structure editing is only available for YAML files")
             return
         updated_text = self._show_yaml_structure_editor()
@@ -14362,43 +14393,113 @@ class MainFrame(
         self._announce(label)
         self._set_status(label)
 
+    _LANGUAGE_AUTO_LABEL = "Auto-detect from file"
+
     def set_document_language(self, language: str | None = None) -> None:
-        """Set the active language profile for the current document tab."""
+        """Set (or clear) the language profile for the current document tab.
+
+        ``language`` may be a profile name, ``"Plain text"``, the auto-detect
+        label (clears the user override), or None to prompt. The choice is
+        tab-only: it is not remembered when the file is reopened. Setting a
+        language never renames the file — when the chosen language's extension
+        doesn't match, a Save As hint is announced.
+        """
         wx = self._wx
         tab = getattr(self, "_current_tab", None)
         if tab is None:
             return
-        if language:
-            profile: LanguageProfile | None = get_profile_by_name(language)
-            if profile is None:
-                self._set_status(f"Unknown language: {language}")
-                return
+        auto = self._LANGUAGE_AUTO_LABEL
+        if language is not None:
+            choice_name = language
         else:
-            profiles = all_profiles()
-            names = [p.name for p in profiles] + ["Plain text"]
+            names = [auto] + [p.name for p in all_profiles()] + ["Plain text"]
             dlg = wx.SingleChoiceDialog(
                 self.frame,
-                "Select language profile for this document:",
+                "Select the language profile for this document. This changes editing "
+                "behaviour only; it does not rename the file.",
                 "Set Document Language",
                 names,
             )
-            current = getattr(tab, "_language_profile", None)
-            if current is not None:
-                try:
-                    idx = names.index(current.name)
-                    dlg.SetSelection(idx)
-                except ValueError:
-                    pass
+            if getattr(tab, "_language_profile_pinned", False):
+                current = getattr(tab, "_language_profile", None)
+                preselect = current.name if current else "Plain text"
+            else:
+                preselect = auto
+            try:
+                dlg.SetSelection(names.index(preselect))
+            except ValueError:
+                pass
             if self._show_modal_dialog(dlg, "Set Document Language") != wx.ID_OK:
                 return
-            chosen = dlg.GetStringSelection()
-            profile = get_profile_by_name(chosen) if chosen != "Plain text" else PLAIN_PROFILE
+            choice_name = dlg.GetStringSelection()
+
+        if choice_name == auto:
+            tab._language_profile_pinned = False
+            tab._language_profile = get_profile_for_path(tab.document.path)
+            self._apply_statusbar_layout()
+            self._request_menu_refresh()
+            self._set_status("Language: auto-detect from file")
+            self._announce("Language set to auto-detect from file")
+            return
+
+        if choice_name == "Plain text":
+            profile: LanguageProfile | None = PLAIN_PROFILE
+        else:
+            profile = get_profile_by_name(choice_name)
+            if profile is None:
+                self._set_status(f"Unknown language: {choice_name}")
+                return
         tab._language_profile = profile
         tab._language_profile_pinned = True
         self._apply_statusbar_layout()
-        name = profile.name if profile else "Plain text"
-        self._set_status(f"Language set to {name}")
-        self._announce(f"Language: {name}")
+        self._request_menu_refresh()
+        hint = self._save_as_hint_for_language(profile)
+        message = f"Language set to {profile.name}." + (f" {hint}" if hint else "")
+        self._set_status(message)
+        self._announce(message)
+
+    def _save_as_hint_for_language(self, profile: object) -> str:
+        """Save As tip when the pinned language's extension doesn't match the file.
+
+        Returns an empty string when no hint applies (no path, or the current
+        extension already matches the language).
+        """
+        exts = tuple(getattr(profile, "extensions", ()) or ())
+        if not exts:
+            return ""
+        path = self.document.path
+        current_suffix = path.suffix.lower() if path is not None else ""
+        if current_suffix in exts:
+            return ""
+        name = getattr(profile, "name", "this language")
+        where = current_suffix or "unsaved"
+        return (
+            f"Tip: the file is still {where}; use File, Save As to save it as a "
+            f"{name} ({exts[0]}) file."
+        )
+
+    def _on_document_language_menu(self, event: object) -> None:
+        """Handle the Format > Document Language radio submenu (#181)."""
+        name = getattr(self, "_language_menu_item_ids", {}).get(event.GetId())  # type: ignore[attr-defined]
+        if name is None:
+            return
+        self.set_document_language(self._LANGUAGE_AUTO_LABEL if name == "" else name)
+
+    def _refresh_language_menu_radio(self, menu_bar: object) -> None:
+        """Tick the radio item for the current tab's effective language."""
+        ids = getattr(self, "_language_menu_item_ids", None)
+        if not ids:
+            return
+        tab = getattr(self, "_current_tab", None)
+        if tab is not None and getattr(tab, "_language_profile_pinned", False):
+            profile = getattr(tab, "_language_profile", None)
+            target = profile.name if profile else "Plain text"
+        else:
+            target = ""  # Auto-detect
+        for item_id, name in ids.items():
+            item = menu_bar.FindItemById(item_id)
+            if item is not None and item.IsCheckable():
+                item.Check(name == target)
 
     def change_display_language(self, language: str | None = None) -> None:
         """Choose the language for QUILL's menus, dialogs, and messages (#i18n).
@@ -14507,7 +14608,7 @@ class MainFrame(
     def _navigate_structure(self, reverse: bool) -> None:
         text = self.editor.GetValue()
         cursor = self.editor.GetInsertionPoint()
-        markup_kind = infer_markup_kind(self.document.path)
+        markup_kind = self._effective_markup_kind()
         if reverse:
             target = previous_structure_position(text, cursor, markup_kind)
             if target is None:
@@ -14618,7 +14719,7 @@ class MainFrame(
         self._set_status(f"Focused {next_label} region")
 
     def _outline_entries(self) -> list[OutlineEntry]:
-        markup_kind = infer_markup_kind(self.document.path)
+        markup_kind = self._effective_markup_kind()
         return extract_outline_entries(self.editor.GetValue(), markup_kind)
 
     def _build_yaml_structure_navigator_nodes(self) -> list[_NavigatorNode]:
@@ -20202,7 +20303,7 @@ class MainFrame(
             self._set_status("Insert link cancelled")
             return
 
-        markup_kind = infer_markup_kind(self.document.path)
+        markup_kind = self._effective_markup_kind()
         snippet = build_link_text(markup_kind, display_text, url)
         result = InsertionResult(inserted_text=snippet, caret_offset=len(snippet))
         self._apply_insertion_result(result)
@@ -21830,15 +21931,32 @@ class MainFrame(
     def format_toggle_case(self) -> None:
         self._transform_selection_or_document(to_toggle_case, "Toggle case")
 
+    def _effective_language_profile(self) -> object | None:
+        """The user-pinned language profile for the current tab, or None.
+
+        Returned only when the user has explicitly set the Document Language;
+        otherwise None so path-based detection (the default) stays in charge.
+        """
+        tab = getattr(self, "_current_tab", None)
+        if tab is None or not getattr(tab, "_language_profile_pinned", False):
+            return None
+        return getattr(tab, "_language_profile", None)
+
     def format_toggle_line_comment(self) -> None:
+        profile = self._effective_language_profile()
         self._apply_selection_operation(
-            lambda text, start, end: toggle_line_comment(text, start, end, self.document.path),
+            lambda text, start, end: toggle_line_comment(
+                text, start, end, self.document.path, profile
+            ),
             "Toggled line comment",
         )
 
     def format_toggle_block_comment(self) -> None:
+        profile = self._effective_language_profile()
         self._apply_selection_operation(
-            lambda text, start, end: toggle_block_comment(text, start, end, self.document.path),
+            lambda text, start, end: toggle_block_comment(
+                text, start, end, self.document.path, profile
+            ),
             "Toggled block comment",
         )
 
@@ -22173,7 +22291,7 @@ class MainFrame(
         if not self._feature_enabled("core.format"):
             self._set_status("List Manager is unavailable in this profile")
             return
-        if infer_markup_kind(self.document.path) not in {"markdown", "plain"}:
+        if self._effective_markup_kind() not in {"markdown", "plain"}:
             self._set_status("List Manager is only available in Markdown documents")
             return
         state = self._extract_list_manager_state()
@@ -22751,7 +22869,10 @@ class MainFrame(
             return dialog.GetValue().strip()
 
     def _active_markup_surface(self) -> str | None:
-        kind = infer_markup_kind(self.document.path)
+        # Pin-aware (and content-aware): routes through _current_markup_context so
+        # a pinned HTML/Markdown profile makes bold/italic insert the right markup,
+        # matching what the menu items enable.
+        kind = self._current_markup_context()
         if kind in {"markdown", "html"}:
             return kind
         return None
