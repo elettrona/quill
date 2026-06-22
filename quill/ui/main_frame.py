@@ -289,6 +289,12 @@ from quill.core.publishing import (
     publishing_result_message,
     update_publishing_remote_item,
 )
+from quill.core.publishing_linkage import (
+    apply_publishing_linkage_to_source_metadata,
+    get_publishing_linkage,
+    publishing_linkage_from_source_metadata,
+    upsert_publishing_linkage,
+)
 from quill.core.quick_nav import (
     NavItem,
     build_nav_index,
@@ -7769,6 +7775,9 @@ class MainFrame(
         assert isinstance(result, tuple)
         loaded, epub_book = result
         self._epub_book = epub_book if suffix == ".epub" else None
+        linkage_entry = get_publishing_linkage(selected_path)
+        if linkage_entry is not None:
+            apply_publishing_linkage_to_source_metadata(loaded.source_metadata, linkage_entry)
         if existing_index >= 0:
             tab = self._document_tabs[existing_index]
             tab.document = loaded
@@ -8691,6 +8700,32 @@ class MainFrame(
             getattr(getattr(self, "settings", None), "plain_text_link_style", "text_url")
         )
         write_document_as(document, target, plain_text_link_style=link_style)  # type: ignore[arg-type]
+        self._sync_publishing_linkage_for_document(document)  # type: ignore[arg-type]
+
+    def _sync_publishing_linkage_for_document(self, document: Document) -> None:
+        """Persist or refresh this document's publishing linkage, keyed by its path.
+
+        Structured surfaces (CSV grid, Word) are excluded: Compare/Update only
+        ever read ``self.editor.GetValue()`` as markdown/HTML text, a shape those
+        surfaces were never designed to produce, so linkage is never persisted
+        for them in the first place (and therefore never restored on reopen).
+        Attribute access is defensive throughout, matching this method's other
+        callers: ``document`` and ``self`` are not always a fully-populated
+        ``Document``/``MainFrame`` in characterization tests that stub only the
+        attributes a call path touches.
+        """
+        metadata = getattr(document, "source_metadata", None)
+        if not isinstance(metadata, dict):
+            return
+        entry = publishing_linkage_from_source_metadata(metadata)
+        if entry is None:
+            return
+        path = getattr(document, "path", None)
+        if path is None:
+            return
+        if isinstance(getattr(self, "editor", None), (CsvGridSurface, WordDocumentSurface)):
+            return
+        upsert_publishing_linkage(path, entry)
 
     def save_file(self) -> None:
         if self._active_tab().read_only_remote:
@@ -11405,6 +11440,7 @@ class MainFrame(
         metadata["publishing_remote_title"] = remote_document.title
         metadata["display_name"] = remote_document.title
         self.document.mark_saved()
+        self._sync_publishing_linkage_for_document(self.document)
         self._refresh_title()
         self._set_status(result_message.splitlines()[0])
 
@@ -11499,6 +11535,7 @@ class MainFrame(
             "publishing_updated_at": remote_document.updated_at,
         })
         self.document.mark_saved()
+        self._sync_publishing_linkage_for_document(self.document)
         self._refresh_title()
         self._set_status(result_message.splitlines()[0])
 
@@ -11648,6 +11685,7 @@ class MainFrame(
             "publishing_scheduled_for": remote_document.scheduled_for,
         })
         self.document.mark_saved()
+        self._sync_publishing_linkage_for_document(self.document)
         self._refresh_title()
         self._set_status(result_message.splitlines()[0])
 

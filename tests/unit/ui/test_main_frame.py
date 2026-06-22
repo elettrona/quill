@@ -99,3 +99,44 @@ def test_publishing_send_results_use_explicit_confirmation_formatter() -> None:
     assert 'publishing_result_message("updated", remote_document)' in SOURCE
     assert 'publishing_result_message("created", remote_document)' in SOURCE
     assert "result_message.splitlines()[0]" in SOURCE
+
+
+def test_write_document_to_disk_syncs_publishing_linkage_after_save() -> None:
+    # The save chokepoint persists/refreshes the durable linkage registry so
+    # Compare/Update survive a close-and-reopen cycle (#publishing-linkage).
+    assert (
+        "write_document_as(document, target, plain_text_link_style=link_style)"
+        "  # type: ignore[arg-type]\n        self._sync_publishing_linkage_for_document(document)"
+        in SOURCE
+    )
+    assert "def _sync_publishing_linkage_for_document(self, document: Document) -> None:" in SOURCE
+
+
+def test_sync_publishing_linkage_excludes_structured_surfaces() -> None:
+    # Compare/Update only ever read self.editor.GetValue() as markdown/HTML
+    # text, a shape CSV grid and Word structured surfaces were never designed
+    # to produce, so linkage is never persisted for them.
+    assert (
+        'isinstance(getattr(self, "editor", None), (CsvGridSurface, WordDocumentSurface)):'
+        in SOURCE
+    )
+    assert "entry = publishing_linkage_from_source_metadata(metadata)" in SOURCE
+    assert "upsert_publishing_linkage(path, entry)" in SOURCE
+
+
+def test_finish_open_document_restores_publishing_linkage_from_registry() -> None:
+    # Reopening a previously-linked, previously-saved file restores its
+    # publishing linkage before either tab branch (new tab or refresh) runs.
+    assert (
+        "linkage_entry = get_publishing_linkage(selected_path)\n"
+        "        if linkage_entry is not None:\n"
+        "            apply_publishing_linkage_to_source_metadata("
+        "loaded.source_metadata, linkage_entry)" in SOURCE
+    )
+
+
+def test_send_and_schedule_publishing_handlers_resync_linkage_after_success() -> None:
+    # _send_publishing_remote_item, the schedule-publish handler, and the
+    # create-draft/publish-now handler all refresh the registry's cached
+    # remote state immediately after self.document.mark_saved().
+    assert SOURCE.count("self._sync_publishing_linkage_for_document(self.document)") == 3
