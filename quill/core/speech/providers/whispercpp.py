@@ -277,6 +277,31 @@ class WhisperCppProvider:
 
     # -- transcription ---------------------------------------------------- #
 
+    def _prepare_audio(
+        self, source: Path, tmp_dir: Path, progress: ProgressCallback | None
+    ) -> Path:
+        """Return an audio path whisper.cpp can read (16 kHz mono WAV).
+
+        whisper.cpp only reliably reads 16 kHz mono WAV. When ffmpeg is available
+        we transcode any input (mp3, m4a, mp4, stereo/48k WAV, ...) into the temp
+        dir; the caller's ``TemporaryDirectory`` cleans it up. Without ffmpeg we
+        pass a ``.wav`` straight through (best effort) but refuse other formats
+        with a clear, actionable message instead of letting whisper.cpp fail.
+        """
+        from quill.core.speech import ffmpeg as ffmpeg_tools
+
+        if ffmpeg_tools.ffmpeg_available():
+            try:
+                return ffmpeg_tools.transcode_to_wav(source, out_dir=tmp_dir, progress=progress)
+            except ffmpeg_tools.TranscodeError as exc:
+                raise SpeechError(f"Could not prepare the audio for transcription: {exc}") from exc
+        if source.suffix.lower() != ".wav":
+            raise SpeechError(
+                f"This audio format ({source.suffix or 'unknown'}) needs ffmpeg to convert "
+                f"it first. {ffmpeg_tools.INSTALL_HINT} Or provide a 16 kHz mono WAV file."
+            )
+        return source
+
     def transcribe_file(
         self, request: TranscriptionRequest, progress: ProgressCallback | None = None
     ) -> TranscriptionResult:
@@ -295,11 +320,12 @@ class WhisperCppProvider:
             )
         if not request.source_path.is_file():
             raise SpeechError(f"The audio file was not found: {request.source_path}")
-        if progress is not None:
-            progress(0.05, "Transcribing...")
         with tempfile.TemporaryDirectory() as tmp:
+            audio_path = self._prepare_audio(request.source_path, Path(tmp), progress)
+            if progress is not None:
+                progress(0.05, "Transcribing...")
             output_base = Path(tmp) / "transcript"
-            args = build_whisper_command(exe, model_path, request.source_path, output_base, request)
+            args = build_whisper_command(exe, model_path, audio_path, output_base, request)
             try:
                 completed = run_subprocess_safely(args, timeout_seconds=_TRANSCRIBE_TIMEOUT_S)
             except OSError as exc:

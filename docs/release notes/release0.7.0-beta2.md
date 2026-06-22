@@ -85,6 +85,14 @@ output format (**plain text, Markdown, or HTML**); it opens as an editable draft
 while QUILL works in the background. With the speaker-detection model installed,
 transcripts label **who is speaking when** ("Speaker 1", "Speaker 2", ...).
 
+**Open almost any file.** QUILL now accepts a wide range of audio and video
+formats — MP3, M4A, AAC, FLAC, OGG, Opus, WMA, WAV, MP4, M4V, MOV, MKV, WebM,
+and AVI. When **ffmpeg** is available on your computer, QUILL converts the file
+automatically before transcribing, so you no longer have to prepare a WAV first.
+(Without ffmpeg, the offline Whisper engine still reads 16 kHz mono WAV files;
+the Faster Whisper engine reads the other formats on its own. QUILL does not
+bundle ffmpeg — install it once, e.g. `winget install Gyan.FFmpeg`.)
+
 ### Captions
 **Generate Captions (Offline)...** transcribes a file with timestamps and saves
 it as **SRT** or **VTT** subtitles you can review and ship.

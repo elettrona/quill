@@ -163,11 +163,53 @@ def test_transcribe_runs_and_parses(monkeypatch: pytest.MonkeyPatch, tmp_path: P
     import quill.stability.safe_subprocess as ssp
 
     monkeypatch.setattr(ssp, "run_subprocess_safely", _fake_run)
+    # Force the no-ffmpeg path so a .wav passes straight through to whisper.cpp
+    # (deterministic regardless of whether ffmpeg is on the test machine's PATH).
+    from quill.core.speech import ffmpeg as ffmpeg_tools
+
+    monkeypatch.setattr(ffmpeg_tools, "find_ffmpeg", lambda: None)
 
     provider = whispercpp.WhisperCppProvider()
     result = provider.transcribe_file(TranscriptionRequest(source_path=audio, model_id="small"))
     assert result.full_text == "Hello world second line"
     assert result.model_id == "small"
+
+
+def test_transcribe_transcodes_non_wav_when_ffmpeg_available(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(whispercpp.shutil, "which", lambda _name: "/usr/bin/whisper-cli")
+    model_path = whispercpp._model_path("small")
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    model_path.write_bytes(b"FAKE")
+    audio = tmp_path / "a.mp3"  # not a WAV -> must be transcoded first
+    audio.write_bytes(b"ID3")
+
+    from quill.core.speech import ffmpeg as ffmpeg_tools
+
+    monkeypatch.setattr(ffmpeg_tools, "find_ffmpeg", lambda: "/usr/bin/ffmpeg")
+    seen: dict[str, object] = {}
+
+    def _fake_run(args, *, timeout_seconds=0.0, cwd=None):
+        if args[0] == "/usr/bin/ffmpeg":  # the transcode call
+            Path(args[-1]).write_bytes(b"RIFF")  # produce the WAV
+            seen["transcoded_to"] = args[-1]
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+        # the whisper call: whisper must be handed the transcoded WAV, not the mp3
+        seen["whisper_audio"] = args[args.index("-f") + 1]
+        out_base = Path(args[args.index("-of") + 1])
+        out_base.with_suffix(".json").write_text(_SAMPLE_JSON, encoding="utf-8")
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    import quill.stability.safe_subprocess as ssp
+
+    monkeypatch.setattr(ssp, "run_subprocess_safely", _fake_run)
+
+    provider = whispercpp.WhisperCppProvider()
+    result = provider.transcribe_file(TranscriptionRequest(source_path=audio, model_id="small"))
+    assert result.full_text == "Hello world second line"
+    assert str(seen["whisper_audio"]).endswith(".wav")  # whisper saw the WAV, not the mp3
+    assert str(seen["transcoded_to"]).endswith(".wav")
 
 
 def test_build_command_adds_tdrz_when_diarize(tmp_path: Path) -> None:

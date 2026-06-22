@@ -727,6 +727,13 @@ not need to enable Artificial Intelligence to use these features. They live unde
   and opens the result as an editable draft document. The work runs in the
   background so you can keep editing; QUILL announces when it is done and how many
   words were produced.
+- **Supported formats.** You can pick MP3, M4A, AAC, FLAC, OGG, Opus, WMA, WAV,
+  MP4, M4V, MOV, MKV, WebM, or AVI. If **ffmpeg** is installed, QUILL converts the
+  file automatically before transcribing — you do not have to make a WAV yourself.
+  QUILL does not ship ffmpeg; install it once (for example, `winget install
+  Gyan.FFmpeg`) and QUILL finds it on your PATH. Without ffmpeg, the whisper.cpp
+  engine needs a 16 kHz mono WAV, while the Faster Whisper engine handles the other
+  formats on its own.
 - **Speaker attribution.** If you download the "Small English with speaker
   detection" model (in Manage Speech Models), QUILL marks **who is speaking when**
   — each turn is labelled "Speaker 1", "Speaker 2", and so on in the transcript

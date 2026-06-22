@@ -11,6 +11,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+# Transcribe/Captions accept these; ffmpeg transcodes them to 16 kHz mono WAV.
+_AV_EXTS = "*.wav;*.mp3;*.m4a;*.aac;*.flac;*.ogg;*.opus;*.wma;*.mp4;*.m4v;*.mov;*.mkv;*.webm;*.avi"
+_AUDIO_VIDEO_WILDCARD = f"Audio/Video ({_AV_EXTS})|{_AV_EXTS}|All files (*.*)|*.*"
+
 
 class SpeechCommandsMixin:
     """AI > Speech command handlers (offline model manager + transcription)."""
@@ -295,10 +299,7 @@ class SpeechCommandsMixin:
         with wx.FileDialog(
             self.frame,
             "Choose an audio or video file to transcribe",
-            wildcard=(
-                "Audio/Video (*.wav;*.mp3;*.m4a;*.flac;*.ogg;*.mp4)|"
-                "*.wav;*.mp3;*.m4a;*.flac;*.ogg;*.mp4|All files (*.*)|*.*"
-            ),
+            wildcard=_AUDIO_VIDEO_WILDCARD,
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
         ) as dialog:
             if self._show_modal_dialog(dialog, "Transcribe Audio or Video") != wx.ID_OK:
@@ -375,10 +376,7 @@ class SpeechCommandsMixin:
         with wx.FileDialog(
             self.frame,
             "Choose an audio or video file to caption",
-            wildcard=(
-                "Audio/Video (*.wav;*.mp3;*.m4a;*.flac;*.ogg;*.mp4)|"
-                "*.wav;*.mp3;*.m4a;*.flac;*.ogg;*.mp4|All files (*.*)|*.*"
-            ),
+            wildcard=_AUDIO_VIDEO_WILDCARD,
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
         ) as dialog:
             if self._show_modal_dialog(dialog, "Generate Captions") != wx.ID_OK:
