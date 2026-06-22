@@ -178,3 +178,83 @@ Validation:
 Committed locally as two checkpoints (core, then UI integration); not pushed pending explicit request.
 
 **One decision remains open**: whether/when to loosen `core.third_party_plugins`/SEC-8 for real third-party Quillin or publishing-provider execution.
+
+## 2026-06-22 - Merged origin/main (Beta 2) into the branch
+
+User asked to integrate upstream changes, preserving this branch's work and
+keeping it fully compliant, updating our code only where main's changes
+required it. `origin/main` had advanced 116 commits (PR #664, "Beta 2":
+offline speech/Whisper, the verbosity system, braille proofing, i18n
+display-language switching, crash-submit dialog, data-location migration,
+and more) since this branch's fork point.
+
+`git merge origin/main` auto-merged `main_frame.py` and `main_frame_menu.py`
+cleanly; 5 files needed manual resolution:
+
+- `quill/__main__.py`: a real conflict, not just textual — main's Beta-2
+  work replaced the old `_bootstrap_storage_mode()` first-run storage-mode
+  prompt (inherited boilerplate from before this branch forked, not our
+  code) with `_propagate_portable_environment()` +
+  `apply_pending_data_location_migration()`. The merge silently dropped
+  `_bootstrap_storage_mode`'s *definition* while leaving a stray call to it
+  in the conflict region. Resolved by dropping the stale call (main's
+  replacement already runs earlier in `main()`) and keeping our actual
+  contribution, the `bootstrap_bundled_publishing_providers()` call, intact.
+- `quill/tools/module_size_budgets.json`: resolved programmatically rather
+  than by hand — both sides' historical `_rebaseline_*` comment entries were
+  unioned (main's side was a superset for every region but one, where a
+  one-line annotation difference was kept from main), and every `budgets`
+  dict entry was set to the file's actual measured line count in the merged
+  tree (not either side's stale recorded number), since both branches had
+  independently grown several shared files (`main_frame.py`:
+  25165/25499→**26092** actual; `main_frame_menu.py`: 3633/3658→**3780**
+  actual).
+- `tests/unit/ui/fixtures/dialog_inventory.json`: regenerated from source
+  (`python -m quill.tools.dialog_inventory --write`) rather than hand-merged
+  — it's a generated snapshot, AST-scanned from `quill/**/*.py`.
+- `tests/unit/ui/test_main_frame_menu_contract.py` and
+  `test_power_tools_command_wiring.py`: both sides had added independent,
+  non-overlapping tests/assertions at the same insertion point; kept both.
+
+Two test failures surfaced after conflicts were resolved, both expected
+consequences of main's legitimate growth, not regressions:
+
+- 3 `test_compile_translations.py` failures: `ModuleNotFoundError: babel`.
+  Main's i18n work added `Babel>=2.18.0` to the `dev` extra in
+  `pyproject.toml`; this dev environment hadn't re-run
+  `pip install -e ".[ui,dev]"` since. Fixed by reinstalling.
+- `test_main_frame_characterization.py::test_main_frame_public_surface_is_unchanged`:
+  main's Beta-2 features legitimately added ~29 new public `MainFrame`
+  methods (verbosity, speech, braille proofing, etc.). Regenerated the
+  snapshot (`python -m quill.tools.ui_surface --write`).
+
+Validation: `ruff check .` passed (clean); `ruff format --check .` flagged 2
+files main itself owns (`test_keymap_format.py`,
+`test_prompt_unsaved_changes_native_labels.py`) — verified via a throwaway
+`git worktree add` of `origin/main` alone that this is pre-existing on main,
+caused by a ruff version bump (0.15.16→0.15.18) changing line-wrap
+heuristics, not anything this merge touched; left alone since it isn't our
+code and needs no functional change. Scoped `mypy quill/core quill/io`:
+**down** to 1 finding (the pre-existing `publishing_validation.py` one) —
+the 6 `brf_page_detection.py` findings present before this merge are gone,
+resolved by main's own braille-proofing work. Module-size budget gate,
+provider registry gate, and the Quillin self-lint (`--strict`, 14/14
+bundled Quillins) all passed. Full suite: `4885 passed, 4 failed, 13
+skipped`. The 4 failures (`test_about_info`, `test_open_read`,
+`test_build_windows_distribution`, `test_check_version_consistency`) were
+verified, via a throwaway `git worktree add` of `origin/main` alone, to be
+byte-for-byte identical pre-existing failures on main itself (a real,
+unrelated version-skew between `quill/__init__.py` ("0.7.0") and
+`installer/quill.iss`/`CHANGELOG.md` ("0.7.0 Beta 1"), plus two
+environment/build-state-sensitive checks) — not introduced by this merge.
+Re-ran the full publishing-specific test battery (144 tests across core +
+UI) after the merge commit: all pass. Smoke-launched the app: no traceback.
+
+One harmless side effect: an automatic `--write` regeneration step (`pip
+install`) bumped the installed `ruff` from 0.15.16 to 0.15.18 in this dev
+environment as a transitive consequence of reinstalling for the `babel`
+dependency; not pinned or reverted, since the project's own `pyproject.toml`
+doesn't pin an exact ruff version.
+
+Committed as a single merge commit (`a17acdd2`); not pushed pending
+explicit request, per the standing repo convention.
