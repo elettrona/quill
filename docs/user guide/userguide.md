@@ -764,6 +764,14 @@ not need to enable Artificial Intelligence to use these features. They live unde
   cursor as a single undoable edit (the status bar shows the word count).
 - **Dictation Microphone...** chooses which microphone dictation uses, or the
   system default.
+- **Hugging Face Token...** is optional. QUILL's speech models are open-source
+  (MIT) and need **no Hugging Face account** to download. But if you fetch many
+  models and hit Hugging Face's rate limits, a free access token raises them. The
+  first time you open this, QUILL explains the steps — sign in or sign up at
+  huggingface.co, open **Settings > Access Tokens**, create a token with the
+  **Read** role — and offers to open the token page in your browser; then you
+  paste the token. It is entered masked and stored in Windows Credential Manager
+  (never in a settings file); leave the box blank to remove a saved token.
 
 **Choosing a speech engine.** QUILL ships with the **whisper.cpp** engine and
 uses it by default — nothing extra to install. If you install QUILL's optional

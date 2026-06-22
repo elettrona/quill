@@ -120,18 +120,41 @@ class SpeechCommandsMixin:
         """Store an optional Hugging Face access token for model downloads (#617).
 
         A token is not required for QUILL's public models, but it raises Hugging
-        Face's anonymous rate limits. The token is masked on entry and saved to the
-        OS credential store, not to settings. A blank value removes a saved token.
+        Face's anonymous rate limits. First-time users are guided to create one
+        (with an offer to open the token page); the token is then entered masked
+        and saved to the OS credential store, not to settings. Blank removes it.
         """
-        from quill.core.speech.hf_auth import load_hf_token, save_hf_token
+        import webbrowser
+
+        from quill.core.speech.hf_auth import HF_TOKEN_URL, load_hf_token, save_hf_token
 
         wx = self._wx
-        prompt = (
-            "Optional: a free Hugging Face access token raises download rate limits. "
-            "Leave blank to remove a saved token. Get one at "
-            "https://huggingface.co/settings/tokens"
-        )
-        dlg = wx.PasswordEntryDialog(self.frame, prompt, "Hugging Face Token", load_hf_token())
+        current = load_hf_token()
+        if not current:
+            steps = (
+                "A free Hugging Face access token raises download rate limits. It is "
+                "optional — QUILL's speech models work without one.\n\n"
+                "To create a token:\n"
+                "1. Sign in or sign up at huggingface.co (it is free).\n"
+                "2. Open your profile menu, then Settings, then Access Tokens.\n"
+                "3. Create a token with the 'Read' role and copy it.\n"
+                "4. Come back here and paste it.\n\n"
+                "Open the Hugging Face token page in your browser now?"
+            )
+            choice = self._show_message_box(
+                steps, "Hugging Face Token", wx.ICON_INFORMATION | wx.YES_NO | wx.CANCEL
+            )
+            if choice == wx.CANCEL:
+                return
+            if choice == wx.YES:
+                opened = webbrowser.open(HF_TOKEN_URL)
+                self._set_status(
+                    "Opened the Hugging Face token page in your browser."
+                    if opened
+                    else f"Create a token at {HF_TOKEN_URL}"
+                )
+        prompt = "Paste your Hugging Face access token. Leave blank to remove a saved token."
+        dlg = wx.PasswordEntryDialog(self.frame, prompt, "Hugging Face Token", current)
         if self._show_modal_dialog(dlg, "Hugging Face Token") != wx.ID_OK:
             return
         value = dlg.GetValue().strip()

@@ -15,6 +15,9 @@ from __future__ import annotations
 # The credential name is shared with the diarization token so a user sets it once.
 HF_TOKEN_CRED = "QUILL:huggingface:token"
 
+# Where a user creates a free access token (a "Read" token is enough for downloads).
+HF_TOKEN_URL = "https://huggingface.co/settings/tokens"
+
 RATE_LIMIT_HELP = (
     "Hugging Face is rate-limiting downloads right now. Add a free Hugging Face "
     "access token (Tools > Speech > Whisperer > Hugging Face Token...) to raise the "

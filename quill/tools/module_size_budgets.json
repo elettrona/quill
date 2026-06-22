@@ -67,10 +67,11 @@
   "_rebaseline_2026_06_22_language_detection": "Automatic source-language detection (#181 follow-up): new wx-free quill/core/language_detect.py scorer + the LanguageDetectMixin glue. language_profile.py 645->799 (C# and PHP profiles added with full keyword sets, ruff one-per-line); settings.py 971->980 and settings_specs.py 1525->1554 (the language_detection_mode off/hint/prompt/auto setting + its choice spec); main_frame.py 25493->25499 (mixin in MRO, the debounced _schedule_language_detection call in _sync_editor_change, and session-bias/suggestion-reset in set_document_language). CQ-1 decomposition is the path to lower these.",
   "_rebaseline_2026_06_22_hf_license_token": "Hugging Face download transparency (#617): show each model's license + model-card URL before download (service.py ModelRow fields + model_card_url helper), and an optional HF access token (new wx-free quill/core/speech/hf_auth.py reusing the QUILL:huggingface:token credential) wired into both download paths with 429 rate-limit messaging. main_frame_speech.py 695->732 (license in the download confirm + set_huggingface_token PasswordEntryDialog command); main_frame_menu.py 3637->3648 (Whisperer > Hugging Face Token... item, id, binding). CQ-1 decomposition is the path to lower these.",
   "_rebaseline_2026_06_22_ffmpeg_download": "Optional in-app Download FFmpeg action (#617): new wx-free quill/core/speech/ffmpeg_install.py (Safe-Mode-gated, HTTPS-verified download of the official Gyan.dev build + flat extract of ffmpeg/ffprobe into the resolver tools dir; egress-audited). main_frame_speech.py 732->813 (download_ffmpeg worker + progress dialog) and main_frame_menu.py 3648->3658 (Whisperer > Download FFmpeg item, id, binding). main_frame_speech.py has grown a lot this cycle (model-manager UX, HF license/token, ffmpeg) and is a CQ-1 extraction candidate.",
+  "_rebaseline_2026_06_22_hf_token_guidance": "main_frame_speech.py 813->836: set_huggingface_token() now guides first-time users (steps + an offer to open the Hugging Face token page in the browser) before the masked paste, so people can raise their download rate limits. CQ-1 extraction of this file is still pending.",
   "_default_cap": 600,
   "budgets": {
     "quill/core/format_ops.py": 617,
-    "quill/ui/main_frame_speech.py": 813,
+    "quill/ui/main_frame_speech.py": 836,
     "quill/ui/main_frame.py": 25499,
     "quill/ui/main_frame_quill_key.py": 753,
     "quill/ui/main_frame_braille.py": 775,

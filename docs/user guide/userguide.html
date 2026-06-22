@@ -1415,6 +1415,16 @@ your cursor as a single undoable edit (the status bar shows the word
 count).</li>
 <li><strong>Dictation Microphone...</strong> chooses which microphone
 dictation uses, or the system default.</li>
+<li><strong>Hugging Face Token...</strong> is optional. QUILL's speech
+models are open-source (MIT) and need <strong>no Hugging Face
+account</strong> to download. But if you fetch many models and hit
+Hugging Face's rate limits, a free access token raises them. The first
+time you open this, QUILL explains the steps — sign in or sign up at
+huggingface.co, open <strong>Settings &gt; Access Tokens</strong>,
+create a token with the <strong>Read</strong> role — and offers to open
+the token page in your browser; then you paste the token. It is entered
+masked and stored in Windows Credential Manager (never in a settings
+file); leave the box blank to remove a saved token.</li>
 </ul>
 <p><strong>Choosing a speech engine.</strong> QUILL ships with the
 <strong>whisper.cpp</strong> engine and uses it by default — nothing
