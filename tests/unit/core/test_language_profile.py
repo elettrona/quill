@@ -139,3 +139,16 @@ class TestProfileAttributes:
         assert "fun" in profile.keywords
         assert "val" in profile.keywords
         assert "when" in profile.keywords
+
+
+class TestMarkupKind:
+    def test_html_profile_is_html_surface(self) -> None:
+        assert get_profile_for_path(Path("x.html")).markup_kind == "html"
+
+    def test_markdown_profile_is_markdown_surface(self) -> None:
+        assert get_profile_for_path(Path("x.md")).markup_kind == "markdown"
+
+    def test_code_and_plain_profiles_are_plain_surface(self) -> None:
+        assert get_profile_for_path(Path("x.py")).markup_kind == "plain"
+        assert get_profile_for_path(Path("x.css")).markup_kind == "plain"
+        assert get_profile_for_path(Path("x.txt")).markup_kind == "plain"

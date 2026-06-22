@@ -6,6 +6,7 @@ import os
 import tempfile
 import time
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,40 @@ from typing import Any
 # before giving up so a normal save is not lost to a momentary lock.
 _REPLACE_MAX_ATTEMPTS = 5
 _REPLACE_RETRY_DELAY = 0.05
+
+_TRANSIENT_LOCK_ERRNOS = frozenset({
+    errno.EACCES,
+    errno.EAGAIN,
+    errno.EBUSY,
+    getattr(errno, "EWOULDBLOCK", errno.EAGAIN),
+})
+
+
+def retry_on_transient_lock[T](
+    action: Callable[[], T],
+    *,
+    max_attempts: int = _REPLACE_MAX_ATTEMPTS,
+    delay: float = _REPLACE_RETRY_DELAY,
+) -> T:
+    """Run ``action``, retrying on a transient Windows file-lock error.
+
+    Shared by :func:`_atomic_replace` (single-file saves) and
+    ``core.data_location``'s directory-tree move, both of which can hit a
+    destination momentarily held open by an antivirus scanner or backup
+    agent.
+    """
+    last_error: OSError | None = None
+    for attempt in range(max_attempts):
+        try:
+            return action()
+        except OSError as error:
+            if not isinstance(error, PermissionError) and error.errno not in _TRANSIENT_LOCK_ERRNOS:
+                raise
+            last_error = error
+            if attempt + 1 < max_attempts:
+                time.sleep(delay)
+    assert last_error is not None
+    raise last_error
 
 
 class PathEscapeError(ValueError):
@@ -46,26 +81,7 @@ def _atomic_replace(temp_path: Path, path: Path) -> None:
     violation / lock-violation errnos (ERROR_SHARING_VIOLATION,
     ERROR_LOCK_VIOLATION) so a normal save is not lost to a momentary lock.
     """
-
-    _TRANSIENT_ERRNOS = frozenset({
-        errno.EACCES,
-        errno.EAGAIN,
-        errno.EBUSY,
-        getattr(errno, "EWOULDBLOCK", errno.EAGAIN),
-    })
-    last_error: OSError | None = None
-    for attempt in range(_REPLACE_MAX_ATTEMPTS):
-        try:
-            temp_path.replace(path)
-            return
-        except OSError as error:
-            if not isinstance(error, PermissionError) and error.errno not in _TRANSIENT_ERRNOS:
-                raise
-            last_error = error
-            if attempt + 1 < _REPLACE_MAX_ATTEMPTS:
-                time.sleep(_REPLACE_RETRY_DELAY)
-    assert last_error is not None
-    raise last_error
+    retry_on_transient_lock(lambda: temp_path.replace(path))
 
 
 def read_json(path: Path, default: Any) -> Any:

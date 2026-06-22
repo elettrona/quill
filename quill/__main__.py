@@ -3,36 +3,86 @@ from __future__ import annotations
 import os
 import sys
 import time
+import types
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 from pathlib import Path
 
 from quill import __version__
+from quill.core.data_location import apply_pending_data_location_migration
 from quill.core.features import reset_feature_profile_store
 from quill.core.paths import app_data_dir, ensure_app_directories
-from quill.core.storage_mode import load_storage_mode, portable_root_dir, save_storage_mode
+from quill.core.settings import load_settings as _load_settings
 from quill.stability.diagnostics import dump_all_thread_stacks, setup_fault_handler
 from quill.stability.logging_config import configure_logging
 
 
+# Indirection so the excepthook helpers can be monkeypatched in tests
+# without re-importing the settings module on every call. Defaults
+# to the real ``load_settings`` so production callers see the
+# current behaviour.
+def quill_main_load_settings() -> object:
+    """Return the user's settings; replaced by tests via monkeypatch."""
+    return _load_settings()
+
+
+def _propagate_portable_environment() -> None:
+    """Set QUILL_APP_ROOT and QUILL_PORTABLE when running from a portable bundle.
+
+    The portable bundle's primary entry point is ``quill.exe`` at the bundle
+    root, next to a ``data/`` folder -- the evidence rules in
+    :func:`quill.core.storage_mode._resolve_app_root` apply here too. When
+    the host process can resolve a verified portable anchor, mirror the
+    fact into the env so the legacy ``QUILL_APP_ROOT`` consumers (braille
+    pack, bundled tool paths, read-aloud assets, AI key DPAPI fallback)
+    keep working without each doing its own walk-up from ``sys.executable``.
+
+    Skipped when the env vars are already set -- the launcher or a test
+    harness may have set them deliberately.
+    """
+    from quill.core.storage_mode import _resolve_app_root
+
+    if os.environ.get("QUILL_APP_ROOT") or os.environ.get("QUILL_PORTABLE"):
+        return
+    anchor = _resolve_app_root()
+    if anchor is None:
+        return
+    os.environ["QUILL_APP_ROOT"] = str(anchor)
+    os.environ["QUILL_PORTABLE"] = "1"
+
+
 def _install_excepthook() -> None:
-    """Install sys.excepthook so unhandled crashes show an accessible dialog.
+    """Install sys.excepthook so unhandled crashes offer a submit dialog (#622).
 
     Without this, a crash in the windowed build just silently closes QUILL —
-    a blank screen with no feedback for blind users (finding #51).
-    The handler uses ctypes MessageBoxW which Narrator/NVDA read even with
-    no wx active.
+    a blank screen with no feedback for blind users (finding #51). The
+    native ``ctypes`` ``MessageBoxW`` is the always-on floor (works even
+    when wx is unavailable or the crash happens before wx is initialised).
+
+    When wx is alive and the user has the ``auto_ask_crash_submit`` setting
+    enabled (default True during the beta phase), the handler instead
+    schedules :class:`quill.ui.crash_report_dialog.CrashReportDialog` on
+    the UI thread via :func:`wx.CallAfter`. The dialog shows a redacted
+    preview of the report the user is about to send and returns the
+    user's choice; this handler then either submits via
+    :func:`quill.core.issue_submit.submit_crash_issue`, copies the
+    report to the clipboard, or leaves the local crash file untouched.
+
+    Every step is wrapped in ``try/except``: a misbehaving dialog or
+    network failure must never prevent the local traceback file from
+    being saved and the standard interpreter traceback from firing.
     """
-    import ctypes
     import datetime
     import traceback
-    import types
 
     def _handler(
         exc_type: type[BaseException],
         exc_value: BaseException,
         exc_tb: types.TracebackType | None,
     ) -> None:
+        # 1. Save the local traceback file first. This is the only
+        #    step whose success matters -- the dialog is a nicety on
+        #    top of this durable artifact.
         crash_file: Path | None = None
         try:
             crash_dir = app_data_dir() / "crash-reports"
@@ -44,22 +94,258 @@ def _install_excepthook() -> None:
         except Exception:  # noqa: BLE001
             crash_file = None
 
-        msg = "QUILL encountered an unexpected error and needs to close.\n\n"
-        msg += f"Error: {exc_type.__name__}: {exc_value}\n\n"
-        if crash_file:
-            msg += f"A crash report was saved to:\n{crash_file}"
-        else:
-            msg += "Could not save a crash report."
+        # 2. Try the wx dialog path. Any failure here drops back to
+        #    the native MessageBoxW so the user always sees
+        #    *something*.
+        dialog_used = False
+        try:
+            dialog_used = _try_offer_crash_submit(exc_type, exc_value, exc_tb, crash_file)
+        except Exception:  # noqa: BLE001
+            dialog_used = False
 
-        if sys.platform == "win32":
-            try:
-                ctypes.windll.user32.MessageBoxW(0, msg, "QUILL — Unexpected Error", 0x10)
-            except Exception:  # noqa: BLE001
-                pass
+        # 3. If the dialog path did not run (no wx, pre-init crash,
+        #    dialog disabled, or it threw), fall back to the native
+        #    MessageBoxW so the user can find the local crash file.
+        if not dialog_used:
+            _show_native_fallback(exc_type, exc_value, crash_file)
 
+        # 4. Always end with the standard interpreter traceback so
+        #    console / debugger capture works.
         sys.__excepthook__(exc_type, exc_value, exc_tb)
 
     sys.excepthook = _handler
+
+
+def _try_offer_crash_submit(
+    exc_type: type[BaseException],
+    exc_value: BaseException,
+    exc_tb: types.TracebackType | None,
+    crash_file: Path | None,
+) -> bool:
+    """Try to offer the wx crash-submit dialog; return True on success.
+
+    Returns ``False`` for every "cannot show the dialog" path --
+    missing wx, no running wx.App, the user turned the setting off,
+    pre-init crash -- so the caller can fall back to a native
+    MessageBoxW. Every internal step is best-effort: any exception is
+    swallowed and surfaced as ``False``.
+    """
+    try:
+        import wx  # type: ignore[import-not-found]
+    except Exception:  # noqa: BLE001
+        return False
+
+    # Only attempt the dialog when wx is fully alive (an App is
+    # running) and the user opted in via Settings. Both checks are
+    # best-effort: a failure here is the same as "user said no".
+    try:
+        app = wx.GetApp()  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001
+        app = None
+    if app is None:
+        return False
+
+    try:
+        settings = quill_main_load_settings()
+        if not getattr(settings, "auto_ask_crash_submit", True):
+            return False
+    except Exception:  # noqa: BLE001
+        # If we cannot read settings (e.g. a corrupt file), default to
+        # "show the dialog" because the beta-phase default is on.
+        pass
+
+    # Build the redacted payload. This is the wx-free half of the
+    # flow; if it raises we still fall back to the native path.
+    try:
+        from quill import __version__
+        from quill.core.diagnostics import load_diagnostic_events
+        from quill.core.storage_mode import portable_root_dir
+        from quill.stability.crash_submit import build_crash_report_payload
+
+        recent = [event.name for event in load_diagnostic_events(limit=50)]
+        portable = portable_root_dir() is not None
+        screen_reader_name: str | None = None
+        if sys.platform == "win32":
+            try:
+                from quill.platform.windows.sr_detect import detect_screen_reader
+
+                detected = detect_screen_reader()
+                if detected and getattr(detected, "detected", False):
+                    screen_reader_name = getattr(detected, "name", None)
+            except Exception:  # noqa: BLE001
+                screen_reader_name = None
+
+        active_document = _active_document_snapshot()
+
+        payload = build_crash_report_payload(
+            exc_type=exc_type,
+            exc_value=exc_value,
+            exc_tb=exc_tb,
+            local_crash_file=crash_file,
+            app_version=__version__,
+            portable=portable,
+            screen_reader_name=screen_reader_name,
+            recent_commands=recent,
+            active_document=active_document,
+        )
+    except Exception:  # noqa: BLE001
+        return False
+
+    # Schedule the dialog on the UI thread. We cannot show a modal
+    # dialog from inside sys.excepthook because we are not on the
+    # main loop. wx.CallAfter defers the call to the next idle, which
+    # is exactly what we want -- the user sees the dialog after
+    # QUILL has had a moment to settle.
+    def _run_on_ui() -> None:
+        try:
+            from quill.core.feedback_token import effective_github_token
+            from quill.core.issue_submit import submit_crash_issue
+            from quill.ui.crash_report_dialog import (
+                CrashReportDialog,
+                merge_user_context_into_body,
+            )
+
+            parent = _find_main_frame_window()
+            dialog = CrashReportDialog(parent, payload=payload)
+            try:
+                result = dialog.show()
+            except Exception:  # noqa: BLE001
+                # Dialog construction or modal loop blew up; leave
+                # the local crash file in place and do not submit.
+                return
+
+            if result.act == "cancel":
+                return
+            merged = merge_user_context_into_body(payload.body, result)
+            if result.act == "copy":
+                _copy_to_clipboard(merged)
+                return
+            # act == "send"
+            token = effective_github_token()
+            if not token:
+                # No token: copy to clipboard and surface a status.
+                _copy_to_clipboard(merged)
+                return
+            submit_crash_issue(
+                summary=payload.summary,
+                message=merged,
+                app_version=__version__,
+                github_token=token,
+                metadata=payload.metadata,
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
+    try:
+        wx.CallAfter(_run_on_ui)  # type: ignore[attr-defined]
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _show_native_fallback(
+    exc_type: type[BaseException],
+    exc_value: BaseException,
+    crash_file: Path | None,
+) -> None:
+    """The always-on MessageBoxW so the user can find the local crash file.
+
+    Mirrors the original (#51) behaviour: a native dialog with the
+    file path, regardless of platform. On non-Windows the message is
+    logged to stderr instead.
+    """
+    import ctypes
+
+    msg = "QUILL encountered an unexpected error and needs to close.\n\n"
+    msg += f"Error: {exc_type.__name__}: {exc_value}\n\n"
+    if crash_file:
+        msg += f"A crash report was saved to:\n{crash_file}"
+    else:
+        msg += "Could not save a crash report."
+    if sys.platform == "win32":
+        try:
+            ctypes.windll.user32.MessageBoxW(0, msg, "QUILL — Unexpected Error", 0x10)
+        except Exception:  # noqa: BLE001
+            pass
+    else:
+        try:
+            print(msg, file=sys.stderr)
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _active_document_snapshot() -> object | None:
+    """Return the active ``Document`` if MainFrame has one ready.
+
+    Best-effort: returns ``None`` when wx is not yet alive, MainFrame
+    has not finished its ``__init__``, or any attribute lookup fails.
+    The excepthook uses this only for context; ``None`` is fine.
+    """
+    try:
+        import wx  # type: ignore[import-not-found]
+
+        app = wx.GetApp()  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001
+        return None
+    if app is None:
+        return None
+    try:
+        top = app.GetTopWindow()
+    except Exception:  # noqa: BLE001
+        return None
+    if top is None:
+        return None
+    # MainFrame is a mixin; the actual wx.Frame is `frame`. The
+    # active document lives on the mixin instance. Walk the typical
+    # shapes so a future refactor does not crash the excepthook.
+    for owner in (top, getattr(top, "frame", None), getattr(top, "_main", None)):
+        if owner is None:
+            continue
+        document = getattr(owner, "document", None)
+        if document is not None:
+            return document
+    return None
+
+
+def _find_main_frame_window() -> object | None:
+    """Return the ``wx.Window`` to parent the dialog against, or ``None``.
+
+    Prefers the real ``wx.Frame`` (``top.frame`` when MainFrame is a
+    mixin) over the mixin instance because wxPython's SIP wrapper
+    rejects non-Frame parents (see #624).
+    """
+    try:
+        import wx  # type: ignore[import-not-found]
+
+        app = wx.GetApp()  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001
+        return None
+    if app is None:
+        return None
+    try:
+        top = app.GetTopWindow()
+    except Exception:  # noqa: BLE001
+        return None
+    if top is None:
+        return None
+    real_frame = getattr(top, "frame", None)
+    return real_frame if real_frame is not None else top
+
+
+def _copy_to_clipboard(text: str) -> None:
+    """Copy ``text`` to the clipboard via wx (best-effort)."""
+    try:
+        import wx  # type: ignore[import-not-found]
+
+        clipboard = wx.TheClipboard  # type: ignore[attr-defined]
+        if not clipboard.Open():
+            return
+        try:
+            clipboard.SetData(wx.TextDataObject(text))  # type: ignore[attr-defined]
+        finally:
+            clipboard.Close()
+    except Exception:  # noqa: BLE001
+        pass
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,13 +363,16 @@ def main() -> int:
         print(__version__)
         return 0
 
+    # #615: apply a pending data-location move (Preferences > General >
+    # Data location) before anything resolves app_data_dir() for real, so
+    # logs/settings/recovery land in the new location from this launch on.
+    apply_pending_data_location_migration()
+    _propagate_portable_environment()
     ensure_app_directories()
     log_listener = configure_logging(app_data_dir() / "logs")
     setup_fault_handler()
     _install_excepthook()
     try:
-        _bootstrap_storage_mode()
-
         try:
             from quill.ui.main_frame import run_app
         except ModuleNotFoundError as exc:
@@ -134,53 +423,6 @@ def main() -> int:
     finally:
         log_listener.stop()
     return 0
-
-
-def _bootstrap_storage_mode() -> None:
-    if os.environ.get("QUILL_PORTABLE") != "1":
-        return
-    if os.environ.get("QUILL_DATA_DIR"):
-        return
-    root = portable_root_dir()
-    if root is None:
-        return
-    mode = load_storage_mode()
-    if mode == "portable":
-        os.environ["QUILL_DATA_DIR"] = str(root)
-        return
-    if mode == "appdata":
-        return
-
-    try:
-        import wx
-    except ModuleNotFoundError:
-        return
-
-    app = wx.App(False)
-    try:
-        with wx.SingleChoiceDialog(
-            None,
-            "Where should Quill store its settings and other local data?",
-            "Quill Storage Location",
-            choices=[
-                "AppData (recommended)",
-                "Portable folder next to Quill",
-            ],
-        ) as dialog:
-            selection = dialog.ShowModal()
-            if selection != wx.ID_OK:
-                choice = "appdata"
-            elif dialog.GetSelection() == 1:
-                choice = "portable"
-            else:
-                choice = "appdata"
-    finally:
-        app.Destroy()
-
-    save_storage_mode(choice)
-    if choice == "portable":
-        root.mkdir(parents=True, exist_ok=True)
-        os.environ["QUILL_DATA_DIR"] = str(root)
 
 
 def _parse_cli_arguments(arguments: list[str]) -> Namespace:

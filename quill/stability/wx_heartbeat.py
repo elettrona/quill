@@ -14,6 +14,7 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from quill.stability.diagnostics import dump_all_thread_stacks
 
@@ -21,6 +22,9 @@ try:  # pragma: no cover - optional dependency in non-UI test environments
     import wx  # type: ignore
 except ModuleNotFoundError:  # pragma: no cover
     wx = None  # type: ignore[assignment]
+
+if TYPE_CHECKING:  # pragma: no cover
+    import wx as _wx_types
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +44,12 @@ class HeartbeatState:
 
 
 class WxHeartbeatTimer:
-    def __init__(self, window: object, state: HeartbeatState, interval_ms: int = 1000) -> None:
+    def __init__(
+        self,
+        window: _wx_types.Window,
+        state: HeartbeatState,
+        interval_ms: int = 1000,
+    ) -> None:
         if wx is None:
             raise RuntimeError("wxPython is required for WxHeartbeatTimer")
         self.window = window

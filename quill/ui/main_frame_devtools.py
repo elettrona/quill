@@ -86,7 +86,6 @@ class DevToolsMixin:
     def console_set_editor_text(self, text: str) -> None:
         try:
             self.editor.SetValue(text)
-            self._mark_document_modified()
         except Exception:
             pass
 
@@ -99,7 +98,6 @@ class DevToolsMixin:
     def console_replace_selection(self, text: str) -> None:
         try:
             self.editor.WriteText(text)
-            self._mark_document_modified()
         except Exception:
             pass
 
@@ -120,7 +118,7 @@ class DevToolsMixin:
 
     def console_get_document_name(self) -> str:
         try:
-            path = self._active_document_path()
+            path = self.document.path
             return path.name if path else ""
         except Exception:
             return ""
@@ -552,10 +550,3 @@ class DevToolsMixin:
             self._announce(
                 f"{len(lines)} lines of output — review transcript with your screen reader."
             )
-
-    def _mark_document_modified(self) -> None:
-        """Signal that the active document has been changed from the console."""
-        try:
-            self._set_modified(True)
-        except Exception:
-            pass

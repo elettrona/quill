@@ -10,7 +10,8 @@ Pages (in presentation order):
   2 - Extras (AI / Braille / Automation)
   3 - AI Provider (shown only when AI is wanted)
   4 - Keyboard and Sound
-  5 - Summary
+  5 - Data Location (#615)
+  6 - Summary
 
 Feature toggles are held in ``_pending_overrides: dict[str, str]`` inside
 the dialog and applied to the ``FeatureManager`` only when the user clicks
@@ -22,11 +23,14 @@ is True and the caller should apply the minimal text_editor defaults.
 
 from __future__ import annotations
 
+import html
 import logging
 from collections.abc import Callable
 
 import wx
 
+from quill.core import storage_mode
+from quill.core.data_location import request_data_location_change, resolve_target
 from quill.core.features import (
     FEATURE_STATE_ON,
     FeatureManager,
@@ -44,19 +48,162 @@ from quill.ui.dialog_contract import apply_modal_ids
 _log = logging.getLogger(__name__)
 
 _PREVIEW_MIN_HEIGHT = 230
-_PREVIEW_STYLE = wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_WORDWRAP | wx.BORDER_SIMPLE
 
-_PAGE_TITLES = [
-    "Welcome",
-    "Keyboard and Sound",
-    "Feature Profile",
-    "Remote Access",
-    "AI Assistance",
-    "Reading and Accessibility",
-    "Writing Tools",
-    "Startup Behaviour",
-    "Summary",
-]
+# ---------------------------------------------------------------------------
+# Screen-reader detection (mirrors web_form.py / sticky_notes.py).
+# ---------------------------------------------------------------------------
+
+_SR_DETECTED: bool | None = None
+
+
+def _is_sr_active() -> bool:
+    """Return True if a screen reader is currently running.
+
+    Used to choose between a richer webview preview (sighted users) and a
+    read-only multi-line ``wx.TextCtrl`` preview (screen-reader users, who can
+    arrow through it line by line on both Windows and macOS, like the About
+    window).
+    """
+    global _SR_DETECTED
+    if _SR_DETECTED is None:
+        try:
+            from quill.platform.sr_detect import detect_screen_reader
+
+            _SR_DETECTED = detect_screen_reader().detected
+        except Exception:  # noqa: BLE001
+            _SR_DETECTED = False
+    return bool(_SR_DETECTED)
+
+
+# ---------------------------------------------------------------------------
+# Wizard preview widget (replaces the read-only TextCtrl).
+# ---------------------------------------------------------------------------
+
+
+class _WizardPreview:
+    """Adaptive preview block used by every wizard page.
+
+    Screen-reader users get a **read-only multi-line ``wx.TextCtrl``** — the same
+    surface the About window uses (``info_pages.py``). It is the only control
+    that lets *both* NVDA/JAWS on Windows **and** VoiceOver on macOS arrow
+    through the text line by line. (#610 had replaced it with a ``wx.StaticText``
+    to avoid VoiceOver's "edit text, read only" announcement, but a StaticText is
+    not keyboard-focusable, so Windows screen-reader users could not reach or
+    arrow through the text at all — they only landed on the heading. The
+    read-only TextCtrl is navigable everywhere; the "read only" announcement is
+    accurate and matches the About window, so it is the right trade-off.)
+
+    When no screen reader is active, a sighted user still gets the styled
+    ``SidePreview`` (HTML webview). If the webview is unavailable, everyone gets
+    the read-only TextCtrl, which renders the text fine visually too.
+    """
+
+    def __init__(self, parent: wx.Window, *, name: str, content_html: str) -> None:
+        self._parent = parent
+        self._content_html = content_html
+        self._webview = None
+        self._text_ctrl: wx.TextCtrl | None = None
+        self.control: wx.Window
+        if not _is_sr_active():
+            self._webview = self._try_make_side_preview(parent)
+        if self._webview is not None:
+            self.control = self._webview.control
+            self._webview.update(content_html)
+        else:
+            self._text_ctrl = self._make_readonly_text(parent, name)
+            self.control = self._text_ctrl
+
+    @staticmethod
+    def _try_make_side_preview(parent: wx.Window):
+        try:
+            from wx_accessible_webview import SidePreview
+        except Exception:  # noqa: BLE001
+            return None
+        try:
+            preview = SidePreview(parent, title="")
+        except Exception:  # noqa: BLE001
+            return None
+        if not getattr(preview, "using_webview", False):
+            return None
+        return preview
+
+    def _make_readonly_text(self, parent: wx.Window, name: str) -> wx.TextCtrl:
+        """A read-only, arrow-navigable text field (NVDA/JAWS + VoiceOver)."""
+        text = self._html_to_text(self._content_html)
+        ctrl = wx.TextCtrl(
+            parent,
+            value=text,
+            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_WORDWRAP,
+            name=name,
+        )
+        ctrl.SetMinSize((-1, _PREVIEW_MIN_HEIGHT))
+        return ctrl
+
+    @staticmethod
+    def _html_to_text(content_html: str) -> str:
+        """Strip a small whitelist of HTML tags to plain text.
+
+        The wizard previews only emit ``<p>``, ``<br>``, ``<b>`` and
+        ``<i>`` from the small renderer used by ``update_html``. Anything
+        else round-trips verbatim so screen readers do not announce raw
+        markup.
+        """
+        import re
+
+        out = content_html
+        out = re.sub(r"(?is)<br\s*/?>", "\n", out)
+        out = re.sub(r"(?is)</?p\s*/?>", "", out)
+        out = re.sub(r"(?is)</?b\s*/?>", "", out)
+        out = re.sub(r"(?is)</?i\s*/?>", "", out)
+        return html.unescape(out).strip()
+
+    def update_html(self, content_html: str) -> None:
+        self._content_html = content_html
+        if self._webview is not None:
+            self._webview.update(content_html)
+            return
+        if self._text_ctrl is not None:
+            # ChangeValue (not SetValue) so no EVT_TEXT fires and the control
+            # stays read-only/clean.
+            self._text_ctrl.ChangeValue(self._html_to_text(content_html))
+            self._text_ctrl.GetParent().Layout()
+
+
+def _render_preview_html(plain_text: str) -> str:
+    """Wrap a plain-text preview string in the small HTML dialect that
+    ``_WizardPreview`` consumes. Blank lines become paragraph breaks."""
+    paragraphs = [html.escape(p.strip()) for p in plain_text.split("\n\n")]
+    body = "\n".join(f"<p>{p}</p>" for p in paragraphs if p)
+    # Replace remaining single newlines with <br> so the webview honours
+    # the original line breaks.
+    body = body.replace("\n", "<br>")
+    return body
+
+
+# ---------------------------------------------------------------------------
+# Page heading
+# ---------------------------------------------------------------------------
+
+
+def _page_heading(parent: wx.Window, *, label: str, name: str, scale: float = 1.0) -> wx.StaticText:
+    """Return a bold ``wx.StaticText`` styled as the page heading.
+
+    A heading is not an interactive control. #610 had made it a no-border
+    ``wx.Button`` so it could be the first tab stop, but that announced as a
+    do-nothing "button". Now that the page's first *focusable* control is the
+    read-only preview field (which the user can arrow through) or the first
+    choice, ``_focus_first_page_control`` lands there directly and the heading is
+    a plain, non-focusable StaticText again — visible, read on the page, never a
+    spurious button.
+    """
+    heading = wx.StaticText(parent, label=label, name=name)
+    base = (
+        parent.GetFont()
+        if hasattr(parent, "GetFont")
+        else wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)
+    )
+    heading.SetFont(base.Scaled(scale).Bold())
+    return heading
 
 
 # ---------------------------------------------------------------------------
@@ -96,8 +243,16 @@ class _WelcomePage(_WizardPage):
         super().__init__(parent, "Welcome")
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = wx.StaticText(self, label=_("Welcome to QUILL"), name="wizard.welcome_heading")
-        heading.SetFont(heading.GetFont().Scaled(1.4).Bold())
+        # #610: focusable heading is the first tab stop on the page; the
+        # plain-text StaticText it replaced could not accept keyboard
+        # focus and screen readers landed on the preview (a TextCtrl)
+        # first.
+        heading = _page_heading(
+            self,
+            label=_("Welcome to QUILL"),
+            name="wizard.welcome_heading",
+            scale=1.4,
+        )
         sizer.Add(heading, flag=wx.ALL, border=12)
 
         about_label = wx.StaticText(
@@ -105,14 +260,18 @@ class _WelcomePage(_WizardPage):
         )
         sizer.Add(about_label, flag=wx.LEFT | wx.RIGHT, border=12)
 
-        preview = wx.TextCtrl(
+        # Preview is a styled SidePreview (webview) for sighted users, or a
+        # read-only multi-line wx.TextCtrl for screen-reader users — arrow-
+        # navigable on Windows (NVDA/JAWS) and macOS (VoiceOver), like the
+        # About window. (Reverts the #610 StaticText, which Windows screen
+        # readers could not focus or arrow through.)
+        preview = _WizardPreview(
             self,
-            value=str(self._PREVIEW),
-            style=_PREVIEW_STYLE,
             name="wizard.welcome_preview",
+            content_html=_render_preview_html(str(self._PREVIEW)),
         )
-        preview.SetMinSize((-1, _PREVIEW_MIN_HEIGHT))
-        sizer.Add(preview, proportion=1, flag=wx.EXPAND | wx.ALL, border=12)
+        sizer.Add(preview.control, proportion=1, flag=wx.EXPAND | wx.ALL, border=12)
+        self._preview = preview
 
         self.SetSizer(sizer)
 
@@ -132,10 +291,11 @@ class _IntentPage(_WizardPage):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = wx.StaticText(
-            self, label=_("What kind of writing do you do?"), name="wizard.intent_heading"
+        heading = _page_heading(
+            self,
+            label=_("What kind of writing do you do?"),
+            name="wizard.intent_heading",
         )
-        heading.SetFont(heading.GetFont().Bold())
         sizer.Add(heading, flag=wx.ALL, border=12)
 
         desc = wx.StaticText(
@@ -163,14 +323,14 @@ class _IntentPage(_WizardPage):
         )
         sizer.Add(about_label, flag=wx.LEFT | wx.RIGHT, border=12)
 
-        self._preview = wx.TextCtrl(
+        # Adaptive preview: styled webview for sighted users, read-only
+        # arrow-navigable wx.TextCtrl for screen-reader users (both platforms).
+        self._preview = _WizardPreview(
             self,
-            value="",
-            style=_PREVIEW_STYLE,
             name="wizard.intent_preview",
+            content_html="",
         )
-        self._preview.SetMinSize((-1, _PREVIEW_MIN_HEIGHT))
-        sizer.Add(self._preview, proportion=1, flag=wx.EXPAND | wx.ALL, border=12)
+        sizer.Add(self._preview.control, proportion=1, flag=wx.EXPAND | wx.ALL, border=12)
 
         self._list.Bind(wx.EVT_LISTBOX, self._on_selection)
 
@@ -191,8 +351,7 @@ class _IntentPage(_WizardPage):
 
     def _update_preview(self, index: int) -> None:
         if 0 <= index < len(self._profiles):
-            self._preview.SetValue(self._profiles[index].preview_text)
-            self._preview.SetInsertionPoint(0)
+            self._preview.update_html(_render_preview_html(self._profiles[index].preview_text))
 
     def selected_profile(self) -> IntentProfile:
         index = self._list.GetSelection()
@@ -216,10 +375,11 @@ class _ExtrasPage(_WizardPage):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = wx.StaticText(
-            self, label=_("A few optional extras"), name="wizard.extras_heading"
+        heading = _page_heading(
+            self,
+            label=_("A few optional extras"),
+            name="wizard.extras_heading",
         )
-        heading.SetFont(heading.GetFont().Bold())
         sizer.Add(heading, flag=wx.ALL, border=12)
 
         self._desc = wx.StaticText(
@@ -259,14 +419,14 @@ class _ExtrasPage(_WizardPage):
         )
         sizer.Add(what_label, flag=wx.LEFT | wx.RIGHT, border=12)
 
-        self._preview = wx.TextCtrl(
+        # #610: adaptive preview (SidePreview / StaticText) replaces the
+        # read-only TextCtrl.
+        self._preview = _WizardPreview(
             self,
-            value="",
-            style=_PREVIEW_STYLE,
             name="wizard.extras_preview",
+            content_html="",
         )
-        self._preview.SetMinSize((-1, _PREVIEW_MIN_HEIGHT))
-        sizer.Add(self._preview, proportion=1, flag=wx.EXPAND | wx.ALL, border=12)
+        sizer.Add(self._preview.control, proportion=1, flag=wx.EXPAND | wx.ALL, border=12)
 
         self.SetSizer(sizer)
         self._update_preview()
@@ -337,8 +497,7 @@ class _ExtrasPage(_WizardPage):
                         "  - BRF test content trigger (=brftest())\n"
                     )
                 )
-        self._preview.SetValue("\n".join(lines))
-        self._preview.SetInsertionPoint(0)
+        self._preview.update_html(_render_preview_html("\n".join(lines)))
 
     def wants_ai(self) -> bool:
         return self._intent.includes_ai or (self._ai_check.IsShown() and self._ai_check.GetValue())
@@ -370,10 +529,11 @@ class _AIProviderPage(_WizardPage):
         self._open_ai_hub = open_ai_hub
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = wx.StaticText(
-            self, label=_("Set up your AI connection"), name="wizard.ai_heading"
+        heading = _page_heading(
+            self,
+            label=_("Set up your AI connection"),
+            name="wizard.ai_heading",
         )
-        heading.SetFont(heading.GetFont().Bold())
         sizer.Add(heading, flag=wx.ALL, border=12)
 
         desc = wx.StaticText(
@@ -417,8 +577,11 @@ class _KeyboardSoundPage(_WizardPage):
         super().__init__(parent, "Keyboard and Sound")
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = wx.StaticText(self, label=_("Keyboard and Sound"), name="wizard.kb_heading")
-        heading.SetFont(heading.GetFont().Bold())
+        heading = _page_heading(
+            self,
+            label=_("Keyboard and Sound"),
+            name="wizard.kb_heading",
+        )
         sizer.Add(heading, flag=wx.ALL, border=12)
 
         desc = wx.StaticText(
@@ -540,7 +703,127 @@ class _KeyboardSoundPage(_WizardPage):
 
 
 # ---------------------------------------------------------------------------
-# Page 5 - Summary
+# Page 5 - Data Location (#615)
+# ---------------------------------------------------------------------------
+
+
+class _DataLocationPage(_WizardPage):
+    """Where QUILL stores settings, autosaves, and other local data.
+
+    A change here is applied through ``request_data_location_change``
+    (restart-deferred, see ``core.data_location``) rather than written
+    directly, so re-running this wizard on an existing install (Help >
+    Personalise QUILL) never moves real data out from under a running
+    session -- only a true first run, where the target already equals the
+    untouched default, applies immediately.
+    """
+
+    def __init__(self, parent: wx.Window) -> None:
+        super().__init__(parent, "Where QUILL stores your data")
+        self._portable_root = storage_mode.portable_root_dir()
+        self._custom_path = ""
+        self._pending_summary = ""
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+
+        heading = _page_heading(
+            self,
+            label=_("Where should QUILL store your data?"),
+            name="wizard.data_location_heading",
+        )
+        sizer.Add(heading, flag=wx.ALL, border=12)
+
+        desc = wx.StaticText(
+            self,
+            label=_(
+                "Settings, dictionaries, autosaves, and recovery files go here. "
+                "You can change this later from Help > Personalise QUILL or Preferences."
+            ),
+            name="wizard.data_location_desc",
+        )
+        desc.Wrap(440)
+        sizer.Add(desc, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM, border=12)
+
+        self._appdata_radio = wx.RadioButton(
+            self,
+            label=_("In my Windows user profile (recommended)"),
+            name="wizard.data_location_appdata",
+            style=wx.RB_GROUP,
+        )
+        self._appdata_radio.SetValue(True)
+        sizer.Add(self._appdata_radio, flag=wx.LEFT | wx.BOTTOM, border=12)
+
+        self._portable_radio = wx.RadioButton(
+            self,
+            label=_("Next to QUILL, on this portable drive"),
+            name="wizard.data_location_portable",
+        )
+        self._portable_radio.Show(self._portable_root is not None)
+        sizer.Add(self._portable_radio, flag=wx.LEFT | wx.BOTTOM, border=12)
+
+        self._custom_radio = wx.RadioButton(
+            self,
+            label=_("Choose a folder:"),
+            name="wizard.data_location_custom",
+        )
+        sizer.Add(self._custom_radio, flag=wx.LEFT | wx.BOTTOM, border=4)
+
+        # #610: a StaticText display (not a TextCtrl) so VoiceOver does not
+        # announce this as an editable field -- the path is only ever set
+        # via the Choose dialog, mirroring _KeyboardSoundPage's sound-pack
+        # picker above.
+        custom_row = wx.BoxSizer(wx.HORIZONTAL)
+        self._custom_display = wx.StaticText(
+            self, label=_("No folder chosen"), name="wizard.data_location_custom_path"
+        )
+        self._choose_btn = wx.Button(self, label=_("Choose..."), name="wizard.data_location_choose")
+        self._choose_btn.Bind(wx.EVT_BUTTON, self._on_choose_folder)
+        custom_row.Add(self._custom_display, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        custom_row.Add(self._choose_btn, 0, wx.ALIGN_CENTER_VERTICAL)
+        sizer.Add(custom_row, flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, border=12)
+
+        self.SetSizer(sizer)
+
+    def _on_choose_folder(self, _event: object) -> None:
+        with wx.DirDialog(
+            self,
+            _("Choose a folder for QUILL's data"),
+            defaultPath=self._custom_path,
+            style=wx.DD_DEFAULT_STYLE,
+        ) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            self._custom_path = dlg.GetPath()
+        self._custom_display.SetLabel(self._custom_path)
+        self.Layout()
+        self._custom_radio.SetValue(True)
+
+    def collect(self, _settings: Settings, overrides: dict) -> None:
+        from pathlib import Path
+
+        if self._custom_radio.GetValue() and self._custom_path:
+            mode = "custom"
+            custom_path = Path(self._custom_path)
+        elif self._portable_radio.GetValue() and self._portable_root is not None:
+            mode = "portable"
+            custom_path = None
+        else:
+            mode = "appdata"
+            custom_path = None
+
+        try:
+            target = resolve_target(mode, custom_path)
+            request_data_location_change(mode, custom_path)
+        except (ValueError, OSError) as error:
+            _log.warning("Could not record data-location choice %s: %s", mode, error)
+            overrides["_data_location_summary"] = ""
+            return
+
+        overrides["_data_location_summary"] = _("Data location: {target}").format(target=target)
+
+
+# ---------------------------------------------------------------------------
+# Page 6 - Summary
 # ---------------------------------------------------------------------------
 
 
@@ -549,8 +832,11 @@ class _SummaryPage(_WizardPage):
         super().__init__(parent, "Summary")
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = wx.StaticText(self, label=_("You are all set!"), name="wizard.summary_heading")
-        heading.SetFont(heading.GetFont().Bold())
+        heading = _page_heading(
+            self,
+            label=_("You are all set!"),
+            name="wizard.summary_heading",
+        )
         sizer.Add(heading, flag=wx.ALL, border=12)
 
         ready_label = wx.StaticText(
@@ -558,13 +844,14 @@ class _SummaryPage(_WizardPage):
         )
         sizer.Add(ready_label, flag=wx.LEFT | wx.RIGHT, border=12)
 
-        self._summary = wx.TextCtrl(
+        # #610: adaptive preview (SidePreview / StaticText) replaces the
+        # read-only TextCtrl.
+        self._summary = _WizardPreview(
             self,
-            style=_PREVIEW_STYLE,
             name="wizard.summary_text",
+            content_html="",
         )
-        self._summary.SetMinSize((-1, _PREVIEW_MIN_HEIGHT))
-        sizer.Add(self._summary, proportion=1, flag=wx.EXPAND | wx.ALL, border=12)
+        sizer.Add(self._summary.control, proportion=1, flag=wx.EXPAND | wx.ALL, border=12)
 
         note = wx.StaticText(
             self,
@@ -625,8 +912,11 @@ class _SummaryPage(_WizardPage):
             _("Sound notifications: {state}").format(state=_("On") if sound_on else _("Off"))
         )
 
-        self._summary.SetValue("\n".join(lines))
-        self._summary.SetInsertionPoint(0)
+        data_location_summary = overrides.get("_data_location_summary")
+        if data_location_summary:
+            lines.append(str(data_location_summary))
+
+        self._summary.update_html(_render_preview_html("\n".join(lines)))
 
     def collect(self, _settings: Settings, _overrides: dict) -> None:
         pass
@@ -688,9 +978,10 @@ class SetupWizardDialog(wx.Dialog):
         extras = _ExtrasPage(self)
         ai_provider = _AIProviderPage(self, self._open_ai_hub)
         kb_sound = _KeyboardSoundPage(self, self._settings)
+        data_location = _DataLocationPage(self)
         summary = _SummaryPage(self)
         # All pages constructed; hide them all until shown by _show_page.
-        return [welcome, intent, extras, ai_provider, kb_sound, summary]
+        return [welcome, intent, extras, ai_provider, kb_sound, data_location, summary]
 
     def _rebuild_active(self) -> None:
         """Rebuild the visible page sequence based on current overrides."""
@@ -703,7 +994,8 @@ class SetupWizardDialog(wx.Dialog):
         if want_ai:
             pages.append(self._all_pages[3])  # AI Provider
         pages.append(self._all_pages[4])  # Keyboard & Sound
-        pages.append(self._all_pages[5])  # Summary
+        pages.append(self._all_pages[5])  # Data Location
+        pages.append(self._all_pages[6])  # Summary
         self._active = pages
 
     # -- UI ------------------------------------------------------------------
@@ -725,8 +1017,14 @@ class SetupWizardDialog(wx.Dialog):
         nav.Add(self._progress, flag=wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border=8)
         nav.AddStretchSpacer()
 
-        self._back_btn = wx.Button(self, label=_("< Back"), name="wizard.back")
-        self._next_btn = wx.Button(self, label=_("Next >"), name="wizard.next")
+        # #611: Drop the chevron decorations from the accessible name.
+        # VoiceOver was reading them as "less than Back" and "Next
+        # greater than" — pure noise. The labels now read "Back" and
+        # "Next" so screen readers (and JAWS in Forms mode) hear clean
+        # button names. Visual decoration is unchanged; this fix is
+        # only about what screen readers announce.
+        self._back_btn = wx.Button(self, label=_("Back"), name="wizard.back")
+        self._next_btn = wx.Button(self, label=_("Next"), name="wizard.next")
         self._finish_btn = wx.Button(self, wx.ID_OK, label=_("Finish"), name="wizard.finish")
         self._cancel_btn = wx.Button(self, wx.ID_CANCEL, label=_("Cancel"), name="wizard.cancel")
 
@@ -762,7 +1060,12 @@ class SetupWizardDialog(wx.Dialog):
         self._next_btn.Show(idx < total - 1)
         self._finish_btn.Show(idx == total - 1)
 
-        title = _PAGE_TITLES[idx] if idx < len(_PAGE_TITLES) else f"Step {idx + 1}"
+        # Use the page's own name rather than a separately indexed title
+        # list: the active page sequence varies (the AI Provider page only
+        # appears when wanted), so a position-indexed list drifts out of
+        # sync with what is actually shown. Every page already sets a
+        # human-readable name via _WizardPage.__init__.
+        title = page.GetName() or f"Step {idx + 1}"
         self._announce(f"Step {idx + 1} of {total}: {title}")
 
         if idx == total - 1:
@@ -776,10 +1079,14 @@ class SetupWizardDialog(wx.Dialog):
     def _focus_first_page_control(self) -> None:
         """Focus the first interactive child of the current page.
 
+        The page heading is a non-focusable ``wx.StaticText`` (see
+        ``_page_heading``), so focus lands on the first real focusable control —
+        the read-only preview field the user can arrow through, or the first
+        choice — rather than a spurious "heading" button. Falls back to the nav
+        button when the page has no focusable children.
+
         Always sets the correct default button first so Enter activates the
         right nav button even when focus is inside a TextCtrl or ListBox.
-        Falls back to focusing the nav button when the page has no focusable
-        children.
         """
         total = len(self._active)
         on_last = self._current_idx == total - 1

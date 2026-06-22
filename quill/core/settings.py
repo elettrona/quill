@@ -94,10 +94,13 @@ class Settings:
     abbreviation_expansion_sound: bool = False
     abbreviation_expansion_sound_file: str = ""
     multi_press_window_ms: int = 400
-    dictation_engine: str = "vosk"
+    dictation_engine: str = "windows"
     dictation_language: str = "en-US"
     dictation_model: str = "base"
     dictation_device_index: int = -1
+    # Offline speech engine: "" = bundled whisper.cpp; "fasterwhisper" opts into
+    # the Faster Whisper (CTranslate2) engine on machines that have it.
+    speech_provider: str = ""
     bw_speech_selection_mode: str = "recommended"
     bw_speech_model_id: str = "whisper-base"
     bw_enable_parakeet_models: bool = False
@@ -111,6 +114,12 @@ class Settings:
     watch_folder_enabled: bool = False
     watch_folder_path: str = ""
     startup_folder: str = ""
+    # #620: Simple File Open dialog. When true, File > Open... shows a
+    # keyboard-friendly picker with a small filter, recent locations, and
+    # a hidden-files toggle. The standard Windows file dialog is still
+    # available via the "Use Windows Dialog" button inside the simple
+    # dialog.
+    use_simple_file_dialog: bool = False
     watch_folder_include_subfolders: bool = False
     watch_folder_process_existing: bool = False
     watch_folder_auto_start: bool = False
@@ -150,6 +159,22 @@ class Settings:
     announce_mode_changes: bool = True
     announce_spelling: bool = True
     announce_punctuation_level: str = "some"
+    # Verbosity system (rebuild) — scalar prefs. Collection-typed state
+    # (custom profiles, per-verb/chord overrides, QVP packs) persists separately
+    # in verbosity_custom.json via quill.core.verbosity.storage.
+    verbosity_mastery_enabled: bool = True
+    verbosity_mastery_threshold: int = 25
+    verbosity_validation_mode: str = "on_button"
+    verbosity_history_enabled: bool = True
+    verbosity_history_limit: int = 100
+    verbosity_history_clear_on_exit: bool = False
+    verbosity_task_profile_suggestions: bool = False
+    verbosity_safe_mode_enabled: bool = False
+    # #181: automatic Document Language detection on paste/typing. One of
+    # "off" (default), "hint" (status bar only), "prompt" (announce a suggestion),
+    # or "auto" (switch automatically). Only ever acts on unpinned untitled/.txt
+    # documents; never overrides a real extension or a user choice.
+    language_detection_mode: str = "off"
     # SET-4: tunable behavior toggles
     browse_mode_sticky: bool = False
     quill_key_sound_enter: str = ""
@@ -185,6 +210,24 @@ class Settings:
     # Bug reporter identity: pre-fill the Report a Bug dialog for speed.
     bug_reporter_name: str = ""
     bug_reporter_email: str = ""
+    # #618: open the Report a Bug dialog in a separate, non-modal
+    # window by default so users can alt-tab between the form and
+    # the editor to document exact reproduction steps. The 0.5.0
+    # default was a modal dialog that blocked the editor.
+    report_bug_separate_window: bool = True
+    # #618: when the user submits a bug report, copy the report to
+    # the clipboard and stop. The 0.5.0 default also opened a
+    # browser to the GitHub "New Issue" page; that step is now
+    # opt-in via this setting (default False) so the upgrade story
+    # is "Quill copies, you decide whether to open the browser."
+    report_bug_auto_open_browser: bool = False
+    # STABILITY: when True, an unhandled exception shows the crash-submit
+    # dialog so the user can review a redacted preview and choose whether
+    # to send the report to the developers. When False, the local-only
+    # path runs (file is still saved to app_data_dir()/crash-reports).
+    # Default is True during the beta phase so the team can hear about
+    # crashes without forcing the user to opt in every time.
+    auto_ask_crash_submit: bool = True
     # I18N: BCP 47 language tag for the UI; empty string means "use OS default".
     language: str = ""
     # WIZARD: True once the first-run setup wizard has completed.
@@ -423,14 +466,17 @@ class Settings:
         )
         if markdown_clipboard_format not in {"html", "rtf"}:
             markdown_clipboard_format = "html"
-        dictation_engine = str(data.get("dictation_engine", "vosk")).strip().lower()
-        if dictation_engine not in {"vosk", "whisper"}:
-            dictation_engine = "vosk"
+        engine = str(data.get("dictation_engine", "windows")).strip().lower()
+        engine = "offline" if engine in {"vosk", "whisper"} else engine  # #617 migrate
+        dictation_engine = engine if engine in {"offline", "windows", "cloud"} else "windows"
         dictation_language = str(data.get("dictation_language", "en-US")).strip() or "en-US"
         dictation_model = str(data.get("dictation_model", "base")).strip() or "base"
         dictation_device_index = int(data.get("dictation_device_index", -1))
         if dictation_device_index < -1:
             dictation_device_index = -1
+        speech_provider = str(data.get("speech_provider", "")).strip().lower()
+        if speech_provider not in {"", "whispercpp", "fasterwhisper"}:
+            speech_provider = ""
         bw_speech_selection_mode = (
             str(data.get("bw_speech_selection_mode", "recommended")).strip().lower()
             or "recommended"
@@ -462,6 +508,8 @@ class Settings:
         watch_folder_enabled = bool(data.get("watch_folder_enabled", False))
         watch_folder_path = str(data.get("watch_folder_path", "")).strip()
         startup_folder = str(data.get("startup_folder", "")).strip()
+        # #620: Simple File Open dialog opt-in.
+        use_simple_file_dialog = bool(data.get("use_simple_file_dialog", False))
         watch_folder_include_subfolders = bool(data.get("watch_folder_include_subfolders", False))
         watch_folder_process_existing = bool(data.get("watch_folder_process_existing", False))
         watch_folder_auto_start = bool(data.get("watch_folder_auto_start", False))
@@ -536,6 +584,28 @@ class Settings:
         )
         if announce_punctuation_level not in {"none", "some", "most", "all"}:
             announce_punctuation_level = "some"
+        # Verbosity system (rebuild) scalar prefs.
+        verbosity_mastery_enabled = bool(data.get("verbosity_mastery_enabled", True))
+        verbosity_mastery_threshold = _clamp_int(
+            data.get("verbosity_mastery_threshold", 25), 25, 1, 1000
+        )
+        verbosity_validation_mode = (
+            str(data.get("verbosity_validation_mode", "on_button")).strip().lower()
+        )
+        if verbosity_validation_mode not in {"on_button", "on_focus", "live"}:
+            verbosity_validation_mode = "on_button"
+        language_detection_mode = str(data.get("language_detection_mode", "off")).strip().lower()
+        if language_detection_mode not in {"off", "hint", "prompt", "auto"}:
+            language_detection_mode = "off"
+        verbosity_history_enabled = bool(data.get("verbosity_history_enabled", True))
+        verbosity_history_limit = _clamp_int(
+            data.get("verbosity_history_limit", 100), 100, 1, 10000
+        )
+        verbosity_history_clear_on_exit = bool(data.get("verbosity_history_clear_on_exit", False))
+        verbosity_task_profile_suggestions = bool(
+            data.get("verbosity_task_profile_suggestions", False)
+        )
+        verbosity_safe_mode_enabled = bool(data.get("verbosity_safe_mode_enabled", False))
         # SET-4: behavior toggles
         browse_mode_sticky = bool(data.get("browse_mode_sticky", False))
         quill_key_sound_enter = str(data.get("quill_key_sound_enter", "")).strip()
@@ -583,6 +653,7 @@ class Settings:
         setup_wizard_wants_automation = bool(data.get("setup_wizard_wants_automation", False))
         upgrade_prompt_braille_pack = bool(data.get("upgrade_prompt_braille_pack", False))
         console_enabled = bool(data.get("console_enabled", True))
+        auto_ask_crash_submit = bool(data.get("auto_ask_crash_submit", True))
         try:
             console_python_timeout = int(data.get("console_python_timeout", 30))
         except (TypeError, ValueError):
@@ -759,6 +830,7 @@ class Settings:
             dictation_language=dictation_language,
             dictation_model=dictation_model,
             dictation_device_index=dictation_device_index,
+            speech_provider=speech_provider,
             bw_speech_selection_mode=bw_speech_selection_mode,
             bw_speech_model_id=bw_speech_model_id,
             bw_enable_parakeet_models=bw_enable_parakeet_models,
@@ -772,6 +844,7 @@ class Settings:
             watch_folder_enabled=watch_folder_enabled,
             watch_folder_path=watch_folder_path,
             startup_folder=startup_folder,
+            use_simple_file_dialog=use_simple_file_dialog,
             watch_folder_include_subfolders=watch_folder_include_subfolders,
             watch_folder_process_existing=watch_folder_process_existing,
             watch_folder_auto_start=watch_folder_auto_start,
@@ -804,6 +877,15 @@ class Settings:
             announce_mode_changes=announce_mode_changes,
             announce_spelling=announce_spelling,
             announce_punctuation_level=announce_punctuation_level,
+            verbosity_mastery_enabled=verbosity_mastery_enabled,
+            verbosity_mastery_threshold=verbosity_mastery_threshold,
+            verbosity_validation_mode=verbosity_validation_mode,
+            language_detection_mode=language_detection_mode,
+            verbosity_history_enabled=verbosity_history_enabled,
+            verbosity_history_limit=verbosity_history_limit,
+            verbosity_history_clear_on_exit=verbosity_history_clear_on_exit,
+            verbosity_task_profile_suggestions=verbosity_task_profile_suggestions,
+            verbosity_safe_mode_enabled=verbosity_safe_mode_enabled,
             browse_mode_sticky=browse_mode_sticky,
             quill_key_sound_enter=quill_key_sound_enter,
             quill_key_sound_exit=quill_key_sound_exit,
@@ -842,6 +924,7 @@ class Settings:
             setup_wizard_wants_automation=setup_wizard_wants_automation,
             upgrade_prompt_braille_pack=upgrade_prompt_braille_pack,
             console_enabled=console_enabled,
+            auto_ask_crash_submit=auto_ask_crash_submit,
             console_python_timeout=console_python_timeout,
             console_typescript_timeout=console_typescript_timeout,
             sound_enabled=sound_enabled,

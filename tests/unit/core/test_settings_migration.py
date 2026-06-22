@@ -67,3 +67,21 @@ def test_unspecced_fields_go_to_ungrouped() -> None:
     doc = to_versioned(Settings())
     # status_bar_order has no registry spec; it must still be serialized.
     assert "status_bar_order" in doc["groups"].get(UNGROUPED_KEY, {})
+
+
+def test_dictation_engine_legacy_values_migrate_to_offline() -> None:
+    # The legacy local-recognizer values never actually ran; preserve the user's
+    # local/offline intent by mapping them to "offline" (Speech wave S0, #617).
+    assert Settings.from_dict({"dictation_engine": "vosk"}).dictation_engine == "offline"
+    assert Settings.from_dict({"dictation_engine": "whisper"}).dictation_engine == "offline"
+
+
+def test_dictation_engine_unknown_defaults_to_windows() -> None:
+    assert Settings.from_dict({"dictation_engine": "bogus"}).dictation_engine == "windows"
+    # Windows dictation is the only functional engine today, so it is the default.
+    assert Settings.from_dict({}).dictation_engine == "windows"
+
+
+def test_dictation_engine_valid_values_pass_through() -> None:
+    for value in ("offline", "windows", "cloud"):
+        assert Settings.from_dict({"dictation_engine": value}).dictation_engine == value

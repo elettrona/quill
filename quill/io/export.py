@@ -242,12 +242,14 @@ def write_document_as(
 ) -> Path:
     """Write ``document`` to ``path``, converting to the format of its extension.
 
-    ``.rtf`` re-serializes to RTF, ``.docx`` renders to Word via Pandoc,
-    ``.html``/``.htm``/``.xhtml`` render to HTML, ``.txt``/``.text`` strip to
-    plain text, and everything else (``.md`` and any unknown extension) is
-    written verbatim, since the canonical text already is Markdown.
-    ``plain_text_link_style`` controls how links survive the plain-text
-    conversion (see :data:`LINK_STYLES`).
+    ``.rtf`` re-serializes to RTF, ``.docx`` renders to Word via Pandoc, and
+    ``.html``/``.htm``/``.xhtml`` render to HTML. Everything else —
+    ``.txt``/``.text``, ``.md``, and any unknown extension — is written
+    **verbatim** (#649): the canonical text already is Markdown, and a plain-text
+    file must round-trip without Markdown stripping or blank-line collapsing. The
+    explicit "Save as plain text" command (``write_plain_text_document``) still
+    flattens markup. ``plain_text_link_style`` is accepted for call-site symmetry
+    and applies only on that explicit plain-text path (see :data:`LINK_STYLES`).
     """
     target = path or document.path
     if target is None:
@@ -259,8 +261,11 @@ def write_document_as(
         return write_docx_document(document, target)
     if suffix in _HTML_SUFFIXES:
         return write_html_document(document, target)
-    if suffix in _PLAIN_SUFFIXES:
-        return write_plain_text_document(document, target, link_style=plain_text_link_style)
+    # A plain-text file the user opened (or saves to by extension) must round-trip
+    # verbatim: no Markdown stripping and, critically, no collapsing of blank-line
+    # runs (#649). The explicit "Save as plain text" command (save_as_plain_text)
+    # still routes through write_plain_text_document for users who want their
+    # Markdown markup flattened.
     return write_text_document(document, target)
 
 

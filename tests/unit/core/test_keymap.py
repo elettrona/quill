@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -83,6 +84,90 @@ def test_reset_keymap_restores_defaults(tmp_path: Path, monkeypatch: pytest.Monk
     assert load_keymap() == DEFAULT_KEYMAP
 
 
+def test_load_keymap_drops_unknown_command_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A saved binding for a command id that no longer exists is dropped."""
+    store_path = tmp_path / "keymap-store.json"
+    monkeypatch.setattr(keymap_module, "keymap_path", lambda: store_path)
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+
+    save_keymap({"definitely.not.a.command": "Ctrl+Alt+Z"})
+
+    loaded = load_keymap()
+
+    assert "definitely.not.a.command" not in loaded
+    assert loaded == DEFAULT_KEYMAP
+
+
+def test_load_keymap_drops_empty_binding(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A saved binding that is whitespace-only is treated as 'use default'."""
+    store_path = tmp_path / "keymap-store.json"
+    monkeypatch.setattr(keymap_module, "keymap_path", lambda: store_path)
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+
+    save_keymap({"file.save": "   "})
+
+    loaded = load_keymap()
+
+    assert loaded["file.save"] == DEFAULT_KEYMAP["file.save"]
+
+
+def test_load_keymap_persists_cleaned_map(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """When the saved file contains entries that get dropped, the surviving
+    subset is written back to disk so the user sees the cleanup on next open.
+
+    Valid entries survive untouched; invalid entries (unknown command id,
+    conflicting chord, whitespace-only binding) are removed. The on-disk
+    file keeps only the user's surviving delta — not the full
+    DEFAULT_KEYMAP — so a small override file stays small.
+    """
+    store_path = tmp_path / "keymap-store.json"
+    monkeypatch.setattr(keymap_module, "keymap_path", lambda: store_path)
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+
+    # Mix: one valid override, one orphan command id, one conflict.
+    save_keymap({
+        "file.save": "Ctrl+Shift+Alt+S",  # valid override, must survive
+        "definitely.removed.command": "Ctrl+Alt+X",  # unknown id, must be dropped
+        "app.command_palette": "Ctrl+S",  # collides with file.save default
+    })
+
+    loaded = load_keymap()
+
+    # Cleaned map in memory.
+    assert loaded["file.save"] == "Ctrl+Shift+Alt+S"
+    assert "definitely.removed.command" not in loaded
+    assert loaded["app.command_palette"] == DEFAULT_KEYMAP["app.command_palette"]
+
+    # Surviving user overrides persisted to disk for the next launch.
+    # Only the keys the user had on disk and that survived the merge.
+    on_disk = keymap_module.read_json(store_path, default={})
+    assert on_disk == {"file.save": "Ctrl+Shift+Alt+S"}
+    assert "definitely.removed.command" not in on_disk
+    assert "app.command_palette" not in on_disk
+
+
+def test_load_keymap_leaves_clean_file_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When the saved file is already valid, load_keymap does not rewrite it.
+
+    A clean file should not trigger a disk write on every launch — only
+    files that need cleanup do.
+    """
+    store_path = tmp_path / "keymap-store.json"
+    monkeypatch.setattr(keymap_module, "keymap_path", lambda: store_path)
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+
+    save_keymap({"file.save": "Ctrl+Shift+Alt+S"})
+    mtime_before = store_path.stat().st_mtime_ns
+
+    load_keymap()
+
+    assert store_path.stat().st_mtime_ns == mtime_before
+
+
 def test_find_keymap_conflict_matches_existing_command() -> None:
     keymap = {"file.save": "Ctrl+S", "edit.find": "Ctrl+F"}
     conflict = find_keymap_conflict(keymap, "file.open", "Ctrl+S")
@@ -152,6 +237,98 @@ def test_legacy_find_grave_binding_migrates_to_ctrl_f() -> None:
     # the conventional Ctrl+F on load.
     merged = keymap_module.merge_keymaps({"edit.find": "Ctrl+Shift+Grave, F"})
     assert merged["edit.find"] == "Ctrl+F"
+
+
+def test_quote_lines_default_is_ctrl_shift_q() -> None:
+    # #608: Quote Lines moved from Ctrl+Q to Ctrl+Shift+Q so Ctrl+Q is
+    # free for the system Quit shortcut on macOS (Cmd+Q in wxPython).
+    assert DEFAULT_KEYMAP["edit.quote_lines"] == "Ctrl+Shift+Q"
+    # Unquote Lines moves from Ctrl+Shift+Q to Ctrl+Shift+K to keep
+    # the pair on the home row (Q -> K) and free Ctrl+Q entirely.
+    assert DEFAULT_KEYMAP["edit.unquote_lines"] == "Ctrl+Shift+K"
+
+
+def test_app_exit_default_is_ctrl_q_for_macos_quit() -> None:
+    # #608: app.exit is bound to Ctrl+Q so wx maps it to Cmd+Q on
+    # macOS (the conventional Quit shortcut). Alt+F4 still works via
+    # the wx ID_EXIT stock accelerator on the File menu.
+    assert DEFAULT_KEYMAP["app.exit"] == "Ctrl+Q"
+
+
+def test_legacy_quote_lines_ctrl_q_migrates_to_ctrl_shift_q() -> None:
+    # #608: A user who saved Ctrl+Q on edit.quote_lines (the prior default)
+    # has their saved entry rewritten to Ctrl+Shift+Q on load, so they
+    # don't keep the macOS-quit collision after upgrading.
+    merged = keymap_module.merge_keymaps({"edit.quote_lines": "Ctrl+Q"})
+    assert merged["edit.quote_lines"] == "Ctrl+Shift+Q"
+
+
+def test_legacy_unquote_lines_ctrl_shift_q_migrates_to_ctrl_shift_k() -> None:
+    # #608 mirror: A user who saved Ctrl+Shift+Q on edit.unquote_lines
+    # (the prior default) has it rewritten to Ctrl+Shift+K on load.
+    merged = keymap_module.merge_keymaps({"edit.unquote_lines": "Ctrl+Shift+Q"})
+    assert merged["edit.unquote_lines"] == "Ctrl+Shift+K"
+
+
+# ---------------------------------------------------------------------------
+# #609: macOS Option+Left/Right no longer hijacked by Back/Forward Location.
+# ---------------------------------------------------------------------------
+
+
+def test_default_keymap_uses_alt_left_on_windows() -> None:
+    """#609: the Windows default for back/forward location stays
+    Alt+Left / Alt+Right (the conventional Windows chord)."""
+    if sys.platform == "darwin":
+        # Skip on macOS so the assertion is unambiguous.
+        return
+    from quill.core.keymap import DEFAULT_KEYMAP
+
+    assert DEFAULT_KEYMAP["navigate.back_location"] == "Alt+Left"
+    assert DEFAULT_KEYMAP["navigate.forward_location"] == "Alt+Right"
+
+
+def test_default_keymap_uses_cmd_brackets_on_macos() -> None:
+    """#609: the macOS default for back/forward location is Cmd+[ /
+    Cmd+], the conventional macOS chord, so the Alt+Left / Alt+Right
+    slot is free for the system word-by-word movement."""
+    if sys.platform != "darwin":
+        return
+    from quill.core.keymap import DEFAULT_KEYMAP
+
+    assert DEFAULT_KEYMAP["navigate.back_location"] == "Cmd+["
+    assert DEFAULT_KEYMAP["navigate.forward_location"] == "Cmd+]"
+
+
+def test_legacy_macos_alt_left_back_location_rewritten_to_cmd_open_bracket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """#609: a pre-#609 macOS user who saved Alt+Left for back location
+    has it rewritten to Cmd+[ on first load."""
+    monkeypatch.setattr(sys, "platform", "darwin")
+    merged = keymap_module.merge_keymaps({"navigate.back_location": "Alt+Left"})
+    assert merged["navigate.back_location"] == "Cmd+["
+
+
+def test_legacy_macos_alt_right_forward_location_rewritten_to_cmd_close_bracket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """#609: a pre-#609 macOS user who saved Alt+Right for forward
+    location has it rewritten to Cmd+] on first load."""
+    monkeypatch.setattr(sys, "platform", "darwin")
+    merged = keymap_module.merge_keymaps({"navigate.forward_location": "Alt+Right"})
+    assert merged["navigate.forward_location"] == "Cmd+]"
+
+
+def test_default_keymap_has_no_ctrl_q_collision() -> None:
+    # #608 pin: no two commands in the default keymap may share Ctrl+Q,
+    # because that chord is now reserved for app.exit (which maps to
+    # Cmd+Q on macOS).
+    collisions = {
+        chord: commands
+        for chord, commands in _duplicates(DEFAULT_KEYMAP).items()
+        if chord == "CTRL+Q"
+    }
+    assert collisions == {}
 
 
 def test_profile_picker_shortcut_is_available() -> None:

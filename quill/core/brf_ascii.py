@@ -19,6 +19,7 @@ This module is wx-free; it lives in ``quill/core`` and is imported by
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 # UTF-8 byte order mark.
@@ -59,6 +60,45 @@ def find_non_brf_ascii_offsets(text: str) -> list[int]:
     char offsets throughout.
     """
     return [index for index, ch in enumerate(text) if not is_brf_ascii_byte(ord(ch))]
+
+
+def looks_like_braille(text: str) -> bool:
+    """Heuristically decide whether ``text`` is ASCII-braille (NABCC/BRF) content.
+
+    Used to offer "open in Braille Mode" when braille is pasted into a plain
+    document. Conservative on purpose — ``is_brf_ascii_byte`` alone matches all
+    printable ASCII (including ordinary prose), so this layers several braille-
+    specific signals so that neither normal text nor ALL-CAPS prose trips it:
+
+    1. Almost every character is NABCC (a stray non-ASCII rules it out).
+    2. Letters are essentially all uppercase (braille ASCII has no lowercase).
+    3. Lines are short (braille pages wrap at ~40 cells).
+    4. At least one distinctive braille indicator is present: a form feed
+       (page break), a number sign followed by a-j (braille digits), or capital/
+       grouping signs that hug the next cell (``,A`` rather than ``, ``) — which
+       ordinary punctuation (``, ``) never does.
+    """
+    sample = text[:4000]
+    if len(sample) < 60:
+        return False
+    non_brf = sum(1 for ch in sample if not is_brf_ascii_byte(ord(ch)))
+    if non_brf / len(sample) > 0.02:
+        return False
+    letters = [ch for ch in sample if ch.isalpha()]
+    if len(letters) < 20:
+        return False
+    if sum(1 for ch in letters if ch.islower()) / len(letters) > 0.05:
+        return False
+    lines = [ln for ln in sample.splitlines() if ln.strip()]
+    if not lines:
+        return False
+    if sum(len(ln) for ln in lines) / len(lines) > 42:
+        return False
+    has_formfeed = "\x0c" in sample
+    has_number_sign = bool(re.search(r"#[a-jA-J]", sample))
+    # Capital/grouping signs in braille immediately precede the next cell.
+    indicator_hits = len(re.findall(r"[,;][^\s]", sample))
+    return has_formfeed or has_number_sign or indicator_hits >= max(2, len(lines))
 
 
 @dataclass(frozen=True)

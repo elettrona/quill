@@ -6,6 +6,7 @@ load/save/merge logic and stay within its module-size budget.
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 
 KEYBOARD_PACK_DEFAULT = "Quill Default"
@@ -159,8 +160,11 @@ KEYBOARD_PACKS: dict[str, KeyboardPack] = {
             "navigate.go_to_line": "Ctrl+G",
             "navigate.go_to_page": "Ctrl+Shift+G",
             "navigate.outline_navigator": "Ctrl+Shift+O",
-            "navigate.back_location": "Alt+Left",
-            "navigate.forward_location": "Alt+Right",
+            # #609: macOS uses Cmd+[ / Cmd+] for back/forward location
+            # so the Alt+Left / Alt+Right slot stays free for the
+            # system-standard word-by-word movement.
+            "navigate.back_location": "Cmd+[" if sys.platform == "darwin" else "Alt+Left",
+            "navigate.forward_location": "Cmd+]" if sys.platform == "darwin" else "Alt+Right",
             "navigate.next_structure": "Alt+Down",
             "navigate.previous_structure": "Alt+Up",
             "edit.select_line": "Ctrl+L",

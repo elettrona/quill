@@ -25,17 +25,15 @@ def _build_frame() -> MainFrame:
     frame._set_status = lambda message: setattr(frame, "_status_message", message)
     # Record every side effect the apply path is expected to run.
     for name in (
-        "set_theme",
-        "_set_spellcheck_mode",
+        "_apply_theme",
+        "toggle_spellcheck_as_you_type",
         "_apply_ai_menu_enabled",
         "_refresh_ai_status",
-        "_apply_soft_wrap_setting",
+        "_apply_soft_wrap",
         "_rebuild_tab_host",
         "_build_menu",
-        "_apply_dirty_title_style_setting",
+        "set_dirty_title_style",
         "_refresh_title",
-        "_refresh_view_menu_checks",
-        "_clear_navigation_issue_state",
     ):
         setattr(
             frame,
@@ -55,7 +53,7 @@ def test_apply_refresh_saves_and_runs_side_effects(monkeypatch) -> None:
     assert saved == [frame.settings]
     assert frame._status_message == "Updated settings"
     # The headline refreshers must all fire so the UI stays consistent.
-    for expected in ("set_theme", "_build_menu", "_rebuild_tab_host", "_refresh_title"):
+    for expected in ("_apply_theme", "_build_menu", "_rebuild_tab_host", "_refresh_title"):
         assert expected in frame._refresh_calls
 
 

@@ -94,3 +94,39 @@ def test_detect_line_endings_empty_string_is_neutral() -> None:
 
 def test_brf_form_feed_constant_matches_literal() -> None:
     assert BRF_FORM_FEED == "\x0c"
+
+
+class TestLooksLikeBraille:
+    def test_detects_ascii_braille(self) -> None:
+        from quill.core.brf_ascii import looks_like_braille
+
+        brf = (
+            ",! QUICK ,BROWN ,FOX JUMPS OV} ! LAZY ,DOG4\n"
+            "#A4 ,! FIRST C8APT}3 ,A ,TALE\n"
+            ",?IS IS A L9E OF GRADE #B ,BRAILLE4\n"
+            ",WE CONT9UE ) MORE ,BRAILLE TEXT 6 F NEXT L9E4\n"
+        )
+        assert looks_like_braille(brf) is True
+
+    def test_rejects_ordinary_prose(self) -> None:
+        from quill.core.brf_ascii import looks_like_braille
+
+        prose = (
+            "The quick brown fox jumps over the lazy dog. This is ordinary text "
+            "with normal sentences and lowercase letters throughout the paragraph."
+        )
+        assert looks_like_braille(prose) is False
+
+    def test_rejects_all_caps_text_without_braille_indicators(self) -> None:
+        from quill.core.brf_ascii import looks_like_braille
+
+        caps = (
+            "ROSES ARE RED\nVIOLETS ARE BLUE\nSUGAR IS SWEET\nAND SO ARE YOU\n"
+            "THIS IS AN ALL CAPS POEM WITH NO BRAILLE INDICATORS AT ALL HERE\n"
+        )
+        assert looks_like_braille(caps) is False
+
+    def test_rejects_short_input(self) -> None:
+        from quill.core.brf_ascii import looks_like_braille
+
+        assert looks_like_braille(",A ,B #C") is False

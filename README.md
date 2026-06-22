@@ -142,6 +142,8 @@ Runs on **Windows and macOS** (Python 3.12).
 2. Install dependencies:
    - `pip install -e ".[ui,dev]"`
    - On-device AI for Ask Quill: add `ai` on Windows/Linux (`pip install -e ".[ui,ai]"`, pulls llama.cpp). macOS uses Apple Foundation Models — no extra needed.
+   - Tip: `llama-cpp-python` has prebuilt CPU wheels but no Windows wheel on PyPI itself; if `pip` starts a slow source build, force the wheel with `pip install --only-binary=llama-cpp-python ...` (the project's extra index already points at the CPU wheels).
+   - Offline speech (**Tools > Speech > Whisperer**): no Python package is required — the whisper.cpp engine ships with the Windows installer (the *offline speech engine* component) or you can drop it under `tools/speech/whispercpp`. To transcribe non-WAV audio/video (mp3, m4a, mp4, mov, ...), install **ffmpeg** and put it on your PATH (for example `winget install Gyan.FFmpeg`); QUILL invokes a system/user-installed ffmpeg and does **not** bundle it (ffmpeg is GPL/LGPL). For the optional GPU-accelerated engine, add `pip install faster-whisper`.
 3. Launch:
    - `python -m quill`  (on Windows, `pythonw -m quill` for no console window)
 

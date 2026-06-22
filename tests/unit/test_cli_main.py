@@ -166,3 +166,75 @@ def test_launch_configuration_diff_missing_file_ignored(tmp_path: Path) -> None:
     parsed = entry._parse_cli_arguments(["--diff", str(left), str(missing)])
     requests, *_ = entry._launch_configuration(parsed)
     assert len(requests) == 0
+
+
+# ---------------------------------------------------------------------------
+# _propagate_portable_environment: mirror portable-anchor evidence into env
+# ---------------------------------------------------------------------------
+
+
+def test_propagate_portable_environment_sets_env_for_verified_bundle(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A bundle with quill.exe + data/ sets QUILL_APP_ROOT and QUILL_PORTABLE.
+
+    The new portable detection contract is filesystem evidence (quill.exe +
+    data/ at the same anchor), not an env-var say-so. The runtime still
+    mirrors the verified anchor into QUILL_APP_ROOT so the braille-pack,
+    bundled-tool, and AI-key consumers keep working.
+    """
+    from quill.core import storage_mode
+
+    monkeypatch.delenv("QUILL_APP_ROOT", raising=False)
+    monkeypatch.delenv("QUILL_PORTABLE", raising=False)
+    root = tmp_path / "QuillPortable"
+    root.mkdir()
+    (root / "quill.exe").write_bytes(b"MZ\x00\x00")
+    (root / "data").mkdir()
+    # No QUILL_APP_ROOT: the helper derives the anchor from sys.executable.
+    monkeypatch.setattr(storage_mode.sys, "executable", str(root / "quill.exe"))
+
+    entry._propagate_portable_environment()
+
+    assert entry.os.environ["QUILL_APP_ROOT"] == str(root)
+    assert entry.os.environ["QUILL_PORTABLE"] == "1"
+
+
+def test_propagate_portable_environment_does_nothing_without_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No portable anchor means no env-var injection.
+
+    A non-portable launch (system installer) does not have a data/ folder
+    sibling; the helper must not invent a portable install.
+    """
+    monkeypatch.delenv("QUILL_APP_ROOT", raising=False)
+    monkeypatch.delenv("QUILL_PORTABLE", raising=False)
+    # No QUILL_APP_ROOT set, and the walk-up from sys.executable in this
+    # test environment must not find a verified portable anchor either.
+    entry._propagate_portable_environment()
+    assert "QUILL_APP_ROOT" not in entry.os.environ
+    assert "QUILL_PORTABLE" not in entry.os.environ
+
+
+def test_propagate_portable_environment_respects_existing_quill_app_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """If a caller already set QUILL_APP_ROOT, do not override it.
+
+    The launcher or a test harness may have set the env var deliberately;
+    a portable bundle is not the only legitimate source of the variable.
+    """
+    # Clean up any leakage from prior tests' direct os.environ writes.
+    monkeypatch.delenv("QUILL_APP_ROOT", raising=False)
+    monkeypatch.delenv("QUILL_PORTABLE", raising=False)
+    sentinel = tmp_path / "explicit-root"
+    sentinel.mkdir()
+    monkeypatch.setenv("QUILL_APP_ROOT", str(sentinel))
+
+    entry._propagate_portable_environment()
+
+    assert entry.os.environ["QUILL_APP_ROOT"] == str(sentinel)
+    # QUILL_PORTABLE is left unset: the caller did not opt into portable
+    # mode by setting it, so we must not assume.
+    assert entry.os.environ.get("QUILL_PORTABLE") is None

@@ -20,6 +20,8 @@ def _menu_source() -> str:
         + (ui / "main_frame_braille.py").read_text(encoding="utf-8")
         + "\n"
         + (ui / "main_frame_braille_phase2.py").read_text(encoding="utf-8")
+        + "\n"
+        + (ui / "main_frame_braille_phase3.py").read_text(encoding="utf-8")
     )
 
 
@@ -37,6 +39,13 @@ def test_menu_item_ids_have_menu_bindings() -> None:
             source,
             flags=re.S,
         )
+    )
+    # Some mixins (e.g. main_frame_braille_phase3) bind a batch of items in a
+    # loop over (id, handler) pairs and call Bind(..., id=loop_var), which the
+    # literal-id regex above cannot see. Treat an id paired with a handler in a
+    # (self._id_X, self.handler) tuple as bound — that is the loop-bind idiom.
+    bound_ids |= set(
+        re.findall(r"\(\s*(self\._id_[A-Za-z0-9_]+)\s*,\s*self\.[A-Za-z0-9_]+", source)
     )
 
     # These are handled by dynamic menu callbacks rather than direct id-specific
@@ -134,3 +143,35 @@ def test_insert_link_is_not_duplicated_in_edit_menu() -> None:
         source,
     )
     assert insert_link_appends == ["insert_menu"], insert_link_appends
+
+
+# ---------------------------------------------------------------------------
+# #613: macOS Help menu is registered as the system Help menu.
+# ---------------------------------------------------------------------------
+
+
+def test_macos_help_menu_is_marked_as_system_help_menu() -> None:
+    """#613: on macOS, the Help menu must be marked as the system Help
+    menu (via menu_bar.SetHelpMenu or MacSetHelpMenuTitle) so the OS
+    moves it to the rightmost position, where macOS users expect
+    it. Without this hint, wx leaves the menu in the slot the bar
+    gave it and VoiceOver users see a top-level menu order that
+    does not match the macOS AppKit convention."""
+    source = _menu_source()
+    # The platform gate is required so the call only runs on macOS
+    # (a Windows build that touches the wx method with the wrong
+    # signature should be a no-op, not a startup crash).
+    assert 'platform.system() == "Darwin"' in source, (
+        "#613: SetHelpMenu must be gated on the macOS platform check"
+    )
+    # Either the modern SetHelpMenu API or the classic
+    # MacSetHelpMenuTitle API must be called.
+    assert "SetHelpMenu(" in source or "MacSetHelpMenuTitle(" in source, (
+        "#613: macOS Help-menu hook must call SetHelpMenu or MacSetHelpMenuTitle"
+    )
+    # The call must be wrapped so a wx build without the API degrades
+    # gracefully (do not raise out of menu construction).
+    assert "except Exception" in source, (
+        "#613: SetHelpMenu must be wrapped in try/except so an "
+        "incompatible wx build degrades to the bar-order fallback"
+    )

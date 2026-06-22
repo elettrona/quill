@@ -330,6 +330,23 @@ class AIProgressDialog:
     def update_message(self, message: str) -> None:
         self._wx.CallAfter(self._label.SetLabel, message)
 
+    def set_progress(self, percent: int, message: str | None = None) -> None:
+        """Switch the gauge to a determinate value (0-100) and optionally relabel.
+
+        Safe to call from a worker thread; the widget update is marshalled to the
+        UI thread. Negative ``percent`` leaves the gauge pulsing (indeterminate).
+        """
+
+        def _apply() -> None:
+            if message is not None:
+                self._label.SetLabel(message)
+            if percent < 0:
+                self._gauge.Pulse()
+            else:
+                self._gauge.SetValue(max(0, min(100, int(percent))))
+
+        self._wx.CallAfter(_apply)
+
     def close(self) -> None:
         self._wx.CallAfter(self.dialog.Destroy)
 

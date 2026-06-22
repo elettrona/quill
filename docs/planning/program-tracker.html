@@ -1,0 +1,2479 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>program-tracker</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<h1 id="quill-program-tracker--path-to-zero-open-issues">QUILL Program
+Tracker — Path to Zero Open Issues</h1>
+<blockquote>
+<p><strong>Living document.</strong> This is the single source of truth
+for clearing the issue tracker by <strong>shipping</strong> (not
+archiving) every open issue except where a strong reason is recorded.
+Re-run <code>_gen_tracker.py</code> to refresh the snapshot; hand-edit
+the <strong>Status</strong> column as work lands and move rows to
+Shipped.</p>
+</blockquote>
+<p><strong>Operating rules:</strong> everything ships (2.0 deferral
+framing is dropped); track work as individual issues; execute in
+<strong>buckets</strong> via <strong>small, low-risk commits</strong>;
+update release notes + user guide + PRD + CHANGELOG with each landed
+bucket; <strong>simplicity for the user is king</strong>.</p>
+<blockquote>
+<p><strong>2026-06-21 consolidation.</strong> The plan of record is now
+<a href="roadmap.md"><code>roadmap.md</code></a> (organized by
+workstream, including the BITS Whisperer / GLOW / ChapterForge
+integrations). The tracker was reconciled to it: open issues dropped
+from <strong>232 to 80</strong> by closing the 100 verbosity brainstorm
+addenda (→ verbosity polish backlog), the AI placeholders (→ Agentic AI
+PRD), the Tier-6 doc stubs (→ Docs &amp; Tutorials track), content-free
+FEAT stubs, the done localization item, Linux (out of scope), and
+meta/archive placeholders. The GLOW integration (#528–#534, #593–#598)
+and BITS Whisperer (#515, #566–#577, #617, #663) stay open as live
+workstreams. The per-bucket / priority / rating tables further below are
+a <strong>stale historical snapshot</strong>; <code>roadmap.md</code>
+supersedes them.</p>
+</blockquote>
+<p><em>Live status is the <strong>By status</strong> table
+below.</em></p>
+<h2 id="status-legend">Status legend</h2>
+<ul>
+<li>✅ Shipped — merged on this branch, acceptance met.</li>
+<li>🚧 In progress — actively being implemented.</li>
+<li>⬜ Planned — not started.</li>
+<li>❌ Out of scope — will not ship (reason recorded).</li>
+</ul>
+<p><strong>Platform scope:</strong> Windows (primary) and macOS
+(supported). <strong>Linux/Unix is out of scope and not a shipping
+target</strong> — the Linux roadmap issues (#520, #565, #589) are closed
+won't-do.</p>
+<h2 id="dashboard">Dashboard</h2>
+<h3 id="by-status">By status</h3>
+<p><strong>Open issues on GitHub: 42</strong> (down from 232 before the
+2026-06-21 consolidation). <strong>Shipped this program:
+~60.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th style="text-align: right;">Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>✅ Shipped</td>
+<td style="text-align: right;"><strong>The verbosity rebuild (#271 +
+#361–#404) is complete and the whole range is closed</strong> — 1.1
+foundation, 1.2 engine+modes, 1.3 packs/library/preview, 1.4 UI, 1.5
+live wiring, 1.6 consolidated into the polish backlog; remaining
+spec-section polish is tracked in verbosity-system.md, not as open
+issues. <strong>Offline voice commands #663 (Speech S5)</strong>
+shipped. Plus #648/#649/#643/#646, braille #238–#242/#246, #251 DAISY,
+#617 speech core.</td>
+</tr>
+<tr>
+<td>🚧 In progress</td>
+<td style="text-align: right;">— (verbosity workstream closed; remaining
+work is the other workstreams below)</td>
+</tr>
+<tr>
+<td>🧹 Resolved (bookkeeping)</td>
+<td style="text-align: right;">2 (#600, #601 — braille design captured
+in docs)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="open-by-workstream-per-roadmapmd">Open by workstream (per <a
+href="roadmap.md"><code>roadmap.md</code></a>)</h3>
+<table>
+<thead>
+<tr>
+<th>Workstream</th>
+<th>Open issues</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Verbosity (Phase 2)</td>
+<td><strong>Complete</strong> — #271 + #361–#404 closed; remaining
+polish lives in the verbosity-system.md backlog.</td>
+</tr>
+<tr>
+<td>Speech &amp; Dictation — BITS Whisperer</td>
+<td>#617 (epic), and the BW consolidation backlog #515, #566–#577 (S5
+voice commands #663 shipped)</td>
+</tr>
+<tr>
+<td>GLOW integration</td>
+<td>family #528–#534; Accessibility Agents #593–#598</td>
+</tr>
+<tr>
+<td>Platform &amp; Distribution</td>
+<td>#506, #516, #517, #518, #519, #521, #525, #599
+(packaging/freeze)</td>
+</tr>
+<tr>
+<td>Navigation &amp; Editor</td>
+<td>#513, #514, #578</td>
+</tr>
+<tr>
+<td>Publishing &amp; Audiobook</td>
+<td>#140 (DAISY shipped; ChapterForge integration planned)</td>
+</tr>
+<tr>
+<td>Docs / QA in-flight</td>
+<td>#526 (SR sign-off), #527 (spell-check preload)</td>
+</tr>
+<tr>
+<td>Long-horizon</td>
+<td>#590 (ecosystem), #592 (collaboration)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Closed via consolidation (2026-06-21):</strong> 152 issues —
+the 100 verbosity addenda, 11 AI placeholders, 30 Tier-6 doc stubs, 7
+content-free FEAT stubs, localization (done), 3 Linux (out of scope), 3
+meta/archive. Each carries a closing comment pointing to its home in the
+plan.</p>
+</blockquote>
+<blockquote>
+<p><strong>Wave 2 (Verbosity) — foundation + engine shipped (sub-PRs 1.1
+and 1.2).</strong> 1.1 (#361) landed the pure-domain foundation; 1.2
+(#362) added the routing <strong>engine</strong>
+(<code>engine.py</code>) plus Quiet/Meeting modes, the undo stack,
+mastery, announcement history, the explanation trace, Safe Mode + scoped
+resets, feedback tuning, task-profile suggestions, profile
+import/export, and atomic <code>verbosity_custom.json</code> storage —
+all wx-free, 180 verbosity tests, engine coverage 96%. 1.3 (#363) added
+QVP packs (qvp.py + qvp.json, hand-validated, no code-exec), the
+template library (library.py), and the scenario preview renderer
+(preview.py) with golden snapshots under tests/golden/verbosity/ — 220
+verbosity tests. The engine is reachable from the assistant-panel and
+AI-Hub announce paths via a no-op passthrough. Fully closed: §6 #368,
+§12 #374, §15 #377, §30 #392, §20 #382. Everything under "In progress"
+has its core in and its chord/badge/dialog half pending. <strong>Next:
+sub-PR 1.4 — the wxPython UI (prefs panel, token editor, library,
+history, preview lab, about) (#364); then 1.5 call-site migration + the
+16 VerbositySettings fields (#365), 1.6 (#366).</strong></p>
+</blockquote>
+<blockquote>
+<p><strong>#246 completed via back-translation (source-to-BRF).</strong>
+The deliverable is braille→text <strong>back-translation</strong>, now
+selection-aware (Braille &gt; Translation &gt; Back-Translate (draft)
+back-translates the selected passage, else the whole document) so a
+proofreader can recover the source text of one passage. The "compare
+back-translation with source" feature was <strong>descoped</strong> per
+maintainer decision, and per-page source linking
+(<code>listUnlinkedSourcePages</code>) remains out of scope (it needs a
+cross-format Source-Position model). #246 is closed as completed on the
+back-translation deliverable.</p>
+</blockquote>
+<h3 id="by-bucket-open">By bucket (open)</h3>
+<table>
+<thead>
+<tr>
+<th>Bucket</th>
+<th style="text-align: right;">Open</th>
+<th>Risk</th>
+<th>Impact</th>
+<th>Value</th>
+<th>Effort</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Verbosity System</td>
+<td style="text-align: right;">146</td>
+<td>Med</td>
+<td>High</td>
+<td>High</td>
+<td>High</td>
+</tr>
+<tr>
+<td>Docs &amp; Content</td>
+<td style="text-align: right;">37</td>
+<td>Low</td>
+<td>Med</td>
+<td>Med</td>
+<td>Med</td>
+</tr>
+<tr>
+<td>AI &amp; Agentic</td>
+<td style="text-align: right;">17</td>
+<td>Med</td>
+<td>High</td>
+<td>High</td>
+<td>High</td>
+</tr>
+<tr>
+<td>Speech &amp; Dictation</td>
+<td style="text-align: right;">13</td>
+<td>Med</td>
+<td>High</td>
+<td>High</td>
+<td>High</td>
+</tr>
+<tr>
+<td>Navigation &amp; Editor</td>
+<td style="text-align: right;">11</td>
+<td>Low</td>
+<td>Med</td>
+<td>Med</td>
+<td>Med</td>
+</tr>
+<tr>
+<td>Platform &amp; Distribution</td>
+<td style="text-align: right;">10</td>
+<td>High</td>
+<td>High</td>
+<td>High</td>
+<td>High</td>
+</tr>
+<tr>
+<td>Braille Mode</td>
+<td style="text-align: right;">8</td>
+<td>Low</td>
+<td>Med</td>
+<td>High</td>
+<td>Med</td>
+</tr>
+<tr>
+<td>GLOW Family</td>
+<td style="text-align: right;">8</td>
+<td>Med</td>
+<td>High</td>
+<td>High</td>
+<td>Med</td>
+</tr>
+<tr>
+<td>Publishing &amp; Export</td>
+<td style="text-align: right;">2</td>
+<td>Med</td>
+<td>Med</td>
+<td>Med</td>
+<td>Med</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td style="text-align: right;"><strong>252</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="by-priority-label-open">By priority label (open)</h3>
+<table>
+<thead>
+<tr>
+<th>Priority</th>
+<th style="text-align: right;">Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0</td>
+<td style="text-align: right;">146</td>
+</tr>
+<tr>
+<td>P1</td>
+<td style="text-align: right;">19</td>
+</tr>
+<tr>
+<td>P2</td>
+<td style="text-align: right;">74</td>
+</tr>
+<tr>
+<td>P3</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr>
+<td>—</td>
+<td style="text-align: right;">11</td>
+</tr>
+</tbody>
+</table>
+<h3 id="by-risk--impact--value--effort-open-bucket-level">By risk /
+impact / value / effort (open, bucket-level)</h3>
+<table>
+<thead>
+<tr>
+<th>Rating</th>
+<th style="text-align: right;">Risk</th>
+<th style="text-align: right;">Impact</th>
+<th style="text-align: right;">Value</th>
+<th style="text-align: right;">Effort</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>High</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">194</td>
+<td style="text-align: right;">202</td>
+<td style="text-align: right;">186</td>
+</tr>
+<tr>
+<td>Med</td>
+<td style="text-align: right;">186</td>
+<td style="text-align: right;">58</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">66</td>
+</tr>
+<tr>
+<td>Low</td>
+<td style="text-align: right;">56</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Risk/impact/value/effort are <strong>bucket-level baselines</strong>
+for portfolio totals; per-issue overrides are noted inline as work is
+scoped. Methodology: Risk = chance a change destabilizes shipping
+behavior; Impact = breadth of users affected; Value = product/mission
+benefit; Effort = engineering size.</p>
+</blockquote>
+<h2 id="execution-waves-lowest-hanging-first">Execution waves
+(lowest-hanging first)</h2>
+<ol type="1">
+<li><strong>Wave 0 — done:</strong> text round-trip + VoiceOver names
+(#648/#649/#643/#646). ✅</li>
+<li><strong>Wave 1 — Speech S0 + complete Braille + DAISY export. ✅
+Complete.</strong> Speech S0 honesty fix ✅; Braille
+#238/#239/#240/#241/#242 ✅ and back-translation #246 ✅ — braille
+proofing, validation, and back-translation all ship; <strong>DAISY 2.02
+text-only export #251 ✅</strong> (File &gt; Export &gt; DAISY Talking
+Book writes an <code>ncc.html</code> + <code>content.html</code> +
+<code>book.smil</code> folder readable on Victor Stream / Plextalk / APH
+players and in Book Wizard Producer).</li>
+<li><strong>Wave 2 — Verbosity &amp; Polish</strong> (combined): the
+core (#271, #361–#366) and the §5–§46 spec (#367–#404)
+<strong>plus</strong> the addenda polish set (#405–#504) shipped
+together as one verbosity workstream — keep the high-value knobs, fold
+or fast-track the rest, close each as it lands. (Formerly split across
+Waves 2 and 8; merged because it is all one workstream with no
+cross-wave risk.)</li>
+<li><strong>Wave 3 — Speech foundation S1–S2</strong> (#617): provider
+registry, model manager, offline WAV transcription.</li>
+<li><strong>Wave 4 — Captions &amp; dictation</strong> (#617 Speech
+S3).</li>
+<li><strong>Wave 5 — AI &amp; Agentic</strong> (#507–#512, #523/#524)
+and the agentic-AI PRD.</li>
+<li><strong>Wave 6 — Navigation/editor + GLOW + Publishing</strong>
+(#513/#514/#521, #528–#534, #140 publishing). (DAISY #251 moved to Wave
+1.)</li>
+<li><strong>Wave 7 — Platform &amp; Distribution</strong> (#506, #516,
+#517, #518 macOS, #519) and Docs/Content (#505, #535–#564).
+<strong>Linux/Unix excluded</strong> (#520/#565/#589 are out of
+scope).</li>
+</ol>
+<h2 id="shipped">Shipped</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">#</th>
+<th>Title</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">648</td>
+<td>Text round-trip: UTF-8 BOM no longer shows as a stray character</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">649</td>
+<td>Text round-trip: CRLF + blank-line runs preserved on save</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">643</td>
+<td>AI Hub notebook accessible name (VoiceOver)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">646</td>
+<td>AI Hub tab group accessible name (VoiceOver)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">617</td>
+<td>Speech <strong>S0–S4</strong> done and epic <strong>closed as
+delivered</strong>: dictation setting honest; offline STT foundation;
+whisper.cpp provider + offline transcription + model manager (HF-Hub);
+<strong>transcript formats (plain/Markdown/HTML)</strong> +
+<strong>captions (SRT/VTT)</strong>; <strong>speaker
+attribution</strong> (tinydiarize); <strong>offline
+dictate-at-cursor</strong> (QUILL Key+Shift+D, start/stop earcons,
+status bar); <strong>mic selection</strong>; whisper.cpp as a
+<strong>distributable installer component</strong> +
+<strong><code>sounddevice</code> bundled</strong>; <strong>optional
+Faster Whisper engine + Speech Engine chooser (S4)</strong>. The one
+remaining capability, <strong>S5 offline voice commands</strong>, is
+split out to <strong>#663</strong>.</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">238</td>
+<td>Braille BR-015 — <code>brf_sidecar.py</code> foundation (atomic
+per-file sidecar: position, proofing, anchors, notes)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">239</td>
+<td>Braille BR-016 — restore last position on open + spoken announcement
+(<code>brf_progress.py</code>)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">240</td>
+<td>Braille BR-017 — Proofing submenu (8 commands, sidecar-backed;
+<code>brf_proofing.py</code> +
+<code>main_frame_braille_phase3.py</code>)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">241</td>
+<td>Braille BR-018 — <code>brf_validator.py</code> layout validator (10
+warning categories, read-only)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">242</td>
+<td>Braille BR-019 — Validation submenu (4 commands) + Warnings List
+dialog</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">246</td>
+<td>Braille BR-023 — selection-aware back-translation (braille→text
+source recovery); compare + per-page linking descoped</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">251</td>
+<td>DAISY 2.02 text-only talking-book export (File &gt; Export &gt;
+DAISY Talking Book; wx-free <code>quill/io/daisy.py</code> writes
+ncc.html + content.html + book.smil)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">617</td>
+<td>Offline speech-to-text S0–S4 (foundation, whisper.cpp + Faster
+Whisper, transcription, captions, dictation, model manager); closed as
+delivered, S5 voice commands split to #663</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">361</td>
+<td>Verbosity Sub-PR 1.1 — core foundation
+(<code>quill/core/verbosity/</code>: channels, tokens + 12 filters,
+strict parser/validator, profiles + CustomProfile, 34-verb catalog +
+registry, data-order, schemas); 102 tests, parser cov 99%</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">368</td>
+<td>Verbosity §6 — Profile model (Beginner/Normal/Expert/Quiet +
+CustomProfile round-trip)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">374</td>
+<td>Verbosity §12 — Token system (TokenSpec + the 12 engine filters; no
+custom filters)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">377</td>
+<td>Verbosity §15 — Verb registry (VerbSpec + Severity + 34-verb catalog
++ VerbRegistry)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">362</td>
+<td>Verbosity Sub-PR 1.2 — routing engine + Quiet/Meeting/undo, mastery,
+history, explain, safe mode, feedback, task profiles, import/export,
+storage; engine reachable via no-op passthrough; 180 tests, engine cov
+96%</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">392</td>
+<td>Verbosity §30 — profile import/export
+(<code>.quill-verbosity-profile.json</code>); data-only, schema-checked,
+no code-execution path</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">363</td>
+<td>Verbosity Sub-PR 1.3 — QVP pack loader/validator/install flow
+(qvp.py + qvp.json), template library (library.py), scenario preview
+(preview.py); golden tests; 220 verbosity tests</td>
+<td>✅</td>
+</tr>
+<tr>
+<td style="text-align: right;">382</td>
+<td>Verbosity §20 — <code>.qvp.json</code> format + hand-validating
+loader (no jsonschema runtime dep; no code-execution path)</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
+<h2 id="out-of-scope">Out of scope</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">#</th>
+<th>Title</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">520</td>
+<td>O17 — Linux platform layer</td>
+<td>Linux/Unix is not a shipping target (macOS yes, Linux no)</td>
+</tr>
+<tr>
+<td style="text-align: right;">565</td>
+<td>Tier-6 LINUX-2</td>
+<td>Linux/Unix out of scope</td>
+</tr>
+<tr>
+<td style="text-align: right;">589</td>
+<td>LINUX-1 spike</td>
+<td>Linux/Unix out of scope</td>
+</tr>
+</tbody>
+</table>
+<h2 id="open-work-by-bucket">Open work by bucket</h2>
+<h3
+id="speech--dictation-13-issues--risk-med--impact-high--value-high--effort-high">Speech
+&amp; Dictation (13 issues · Risk Med · Impact High · Value High ·
+Effort High)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">#</th>
+<th style="text-align: center;">Priority</th>
+<th style="text-align: center;">Status</th>
+<th>Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">515</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] O12 — BITS Whisperer transcription runtime
+(deferred)</td>
+</tr>
+<tr>
+<td style="text-align: right;">567</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: BW-1 — BITS Whisperer BW-1 — deferred
+to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">568</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: BW-2 — BITS Whisperer BW-2 — deferred
+to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">569</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: BW-3 — BITS Whisperer BW-3 — deferred
+to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">570</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: BW-4 — BITS Whisperer BW-4 — deferred
+to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">571</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: BW-5 — BITS Whisperer BW-5 — deferred
+to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">572</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: BW-6 — BITS Whisperer BW-6 — deferred
+to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">573</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: BW-7 — BITS Whisperer BW-7 — deferred
+to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">574</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: BW-8 — BITS Whisperer BW-8 — deferred
+to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">575</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: BW-9 — BITS Whisperer BW-9 — deferred
+to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">576</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: BW-10 — BITS Whisperer BW-10 —
+deferred to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">577</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: WATCH-9 — BITS Whisperer WATCH-9 —
+deferred to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">617</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">✅</td>
+<td>Offline Speech-to-Text Provider Architecture (S0–S4 shipped; closed
+as delivered)</td>
+</tr>
+<tr>
+<td style="text-align: right;">663</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">⬜</td>
+<td>Offline voice commands (Speech S5, split from #617)</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="verbosity-system-146-issues--risk-med--impact-high--value-high--effort-high">Verbosity
+System (146 issues · Risk Med · Impact High · Value High · Effort
+High)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">#</th>
+<th style="text-align: center;">Priority</th>
+<th style="text-align: center;">Status</th>
+<th>Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">271</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>[P0] Verbosity rebuild: implement per-verb token registry from
+docs/planning/verbosity.md</td>
+</tr>
+<tr>
+<td style="text-align: right;">361</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">✅</td>
+<td>[Verbosity] Sub-PR 1.1 — Core foundation: channels, profiles,
+tokens, parser (shipped: <code>quill/core/verbosity/</code>, 102
+tests)</td>
+</tr>
+<tr>
+<td style="text-align: right;">362</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">✅</td>
+<td>[Verbosity] Sub-PR 1.2 — Engine, quiet, meeting, mastery, history,
+explain, safe mode (shipped: engine.py + 10 companion modules, 180
+tests, engine cov 96%)</td>
+</tr>
+<tr>
+<td style="text-align: right;">363</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">✅</td>
+<td>[Verbosity] Sub-PR 1.3 — QVP, library, preview, schema validation
+(shipped: qvp.py + qvp.json + library.py + preview.py, golden tests, 220
+verbosity tests)</td>
+</tr>
+<tr>
+<td style="text-align: right;">364</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>[Verbosity] Sub-PR 1.4 — UI: preferences, token editor, library,
+history, preview lab, about dialog</td>
+</tr>
+<tr>
+<td style="text-align: right;">365</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>[Verbosity] Sub-PR 1.5 — Engine call-site migration, keymap,
+main_frame wiring</td>
+</tr>
+<tr>
+<td style="text-align: right;">366</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>[Verbosity] Sub-PR 1.6 — Section 53 addendum (100-item UX
+polish)</td>
+</tr>
+<tr>
+<td style="text-align: right;">367</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §5 Locked design decisions (12 decisions) — core-testable
+decisions done (channels floor, profile ladder, default Normal);
+QVP/token-editor/library decisions pending UI</td>
+</tr>
+<tr>
+<td style="text-align: right;">368</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">✅</td>
+<td>Verbosity: §6 Profile model (Beginner / Normal / Expert / Quiet +
+CustomProfile)</td>
+</tr>
+<tr>
+<td style="text-align: right;">369</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §7 Channel system (Channel enum + routing) — enum +
+routing + floor shipped; per-channel prefs UI pending</td>
+</tr>
+<tr>
+<td style="text-align: right;">370</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity: §8 Sound design (master + per-event gating)</td>
+</tr>
+<tr>
+<td style="text-align: right;">371</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §9 Quiet Mode (controller + chords) — controller +
+phrasing shipped; chord/badge UI pending</td>
+</tr>
+<tr>
+<td style="text-align: right;">372</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §10 Meeting Mode (controller + chords) — controller
+shipped; chord/badge UI pending</td>
+</tr>
+<tr>
+<td style="text-align: right;">373</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §11 Quiet Undo (Ctrl+Shift+Z) — bounded undo stack
+shipped; chord binding pending</td>
+</tr>
+<tr>
+<td style="text-align: right;">374</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">✅</td>
+<td>Verbosity: §12 Token system (TokenSpec + filters)</td>
+</tr>
+<tr>
+<td style="text-align: right;">375</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §13 Template validation (strict allowlist + type
+checking) — parser-side validation + spoken summary shipped;
+token-editor UI (Save-disabled, Ctrl+T/Ctrl+Shift+P) pending</td>
+</tr>
+<tr>
+<td style="text-align: right;">376</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §14 Data ordering model + editor — frozen DataOrder model
+shipped; editor UI + persistence pending</td>
+</tr>
+<tr>
+<td style="text-align: right;">377</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">✅</td>
+<td>Verbosity: §15 Verb registry (VerbSpec + initial verb catalog)</td>
+</tr>
+<tr>
+<td style="text-align: right;">378</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity: §16 Per-verb preferences UI</td>
+</tr>
+<tr>
+<td style="text-align: right;">379</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity: §17 Verbosity Preferences UI (top-level panel)</td>
+</tr>
+<tr>
+<td style="text-align: right;">380</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity: §18 Token editor UI (Simple + Advanced)</td>
+</tr>
+<tr>
+<td style="text-align: right;">381</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §19 Templates library (CRUD + cross-verb behavior) —
+TemplateLibrary (save/rename/delete + cross-verb apply) shipped;
+list/confirm/persist UI pending</td>
+</tr>
+<tr>
+<td style="text-align: right;">382</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">✅</td>
+<td>Verbosity: §20 QVP file format (<code>.qvp.json</code> schema) —
+qvp.json + hand-validating loader, no code-exec path</td>
+</tr>
+<tr>
+<td style="text-align: right;">383</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §21 QVP install flow (file picker + validate + announce)
+— install_pack() runs steps 2-12 with QVPInstallResult + spoken sequence
+(golden-tested); file picker + modal install dialog pending (#364)</td>
+</tr>
+<tr>
+<td style="text-align: right;">384</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity: §22 Profile preview on switch (replay last 3)</td>
+</tr>
+<tr>
+<td style="text-align: right;">385</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §23 Preview Lab (scenario-based renderer) — preview.py
+renderer + 14 scenarios + golden tests shipped; the side-by-side Lab
+dialog pending (#364)</td>
+</tr>
+<tr>
+<td style="text-align: right;">386</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §24 Announcement history (record + replay + filter) —
+history.py (record/filter/redact) shipped; chords + viewer UI
+pending</td>
+</tr>
+<tr>
+<td style="text-align: right;">387</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §25 Why did QUILL say that? (explanation trace) —
+ExplanationTrace + to_text() shipped; Explain command UI pending</td>
+</tr>
+<tr>
+<td style="text-align: right;">388</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §26 Too Much / Too Little / Just Right (feedback tuning)
+— FeedbackStore + suggestion shipped; chords pending</td>
+</tr>
+<tr>
+<td style="text-align: right;">389</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §27 Mastery-based step down (per-verb threshold +
+10-second timeout) — MasteryTracker shipped; offer dialog/timer UI
+pending</td>
+</tr>
+<tr>
+<td style="text-align: right;">390</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity: §28 Channel-specific templates (speech / braille / visual
+/ sound_event)</td>
+</tr>
+<tr>
+<td style="text-align: right;">391</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §29 Safe Mode and Reset (per-verb / per-chord / profile /
+QVP) — VerbositySafeMode + env detection + scoped resets shipped; engine
+integration + UI pending</td>
+</tr>
+<tr>
+<td style="text-align: right;">392</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">✅</td>
+<td>Verbosity: §30 Import / Export
+(<code>.quill-verbosity-profile.json</code>) — data-only,
+schema-checked, no-exec, round-trip tested</td>
+</tr>
+<tr>
+<td style="text-align: right;">393</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §31 Task-aware profiles (Markdown / Code / Braille /
+Review / etc.) — TaskProfileSuggester (default off) shipped; file-open
+suggestion UI pending</td>
+</tr>
+<tr>
+<td style="text-align: right;">394</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity: §32 First-run Verbosity Tour (setup wizard page)</td>
+</tr>
+<tr>
+<td style="text-align: right;">395</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity: §33 Keyboard Manager integration (Verbosity tab)</td>
+</tr>
+<tr>
+<td style="text-align: right;">396</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity: §34 Hotkey plan (chords + conflict resolution)</td>
+</tr>
+<tr>
+<td style="text-align: right;">397</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">🚧</td>
+<td>Verbosity: §35 Storage (VerbositySettings + verbosity_custom.json) —
+atomic verbosity_custom.json read/write shipped; the 16
+VerbositySettings fields deferred to #365</td>
+</tr>
+<tr>
+<td style="text-align: right;">398</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity: §40 Accessibility requirements (screen-reader-first
+contract)</td>
+</tr>
+<tr>
+<td style="text-align: right;">399</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity: §41 Testing plan (core + UI + golden)</td>
+</tr>
+<tr>
+<td style="text-align: right;">400</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity: §42 Golden announcement tests
+(tests/golden/verbosity/)</td>
+</tr>
+<tr>
+<td style="text-align: right;">401</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity: §43 Documentation plan (PRD + userguide +
+CONTROL_REFERENCE + dev docs)</td>
+</tr>
+<tr>
+<td style="text-align: right;">402</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity: §44 Manual smoke test (golden path steps 1-65)</td>
+</tr>
+<tr>
+<td style="text-align: right;">403</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity: §45 Verification commands (gates that must be green)</td>
+</tr>
+<tr>
+<td style="text-align: right;">404</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity: §46 Order of work (46 steps; sub-PRs follow this)</td>
+</tr>
+<tr>
+<td style="text-align: right;">405</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #1: Settings Should Have Three Layers</td>
+</tr>
+<tr>
+<td style="text-align: right;">406</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #2: Searchable Settings</td>
+</tr>
+<tr>
+<td style="text-align: right;">407</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #3: Verbosity Recipes</td>
+</tr>
+<tr>
+<td style="text-align: right;">408</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #4: Announcement Budget</td>
+</tr>
+<tr>
+<td style="text-align: right;">409</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #5: Repetition Collapse</td>
+</tr>
+<tr>
+<td style="text-align: right;">410</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #6: Screen Reader Handoff Mode</td>
+</tr>
+<tr>
+<td style="text-align: right;">411</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #7: Typing Echo Controls</td>
+</tr>
+<tr>
+<td style="text-align: right;">412</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #8: Indentation and Whitespace Verbosity</td>
+</tr>
+<tr>
+<td style="text-align: right;">413</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #9: Selection Verbosity Knobs</td>
+</tr>
+<tr>
+<td style="text-align: right;">414</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #10: Clipboard Verbosity Knobs</td>
+</tr>
+<tr>
+<td style="text-align: right;">415</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #11: Search Result Verbosity Knobs</td>
+</tr>
+<tr>
+<td style="text-align: right;">416</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #12: Error Coaching</td>
+</tr>
+<tr>
+<td style="text-align: right;">417</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #13: “Details on Demand”</td>
+</tr>
+<tr>
+<td style="text-align: right;">418</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #14: Announcement Detail Levels Per Category</td>
+</tr>
+<tr>
+<td style="text-align: right;">419</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #15: Boundary Announcements</td>
+</tr>
+<tr>
+<td style="text-align: right;">420</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #16: Progress Announcement Controls</td>
+</tr>
+<tr>
+<td style="text-align: right;">421</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #17: Mode Change Announcements</td>
+</tr>
+<tr>
+<td style="text-align: right;">422</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #18: “Where Am I?” Command</td>
+</tr>
+<tr>
+<td style="text-align: right;">423</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #19: “What Changed?” Command</td>
+</tr>
+<tr>
+<td style="text-align: right;">424</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #20: “Speak Status Bar” Command</td>
+</tr>
+<tr>
+<td style="text-align: right;">425</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #21: Braille-Specific Knobs</td>
+</tr>
+<tr>
+<td style="text-align: right;">426</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #22: Punctuation and Symbol Profiles</td>
+</tr>
+<tr>
+<td style="text-align: right;">427</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #23: Markdown-Aware Verbosity</td>
+</tr>
+<tr>
+<td style="text-align: right;">428</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #24: Code-Aware Verbosity</td>
+</tr>
+<tr>
+<td style="text-align: right;">429</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #25: Compare/Diff Verbosity</td>
+</tr>
+<tr>
+<td style="text-align: right;">430</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #26: File Operation Verbosity</td>
+</tr>
+<tr>
+<td style="text-align: right;">431</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #27: Encoding and Line Ending Verbosity</td>
+</tr>
+<tr>
+<td style="text-align: right;">432</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #28: Notification Priority Levels</td>
+</tr>
+<tr>
+<td style="text-align: right;">433</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #29: Verbosity Rules Engine</td>
+</tr>
+<tr>
+<td style="text-align: right;">434</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #30: Per-Workspace Verbosity</td>
+</tr>
+<tr>
+<td style="text-align: right;">435</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #31: Per-File Verbosity</td>
+</tr>
+<tr>
+<td style="text-align: right;">436</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #32: Temporary Verbosity Boost</td>
+</tr>
+<tr>
+<td style="text-align: right;">437</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #33: Hold-to-Explain</td>
+</tr>
+<tr>
+<td style="text-align: right;">438</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #34: Training Mode</td>
+</tr>
+<tr>
+<td style="text-align: right;">439</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #35: Contextual Help Hooks</td>
+</tr>
+<tr>
+<td style="text-align: right;">440</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #36: Friendly Names for Technical Concepts</td>
+</tr>
+<tr>
+<td style="text-align: right;">441</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #37: “Confidence Check” Wizard</td>
+</tr>
+<tr>
+<td style="text-align: right;">442</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #38: Community Pack Preview and Diff</td>
+</tr>
+<tr>
+<td style="text-align: right;">443</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #39: QVP Trust Labels</td>
+</tr>
+<tr>
+<td style="text-align: right;">444</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #40: QVP “Copy as User Template”</td>
+</tr>
+<tr>
+<td style="text-align: right;">445</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #41: Verbosity Conflict Checker</td>
+</tr>
+<tr>
+<td style="text-align: right;">446</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #42: “Explain My Settings”</td>
+</tr>
+<tr>
+<td style="text-align: right;">447</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #43: Export Support Bundle</td>
+</tr>
+<tr>
+<td style="text-align: right;">448</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #44: Privacy Controls</td>
+</tr>
+<tr>
+<td style="text-align: right;">449</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #45: Private Document Mode</td>
+</tr>
+<tr>
+<td style="text-align: right;">450</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #46: Speech Rate and Pause Knobs</td>
+</tr>
+<tr>
+<td style="text-align: right;">451</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #47: Announcement Queue Policy</td>
+</tr>
+<tr>
+<td style="text-align: right;">452</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #48: “Last Important Announcement”</td>
+</tr>
+<tr>
+<td style="text-align: right;">453</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #49: Earcons With Text Equivalents</td>
+</tr>
+<tr>
+<td style="text-align: right;">454</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #50: Learn Sounds Mode</td>
+</tr>
+<tr>
+<td style="text-align: right;">455</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #51: Announcement Favorites</td>
+</tr>
+<tr>
+<td style="text-align: right;">456</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #52: “Pin This Status”</td>
+</tr>
+<tr>
+<td style="text-align: right;">457</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #53: Smart Status Rotation</td>
+</tr>
+<tr>
+<td style="text-align: right;">458</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #54: “Speak Current Template”</td>
+</tr>
+<tr>
+<td style="text-align: right;">459</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #55: Token Help on Demand</td>
+</tr>
+<tr>
+<td style="text-align: right;">460</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #56: Template Examples Per Token</td>
+</tr>
+<tr>
+<td style="text-align: right;">461</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #57: Pack Author Mode</td>
+</tr>
+<tr>
+<td style="text-align: right;">462</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #58: Built-In Sample QVPs</td>
+</tr>
+<tr>
+<td style="text-align: right;">463</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #59: “Make This My Default”</td>
+</tr>
+<tr>
+<td style="text-align: right;">464</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #60: Bulk Editing</td>
+</tr>
+<tr>
+<td style="text-align: right;">465</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #61: Undo for Settings Changes</td>
+</tr>
+<tr>
+<td style="text-align: right;">466</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #62: Settings Change History</td>
+</tr>
+<tr>
+<td style="text-align: right;">467</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #63: “Test My Current Settings”</td>
+</tr>
+<tr>
+<td style="text-align: right;">468</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #64: Recommended Settings Suggestions</td>
+</tr>
+<tr>
+<td style="text-align: right;">469</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #65: Accessibility Persona Setup</td>
+</tr>
+<tr>
+<td style="text-align: right;">470</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #66: Command Discovery Announcements</td>
+</tr>
+<tr>
+<td style="text-align: right;">471</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #67: “Do Not Say This Again”</td>
+</tr>
+<tr>
+<td style="text-align: right;">472</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #68: Per-Announcement Suppression</td>
+</tr>
+<tr>
+<td style="text-align: right;">473</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #69: Announcement Labels</td>
+</tr>
+<tr>
+<td style="text-align: right;">474</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #70: “What Will This Change?” Confirmation</td>
+</tr>
+<tr>
+<td style="text-align: right;">475</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #71: Better Defaults for Experts</td>
+</tr>
+<tr>
+<td style="text-align: right;">476</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #72: Better Defaults for Beginners</td>
+</tr>
+<tr>
+<td style="text-align: right;">477</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #73: Human-Friendly Names Everywhere</td>
+</tr>
+<tr>
+<td style="text-align: right;">478</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #74: “Copy Debug Summary”</td>
+</tr>
+<tr>
+<td style="text-align: right;">479</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #75: “Report This Announcement”</td>
+</tr>
+<tr>
+<td style="text-align: right;">480</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #76: Documentation From Settings</td>
+</tr>
+<tr>
+<td style="text-align: right;">481</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #77: Default Reset Granularity</td>
+</tr>
+<tr>
+<td style="text-align: right;">482</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #78: Settings Export Preview</td>
+</tr>
+<tr>
+<td style="text-align: right;">483</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #79: Import Conflict Wizard</td>
+</tr>
+<tr>
+<td style="text-align: right;">484</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #80: “Try Without Applying”</td>
+</tr>
+<tr>
+<td style="text-align: right;">485</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #81: Session Profiles</td>
+</tr>
+<tr>
+<td style="text-align: right;">486</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #82: Time-Based Quiet Hours</td>
+</tr>
+<tr>
+<td style="text-align: right;">487</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #83: Focus Mode</td>
+</tr>
+<tr>
+<td style="text-align: right;">488</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #84: Review Mode</td>
+</tr>
+<tr>
+<td style="text-align: right;">489</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #85: “Readability / Accessibility Verbosity”</td>
+</tr>
+<tr>
+<td style="text-align: right;">490</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #86: Microcopy Style Settings</td>
+</tr>
+<tr>
+<td style="text-align: right;">491</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #87: “Use My Words” Custom Labels</td>
+</tr>
+<tr>
+<td style="text-align: right;">492</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #88: Abbreviation Dictionary for
+Announcements</td>
+</tr>
+<tr>
+<td style="text-align: right;">493</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #89: Language and Localization Readiness</td>
+</tr>
+<tr>
+<td style="text-align: right;">494</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #90: Accessibility Testing Assistant Mode</td>
+</tr>
+<tr>
+<td style="text-align: right;">495</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #91: Developer “Trace Verbosity”</td>
+</tr>
+<tr>
+<td style="text-align: right;">496</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #92: Performance Knobs</td>
+</tr>
+<tr>
+<td style="text-align: right;">497</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #93: Status Badges</td>
+</tr>
+<tr>
+<td style="text-align: right;">498</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #94: Braille Status Cell</td>
+</tr>
+<tr>
+<td style="text-align: right;">499</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #95: “Command Echo”</td>
+</tr>
+<tr>
+<td style="text-align: right;">500</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #96: “Before and After” Announcements</td>
+</tr>
+<tr>
+<td style="text-align: right;">501</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #97: Destructive Action Warnings</td>
+</tr>
+<tr>
+<td style="text-align: right;">502</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #98: “Undo Available” Announcements</td>
+</tr>
+<tr>
+<td style="text-align: right;">503</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #99: Multi-Monitor / Presentation Safety</td>
+</tr>
+<tr>
+<td style="text-align: right;">504</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>Verbosity addendum #100: Final Recommendation</td>
+</tr>
+<tr>
+<td style="text-align: right;">602</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning Archive] Verbosity System framing, scoping, risks, and
+release framing - 0.7.0</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="braille-mode-8-issues--risk-low--impact-med--value-high--effort-med">Braille
+Mode (8 issues · Risk Low · Impact Med · Value High · Effort Med)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">#</th>
+<th style="text-align: center;">Priority</th>
+<th style="text-align: center;">Status</th>
+<th>Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">238</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">✅</td>
+<td>[BR-015] brf_sidecar.py (Braille Mode P3)</td>
+</tr>
+<tr>
+<td style="text-align: right;">239</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">✅</td>
+<td>[BR-016] brf_progress.py: restore last position on open (Braille
+Mode P3)</td>
+</tr>
+<tr>
+<td style="text-align: right;">240</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">✅</td>
+<td>[BR-017] Braille &gt; Proofing submenu (Braille Mode P3)</td>
+</tr>
+<tr>
+<td style="text-align: right;">241</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">✅</td>
+<td>[BR-018] brf_validator.py (Braille Mode P4)</td>
+</tr>
+<tr>
+<td style="text-align: right;">242</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">✅</td>
+<td>[BR-019] Validation commands + Warnings List dialog (Braille Mode
+P4)</td>
+</tr>
+<tr>
+<td style="text-align: right;">246</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">✅</td>
+<td>[BR-023] Source-to-BRF linking — back-translation (compare/linking
+descoped)</td>
+</tr>
+<tr>
+<td style="text-align: right;">600</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">🧹</td>
+<td>[Planning] Braille Mode Phases 3/4/6 — tracked by #238-#246</td>
+</tr>
+<tr>
+<td style="text-align: right;">601</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">🧹</td>
+<td>[Planning Archive] Braille Mode design reference - Phases 3/4/6
+deferred from 0.7.0</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="ai--agentic-17-issues--risk-med--impact-high--value-high--effort-high">AI
+&amp; Agentic (17 issues · Risk Med · Impact High · Value High · Effort
+High)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">#</th>
+<th style="text-align: center;">Priority</th>
+<th style="text-align: center;">Status</th>
+<th>Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">507</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] O5 — Ask QUILL per-message action buttons</td>
+</tr>
+<tr>
+<td style="text-align: right;">508</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] O5b — Unify the two AI stacks</td>
+</tr>
+<tr>
+<td style="text-align: right;">509</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] O6 — AI Hub = Settings-style two-pane</td>
+</tr>
+<tr>
+<td style="text-align: right;">510</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] O7 — Azure provider: implement or formally drop</td>
+</tr>
+<tr>
+<td style="text-align: right;">511</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] O8 — AI-19 GitHub Copilot SDK (deferred)</td>
+</tr>
+<tr>
+<td style="text-align: right;">512</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] O9 — SHELL-2 structured-OCR AI structuring pass</td>
+</tr>
+<tr>
+<td style="text-align: right;">523</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] In flight: AI-19 GitHub Copilot SDK</td>
+</tr>
+<tr>
+<td style="text-align: right;">524</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] In flight: SHELL-2 OCR AI structuring</td>
+</tr>
+<tr>
+<td style="text-align: right;">579</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: AI-11 — AI AI-11 — deferred to QUILL
+2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">580</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: AI-12 — AI AI-12 — deferred to QUILL
+2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">581</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: AI-18 — AI AI-18 — deferred to QUILL
+2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">593</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: AX-A — Accessibility Agents AX-A —
+deferred to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">594</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: AX-B — Accessibility Agents AX-B —
+deferred to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">595</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: AX-C — Accessibility Agents AX-C —
+deferred to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">596</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: AX-D — Accessibility Agents AX-D —
+deferred to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">597</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: AX-E — Accessibility Agents AX-E —
+deferred to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">598</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: AX-F — Accessibility Agents AX-F —
+deferred to QUILL 2.0</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="publishing--export-2-issues--risk-med--impact-med--value-med--effort-med">Publishing
+&amp; Export (2 issues · Risk Med · Impact Med · Value Med · Effort
+Med)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">#</th>
+<th style="text-align: center;">Priority</th>
+<th style="text-align: center;">Status</th>
+<th>Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">140</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">⬜</td>
+<td>Support Direct Publishing to WordPress and Other Publishing
+Platforms.</td>
+</tr>
+<tr>
+<td style="text-align: right;">251</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">✅</td>
+<td>Suggestion: Export to DAISY talking book</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="platform--distribution-10-issues--risk-high--impact-high--value-high--effort-high">Platform
+&amp; Distribution (10 issues · Risk High · Impact High · Value High ·
+Effort High)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">#</th>
+<th style="text-align: center;">Priority</th>
+<th style="text-align: center;">Status</th>
+<th>Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">506</td>
+<td style="text-align: center;">P0</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] O1 — Live installer smoke on Windows 10/11</td>
+</tr>
+<tr>
+<td style="text-align: right;">516</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] O13 — Native RTF editing</td>
+</tr>
+<tr>
+<td style="text-align: right;">517</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] O14 — Quillin Hub launch</td>
+</tr>
+<tr>
+<td style="text-align: right;">518</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] O15 — macOS port to shipping quality (#42)</td>
+</tr>
+<tr>
+<td style="text-align: right;">519</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] O16 — Plugin capability, signing, marketplace</td>
+</tr>
+<tr>
+<td style="text-align: right;">520</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">❌</td>
+<td>[Planning] O17 — Linux platform layer</td>
+</tr>
+<tr>
+<td style="text-align: right;">525</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] In flight: SHELL-3 Windows 11 primary menu</td>
+</tr>
+<tr>
+<td style="text-align: right;">565</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">❌</td>
+<td>[Planning] Tier 6 / 1.0 backlog: LINUX-2</td>
+</tr>
+<tr>
+<td style="text-align: right;">589</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">❌</td>
+<td>[Planning] QUILL 2.0 deferred: LINUX-1 — LINUX-1 spike — deferred to
+QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">599</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: PKG-1 — Packaging freezing evaluation
+PKG-1 — deferred to QUILL 2.0</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="navigation--editor-11-issues--risk-low--impact-med--value-med--effort-med">Navigation
+&amp; Editor (11 issues · Risk Low · Impact Med · Value Med · Effort
+Med)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">#</th>
+<th style="text-align: center;">Priority</th>
+<th style="text-align: center;">Status</th>
+<th>Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">513</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] O10 — Quick Nav enhancements</td>
+</tr>
+<tr>
+<td style="text-align: right;">514</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] O11 — Un-gate structured Word view + CSV grid</td>
+</tr>
+<tr>
+<td style="text-align: right;">521</td>
+<td style="text-align: center;">P3</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] O20 — Extract main_frame_statusbar.py</td>
+</tr>
+<tr>
+<td style="text-align: right;">578</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: NAV-10 — Navigation NAV-10 — deferred
+to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">582</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: FEAT-12 — Feature FEAT-12 — deferred
+to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">583</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: FEAT-13 — Feature FEAT-13 — deferred
+to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">584</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: FEAT-14 — Feature FEAT-14 — deferred
+to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">585</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: FEAT-15 — Feature FEAT-15 — deferred
+to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">586</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: FEAT-16 — Feature FEAT-16 — deferred
+to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">587</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: FEAT-17 — Feature FEAT-17 — deferred
+to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">588</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: FEAT-18 — Feature FEAT-18 — deferred
+to QUILL 2.0</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="glow-family-8-issues--risk-med--impact-high--value-high--effort-med">GLOW
+Family (8 issues · Risk Med · Impact High · Value High · Effort
+Med)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">#</th>
+<th style="text-align: center;">Priority</th>
+<th style="text-align: center;">Status</th>
+<th>Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">528</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 2 / 1.0 GLOW family: GLOW-1</td>
+</tr>
+<tr>
+<td style="text-align: right;">529</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 2 / 1.0 GLOW family: GLOW-2</td>
+</tr>
+<tr>
+<td style="text-align: right;">530</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 2 / 1.0 GLOW family: GLOW-3</td>
+</tr>
+<tr>
+<td style="text-align: right;">531</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 2 / 1.0 GLOW family: GLOW-4</td>
+</tr>
+<tr>
+<td style="text-align: right;">532</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 2 / 1.0 GLOW family: GLOW-5</td>
+</tr>
+<tr>
+<td style="text-align: right;">533</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 2 / 1.0 GLOW family: GLOW-6</td>
+</tr>
+<tr>
+<td style="text-align: right;">534</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 2 / 1.0 GLOW family: GLOW-7</td>
+</tr>
+<tr>
+<td style="text-align: right;">566</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: WATCH-8 — GLOW watch action —
+deferred to QUILL 2.0</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="docs--content-37-issues--risk-low--impact-med--value-med--effort-med">Docs
+&amp; Content (37 issues · Risk Low · Impact Med · Value Med · Effort
+Med)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">#</th>
+<th style="text-align: center;">Priority</th>
+<th style="text-align: center;">Status</th>
+<th>Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">505</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 1.0 + 2.0 open roadmap (planning.md)</td>
+</tr>
+<tr>
+<td style="text-align: right;">522</td>
+<td style="text-align: center;">P3</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] O21 — Master backlog (per-tier backlog IDs)</td>
+</tr>
+<tr>
+<td style="text-align: right;">526</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] In flight: DLG-3.8 NVDA / JAWS / Narrator sign-off</td>
+</tr>
+<tr>
+<td style="text-align: right;">527</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] In flight: CQ-11 spell-check preload half</td>
+</tr>
+<tr>
+<td style="text-align: right;">535</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: DOC-1</td>
+</tr>
+<tr>
+<td style="text-align: right;">536</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: DOC-2</td>
+</tr>
+<tr>
+<td style="text-align: right;">537</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: DOC-3</td>
+</tr>
+<tr>
+<td style="text-align: right;">538</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: DOC-4</td>
+</tr>
+<tr>
+<td style="text-align: right;">539</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: DOC-5</td>
+</tr>
+<tr>
+<td style="text-align: right;">540</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: DOC-6</td>
+</tr>
+<tr>
+<td style="text-align: right;">541</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: DOC-7</td>
+</tr>
+<tr>
+<td style="text-align: right;">542</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: DOC-8</td>
+</tr>
+<tr>
+<td style="text-align: right;">543</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: DOC-11</td>
+</tr>
+<tr>
+<td style="text-align: right;">544</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: DOC-12</td>
+</tr>
+<tr>
+<td style="text-align: right;">545</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: DOC-14</td>
+</tr>
+<tr>
+<td style="text-align: right;">546</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: DOC-15</td>
+</tr>
+<tr>
+<td style="text-align: right;">547</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: DOC-16</td>
+</tr>
+<tr>
+<td style="text-align: right;">548</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: DOC-17</td>
+</tr>
+<tr>
+<td style="text-align: right;">549</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: DOC-18</td>
+</tr>
+<tr>
+<td style="text-align: right;">550</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: POD-1</td>
+</tr>
+<tr>
+<td style="text-align: right;">551</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: POD-2</td>
+</tr>
+<tr>
+<td style="text-align: right;">552</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: POD-3</td>
+</tr>
+<tr>
+<td style="text-align: right;">553</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: POD-4</td>
+</tr>
+<tr>
+<td style="text-align: right;">554</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: POD-5</td>
+</tr>
+<tr>
+<td style="text-align: right;">555</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: TUT-1</td>
+</tr>
+<tr>
+<td style="text-align: right;">556</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: TUT-2</td>
+</tr>
+<tr>
+<td style="text-align: right;">557</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: TUT-3</td>
+</tr>
+<tr>
+<td style="text-align: right;">558</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: TUT-4</td>
+</tr>
+<tr>
+<td style="text-align: right;">559</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: TUT-5</td>
+</tr>
+<tr>
+<td style="text-align: right;">560</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: TUT-6</td>
+</tr>
+<tr>
+<td style="text-align: right;">561</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: TUT-7</td>
+</tr>
+<tr>
+<td style="text-align: right;">562</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: CQ-14</td>
+</tr>
+<tr>
+<td style="text-align: right;">563</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: CQ-23</td>
+</tr>
+<tr>
+<td style="text-align: right;">564</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] Tier 6 / 1.0 backlog: CQ-24</td>
+</tr>
+<tr>
+<td style="text-align: right;">590</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: ECO-1 — Ecosystem ECO-1 — deferred to
+QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">591</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: L10N-1 — Localization L10N-1 —
+deferred to QUILL 2.0</td>
+</tr>
+<tr>
+<td style="text-align: right;">592</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Planning] QUILL 2.0 deferred: COLLAB-1 — Collaboration COLLAB-1 —
+deferred to QUILL 2.0</td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>

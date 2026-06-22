@@ -58,6 +58,22 @@ def test_toggle_line_comment_prefix_style_on_blank_line() -> None:
     assert commented == "# "
 
 
+def test_toggle_comment_honors_pinned_profile_over_path() -> None:
+    # A .txt file pinned to HTML/Python comments per the profile, not the name.
+    from quill.core.language_profile import get_profile_by_name
+
+    html = get_profile_by_name("HTML")
+    python = get_profile_by_name("Python")
+    text = "hello"
+    html_line, _, _ = toggle_line_comment(text, 0, len(text), Path("note.txt"), html)
+    assert html_line == "<!-- hello -->"
+    py_line, _, _ = toggle_line_comment(text, 0, len(text), Path("note.txt"), python)
+    assert py_line == "# hello"
+    # Block comment likewise follows the profile.
+    wrapped, _, _ = toggle_block_comment("alpha", 0, 5, Path("note.txt"), html)
+    assert wrapped.startswith("<!--") and wrapped.endswith("-->")
+
+
 def test_toggle_line_comment_html_style() -> None:
     text = "hello\nworld"
     commented, _, _ = toggle_line_comment(text, 0, len(text), Path("notes.md"))
