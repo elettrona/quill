@@ -282,6 +282,8 @@ def _download_repo(
     if progress is not None:
         progress(0.02, f"Downloading {info.display_name}...")
     kwargs: dict[str, Any] = {"repo_id": repo_id, "local_dir": str(target)}
+    if info.revision:
+        kwargs["revision"] = info.revision  # pinned commit; huggingface_hub verifies files
     from quill.core.speech.hf_auth import load_hf_token
 
     token = load_hf_token()

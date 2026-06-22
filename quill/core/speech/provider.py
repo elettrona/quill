@@ -32,6 +32,9 @@ class SpeechModelInfo:
     download_url: str | None = None
     sha256: str | None = None
     license_name: str | None = None
+    # Pinned Hugging Face commit SHA (Faster Whisper repos). whisper.cpp pins the
+    # revision in download_url instead. Empty = follow the default branch.
+    revision: str = ""
 
 
 @dataclass(frozen=True, slots=True)

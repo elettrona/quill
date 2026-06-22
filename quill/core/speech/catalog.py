@@ -14,10 +14,12 @@ RECOMMENDED_MODEL_ID = "small"
 # A model that supports whisper.cpp tinydiarize (-tdrz) speaker-turn detection.
 DIARIZATION_MODEL_ID = "small.en-tdrz"
 
-# whisper.cpp GGML models are published on Hugging Face. URLs are data-driven so
-# a release/mirror can override them; sha256 is left None until the pipeline pins
-# verified hashes (download verifies only when a hash is present — #617 section 8).
-_HF_BASE = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main"
+# whisper.cpp GGML models are published on Hugging Face. Pinned to a specific
+# commit (not "main") so a re-upload can't silently swap a model under us, and the
+# per-file sha256 below stays valid (the download verifies it — #617 section 8).
+# Bump the revision and the hashes together, deliberately.
+_WHISPER_CPP_REVISION = "5359861c739e955e79d9a303bcbc70fb988958b1"
+_HF_BASE = f"https://huggingface.co/ggerganov/whisper.cpp/resolve/{_WHISPER_CPP_REVISION}"
 
 
 def _ggml_url(name: str) -> str:
@@ -34,6 +36,7 @@ WHISPER_CPP_MODELS: tuple[SpeechModelInfo, ...] = (
         speed_tier="fast",
         recommended_use="Smallest download. Good for testing and simple voice commands.",
         download_url=_ggml_url("tiny"),
+        sha256="be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21",
         license_name="MIT",
     ),
     SpeechModelInfo(
@@ -45,6 +48,7 @@ WHISPER_CPP_MODELS: tuple[SpeechModelInfo, ...] = (
         speed_tier="fast",
         recommended_use="Small download. Better than Tiny; good for quick notes.",
         download_url=_ggml_url("base"),
+        sha256="60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe",
         license_name="MIT",
     ),
     SpeechModelInfo(
@@ -56,6 +60,7 @@ WHISPER_CPP_MODELS: tuple[SpeechModelInfo, ...] = (
         speed_tier="medium",
         recommended_use="Recommended starting point: solid transcription without a huge download.",
         download_url=_ggml_url("small"),
+        sha256="1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b",
         license_name="MIT",
     ),
     SpeechModelInfo(
@@ -68,7 +73,13 @@ WHISPER_CPP_MODELS: tuple[SpeechModelInfo, ...] = (
         recommended_use=(
             "English only, and marks who is speaking when (speaker turns) in transcripts."
         ),
-        download_url=_ggml_url("small.en-tdrz"),
+        # The tinydiarize model lives in its own repo, not ggerganov/whisper.cpp,
+        # so it is pinned separately (the old ggerganov URL 404s).
+        download_url=(
+            "https://huggingface.co/akashmjn/tinydiarize-whisper.cpp/resolve/"
+            "d44ba793fc67e509623a88a409723311fa677744/ggml-small.en-tdrz.bin"
+        ),
+        sha256="ceac3ec06d1d98ef71aec665283564631055fd6129b79d8e1be4f9cc33cc54b4",
         license_name="MIT",
     ),
     SpeechModelInfo(
@@ -80,6 +91,7 @@ WHISPER_CPP_MODELS: tuple[SpeechModelInfo, ...] = (
         speed_tier="slow",
         recommended_use="Higher accuracy. Larger download and slower on older computers.",
         download_url=_ggml_url("medium"),
+        sha256="6c14d5adee5f86394037b4e4e8b59f1673b6cee10e3cf0b11bbdbee79c156208",
         license_name="MIT",
     ),
     SpeechModelInfo(
@@ -91,6 +103,7 @@ WHISPER_CPP_MODELS: tuple[SpeechModelInfo, ...] = (
         speed_tier="slow",
         recommended_use="Best local quality. Very large download and storage requirement.",
         download_url=_ggml_url("large-v3"),
+        sha256="64d182b440b98d5203c4f9bd541544d84c605196c4f7b845dfa11fb23594d1e2",
         license_name="MIT",
     ),
 )
@@ -130,6 +143,7 @@ FASTER_WHISPER_MODELS: tuple[SpeechModelInfo, ...] = (
         speed_tier="fast",
         recommended_use="Smallest download. Fastest, lowest accuracy.",
         download_url=_ct2_repo("tiny"),
+        revision="d90ca5fe260221311c53c58e660288d3deb8d356",
         license_name="MIT",
     ),
     SpeechModelInfo(
@@ -141,6 +155,7 @@ FASTER_WHISPER_MODELS: tuple[SpeechModelInfo, ...] = (
         speed_tier="fast",
         recommended_use="Small and quick; good for short notes.",
         download_url=_ct2_repo("base"),
+        revision="ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66",
         license_name="MIT",
     ),
     SpeechModelInfo(
@@ -152,6 +167,7 @@ FASTER_WHISPER_MODELS: tuple[SpeechModelInfo, ...] = (
         speed_tier="fast",
         recommended_use="Recommended: solid accuracy and fast, especially with a GPU.",
         download_url=_ct2_repo("small"),
+        revision="536b0662742c02347bc0e980a01041f333bce120",
         license_name="MIT",
     ),
     SpeechModelInfo(
@@ -163,6 +179,7 @@ FASTER_WHISPER_MODELS: tuple[SpeechModelInfo, ...] = (
         speed_tier="medium",
         recommended_use="Higher accuracy; comfortable on a GPU or a fast CPU.",
         download_url=_ct2_repo("medium"),
+        revision="08e178d48790749d25932bbc082711ddcfdfbc4f",
         license_name="MIT",
     ),
     SpeechModelInfo(
@@ -174,6 +191,7 @@ FASTER_WHISPER_MODELS: tuple[SpeechModelInfo, ...] = (
         speed_tier="medium",
         recommended_use="Best quality. Large download; a GPU is recommended.",
         download_url=_ct2_repo("large-v3"),
+        revision="edaa852ec7e145841d8ffdb056a99866b5f0a478",
         license_name="MIT",
     ),
     SpeechModelInfo(
@@ -187,6 +205,7 @@ FASTER_WHISPER_MODELS: tuple[SpeechModelInfo, ...] = (
             "English-only, near-Large accuracy at roughly half the size and twice the speed."
         ),
         download_url="Systran/faster-distil-whisper-large-v3",
+        revision="c3058b475261292e64a0412df1d2681c06260fab",
         license_name="MIT",
     ),
 )

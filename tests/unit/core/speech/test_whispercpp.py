@@ -239,3 +239,23 @@ def test_parse_assigns_speakers_on_turn_markers() -> None:
 def test_parse_without_markers_has_no_speakers() -> None:
     result = whispercpp.parse_whisper_json(_SAMPLE_JSON)
     assert all(seg.speaker == "" for seg in result.segments)
+
+
+def test_whisper_cpp_catalog_is_pinned_to_a_revision_with_hashes() -> None:
+    from quill.core.speech import catalog
+
+    # Every whisper.cpp model pins a commit (not "main") and a sha256 so the
+    # download verifies integrity (#617 / HF supply-chain hardening).
+    for model in catalog.WHISPER_CPP_MODELS:
+        assert model.download_url and "/resolve/main/" not in model.download_url, model.id
+        assert model.sha256 and len(model.sha256) == 64, model.id
+    # The tinydiarize model lives in its own repo, not ggerganov/whisper.cpp.
+    tdrz = catalog.model_by_id("small.en-tdrz")
+    assert tdrz is not None and "tinydiarize-whisper.cpp" in (tdrz.download_url or "")
+
+
+def test_faster_whisper_catalog_pins_revisions() -> None:
+    from quill.core.speech import catalog
+
+    for model in catalog.FASTER_WHISPER_MODELS:
+        assert model.revision and len(model.revision) == 40, model.id
