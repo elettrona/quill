@@ -281,10 +281,41 @@ def _download_repo(
         ) from exc
     if progress is not None:
         progress(0.02, f"Downloading {info.display_name}...")
+    kwargs: dict[str, Any] = {"repo_id": repo_id, "local_dir": str(target)}
+    if progress is not None:
+        tqdm_cls = _make_progress_tqdm(info, progress)
+        if tqdm_cls is not None:
+            kwargs["tqdm_class"] = tqdm_cls
     try:
-        snapshot_download(repo_id=repo_id, local_dir=str(target))
+        snapshot_download(**kwargs)
     except Exception as exc:  # noqa: BLE001 - surface a clean message
         shutil.rmtree(target, ignore_errors=True)
         raise SpeechError(f"The model download failed: {exc}") from exc
+
+
+def _make_progress_tqdm(info: SpeechModelInfo, progress: ProgressCallback) -> type | None:
+    """Build a tqdm subclass that forwards Hugging Face byte progress to ``progress``.
+
+    huggingface_hub creates one progress bar per file; we accumulate bytes across
+    them and divide by the model's approximate size to report a single moving
+    percentage (0.02-0.99). If ``progress`` raises (user cancelled), the exception
+    propagates out of ``snapshot_download`` and aborts the download.
+    """
+    try:
+        from tqdm.auto import tqdm as _BaseTqdm  # type: ignore[import-untyped]
+    except Exception:  # noqa: BLE001 - no tqdm means we simply skip byte progress
+        return None
+
+    total_bytes = max(1, int(info.approximate_size_mb) * 1024 * 1024)
+    shared = {"done": 0}
+
+    class _ProgressTqdm(_BaseTqdm):  # type: ignore[misc, valid-type]
+        def update(self, n: float | None = 1) -> bool | None:
+            shared["done"] += int(n or 0)
+            fraction = 0.02 + 0.95 * min(shared["done"] / total_bytes, 1.0)
+            progress(min(fraction, 0.99), f"Downloading {info.display_name}...")
+            return super().update(n)  # type: ignore[no-any-return]
+
+    return _ProgressTqdm
     if progress is not None:
         progress(0.99, f"Finishing {info.display_name}...")

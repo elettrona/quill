@@ -77,15 +77,26 @@ class SpeechCommandsMixin:
     # -- model manager ---------------------------------------------------- #
 
     def open_speech_models(self) -> None:
-        from quill.core.speech.service import describe_models
+        from quill.core.speech.service import (
+            ModelRow,
+            describe_models,
+            detect_has_gpu,
+            detect_total_ram_gb,
+            machine_summary,
+        )
 
         wx = self._wx
         provider = self._choose_speech_engine() or self._speech_provider()
-        rows = describe_models(provider)  # type: ignore[arg-type]
+        total_ram = detect_total_ram_gb()
+        has_gpu = detect_has_gpu()
+        rows = describe_models(provider, total_ram, has_gpu)  # type: ignore[arg-type]
         labels = [row.label for row in rows]
         with wx.SingleChoiceDialog(
             self.frame,
-            "Speech models for offline transcription. Choose one to download or remove:",
+            "Speech models for offline transcription. "
+            f"{machine_summary(total_ram, has_gpu)} "
+            "Choose a model, then pick what to do with it (download it, or remove it "
+            "if it is already installed):",
             "Manage Speech Models",
             labels,
         ) as dialog:
@@ -94,16 +105,48 @@ class SpeechCommandsMixin:
             selection = dialog.GetSelection()
         if selection < 0 or selection >= len(rows):
             return
-        row = rows[selection]
-        if row.installed:
+        row: ModelRow = rows[selection]
+        action = self._choose_model_action(row)
+        if action == "download":
+            self._maybe_download_speech_model(provider, row)
+        elif action == "remove":
             self._maybe_remove_speech_model(provider, row.id)
+
+    def _choose_model_action(self, row: object) -> str | None:
+        """Ask what to do with the chosen model. Returns 'download', 'remove', or None.
+
+        An explicit action picker makes deletion discoverable (the previous flow
+        silently inferred the action from install state) and keeps every option
+        keyboard- and screen-reader-reachable through a stock single-choice list.
+        """
+        wx = self._wx
+        installed = bool(getattr(row, "installed", False))
+        if installed:
+            actions = [
+                ("Remove this model from my computer", "remove"),
+                ("Keep it (do nothing)", None),
+            ]
         else:
-            self._maybe_download_speech_model(provider, row.id)
+            actions = [
+                ("Download this model", "download"),
+                ("Do nothing", None),
+            ]
+        labels = [label for label, _key in actions]
+        with wx.SingleChoiceDialog(
+            self.frame, "What would you like to do?", "Speech Model", labels
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Speech Model") != wx.ID_OK:
+                return None
+            choice = dialog.GetSelection()
+        if 0 <= choice < len(actions):
+            return actions[choice][1]
+        return None
 
     def _maybe_remove_speech_model(self, provider: object, model_id: str) -> None:
         wx = self._wx
         confirm = self._show_message_box(
-            f"Remove the '{model_id}' speech model from this computer?",
+            f"Remove the '{model_id}' speech model from this computer? "
+            "You can download it again later from Manage Speech Models.",
             "Remove Speech Model",
             wx.ICON_QUESTION | wx.YES_NO,
         )
@@ -116,29 +159,99 @@ class SpeechCommandsMixin:
             return
         self._announce(f"Removed the {model_id} speech model.")
 
-    def _maybe_download_speech_model(self, provider: object, model_id: str) -> None:
+    def _maybe_download_speech_model(self, provider: object, row: object) -> None:
+        from quill.core.speech.service import enough_disk_for, models_dir_free_gb
+
         wx = self._wx
+        model_id = str(getattr(row, "id", ""))
         estimate = provider.estimate_model_size(model_id)  # type: ignore[attr-defined]
+        notes: list[str] = []
+        icon = wx.ICON_QUESTION
+        warning = str(getattr(row, "ram_warning", "") or "")
+        if warning:
+            notes.append(f"{warning} It may run very slowly or fail to load.")
+            icon = wx.ICON_WARNING
+        gpu_note = str(getattr(row, "gpu_note", "") or "")
+        if gpu_note:
+            notes.append(gpu_note)
+        free_gb = models_dir_free_gb()
+        if not enough_disk_for(int(estimate.download_mb), free_gb):
+            notes.append(
+                f"Low disk space: this needs about {estimate.download_mb} MB but only "
+                f"{free_gb:.1f} GB is free where models are stored."
+            )
+            icon = wx.ICON_WARNING
+        extra = ("\n\nWarning: " + " ".join(notes)) if notes else ""
         confirm = self._show_message_box(
             f"Download the '{model_id}' speech model (about {estimate.download_mb} MB) "
             "from the Hugging Face Hub? It is stored on this computer and used for "
-            "private, offline transcription.",
+            f"private, offline transcription.{extra}",
             "Download Speech Model",
-            wx.ICON_QUESTION | wx.YES_NO,
+            icon | wx.YES_NO,
         )
         if confirm != wx.YES:
             return
+        self._download_speech_model_with_progress(provider, model_id)
 
-        def _work(progress):  # progress: (label, current, total)
-            def _on_chunk(fraction: float, message: str) -> None:
-                progress(message, int(fraction * 100), 100)
+    def _download_speech_model_with_progress(self, provider: object, model_id: str) -> None:
+        """Download a model on a worker thread, showing a cancelable progress gauge.
 
-            return provider.download_model(model_id, _on_chunk)  # type: ignore[attr-defined]
+        The download never touches the UI thread (so the app stays responsive),
+        reports a real percentage, and announces coarse milestones for screen
+        readers. Cancel is cooperative: the progress callback raises when the
+        user cancels, which aborts the stream and cleans up the partial file.
+        """
+        import threading
 
-        def _done(_installed: object) -> None:
-            self._announce(f"Downloaded the {model_id} speech model.")
+        from quill.core.speech.provider import SpeechError
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
 
-        self._run_background_task(f"Downloading {model_id} speech model", _work, _done)
+        wx = self._wx
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            self.frame,
+            "Downloading Speech Model",
+            f"Preparing to download the {model_id} model...",
+            on_cancel=cancel.set,
+        )
+        progress.show()
+        self._announce(f"Downloading the {model_id} speech model.")
+        last_milestone = {"value": -1}
+
+        def _on_chunk(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise SpeechError("Download cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            progress.set_progress(percent, f"{message} {percent}%")
+            milestone = percent - (percent % 25)
+            if percent < 100 and milestone != last_milestone["value"]:
+                last_milestone["value"] = milestone
+                wx.CallAfter(self._set_status, f"Downloading {model_id}: {percent}%")
+
+        def _run() -> None:
+            try:
+                provider.download_model(model_id, _on_chunk)  # type: ignore[attr-defined]
+            except SpeechError as exc:
+                wx.CallAfter(progress.close)
+                if cancel.is_set():
+                    wx.CallAfter(self._set_status, f"Download of {model_id} cancelled.")
+                    wx.CallAfter(self._announce, f"Download of the {model_id} model cancelled.")
+                else:
+                    wx.CallAfter(self._set_status, f"Could not download model: {exc}")
+                    wx.CallAfter(self._announce, f"Could not download the model. {exc}")
+                return
+            except Exception as exc:  # noqa: BLE001 - surface a clean message
+                wx.CallAfter(progress.close)
+                wx.CallAfter(self._set_status, f"Could not download model: {exc}")
+                wx.CallAfter(self._announce, f"Could not download the model. {exc}")
+                return
+            wx.CallAfter(progress.close)
+            wx.CallAfter(self._set_status, f"Downloaded the {model_id} speech model.")
+            wx.CallAfter(self._announce, f"Downloaded the {model_id} speech model.")
+
+        threading.Thread(  # GATE-40-OK: speech model download worker.
+            target=_run, daemon=True
+        ).start()
 
     # -- transcription ---------------------------------------------------- #
 
