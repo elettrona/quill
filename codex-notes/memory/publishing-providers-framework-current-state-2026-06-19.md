@@ -42,3 +42,13 @@ Future slices must include and record focused tests, relevant new unit tests, Ru
 The WordPress first-party bundled-provider package path is complete. The closeout audit passed with `77 passed`, Ruff, the module-size gate, and the provider registry gate. No product code changed during closeout.
 
 The user explicitly authorized schedule publishing, compare/sync, Quillin worker execution, and live third-party loading after closeout. The next planned phase is schedule publishing. Preserve the existing security, consent, accessibility, provider-neutrality, and validation contracts.
+
+## Schedule Publishing Memory - 2026-06-21
+
+Schedule publishing is implemented and complete. `PUBLISHING_OPERATION_SCHEDULE` exists; WordPress gets it for free through the shared `PUBLISHING_OPERATIONS` tuple. `quill.core.publishing_schedule.validate_scheduled_publish_time` is the timezone-aware validation model — a plain tz-aware `datetime` is the value type, deliberately not wrapped in a new dataclass. `create_publishing_remote_item`/`update_publishing_remote_item` grew an optional `scheduled_at` parameter rather than a new function; when set, status becomes `"future"` and WordPress sends an explicit UTC `date_gmt`, round-tripped back as `PublishingRemoteDocument.scheduled_for`. The UI adds one dialog (`SchedulePublishDialog`, accessible date/time/timezone/content-kind controls, re-validates instead of closing on bad input) and one command/menu entry (`publishing.schedule_publish`) that dispatches to whichever existing core function applies depending on whether the current document is a fresh document or an already-open remote item.
+
+Added `tzdata` as a base dependency (not a `ui` extra) because Windows has no system IANA timezone database and `zoneinfo` needs it.
+
+Validated with the core focused battery (`61 passed`), the combined publishing/accessibility/governance battery (`153 passed`), Ruff, the provider registry gate, and a full-suite run (`4074 passed, 66 failed, 14 skipped`) matching the pre-existing baseline failure set exactly. Committed locally in two checkpoints; not pushed.
+
+Next roadmap phase: local-versus-remote compare and the first honest sync model.

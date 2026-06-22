@@ -64,3 +64,23 @@ No schedule publish, compare/sync, worker execution, or live third-party loading
 - recorded the user's explicit post-closeout authorization for schedule publishing, compare/sync, Quillin worker execution, and live third-party loading
 
 Phase 1 is closed. The next roadmap phase is schedule publishing.
+
+## 2026-06-21 - Schedule Publishing Implementation
+
+Continued in Claude Code from the Codex restart prompt for this phase; the prompt's Codex `apply_patch` tooling-blocker section did not apply (no sandboxed patch helper in this tool) and was dropped, everything else carried over. Verified repository state first: `origin/main` had advanced one unrelated commit (macOS DMG packaging fix, `34e85556`) past what the restart prompt assumed; merged it into the branch before starting.
+
+Work completed in two commits:
+
+- Core checkpoint: `PUBLISHING_OPERATION_SCHEDULE`; new `quill/core/publishing_schedule.py` (`validate_scheduled_publish_time`); `scheduled_at` parameter added to the `PublishingProviderClient` protocol, the WordPress client (`date_gmt` payload field, `_fields` query param, `scheduled_for` response field), and to `create_publishing_remote_item`/`update_publishing_remote_item`; `publishing_result_message`/`_display_status` extended for the `"scheduled"`/`"future"` case; `PUBLISHING_OPERATION_SCHEDULE` added to the provider/client operation-method validation map; `tzdata` added as a base dependency. New tests: `tests/unit/core/test_publishing_schedule.py` (5 tests) plus 5 new WordPress-payload tests and one unsupported-provider gating test added to the existing `test_publishing_browse.py`/`test_publishing.py` files; 3 pre-existing endpoint-URL assertions updated for the new `date_gmt` `_fields` entry.
+- UI + governance checkpoint: `SchedulePublishDialog` in `quill/ui/publishing_tools.py` (date/time `TextCtrl`, IANA timezone `Choice` defaulting to UTC, content-kind `Choice`/`StaticText` depending on context, validate-and-reopen loop); menu id/item/binding and command registration for `publishing.schedule_publish`; `_schedule_publishing_publish` handler in `main_frame.py` covering both new-document and already-open-remote-item scheduling with the same review-first confirmation idiom as the existing publish/update actions. Regenerated `dialog_inventory.json`; added the dialog to `dialogs.md`; bumped `module_size_budgets.json` for the five files that grew, with a dated rebaseline comment; widened the `_request_json` network-egress rationale to cover create/update/schedule (it previously only mentioned browse/open, which was already stale before this change). New test file `test_schedule_publish_dialog_a11y.py` (8 tests); extended `test_main_frame_menu_contract.py`'s publishing menu assertion.
+
+Validation:
+
+- core-focused: `61 passed`
+- combined publishing/accessibility/governance battery: `153 passed`
+- Ruff: passed (both checkpoints)
+- provider registry gate: passed
+- scoped `mypy quill/core quill/io`: same 7 pre-existing findings as before this slice (6 in `brf_page_detection.py`, 1 in `publishing_validation.py`'s untouched `_extend_unknown_issues`), none introduced by this work
+- full unit suite: `4074 passed, 66 failed, 14 skipped` — the 66 failures are the identical pre-existing set from the `4056 passed, 66 failed, 14 skipped` baseline; the +18 passing delta is exactly the new tests added in this slice
+
+No compare/sync, Quillin worker execution, or live third-party loading work was performed. Committed locally as two checkpoints; not pushed (this session's explicit instruction, matching the standing repo convention).

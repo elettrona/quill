@@ -31,3 +31,7 @@ The next work must remain within Phase 1. Worker execution and third-party disco
 The closeout audit passed. The WordPress first-party bundled-provider path is complete, including trusted adapter validation and normal startup bootstrap.
 
 The user's post-closeout approval unblocks the later roadmap phases. Current order: schedule publishing, compare/sync, Quillin worker execution, then live third-party loading. No later-phase implementation was performed during closeout.
+
+## Schedule Publishing Complete - 2026-06-21
+
+Schedule publishing is implemented and closed out. WordPress can now schedule a new post/page or an already-open remote item via `status="future"` + UTC `date_gmt`, behind one provider-neutral command/menu entry and one accessible dialog. Compare/sync, Quillin worker execution, and live third-party loading remain unresolved and explicitly unapproved-for-implementation until separately reviewed. Current order: compare/sync next, then Quillin worker execution, then live third-party loading.

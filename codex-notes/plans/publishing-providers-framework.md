@@ -2222,3 +2222,25 @@ The WordPress first-party bundled-provider package path is complete. The closeou
 Closeout validation: `77 passed`, Ruff passed, the module-size gate passed, and the provider registry gate passed.
 
 The user explicitly approved schedule publishing, local-versus-remote compare/sync, Quillin worker execution, and live third-party provider loading to become unblocked after this closeout. Proceed in separately reviewable roadmap phases, beginning with schedule publishing. Security, consent, accessibility, provider-neutrality, validation, and test gates remain required.
+
+## 2026-06-21 Schedule Publishing Implemented
+
+The schedule-publishing roadmap phase is complete, implemented as a Claude Code session continuing from this plan (the originating restart prompt was written for Codex; its tooling-specific blocker section did not apply and was dropped).
+
+Implemented:
+
+- `PUBLISHING_OPERATION_SCHEDULE` provider operation, added to `PUBLISHING_OPERATIONS` so WordPress gains it automatically through its existing `supported_operations`/`implemented_operations` reference.
+- `quill.core.publishing_schedule.validate_scheduled_publish_time(when, *, now=None)`: rejects timezone-naive values and values not strictly in the future.
+- `create_publishing_remote_item` and `update_publishing_remote_item` (`quill/core/publishing.py`) gained an optional `scheduled_at` parameter rather than a new top-level function — when set, status is forced to `"future"`, the operation gate checks `schedule` support, and the time is validated before any client call.
+- `PublishingProviderClient.create_remote_item`/`update_remote_item` and the WordPress client gained a matching `scheduled_at` parameter; WordPress sends `status="future"` and an explicit UTC `date_gmt`, and round-trips the provider's returned `date_gmt` back into a new `PublishingRemoteDocument.scheduled_for` field.
+- `publishing_result_message` reports a `"Scheduled"` verb and a `"Scheduled for: ... UTC"` line; `_display_status` maps `"future"` to `"scheduled"`.
+- New accessible `SchedulePublishDialog` (`quill/ui/publishing_tools.py`): plain `TextCtrl` date/time fields, a `Choice` of IANA time zones (default `UTC`), and a content-kind `Choice` (new document) or fixed `StaticText` (already-open remote item). Re-validates and re-shows on bad input instead of closing silently.
+- One command (`publishing.schedule_publish`, already mapped to the `future.publishing` feature) and one `File > Publish > Schedule Publish...` menu entry cover both scheduling a new post/page from the current document and scheduling an already-open remote item; the handler runs the same plain-language review-first confirmation idiom as the existing publish-now/update actions before any network call.
+
+Deliberately not implemented in this phase: timers, polling, recurring automation, or any delayed Quill-side execution. The provider only schedules; Quill never wakes up later to do anything.
+
+Validation: core focused battery `61 passed`; combined publishing/accessibility/governance battery `153 passed`; Ruff and the provider registry gate passed; scoped `mypy quill/core quill/io` shows the same pre-existing, unrelated findings as before (six `brf_page_detection.py` issues and one loosely-typed `_extend_unknown_issues` parameter in `publishing_validation.py` that this slice did not touch); full unit suite `4074 passed, 66 failed, 14 skipped` — the 66 failures are the identical pre-existing set from the recorded `4056 passed, 66 failed, 14 skipped` baseline (none publishing-, dialog-, or module-size-related), and the +18 passing delta is exactly the new tests this slice added.
+
+Committed locally as two checkpoints (core, then UI+governance); not pushed, per this session's explicit instruction to keep work local until the user pushes.
+
+Next roadmap phase per the Phase 1 closeout authorization: local-versus-remote compare and the first honest sync model.
