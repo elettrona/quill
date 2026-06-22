@@ -258,3 +258,84 @@ doesn't pin an exact ruff version.
 
 Committed as a single merge commit (`a17acdd2`); not pushed pending
 explicit request, per the standing repo convention.
+
+## 2026-06-22 - Locked publishing off behind the existing feature flag
+
+User asked to lock the publishing feature behind a "dev flag" so it isn't
+rolled into the public release when this branch's PR eventually lands.
+Researched the existing feature-flag system first rather than inventing a
+new mechanism, since the user explicitly wanted to match how current
+features are defined.
+
+Found `future.publishing` already exists in
+`quill/core/feature_catalog.py` (used throughout for command-feature
+mapping) but was a normal toggle, default-quiet-but-enabled in every
+profile (`FEATURE_STATE_QUIET` everywhere in `quill/core/features.py`).
+The established mechanism for "shipped but hidden from a default build" in
+this codebase is `locked_off=True` — used today by `core.third_party_plugins`
+(SEC-8) and `core.rich_text_lens`. `FeatureManager.state_for()` checks
+`locked_off` before consulting any profile, so it overrides every profile
+unconditionally; there is no settings-level override. Confirmed via the
+user's own clarifying answer ("how are current features defined? I want
+this to match that") that the static `locked_off=True` precedent, not a
+new `QUILL_DEV_BUILD`-conditional mechanism, was wanted.
+
+Critical finding before implementing: the File > Publish submenu in
+`quill/ui/main_frame_menu.py` was built **unconditionally** — no feature
+check wrapped it at all. Locking the flag alone would only have removed
+publishing commands from the Command Palette/Go to Anything (via the
+existing `is_visible()` -> `is_enabled()` -> `state_for()` chain that
+`quill/ui/palette.py` already uses) — the visible File > Publish submenu
+and its items would still have appeared and worked. Found the established
+menu-gating pattern by reading how `core.glow` does it (only the
+`.Append()`/`AppendSubMenu()` calls are wrapped in
+`if self._feature_enabled(...):` — menu id (`wx.NewIdRef()`) declarations
+and `Bind()` calls stay unconditional, since an id never attached to a
+real menu item can't fire from the UI regardless). Confirmed with the user
+this was wanted before touching code.
+
+Implemented:
+
+- `quill/core/feature_catalog.py`: `future.publishing` gains
+  `locked_off=True` and an updated description explaining why.
+- `quill/ui/main_frame_menu.py`: the whole Publish submenu construction
+  block (creating `self._publishing_file_menu`, all 11 `.Append()` calls,
+  the separator, and `file_menu.AppendSubMenu(...)`) is now wrapped in
+  `if self._feature_enabled("future.publishing"):`. The 11 `wx.NewIdRef()`
+  declarations and the later `Bind()` calls are untouched, matching the
+  GLOW precedent exactly.
+- No command-handler-level guards added (also matching the GLOW precedent
+  — `glow_audit_document`/etc. have no internal feature check either; the
+  menu gate plus palette filtering is considered sufficient since nothing
+  else in the UI exposes these command ids).
+
+Test fallout, all expected and updated:
+
+- `tests/unit/core/test_features.py::test_feature_manager_respects_profile_state`:
+  `state_for("future.publishing")` now asserts `FEATURE_STATE_OFF` instead
+  of `FEATURE_STATE_QUIET` (locked_off overrides the profile's quiet
+  setting, by design).
+- New `tests/unit/core/test_publishing_framework.py::test_publishing_feature_is_locked_off_pending_review`
+  and `test_publishing_disabled_in_default_build`, mirroring
+  `test_plugins.py`'s existing SEC-8 lock tests exactly.
+- `tests/unit/ui/test_main_frame_menu_contract.py`: the existing
+  `test_publishing_actions_live_in_file_menu_not_top_level_publishing_menu`
+  needed its expected indentation updated (+4 spaces, one new nesting
+  level) but otherwise needed no semantic change, since string-match
+  source-inspection tests don't care about the new `if` wrapper's presence
+  beyond indentation. New
+  `test_publishing_menu_is_gated_behind_its_locked_off_feature_flag` pins
+  the gate itself.
+- `quill/tools/module_size_budgets.json`: `main_frame_menu.py` rebaselined
+  3780->3786 (+6, the `if` line plus its 5-line explanatory comment).
+
+Validation: Ruff/`ruff format --check` clean; scoped `mypy quill/core
+quill/io` unchanged (1 pre-existing finding); module-size budget gate
+passed; full suite `4888 passed, 4 failed, 13 skipped` (the same 4
+failures verified pre-existing on `origin/main` itself earlier this
+session — unrelated to this change); smoke-launched the app, no
+traceback. The dialog-inventory and `ui_surface` generated snapshots did
+not need regenerating — no dialog surfaces or public methods were
+added/removed, only an existing block's visibility was gated.
+
+Committed locally (`6861b4d`); not pushed pending explicit request.
