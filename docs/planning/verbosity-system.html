@@ -3525,6 +3525,96 @@ track it as code lands.</p>
 <h3 id="closes-43">Closes</h3>
 <p>Section 46 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
+<h1 id="polish-backlog-10--consolidated-from-the-100-addenda">Polish
+backlog (1.0) — consolidated from the 100 addenda</h1>
+<blockquote>
+<p><strong>This is the working backlog.</strong> The 100 "Verbosity
+addendum" sections that follow (#405–#504) are the original brainstorm,
+kept for reference. They are deduplicated and triaged here into a small
+set of themed features. The individual addendum issues are closed on the
+tracker; this section is their home. Most "knobs" are not new features —
+they are per-verb overrides the verb registry already models, so they
+ship as <em>verbs + the per-verb UI</em>, not as bespoke settings.</p>
+</blockquote>
+<h2
+id="already-covered-by-the-shipped-core-or-the-14-ui-no-new-work">Already
+covered by the shipped core or the 1.4 UI (no new work)</h2>
+<p>Three-layer settings (#405), searchable settings (#406), settings
+undo/history (#465/#466), test-my-settings (#467), reset granularity
+(#481), export/import preview + conflict (#482/#483),
+try-without-applying (#484), do-not-say-again / per-announcement
+suppression (#471/#472), QVP copy-as-template / trust labels / sample
+packs (#440/#443/#444/#462), token help / examples /
+speak-current-template (#458/#459/#460), better defaults for
+experts/beginners (#475/#476). These map to the profile model, the verb
+registry, the QVP loader/library, and the prefs/token editor in sub-PR
+1.4.</p>
+<h2 id="themed-features-worth-building-10">Themed features worth
+building (1.0)</h2>
+<ol type="1">
+<li><strong>Per-category verbosity, via the verb registry.</strong>
+Indentation/whitespace, selection, clipboard, search-result, boundary,
+progress, mode-change, file-operation, and encoding/line-ending
+announcements (#412–#421, #430/#431, #418) are all per-verb overrides —
+ship the verbs and the per-verb table, not ten settings panels.</li>
+<li><strong>Status query commands.</strong> "Where am I?", "What
+changed?", "Speak status bar" (#422/#423/#424) — three small, high-value
+commands.</li>
+<li><strong>Announcement flow control.</strong> Budget, repetition
+collapse, queue policy, notification priority, and the support-bundle
+export (#408/#409/#451/#432/#447).</li>
+<li><strong>Safety announcements.</strong> Destructive-action warnings,
+"undo available", before/after, and "what will this change?"
+confirmation (#500/#501/#502/#474).</li>
+<li><strong>Friendly names.</strong> One feature: human-friendly names
+for technical concepts everywhere (consolidates
+#436/#440/#473/#477).</li>
+<li><strong>Status bar surfacing.</strong> Pin-this-status, status
+badges, favorites, last important announcement
+(#452/#455/#456/#497).</li>
+<li><strong>Scope profiles.</strong> Per-workspace / per-file verbosity,
+session profiles, and time-based quiet hours (#434/#435/#485/#486);
+task-aware Markdown/Code modes already exist in core
+(#393/#427/#428).</li>
+<li><strong>Sound learnability.</strong> Earcons-with-text-equivalents
+and a "learn sounds" mode (#453/#454), under the §8 sound design.</li>
+<li><strong>Coaching &amp; discovery.</strong> Error coaching,
+details-on-demand, command-discovery announcements, contextual-help
+hooks (#416/#417/#470/#439).</li>
+<li><strong>Braille channel polish.</strong> Braille-specific knobs and
+the braille status cell (#425/#498), under the braille channel.</li>
+</ol>
+<h2
+id="recommend-do-not-build-screen-reader-redundant-or-out-of-scope">Recommend:
+do not build (screen-reader-redundant or out of scope)</h2>
+<p>Recorded here deliberately rather than silently dropped:</p>
+<ul>
+<li><strong>Typing Echo (#411)</strong> and <strong>Command Echo
+(#499)</strong> — the screen reader already echoes typed
+characters/words and announces outcomes; QUILL adding its own echo
+double-speaks or fights the SR. The correct answer is the
+<strong>Screen-Reader Handoff</strong> mode (#410), not a second echo
+engine.</li>
+<li><strong>Speech Rate and Pause knobs (#450)</strong> — QUILL does not
+own the screen reader's voice; rate/pacing is an SR setting.</li>
+<li><strong>Punctuation and Symbol Profiles (#426)</strong> —
+punctuation level is a core NVDA/JAWS/Narrator setting; duplicating it
+in QUILL conflicts with the SR. (A braille-only punctuation note may
+live under braille polish.)</li>
+<li><strong>Smart Status Rotation (#457)</strong> — auto-rotating status
+is unpredictable for SR users. <strong>Multi-Monitor/Presentation Safety
+(#503)</strong> — the audio half is Meeting Mode, already built.</li>
+<li><strong>Final Recommendation (#504)</strong> — a meta summary, not a
+feature.</li>
+<li>Reconcile, do not re-implement: <strong>Abbreviation dictionary for
+announcements (#492)</strong> overlaps the existing Abbreviation
+Manager; <strong>Language/Localization readiness (#493)</strong>
+overlaps the shipped i18n work.</li>
+</ul>
+<hr />
+<h2
+id="original-addenda-reference-archive--issues-closed-see-backlog-above">Original
+addenda (reference archive — issues closed, see backlog above)</h2>
 <h2
 id="405--verbosity-addendum-1-settings-should-have-three-layers">#405 —
 Verbosity addendum #1: Settings Should Have Three Layers</h2>

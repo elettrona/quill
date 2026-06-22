@@ -2771,6 +2771,79 @@ Section 46 of `docs/planning/verbosity.md`.
 
 ---
 
+# Polish backlog (1.0) — consolidated from the 100 addenda
+
+> **This is the working backlog.** The 100 "Verbosity addendum" sections that
+> follow (#405–#504) are the original brainstorm, kept for reference. They are
+> deduplicated and triaged here into a small set of themed features. The
+> individual addendum issues are closed on the tracker; this section is their
+> home. Most "knobs" are not new features — they are per-verb overrides the verb
+> registry already models, so they ship as *verbs + the per-verb UI*, not as
+> bespoke settings.
+
+## Already covered by the shipped core or the 1.4 UI (no new work)
+
+Three-layer settings (#405), searchable settings (#406), settings undo/history
+(#465/#466), test-my-settings (#467), reset granularity (#481), export/import
+preview + conflict (#482/#483), try-without-applying (#484), do-not-say-again /
+per-announcement suppression (#471/#472), QVP copy-as-template / trust labels /
+sample packs (#440/#443/#444/#462), token help / examples / speak-current-template
+(#458/#459/#460), better defaults for experts/beginners (#475/#476). These map to
+the profile model, the verb registry, the QVP loader/library, and the prefs/token
+editor in sub-PR 1.4.
+
+## Themed features worth building (1.0)
+
+1. **Per-category verbosity, via the verb registry.** Indentation/whitespace,
+   selection, clipboard, search-result, boundary, progress, mode-change,
+   file-operation, and encoding/line-ending announcements (#412–#421, #430/#431,
+   #418) are all per-verb overrides — ship the verbs and the per-verb table, not
+   ten settings panels.
+2. **Status query commands.** "Where am I?", "What changed?", "Speak status bar"
+   (#422/#423/#424) — three small, high-value commands.
+3. **Announcement flow control.** Budget, repetition collapse, queue policy,
+   notification priority, and the support-bundle export (#408/#409/#451/#432/#447).
+4. **Safety announcements.** Destructive-action warnings, "undo available",
+   before/after, and "what will this change?" confirmation (#500/#501/#502/#474).
+5. **Friendly names.** One feature: human-friendly names for technical concepts
+   everywhere (consolidates #436/#440/#473/#477).
+6. **Status bar surfacing.** Pin-this-status, status badges, favorites, last
+   important announcement (#452/#455/#456/#497).
+7. **Scope profiles.** Per-workspace / per-file verbosity, session profiles, and
+   time-based quiet hours (#434/#435/#485/#486); task-aware Markdown/Code modes
+   already exist in core (#393/#427/#428).
+8. **Sound learnability.** Earcons-with-text-equivalents and a "learn sounds" mode
+   (#453/#454), under the §8 sound design.
+9. **Coaching & discovery.** Error coaching, details-on-demand, command-discovery
+   announcements, contextual-help hooks (#416/#417/#470/#439).
+10. **Braille channel polish.** Braille-specific knobs and the braille status cell
+    (#425/#498), under the braille channel.
+
+## Recommend: do not build (screen-reader-redundant or out of scope)
+
+Recorded here deliberately rather than silently dropped:
+
+- **Typing Echo (#411)** and **Command Echo (#499)** — the screen reader already
+  echoes typed characters/words and announces outcomes; QUILL adding its own echo
+  double-speaks or fights the SR. The correct answer is the **Screen-Reader
+  Handoff** mode (#410), not a second echo engine.
+- **Speech Rate and Pause knobs (#450)** — QUILL does not own the screen reader's
+  voice; rate/pacing is an SR setting.
+- **Punctuation and Symbol Profiles (#426)** — punctuation level is a core
+  NVDA/JAWS/Narrator setting; duplicating it in QUILL conflicts with the SR. (A
+  braille-only punctuation note may live under braille polish.)
+- **Smart Status Rotation (#457)** — auto-rotating status is unpredictable for SR
+  users. **Multi-Monitor/Presentation Safety (#503)** — the audio half is Meeting
+  Mode, already built.
+- **Final Recommendation (#504)** — a meta summary, not a feature.
+- Reconcile, do not re-implement: **Abbreviation dictionary for announcements
+  (#492)** overlaps the existing Abbreviation Manager; **Language/Localization
+  readiness (#493)** overlaps the shipped i18n work.
+
+---
+
+## Original addenda (reference archive — issues closed, see backlog above)
+
 ## #405 — Verbosity addendum #1: Settings Should Have Three Layers
 
 **Labels:** feature, p0

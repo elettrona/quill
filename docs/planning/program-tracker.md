@@ -6,7 +6,19 @@
 **Operating rules:** everything ships (2.0 deferral framing is dropped); track work as individual issues; execute in **buckets** via **small, low-risk commits**; update release notes + user guide + PRD + CHANGELOG with each landed bucket; **simplicity for the user is king**.
 
 
-_Live status is the **By status** table below. The per-bucket / priority / rating tables are the original portfolio baseline snapshot (252 open) kept for proportions. Issue #617 is in scope (it now ships); Linux/Unix is out of scope._
+> **2026-06-21 consolidation.** The plan of record is now
+> [`roadmap.md`](roadmap.md) (organized by workstream, including the BITS
+> Whisperer / GLOW / ChapterForge integrations). The tracker was reconciled to
+> it: open issues dropped from **232 to 80** by closing the 100 verbosity
+> brainstorm addenda (→ verbosity polish backlog), the AI placeholders (→ Agentic
+> AI PRD), the Tier-6 doc stubs (→ Docs & Tutorials track), content-free FEAT
+> stubs, the done localization item, Linux (out of scope), and meta/archive
+> placeholders. The GLOW integration (#528–#534, #593–#598) and BITS Whisperer
+> (#515, #566–#577, #617, #663) stay open as live workstreams. The per-bucket /
+> priority / rating tables further below are a **stale historical snapshot**;
+> `roadmap.md` supersedes them.
+
+_Live status is the **By status** table below._
 
 
 ## Status legend
@@ -25,14 +37,31 @@ closed won't-do.
 
 ### By status
 
+**Open issues on GitHub: 80** (down from 232 before the 2026-06-21 consolidation). **Shipped this program: 20.**
+
 | Status | Count |
 | --- | ---: |
-| ✅ Shipped | 20 (#648, #649, #643, #646, #238, #239, #240, #241, #242, #246, #251, #617, #361, #368, #374, #377, #362, #392, #363, #382) |
-| 🚧 In progress | 17 (verbosity partials, core landed/UI pending: #367 §5, #369 §7, #375 §13, #376 §14, #371 §9, #372 §10, #373 §11, #386 §24, #387 §25, #388 §26, #389 §27, #391 §29, #393 §31, #397 §35, #381 §19, #383 §21, #385 §23) |
+| ✅ Shipped | 20 (#648, #649, #643, #646, #238, #239, #240, #241, #242, #246, #251, #617 core S0–S4, #361, #368, #374, #377, #362, #392, #363, #382) |
+| 🚧 In progress | Verbosity (Phase 2): sub-PRs #364/#365/#366 + the §-section partials with core landed / UI pending (#367, #369, #371–#373, #375, #376, #381, #383, #385, #386–#389, #391, #393, #397) |
 | 🧹 Resolved (bookkeeping) | 2 (#600, #601 — braille design captured in docs) |
-| ❌ Out of scope | 3 (Linux/Unix — #520, #565, #589) |
-| ⬜ Planned | 215 (incl. new #663 — Speech S5 offline voice commands) |
-| **Total tracked** | **257** |
+
+### Open by workstream (per [`roadmap.md`](roadmap.md))
+
+| Workstream | Open issues |
+| --- | --- |
+| Verbosity (Phase 2, in progress) | sub-PRs #364/#365/#366 + the §-section partials above (+ epic #271) |
+| Speech & Dictation — BITS Whisperer | #617, #663, and the BW consolidation backlog #515, #566–#577 |
+| GLOW integration | family #528–#534; Accessibility Agents #593–#598 |
+| Platform & Distribution | #506, #516, #517, #518, #519, #521, #525, #599 (packaging/freeze) |
+| Navigation & Editor | #513, #514, #578 |
+| Publishing & Audiobook | #140 (DAISY shipped; ChapterForge integration planned) |
+| Docs / QA in-flight | #526 (SR sign-off), #527 (spell-check preload) |
+| Long-horizon | #590 (ecosystem), #592 (collaboration) |
+
+> **Closed via consolidation (2026-06-21):** 152 issues — the 100 verbosity
+> addenda, 11 AI placeholders, 30 Tier-6 doc stubs, 7 content-free FEAT stubs,
+> localization (done), 3 Linux (out of scope), 3 meta/archive. Each carries a
+> closing comment pointing to its home in the plan.
 
 > **Wave 2 (Verbosity) — foundation + engine shipped (sub-PRs 1.1 and 1.2).**
 > 1.1 (#361) landed the pure-domain foundation; 1.2 (#362) added the routing
