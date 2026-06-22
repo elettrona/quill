@@ -78,6 +78,25 @@ editing. Then download a model from **Manage Speech Models** (sizes and
 trade-offs are shown; the Small model is a good start; downloads come over a
 secure connection and are disabled in Safe Mode).
 
+### Manage models with confidence
+**Manage Speech Models** now guides you to a model that fits your computer and
+gets out of your way while it downloads.
+
+- **Machine-aware guidance.** The dialog opens with a summary of your machine
+  (RAM, and whether a GPU was found). Each model shows roughly how much memory it
+  needs, flags models that are too big for your RAM, marks the best fit as
+  **"Recommended for your computer,"** and warns when a large model has no GPU to
+  accelerate it.
+- **Downloads run in the background with a real percentage.** A download no longer
+  freezes QUILL — it runs while you keep working, shows a percentage you can
+  **Cancel** at any time (cancelling cleans up the partial file), and announces
+  progress for screen-reader users. QUILL also warns about low disk space before
+  starting.
+- **Deleting a model is now obvious.** After you pick a model, choose **Download**
+  or **Remove** explicitly, instead of the action being inferred for you.
+- **A startup freeze is fixed.** Opening any Whisperer command no longer stalls
+  the app while the optional Faster Whisper engine loads.
+
 ### Transcribe audio and video
 **Transcribe Audio or Video (Offline)...** turns a recording into text on your
 own machine — no cloud account, and your audio is never uploaded. Choose the

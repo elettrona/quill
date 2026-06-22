@@ -718,10 +718,22 @@ not need to enable Artificial Intelligence to use these features. They live unde
 **Tools > Speech > Whisperer**:
 
 - **Manage Speech Models...** lists local speech models with their download size,
-  accuracy, and speed. Choose a model that is not installed to download it (the
-  Small model is recommended to start); choose an installed model to remove it.
-  Models are downloaded over a secure connection from the Hugging Face Hub and
-  stored on your computer. Downloading is disabled in Safe Mode.
+  accuracy, and speed, and helps you pick one that will actually run well on your
+  computer. The dialog opens with a one-line summary of your machine (RAM, and
+  whether a GPU was found). Each model shows roughly how much memory it needs; a
+  model that is too big for your RAM is flagged, the best fit for your computer is
+  marked **"Recommended for your computer,"** and a larger model warns you when no
+  GPU is present (it will be slow on the CPU).
+  - **Choosing what to do.** Pick a model, then choose an action: **Download this
+    model** if it is not installed, or **Remove this model from my computer** if it
+    is. (Deletion is now an explicit choice, so it is easy to find.) Before a
+    download starts, QUILL warns you if there is not enough free disk space.
+  - **Downloads run in the background and show progress.** A download no longer
+    freezes QUILL: it runs while you keep working, shows a **percentage** in a
+    progress window you can **Cancel** at any time, and announces progress as it
+    goes. Cancelling cleans up the partial file. Models come over a secure
+    connection from the Hugging Face Hub and are stored on your computer.
+    Downloading is disabled in Safe Mode.
 - **Transcribe Audio or Video (Offline)...** asks for an audio or video file and a
   transcript format — **plain text, Markdown, or HTML** — then transcribes locally
   and opens the result as an editable draft document. The work runs in the

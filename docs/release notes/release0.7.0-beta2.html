@@ -267,6 +267,30 @@ no separate install, no PATH editing. Then download a model from
 <strong>Manage Speech Models</strong> (sizes and trade-offs are shown;
 the Small model is a good start; downloads come over a secure connection
 and are disabled in Safe Mode).</p>
+<h3 id="manage-models-with-confidence">Manage models with
+confidence</h3>
+<p><strong>Manage Speech Models</strong> now guides you to a model that
+fits your computer and gets out of your way while it downloads.</p>
+<ul>
+<li><strong>Machine-aware guidance.</strong> The dialog opens with a
+summary of your machine (RAM, and whether a GPU was found). Each model
+shows roughly how much memory it needs, flags models that are too big
+for your RAM, marks the best fit as <strong>"Recommended for your
+computer,"</strong> and warns when a large model has no GPU to
+accelerate it.</li>
+<li><strong>Downloads run in the background with a real
+percentage.</strong> A download no longer freezes QUILL — it runs while
+you keep working, shows a percentage you can <strong>Cancel</strong> at
+any time (cancelling cleans up the partial file), and announces progress
+for screen-reader users. QUILL also warns about low disk space before
+starting.</li>
+<li><strong>Deleting a model is now obvious.</strong> After you pick a
+model, choose <strong>Download</strong> or <strong>Remove</strong>
+explicitly, instead of the action being inferred for you.</li>
+<li><strong>A startup freeze is fixed.</strong> Opening any Whisperer
+command no longer stalls the app while the optional Faster Whisper
+engine loads.</li>
+</ul>
 <h3 id="transcribe-audio-and-video">Transcribe audio and video</h3>
 <p><strong>Transcribe Audio or Video (Offline)...</strong> turns a
 recording into text on your own machine — no cloud account, and your

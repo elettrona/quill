@@ -1357,11 +1357,27 @@ Artificial Intelligence to use these features. They live under
 <strong>Tools &gt; Speech &gt; Whisperer</strong>:</p>
 <ul>
 <li><strong>Manage Speech Models...</strong> lists local speech models
-with their download size, accuracy, and speed. Choose a model that is
-not installed to download it (the Small model is recommended to start);
-choose an installed model to remove it. Models are downloaded over a
-secure connection from the Hugging Face Hub and stored on your computer.
+with their download size, accuracy, and speed, and helps you pick one
+that will actually run well on your computer. The dialog opens with a
+one-line summary of your machine (RAM, and whether a GPU was found).
+Each model shows roughly how much memory it needs; a model that is too
+big for your RAM is flagged, the best fit for your computer is marked
+<strong>"Recommended for your computer,"</strong> and a larger model
+warns you when no GPU is present (it will be slow on the CPU).
+<ul>
+<li><strong>Choosing what to do.</strong> Pick a model, then choose an
+action: <strong>Download this model</strong> if it is not installed, or
+<strong>Remove this model from my computer</strong> if it is. (Deletion
+is now an explicit choice, so it is easy to find.) Before a download
+starts, QUILL warns you if there is not enough free disk space.</li>
+<li><strong>Downloads run in the background and show progress.</strong>
+A download no longer freezes QUILL: it runs while you keep working,
+shows a <strong>percentage</strong> in a progress window you can
+<strong>Cancel</strong> at any time, and announces progress as it goes.
+Cancelling cleans up the partial file. Models come over a secure
+connection from the Hugging Face Hub and are stored on your computer.
 Downloading is disabled in Safe Mode.</li>
+</ul></li>
 <li><strong>Transcribe Audio or Video (Offline)...</strong> asks for an
 audio or video file and a transcript format — <strong>plain text,
 Markdown, or HTML</strong> — then transcribes locally and opens the
