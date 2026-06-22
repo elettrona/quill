@@ -98,7 +98,9 @@ def test_feature_manager_respects_profile_state() -> None:
     assert manager.state_for("core.file") == FEATURE_STATE_ON
     assert manager.state_for("core.search.regex") == FEATURE_STATE_OFF
     assert manager.state_for("future.ai") == FEATURE_STATE_QUIET
-    assert manager.state_for("future.publishing") == FEATURE_STATE_QUIET
+    # future.publishing is locked_off (publishing-providers-framework branch
+    # under review), which overrides any profile's quiet/on state.
+    assert manager.state_for("future.publishing") == FEATURE_STATE_OFF
 
 
 def test_feature_manager_can_switch_profiles() -> None:

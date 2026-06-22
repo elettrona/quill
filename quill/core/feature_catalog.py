@@ -422,10 +422,16 @@ FEATURE_DEFINITIONS: dict[str, FeatureDefinition] = {
         "future.publishing",
         "Publishing",
         aliases=("publishing", "publish", "site publishing"),
-        description="Publishing connections and provider-aware remote publishing flows.",
+        description=(
+            "Publishing connections and provider-aware remote publishing flows. "
+            "Locked off while the publishing-providers-framework branch is under "
+            "review; gating this off keeps it out of the public release until "
+            "the feature is ready to ship."
+        ),
         maturity="advanced",
         privacy="network after confirmation",
         category="future",
+        locked_off=True,
     ),
     "future.ai_menu_top_level": FeatureDefinition(
         "future.ai_menu_top_level",

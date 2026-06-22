@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from quill.core.features import feature_for_command
+from quill.core.features import FEATURE_DEFINITIONS, FeatureManager, feature_for_command
 
 
 def test_publishing_commands_map_to_publishing_feature() -> None:
@@ -41,3 +41,16 @@ def test_publishing_command_ids_stay_provider_neutral() -> None:
 
     assert all(command_id.startswith("publishing.") for command_id in publishing_commands)
     assert all("wordpress" not in command_id for command_id in publishing_commands)
+
+
+def test_publishing_feature_is_locked_off_pending_review() -> None:
+    # The publishing-providers-framework branch is locked off so it never
+    # ships in a public release until this gate is deliberately lifted.
+    definition = FEATURE_DEFINITIONS["future.publishing"]
+    assert definition.locked_off is True
+
+
+def test_publishing_disabled_in_default_build() -> None:
+    manager = FeatureManager.load(persistent=False)
+    assert manager.is_enabled("future.publishing") is False
+    assert manager.is_visible("future.publishing") is False
