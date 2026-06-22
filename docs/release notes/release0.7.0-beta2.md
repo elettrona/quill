@@ -162,6 +162,39 @@ hardware players such as the Victor Reader Stream, Plextalk, and APH units.
 
 ---
 
+## Write in any language: Document Language and auto-detection
+
+QUILL now lets a document be edited *as* a language even when its file name says
+otherwise — so a plain `.txt`, an unsaved buffer, or a snippet you pasted can get
+real HTML, Markdown, or code editing.
+
+- **Set the language and get its characteristics.** **Ctrl+Shift+L** (also
+  **Navigate > Set Document Language...**, the new **Format > Document Language**
+  list, or Enter on the status-bar **Language** segment) pins a language for the
+  current document. Once set, **Bold/Italic** insert the right markup,
+  the heading/table/list/tag menu items light up, **comment toggling** uses that
+  language's syntax, and heading navigation, the outline, link insertion, and
+  live preview all follow it. The status bar shows **(set)** when you chose the
+  language yourself. Recognised languages now include HTML, Markdown, CSS,
+  Python, JavaScript, TypeScript, C, C++, **C#**, **PHP**, Go, Rust, Kotlin,
+  Shell, YAML, JSON, TOML, and SQL.
+- **It is an editing aid, not a rename.** Setting HTML on a `.txt` does not change
+  the file; QUILL reminds you to use **Save As** to write it as `.html`. The
+  choice is per-tab and resets when you close the file. **Auto-detect from file**
+  clears the override.
+- **Optional automatic detection (off by default).** Turn on **Settings >
+  Editing > Auto-detect document language** to have QUILL recognise the language
+  when you paste or type code into a plain `.txt`/untitled document. Choose how
+  assertive it is: **Hint** (status bar only), **Suggest and announce** (you
+  confirm), or **Switch automatically**. Detection is cautious — it acts only
+  when confident, never guesses on ordinary prose, learns lightly from the
+  languages you use, and **never** overrides a real extension or a language you
+  set. Unlike editors that switch silently or show a visual-only hint, QUILL
+  keeps a screen-reader user informed in every mode. Braille content is never
+  affected — it has its own Braille Mode.
+
+---
+
 ## A smoother upgrade
 
 When you upgrade from QUILL 0.5.0 or Beta 1, QUILL checks your saved settings and

@@ -2998,28 +2998,88 @@ understands documents</h3>
 review starts to feel much less fragile.</p>
 <h3 id="code-aware-editing">Code-aware editing</h3>
 <p>When you open a source file, Quill loads a <strong>language
-profile</strong> based on the file extension — Python, JavaScript and
-TypeScript, Kotlin, Shell, Markdown, JSON, TOML, and SQL are recognised,
-with a plain-text fallback for everything else. The profile tells Quill
-how that language is tokenised so movement and announcements make sense
-for code.</p>
+profile</strong> based on the file extension. Recognised languages are
+HTML, Markdown, CSS, Python, JavaScript, TypeScript, C, C++, C#, PHP,
+Go, Rust, Kotlin, Shell, YAML, JSON, TOML, and SQL, with a plain-text
+fallback for everything else. The profile tells Quill how that language
+is tokenised so movement and announcements make sense for code.</p>
 <ul>
 <li><strong>Token navigation.</strong> Move by code token rather than by
 word with <strong>Next Token</strong> and <strong>Previous
 Token</strong> in the Navigate menu. The caret lands on the next
 identifier, keyword, operator, or literal, which is far more predictable
 than character or word movement when you are reading code by ear.</li>
-<li><strong>Set the language yourself.</strong> Auto-detection follows
-the file extension, but you can override it for the current document
-with <strong>Navigate → Set Document Language</strong> — useful for an
-unsaved buffer, an unusual extension, or a snippet pasted into a plain
-file.</li>
 <li><strong>Pairs with indentation tones.</strong> Code-aware editing
 works well alongside the optional indentation tones described under <a
 href="#sound-notifications-and-earcons">Sound notifications and
 earcons</a>, so structure is carried by pitch while you move by
 token.</li>
 </ul>
+<h4 id="setting-the-document-language">Setting the document
+language</h4>
+<p>Auto-detection follows the file extension, but you can <strong>set
+the language yourself</strong> for the current document — useful for an
+unsaved buffer, an unusual extension, or code you pasted into a plain
+<code>.txt</code> file. When you do, you get that language's full
+editing characteristics, not just token navigation:</p>
+<ul>
+<li><strong>Bold and Italic</strong> insert the right markup
+(<code>&lt;strong&gt;</code>/<code>&lt;em&gt;</code> for HTML,
+<code>**…**</code>/<code>*…*</code> for Markdown).</li>
+<li>The <strong>heading, table, list, and tag</strong> menu items enable
+for HTML and Markdown.</li>
+<li><strong>Toggle Line/Block Comment</strong> uses the language's
+comment syntax (<code>#</code>, <code>//</code>,
+<code>&lt;!-- --&gt;</code>, <code>-- </code>).</li>
+<li><strong>Heading and structure navigation, the outline, link
+insertion, and live preview</strong> all follow the chosen
+language.</li>
+</ul>
+<p>Three ways to set it, all equivalent:</p>
+<ul>
+<li><strong>Hotkey:</strong> <strong>Ctrl+Shift+L</strong> opens the
+language picker (type-ahead; the current language is preselected).</li>
+<li><strong>Menus:</strong> <strong>Navigate → Set Document
+Language...</strong> (the same picker), or <strong>Format → Document
+Language</strong>, a checkable list where you can switch with one
+keypress and see the active language at a glance.</li>
+<li><strong>Status bar:</strong> the <strong>Language</strong> segment
+shows the current language — with <strong>(set)</strong> when you chose
+it yourself rather than it being detected — and pressing
+<strong>Enter</strong> on it opens the picker.</li>
+</ul>
+<p>Choosing <strong>Auto-detect from file</strong> clears your override
+and goes back to following the file name. Setting a language is an
+<em>editing</em> aid: it never renames the file, so if you set HTML on a
+<code>.txt</code>, Quill reminds you to use <strong>Save As</strong> to
+save it as <code>.html</code>. The choice applies to the current tab and
+is not remembered after you close the file.</p>
+<h4 id="automatic-language-detection-optional-off-by-default">Automatic
+language detection (optional, off by default)</h4>
+<p>Quill can detect the language for you when you paste or type code
+into a plain <code>.txt</code> or untitled document. It is <strong>off
+by default</strong>; turn it on in <strong>Settings → Editing →
+Auto-detect document language</strong>, which offers four modes:</p>
+<ul>
+<li><strong>Off</strong> — never detect (the default).</li>
+<li><strong>Hint in the status bar only</strong> — quietly shows "Looks
+like HTML" in the status bar; nothing changes and nothing is
+spoken.</li>
+<li><strong>Suggest and announce, you confirm</strong> — announces a
+dismissible suggestion ("This looks like HTML. Press Ctrl+Shift+L, then
+Enter, to set the document language."), and you decide.</li>
+<li><strong>Switch automatically</strong> — sets the language for you
+and announces the change.</li>
+</ul>
+<p>Detection runs a fraction of a second after you stop typing or
+pasting, looks at the content (the first several thousand characters),
+and is deliberately cautious: it only acts when it is confident, never
+guesses on ordinary prose, and <strong>never</strong> overrides a real
+file extension or a language you set yourself. It also learns lightly
+from the languages you use during a session. Unlike some editors, Quill
+never switches silently or relies on a visual-only hint — in every mode
+you either stay in control or hear what changed. (Braille files and
+pasted braille are not affected — braille has its own Braille Mode.)</p>
 <h3 id="abbreviation-expansion-emmet-style">Abbreviation expansion
 (Emmet-style)</h3>
 <p>Three commands on the <strong>Edit</strong> menu expand compact

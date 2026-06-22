@@ -4108,6 +4108,71 @@ supported languages; Markdown respects fence boundaries.</li>
 <code>Matched bracket on line N, column C</code> so screen-reader users
 do not lose context.</li>
 </ul>
+<h3 id="528a-document-language-profiles-and-auto-detection-181">5.28a
+Document Language profiles and auto-detection (#181)</h3>
+<p>Each document has a <strong>language profile</strong>
+(<code>quill/core/language_profile.py</code>) describing one
+programming/markup language: extensions, indent convention, comment
+syntax, brackets, keyword set, and a <code>markup_kind</code>
+(<code>"html"</code>, <code>"markdown"</code>, or <code>"plain"</code>).
+Recognised languages: HTML, Markdown, CSS, Python, JavaScript,
+TypeScript, C, C++, C#, PHP, Go, Rust, Kotlin, Shell, YAML, JSON, TOML,
+SQL, plus a plain-text fallback. The profile is wx-free, pure data.</p>
+<ul>
+<li><strong>Auto-assignment.</strong> On open and on tab creation the
+profile is set from the file extension
+(<code>get_profile_for_path</code>), unless the user has pinned
+one.</li>
+<li><strong>User override.</strong> <code>set_document_language</code>
+pins a profile for the current tab
+(<code>_DocumentTab._language_profile</code> +
+<code>_language_profile_pinned</code>). Reachable via
+<code>navigate.set_language</code> (default
+<strong>Ctrl+Shift+L</strong>), <strong>Navigate &gt; Set Document
+Language...</strong>, the <strong>Format &gt; Document Language</strong>
+radio submenu (Auto-detect + every profile + Plain text, current item
+checked), and Enter on the status-bar <strong>Language</strong> segment
+(which appends "(set)" when pinned). "Auto-detect from file" clears the
+override.</li>
+<li><strong>The pin drives editing characteristics.</strong> A pinned
+profile is the source of truth ahead of path/content inference via
+<code>_pinned_markup_kind()</code>,
+<code>_current_markup_context()</code>, and
+<code>_effective_markup_kind()</code>: bold/italic surface, the
+heading/table/list/tag menu enablement, comment toggling
+(<code>format_ops.toggle_line/block_comment</code> accept the profile),
+heading and structure navigation, the outline, link insertion, and live
+preview all follow it.</li>
+<li><strong>Editing aid, not a rename.</strong> Pinning never changes
+the file format; when the profile's extension doesn't match the file, a
+Save As hint is announced. The override is tab-only (not persisted
+across reopen).</li>
+</ul>
+<p><strong>Automatic detection</strong>
+(<code>quill/core/language_detect.py</code>, wx-free, deterministic, no
+ML) scores the buffer over the languages above using weighted structural
+signals, then applies confidence discipline modelled on VS Code's
+detector: an absolute floor, a relative margin over the runner-up,
+ambiguity penalties (YAML/TOML/SQL), optional session-history bias, and
+a <code>should_switch()</code> hysteresis gate. It returns
+<code>language=None</code> (plain) when unsure and does not misfire on
+prose or ASCII-braille.</p>
+<ul>
+<li><strong>Setting:</strong> <code>language_detection_mode</code> ∈
+{<code>off</code> (default), <code>hint</code>, <code>prompt</code>,
+<code>auto</code>}, exposed in <strong>Settings &gt;
+Editing</strong>.</li>
+<li><strong>Trigger:</strong> <code>LanguageDetectMixin</code> debounces
+content changes (~800 ms) and runs <strong>only</strong> on unpinned
+untitled/<code>.txt</code>-like documents; it never overrides a real
+extension or a user pin.</li>
+<li><strong>Behaviour by mode:</strong> <code>hint</code> updates the
+status bar silently; <code>prompt</code> announces a dismissible
+suggestion; <code>auto</code> calls <code>set_document_language</code>
+and announces the change. A screen-reader user is informed in every mode
+(no silent or visual-only switch). Braille content is out of scope —
+Braille Mode owns it.</li>
+</ul>
 <h3 id="529-format-menu-text-transforms-no-styling">5.29 Format menu
 (text transforms, no styling)</h3>
 <p>A dedicated menu surfacing transforms that are otherwise reachable

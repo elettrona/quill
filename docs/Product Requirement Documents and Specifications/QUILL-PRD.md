@@ -2186,6 +2186,21 @@ Remote I/O is the natural extension of "Open from URL": once a user has a saved 
 - Bracket matching is language-aware: respects strings and comments in supported languages; Markdown respects fence boundaries.
 - The match is announced as `Matched bracket on line N, column C` so screen-reader users do not lose context.
 
+### 5.28a Document Language profiles and auto-detection (#181)
+
+Each document has a **language profile** (`quill/core/language_profile.py`) describing one programming/markup language: extensions, indent convention, comment syntax, brackets, keyword set, and a `markup_kind` (`"html"`, `"markdown"`, or `"plain"`). Recognised languages: HTML, Markdown, CSS, Python, JavaScript, TypeScript, C, C++, C#, PHP, Go, Rust, Kotlin, Shell, YAML, JSON, TOML, SQL, plus a plain-text fallback. The profile is wx-free, pure data.
+
+- **Auto-assignment.** On open and on tab creation the profile is set from the file extension (`get_profile_for_path`), unless the user has pinned one.
+- **User override.** `set_document_language` pins a profile for the current tab (`_DocumentTab._language_profile` + `_language_profile_pinned`). Reachable via `navigate.set_language` (default **Ctrl+Shift+L**), **Navigate > Set Document Language...**, the **Format > Document Language** radio submenu (Auto-detect + every profile + Plain text, current item checked), and Enter on the status-bar **Language** segment (which appends "(set)" when pinned). "Auto-detect from file" clears the override.
+- **The pin drives editing characteristics.** A pinned profile is the source of truth ahead of path/content inference via `_pinned_markup_kind()`, `_current_markup_context()`, and `_effective_markup_kind()`: bold/italic surface, the heading/table/list/tag menu enablement, comment toggling (`format_ops.toggle_line/block_comment` accept the profile), heading and structure navigation, the outline, link insertion, and live preview all follow it.
+- **Editing aid, not a rename.** Pinning never changes the file format; when the profile's extension doesn't match the file, a Save As hint is announced. The override is tab-only (not persisted across reopen).
+
+**Automatic detection** (`quill/core/language_detect.py`, wx-free, deterministic, no ML) scores the buffer over the languages above using weighted structural signals, then applies confidence discipline modelled on VS Code's detector: an absolute floor, a relative margin over the runner-up, ambiguity penalties (YAML/TOML/SQL), optional session-history bias, and a `should_switch()` hysteresis gate. It returns `language=None` (plain) when unsure and does not misfire on prose or ASCII-braille.
+
+- **Setting:** `language_detection_mode` ∈ {`off` (default), `hint`, `prompt`, `auto`}, exposed in **Settings > Editing**.
+- **Trigger:** `LanguageDetectMixin` debounces content changes (~800 ms) and runs **only** on unpinned untitled/`.txt`-like documents; it never overrides a real extension or a user pin.
+- **Behaviour by mode:** `hint` updates the status bar silently; `prompt` announces a dismissible suggestion; `auto` calls `set_document_language` and announces the change. A screen-reader user is informed in every mode (no silent or visual-only switch). Braille content is out of scope — Braille Mode owns it.
+
 ### 5.29 Format menu (text transforms, no styling)
 
 A dedicated menu surfacing transforms that are otherwise reachable via Tools or shortcuts. The menu exists because discoverability matters more than purity.

@@ -362,6 +362,48 @@ the folder in a tool like APH Book Wizard Producer to add recorded or
 synthesized audio later.</li>
 </ul>
 <hr />
+<h2
+id="write-in-any-language-document-language-and-auto-detection">Write in
+any language: Document Language and auto-detection</h2>
+<p>QUILL now lets a document be edited <em>as</em> a language even when
+its file name says otherwise — so a plain <code>.txt</code>, an unsaved
+buffer, or a snippet you pasted can get real HTML, Markdown, or code
+editing.</p>
+<ul>
+<li><strong>Set the language and get its characteristics.</strong>
+<strong>Ctrl+Shift+L</strong> (also <strong>Navigate &gt; Set Document
+Language...</strong>, the new <strong>Format &gt; Document
+Language</strong> list, or Enter on the status-bar
+<strong>Language</strong> segment) pins a language for the current
+document. Once set, <strong>Bold/Italic</strong> insert the right
+markup, the heading/table/list/tag menu items light up, <strong>comment
+toggling</strong> uses that language's syntax, and heading navigation,
+the outline, link insertion, and live preview all follow it. The status
+bar shows <strong>(set)</strong> when you chose the language yourself.
+Recognised languages now include HTML, Markdown, CSS, Python,
+JavaScript, TypeScript, C, C++, <strong>C#</strong>,
+<strong>PHP</strong>, Go, Rust, Kotlin, Shell, YAML, JSON, TOML, and
+SQL.</li>
+<li><strong>It is an editing aid, not a rename.</strong> Setting HTML on
+a <code>.txt</code> does not change the file; QUILL reminds you to use
+<strong>Save As</strong> to write it as <code>.html</code>. The choice
+is per-tab and resets when you close the file. <strong>Auto-detect from
+file</strong> clears the override.</li>
+<li><strong>Optional automatic detection (off by default).</strong> Turn
+on <strong>Settings &gt; Editing &gt; Auto-detect document
+language</strong> to have QUILL recognise the language when you paste or
+type code into a plain <code>.txt</code>/untitled document. Choose how
+assertive it is: <strong>Hint</strong> (status bar only),
+<strong>Suggest and announce</strong> (you confirm), or <strong>Switch
+automatically</strong>. Detection is cautious — it acts only when
+confident, never guesses on ordinary prose, learns lightly from the
+languages you use, and <strong>never</strong> overrides a real extension
+or a language you set. Unlike editors that switch silently or show a
+visual-only hint, QUILL keeps a screen-reader user informed in every
+mode. Braille content is never affected — it has its own Braille
+Mode.</li>
+</ul>
+<hr />
 <h2 id="a-smoother-upgrade">A smoother upgrade</h2>
 <p>When you upgrade from QUILL 0.5.0 or Beta 1, QUILL checks your saved
 settings and keyboard shortcuts as it starts and carries forward
