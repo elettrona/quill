@@ -8754,13 +8754,20 @@ class MainFrame(
         self._set_status("Nothing to redo")
 
     def _apply_soft_wrap(self, enabled: bool) -> None:
+        # On the first-run path the editor is created after the wizard closes,
+        # but _bind_events() (which calls this) runs during __init__ before that.
+        # No-op until the editor exists; _maybe_run_first_run_onboarding re-applies
+        # soft wrap once the first document tab is created.
+        editor = getattr(self, "editor", None)
+        if editor is None:
+            return
         wx = self._wx
-        style = self.editor.GetWindowStyleFlag()
+        style = editor.GetWindowStyleFlag()
         if enabled:
             style = style & ~wx.TE_DONTWRAP
         else:
             style = style | wx.TE_DONTWRAP
-        self.editor.SetWindowStyleFlag(style)
+        editor.SetWindowStyleFlag(style)
 
     def _load_persistent_undo_state(self, path: Path, text: str) -> None:
         history = load_undo_history(path)
@@ -24505,11 +24512,14 @@ class MainFrame(
                     self._report_startup_task_failure("first-run document tab")
                 # Re-run the editor-dependent init steps that __init__
                 # skipped for this branch. _create_document_tab() already
-                # wired the tab + editor; these restore the location ring
-                # and accessibility region for the new document.
+                # wired the tab + editor; these restore the location ring,
+                # accessibility region, and soft-wrap style for the new document
+                # (the _bind_events() call in __init__ no-opped soft wrap because
+                # the editor did not exist yet).
                 try:
                     self._location_ring.record(0)
                     self._region_tracker.enter("Editor")
+                    self._apply_soft_wrap(self.settings.soft_wrap)
                 except Exception:
                     pass
             _focus_editor()

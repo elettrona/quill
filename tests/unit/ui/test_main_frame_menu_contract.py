@@ -20,6 +20,8 @@ def _menu_source() -> str:
         + (ui / "main_frame_braille.py").read_text(encoding="utf-8")
         + "\n"
         + (ui / "main_frame_braille_phase2.py").read_text(encoding="utf-8")
+        + "\n"
+        + (ui / "main_frame_braille_phase3.py").read_text(encoding="utf-8")
     )
 
 
@@ -37,6 +39,13 @@ def test_menu_item_ids_have_menu_bindings() -> None:
             source,
             flags=re.S,
         )
+    )
+    # Some mixins (e.g. main_frame_braille_phase3) bind a batch of items in a
+    # loop over (id, handler) pairs and call Bind(..., id=loop_var), which the
+    # literal-id regex above cannot see. Treat an id paired with a handler in a
+    # (self._id_X, self.handler) tuple as bound — that is the loop-bind idiom.
+    bound_ids |= set(
+        re.findall(r"\(\s*(self\._id_[A-Za-z0-9_]+)\s*,\s*self\.[A-Za-z0-9_]+", source)
     )
 
     # These are handled by dynamic menu callbacks rather than direct id-specific
