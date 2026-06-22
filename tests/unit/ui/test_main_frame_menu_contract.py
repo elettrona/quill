@@ -178,6 +178,11 @@ def test_publishing_actions_live_in_file_menu_not_top_level_publishing_menu() ->
         "            self._id_publishing_publish_remote_item," in source
     )
     assert "lambda _e: self._publish_open_remote_item()" in source
+    assert (
+        "self._publishing_file_menu.Append(\n"
+        "            self._id_publishing_schedule_publish," in source
+    )
+    assert "lambda _e: self._schedule_publishing_publish()" in source
 
 
 def test_menu_builder_only_calls_power_tools_helpers_that_exist() -> None:

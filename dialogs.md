@@ -233,6 +233,7 @@ state and lists any installed Quillins read-only.
 - [ ] Verify Current Publishing Connection: File > Publish > Verify Current Publishing Connection
 - [ ] Browse Published Content: File > Publish > Browse Published Content...
 - [ ] Edit Publishing Connection: from Publishing Connections
+- [ ] Schedule Publish: File > Publish > Schedule Publish...
 
 ## S. Help: features and profile
 

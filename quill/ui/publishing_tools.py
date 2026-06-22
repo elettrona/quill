@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 from quill.core.publishing import (
     PublishingConnectionProfile,
@@ -25,7 +28,16 @@ from quill.core.publishing_providers import (
     publishing_auth_method_name,
     publishing_provider_display_name,
 )
+from quill.core.publishing_schedule import validate_scheduled_publish_time
 from quill.ui.dialog_contract import apply_modal_ids, show_message_box, show_modal_dialog
+
+_TIMEZONE_CHOICES = sorted(available_timezones())
+
+
+@dataclass(frozen=True, slots=True)
+class ScheduledPublishChoice:
+    content_kind: str
+    scheduled_at: datetime
 
 
 class EditPublishingConnectionDialog:
@@ -711,5 +723,164 @@ class PublishingConnectionsDialog:
         self.dialog.CentreOnParent()
         try:
             return show_modal_dialog(self.dialog, "Publishing Connections") == self._wx.ID_OK
+        finally:
+            self.dialog.Destroy()
+
+
+class SchedulePublishDialog:
+    def __init__(
+        self,
+        parent: object,
+        *,
+        provider_id: str,
+        fixed_content_kind: str | None = None,
+        announce_cb: Callable[[str], None] | None = None,
+    ) -> None:
+        import wx
+
+        self._wx = wx
+        self._announce = announce_cb or (lambda _message: None)
+        self._provider_id = provider_id
+        self._fixed_content_kind = fixed_content_kind
+        self._content_kinds = provider_content_kinds(provider_id) or ("post", "page")
+
+        self.dialog = wx.Dialog(
+            parent,
+            title="Schedule Publish",
+            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+        )
+        self.dialog.SetSize((520, 380))
+
+        root = wx.BoxSizer(wx.VERTICAL)
+        root.Add(
+            wx.StaticText(
+                self.dialog,
+                label=(
+                    "Choose when this content should publish. Quill sends the document "
+                    "and the chosen time to the publishing site only after you confirm."
+                ),
+            ),
+            0,
+            wx.EXPAND | wx.ALL,
+            8,
+        )
+
+        panel = wx.Panel(self.dialog)
+        form = wx.FlexGridSizer(0, 2, 8, 8)
+        form.AddGrowableCol(1, 1)
+
+        def add_row(label: object, control: object) -> None:
+            form.Add(label, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 8)
+            form.Add(control, 1, wx.EXPAND | wx.RIGHT, 8)
+
+        self.content_kind_caption = wx.StaticText(panel, label="Content type")
+        if fixed_content_kind:
+            self.content_kind: object = wx.StaticText(
+                panel,
+                label=provider_content_kind_label(provider_id, fixed_content_kind),
+            )
+        else:
+            self.content_kind = wx.Choice(
+                panel,
+                choices=[
+                    provider_content_kind_label(provider_id, kind) for kind in self._content_kinds
+                ],
+            )
+            self.content_kind.SetSelection(0)
+        self.content_kind.SetName("Content type")
+        add_row(self.content_kind_caption, self.content_kind)
+
+        self.date_caption = wx.StaticText(panel, label="Publish date (YYYY-MM-DD)")
+        self.date = wx.TextCtrl(panel)
+        self.date.SetName("Publish date (YYYY-MM-DD)")
+        add_row(self.date_caption, self.date)
+
+        self.time_caption = wx.StaticText(panel, label="Publish time (24-hour HH:MM)")
+        self.time = wx.TextCtrl(panel)
+        self.time.SetName("Publish time (24-hour HH:MM)")
+        add_row(self.time_caption, self.time)
+
+        self.timezone_caption = wx.StaticText(panel, label="Time zone")
+        self.timezone = wx.Choice(panel, choices=_TIMEZONE_CHOICES)
+        self.timezone.SetName("Time zone")
+        self.timezone.SetSelection(self._default_timezone_index())
+        add_row(self.timezone_caption, self.timezone)
+
+        panel.SetSizer(form)
+        root.Add(panel, 1, wx.EXPAND | wx.ALL, 8)
+
+        self.status = wx.StaticText(
+            self.dialog,
+            label="Enter a future date, time, and time zone, then choose OK.",
+        )
+        root.Add(self.status, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+        buttons = self.dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
+        if buttons is not None:
+            root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
+        self.dialog.SetSizerAndFit(root)
+        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+        self.content_kind.SetFocus()
+
+    def _default_timezone_index(self) -> int:
+        try:
+            return _TIMEZONE_CHOICES.index("UTC")
+        except ValueError:
+            return 0
+
+    def _selected_content_kind(self) -> str:
+        if self._fixed_content_kind:
+            return self._fixed_content_kind
+        selection = self.content_kind.GetSelection()
+        if selection < 0 or selection >= len(self._content_kinds):
+            return self._content_kinds[0]
+        return self._content_kinds[selection]
+
+    def _build_choice(self) -> tuple[ScheduledPublishChoice | None, str | None]:
+        date_text = self.date.GetValue().strip()
+        time_text = self.time.GetValue().strip()
+        selection = self.timezone.GetSelection()
+        zone_name = (
+            _TIMEZONE_CHOICES[selection] if 0 <= selection < len(_TIMEZONE_CHOICES) else "UTC"
+        )
+        try:
+            naive = datetime.strptime(f"{date_text} {time_text}", "%Y-%m-%d %H:%M")
+        except ValueError:
+            return None, "Enter the publish date as YYYY-MM-DD and time as 24-hour HH:MM."
+        try:
+            zone = ZoneInfo(zone_name)
+        except ZoneInfoNotFoundError:
+            return None, "Choose a valid time zone before scheduling."
+        scheduled_at = naive.replace(tzinfo=zone)
+        schedule_error = validate_scheduled_publish_time(scheduled_at)
+        if schedule_error:
+            return None, schedule_error
+        return (
+            ScheduledPublishChoice(
+                content_kind=self._selected_content_kind(),
+                scheduled_at=scheduled_at,
+            ),
+            None,
+        )
+
+    def show_modal(self) -> ScheduledPublishChoice | None:
+        self.dialog.CentreOnParent()
+        try:
+            while True:
+                if show_modal_dialog(self.dialog, "Schedule Publish") != self._wx.ID_OK:
+                    return None
+                choice, error = self._build_choice()
+                if error:
+                    self.status.SetLabel(error)
+                    self._announce(error)
+                    show_message_box(
+                        error,
+                        "Schedule Publish",
+                        self._wx.ICON_WARNING | self._wx.OK,
+                        self.dialog,
+                        announce=self._announce,
+                    )
+                    continue
+                return choice
         finally:
             self.dialog.Destroy()

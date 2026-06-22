@@ -145,6 +145,7 @@ class MenuBuilderMixin:
         self._id_publishing_publish_current_page = wx.NewIdRef()
         self._id_publishing_update_remote_item = wx.NewIdRef()
         self._id_publishing_publish_remote_item = wx.NewIdRef()
+        self._id_publishing_schedule_publish = wx.NewIdRef()
         self._publishing_file_menu = wx.Menu()
         self._publishing_file_menu.Append(
             self._id_publishing_connections,
@@ -187,6 +188,10 @@ class MenuBuilderMixin:
                 "Publish Open Remote Content...",
                 "publishing.publish_remote_item",
             ),
+        )
+        self._publishing_file_menu.Append(
+            self._id_publishing_schedule_publish,
+            self._menu_label("&Schedule Publish...", "publishing.schedule_publish"),
         )
         file_menu.AppendSeparator()
         file_menu.AppendSubMenu(self._publishing_file_menu, _("P&ublish"))
@@ -2282,6 +2287,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self._publish_open_remote_item(),
             id=self._id_publishing_publish_remote_item,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self._schedule_publishing_publish(),
+            id=self._id_publishing_schedule_publish,
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.show_about_quill(), id=self._id_about_quill)
         self.frame.Bind(

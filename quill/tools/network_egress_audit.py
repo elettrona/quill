@@ -85,10 +85,11 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "TLS context."
     ),
     "core/publishing_clients.py::_request_json": (
-        "User-initiated publishing browse/open requests from the Publish menu "
-        "and publishing dialogs. Runs only when the user explicitly loads or "
-        "opens remote content through a saved connection; remote endpoints are "
-        "HTTPS-enforced and HTTPS uses a verified TLS context."
+        "User-initiated publishing browse, open, create, update, and schedule "
+        "requests from the Publish menu and publishing dialogs. Runs only when "
+        "the user explicitly loads, sends, or schedules content through a saved "
+        "connection; remote endpoints are HTTPS-enforced and HTTPS uses a "
+        "verified TLS context."
     ),
     "ui/main_frame_quillins_host.py::fetch": (
         "Quillin host 'net' capability bridge. A Quillin can only reach this "

@@ -250,6 +250,7 @@
   "quill/ui/publishing_tools.py::BrowsePublishingContentDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/publishing_tools.py::EditPublishingConnectionDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/publishing_tools.py::PublishingConnectionsDialog.__init__::wx.Dialog": "hardened_custom",
+  "quill/ui/publishing_tools.py::SchedulePublishDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/quillin_prefs_dialog.py::build_quillin_pref_dialog::wx.Dialog": "hardened_custom",
   "quill/ui/quillin_wizard.py::open_quillin_wizard.on_save::wx.MessageDialog": "native",
   "quill/ui/quillin_wizard.py::open_quillin_wizard::wx.Dialog": "hardened_custom",

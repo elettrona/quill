@@ -517,7 +517,11 @@ from quill.ui.main_frame_ssh import SshEditingMixin
 from quill.ui.main_frame_statusbar import StatusBarMixin, _StatusBarCell
 from quill.ui.notebook_panel import NotebookEntriesPanel
 from quill.ui.palette import CommandPaletteDialog
-from quill.ui.publishing_tools import BrowsePublishingContentDialog, PublishingConnectionsDialog
+from quill.ui.publishing_tools import (
+    BrowsePublishingContentDialog,
+    PublishingConnectionsDialog,
+    SchedulePublishDialog,
+)
 from quill.ui.rich_text_surface import RichTextSurface
 from quill.ui.session_browser import SessionBrowserDialog
 from quill.ui.share_dialogs import (
@@ -1851,6 +1855,12 @@ class MainFrame(
             "publishing.publish_remote_item",
             "Publish Open Remote Content...",
             self._publish_open_remote_item,
+            None,
+        )
+        self.commands.register(
+            "publishing.schedule_publish",
+            "Schedule Publish...",
+            self._schedule_publishing_publish,
             None,
         )
         self.commands.register(
@@ -11453,6 +11463,134 @@ class MainFrame(
         if path is not None and path.suffix.lower() in {".html", ".htm", ".xhtml"}:
             return "html"
         return "markdown"
+
+    def _schedule_publishing_publish(self) -> None:
+        from quill.core.publishing import current_publishing_connection, load_publishing_secret
+
+        profile = current_publishing_connection()
+        if profile is None:
+            message = "No current publishing connection is selected."
+            self._show_message_box(message, "Schedule Publish", self._wx.ICON_WARNING | self._wx.OK)
+            self._set_status(message)
+            return
+
+        metadata = self.document.source_metadata
+        is_remote_item = metadata.get("source_kind") == "publishing_remote"
+        remote_id = ""
+        fixed_content_kind: str | None = None
+        if is_remote_item:
+            provider_id = str(metadata.get("publishing_provider_id", "")).strip()
+            site_url = str(metadata.get("publishing_site_url", "")).strip()
+            if provider_id and profile.provider_id != provider_id:
+                message = "The current publishing connection does not match this remote item."
+                self._show_message_box(
+                    message, "Schedule Publish", self._wx.ICON_WARNING | self._wx.OK
+                )
+                self._set_status(message)
+                return
+            if site_url and profile.site_url.rstrip("/") != site_url.rstrip("/"):
+                message = "The current publishing connection does not match this remote site."
+                self._show_message_box(
+                    message, "Schedule Publish", self._wx.ICON_WARNING | self._wx.OK
+                )
+                self._set_status(message)
+                return
+            remote_id = str(metadata.get("publishing_remote_id", "")).strip()
+            fixed_content_kind = (
+                str(metadata.get("publishing_content_kind", "")).strip().lower() or "post"
+            )
+
+        dialog = SchedulePublishDialog(
+            self.frame,
+            provider_id=profile.provider_id,
+            fixed_content_kind=fixed_content_kind,
+            announce_cb=self._announce,
+        )
+        choice = dialog.show_modal()
+        if choice is None:
+            self._set_status("Schedule publish cancelled")
+            return
+
+        content_kind = fixed_content_kind or choice.content_kind
+        label_kind = "page" if content_kind == "page" else "post"
+        title = (
+            self._current_document_title() if is_remote_item else self._publishing_document_title()
+        )
+        authoring_surface = (
+            str(metadata.get("publishing_authoring_surface", "")).strip().lower() or "markdown"
+            if is_remote_item
+            else self._publishing_document_authoring_surface()
+        )
+        when_local = choice.scheduled_at.strftime("%Y-%m-%d %H:%M %Z")
+        review_message = (
+            f"Schedule this remote {label_kind} to publish on {profile.site_url}?\n\n"
+            f"Title: {title}\n"
+            f"Scheduled for: {when_local}\n"
+            f"Authoring surface: {authoring_surface}\n\n"
+            "Choose Yes to send the current document text and schedule it."
+        )
+        proceed = self._show_message_box(
+            review_message,
+            "Schedule Publish",
+            self._wx.ICON_INFORMATION | self._wx.YES_NO | self._wx.CANCEL,
+        )
+        if proceed != self._wx.ID_YES:
+            self._set_status("Schedule publish cancelled")
+            return
+
+        secret = load_publishing_secret(profile.id)
+        if remote_id:
+            ok, message, remote_document = update_publishing_remote_item(
+                profile,
+                secret,
+                content_kind=content_kind,
+                remote_id=remote_id,
+                title=title,
+                document_text=self.editor.GetValue(),
+                authoring_surface=authoring_surface,
+                scheduled_at=choice.scheduled_at,
+            )
+        else:
+            ok, message, remote_document = create_publishing_remote_item(
+                profile,
+                secret,
+                content_kind=content_kind,
+                title=title,
+                document_text=self.editor.GetValue(),
+                authoring_surface=authoring_surface,
+                scheduled_at=choice.scheduled_at,
+            )
+        icon = self._wx.ICON_INFORMATION if ok else self._wx.ICON_WARNING
+        result_message = (
+            publishing_result_message("scheduled", remote_document)
+            if ok and remote_document is not None
+            else message
+        )
+        self._show_message_box(result_message, "Schedule Publish", icon | self._wx.OK)
+        if not ok or remote_document is None:
+            self._set_status(message)
+            return
+        self.document.source_metadata.update({
+            "source_kind": "publishing_remote",
+            "display_name": remote_document.title,
+            "source_label": "from publishing",
+            "publishing_authoring_surface": authoring_surface,
+            "publishing_open_representation": (
+                "raw_html" if authoring_surface == "html" else "readable_markdown"
+            ),
+            "publishing_provider_id": remote_document.provider_id,
+            "publishing_site_url": remote_document.site_url,
+            "publishing_remote_id": remote_document.remote_id,
+            "publishing_remote_url": remote_document.remote_url,
+            "publishing_remote_title": remote_document.title,
+            "publishing_content_kind": remote_document.content_kind,
+            "publishing_status": remote_document.status,
+            "publishing_updated_at": remote_document.updated_at,
+            "publishing_scheduled_for": remote_document.scheduled_for,
+        })
+        self.document.mark_saved()
+        self._refresh_title()
+        self._set_status(result_message.splitlines()[0])
 
     def _set_ai_menu_status_badge(
         self, ready: bool | None, detail: str, badge: str | None = None
