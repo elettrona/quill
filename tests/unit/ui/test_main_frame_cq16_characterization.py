@@ -255,17 +255,11 @@ def test_switch_document_wraps_around_and_guards_single_tab() -> None:
     assert statuses[-1] == "Switched to B.md"
 
 
-def test_write_document_to_disk_routes_rtf_through_the_rtf_writer(monkeypatch) -> None:
+def test_write_document_to_disk_routes_by_extension(monkeypatch) -> None:
     import quill.io.export as export_module
 
-    plain_calls: list[tuple[object, Path | None]] = []
     rtf_calls: list[tuple[object, Path | None]] = []
     verbatim_calls: list[tuple[object, Path | None]] = []
-    monkeypatch.setattr(
-        export_module,
-        "write_plain_text_document",
-        lambda doc, target=None, **kwargs: plain_calls.append((doc, target)),
-    )
     monkeypatch.setattr(
         export_module,
         "write_rtf_document",
@@ -279,20 +273,23 @@ def test_write_document_to_disk_routes_rtf_through_the_rtf_writer(monkeypatch) -
 
     frame = _bare()
 
-    # A .txt target strips markup to plain text.
+    # A .txt target is written verbatim — no Markdown stripping and no blank-line
+    # collapsing (#649). (The explicit "Save as plain text" command still flattens
+    # markup; Save / Save As by extension does not.)
     txt_doc = SimpleNamespace(path=Path("note.txt"))
     frame._write_document_to_disk(txt_doc)
-    assert plain_calls == [(txt_doc, Path("note.txt"))]
+    assert verbatim_calls[-1] == (txt_doc, Path("note.txt"))
     assert rtf_calls == []
 
-    # A .md target is written verbatim (already Markdown).
+    # A .md target is also written verbatim (already Markdown).
     md_doc = SimpleNamespace(path=Path("note.md"))
     frame._write_document_to_disk(md_doc)
-    assert verbatim_calls == [(md_doc, Path("note.md"))]
+    assert verbatim_calls[-1] == (md_doc, Path("note.md"))
 
+    # A .rtf path routes through the RTF writer.
     rtf_doc = SimpleNamespace(path=Path("note.rtf"))
     frame._write_document_to_disk(rtf_doc)
-    assert rtf_calls == [(rtf_doc, Path("note.rtf"))]
+    assert rtf_calls[-1] == (rtf_doc, Path("note.rtf"))
 
     # An explicit .rtf target overrides a non-rtf document path.
     other = SimpleNamespace(path=Path("note.txt"))
