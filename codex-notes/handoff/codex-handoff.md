@@ -1,5 +1,12 @@
 # Codex Handoff
 
+## 2026-06-21 Repository Moved (Remote URL Update)
+
+- pushing the schedule-publishing checkpoints returned a GitHub "this repository moved" notice pointing at the new canonical location
+- `origin` was updated from `https://github.com/community-access/quill` to `https://github.com/Community-Access/quill.git`
+- the push itself succeeded either way (GitHub follows the redirect automatically), so this was a hygiene update, not a fix for a failure
+- no product behavior changed; no other remotes (e.g. any fork remote referenced earlier in this log) were touched
+
 ## 2026-06-19 Follow-Up Phases Opened
 
 - added `codex-notes/notes/publishing-follow-up-phases-2026-06-19.md`
