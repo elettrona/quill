@@ -514,6 +514,7 @@ from quill.ui.main_frame_simple_open import SimpleOpenMixin
 from quill.ui.main_frame_speech import SpeechCommandsMixin
 from quill.ui.main_frame_ssh import SshEditingMixin
 from quill.ui.main_frame_statusbar import StatusBarMixin, _StatusBarCell
+from quill.ui.main_frame_verbosity import VerbosityCommandsMixin
 from quill.ui.notebook_panel import NotebookEntriesPanel
 from quill.ui.palette import CommandPaletteDialog
 from quill.ui.rich_text_surface import RichTextSurface
@@ -803,6 +804,7 @@ class MainFrame(
     AbbreviationsMixin,
     AiActionsMixin,
     SpeechCommandsMixin,
+    VerbosityCommandsMixin,
     BrailleProofingCommandsMixin,
     BraillePhase2CommandsMixin,
     BrailleCommandsMixin,
@@ -1689,6 +1691,55 @@ class MainFrame(
             "Send to Tray",
             self.send_to_tray,
             self._binding_for("view.send_to_tray"),
+        )
+        # Verbosity system (sub-PR 1.5).
+        self.commands.register(
+            "verbosity.toggle_quiet",
+            "Toggle Quiet Mode",
+            self.toggle_quiet_mode,
+            self._binding_for("verbosity.toggle_quiet"),
+        )
+        self.commands.register(
+            "verbosity.toggle_meeting",
+            "Toggle Meeting Mode",
+            self.toggle_meeting_mode,
+            self._binding_for("verbosity.toggle_meeting"),
+        )
+        self.commands.register(
+            "verbosity.undo",
+            "Undo Verbosity Change",
+            self.verbosity_undo,
+            self._binding_for("verbosity.undo"),
+        )
+        self.commands.register(
+            "verbosity.history",
+            "Announcement History",
+            self.open_verbosity_preferences,
+            self._binding_for("verbosity.history"),
+        )
+        self.commands.register(
+            "verbosity.preferences",
+            "Verbosity Preferences",
+            self.open_verbosity_preferences,
+            self._binding_for("verbosity.preferences"),
+        )
+        self.commands.register(
+            "verbosity.where_am_i",
+            "Where Am I",
+            self.verbosity_where_am_i,
+            self._binding_for("verbosity.where_am_i"),
+        )
+        self.commands.register(
+            "verbosity.what_changed",
+            "What Changed",
+            self.verbosity_what_changed,
+            self._binding_for("verbosity.what_changed"),
+        )
+        self.commands.register(
+            "verbosity.speak_status",
+            "Speak Status Bar",
+            self.verbosity_speak_status,
+            self._binding_for("verbosity.speak_status"),
         )
         self.commands.register(
             "view.toggle_soft_wrap",
@@ -6917,6 +6968,15 @@ class MainFrame(
     def _announce(self, message: str, *, force: bool = False) -> None:
         self._status_message = message
         self._refresh_statusbar()
+        # Verbosity routing (sub-PR 1.5): once the user has engaged verbosity, the
+        # controller exists and decides whether Quiet/Meeting suppress speech. The
+        # status bar (set above) is the always-on visual floor. Gated on the
+        # controller existing, so the default path is unchanged until then.
+        if not force and getattr(self, "_verbosity_controller", None) is not None:
+            speech, suppressed = self._route_verbosity_announcement(message)
+            if suppressed:
+                return
+            message = speech or message
         engine = getattr(self, "_announcement_engine", None)
         if engine is None:
             return

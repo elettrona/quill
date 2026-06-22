@@ -253,6 +253,7 @@
   "quill/ui/main_frame_speech.py::SpeechCommandsMixin.open_speech_models::wx.SingleChoiceDialog": "native",
   "quill/ui/main_frame_speech.py::SpeechCommandsMixin.transcribe_audio_offline::wx.FileDialog": "native",
   "quill/ui/main_frame_ssh.py::SshEditingMixin._request_for_site::wx.PasswordEntryDialog": "native",
+  "quill/ui/main_frame_verbosity.py::VerbosityCommandsMixin.open_verbosity_preferences::wx.Dialog": "hardened_custom",
   "quill/ui/ocr_review_dialog.py::OcrReviewDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/palette.py::CommandPaletteDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/palette.py::GoToAnythingDialog.__init__::wx.Dialog": "hardened_custom",
