@@ -11206,7 +11206,9 @@ class MainFrame(
         self._set_status(message)
 
     def _browse_publishing_content(self) -> None:
-        dialog = BrowsePublishingContentDialog(self.frame, announce_cb=self._announce)
+        dialog = BrowsePublishingContentDialog(
+            self.frame, self._task_manager, announce_cb=self._announce
+        )
         remote_document = dialog.show_modal()
         if remote_document is None:
             self._set_status("Browse publishing content cancelled")

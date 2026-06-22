@@ -45,6 +45,10 @@ def test_remote_publishing_tabs_use_metadata_identity() -> None:
     assert (
         'tab.source_label = str(document.source_metadata.get("source_label", "")).strip()' in SOURCE
     )
+
+
+def test_browse_publishing_content_dialog_receives_task_manager() -> None:
+    assert "BrowsePublishingContentDialog(\n            self.frame, self._task_manager," in SOURCE
     assert "self.notebook.AddPage(panel, document.name, select=select)" in SOURCE
 
 

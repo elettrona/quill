@@ -134,3 +134,37 @@ def test_publishing_provider_choices_come_from_registry() -> None:
     body = _edit_dialog_source()
     assert "available_publishing_providers()" in body
     assert "_PROVIDER_CHOICES" not in body
+
+
+def _browse_dialog_source() -> str:
+    source = _publishing_tools_source()
+    start = source.index("class BrowsePublishingContentDialog")
+    end = source.index("class PublishingConnectionsDialog")
+    return source[start:end]
+
+
+def test_browse_dialog_dispatches_load_through_task_manager() -> None:
+    body = _browse_dialog_source()
+    assert "self._task_manager.submit(" in body
+    assert "func=browse_publishing_content_task," in body
+    assert "self._task_manager.cancel(" in body
+
+
+def test_browse_dialog_has_named_cancel_button() -> None:
+    body = _browse_dialog_source()
+    assert 'self.cancel_load_button = wx.Button(self.dialog, label="Cancel")' in body
+    assert 'self.cancel_load_button.SetName("Cancel loading publishing content")' in body
+    assert "self.cancel_load_button.Hide()" in body
+
+
+def test_browse_dialog_does_not_disable_or_trap_the_escape_button() -> None:
+    body = _browse_dialog_source()
+    assert "apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)" in body
+    assert 'wx.Button(self.dialog, wx.ID_CANCEL, label="Close")' in body
+    assert 'self.cancel_load_button = wx.Button(self.dialog, label="Cancel")' in body
+
+
+def test_browse_dialog_ignores_stale_task_callbacks() -> None:
+    body = _browse_dialog_source()
+    assert "if self._destroyed or operation_id != self._active_operation_id:" in body
+    assert "self._destroyed = True" in body

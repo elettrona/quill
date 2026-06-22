@@ -7,7 +7,6 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 from quill.core.publishing import (
     PublishingConnectionProfile,
-    browse_publishing_content,
     current_publishing_connection,
     load_publishing_connections,
     load_publishing_remote_item,
@@ -29,6 +28,8 @@ from quill.core.publishing_providers import (
     publishing_provider_display_name,
 )
 from quill.core.publishing_schedule import validate_scheduled_publish_time
+from quill.core.publishing_worker import browse_publishing_content_task
+from quill.stability.task_manager import CancelledError, TaskManager
 from quill.ui.dialog_contract import apply_modal_ids, show_message_box, show_modal_dialog
 
 _TIMEZONE_CHOICES = sorted(available_timezones())
@@ -298,18 +299,22 @@ class BrowsePublishingContentDialog:
     def __init__(
         self,
         parent: object,
+        task_manager: TaskManager,
         *,
         announce_cb: Callable[[str], None] | None = None,
     ) -> None:
         import wx
 
         self._wx = wx
+        self._task_manager = task_manager
         self._announce = announce_cb or (lambda _message: None)
         self._profile = current_publishing_connection()
         self._secret = load_publishing_secret(self._profile.id) if self._profile is not None else ""
         self._items: list[PublishingRemoteItemSummary] = []
         self._selected_document: PublishingRemoteDocument | None = None
         self.selected_open_representation = "readable_markdown"
+        self._active_operation_id: str | None = None
+        self._destroyed = False
 
         self.dialog = wx.Dialog(
             parent,
@@ -364,8 +369,14 @@ class BrowsePublishingContentDialog:
         filters.Add(self.open_as, 0)
         root.Add(filters, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
+        load_row = wx.BoxSizer(wx.HORIZONTAL)
         self.load_button = wx.Button(self.dialog, label="Load Content")
-        root.Add(self.load_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+        load_row.Add(self.load_button, 0, wx.RIGHT, 8)
+        self.cancel_load_button = wx.Button(self.dialog, label="Cancel")
+        self.cancel_load_button.SetName("Cancel loading publishing content")
+        self.cancel_load_button.Hide()
+        load_row.Add(self.cancel_load_button, 0)
+        root.Add(load_row, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
         root.Add(
             wx.StaticText(self.dialog, label="Publishing content"),
@@ -401,6 +412,7 @@ class BrowsePublishingContentDialog:
         self.dialog.SetSizerAndFit(root)
         apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         self.load_button.Bind(wx.EVT_BUTTON, self._on_load)
+        self.cancel_load_button.Bind(wx.EVT_BUTTON, self._on_cancel_load)
         self.content_list.Bind(wx.EVT_LISTBOX, self._on_selection_changed)
         self.content_list.Bind(wx.EVT_LISTBOX_DCLICK, self._on_open)
         self.open_button.Bind(wx.EVT_BUTTON, self._on_open)
@@ -477,12 +489,45 @@ class BrowsePublishingContentDialog:
         if self._profile is None:
             self._update_summary("No current publishing connection is selected.")
             return
-        ok, message, items = browse_publishing_content(
-            self._profile,
-            self._secret,
+        if self._active_operation_id is not None:
+            return
+        self._set_loading_state(True)
+        self._update_summary("Loading publishing content...")
+        task = self._task_manager.submit(
+            name="publishing-browse",
+            func=browse_publishing_content_task,
+            on_success=self._on_browse_task_success,
+            on_failure=self._on_browse_task_failure,
+            profile=self._profile,
+            secret=self._secret,
             content_kinds=self._scope_kinds(),
             statuses=self._scope_statuses(),
         )
+        self._active_operation_id = task.operation_id
+
+    def _set_loading_state(self, loading: bool) -> None:
+        self.load_button.Enable(not loading)
+        self.cancel_load_button.Show(loading)
+        self.cancel_load_button.Enable(loading)
+        self.open_button.Enable(not loading)
+        self.dialog.Layout()
+
+    def _on_cancel_load(self, _event: object) -> None:
+        if self._active_operation_id is None:
+            return
+        self._task_manager.cancel(self._active_operation_id)
+        self._active_operation_id = None
+        self._set_loading_state(False)
+        message = "Browse cancelled."
+        self._update_summary(message)
+        self._announce(message)
+
+    def _on_browse_task_success(self, operation_id: str, result: object) -> None:
+        if self._destroyed or operation_id != self._active_operation_id:
+            return
+        self._active_operation_id = None
+        self._set_loading_state(False)
+        ok, message, items = result
         self._items = items
         self.content_list.Set([self._item_label(item) for item in items])
         if items:
@@ -495,6 +540,24 @@ class BrowsePublishingContentDialog:
             message,
             "Browse Publishing Content",
             icon | self._wx.OK,
+            self.dialog,
+            announce=self._announce,
+        )
+
+    def _on_browse_task_failure(self, operation_id: str, exc: BaseException) -> None:
+        if self._destroyed or operation_id != self._active_operation_id:
+            return
+        self._active_operation_id = None
+        self._set_loading_state(False)
+        if isinstance(exc, CancelledError):
+            self._update_summary("Browse cancelled.")
+            return
+        message = f"Browse publishing content failed unexpectedly: {exc}"
+        self._update_summary(message)
+        show_message_box(
+            message,
+            "Browse Publishing Content",
+            self._wx.ICON_WARNING | self._wx.OK,
             self.dialog,
             announce=self._announce,
         )
@@ -534,6 +597,10 @@ class BrowsePublishingContentDialog:
                 return None
             return self._selected_document
         finally:
+            self._destroyed = True
+            if self._active_operation_id is not None:
+                self._task_manager.cancel(self._active_operation_id)
+                self._active_operation_id = None
             self.dialog.Destroy()
 
 
