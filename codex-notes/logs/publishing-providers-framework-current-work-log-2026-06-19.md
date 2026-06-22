@@ -105,3 +105,28 @@ Validation:
 - full unit suite: `4083 passed, 66 failed, 14 skipped` — identical pre-existing failure set; +9 passing delta matches the new tests added
 
 No Quillin worker execution or live third-party loading work was performed. Committed locally as two checkpoints; not pushed pending explicit request.
+
+## 2026-06-21 - Quillin Worker Execution Boundaries Implementation
+
+User then asked to push the compare checkpoints (`c8ed954e` pushed cleanly to the corrected remote) and to continue with the next roadmap phase.
+
+Researched QUILL's Quillin/extension architecture via two parallel Explore agents before planning, since this phase's name implied touching the sandboxing model directly: confirmed Quillins already run Python workers via `subprocess.Popen` (`quill/core/quillins/host.py` + `host_worker.py`, JSONL IPC) and Node workers via `quill/core/ai/external_engine.py`'s allowlisted subprocess runner, both with capability/consent gating — but none of this is reusable for publishing providers without new provider-specific IPC work, and there is no untrusted provider yet to justify building it (SEC-8 keeps third-party discovery locked off regardless of this phase). Also confirmed `quill.stability.task_manager.TaskManager` (verified exact class name by reading the file directly) already gives background dispatch + cooperative `CancellationToken` + UI-thread-marshalled callbacks, unused by publishing today.
+
+Presented the user three explicit scope options (lifecycle behavior now/boundary deferred; build the real boundary now against a fake provider; skip straight to third-party loading) via AskUserQuestion; the user picked the first, recommended option.
+
+Work completed in two commits:
+
+- Core checkpoint: `PublishingOperationCancelled` (`quill/core/publishing_providers.py`); `is_cancelled` parameter added to `browse_publishing_content` (`publishing.py`) and to the `PublishingProviderClient.browse_content` Protocol + WordPress implementation (`publishing_clients.py`), checked between per-content-kind requests; new `quill/core/publishing_worker.py` (`browse_publishing_content_task`, the sole bridge to `quill.stability.task_manager`); `publishing_adapters.py` gained `WORKER_EXECUTION = "worker"` with its own "not implemented yet" rejection, distinct from the generic-rejection branch (required fixing one existing parametrized test that had used `"worker"` as its generic-rejection example). New `tests/unit/core/test_publishing_worker.py` (2 tests); 2 new cancellation tests added to `test_publishing_browse.py`; 1 new case added to `test_publishing_adapters.py`'s parametrize.
+- UI + governance checkpoint: `BrowsePublishingContentDialog` (`quill/ui/publishing_tools.py`) now threads a required `task_manager` constructor parameter, gained a Cancel button, and dispatches `_on_load` through `task_manager.submit()` instead of blocking the UI thread; new `_on_cancel_load`/`_on_browse_task_success`/`_on_browse_task_failure` with an operation-id staleness guard and a `_destroyed` flag set in `show_modal()`'s teardown (which also best-effort-cancels any in-flight task). Did not touch the `wx.ID_CANCEL` Close button or Escape handling, per this repo's escape-trap governance tests. `main_frame.py`'s `_browse_publishing_content` now passes `self._task_manager`. New static source-inspection tests in `test_publishing_connection_dialog_a11y.py` (4 tests) and one in `test_main_frame.py`; bumped `module_size_budgets.json` for the three touched files.
+
+Validation:
+
+- focused battery (core + UI + module-size): `97 passed`
+- dialog governance gates (inventory, banned-patterns, button contract, hardening, announce-gap): `44 passed`
+- Ruff: passed (both checkpoints)
+- provider registry gate: passed
+- scoped `mypy quill/core quill/io`: unchanged from before this slice (same 7 pre-existing findings)
+- full unit suite: `4093 passed, 66 failed, 14 skipped` — identical pre-existing failure set; +10 passing delta matches the new tests added
+- smoke-launched `python -m quill` for ~12s: no startup traceback (only a benign unrelated lexicon-file stderr warning), confirming the new wiring doesn't break MainFrame construction. Could not interactively click through Browse → Load → Cancel: no pywinauto installed, no project run-skill exists for this wxPython desktop app. Recorded as a known verification gap rather than claimed as tested.
+
+No live third-party provider loading work was performed. Committed locally as two checkpoints; not pushed pending explicit request.

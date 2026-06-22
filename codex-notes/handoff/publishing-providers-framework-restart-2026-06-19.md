@@ -87,4 +87,20 @@ Implemented state:
 
 Validation: focused battery (`86 passed`), Ruff, the provider registry gate, and a full-suite run (`4083 passed, 66 failed, 14 skipped`) — the 66 failures match the pre-existing baseline exactly; no regressions.
 
-Committed locally in two checkpoints (core, then UI+governance); **not pushed** pending explicit request, consistent with the standing repo convention. Resume by verifying local branch state before continuing into the next roadmap phase: Quillin worker execution boundaries and lifecycle behavior.
+Committed locally in two checkpoints (core, then UI+governance); the user then explicitly asked for these to be pushed, which was done (`c8ed954e`), pushing cleanly to the corrected `https://github.com/Community-Access/quill.git` remote.
+
+## 2026-06-21 Quillin Worker Execution Boundaries Handoff
+
+Continued in the same session. Before planning, researched QUILL's Quillin/extension architecture directly (two parallel Explore agents) since the phase name implied touching the sandboxing model: confirmed Quillins already run via subprocess isolation (`quill/core/quillins/host.py` + `host_worker.py` for Python, `quill/core/ai/external_engine.py` for Node) with capability/consent gating, but none of it is reusable for publishing providers without new provider-specific IPC work — and there's no untrusted provider yet to justify building it, since SEC-8 keeps third-party discovery locked off regardless. Presented the user three explicit scope options; they picked "lifecycle behavior now, real boundary deferred" (the recommended option).
+
+Implemented state:
+
+- `quill/core/publishing_providers.py` defines `PublishingOperationCancelled`.
+- `quill/core/publishing.py`'s `browse_publishing_content` and `quill/core/publishing_clients.py`'s `PublishingProviderClient.browse_content`/`WordPressPublishingClient.browse_content` accept an `is_cancelled` callable, checked between per-content-kind requests.
+- New `quill/core/publishing_worker.py` (`browse_publishing_content_task`) is the sole bridge from `quill.core.publishing` to `quill.stability.task_manager` — `publishing.py` itself stays decoupled from the stability layer.
+- `quill/ui/publishing_tools.py`'s `BrowsePublishingContentDialog` now requires a `task_manager` constructor parameter, dispatches loads through it with a real Cancel button, and ignores stale callbacks via an operation-id + `_destroyed` guard. `quill/ui/main_frame.py` threads `self._task_manager` through.
+- `quill/core/publishing_adapters.py` gained `WORKER_EXECUTION = "worker"`, explicitly rejected with a distinct "not implemented yet" message.
+
+Validation: focused battery (`97 passed`), dialog governance gates (`44 passed`), Ruff, mypy, the provider registry gate, and a full-suite run (`4093 passed, 66 failed, 14 skipped`) — the 66 failures match the pre-existing baseline exactly. Smoke-launched the app to confirm no startup traceback; could not interactively click through Browse/Cancel (no pywinauto, no project run-skill for this wx app) — recorded honestly as a verification gap rather than claimed as tested.
+
+Committed locally in two checkpoints (core, then UI+governance); **not pushed** pending explicit request. Resume by verifying local branch state before continuing into the final roadmap phase: live third-party provider loading.

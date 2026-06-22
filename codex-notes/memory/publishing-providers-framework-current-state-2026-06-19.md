@@ -62,3 +62,17 @@ Important scope decision recorded here for future sessions: `Document.source_met
 Validated with the focused battery (`86 passed`), Ruff, the provider registry gate, and a full-suite run (`4083 passed, 66 failed, 14 skipped`) matching the pre-existing baseline failure set exactly. Committed locally in two checkpoints; not pushed.
 
 Next roadmap phase: Quillin worker execution boundaries and lifecycle behavior.
+
+## Quillin Worker Execution Boundaries Memory - 2026-06-21
+
+Researched first: QUILL's Quillin extension system already has a full subprocess-based worker model (`quill/core/quillins/host.py` + `host_worker.py`, Node via `quill/core/ai/external_engine.py`) with capability/consent gating, but it's Quillin-specific. Publishing providers only support `execution="in_process"`. Building a real provider-specific subprocess/IPC worker boundary would be greenfield work with no concrete consumer — third-party providers remain SEC-8-locked regardless, so nothing real exists yet to validate a worker boundary against. Scoped this phase to real, testable lifecycle behavior instead (confirmed with the user via an explicit three-option choice), deferring the actual boundary build to the live third-party loading phase.
+
+`quill.stability.task_manager.TaskManager` (the class is `TaskManager`, not `QuillTaskManager` despite CLAUDE.md's prose) already provides background dispatch + cooperative cancellation (`CancellationToken`) + UI-thread-marshalled callbacks (`call_ui_safely`/`wx.CallAfter`) — it does not enforce a wall-clock timeout itself; the existing per-request socket timeout in `publishing_clients.py` remains the real timeout enforcement. `MainFrame._task_manager` already exists and was threaded into `BrowsePublishingContentDialog`.
+
+Implemented: `is_cancelled` checkpoint in `browse_publishing_content`/WordPress `browse_content` (raises `PublishingOperationCancelled` between per-kind requests, not a partial-results return — cancel means stop-and-discard); new `publishing_worker.py` as the sole bridge from `quill.core.publishing` to `quill.stability.task_manager`; `BrowsePublishingContentDialog` Cancel button + task-manager dispatch with stale-callback guards; `publishing_adapters.py`'s `WORKER_EXECUTION = "worker"` declared-but-deferred policy.
+
+Important limitation recorded honestly (not hidden): a cooperative cancel can only take effect at a checkpoint the worker function reaches. If cancel is clicked while the first/only request is blocked on a socket read, that thread keeps running until its own socket timeout — the dialog detaches and reports "cancelled" immediately either way, but nothing is forcibly killed. That's exactly the gap a real subprocess worker boundary would close.
+
+Validated with the focused battery (`97 passed`), Ruff, mypy, the provider registry gate, and a full-suite run (`4093 passed, 66 failed, 14 skipped`) matching the pre-existing baseline. Smoke-launched the app to confirm no startup traceback; could not interactively click through Browse/Cancel — no pywinauto or project run-skill exists for this wx app, recorded as a known gap. Committed locally in two checkpoints; not pushed.
+
+Next roadmap phase: live third-party provider loading.

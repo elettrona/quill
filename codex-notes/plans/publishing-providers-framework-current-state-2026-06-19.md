@@ -68,3 +68,11 @@ Implemented as the smallest coherent slice: `build_publishing_comparison` (pure 
 Validation: focused battery `86 passed`; Ruff and the provider registry gate passed; full unit suite `4083 passed, 66 failed, 14 skipped`, the 66 failures matching the pre-existing baseline exactly.
 
 Next roadmap phase: Quillin worker execution boundaries and lifecycle behavior.
+
+## Quillin Worker Execution Boundaries Complete - 2026-06-21
+
+Scoped narrowly after confirming there's no untrusted provider yet to validate a real subprocess worker boundary against. Implemented: cooperative cancellation (`is_cancelled`/`PublishingOperationCancelled`) threaded through `browse_publishing_content` and the WordPress client's `browse_content`; a new `publishing_worker.py` dispatch module bridging to `quill.stability.task_manager`; `BrowsePublishingContentDialog` now runs its load through the existing `TaskManager` with a real Cancel button instead of blocking the UI thread; `publishing_adapters.py` recognizes `"worker"` as a declared-but-deferred execution policy with its own honest rejection message. The real subprocess/IPC boundary itself remains deferred to the live third-party loading phase.
+
+Validation: focused battery `97 passed`; Ruff, mypy, and the provider registry gate passed; full unit suite `4093 passed, 66 failed, 14 skipped` matching the pre-existing baseline exactly.
+
+Next roadmap phase: live third-party provider loading.

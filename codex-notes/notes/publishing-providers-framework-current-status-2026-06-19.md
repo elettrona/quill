@@ -39,3 +39,7 @@ Schedule publishing is implemented and closed out. WordPress can now schedule a 
 ## Compare With Remote Complete - 2026-06-21
 
 Compare is implemented and closed out. Users can request an honest comparison of an already-open remote publishing item against its current remote state (title/body/status, plus a "remote changed since you last synced" signal) without any automatic overwrite or merge. Cross-session linkage persistence was explicitly deferred — `source_metadata` does not survive a local save/reopen, and building a durable registry remains a separate, unscheduled piece of work. Quillin worker execution and live third-party loading remain unresolved and explicitly unapproved-for-implementation until separately reviewed. Current order: Quillin worker execution next, then live third-party loading.
+
+## Quillin Worker Execution Boundaries Complete - 2026-06-21
+
+Implemented and closed out, scoped narrowly after confirming no untrusted publishing provider exists yet to validate a real subprocess worker boundary against. Browsing publishing content now dispatches through the app's existing background task manager with a real, honest Cancel button, instead of blocking the UI thread. The execution-policy contract now recognizes a `"worker"` value as declared-but-not-yet-implemented. The actual subprocess/IPC boundary remains deferred to the live third-party provider loading phase — the only phase left. SEC-8 remains unchanged; third-party providers are still not enabled.

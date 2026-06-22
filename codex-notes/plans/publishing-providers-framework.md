@@ -2265,3 +2265,20 @@ Validation: focused battery `86 passed`; Ruff and the provider registry gate pas
 Committed locally as two checkpoints (core, then UI+governance); not pushed pending explicit request.
 
 Next roadmap phase: Quillin worker execution boundaries and lifecycle behavior.
+
+## 2026-06-21 Quillin Worker Execution Boundaries Implemented
+
+This phase's scope was deliberately narrowed after research found there is no untrusted publishing provider yet to validate a real subprocess/IPC worker boundary against (third-party loading remains SEC-8-locked regardless). Building that boundary now would be speculative greenfield work with no concrete consumer. The user confirmed (via explicit choice among three framed options) the recommended scope: deliver real, testable lifecycle behavior now, and formalize the execution-policy contract as "declared but not yet implemented" for a worker policy, deferring the actual boundary to the live third-party loading phase.
+
+Implemented:
+
+- `browse_publishing_content` (and the WordPress `browse_content` client method, via a new `is_cancelled` parameter on both the Protocol and the implementation) now check a caller-supplied cancellation callback between per-content-kind requests, raising the new `PublishingOperationCancelled` (`quill/core/publishing_providers.py`) rather than returning partial results — cancellation means "stop and discard," kept distinct from the existing unrelated partial-results-on-timeout behavior.
+- New `quill/core/publishing_worker.py`: the only publishing module allowed to import `quill.stability.task_manager`, so `quill.core.publishing` itself stays decoupled from the stability layer. `browse_publishing_content_task` matches `TaskManager.submit()`'s mandatory wrapper kwargs and translates `PublishingOperationCancelled` into `quill.stability.task_manager.CancelledError`.
+- `BrowsePublishingContentDialog` now dispatches its load through `MainFrame`'s existing `TaskManager` instead of blocking the UI thread, with a real Cancel button. Cancelling detaches the dialog immediately and reports "Browse cancelled." honestly without waiting for the background thread to actually stop — a true mid-request abort needs the deferred subprocess boundary. Stale callbacks (after a cancel or dialog teardown) are ignored via an operation-id guard; the existing `wx.ID_CANCEL` Close button and Escape handling are untouched (no new escape-trap pattern).
+- `quill/core/publishing_adapters.py` gained `WORKER_EXECUTION = "worker"`, recognized and explicitly rejected with a distinct "not implemented yet" message, separate from the generic rejection for truly unknown execution values.
+
+Validation: focused battery `97 passed`; Ruff, mypy (unchanged pre-existing findings), and the provider registry gate passed; full unit suite `4093 passed, 66 failed, 14 skipped` — identical pre-existing failure set, +10 passing delta matching the new tests. Smoke-launched the app (`python -m quill`) to confirm no startup traceback from the new wiring; could not interactively drive Browse/Cancel since no GUI automation tooling (pywinauto) or project run-skill exists for this wx app — recorded as a known verification gap, not papered over.
+
+Committed locally as two checkpoints (core, then UI+governance); not pushed pending explicit request.
+
+Next roadmap phase: live third-party provider loading — the actual final phase, where a real worker boundary would first have a concrete consumer.
