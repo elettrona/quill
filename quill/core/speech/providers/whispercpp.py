@@ -371,7 +371,13 @@ def _download_to_file(
     url = info.download_url or ""
     if not url.lower().startswith("https://"):
         raise SpeechError("Model downloads must use a secure (HTTPS) address.")
-    request = urllib.request.Request(url, headers={"User-Agent": "QUILL"})
+    headers = {"User-Agent": "QUILL"}
+    from quill.core.speech.hf_auth import load_hf_token
+
+    token = load_hf_token()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    request = urllib.request.Request(url, headers=headers)
     digest = hashlib.sha256()
     fd, raw_temp = tempfile.mkstemp(
         prefix=f".{target.name}.", suffix=".part", dir=str(target.parent)
@@ -403,4 +409,8 @@ def _download_to_file(
         raise
     except Exception as exc:  # noqa: BLE001 - surface a clean message, clean up the partial file
         temp_path.unlink(missing_ok=True)
+        from quill.core.speech.hf_auth import RATE_LIMIT_HELP, looks_rate_limited
+
+        if looks_rate_limited(exc):
+            raise SpeechError(RATE_LIMIT_HELP) from exc
         raise SpeechError(f"The model download failed: {exc}") from exc

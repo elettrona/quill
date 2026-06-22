@@ -116,6 +116,34 @@ class SpeechCommandsMixin:
         elif action == "remove":
             self._maybe_remove_speech_model(provider, row.id)
 
+    def set_huggingface_token(self) -> None:
+        """Store an optional Hugging Face access token for model downloads (#617).
+
+        A token is not required for QUILL's public models, but it raises Hugging
+        Face's anonymous rate limits. The token is masked on entry and saved to the
+        OS credential store, not to settings. A blank value removes a saved token.
+        """
+        from quill.core.speech.hf_auth import load_hf_token, save_hf_token
+
+        wx = self._wx
+        prompt = (
+            "Optional: a free Hugging Face access token raises download rate limits. "
+            "Leave blank to remove a saved token. Get one at "
+            "https://huggingface.co/settings/tokens"
+        )
+        dlg = wx.PasswordEntryDialog(self.frame, prompt, "Hugging Face Token", load_hf_token())
+        if self._show_modal_dialog(dlg, "Hugging Face Token") != wx.ID_OK:
+            return
+        value = dlg.GetValue().strip()
+        try:
+            save_hf_token(value)
+        except Exception as exc:  # noqa: BLE001 - surface a clean message
+            self._set_status(f"Could not save token: {exc}")
+            return
+        message = "Hugging Face token saved." if value else "Hugging Face token cleared."
+        self._announce(message)
+        self._set_status(message)
+
     def _choose_model_action(self, row: object) -> str | None:
         """Ask what to do with the chosen model. Returns 'download', 'remove', or None.
 
@@ -186,10 +214,18 @@ class SpeechCommandsMixin:
             )
             icon = wx.ICON_WARNING
         extra = ("\n\nWarning: " + " ".join(notes)) if notes else ""
+        # Be transparent about licensing when downloading on the user's behalf.
+        license_name = str(getattr(row, "license_name", "") or "")
+        card_url = str(getattr(row, "model_card_url", "") or "")
+        license_line = ""
+        if license_name:
+            license_line = f"\n\nThis model is {license_name} licensed."
+            if card_url:
+                license_line += f" Model card: {card_url}"
         confirm = self._show_message_box(
             f"Download the '{model_id}' speech model (about {estimate.download_mb} MB) "
             "from the Hugging Face Hub? It is stored on this computer and used for "
-            f"private, offline transcription.{extra}",
+            f"private, offline transcription.{license_line}{extra}",
             "Download Speech Model",
             icon | wx.YES_NO,
         )
@@ -682,6 +718,7 @@ class SpeechCommandsMixin:
             ),
             ("tools.speech_dictate", "Dictate (Offline)", self.dictate_offline_toggle),
             ("tools.speech_microphone", "Dictation Microphone", self.choose_dictation_microphone),
+            ("tools.speech_hf_token", "Hugging Face Token", self.set_huggingface_token),
         ]
         for command_id, title, handler in specs:
             self.commands.try_register(

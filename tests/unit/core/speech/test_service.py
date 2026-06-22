@@ -117,6 +117,61 @@ def test_machine_summary_is_speakable() -> None:
     assert "no GPU" in service.machine_summary(8.0, has_gpu=False)
 
 
+def test_describe_models_carries_license_and_card_url() -> None:
+    rows = service.describe_models(_Provider(installed=[]), total_ram_gb=16.0, has_gpu=True)
+    by_id = {r.id: r for r in rows}
+    # _Provider's models have no license_name set, so license is empty here; the
+    # label must not crash and the row fields exist.
+    assert hasattr(by_id["small"], "license_name")
+    assert hasattr(by_id["small"], "model_card_url")
+
+
+def test_model_card_url_from_resolve_and_repo_forms() -> None:
+    assert (
+        service.model_card_url(
+            "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin"
+        )
+        == "https://huggingface.co/ggerganov/whisper.cpp"
+    )
+    assert (
+        service.model_card_url("Systran/faster-whisper-small")
+        == "https://huggingface.co/Systran/faster-whisper-small"
+    )
+    assert service.model_card_url(None) == ""
+    assert service.model_card_url("") == ""
+
+
+def test_describe_models_label_includes_license_when_present() -> None:
+    from quill.core.speech.provider import SpeechModelInfo
+
+    class _Licensed:
+        id = "whispercpp"
+
+        def list_supported_models(self):
+            return [
+                SpeechModelInfo(
+                    id="small",
+                    display_name="Small",
+                    language_mode="multilingual",
+                    approximate_size_mb=465,
+                    accuracy_tier="medium",
+                    speed_tier="medium",
+                    recommended_use="Recommended.",
+                    download_url="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin",
+                    license_name="MIT",
+                )
+            ]
+
+        def list_installed_models(self):
+            return []
+
+    rows = service.describe_models(_Licensed(), total_ram_gb=16.0, has_gpu=True)
+    row = rows[0]
+    assert row.license_name == "MIT"
+    assert "MIT licensed" in row.label
+    assert row.model_card_url == "https://huggingface.co/ggerganov/whisper.cpp"
+
+
 def test_input_device_round_trip(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(service, "app_data_dir", lambda: tmp_path)
     assert service.load_input_device() == -1  # default

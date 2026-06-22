@@ -282,6 +282,11 @@ def _download_repo(
     if progress is not None:
         progress(0.02, f"Downloading {info.display_name}...")
     kwargs: dict[str, Any] = {"repo_id": repo_id, "local_dir": str(target)}
+    from quill.core.speech.hf_auth import load_hf_token
+
+    token = load_hf_token()
+    if token:
+        kwargs["token"] = token
     if progress is not None:
         tqdm_cls = _make_progress_tqdm(info, progress)
         if tqdm_cls is not None:
@@ -290,6 +295,10 @@ def _download_repo(
         snapshot_download(**kwargs)
     except Exception as exc:  # noqa: BLE001 - surface a clean message
         shutil.rmtree(target, ignore_errors=True)
+        from quill.core.speech.hf_auth import RATE_LIMIT_HELP, looks_rate_limited
+
+        if looks_rate_limited(exc):
+            raise SpeechError(RATE_LIMIT_HELP) from exc
         raise SpeechError(f"The model download failed: {exc}") from exc
 
 

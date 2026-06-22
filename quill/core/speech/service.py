@@ -78,6 +78,8 @@ class ModelRow:
     ram_warning: str = ""
     recommended: bool = False
     gpu_note: str = ""
+    license_name: str = ""
+    model_card_url: str = ""
 
 
 def _size_text(mb: int) -> str:
@@ -211,11 +213,13 @@ def describe_models(
             gpu_note = "No GPU detected; expect slow transcription on the CPU."
         recommended = info.id == recommended_id
         rec_note = " Recommended for your computer." if recommended else ""
+        license_name = info.license_name or ""
+        license_note = f" {license_name} licensed." if license_name else ""
         label = (
             f"{info.display_name} — {state} — {_size_text(info.approximate_size_mb)} "
             f"download — {info.accuracy_tier} accuracy, {info.speed_tier} speed. "
             f"{info.recommended_use} {ram_note}"
-            f"{(' ' + gpu_note) if gpu_note else ''}{rec_note}"
+            f"{(' ' + gpu_note) if gpu_note else ''}{rec_note}{license_note}"
         )
         rows.append(
             ModelRow(
@@ -227,6 +231,27 @@ def describe_models(
                 ram_warning=ram_warning,
                 recommended=recommended,
                 gpu_note=gpu_note,
+                license_name=license_name,
+                model_card_url=model_card_url(info.download_url),
             )
         )
     return rows
+
+
+def model_card_url(download_url: str | None) -> str:
+    """Best-effort Hugging Face model-card URL from a model's download source.
+
+    whisper.cpp stores a full ``.../resolve/<rev>/<file>`` URL; Faster Whisper
+    stores the Hub repo id (``org/name``). Returns "" when neither shape matches.
+    """
+    src = (download_url or "").strip()
+    if not src:
+        return ""
+    marker = "huggingface.co/"
+    if marker in src:
+        rest = src.split(marker, 1)[1]
+        repo = rest.split("/resolve/", 1)[0].strip("/")
+        return f"https://huggingface.co/{repo}" if repo else ""
+    if "/" in src and not src.lower().startswith("http"):
+        return f"https://huggingface.co/{src.strip('/')}"
+    return ""

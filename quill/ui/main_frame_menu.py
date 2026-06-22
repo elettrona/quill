@@ -1304,6 +1304,7 @@ class MenuBuilderMixin:
         self._id_speech_dictate = wx.NewIdRef()
         self._id_speech_voice_command = wx.NewIdRef()
         self._id_speech_microphone = wx.NewIdRef()
+        self._id_speech_hf_token = wx.NewIdRef()
         self._id_ai_connection = wx.NewIdRef()
         self._id_ai_forget_key = wx.NewIdRef()
         self._id_ai_rewrite_selection = wx.NewIdRef()
@@ -1562,6 +1563,11 @@ class MenuBuilderMixin:
         whisperer_menu.Append(
             self._id_speech_microphone,
             self._menu_label(_("Dictation &Microphone..."), "tools.speech_microphone"),
+        )
+        whisperer_menu.AppendSeparator()
+        whisperer_menu.Append(
+            self._id_speech_hf_token,
+            self._menu_label(_("&Hugging Face Token..."), "tools.speech_hf_token"),
         )
         speech_menu = wx.Menu()
         speech_menu.AppendSubMenu(whisperer_menu, _("&Whisperer"))
@@ -2496,6 +2502,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.choose_dictation_microphone(),
             id=self._id_speech_microphone,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.set_huggingface_token(),
+            id=self._id_speech_hf_token,
         )
         self.frame.Bind(
             wx.EVT_MENU,
