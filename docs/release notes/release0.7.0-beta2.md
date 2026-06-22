@@ -358,6 +358,26 @@ For most people, nothing special:
 2. Let QUILL check and carry forward your compatible settings at startup.
 3. Keep working with your familiar files and preferences.
 
+**Optional extras, only if you want them:**
+
+- **Offline speech engine.** The on-device transcription engine (whisper.cpp)
+  ships with the Windows installer — choose the *offline speech engine
+  (whisper.cpp)* component during setup (it is included in a Full install). In a
+  portable copy you can drop it into `tools\speech\whispercpp`. Then download a
+  model from **Tools > Speech > Whisperer > Manage Speech Models**.
+- **ffmpeg, for transcribing anything but WAV.** To transcribe or caption MP3,
+  M4A, MP4, MOV, MKV, and other formats, install **ffmpeg** and make sure it is on
+  your PATH (for example, `winget install Gyan.FFmpeg`). QUILL does not bundle
+  ffmpeg — it uses the copy on your computer — so without it the offline engine
+  reads only 16 kHz mono WAV files. No ffmpeg is needed for typing, editing, or
+  any non-speech feature.
+- **Faster Whisper (advanced, GPU).** On capable machines you can install the
+  optional `faster-whisper` package to add a higher-throughput engine; QUILL then
+  offers a Speech Engine chooser.
+
+None of these are required to launch, edit, or save — QUILL runs fully without
+them.
+
 You should not need to edit `keymap.json` or rebuild your preferences by hand.
 Because this is a beta, please keep telling us anything that feels confusing,
 inaccessible, unreliable, or harder than it should be — your feedback shapes what
