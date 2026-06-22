@@ -291,6 +291,21 @@ explicitly, instead of the action being inferred for you.</li>
 <li><strong>A startup freeze is fixed.</strong> Opening any Whisperer
 command no longer stalls the app while the optional Faster Whisper
 engine loads.</li>
+<li><strong>Clear about licensing.</strong> Each model now shows its
+license (the bundled Whisper models are <strong>MIT</strong>) and links
+its model card, right in the list and the download prompt — so you know
+the terms before anything downloads.</li>
+<li><strong>Verified, reproducible downloads.</strong> Models are
+fetched from a pinned version and checked against a known checksum, so a
+silent re-upload can't change a model underneath you. (This also fixed
+the speaker-detection model, whose download link had gone stale — it
+works again.)</li>
+<li><strong>Optional Hugging Face token.</strong> Not needed for QUILL's
+public models, but if you ever hit Hugging Face's rate limits you can
+add a free access token under <strong>Tools &gt; Speech &gt; Whisperer
+&gt; Hugging Face Token...</strong> (entered masked, stored in Windows
+Credential Manager, never in a settings file). A rate-limit error now
+explains this instead of showing a raw failure.</li>
 </ul>
 <h3 id="transcribe-audio-and-video">Transcribe audio and video</h3>
 <p><strong>Transcribe Audio or Video (Offline)...</strong> turns a
