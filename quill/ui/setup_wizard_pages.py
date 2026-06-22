@@ -181,43 +181,29 @@ def _render_preview_html(plain_text: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Focusable heading (used so the heading is the first tab stop).
+# Page heading
 # ---------------------------------------------------------------------------
 
 
-def _focusable_heading(
-    parent: wx.Window, *, label: str, name: str, scale: float = 1.0
-) -> wx.Button:
-    """Return a no-border button styled to look like a heading.
+def _page_heading(parent: wx.Window, *, label: str, name: str, scale: float = 1.0) -> wx.StaticText:
+    """Return a bold ``wx.StaticText`` styled as the page heading.
 
-    A plain ``wx.StaticText`` cannot accept keyboard focus, so
-    ``_focus_first_page_control`` would skip past the heading and land on
-    the first focusable child (the preview). Promoting the heading to a
-    focusable button gives screen readers a real focusable role and lets
-    the wizard's focus function land on the heading first.
-
-    The button is a no-op when activated (Enter / Space do nothing) — the
-    focus helper that consumes ``wx.EVT_BUTTON`` is intentionally not
-    bound so the button does not interfere with Tab navigation.
+    A heading is not an interactive control. #610 had made it a no-border
+    ``wx.Button`` so it could be the first tab stop, but that announced as a
+    do-nothing "button". Now that the page's first *focusable* control is the
+    read-only preview field (which the user can arrow through) or the first
+    choice, ``_focus_first_page_control`` lands there directly and the heading is
+    a plain, non-focusable StaticText again — visible, read on the page, never a
+    spurious button.
     """
-    btn = wx.Button(
-        parent,
-        label=label,
-        name=name,
-        style=wx.NO_BORDER | wx.BU_NOTEXT,
-    )
-    # wx.BU_NOTEXT hides the label; we want the heading visible. Re-set
-    # the label after construction so it survives the style.
-    btn.SetLabel(label)
-    btn.SetName(label)
+    heading = wx.StaticText(parent, label=label, name=name)
     base = (
         parent.GetFont()
         if hasattr(parent, "GetFont")
         else wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)
     )
-    btn.SetFont(base.Scaled(scale).Bold())
-    # Tab moves on; Enter/Space do nothing. We do NOT bind EVT_BUTTON.
-    return btn
+    heading.SetFont(base.Scaled(scale).Bold())
+    return heading
 
 
 # ---------------------------------------------------------------------------
@@ -261,7 +247,7 @@ class _WelcomePage(_WizardPage):
         # plain-text StaticText it replaced could not accept keyboard
         # focus and screen readers landed on the preview (a TextCtrl)
         # first.
-        heading = _focusable_heading(
+        heading = _page_heading(
             self,
             label=_("Welcome to QUILL"),
             name="wizard.welcome_heading",
@@ -305,7 +291,7 @@ class _IntentPage(_WizardPage):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = _focusable_heading(
+        heading = _page_heading(
             self,
             label=_("What kind of writing do you do?"),
             name="wizard.intent_heading",
@@ -389,7 +375,7 @@ class _ExtrasPage(_WizardPage):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = _focusable_heading(
+        heading = _page_heading(
             self,
             label=_("A few optional extras"),
             name="wizard.extras_heading",
@@ -543,7 +529,7 @@ class _AIProviderPage(_WizardPage):
         self._open_ai_hub = open_ai_hub
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = _focusable_heading(
+        heading = _page_heading(
             self,
             label=_("Set up your AI connection"),
             name="wizard.ai_heading",
@@ -591,7 +577,7 @@ class _KeyboardSoundPage(_WizardPage):
         super().__init__(parent, "Keyboard and Sound")
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = _focusable_heading(
+        heading = _page_heading(
             self,
             label=_("Keyboard and Sound"),
             name="wizard.kb_heading",
@@ -740,7 +726,7 @@ class _DataLocationPage(_WizardPage):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = _focusable_heading(
+        heading = _page_heading(
             self,
             label=_("Where should QUILL store your data?"),
             name="wizard.data_location_heading",
@@ -846,7 +832,7 @@ class _SummaryPage(_WizardPage):
         super().__init__(parent, "Summary")
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        heading = _focusable_heading(
+        heading = _page_heading(
             self,
             label=_("You are all set!"),
             name="wizard.summary_heading",
@@ -1093,11 +1079,11 @@ class SetupWizardDialog(wx.Dialog):
     def _focus_first_page_control(self) -> None:
         """Focus the first interactive child of the current page.
 
-        #610: each page now starts with a no-border ``wx.Button`` styled
-        to look like the heading (``_focusable_heading``), so it is the
-        first focusable child and screen-reader focus lands on the
-        heading instead of the preview. Falls back to the nav button
-        when the page has no focusable children.
+        The page heading is a non-focusable ``wx.StaticText`` (see
+        ``_page_heading``), so focus lands on the first real focusable control —
+        the read-only preview field the user can arrow through, or the first
+        choice — rather than a spurious "heading" button. Falls back to the nav
+        button when the page has no focusable children.
 
         Always sets the correct default button first so Enter activates the
         right nav button even when focus is inside a TextCtrl or ListBox.

@@ -89,35 +89,18 @@ def test_ai_provider_page_exists() -> None:
     assert "Open AI Hub" in src
 
 
-def test_preview_widgets_are_not_textctrls() -> None:
-    # #610: a read-only wx.TextCtrl is announced by VoiceOver as an
-    # "edit text" field, which is misleading: the wizard preview is
-    # not editable. The fix is to swap every preview TextCtrl for a
-    # SidePreview (webview) or a multi-line wx.StaticText, neither of
-    # which carry the "editable text" role.
-    import re
-
+def test_sr_preview_is_readonly_arrow_navigable_textctrl() -> None:
+    # #610 follow-up: the screen-reader preview is a read-only multi-line
+    # wx.TextCtrl — the only control both NVDA/JAWS (Windows) and VoiceOver
+    # (macOS) can arrow through, matching the About window. (#610 had used a
+    # wx.StaticText, which Windows screen readers cannot focus or arrow through.)
     src = _wizard_pages_source()
-    # Strip comments and docstrings first so explanatory text in the
-    # module docstring does not satisfy the negative contract below.
-    code = re.sub(r"#.*", "", src)
-    code = re.sub(r'"""[\s\S]*?"""', "", code)
-    code = re.sub(r"'''[\s\S]*?'''", "", code)
-    assert "wx.TextCtrl" not in code, (
-        "#610: wizard preview widgets must not be wx.TextCtrl "
-        "(announced as editable by VoiceOver even with TE_READONLY)"
+    assert "wx.TE_MULTILINE | wx.TE_READONLY" in src, (
+        "wizard SR preview must be a read-only multi-line TextCtrl (arrow-navigable)"
     )
-    assert "_PREVIEW_STYLE" not in code, (
-        "#610: _PREVIEW_STYLE (TE_READONLY) has been removed in favour "
-        "of the adaptive _WizardPreview widget"
-    )
-    assert "_WizardPreview" in src, (
-        "#610: _WizardPreview is the replacement for read-only TextCtrls"
-    )
-    assert "_focusable_heading" in src, (
-        "#610: page headings must use _focusable_heading so they take "
-        "the first tab stop on the page"
-    )
+    assert "_make_readonly_text" in src
+    assert "_WizardPreview" in src
+    assert "_page_heading" in src, "page headings use the _page_heading helper"
 
 
 def test_setup_wizard_dialog_exists() -> None:
@@ -323,36 +306,36 @@ def test_wizard_nav_button_labels_have_no_chevrons() -> None:
 
 
 # ---------------------------------------------------------------------------
-# #610: wizard focus lands on the heading first; preview is not an edit field.
+# Page headings are non-focusable StaticText; focus lands on the first real
+# control (the read-only preview / first choice), never a do-nothing button.
 # ---------------------------------------------------------------------------
 
 
-def test_focusable_heading_helper_uses_no_border_button() -> None:
-    """#610: the page heading must be a focusable widget (the helper
-    returns a no-border wx.Button) so _focus_first_page_control can
-    land on the heading rather than the preview below it."""
-    src = _wizard_pages_source()
-    assert "def _focusable_heading(" in src, "#610: _focusable_heading helper is required"
-    # Style includes NO_BORDER so it looks like a heading, not a button.
-    assert "wx.NO_BORDER" in src, (
-        "_focusable_heading must use wx.NO_BORDER so the button is "
-        "visually indistinguishable from a heading"
-    )
-    # No Bind call on the heading button: scan the function body of
-    # _focusable_heading for an EVT_BUTTON binding and fail if found.
+def test_page_heading_helper_is_static_text_not_button() -> None:
+    """The page-heading helper returns a plain bold wx.StaticText.
+
+    #610 had made it a no-border wx.Button so it could be the first tab stop,
+    but that announced as a do-nothing "Welcome to QUILL" button. The heading is
+    a non-focusable StaticText again; focus lands on the first real control.
+    """
     import re
 
-    body = re.search(r"def _focusable_heading\([\s\S]*?\n    return btn\n", src)
-    assert body is not None, "_focusable_heading function body not found"
-    assert "btn.Bind(wx.EVT_BUTTON" not in body.group(0), (
-        "_focusable_heading must not bind EVT_BUTTON (heading is a visual heading, not an action)"
+    src = _wizard_pages_source()
+    assert "def _page_heading(" in src, "the _page_heading helper is required"
+    body = re.search(r"def _page_heading\([\s\S]*?\n    return heading\n", src)
+    assert body is not None, "_page_heading function body not found"
+    assert "wx.StaticText(" in body.group(0), "the heading must be a wx.StaticText"
+    assert "wx.Button(" not in body.group(0), (
+        "the heading must not be a wx.Button (it announced as a do-nothing button)"
     )
 
 
-def test_every_page_heading_uses_focusable_heading() -> None:
-    """#610: every wizard page must use the focusable heading helper.
-    Pin the contract so a future page that drops back to a plain
-    StaticText is caught."""
+def test_every_page_heading_uses_the_heading_helper() -> None:
+    """Every wizard page builds its heading through _page_heading.
+
+    Pin the contract so a future page does not reintroduce a focusable button
+    heading or a bare StaticText with a different style.
+    """
     src = _wizard_pages_source()
     expected_headings = [
         "wizard.welcome_heading",
@@ -364,27 +347,21 @@ def test_every_page_heading_uses_focusable_heading() -> None:
     ]
     for name in expected_headings:
         assert f'name="{name}"' in src, f"Wizard heading {name!r} is missing"
-    # No wx.StaticText(...heading...) anywhere; every heading is a button.
-    import re
-
-    static_text_headings = re.findall(r"wx\.StaticText\([^)]*?name=\"wizard\.\w+_heading\"", src)
-    assert static_text_headings == [], (
-        f"#610: every page heading must be a _focusable_heading (button), "
-        f"not a wx.StaticText. Found: {static_text_headings}"
+    # The heading must never be a focusable button again.
+    assert "_focusable_heading" not in src, (
+        "the heading helper was renamed to _page_heading (StaticText, not a button)"
     )
 
 
-def test_wizard_preview_widget_is_not_a_textctrl() -> None:
-    """#610: the wizard preview widget must NOT be a wx.TextCtrl, even
-    a read-only one, because VoiceOver announces TextCtrl as an
-    'editable text' field regardless of TE_READONLY."""
-    import re
+def test_wizard_preview_widget_is_a_readonly_textctrl() -> None:
+    """The wizard preview (screen-reader path) IS a read-only wx.TextCtrl.
 
+    This is what makes it arrow-navigable on Windows (NVDA/JAWS) and macOS
+    (VoiceOver), like the About window — the experience #610 had removed.
+    """
     src = _wizard_pages_source()
-    code = re.sub(r"#.*", "", src)
-    code = re.sub(r'"""[\s\S]*?"""', "", code)
-    code = re.sub(r"'''[\s\S]*?'''", "", code)
-    assert "wx.TextCtrl" not in code, "#610: wizard must not use wx.TextCtrl as a preview widget"
+    assert "wx.TextCtrl(" in src, "the wizard SR preview must be a wx.TextCtrl"
+    assert "wx.TE_READONLY" in src, "the wizard preview TextCtrl must be read-only"
 
 
 def test_wizard_preview_uses_html_renderer_helper() -> None:
