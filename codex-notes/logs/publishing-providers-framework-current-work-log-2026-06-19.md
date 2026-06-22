@@ -154,3 +154,27 @@ Validation:
 - `publishing_adapters.py` measured at 146 lines, well under the untracked 600-line default cap — no module-size budget entry needed
 
 **This closes the publishing-providers-framework roadmap.** All four phases authorized by the 2026-06-20 Phase 1 closeout are addressed. Two decisions remain explicitly open for the user/product, recorded as deliberate non-defaults rather than oversights: the deferred cross-session publishing-linkage registry (compare phase), and whether/when to loosen `core.third_party_plugins`/SEC-8 for real third-party execution (this phase). Committed locally; not pushed pending explicit request.
+
+## 2026-06-22 - Durable Publishing Linkage Registry (Resolves First Open Decision)
+
+User asked to resolve the first of the two decisions left open at roadmap close. Planned via `EnterPlanMode`/`ExitPlanMode` after reading the actual call sites directly (`Document.source_metadata`, `_write_document_to_disk`, `_finish_open_document`, the three publish-success handlers, `quill/io/export.py`'s `mark_saved` call, `quill/core/publishing.py`'s connections-store pattern to mirror).
+
+Work completed in two commits:
+
+1. **Core**: new `quill/core/publishing_linkage.py` — `PublishingLinkageEntry` frozen dataclass, path-keyed JSON store at `app_data_dir() / "publishing-linkage.json"` (mirrors `publishing-connections.json`: `read_json`/`write_json_atomic`, defensive `isinstance` checks at every JSON level), `load_publishing_linkage_registry`/`save_publishing_linkage_registry`/`get_publishing_linkage`/`upsert_publishing_linkage`/`remove_publishing_linkage`, and `publishing_linkage_from_source_metadata`/`apply_publishing_linkage_to_source_metadata` converters. 16 new tests in `tests/unit/core/test_publishing_linkage.py`.
+2. **UI integration**: `MainFrame._sync_publishing_linkage_for_document` (the one shared helper) called from `_write_document_to_disk` (after every save) and from all three handlers that refresh publishing metadata after a successful network round trip — `_send_publishing_remote_item`, the schedule-publish handler, and the create-draft/publish-now handler (the latter two were not in the original plan; discovered while implementing, since they mutate `source_metadata` via the identical pattern, and added for consistency). `_finish_open_document` looks up the registry by `selected_path` and restores a hit into `source_metadata` before either tab branch runs. The helper skips untitled documents and `CsvGridSurface`/`WordDocumentSurface` tabs (Compare/Update only ever read markdown/HTML text from `self.editor.GetValue()`, a shape those structured surfaces don't produce). 4 new static-source tests in `tests/unit/ui/test_main_frame.py`; `main_frame.py`'s module-size budget bumped 25127->25165.
+
+Real bug caught mid-implementation: the first version of the helper used bare `self.editor`/`document.source_metadata` attribute access and broke `test_main_frame_cq16_characterization.py::test_write_document_to_disk_routes_rtf_through_the_rtf_writer`, which calls `_write_document_to_disk` against a bare `MainFrame.__new__` test double and a `SimpleNamespace(path=...)` document — neither has those attributes, matching that suite's documented convention of stubbing only what each method touches. Fixed by rewriting the helper to be fully `getattr`-defensive (checks `source_metadata` is a dict before touching anything else, so the common non-publishing case never reaches `self.editor` at all), confirmed by re-running the full suite and seeing the previously-broken test pass again with no new failures introduced.
+
+Validation methodology finding, recorded for future sessions: ran the full suite with pytest's *default* temp directory rather than a custom `--basetemp` this time. Every prior full-suite baseline in this roadmap was recorded using `--basetemp=.tmp\pytest-<slice>-full`, a path under the repo and therefore outside `Path.home()` — and `quill/core/paths.py`'s H-1-core guard (`_is_constrained_to_home`) silently rejects a `QUILL_DATA_DIR` override outside home, so any test using the shared `quill_data_dir` conftest fixture would have silently lost isolation under those basetemps and fallen through to the real `%APPDATA%\Quill`. A `git stash`/clean-tree comparison run this slice independently confirms the true pre-existing baseline is `19 failed` (identical names with or without this slice's changes), not the `66` recorded in every earlier phase's notes. Not retroactively corrected in those notes; flagged here only so a future session doesn't mistake `66` for ground truth or repeat the same basetemp pattern. One harmless concrete side effect from finding this: the slice's own first (buggy) test run wrote a single bogus entry into the real `%APPDATA%\Roaming\Quill\publishing-linkage.json`; asked the user, who chose to leave it (harmless test data).
+
+Validation:
+
+- focused battery: `77 passed`
+- Ruff and `ruff format --check`: passed
+- scoped `mypy quill/core quill/io`: unchanged (same 7 pre-existing findings)
+- full unit suite: `4167 passed, 19 failed, 14 skipped`; clean-tree comparison (`git stash`) shows the identical 19 failures at `4147 passed`, proving zero regressions and that the +20 delta is exactly the new tests added
+
+Committed locally as two checkpoints (core, then UI integration); not pushed pending explicit request.
+
+**One decision remains open**: whether/when to loosen `core.third_party_plugins`/SEC-8 for real third-party Quillin or publishing-provider execution.

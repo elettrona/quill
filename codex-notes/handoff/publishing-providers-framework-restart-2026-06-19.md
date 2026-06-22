@@ -120,3 +120,19 @@ Validation: focused battery (`82 passed`), Ruff, mypy, the provider registry gat
 Committed locally in one checkpoint; **not pushed** pending explicit request.
 
 **This closes the publishing-providers-framework roadmap.** All four phases the 2026-06-20 Phase 1 closeout authorized are addressed: WordPress bundled-provider path, schedule publishing, local-versus-remote compare, and Quillin worker execution / live third-party loading (the last two both concluded "build the contract, defer the boundary," since no untrusted code can run in this product yet). Two decisions remain explicitly open for whoever resumes this branch, not engineering defaults: whether to build the durable cross-session publishing-linkage registry deferred in the compare phase, and whether/when to loosen `core.third_party_plugins`/SEC-8 for real third-party execution. If resuming, verify local branch state (it will be ahead of `origin/feature/publishing-providers-framework` until pushed) and read this file's full history plus the four closeout notes in `codex-notes/notes/` before deciding what, if anything, comes next.
+
+## 2026-06-22 Durable Publishing Linkage Registry Handoff (First Open Decision Resolved)
+
+User chose to resolve the first of the two decisions above. Implemented state:
+
+- `quill/core/publishing_linkage.py` (new): path-keyed JSON registry (`app_data_dir() / "publishing-linkage.json"`), `PublishingLinkageEntry` dataclass, load/save/get/upsert/remove functions, and `publishing_linkage_from_source_metadata`/`apply_publishing_linkage_to_source_metadata` converters against `Document.source_metadata`.
+- `quill/ui/main_frame.py`: new `_sync_publishing_linkage_for_document` helper, called from `_write_document_to_disk` (the save chokepoint) and from all three handlers that refresh publishing metadata after a successful round trip (`_send_publishing_remote_item`, the schedule-publish handler, the create-draft/publish-now handler). `_finish_open_document` restores a registry hit into `source_metadata` before either tab branch runs. The helper is fully `getattr`-defensive (a first cut without that broke an existing characterization test against a bare `MainFrame.__new__` test double) and skips untitled documents and `CsvGridSurface`/`WordDocumentSurface` tabs.
+- `quill/tools/module_size_budgets.json`: `main_frame.py` rebaselined 25127->25165.
+
+Methodology note for whoever resumes next: this slice's full-suite validation used pytest's *default* temp dir, not a custom `--basetemp`. Every earlier phase's recorded `66 failed` baseline used `--basetemp=.tmp\pytest-<slice>-full` (a path outside `Path.home()`), which silently breaks `QUILL_DATA_DIR` isolation for any test depending on the shared `quill_data_dir` conftest fixture (per `quill/core/paths.py`'s H-1-core `_is_constrained_to_home` guard) — those tests would fall through to the real `%APPDATA%\Quill`. A `git stash`/clean-tree comparison this slice ran confirms the true baseline is `19 failed` (identical names with or without this slice), not `66`. Do not assume `66` is ground truth if continuing validation on this branch; do not reuse a custom `--basetemp` outside home for isolation-sensitive tests.
+
+Validation: focused battery `77 passed`; Ruff/`ruff format --check` passed; scoped mypy unchanged (same 7 pre-existing findings); full suite `4167 passed, 19 failed, 14 skipped`, clean-tree comparison confirms the 19 are pre-existing and unrelated.
+
+Committed locally in two checkpoints (core, then UI integration); **not pushed** pending explicit request.
+
+**One decision remains open**: whether/when to loosen `core.third_party_plugins`/SEC-8 for real third-party Quillin or publishing-provider execution. If resuming, read this entry plus the new closeout note in `codex-notes/notes/` before deciding what, if anything, comes next.
