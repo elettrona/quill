@@ -265,6 +265,22 @@ real HTML, Markdown, or code editing.
 
 ---
 
+## Find your way faster: Quick Nav
+
+**Go to Anything** (the QUILL key + `G`) is a single search panel for everything
+worth jumping to in your document. It lists every navigable element — headings,
+links, lists, **tables**, block quotes, bookmarks, code blocks — with a category
+filter that shows a **live count** of each type, plus a type-ahead box to filter
+and jump.
+
+It now also lists your document's **misspellings** and, when a search is active,
+the current query's **search hits** as their own navigable types. So you can open
+one panel and jump straight to the next misspelled word, or to any match of your
+last search, the same way you jump to a heading or a link — with a live count of
+how many of each there are.
+
+---
+
 ## A smoother upgrade
 
 When you upgrade from QUILL 0.5.0 or Beta 1, QUILL checks your saved settings and
