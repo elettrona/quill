@@ -143,6 +143,7 @@ class MenuBuilderMixin:
         self._id_publishing_publish_current = wx.NewIdRef()
         self._id_publishing_create_page_draft = wx.NewIdRef()
         self._id_publishing_publish_current_page = wx.NewIdRef()
+        self._id_publishing_compare_remote_item = wx.NewIdRef()
         self._id_publishing_update_remote_item = wx.NewIdRef()
         self._id_publishing_publish_remote_item = wx.NewIdRef()
         self._id_publishing_schedule_publish = wx.NewIdRef()
@@ -177,6 +178,10 @@ class MenuBuilderMixin:
         self._publishing_file_menu.Append(
             self._id_publishing_publish_current_page,
             self._menu_label("Publish Page Now...", "publishing.publish_current_page"),
+        )
+        self._publishing_file_menu.Append(
+            self._id_publishing_compare_remote_item,
+            self._menu_label("Compare With Remote...", "publishing.compare_remote_item"),
         )
         self._publishing_file_menu.Append(
             self._id_publishing_update_remote_item,
@@ -2277,6 +2282,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self._publish_current_page(),
             id=self._id_publishing_publish_current_page,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self._compare_publishing_remote_item(),
+            id=self._id_publishing_compare_remote_item,
         )
         self.frame.Bind(
             wx.EVT_MENU,

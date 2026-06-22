@@ -282,8 +282,10 @@ from quill.core.onboarding import (
 from quill.core.outline import OutlineEntry, extract_outline_entries
 from quill.core.paths import app_data_dir, ensure_app_directories
 from quill.core.publishing import (
+    compare_publishing_remote_item,
     create_publishing_remote_item,
     prepare_publishing_remote_content,
+    publishing_comparison_message,
     publishing_result_message,
     update_publishing_remote_item,
 )
@@ -1843,6 +1845,12 @@ class MainFrame(
             "publishing.publish_current_page",
             "Publish Page Now...",
             self._publish_current_page,
+            None,
+        )
+        self.commands.register(
+            "publishing.compare_remote_item",
+            "Compare With Remote...",
+            self._compare_publishing_remote_item,
             None,
         )
         self.commands.register(
@@ -11235,6 +11243,55 @@ class MainFrame(
         self._refresh_title()
         content_kind = "page" if remote_document.content_kind == "page" else "post"
         self._set_status(f"Opened {content_kind} from publishing.")
+
+    def _compare_publishing_remote_item(self) -> None:
+        from quill.core.publishing import current_publishing_connection, load_publishing_secret
+
+        dialog_title = "Compare With Remote"
+        metadata = self.document.source_metadata
+        if metadata.get("source_kind") != "publishing_remote":
+            message = "Open remote publishing content before comparing it with the remote site."
+            self._show_message_box(message, dialog_title, self._wx.ICON_INFORMATION | self._wx.OK)
+            self._set_status(message)
+            return
+        profile = current_publishing_connection()
+        if profile is None:
+            message = "No current publishing connection is selected."
+            self._show_message_box(message, dialog_title, self._wx.ICON_WARNING | self._wx.OK)
+            self._set_status(message)
+            return
+        provider_id = str(metadata.get("publishing_provider_id", "")).strip()
+        site_url = str(metadata.get("publishing_site_url", "")).strip()
+        remote_id = str(metadata.get("publishing_remote_id", "")).strip()
+        content_kind = str(metadata.get("publishing_content_kind", "")).strip().lower()
+        authoring_surface = str(metadata.get("publishing_authoring_surface", "")).strip().lower()
+        if provider_id and profile.provider_id != provider_id:
+            message = "The current publishing connection does not match this remote item."
+            self._show_message_box(message, dialog_title, self._wx.ICON_WARNING | self._wx.OK)
+            self._set_status(message)
+            return
+        if site_url and profile.site_url.rstrip("/") != site_url.rstrip("/"):
+            message = "The current publishing connection does not match this remote site."
+            self._show_message_box(message, dialog_title, self._wx.ICON_WARNING | self._wx.OK)
+            self._set_status(message)
+            return
+        ok, message, comparison = compare_publishing_remote_item(
+            profile,
+            load_publishing_secret(profile.id),
+            content_kind=content_kind,
+            remote_id=remote_id,
+            local_title=self._current_document_title(),
+            local_document_text=self.editor.GetValue(),
+            local_authoring_surface=authoring_surface or "markdown",
+            local_status=str(metadata.get("publishing_status", "")).strip(),
+            last_known_updated_at=str(metadata.get("publishing_updated_at", "")).strip(),
+        )
+        icon = self._wx.ICON_INFORMATION if ok else self._wx.ICON_WARNING
+        report = (
+            publishing_comparison_message(comparison) if ok and comparison is not None else message
+        )
+        self._show_message_box(report, dialog_title, icon | self._wx.OK)
+        self._set_status(report.splitlines()[0] if ok else message)
 
     def _update_publishing_remote_item(self) -> None:
         self._send_publishing_remote_item(status=None)
