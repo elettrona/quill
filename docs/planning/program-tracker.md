@@ -37,20 +37,20 @@ closed won't-do.
 
 ### By status
 
-**Open issues on GitHub: 60** (down from 232 before the 2026-06-21 consolidation). **Shipped this program: 41.**
+**Open issues on GitHub: 42** (down from 232 before the 2026-06-21 consolidation). **Shipped this program: ~60.**
 
 | Status | Count |
 | --- | ---: |
-| ✅ Shipped | 41 — **the verbosity rebuild is essentially complete:** 1.1 foundation (#361/#368/#374/#377), 1.2 engine+modes (#362/#392), 1.3 packs/library/preview (#363/#382), 1.4 UI (#364 + §7/§13/§14/§16–§19/§21/§23–§25), **1.5 wiring (#365) and §5/§9/§10/§11/§29/§35 (#367/#371/#372/#373/#391/#397)**, and **1.6 consolidated (#366)** into the polish backlog; plus #648/#649/#643/#646, braille #238–#242/#246, #251 DAISY, #617 speech core |
-| 🚧 In progress | Verbosity polish partials whose chord/dialog half is still unwired: §26 feedback tuning (#388), §27 mastery offer dialog (#389), §31 task-profile on-open suggestion (#393). The themed survivors of the 100 addenda are tracked in the verbosity-system.md polish backlog. |
+| ✅ Shipped | **The verbosity rebuild (#271 + #361–#404) is complete and the whole range is closed** — 1.1 foundation, 1.2 engine+modes, 1.3 packs/library/preview, 1.4 UI, 1.5 live wiring, 1.6 consolidated into the polish backlog; remaining spec-section polish is tracked in verbosity-system.md, not as open issues. **Offline voice commands #663 (Speech S5)** shipped. Plus #648/#649/#643/#646, braille #238–#242/#246, #251 DAISY, #617 speech core. |
+| 🚧 In progress | — (verbosity workstream closed; remaining work is the other workstreams below) |
 | 🧹 Resolved (bookkeeping) | 2 (#600, #601 — braille design captured in docs) |
 
 ### Open by workstream (per [`roadmap.md`](roadmap.md))
 
 | Workstream | Open issues |
 | --- | --- |
-| Verbosity (Phase 2 — essentially complete) | 1.1–1.6 shipped (#361–#366); polish partials #388/#389/#393 + the verbosity-system.md polish backlog remain (+ epic #271). |
-| Speech & Dictation — BITS Whisperer | #617, #663, and the BW consolidation backlog #515, #566–#577 |
+| Verbosity (Phase 2) | **Complete** — #271 + #361–#404 closed; remaining polish lives in the verbosity-system.md backlog. |
+| Speech & Dictation — BITS Whisperer | #617 (epic), and the BW consolidation backlog #515, #566–#577 (S5 voice commands #663 shipped) |
 | GLOW integration | family #528–#534; Accessibility Agents #593–#598 |
 | Platform & Distribution | #506, #516, #517, #518, #519, #521, #525, #599 (packaging/freeze) |
 | Navigation & Editor | #513, #514, #578 |

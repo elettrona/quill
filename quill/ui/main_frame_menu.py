@@ -1282,6 +1282,7 @@ class MenuBuilderMixin:
         self._id_speech_transcribe = wx.NewIdRef()
         self._id_speech_captions = wx.NewIdRef()
         self._id_speech_dictate = wx.NewIdRef()
+        self._id_speech_voice_command = wx.NewIdRef()
         self._id_speech_microphone = wx.NewIdRef()
         self._id_ai_connection = wx.NewIdRef()
         self._id_ai_forget_key = wx.NewIdRef()
@@ -1598,6 +1599,10 @@ class MenuBuilderMixin:
         speech_menu.Append(
             self._id_speech_dictate,
             self._menu_label(_("&Dictate (Offline)"), "tools.speech_dictate"),
+        )
+        speech_menu.Append(
+            self._id_speech_voice_command,
+            self._menu_label(_("&Voice Command (Offline)"), "tools.voice_command"),
         )
         speech_menu.Append(
             self._id_speech_microphone,
@@ -2459,6 +2464,9 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.dictate_offline_toggle(), id=self._id_speech_dictate
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.voice_command_toggle(), id=self._id_speech_voice_command
         )
         self.frame.Bind(
             wx.EVT_MENU,

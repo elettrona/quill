@@ -2840,6 +2840,36 @@ Recorded here deliberately rather than silently dropped:
   (#492)** overlaps the existing Abbreviation Manager; **Language/Localization
   readiness (#493)** overlaps the shipped i18n work.
 
+## Remaining spec-section polish (from the closed #271–#404 range)
+
+The verbosity rebuild (sub-PRs 1.1–1.6, #361–#366) shipped and its issue range
+(#271 epic + the §-section issues #367–#404) is closed. A few **spec sections
+were only partly built**; their remainder is tracked here rather than as open
+issues:
+
+- **§8 sound design (#370)** — the per-profile sound *policy* (all / errors-only /
+  off) ships in the engine; the master + per-event earcon gating matrix is the
+  remaining piece.
+- **§22 profile preview on switch (#384)** — the Preview Lab previews any profile
+  on demand; auto-replaying the last three announcements when you switch profiles
+  is not built.
+- **§26 feedback tuning (#388)** — `FeedbackStore` ships; the QUILL key + / − / 0
+  chords and the gentle suggestion surface remain.
+- **§27 mastery step-down (#389)** — `MasteryTracker` ships; the 10-second offer
+  dialog with the 3-second spoken countdown remains.
+- **§28 channel-specific templates (#390)** — the engine renders one text to all
+  channels today; distinct speech/braille/visual/sound templates per verb remain.
+- **§31 task-aware profiles (#393)** — `TaskProfileSuggester` + its setting ship
+  (off by default); the on-file-open suggestion prompt remains.
+- **§32 first-run verbosity tour (#394)** — a setup-wizard page introducing the
+  profiles is not built.
+
+Everything else in the range shipped: §33 Keyboard Manager integration (#395,
+commands auto-register), §34 hotkey plan (#396), §40 accessibility contract
+(#398, A11Y-4), §41 testing (#399), §42 golden tests (#400), §43 documentation
+(#401), §45 verification gates (#403). §44 (#402) is the pre-release manual smoke
+run, and §46 (#404) was the build order — both process, not code.
+
 ---
 
 ## Original addenda (reference archive — issues closed, see backlog above)

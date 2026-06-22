@@ -2223,6 +2223,13 @@ class MainFrame(
             feature_id="core.dictation",
         )
         self.commands.register(
+            "tools.voice_command",
+            "Voice Command (Offline)",
+            self.voice_command_toggle,
+            self._binding_for("tools.voice_command"),
+            feature_id="core.dictation",
+        )
+        self.commands.register(
             "tools.dictation_voice_commands_toggle",
             "Hey QUILL Commands",
             self.toggle_dictation_voice_commands,

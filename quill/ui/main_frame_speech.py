@@ -416,6 +416,104 @@ class SpeechCommandsMixin:
         except Exception:  # noqa: BLE001 - a missing sound must not break dictation
             pass
 
+    # -- offline voice commands (#663, push-to-talk) --------------------- #
+
+    def voice_command_toggle(self) -> None:
+        """Push-to-talk: speak one command and dispatch it (offline, allowlisted)."""
+        from quill.core.speech.voice_commands import voice_commands_available
+
+        if not voice_commands_available(
+            self.settings, safe_mode_active=bool(getattr(self, "_safe_mode", False))
+        ):
+            self._announce(
+                "Voice commands are off. Turn them on in Settings (they are disabled in Safe Mode)."
+            )
+            return
+        recorder = getattr(self, "_voice_recorder", None)
+        if recorder is not None and recorder.is_recording:
+            self._stop_and_dispatch_voice_command(recorder)
+        else:
+            self._start_voice_command()
+
+    def _start_voice_command(self) -> None:
+        from quill.core.speech.capture import MicRecorder, capture_available
+
+        wx = self._wx
+        if not capture_available():
+            self._show_message_box(
+                "Voice commands need microphone-capture support (the optional "
+                "'sounddevice' package).",
+                "Voice Commands",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        provider = self._speech_provider()
+        if self._installed_or_prompt(provider, "Voice Commands") is None:
+            return
+        from quill.core.speech.service import load_input_device
+
+        recorder = MicRecorder()
+        try:
+            recorder.start(load_input_device())
+        except Exception as exc:  # noqa: BLE001 - surface a clean message
+            self._set_status(f"Could not start voice commands: {exc}")
+            return
+        self._voice_recorder = recorder
+        self._play_speech_sound("transcription_started")
+        self._set_status("Listening for a command")
+        self._announce("Listening for a command. Run the command again to stop and act.")
+
+    def _stop_and_dispatch_voice_command(self, recorder: object) -> None:
+        self._voice_recorder = None
+        self._play_speech_sound("transcription_stopped")
+        try:
+            wav_path = recorder.stop()  # type: ignore[attr-defined]
+        except Exception as exc:  # noqa: BLE001
+            self._set_status(f"Voice command failed: {exc}")
+            return
+        provider = self._speech_provider()
+        installed = provider.list_installed_models()  # type: ignore[attr-defined]
+        if not installed:
+            self._set_status("No speech model installed.")
+            return
+        model_id = self._default_model_id(installed)
+
+        from quill.core.speech.provider import TranscriptionRequest
+
+        request = TranscriptionRequest(source_path=wav_path, model_id=model_id)
+
+        def _work(progress):
+            def _on_progress(fraction: float, message: str) -> None:
+                progress(message, int(fraction * 100), 100)
+
+            try:
+                return provider.transcribe_file(request, _on_progress)  # type: ignore[attr-defined]
+            finally:
+                try:
+                    wav_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+        self._set_status("Recognizing command")
+        self._run_background_task("Recognizing command", _work, self._dispatch_voice_result)
+
+    def _dispatch_voice_result(self, result: object) -> None:
+        from quill.core.ai.agent import SAFE_TOOL_IDS
+        from quill.core.speech.voice_commands import resolve_transcript
+
+        transcript = (getattr(result, "full_text", "") or "").strip()
+        outcome = resolve_transcript(transcript, self.commands)
+        if outcome.kind == "run" and outcome.command_id in SAFE_TOOL_IDS:
+            self._announce(outcome.message)
+            try:
+                self.commands.run(outcome.command_id)
+            except KeyError:
+                self._set_status("That command is not available right now.")
+        else:
+            # cancel / no_match / a command that fell outside the safe allowlist.
+            self._set_status(outcome.message)
+            self._announce(outcome.message)
+
     # -- microphone selection --------------------------------------------- #
 
     def choose_dictation_microphone(self) -> None:
