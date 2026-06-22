@@ -6,6 +6,7 @@ import json
 import re
 import ssl
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlparse
@@ -45,6 +46,7 @@ class PublishingRemoteDocument:
     content_kind: str
     body: str
     updated_at: str = ""
+    scheduled_for: str = ""
 
 
 class PublishingProviderClient(Protocol):
@@ -89,6 +91,7 @@ class PublishingProviderClient(Protocol):
         body_html: str,
         timeout_seconds: float,
         status: str | None = None,
+        scheduled_at: datetime | None = None,
     ) -> tuple[bool, str, PublishingRemoteDocument | None]: ...
 
     def create_remote_item(
@@ -101,6 +104,7 @@ class PublishingProviderClient(Protocol):
         body_html: str,
         status: str,
         timeout_seconds: float,
+        scheduled_at: datetime | None = None,
     ) -> tuple[bool, str, PublishingRemoteDocument | None]: ...
 
 
@@ -274,6 +278,7 @@ class WordPressPublishingClient:
         body_html: str,
         timeout_seconds: float,
         status: str | None = None,
+        scheduled_at: datetime | None = None,
     ) -> tuple[bool, str, PublishingRemoteDocument | None]:
         account_identifier = str(getattr(profile, "account_identifier", "")).strip()
         site_url = str(getattr(profile, "site_url", "")).strip()
@@ -290,6 +295,8 @@ class WordPressPublishingClient:
             clean_status = status.strip().lower()
             if clean_status:
                 payload["status"] = clean_status
+        if scheduled_at is not None:
+            payload["date_gmt"] = _wordpress_date_gmt(scheduled_at)
         try:
             result = _request_json(
                 endpoint,
@@ -319,6 +326,7 @@ class WordPressPublishingClient:
         body_html: str,
         status: str,
         timeout_seconds: float,
+        scheduled_at: datetime | None = None,
     ) -> tuple[bool, str, PublishingRemoteDocument | None]:
         account_identifier = str(getattr(profile, "account_identifier", "")).strip()
         site_url = str(getattr(profile, "site_url", "")).strip()
@@ -336,6 +344,8 @@ class WordPressPublishingClient:
             "content": body_html,
             "status": status,
         }
+        if scheduled_at is not None:
+            payload["date_gmt"] = _wordpress_date_gmt(scheduled_at)
         try:
             result = _request_json(
                 endpoint,
@@ -465,7 +475,7 @@ def _wordpress_collection_endpoint(
 def _wordpress_collection_write_endpoint(site_url: str, content_kind: str) -> str:
     query = urlencode({
         "context": "edit",
-        "_fields": "id,link,title,status,modified_gmt,type,content",
+        "_fields": "id,link,title,status,modified_gmt,date_gmt,type,content",
     })
     return site_url.rstrip("/") + f"/wp-json/wp/v2/{_wordpress_kind_path(content_kind)}?{query}"
 
@@ -473,7 +483,7 @@ def _wordpress_collection_write_endpoint(site_url: str, content_kind: str) -> st
 def _wordpress_item_endpoint(site_url: str, content_kind: str, remote_id: str) -> str:
     query = urlencode({
         "context": "edit",
-        "_fields": "id,link,title,status,modified_gmt,type,content",
+        "_fields": "id,link,title,status,modified_gmt,date_gmt,type,content",
     })
     return (
         site_url.rstrip("/")
@@ -536,6 +546,7 @@ def _wordpress_document_from_payload(
         content_kind=_normalized_content_kind(payload.get("type"), fallback=content_kind),
         body=body,
         updated_at=str(payload.get("modified_gmt", "")).strip(),
+        scheduled_for=str(payload.get("date_gmt", "")).strip(),
     )
 
 
@@ -572,6 +583,10 @@ def _normalized_content_kind(value: object, *, fallback: str) -> str:
     if normalized == "page":
         return "page"
     return "post"
+
+
+def _wordpress_date_gmt(value: datetime) -> str:
+    return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def _normalized_statuses(statuses: tuple[str, ...]) -> tuple[str, ...]:

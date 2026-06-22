@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta, timezone
 
 import quill.core.publishing as publishing
 import quill.core.publishing_clients as publishing_clients
@@ -308,7 +309,7 @@ def test_wordpress_update_remote_item_posts_json_payload(monkeypatch) -> None:
     assert request_details["method"] == "POST"
     assert (
         request_details["url"]
-        == "https://example.com/wp-json/wp/v2/pages/22?context=edit&_fields=id%2Clink%2Ctitle%2Cstatus%2Cmodified_gmt%2Ctype%2Ccontent"
+        == "https://example.com/wp-json/wp/v2/pages/22?context=edit&_fields=id%2Clink%2Ctitle%2Cstatus%2Cmodified_gmt%2Cdate_gmt%2Ctype%2Ccontent"
     )
     assert json.loads(str(request_details["body"])) == {
         "title": "About page",
@@ -361,7 +362,7 @@ def test_wordpress_publish_remote_item_posts_publish_status(monkeypatch) -> None
     assert request_details["method"] == "POST"
     assert (
         request_details["url"]
-        == "https://example.com/wp-json/wp/v2/pages/22?context=edit&_fields=id%2Clink%2Ctitle%2Cstatus%2Cmodified_gmt%2Ctype%2Ccontent"
+        == "https://example.com/wp-json/wp/v2/pages/22?context=edit&_fields=id%2Clink%2Ctitle%2Cstatus%2Cmodified_gmt%2Cdate_gmt%2Ctype%2Ccontent"
     )
     assert json.loads(str(request_details["body"])) == {
         "title": "About page",
@@ -413,7 +414,7 @@ def test_wordpress_create_remote_item_posts_json_payload(monkeypatch) -> None:
     assert request_details["method"] == "POST"
     assert (
         request_details["url"]
-        == "https://example.com/wp-json/wp/v2/posts?context=edit&_fields=id%2Clink%2Ctitle%2Cstatus%2Cmodified_gmt%2Ctype%2Ccontent"
+        == "https://example.com/wp-json/wp/v2/posts?context=edit&_fields=id%2Clink%2Ctitle%2Cstatus%2Cmodified_gmt%2Cdate_gmt%2Ctype%2Ccontent"
     )
     assert json.loads(str(request_details["body"])) == {
         "title": "Draft title",
@@ -667,3 +668,207 @@ def test_create_publishing_remote_item_converts_markdown_tabs_to_html_body(monke
     assert captured["title"] == "Hello"
     assert captured["status"] == "draft"
     assert captured["body_html"] == '<h1 id="title">Title</h1>\n<p>Hello world</p>'
+
+
+def test_wordpress_create_remote_item_with_scheduled_at_sends_future_status_and_date_gmt(
+    monkeypatch,
+) -> None:
+    request_details: dict[str, object] = {}
+
+    def _urlopen(request, **_kwargs):
+        request_details["body"] = request.data.decode("utf-8") if request.data else ""
+        return _FakeResponse({
+            "id": 46,
+            "link": "https://example.com/posts/future",
+            "title": {"rendered": "Future title"},
+            "status": "future",
+            "modified_gmt": "2026-06-21T18:00:00",
+            "date_gmt": "2026-07-01T15:30:00",
+            "type": "post",
+            "content": {"rendered": "<p>Future body</p>"},
+        })
+
+    monkeypatch.setattr(publishing_clients, "urlopen", _urlopen)
+    profile = PublishingConnectionProfile(
+        id="pub-one",
+        label="Site one",
+        provider_id="wordpress",
+        site_url="https://example.com",
+        auth_method=AUTH_METHOD_APP_PASSWORD,
+        account_identifier="writer",
+    )
+
+    ok, message, document = publishing.create_publishing_remote_item(
+        profile,
+        "secret",
+        content_kind="post",
+        title="Future title",
+        document_text="<p>Future body</p>",
+        authoring_surface="html",
+        scheduled_at=datetime(2026, 7, 1, 15, 30, tzinfo=UTC),
+    )
+
+    assert ok is True
+    assert message == "Created publishing content on example.com."
+    assert document is not None
+    assert document.status == "future"
+    assert document.scheduled_for == "2026-07-01T15:30:00"
+    assert json.loads(str(request_details["body"])) == {
+        "title": "Future title",
+        "content": "<p>Future body</p>",
+        "status": "future",
+        "date_gmt": "2026-07-01T15:30:00",
+    }
+
+
+def test_wordpress_update_remote_item_with_scheduled_at_sends_future_status_and_date_gmt(
+    monkeypatch,
+) -> None:
+    request_details: dict[str, object] = {}
+
+    def _urlopen(request, **_kwargs):
+        request_details["body"] = request.data.decode("utf-8") if request.data else ""
+        return _FakeResponse({
+            "id": 22,
+            "link": "https://example.com/about",
+            "title": {"rendered": "About page"},
+            "status": "future",
+            "modified_gmt": "2026-06-21T18:00:00",
+            "date_gmt": "2026-07-02T09:00:00",
+            "type": "page",
+            "content": {"rendered": "<p>About body</p>"},
+        })
+
+    monkeypatch.setattr(publishing_clients, "urlopen", _urlopen)
+    profile = PublishingConnectionProfile(
+        id="pub-one",
+        label="Site one",
+        provider_id="wordpress",
+        site_url="https://example.com",
+        auth_method=AUTH_METHOD_APP_PASSWORD,
+        account_identifier="writer",
+    )
+
+    ok, message, document = publishing.update_publishing_remote_item(
+        profile,
+        "secret",
+        content_kind="page",
+        remote_id="22",
+        title="About page",
+        document_text="<p>About body</p>",
+        authoring_surface="html",
+        scheduled_at=datetime(2026, 7, 2, 9, 0, tzinfo=UTC),
+    )
+
+    assert ok is True
+    assert document is not None
+    assert document.status == "future"
+    assert document.scheduled_for == "2026-07-02T09:00:00"
+    assert json.loads(str(request_details["body"])) == {
+        "title": "About page",
+        "content": "<p>About body</p>",
+        "status": "future",
+        "date_gmt": "2026-07-02T09:00:00",
+    }
+
+
+def test_wordpress_schedule_converts_non_utc_offset_to_utc_date_gmt(monkeypatch) -> None:
+    request_details: dict[str, object] = {}
+
+    def _urlopen(request, **_kwargs):
+        request_details["body"] = request.data.decode("utf-8") if request.data else ""
+        return _FakeResponse({
+            "id": 48,
+            "link": "https://example.com/posts/future",
+            "title": {"rendered": "Future title"},
+            "status": "future",
+            "modified_gmt": "2026-06-21T18:00:00",
+            "date_gmt": "2026-07-01T19:30:00",
+            "type": "post",
+            "content": {"rendered": "<p>Future body</p>"},
+        })
+
+    monkeypatch.setattr(publishing_clients, "urlopen", _urlopen)
+    profile = PublishingConnectionProfile(
+        id="pub-one",
+        label="Site one",
+        provider_id="wordpress",
+        site_url="https://example.com",
+        auth_method=AUTH_METHOD_APP_PASSWORD,
+        account_identifier="writer",
+    )
+    minus_four = timezone(timedelta(hours=-4))
+
+    ok, _message, _document = publishing.create_publishing_remote_item(
+        profile,
+        "secret",
+        content_kind="post",
+        title="Future title",
+        document_text="<p>Future body</p>",
+        authoring_surface="html",
+        scheduled_at=datetime(2026, 7, 1, 15, 30, tzinfo=minus_four),
+    )
+
+    assert ok is True
+    assert json.loads(str(request_details["body"]))["date_gmt"] == "2026-07-01T19:30:00"
+
+
+def test_create_publishing_remote_item_rejects_past_scheduled_time(monkeypatch) -> None:
+    def _urlopen(request, **_kwargs):
+        raise AssertionError("No network call should happen for a past scheduled time.")
+
+    monkeypatch.setattr(publishing_clients, "urlopen", _urlopen)
+    profile = PublishingConnectionProfile(
+        id="pub-one",
+        label="Site one",
+        provider_id="wordpress",
+        site_url="https://example.com",
+        auth_method=AUTH_METHOD_APP_PASSWORD,
+        account_identifier="writer",
+    )
+    past = datetime(2020, 1, 1, tzinfo=UTC)
+
+    ok, message, document = publishing.create_publishing_remote_item(
+        profile,
+        "secret",
+        content_kind="post",
+        title="Too late",
+        document_text="<p>Body</p>",
+        authoring_surface="html",
+        scheduled_at=past,
+    )
+
+    assert ok is False
+    assert message == "Choose a publish time that is in the future."
+    assert document is None
+
+
+def test_update_publishing_remote_item_rejects_naive_scheduled_time(monkeypatch) -> None:
+    def _urlopen(request, **_kwargs):
+        raise AssertionError("No network call should happen for a naive scheduled time.")
+
+    monkeypatch.setattr(publishing_clients, "urlopen", _urlopen)
+    profile = PublishingConnectionProfile(
+        id="pub-one",
+        label="Site one",
+        provider_id="wordpress",
+        site_url="https://example.com",
+        auth_method=AUTH_METHOD_APP_PASSWORD,
+        account_identifier="writer",
+    )
+    naive = datetime(2026, 7, 1, 12, 0)
+
+    ok, message, document = publishing.update_publishing_remote_item(
+        profile,
+        "secret",
+        content_kind="page",
+        remote_id="22",
+        title="About page",
+        document_text="<p>Body</p>",
+        authoring_surface="html",
+        scheduled_at=naive,
+    )
+
+    assert ok is False
+    assert message == "Choose a time zone for the scheduled publish time."
+    assert document is None

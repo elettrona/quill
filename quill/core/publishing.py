@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -19,6 +20,7 @@ from quill.core.publishing_providers import (
     PUBLISHING_OPERATION_CREATE,
     PUBLISHING_OPERATION_LOAD,
     PUBLISHING_OPERATION_PUBLISH,
+    PUBLISHING_OPERATION_SCHEDULE,
     PUBLISHING_OPERATION_UPDATE,
     PUBLISHING_OPERATION_VERIFY,
     default_content_format_for_provider,
@@ -31,6 +33,7 @@ from quill.core.publishing_providers import (
     publishing_provider_definition,
     publishing_provider_display_name,
 )
+from quill.core.publishing_schedule import validate_scheduled_publish_time
 from quill.core.storage import read_json, write_json_atomic
 from quill.platform.windows.credential_manager import (
     credential_manager_available,
@@ -399,6 +402,7 @@ def update_publishing_remote_item(
     document_text: str,
     authoring_surface: str,
     status: str | None = None,
+    scheduled_at: datetime | None = None,
     timeout_seconds: float = 10.0,
 ) -> tuple[bool, str, PublishingRemoteDocument | None]:
     normalized = _normalized_profile(profile)
@@ -420,12 +424,20 @@ def update_publishing_remote_item(
             ),
             None,
         )
-    requested_operation = PUBLISHING_OPERATION_UPDATE
-    if status and status.strip().lower() == "publish":
+    if scheduled_at is not None:
+        requested_operation = PUBLISHING_OPERATION_SCHEDULE
+        status = "future"
+    elif status and status.strip().lower() == "publish":
         requested_operation = PUBLISHING_OPERATION_PUBLISH
+    else:
+        requested_operation = PUBLISHING_OPERATION_UPDATE
     operation_error = _provider_operation_error(normalized.provider_id, requested_operation)
     if operation_error:
         return False, operation_error, None
+    if scheduled_at is not None:
+        schedule_error = validate_scheduled_publish_time(scheduled_at)
+        if schedule_error:
+            return False, schedule_error, None
     client = publishing_provider_client(normalized.provider_id)
     if client is None:
         provider_name = publishing_provider_display_name(normalized.provider_id)
@@ -445,6 +457,7 @@ def update_publishing_remote_item(
         body_html=body_html,
         timeout_seconds=timeout_seconds,
         status=status,
+        scheduled_at=scheduled_at,
     )
 
 
@@ -457,6 +470,7 @@ def create_publishing_remote_item(
     document_text: str,
     authoring_surface: str,
     status: str = "draft",
+    scheduled_at: datetime | None = None,
     timeout_seconds: float = 10.0,
 ) -> tuple[bool, str, PublishingRemoteDocument | None]:
     normalized = _normalized_profile(profile)
@@ -479,12 +493,20 @@ def create_publishing_remote_item(
             None,
         )
     clean_status = status.strip().lower() or "draft"
-    requested_operation = (
-        PUBLISHING_OPERATION_PUBLISH if clean_status == "publish" else PUBLISHING_OPERATION_CREATE
-    )
+    if scheduled_at is not None:
+        requested_operation = PUBLISHING_OPERATION_SCHEDULE
+        clean_status = "future"
+    elif clean_status == "publish":
+        requested_operation = PUBLISHING_OPERATION_PUBLISH
+    else:
+        requested_operation = PUBLISHING_OPERATION_CREATE
     operation_error = _provider_operation_error(normalized.provider_id, requested_operation)
     if operation_error:
         return False, operation_error, None
+    if scheduled_at is not None:
+        schedule_error = validate_scheduled_publish_time(scheduled_at)
+        if schedule_error:
+            return False, schedule_error, None
     client = publishing_provider_client(normalized.provider_id)
     if client is None:
         provider_name = publishing_provider_display_name(normalized.provider_id)
@@ -501,6 +523,7 @@ def create_publishing_remote_item(
         body_html=body_html,
         status=clean_status,
         timeout_seconds=timeout_seconds,
+        scheduled_at=scheduled_at,
     )
 
 
@@ -537,7 +560,13 @@ def prepare_publishing_remote_content(
 
 
 def publishing_result_message(action: str, document: PublishingRemoteDocument) -> str:
-    verb = "Updated" if action.strip().lower() == "updated" else "Created"
+    normalized_action = action.strip().lower()
+    if normalized_action == "updated":
+        verb = "Updated"
+    elif normalized_action == "scheduled":
+        verb = "Scheduled"
+    else:
+        verb = "Created"
     content_kind = provider_content_kind_label(document.provider_id, document.content_kind).lower()
     title = document.title.strip() or "(untitled)"
     status = _display_status(document.status)
@@ -546,6 +575,9 @@ def publishing_result_message(action: str, document: PublishingRemoteDocument) -
         f"Title: {title}",
         f"Status: {status}",
     ]
+    scheduled_for = document.scheduled_for.strip()
+    if scheduled_for:
+        lines.append(f"Scheduled for: {scheduled_for} UTC")
     remote_url = document.remote_url.strip()
     if remote_url:
         lines.append(f"Link: {remote_url}")
@@ -656,6 +688,8 @@ def _display_status(status: str) -> str:
     normalized = status.strip().lower()
     if normalized == "publish":
         return "published"
+    if normalized == "future":
+        return "scheduled"
     if normalized:
         return normalized.replace("_", " ")
     return "unknown"

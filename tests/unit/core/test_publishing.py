@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -343,6 +344,15 @@ def test_second_provider_capabilities_gate_unimplemented_lifecycle_actions() -> 
             authoring_surface="markdown",
             status="publish",
         )
+        schedule_ok, schedule_message, schedule_document = publishing.create_publishing_remote_item(
+            profile,
+            "second-secret",
+            content_kind="article",
+            title="Ready",
+            document_text="Body",
+            authoring_surface="markdown",
+            scheduled_at=datetime(2099, 1, 1, tzinfo=UTC),
+        )
     finally:
         publishing_clients.unregister_publishing_provider_client("secondcms")
         unregister_publishing_provider("secondcms")
@@ -355,6 +365,9 @@ def test_second_provider_capabilities_gate_unimplemented_lifecycle_actions() -> 
     assert publish_ok is False
     assert publish_message == "Second CMS publish is not implemented yet."
     assert document is None
+    assert schedule_ok is False
+    assert schedule_message == "Second CMS schedule is not implemented yet."
+    assert schedule_document is None
 
 
 class _VerifyOnlyClient:
