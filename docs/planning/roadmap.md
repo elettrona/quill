@@ -140,9 +140,10 @@ the verbosity braille channel.
 
 - Live installer smoke on Windows 10/11 (#506); macOS to shipping quality (#518);
   native RTF editing (#516); the Quillin Hub (#517); plugin capability + signing +
-  marketplace (#519); the Windows 11 primary-menu pass (#525); **packaging/freeze
-  evaluation** (the old PKG-1 — Nuitka/PyInstaller hardening, now a real 1.0
-  distribution item).
+  marketplace (#519).
+- **Deferred to 2.0** (consolidated into the backlog tracker #680): the Windows 11
+  modern primary-menu `IExplorerCommand` pass (SHELL-3, was #525) and the
+  packaging/freeze evaluation (PKG-1 — Nuitka/PyInstaller hardening, was #599).
 - **Out of scope:** Linux/Unix (#520, #565, #589). Platform scope is Windows
   (primary) and macOS (supported).
 
@@ -194,6 +195,23 @@ ideas (#590/#592).
   Screen-Reader Handoff mode), **Speech Rate/Pause knobs** (QUILL does not own the
   SR voice), **Punctuation/Symbol Profiles** (a core SR setting; duplicating it
   fights the SR), and the **"Final Recommendation"** meta-issue.
+
+### Update (2026-06-22): further consolidation into tracking issues
+
+The remaining per-ID planning stubs were collapsed into dedicated tracking
+issues so the 1.0 tracker holds workstreams, not bare placeholders:
+
+- **GLOW family** (the old #528–#534 epics) + WATCH-8 (#566) → **#674** (1.0).
+- **Accessibility Agents** AX-A..F (the old #593–#598) → **#675** (under the
+  Agentic AI PRD, §3).
+- **2.0-deferred singletons** PKG-1 (#599), COLLAB-1 (#592), ECO-1 (#590), and
+  SHELL-3 (#525) → **#680**, a single "QUILL 2.0 deferred backlog" tracker.
+- **NAV-10 (#578)** — undefined stub; folded into Quick Nav (#513), which shipped
+  the misspellings/search-hits nav types.
+
+The BITS Whisperer workstream (#669) shipped offline auto-transcription (#668),
+transcript formats (#670), cloud providers as Quillins (#671), and the Parakeet
+(#673) and Vosk (#677) engines this cycle.
 
 ---
 

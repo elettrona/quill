@@ -368,10 +368,12 @@ view + CSV grid (#514); extract <code>main_frame_statusbar.py</code>
 <ul>
 <li>Live installer smoke on Windows 10/11 (#506); macOS to shipping
 quality (#518); native RTF editing (#516); the Quillin Hub (#517);
-plugin capability + signing + marketplace (#519); the Windows 11
-primary-menu pass (#525); <strong>packaging/freeze evaluation</strong>
-(the old PKG-1 — Nuitka/PyInstaller hardening, now a real 1.0
-distribution item).</li>
+plugin capability + signing + marketplace (#519).</li>
+<li><strong>Deferred to 2.0</strong> (consolidated into the backlog
+tracker #680): the Windows 11 modern primary-menu
+<code>IExplorerCommand</code> pass (SHELL-3, was #525) and the
+packaging/freeze evaluation (PKG-1 — Nuitka/PyInstaller hardening, was
+#599).</li>
 <li><strong>Out of scope:</strong> Linux/Unix (#520, #565, #589).
 Platform scope is Windows (primary) and macOS (supported).</li>
 </ul>
@@ -434,6 +436,27 @@ Screen-Reader Handoff mode), <strong>Speech Rate/Pause knobs</strong>
 Profiles</strong> (a core SR setting; duplicating it fights the SR), and
 the <strong>"Final Recommendation"</strong> meta-issue.</li>
 </ul>
+<h3
+id="update-2026-06-22-further-consolidation-into-tracking-issues">Update
+(2026-06-22): further consolidation into tracking issues</h3>
+<p>The remaining per-ID planning stubs were collapsed into dedicated
+tracking issues so the 1.0 tracker holds workstreams, not bare
+placeholders:</p>
+<ul>
+<li><strong>GLOW family</strong> (the old #528–#534 epics) + WATCH-8
+(#566) → <strong>#674</strong> (1.0).</li>
+<li><strong>Accessibility Agents</strong> AX-A..F (the old #593–#598) →
+<strong>#675</strong> (under the Agentic AI PRD, §3).</li>
+<li><strong>2.0-deferred singletons</strong> PKG-1 (#599), COLLAB-1
+(#592), ECO-1 (#590), and SHELL-3 (#525) → <strong>#680</strong>, a
+single "QUILL 2.0 deferred backlog" tracker.</li>
+<li><strong>NAV-10 (#578)</strong> — undefined stub; folded into Quick
+Nav (#513), which shipped the misspellings/search-hits nav types.</li>
+</ul>
+<p>The BITS Whisperer workstream (#669) shipped offline
+auto-transcription (#668), transcript formats (#670), cloud providers as
+Quillins (#671), and the Parakeet (#673) and Vosk (#677) engines this
+cycle.</p>
 <hr />
 <h2 id="11-source-repos-for-the-consolidations">11. Source repos for the
 consolidations</h2>
