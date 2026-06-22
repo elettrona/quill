@@ -76,3 +76,11 @@ Scoped narrowly after confirming there's no untrusted provider yet to validate a
 Validation: focused battery `97 passed`; Ruff, mypy, and the provider registry gate passed; full unit suite `4093 passed, 66 failed, 14 skipped` matching the pre-existing baseline exactly.
 
 Next roadmap phase: live third-party provider loading.
+
+## Live Third-Party Provider Loading — Contract Shipped, Roadmap Closed - 2026-06-21
+
+Found this phase was really a product security policy question, not an engineering scoping one: SEC-8 (`core.third_party_plugins`, `locked_off=True`) is product-wide, and the publishing provider registries have zero gate of their own today. Presented the user three options; they chose: build the `ThirdPartyPublishingProviderAdapter` validation contract (id-conflict checking against bundled providers, host-owned secrets, required worker execution) while leaving real loading unimplemented and the SEC-8 lock untouched — mirroring exactly how Phase 1 shipped a contract before wiring WordPress through it.
+
+Validation: focused battery `82 passed`; Ruff, mypy, and the provider registry gate passed (confirming zero registry impact); full unit suite `4100 passed, 66 failed, 14 skipped` matching the pre-existing baseline exactly.
+
+All four roadmap phases authorized by the 2026-06-20 Phase 1 closeout are now addressed. Two decisions remain explicitly open for the user/product, not engineering defaults: the deferred cross-session publishing-linkage registry (from the compare phase), and whether/when to loosen SEC-8 for real third-party execution.

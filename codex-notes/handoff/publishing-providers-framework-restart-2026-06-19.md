@@ -103,4 +103,20 @@ Implemented state:
 
 Validation: focused battery (`97 passed`), dialog governance gates (`44 passed`), Ruff, mypy, the provider registry gate, and a full-suite run (`4093 passed, 66 failed, 14 skipped`) — the 66 failures match the pre-existing baseline exactly. Smoke-launched the app to confirm no startup traceback; could not interactively click through Browse/Cancel (no pywinauto, no project run-skill for this wx app) — recorded honestly as a verification gap rather than claimed as tested.
 
-Committed locally in two checkpoints (core, then UI+governance); **not pushed** pending explicit request. Resume by verifying local branch state before continuing into the final roadmap phase: live third-party provider loading.
+Committed locally in two checkpoints (core, then UI+governance); **not pushed** pending explicit request.
+
+## 2026-06-21 Live Third-Party Provider Loading Handoff (Roadmap Closed)
+
+User asked to continue and confirmed wanting memory/docs kept current (established practice all session). Before scoping, researched SEC-8 and the "Install from Folder" Quillin flow directly, since the phase name implied loosening a security boundary. Found SEC-8 (`core.third_party_plugins`, `locked_off=True` in `quill/core/feature_catalog.py`) is product-wide, not publishing-specific, and that `register_publishing_provider`/`register_publishing_provider_client` are themselves completely ungated — the only thing stopping third-party providers today is that third-party Quillin code cannot execute at all yet. Presented the user three explicit options; they chose to build the validation contract while leaving SEC-8 and real loading untouched, matching every prior phase's "build the contract, defer the risky part" pattern.
+
+Implemented state:
+
+- `quill/core/publishing_adapters.py` defines `ThirdPartyPublishingProviderAdapter` and `register_third_party_publishing_provider`. The function validates everything (matching ids, required rationale, host-owned secrets, required worker execution, no id conflict with bundled adapters) and then unconditionally rejects registration — proven by tests to leave the live registries completely untouched even for a fully well-formed adapter.
+
+No UI, dialog, menu, or module-size-budget changes were needed — `publishing_adapters.py` stayed at 146 lines.
+
+Validation: focused battery (`82 passed`), Ruff, mypy, the provider registry gate (confirms zero registry impact), and a full-suite run (`4100 passed, 66 failed, 14 skipped`) — the 66 failures match the pre-existing baseline exactly.
+
+Committed locally in one checkpoint; **not pushed** pending explicit request.
+
+**This closes the publishing-providers-framework roadmap.** All four phases the 2026-06-20 Phase 1 closeout authorized are addressed: WordPress bundled-provider path, schedule publishing, local-versus-remote compare, and Quillin worker execution / live third-party loading (the last two both concluded "build the contract, defer the boundary," since no untrusted code can run in this product yet). Two decisions remain explicitly open for whoever resumes this branch, not engineering defaults: whether to build the durable cross-session publishing-linkage registry deferred in the compare phase, and whether/when to loosen `core.third_party_plugins`/SEC-8 for real third-party execution. If resuming, verify local branch state (it will be ahead of `origin/feature/publishing-providers-framework` until pushed) and read this file's full history plus the four closeout notes in `codex-notes/notes/` before deciding what, if anything, comes next.

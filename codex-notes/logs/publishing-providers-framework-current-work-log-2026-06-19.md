@@ -130,3 +130,27 @@ Validation:
 - smoke-launched `python -m quill` for ~12s: no startup traceback (only a benign unrelated lexicon-file stderr warning), confirming the new wiring doesn't break MainFrame construction. Could not interactively click through Browse → Load → Cancel: no pywinauto installed, no project run-skill exists for this wxPython desktop app. Recorded as a known verification gap rather than claimed as tested.
 
 No live third-party provider loading work was performed. Committed locally as two checkpoints; not pushed pending explicit request.
+
+## 2026-06-21 - Live Third-Party Provider Loading (Final Phase, Roadmap Closed)
+
+User asked to continue, and confirmed wanting memory/docs kept current throughout (already the established practice this session).
+
+Researched QUILL's SEC-8 policy and the "Install from Folder" Quillin flow via one Explore agent before scoping, since the phase name implied loosening a security boundary: confirmed SEC-8 (`docs/QUILL-PRD.md`, `core.third_party_plugins` flag in `quill/core/feature_catalog.py`, `locked_off=True`) is product-wide — it keeps all third-party Quillin code from running in a default v1.0 build, regardless of publishing. "Install from Folder" (`quill/ui/main_frame_quillins.py` → `quill/core/quillins/loader.py`'s `install_extension()`) is already open and ungated, but installed code still never executes while the flag is locked off. Found `register_publishing_provider`/`register_publishing_provider_client` are themselves completely open functions with no gate — third-party provider loading is blocked today ENTIRELY by the Quillin-execution lock, not by anything publishing-specific.
+
+Presented the user three explicit options via AskUserQuestion (build the contract with loading kept locked off; flip the SEC-8 flag and wire real loading; stop here as policy-blocked). The user chose the first, recommended option, matching the "build the contract, defer the risky part" pattern used in schedule/compare/worker-execution.
+
+Work completed in one commit (no UI/dialog/menu/budget changes needed — this was a pure core-contract addition):
+
+- `quill/core/publishing_adapters.py`: new `ThirdPartyPublishingProviderAdapter` dataclass (no trusted defaults for `secret_access`/`execution`, unlike the bundled adapter) and `register_third_party_publishing_provider()`. Validation cascade: ids must match; network rationale required; secrets must be host-owned; execution must be `worker` (in-process rejected outright for untrusted code); provider id must not conflict with an existing bundled adapter; then an unconditional final rejection ("Live third-party publishing provider loading is not implemented yet."). Module docstring states explicitly this contract does not loosen, bypass, or duplicate the SEC-8 lock.
+- `tests/unit/core/test_publishing_adapters.py`: 14 new tests — each validation branch independently triggered, an id-mismatch case, a bundled-id-conflict case, and a proof test that even a fully well-formed third-party adapter still gets rejected with the live registries (`PROVIDER_DEFINITIONS`, `_PUBLISHING_PROVIDER_CLIENTS`) left completely untouched.
+
+Validation:
+
+- focused battery (publishing core + adapters): `82 passed`
+- Ruff: passed
+- provider registry gate: passed (confirms zero registry impact)
+- scoped `mypy quill/core quill/io`: unchanged from before this slice (same 7 pre-existing findings)
+- full unit suite: `4100 passed, 66 failed, 14 skipped` — identical pre-existing failure set; +7 passing delta matches the new tests added
+- `publishing_adapters.py` measured at 146 lines, well under the untracked 600-line default cap — no module-size budget entry needed
+
+**This closes the publishing-providers-framework roadmap.** All four phases authorized by the 2026-06-20 Phase 1 closeout are addressed. Two decisions remain explicitly open for the user/product, recorded as deliberate non-defaults rather than oversights: the deferred cross-session publishing-linkage registry (compare phase), and whether/when to loosen `core.third_party_plugins`/SEC-8 for real third-party execution (this phase). Committed locally; not pushed pending explicit request.

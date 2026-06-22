@@ -43,3 +43,9 @@ Compare is implemented and closed out. Users can request an honest comparison of
 ## Quillin Worker Execution Boundaries Complete - 2026-06-21
 
 Implemented and closed out, scoped narrowly after confirming no untrusted publishing provider exists yet to validate a real subprocess worker boundary against. Browsing publishing content now dispatches through the app's existing background task manager with a real, honest Cancel button, instead of blocking the UI thread. The execution-policy contract now recognizes a `"worker"` value as declared-but-not-yet-implemented. The actual subprocess/IPC boundary remains deferred to the live third-party provider loading phase — the only phase left. SEC-8 remains unchanged; third-party providers are still not enabled.
+
+## Live Third-Party Provider Loading Complete - 2026-06-21 (Roadmap Closed)
+
+Implemented and closed out. The third-party publishing provider adapter contract now exists and is fully validated and tested (id-conflict checking against bundled providers, host-owned secrets, required worker execution), but registering one always fails — live third-party loading is not implemented. This was a deliberate choice after confirming SEC-8 is a product-wide lock (not publishing-specific) and that the publishing provider registries have no gate of their own; "live loading" would mean creating an exception to, or flipping, a security boundary that protects every Quillin capability, not just publishing. That remains an explicit, separate product decision, not something this work assumed or defaulted into.
+
+**All four roadmap phases authorized by the 2026-06-20 Phase 1 closeout are now complete.** SEC-8 remains unchanged; third-party providers and third-party Quillin code in general are still not enabled in a default build.
