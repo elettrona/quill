@@ -5,7 +5,7 @@
 #define AppVersion "0.7.0 Beta 1"
 #define AppPublisher "Community Access"
 #define AppURL "https://github.com/Community-Access/quill"
-#define AppExeName "run-quill.cmd"
+#define AppExeName "quill.exe"
 
 [Setup]
 AppId={{6E0A1C52-4A90-4C6E-A8A1-3C2A16E2B7F2}
@@ -47,10 +47,13 @@ WizardStyle=modern
 CloseApplications=force
 RestartApplications=no
 UninstallDisplayName={#AppName} {#AppVersion}
-; pythonw.exe carries a real icon so Add/Remove Programs shows one;
-; the .cmd launcher has none. Falls back gracefully when no bundled
-; runtime is present (e.g. a dev build).
-UninstallDisplayIcon={app}\python\pythonw.exe
+; The bundled launcher carries a real icon so Add/Remove Programs
+; shows one. BundledLauncherPath (see [Code]) prefers quill.exe at
+; the bundle root -- a VERSIONINFO-stamped copy of pythonw.exe, see
+; _stamp_quill_launcher -- then python\quill.exe, then plain
+; pythonw.exe, and gracefully returns blank when no bundled runtime
+; is present (e.g. a dev build), in which case no icon is shown.
+UninstallDisplayIcon={code:BundledLauncherPath}
 LicenseFile=LICENSE
 InfoAfterFile=README-installer.txt
 SetupLogging=yes
@@ -59,7 +62,6 @@ SetupLogging=yes
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a &Desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 Name: "fileassoc"; Description: "Register Quill in the Open With menu for common text formats (.txt, .md, .rst, .log, .csv, .json)"; GroupDescription: "File associations:"; Flags: unchecked
 Name: "shellverbs"; Description: "Add ""Send to Quill"" actions (OCR, Open, Read aloud) to the file right-click menu"; GroupDescription: "File associations:"; Flags: unchecked
 
@@ -78,11 +80,12 @@ Name: "pandoc"; Description: "Install bundled Pandoc for document conversion"; T
 Name: "speechdectalk"; Description: "Install bundled DECtalk runtime"; Types: full custom; Flags: checkablealone
 Name: "speechespeak"; Description: "Install bundled eSpeak-NG runtime"; Types: full custom; Flags: checkablealone
 Name: "speechpiper"; Description: "Install bundled Piper neural TTS runtime"; Types: full custom; Flags: checkablealone
+Name: "speechwhisper"; Description: "Install the offline speech engine (whisper.cpp) for private, on-device transcription and dictation (Tools > Speech > Whisperer)"; Types: full custom; Flags: checkablealone
 Name: "nodejs"; Description: "Install portable Node.js runtime for Node Quillins and the Developer Console TypeScript interface (~30 MB); not required for Python Quillins"; Flags: checkablealone
 Name: "braillepack"; Description: "Install QUILL Braille Pack (liblouis translation engine, UEB, Standard American English, and international braille profiles, ~15 MB)"; Types: full custom; Flags: checkablealone
 
 [Files]
-Source: "..\portable\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "docs\QUILL-PRD.md,tools\pandoc\*,tools\speech\dectalk\*,tools\speech\espeak-ng\*,tools\speech\piper\*,tools\nodejs\*,vendor\braille-pack\*,_tool-download\*,_speech-download\*"
+Source: "..\portable\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "docs\QUILL-PRD.md,tools\pandoc\*,tools\speech\dectalk\*,tools\speech\espeak-ng\*,tools\speech\piper\*,tools\speech\whispercpp\*,tools\nodejs\*,vendor\braille-pack\*,_tool-download\*,_speech-download\*"
 ; QUILL Braille Pack: liblouis runtime, translation tables, and BRF profiles.
 ; Installed to vendor\braille-pack so QUILL detects it automatically via QUILL_APP_ROOT.
 Source: "..\portable\vendor\braille-pack\*"; DestDir: "{app}\vendor\braille-pack"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: braillepack
@@ -91,6 +94,11 @@ Source: "..\portable\tools\pandoc\*"; DestDir: "{app}\tools\pandoc"; Flags: igno
 Source: "..\portable\tools\speech\dectalk\*"; DestDir: "{app}\tools\speech\dectalk"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk
 Source: "..\portable\tools\speech\espeak-ng\*"; DestDir: "{app}\tools\speech\espeak-ng"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechespeak
 Source: "..\portable\tools\speech\piper\*"; DestDir: "{app}\tools\speech\piper"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechpiper
+; whisper.cpp offline speech engine. Resolved at runtime from
+; {app}\tools\speech\whispercpp (QUILL_APP_ROOT). Optional;
+; skipifsourcedoesntexist means a build without the bundled engine still
+; installs, and users can also drop the executable here or download it later.
+Source: "..\portable\tools\speech\whispercpp\*"; DestDir: "{app}\tools\speech\whispercpp"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechwhisper
 ; Node.js portable runtime (optional). The build script copies a portable
 ; node.exe distribution into portable\tools\nodejs when building with
 ; --bundle-nodejs. skipifsourcedoesntexist means a build without bundled
@@ -98,13 +106,13 @@ Source: "..\portable\tools\speech\piper\*"; DestDir: "{app}\tools\speech\piper";
 Source: "..\portable\tools\nodejs\*"; DestDir: "{app}\tools\nodejs"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: nodejs
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: "-m quill"; WorkingDir: "{app}"; Check: FileExists(ExpandConstant('{app}\python\pythonw.exe'))
-Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Check: not FileExists(ExpandConstant('{app}\python\pythonw.exe'))
+Name: "{group}\{#AppName}"; Filename: "{code:BundledLauncherPath}"; Parameters: "-m quill"; WorkingDir: "{app}"; Check: HasBundledLauncher
+Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Check: not HasBundledLauncher
 Name: "{group}\{#AppName} README"; Filename: "{app}\README.txt"
 Name: "{group}\{#AppName} User Guide"; Filename: "{app}\docs\userguide.html"
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: "-m quill"; WorkingDir: "{app}"; Tasks: desktopicon; Check: FileExists(ExpandConstant('{app}\python\pythonw.exe'))
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon; Check: not FileExists(ExpandConstant('{app}\python\pythonw.exe'))
+Name: "{autodesktop}\{#AppName}"; Filename: "{code:BundledLauncherPath}"; Parameters: "-m quill"; WorkingDir: "{app}"; Check: HasBundledLauncher
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Check: not HasBundledLauncher
 
 [Registry]
 ; Register Quill in the OpenWithList for common text formats. We
@@ -266,8 +274,8 @@ Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\Quill.re
 [Run]
 Filename: "{app}\README.txt"; Description: "View the Quill README"; Flags: postinstall shellexec skipifsilent unchecked
 Filename: "{app}\docs\userguide.html"; Description: "View the User Guide"; Flags: postinstall shellexec skipifsilent unchecked
-Filename: "{app}\python\pythonw.exe"; Parameters: "-m quill"; Description: "Launch {#AppName}"; Flags: postinstall nowait skipifsilent unchecked; Check: FileExists(ExpandConstant('{app}\python\pythonw.exe'))
-Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: postinstall nowait skipifsilent unchecked; Check: not FileExists(ExpandConstant('{app}\python\pythonw.exe'))
+Filename: "{code:BundledLauncherPath}"; Parameters: "-m quill"; Description: "Launch {#AppName}"; Flags: postinstall nowait skipifsilent unchecked; Check: HasBundledLauncher
+Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: postinstall nowait skipifsilent unchecked; Check: not HasBundledLauncher
 
 [UninstallDelete]
 ; Always remove install-dir build junk. Whether to also remove the
@@ -283,6 +291,33 @@ Type: filesandordirs; Name: "{app}\__pycache__"
 Type: filesandordirs; Name: "{app}\python"
 
 [Code]
+// -- Bundled launcher resolution ------------------------------------------------
+// quill.exe at the bundle root is a copy of the embedded runtime's
+// pythonw.exe whose VERSIONINFO has been stamped with the Quill
+// product identity (see _stamp_quill_launcher in
+// build_windows_distribution.py), so JAWS's Ctrl+JAWSKey+V reports
+// the real Quill version instead of "Python 3.x.x" (issue #615).
+// BundledLauncherPath tries the hoisted quill.exe first, then the
+// older python\quill.exe (kept for back-compat with bundles from
+// before the hoist landed), then plain python\pythonw.exe, and
+// finally '' so every call site falls back gracefully.
+function BundledLauncherPath(Param: String): String;
+begin
+  if FileExists(ExpandConstant('{app}\quill.exe')) then
+    Result := ExpandConstant('{app}\quill.exe')
+  else if FileExists(ExpandConstant('{app}\python\quill.exe')) then
+    Result := ExpandConstant('{app}\python\quill.exe')
+  else if FileExists(ExpandConstant('{app}\python\pythonw.exe')) then
+    Result := ExpandConstant('{app}\python\pythonw.exe')
+  else
+    Result := '';
+end;
+
+function HasBundledLauncher(): Boolean;
+begin
+  Result := BundledLauncherPath('') <> '';
+end;
+
 // -- Skip component page for full installs ------------------------------------
 // Full install: skip component selection (everything is pre-selected).
 function ShouldSkipPage(PageID: Integer): Boolean;
@@ -301,7 +336,18 @@ procedure CurStepChanged(CurStep: TSetupStep);
 var
   NodePath: String;
   WingetResult: Integer;
+  StaleShortcut: String;
 begin
+  if CurStep = ssInstall then
+  begin
+    // Drop any pre-existing desktop shortcut before Inno writes the
+    // new one. A beta-1 install created a shortcut pointing at
+    // run-quill.cmd; removing it here guarantees the new shortcut
+    // launches quill.exe, not the obsolete launcher.
+    StaleShortcut := ExpandConstant('{autodesktop}\{#AppName}.lnk');
+    if FileExists(StaleShortcut) then
+      DeleteFile(StaleShortcut);
+  end;
   if CurStep = ssPostInstall then
   begin
     SaveStringToFile(ExpandConstant('{app}\quill-new-install.txt'), 'new-install', False);

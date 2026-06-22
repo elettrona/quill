@@ -78,7 +78,13 @@ class AskQuillChatDialog:
         self._review_changes = review_changes
         self._tool_titles = dict(tool_catalog)
         self._tool_ids = tuple(tid for tid, _ in tool_catalog)
-        self._announce = announce or (lambda _m: None)
+        # Route announcements through the verbosity engine's legacy passthrough
+        # (a no-op for the user today) so engine.speak() is reachable from this
+        # call site as the verbosity rebuild migrates paths onto it.
+        from quill.core.verbosity.engine import speak_legacy_text
+
+        _base_announce = announce or (lambda _m: None)
+        self._announce = lambda message: _base_announce(speak_legacy_text(message))
         self._last_response = ""
         self._first_done = False
         self._session = None

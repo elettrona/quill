@@ -321,3 +321,467 @@ def test_deferred_startup_task_list_includes_help_topics_warmup() -> None:
 
     assert '"help topics warm-up"' in src
     assert "warm_help_topics" in src
+
+
+def test_first_run_defers_tab_creation_until_wizard_returns() -> None:
+    """#606: on first launch the wizard must open before any document tab.
+
+    __init__ builds the frame without a tab when
+    setup_wizard_completed is False, so macOS screen readers do not
+    announce "Untitled" before the wizard modal grabs focus.
+    _maybe_run_first_run_onboarding creates the tab via
+    new_document() after the wizard returns, so the user lands in
+    a fresh document once the wizard is closed.
+    """
+    frame = _build_frame()
+    frame.settings = type(
+        "Settings", (), {"setup_wizard_completed": False, "auto_check_updates": False}
+    )()
+    frame._first_run_wizard_pending = True
+    frame._document_tabs = []
+    failures: list[str] = []
+    frame._report_startup_task_failure = lambda label: failures.append(label)
+
+    wizard_open_tab_count: list[int] = []
+
+    def _fake_run_startup_wizard(*, first_run: bool = False):
+        # #606: while the wizard is "open" the notebook must be
+        # empty -- no "Untitled" tab should have been built in
+        # __init__ on this branch.
+        wizard_open_tab_count.append(len(frame._document_tabs))
+        return True, False
+
+    frame.run_startup_wizard = _fake_run_startup_wizard  # type: ignore[method-assign]
+
+    def _stub_create_document_tab(document: object, select: bool = True) -> None:
+        # Mirror the real _create_document_tab() side effect for the
+        # assertion: a fresh tab lands in _document_tabs. We stub it
+        # because the production method requires live wx widgets
+        # (Panel, SplitterWindow, TextCtrl) that the __new__-built
+        # frame does not have.
+        class _StubTab:
+            pass
+
+        frame._document_tabs.append(_StubTab())
+
+    frame._create_document_tab = _stub_create_document_tab  # type: ignore[method-assign]
+    frame._location_ring = type("LR", (), {"record": lambda self, n: None})()
+    frame._region_tracker = type("RT", (), {"enter": lambda self, name: None})()
+    frame._focus_editor = lambda: None
+    # Pre-clear the legacy first-run flags the wizard branch writes
+    # to, so we exercise the production path that suppresses them.
+    frame._first_run_profile_prompt = True
+    frame._first_run_assistant_prompt = True
+    frame._first_run_glow_prompt = True
+    frame._first_run_speech_prompt = True
+    frame._first_run_watch_folder_prompt = True
+
+    frame._maybe_run_first_run_onboarding()
+
+    # #606 invariants
+    assert wizard_open_tab_count == [0], "no document tab must exist while the wizard is open"
+    assert len(frame._document_tabs) == 1, (
+        "_create_document_tab() must create exactly one tab after the wizard"
+    )
+    assert frame._first_run_wizard_pending is False, (
+        "the pending flag must be cleared once the tab is created"
+    )
+    # The wizard branch suppresses the legacy per-feature prompts.
+    assert frame._first_run_profile_prompt is False
+    assert frame._first_run_assistant_prompt is False
+    assert frame._first_run_glow_prompt is False
+    assert frame._first_run_speech_prompt is False
+    assert frame._first_run_watch_folder_prompt is False
+    # No startup-task failures were reported by this happy path.
+    assert failures == []
+
+
+# ---------------------------------------------------------------------------
+# #44: an undeletable new-install marker must not force the wizard to reopen
+# on every subsequent launch.
+# ---------------------------------------------------------------------------
+
+
+class _UndeletableMarker:
+    """A marker path stand-in whose unlink() always fails, like a marker
+    written into an elevated install directory the running user can't
+    write to."""
+
+    def __init__(
+        self,
+        mtime: float,
+        path: str = "C:/Program Files/Quill/quill-new-install.txt",
+    ) -> None:
+        self._mtime = mtime
+        self._path = path
+        self.unlink_attempts = 0
+
+    def exists(self) -> bool:
+        return True
+
+    def stat(self):
+        return type("Stat", (), {"st_mtime": self._mtime})()
+
+    def resolve(self):
+        # Real Path.resolve() returns a Path; the production code only uses
+        # ``str(resolved)`` so a string-shaped stand-in is fine.
+        return self._path
+
+    def unlink(self) -> None:
+        self.unlink_attempts += 1
+        raise OSError("Access is denied")
+
+
+def test_undeletable_marker_does_not_reopen_wizard_on_next_launch(monkeypatch, tmp_path) -> None:
+    import quill.core.paths as paths_module
+
+    frame = _build_frame()
+    frame.settings = type("Settings", (), {"setup_wizard_completed": True})()
+    frame.run_startup_wizard = lambda **kwargs: None
+    marker = _UndeletableMarker(mtime=12345.0)
+    monkeypatch.setattr(paths_module, "new_install_marker_path", lambda: marker)
+    monkeypatch.setattr(paths_module, "app_data_dir", lambda: tmp_path)
+
+    saved: list[bool] = []
+    import quill.core.settings as settings_module
+
+    monkeypatch.setattr(
+        settings_module, "save_settings", lambda s: saved.append(s.setup_wizard_completed)
+    )
+
+    # First launch: marker exists and hasn't been consumed before, so the
+    # wizard flag resets even though the delete itself fails.
+    frame._maybe_run_first_run_onboarding()
+    assert marker.unlink_attempts == 1
+    assert saved == [False]
+
+    # Second launch: same undeleted marker, same mtime. Before the fix this
+    # would reset setup_wizard_completed to False again every single launch,
+    # reopening the wizard forever. The sentinel recorded under app_data_dir()
+    # must recognize this marker as already consumed and skip the reset.
+    frame.settings.setup_wizard_completed = True
+    frame._maybe_run_first_run_onboarding()
+    assert saved == [False]  # no second reset recorded
+
+
+# ---------------------------------------------------------------------------
+# #647: the sentinel must treat a marker at a path it has already seen as
+# consumed, even when the marker's mtime changes between launches. Antivirus
+# tools, filesystem mtime drift, and other processes touching the marker file
+# can update its mtime without rewriting its content; comparing only on mtime
+# (the #44 fix) made the wizard reopen on every launch in that case. The
+# marker's resolved path is the stable identity for a given install.
+# ---------------------------------------------------------------------------
+
+
+def test_undeletable_marker_with_changed_mtime_does_not_reopen_wizard(
+    monkeypatch, tmp_path
+) -> None:
+    """#647: same marker path, but mtime has changed between launches. The
+    sentinel must still recognize the marker as already consumed -- the wizard
+    must NOT reopen just because the mtime drifted."""
+    import quill.core.paths as paths_module
+
+    frame = _build_frame()
+    frame.settings = type("Settings", (), {"setup_wizard_completed": True})()
+    frame.run_startup_wizard = lambda **kwargs: None
+    marker = _UndeletableMarker(
+        mtime=1000.0,
+        path="C:/Program Files/Quill/quill-new-install.txt",
+    )
+    monkeypatch.setattr(paths_module, "new_install_marker_path", lambda: marker)
+    monkeypatch.setattr(paths_module, "app_data_dir", lambda: tmp_path)
+
+    saved: list[bool] = []
+    import quill.core.settings as settings_module
+
+    monkeypatch.setattr(
+        settings_module, "save_settings", lambda s: saved.append(s.setup_wizard_completed)
+    )
+
+    # First launch: marker consumed, wizard flag reset, sentinel written with
+    # the marker's resolved path + the original mtime.
+    frame._maybe_run_first_run_onboarding()
+    assert marker.unlink_attempts == 1
+    assert saved == [False]
+
+    # Second launch: AV or filesystem has bumped the marker's mtime to a
+    # different value. Same path, so the sentinel should still recognize
+    # it as already consumed and skip the reset (#647).
+    marker._mtime = 2000.0
+    frame.settings.setup_wizard_completed = True
+    frame._maybe_run_first_run_onboarding()
+    assert marker.unlink_attempts == 2  # unlink was retried
+    assert saved == [False]  # no second reset recorded
+
+
+def test_marker_at_different_path_is_treated_as_new_install(monkeypatch, tmp_path) -> None:
+    """#647: a marker at a different resolved path means a genuinely new
+    install (portable bundle moved, custom install location, etc.). The
+    wizard flag must reset in that case."""
+    import quill.core.paths as paths_module
+
+    frame = _build_frame()
+    frame.settings = type("Settings", (), {"setup_wizard_completed": True})()
+    frame.run_startup_wizard = lambda **kwargs: None
+    marker = _UndeletableMarker(
+        mtime=1000.0,
+        path="C:/Program Files/Quill/quill-new-install.txt",
+    )
+    monkeypatch.setattr(paths_module, "new_install_marker_path", lambda: marker)
+    monkeypatch.setattr(paths_module, "app_data_dir", lambda: tmp_path)
+
+    saved: list[bool] = []
+    import quill.core.settings as settings_module
+
+    monkeypatch.setattr(
+        settings_module, "save_settings", lambda s: saved.append(s.setup_wizard_completed)
+    )
+
+    # First install at one location.
+    frame._maybe_run_first_run_onboarding()
+    assert saved == [False]
+
+    # Second install at a different location (e.g., user uninstalled and
+    # reinstalled into D:/Quill). The path differs, so the sentinel must
+    # treat this as a new install and reset the wizard flag.
+    marker._path = "D:/Quill/quill-new-install.txt"
+    frame.settings.setup_wizard_completed = True
+    frame._maybe_run_first_run_onboarding()
+    assert saved == [False, False]
+
+
+def test_legacy_mtime_only_sentinel_is_not_misread_as_new_install(monkeypatch, tmp_path) -> None:
+    """#647: a sentinel written by an older QUILL build (mtime-only, before
+    the path-aware fix shipped) must still be honored -- the legacy sentinel
+    simply lacks a ``path`` key, which does not match any current marker's
+    resolved path, so the wizard would reset on the first launch after
+    upgrade. That is acceptable: a one-time wizard reopen on the first launch
+    after upgrading to the path-aware build is far better than the previous
+    behaviour of reopening forever."""
+    import json
+
+    import quill.core.paths as paths_module
+
+    legacy_sentinel = tmp_path / "new-install-marker-consumed.json"
+    legacy_sentinel.write_text(
+        json.dumps({"mtime": 999.0}),  # legacy format: no "path" key
+        encoding="utf-8",
+    )
+
+    frame = _build_frame()
+    frame.settings = type("Settings", (), {"setup_wizard_completed": True})()
+    frame.run_startup_wizard = lambda **kwargs: None
+    marker = _UndeletableMarker(
+        mtime=1234.0,
+        path="C:/Program Files/Quill/quill-new-install.txt",
+    )
+    monkeypatch.setattr(paths_module, "new_install_marker_path", lambda: marker)
+    monkeypatch.setattr(paths_module, "app_data_dir", lambda: tmp_path)
+
+    saved: list[bool] = []
+    import quill.core.settings as settings_module
+
+    monkeypatch.setattr(
+        settings_module, "save_settings", lambda s: saved.append(s.setup_wizard_completed)
+    )
+
+    # Legacy sentinel has no "path" key, so the check sees the marker as
+    # new and resets the wizard flag once. After this launch, the sentinel
+    # is rewritten in the new path-aware format and subsequent launches
+    # will recognize the marker correctly.
+    frame._maybe_run_first_run_onboarding()
+    assert saved == [False]
+
+    # Second launch: the rewritten sentinel now has the path, so the
+    # marker is correctly treated as already consumed.
+    frame.settings.setup_wizard_completed = True
+    frame._maybe_run_first_run_onboarding()
+    assert saved == [False]  # no second reset recorded
+
+
+# ---------------------------------------------------------------------------
+# #606 follow-up: _apply_theme runs from __init__ before _create_document_tab
+# when the Setup Wizard is pending on a fresh install. self.editor does not
+# exist yet, so the three editor.* calls must not raise AttributeError.
+# ---------------------------------------------------------------------------
+
+
+def test_apply_theme_survives_missing_editor_in_wizard_pending_init() -> None:
+    """Regression for the fresh-install crash: AttributeError on self.editor
+    in _apply_theme() during the wizard-pending branch of __init__ (#606
+    follow-up). _apply_theme must guard the editor writes with getattr() and
+    still apply the chrome + statusbar colors so the wizard modal sees the
+    correct palette."""
+    frame = _build_frame()
+
+    class _Colour:
+        def __init__(self, r, g, b) -> None:
+            self.r, self.g, self.b = r, g, b
+
+        def __eq__(self, other):
+            return isinstance(other, _Colour) and (self.r, self.g, self.b) == (
+                other.r,
+                other.g,
+                other.b,
+            )
+
+        def __hash__(self):
+            return hash((self.r, self.g, self.b))
+
+    class _StatusBar:
+        def __init__(self) -> None:
+            self.fg = None
+            self.bg = None
+
+        def SetForegroundColour(self, colour):  # noqa: N802
+            self.fg = colour
+            return True
+
+        def SetBackgroundColour(self, colour):  # noqa: N802
+            self.bg = colour
+            return True
+
+    class _Frame:
+        def __init__(self) -> None:
+            self.fg = None
+            self.bg = None
+
+        def SetForegroundColour(self, colour):  # noqa: N802
+            self.fg = colour
+            return True
+
+        def SetBackgroundColour(self, colour):  # noqa: N802
+            self.bg = colour
+            return True
+
+        def Refresh(self):
+            pass
+
+    class _CallAfter:
+        def __init__(self):
+            self.calls = []
+
+        def __call__(self, fn, *args):
+            self.calls.append((fn, args))
+
+    wx_stub = _Wx()
+    wx_stub.Colour = _Colour
+    call_after = _CallAfter()
+    wx_stub.CallAfter = call_after  # type: ignore[attr-defined]
+    frame._wx = wx_stub
+    frame.frame = _Frame()  # type: ignore[assignment]
+    frame.statusbar = _StatusBar()  # type: ignore[attr-defined]
+    # Note: no frame.editor -- the wizard-pending branch never calls
+    # _create_document_tab, so self.editor is unset.
+    assert not hasattr(frame, "editor")
+    # Use "dark" so the test does not need a real SystemSettings stub.
+    frame.settings = type("Settings", (), {"theme": "dark"})()
+
+    # Must not raise AttributeError on self.editor.
+    frame._apply_theme("dark")
+
+    # The chrome + statusbar colors still apply so the wizard sees them.
+    assert frame.frame.fg == _Colour(230, 230, 230)
+    assert frame.frame.bg == _Colour(45, 45, 45)
+    assert frame.statusbar.fg == _Colour(230, 230, 230)
+    assert frame.statusbar.bg == _Colour(45, 45, 45)
+    # The contrast-ratio announce is still scheduled.
+    assert len(call_after.calls) == 1
+
+
+# ---------------------------------------------------------------------------
+# Init-order regression: _refresh_contextual_menu_items + _current_markup_context
+# must not raise AttributeError on self.editor during the wizard-pending
+# branch of __init__ (fresh install). The contextual refresh is deferred via
+# _request_menu_refresh(); _current_markup_context falls back to "plain" when
+# the editor is missing. After __init__ finishes, _ui_ready is True and the
+# pending refresh fires once.
+# ---------------------------------------------------------------------------
+
+
+def test_current_markup_context_returns_plain_when_editor_missing() -> None:
+    """Regression for the fresh-install crash: _current_markup_context is
+    called from _refresh_contextual_menu_items during the wizard-pending
+    branch of __init__ (self.editor does not exist yet). The function must
+    fall back to "plain" instead of raising AttributeError on self.editor.
+    """
+    frame = _build_frame()
+    frame.document = type("Document", (), {"path": None})()
+    assert not hasattr(frame, "editor")
+
+    # Must not raise AttributeError on self.editor.
+    assert frame._current_markup_context() == "plain"
+
+
+def test_refresh_contextual_menu_items_defers_during_init() -> None:
+    """Regression for the fresh-install crash: _build_menu calls
+    _refresh_contextual_menu_items during __init__ on the wizard-pending
+    branch. With self.editor unset and _ui_ready False, the refresh must
+    defer by setting _pending_menu_refresh=True and return rather than
+    crash. The deferred refresh is then flushed by the constructor's
+    final flush, or by the wizard's post-create flush.
+    """
+    frame = _build_frame()
+    assert not hasattr(frame, "editor")
+    frame._ui_ready = False
+    frame._pending_menu_refresh = False
+
+    # Must not raise AttributeError on self.editor / self.frame.GetMenuBar.
+    frame._refresh_contextual_menu_items()
+
+    # The refresh was deferred (the pending flag is set) rather than
+    # executed. The constructor's final flush will pick this up.
+    assert frame._pending_menu_refresh is True, (
+        "_refresh_contextual_menu_items must set the pending flag when _ui_ready is False"
+    )
+
+
+def test_refresh_contextual_menu_items_runs_normally_after_init() -> None:
+    """Once __init__ has finished (_ui_ready is True and self.editor is
+    set), _refresh_contextual_menu_items should run normally and not
+    defer. The function only defers during construction, not at steady
+    state.
+    """
+
+    class _Editor:
+        def GetValue(self):
+            return "hello"
+
+    frame = _build_frame()
+    frame.editor = _Editor()  # type: ignore[attr-defined]
+    frame._ui_ready = True
+    frame._pending_menu_refresh = False
+
+    # Steady-state: the function does not defer; it executes against
+    # the (stubbed) menu bar. A bare-metal frame has no GetMenuBar, so
+    # the function returns early after detecting a None menu bar.
+    # The point of this test is that the lifecycle gate does not
+    # intercept the steady-state path.
+    frame._refresh_contextual_menu_items()
+
+    # The function was NOT deferred -- the lifecycle gate let it through.
+    assert frame._pending_menu_refresh is False
+
+
+def test_refresh_contextual_menu_items_runs_when_ui_ready_attr_missing() -> None:
+    """Tests using ``MainFrame.__new__`` do not set ``_ui_ready`` at all.
+    The lifecycle gate must default to 'ready' so these tests are not
+    silently gated. This pins the documented invariant: only the real
+    ``__init__`` (which sets ``_ui_ready = False`` at the top) is
+    intercepted by the gate.
+    """
+
+    class _Editor:
+        def GetValue(self):
+            return "hello"
+
+    frame = _build_frame()
+    frame.editor = _Editor()  # type: ignore[attr-defined]
+    assert not hasattr(frame, "_ui_ready")
+    frame._pending_menu_refresh = False
+
+    frame._refresh_contextual_menu_items()
+
+    # Default (missing attr) means "ready"; the gate let it through.
+    assert frame._pending_menu_refresh is False

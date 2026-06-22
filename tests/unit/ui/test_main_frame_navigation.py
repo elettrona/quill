@@ -435,7 +435,7 @@ def test_refresh_title_uses_full_path_when_enabled() -> None:
 
     frame._refresh_title()
 
-    assert frame.frame.title == f"{frame.document.path} * - Quill"
+    assert frame.frame.title == f"{frame.document.path} * - {main_frame_module._APP_TITLE_VERSION}"
 
 
 def test_statusbar_hides_file_path_when_title_uses_full_path() -> None:
@@ -490,7 +490,30 @@ def test_refresh_title_uses_asterisk_text_dirty_style() -> None:
 
     frame._refresh_title()
 
-    assert frame.frame.title == "note.md * [modified] - Quill"
+    assert frame.frame.title == f"note.md * [modified] - {main_frame_module._APP_TITLE_VERSION}"
+
+
+def test_window_title_includes_app_version_for_screen_readers() -> None:
+    """#615: window title must surface the QUILL version so screen readers
+    announcing the focused window (JAWS Insert+T, NVDA+T, Narrator Caps+H)
+    speak the version. The Ctrl+JAWSKey+V path lives in the OS layer and
+    reads the launcher's VersionInfo, which the portable build does not
+    have; the window title is the only in-process channel that reaches
+    every screen reader.
+    """
+    frame = _build_frame("hello", insertion_point=0)
+    frame.settings.title_bar_path_mode = "name"
+    frame.settings.dirty_title_style = "asterisk"
+
+    frame._refresh_title()
+
+    assert main_frame_module._APP_TITLE_VERSION in frame.frame.title
+    assert "QUILL for All" in frame.frame.title
+    # The version string must include a SemVer-style "N.N.N" so JAWS does
+    # not announce only the brand. build_info.get_short_version() returns
+    # "0.7.0 Beta 1"; the major.minor.patch triple "0.7.0" is the part the
+    # screen reader will speak.
+    assert "0.7.0" in main_frame_module._APP_TITLE_VERSION
 
 
 def test_feature_coverage_maps_new_surfaces_to_known_features() -> None:
@@ -557,7 +580,7 @@ def test_prompt_to_save_active_document_saves_when_requested() -> None:
     frame._wx = type("WX", (), {"ID_YES": 1, "ID_CANCEL": 0})()
     actions: list[str] = []
 
-    frame._prompt_unsaved_changes_action = lambda *_args: 1  # type: ignore[method-assign]
+    frame._prompt_unsaved_changes_action = lambda *_a, **_k: 1  # type: ignore[method-assign]
 
     def _save_file() -> None:
         actions.append("saved")
@@ -573,7 +596,7 @@ def test_prompt_to_save_active_document_cancels_when_requested() -> None:
     frame = _build_frame("one", insertion_point=0)
     frame.document.modified = True
     frame._wx = type("WX", (), {"ID_YES": 1, "ID_CANCEL": 0})()
-    frame._prompt_unsaved_changes_action = lambda *_args: 0  # type: ignore[method-assign]
+    frame._prompt_unsaved_changes_action = lambda *_a, **_k: 0  # type: ignore[method-assign]
 
     assert frame._prompt_to_save_active_document("closing") is False
 
@@ -582,7 +605,7 @@ def test_prompt_to_save_active_document_discards_when_requested() -> None:
     frame = _build_frame("one", insertion_point=0)
     frame.document.modified = True
     frame._wx = type("WX", (), {"ID_YES": 1, "ID_CANCEL": 0, "ID_NO": 2})()
-    frame._prompt_unsaved_changes_action = lambda *_args: 2  # type: ignore[method-assign]
+    frame._prompt_unsaved_changes_action = lambda *_a, **_k: 2  # type: ignore[method-assign]
 
     assert frame._prompt_to_save_active_document("closing") is True
 
@@ -590,7 +613,7 @@ def test_prompt_to_save_active_document_discards_when_requested() -> None:
 def test_confirm_discard_changes_accepts_reload_only() -> None:
     frame = _build_frame("one", insertion_point=0)
     frame._wx = type("WX", (), {"ID_YES": 1, "ID_CANCEL": 0})()
-    frame._prompt_unsaved_changes_action = lambda *_args: 1  # type: ignore[method-assign]
+    frame._prompt_unsaved_changes_action = lambda *_a, **_k: 1  # type: ignore[method-assign]
 
     assert frame._confirm_discard_changes() is True
 
@@ -1850,18 +1873,25 @@ def test_prompt_untrusted_location_uses_single_checkbox_dialog() -> None:
     assert captured["checkbox"] == "Trust this folder for future opens"
 
 
-def test_prompt_unsaved_changes_action_uses_native_message_dialog() -> None:
+def test_prompt_unsaved_changes_action_uses_native_yes_no_cancel() -> None:
+    # #23: the dialog must use the platform's native Yes/No/Cancel buttons
+    # without overriding labels, so the built-in Y/N/Esc keyboard
+    # accelerators fire on every platform (overriding labels with
+    # SetYesNoCancelLabels disables them on at least macOS Cocoa).
     frame = _build_frame("hello")
     captured: dict[str, object] = {}
+    dialogs: list[_MessageDialog] = []
 
     class _MessageDialog:
         def __init__(self, _parent: object, message: str, title: str, style: int) -> None:
             captured["message"] = message
             captured["title"] = title
             captured["style"] = style
+            self.set_label_calls: list[tuple[str, str, str]] = []
+            dialogs.append(self)
 
         def SetYesNoCancelLabels(self, yes: str, no: str, cancel: str) -> bool:
-            captured["labels"] = (yes, no, cancel)
+            self.set_label_calls.append((yes, no, cancel))
             return True
 
         def Destroy(self) -> None:
@@ -1881,19 +1911,25 @@ def test_prompt_unsaved_changes_action_uses_native_message_dialog() -> None:
         },
     )()
     frame._wx = wx
-    # Native wx.MessageDialog handles keys itself; we only own the labels and
-    # that ShowModal's result is returned unchanged.
-    frame._show_modal_dialog = lambda _dialog, _label: wx.ID_NO  # type: ignore[method-assign]
+    # Native wx.MessageDialog handles keys itself; we only own ShowModal's
+    # return value. _show_modal_dialog gets routed through the stub below
+    # so we can return a deterministic result without running the real one.
+    frame._show_modal_dialog = (
+        lambda _dialog, _label, **_kwargs: wx.ID_NO  # type: ignore[method-assign]
+    )
 
     result = frame._prompt_unsaved_changes_action(
         "Unsaved changes",
         "You have unsaved changes. Save before closing?",
-        "Save",
-        "Don't Save",
     )
 
     assert result == wx.ID_NO
-    assert captured["labels"] == ("Save", "Don't Save", "Cancel")
+    # Native labels = native accelerators; we MUST NOT call
+    # SetYesNoCancelLabels, because that override is what was disabling Y/N.
+    assert dialogs[0].set_label_calls == []
+    # Style must still request YES_NO + CANCEL + ICON_WARNING so the
+    # platform synthesises the three buttons (and their accelerators).
+    assert captured["style"] == wx.YES_NO | wx.CANCEL | wx.ICON_WARNING
 
 
 def test_prompt_table_shape_reprompts_invalid_values() -> None:

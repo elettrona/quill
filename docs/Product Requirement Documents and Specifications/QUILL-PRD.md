@@ -274,7 +274,7 @@ Quill should stay calm by default and unlock power features intentionally.
 - Case conversion: `Ctrl+Shift+U` upper, `Ctrl+L` lower, `Ctrl+Shift+T` title. Selection if present, otherwise whole document.
 - Multiple documents: `Ctrl+Tab` and `Ctrl+Shift+Tab` cycle. Switching announces document name only.
 - Close current document: `Ctrl+W` or `Ctrl+F4`. Prompt to save if modified.
-- Exit: `Alt+F4` or `Ctrl+Q`. Prompts for each modified document.
+- Exit: `Alt+F4` on Windows, `Cmd+Q` on macOS. Prompts for each modified document.
 - Quill does not restore previous documents on launch by default. Opt-in setting available.
 
 ### 5.2a QUILL Quick Nav mode
@@ -333,7 +333,7 @@ Customization:
 ### 5.3 File operations
 
 - `Ctrl+N` new blank document.
-- `Ctrl+O` open via standard `wx.FileDialog`. Quill aims to be the most catholic accessible reader on Windows; the full supported list is in [section 5.3a](#53a-extended-format-support). The headline groups are:
+- `Ctrl+O` open via the user-selected dialog. When **Settings > General > Use simple file open dialog** is on, QUILL shows a keyboard-friendly picker (issue #620) with a path field, a small file-type filter, a recent-locations list, a hidden-files toggle, and a `Use Windows Dialog` button that opens the standard picker for one invocation. When the setting is off, QUILL shows the standard `wx.FileDialog` directly. The setting is off by default; the simple dialog is opt-in. The full supported list is in [section 5.3a](#53a-extended-format-support). The headline groups are:
   - **Plain text and config**: `txt`, `log`, `cue`, `ini`, `json`, `jsonc`, `json5`, `xml`, `csv`, `tsv`, `yaml`, `yml`, `toml`, `nfo`, `env`, `properties`, `conf`, `cfg`, `dotenv`.
   - **Markdown family**: `md`, `markdown`, `mdx`, `mdown`, `mdwn`, `mkd`, `mkdn`, `mkdown`, `ronn`, `qmd` (Quarto), `rmd` (R Markdown).
   - **Lightweight markup**: `rst` (reStructuredText), `adoc`/`asciidoc`, `textile`, `org` (Org-mode), `wiki`/`mediawiki`, `bbcode`, `tex`/`latex`, `bib`/`bibtex`, `typ` (Typst).
@@ -424,6 +424,8 @@ QUILL ships a curated Tier-1 list of Pandoc-supported formats in the File menu a
 
 **Tier-1 outputs:** the same set plus PDF (export only).
 
+**Non-Pandoc export — DAISY talking book (#251):** **File > Export > DAISY Talking Book** writes a DAISY 2.02 text-only talking book. This export does not go through Pandoc; the wx-free, strict-typed `quill/io/daisy.py` (`write_daisy_textonly`) renders the live buffer directly. Because a DAISY book is a folder rather than a single file, the chosen name becomes a folder holding `ncc.html` (Navigation Control Center: `dc:`/`ncc:` metadata, `multimediaType=textNCX`, and heading links), `content.html` (XHTML 1.0 with an `id` on every readable element), and `book.smil` (SMIL 1.0 reading-order container with zero-duration `<par>`s, since the book carries no audio). Headings become player navigation points; a document with no `h1` gets a synthetic title heading so navigation is well-formed. The output opens in DAISY software readers and hardware players (Victor Reader Stream, Plextalk, APH units) and in APH Book Wizard Producer for adding TTS audio.
+
 ##### 5.3a.1.1 Single-file Import / Export
 
 **File > Import > <format>** converts a single file from disk into a new Markdown buffer in a new tab. **File > Export > <format>** converts the current buffer to the named format on a background thread. Both routes use Pandoc and `quill.stability.safe_subprocess.run_subprocess_safely` so a misbehaving Pandoc cannot take QUILL down.
@@ -487,7 +489,7 @@ A fourth field, `import_export_last_folder` (string, default `""`), is intention
 - **PDF import.** Pandoc cannot do it reliably; the dedicated braille and DAISY pipelines remain the right tools.
 - **Tier 2 / Tier 3 formats.** A future release will replace the **Tools > Pandoc Conversion Center...** placeholder with the full format picker.
 - **MarkItDown integration.** Tracked as a follow-up issue. The integration belongs in a Quillin so its dependencies stay out of the core.
-- **Per-verb verbosity tokens.** The completion announcement routes through the existing `announce()` shim. The per-verb `VerbTokenSpec` registry from the verbosity rebuild is not in source yet; that work is tracked separately.
+- **Per-verb verbosity tokens.** The completion announcement routes through the existing `announce()` shim. The pure-domain foundation of the per-verb verbosity rebuild now exists in source (`quill/core/verbosity/`, see §5.91.2), but the routing engine and call-site migration are still tracked separately; this completion path has not yet been migrated onto it. See §5.91.4.
 
 Cross-links: this section is referenced from `### 5.25b Watch Folder automation` (the Watch Folder Quillin can use the same `BatchPlan` shape when it needs batch-style conversion) and from `§22 Startup Wizard` (the Startup wizard's "What kind of writing do you do?" intent picker exposes the Import / Export and Batch Conversion entries only when the chosen profile warrants them).
 
@@ -1884,6 +1886,29 @@ partial profile can never start a worker.
 Quill integrates BITS Whisperer speech capabilities in phased increments to minimize regression risk
 and preserve accessibility reliability.
 
+> **Offline speech & dictation reengineering (#617).** The full provider-architecture
+> plan — one offline-first speech engine (whisper.cpp default, with Windows, cloud, and
+> Faster Whisper providers), two user verbs (Dictate / Transcribe), an accessible model
+> manager, captions, and gated voice commands — lives in
+> [`docs/planning/dictation-and-speech.md`](../../planning/dictation-and-speech.md) and is
+> sequenced into small waves S0–S5. **Wave S0 (shipped):** the `dictation_engine` setting
+> was made honest — it now uses the `offline`/`windows`/`cloud` model (default `windows`,
+> the only functional engine today), legacy `vosk`/`whisper` values migrate to `offline`,
+> and the dead local-recognizer stub was removed. Dictation behavior is unchanged: it still
+> drives the OS dictation panel until the offline engine lands in S2–S3.
+>
+> **Waves S1–S4 (shipped).** The offline engine landed: a whisper.cpp provider with an
+> accessible model manager (Hugging Face Hub downloads, Safe-Mode gated), **Transcribe**
+> (plain text / Markdown / HTML), **Generate Captions** (SRT / VTT), push-to-talk
+> **Dictate at the cursor** (distinct earcons, status-bar state, microphone picker,
+> QUILL Key + Shift+D), and **speaker attribution** via the whisper.cpp speaker-detection
+> model. The whisper.cpp engine ships as an installer component, and `sounddevice` is
+> bundled for capture. **S4 added Faster Whisper** as an optional, GPU-aware second engine
+> (`fasterwhisper` extra): when present it appears in a **Speech Engine** chooser, the
+> choice is saved in `speech_provider`, and it is used for transcription, captions, and
+> dictation. whisper.cpp remains the default and needs nothing extra; Faster Whisper does
+> not attribute speakers.
+
 Phase 1 scope:
 
 - Keep current dictation behavior stable while introducing BITS Whisperer speech model management.
@@ -2161,6 +2186,21 @@ Remote I/O is the natural extension of "Open from URL": once a user has a saved 
 - Bracket matching is language-aware: respects strings and comments in supported languages; Markdown respects fence boundaries.
 - The match is announced as `Matched bracket on line N, column C` so screen-reader users do not lose context.
 
+### 5.28a Document Language profiles and auto-detection (#181)
+
+Each document has a **language profile** (`quill/core/language_profile.py`) describing one programming/markup language: extensions, indent convention, comment syntax, brackets, keyword set, and a `markup_kind` (`"html"`, `"markdown"`, or `"plain"`). Recognised languages: HTML, Markdown, CSS, Python, JavaScript, TypeScript, C, C++, C#, PHP, Go, Rust, Kotlin, Shell, YAML, JSON, TOML, SQL, plus a plain-text fallback. The profile is wx-free, pure data.
+
+- **Auto-assignment.** On open and on tab creation the profile is set from the file extension (`get_profile_for_path`), unless the user has pinned one.
+- **User override.** `set_document_language` pins a profile for the current tab (`_DocumentTab._language_profile` + `_language_profile_pinned`). Reachable via `navigate.set_language` (default **Ctrl+Shift+L**), **Navigate > Set Document Language...**, the **Format > Document Language** radio submenu (Auto-detect + every profile + Plain text, current item checked), and Enter on the status-bar **Language** segment (which appends "(set)" when pinned). "Auto-detect from file" clears the override.
+- **The pin drives editing characteristics.** A pinned profile is the source of truth ahead of path/content inference via `_pinned_markup_kind()`, `_current_markup_context()`, and `_effective_markup_kind()`: bold/italic surface, the heading/table/list/tag menu enablement, comment toggling (`format_ops.toggle_line/block_comment` accept the profile), heading and structure navigation, the outline, link insertion, and live preview all follow it.
+- **Editing aid, not a rename.** Pinning never changes the file format; when the profile's extension doesn't match the file, a Save As hint is announced. The override is tab-only (not persisted across reopen).
+
+**Automatic detection** (`quill/core/language_detect.py`, wx-free, deterministic, no ML) scores the buffer over the languages above using weighted structural signals, then applies confidence discipline modelled on VS Code's detector: an absolute floor, a relative margin over the runner-up, ambiguity penalties (YAML/TOML/SQL), optional session-history bias, and a `should_switch()` hysteresis gate. It returns `language=None` (plain) when unsure and does not misfire on prose or ASCII-braille.
+
+- **Setting:** `language_detection_mode` ∈ {`off` (default), `hint`, `prompt`, `auto`}, exposed in **Settings > Editing**.
+- **Trigger:** `LanguageDetectMixin` debounces content changes (~800 ms) and runs **only** on unpinned untitled/`.txt`-like documents; it never overrides a real extension or a user pin.
+- **Behaviour by mode:** `hint` updates the status bar silently; `prompt` announces a dismissible suggestion; `auto` calls `set_document_language` and announces the change. A screen-reader user is informed in every mode (no silent or visual-only switch). Braille content is out of scope — Braille Mode owns it.
+
 ### 5.29 Format menu (text transforms, no styling)
 
 A dedicated menu surfacing transforms that are otherwise reachable via Tools or shortcuts. The menu exists because discoverability matters more than purity.
@@ -2237,6 +2277,15 @@ A dedicated menu surfacing transforms that are otherwise reachable via Tools or 
   - the screen-reader detection result and version (if available),
   - basic environment info (Windows build, Python build, wxPython build, locale).
 - Nothing leaves the machine. The user chooses where to save the zip and what to do with it.
+
+#### 5.33a Crash reports offer to submit (#622)
+
+- When an unhandled exception closes QUILL, the excepthook writes the traceback to a timestamped file under `app_data_dir()/crash-reports/`, then schedules a crash-submit dialog on the UI thread via `wx.CallAfter`. The dialog shows a redacted preview (the last 10 commands, the active document's name and encoding, the platform and screen-reader information, the last 12 traceback frames), three free-text fields ("What were you doing?", "What command triggered it?", "Expected behaviour"), and three buttons: **Send report**, **Copy to clipboard**, **Don't send**.
+- The default button is **Don't send** so a user who opens the dialog by accident does not accidentally send anything. Escape is bound to **Don't send**. Initial focus lands on the **What were you doing** field so the screen reader announces the first input first, not the buttons.
+- `Send report` calls `quill.core.issue_submit.submit_crash_issue` with the redacted body and metadata. A configured GitHub token is required; if the token is absent the report is copied to the clipboard instead, and nothing is submitted silently.
+- Every step is wrapped in `try/except` so a misbehaving dialog path can never prevent the local crash file from being saved or the standard interpreter traceback from firing. The native `ctypes.windll.user32.MessageBoxW` from finding #51 remains the always-on fallback when wx is unavailable, no `wx.App` is running yet, the user turned the setting off, or the dialog path raised.
+- `Settings > General > Offer to send crash reports automatically` (`auto_ask_crash_submit`) controls whether the dialog appears; the default is `True` during the beta phase so the team can hear about crashes without forcing the user to opt in every time. The local crash file is always written regardless of the setting.
+- The dialog is added to the dialog inventory and follows the same `apply_modal_ids` + `_show_modal_dialog` contract as every other modal in QUILL. The dialog's parent is the real `wx.Frame` (`MainFrame.frame`), not the `MainFrame` mixin, per the #624 fix in `quill/ui/main_frame_hygiene.py`.
 
 ### 5.34 Welcome and Keyboard Reference
 
@@ -3000,17 +3049,17 @@ accept_into: selection
 
 ### 5.85 Portable API key store
 
-By default QUILL stores AI provider keys in the Windows Credential Manager, which ties them to the current Windows user account. Portable mode offers an alternative: a DPAPI-encrypted file (`keys.enc`) in the QUILL data directory, activated by setting `QUILL_PORTABLE=1`.
+By default QUILL stores AI provider keys in the Windows Credential Manager, which ties them to the current Windows user account. Portable mode offers an alternative: a DPAPI-encrypted file (`keys.enc`) in the QUILL data directory, activated by the presence of a `data/` folder next to `quill.exe` in the portable bundle.
 
 **Motivation.** Some users run QUILL from a self-contained folder on a network share or external drive. They want all QUILL data — settings, data files, and keys — to live in one directory without requiring Credential Manager access on each machine. A DPAPI-encrypted file achieves this: everything stays in the folder, and the file is protected by the Windows user-account key.
 
 **Access priority chain (highest wins):**
 
 1. Environment variable (`QUILL_OPENROUTER_KEY`, `QUILL_OPENAI_KEY`, `QUILL_OLLAMA_KEY`, `QUILL_ASSISTANT_KEY`) — for CI pipelines and developer overrides.
-2. Portable file store (`keys.enc`) — when `QUILL_PORTABLE=1` is set.
+2. Portable file store (`keys.enc`) — used automatically when the running install is recognised as portable (a verified bundle anchor with `quill.exe` + `data/`).
 3. Windows Credential Manager — default for standard installations.
 
-**Activation.** Set `QUILL_PORTABLE=1` in the process environment before launching QUILL. No other configuration is needed. The `keys.enc` file is created automatically in `app_data_dir()` on first key save.
+**Activation.** Portable mode is a property of the bundle, not of the running environment. The portable build ships `quill.exe` at the bundle root and an empty `data/` folder next to it; that folder is the deliberate filesystem opt-in. No environment variable to set. If you want to convert an installed build into a portable one, copy the install folder to a USB drive and create an empty `data/` folder at its root; QUILL will switch to portable mode automatically. The previous `QUILL_PORTABLE=1` activation mechanism is no longer required and is ignored — detection is filesystem-driven. The `keys.enc` file is created automatically in `app_data_dir()` on first key save.
 
 **Security properties.** The file is encrypted with Windows DPAPI using a QUILL-specific entropy token. It is decryptable only on the same Windows machine by the same user account that encrypted it. Moving `keys.enc` to a different machine or a different Windows account will fail to decrypt; the user must re-enter their keys.
 
@@ -3022,6 +3071,40 @@ By default QUILL stores AI provider keys in the Windows Credential Manager, whic
 | `quill/platform/windows/dpapi.py` | DPAPI `protect_secret`/`unprotect_secret` (existing) |
 | `quill/ui/ai_chat_dialog.py` | `_load_api_key`/`_save_api_key` updated to use credential_store |
 | `quill/core/assistant_ai.py` | `_load/save/delete_api_key_from_credential_manager` updated to use credential_store |
+
+---
+
+### 5.86 Configurable data location (#615)
+
+Where QUILL stores its data directory (`app_data_dir()` — settings, recovery, undo history, logs, and everything else under it) is a user choice, not a hardcoded path, satisfying the "Portable mode clarity" goal in §5.
+
+**Storage modes.** `quill/core/storage_mode.py` persists one of three modes to `storage-mode.json`:
+
+1. `appdata` (default) — `%APPDATA%\Quill`.
+2. `portable` — `<app root>/data`, only available when the running install is verified portable.
+3. `custom` — any user-chosen folder, stored alongside the mode as a `path` field.
+
+**Portable detection without reopening L-9.** A prior security fix (commit `a4fec36`) gated `QUILL_PORTABLE_ROOT` behind `_DEV_BUILD` because trusting an attacker-controlled environment variable's *value* could redirect a user's data directory. That fix stands: this feature never trusts an env var's value directly, in any build. `storage_mode._resolve_app_root()` derives a candidate anchor from `QUILL_APP_ROOT` or by walking up from `sys.executable`, then only treats it as a real portable install when `quill.exe` and a sibling `data/` folder both exist at that anchor — filesystem evidence, not the env var's say-so. `run-quill.cmd` is accepted as back-compat evidence so a beta-1 portable bundle without a `data/` folder keeps working. `tests/unit/core/test_storage_mode.py::test_arbitrary_quill_app_root_alone_does_not_redirect_data` is a regression test mirroring the original L-9 threat model, and `test_quill_exe_alone_without_data_folder_is_not_portable` and `test_data_folder_alone_without_quill_exe_is_not_portable` lock in the new evidence rule.
+
+**Where it's surfaced.**
+- The first-run Setup Wizard's new Data Location page (`quill/ui/setup_wizard_pages.py::_DataLocationPage`) offers AppData, Portable (when available), or a custom folder via `wx.DirDialog`. On Finish this writes `storage-mode.json` directly — there is nothing to migrate yet on a fresh install.
+- **Preferences → General** has the same three-way choice (`quill/ui/main_frame.py::_build_data_location_block`), for changing the location on an existing install.
+
+**Restart-deferred migration.** A live move is unsafe: `CopyTray` caches its data directory at construction, `Settings` is loaded once at startup, and Windows has no atomic directory-move primitive that's safe against transient file locks. `quill/core/data_location.py` instead:
+1. `request_data_location_change(mode, custom_path=None)` validates the target and writes a `pending-data-location.json` marker into the *current* data directory. Nothing moves yet; the current install keeps working normally until restart.
+2. `apply_pending_data_location_migration()` runs first in `quill/__main__.py::main()`, before `ensure_app_directories()`. If a marker is present, it moves the old directory's contents to the new location (per-entry, via `core.storage.retry_on_transient_lock` for Windows' transient `EACCES`/`EAGAIN`/`EBUSY` locks), writes the new `storage-mode.json` at the destination, and leaves a one-time migration notice. On failure, the old location is left untouched and the notice explains what went wrong — data is never silently lost.
+3. Preferences shows a "Restart Now" / "Later" prompt (`MainFrame._confirm_restart_for_data_location`) immediately after a change is requested, since the move only takes effect on the next launch.
+
+**Implementation map.**
+
+| File | Role |
+| --- | --- |
+| `quill/core/storage_mode.py` | Mode persistence; trusted-anchor + filesystem-evidence portable detection |
+| `quill/core/data_location.py` | Pending-migration marker, restart-deferred move, migration notice |
+| `quill/core/paths.py` | `app_data_dir()` resolves `appdata`/`portable`/`custom` via `storage_mode` |
+| `quill/core/storage.py` | `retry_on_transient_lock` (shared by atomic JSON writes and directory moves) |
+| `quill/ui/setup_wizard_pages.py` | `_DataLocationPage` (first-run choice) |
+| `quill/ui/main_frame.py` | Preferences control, restart prompt, relaunch |
 
 ---
 
@@ -3261,6 +3344,80 @@ The screen-reader detection result flows through `MainFrame._set_status_quiet` (
 #### 5.91.3 Why two layers
 
 The per-Quillin check exists because the user's preference for the lifecycle cue is **Quillin-local** — it travels with the extension, not with the global app setting. The host-dispatcher check exists because `verbosity_speech_enabled` is a global master gate that should silence every Quillin announcement, not just one. Together they keep the user in control at both levels.
+
+#### 5.91.4 Verbosity rebuild — core foundation (sub-PR 1.1)
+
+The full verbosity rebuild (`docs/planning/verbosity-system.md`) replaces the single `announcement_verbosity` knob with a per-verb, channel-aware, user-customizable announcement system. Its **pure-domain foundation** now lives in `quill/core/verbosity/` (wx-free, strict-typed, in `mypy` scope). No user-facing behavior changes yet — the routing engine, runtime modes, and UI land in later sub-PRs — so there is nothing new for a user to see or do; this subsection records the contract the rest of the rebuild builds on.
+
+| Module | Responsibility |
+|---|---|
+| `channels.py` | `Channel(Flag)` — SPEECH, BRAILLE, SOUND, VISUAL. `route_channels()` always folds in the VISUAL floor, which can never be disabled (the accessibility floor). |
+| `tokens.py` | `TokenSpec` (name, type, description, derive, per-token filter allowlist) and the **twelve** engine filters (`upper`, `lower`, `title`, `ordinal`, `pad`, `pluralize`, `singular`, `duration_human`, `date_long`, `date_short`, `time`, `truncate`). No custom filters exist — the security boundary that keeps templates and QVP packs data-only. |
+| `parser.py` | Strict template parser for `{name}`, `${filter:name}`, `${filter:arg:name}`; returns structured errors, never raises. `validate()` enforces the §13 contract (token allowlist, filter existence, type compatibility, per-token allowlist, argument rules) and produces the spoken summary. |
+| `profiles.py` | Built-in `Beginner` / `Normal` / `Expert` / `Quiet` profiles + `CustomProfile` (JSON round-trip). `profile_for_announcement_verbosity()` / `active_profile()` give the legacy `announcement_verbosity` knob (`minimal`→Expert, `normal`→Normal, `verbose`→Beginner) its first real consumer. |
+| `verbs.py` / `registry.py` | `VerbSpec` + `Severity` and the initial verb catalog (the 34 verbs enumerated in §15, across `nav.*`, `edit.*`, `doc.*`, `search.*`, `system.*`, and `_legacy`); `VerbRegistry` with duplicate-id protection and id-sorted `all()`. |
+| `data_order.py` | Frozen, hashable `DataOrder` (verb id, ordered fields, separator) with move-up/down/reset/render. When both a custom template and a custom data order exist for a verb, the template wins. |
+| `schema.py` | Draft-07 JSON schemas for verbosity settings, the custom-profile store, QVP packs (`additionalProperties: false`, required metadata), and profile import/export — the data contracts the later sub-PRs validate against. |
+
+Tested by `tests/unit/core/test_verbosity_*.py` (102 cases; parser coverage 99%).
+
+#### 5.91.5 Verbosity rebuild — engine and runtime modes (sub-PR 1.2)
+
+Sub-PR 1.2 adds the routing layer on top of the foundation, still wx-free and in `mypy` scope. No user-facing surface yet (chords, status-bar badges, and dialogs land with the UI sub-PR), but the full decision layer exists and `VerbosityEngine.speak()` is reachable from the assistant-panel and AI-Hub announce paths through a no-op `speak_legacy_text()` passthrough.
+
+| Module | Responsibility |
+|---|---|
+| `engine.py` | `VerbosityEngine.speak(verb_id, ctx, *, quiet, meeting, chord, trigger)` returns a `RenderedAnnouncement` (per-channel text, sound event, channels, profile, severity, template source, suppressed flag, and an `ExplanationTrace`). Template precedence: per-chord override → per-verb override → QVP → default. Channels are routed with the always-on visual floor; Quiet drops speech+sound, Meeting drops sound; the profile's `suppress_routine` hides routine confirmations (errors always speak); sound follows the profile's all / errors-only / off policy. |
+| `quiet.py` | `QuietMode` (enter/exit/toggle + phrasing) and `VerbosityUndoStack` — the bounded §11 undo stack of reversible verbosity transitions. |
+| `meeting.py` | `MeetingMode` controller (hard-mute sound, reduced speech, braille+visual remain). |
+| `mastery.py` | `MasteryTracker` — per-verb success counter that signals a step-down offer exactly once at threshold (default 25), then resets so it never nags; per-verb and global disable. |
+| `history.py` | `AnnouncementHistory` — bounded ring buffer of `HistoryEntry` records with filter-by verb/profile/severity/warnings; `redact_text` (on by default) keeps raw token values out of the record, storing only the user-facing rendered text. |
+| `explain.py` | `ExplanationTrace` — the full "Why did QUILL say that?" account (verb, trigger, profile, channels, template source, per-channel output, suppression reason, mode/override/QVP flags) rendered to plain copyable text. |
+| `safe_mode.py` | `VerbositySafeMode` (toggle + `QUILL_SAFE_MODE` / `QUILL_VERBOSITY_SAFE_MODE` env detection) and non-destructive `reset_verb` / `reset_chord` / `restore_builtin` helpers that return a new `CustomProfile`. |
+| `feedback_tuning.py` | `FeedbackStore` — local Too Much / Too Little / Just Right tallies per verb with a gentle one-shot suggestion; declined verbs never re-suggest. No telemetry. |
+| `task_profiles.py` | `TaskProfileSuggester` — opt-in, **off by default**, per-extension profile suggestions with accept/reject memory. |
+| `import_export.py` | `.quill-verbosity-profile.json` import/export. Strictly data: structure is validated by hand and nothing from the file is executed (no `exec`/`eval`/`__import__` path), verified by test. |
+| `storage.py` | Atomic `verbosity_custom.json` read/write via `write_json_atomic`; a corrupt file loads as empty defaults plus a load error for a nonblocking warning, never throwing the user out. |
+
+Tested by 11 more `tests/unit/core/test_verbosity_*.py` modules (180 verbosity cases total; engine coverage 96%). The 16 `VerbositySettings` fields and the chord/badge/dialog surfaces are deferred to the call-site-migration and UI sub-PRs.
+
+#### 5.91.6 Verbosity rebuild — QVP packs, library, and preview (sub-PR 1.3)
+
+Sub-PR 1.3 adds the shareable-pack and preview core, still wx-free.
+
+| Module | Responsibility |
+|---|---|
+| `quill/core/schemas/qvp.json` | The canonical `.qvp.json` schema (§20): nested `pack` metadata, a `templates` array, `kind` fixed to `quill-verbosity-pack`, `additionalProperties:false`. For humans/tools — validation is by hand (no jsonschema runtime dep). |
+| `qvp.py` | Loads and validates packs by hand (structured errors, never executing pack content — no `exec`/`eval`/`__import__`, test-asserted) and runs the §21 install flow: JSON → schema → kind → `min_quill_version` gate → metadata → unique template ids → namespace-collision check → dependency check (missing deps warn) → validate each template against its target verb → install → announce. Returns `QVPInstallResult(accepted, rejected_templates, warnings, spoken_sequence, errors)`. |
+| `library.py` | `TemplateLibrary` — a flat collection across built-in / user / QVP sources with save / rename / delete CRUD (read-only built-ins and QVP entries) and cross-verb `apply()`, which strips tokens the target verb doesn't track and reports them. |
+| `preview.py` | The fourteen built-in Preview Lab scenarios and `preview_scenario` / `preview_all`, which render each through a `VerbosityEngine` and surface per-channel output plus profile, template source, channel mix, and suppressed content. |
+
+Tested by `test_verbosity_qvp.py`, `test_verbosity_library.py`, `test_verbosity_preview.py`, and golden snapshots under `tests/golden/verbosity/` (220 verbosity cases total; qvp coverage 95%). The Library CRUD UI, the QVP install dialog, and the Preview Lab dialog are deferred to the UI sub-PR.
+
+#### 5.91.7 Verbosity rebuild — the wxPython UI (sub-PR 1.4)
+
+Sub-PR 1.4 adds the user-facing surfaces under `quill/ui/`, each A11Y-4 hardened (label-then-control via mnemonics, `SetName`/`SetHint`, `apply_modal_ids`, deterministic focus, no icon-only buttons, registered in the dialog inventory) and wired to the already-tested pure core. The dialogs are not yet menu/chord-reachable — that is sub-PR 1.5.
+
+| Surface | Responsibility |
+|---|---|
+| `verbosity_prefs.py` | The embeddable `wx.Panel`: profile picker, the four-channel mix (Visual checked + disabled — the always-on floor), validation-mode and mastery boxes, tool buttons (Preview Lab / History / Templates / Safe Mode / Import-Export), and a filterable verb table (master list + detail) whose Edit-announcement / Data-order buttons launch the editors. Initial focus is the filter. |
+| `verbosity_token_editor.py` | Simple/Advanced **RadioBox** (not a notebook, §5 decision 6) over one template field; `Ctrl+T` validates and speaks the §13 summary, `Ctrl+Shift+P` previews (via `EVT_CHAR_HOOK`); Save is disabled with a tooltip while blocking errors exist; Insert-token and Speak-current-template. |
+| `verbosity_data_order.py` | Move Up / Down / Reset / Preview over a verb's field order. |
+| `verbosity_chord_editor.py` | Per-chord template overrides, validated against the chord's verb. |
+| `verbosity_library.py` | Template CRUD (Save/Rename/Delete, read-only built-ins & QVP) + Install QVP. |
+| `verbosity_qvp_install.py` | Browse → validate → install a `.qvp.json`, reading back the spoken sequence, accepted templates, rejected (with reasons), and dependency warnings; Install is disabled until a valid pack is selected. |
+| `verbosity_history.py` | Review / replay / copy / explain recent announcements with a live filter; the explanation pane shows the full trace. |
+| `verbosity_preview_lab.py` | The 14 scenarios with per-channel output (speech/braille/visual/sound), profile, template source, channel mix, and suppressed content. |
+| `verbosity_safe_mode.py` | Scoped, non-destructive resets (disable custom / reset verb / reset chord / restore built-ins) with export-first. |
+| `verbosity_import_export.py` | Data-only `.quill-verbosity-profile.json` import/export. |
+
+The 3-tab About dialog already ships (About Quill, §"About"). Tested by `tests/unit/ui/test_verbosity_ui.py` (62 source-contract cases); the A11Y-4 banned-pattern, dialog-button-contract, escape-z-order, and GATE-11 gates pass, and `dialog_inventory.json` was regenerated with 12 new hardened surfaces.
+
+#### 5.91.8 Verbosity rebuild — live wiring and polish (sub-PRs 1.5 and 1.6)
+
+Sub-PR 1.5 makes the system live. `quill/core/verbosity/controller.py` (`VerbosityController`, wx-free) owns the engine, Quiet/Meeting controllers, the undo stack, announcement history, mastery, and Safe Mode. `MainFrame` gains `VerbosityCommandsMixin` (`quill/ui/main_frame_verbosity.py`) and registers eight `verbosity.*` commands (palette- and Keyboard-Manager-reachable). The announce choke-point (`MainFrame._announce`) routes through `VerbosityController.process` **only once the controller exists** (created on first verbosity use), so the default path is unchanged until then; once live, Quiet/Meeting suppress speech while the status-bar visual floor remains. Default chords avoid all conflicts (`edit.quote_lines` keeps `Ctrl+Shift+Q`): Quiet = QUILL key + Q, Meeting = QUILL key + Shift+Q, Verbosity Undo = `Ctrl+Shift+Z`; the rest are palette/Keyboard-Manager reachable. Eight scalar `verbosity_*` settings persist (mastery enabled/threshold, validation mode, history enabled/limit/clear-on-exit, task-profile suggestions, Safe Mode); collection-typed state stays in `verbosity_custom.json`. Live in-app behavior warrants a manual smoke run before release.
+
+Sub-PR 1.6 (the original "100-item addendum") was **consolidated** in the 2026-06-21 tracker cleanup into the deduplicated *Polish backlog* in `docs/planning/verbosity-system.md`, which is the authoritative status list for those ideas. Rather than 100 separate features: the duplicates and already-built items are folded into the foundation/engine/UI shipped in 1.1–1.5; the themed survivors (per-category verbosity via the verb registry, status-query commands, announcement flow control, safety announcements, friendly names, status-bar surfacing, scope profiles, sound learnability, coaching/discovery, braille polish) are tracked there; and the screen-reader-redundant items — **typing echo, command echo, speech rate/pause, punctuation/symbol profiles** — are recorded as **recommend do not build**, because QUILL speaks alongside the screen reader and must not duplicate or fight the settings (echo, rate, punctuation level) the screen reader already owns.
 
 ---
 
@@ -4347,6 +4504,8 @@ Right-to-left UI; additional languages; optional split view (still standard cont
 
 ## 17. Backlog and deferred items
 
+> **Live program tracker.** The authoritative, continuously-updated view of all open work — bucketed into workstreams with per-bucket risk/impact/value/effort, priority totals, status, and execution waves — lives in [`docs/planning/program-tracker.md`](../../planning/program-tracker.md). The full design text for each workstream is consolidated in the companion specs: [`verbosity-system.md`](../../planning/verbosity-system.md), [`dictation-and-speech.md`](../../planning/dictation-and-speech.md) (offline speech-to-text, #617), [`braille-mode-backlog.md`](../../planning/braille-mode-backlog.md), [`roadmap.md`](../../planning/roadmap.md), and [`feature-backlog.md`](../../planning/feature-backlog.md). The current direction is that these items **ship** (the older 2.0-deferral framing is dropped); the tables below are retained as the format-support reference.
+
 Everything below is intentionally out of v1.0. Each item is either yellow (achievable but requires more engineering than the v1.0 quality bar permits in time) or red (depends on unstable third-party formats, large native dependencies, or research-flavoured uplift we will not promise without measurement).
 
 The organising principle is simple: **v1.0 ships only Confidence A. Confidence B and C land in v1.1–1.3 behind opt-in plugins and feature flags, with quality grades shown to the user.**
@@ -4761,7 +4920,7 @@ The governing rules remain the same throughout the roadmap: local-first processi
 - [x] Add `quill/tools/sqp_validator.py`: CLI validator with `--strict` mode.
 - [x] Add bundled `ai-writing-skills` Quillin with 4 sample skills (Accessible Rewrite, Research and Draft, Meeting Notes to Action Items, Argument Strengthener).
 - [x] Add `tests/unit/core/test_skill_pack.py`: 23 tests covering parsing, validation, runner, condition branching, depth limit, and all bundled files.
-- [x] Add `quill/platform/windows/credential_store.py`: unified credential access with env-var, portable DPAPI file, and Credential Manager backends. Activated by `QUILL_PORTABLE=1`. Update `ai_chat_dialog.py` and `assistant_ai.py` to use it.
+- [x] Add `quill/platform/windows/credential_store.py`: unified credential access with env-var, portable DPAPI file, and Credential Manager backends. Activated by portable-mode detection (filesystem evidence: `quill.exe` + `data/` at the bundle anchor). Update `ai_chat_dialog.py` and `assistant_ai.py` to use it.
 - [x] Add bundled Quillin `math-equations` (`com.quill.bundled.math-equations`): `Insert → Insert Equation...` (`Ctrl+Shift+E`) inserts LaTeX or MathML at the caret. Two-step accessible dialog: (1) prompt for equation text with selection pre-fill and delimiter stripping; (2) display-mode choice (Inline `$...$` / Block `$$...$$`). MathML (`<math ...>`) detected automatically and inserted verbatim. `quill/core/browser_preview.py` and `quill/io/export.py` inject MathJax 3 CDN script tag so equations render in Browser Preview and HTML export. Sample equations in `docs/math/latex_testing.md`. 14 unit tests in `tests/unit/core/test_quillins_bundled_math_equations.py`. Original contribution by Robert Danaraj; redesigned as a sandboxed Quillin.
 
 ---
@@ -6036,8 +6195,9 @@ From `scripts/build_windows_distribution.py` and the portable bundle layout:
 - A private embedded Python runtime (`python/`, amd64, pinned 3.12.x) with
   wxPython, pyttsx3, and the other runtime wheels preinstalled, plus the
   vendored `quill-glow-core` contract wheel. End users install no Python.
-- The `quill` package source, the `run-quill.cmd` launcher, `manifest.json`,
-  `README.txt`.
+- The `quill` package source, the hoisted `quill.exe` launcher (a stamped
+  copy of `pythonw.exe`), an empty `data/` folder (the portable opt-in),
+  `manifest.json`, `README.txt`.
 - Docs: `docs/userguide.html` and `docs/userguide.md` (PRD and engineering docs
   are published to GitHub Pages instead of bundled).
 - Optional tools under `tools/`, included only when the build was run with the
@@ -6498,7 +6658,7 @@ reg query "HKCU\Software\Classes\SystemFileAssociations\.png\shell\Quill.ocr\com
 ```
 
 The `\command` default value should be:
-`"<install>\run-quill.cmd" --action ocr "%1"`.
+`"<install>\quill.exe" -m quill --action ocr "%1"`.
 
 #### Step 5 — Uninstall and confirm clean removal
 

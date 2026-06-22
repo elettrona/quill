@@ -92,3 +92,39 @@ def test_translation_failure_is_announced(monkeypatch) -> None:
 
     assert opened == []  # no empty document on failure
     assert "Translation failed" in frame._announced[-1]
+
+
+def test_back_translate_uses_selection_when_present(monkeypatch) -> None:
+    captured: dict[str, str] = {}
+
+    def _fake_back(text, table=worker.DEFAULT_TABLE, **_k):
+        captured["text"] = text
+        return "recovered passage"
+
+    monkeypatch.setattr(worker, "back_translate", _fake_back)
+    frame = _frame()
+    frame.editor = _Editor(",whole _docu;t", selection=",sel")  # type: ignore[attr-defined]
+    frame._create_document_tab = lambda doc, select=True: None  # type: ignore[attr-defined]
+
+    frame.back_translate_ueb()
+
+    assert captured["text"] == ",sel"  # back-translated the selection, not the whole doc
+    assert "selection" in frame._announced[-1].lower()
+
+
+def test_back_translate_uses_document_when_no_selection(monkeypatch) -> None:
+    captured: dict[str, str] = {}
+
+    def _fake_back(text, table=worker.DEFAULT_TABLE, **_k):
+        captured["text"] = text
+        return "whole document"
+
+    monkeypatch.setattr(worker, "back_translate", _fake_back)
+    frame = _frame()
+    frame.editor = _Editor(",whole _docu;t", selection="")  # type: ignore[attr-defined]
+    frame._create_document_tab = lambda doc, select=True: None  # type: ignore[attr-defined]
+
+    frame.back_translate_ueb()
+
+    assert captured["text"] == ",whole _docu;t"
+    assert "document" in frame._announced[-1].lower()

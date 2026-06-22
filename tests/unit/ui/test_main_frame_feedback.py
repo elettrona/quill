@@ -90,7 +90,11 @@ def test_report_bug_falls_back_to_legacy_when_hub_raises(monkeypatch) -> None:
 
 
 def test_report_bug_reviews_then_opens_support_form(monkeypatch) -> None:
+    # #618: the auto-open-browser step is opt-in via the
+    # report_bug_auto_open_browser setting (default False in 0.7.0).
+    # This test exercises the opt-in path.
     frame = _build_frame()
+    frame.settings.report_bug_auto_open_browser = True
     opened: list[str] = []
     copied: list[str] = []
     monkeypatch.setattr(frame, "_feedback_hub_available", lambda: False)
@@ -110,7 +114,9 @@ def test_report_bug_reviews_then_opens_support_form(monkeypatch) -> None:
 
 
 def test_report_bug_includes_diagnostics_path_when_present(monkeypatch) -> None:
+    # #618: opt-in auto-open-browser to test the diagnostics-bundle path.
     frame = _build_frame()
+    frame.settings.report_bug_auto_open_browser = True
     opened: list[str] = []
     copied: list[str] = []
     frame._last_bug_report_diagnostics_path = Path(r"C:\Temp\quill-diagnostics.zip")
@@ -129,6 +135,29 @@ def test_report_bug_includes_diagnostics_path_when_present(monkeypatch) -> None:
     assert "Diagnostics bundle path" in copied[0]
     assert "quill-diagnostics.zip" in copied[0]
     assert opened == ["https://example.invalid"]
+
+
+def test_report_bug_does_not_open_browser_by_default(monkeypatch) -> None:
+    # #618: 0.7.0 default is "Quill copies, you decide whether to open the
+    # browser". The browser must NOT open when report_bug_auto_open_browser
+    # is False (the default). The clipboard still receives the report.
+    frame = _build_frame()
+    opened: list[str] = []
+    copied: list[str] = []
+    monkeypatch.setattr(frame, "_feedback_hub_available", lambda: False)
+    monkeypatch.setattr(
+        frame,
+        "_review_bug_report",
+        lambda: ({"summary": "Bug report: note.md", "body": "Body"}, "https://example.invalid"),
+    )
+    monkeypatch.setattr(frame, "_copy_to_clipboard", lambda text: copied.append(text) or True)
+    monkeypatch.setattr("quill.ui.main_frame.webbrowser.open", lambda url: opened.append(url))
+
+    frame.report_bug()
+
+    assert copied == ["Body"], "report must always be copied to the clipboard"
+    assert opened == [], "browser must NOT open when auto_open_browser is False"
+    assert frame._notification == ("Copied support-hub bug report to clipboard", "support")
 
 
 def test_save_diagnostics_bundle_cancels_when_review_cancelled(monkeypatch) -> None:

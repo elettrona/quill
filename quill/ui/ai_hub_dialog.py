@@ -109,7 +109,13 @@ class AIHubDialog:
 
         self._wx = wx
         self._show_modal = show_modal_dialog
-        self._announce = announce or (lambda _m: None)
+        # Route announcements through the verbosity engine's legacy passthrough
+        # (a no-op for the user today) so engine.speak() is reachable from this
+        # call site as the verbosity rebuild migrates paths onto it.
+        from quill.core.verbosity.engine import speak_legacy_text
+
+        _base_announce = announce or (lambda _m: None)
+        self._announce = lambda message: _base_announce(speak_legacy_text(message))
         self._open_advanced = open_advanced_connection
 
         from quill.core.assistant_ai import (
@@ -151,13 +157,23 @@ class AIHubDialog:
         root = wx.BoxSizer(wx.VERTICAL)
 
         self._notebook = wx.Notebook(self.dialog)
+        # #643/#646: give the tab control an explicit accessible name so
+        # VoiceOver (macOS) announces the settings dialog's purpose and the tab
+        # group when focus lands here, rather than reading an unnamed group.
+        self._notebook.SetName(str(_("AI settings sections")))
         root.Add(self._notebook, 1, wx.EXPAND | wx.ALL, 8)
 
-        self._notebook.AddPage(self._build_provider_tab(), _("Provider"))
-        self._notebook.AddPage(self._build_on_device_tab(), _("On-Device"))
-        self._notebook.AddPage(self._build_audio_tab(), _("Audio Services"))
-        self._notebook.AddPage(self._build_instructions_tab(), _("Instructions"))
-        self._notebook.AddPage(self._build_advanced_tab(), _("Advanced"))
+        # #614 follow-up: wx.Notebook.AddPage on Windows rejects the
+        # lazy_gettext proxy at the wx boundary (TypeError: Item at
+        # index 0 has type '_LazyString' but a sequence of bytes or
+        # strings is expected). Coerce each tab label to str() so the
+        # proxy never reaches wx. Choice/ListBox/ComboBox labels are
+        # already coerced in their own builders.
+        self._notebook.AddPage(self._build_provider_tab(), str(_("Provider")))
+        self._notebook.AddPage(self._build_on_device_tab(), str(_("On-Device")))
+        self._notebook.AddPage(self._build_audio_tab(), str(_("Audio Services")))
+        self._notebook.AddPage(self._build_instructions_tab(), str(_("Instructions")))
+        self._notebook.AddPage(self._build_advanced_tab(), str(_("Advanced")))
 
         btn_sizer = wx.StdDialogButtonSizer()
         ok_btn = wx.Button(self.dialog, wx.ID_OK, label=_("&OK"))
@@ -190,7 +206,7 @@ class AIHubDialog:
         # Provider selector
         sizer.Add(wx.StaticText(panel, label=_("AI provider:")), 0, wx.ALL, 6)
         provider_ids = [pid for pid, _label in _PROVIDER_CHOICES]
-        provider_labels = [label for _pid, label in _PROVIDER_CHOICES]
+        provider_labels = [str(label) for _pid, label in _PROVIDER_CHOICES]
         self._provider_choice = wx.Choice(panel, choices=provider_labels)
         self._provider_choice.SetName("AI provider")
         try:
@@ -371,8 +387,8 @@ class AIHubDialog:
         outer = wx.BoxSizer(wx.VERTICAL)
 
         sub = wx.Notebook(panel)
-        sub.AddPage(self._build_writing_tasks_page(sub), _("Writing Tasks"))
-        sub.AddPage(self._build_image_styles_page(sub), _("Image Styles"))
+        sub.AddPage(self._build_writing_tasks_page(sub), str(_("Writing Tasks")))
+        sub.AddPage(self._build_image_styles_page(sub), str(_("Image Styles")))
         outer.Add(sub, 1, wx.EXPAND | wx.ALL, 6)
 
         panel.SetSizer(outer)
@@ -394,7 +410,7 @@ class AIHubDialog:
         self._inst_task_ids: list[str] = []
         for task_id, inst in self._instructions.items():
             marker = " *" if inst.is_customised() else ""
-            self._inst_list.Append(f"{inst.title}{marker}")
+            self._inst_list.Append(f"{str(inst.title)}{marker}")
             self._inst_task_ids.append(task_id)
         left.Add(self._inst_list, 1, wx.EXPAND)
         sizer.Add(left, 0, wx.EXPAND | wx.ALL, 8)
@@ -485,7 +501,7 @@ class AIHubDialog:
             sid = style["id"]
             marker = " *" if sid in self._vision_overrides else ""
             disabled_mark = " [hidden]" if sid in self._vision_disabled else ""
-            self._img_list.Append(f"{style['title']}{marker}{disabled_mark}")
+            self._img_list.Append(f"{str(style['title'])}{marker}{disabled_mark}")
             self._img_style_ids.append(sid)
         left.Add(self._img_list, 1, wx.EXPAND)
         sizer.Add(left, 0, wx.EXPAND | wx.ALL, 8)

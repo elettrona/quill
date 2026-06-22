@@ -219,7 +219,7 @@ class BraillePhase2CommandsMixin:
                 print_page_number = chosen.detected_print_page
                 # Continuation letter requires a previous indicator.
                 if chosen.braille_page == braille_page and len(relevant) >= 2:
-                    continuation = detect_continuation_letter(text, chosen, relevant[-2])
+                    continuation = detect_continuation_letter(text, page_map, chosen, relevant[-2])
             heads = detect_running_head(text, page_map)
             for head in heads:
                 if head.braille_page == braille_page:

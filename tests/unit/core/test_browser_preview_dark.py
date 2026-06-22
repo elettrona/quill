@@ -34,3 +34,16 @@ def test_render_preview_html_adapts_links_for_dark_browsers() -> None:
     assert "@media (prefers-color-scheme: dark)" in page
     # A light-blue link colour, not the default #0000ee, on dark backgrounds.
     assert "a{color:#6cb6ff;}" in page
+
+
+def test_render_preview_html_has_no_refresh_tag_by_default() -> None:
+    # Issue #46: one-shot pages (the User Guide, keyboard reference, etc.)
+    # must not get the live-preview auto-refresh tag, or they reload forever.
+    page = render_preview_html("Doc", "hello", "markdown")
+    assert "http-equiv" not in page
+
+
+def test_render_preview_html_live_includes_refresh_tag() -> None:
+    # The live browser preview still needs to poll so an open tab tracks edits.
+    page = render_preview_html("Doc", "hello", "markdown", live=True)
+    assert '<meta http-equiv="refresh" content="1">' in page

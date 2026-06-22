@@ -407,6 +407,54 @@ class BrailleCommandsMixin:
         except (ValueError, TypeError, IndexError):
             return None
 
+    def _brf_open_message(self, loaded: object, path: object) -> str:
+        """Open announcement, restoring the caret for braille files (BR-016, #239).
+
+        For a braille file with a saved sidecar position (and sidecar saving on,
+        not in safe mode) this moves the caret to the last offset and announces
+        the restored braille page/line/cell. For any other document it returns
+        the generic "Opened <name>" message. Never raises: a missing or malformed
+        sidecar simply means no restore.
+        """
+        from pathlib import Path
+
+        meta = getattr(loaded, "source_metadata", {}) or {}
+        name = getattr(loaded, "name", "") or Path(str(path)).name
+        if meta.get("source_kind") != "brf":
+            return f"Opened {name}"
+
+        from quill.core.brf_progress import format_open_announcement, restore_offset
+        from quill.core.brf_sidecar import BRFSidecarError, read_sidecar
+
+        try:
+            sidecar = read_sidecar(Path(str(path)))
+        except BRFSidecarError:
+            sidecar = None
+        offset = restore_offset(
+            sidecar,
+            save_sidecar_enabled=bool(getattr(self.settings, "braille_save_sidecar", True)),
+            safe_mode=bool(getattr(self, "_safe_mode", False)),
+            text_length=len(getattr(loaded, "text", "")),
+        )
+        editor = getattr(self, "editor", None)
+        if offset is not None and editor is not None:
+            editor.SetInsertionPoint(offset)
+            editor.SetSelection(offset, offset)
+        page_count = braille_page = line = cell = 0
+        resolved = self._braille_position()
+        if resolved is not None:
+            _resolver, pos = resolved
+            page_count, braille_page, line, cell = pos.page_count, pos.page, pos.line, pos.cell
+        print_page = sidecar.position.print_page if (offset is not None and sidecar) else ""
+        return format_open_announcement(
+            page_count=page_count,
+            restored=offset is not None,
+            braille_page=braille_page,
+            line=line,
+            cell=cell,
+            print_page=print_page,
+        )
+
     def _announce_not_braille(self) -> None:
         self._set_status("Not a braille document")
         self._announce("This is not a braille document.")
@@ -622,15 +670,22 @@ class BrailleCommandsMixin:
         )
 
     def back_translate_ueb(self) -> None:
+        # Back-translate the selected braille passage when there is a selection,
+        # otherwise the whole document, so a proofreader can recover the source
+        # text of just one passage (BR-023/#246 back-translation).
         editor = getattr(self, "editor", None)
         if editor is None:
             return
+        selection = editor.GetStringSelection()
+        source = selection if selection.strip() else editor.GetValue()
+        scope = "selection" if selection.strip() else "document"
         self._translate_and_open(
-            source=editor.GetValue(),
+            source=source,
             table="en-ueb-g2",
             draft=True,
             label=lambda result: (
-                f"Back-translation draft. {len(result.split())} words. Review against the BRF."
+                f"Back-translation draft from {scope}. {len(result.split())} words. "
+                "Review against the BRF."
             ),
         )
 

@@ -199,6 +199,25 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("startup folder", "default folder", "open folder", "file dialog", "start folder"),
     ),
     SettingSpec(
+        "use_simple_file_dialog",
+        "Use simple file open dialog",
+        "general",
+        "bool",
+        "When enabled, File > Open... opens a keyboard-friendly file picker "
+        "with a small filter, recent locations, and a hidden-files toggle, "
+        "instead of the standard Windows file open dialog. The simple "
+        "dialog includes a Use Windows Dialog button for edge cases.",
+        keywords=(
+            "simple",
+            "open",
+            "dialog",
+            "file",
+            "screen reader",
+            "accessibility",
+            "keyboard",
+        ),
+    ),
+    SettingSpec(
         "default_new_document_format",
         "Default new-document format",
         "general",
@@ -235,6 +254,35 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "bool",
         "Wrap long lines to the window width.",
         keywords=("wrap", "word wrap", "lines"),
+    ),
+    SettingSpec(
+        "language_detection_mode",
+        "Auto-detect document language",
+        "editing",
+        "choice",
+        (
+            "Detect the programming or markup language when you paste or type code "
+            "into a plain text or untitled document, so you get that language's "
+            "editing characteristics. Never overrides a real file extension or a "
+            "language you set yourself."
+        ),
+        choices=(
+            ("off", "Off"),
+            ("hint", "Hint in the status bar only"),
+            ("prompt", "Suggest and announce, you confirm"),
+            ("auto", "Switch automatically"),
+        ),
+        keywords=(
+            "language",
+            "detect",
+            "auto",
+            "syntax",
+            "paste",
+            "html",
+            "markdown",
+            "code",
+            "profile",
+        ),
     ),
     SettingSpec(
         "wrap_find",
@@ -1062,6 +1110,59 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "text",
         "Your contact email, pre-filled in the Report a Bug dialog for convenience.",
         keywords=("email", "bug", "report", "contact"),
+    ),
+    # #618: open the Report a Bug dialog in a separate, non-modal
+    # window by default so users can alt-tab between the form and
+    # the editor to document exact reproduction steps.
+    SettingSpec(
+        "report_bug_separate_window",
+        "Open Report a Bug in a separate window",
+        "general",
+        "bool",
+        "Open the Report a Bug dialog in its own non-modal window so you "
+        "can alt-tab between the form and the editor to document exact "
+        "reproduction steps. The editor stays interactive while the form "
+        "is open. Turn this off to use the 0.5.0 modal-dialog behaviour.",
+        keywords=("bug", "report", "dialog", "window", "modal", "modeless"),
+    ),
+    # #618: when the user submits a bug report, copy the report to
+    # the clipboard and stop. The 0.5.0 default also opened a
+    # browser to the GitHub "New Issue" page; that step is now
+    # opt-in via this setting.
+    SettingSpec(
+        "report_bug_auto_open_browser",
+        "Auto-open support form in browser after submit",
+        "general",
+        "bool",
+        "After you submit a bug report from inside Quill, automatically "
+        "open the support form in your default browser. The report is "
+        "always copied to the clipboard; enable this if you would like "
+        "Quill to also pop the GitHub 'New Issue' page with the report "
+        "pre-filled. Disabled by default in 0.7.0 because the report is "
+        "already on the clipboard and many users do not want a browser "
+        "window opened on their behalf.",
+        keywords=("bug", "report", "browser", "support", "github", "auto"),
+    ),
+    # #622: when an unhandled exception crashes QUILL, offer a dialog
+    # that lets the user review a redacted preview and choose whether
+    # to send the report to the developers. When disabled the local
+    # crash file is still saved to app_data_dir()/crash-reports; the
+    # dialog is the only opt-in here.
+    SettingSpec(
+        "auto_ask_crash_submit",
+        "Offer to send crash reports automatically",
+        "general",
+        "bool",
+        "When an unhandled exception closes Quill, show a dialog that "
+        "lets you review a redacted summary (recent commands, "
+        "environment, last frames of the traceback) and choose whether "
+        "to send it to the developers. Your personal data is scrubbed "
+        "before it leaves the machine, and nothing is sent unless you "
+        "explicitly choose Send. The local crash file is always saved "
+        "even when this option is off. Enabled by default during the "
+        "beta phase so the team can hear about crashes without you "
+        "having to opt in every time.",
+        keywords=("crash", "report", "submit", "send", "diagnostics", "beta"),
     ),
     # --- Transcription -----------------------------------------------------
     SettingSpec(

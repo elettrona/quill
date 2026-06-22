@@ -88,7 +88,21 @@ PIPER_PINNED_SHA256 = "f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc808
 # in the shipping build. The vendored contract wheel (see _install_vendored_glow)
 # still installs the safe GLOW seam. Re-add "glow" here when GLOW is re-enabled
 # and its wheels are published.
-DEFAULT_BUNDLED_DEPENDENCY_GROUPS = ("ui", "spellcheck", "ocr", "kokoro")
+# "speech" bundles sounddevice (PortAudio) so offline dictation works out of the
+# box (#617) without a separate pip install. The whisper.cpp engine itself is a
+# separate InnoSetup component (tools/speech/whispercpp), not a pip wheel.
+DEFAULT_BUNDLED_DEPENDENCY_GROUPS = ("ui", "spellcheck", "ocr", "kokoro", "speech")
+
+# Pinned rcedit release (electron/rcedit). Build-tool only -- never copied into
+# the portable bundle or the installer payload. Used to stamp the bundled
+# launcher's VERSIONINFO so JAWS's Ctrl+JAWSKey+V (which reads the foreground
+# window's owning .exe, not the window title) reports "QUILL for All" instead
+# of the embeddable Python runtime's own "Python 3.x.x" (issue #615).
+RCEDIT_PINNED_VERSION = "2.0.0"
+RCEDIT_PINNED_URL = (
+    f"https://github.com/electron/rcedit/releases/download/v{RCEDIT_PINNED_VERSION}/rcedit-x64.exe"
+)
+RCEDIT_PINNED_SHA256 = "3e7801db1a5edbec91b49a24a094aad776cb4515488ea5a4ca2289c400eade2a"
 
 
 def main() -> int:
@@ -136,6 +150,16 @@ def main() -> int:
         help="Optional local Kokoro voices/models directory to bundle under portable\\tools\\speech\\kokoro.",
     )
     parser.add_argument(
+        "--whisper-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Optional local whisper.cpp directory (containing whisper-cli.exe and its "
+            "DLLs) to bundle under portable\\tools\\speech\\whispercpp for the offline "
+            "speech engine (#617). Installed via the 'speechwhisper' component."
+        ),
+    )
+    parser.add_argument(
         "--braille-pack-dir",
         type=Path,
         default=None,
@@ -172,6 +196,7 @@ def main() -> int:
                 "speech/dectalk": args.dectalk_dir,
                 "speech/espeak-ng": args.espeak_dir,
                 "speech/kokoro": args.kokoro_dir,
+                "speech/whispercpp": args.whisper_dir,
             }.items()
             if path is not None
         },
@@ -207,8 +232,11 @@ def build_windows_distribution(
     installer_dir.mkdir(parents=True, exist_ok=True)
     reference_installer_dir.mkdir(parents=True, exist_ok=True)
 
-    launcher = portable_dir / "run-quill.cmd"
-    launcher.write_text(_render_launcher_script(), encoding="utf-8")
+    # The portable bundle ships an empty ``data/`` folder so the install is
+    # recognised as portable from first launch with zero setup. ``data/`` is
+    # the user's deliberate opt-in: a folder with quill.exe but no data/ is
+    # not portable (see quill.core.storage_mode._has_portable_evidence).
+    (portable_dir / "data").mkdir(exist_ok=True)
 
     staged_docs = _stage_distribution_docs(portable_dir, resolved_source_root)
     effective_bundled_tools = dict(bundled_tool_dirs or {})
@@ -249,7 +277,7 @@ def build_windows_distribution(
         "channel": identity.channel,
         "prereleaseNumber": identity.prerelease_number,
         "publisher": identity.publisher,
-        "portableLauncher": str(launcher),
+        "portableEntry": str(portable_dir / "quill.exe"),
         "installerScript": str(installer_dir / "quill.iss"),
         "bundledPython": bool(bundle_python),
         "embeddedPythonVersion": EMBEDDED_PYTHON_VERSION if bundle_python else None,
@@ -263,6 +291,9 @@ def build_windows_distribution(
         portable_dir, braille_pack_dir, source_root=resolved_source_root
     )
 
+    iss_numeric_version = _iss_numeric_version(
+        identity.base_version, identity.channel, identity.prerelease_number
+    )
     installer_script = installer_dir / "quill.iss"
     reference_installer_script = reference_installer_dir / "quill.iss"
     installer_script_text = build_inno_setup_script(
@@ -270,9 +301,7 @@ def build_windows_distribution(
         product_name=identity.product_name,
         publisher=identity.publisher,
         bundle_braille_pack=braille_pack_staged,
-        numeric_version=_iss_numeric_version(
-            identity.base_version, identity.channel, identity.prerelease_number
-        ),
+        numeric_version=iss_numeric_version,
     )
     installer_script.write_text(installer_script_text, encoding="utf-8")
     reference_installer_script.write_text(installer_script_text, encoding="utf-8")
@@ -295,7 +324,21 @@ def build_windows_distribution(
             portable_dir / "python",
             source_root=resolved_source_root,
             pyproject=pyproject,
+            identity=identity,
+            launcher_file_version=iss_numeric_version,
+            build_cache_dir=output_dir / "_build-tools",
         )
+        # Hoist the stamped quill.exe from python/ to the bundle root so
+        # double-clicking quill.exe at the bundle root launches the app,
+        # matching the detection contract in storage_mode._has_portable_evidence
+        # (the portable anchor is the folder that contains quill.exe + data/).
+        stamped = python_runtime_dir / "quill.exe"
+        if stamped.exists():
+            shutil.copy2(stamped, portable_dir / "quill.exe")
+        else:
+            print(
+                f"Warning: stamped launcher {stamped} not found; bundle-root quill.exe not written."
+            )
 
     result = {
         "portable_dir": str(portable_dir),
@@ -314,73 +357,6 @@ def build_windows_distribution(
     return result
 
 
-def _render_launcher_script() -> str:
-    """Return the contents of ``run-quill.cmd``.
-
-    The launcher prefers a Python interpreter shipped alongside it
-    (``python\\pythonw.exe`` for normal windowed launch and
-    ``python\\python.exe`` with ``--console``) so the
-    typical end user never has to install Python. If no bundled
-    interpreter is present we fall back to one on ``PATH`` and, failing
-    that, print a clear screen-reader-friendly error.
-    """
-
-    return (
-        "@echo off\r\n"
-        "setlocal\r\n"
-        "set QUILL_PORTABLE=1\r\n"
-        "set QUILL_APP_ROOT=%~dp0\r\n"
-        "set QUILL_PORTABLE_ROOT=%~dp0data\r\n"
-        "set QUILL_CONSOLE_MODE=0\r\n"
-        'if /I "%~1"=="--console" (\r\n'
-        "    set QUILL_CONSOLE_MODE=1\r\n"
-        "    shift\r\n"
-        ")\r\n"
-        'if /I "%~1"=="--no-console" (\r\n'
-        "    set QUILL_CONSOLE_MODE=0\r\n"
-        "    shift\r\n"
-        ")\r\n"
-        ":: Prefer the bundled embedded Python that ships with the installer.\r\n"
-        'set "QUILL_BUNDLED_PYTHON=%~dp0python\\python.exe"\r\n'
-        'set "QUILL_BUNDLED_PYTHONW=%~dp0python\\pythonw.exe"\r\n'
-        'if "%QUILL_CONSOLE_MODE%"=="0" (\r\n'
-        '    if exist "%QUILL_BUNDLED_PYTHONW%" (\r\n'
-        '        start "" "%QUILL_BUNDLED_PYTHONW%" -m quill %*\r\n'
-        "        exit /b 0\r\n"
-        "    )\r\n"
-        "    where pythonw >nul 2>nul\r\n"
-        "    if errorlevel 1 goto :run_console\r\n"
-        '    start "" pythonw -m quill %*\r\n'
-        "    exit /b 0\r\n"
-        ")\r\n"
-        ":run_console\r\n"
-        'if exist "%QUILL_BUNDLED_PYTHON%" (\r\n'
-        '    "%QUILL_BUNDLED_PYTHON%" -m quill %*\r\n'
-        "    goto :after_run\r\n"
-        ")\r\n"
-        ":: Fallback: a system-wide Python on PATH (developer / dev-build mode).\r\n"
-        "where python >nul 2>nul\r\n"
-        "if errorlevel 1 (\r\n"
-        "    echo.\r\n"
-        "    echo Quill could not find its bundled Python runtime, and no Python\r\n"
-        "    echo interpreter is available on PATH.\r\n"
-        "    echo.\r\n"
-        "    echo If you installed Quill from the official installer, please\r\n"
-        "    echo reinstall: this build is missing the bundled runtime.\r\n"
-        "    echo.\r\n"
-        "    pause\r\n"
-        "    exit /b 1\r\n"
-        ")\r\n"
-        "python -m quill %*\r\n"
-        ":after_run\r\n"
-        "if errorlevel 1 (\r\n"
-        "    echo.\r\n"
-        "    echo Quill exited with an error. See the messages above.\r\n"
-        "    pause\r\n"
-        ")\r\n"
-    )
-
-
 def _render_readme(
     version: str,
     bundle_python: bool,
@@ -394,14 +370,14 @@ def _render_readme(
         runtime_paragraph = (
             "This bundle ships a private Python runtime in the python\\ folder,\n"
             "so you do NOT need to install Python, pip, wxPython, or anything\n"
-            "else. Just run run-quill.cmd and start writing."
+            "else. Just double-click quill.exe and start writing."
         )
     else:
         runtime_paragraph = (
             "This bundle does not include a Python runtime. To run it,\n"
             "install Python 3.12+ from https://www.python.org/downloads/windows/\n"
             "and run:  pip install wxPython pyttsx3\n"
-            "Then double-click run-quill.cmd."
+            "Then double-click quill.exe."
         )
 
     docs_paragraph = ""
@@ -470,9 +446,10 @@ def build_shell_verb_registry_lines(
     default association. Every key is gated behind the opt-in ``shellverbs`` task
     and tagged ``uninsdeletekey`` so a full uninstall removes the verbs cleanly.
 
-    The launch command is ``"{app}\\run-quill.cmd" --action <action> "%1"``;
-    ``run-quill.cmd`` forwards ``%*`` to ``python -m quill``, so the selected
-    file path and verb reach the same dispatch used by the in-app menu.
+    The launch command is ``"{app}\\{#AppExeName}" --action <action> "%1"``;
+    quill.exe is the bundled launcher (a stamped copy of pythonw.exe), so
+    the selected file path and verb reach the same dispatch used by the
+    in-app menu.
     """
 
     selected = tuple(verbs) if verbs is not None else default_shell_verbs()
@@ -567,7 +544,7 @@ def build_inno_setup_script(
         f'#define AppVersion "{version}"',
         f'#define AppPublisher "{publisher}"',
         '#define AppURL "https://github.com/Community-Access/quill"',
-        '#define AppExeName "run-quill.cmd"',
+        '#define AppExeName "quill.exe"',
         "",
         "[Setup]",
         "AppId={{6E0A1C52-4A90-4C6E-A8A1-3C2A16E2B7F2}",
@@ -614,10 +591,13 @@ def build_inno_setup_script(
         "CloseApplications=force",
         "RestartApplications=no",
         "UninstallDisplayName={#AppName} {#AppVersion}",
-        "; pythonw.exe carries a real icon so Add/Remove Programs shows one;",
-        "; the .cmd launcher has none. Falls back gracefully when no bundled",
-        "; runtime is present (e.g. a dev build).",
-        "UninstallDisplayIcon={app}\\python\\pythonw.exe",
+        "; The bundled launcher carries a real icon so Add/Remove Programs",
+        "; shows one. BundledLauncherPath (see [Code]) prefers quill.exe at",
+        "; the bundle root -- a VERSIONINFO-stamped copy of pythonw.exe, see",
+        "; _stamp_quill_launcher -- then python\\quill.exe, then plain",
+        "; pythonw.exe, and gracefully returns blank when no bundled runtime",
+        "; is present (e.g. a dev build), in which case no icon is shown.",
+        "UninstallDisplayIcon={code:BundledLauncherPath}",
         "LicenseFile=LICENSE",
         "InfoAfterFile=README-installer.txt",
         "SetupLogging=yes",
@@ -626,8 +606,6 @@ def build_inno_setup_script(
         'Name: "english"; MessagesFile: "compiler:Default.isl"',
         "",
         "[Tasks]",
-        'Name: "desktopicon"; Description: "Create a &Desktop shortcut";'
-        ' GroupDescription: "Additional shortcuts:"; Flags: unchecked',
         'Name: "fileassoc"; Description: "Register Quill in the Open With menu'
         ' for common text formats (.txt, .md, .rst, .log, .csv, .json)";'
         ' GroupDescription: "File associations:"; Flags: unchecked',
@@ -654,6 +632,10 @@ def build_inno_setup_script(
         " Types: full custom; Flags: checkablealone",
         'Name: "speechpiper"; Description: "Install bundled Piper neural TTS runtime";'
         " Types: full custom; Flags: checkablealone",
+        'Name: "speechwhisper"; Description: "Install the offline speech engine'
+        " (whisper.cpp) for private, on-device transcription and dictation"
+        ' (Tools > Speech > Whisperer)";'
+        " Types: full custom; Flags: checkablealone",
         'Name: "nodejs"; Description: "Install portable Node.js runtime for Node Quillins'
         " and the Developer Console TypeScript interface (~30 MB);"
         ' not required for Python Quillins";'
@@ -666,7 +648,7 @@ def build_inno_setup_script(
         "[Files]",
         'Source: "..\\portable\\*"; DestDir: "{app}";'
         " Flags: ignoreversion recursesubdirs createallsubdirs;"
-        ' Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\nodejs\\*,vendor\\braille-pack\\*,_tool-download\\*,_speech-download\\*"',
+        ' Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\speech\\whispercpp\\*,tools\\nodejs\\*,vendor\\braille-pack\\*,_tool-download\\*,_speech-download\\*"',
         "; QUILL Braille Pack: liblouis runtime, translation tables, and BRF profiles.",
         "; Installed to vendor\\braille-pack so QUILL detects it automatically via QUILL_APP_ROOT.",
         'Source: "..\\portable\\vendor\\braille-pack\\*"; DestDir: "{app}\\vendor\\braille-pack";'
@@ -685,6 +667,14 @@ def build_inno_setup_script(
         'Source: "..\\portable\\tools\\speech\\piper\\*"; DestDir: "{app}\\tools\\speech\\piper";'
         " Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist;"
         " Components: speechpiper",
+        "; whisper.cpp offline speech engine. Resolved at runtime from",
+        "; {app}\\tools\\speech\\whispercpp (QUILL_APP_ROOT). Optional;",
+        "; skipifsourcedoesntexist means a build without the bundled engine still",
+        "; installs, and users can also drop the executable here or download it later.",
+        'Source: "..\\portable\\tools\\speech\\whispercpp\\*";'
+        ' DestDir: "{app}\\tools\\speech\\whispercpp";'
+        " Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist;"
+        " Components: speechwhisper",
         "; Node.js portable runtime (optional). The build script copies a portable",
         "; node.exe distribution into portable\\tools\\nodejs when building with",
         "; --bundle-nodejs. skipifsourcedoesntexist means a build without bundled",
@@ -694,15 +684,15 @@ def build_inno_setup_script(
         " Components: nodejs",
         "",
         "[Icons]",
-        'Name: "{group}\\{#AppName}"; Filename: "{app}\\python\\pythonw.exe"; Parameters: "-m quill"; WorkingDir: "{app}"; Check: FileExists(ExpandConstant(\'{app}\\python\\pythonw.exe\'))',
-        'Name: "{group}\\{#AppName}"; Filename: "{app}\\{#AppExeName}"; WorkingDir: "{app}"; Check: not FileExists(ExpandConstant(\'{app}\\python\\pythonw.exe\'))',
+        'Name: "{group}\\{#AppName}"; Filename: "{code:BundledLauncherPath}"; Parameters: "-m quill"; WorkingDir: "{app}"; Check: HasBundledLauncher',
+        'Name: "{group}\\{#AppName}"; Filename: "{app}\\{#AppExeName}"; WorkingDir: "{app}"; Check: not HasBundledLauncher',
         'Name: "{group}\\{#AppName} README"; Filename: "{app}\\README.txt"',
         ('Name: "{group}\\{#AppName} User Guide"; Filename: "{app}\\docs\\userguide.html"'),
         'Name: "{group}\\Uninstall {#AppName}"; Filename: "{uninstallexe}"',
-        'Name: "{autodesktop}\\{#AppName}"; Filename: "{app}\\python\\pythonw.exe"; Parameters: "-m quill";'
-        " WorkingDir: \"{app}\"; Tasks: desktopicon; Check: FileExists(ExpandConstant('{app}\\python\\pythonw.exe'))",
+        'Name: "{autodesktop}\\{#AppName}"; Filename: "{code:BundledLauncherPath}"; Parameters: "-m quill";'
+        ' WorkingDir: "{app}"; Check: HasBundledLauncher',
         'Name: "{autodesktop}\\{#AppName}"; Filename: "{app}\\{#AppExeName}";'
-        " WorkingDir: \"{app}\"; Tasks: desktopicon; Check: not FileExists(ExpandConstant('{app}\\python\\pythonw.exe'))",
+        ' WorkingDir: "{app}"; Check: not HasBundledLauncher',
         "",
         "[Registry]",
         "; Register Quill in the OpenWithList for common text formats. We",
@@ -738,10 +728,10 @@ def build_inno_setup_script(
         'Filename: "{app}\\docs\\userguide.html";'
         ' Description: "View the User Guide";'
         " Flags: postinstall shellexec skipifsilent unchecked",
-        'Filename: "{app}\\python\\pythonw.exe"; Parameters: "-m quill"; Description: "Launch {#AppName}";'
-        " Flags: postinstall nowait skipifsilent unchecked; Check: FileExists(ExpandConstant('{app}\\python\\pythonw.exe'))",
+        'Filename: "{code:BundledLauncherPath}"; Parameters: "-m quill"; Description: "Launch {#AppName}";'
+        " Flags: postinstall nowait skipifsilent unchecked; Check: HasBundledLauncher",
         'Filename: "{app}\\{#AppExeName}"; Description: "Launch {#AppName}";'
-        " Flags: postinstall nowait skipifsilent unchecked; Check: not FileExists(ExpandConstant('{app}\\python\\pythonw.exe'))",
+        " Flags: postinstall nowait skipifsilent unchecked; Check: not HasBundledLauncher",
         "",
         "[UninstallDelete]",
         "; Always remove install-dir build junk. Whether to also remove the",
@@ -757,6 +747,33 @@ def build_inno_setup_script(
         'Type: filesandordirs; Name: "{app}\\python"',
         "",
         "[Code]",
+        "// -- Bundled launcher resolution ------------------------------------------------",
+        "// quill.exe at the bundle root is a copy of the embedded runtime's",
+        "// pythonw.exe whose VERSIONINFO has been stamped with the Quill",
+        "// product identity (see _stamp_quill_launcher in",
+        "// build_windows_distribution.py), so JAWS's Ctrl+JAWSKey+V reports",
+        '// the real Quill version instead of "Python 3.x.x" (issue #615).',
+        "// BundledLauncherPath tries the hoisted quill.exe first, then the",
+        "// older python\\quill.exe (kept for back-compat with bundles from",
+        "// before the hoist landed), then plain python\\pythonw.exe, and",
+        "// finally '' so every call site falls back gracefully.",
+        "function BundledLauncherPath(Param: String): String;",
+        "begin",
+        "  if FileExists(ExpandConstant('{app}\\quill.exe')) then",
+        "    Result := ExpandConstant('{app}\\quill.exe')",
+        "  else if FileExists(ExpandConstant('{app}\\python\\quill.exe')) then",
+        "    Result := ExpandConstant('{app}\\python\\quill.exe')",
+        "  else if FileExists(ExpandConstant('{app}\\python\\pythonw.exe')) then",
+        "    Result := ExpandConstant('{app}\\python\\pythonw.exe')",
+        "  else",
+        "    Result := '';",
+        "end;",
+        "",
+        "function HasBundledLauncher(): Boolean;",
+        "begin",
+        "  Result := BundledLauncherPath('') <> '';",
+        "end;",
+        "",
         "// -- Skip component page for full installs ------------------------------------",
         "// Full install: skip component selection (everything is pre-selected).",
         "function ShouldSkipPage(PageID: Integer): Boolean;",
@@ -775,7 +792,18 @@ def build_inno_setup_script(
         "var",
         "  NodePath: String;",
         "  WingetResult: Integer;",
+        "  StaleShortcut: String;",
         "begin",
+        "  if CurStep = ssInstall then",
+        "  begin",
+        "    // Drop any pre-existing desktop shortcut before Inno writes the",
+        "    // new one. A beta-1 install created a shortcut pointing at",
+        "    // run-quill.cmd; removing it here guarantees the new shortcut",
+        "    // launches quill.exe, not the obsolete launcher.",
+        "    StaleShortcut := ExpandConstant('{autodesktop}\\{#AppName}.lnk');",
+        "    if FileExists(StaleShortcut) then",
+        "      DeleteFile(StaleShortcut);",
+        "  end;",
         "  if CurStep = ssPostInstall then",
         "  begin",
         "    SaveStringToFile(ExpandConstant('{app}\\quill-new-install.txt'), 'new-install', False);",
@@ -881,6 +909,9 @@ def bundle_embedded_python(
     target_dir: Path,
     source_root: Path,
     pyproject: Path,
+    identity: BuildIdentity | None = None,
+    launcher_file_version: str | None = None,
+    build_cache_dir: Path | None = None,
     download_url: str = EMBEDDED_PYTHON_URL,
     expected_sha256: str | None = EMBEDDED_PYTHON_SHA256,
 ) -> Path:
@@ -898,6 +929,8 @@ def bundle_embedded_python(
     5. ``pip install`` the runtime dependencies (wxPython, pyttsx3).
     6. Drop the Quill package source into the runtime so
        ``python -m quill`` resolves without a wheel build step.
+    7. Copy ``pythonw.exe`` to ``quill.exe`` and stamp its VERSIONINFO with
+       the Quill identity (issue #615), when ``identity`` is supplied.
 
     Returns the path to the prepared runtime directory.
     """
@@ -981,8 +1014,86 @@ def bundle_embedded_python(
     _install_vendored_glow(python_exe, source_root)
     _prune_embedded_runtime(site_packages)
 
+    if identity is not None:
+        _stamp_quill_launcher(
+            target_dir,
+            identity=identity,
+            file_version=launcher_file_version or "0.0.0.0",
+            build_cache_dir=build_cache_dir or target_dir.parent / "_build-tools",
+        )
+
     archive.unlink(missing_ok=True)
     return target_dir
+
+
+def _stamp_quill_launcher(
+    runtime_dir: Path,
+    *,
+    identity: BuildIdentity,
+    file_version: str,
+    build_cache_dir: Path,
+) -> None:
+    """Copy pythonw.exe to quill.exe and stamp its VERSIONINFO (issue #615).
+
+    JAWS's Ctrl+JAWSKey+V reads VersionInfo from the foreground window's
+    owning .exe at the OS layer, not from the window title -- the earlier
+    fix (window-title version) cannot reach that channel because the
+    process actually running the whole session is pythonw.exe, whose
+    VersionInfo says "Python 3.x.x". quill.exe is a byte-for-byte copy of
+    that same interpreter binary; rcedit only edits its resource section in
+    place, so behavior is unchanged and only its reported identity differs.
+    """
+    pythonw_exe = runtime_dir / "pythonw.exe"
+    if not pythonw_exe.exists():
+        print(f"Warning: {pythonw_exe} not found; skipping launcher VersionInfo stamp.")
+        return
+    quill_exe = runtime_dir / "quill.exe"
+    shutil.copy2(pythonw_exe, quill_exe)
+
+    rcedit_path = _download_rcedit(build_cache_dir)
+    print(f"Stamping {quill_exe} VersionInfo as {identity.product_name} {file_version}...")
+    subprocess.run(
+        [
+            str(rcedit_path),
+            str(quill_exe),
+            "--set-version-string",
+            "ProductName",
+            identity.product_name,
+            "--set-version-string",
+            "FileDescription",
+            f"{identity.product_name} accessible writing environment",
+            "--set-version-string",
+            "CompanyName",
+            identity.publisher,
+            "--set-version-string",
+            "OriginalFilename",
+            quill_exe.name,
+            "--set-version-string",
+            "InternalName",
+            "quill",
+            "--set-file-version",
+            file_version,
+            "--set-product-version",
+            file_version,
+        ],
+        check=True,
+    )
+
+
+def _download_rcedit(cache_dir: Path) -> Path:
+    """Download and SHA-256-verify rcedit-x64.exe into cache_dir, reusing it if present.
+
+    rcedit patches the Windows VERSIONINFO/icon resources of an existing PE
+    executable in place; it is a build-time tool only and is never copied
+    into the portable bundle or the installer payload.
+    """
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    rcedit_exe = cache_dir / "rcedit-x64.exe"
+    if rcedit_exe.exists():
+        return rcedit_exe
+    print(f"Downloading rcedit from {RCEDIT_PINNED_URL}...")
+    _download_with_verification(RCEDIT_PINNED_URL, rcedit_exe, expected_sha256=RCEDIT_PINNED_SHA256)
+    return rcedit_exe
 
 
 def _prune_embedded_runtime(site_packages: Path) -> None:

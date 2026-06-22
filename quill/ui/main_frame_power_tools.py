@@ -549,8 +549,20 @@ class PowerToolsActionsMixin:
         scale = str(getattr(self.settings, "indent_tone_scale", "") or "")
         if not scale:
             return
-        text = self.editor.GetValue()
-        cursor = self.editor.GetInsertionPoint()
+        # editor binds on tab selection; short-circuit before that (#614)
+        editor = getattr(self, "editor", None)
+        if editor is None:
+            return
+        # #603: the caret handler can fire after the underlying C++ TextCtrl
+        # has been destroyed (e.g. on a dirty-doc close where the editor is
+        # torn down between the queued event and its dispatch). Reading
+        # GetValue() / GetInsertionPoint() on a dead widget raises
+        # RuntimeError; swallow it so the close path completes cleanly.
+        try:
+            text = editor.GetValue()
+            cursor = editor.GetInsertionPoint()
+        except RuntimeError:
+            return
         line_start = text.rfind("\n", 0, cursor) + 1
         newline = text.find("\n", cursor)
         line_end = len(text) if newline == -1 else newline

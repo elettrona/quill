@@ -83,13 +83,23 @@ check and will block merge if errors are present.
 
 ### 5. Compile and test in the running app
 
+Compile your `.po` into the `.mo` the app loads. Either tool works; the first
+needs no `pybabel` on your PATH:
+
 ```
-pybabel compile -d quill/locale -D quill
+python -m quill.tools.compile_translations
+# or: pybabel compile -d quill/locale -D quill
+```
+
+```
 python -m quill
 ```
 
-Open QUILL Settings and set **Language** to your language code. Navigate the
-menus and dialogs to verify your translations appear and sound natural.
+In QUILL, open **Tools > Writing & Language > Change Display Language...** and
+choose your language (only languages with a compiled `.mo` appear in the list).
+Navigate the menus and dialogs to verify your translations appear and sound
+natural. The choice is saved; restart QUILL so every menu and dialog reloads in
+your language.
 
 Pay particular attention to:
 - Menu mnemonics (the underlined shortcut letters — check the **Mnemonic `&`**
@@ -152,7 +162,7 @@ pybabel extract \
   -k "ngettext:1,2" \
   -k lazy_gettext \
   --project "QUILL" \
-  --version "0.6.0" \
+  --version "0.7.0" \
   --copyright-holder "Blind Information Technology Solutions (BITS) and Community Access" \
   --msgid-bugs-address "https://github.com/Community-Access/quill/issues" \
   -o quill/locale/quill.pot \
@@ -293,6 +303,12 @@ The CI gate checks placeholder preservation.
 - All user-facing strings in `quill/ui/` and key `quill/core/` modules are
   wrapped with `_()`, `ngettext()`, or `lazy_gettext()`.
 - `python -m quill.tools.check_translation` validates `.po` files on every PR.
+- `python -m quill.tools.compile_translations` builds `.mo` files from every
+  `.po` (no `pybabel` CLI required); the release build runs this so installed
+  copies ship the compiled catalogs.
+- **Tools > Writing & Language > Change Display Language...** lets users switch
+  the UI language to any installed translation at runtime.
+- `quill/locale` is packaged into the wheel, so `.pot` and `.mo` files ship.
 - Translation PR template in `.github/PULL_REQUEST_TEMPLATE/translation.md`.
 
 **What is not done yet:**

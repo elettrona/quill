@@ -10,6 +10,8 @@ reaches every menu id, submenu, label helper, and refresh routine through
 
 from __future__ import annotations
 
+import platform
+
 from quill.core.i18n import _
 
 
@@ -68,6 +70,7 @@ class MenuBuilderMixin:
         self._id_export_epub = wx.NewIdRef()
         self._id_export_pdf = wx.NewIdRef()
         self._id_export_plain_text = wx.NewIdRef()
+        self._id_export_daisy = wx.NewIdRef()  # DAISY 2.02 text-only talking book (#251)
         self._id_export_other = wx.NewIdRef()  # "Other Pandoc Format..."
         self._id_batch_convert_import = wx.NewIdRef()
         self._id_batch_convert_export = wx.NewIdRef()
@@ -288,6 +291,10 @@ class MenuBuilderMixin:
         export_menu.Append(
             self._id_export_plain_text,
             self._menu_label(_("Plain &Text..."), "file.export_plain_text"),
+        )
+        export_menu.Append(
+            self._id_export_daisy,
+            self._menu_label(_("&DAISY Talking Book..."), "file.export_daisy"),
         )
         export_menu.AppendSeparator()
         export_menu.Append(
@@ -1081,6 +1088,26 @@ class MenuBuilderMixin:
         self._append_power_tools_markdown_profiles_items(markdown_menu)
         format_menu.AppendSubMenu(markdown_menu, _("&Markdown"))
 
+        # --- Document Language submenu (#181): pin the editing language so a
+        # plain .txt can be written as HTML/Markdown/code and get those
+        # characteristics. Radio items show and switch the active profile;
+        # "Auto-detect" clears the override. The dialog (Ctrl+Shift+L, also in
+        # Navigate) remains for type-ahead selection.
+        from quill.core.language_profile import all_profiles as _all_lang_profiles
+
+        language_menu = wx.Menu()
+        self._language_menu_item_ids: dict[int, str] = {}
+        auto_item = language_menu.AppendRadioItem(wx.ID_ANY, _("&Auto-detect from file"))
+        self._language_menu_item_ids[auto_item.GetId()] = ""
+        for _profile in _all_lang_profiles():
+            radio = language_menu.AppendRadioItem(wx.ID_ANY, _profile.name)
+            self._language_menu_item_ids[radio.GetId()] = _profile.name
+        plain_item = language_menu.AppendRadioItem(wx.ID_ANY, _("Plain text"))
+        self._language_menu_item_ids[plain_item.GetId()] = "Plain text"
+        for _lang_id in self._language_menu_item_ids:
+            self.frame.Bind(wx.EVT_MENU, self._on_document_language_menu, id=_lang_id)
+        format_menu.AppendSubMenu(language_menu, _("Document &Language"))
+
         # Quillin-contributed Format items
         self._append_quillin_menu_items(format_menu, "Format")
 
@@ -1338,6 +1365,14 @@ class MenuBuilderMixin:
         self._id_ai_status_detail = wx.NewIdRef()
         self._id_ai_model = wx.NewIdRef()
         self._id_ai_session_browser = wx.NewIdRef()
+        self._id_speech_models = wx.NewIdRef()
+        self._id_speech_transcribe = wx.NewIdRef()
+        self._id_speech_captions = wx.NewIdRef()
+        self._id_speech_dictate = wx.NewIdRef()
+        self._id_speech_voice_command = wx.NewIdRef()
+        self._id_speech_microphone = wx.NewIdRef()
+        self._id_speech_ffmpeg = wx.NewIdRef()
+        self._id_speech_hf_token = wx.NewIdRef()
         self._id_ai_connection = wx.NewIdRef()
         self._id_ai_forget_key = wx.NewIdRef()
         self._id_ai_rewrite_selection = wx.NewIdRef()
@@ -1448,6 +1483,12 @@ class MenuBuilderMixin:
         writing_menu.Append(
             self._id_dictionary_status,
             self._menu_label(_("Dictionary &Status..."), "tools.dictionary_status"),
+        )
+        writing_menu.AppendSeparator()
+        self._id_display_language = wx.NewIdRef()
+        writing_menu.Append(
+            self._id_display_language,
+            self._menu_label(_("Change &Display Language..."), "app.display_language"),
         )
         # GLOW is hidden for now (core.glow is locked off pending completion).
         # When re-enabled, these audit/fix items reappear automatically.
@@ -1560,6 +1601,49 @@ class MenuBuilderMixin:
             self._menu_label(_("&Describe Image..."), "tools.describe_image"),
         )
         tools_menu.AppendSubMenu(reading_menu, _("R&eading && Dictation"))
+        # Offline, on-device speech (#617): Tools > Speech > Whisperer. These
+        # need no AI provider or keys and work with AI fully off, so they live
+        # under their own Speech menu — not the AI menu, which wrongly implied an
+        # AI dependency. "Whisperer" is the BITS Whisperer speech engine brand.
+        whisperer_menu = wx.Menu()
+        whisperer_menu.Append(
+            self._id_speech_models,
+            self._menu_label(_("&Manage Speech Models..."), "tools.speech_models"),
+        )
+        whisperer_menu.Append(
+            self._id_speech_transcribe,
+            self._menu_label(
+                _("&Transcribe Audio or Video (Offline)..."), "tools.speech_transcribe"
+            ),
+        )
+        whisperer_menu.Append(
+            self._id_speech_captions,
+            self._menu_label(_("Generate &Captions (Offline)..."), "tools.speech_captions"),
+        )
+        whisperer_menu.Append(
+            self._id_speech_dictate,
+            self._menu_label(_("&Dictate (Offline)"), "tools.speech_dictate"),
+        )
+        whisperer_menu.Append(
+            self._id_speech_voice_command,
+            self._menu_label(_("&Voice Command (Offline)"), "tools.voice_command"),
+        )
+        whisperer_menu.Append(
+            self._id_speech_microphone,
+            self._menu_label(_("Dictation &Microphone..."), "tools.speech_microphone"),
+        )
+        whisperer_menu.AppendSeparator()
+        whisperer_menu.Append(
+            self._id_speech_ffmpeg,
+            self._menu_label(_("Download &FFmpeg..."), "tools.speech_ffmpeg"),
+        )
+        whisperer_menu.Append(
+            self._id_speech_hf_token,
+            self._menu_label(_("&Hugging Face Token..."), "tools.speech_hf_token"),
+        )
+        speech_menu = wx.Menu()
+        speech_menu.AppendSubMenu(whisperer_menu, _("&Whisperer"))
+        tools_menu.AppendSubMenu(speech_menu, _("&Speech"))
 
         # Comparison (was Compare Documents) ----------------------------------
         compare_menu = wx.Menu()
@@ -2118,6 +2202,27 @@ class MenuBuilderMixin:
         menu_bar.Append(window_menu, _("&Window"))
         menu_bar.Append(help_menu, _("&Help"))
 
+        # #613: on macOS, tell wx that the "Help" menu is the system
+        # Help menu so the OS moves it to the rightmost position (where
+        # macOS users expect it) instead of leaving it in the slot wx
+        # gave it (the menu bar's tail, but wx only respects the
+        # SetHelpMenu hint for the system Help menu). Without this,
+        # VoiceOver users see a top-level menu order that does not
+        # match the macOS AppKit convention. Wrapped in hasattr +
+        # try/except so a wx build without the API degrades gracefully
+        # (and the dialog_inventory / module_size gates do not see an
+        # attribute error).
+        if platform.system() == "Darwin":
+            try:
+                if hasattr(menu_bar, "SetHelpMenu"):
+                    menu_bar.SetHelpMenu(help_menu)
+                elif hasattr(menu_bar, "MacSetHelpMenuTitle"):
+                    menu_bar.MacSetHelpMenuTitle(_("&Help"))
+            except Exception:  # noqa: BLE001
+                # Help-menu hint is best-effort; do not break menu
+                # construction if the wx build rejects the call.
+                pass
+
         self._apply_menu_customization(menu_bar)
         self.frame.SetMenuBar(menu_bar)
         self._refresh_contextual_menu_items()
@@ -2224,6 +2329,7 @@ class MenuBuilderMixin:
             lambda _e: self.export_document("plain_text"),
             id=self._id_export_plain_text,
         )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.export_daisy(), id=self._id_export_daisy)
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.export_document_other(), id=self._id_export_other
         )
@@ -2497,6 +2603,42 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.open_ai_session_browser(),
             id=self._id_ai_session_browser,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_speech_models(),
+            id=self._id_speech_models,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.transcribe_audio_offline(),
+            id=self._id_speech_transcribe,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.generate_captions_offline(),
+            id=self._id_speech_captions,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.dictate_offline_toggle(), id=self._id_speech_dictate
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.voice_command_toggle(), id=self._id_speech_voice_command
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.choose_dictation_microphone(),
+            id=self._id_speech_microphone,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.download_ffmpeg(),
+            id=self._id_speech_ffmpeg,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.set_huggingface_token(),
+            id=self._id_speech_hf_token,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -3117,6 +3259,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.show_dictionary_status(),
             id=self._id_dictionary_status,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.change_display_language(),
+            id=self._id_display_language,
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.ocr_image_file(), id=self._id_ocr_image)
         self.frame.Bind(

@@ -42,17 +42,14 @@ version = "2.4.6"
     portable_dir = tmp_path / "dist" / "portable"
     installer_script = tmp_path / "dist" / "installer" / "quill.iss"
     assert portable_dir.exists()
-    launcher = (portable_dir / "run-quill.cmd").read_text(encoding="utf-8")
-    assert launcher.startswith("@echo off")
-    assert "set QUILL_PORTABLE=1" in launcher
-    assert "set QUILL_APP_ROOT=%~dp0" in launcher
-    assert "set QUILL_PORTABLE_ROOT=%~dp0data" in launcher
-    # Launcher defaults to pythonw and supports --console for diagnostics.
-    assert "QUILL_BUNDLED_PYTHON" in launcher
-    assert "QUILL_BUNDLED_PYTHONW" in launcher
-    assert "python\\python.exe" in launcher
-    assert "python\\pythonw.exe" in launcher
-    assert '"--console"' in launcher
+    # The portable bundle's entry point is quill.exe at the bundle root, and
+    # the detection contract requires a sibling ``data/`` folder -- not the
+    # legacy run-quill.cmd launcher.
+    assert not (portable_dir / "run-quill.cmd").exists()
+    assert (portable_dir / "data").is_dir()
+    # The hoisted quill.exe is only written when bundle_python is True; this
+    # build does not bundle Python, so we assert the absence rather than call
+    # the full bundle a second time.
 
     readme_text = (portable_dir / "README.txt").read_text(encoding="utf-8")
     assert "QUILL for All Portable 2.4.6" in readme_text
@@ -73,6 +70,10 @@ version = "2.4.6"
     assert manifest["baseVersion"] == "2.4.6"
     assert manifest["channel"] == "stable"
     assert manifest["bundledPython"] is False
+    # The portable bundle's entry point is the hoisted quill.exe, not the
+    # legacy run-quill.cmd launcher.
+    assert manifest["portableEntry"].endswith("quill.exe")
+    assert manifest.get("portableLauncher") is None
     assert sorted(manifest["bundledTools"]) == [
         "pandoc",
         "speech/dectalk",
@@ -96,6 +97,9 @@ def test_build_inno_setup_script_mentions_portable_bundle() -> None:
     assert '#define AppName "QUILL for All"' in script
     assert '#define AppVersion "9.9.9"' in script
     assert '#define AppPublisher "Community Access"' in script
+    # The portable bundle's entry point is quill.exe; run-quill.cmd is gone.
+    assert '#define AppExeName "quill.exe"' in script
+    assert '#define AppExeName "run-quill.cmd"' not in script
     assert 'Source: "..\\portable\\*"' in script
     # Accessibility-friendly installer flags are present.
     assert "PrivilegesRequired=lowest" in script
@@ -124,10 +128,15 @@ def test_build_inno_setup_script_mentions_portable_bundle() -> None:
     assert "ShouldInstallPaulVoice" not in script
     assert 'Name: "speechespeak"; Description: "Install bundled eSpeak-NG runtime";' in script
     assert 'Name: "speechpiper"; Description: "Install bundled Piper neural TTS runtime";' in script
+    # The offline whisper.cpp speech engine ships as its own optional component
+    # (#617), gated payload under tools\speech\whispercpp, surfaced under
+    # Tools > Speech > Whisperer.
+    assert 'Name: "speechwhisper"; Description: "Install the offline speech engine' in script
+    assert "(Tools > Speech > Whisperer)" in script
     assert "speechkokoro" not in script
     assert "speechopenvoice" not in script
     assert (
-        'Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\nodejs\\*,vendor\\braille-pack\\*,_tool-download\\*,_speech-download\\*"'
+        'Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\speech\\whispercpp\\*,tools\\nodejs\\*,vendor\\braille-pack\\*,_tool-download\\*,_speech-download\\*"'
         in script
     )
     assert 'Source: "..\\portable\\tools\\pandoc\\*"; DestDir: "{app}\\tools\\pandoc";' in script
@@ -149,17 +158,42 @@ def test_build_inno_setup_script_mentions_portable_bundle() -> None:
         'Source: "..\\portable\\tools\\speech\\piper\\*"; DestDir: "{app}\\tools\\speech\\piper";'
         in script
     )
+    assert (
+        'Source: "..\\portable\\tools\\speech\\whispercpp\\*";'
+        ' DestDir: "{app}\\tools\\speech\\whispercpp";' in script
+    )
     assert "Components: speechdectalk" in script
     assert "Components: speechespeak" in script
     assert "Components: speechpiper" in script
+    assert "Components: speechwhisper" in script
     assert "User Guide" in script
     assert "userguide.html" in script
-    assert "python\\pythonw.exe" in script
     assert 'Parameters: "-m quill"' in script
-    assert "Check: FileExists(ExpandConstant('{app}\\python\\pythonw.exe'))" in script
-    assert "Check: not FileExists(ExpandConstant('{app}\\python\\pythonw.exe'))" in script
+    # Bundled-launcher resolution (issue #615): the hoisted quill.exe at the
+    # bundle root is preferred, falling back to python\quill.exe then plain
+    # pythonw.exe, via the BundledLauncherPath/HasBundledLauncher [Code]
+    # functions.
+    assert "function BundledLauncherPath(Param: String): String;" in script
+    assert "function HasBundledLauncher(): Boolean;" in script
+    assert "{app}\\quill.exe" in script
+    assert "{app}\\python\\quill.exe" in script
+    assert "{app}\\python\\pythonw.exe" in script
+    assert "{code:BundledLauncherPath}" in script
+    assert "Check: HasBundledLauncher" in script
+    assert "Check: not HasBundledLauncher" in script
+    assert "UninstallDisplayIcon={code:BundledLauncherPath}" in script
     assert "Beta Announcement" not in script
     assert "Product Requirements" not in script
+    # The desktop shortcut is created unconditionally. A previous (beta-1)
+    # install could have left a Quill.lnk pointing at run-quill.cmd on the
+    # user's desktop; the CurStepChanged(ssInstall) hook in [Code] deletes
+    # that stale shortcut before the new one is created. No `desktopicon`
+    # task definition should remain once the gate is removed.
+    assert "Tasks: desktopicon" not in script
+    assert "autodesktop" in script
+    assert "{#AppName}.lnk" in script
+    assert "StaleShortcut" in script
+    assert "CurStep = ssInstall" in script
     # File-association registry entries use HKCU only (never overwrite defaults).
     assert "HKCU" in script
     assert "HKLM" not in script
@@ -195,9 +229,10 @@ def test_shell_verb_registry_lines_are_optin_and_uninstall_clean() -> None:
     assert all("Flags: uninsdeletekey" in line for line in root_key_lines)
 
 
-def test_shell_verb_command_launches_run_quill_cmd_with_action() -> None:
-    # The launch command routes through run-quill.cmd (AppExeName), which
-    # forwards %* to `python -m quill`, passing the file as %1.
+def test_shell_verb_command_launches_quill_exe_with_action() -> None:
+    # The launch command routes through quill.exe (AppExeName), which is the
+    # hoisted launcher at the bundle root -- a stamped copy of pythonw.exe
+    # that runs `python -m quill` with %1 passed in as the file to act on.
     lines = build_shell_verb_registry_lines()
     command_lines = [line for line in lines if "\\command" in line]
     assert command_lines

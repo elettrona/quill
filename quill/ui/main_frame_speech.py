@@ -1,0 +1,836 @@
+"""Offline speech commands: model manager + transcribe (#617, Speech S2 UI).
+
+A mixin on :class:`~quill.ui.main_frame.MainFrame` providing the **AI > Speech**
+commands. It uses stock, fully-accessible wx dialogs (single-choice picker,
+message box, file dialog) and routes model downloads and transcription through
+``_run_background_task`` so the UI never blocks. All speech logic lives in
+``quill.core.speech`` (provider, service); this is thin wiring.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+# Transcribe/Captions accept these; ffmpeg transcodes them to 16 kHz mono WAV.
+_AV_EXTS = "*.wav;*.mp3;*.m4a;*.aac;*.flac;*.ogg;*.opus;*.wma;*.mp4;*.m4v;*.mov;*.mkv;*.webm;*.avi"
+_AUDIO_VIDEO_WILDCARD = f"Audio/Video ({_AV_EXTS})|{_AV_EXTS}|All files (*.*)|*.*"
+
+
+class SpeechCommandsMixin:
+    """AI > Speech command handlers (offline model manager + transcription)."""
+
+    # Relies on MainFrame helpers: _wx, frame, settings, _show_modal_dialog,
+    # _show_message_box, _run_background_task, _create_document_tab, _announce,
+    # _set_status.
+
+    def _speech_registry(self) -> object:
+        from quill.core.speech.service import default_registry
+
+        configured = str(getattr(self.settings, "speech_whisper_path", "") or "") or None
+        return default_registry(configured)
+
+    def _speech_provider(self) -> object:
+        from quill.core.speech.service import DEFAULT_PROVIDER_ID
+
+        registry = self._speech_registry()
+        chosen = str(getattr(self.settings, "speech_provider", "") or "")
+        if chosen:
+            provider = registry.get(chosen)  # type: ignore[attr-defined]
+            try:
+                if provider is not None and provider.is_available():
+                    return provider
+            except Exception:  # noqa: BLE001 - fall back to the bundled engine
+                pass
+        return registry.get(DEFAULT_PROVIDER_ID)  # type: ignore[attr-defined]
+
+    def _choose_speech_engine(self) -> object | None:
+        """Let the user pick the speech engine when more than one is available.
+
+        Persists the choice to ``settings.speech_provider`` so transcription,
+        captions, and dictation all use it. Returns the chosen provider, or None
+        to fall back to the default (including when only one engine exists).
+        """
+        from quill.core.settings import save_settings
+
+        wx = self._wx
+        registry = self._speech_registry()
+        providers = registry.available()  # type: ignore[attr-defined]
+        if len(providers) <= 1:
+            return None
+        labels = [p.display_name for p in providers]
+        current = str(getattr(self.settings, "speech_provider", "") or "")
+        selected = next((i for i, p in enumerate(providers) if p.id == current), 0)
+        with wx.SingleChoiceDialog(
+            self.frame, "Choose the speech engine to use:", "Speech Engine", labels
+        ) as dialog:
+            dialog.SetSelection(selected)
+            if self._show_modal_dialog(dialog, "Speech Engine") != wx.ID_OK:
+                return None
+            choice = dialog.GetSelection()
+        if not (0 <= choice < len(providers)):
+            return None
+        provider = providers[choice]
+        self.settings.speech_provider = provider.id
+        try:
+            save_settings(self.settings)
+        except Exception:  # noqa: BLE001 - a save failure must not block model management
+            pass
+        self._announce(f"Speech engine set to {provider.display_name}.")
+        return provider
+
+    # -- model manager ---------------------------------------------------- #
+
+    def open_speech_models(self) -> None:
+        from quill.core.speech.service import (
+            ModelRow,
+            describe_models,
+            detect_has_gpu,
+            detect_total_ram_gb,
+            machine_summary,
+        )
+
+        wx = self._wx
+        provider = self._choose_speech_engine() or self._speech_provider()
+        total_ram = detect_total_ram_gb()
+        has_gpu = detect_has_gpu()
+        rows = describe_models(provider, total_ram, has_gpu)  # type: ignore[arg-type]
+        labels = [row.label for row in rows]
+        with wx.SingleChoiceDialog(
+            self.frame,
+            "Speech models for offline transcription. "
+            f"{machine_summary(total_ram, has_gpu)} "
+            "Choose a model, then pick what to do with it (download it, or remove it "
+            "if it is already installed):",
+            "Manage Speech Models",
+            labels,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Manage Speech Models") != wx.ID_OK:
+                return
+            selection = dialog.GetSelection()
+        if selection < 0 or selection >= len(rows):
+            return
+        row: ModelRow = rows[selection]
+        action = self._choose_model_action(row)
+        if action == "download":
+            self._maybe_download_speech_model(provider, row)
+        elif action == "remove":
+            self._maybe_remove_speech_model(provider, row.id)
+
+    def set_huggingface_token(self) -> None:
+        """Store an optional Hugging Face access token for model downloads (#617).
+
+        A token is not required for QUILL's public models, but it raises Hugging
+        Face's anonymous rate limits. First-time users are guided to create one
+        (with an offer to open the token page); the token is then entered masked
+        and saved to the OS credential store, not to settings. Blank removes it.
+        """
+        import webbrowser
+
+        from quill.core.speech.hf_auth import HF_TOKEN_URL, load_hf_token, save_hf_token
+
+        wx = self._wx
+        current = load_hf_token()
+        if not current:
+            steps = (
+                "A free Hugging Face access token raises download rate limits. It is "
+                "optional — QUILL's speech models work without one.\n\n"
+                "To create a token:\n"
+                "1. Sign in or sign up at huggingface.co (it is free).\n"
+                "2. Open your profile menu, then Settings, then Access Tokens.\n"
+                "3. Create a token with the 'Read' role and copy it.\n"
+                "4. Come back here and paste it.\n\n"
+                "Open the Hugging Face token page in your browser now?"
+            )
+            choice = self._show_message_box(
+                steps, "Hugging Face Token", wx.ICON_INFORMATION | wx.YES_NO | wx.CANCEL
+            )
+            if choice == wx.CANCEL:
+                return
+            if choice == wx.YES:
+                opened = webbrowser.open(HF_TOKEN_URL)
+                self._set_status(
+                    "Opened the Hugging Face token page in your browser."
+                    if opened
+                    else f"Create a token at {HF_TOKEN_URL}"
+                )
+        prompt = "Paste your Hugging Face access token. Leave blank to remove a saved token."
+        dlg = wx.PasswordEntryDialog(self.frame, prompt, "Hugging Face Token", current)
+        if self._show_modal_dialog(dlg, "Hugging Face Token") != wx.ID_OK:
+            return
+        value = dlg.GetValue().strip()
+        try:
+            save_hf_token(value)
+        except Exception as exc:  # noqa: BLE001 - surface a clean message
+            self._set_status(f"Could not save token: {exc}")
+            return
+        message = "Hugging Face token saved." if value else "Hugging Face token cleared."
+        self._announce(message)
+        self._set_status(message)
+
+    def download_ffmpeg(self) -> None:
+        """Download an official ffmpeg build so any audio/video format transcribes.
+
+        ffmpeg is GPL/LGPL and QUILL does not bundle it; this fetches it from the
+        official builder on an explicit action, into the QUILL tools folder the
+        resolver searches. Runs on a worker thread behind a cancelable percentage.
+        """
+        import threading
+
+        from quill.core.speech.ffmpeg import ffmpeg_available
+        from quill.core.speech.ffmpeg_install import (
+            FFmpegInstallError,
+            ffmpeg_install_supported,
+            install_ffmpeg,
+        )
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
+
+        wx = self._wx
+        if not ffmpeg_install_supported():
+            self._show_message_box(
+                "Automatic ffmpeg download is Windows-only. On macOS install it with "
+                "Homebrew (brew install ffmpeg); on Linux use your package manager.",
+                "Download FFmpeg",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        if ffmpeg_available():
+            again = self._show_message_box(
+                "ffmpeg is already available on this computer. Download QUILL's own "
+                "managed copy anyway?",
+                "Download FFmpeg",
+                wx.ICON_QUESTION | wx.YES_NO,
+            )
+            if again != wx.YES:
+                return
+        confirm = self._show_message_box(
+            "Download ffmpeg (about 110 MB) from the official Gyan.dev build so QUILL "
+            "can transcribe MP3, M4A, MP4, and other formats? ffmpeg is open-source "
+            "(GPL/LGPL) and is fetched directly from the builder; QUILL does not bundle "
+            "it.",
+            "Download FFmpeg",
+            wx.ICON_QUESTION | wx.YES_NO,
+        )
+        if confirm != wx.YES:
+            return
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            self.frame,
+            "Downloading FFmpeg",
+            "Preparing to download ffmpeg...",
+            on_cancel=cancel.set,
+        )
+        progress.show()
+        self._announce("Downloading ffmpeg.")
+
+        def _on_progress(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise FFmpegInstallError("Download cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            progress.set_progress(percent, f"{message} {percent}%")
+
+        def _run() -> None:
+            try:
+                install_ffmpeg(_on_progress)
+            except Exception as exc:  # noqa: BLE001 - surface a clean message
+                wx.CallAfter(progress.close)
+                if cancel.is_set():
+                    wx.CallAfter(self._set_status, "ffmpeg download cancelled.")
+                    wx.CallAfter(self._announce, "ffmpeg download cancelled.")
+                else:
+                    wx.CallAfter(self._set_status, f"Could not install ffmpeg: {exc}")
+                    wx.CallAfter(self._announce, f"Could not install ffmpeg. {exc}")
+                return
+            wx.CallAfter(progress.close)
+            done = "ffmpeg installed. You can now transcribe more audio and video formats."
+            wx.CallAfter(self._set_status, done)
+            wx.CallAfter(self._announce, done)
+
+        threading.Thread(  # GATE-40-OK: ffmpeg download worker.
+            target=_run, daemon=True
+        ).start()
+
+    def _choose_model_action(self, row: object) -> str | None:
+        """Ask what to do with the chosen model. Returns 'download', 'remove', or None.
+
+        An explicit action picker makes deletion discoverable (the previous flow
+        silently inferred the action from install state) and keeps every option
+        keyboard- and screen-reader-reachable through a stock single-choice list.
+        """
+        wx = self._wx
+        installed = bool(getattr(row, "installed", False))
+        if installed:
+            actions = [
+                ("Remove this model from my computer", "remove"),
+                ("Keep it (do nothing)", None),
+            ]
+        else:
+            actions = [
+                ("Download this model", "download"),
+                ("Do nothing", None),
+            ]
+        labels = [label for label, _key in actions]
+        with wx.SingleChoiceDialog(
+            self.frame, "What would you like to do?", "Speech Model", labels
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Speech Model") != wx.ID_OK:
+                return None
+            choice = dialog.GetSelection()
+        if 0 <= choice < len(actions):
+            return actions[choice][1]
+        return None
+
+    def _maybe_remove_speech_model(self, provider: object, model_id: str) -> None:
+        wx = self._wx
+        confirm = self._show_message_box(
+            f"Remove the '{model_id}' speech model from this computer? "
+            "You can download it again later from Manage Speech Models.",
+            "Remove Speech Model",
+            wx.ICON_QUESTION | wx.YES_NO,
+        )
+        if confirm != wx.YES:
+            return
+        try:
+            provider.remove_model(model_id)  # type: ignore[attr-defined]
+        except Exception as exc:  # noqa: BLE001 - surface a clean message
+            self._set_status(f"Could not remove model: {exc}")
+            return
+        self._announce(f"Removed the {model_id} speech model.")
+
+    def _maybe_download_speech_model(self, provider: object, row: object) -> None:
+        from quill.core.speech.service import enough_disk_for, models_dir_free_gb
+
+        wx = self._wx
+        model_id = str(getattr(row, "id", ""))
+        estimate = provider.estimate_model_size(model_id)  # type: ignore[attr-defined]
+        notes: list[str] = []
+        icon = wx.ICON_QUESTION
+        warning = str(getattr(row, "ram_warning", "") or "")
+        if warning:
+            notes.append(f"{warning} It may run very slowly or fail to load.")
+            icon = wx.ICON_WARNING
+        gpu_note = str(getattr(row, "gpu_note", "") or "")
+        if gpu_note:
+            notes.append(gpu_note)
+        free_gb = models_dir_free_gb()
+        if not enough_disk_for(int(estimate.download_mb), free_gb):
+            notes.append(
+                f"Low disk space: this needs about {estimate.download_mb} MB but only "
+                f"{free_gb:.1f} GB is free where models are stored."
+            )
+            icon = wx.ICON_WARNING
+        extra = ("\n\nWarning: " + " ".join(notes)) if notes else ""
+        # Be transparent about licensing when downloading on the user's behalf.
+        license_name = str(getattr(row, "license_name", "") or "")
+        card_url = str(getattr(row, "model_card_url", "") or "")
+        license_line = ""
+        if license_name:
+            license_line = f"\n\nThis model is {license_name} licensed."
+            if card_url:
+                license_line += f" Model card: {card_url}"
+        confirm = self._show_message_box(
+            f"Download the '{model_id}' speech model (about {estimate.download_mb} MB) "
+            "from the Hugging Face Hub? It is stored on this computer and used for "
+            f"private, offline transcription.{license_line}{extra}",
+            "Download Speech Model",
+            icon | wx.YES_NO,
+        )
+        if confirm != wx.YES:
+            return
+        self._download_speech_model_with_progress(provider, model_id)
+
+    def _download_speech_model_with_progress(self, provider: object, model_id: str) -> None:
+        """Download a model on a worker thread, showing a cancelable progress gauge.
+
+        The download never touches the UI thread (so the app stays responsive),
+        reports a real percentage, and announces coarse milestones for screen
+        readers. Cancel is cooperative: the progress callback raises when the
+        user cancels, which aborts the stream and cleans up the partial file.
+        """
+        import threading
+
+        from quill.core.speech.provider import SpeechError
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
+
+        wx = self._wx
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            self.frame,
+            "Downloading Speech Model",
+            f"Preparing to download the {model_id} model...",
+            on_cancel=cancel.set,
+        )
+        progress.show()
+        self._announce(f"Downloading the {model_id} speech model.")
+        last_milestone = {"value": -1}
+
+        def _on_chunk(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise SpeechError("Download cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            progress.set_progress(percent, f"{message} {percent}%")
+            milestone = percent - (percent % 25)
+            if percent < 100 and milestone != last_milestone["value"]:
+                last_milestone["value"] = milestone
+                wx.CallAfter(self._set_status, f"Downloading {model_id}: {percent}%")
+
+        def _run() -> None:
+            try:
+                provider.download_model(model_id, _on_chunk)  # type: ignore[attr-defined]
+            except SpeechError as exc:
+                wx.CallAfter(progress.close)
+                if cancel.is_set():
+                    wx.CallAfter(self._set_status, f"Download of {model_id} cancelled.")
+                    wx.CallAfter(self._announce, f"Download of the {model_id} model cancelled.")
+                else:
+                    wx.CallAfter(self._set_status, f"Could not download model: {exc}")
+                    wx.CallAfter(self._announce, f"Could not download the model. {exc}")
+                return
+            except Exception as exc:  # noqa: BLE001 - surface a clean message
+                wx.CallAfter(progress.close)
+                wx.CallAfter(self._set_status, f"Could not download model: {exc}")
+                wx.CallAfter(self._announce, f"Could not download the model. {exc}")
+                return
+            wx.CallAfter(progress.close)
+            wx.CallAfter(self._set_status, f"Downloaded the {model_id} speech model.")
+            wx.CallAfter(self._announce, f"Downloaded the {model_id} speech model.")
+
+        threading.Thread(  # GATE-40-OK: speech model download worker.
+            target=_run, daemon=True
+        ).start()
+
+    # -- transcription ---------------------------------------------------- #
+
+    _TRANSCRIPT_FORMATS = (
+        ("Plain text", "text"),
+        ("Markdown", "markdown"),
+        ("HTML", "html"),
+    )
+
+    def _select_model_and_diarize(self, installed: list) -> tuple[str, bool]:
+        """Prefer an installed speaker-detection model (enables diarization)."""
+        from quill.core.speech.catalog import is_diarization_model
+
+        for model in installed:
+            if is_diarization_model(model.id):
+                return model.id, True
+        return self._default_model_id(installed), False
+
+    def _choose_transcript_format(self, title: str) -> str | None:
+        wx = self._wx
+        labels = [label for label, _key in self._TRANSCRIPT_FORMATS]
+        with wx.SingleChoiceDialog(self.frame, "Transcript format:", title, labels) as dialog:
+            if self._show_modal_dialog(dialog, title) != wx.ID_OK:
+                return None
+            choice = dialog.GetSelection()
+        if 0 <= choice < len(self._TRANSCRIPT_FORMATS):
+            return self._TRANSCRIPT_FORMATS[choice][1]
+        return "text"
+
+    def transcribe_audio_offline(self) -> None:
+        wx = self._wx
+        provider = self._speech_provider()
+        installed = self._installed_or_prompt(provider, "Transcribe Audio or Video")
+        if installed is None:
+            return
+        model_id, diarize = self._select_model_and_diarize(installed)
+        fmt = self._choose_transcript_format("Transcribe Audio or Video")
+        if fmt is None:
+            return
+
+        with wx.FileDialog(
+            self.frame,
+            "Choose an audio or video file to transcribe",
+            wildcard=_AUDIO_VIDEO_WILDCARD,
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Transcribe Audio or Video") != wx.ID_OK:
+                return
+            source = Path(dialog.GetPath())
+
+        from quill.core.speech.provider import TranscriptionRequest
+
+        request = TranscriptionRequest(
+            source_path=source, model_id=model_id, output_timestamps=True, diarize=diarize
+        )
+
+        def _work(progress):
+            def _on_progress(fraction: float, message: str) -> None:
+                progress(message, int(fraction * 100), 100)
+
+            return provider.transcribe_file(request, _on_progress)  # type: ignore[attr-defined]
+
+        self._run_background_task(
+            f"Transcribing {source.name}",
+            _work,
+            lambda result: self._open_transcription_result(result, fmt),
+        )
+
+    def _open_transcription_result(self, result: object, fmt: str = "text") -> None:
+        from quill.core.document import Document
+        from quill.core.speech import formatters
+
+        if fmt == "markdown":
+            text = formatters.to_markdown(result)  # type: ignore[arg-type]
+        elif fmt == "html":
+            text = formatters.to_html(result)  # type: ignore[arg-type]
+        else:
+            text = formatters.to_plain_text(result)  # type: ignore[arg-type]
+        self._create_document_tab(Document(text=text), select=True)
+        words = len((getattr(result, "full_text", "") or "").split())
+        has_speakers = any(getattr(s, "speaker", "") for s in getattr(result, "segments", ()))
+        extra = " with speaker labels" if has_speakers else ""
+        self._announce(
+            f"Transcription complete{extra}. {words} words. Review the draft transcript."
+        )
+
+    def _installed_or_prompt(self, provider: object, title: str) -> list | None:
+        """Return installed models, or None after offering to open the manager."""
+        wx = self._wx
+        installed = provider.list_installed_models()  # type: ignore[attr-defined]
+        if installed:
+            return installed
+        offer = self._show_message_box(
+            "No offline speech model is installed yet. Open Manage Speech Models to download one?",
+            title,
+            wx.ICON_INFORMATION | wx.YES_NO,
+        )
+        if offer == wx.YES:
+            self.open_speech_models()
+        return None
+
+    @staticmethod
+    def _default_model_id(installed: list) -> str:
+        from quill.core.speech.catalog import RECOMMENDED_MODEL_ID
+
+        ids = [m.id for m in installed]
+        return RECOMMENDED_MODEL_ID if RECOMMENDED_MODEL_ID in ids else ids[0]
+
+    # -- captions --------------------------------------------------------- #
+
+    def generate_captions_offline(self) -> None:
+        wx = self._wx
+        provider = self._speech_provider()
+        installed = self._installed_or_prompt(provider, "Generate Captions")
+        if installed is None:
+            return
+        model_id = self._default_model_id(installed)
+        with wx.FileDialog(
+            self.frame,
+            "Choose an audio or video file to caption",
+            wildcard=_AUDIO_VIDEO_WILDCARD,
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Generate Captions") != wx.ID_OK:
+                return
+            source = Path(dialog.GetPath())
+
+        from quill.core.speech.provider import TranscriptionRequest
+
+        request = TranscriptionRequest(
+            source_path=source, model_id=model_id, output_timestamps=True
+        )
+
+        def _work(progress):
+            def _on_progress(fraction: float, message: str) -> None:
+                progress(message, int(fraction * 100), 100)
+
+            return provider.transcribe_file(request, _on_progress)  # type: ignore[attr-defined]
+
+        self._run_background_task(
+            f"Captioning {source.name}", _work, lambda result: self._save_captions(result, source)
+        )
+
+    def _save_captions(self, result: object, source: Path) -> None:
+        from quill.core.speech import formatters
+
+        wx = self._wx
+        segments = getattr(result, "segments", ()) or ()
+        if not segments:
+            self._announce("No timed segments were produced, so captions cannot be made.")
+            return
+        formats = ["SubRip captions (.srt)", "WebVTT captions (.vtt)"]
+        with wx.SingleChoiceDialog(
+            self.frame, "Caption format:", "Generate Captions", formats
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Generate Captions") != wx.ID_OK:
+                return
+            choice = dialog.GetSelection()
+        if choice == 0:
+            text, ext = formatters.to_srt(segments), ".srt"
+        else:
+            text, ext = formatters.to_vtt(segments), ".vtt"
+        with wx.FileDialog(
+            self.frame,
+            "Save captions",
+            defaultFile=f"{source.stem}{ext}",
+            wildcard="Caption files (*.srt;*.vtt)|*.srt;*.vtt|All files (*.*)|*.*",
+            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Save captions") != wx.ID_OK:
+                return
+            target = Path(dialog.GetPath())
+        target.write_text(text, encoding="utf-8", newline="\n")
+        self._announce(f"Captions saved to {target.name}.")
+
+    # -- dictation (offline, push-to-talk) -------------------------------- #
+
+    def dictate_offline_toggle(self) -> None:
+        recorder = getattr(self, "_mic_recorder", None)
+        if recorder is not None and recorder.is_recording:
+            self._stop_and_insert_dictation(recorder)
+        else:
+            self._start_dictation()
+
+    def _start_dictation(self) -> None:
+        from quill.core.speech.capture import MicRecorder, capture_available
+
+        wx = self._wx
+        if not capture_available():
+            self._show_message_box(
+                "Offline dictation needs microphone-capture support (the optional "
+                "'sounddevice' package). You can also use Windows dictation with "
+                "Ctrl+Alt+V.",
+                "Dictate (Offline)",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        provider = self._speech_provider()
+        if self._installed_or_prompt(provider, "Dictate (Offline)") is None:
+            return
+        from quill.core.speech.service import load_input_device
+
+        recorder = MicRecorder()
+        try:
+            recorder.start(load_input_device())
+        except Exception as exc:  # noqa: BLE001 - surface a clean message
+            self._set_status(f"Could not start dictation: {exc}")
+            return
+        self._mic_recorder = recorder
+        self._play_speech_sound("transcription_started")
+        self._set_status("Dictation listening")
+        self._announce("Listening. Run Dictate (Offline) again to stop and insert.")
+
+    def _stop_and_insert_dictation(self, recorder: object) -> None:
+        self._mic_recorder = None
+        self._play_speech_sound("transcription_stopped")
+        try:
+            wav_path = recorder.stop()  # type: ignore[attr-defined]
+        except Exception as exc:  # noqa: BLE001
+            self._set_status(f"Dictation failed: {exc}")
+            return
+        provider = self._speech_provider()
+        installed = provider.list_installed_models()  # type: ignore[attr-defined]
+        if not installed:
+            self._set_status("No speech model installed.")
+            return
+        model_id = self._default_model_id(installed)
+
+        from quill.core.speech.provider import TranscriptionRequest
+
+        request = TranscriptionRequest(source_path=wav_path, model_id=model_id)
+
+        def _work(progress):
+            def _on_progress(fraction: float, message: str) -> None:
+                progress(message, int(fraction * 100), 100)
+
+            try:
+                return provider.transcribe_file(request, _on_progress)  # type: ignore[attr-defined]
+            finally:
+                try:
+                    wav_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+        self._set_status("Transcribing dictation")
+        self._announce("Transcribing dictation...")
+        self._run_background_task("Transcribing dictation", _work, self._insert_dictation_result)
+
+    def _insert_dictation_result(self, result: object) -> None:
+        text = (getattr(result, "full_text", "") or "").strip()
+        editor = getattr(self, "editor", None)
+        if not text or editor is None:
+            self._set_status("Dictation: no speech detected")
+            self._announce("No speech detected.")
+            return
+        editor.WriteText(text + " ")
+        self._play_speech_sound("transcription_word_inserted")
+        words = len(text.split())
+        self._set_status(f"Dictation inserted {words} words")
+        self._announce(f"Inserted {words} words. Press Control+Z to undo.")
+
+    @staticmethod
+    def _play_speech_sound(event_id: str) -> None:
+        """Play a dictation earcon (distinct from other sounds); never raises."""
+        try:
+            from quill.ui.sound_manager import post_sound
+
+            post_sound(event_id)
+        except Exception:  # noqa: BLE001 - a missing sound must not break dictation
+            pass
+
+    # -- offline voice commands (#663, push-to-talk) --------------------- #
+
+    def voice_command_toggle(self) -> None:
+        """Push-to-talk: speak one command and dispatch it (offline, allowlisted)."""
+        from quill.core.speech.voice_commands import voice_commands_available
+
+        if not voice_commands_available(
+            self.settings, safe_mode_active=bool(getattr(self, "_safe_mode", False))
+        ):
+            self._announce(
+                "Voice commands are off. Turn them on in Settings (they are disabled in Safe Mode)."
+            )
+            return
+        recorder = getattr(self, "_voice_recorder", None)
+        if recorder is not None and recorder.is_recording:
+            self._stop_and_dispatch_voice_command(recorder)
+        else:
+            self._start_voice_command()
+
+    def _start_voice_command(self) -> None:
+        from quill.core.speech.capture import MicRecorder, capture_available
+
+        wx = self._wx
+        if not capture_available():
+            self._show_message_box(
+                "Voice commands need microphone-capture support (the optional "
+                "'sounddevice' package).",
+                "Voice Commands",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        provider = self._speech_provider()
+        if self._installed_or_prompt(provider, "Voice Commands") is None:
+            return
+        from quill.core.speech.service import load_input_device
+
+        recorder = MicRecorder()
+        try:
+            recorder.start(load_input_device())
+        except Exception as exc:  # noqa: BLE001 - surface a clean message
+            self._set_status(f"Could not start voice commands: {exc}")
+            return
+        self._voice_recorder = recorder
+        self._play_speech_sound("transcription_started")
+        self._set_status("Listening for a command")
+        self._announce("Listening for a command. Run the command again to stop and act.")
+
+    def _stop_and_dispatch_voice_command(self, recorder: object) -> None:
+        self._voice_recorder = None
+        self._play_speech_sound("transcription_stopped")
+        try:
+            wav_path = recorder.stop()  # type: ignore[attr-defined]
+        except Exception as exc:  # noqa: BLE001
+            self._set_status(f"Voice command failed: {exc}")
+            return
+        provider = self._speech_provider()
+        installed = provider.list_installed_models()  # type: ignore[attr-defined]
+        if not installed:
+            self._set_status("No speech model installed.")
+            return
+        model_id = self._default_model_id(installed)
+
+        from quill.core.speech.provider import TranscriptionRequest
+
+        request = TranscriptionRequest(source_path=wav_path, model_id=model_id)
+
+        def _work(progress):
+            def _on_progress(fraction: float, message: str) -> None:
+                progress(message, int(fraction * 100), 100)
+
+            try:
+                return provider.transcribe_file(request, _on_progress)  # type: ignore[attr-defined]
+            finally:
+                try:
+                    wav_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+        self._set_status("Recognizing command")
+        self._run_background_task("Recognizing command", _work, self._dispatch_voice_result)
+
+    def _dispatch_voice_result(self, result: object) -> None:
+        from quill.core.ai.agent import SAFE_TOOL_IDS
+        from quill.core.speech.voice_commands import resolve_transcript
+
+        transcript = (getattr(result, "full_text", "") or "").strip()
+        outcome = resolve_transcript(transcript, self.commands)
+        if outcome.kind == "run" and outcome.command_id in SAFE_TOOL_IDS:
+            self._announce(outcome.message)
+            try:
+                self.commands.run(outcome.command_id)
+            except KeyError:
+                self._set_status("That command is not available right now.")
+        else:
+            # cancel / no_match / a command that fell outside the safe allowlist.
+            self._set_status(outcome.message)
+            self._announce(outcome.message)
+
+    # -- microphone selection --------------------------------------------- #
+
+    def choose_dictation_microphone(self) -> None:
+        from quill.core.speech.capture import list_input_devices
+        from quill.core.speech.service import load_input_device, save_input_device
+
+        wx = self._wx
+        devices = list_input_devices()
+        if not devices:
+            self._show_message_box(
+                "No microphones were found, or microphone-capture support (the "
+                "optional 'sounddevice' package) is not installed.",
+                "Dictation Microphone",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        current = load_input_device()
+        labels = ["System default microphone"] + [name for _index, name in devices]
+        selected_row = 0
+        for row, (index, _name) in enumerate(devices, start=1):
+            if index == current:
+                selected_row = row
+        with wx.SingleChoiceDialog(
+            self.frame,
+            "Choose the microphone for offline dictation:",
+            "Dictation Microphone",
+            labels,
+        ) as dialog:
+            dialog.SetSelection(selected_row)
+            if self._show_modal_dialog(dialog, "Dictation Microphone") != wx.ID_OK:
+                return
+            choice = dialog.GetSelection()
+        if choice <= 0:
+            save_input_device(-1)
+            self._announce("Dictation microphone set to the system default.")
+            return
+        index, name = devices[choice - 1]
+        save_input_device(index)
+        self._announce(f"Dictation microphone set to {name}.")
+
+    # -- command registration --------------------------------------------- #
+
+    def _register_speech_commands(self) -> None:
+        specs = [
+            ("tools.speech_models", "Manage Speech Models", self.open_speech_models),
+            (
+                "tools.speech_transcribe",
+                "Transcribe Audio or Video (Offline)",
+                self.transcribe_audio_offline,
+            ),
+            (
+                "tools.speech_captions",
+                "Generate Captions (Offline)",
+                self.generate_captions_offline,
+            ),
+            ("tools.speech_dictate", "Dictate (Offline)", self.dictate_offline_toggle),
+            ("tools.speech_microphone", "Dictation Microphone", self.choose_dictation_microphone),
+            ("tools.speech_ffmpeg", "Download FFmpeg", self.download_ffmpeg),
+            ("tools.speech_hf_token", "Hugging Face Token", self.set_huggingface_token),
+        ]
+        for command_id, title, handler in specs:
+            self.commands.try_register(
+                command_id,
+                title,
+                handler,
+                self._binding_for(command_id),
+                feature_id="core.dictation",
+            )

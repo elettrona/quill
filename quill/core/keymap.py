@@ -1,8 +1,13 @@
 from __future__ import annotations
 
 import logging
+import sys
 from pathlib import Path
 
+from quill.core.keymap_format import (
+    format_binding_for_display,
+    format_quill_key_chord,
+)
 from quill.core.keymap_packs import (
     KEYBOARD_PACK_CUSTOM,
     KEYBOARD_PACK_DEFAULT,
@@ -11,10 +16,6 @@ from quill.core.keymap_packs import (
     keyboard_pack_description,
     keyboard_pack_names,
     keyboard_pack_preview,
-)
-from quill.core.keymap_format import (
-    format_binding_for_display,
-    format_quill_key_chord,
 )
 from quill.core.paths import app_data_dir
 from quill.core.storage import read_json, write_json_atomic
@@ -69,13 +70,21 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "view.toggle_tab_control": "Ctrl+Shift+Grave, Shift+T",
     "app.command_palette": "Ctrl+Shift+P",
     "app.preferences": "Ctrl+,",
-    "app.exit": "Alt+F4",
+    # #608: app.exit is bound to Ctrl+Q so it maps to Cmd+Q on macOS
+    # (the conventional Quit shortcut) and Alt+F4 on Windows is also
+    # wired by the wx stock accelerator on the file menu. Quote Lines
+    # was moved to Ctrl+Shift+Q to free up Ctrl+Q.
+    "app.exit": "Ctrl+Q",
     "navigate.go_to_line": "Ctrl+G",
     "navigate.go_to_page": "Ctrl+Shift+G",
     "navigate.next_region": "F6",
     "navigate.previous_region": "Shift+F6",
-    "navigate.back_location": "Alt+Left",
-    "navigate.forward_location": "Alt+Right",
+    # #609: on macOS, Alt+Left / Alt+Right collide with the system-standard
+    # Option+Left / Option+Right word-by-word movement (and with
+    # VoiceOver's word-by-word reading). Use Cmd+[ / Cmd+] on macOS,
+    # which is the conventional macOS back/forward chord.
+    "navigate.back_location": "Cmd+[" if sys.platform == "darwin" else "Alt+Left",
+    "navigate.forward_location": "Cmd+]" if sys.platform == "darwin" else "Alt+Right",
     "navigate.outline_navigator": "Ctrl+Shift+O",
     "navigate.match_bracket": "Ctrl+Shift+\\",
     "navigate.next_structure": "Alt+Down",
@@ -92,6 +101,7 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "tools.read_aloud_start_pause": "Ctrl+Shift+Grave, R",  # §10.8.2: P→R
     "tools.read_aloud_stop": "Ctrl+Shift+Grave, Shift+R",  # §10.8.2: Shift+P→Shift+R
     "tools.dictation_toggle": "Ctrl+Shift+Grave, D",
+    "tools.speech_dictate": "Ctrl+Shift+Grave, Shift+D",
     "tools.describe_image": "Ctrl+Shift+Grave, I",
     "tools.document_intake_report": "Ctrl+Shift+I",
     # #357 keymap consolidation: AI commands move from inline F7/Shift+F7/F8/
@@ -184,8 +194,14 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "edit.select_to_end_of_line": "Shift+End",
     "edit.select_to_start_of_document": "Ctrl+Shift+Home",
     "edit.select_to_end_of_document": "Ctrl+Shift+End",
-    "edit.quote_lines": "Ctrl+Q",  # §4.22 advanced-editor parity
-    "edit.unquote_lines": "Ctrl+Shift+Q",  # §4.22 advanced-editor parity
+    # #608: Quote Lines moved from Ctrl+Q to Ctrl+Shift+Q so Ctrl+Q is
+    # free for the system Quit shortcut on macOS (Cmd+Q maps to Ctrl+Q in
+    # wxPython). Unquote Lines moved from Ctrl+Shift+Q to Ctrl+Shift+K
+    # to keep the two commands as a near-mirror pair (Shift+Q -> Shift+K
+    # to stay in the home row). The legacy_rebinding entries below
+    # rewrite the prior pair on load for users who saved them to disk.
+    "edit.quote_lines": "Ctrl+Shift+Q",  # §4.22 advanced-editor parity; #608
+    "edit.unquote_lines": "Ctrl+Shift+K",  # §4.22 advanced-editor parity; #608
     "edit.duplicate_selection": "",  # §4.17; no default key to avoid Ctrl+D clash
     "edit.reverse_lines": "Alt+Shift+Z",  # §4.22 advanced-editor parity
     "format.toggle_line_comment": "Ctrl+/",
@@ -295,8 +311,45 @@ def keymap_path() -> Path:
 
 
 def load_keymap() -> dict[str, str]:
-    raw = read_json(keymap_path(), default={})
-    return merge_keymaps(raw)
+    """Load the user's keymap from disk and return the cleaned merged map.
+
+    The on-disk file is the user's saved overrides. ``merge_keymaps``
+    starts from ``DEFAULT_KEYMAP`` and applies only the saved entries
+    that are still valid (recognized command id, non-empty chord, no
+    conflict with another command). Invalid entries are dropped so the
+    default takes effect.
+
+    If the merge dropped any entries the user had on disk, the cleaned
+    subset is persisted back so the saved file reflects "what was
+    actually honored" on the next startup. Files that are already clean
+    (every saved entry survives the merge) are left untouched, so a
+    small per-user delta file stays small.
+    """
+    path = keymap_path()
+    raw = read_json(path, default={})
+    if not isinstance(raw, dict):
+        return DEFAULT_KEYMAP.copy()
+    cleaned = merge_keymaps(raw)
+    # Compute the set of dropped keys: present in raw but missing from
+    # cleaned, or present in both but with the default value restored.
+    # These are the entries the user had on disk that did not survive the
+    # merge — they need to be persisted out so the file reflects what we
+    # actually honored.
+    dropped = [k for k in raw if k not in cleaned or cleaned.get(k) == DEFAULT_KEYMAP.get(k)]
+    if dropped:
+        # Persist only the user's surviving overrides, not the full
+        # DEFAULT_KEYMAP, so the on-disk file stays a small delta. The
+        # dropped entries have been logged; they will not reappear on
+        # the next launch because they are no longer in the file.
+        surviving = {k: v for k, v in cleaned.items() if k in raw and v != DEFAULT_KEYMAP.get(k)}
+        try:
+            write_json_atomic(path, surviving)
+        except OSError as exc:
+            # Persistence is best-effort: a read-only install or a locked
+            # file should not stop QUILL from launching with the cleaned
+            # map in memory. The cleanup will retry on the next launch.
+            logger.debug("Could not persist cleaned keymap to %s: %s", path, exc)
+    return cleaned
 
 
 def load_keymap_profile(name: str) -> dict[str, str]:
@@ -355,6 +408,12 @@ def merge_keymaps(raw: object) -> dict[str, str]:
         # Find returns to the conventional Ctrl+F. It had briefly defaulted to the
         # QUILL-key prefix; rewrite that stale saved binding on load.
         "edit.find": ("CTRL+SHIFT+GRAVE, F", "Ctrl+F"),
+        # #608: Quote Lines moves from Ctrl+Q to Ctrl+Shift+Q so Cmd+Q
+        # can quit on macOS. Unquote Lines moves from Ctrl+Shift+Q to
+        # Ctrl+Shift+K to stay in the home row and free Ctrl+Q entirely.
+        # Rewrite the prior pair on load for users who saved them.
+        "edit.quote_lines": ("Ctrl+Q", "Ctrl+Shift+Q"),
+        "edit.unquote_lines": ("Ctrl+Shift+Q", "Ctrl+Shift+K"),
         # window.next_document / previous_document: Ctrl+Tab restored as default
         # in #190; no legacy rebinding needed.
         "view.send_to_tray": ("CTRL+ALT+T", "Ctrl+Shift+Grave, T"),
@@ -389,18 +448,42 @@ def merge_keymaps(raw: object) -> dict[str, str]:
         "edit.expand_selection": ("ALT+SHIFT+UP", "Ctrl+Shift+Grave, J"),
         "edit.shrink_selection": ("ALT+SHIFT+DOWN", "Ctrl+Shift+Grave, Shift+J"),
     }
+    # #609: on macOS, a user who saved Alt+Left / Alt+Right for
+    # back/forward location on a pre-#609 build has a saved entry that
+    # now collides with the system word-by-word shortcut. Rewrite it to
+    # the new macOS chord (Cmd+[ / Cmd+]) on first load.
+    if sys.platform == "darwin":
+        legacy_rebindings["navigate.back_location"] = ("Alt+Left", "Cmd+[")
+        legacy_rebindings["navigate.forward_location"] = ("Alt+Right", "Cmd+]")
     for command_id, binding in raw.items():
         if isinstance(command_id, str) and isinstance(binding, str):
+            # A binding for a command id that no longer ships in DEFAULT_KEYMAP
+            # is no longer valid; drop it so the default (which is to omit it)
+            # takes effect.
+            if command_id not in DEFAULT_KEYMAP:
+                logger.debug("Dropping keymap entry for unknown command: %r", command_id)
+                continue
             normalized = binding
             legacy_binding = legacy_rebindings.get(command_id)
-            if legacy_binding is not None and normalized.strip().upper() == legacy_binding[0]:
+            if (
+                legacy_binding is not None
+                and normalized.strip().upper() == legacy_binding[0].upper()
+            ):  # noqa: E501
                 normalized = legacy_binding[1]
+            # An empty binding means "use the default" — drop it so the
+            # default in DEFAULT_KEYMAP takes effect (do not store "" on top).
             if not normalized.strip():
-                merged[command_id] = ""
                 continue
             conflict = find_keymap_conflict(merged, command_id, normalized)
             if conflict is None:
                 merged[command_id] = normalized
+            else:
+                logger.debug(
+                    "Dropping keymap entry for %r: chord %r already taken by %r",
+                    command_id,
+                    normalized,
+                    conflict,
+                )
     return merged
 
 

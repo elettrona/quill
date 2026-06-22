@@ -61,8 +61,10 @@ def test_repository_root_markdown_is_limited_to_sanctioned_files() -> None:
     stray = sorted(present - _SANCTIONED_ROOT_MARKDOWN)
     assert stray == [], (
         "Only conventional root Markdown files are allowed at the repository "
-        "root; design, research, and planning notes belong under docs/ (for "
-        f"example docs/planning/). Found unsanctioned root Markdown: {stray}"
+        "root; design, research, and planning notes belong under docs/ "
+        "(planning material now lives in the QUILL-PRD, the user guide, and "
+        f"the release notes since the 0.7.0 release scope). Found unsanctioned "
+        f"root Markdown: {stray}"
     )
 
 
@@ -73,14 +75,15 @@ def test_docs_are_in_their_expected_homes() -> None:
     docs = _REPO_ROOT / "docs"
     # Quillin scripting contract lives under docs/quillins/ alongside generated epub/html.
     assert (docs / "quillins" / "quillins.md").is_file(), "missing docs/quillins/quillins.md"
-    # Planning roadmap lives under docs/planning/. The braille spec used to be a
-    # standalone file here; it was rolled into planning.md on 2026-06-18, so
-    # braille.md must not reappear.
-    assert (docs / "planning" / "planning.md").is_file(), "missing docs/planning/planning.md"
-    assert not (docs / "planning" / "braille.md").is_file(), (
-        "docs/planning/braille.md was rolled into planning.md; "
-        "restore the planning section instead."
-    )
+    # docs/planning/ is retained as the home for active planning, backlog, and
+    # naming/branding material (roadmap, feature/braille backlogs, the consolidated
+    # 1.0 tracker, the TINDRA naming plan, ...). The earlier 0.7.0 "merge then
+    # delete the planning folder" scope was superseded by keeping it as a living
+    # home for in-flight planning, so guard that the folder and its anchor file
+    # exist rather than forbidding them.
+    planning = docs / "planning"
+    assert planning.is_dir(), "missing docs/planning/ (the home for planning docs)"
+    assert (planning / "roadmap.md").is_file(), "missing docs/planning/roadmap.md"
     # User guide lives under docs/user guide/
     assert (docs / "user guide" / "userguide.md").is_file(), "missing docs/user guide/userguide.md"
     # PRD lives under docs/Product Requirement Documents and Specifications/

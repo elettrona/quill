@@ -28,9 +28,17 @@ def test_convert_document_with_pandoc_returns_stdout(monkeypatch, tmp_path: Path
     tool_status = type("Status", (), {"installed": True, "path": "C:/Tools/pandoc.exe"})()
 
     class Completed:
+        returncode = 0
         stdout = "# Converted\n"
 
-    monkeypatch.setattr("quill.io.pandoc.subprocess.run", lambda *args, **kwargs: Completed())
+    # quill/io/pandoc.py delegates subprocess launching to
+    # run_subprocess_safely (so the redact-args-in-logs contract applies);
+    # monkeypatch the safety wrapper, not a module-level subprocess import
+    # that no longer exists.
+    monkeypatch.setattr(
+        "quill.io.pandoc.run_subprocess_safely",
+        lambda *args, **kwargs: Completed(),
+    )
 
     result = convert_document_with_pandoc(source, "markdown", tool_status=tool_status)
 
@@ -47,7 +55,12 @@ def test_convert_document_with_pandoc_raises_on_error(monkeypatch, tmp_path: Pat
     def raise_error(*_args, **_kwargs):
         raise subprocess.CalledProcessError(1, ["pandoc"], stderr="bad input")
 
-    monkeypatch.setattr("quill.io.pandoc.subprocess.run", raise_error)
+    monkeypatch.setattr(
+        "quill.io.pandoc.run_subprocess_safely",
+        raise_error,
+    )
 
-    with pytest.raises(PandocConversionError, match="bad input"):
+    # #262 rewrote the error path through _map_exception which formats the
+    # message as "Pandoc invocation failed: <stderr from CalledProcessError>".
+    with pytest.raises(PandocConversionError, match="Pandoc invocation failed"):
         convert_document_with_pandoc(source, "markdown", tool_status=tool_status)

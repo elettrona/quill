@@ -134,8 +134,16 @@ class HygieneMixin:
             except Exception:  # noqa: BLE001
                 self._hygiene_dialog = None
 
+        # The dialog must be parented to the real wx.Frame (stored as
+        # ``self.frame``), not the mixin instance itself — the mixin class
+        # does not inherit from wx.Window, so passing ``self`` here produces
+        # a ``TypeError: Dialog(): argument 1 has unexpected type
+        # 'MainFrame'`` from wxPython's SIP wrapper. See issue #624.
+        parent_frame = getattr(self, "frame", None)
+        if parent_frame is None:
+            return
         self._hygiene_dialog = HygieneReviewDialog(
-            self,  # type: ignore[arg-type]
+            parent_frame,
             findings,
             on_apply_fix=self._hygiene_apply_fix,
             on_go_to=self._hygiene_goto,
