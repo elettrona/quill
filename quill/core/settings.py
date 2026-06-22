@@ -170,6 +170,11 @@ class Settings:
     verbosity_history_clear_on_exit: bool = False
     verbosity_task_profile_suggestions: bool = False
     verbosity_safe_mode_enabled: bool = False
+    # #181: automatic Document Language detection on paste/typing. One of
+    # "off" (default), "hint" (status bar only), "prompt" (announce a suggestion),
+    # or "auto" (switch automatically). Only ever acts on unpinned untitled/.txt
+    # documents; never overrides a real extension or a user choice.
+    language_detection_mode: str = "off"
     # SET-4: tunable behavior toggles
     browse_mode_sticky: bool = False
     quill_key_sound_enter: str = ""
@@ -589,6 +594,9 @@ class Settings:
         )
         if verbosity_validation_mode not in {"on_button", "on_focus", "live"}:
             verbosity_validation_mode = "on_button"
+        language_detection_mode = str(data.get("language_detection_mode", "off")).strip().lower()
+        if language_detection_mode not in {"off", "hint", "prompt", "auto"}:
+            language_detection_mode = "off"
         verbosity_history_enabled = bool(data.get("verbosity_history_enabled", True))
         verbosity_history_limit = _clamp_int(
             data.get("verbosity_history_limit", 100), 100, 1, 10000
@@ -872,6 +880,7 @@ class Settings:
             verbosity_mastery_enabled=verbosity_mastery_enabled,
             verbosity_mastery_threshold=verbosity_mastery_threshold,
             verbosity_validation_mode=verbosity_validation_mode,
+            language_detection_mode=language_detection_mode,
             verbosity_history_enabled=verbosity_history_enabled,
             verbosity_history_limit=verbosity_history_limit,
             verbosity_history_clear_on_exit=verbosity_history_clear_on_exit,

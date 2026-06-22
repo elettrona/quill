@@ -256,6 +256,35 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("wrap", "word wrap", "lines"),
     ),
     SettingSpec(
+        "language_detection_mode",
+        "Auto-detect document language",
+        "editing",
+        "choice",
+        (
+            "Detect the programming or markup language when you paste or type code "
+            "into a plain text or untitled document, so you get that language's "
+            "editing characteristics. Never overrides a real file extension or a "
+            "language you set yourself."
+        ),
+        choices=(
+            ("off", "Off"),
+            ("hint", "Hint in the status bar only"),
+            ("prompt", "Suggest and announce, you confirm"),
+            ("auto", "Switch automatically"),
+        ),
+        keywords=(
+            "language",
+            "detect",
+            "auto",
+            "syntax",
+            "paste",
+            "html",
+            "markdown",
+            "code",
+            "profile",
+        ),
+    ),
+    SettingSpec(
         "wrap_find",
         "Wrap find searches",
         "editing",

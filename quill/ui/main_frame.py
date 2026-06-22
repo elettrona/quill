@@ -499,6 +499,7 @@ from quill.ui.main_frame_github import GitHubRemoteMixin
 from quill.ui.main_frame_hygiene import HygieneMixin
 from quill.ui.main_frame_image import ImageCaptureMixin
 from quill.ui.main_frame_intellisense import IntellisensePopupMixin
+from quill.ui.main_frame_language_detect import LanguageDetectMixin
 from quill.ui.main_frame_line_commands import LineCommandsMixin
 from quill.ui.main_frame_menu import MenuBuilderMixin
 from quill.ui.main_frame_notebook import NotebookUIMixin
@@ -805,6 +806,7 @@ class MainFrame(
     AiActionsMixin,
     SpeechCommandsMixin,
     VerbosityCommandsMixin,
+    LanguageDetectMixin,
     BrailleProofingCommandsMixin,
     BraillePhase2CommandsMixin,
     BrailleCommandsMixin,
@@ -4310,6 +4312,8 @@ class MainFrame(
         self._maybe_autosave()
         self._refresh_title()
         self._refresh_contextual_menu_items()
+        # #181: debounced auto language detection (no-op unless enabled in Settings).
+        self._schedule_language_detection()
         # Quiet: this fires on every keystroke; speaking "Modified" each time is
         # noise for a screen reader (it already echoes the typed character).
         self._set_status_quiet(status)
@@ -14436,6 +14440,7 @@ class MainFrame(
         if choice_name == auto:
             tab._language_profile_pinned = False
             tab._language_profile = get_profile_for_path(tab.document.path)
+            self._last_language_suggestion = None  # allow auto-detection to re-suggest
             self._apply_statusbar_layout()
             self._request_menu_refresh()
             self._set_status("Language: auto-detect from file")
@@ -14451,6 +14456,7 @@ class MainFrame(
                 return
         tab._language_profile = profile
         tab._language_profile_pinned = True
+        self._note_language_session_use(profile.name)
         self._apply_statusbar_layout()
         self._request_menu_refresh()
         hint = self._save_as_hint_for_language(profile)
