@@ -76,6 +76,13 @@ class LanguageDetectMixin:
         text = editor.GetValue()
         if len(text) < _MIN_CHARS_TO_DETECT:
             return
+        # Braille content is not a programming language; if it looks like ASCII
+        # braille, suggest Braille Mode instead of a code profile.
+        from quill.core.brf_ascii import looks_like_braille
+
+        if looks_like_braille(text):
+            self._maybe_suggest_braille_mode(mode)
+            return
         result = detect_language(text, bias=getattr(self, "_language_session_bias", None))
         if result.language is None:
             return
@@ -87,6 +94,27 @@ class LanguageDetectMixin:
             return  # already suggested/applied; don't nag while they keep typing
         self._last_language_suggestion = result.language
         self._act_on_language_detection(mode, result.language, result.confidence)
+
+    def _maybe_suggest_braille_mode(self, mode: str) -> None:
+        """Offer Braille Mode for pasted ASCII-braille (never auto-enters a mode).
+
+        Entering Braille Mode changes the whole editing surface, so even in
+        "auto" this only suggests — it does not switch for you.
+        """
+        if getattr(self, "_last_language_suggestion", None) == "__braille__":
+            return  # already suggested; don't nag
+        self._last_language_suggestion = "__braille__"
+        if mode == "hint":
+            self._set_status(
+                "Looks like Braille — use Help > Enable Braille Mode to open it as braille."
+            )
+        else:  # prompt or auto
+            message = (
+                "This looks like Braille. Use Help, Enable Braille Mode to open it "
+                "as a braille document."
+            )
+            self._set_status(message)
+            self._announce(message)
 
     def _act_on_language_detection(self, mode: str, language: str, confidence: float) -> None:
         percent = int(round(confidence * 100))

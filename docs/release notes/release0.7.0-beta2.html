@@ -621,6 +621,14 @@ chooser.</li>
 </ul>
 <p>None of these are required to launch, edit, or save — QUILL runs
 fully without them.</p>
+<p><strong>Installing from source (developers).</strong> If you install
+with <code>pip</code> rather than the Windows installer and the
+on-device AI extra, note that <code>llama-cpp-python</code> has prebuilt
+CPU wheels but no Windows wheel on PyPI itself. If <code>pip</code>
+starts a slow source build, force the wheel with
+<code>pip install --only-binary=llama-cpp-python ...</code> (QUILL's
+requirements already point at the CPU wheel index). Installer users are
+unaffected.</p>
 <p>You should not need to edit <code>keymap.json</code> or rebuild your
 preferences by hand. Because this is a beta, please keep telling us
 anything that feels confusing, inaccessible, unreliable, or harder than
