@@ -174,6 +174,16 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("recent", "history", "files"),
     ),
     SettingSpec(
+        "recent_files_auto_clear_missing",
+        "Drop missing recent files automatically",
+        "general",
+        "bool",
+        "Remove Recent Files entries whose file no longer exists, but only on "
+        "fixed internal drives -- never on removable, USB, or network drives "
+        "(where a missing file usually means the drive is disconnected).",
+        keywords=("recent", "history", "files", "missing", "clean up"),
+    ),
+    SettingSpec(
         "language",
         "Interface language",
         "general",

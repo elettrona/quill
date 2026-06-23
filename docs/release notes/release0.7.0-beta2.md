@@ -395,6 +395,11 @@ the same behaviour described here.
   Changes** announces when the file still matches what is on disk.
 - **Ctrl+W closes the current document.** If no side preview is open, Ctrl+W now
   closes the active document instead of doing nothing.
+- **Recent Files can tidy itself.** A new General setting, **Drop missing recent
+  files automatically** (off by default), removes Recent Files entries whose file
+  is gone — but only on your fixed internal drives. Files on USB, removable, or
+  network drives are left alone, since "missing" there usually just means the
+  drive is unplugged or offline.
 - The unfinished **Pandoc Conversion Center** menu item was removed; use
   **File > Import** / **File > Export** (and **Tools > Batch Conversion** for
   folders).

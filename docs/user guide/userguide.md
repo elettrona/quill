@@ -307,7 +307,7 @@ The **File** menu is the full document lifecycle.
 
 - **New** creates a blank document.
 - **Open...** opens a document from disk.
-- **Open Recent** returns quickly to recently used files.
+- **Open Recent** returns quickly to recently used files. If you turn on **Drop missing recent files automatically** in Settings (General), entries whose file has been deleted from a fixed internal drive are removed from the list. Files on USB, removable, or network drives are always kept, so unplugging a drive never clears its history.
 - **Open from URL...** downloads a document or text resource through an explicit safety flow that confirms host and expected size.
 - **Open from Remote**, **Save to Remote**, **Save Copy to Remote**, and **Manage Remote Sites...** (in the *Open from Remote* submenu) open, save, and administer saved sites over **FTP, SFTP, HTTPS, WebDAV, and Amazon S3 (or any S3-compatible service)**. Each remote operation is explicit, runs over a verified TLS context, announces host and expected size, and never writes to disk before you confirm.
 - **Snapshots** lets you save and reopen groups of documents as a single workspace snapshot, similar to lightweight workspaces in Visual Studio Code.

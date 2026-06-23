@@ -48,8 +48,13 @@ and 13, and likely contributes to 10. A small systemic fix is proposed below.
    assume the document is clean. Chose the spoken-count form over auto-wrap to
    keep the caret where the user left it. `_misspellings_behind_message`.
 
-10. **Watch Folder queue "does nothing", returns to editor.** Likely an
-    empty-state or no-op path with no spoken feedback. Needs investigation.
+10. **(PARTIAL) Watch Folder queue "does nothing", returns to editor.** The most
+    likely cause matched the silent-status theme: when `core.watch_folder` is
+    gated off in the active profile, `show_watch_folder_status` set a silent
+    status and returned focus to the editor. That early return now force-speaks
+    "Watch folder is unavailable in this profile" via `_announce_result`. If the
+    feature is enabled and the monitor still feels empty, that needs a live
+    repro (the dialog populates from the live queue).
 
 11. **(DONE) Ctrl+W closes the active document when there is no split preview.**
     The char-hook Ctrl+W branch consumed the key to close a side preview and,
@@ -57,25 +62,29 @@ and 13, and likely contributes to 10. A small systemic fix is proposed below.
     falls back to `close_current_document` (guarded to the document surface so it
     doesn't hijack Ctrl+W inside a modal/WebView dialog).
 
-12. **Snapshots submenu confusion.** File > Snapshots IS a submenu (workspace
-    snapshots: Save/Open Snapshot, Recent Snapshots, Open Documents in Current
-    Workspace) populated by `_refresh_sessions_menu`. User sees right-arrow jump
-    to Edit and Enter do nothing, which means it renders empty for them -- a
-    population/timing bug to reproduce. Also a terminology collision: "Snapshot"
-    is reused under File > Notebook (Save/Restore/Manage Snapshots). Decide:
-    fix population, and rename one set to remove the collision (e.g. workspace
-    "Snapshots" vs notebook "Versions").
+12. **(DEFERRED — needs live repro) Snapshots submenu confusion.** Reviewed
+    `_refresh_sessions_menu`: at menu-build time (`_menu_open_depth == 0`) it
+    populates four items (Save/Open Snapshot, Recent Snapshots, separator, Open
+    Documents in Current Workspace) and the deferral guard returns *before*
+    clearing, so a deferred refresh cannot empty an already-built submenu. No
+    blind code change made — the empty-render needs an interactive repro to find
+    the actual trigger. The terminology collision (workspace "Snapshots" vs
+    notebook "Snapshots") is a real, separate UX fix (rename notebook set to
+    "Versions"); it touches many labels/docs and should be its own change.
 
 13. **(DONE) "Check for External Changes" now speaks the no-change result.**
     The `ReloadAction.NONE` path force-speaks "'<file>' matches the on-disk
     version." via `_announce_result`, so it is confirmed aloud under a screen
     reader instead of updating a status the user never hears.
 
-14. **Recent files: auto-clear missing entries (setting).** Add a setting to drop
-    recent-file entries whose target no longer exists on disk, but **only for
-    fixed/internal drives** -- never for removable/USB, network, or portable
-    drives (a file "missing" there usually means the drive is detached, not
-    deleted). New setting + drive-type detection.
+14. **(DONE) Recent files: auto-clear missing entries (setting).** New
+    `recent_files_auto_clear_missing` setting (off by default, General tab).
+    When on, `prune_missing_recent_files` drops entries whose file is gone, but
+    only on a **confirmed fixed/internal drive** (Win32 `GetDriveTypeW` ==
+    `DRIVE_FIXED`); removable/USB/network/unknown drives and non-Windows
+    platforms are never probed and always kept, so a detached drive can't wipe
+    its history. Applied at startup load; the pruned list is persisted. Logic is
+    wx-free in `quill/core/recent.py` with unit tests.
 
 15. **(DONE) Search menu no longer announces a dangling "Separator".** The
     power-tools group's first item declares `separator_before`, so when the regex

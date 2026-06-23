@@ -312,7 +312,13 @@ from quill.core.read_aloud import (
 from quill.core.read_aloud import (
     VoiceOption as ReadAloudVoiceOption,
 )
-from quill.core.recent import add_recent_file, clear_recent_files, load_recent_files
+from quill.core.recent import (
+    add_recent_file,
+    clear_recent_files,
+    load_recent_files,
+    prune_missing_recent_files,
+    save_recent_files,
+)
 from quill.core.recovery import (
     begin_session,
     mark_clean_exit,
@@ -1034,6 +1040,15 @@ class MainFrame(
             self._active_language = "en"
         self.keymap = dict(DEFAULT_KEYMAP) if safe_mode else load_keymap()
         self.recent_files = [] if safe_mode else load_recent_files()
+        if not safe_mode and getattr(self.settings, "recent_files_auto_clear_missing", False):
+            # #14: drop entries whose file is gone, but only on confirmed fixed
+            # internal drives (never removable/network), then persist the pruned
+            # list so the menu and the on-disk history stay in sync.
+            self.recent_files, _dropped = prune_missing_recent_files(
+                self.recent_files, enabled=True
+            )
+            if _dropped:
+                save_recent_files(self.recent_files)
         self._trusted_locations = set() if safe_mode else load_trusted_locations()
         self.session_id = str(uuid4())
         self._recovery_offers = [] if safe_mode else begin_session(self.session_id)
@@ -17498,7 +17513,9 @@ class MainFrame(
     def show_watch_folder_status(self) -> None:
         """Open the accessible Watch Queue Monitor (WATCH-4)."""
         if not self._feature_enabled("core.watch_folder"):
-            self._set_status("Watch folder is unavailable in this profile")
+            # #10: this early return left focus in the editor with only a silent
+            # status, so the command looked like it "did nothing". Speak it.
+            self._announce_result("Watch folder is unavailable in this profile")
             return
         existing = self._watch_queue_monitor
         if existing is not None:

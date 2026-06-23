@@ -235,35 +235,46 @@ the reverse for F8) via the new <code>_announce_result</code> helper, so
 the user knows to reverse rather than assume the document is clean.
 Chose the spoken-count form over auto-wrap to keep the caret where the
 user left it. <code>_misspellings_behind_message</code>.</p></li>
-<li><p><strong>Watch Folder queue "does nothing", returns to
-editor.</strong> Likely an empty-state or no-op path with no spoken
-feedback. Needs investigation.</p></li>
+<li><p><strong>(PARTIAL) Watch Folder queue "does nothing", returns to
+editor.</strong> The most likely cause matched the silent-status theme:
+when <code>core.watch_folder</code> is gated off in the active profile,
+<code>show_watch_folder_status</code> set a silent status and returned
+focus to the editor. That early return now force-speaks "Watch folder is
+unavailable in this profile" via <code>_announce_result</code>. If the
+feature is enabled and the monitor still feels empty, that needs a live
+repro (the dialog populates from the live queue).</p></li>
 <li><p><strong>(DONE) Ctrl+W closes the active document when there is no
 split preview.</strong> The char-hook Ctrl+W branch consumed the key to
 close a side preview and, when none was open, swallowed it before the
 accelerator could fire. It now falls back to
 <code>close_current_document</code> (guarded to the document surface so
 it doesn't hijack Ctrl+W inside a modal/WebView dialog).</p></li>
-<li><p><strong>Snapshots submenu confusion.</strong> File &gt; Snapshots
-IS a submenu (workspace snapshots: Save/Open Snapshot, Recent Snapshots,
-Open Documents in Current Workspace) populated by
-<code>_refresh_sessions_menu</code>. User sees right-arrow jump to Edit
-and Enter do nothing, which means it renders empty for them -- a
-population/timing bug to reproduce. Also a terminology collision:
-"Snapshot" is reused under File &gt; Notebook (Save/Restore/Manage
-Snapshots). Decide: fix population, and rename one set to remove the
-collision (e.g. workspace "Snapshots" vs notebook "Versions").</p></li>
+<li><p><strong>(DEFERRED — needs live repro) Snapshots submenu
+confusion.</strong> Reviewed <code>_refresh_sessions_menu</code>: at
+menu-build time (<code>_menu_open_depth == 0</code>) it populates four
+items (Save/Open Snapshot, Recent Snapshots, separator, Open Documents
+in Current Workspace) and the deferral guard returns <em>before</em>
+clearing, so a deferred refresh cannot empty an already-built submenu.
+No blind code change made — the empty-render needs an interactive repro
+to find the actual trigger. The terminology collision (workspace
+"Snapshots" vs notebook "Snapshots") is a real, separate UX fix (rename
+notebook set to "Versions"); it touches many labels/docs and should be
+its own change.</p></li>
 <li><p><strong>(DONE) "Check for External Changes" now speaks the
 no-change result.</strong> The <code>ReloadAction.NONE</code> path
 force-speaks "'<file>' matches the on-disk version." via
 <code>_announce_result</code>, so it is confirmed aloud under a screen
 reader instead of updating a status the user never hears.</p></li>
-<li><p><strong>Recent files: auto-clear missing entries
-(setting).</strong> Add a setting to drop recent-file entries whose
-target no longer exists on disk, but <strong>only for fixed/internal
-drives</strong> -- never for removable/USB, network, or portable drives
-(a file "missing" there usually means the drive is detached, not
-deleted). New setting + drive-type detection.</p></li>
+<li><p><strong>(DONE) Recent files: auto-clear missing entries
+(setting).</strong> New <code>recent_files_auto_clear_missing</code>
+setting (off by default, General tab). When on,
+<code>prune_missing_recent_files</code> drops entries whose file is
+gone, but only on a <strong>confirmed fixed/internal drive</strong>
+(Win32 <code>GetDriveTypeW</code> == <code>DRIVE_FIXED</code>);
+removable/USB/network/unknown drives and non-Windows platforms are never
+probed and always kept, so a detached drive can't wipe its history.
+Applied at startup load; the pruned list is persisted. Logic is wx-free
+in <code>quill/core/recent.py</code> with unit tests.</p></li>
 <li><p><strong>(DONE) Search menu no longer announces a dangling
 "Separator".</strong> The power-tools group's first item declares
 <code>separator_before</code>, so when the regex Find/Replace items

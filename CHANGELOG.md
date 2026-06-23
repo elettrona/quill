@@ -44,6 +44,8 @@ First pre-release of the 0.7.0 line. Tagged off `release/0.7.0-verbosity` once t
 - **Spoken confirmations for results that don't move focus.** A new internal escape hatch (`_announce_result`) force-speaks explicit command results that change nothing for the screen reader to pick up. **F7 / F8** (next/previous misspelling) now speak "No misspellings ahead; N behind" (and the reverse) instead of going silent when the caret is already past the last misspelling, and **Check for External Changes** speaks "matches the on-disk version" when there is no change.
 - **Ctrl+W closes the active document when no side preview is open.** Previously Ctrl+W only closed a split side-preview and otherwise did nothing; it now falls back to closing the current document (only while focus is in the document surface, so dialogs are unaffected).
 - **Search menu no longer announces a stray "Separator".** A feature-gated section left a dangling menu separator the screen reader read but could not focus; dangling leading/trailing/doubled separators are now pruned.
+- **Watch Queue Monitor explains itself when unavailable.** Opening it in a profile without the watch-folder feature now speaks "Watch folder is unavailable in this profile" instead of returning to the editor with only a silent status.
+- **Optionally drop missing recent files (`recent_files_auto_clear_missing`).** A new General setting (off by default) removes Recent Files entries whose file no longer exists — but only on confirmed fixed/internal drives. Entries on removable, USB, or network drives are never probed and never dropped, because a "missing" file there usually means the drive is disconnected, not deleted.
 
 ### Removed
 
