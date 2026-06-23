@@ -16,6 +16,48 @@ from quill.core.i18n import _
 
 
 class MenuBuilderMixin:
+    def _register_voice_commands_check_menu(self, menu: object) -> None:
+        """Track the menu holding the Hey QUILL Commands check item (#7).
+
+        The checkable item can flip from the menu, the keymap/command palette, or
+        the Settings dialog, so the handler needs a handle to re-sync the visual
+        check wherever it lives (basic and full profiles build different menus)."""
+        menus = getattr(self, "_voice_commands_check_menus", None)
+        if menus is None:
+            menus = self._voice_commands_check_menus = []
+        menus.append(menu)
+
+    def _prune_menu_separators(self, menu: object) -> None:
+        """Remove dangling separators from a built menu (#15).
+
+        A separator the screen reader announces but cannot focus appears when a
+        menu opens or ends with one, or has two in a row -- usually because an
+        optional section above/below was feature-gated out, leaving a section
+        divider with nothing on one side. Strip leading and trailing separators
+        and collapse consecutive runs to one. Safe to call on any menu."""
+        positions_to_remove: list[int] = []
+        count = menu.GetMenuItemCount()
+        prev_was_separator = True  # leading separators have nothing before them
+        for position in range(count):
+            item = menu.FindItemByPosition(position)
+            is_separator = item is not None and item.IsSeparator()
+            if is_separator and prev_was_separator:
+                positions_to_remove.append(position)
+            else:
+                prev_was_separator = is_separator
+        # A trailing separator (last kept item is a separator) is also dangling.
+        for position in range(count - 1, -1, -1):
+            if position in positions_to_remove:
+                continue
+            item = menu.FindItemByPosition(position)
+            if item is not None and item.IsSeparator():
+                positions_to_remove.append(position)
+            break
+        for position in sorted(set(positions_to_remove), reverse=True):
+            item = menu.FindItemByPosition(position)
+            if item is not None:
+                menu.DestroyItem(item)
+
     def _build_menu(self) -> None:
         wx = self._wx
         menu_bar = wx.MenuBar()
@@ -545,6 +587,11 @@ class MenuBuilderMixin:
         # Phase 4).
         self._append_power_tools_search_items(search_menu)
         self._append_quillin_menu_items(search_menu, "Search")
+        # #15: the power-tools group's first item declares a separator_before, so
+        # when the regex Find/Replace items above are feature-gated off (basic
+        # profiles) the menu opens with a leading separator the screen reader
+        # reads but can't arrow to. Prune leading/trailing/doubled separators.
+        self._prune_menu_separators(search_menu)
         self._id_send_to_tray = wx.NewIdRef()
         self._id_toggle_tray_mode = wx.NewIdRef()
         self._id_toggle_soft_wrap = wx.NewIdRef()
@@ -1504,10 +1551,15 @@ class MenuBuilderMixin:
             self._menu_label(_("&Dictation"), "tools.dictation_toggle"),
             _("Press to start dictation, press again to stop and insert"),
         )
-        dictation_submenu.Append(
+        dictation_submenu.AppendCheckItem(
             self._id_dictation_voice_commands,
-            _("Hey QUILL &Commands (in Settings)..."),
+            self._menu_label(_("Hey QUILL &Commands"), "tools.dictation_voice_commands_toggle"),
         )
+        dictation_submenu.Check(
+            self._id_dictation_voice_commands,
+            bool(getattr(self.settings, "voice_commands_enabled", False)),
+        )
+        self._register_voice_commands_check_menu(dictation_submenu)
         reading_menu.AppendSubMenu(dictation_submenu, _("&Dictation"))
         reading_menu.AppendSeparator()
         reading_menu.Append(
@@ -1792,10 +1844,15 @@ class MenuBuilderMixin:
             self._menu_label(_("&Dictation"), "tools.dictation_toggle"),
             _("Press to start dictation, press again to stop and insert"),
         )
-        bw_dictation_menu.Append(
+        bw_dictation_menu.AppendCheckItem(
             self._id_dictation_voice_commands,
-            _("Hey QUILL &Commands (in Settings)..."),
+            self._menu_label(_("Hey QUILL &Commands"), "tools.dictation_voice_commands_toggle"),
         )
+        bw_dictation_menu.Check(
+            self._id_dictation_voice_commands,
+            bool(getattr(self.settings, "voice_commands_enabled", False)),
+        )
+        self._register_voice_commands_check_menu(bw_dictation_menu)
         bw_dictation_menu.AppendSeparator()
         bw_dictation_menu.Append(
             self._id_watch_folder_toggle,

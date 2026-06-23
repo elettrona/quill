@@ -29,9 +29,11 @@ and 13, and likely contributes to 10. A small systemic fix is proposed below.
 
 ## Open
 
-7. **Hey QUILL settings menu item should be a checkable on/off toggle.** Today it
-   tries (and fails) to jump to a settings tab. Make it a checkable menu item
-   that flips the Hey QUILL setting directly and reflects current state.
+7. **(DONE) Hey QUILL settings menu item is now a checkable on/off toggle.**
+   `toggle_dictation_voice_commands` flips `settings.voice_commands_enabled`
+   directly, persists, syncs the menu check (both basic and full profiles), and
+   speaks the new state. The menu item is `AppendCheckItem` and no longer reads
+   "...(in Settings)".
 
 8. **Speech model list is disjointed (largest item).**
    - whisper.cpp is missing from the model/engine list (only "fast"/openai show).
@@ -39,19 +41,21 @@ and 13, and likely contributes to 10. A small systemic fix is proposed below.
    - Escape in the model list opens the whisper-models list instead of returning
      to the editor. Needs an escape/back contract and a coherent flow.
 
-9. **F7 (next misspelling) "does nothing" on a freshly typed misspelling.** F7
-   searches forward from the caret; after typing "teest" the caret is past it, so
-   there is no *next* misspelling and the result ("No next misspelling") is
-   silent under a screen reader (theme above). Fix: speak the result, and decide
-   whether F7 should wrap to misspellings before the caret (recommend wrap, or a
-   spoken "no misspellings ahead; N behind").
+9. **(DONE) F7/F8 now speak a directional result on a freshly typed
+   misspelling.** Instead of a silent "No next misspelling", F7/F8 force-speak
+   "No misspellings ahead; N misspelling(s) behind" (and the reverse for F8) via
+   the new `_announce_result` helper, so the user knows to reverse rather than
+   assume the document is clean. Chose the spoken-count form over auto-wrap to
+   keep the caret where the user left it. `_misspellings_behind_message`.
 
 10. **Watch Folder queue "does nothing", returns to editor.** Likely an
     empty-state or no-op path with no spoken feedback. Needs investigation.
 
-11. **Ctrl+W should also close the active document/window.** Today it only closes
-    a split side-preview; otherwise it does nothing. Add document close as the
-    fallback.
+11. **(DONE) Ctrl+W closes the active document when there is no split preview.**
+    The char-hook Ctrl+W branch consumed the key to close a side preview and,
+    when none was open, swallowed it before the accelerator could fire. It now
+    falls back to `close_current_document` (guarded to the document surface so it
+    doesn't hijack Ctrl+W inside a modal/WebView dialog).
 
 12. **Snapshots submenu confusion.** File > Snapshots IS a submenu (workspace
     snapshots: Save/Open Snapshot, Recent Snapshots, Open Documents in Current
@@ -62,9 +66,10 @@ and 13, and likely contributes to 10. A small systemic fix is proposed below.
     fix population, and rename one set to remove the collision (e.g. workspace
     "Snapshots" vs notebook "Versions").
 
-13. **"Check for External Changes" says nothing when there are no changes.** It
-    calls `_set_status("'<file>' matches the on-disk version.")` -> silent under a
-    screen reader (theme above). User wants a dialog or at least a spoken result.
+13. **(DONE) "Check for External Changes" now speaks the no-change result.**
+    The `ReloadAction.NONE` path force-speaks "'<file>' matches the on-disk
+    version." via `_announce_result`, so it is confirmed aloud under a screen
+    reader instead of updating a status the user never hears.
 
 14. **Recent files: auto-clear missing entries (setting).** Add a setting to drop
     recent-file entries whose target no longer exists on disk, but **only for
@@ -72,12 +77,11 @@ and 13, and likely contributes to 10. A small systemic fix is proposed below.
     drives (a file "missing" there usually means the drive is detached, not
     deleted). New setting + drive-type detection.
 
-15. **Search menu announces a "Separator" you can't arrow to.** The Search menu
-    (`search_menu`, main_frame_menu.py ~530) ends with
-    `_append_power_tools_search_items` + `_append_quillin_menu_items(... "Search")`,
-    which likely append a trailing/leading separator even when the following
-    section is empty. A dangling separator is read by the screen reader but is not
-    focusable. Fix: only append the separator when items actually follow it.
+15. **(DONE) Search menu no longer announces a dangling "Separator".** The
+    power-tools group's first item declares `separator_before`, so when the regex
+    Find/Replace items above are feature-gated off the menu opened with a leading
+    separator. Added `_prune_menu_separators` (strips leading/trailing/doubled
+    separators) and applied it to the Search menu after it is built.
 
 16. **(DONE) Removed the Tools > Accessibility "Speak" items.** Speak Cursor
     Address, Speak Document Status, and Speak Selection Length removed: the three
@@ -91,11 +95,10 @@ and 13, and likely contributes to 10. A small systemic fix is proposed below.
     passes; handler docstring updated. (Note: it was never actually duplicated in
     Tools; this consolidation puts it where the user expected it.)
 
-## Proposed systemic fix (covers 9, 13, and the class)
+## Systemic fix (covers 9, 13, and the class) — DONE
 
-Add a single helper, e.g. `_announce_result(msg)`, that sets the status text and
-force-speaks it, and route explicit command results that have no focus change
-through it. Open question for the user: in Quiet/Meeting verbosity modes,
-forced speech bypasses suppression -- should explicit, user-invoked results
-still be spoken in those modes (recommended: yes, because the user asked for
-them), or stay suppressed?
+Added `MainFrame._announce_result(msg)`: it sets the status text and force-speaks
+it, the idiom for explicit command results that cause no focus change. Items 9
+and 13 route through it. Decision (per the user): forced speech bypasses
+Quiet/Meeting suppression for these results, because the user explicitly invoked
+the command and asked for the confirmation.

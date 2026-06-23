@@ -385,6 +385,16 @@ the same behaviour described here.
   from the keyboard.
 - **Clear All Notifications** is now a one-step action on the notifications
   status-cell context menu.
+- **Hey QUILL Commands is a real on/off toggle.** The Reading > Dictation > Hey
+  QUILL Commands menu item is now checkable: it flips the setting directly,
+  remembers it, and says "Hey QUILL voice commands on" or "off" — it no longer
+  sends you to a settings tab.
+- **Results that don't move the cursor are now spoken.** Pressing **F7** or
+  **F8** just after typing a misspelling now says "No misspellings ahead; N
+  behind" (and the reverse) instead of staying silent, and **Check for External
+  Changes** announces when the file still matches what is on disk.
+- **Ctrl+W closes the current document.** If no side preview is open, Ctrl+W now
+  closes the active document instead of doing nothing.
 - The unfinished **Pandoc Conversion Center** menu item was removed; use
   **File > Import** / **File > Export** (and **Tools > Batch Conversion** for
   folders).

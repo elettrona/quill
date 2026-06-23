@@ -1096,7 +1096,7 @@ Status Page behavior:
 BITS Whisperer ships with safe defaults applied automatically; runtime routing changes stay off until you opt in from these Preferences surfaces.
 
 Read Aloud is particularly useful for proofreading by ear. OCR Image handles image-to-text work with an explicit consent and progress flow.
-Dictation uses Windows' own speech input. When Hey QUILL Commands is enabled, Quill stays silent and only listens while dictation is active, then runs the matching action after the wake phrase.
+Dictation uses Windows' own speech input. **Hey QUILL Commands** is a checkable menu item (Reading → Dictation): activate it to turn the feature on or off directly — Quill remembers the setting and announces "Hey QUILL voice commands on" or "off". When it is enabled, Quill stays silent and only listens while dictation is active, then runs the matching action after the wake phrase.
 Watch Folder automation is best for "drop and open" workflows: copy supported files into one
 folder and let Quill open them in the background.
 

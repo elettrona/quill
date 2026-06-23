@@ -4149,6 +4149,13 @@ class MainFrame(
             if splitter is not None and splitter.IsSplit():
                 self.toggle_side_preview()
                 return
+            # #11: no side preview to close -> close the active document. The hook
+            # consumes Ctrl+W here, so without this fallback the accelerator never
+            # fires and Ctrl+W appears to do nothing. Guarded to the document
+            # surface so it doesn't hijack Ctrl+W inside a modal/WebView dialog.
+            if tab is not None and self._focus_is_in_document_surface():
+                self.close_current_document()
+                return
         if not self._focus_is_in_document_surface():
             # Modal dialogs (including WebView-hosted HTML surfaces) should
             # receive keys directly. If browse mode was active in the editor,
@@ -5125,7 +5132,9 @@ class MainFrame(
         )
 
         if decision.action == ReloadAction.NONE:
-            self._set_status(f"'{self.document.path.name}' matches the on-disk version.")
+            # No external change. force-speak the result -- nothing moves focus,
+            # so the plain status would be silent under a screen reader (#13).
+            self._announce_result(f"'{self.document.path.name}' matches the on-disk version.")
         elif decision.action == ReloadAction.RELOAD:
             # Force-prompt even though auto_reload_when_clean would normally reload silently.
             self._show_external_change_prompt(ReloadAction.PROMPT_CONFLICT)
@@ -7007,6 +7016,19 @@ class MainFrame(
         character (it already echoes what you type)."""
         self._status_message = message
         self._refresh_statusbar()
+
+    def _announce_result(self, message: str) -> None:
+        """Set the status bar text and force-speak an explicit command result.
+
+        The announcement engine deliberately stays silent while JAWS/NVDA is
+        active (prism_bridge), on the assumption the screen reader will read
+        whatever focus/control change the command caused. Commands that change
+        nothing focus-wise -- an indent, a "no changes" check, a "nothing found"
+        result -- would therefore update a status the user never hears. Route
+        those results through here: ``force=True`` bypasses the suppression so
+        the confirmation is spoken. The user explicitly invoked the command, so
+        the result is spoken even in Quiet/Meeting verbosity modes."""
+        self._announce(message, force=True)
 
     def _feature_enabled(self, feature_id: str) -> bool:
         feature_manager = getattr(self, "features", None)
@@ -15603,12 +15625,38 @@ class MainFrame(
         self._location_ring.record(selected.start)
         self._set_status(f'Jumped to misspelling "{selected.word}"')
 
+    def _misspellings_behind_message(
+        self, text: str, cursor: int, dictionary: set[str], *, ahead: bool
+    ) -> str:
+        """Build the spoken "none in this direction" result for F7/F8.
+
+        F7/F8 search forward/backward from the caret and don't wrap, so right
+        after typing a misspelling the caret sits past it and there is no *next*
+        one -- the bare "No next misspelling" was both misleading and silent
+        under a screen reader (#9). Count the misspellings in the other
+        direction so the user knows to reverse instead of assuming the document
+        is clean."""
+        direction = "ahead" if ahead else "behind"
+        other_key = "behind" if ahead else "ahead"
+        other = (
+            find_previous_misspelling(text, cursor, dictionary)
+            if ahead
+            else find_next_misspelling(text, cursor, dictionary)
+        )
+        if other is None:
+            return "No misspellings found"
+        count = sum(1 for m in list_misspellings(text, dictionary) if (m.end <= cursor) == ahead)
+        plural = "" if count == 1 else "s"
+        return f"No misspellings {direction}; {count} misspelling{plural} {other_key}"
+
     def next_misspelling(self) -> None:
         dictionary = self._spell_dictionary()
+        text = self.editor.GetValue()
         cursor = self.editor.GetInsertionPoint()
-        item = find_next_misspelling(self.editor.GetValue(), cursor, dictionary)
+        item = find_next_misspelling(text, cursor, dictionary)
         if item is None:
-            self._set_status("No next misspelling")
+            message = self._misspellings_behind_message(text, cursor, dictionary, ahead=True)
+            self._announce_result(message)
             return
         self._record_location_before_jump()
         if self._extend_selection_mode and self._extend_selection_anchor is not None:
@@ -15621,10 +15669,12 @@ class MainFrame(
 
     def previous_misspelling(self) -> None:
         dictionary = self._spell_dictionary()
+        text = self.editor.GetValue()
         cursor = self.editor.GetInsertionPoint()
-        item = find_previous_misspelling(self.editor.GetValue(), cursor, dictionary)
+        item = find_previous_misspelling(text, cursor, dictionary)
         if item is None:
-            self._set_status("No previous misspelling")
+            message = self._misspellings_behind_message(text, cursor, dictionary, ahead=False)
+            self._announce_result(message)
             return
         self._record_location_before_jump()
         if self._extend_selection_mode and self._extend_selection_anchor is not None:
@@ -16738,9 +16788,24 @@ class MainFrame(
             self._set_status("Windows dictation started. Speak into the editor.")
 
     def toggle_dictation_voice_commands(self) -> None:
-        """Open Settings at the Transcription tab where Hey QUILL commands can be toggled."""
-        self.open_general_preferences()
-        self._set_status("Hey QUILL commands setting is in Settings > Transcription")
+        """Flip the Hey QUILL voice-commands setting and reflect it in the menu (#7).
+
+        Previously this jumped to Settings > Transcription and the menu read
+        "...(in Settings)" — a dead link, not a control. It is now a checkable
+        on/off toggle: flip ``settings.voice_commands_enabled``, persist, sync
+        the menu check, and speak the new state."""
+        enabled = not bool(getattr(self.settings, "voice_commands_enabled", False))
+        self.settings.voice_commands_enabled = enabled
+        save_settings(self.settings)
+        self._sync_dictation_voice_commands_menu_check()
+        self._announce_result("Hey QUILL voice commands " + ("on" if enabled else "off"))
+
+    def _sync_dictation_voice_commands_menu_check(self) -> None:
+        """Mirror settings.voice_commands_enabled onto the Hey QUILL Commands
+        check item wherever it was built (#7)."""
+        enabled = bool(getattr(self.settings, "voice_commands_enabled", False))
+        for menu in getattr(self, "_voice_commands_check_menus", ()) or ():
+            menu.Check(self._id_dictation_voice_commands, enabled)
 
     def _bw_include_parakeet_models(self) -> bool:
         if not self._feature_enabled("core.bw_parakeet"):

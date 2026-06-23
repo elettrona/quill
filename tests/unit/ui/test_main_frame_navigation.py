@@ -206,6 +206,10 @@ def _build_frame(text: str, insertion_point: int = 0) -> MainFrame:
             "browse_mode_preload_cache": False,
         },
     )()
+    # Session state normally set in __init__: the F6 region rotation reads tab-
+    # control visibility, and the Tab handler reads the literal-tab mode.
+    frame._tab_control_visible = bool(frame.settings.show_tab_control)
+    frame._tab_inserts_literal = False
     return frame
 
 
@@ -270,6 +274,61 @@ def test_navigate_region_skips_preview_when_hidden() -> None:
     assert frame._active_region == "Status Bar"
     frame.navigate_next_region()
     assert frame._active_region == "Editor"
+
+
+def test_document_tabs_region_present_when_tab_control_visible() -> None:
+    frame = _build_frame("hello")
+    frame._tab_control_visible = True
+    labels = frame._current_focus_region_labels()
+    assert "Document Tabs" in labels
+    # Rotation order: Editor -> Document Tabs -> Status Bar.
+    assert labels.index("Document Tabs") == labels.index("Editor") + 1
+
+
+def test_document_tabs_region_absent_when_tab_control_hidden() -> None:
+    frame = _build_frame("hello")
+    frame._tab_control_visible = False
+    assert "Document Tabs" not in frame._current_focus_region_labels()
+
+
+def test_misspellings_behind_message_counts_the_other_direction(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from quill.core.spellcheck import Misspelling
+    from quill.ui import main_frame as mf
+
+    # The unit env has no real spell backend, so drive the message logic with a
+    # single known misspelling at [0, 5) (a stand-in for "teest good").
+    miss = Misspelling(word="teest", start=0, end=5)
+    monkeypatch.setattr(mf, "list_misspellings", lambda _t, _d: [miss])
+    monkeypatch.setattr(
+        mf, "find_next_misspelling", lambda _t, c, _d: miss if c <= miss.start else None
+    )
+    monkeypatch.setattr(
+        mf, "find_previous_misspelling", lambda _t, c, _d: miss if c > miss.end else None
+    )
+    frame = _build_frame("teest good")
+    # Caret past the only misspelling: nothing ahead, one behind.
+    ahead = frame._misspellings_behind_message("teest good", 10, {"good"}, ahead=True)
+    assert ahead == "No misspellings ahead; 1 misspelling behind"
+    # Caret before it: nothing behind, one ahead.
+    behind = frame._misspellings_behind_message("teest good", 0, {"good"}, ahead=False)
+    assert behind == "No misspellings behind; 1 misspelling ahead"
+
+
+def test_misspellings_behind_message_reports_none_when_clean(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from quill.ui import main_frame as mf
+
+    monkeypatch.setattr(mf, "list_misspellings", lambda _t, _d: [])
+    monkeypatch.setattr(mf, "find_next_misspelling", lambda _t, _c, _d: None)
+    monkeypatch.setattr(mf, "find_previous_misspelling", lambda _t, _c, _d: None)
+    frame = _build_frame("good good")
+    assert (
+        frame._misspellings_behind_message("good good", 9, {"good"}, ahead=True)
+        == "No misspellings found"
+    )
 
 
 def test_match_bracket_moves_to_match() -> None:
