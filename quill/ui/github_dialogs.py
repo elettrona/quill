@@ -412,9 +412,11 @@ class GitHubRepositoryBrowserDialog:
         full_name = self._repo_ctrl.GetValue().strip()
         if not full_name:
             self._set_status("Enter a repository name (owner/repo) first.")
+            self._repo_ctrl.SetFocus()  # place the user on the field to fix
             return
         if "/" not in full_name:
             self._set_status("Repository must be in owner/repo format.")
+            self._repo_ctrl.SetFocus()  # place the user on the field to fix
             return
         self._set_loading(True)
         self._set_status(f"Loading {full_name}...")

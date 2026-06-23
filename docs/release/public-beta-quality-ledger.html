@@ -796,6 +796,34 @@ and does not Skip. Recorded as intentional but flagged: confirm keyboard
 users can still reach the dialog's buttons (via Escape/Enter or an
 explicit focus path) — needs live keyboard verification.</li>
 </ul>
+<h2
+id="accessibility-audit--wave-5-error-to-field-association">Accessibility
+audit — wave 5 (error-to-field association)</h2>
+<p>When a dialog rejects invalid input, focus should move to the
+offending field (not stay on the button) and the error should be
+announced. QUILL announces status messages via GATE-12, so the
+announcement half is covered; the audit targeted the focus half.</p>
+<h3
+id="a11y-004--in-dialog-validation-did-not-move-focus-to-the-bad-field">A11Y-004
+— in-dialog validation did not move focus to the bad field</h3>
+<ul>
+<li>Severity: Medium. Category: Accessibility (error recovery).</li>
+<li><code>github_dialogs.py</code> "open repository" form validated
+owner/repo inline, set a status message, and returned with focus left on
+the Load button — a keyboard or screen-reader user had to navigate back
+to the field to fix it.</li>
+<li>Resolution: <code>self._repo_ctrl.SetFocus()</code> on both
+validation branches so the user lands on the field to correct.</li>
+<li>Surveyed the other validating dialogs: most validate input from a
+prompt or WebView form that has already closed
+(<code>main_frame_power_tools</code> numeric/pattern ops, single-prompt
+tools), so there is no live field to refocus — the announced status
+message is the correct behavior there. <code>assistant_panel</code>
+already manages field focus well. github's persistent form was the real
+gap.</li>
+<li>GATE-11 rebaselined +2 (the two SetFocus calls). Status: Fixed;
+needs live keyboard/SR confirmation.</li>
+</ul>
 <h2 id="full-suite-sweep-drive-detectable-failures-to-zero">Full-suite
 sweep (drive detectable failures to zero)</h2>
 <p>Running the whole <code>tests/unit tests/stability</code> suite (4896
@@ -844,10 +872,10 @@ TEST-001.</li>
 <li>The accessibility audit is a 6-wave plan: wave 1 (tab-group +
 control naming), wave 2 (initial-focus quality), and wave 3 (label/field
 associations) are done. wave 4 (keyboard-trap / tab-order spot checks)
-is done. Remaining: wave 5 (error-to-field association + announcement),
-wave 6 (the editor surface itself). Plus a label/field continuation
-sweep of the lower-coverage dialogs and live keyboard verification of
-the reorder dialog.</li>
+and wave 5 (error-to-field association) are done. Remaining: wave 6 (the
+editor surface itself). Plus a label/field continuation sweep of the
+lower-coverage dialogs and live keyboard/SR verification of the reorder
+dialog and the wave 1-5 fixes.</li>
 <li>The startup/shutdown initialization-order hardening review (Section
 9).</li>
 <li>The call-site / attribute-contract repository audit (Section
