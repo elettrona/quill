@@ -9,6 +9,70 @@ plus the baseline gate state; it is not a claim that the entire repository has
 been exhaustively re-audited. Sections marked "Deferred / next wave" are honest
 about what has not yet been done.
 
+## Reusable wave prompt (run this for each audit wave)
+
+This is the distilled, repo-tuned instruction set for running one focused wave of
+the quality/accessibility pass. It is an improved version of the original master
+brief: scoped to what is achievable and verifiable in a single pass, and tuned to
+this repository's existing gates and conventions. Paste it (optionally with a
+"Focus area:" line naming the wave) to drive the next wave.
+
+> **Role.** Act as principal Python/wxPython engineer and accessibility
+> specialist for **QUILL**. Investigate, fix, test, and document — do not just
+> produce a report.
+>
+> **Hard constraints.**
+> - The product name is **QUILL**. Do **not** rename anything to TINDRA or assume
+>   that rename; leave existing QUILL identifiers, paths, and brand strings.
+> - Work on a feature branch, never commit to `main`. Make small, logical,
+>   attributable commits; do not push, tag, or merge unless explicitly asked.
+> - Do not weaken a fix to satisfy a test, broaden `except`, or silence a gate.
+>   When a test double is incomplete (e.g. a `_Fake*` missing a method the real
+>   widget has), fix the double, not the production change.
+> - Respect the existing architecture and import boundaries (core/io are wx-free
+>   and strict-typed; ui is gradual-typed).
+>
+> **Pick a bounded focus area** (one wave): e.g. dialog accessible-naming,
+> initial-focus quality, label/field associations, keyboard traps, startup
+> init-order, a call-site/attribute audit of one subsystem. Do not attempt the
+> whole repo at once; depth over breadth.
+>
+> **Method.**
+> 1. Establish the wave baseline by running the relevant existing gates rather
+>    than inventing new ones: `ruff check .`, `ruff format --check .`,
+>    `mypy quill/core quill/io` (always scoped — never unscoped), and the targeted
+>    pytest suites + tool gates (dialog-inventory, dialog-button-contract,
+>    dialog-zorder, announce-gap/GATE-12, a11y-regions, module-size/GATE-11,
+>    network-egress, docs-parity). The accessibility infrastructure is strong and
+>    gate-backed; aim at what the gates do **not** check (accessible names,
+>    initial focus, focus restoration, label associations, verbosity).
+> 2. For each finding, determine intent before changing: is it a real defect, an
+>    intentional cross-tool pragma, a tested automation handle, or expected
+>    behavior? Record reviewed-but-intentional items too.
+> 3. Make the minimal correct fix. Prefer native, accessible wx controls and
+>    human-readable accessible names (screen readers speak `SetName` verbatim —
+>    never snake_case identifiers).
+> 4. Run the smallest useful tests after each change; add a regression test where
+>    one can be written cleanly (skip brittle full-wx-modal harnesses — record as
+>    needs-live-validation instead).
+> 5. If a change trips GATE-11 module-size, first try to make the edit net-neutral
+>    or extract; only rebaseline with a dated `_rebaseline_<date>` justification
+>    comment in `module_size_budgets.json` when growth is genuinely warranted.
+> 6. Regenerate docs artifacts for any changed `docs/**/*.md`
+>    (`pandoc <f>.md -f gfm -t html5 -s -o <f>.html` and `-t epub3 -o <f>.epub`),
+>    and keep this ledger current: running totals, finding IDs
+>    (`A11Y-`/`FOCUS-`/`KEY-`/`CALL-`/`PERF-`/`SEC-`/`DOC-`/`TEST-`/`RELEASE-`),
+>    severity, root cause, resolution, validation, status.
+>
+> **Honesty.** Never represent unfinished work as complete. Distinguish
+> code-reviewed-against-expected-SR-behavior from live NVDA/JAWS testing. Keep an
+> explicit "Deferred / next wave" list. Resolve release blockers before calling
+> anything release-ready.
+>
+> **Deliverables each wave.** The actual fixes + tests; updated ledger; a short
+> wave summary (what was audited, found, fixed, deferred); the commands run and
+> their results.
+
 ## Baseline (gate state)
 
 Captured on the current branch (`main`), dev environment, Python 3.12.
@@ -27,13 +91,14 @@ Captured on the current branch (`main`), dev environment, Python 3.12.
 
 | Metric | Count |
 | --- | --- |
-| Production files modified (this pass) | 14 |
+| Production files modified (this pass) | 15 |
 | Test files added/modified | 2 |
 | Documentation files modified | 4 (md) + regenerated html/epub |
 | Bugs fixed | 1 (L-001 class reviewed; see notes) |
 | Features hardened / shipped | 4 (Vosk bundling, Groq, ElevenLabs, Faster Whisper on-demand install) |
 | Security/egress items reviewed | 1 (SEC-001, pip subprocess egress documented) |
 | Accessibility issues fixed | 13 (6 unnamed tab groups, 7 literal snake_case names) |
+| Focus-management issues fixed | 1 (FOCUS-001 wx.html fallback initial focus) |
 | Tests added | 2 files (`test_cloud_transcribers.py`, `test_engine_install.py`) |
 | Remaining known issues | 1 (TEST-001) |
 | Intentional legacy QUILL references reviewed | n/a (no rename; QUILL is the name) |
@@ -133,16 +198,53 @@ therefore targeted what those gates do not check: accessible names.
   not the window name, so these are not literal-readout defects.
 - Status: Fixed (controls) / Intentional (dialog handles).
 
+## Accessibility audit — wave 2 (initial-focus quality)
+
+Audited which control receives focus when a dialog opens and whether focus is
+restored on close.
+
+Verified (strong, no change needed): the centralized `MainFrame._show_modal_dialog`
+runs `focus_primary_control(dialog)` so custom `wx.Dialog` surfaces open with focus
+on their first real content control — not the OK button — via
+`dialog_contract.find_primary_focus_target` over a comprehensive
+`_PREFERRED_FOCUS_CLASSES` list (lists, trees, dataviews, text, search, combo,
+choice, spin, radio, checkbox, slider). It honors a construction-time
+`SetFocus()` and the `_quill_keep_initial_focus` opt-out (e.g. crash recovery,
+where the primary button should hold focus). On close it restores focus to the
+editor by default (`restore_editor_focus`), and dialogs that should not pass
+`restore_editor_focus=False`. Native dialogs are deliberately left to manage their
+own focus. The dialog-inventory gate ensures dialogs route through this path.
+
+### FOCUS-001 — wx.html fallback dialog opened on the Close button, not its content
+- Severity: Medium. Category: Accessibility (initial focus).
+- `preview_dialog.AccessibleHtmlDialog` (the `wx.html.HtmlWindow` fallback used
+  when `wx-accessible-webview` is absent) calls the standalone `show_modal_dialog`,
+  which does no focus management, and `HtmlWindow` is not a preferred focus class —
+  so the dialog opened with focus parked on its default Close button. A
+  screen-reader user landed on "Close" instead of the readable content.
+- Resolution: store the view and `self._view.SetFocus()` before showing (mirrors
+  the already-tested `SidePreview.focus()`), so focus lands on the content.
+- Considered and rejected: adding `HtmlWindow`/`Grid` to `_PREFERRED_FOCUS_CLASSES`.
+  Only this fallback dialog used `HtmlWindow` as primary content (fixed directly),
+  and no modal dialog uses `Grid` as primary content (`csv_grid` is a panel
+  surface). Changing the shared list risks shifting initial focus in existing
+  multi-control dialogs (the walker returns the first preferred control in tab
+  order), so the localized fix is safer.
+- Tests: `test_preview_dialog_accessibility.py` (4) still pass; behavioral
+  modal-focus assertion needs a full wx.App + shown window, so it is recorded as
+  needs-live-validation rather than added as a brittle test.
+- Status: Fixed. Needs live NVDA/JAWS confirmation.
+
 ## Deferred / next wave (not yet done — do not represent as complete)
 
 The master quality-pass scope is repository-wide and multi-session. Not yet
 performed in this pass:
 
 - Full test-suite run with a per-test timeout to neutralize TEST-001.
-- The accessibility audit continues: wave 1 (tab-group + control naming) is done;
-  still to do — initial-focus quality per dialog, label/field associations,
-  keyboard-trap spot checks beyond the gate, and the editor surface (Sections 11,
-  24 of the brief).
+- The accessibility audit continues: wave 1 (tab-group + control naming) and
+  wave 2 (initial-focus quality) are done; still to do — label/field
+  associations, keyboard-trap spot checks beyond the gate, error-to-field
+  association/announcement, and the editor surface itself (Sections 11, 24).
 - The startup/shutdown initialization-order hardening review (Section 9).
 - The call-site / attribute-contract repository audit (Section 7).
 - The performance and visual-polish passes (Sections 13, 14).
