@@ -774,15 +774,26 @@ not need to enable Artificial Intelligence to use these features. They live unde
   (never in a settings file); leave the box blank to remove a saved token.
 
 **Choosing a speech engine.** QUILL ships with the **whisper.cpp** engine and
-uses it by default — nothing extra to install. If you install QUILL's optional
-`fasterwhisper` dependency, a second engine, **Faster Whisper**, becomes
-available. Faster Whisper runs in-process and uses your **GPU** automatically
-when one is present, which can be considerably faster on capable machines. When
-more than one engine is available, **Manage Speech Models** first asks which
+uses it by default — nothing extra to install. You can add two more optional
+engines, each by installing its dependency:
+
+- **Faster Whisper** (`fasterwhisper` dependency) — a higher-throughput
+  multilingual engine that runs in-process and uses your **GPU** automatically
+  when one is present.
+- **Parakeet** (`parakeet` dependency) — NVIDIA's high-accuracy **English-only**
+  engine with timestamps, also GPU-oriented. It installs NVIDIA NeMo and PyTorch,
+  which are a large download, so it is strictly opt-in.
+- **Vosk** (`vosk` dependency) — a **very low-resource, CPU-only English** engine
+  that runs on a ~40 MB model with no GPU. Ideal for older or constrained
+  machines where the other engines are impractical. Models download from
+  alphacephei.com (verified HTTPS, integrity-checked) via Manage Speech Models.
+
+When more than one engine is available, **Manage Speech Models** first asks which
 **Speech Engine** to use; QUILL remembers your choice and applies it to
 transcription, captions, and dictation. Each engine has its own models, so
-download a model after switching. Note that Faster Whisper does not label
-speakers — for speaker attribution, use the whisper.cpp speaker-detection model.
+download a model after switching. All engines run **entirely on your computer**.
+Note that neither Faster Whisper nor Parakeet labels speakers — for speaker
+attribution, use the whisper.cpp speaker-detection model.
 
 The offline speech **engine ships with QUILL**: enable the *offline speech engine
 (whisper.cpp)* component in the installer, or place the executable under
@@ -792,6 +803,22 @@ Offline **dictation** also needs microphone-capture support (the optional
 `sounddevice` package); if it is missing, QUILL tells you and you can still use
 Windows dictation. Because automatic transcription is never perfect, results are
 always a draft to review.
+
+##### Cloud transcription providers (optional, via Quillins)
+
+The offline engines above keep everything on your machine. If you want a cloud
+provider as well — for example **OpenAI Whisper** for its accuracy — install the
+**OpenAI Whisper Transcription** Quillin (a bundled extension) and configure an
+OpenAI API key in AI Hub. It then appears as a provider in Manage Speech Models.
+
+Cloud providers are **opt-in and never silent**: audio is uploaded only when you
+explicitly transcribe a file with that provider, never offline and never in Safe
+Mode. The Watch Folder "Transcribe audio (Whisperer)" automation always uses the
+on-device engines only, so a cloud provider can never auto-upload your audio.
+Extensions that add a provider ship no code and request no network permission —
+QUILL itself performs the upload through its audited network path, so the
+extension never sees your audio or your key. (Developers: see the Quillin guide,
+"Transcription providers".)
 
 #### Read Aloud with AI Voice (OpenAI TTS)
 
@@ -1018,7 +1045,22 @@ If you prefer to keep your text on your machine entirely:
 - **Watch Folder Profiles...** configures folder path, subfolders, startup behavior, and polling behavior.
 - **Watch Folder Queue...** shows current runtime state and active configuration.
 
-When BITS Whisperer is enabled (QUILL 2.0), Watch Folder also appears in the BITS Whisperer submenu alongside Dictation.
+Each watch profile runs one action on every file it claims. Besides opening,
+moving, copying, converting, running a macro or a sandboxed transform, and OCR,
+a profile can **Transcribe audio (Whisperer)**: any audio or video file dropped
+into the folder is transcribed on your machine with the offline Whisperer engine
+and a transcript is written next to it — nothing is uploaded. Choose the
+**Transcript format** in the profile: plain **Text** (`.txt`), **SubRip captions**
+(`.srt`), **WebVTT captions** (`.vtt`), or **Markdown** (`.md`). The caption
+formats carry timestamps; if the engine returns no timed segments they fall back
+to plain text so you never get an empty caption file. It needs no consent; if no
+speech model is installed yet, the profile tells you to download one from
+**Tools → Speech → Whisperer → Manage Speech Models**. (A separate
+**Transcribe audio (OpenAI Whisper)** action is available for cloud transcription
+when you have enabled AI and configured a key.)
+
+The broader BITS Whisperer cloud-provider suite remains deferred; when it is
+enabled, Watch Folder also appears in the BITS Whisperer submenu alongside Dictation.
 
 Speech model selection intentionally follows a two-mode flow:
 
@@ -1782,7 +1824,12 @@ Performance note:
 Pressing the QUILL key (`Ctrl+Shift+Grave`) once arms a short prefix. Follow it with:
 
 - `N` to enter browse/Quick Nav mode. If the `browse_mode_sticky` setting is on, the mode stays locked until `Esc`; otherwise it expires on the QUILL-key timeout. (Press the QUILL key alone a second time to lock browse mode on regardless of the setting.)
-- `G` to open Go to Anything (Quick Nav search).
+- `G` to open Go to Anything (Quick Nav search). It lists every navigable
+  element in the document — headings, links, lists, tables, block quotes,
+  bookmarks, code blocks — with a category filter that shows a live count of
+  each type. It also lists the document's **misspellings** and, when a search is
+  active, the current query's **search hits** as their own navigable types, so
+  you can jump straight to a misspelled word or a match from the same panel.
 - `M` to **paste HTML clipboard content as Markdown** at the cursor. Quill reads the
   clipboard's rich HTML (the `HTML Format` flavour copied from web pages and word
   processors), converts headings, lists, links, bold/italic, code, and block quotes to

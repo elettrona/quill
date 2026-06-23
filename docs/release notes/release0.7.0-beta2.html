@@ -337,6 +337,33 @@ official build and sets it up — or install it yourself once with
 <p><strong>Generate Captions (Offline)...</strong> transcribes a file
 with timestamps and saves it as <strong>SRT</strong> or
 <strong>VTT</strong> subtitles you can review and ship.</p>
+<h3 id="transcribe-a-whole-folder-automatically">Transcribe a whole
+folder automatically</h3>
+<p>Watch Folder automation can now transcribe for you. Point a watch
+profile at a folder, choose the <strong>Transcribe audio
+(Whisperer)</strong> action, and every audio or video file you drop in
+is transcribed <strong>on your machine</strong> and saved next to it —
+nothing is uploaded. Pick the <strong>Transcript format</strong> per
+profile: plain <strong>Text</strong>, <strong>SubRip (.srt)</strong>,
+<strong>WebVTT (.vtt)</strong>, or <strong>Markdown</strong>. The
+caption formats carry timestamps and fall back to plain text when the
+engine returns no timed segments, so you never get an empty caption
+file. If no speech model is installed yet, the profile tells you where
+to get one. This automation always uses the on-device engine — it never
+uploads your audio.</p>
+<h3 id="add-a-cloud-transcription-provider-optional">Add a cloud
+transcription provider (optional)</h3>
+<p>Prefer a cloud service for its accuracy? You can now add one as an
+<strong>extension</strong>. Install the bundled <strong>OpenAI Whisper
+Transcription</strong> Quillin and set an OpenAI API key in AI Hub, and
+"OpenAI Whisper" appears as a provider in <strong>Manage Speech
+Models</strong>. Cloud transcription is strictly <strong>opt-in and
+never silent</strong>: audio is uploaded only when you explicitly
+transcribe a file with that provider, never offline and never in Safe
+Mode — and the folder automation above never uses it. Extensions that
+add a provider ship no code and request no network permission; QUILL
+itself performs the upload through its audited network path, so the
+extension never sees your audio or your key.</p>
 <h3 id="dictate-into-your-document">Dictate into your document</h3>
 <p><strong>Dictate (Offline)</strong> lets you speak directly into the
 editor. Press the command (or <code>QUILL key + Shift + D</code>) to
@@ -355,13 +382,26 @@ disabled in Safe Mode. Say "cancel" or "never mind" to dismiss without
 acting.</p>
 <h3 id="choose-your-engine">Choose your engine</h3>
 <p>The bundled <strong>whisper.cpp</strong> engine needs nothing extra.
-On capable machines you can opt into <strong>Faster Whisper</strong>, a
-higher-throughput engine that uses your <strong>GPU</strong> when one is
-available, by installing QUILL's optional <code>fasterwhisper</code>
-dependency; <strong>Manage Speech Models</strong> then offers a
-<strong>Speech Engine</strong> chooser, and your choice is used for
-transcription, captions, and dictation. (For speaker labels, use the
-whisper.cpp speaker-detection model.)</p>
+On capable machines you can opt into two more, each by installing an
+optional dependency:</p>
+<ul>
+<li><strong>Faster Whisper</strong> — a higher-throughput multilingual
+engine that uses your <strong>GPU</strong> when one is available
+(<code>fasterwhisper</code> dependency).</li>
+<li><strong>Parakeet (English)</strong> — NVIDIA's high-accuracy
+<strong>English</strong> engine with timestamps, also GPU-oriented
+(<code>parakeet</code> dependency, which pulls in NVIDIA NeMo and
+PyTorch — a large download).</li>
+<li><strong>Vosk (English)</strong> — a <strong>very low-resource,
+CPU-only</strong> engine that runs on a ~40 MB model with no GPU, for
+old or constrained machines (<code>vosk</code> dependency).</li>
+</ul>
+<p><strong>Manage Speech Models</strong> then offers a <strong>Speech
+Engine</strong> chooser, and your choice is used for transcription,
+captions, and dictation; each engine has its own models, so download one
+after switching. All three run <strong>entirely on your
+computer</strong>. (For speaker labels, use the whisper.cpp
+speaker-detection model.)</p>
 <h2 id="read-and-proof-braille">Read and proof braille</h2>
 <p>Braille Mode gained a real proofreading and quality workflow, and it
 never changes your braille file — progress and notes live in a small
@@ -452,6 +492,21 @@ visual-only hint, QUILL keeps a screen-reader user informed in every
 mode. Braille content is never affected — it has its own Braille
 Mode.</li>
 </ul>
+<hr />
+<h2 id="find-your-way-faster-quick-nav">Find your way faster: Quick
+Nav</h2>
+<p><strong>Go to Anything</strong> (the QUILL key + <code>G</code>) is a
+single search panel for everything worth jumping to in your document. It
+lists every navigable element — headings, links, lists,
+<strong>tables</strong>, block quotes, bookmarks, code blocks — with a
+category filter that shows a <strong>live count</strong> of each type,
+plus a type-ahead box to filter and jump.</p>
+<p>It now also lists your document's <strong>misspellings</strong> and,
+when a search is active, the current query's <strong>search
+hits</strong> as their own navigable types. So you can open one panel
+and jump straight to the next misspelled word, or to any match of your
+last search, the same way you jump to a heading or a link — with a live
+count of how many of each there are.</p>
 <hr />
 <h2 id="a-smoother-upgrade">A smoother upgrade</h2>
 <p>When you upgrade from QUILL 0.5.0 or Beta 1, QUILL checks your saved

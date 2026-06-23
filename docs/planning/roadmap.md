@@ -67,13 +67,17 @@ single `announcement_verbosity` knob.
   whisper.cpp + Faster Whisper engines, offline transcription, transcript and
   caption formats, speaker attribution, dictate-at-cursor, mic selection, the
   model manager, and the installer component.
+- **Also shipped (WATCH-9):** Watch Folder can auto-transcribe arriving audio
+  on-device — the **Transcribe audio (Whisperer)** watch action
+  (`watch_transcribe.py` + wx-free `speech/transcribe.py`) writes a sibling
+  `.txt` per file, offline and consent-free.
 - **To consolidate from BITS Whisperer:** the broader provider matrix (cloud +
-  on-device tiers) behind QUILL's network-egress audit and Safe Mode; the
-  watch-folder automation surface (**BITS Whisperer → Dictation and Watch
-  Folder**); export-format breadth; and the guided provider/model onboarding.
+  on-device tiers) behind QUILL's network-egress audit and Safe Mode;
+  export-format breadth (SRT/VTT); and the guided provider/model onboarding.
   These were the old `bw_*` "BITS Whisperer" tier IDs (BW-1..10, WATCH-8/9) —
   now folded here, not deferred.
-- **Open:** #617 epic context, #663 offline voice commands (S5).
+- **Open:** #617 epic context, #663 offline voice commands (S5). Tracked as one
+  consolidation issue, not the old per-ID stubs (#515, #567–#577, now closed).
 
 ## 3. Agentic AI platform (planned — PRD ready)
 
@@ -91,6 +95,7 @@ stack unification, O7 Azure provider, O8/AI-19 **GitHub Copilot SDK**, O9/SHELL-
 OCR structuring, and AI-11/12/18. The **Accessibility Agents** from GLOW
 (Accessibility Editor, Screen-Reader UX Reviewer, Braille/BRF assistant) become
 catalog agents here (the launch set already promotes `accessibility_agent.py`).
+The old per-ID AX-A..F stubs are consolidated into the tracking issue **#675**.
 
 ## 4. Accessibility tooling (from GLOW)
 
@@ -100,8 +105,9 @@ catalog agents here (the launch set already promotes `accessibility_agent.py`).
   Guidelines, Microsoft Accessibility Checker rules, and WCAG 2.2 AA, returning a
   scored, navigable findings report with remediation guidance. Lands as an
   in-QUILL audit surface (and an agent in §3).
-- **GLOW family (#528–#534):** the seven GLOW capabilities, re-homed on QUILL's
-  invariants; consolidated here rather than tracked as bare stubs.
+- **GLOW family:** the seven GLOW capabilities (the old #528–#534 stubs) plus the
+  WATCH-8 GLOW watch action (#566), re-homed on QUILL's invariants and tracked in
+  the consolidated issue **#674** rather than as bare per-ID stubs.
 - **Out of QUILL's scope:** GLOW's server/Keycloak/Office-add-in/MCP-deployment
   surfaces stay in the GLOW product; QUILL takes the authoring-time checks.
 
@@ -134,9 +140,10 @@ the verbosity braille channel.
 
 - Live installer smoke on Windows 10/11 (#506); macOS to shipping quality (#518);
   native RTF editing (#516); the Quillin Hub (#517); plugin capability + signing +
-  marketplace (#519); the Windows 11 primary-menu pass (#525); **packaging/freeze
-  evaluation** (the old PKG-1 — Nuitka/PyInstaller hardening, now a real 1.0
-  distribution item).
+  marketplace (#519).
+- **Deferred to 2.0** (consolidated into the backlog tracker #680): the Windows 11
+  modern primary-menu `IExplorerCommand` pass (SHELL-3, was #525) and the
+  packaging/freeze evaluation (PKG-1 — Nuitka/PyInstaller hardening, was #599).
 - **Out of scope:** Linux/Unix (#520, #565, #589). Platform scope is Windows
   (primary) and macOS (supported).
 
@@ -188,6 +195,23 @@ ideas (#590/#592).
   Screen-Reader Handoff mode), **Speech Rate/Pause knobs** (QUILL does not own the
   SR voice), **Punctuation/Symbol Profiles** (a core SR setting; duplicating it
   fights the SR), and the **"Final Recommendation"** meta-issue.
+
+### Update (2026-06-22): further consolidation into tracking issues
+
+The remaining per-ID planning stubs were collapsed into dedicated tracking
+issues so the 1.0 tracker holds workstreams, not bare placeholders:
+
+- **GLOW family** (the old #528–#534 epics) + WATCH-8 (#566) → **#674** (1.0).
+- **Accessibility Agents** AX-A..F (the old #593–#598) → **#675** (under the
+  Agentic AI PRD, §3).
+- **2.0-deferred singletons** PKG-1 (#599), COLLAB-1 (#592), ECO-1 (#590), and
+  SHELL-3 (#525) → **#680**, a single "QUILL 2.0 deferred backlog" tracker.
+- **NAV-10 (#578)** — undefined stub; folded into Quick Nav (#513), which shipped
+  the misspellings/search-hits nav types.
+
+The BITS Whisperer workstream (#669) shipped offline auto-transcription (#668),
+transcript formats (#670), cloud providers as Quillins (#671), and the Parakeet
+(#673) and Vosk (#677) engines this cycle.
 
 ---
 

@@ -136,6 +136,28 @@ yourself once with `winget install Gyan.FFmpeg`.
 **Generate Captions (Offline)...** transcribes a file with timestamps and saves
 it as **SRT** or **VTT** subtitles you can review and ship.
 
+### Transcribe a whole folder automatically
+Watch Folder automation can now transcribe for you. Point a watch profile at a
+folder, choose the **Transcribe audio (Whisperer)** action, and every audio or
+video file you drop in is transcribed **on your machine** and saved next to it —
+nothing is uploaded. Pick the **Transcript format** per profile: plain **Text**,
+**SubRip (.srt)**, **WebVTT (.vtt)**, or **Markdown**. The caption formats carry
+timestamps and fall back to plain text when the engine returns no timed segments,
+so you never get an empty caption file. If no speech model is installed yet, the
+profile tells you where to get one. This automation always uses the on-device
+engine — it never uploads your audio.
+
+### Add a cloud transcription provider (optional)
+Prefer a cloud service for its accuracy? You can now add one as an **extension**.
+Install the bundled **OpenAI Whisper Transcription** Quillin and set an OpenAI API
+key in AI Hub, and "OpenAI Whisper" appears as a provider in **Manage Speech
+Models**. Cloud transcription is strictly **opt-in and never silent**: audio is
+uploaded only when you explicitly transcribe a file with that provider, never
+offline and never in Safe Mode — and the folder automation above never uses it.
+Extensions that add a provider ship no code and request no network permission;
+QUILL itself performs the upload through its audited network path, so the
+extension never sees your audio or your key.
+
 ### Dictate into your document
 **Dictate (Offline)** lets you speak directly into the editor. Press the command
 (or `QUILL key + Shift + D`) to start — you hear a start tone and "Dictation
@@ -153,11 +175,20 @@ disabled in Safe Mode. Say "cancel" or "never mind" to dismiss without acting.
 
 ### Choose your engine
 The bundled **whisper.cpp** engine needs nothing extra. On capable machines you
-can opt into **Faster Whisper**, a higher-throughput engine that uses your **GPU**
-when one is available, by installing QUILL's optional `fasterwhisper` dependency;
+can opt into two more, each by installing an optional dependency:
+
+- **Faster Whisper** — a higher-throughput multilingual engine that uses your
+  **GPU** when one is available (`fasterwhisper` dependency).
+- **Parakeet (English)** — NVIDIA's high-accuracy **English** engine with
+  timestamps, also GPU-oriented (`parakeet` dependency, which pulls in NVIDIA
+  NeMo and PyTorch — a large download).
+- **Vosk (English)** — a **very low-resource, CPU-only** engine that runs on a
+  ~40 MB model with no GPU, for old or constrained machines (`vosk` dependency).
+
 **Manage Speech Models** then offers a **Speech Engine** chooser, and your choice
-is used for transcription, captions, and dictation. (For speaker labels, use the
-whisper.cpp speaker-detection model.)
+is used for transcription, captions, and dictation; each engine has its own
+models, so download one after switching. All three run **entirely on your
+computer**. (For speaker labels, use the whisper.cpp speaker-detection model.)
 
 ## Read and proof braille
 
@@ -231,6 +262,22 @@ real HTML, Markdown, or code editing.
   set. Unlike editors that switch silently or show a visual-only hint, QUILL
   keeps a screen-reader user informed in every mode. Braille content is never
   affected — it has its own Braille Mode.
+
+---
+
+## Find your way faster: Quick Nav
+
+**Go to Anything** (the QUILL key + `G`) is a single search panel for everything
+worth jumping to in your document. It lists every navigable element — headings,
+links, lists, **tables**, block quotes, bookmarks, code blocks — with a category
+filter that shows a **live count** of each type, plus a type-ahead box to filter
+and jump.
+
+It now also lists your document's **misspellings** and, when a search is active,
+the current query's **search hits** as their own navigable types. So you can open
+one panel and jump straight to the next misspelled word, or to any match of your
+last search, the same way you jump to a heading or a link — with a live count of
+how many of each there are.
 
 ---
 
