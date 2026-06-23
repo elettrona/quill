@@ -69,16 +69,10 @@ SETTING_GROUPS: tuple[SettingGroup, ...] = (
         "Integration and Context Menu",
         "File-manager right-click verbs and how QUILL is offered on files.",
     ),
-    SettingGroup("updates", "Updates", "Update checking and release channel."),
     SettingGroup(
-        "security",
-        "Security and Privacy",
-        "Host-key trust, network consent, and other safety toggles.",
-    ),
-    SettingGroup(
-        "developer",
-        "Developer Console",
-        "Python and TypeScript consoles for developers and power users.",
+        "admin",
+        "Administration",
+        "Updates, security, developer tools, and settings management.",
     ),
     SettingGroup(
         "braille",
@@ -1301,7 +1295,7 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
     SettingSpec(
         "auto_check_updates",
         "Check for updates on startup",
-        "updates",
+        "admin",
         "bool",
         "Look for a newer release each time QUILL starts.",
         feature_id="core.updates",
@@ -1310,7 +1304,7 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
     SettingSpec(
         "beta_updates",
         "Get beta updates",
-        "updates",
+        "admin",
         "bool",
         "Receive pre-release builds, which may be unstable.",
         feature_id="core.updates",
@@ -1385,12 +1379,11 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "with motor control differences. Default: 400.",
         keywords=("multi press", "double press", "copy tray", "keyboard", "timer"),
     ),
-    # --- Security and privacy ----------------------------------------------
-    # --- Developer Console -------------------------------------------------
+    # --- Administration: developer tools, security, updates, and settings management ---
     SettingSpec(
         "console_enabled",
         "Enable Developer Console",
-        "developer",
+        "admin",
         "bool",
         "When on, the Python and TypeScript developer consoles are available "
         "under Tools > Advanced > Developer Console. Off by default for "
@@ -1401,7 +1394,7 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
     SettingSpec(
         "console_python_timeout",
         "Python console execution timeout (seconds)",
-        "developer",
+        "admin",
         "int",
         "Maximum seconds a Python console command may run before QUILL interrupts it. Default: 30.",
         minimum=5,
@@ -1412,7 +1405,7 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
     SettingSpec(
         "console_typescript_timeout",
         "TypeScript console execution timeout (seconds)",
-        "developer",
+        "admin",
         "int",
         "Maximum seconds a TypeScript console command may run before the "
         "Node worker is restarted. Default: 30.",
@@ -1424,7 +1417,7 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
     SettingSpec(
         "ssh_trust_first_use",
         "Trust SSH hosts on first connection",
-        "security",
+        "admin",
         "bool",
         "When on, QUILL remembers a host key the first time it is seen "
         "(paramiko AutoAddPolicy). When off, the safer default, an "

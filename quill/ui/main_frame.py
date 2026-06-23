@@ -11264,6 +11264,7 @@ class MainFrame(
                 _g: object,
                 _sa: bool,
                 _show_data_location: bool = False,
+                _show_mgmt: bool = False,
             ) -> Callable[[], None]:
                 def _build() -> None:
                     if _g.description:
@@ -11344,6 +11345,138 @@ class MainFrame(
                         _make_control(_p, _ps, spec, _pi)
                     if _show_data_location:
                         _build_data_location_block(_p, _ps)
+                    if _show_mgmt:
+                        _ps.Add(wx.StaticLine(_p), 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 6)
+                        _ps.Add(
+                            wx.StaticText(
+                                _p,
+                                label=(
+                                    "Export, import, and reset your settings and feature profiles."
+                                ),
+                            ),
+                            0,
+                            wx.ALL,
+                            6,
+                        )
+                        _exp_btn = wx.Button(_p, label="&Export settings...")
+                        _imp_btn = wx.Button(_p, label="&Import settings...")
+                        _rst_btn = wx.Button(_p, label="&Reset to Factory Defaults")
+                        _exp_prf_btn = wx.Button(_p, label="Export &profile...")
+                        _imp_prf_btn = wx.Button(_p, label="Import pro&file...")
+                        for _mb in [_exp_btn, _imp_btn, _rst_btn, _exp_prf_btn, _imp_prf_btn]:
+                            _ps.Add(_mb, 0, wx.ALL, 4)
+
+                        def _on_export(_event: object) -> None:
+                            with wx.FileDialog(
+                                dialog,
+                                "Export settings",
+                                wildcard=self.QSF_WILDCARD,
+                                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+                            ) as file_dialog:
+                                if (
+                                    self._show_modal_dialog(file_dialog, "Export settings")
+                                    != wx.ID_OK
+                                ):
+                                    return
+                                target = Path(file_dialog.GetPath())
+                            if target.suffix.lower() != ".qsf":
+                                target = target.with_suffix(".qsf")
+                            payload = registry.export_settings(self.settings)
+                            target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+                            self._set_status(f"Exported settings to {target.name}")
+
+                        def _on_import(_event: object) -> None:
+                            with wx.FileDialog(
+                                dialog,
+                                "Import settings",
+                                wildcard=self.QSF_WILDCARD,
+                                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+                            ) as file_dialog:
+                                if (
+                                    self._show_modal_dialog(file_dialog, "Import settings")
+                                    != wx.ID_OK
+                                ):
+                                    return
+                                source = Path(file_dialog.GetPath())
+                            try:
+                                raw = json.loads(source.read_text(encoding="utf-8"))
+                            except (OSError, ValueError):
+                                self._set_status(f"Could not read settings from {source.name}")
+                                return
+                            action["mode"] = "import"
+                            action["imported"] = registry.import_settings(raw)
+                            dialog.EndModal(wx.ID_CANCEL)
+
+                        def _on_reset(_event: object) -> None:
+                            result = self._show_message_box(
+                                "Reset every setting to its factory default?"
+                                " This cannot be undone.",
+                                "Reset to Factory Defaults",
+                                wx.ICON_WARNING | wx.YES_NO | wx.NO_DEFAULT,
+                            )
+                            if result != wx.YES:
+                                return
+                            action["mode"] = "reset"
+                            dialog.EndModal(wx.ID_CANCEL)
+
+                        def _on_export_profile(_event: object) -> None:
+                            with wx.FileDialog(
+                                dialog,
+                                "Export profile",
+                                wildcard=self.QPF_WILDCARD,
+                                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+                            ) as file_dialog:
+                                if (
+                                    self._show_modal_dialog(file_dialog, "Export profile")
+                                    != wx.ID_OK
+                                ):
+                                    return
+                                target = Path(file_dialog.GetPath())
+                            if target.suffix.lower() != ".qpf":
+                                target = target.with_suffix(".qpf")
+                            try:
+                                export_feature_profile_file(self.features, target)
+                            except OSError:
+                                self._set_status(f"Could not write profile to {target.name}")
+                                return
+                            self._set_status(f"Exported feature profile to {target.name}")
+
+                        def _on_import_profile(_event: object) -> None:
+                            with wx.FileDialog(
+                                dialog,
+                                "Import profile",
+                                wildcard=self.QPF_WILDCARD,
+                                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+                            ) as file_dialog:
+                                if (
+                                    self._show_modal_dialog(file_dialog, "Import profile")
+                                    != wx.ID_OK
+                                ):
+                                    return
+                                source = Path(file_dialog.GetPath())
+                            try:
+                                warnings = import_feature_profile_file(self.features, source)
+                            except (OSError, ValueError):
+                                self._set_status(
+                                    f"Could not read a feature profile from {source.name}"
+                                )
+                                return
+                            self._apply_accelerators()
+                            self._build_menu()
+                            profile_name = self.features.active_profile.name
+                            if warnings:
+                                self._set_status(
+                                    f"Imported profile {profile_name}"
+                                    f" ({len(warnings)} item(s) ignored)"
+                                )
+                            else:
+                                self._set_status(f"Imported feature profile {profile_name}")
+
+                        _exp_btn.Bind(wx.EVT_BUTTON, _on_export)
+                        _imp_btn.Bind(wx.EVT_BUTTON, _on_import)
+                        _rst_btn.Bind(wx.EVT_BUTTON, _on_reset)
+                        _exp_prf_btn.Bind(wx.EVT_BUTTON, _on_export_profile)
+                        _imp_prf_btn.Bind(wx.EVT_BUTTON, _on_import_profile)
                     _p.Layout()
 
                 return _build
@@ -11356,7 +11489,8 @@ class MainFrame(
                 ]
                 show_ai_master = group.id == "ai"
                 show_data_location = group.id == "general"
-                if not specs and not show_ai_master and not show_data_location:
+                show_mgmt = group.id == "admin"
+                if not specs and not show_ai_master and not show_data_location and not show_mgmt:
                     continue
                 _pg = wx.Panel(notebook, style=wx.TAB_TRAVERSAL)
                 _pg.SetSizer(wx.BoxSizer(wx.VERTICAL))
@@ -11370,133 +11504,16 @@ class MainFrame(
                         group,
                         show_ai_master,
                         show_data_location,
+                        show_mgmt,
                     )
                 )
                 page_index += 1
-
-            # Settings Management tab: all Export / Import / Reset / Profile buttons
-            _mgmt_pg = wx.Panel(notebook, style=wx.TAB_TRAVERSAL)
-            _mgmt_sz = wx.BoxSizer(wx.VERTICAL)
-            _mgmt_sz.Add(
-                wx.StaticText(
-                    _mgmt_pg,
-                    label="Export, import, and reset your settings and feature profiles.",
-                ),
-                0,
-                wx.ALL,
-                6,
-            )
-            export_btn = wx.Button(_mgmt_pg, label="&Export settings...")
-            import_btn = wx.Button(_mgmt_pg, label="&Import settings...")
-            reset_btn = wx.Button(_mgmt_pg, label="&Reset to Factory Defaults")
-            export_profile_btn = wx.Button(_mgmt_pg, label="Export &profile...")
-            import_profile_btn = wx.Button(_mgmt_pg, label="Import pro&file...")
-            for _mb in [export_btn, import_btn, reset_btn, export_profile_btn, import_profile_btn]:
-                _mgmt_sz.Add(_mb, 0, wx.ALL, 4)
-            _mgmt_pg.SetSizer(_mgmt_sz)
-            notebook.AddPage(_mgmt_pg, "Settings Management")
 
             outer.Add(notebook, 1, wx.EXPAND | wx.ALL, 8)
 
             # action carries the post-dialog instruction: "ok" | "cancel" |
             # "import" | "reset"; imported holds the Settings parsed from a file.
             action: dict[str, object] = {"mode": "cancel", "imported": None}
-
-            def _on_export(_event: object) -> None:
-                with wx.FileDialog(
-                    dialog,
-                    "Export settings",
-                    wildcard=self.QSF_WILDCARD,
-                    style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
-                ) as file_dialog:
-                    if self._show_modal_dialog(file_dialog, "Export settings") != wx.ID_OK:
-                        return
-                    target = Path(file_dialog.GetPath())
-                if target.suffix.lower() != ".qsf":
-                    target = target.with_suffix(".qsf")
-                payload = registry.export_settings(self.settings)
-                target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-                self._set_status(f"Exported settings to {target.name}")
-
-            def _on_import(_event: object) -> None:
-                with wx.FileDialog(
-                    dialog,
-                    "Import settings",
-                    wildcard=self.QSF_WILDCARD,
-                    style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
-                ) as file_dialog:
-                    if self._show_modal_dialog(file_dialog, "Import settings") != wx.ID_OK:
-                        return
-                    source = Path(file_dialog.GetPath())
-                try:
-                    raw = json.loads(source.read_text(encoding="utf-8"))
-                except (OSError, ValueError):
-                    self._set_status(f"Could not read settings from {source.name}")
-                    return
-                action["mode"] = "import"
-                action["imported"] = registry.import_settings(raw)
-                dialog.EndModal(wx.ID_CANCEL)
-
-            def _on_reset(_event: object) -> None:
-                result = self._show_message_box(
-                    "Reset every setting to its factory default? This cannot be undone.",
-                    "Reset to Factory Defaults",
-                    wx.ICON_WARNING | wx.YES_NO | wx.NO_DEFAULT,
-                )
-                if result != wx.YES:
-                    return
-                action["mode"] = "reset"
-                dialog.EndModal(wx.ID_CANCEL)
-
-            def _on_export_profile(_event: object) -> None:
-                with wx.FileDialog(
-                    dialog,
-                    "Export profile",
-                    wildcard=self.QPF_WILDCARD,
-                    style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
-                ) as file_dialog:
-                    if self._show_modal_dialog(file_dialog, "Export profile") != wx.ID_OK:
-                        return
-                    target = Path(file_dialog.GetPath())
-                if target.suffix.lower() != ".qpf":
-                    target = target.with_suffix(".qpf")
-                try:
-                    export_feature_profile_file(self.features, target)
-                except OSError:
-                    self._set_status(f"Could not write profile to {target.name}")
-                    return
-                self._set_status(f"Exported feature profile to {target.name}")
-
-            def _on_import_profile(_event: object) -> None:
-                with wx.FileDialog(
-                    dialog,
-                    "Import profile",
-                    wildcard=self.QPF_WILDCARD,
-                    style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
-                ) as file_dialog:
-                    if self._show_modal_dialog(file_dialog, "Import profile") != wx.ID_OK:
-                        return
-                    source = Path(file_dialog.GetPath())
-                try:
-                    warnings = import_feature_profile_file(self.features, source)
-                except (OSError, ValueError):
-                    self._set_status(f"Could not read a feature profile from {source.name}")
-                    return
-                self._apply_accelerators()
-                self._build_menu()
-                profile_name = self.features.active_profile.name
-                if warnings:
-                    self._set_status(
-                        f"Imported profile {profile_name} ({len(warnings)} item(s) ignored)"
-                    )
-                else:
-                    self._set_status(f"Imported feature profile {profile_name}")
-
-            export_btn.Bind(wx.EVT_BUTTON, _on_export)
-            import_btn.Bind(wx.EVT_BUTTON, _on_import)
-            reset_btn.Bind(wx.EVT_BUTTON, _on_reset)
-            export_profile_btn.Bind(wx.EVT_BUTTON, _on_export_profile)
-            import_profile_btn.Bind(wx.EVT_BUTTON, _on_import_profile)
 
             _ok_btn = wx.Button(dialog, id=wx.ID_OK)
             _cancel_btn = wx.Button(dialog, id=wx.ID_CANCEL)
