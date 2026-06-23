@@ -339,3 +339,76 @@ not need regenerating — no dialog surfaces or public methods were
 added/removed, only an existing block's visibility was gated.
 
 Committed locally (`6861b4d`); not pushed pending explicit request.
+
+## 2026-06-22 - Second origin/main sync (24 commits) + restored 8 lost test functions
+
+User asked to pull and merge main again, explicitly stressing that the
+merge must not break this branch's own work. `origin/main` had advanced 24
+commits (093a8ac4..8419d7ca: Quick Nav misspellings/search-hits, Vosk and
+NVIDIA Parakeet offline speech engines, host-mediated cloud transcription
+Quillins, watch-folder transcription actions, several dependency bumps,
+and a CI green-main fix) — much smaller than the prior 116-commit sync.
+
+4 conflicts, one of which surfaced a real, pre-existing problem **not**
+introduced by this merge: `tests/unit/ui/test_main_frame.py` conflicted
+because origin/main's tiny `# noqa: E501` fix landed inside
+`test_about_dialog_open_handler_calls_show_about_quill` — a test function
+that turned out to be **completely missing from our branch**, along with
+7 sibling tests (`test_document_tab_declares_language_profile_slots`,
+`test_open_startup_logs_handler_is_defined`,
+`test_help_view_startup_logs_menu_id_is_defined`,
+`test_startup_speech_gate_uses_quiet_status`,
+`test_screen_reader_detected_announcement_is_gated`,
+`test_show_about_quill_passes_real_about_info_instance`,
+`test_close_tab_does_not_hit_undeclared_slot`). Traced this with `git show
+<commit>:<path> | grep '^def test_'` across the previous merge commit
+(`a17acdd2`) and both of its parents: confirmed these 8 tests already
+existed in `093a8ac4` (an ancestor of our branch, merged in last time) and
+in both merge parents individually, but git's merge silently dropped them
+from the result without ever flagging a conflict — a real delete/modify
+hazard, not something caught by "no CONFLICT reported." The underlying
+`main_frame.py` production code for all 8 was never affected (confirmed:
+all 8 pass immediately once the test functions are restored), so this was
+pure lost test *coverage*, not a functional regression — but coverage
+this branch had been silently missing for a while. Restored all 8 by
+reconstructing the file from both full versions (`git show <ref>:<path>`)
+rather than trusting the line-based 3-way merge a second time; verified
+each restored test individually passes against current `main_frame.py`.
+
+The other 3 conflicts followed the now-established playbook from the
+first sync: `module_size_budgets.json` resolved by the same programmatic
+approach (union of comment keys, every `budgets` entry set to the file's
+*actual measured* size in the merged tree rather than either side's
+recorded number — this also revealed that several of `origin/main`'s own
+recorded budget numbers, e.g. `features.py` at 1029 vs. a real measured
+710 on main itself, were stale/loose; not fixed on main, just not carried
+forward into our ledger) — `quill/ui/main_frame.py` settled at **25686**
+real lines (down from 26092 after the previous sync, since main's newer
+commits extracted some code out even while adding Quick Nav/watch
+features). `dialog_inventory.json` and `main_frame_public_surface.json`
+both regenerated via their `--write` tools rather than hand-merged, same
+as last time.
+
+Verified the publishing lock from the previous session entry survived the
+merge intact: `future.publishing` still `locked_off=True` in
+`feature_catalog.py`, and the `if self._feature_enabled("future.publishing"):`
+gate is still wrapping the File > Publish submenu in `main_frame_menu.py`.
+
+Validation: reinstalled `pip install -e ".[ui,dev]"` for the dependency
+bumps (pytest 9.0.3->9.1.1, pillow); Ruff clean; scoped `mypy quill/core
+quill/io` unchanged (same 1 pre-existing finding); module-size budget
+gate, provider registry gate, and Quillin self-lint (15/15 — main's new
+`openai-whisper-transcription` bundled Quillin) all passed; full suite
+`4966 passed, 1 failed, 16 skipped` — the 1 failure
+(`test_read_open_document_uses_corpus_fixture_byte_identical`, a braille
+line-ending mismatch) verified byte-for-byte identical on a clean
+`origin/main` worktree, confirming it's pre-existing and unrelated; the
+3 other failures from the previous merge's baseline (`test_about_info`,
+`test_build_windows_distribution`, `test_check_version_consistency`) are
+now **gone** — main's own commits since the last sync fixed the
+"0.7.0 Beta 1" vs "0.7.0" version-skew that caused them. Re-ran the full
+201-test publishing+feature+menu+budget battery clean; smoke-launched the
+app, no traceback.
+
+Committed locally as a single merge commit (`8e50df9`); not pushed
+pending explicit request.
