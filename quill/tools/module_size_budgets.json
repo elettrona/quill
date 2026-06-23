@@ -81,7 +81,7 @@
   "_default_cap": 600,
   "budgets": {
     "quill/core/format_ops.py": 617,
-    "quill/ui/main_frame_speech.py": 933,
+    "quill/ui/main_frame_speech.py": 879,
     "quill/ui/main_frame.py": 25279,
     "quill/ui/main_frame_quill_key.py": 753,
     "quill/ui/main_frame_braille.py": 775,
@@ -89,7 +89,7 @@
     "quill/ui/assistant_panel.py": 801,
     "quill/ui/main_frame_power_tools.py": 1299,
     "quill/core/emmet.py": 634,
-    "quill/ui/main_frame_menu.py": 3726,
+    "quill/ui/main_frame_menu.py": 3722,
     "quill/ui/main_frame_power_tools_menu.py": 778,
     "quill/core/read_aloud.py": 1244,
     "quill/core/assistant_ai.py": 1362,

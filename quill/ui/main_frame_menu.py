@@ -1545,23 +1545,6 @@ class MenuBuilderMixin:
             self._menu_label(_("&Read All"), "edit.read_all"),
         )
         reading_menu.AppendSeparator()
-        dictation_submenu = wx.Menu()
-        dictation_submenu.Append(
-            self._id_dictation,
-            self._menu_label(_("&Dictation"), "tools.dictation_toggle"),
-            _("Press to start dictation, press again to stop and insert"),
-        )
-        dictation_submenu.AppendCheckItem(
-            self._id_dictation_voice_commands,
-            self._menu_label(_("Hey QUILL &Commands"), "tools.dictation_voice_commands_toggle"),
-        )
-        dictation_submenu.Check(
-            self._id_dictation_voice_commands,
-            bool(getattr(self.settings, "voice_commands_enabled", False)),
-        )
-        self._register_voice_commands_check_menu(dictation_submenu)
-        reading_menu.AppendSubMenu(dictation_submenu, _("&Dictation"))
-        reading_menu.AppendSeparator()
         reading_menu.Append(
             self._id_toggle_sound,
             self._menu_label(_("Toggle &Sound Notifications"), "tools.sound_toggle"),
@@ -1588,54 +1571,67 @@ class MenuBuilderMixin:
             self._menu_label(_("&Describe Image..."), "tools.describe_image"),
         )
         tools_menu.AppendSubMenu(reading_menu, _("R&eading && Dictation"))
-        # Offline, on-device speech (#617): Tools > Speech > Whisperer. These
-        # need no AI provider or keys and work with AI fully off, so they live
-        # under their own Speech menu — not the AI menu, which wrongly implied an
-        # AI dependency. "Whisperer" is the BITS Whisperer speech engine brand.
-        whisperer_menu = wx.Menu()
-        whisperer_menu.Append(
+        # Tools > Speech: flat menu consolidating offline speech, Windows dictation,
+        # and model management (#669). Previously split across Reading & Dictation >
+        # Dictation (Windows) and Speech > Whisperer (offline). One menu is simpler.
+        speech_menu = wx.Menu()
+        speech_menu.Append(
             self._id_speech_models,
             self._menu_label(_("&Manage Speech Models..."), "tools.speech_models"),
         )
-        whisperer_menu.Append(
+        speech_menu.AppendSeparator()
+        speech_menu.Append(
+            self._id_speech_dictate,
+            self._menu_label(_("&Dictate (Offline)"), "tools.speech_dictate"),
+        )
+        speech_menu.Append(
+            self._id_speech_voice_command,
+            self._menu_label(_("&Voice Command (Offline)"), "tools.voice_command"),
+        )
+        speech_menu.Append(
+            self._id_dictation,
+            self._menu_label(_("&Windows Dictation"), "tools.dictation_toggle"),
+            _("Press to start Windows dictation, press again to stop and insert"),
+        )
+        speech_menu.AppendCheckItem(
+            self._id_dictation_voice_commands,
+            self._menu_label(_("Hey QUILL &Commands"), "tools.dictation_voice_commands_toggle"),
+        )
+        speech_menu.Check(
+            self._id_dictation_voice_commands,
+            bool(getattr(self.settings, "voice_commands_enabled", False)),
+        )
+        self._register_voice_commands_check_menu(speech_menu)
+        speech_menu.Append(
+            self._id_speech_microphone,
+            self._menu_label(_("Dictation &Microphone..."), "tools.speech_microphone"),
+        )
+        speech_menu.AppendSeparator()
+        speech_menu.Append(
             self._id_speech_transcribe,
             self._menu_label(
                 _("&Transcribe Audio or Video (Offline)..."), "tools.speech_transcribe"
             ),
         )
-        whisperer_menu.Append(
+        speech_menu.Append(
             self._id_speech_captions,
             self._menu_label(_("Generate &Captions (Offline)..."), "tools.speech_captions"),
         )
-        whisperer_menu.Append(
-            self._id_speech_dictate,
-            self._menu_label(_("&Dictate (Offline)"), "tools.speech_dictate"),
-        )
-        whisperer_menu.Append(
-            self._id_speech_voice_command,
-            self._menu_label(_("&Voice Command (Offline)"), "tools.voice_command"),
-        )
-        whisperer_menu.Append(
-            self._id_speech_microphone,
-            self._menu_label(_("Dictation &Microphone..."), "tools.speech_microphone"),
-        )
-        whisperer_menu.AppendSeparator()
-        whisperer_menu.Append(
+        speech_menu.AppendSeparator()
+        speech_menu.Append(
             self._id_speech_ffmpeg,
             self._menu_label(_("Download &FFmpeg..."), "tools.speech_ffmpeg"),
         )
-        whisperer_menu.Append(
+        speech_menu.Append(
             self._id_speech_engine_dl,
             self._menu_label(
                 _("Download Faster Whisper &Engine..."), "tools.speech_engine_download"
             ),
         )
-        whisperer_menu.Append(
+        speech_menu.Append(
             self._id_speech_hf_token,
             self._menu_label(_("&Hugging Face Token..."), "tools.speech_hf_token"),
         )
-        speech_menu = wx.Menu()
-        speech_menu.AppendSubMenu(whisperer_menu, _("&Whisperer"))
         tools_menu.AppendSubMenu(speech_menu, _("&Speech"))
 
         # Comparison (was Compare Documents) ----------------------------------

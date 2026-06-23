@@ -43,91 +43,67 @@ class SpeechCommandsMixin:
                 pass
         return registry.get(DEFAULT_PROVIDER_ID)  # type: ignore[attr-defined]
 
-    def _choose_speech_engine(self) -> tuple[bool, object | None]:
-        """Let the user pick the speech engine when more than one is available.
-
-        Persists the choice to ``settings.speech_provider`` so transcription,
-        captions, and dictation all use it.
-
-        Returns ``(cancelled, provider)``. ``cancelled`` is True only when the
-        user dismissed the chooser with Escape/Cancel, so the caller can abort
-        and return to the editor instead of silently falling through to the
-        default engine's model list (#8). ``provider`` is the chosen provider,
-        or None when no choice was offered (one engine) — the caller then uses
-        the default.
-        """
-        from quill.core.settings import save_settings
-
-        wx = self._wx
-        registry = self._speech_registry()
-        providers = registry.available()  # type: ignore[attr-defined]
-        if len(providers) <= 1:
-            return False, None
-        labels = [p.display_name for p in providers]
-        current = str(getattr(self.settings, "speech_provider", "") or "")
-        selected = next((i for i, p in enumerate(providers) if p.id == current), 0)
-        with wx.SingleChoiceDialog(
-            self.frame, "Choose the speech engine to use:", "Speech Engine", labels
-        ) as dialog:
-            dialog.SetSelection(selected)
-            if self._show_modal_dialog(dialog, "Speech Engine") != wx.ID_OK:
-                return True, None
-            choice = dialog.GetSelection()
-        if not (0 <= choice < len(providers)):
-            return True, None
-        provider = providers[choice]
-        self.settings.speech_provider = provider.id
-        try:
-            save_settings(self.settings)
-        except Exception:  # noqa: BLE001 - a save failure must not block model management
-            pass
-        self._announce(f"Speech engine set to {provider.display_name}.")
-        return False, provider
-
     # -- model manager ---------------------------------------------------- #
 
     def open_speech_models(self) -> None:
+        from quill.core.settings import save_settings
+        from quill.core.speech.engine_install import is_faster_whisper_available
+        from quill.core.speech.ffmpeg import ffmpeg_available
         from quill.core.speech.service import (
-            ModelRow,
             describe_models,
             detect_has_gpu,
             detect_total_ram_gb,
             machine_summary,
         )
+        from quill.ui.speech_setup_dialog import SpeechSetupDialog
 
-        wx = self._wx
-        # #8: distinguish "cancelled the engine chooser" (return to the editor)
-        # from "only one engine, no choice offered" (use the default). Without
-        # this, Escape on the chooser fell through to the default engine's model
-        # list instead of closing.
-        cancelled, chosen = self._choose_speech_engine()
-        if cancelled:
-            return
-        provider = chosen or self._speech_provider()
+        registry = self._speech_registry()
+        all_providers = list(registry.available())  # type: ignore[attr-defined]
+        provider = self._speech_provider()
         total_ram = detect_total_ram_gb()
         has_gpu = detect_has_gpu()
         rows = describe_models(provider, total_ram, has_gpu)  # type: ignore[arg-type]
-        labels = [row.label for row in rows]
-        with wx.SingleChoiceDialog(
+
+        dlg = SpeechSetupDialog(
             self.frame,
-            "Speech models for offline transcription. "
-            f"{machine_summary(total_ram, has_gpu)} "
-            "Choose a model, then pick what to do with it (download it, or remove it "
-            "if it is already installed):",
-            "Manage Speech Models",
-            labels,
-        ) as dialog:
-            if self._show_modal_dialog(dialog, "Manage Speech Models") != wx.ID_OK:
-                return
-            selection = dialog.GetSelection()
-        if selection < 0 or selection >= len(rows):
+            provider=provider,
+            rows=rows,
+            machine_summary=machine_summary(total_ram, has_gpu),
+            ffmpeg_ok=ffmpeg_available(),
+            engine_ok=is_faster_whisper_available(),
+            all_providers=all_providers,
+            total_ram=total_ram,
+            has_gpu=has_gpu,
+        )
+        result = dlg.show(self._show_modal_dialog)
+        if result is None:
             return
-        row: ModelRow = rows[selection]
-        action = self._choose_model_action(row)
-        if action == "download":
-            self._maybe_download_speech_model(provider, row)
-        elif action == "remove":
-            self._maybe_remove_speech_model(provider, row.id)
+
+        # Save engine choice when the user switched providers inside the dialog.
+        chosen_provider_id = result.provider_id or ""
+        if chosen_provider_id and chosen_provider_id != str(
+            getattr(self.settings, "speech_provider", "") or ""
+        ):
+            chosen = registry.get(chosen_provider_id)  # type: ignore[attr-defined]
+            if chosen is not None:
+                provider = chosen
+                self.settings.speech_provider = chosen_provider_id
+                try:
+                    save_settings(self.settings)
+                except Exception:  # noqa: BLE001
+                    pass
+                self._announce(f"Speech engine set to {provider.display_name}.")  # type: ignore[attr-defined]
+
+        if result.action == "download" and result.model_row is not None:
+            self._maybe_download_speech_model(provider, result.model_row)
+        elif result.action == "remove" and result.model_id:
+            self._maybe_remove_speech_model(provider, result.model_id)
+        elif result.action == "ffmpeg":
+            self.download_ffmpeg()
+        elif result.action == "engine":
+            self.download_faster_whisper()
+        elif result.action == "hf_token":
+            self.set_huggingface_token()
 
     def set_huggingface_token(self) -> None:
         """Store an optional Hugging Face access token for model downloads (#617).
@@ -345,36 +321,6 @@ class SpeechCommandsMixin:
         threading.Thread(  # GATE-40-OK: Faster Whisper install worker.
             target=_run, daemon=True
         ).start()
-
-    def _choose_model_action(self, row: object) -> str | None:
-        """Ask what to do with the chosen model. Returns 'download', 'remove', or None.
-
-        An explicit action picker makes deletion discoverable (the previous flow
-        silently inferred the action from install state) and keeps every option
-        keyboard- and screen-reader-reachable through a stock single-choice list.
-        """
-        wx = self._wx
-        installed = bool(getattr(row, "installed", False))
-        if installed:
-            actions = [
-                ("Remove this model from my computer", "remove"),
-                ("Keep it (do nothing)", None),
-            ]
-        else:
-            actions = [
-                ("Download this model", "download"),
-                ("Do nothing", None),
-            ]
-        labels = [label for label, _key in actions]
-        with wx.SingleChoiceDialog(
-            self.frame, "What would you like to do?", "Speech Model", labels
-        ) as dialog:
-            if self._show_modal_dialog(dialog, "Speech Model") != wx.ID_OK:
-                return None
-            choice = dialog.GetSelection()
-        if 0 <= choice < len(actions):
-            return actions[choice][1]
-        return None
 
     def _maybe_remove_speech_model(self, provider: object, model_id: str) -> None:
         wx = self._wx
