@@ -426,7 +426,11 @@ FEATURE_DEFINITIONS: dict[str, FeatureDefinition] = {
             "Publishing connections and provider-aware remote publishing flows. "
             "Locked off while the publishing-providers-framework branch is under "
             "review; gating this off keeps it out of the public release until "
-            "the feature is ready to ship."
+            "the feature is ready to ship. Once enabled, available by default "
+            "in the Casual Writer, Author or Student, Developer and Power "
+            "Text, and Full Quill profiles; off by default elsewhere, but any "
+            "user can still turn it on individually via Manage Individual "
+            "Features."
         ),
         maturity="advanced",
         privacy="network after confirmation",
