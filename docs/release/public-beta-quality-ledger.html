@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>public-beta-quality-ledger</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<h1 id="quill-public-beta-quality-ledger">QUILL Public Beta Quality
+Ledger</h1>
+<p>Living record of the public-beta quality pass. The product name is
+<strong>QUILL</strong> (no rename); any "TINDRA" naming is a future,
+not-yet-applied plan and is out of scope here.</p>
+<p>This ledger is iterative. It is seeded with the work verified in the
+current pass plus the baseline gate state; it is not a claim that the
+entire repository has been exhaustively re-audited. Sections marked
+"Deferred / next wave" are honest about what has not yet been done.</p>
+<h2 id="baseline-gate-state">Baseline (gate state)</h2>
+<p>Captured on the current branch (<code>main</code>), dev environment,
+Python 3.12.</p>
+<table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Command</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lint</td>
+<td><code>ruff check .</code></td>
+<td>Pass (3 benign cross-tool <code># noqa</code> warnings, see
+L-001)</td>
+</tr>
+<tr>
+<td>Format</td>
+<td><code>ruff format --check .</code></td>
+<td>Pass after formatting one new file</td>
+</tr>
+<tr>
+<td>Types (scoped)</td>
+<td><code>mypy quill/core quill/io</code></td>
+<td>Pass (298 files, no issues)</td>
+</tr>
+<tr>
+<td>Egress audit</td>
+<td><code>tests/unit/tools/test_network_egress_audit.py</code></td>
+<td>Pass</td>
+</tr>
+<tr>
+<td>Docs parity</td>
+<td><code>scripts/check_docs_artifacts.py</code></td>
+<td>Pass</td>
+</tr>
+<tr>
+<td>Build dist</td>
+<td><code>tests/unit/scripts/test_build_windows_distribution.py</code></td>
+<td>Pass (15)</td>
+</tr>
+<tr>
+<td>Speech suite</td>
+<td><code>tests/unit/core/speech/</code> (subset)</td>
+<td>Pass; one Parakeet test hits a <code>transformers</code> import
+timeout in dev (see TEST-001)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="running-totals">Running totals</h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Production files modified (this pass)</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Test files added/modified</td>
+<td>2</td>
+</tr>
+<tr>
+<td>Documentation files modified</td>
+<td>4 (md) + regenerated html/epub</td>
+</tr>
+<tr>
+<td>Bugs fixed</td>
+<td>1 (L-001 class reviewed; see notes)</td>
+</tr>
+<tr>
+<td>Features hardened / shipped</td>
+<td>4 (Vosk bundling, Groq, ElevenLabs, Faster Whisper on-demand
+install)</td>
+</tr>
+<tr>
+<td>Security/egress items reviewed</td>
+<td>1 (SEC-001, pip subprocess egress documented)</td>
+</tr>
+<tr>
+<td>Accessibility issues fixed</td>
+<td>0 (audit deferred; see next wave)</td>
+</tr>
+<tr>
+<td>Tests added</td>
+<td>2 files (<code>test_cloud_transcribers.py</code>,
+<code>test_engine_install.py</code>)</td>
+</tr>
+<tr>
+<td>Remaining known issues</td>
+<td>1 (TEST-001)</td>
+</tr>
+<tr>
+<td>Intentional legacy QUILL references reviewed</td>
+<td>n/a (no rename; QUILL is the name)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="findings">Findings</h2>
+<h3
+id="release-001--faster-whisper-engine-had-no-path-for-packaged-users">RELEASE-001
+— Faster Whisper engine had no path for packaged users</h3>
+<ul>
+<li>Severity: Medium. Category: Packaging / feature completeness.</li>
+<li>Component: <code>scripts/build_windows_distribution.py</code>,
+<code>quill/core/speech/engine_install.py</code>,
+<code>quill/ui/main_frame_speech.py</code>,
+<code>quill/ui/main_frame_menu.py</code>,
+<code>quill/__main__.py</code>.</li>
+<li>Problem: the shipped installer uses a frozen embeddable Python, so
+the <code>[fasterwhisper]</code> extra was unreachable for non-source
+users. Only whisper.cpp was selectable as an offline engine in a
+packaged build.</li>
+<li>Resolution: added an on-demand installer. <strong>Tools &gt; Speech
+&gt; Whisperer &gt; Download Faster Whisper Engine...</strong> installs
+it wheel-only
+(<code>pip install --only-binary=:all: --target &lt;app data&gt;/engine-packs/faster-whisper</code>)
+into a user-writable folder (no admin), prepended to
+<code>sys.path</code> at startup so the engine appears in the Speech
+Engine chooser. The shipped runtime now keeps <code>pip</code>
+(setuptools/wheel still pruned). Blocked in Safe Mode, behind a
+confirmation + progress dialog.</li>
+<li>Tests: <code>tests/unit/core/speech/test_engine_install.py</code> (8
+cases).</li>
+<li>Status: Fixed. Needs manual validation on a packaged Windows build
+(a real pip-into-target install and engine activation).</li>
+</ul>
+<h3
+id="release-002--vosk-engine-unreachable-for-packaged-users">RELEASE-002
+— Vosk engine unreachable for packaged users</h3>
+<ul>
+<li>Severity: Low. Category: Packaging / accessibility reach.</li>
+<li>Resolution: Vosk's wheel is self-contained (ships libvosk), so it is
+now in the installer's base dependency groups
+(<code>DEFAULT_BUNDLED_DEPENDENCY_GROUPS</code>), available out of the
+box; its ~40 MB model still downloads on first use.</li>
+<li>Status: Fixed. Needs manual validation on a packaged build.</li>
+</ul>
+<h3 id="sec-001--pip-subprocess-egress-faster-whisper-install">SEC-001 —
+pip subprocess egress (Faster Whisper install)</h3>
+<ul>
+<li>Severity: Low (informational). Category: Network egress /
+privacy.</li>
+<li>The on-demand install runs the runtime's pip in a subprocess, which
+reaches PyPI / pythonhosted. The AST egress scanner only sees
+<code>urlopen</code>/<code>urlretrieve</code>, so this is documented as
+a manual comment block in
+<code>quill/tools/network_egress_audit.py</code> (alongside the PyGithub
+block). Gated by an explicit user action, a confirmation dialog, and
+Safe Mode; wheel-only.</li>
+<li>Status: Verified / documented.</li>
+</ul>
+<h3
+id="l-001--three--noqa-dialog_button_contract-directives-warn-under-ruff">L-001
+— Three <code># noqa: dialog_button_contract</code> directives warn
+under ruff</h3>
+<ul>
+<li>Severity: Low. Category: Lint hygiene.</li>
+<li><code>quill/ui/main_frame_quillins.py:737,754</code> and
+<code>quill/ui/main_frame.py:13178</code> carry
+<code># noqa: dialog_button_contract</code>. ruff warns because that is
+not a ruff code — but it is an <strong>intentional cross-tool
+pragma</strong> consumed by the <code>dialog_button_contract</code> gate
+(regex <code>#\s*noqa\s*:\s*dialog_button_contract</code>).</li>
+<li>Resolution: <strong>Intentional behavior — left unchanged.</strong>
+Rewriting them would break the dialog-button-contract gate. Recorded so
+a future pass does not "fix" it blindly.</li>
+<li>Status: Intentional behavior.</li>
+</ul>
+<h3
+id="test-001--parakeet-provider-test-triggers-a-slow-transformers-import-in-dev">TEST-001
+— Parakeet provider test triggers a slow <code>transformers</code>
+import in dev</h3>
+<ul>
+<li>Severity: Low. Category: Test reliability.</li>
+<li>When <code>transformers</code> is installed in the environment,
+running the full <code>tests/unit/core/speech/</code> set can hang on
+NeMo's <code>transformers</code> import-structure scan during a Parakeet
+test, hitting the suite timeout. Product code is lazy (only
+<code>find_spec</code> at startup), so this is a test-harness artifact,
+not a runtime defect; Parakeet is unbundled and source-only.</li>
+<li>Recommended next step: add <code>@pytest.mark.timeout(...)</code> to
+the Parakeet test and ensure it never triggers a real heavy import under
+collection.</li>
+<li>Status: Found (deferred).</li>
+</ul>
+<h2
+id="deferred--next-wave-not-yet-done--do-not-represent-as-complete">Deferred
+/ next wave (not yet done — do not represent as complete)</h2>
+<p>The master quality-pass scope is repository-wide and multi-session.
+Not yet performed in this pass:</p>
+<ul>
+<li>Full test-suite run with a per-test timeout to neutralize
+TEST-001.</li>
+<li>The accessibility/keyboard/focus audit of dialogs and the editor
+(Sections 11, 24 of the brief) — none performed yet.</li>
+<li>The startup/shutdown initialization-order hardening review (Section
+9).</li>
+<li>The call-site / attribute-contract repository audit (Section
+7).</li>
+<li>The performance and visual-polish passes (Sections 13, 14).</li>
+<li>The documentation audit beyond the release notes / CHANGELOG touched
+here.</li>
+</ul>
+<h2 id="validation-performed-this-pass">Validation performed this
+pass</h2>
+<ul>
+<li><code>ruff check</code> on all changed files: pass.</li>
+<li><code>ruff format</code> applied to the one new module.</li>
+<li><code>python -m pytest tests/unit/core/speech/test_engine_install.py tests/unit/core/speech/test_cloud_transcribers.py tests/unit/core/speech/test_quillin_providers.py tests/unit/tools/test_network_egress_audit.py</code>:
+32 passed.</li>
+<li><code>python -m pytest tests/unit/ui/test_main_frame_menu_contract.py tests/unit/ui/test_main_frame_menu_label_accelerator.py tests/unit/ui/test_speech_commands.py</code>:
+11 passed.</li>
+<li><code>python -m pytest tests/unit/scripts/test_build_windows_distribution.py</code>:
+15 passed.</li>
+<li><code>scripts/check_docs_artifacts.py</code>: pass.</li>
+</ul>
+</body>
+</html>

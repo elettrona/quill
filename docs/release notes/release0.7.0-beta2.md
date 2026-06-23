@@ -148,15 +148,23 @@ profile tells you where to get one. This automation always uses the on-device
 engine — it never uploads your audio.
 
 ### Add a cloud transcription provider (optional)
-Prefer a cloud service for its accuracy? You can now add one as an **extension**.
-Install the bundled **OpenAI Whisper Transcription** Quillin and set an OpenAI API
-key in AI Hub, and "OpenAI Whisper" appears as a provider in **Manage Speech
-Models**. Cloud transcription is strictly **opt-in and never silent**: audio is
-uploaded only when you explicitly transcribe a file with that provider, never
-offline and never in Safe Mode — and the folder automation above never uses it.
-Extensions that add a provider ship no code and request no network permission;
-QUILL itself performs the upload through its audited network path, so the
-extension never sees your audio or your key.
+Prefer a cloud service for its accuracy or speed? You can now add one as an
+**extension**. QUILL bundles three, each a purely declarative Quillin:
+
+- **OpenAI Whisper** — best-in-class accuracy across 99+ languages (uses your
+  OpenAI API key).
+- **Groq Whisper** — the same Whisper large-v3-turbo model, run on Groq's
+  hardware for very fast turnaround (needs a Groq API key).
+- **ElevenLabs Scribe** — high accuracy with optional **speaker diarization**, so
+  the transcript marks who spoke each segment (needs an ElevenLabs API key).
+
+Enable one, set its API key, and the provider appears in **Manage Speech Models**.
+Cloud transcription is strictly **opt-in and never silent**: audio is uploaded
+only when you explicitly transcribe a file with that provider, never offline and
+never in Safe Mode — and the folder automation above never uses it. These
+extensions ship no code and request no network permission; QUILL itself performs
+the upload through its audited network path, so the extension never sees your
+audio or your key.
 
 ### Dictate into your document
 **Dictate (Offline)** lets you speak directly into the editor. Press the command
@@ -178,12 +186,17 @@ The bundled **whisper.cpp** engine needs nothing extra. On capable machines you
 can opt into two more, each by installing an optional dependency:
 
 - **Faster Whisper** — a higher-throughput multilingual engine that uses your
-  **GPU** when one is available (`fasterwhisper` dependency).
+  **GPU** when one is available. Install it in one step with **Tools > Speech >
+  Whisperer > Download Faster Whisper Engine...** (about 110 MB, downloaded on
+  demand; no source checkout needed), or from source as the `fasterwhisper`
+  dependency.
 - **Parakeet (English)** — NVIDIA's high-accuracy **English** engine with
   timestamps, also GPU-oriented (`parakeet` dependency, which pulls in NVIDIA
   NeMo and PyTorch — a large download).
 - **Vosk (English)** — a **very low-resource, CPU-only** engine that runs on a
-  ~40 MB model with no GPU, for old or constrained machines (`vosk` dependency).
+  ~40 MB model with no GPU, for old or constrained machines. It ships **in the
+  Windows installer**, so it is available out of the box (no extra install); from
+  source it is the `vosk` dependency. Its model still downloads on first use.
 
 **Manage Speech Models** then offers a **Speech Engine** chooser, and your choice
 is used for transcription, captions, and dictation; each engine has its own
