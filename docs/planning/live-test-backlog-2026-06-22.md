@@ -35,11 +35,18 @@ and 13, and likely contributes to 10. A small systemic fix is proposed below.
    speaks the new state. The menu item is `AppendCheckItem` and no longer reads
    "...(in Settings)".
 
-8. **Speech model list is disjointed (largest item).**
-   - whisper.cpp is missing from the model/engine list (only "fast"/openai show).
-   - Want other engines added the way Vosk/Parakeet were wired.
-   - Escape in the model list opens the whisper-models list instead of returning
-     to the editor. Needs an escape/back contract and a coherent flow.
+8. **Speech model list is disjointed (largest item). (PARTIAL)**
+   - **(DONE) Escape/back contract.** `_choose_speech_engine` now returns
+     `(cancelled, provider)`; `open_speech_models` aborts to the editor when the
+     chooser is cancelled. Previously `_choose_speech_engine() or
+     self._speech_provider()` made Escape fall through to the default engine's
+     model list — the "Escape opens the whisper-models list" bug. Unit-tested.
+   - **(REMAINING) Engine-list completeness.** whisper.cpp is hidden when its
+     binary isn't installed because the chooser lists `registry.available()`
+     only; the user wants registered-but-not-installed engines shown with an
+     install path (the "cloud and engine install" work this branch is named
+     for). That is a model-manager redesign (show `registry.all()` with per-row
+     install status + guided install per engine) and should be its own change.
 
 9. **(DONE) F7/F8 now speak a directional result on a freshly typed
    misspelling.** Instead of a silent "No next misspelling", F7/F8 force-speak

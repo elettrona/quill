@@ -43,12 +43,18 @@ class SpeechCommandsMixin:
                 pass
         return registry.get(DEFAULT_PROVIDER_ID)  # type: ignore[attr-defined]
 
-    def _choose_speech_engine(self) -> object | None:
+    def _choose_speech_engine(self) -> tuple[bool, object | None]:
         """Let the user pick the speech engine when more than one is available.
 
         Persists the choice to ``settings.speech_provider`` so transcription,
-        captions, and dictation all use it. Returns the chosen provider, or None
-        to fall back to the default (including when only one engine exists).
+        captions, and dictation all use it.
+
+        Returns ``(cancelled, provider)``. ``cancelled`` is True only when the
+        user dismissed the chooser with Escape/Cancel, so the caller can abort
+        and return to the editor instead of silently falling through to the
+        default engine's model list (#8). ``provider`` is the chosen provider,
+        or None when no choice was offered (one engine) — the caller then uses
+        the default.
         """
         from quill.core.settings import save_settings
 
@@ -56,7 +62,7 @@ class SpeechCommandsMixin:
         registry = self._speech_registry()
         providers = registry.available()  # type: ignore[attr-defined]
         if len(providers) <= 1:
-            return None
+            return False, None
         labels = [p.display_name for p in providers]
         current = str(getattr(self.settings, "speech_provider", "") or "")
         selected = next((i for i, p in enumerate(providers) if p.id == current), 0)
@@ -65,10 +71,10 @@ class SpeechCommandsMixin:
         ) as dialog:
             dialog.SetSelection(selected)
             if self._show_modal_dialog(dialog, "Speech Engine") != wx.ID_OK:
-                return None
+                return True, None
             choice = dialog.GetSelection()
         if not (0 <= choice < len(providers)):
-            return None
+            return True, None
         provider = providers[choice]
         self.settings.speech_provider = provider.id
         try:
@@ -76,7 +82,7 @@ class SpeechCommandsMixin:
         except Exception:  # noqa: BLE001 - a save failure must not block model management
             pass
         self._announce(f"Speech engine set to {provider.display_name}.")
-        return provider
+        return False, provider
 
     # -- model manager ---------------------------------------------------- #
 
@@ -90,7 +96,14 @@ class SpeechCommandsMixin:
         )
 
         wx = self._wx
-        provider = self._choose_speech_engine() or self._speech_provider()
+        # #8: distinguish "cancelled the engine chooser" (return to the editor)
+        # from "only one engine, no choice offered" (use the default). Without
+        # this, Escape on the chooser fell through to the default engine's model
+        # list instead of closing.
+        cancelled, chosen = self._choose_speech_engine()
+        if cancelled:
+            return
+        provider = chosen or self._speech_provider()
         total_ram = detect_total_ram_gb()
         has_gpu = detect_has_gpu()
         rows = describe_models(provider, total_ram, has_gpu)  # type: ignore[arg-type]

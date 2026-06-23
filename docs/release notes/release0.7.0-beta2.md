@@ -200,8 +200,10 @@ can opt into two more, each by installing an optional dependency:
 
 **Manage Speech Models** then offers a **Speech Engine** chooser, and your choice
 is used for transcription, captions, and dictation; each engine has its own
-models, so download one after switching. All three run **entirely on your
-computer**. (For speaker labels, use the whisper.cpp speaker-detection model.)
+models, so download one after switching. Pressing **Escape** on the engine
+chooser now returns you to the editor rather than opening the default engine's
+model list. All three run **entirely on your computer**. (For speaker labels,
+use the whisper.cpp speaker-detection model.)
 
 ## Read and proof braille
 

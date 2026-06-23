@@ -218,15 +218,24 @@ flips <code>settings.voice_commands_enabled</code> directly, persists,
 syncs the menu check (both basic and full profiles), and speaks the new
 state. The menu item is <code>AppendCheckItem</code> and no longer reads
 "...(in Settings)".</p></li>
-<li><p><strong>Speech model list is disjointed (largest
-item).</strong></p>
+<li><p><strong>Speech model list is disjointed (largest item).
+(PARTIAL)</strong></p>
 <ul>
-<li>whisper.cpp is missing from the model/engine list (only
-"fast"/openai show).</li>
-<li>Want other engines added the way Vosk/Parakeet were wired.</li>
-<li>Escape in the model list opens the whisper-models list instead of
-returning to the editor. Needs an escape/back contract and a coherent
-flow.</li>
+<li><strong>(DONE) Escape/back contract.</strong>
+<code>_choose_speech_engine</code> now returns
+<code>(cancelled, provider)</code>; <code>open_speech_models</code>
+aborts to the editor when the chooser is cancelled. Previously
+<code>_choose_speech_engine() or self._speech_provider()</code> made
+Escape fall through to the default engine's model list — the "Escape
+opens the whisper-models list" bug. Unit-tested.</li>
+<li><strong>(REMAINING) Engine-list completeness.</strong> whisper.cpp
+is hidden when its binary isn't installed because the chooser lists
+<code>registry.available()</code> only; the user wants
+registered-but-not-installed engines shown with an install path (the
+"cloud and engine install" work this branch is named for). That is a
+model-manager redesign (show <code>registry.all()</code> with per-row
+install status + guided install per engine) and should be its own
+change.</li>
 </ul></li>
 <li><p><strong>(DONE) F7/F8 now speak a directional result on a freshly
 typed misspelling.</strong> Instead of a silent "No next misspelling",
