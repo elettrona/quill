@@ -27,13 +27,13 @@ Captured on the current branch (`main`), dev environment, Python 3.12.
 
 | Metric | Count |
 | --- | --- |
-| Production files modified (this pass) | 8 |
+| Production files modified (this pass) | 14 |
 | Test files added/modified | 2 |
 | Documentation files modified | 4 (md) + regenerated html/epub |
 | Bugs fixed | 1 (L-001 class reviewed; see notes) |
 | Features hardened / shipped | 4 (Vosk bundling, Groq, ElevenLabs, Faster Whisper on-demand install) |
 | Security/egress items reviewed | 1 (SEC-001, pip subprocess egress documented) |
-| Accessibility issues fixed | 0 (audit deferred; see next wave) |
+| Accessibility issues fixed | 13 (6 unnamed tab groups, 7 literal snake_case names) |
 | Tests added | 2 files (`test_cloud_transcribers.py`, `test_engine_install.py`) |
 | Remaining known issues | 1 (TEST-001) |
 | Intentional legacy QUILL references reviewed | n/a (no rename; QUILL is the name) |
@@ -95,14 +95,54 @@ Captured on the current branch (`main`), dev environment, Python 3.12.
   ensure it never triggers a real heavy import under collection.
 - Status: Found (deferred).
 
+## Accessibility audit — wave 1 (dialogs / tab groups)
+
+Baseline: the repo's accessibility gates are strong and green — 38 tests across
+dialog-inventory (ShowModal compliance), dialog-focus-routing, dialog-z-order
+(no dialog behind a window), announce-gap (GATE-12: every status update has a
+screen-reader announcement), and a11y-region keyboard-trap tracking. The audit
+therefore targeted what those gates do not check: accessible names.
+
+### A11Y-001 — Notebook tab groups announced generically (no accessible name)
+- Severity: Medium. Category: Accessibility (screen-reader naming).
+- Several `wx.Notebook` tab groups had no `SetName`, so a screen reader announces
+  an unnamed/generic tab group instead of its purpose.
+- Fixed (6): `info_pages.py` About dialog (both the main About notebook and the
+  "About" tabbed dialog), `status_dialog.py` (Application Status), `word_view.py`,
+  `rich_text_surface.py`, `csv_grid.py` (the three alternate document-view
+  surfaces), and the main document tab host in `main_frame.py` (now "Open
+  documents"). Notebooks that were already named (Settings, AI Hub, Quillin
+  prefs, menu-customization, Preferences listbook) were left as-is.
+- Tests: existing UI suites for each surface pass; `test_rich_text_surface.py`'s
+  `_FakeNotebook` double gained `SetName` (the production change was correct; the
+  test double was incomplete).
+- Status: Fixed. Needs live screen-reader confirmation (NVDA/JAWS).
+
+### A11Y-002 — Accessible names set to snake_case identifiers (spoken verbatim)
+- Severity: Medium. Category: Accessibility (screen-reader naming).
+- Controls used `SetName("status_overview")`-style identifiers as their accessible
+  name; a screen reader speaks them literally ("status underscore overview").
+- Fixed (7): `status_dialog.py` (5 controls -> "Status overview", "Tasks and
+  downloads", "Features", "Recent actions", "Refresh"), `verbosity_prefs.py`
+  status line ("Verbosity status", test assertion updated to match), and the
+  `info_pages` About notebook name.
+- Reviewed — intentional (left unchanged): `simple_open_dialog.py` and
+  `crash_report_dialog.py` set a snake_case **dialog window name** that is a
+  tested automation handle (`test_main_frame_simple_open.py` asserts
+  `GetName() == "simple_open"`); a dialog's spoken accessible name is its title,
+  not the window name, so these are not literal-readout defects.
+- Status: Fixed (controls) / Intentional (dialog handles).
+
 ## Deferred / next wave (not yet done — do not represent as complete)
 
 The master quality-pass scope is repository-wide and multi-session. Not yet
 performed in this pass:
 
 - Full test-suite run with a per-test timeout to neutralize TEST-001.
-- The accessibility/keyboard/focus audit of dialogs and the editor (Sections 11,
-  24 of the brief) — none performed yet.
+- The accessibility audit continues: wave 1 (tab-group + control naming) is done;
+  still to do — initial-focus quality per dialog, label/field associations,
+  keyboard-trap spot checks beyond the gate, and the editor surface (Sections 11,
+  24 of the brief).
 - The startup/shutdown initialization-order hardening review (Section 9).
 - The call-site / attribute-contract repository audit (Section 7).
 - The performance and visual-polish passes (Sections 13, 14).

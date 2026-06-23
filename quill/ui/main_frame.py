@@ -4040,12 +4040,11 @@ class MainFrame(
 
     def _create_tab_host(self, show_tab_control: bool) -> object:
         wx = self._wx
-        if show_tab_control:
-            return wx.Notebook(self._documents_panel)
-        simplebook = getattr(wx, "Simplebook", None)
-        if simplebook is not None:
-            return simplebook(self._documents_panel)
-        return wx.Notebook(self._documents_panel)
+        panel = self._documents_panel
+        simplebook = None if show_tab_control else getattr(wx, "Simplebook", None)
+        host = simplebook(panel) if simplebook else wx.Notebook(panel)
+        host.SetName("Open documents")  # SR announces the document tab group, not a bare notebook
+        return host
 
     def _rebuild_tab_host(self, show_tab_control: bool) -> None:
         if show_tab_control == self._tab_control_visible:

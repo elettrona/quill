@@ -126,7 +126,7 @@ class VerbosityPrefsPanel(wx.Panel):
         root.Add(edit_row, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         self._status = wx.StaticText(self, label="")
-        self._status.SetName("verbosity_status")
+        self._status.SetName("Verbosity status")
         root.Add(self._status, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         self.SetSizer(root)

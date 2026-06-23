@@ -35,7 +35,7 @@ def show_about_quill_native(
     dialog.SetSize((760, 580))
     sizer = wx.BoxSizer(wx.VERTICAL)
 
-    notebook = wx.Notebook(dialog, name="about_notebook")
+    notebook = wx.Notebook(dialog, name="About sections")
 
     # --- Overview tab ---
     overview = wx.Panel(notebook)
@@ -345,6 +345,7 @@ def show_whisperer_about_native(
     dialog.SetSize((760, 540))
     sizer = wx.BoxSizer(wx.VERTICAL)
     nb = wx.Notebook(dialog)
+    nb.SetName("About sections")
 
     # Overview tab
     overview_panel = wx.Panel(nb)

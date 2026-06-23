@@ -110,6 +110,7 @@ class RichTextSurface:
         root.Add(header, 0, wx.ALL, 6)
 
         self._notebook = wx.Notebook(self.panel)
+        self._notebook.SetName("Rich text view")
         self._rich_page = wx.Panel(self._notebook)
         self._text_page = wx.Panel(self._notebook)
 

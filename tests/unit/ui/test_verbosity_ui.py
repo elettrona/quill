@@ -95,7 +95,9 @@ def test_prefs_panel_initial_focus_on_filter() -> None:
 
 def test_prefs_panel_has_named_status_line() -> None:
     source = _source("verbosity_prefs.py")
-    assert 'SetName("verbosity_status")' in source
+    # A human-readable accessible name (screen readers speak it verbatim), not a
+    # snake_case identifier.
+    assert 'SetName("Verbosity status")' in source
 
 
 def test_prefs_panel_visual_floor_named() -> None:
