@@ -422,8 +422,16 @@ though clean, so the check is on the record and repeatable.
   mutable literal (`[]`/`{}`/`set()`/`list()`/`dict()`).
 - Result: **0 occurrences**. Status: Clean (no defect).
 
+### BUG-thread-daemon — non-daemon threads (shutdown-hang risk)
+- Audited every `threading.Thread(...)` construction in `quill/` (58 of them) for a
+  `daemon` setting; a non-daemon worker can block interpreter shutdown.
+- Result: **0 missing** — all 58 set `daemon`. Status: Clean (no defect). This
+  matches the repo's `# GATE-40-OK` thread-start review convention.
+
 Note: `ruff`'s broader correctness rules (bare `except`, `is`-with-literal, etc.)
 are already green repo-wide, so those classes are covered by the standing gates.
+The three audit scripts (undefined-method calls, mutable defaults, non-daemon
+threads) are simple AST passes and are good candidates to add as standing CI gates.
 
 ## Full-suite sweep (drive detectable failures to zero)
 

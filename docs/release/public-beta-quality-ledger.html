@@ -857,9 +857,23 @@ id="bug-mutable-defaults--mutable-default-arguments">BUG-mutable-defaults
 <li>Result: <strong>0 occurrences</strong>. Status: Clean (no
 defect).</li>
 </ul>
+<h3
+id="bug-thread-daemon--non-daemon-threads-shutdown-hang-risk">BUG-thread-daemon
+— non-daemon threads (shutdown-hang risk)</h3>
+<ul>
+<li>Audited every <code>threading.Thread(...)</code> construction in
+<code>quill/</code> (58 of them) for a <code>daemon</code> setting; a
+non-daemon worker can block interpreter shutdown.</li>
+<li>Result: <strong>0 missing</strong> — all 58 set <code>daemon</code>.
+Status: Clean (no defect). This matches the repo's
+<code># GATE-40-OK</code> thread-start review convention.</li>
+</ul>
 <p>Note: <code>ruff</code>'s broader correctness rules (bare
 <code>except</code>, <code>is</code>-with-literal, etc.) are already
-green repo-wide, so those classes are covered by the standing gates.</p>
+green repo-wide, so those classes are covered by the standing gates. The
+three audit scripts (undefined-method calls, mutable defaults,
+non-daemon threads) are simple AST passes and are good candidates to add
+as standing CI gates.</p>
 <h2 id="full-suite-sweep-drive-detectable-failures-to-zero">Full-suite
 sweep (drive detectable failures to zero)</h2>
 <p>Running the whole <code>tests/unit tests/stability</code> suite (4896
