@@ -1638,16 +1638,16 @@ The status bar's **Search term** cell (5.1b) displays the current search term an
 
 **Project-wide Find (Find in Folder)** is deferred to v1.2.
 
-### 5.9 Spell checking (magical, local-first)
+### 5.9 Spell checking (local-first, guided F7 review)
 
-This section was significantly expanded in v0.2 of this PRD. See [section 6](#6-spell-checking-deep-dive) for the full design and the decision rationale.
+This section was significantly expanded in v0.2 of this PRD. See [section 6](#6-spell-checking-deep-dive) for the full architecture and decision rationale, and [§6.4](#64-f7-spelling-review-full-specification) for the complete F7 dialog specification.
 
-Quill ships **its own spell checking engine**, built on Hunspell dictionaries, designed from the ground up for screen-reader speed and predictability. It does **not** depend on TinySpell or any other external spell-checker process.
+QUILL ships **its own spell checking engine**, built on Hunspell dictionaries, designed from the ground up for screen-reader speed and predictability. It does **not** depend on TinySpell or any other external spell-checker process.
 
-- `F7` opens the full Spell Check dialog (Word-style, but accessible).
+- **`F7`** opens the **Spelling Review** dialog — a guided, modal, fully keyboard-operable review of every misspelling in the document or active selection. The dialog surfaces each issue inside a readable, navigable, sentence-level context window. See §6.4 for the complete specification. **Implemented in 0.7.0 Beta 2.**
+- **`Ctrl+F7` / `Ctrl+Shift+F7`** jump to the next or previous misspelling without leaving the editor.
 - As-you-type checking is on by default. Misspellings are tracked in a sidecar model (not visual squiggles) and announced gently on word boundary if the user opts in.
-- `Ctrl+;` jumps to the next misspelling and opens an inline suggestion popup (a small modal list, fully keyboard driven).
-- Suggestions come from Hunspell plus an n-gram reranker trained on the user's writing for personalised top-3 suggestions.
+- Suggestions come from Hunspell plus an n-gram reranker trained on the user's writing for personalised top suggestions.
 - Personal dictionary persists per user; per-document dictionary persists in a sidecar file.
 - Multiple simultaneous dictionaries: e.g. English (UK) plus a technical jargon list plus the document's own dictionary, merged with priority.
 - All entirely local. No cloud round-trip ever for spell check.
@@ -3218,7 +3218,7 @@ InstructionSet(task_id, title, default_prompt, user_prompt="", enabled=True)
 | Feature | Shortcut | Module | Dialog |
 |---|---|---|---|
 | AI Thesaurus | Shift+F8 | `core/ai/thesaurus.py` | `ui/ai_thesaurus_dialog.py` |
-| AI Spell Check | F7 | `core/ai/spell_check.py` | `ui/ai_spell_check_dialog.py` |
+| AI Spell Check | — | `core/ai/spell_check.py` | `ui/ai_spell_check_dialog.py` |
 | AI Grammar Check | — | `core/ai/grammar_check.py` | `ui/ai_grammar_check_dialog.py` |
 | Rewrite Selection | — | `core/ai/agent_session.py` | `ui/ai_agent_result_dialog.py` |
 | Summarize Selection | — | `core/ai/agent_session.py` | `ui/ai_agent_result_dialog.py` |
@@ -3470,16 +3470,290 @@ Quill Spell is a layered local engine:
 ### 6.3 User experience
 
 - **Status indicator.** The status bar shows the active dictionary stack as a short label, for example `en-GB + tech + personal`.
-- **F7 full review.** Modal Spell Check dialog with: misspelled word, surrounding sentence with the word highlighted and announced, suggestions list, replacement edit, Change, Change All, Ignore, Ignore All, Add to (with submenu for which dictionary), Finish, Cancel. The word is spoken and then spelled letter by letter.
-- **Ctrl+; quick fix.** Jumps to the next misspelling, opens a small modal list of the top 5 suggestions. Numbers 1 through 5 accept the corresponding suggestion. Enter accepts the highlighted one. `A` adds to dictionary. `I` ignores once. `Esc` cancels.
+- **`F7` Spelling Review.** *(Implemented 0.7.0 Beta 2 — see §6.4 for the full specification.)* A modal guided dialog. Focus opens in a read-only multiline **Context** field with the misspelled word selected within its sentence. Tab order: Context → Change to → Suggestions → Change → Change All → Ignore Once → Ignore All → Add to Dictionary → Undo Last → Close. All actions available without a mouse. Announcements are configurable (Concise / Balanced / Detailed). Optional letter-by-letter spelling of the wrong word after a configurable pause. Scope detects selection vs. whole document. Case-preserving Change All. Session-scoped Ignore All. Position-aware undo.
+- **`Ctrl+F7` / `Ctrl+Shift+F7` next/previous misspelling.** Jumps directly to the next or previous misspelling from the caret without opening the full review dialog.
 - **Background pass.** A debounced background tokenise runs as the user types. Results live in a sidecar model. No visual squiggles. The screen reader is never interrupted by background work.
-- **Mode toggle.** `Alt+F7` toggles as-you-type checking for the current document.
 - **Per-document language.** A YAML-style sidecar (`<doc>.quill.yml`) can pin language and dictionaries. Detected automatically from a magic comment on the first line if present.
 - **Magic touches.**
   - When you add a word, Quill says "Added <word> to your personal dictionary" or "Added <word> to this document's dictionary" so you always know where it went.
   - When you reject the same suggestion three times for the same misspelling, Quill quietly asks once whether you want to add the rejected word to your personal dictionary.
   - When pasting a large block of text, the spell pass is queued at a lower priority so the paste itself is instant.
   - When entering a code fence in Markdown, the engine switches automatically to identifier mode and stops complaining about variable names.
+
+### 6.4 F7 Spelling Review — Full Specification
+
+> **Status: Implemented in 0.7.0 Beta 2.** This section was originally maintained as
+> `docs/planning/QUILL_F7_Spelling_Review_PRD.md`. It is reproduced here as the
+> canonical specification for the shipped feature.
+
+---
+
+#### 6.4.1 Executive Summary
+
+QUILL provides a classic, guided spelling-review experience invoked with **F7**. The feature preserves what made the traditional Microsoft Word spelling dialog effective — one issue at a time, clear suggestions, predictable actions, and an obvious path through the document — while substantially improving that experience for screen-reader and keyboard users.
+
+The defining feature is a focusable **multiline, read-only Context field** that contains the misspelled word in meaningful surrounding text. The current word is selected when the field receives focus so users can hear it in context, review it character by character, move by word or line, copy text, and understand punctuation and sentence structure without leaving the spelling-review dialog.
+
+#### 6.4.2 Product Vision
+
+Pressing F7 in QUILL should feel reassuring and familiar:
+
+1. QUILL finds the next potentially misspelled word.
+2. The Spelling Review dialog opens.
+3. Focus lands in a read-only multiline Context field.
+4. The problem word is selected inside its sentence or paragraph.
+5. The screen reader announces the issue, progress, and context without excessive repetition.
+6. The user can inspect the text with normal editing-navigation commands.
+7. The user can Tab to the replacement field, suggestions, and actions.
+8. Every action immediately confirms what happened and advances to the next issue.
+9. At completion, QUILL reports a useful summary and returns focus exactly where the user expects.
+
+#### 6.4.3 Goals
+
+**Primary goals:**
+
+- Provide a complete spelling review through F7.
+- Present each misspelled word in meaningful, navigable context.
+- Make the entire workflow usable without a mouse.
+- Make the workflow excellent with NVDA, JAWS, Narrator, and other screen readers using standard Windows accessibility APIs.
+- Use standard controls and predictable focus behavior wherever possible.
+- Provide concise, useful speech for state changes without duplicating what the screen reader already announces.
+- Support Ignore Once, Ignore All, Change, Change All, Add to Dictionary, Undo Last Action, and Close.
+- Preserve document integrity, undo history, caret position, selection, viewport, formatting, and accessibility state.
+- Keep local document text private by default.
+- Scale to large documents without freezing QUILL.
+
+**Secondary goals:**
+
+- Support multiple dictionaries and document languages.
+- Provide configurable context size and speech verbosity.
+- Provide a reusable review framework that could later support grammar, terminology, style, and accessibility checks.
+
+#### 6.4.4 Non-Goals for Initial Release
+
+- Grammar, style, readability, or inclusive-language review in the same dialog.
+- Sending document text to an online service by default.
+- Require direct integration with a specific screen reader.
+- Automatically rewrite text without explicit user action.
+- An always-open proofing sidebar.
+
+#### 6.4.5 Design Principles
+
+- **Familiar, but better.** Retain the strengths of classic sequential spell checking while resolving focus uncertainty, insufficient context, repeated speech, ambiguous button behavior, and loss of position.
+- **Context is a first-class control.** The Context field is a standard, focusable, multiline, read-only edit control — not a static label.
+- **Standard controls before custom controls.** Use native wxPython controls with reliable name, role, state, value, selection, and keyboard behavior.
+- **Speech should inform, not compete.** QUILL announces transitions and results. It does not speak what the screen reader will already announce on focus.
+- **No keyboard traps.** Every control is reachable and escapable. Tab and Shift+Tab move predictably. Escape never leaves the user uncertain.
+- **User control over every edit.** No spelling correction is applied until the user activates an explicit action.
+- **Preserve the document experience.** When the dialog closes, the user returns to the document with caret, selection, and scroll position restored.
+
+#### 6.4.6 Terminology
+
+| Term | Meaning |
+|---|---|
+| Issue | A token QUILL's spelling provider considers unknown or misspelled |
+| Current word | The word under review |
+| Context | Surrounding document text shown in the read-only multiline field |
+| Replacement | Text that will replace the current word when Change is activated |
+| Suggestion | A spelling-provider recommendation |
+| Review session | The complete F7 workflow from invocation until completion or cancellation |
+| Review scope | Selection or full document, depending on caret/selection state at F7 |
+| Session ignore | A word ignored until the current review session ends |
+| User dictionary | A persistent, language-specific list of accepted words |
+
+#### 6.4.7 Invocation and Review Scope
+
+- **F7:** Start Spelling Review. Also available from **Tools > Spell Check...**
+- **Scope rules:**
+  1. If the editor has a nonempty selection, F7 checks the selection only.
+  2. If there is no selection, F7 checks the entire document.
+  3. If the document is empty, QUILL reports that and takes no action.
+- The opening announcement states the scope: *"Spelling review. Checking selected text."* or *"Spelling review. Checking document."*
+
+#### 6.4.8 Main Dialog Specification
+
+**Dialog model:** Modal. Title format: **Spelling Review — Issue 3 of 18**
+
+**Tab order:**
+1. Context field
+2. Change to field
+3. Suggestions list
+4. Change button
+5. Change All button
+6. Ignore Once button
+7. Ignore All button
+8. Add to Dictionary button
+9. Undo Last button
+10. Close button
+
+**Issue label:** A bold static text label above Context showing *"Not in dictionary: word"*.
+
+#### 6.4.9 Context Field
+
+- Standard multiline `wx.TextCtrl` with read-only and multiline styles.
+- Labeled **Context around word (Alt+W to reselect)**.
+- Focusable; included in Tab order.
+- Supports character, word, line navigation and Ctrl+C copy.
+- Protected from modification, pasting, or deletion.
+- On each new issue: populates, computes word offsets, selects the word, moves focus via `wx.CallAfter`.
+- **Alt+W** at any time refocuses Context and reselects the current word.
+
+**Context construction** (`quill/core/spelling/context_builder.py`):
+
+- Splits on sentence boundaries using `re.split(r"(?<=[.!?])\s+", ...)`.
+- Includes the sentence containing the issue plus adjacent sentences.
+- Character ceiling: 900 characters (configurable via `spell_review_context_mode` setting).
+- Falls back to a character window when sentence splitting finds no boundaries.
+- Preserves original punctuation and Unicode characters.
+
+#### 6.4.10 Change to Field
+
+- Standard single-line `wx.TextCtrl` labeled **Change to** (`Chan&ge to:`).
+- Pre-filled with the highest-ranked suggestion, or the original word if no suggestions.
+- Full text selected on populate so typing immediately replaces it.
+- Enter activates Change.
+
+#### 6.4.11 Suggestions List
+
+- Standard `wx.ListBox` labeled **Suggestions** (`&Suggestions:`).
+- First suggestion selected by default.
+- Changing selection updates the Change to field.
+- Empty when no suggestions; list stays present, Change to pre-filled with original word; announcer says "No suggestions."
+
+#### 6.4.12 Actions
+
+**Change** — Replaces the current occurrence with the Change to field value. Confirms action, advances to the next issue.
+
+**Change All** — Replaces all matching occurrences within scope for the session. Case-preserving: `teh→the`, `Teh→The`, `TEH→THE`. Reports replacement count. Entire operation is undoable.
+
+**Ignore Once** — Skips this occurrence, advances.
+
+**Ignore All** — Ignores all occurrences for the remainder of the session only. Does not persist.
+
+**Add to Dictionary** — Adds the word to the personal dictionary via `core.spellcheck.add_word_to_scope("personal", ...)`. Reversible within the session via Undo Last.
+
+**Undo Last** — Reverses the most recent spell-review action without closing the dialog. Supports: Change, Change All, Ignore Once, Ignore All, Add to Dictionary. Disabled when nothing has been done. Restores prior Context, Change to state, and counters.
+
+**Close** — `Escape` or the Close button. Changes already applied remain in the document's normal undo history.
+
+#### 6.4.13 Keyboard Map
+
+| Key | Action |
+|---|---|
+| Tab / Shift+Tab | Move forward / backward through controls |
+| Alt+W | Focus Context and reselect current word |
+| Enter (in Change to) | Change |
+| Escape | Close |
+| Chan&ge mnemonic (Alt+G) | Change button |
+| Change &All (Alt+A) | Change All button |
+| &Ignore Once (Alt+I) | Ignore Once button |
+| Ignore A&ll (Alt+L) | Ignore All button |
+| Add to &Dictionary (Alt+D) | Add to Dictionary button |
+| &Undo Last (Alt+U) | Undo Last button |
+| &Close (Alt+C) | Close button |
+
+#### 6.4.14 Screen-Reader Experience
+
+**Announcement service** (`quill/core/spelling/announcements.py` — `AccessibilityAnnouncer`):
+
+Three verbosity modes:
+
+| Mode | What is announced |
+|---|---|
+| **Concise** | Progress numbers and action results only |
+| **Balanced** *(default)* | Issue type, current word, progress, and results |
+| **Detailed** | Balanced plus control hints and scope reminders |
+
+**Optional spell-word feature:** After announcing the misspelling, QUILL can spell it letter by letter. Enabled by `spell_review_spell_word` setting. Delay before spelling starts is configurable via `spell_review_spell_word_pause_ms` (default 800 ms, range 100–3000). Implemented with `wx.CallLater`.
+
+**Avoiding duplicate speech:** QUILL does not announce control names before moving focus. It announces only what the focused control will not convey: scope, progress, action results, completion summary, errors.
+
+**Opening (balanced):** *"Spelling review. Issue 1 of 12. Not in dictionary: accomodate."*
+
+**After Change:** *"Changed accomodate to accommodate. Issue 2 of 12."*
+
+**After Ignore Once:** *"Ignored once. Issue 3 of 12."*
+
+**Completion:** *"Spelling review complete. 9 changes, 2 ignored once, 1 word ignored for this session, and 1 word added to the dictionary."*
+
+**Focus rules:**
+- Focus lands in Context for every new issue.
+- Focus never disappears after an action.
+- Disabled controls do not receive focus.
+- Closing the dialog returns focus to the originating editor.
+
+#### 6.4.15 Session Data Model
+
+Implemented in `quill/core/spelling/` package:
+
+```
+quill/core/spelling/
+    __init__.py          — exports SpellingIssue, ReviewCounters, ReviewSession, build_context
+    models.py            — ActionKind, SpellingIssue, ReviewCounters, ReviewAction
+    context_builder.py   — build_context(text, word_start, word_end, max_chars) -> tuple
+    session.py           — ReviewSession (owns text copy, rescan logic, undo stack)
+    announcements.py     — AccessibilityAnnouncer
+
+quill/ui/spelling_review_dialog.py   — SpellingReviewDialog (presentation only)
+```
+
+**ReviewSession** owns a `_text` copy, rescans after every action via `list_misspellings`, tracks ignored-once positions with offset adjustment (`_shift_ignored_positions`), and maintains an undo stack of `_UndoRecord` objects.
+
+**`_UndoRecord`** stores: action kind, prior text, all_ranges (for Change All), prior ignore state, prior counters.
+
+**Case matching** (`_case_match(original, replacement)`): checks `.isupper()` → uppercase, `.istitle()` → capitalize, else lowercase.
+
+#### 6.4.16 Settings
+
+Settings group added in `quill/core/settings_specs.py` and `quill/core/settings.py`:
+
+| Setting key | Type | Default | Description |
+|---|---|---|---|
+| `spell_review_verbosity` | choice | `"balanced"` | Announcement verbosity: concise / balanced / detailed |
+| `spell_review_spell_word` | bool | `True` | Spell the wrong word letter by letter after announcing it |
+| `spell_review_spell_word_pause_ms` | int (100–3000) | `800` | Milliseconds before letter-spelling starts |
+| `spell_review_wrap_to_beginning` | bool | `True` | After reaching end of document, wrap to beginning |
+| `spell_review_context_mode` | choice | `"sentence"` | Context extraction mode: sentence / paragraph |
+
+#### 6.4.17 Acceptance Criteria
+
+The feature is considered complete when:
+
+1. F7 starts Spelling Review from the active editable document.
+2. A nonempty selection is checked without modifying text outside the selection.
+3. The dialog uses standard accessible controls throughout.
+4. Initial focus lands in the multiline read-only Context field.
+5. The active word is selected in Context.
+6. Users can navigate Context by character, word, and line and can copy text.
+7. Users can reselect the active word with Alt+W.
+8. Replacement and Suggestions are fully keyboard operable.
+9. Change, Change All, Ignore Once, Ignore All, Add to Dictionary, Undo Last, and Close work correctly.
+10. Every action results in a concise, understandable state update.
+11. Focus never becomes lost or trapped.
+12. Closing returns focus to the originating editor.
+13. Changes participate correctly in QUILL's undo history.
+14. Change All respects scope and capitalisation rules.
+15. Missing dictionaries and provider failures produce accessible messages.
+16. NVDA, JAWS, and Narrator can complete the workflow without mouse input.
+17. The dialog works in high contrast and at 200% scaling without clipping essential controls.
+18. Automated tests cover context offsets, session actions, scope boundaries, position-drift after replacements, and completion behavior.
+19. User documentation explains F7, review scope, all actions, and keyboard commands.
+
+#### 6.4.18 Future Enhancements
+
+These remain out of scope for the initial release but can reuse the review session framework:
+
+- Grammar and repeated-word detection
+- Style and clarity review
+- Terminology enforcement
+- Custom organisational and domain dictionaries
+- "Explain this suggestion" for advanced providers
+- Resume an interrupted review session
+- Review only comments, headings, or selected structural regions
+- Plugin-contributed proofing providers
+- Braille-optimised announcement mode
+- A compact review mode for experienced users
+- Optional modeless review pane after the modal workflow is mature and proven accessible
 
 ---
 

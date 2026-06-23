@@ -94,8 +94,8 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "tools.ask_quill_chat": "Alt+Q",
     "tools.word_count": "Ctrl+Shift+W",
     "tools.spell_check_dialog": "F7",
-    "tools.next_misspelling": "Alt+F7",
-    "tools.previous_misspelling": "Shift+Alt+F7",
+    "tools.next_misspelling": "Ctrl+F7",
+    "tools.previous_misspelling": "Ctrl+Shift+F7",
     "tools.misspelling_list": "Alt+Shift+L",
     "tools.thesaurus": "Shift+F7",
     "tools.read_aloud_start_pause": "Ctrl+Shift+Grave, R",  # §10.8.2: P→R

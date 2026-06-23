@@ -276,6 +276,12 @@ class Settings:
     braille_include_proofing_status: bool = True
     braille_include_running_head: bool = False
     braille_include_continuation: bool = True
+    # Spelling Review (F7) settings.
+    spell_review_verbosity: str = "balanced"
+    spell_review_spell_word: bool = True
+    spell_review_spell_word_pause_ms: int = 800
+    spell_review_wrap_to_beginning: bool = True
+    spell_review_context_mode: str = "sentence"
     # Vision prompt library: image description style management.
     vision_default_prompt_style: str = "accessibility"
     vision_prompt_picker_enabled: bool = False
@@ -711,6 +717,20 @@ class Settings:
         braille_include_proofing_status = bool(data.get("braille_include_proofing_status", True))
         braille_include_running_head = bool(data.get("braille_include_running_head", False))
         braille_include_continuation = bool(data.get("braille_include_continuation", True))
+        # Spelling Review (F7) fields.
+        spell_review_verbosity = str(data.get("spell_review_verbosity", "balanced")).strip().lower()
+        if spell_review_verbosity not in {"concise", "balanced", "detailed"}:
+            spell_review_verbosity = "balanced"
+        spell_review_spell_word = bool(data.get("spell_review_spell_word", True))
+        spell_review_spell_word_pause_ms = max(
+            100, min(3000, int(data.get("spell_review_spell_word_pause_ms", 800)))
+        )
+        spell_review_wrap_to_beginning = bool(data.get("spell_review_wrap_to_beginning", True))
+        spell_review_context_mode = (
+            str(data.get("spell_review_context_mode", "sentence")).strip().lower()
+        )
+        if spell_review_context_mode not in {"sentence", "paragraph"}:
+            spell_review_context_mode = "sentence"
         # Vision prompt library fields
         vision_default_prompt_style = str(
             data.get("vision_default_prompt_style", "accessibility")
@@ -948,6 +968,11 @@ class Settings:
             braille_include_proofing_status=braille_include_proofing_status,
             braille_include_running_head=braille_include_running_head,
             braille_include_continuation=braille_include_continuation,
+            spell_review_verbosity=spell_review_verbosity,
+            spell_review_spell_word=spell_review_spell_word,
+            spell_review_spell_word_pause_ms=spell_review_spell_word_pause_ms,
+            spell_review_wrap_to_beginning=spell_review_wrap_to_beginning,
+            spell_review_context_mode=spell_review_context_mode,
             vision_default_prompt_style=vision_default_prompt_style,
             vision_prompt_picker_enabled=vision_prompt_picker_enabled,
             vision_disabled_builtin_styles=vision_disabled_builtin_styles,
