@@ -2320,3 +2320,23 @@ Validation: focused battery `77 passed` (linkage core tests, publishing/compare 
 Committed locally as two checkpoints (core, then UI+governance); not pushed pending explicit request.
 
 **One decision remains open**: whether/when to loosen `core.third_party_plugins`/SEC-8 for real third-party Quillin or publishing-provider execution.
+
+## 2026-06-22 Publishing Profile Restriction — Scoped, Not Implemented
+
+The user was told publishing must only be available in "writer and
+above" profiles — a separate, additive requirement on top of the
+`future.publishing` `locked_off=True` review-gate lock added earlier the
+same day. Since QUILL's 10 feature profiles have no existing tier/rank
+concept (they're personas, not a capability ladder), "writer and above"
+had no formal meaning until confirmed directly with the user: Writer,
+Author or Student, Developer and Power Text, and Full Quill get it;
+Essential, Reader and Student, Office and Admin, Low Vision, Braille and
+Screen Reader Power User, and Accessibility Professional do not. This was
+planning/scoping only, per explicit instruction — no source files were
+touched. Full scope, the exact target `states` table for all 10 profiles,
+why no UI/menu code changes are needed (the existing lock's gating already
+reads the live active profile), the test plan, and three explicitly
+flagged open questions (soft- vs. hard-override semantics, `ON` vs.
+`QUIET` for the included profiles, and *when* to land it relative to the
+separate lock-lifting decision) all live in
+`codex-notes/plans/publishing-profile-restriction-2026-06-22.md`.
