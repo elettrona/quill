@@ -91,7 +91,14 @@ PIPER_PINNED_SHA256 = "f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc808
 # "speech" bundles sounddevice (PortAudio) so offline dictation works out of the
 # box (#617) without a separate pip install. The whisper.cpp engine itself is a
 # separate InnoSetup component (tools/speech/whispercpp), not a pip wheel.
-DEFAULT_BUNDLED_DEPENDENCY_GROUPS = ("ui", "spellcheck", "ocr", "kokoro", "speech")
+# "vosk" bundles the very-low-resource CPU-only offline engine (#669): its wheel
+# is self-contained (it ships libvosk), so unlike whisper.cpp it needs no separate
+# component or native staging -- installing the wheel makes the engine available,
+# and its ~40 MB model still downloads on demand via Manage Speech Models. It is
+# the accessibility-reach fallback for old/constrained machines, so it ships in
+# the base bundle. The heavier opt-in engines (Faster Whisper, Parakeet) stay
+# pip-only and are not bundled.
+DEFAULT_BUNDLED_DEPENDENCY_GROUPS = ("ui", "spellcheck", "ocr", "kokoro", "speech", "vosk")
 
 # Pinned rcedit release (electron/rcedit). Build-tool only -- never copied into
 # the portable bundle or the installer payload. Used to stamp the bundled
@@ -1099,9 +1106,15 @@ def _download_rcedit(cache_dir: Path) -> Path:
 def _prune_embedded_runtime(site_packages: Path) -> None:
     """Remove packages that are only needed during the build, not at runtime.
 
-    pip and setuptools are bootstrapped to install dependencies, then stripped
+    setuptools and wheel are bootstrapped to install dependencies, then stripped
     so they don't bloat the installer.  The pywin32 extras (pythonwin, isapi,
     adodbapi, PyWin32.chm) are also removed.
+
+    pip is deliberately *kept*: the optional Faster Whisper engine is installed
+    on demand at runtime (wheel-only, into a user-writable engine-pack folder --
+    see ``quill/core/speech/engine_install.py``), which needs ``python -m pip``.
+    Modern pip vendors its own dependencies, so removing setuptools/wheel does not
+    break a wheel-only ``pip install``.
 
     ``quill/devtools`` (the in-app Developer Console) and ``quill/tools``
     (``kqp_validator`` backs the runtime "Import Keyboard Pack" command) are
@@ -1109,9 +1122,8 @@ def _prune_embedded_runtime(site_packages: Path) -> None:
     even though most of ``quill/tools`` is otherwise CI-only.
     """
     removable = [
-        # Build tools - used during pip install, not at runtime (~155 MB)
-        "pip",
-        "pip-*",
+        # Build tools - used during pip install, not at runtime. pip stays (it
+        # powers the optional on-demand Faster Whisper engine install).
         "setuptools",
         "setuptools-*",
         "wheel",

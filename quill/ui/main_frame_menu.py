@@ -1305,6 +1305,7 @@ class MenuBuilderMixin:
         self._id_speech_voice_command = wx.NewIdRef()
         self._id_speech_microphone = wx.NewIdRef()
         self._id_speech_ffmpeg = wx.NewIdRef()
+        self._id_speech_engine_dl = wx.NewIdRef()
         self._id_speech_hf_token = wx.NewIdRef()
         self._id_ai_connection = wx.NewIdRef()
         self._id_ai_forget_key = wx.NewIdRef()
@@ -1569,6 +1570,12 @@ class MenuBuilderMixin:
         whisperer_menu.Append(
             self._id_speech_ffmpeg,
             self._menu_label(_("Download &FFmpeg..."), "tools.speech_ffmpeg"),
+        )
+        whisperer_menu.Append(
+            self._id_speech_engine_dl,
+            self._menu_label(
+                _("Download Faster Whisper &Engine..."), "tools.speech_engine_download"
+            ),
         )
         whisperer_menu.Append(
             self._id_speech_hf_token,
@@ -2512,6 +2519,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.download_ffmpeg(),
             id=self._id_speech_ffmpeg,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.download_faster_whisper(),
+            id=self._id_speech_engine_dl,
         )
         self.frame.Bind(
             wx.EVT_MENU,
