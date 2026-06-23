@@ -100,6 +100,7 @@ Captured on the current branch (`main`), dev environment, Python 3.12.
 | Accessibility issues fixed | 13 (6 unnamed tab groups, 7 literal snake_case names) |
 | Focus-management issues fixed | 1 (FOCUS-001 wx.html fallback initial focus) |
 | Label/field association fixes | 4 dialogs (input controls given accessible names) |
+| Keyboard-trap fixes | 3 prose fields (TE_PROCESS_TAB removed) |
 | Tests added | 2 files (`test_cloud_transcribers.py`, `test_engine_install.py`) |
 | Remaining known issues | 1 (TEST-001) |
 | Intentional legacy QUILL references reviewed | n/a (no rename; QUILL is the name) |
@@ -266,6 +267,30 @@ fixed the clearest gaps.
   `batch_wizard_pages.py`, read-only display areas in `info_pages.py`) and a
   broader sweep of single-field dialogs.
 
+## Accessibility audit — wave 4 (keyboard traps / tab order)
+
+### KEY-001 — `wx.TE_PROCESS_TAB` on prose multiline fields trapped Tab
+- Severity: High (a keyboard trap is a release-blocker class). Category: Accessibility.
+- `TE_PROCESS_TAB` makes a multiline `TextCtrl` insert a tab character on Tab
+  instead of moving focus, so a keyboard-only user could not Tab out to the
+  dialog's buttons. Found on four fields; fixed the three that hold prose:
+  `assistant_tools.py` prompt field, `sticky_notes.py` note body, and
+  `web_form.py` textareas. Left `assistant_tools.py`'s restricted-Python **code
+  editor** (`self.code`) with `TE_PROCESS_TAB` — Tab-to-indent is expected there;
+  recorded as intentional with a recommended follow-up (an Escape/Ctrl+Tab focus
+  exit) so even the code editor has a keyboard way out.
+- Tests: web_form/sticky 24 and assistant_tools 12 pass (no style-flag assertions
+  broke). GATE-11 rebaselined +2 on assistant_tools for the explanatory comment.
+- Status: Fixed (3 fields) / Intentional with follow-up (code editor).
+
+### CHAR_HOOK spot-check (no defect)
+- The command palette's `_on_char_hook` correctly `event.Skip()`s every key it
+  does not handle (Escape/Up/Down), so Tab navigation is not swallowed — not a trap.
+- `main_frame.py`'s list-reorder `on_key` (line ~14289) deliberately repurposes
+  Tab/Shift+Tab to demote/promote items and does not Skip. Recorded as intentional
+  but flagged: confirm keyboard users can still reach the dialog's buttons (via
+  Escape/Enter or an explicit focus path) — needs live keyboard verification.
+
 ## Deferred / next wave (not yet done — do not represent as complete)
 
 The master quality-pass scope is repository-wide and multi-session. Not yet
@@ -274,9 +299,10 @@ performed in this pass:
 - Full test-suite run with a per-test timeout to neutralize TEST-001.
 - The accessibility audit is a 6-wave plan: wave 1 (tab-group + control naming),
   wave 2 (initial-focus quality), and wave 3 (label/field associations) are done.
-  Remaining: wave 4 (keyboard-trap / tab-order spot checks beyond the gate),
-  wave 5 (error-to-field association + announcement), wave 6 (the editor surface
-  itself). Plus a label/field continuation sweep of the lower-coverage dialogs.
+  wave 4 (keyboard-trap / tab-order spot checks) is done.
+  Remaining: wave 5 (error-to-field association + announcement), wave 6 (the
+  editor surface itself). Plus a label/field continuation sweep of the
+  lower-coverage dialogs and live keyboard verification of the reorder dialog.
 - The startup/shutdown initialization-order hardening review (Section 9).
 - The call-site / attribute-contract repository audit (Section 7).
 - The performance and visual-polish passes (Sections 13, 14).

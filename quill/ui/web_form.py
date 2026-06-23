@@ -279,7 +279,9 @@ class _WebFormDialog:
                 sizer.Add(
                     wx.StaticText(self.dialog, label=label), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8
                 )
-                style = wx.TE_MULTILINE | wx.TE_PROCESS_TAB if ftype == "textarea" else 0
+                # No TE_PROCESS_TAB: textareas hold prose, so Tab must move focus
+                # between fields rather than insert a tab character (keyboard-trap fix).
+                style = wx.TE_MULTILINE if ftype == "textarea" else 0
                 control = wx.TextCtrl(self.dialog, value=str(field.get("value", "")), style=style)
                 proportion = 1 if ftype == "textarea" else 0
                 sizer.Add(control, proportion, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)

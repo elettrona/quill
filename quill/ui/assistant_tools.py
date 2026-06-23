@@ -1034,7 +1034,9 @@ class WritingAssistantDialog:
         preset_row.Add(self.use_document_button, 0)
         root.Add(preset_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
-        self.prompt = wx.TextCtrl(self.dialog, style=wx.TE_MULTILINE | wx.TE_PROCESS_TAB)
+        # No TE_PROCESS_TAB: this is a prose prompt, so Tab must move focus to the
+        # next control rather than insert a tab character (keyboard-trap fix).
+        self.prompt = wx.TextCtrl(self.dialog, style=wx.TE_MULTILINE)
         self.prompt.SetName("Prompt")
         self.prompt.SetHint("Describe the edit, review, or command you want")
         if initial_prompt.strip():
