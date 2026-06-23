@@ -2,9 +2,30 @@
 
 ## Status
 
-**Planning only. Not implemented.** This document scopes the work; it
-does not change any source file. Implementation should follow this plan
-once the user decides to proceed (see "When to implement," below).
+**Implemented 2026-06-22**, same day as the scoping. The two open
+questions in "Open questions / flagged assumptions" below were resolved
+before coding: soft restriction (Recommended option chosen) and
+`FEATURE_STATE_ON` (Recommended option chosen) for the included profiles.
+The third open question (timing) was resolved by the user asking to begin
+coding immediately — landed now, while still inert behind
+`future.publishing`'s `locked_off=True`.
+
+Implementation: `quill/core/features.py`'s `PROFILE_DEFINITIONS` now match
+the table below exactly (`author_or_student`'s previously-absent key was
+added, not left as an implicit default). `quill/core/feature_catalog.py`'s
+`future.publishing` description was extended to state the restriction.
+No UI/menu/palette code changed, confirmed unnecessary as predicted.
+Two new tests added to `tests/unit/core/test_publishing_framework.py`:
+`test_publishing_profile_states_match_writer_tier_and_above` (the
+configured values) and `test_publishing_profile_states_are_overridden_by_the_lock`
+(the regression test guarding the lock/profile interaction). Module-size
+budget for `features.py` bumped 727->738. Full suite, scoped mypy, ruff,
+provider-registry gate, and a smoke launch all clean — see
+`codex-notes/logs/publishing-providers-framework-current-work-log-2026-06-19.md`'s
+matching 2026-06-22 entry for full validation numbers.
+
+The rest of this document is preserved as written during scoping, for
+the historical record of what was decided and why.
 
 ## Context
 

@@ -412,3 +412,62 @@ app, no traceback.
 
 Committed locally as a single merge commit (`8e50df9`); not pushed
 pending explicit request.
+
+## 2026-06-22 - Implemented the publishing profile restriction
+
+Earlier the same day, scoped (planning-only, no code) a separate, additive
+requirement: the user was told publishing must only be available in
+"writer and above" profiles. Before coding, two flagged open questions
+from that scoping doc
+(`codex-notes/plans/publishing-profile-restriction-2026-06-22.md`) needed
+resolving — soft vs. hard restriction, and `ON` vs. `QUIET` for the
+included profiles. Asked directly rather than assume (both have real,
+non-obvious tradeoffs); the user confirmed both recommended defaults
+(soft, `ON`), then asked to begin coding.
+
+Implemented exactly per the scoping doc's table. In
+`quill/core/features.py`'s `PROFILE_DEFINITIONS`, `"future.publishing"`
+changed from `FEATURE_STATE_QUIET` to `FEATURE_STATE_ON` in
+`PROFILE_WRITER` and `PROFILE_DEVELOPER_POWER_TEXT`; to `FEATURE_STATE_OFF`
+in `PROFILE_ESSENTIAL`, `"reader_and_student"`, `"office_and_admin"`,
+`"low_vision"`, `"braille_screen_reader_power_user"`, and
+`PROFILE_ACCESSIBILITY_PROFESSIONAL`. `PROFILE_AUTHOR_STUDENT` was
+missing the key entirely (a latent gap flagged during scoping); added it
+explicitly as `FEATURE_STATE_ON` rather than leaving it to the implicit
+default. `PROFILE_FULL_QUILL` needed no change (its `states` dict is a
+comprehension over every registered feature, already `ON`). Each changed
+line got a short inline comment pointing back at the rationale on
+`PROFILE_ESSENTIAL`'s entry rather than repeating the explanation 9 times.
+`quill/core/feature_catalog.py`'s `future.publishing` description was
+extended to state the restriction (it previously only mentioned the
+review-gate lock).
+
+Confirmed, as predicted during scoping, that no UI/menu/palette code
+needed to change: `main_frame_menu.py`'s
+`if self._feature_enabled("future.publishing"):` gate and
+`palette.py`'s `is_visible()` filtering both already resolve through
+`FeatureManager.state_for()`, which reads the live active profile on
+every call. The only source of truth is the `PROFILE_DEFINITIONS` data.
+
+Two new tests in `tests/unit/core/test_publishing_framework.py`:
+`test_publishing_profile_states_match_writer_tier_and_above` asserts the
+*configured* value for all 10 profiles directly against
+`PROFILE_DEFINITIONS` (independent of the live lock); a deliberately
+separate `test_publishing_profile_states_are_overridden_by_the_lock`
+asserts that `FeatureManager(active_profile_id=...).state_for("future.publishing")`
+is still `FEATURE_STATE_OFF` for every single profile, including the 4
+configured `ON`, while `locked_off=True` remains — a regression guard so
+a future session doesn't mistake "the profile data says ON" for "the
+feature is actually reachable" (those are two genuinely separate facts
+now that both are in play). `quill/core/features.py`'s module-size budget
+bumped 727->738 (+11 lines, the 9 changed/added dict entries plus 3
+explanatory comment blocks referencing each other instead of repeating).
+
+Validation: Ruff/`ruff format --check` clean; scoped `mypy quill/core
+quill/io` unchanged (same 1 pre-existing finding); module-size budget gate
+passed; full suite `4968 passed, 1 failed, 16 skipped` — the 1 failure is
+the same braille line-ending mismatch already verified pre-existing on
+`origin/main` earlier this session, untouched by this change; provider
+registry gate passed; smoke-launched the app, no traceback.
+
+Committed locally; not pushed pending explicit request.
