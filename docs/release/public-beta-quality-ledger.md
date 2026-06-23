@@ -384,6 +384,28 @@ fixed the clearest gaps.
   but flagged: confirm keyboard users can still reach the dialog's buttons (via
   Escape/Enter or an explicit focus path) — needs live keyboard verification.
 
+## Accessibility audit — wave 6 (editor surface)
+
+Audited the core editing surface — the highest-risk area — element by element. It
+is already comprehensively accessible; no defect was found, so no code was changed
+(the QA discipline is to not make superficial edits to inflate a count). What was
+checked and confirmed:
+- **Editor control**: a native multiline `wx.TextCtrl` (`TE_RICH2 | TE_NOHIDESEL`
+  so the selection stays visible when focus leaves), named "Document", with the
+  macOS AX role pinned to a real text area. Tab is **not** trapped (no
+  `TE_PROCESS_TAB`), so keyboard users can leave the editor.
+- **Layout splitters**: named "Document area" and "Editor area".
+- **Side preview**: the `SidePreview` HtmlWindow is named "Preview" and is
+  focusable via the `view.focus_preview` command, with a return-to-editor path.
+- **Document tabs**: named "Open documents" (wave 1); native notebook announces
+  each tab's document name on arrow navigation; Enter/Space focuses the editor and
+  announces "Focused document <name>".
+- **Status bar**: exemplary — each cell is a named button (`SetName`) that
+  announces "Status bar, <label>, <value>" on focus, with Tab navigation between
+  cells and a "Returned to editor" cue; gated by GATE-12 (announce-gap).
+- Status: Audited, no defect. Manual confirmation cases added to the
+  screen-reader test plan (TC-EDIT-001..004).
+
 ## Accessibility audit — wave 5 (error-to-field association)
 
 When a dialog rejects invalid input, focus should move to the offending field
@@ -503,12 +525,12 @@ The master quality-pass scope is repository-wide and multi-session. Not yet
 performed in this pass:
 
 - Full test-suite run with a per-test timeout to neutralize TEST-001.
-- The accessibility audit is a 6-wave plan: wave 1 (tab-group + control naming),
-  wave 2 (initial-focus quality), and wave 3 (label/field associations) are done.
-  wave 4 (keyboard-trap / tab-order spot checks) and wave 5 (error-to-field
-  association) are done. Remaining: wave 6 (the editor surface itself). Plus a
-  label/field continuation sweep of the lower-coverage dialogs and live
-  keyboard/SR verification of the reorder dialog and the wave 1-5 fixes.
+- The 6-wave accessibility audit is **complete**: wave 1 (tab-group + control
+  naming), wave 2 (initial-focus), wave 3 (label/field associations), wave 4
+  (keyboard traps), wave 5 (error-to-field), wave 6 (editor surface — audited, no
+  defect). Remaining accessibility work is human-only: execute the screen-reader
+  test plan on a packaged build, plus a label/field continuation sweep of the
+  lower-coverage dialogs and live verification of the reorder dialog's Tab handling.
 - The startup/shutdown initialization-order hardening review (Section 9).
 - The call-site / attribute-contract repository audit (Section 7): wave C1 is done
   and clean (undefined-method calls, mutable defaults). Remaining correctness

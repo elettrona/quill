@@ -356,6 +356,44 @@ to the repository edit field so you can correct it without hunting for
 it.</li>
 </ul></li>
 </ul>
+<h2
+id="editor-surface-wave-6--confirm-existing-behavior-no-code-changed">Editor
+surface (wave 6 — confirm existing behavior; no code changed)</h2>
+<p>These confirm the core editing surface is announced correctly. No fix
+was made here (the audit found it already correct), but verify on a real
+build.</p>
+<ul>
+<li>TC-EDIT-001 — Editor control
+<ul>
+<li>Steps: open a document; move focus into the text area.</li>
+<li>Expected: announced as "Document", edit/text-area role, multi-line;
+typed text reads back; the selection is announced and stays visible when
+focus leaves.</li>
+</ul></li>
+<li>TC-EDIT-002 — Leaving the editor with the keyboard
+<ul>
+<li>Steps: with focus in the editor, press Tab.</li>
+<li>Expected: focus moves out of the editor to the next control (Tab is
+not trapped; it does not insert a tab character).</li>
+</ul></li>
+<li>TC-EDIT-003 — Document tabs and side preview
+<ul>
+<li>Steps: open two+ documents; arrow across the document tab control;
+press Enter on one; toggle/focus the side preview (View &gt; Focus
+Preview).</li>
+<li>Expected: the tab control is "Open documents"; each tab announces
+its document name; Enter announces "Focused document <name>" and lands
+in the editor; the preview pane is announced as "Preview".</li>
+</ul></li>
+<li>TC-EDIT-004 — Status bar segments
+<ul>
+<li>Steps: invoke the focus-status-bar command; Tab across the cells;
+press Escape.</li>
+<li>Expected: each cell announces "Status bar, <label>, <value>" (e.g.
+language, position); Tab moves between cells; Escape announces "Returned
+to editor" and returns focus to the document.</li>
+</ul></li>
+</ul>
 <hr />
 <h2
 id="regression-context-not-user-visible-no-sr-step-needed">Regression

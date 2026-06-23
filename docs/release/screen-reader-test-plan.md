@@ -127,6 +127,31 @@ button; it now moves focus to the field.
     "Repository must be in owner/repo format."), AND focus moves to the repository
     edit field so you can correct it without hunting for it.
 
+## Editor surface (wave 6 — confirm existing behavior; no code changed)
+
+These confirm the core editing surface is announced correctly. No fix was made
+here (the audit found it already correct), but verify on a real build.
+
+- TC-EDIT-001 — Editor control
+  - Steps: open a document; move focus into the text area.
+  - Expected: announced as "Document", edit/text-area role, multi-line; typed text
+    reads back; the selection is announced and stays visible when focus leaves.
+- TC-EDIT-002 — Leaving the editor with the keyboard
+  - Steps: with focus in the editor, press Tab.
+  - Expected: focus moves out of the editor to the next control (Tab is not
+    trapped; it does not insert a tab character).
+- TC-EDIT-003 — Document tabs and side preview
+  - Steps: open two+ documents; arrow across the document tab control; press
+    Enter on one; toggle/focus the side preview (View > Focus Preview).
+  - Expected: the tab control is "Open documents"; each tab announces its document
+    name; Enter announces "Focused document <name>" and lands in the editor; the
+    preview pane is announced as "Preview".
+- TC-EDIT-004 — Status bar segments
+  - Steps: invoke the focus-status-bar command; Tab across the cells; press Escape.
+  - Expected: each cell announces "Status bar, <label>, <value>" (e.g. language,
+    position); Tab moves between cells; Escape announces "Returned to editor" and
+    returns focus to the document.
+
 ---
 
 ## Regression context (not user-visible, no SR step needed)
