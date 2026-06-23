@@ -214,11 +214,26 @@ class VoiceBrowserDialog:
         kok_row.Add(self._kok_spin, 1, wx.EXPAND)
         settings_box.Add(kok_row, 0, wx.EXPAND | wx.ALL, 4)
 
+        # eSpeak voice character variant (appended as accent+variant).
+        from quill.core.read_aloud import ESPEAK_VARIANTS as _ev
+
+        self._espeak_variant_codes = [code for code, _ in _ev]
+        self._espeak_variant_labels = [label for _, label in _ev]
+        variant_row = wx.BoxSizer(wx.HORIZONTAL)
+        self._variant_lbl = wx.StaticText(sb, label="Voice &character:")
+        self._variant_choice = wx.Choice(sb, choices=self._espeak_variant_labels)
+        self._variant_choice.SetName("Voice character")
+        self._variant_choice.SetSelection(0)
+        variant_row.Add(self._variant_lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        variant_row.Add(self._variant_choice, 1, wx.EXPAND)
+        settings_box.Add(variant_row, 0, wx.EXPAND | wx.ALL, 4)
+
         self._settings_box = settings_box
         self._rate_row = rate_row
         self._vol_row = vol_row
         self._pitch_row = pitch_row
         self._kok_row = kok_row
+        self._variant_row = variant_row
         self._settings_sb = sb
         root.Add(settings_box, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
@@ -302,8 +317,18 @@ class VoiceBrowserDialog:
         if eng == "kokoro":
             return str(getattr(s, "read_aloud_kokoro_voice", "") or "af_heart")
         if eng == "espeak":
-            return str(getattr(s, "read_aloud_espeak_voice", "") or "en")
+            raw = str(getattr(s, "read_aloud_espeak_voice", "") or "en-gb")
+            return raw.split("+")[0]  # strip stored variant for list matching
         return str(getattr(s, "read_aloud_voice", "") or "")
+
+    def _espeak_combined_voice_id(self, accent_id: str) -> str:
+        """Return ``accent`` or ``accent+variant`` for the currently selected variant."""
+        idx = self._variant_choice.GetSelection()
+        if 0 <= idx < len(self._espeak_variant_codes):
+            code = self._espeak_variant_codes[idx]
+            if code:
+                return f"{accent_id}+{code}"
+        return accent_id
 
     def _refresh_voices(self, eng: str) -> None:
         self._all_voices = self._voices_for_engine(eng)
@@ -367,10 +392,23 @@ class VoiceBrowserDialog:
         if has_kokoro:
             self._kok_spin.SetValue(getattr(s, "read_aloud_kokoro_speed", 1.0))
 
+        has_variant = eng == "espeak"
+        if has_variant:
+            raw = str(getattr(s, "read_aloud_espeak_voice", "") or "en-gb")
+            stored_variant = raw.split("+", 1)[1] if "+" in raw else ""
+            variant_idx = (
+                self._espeak_variant_codes.index(stored_variant)
+                if stored_variant in self._espeak_variant_codes
+                else 0
+            )
+            self._variant_choice.SetSelection(variant_idx)
+
+        has_any = has_rate or has_vol_pitch or has_kokoro or has_variant
         self._settings_box.Show(self._rate_row, has_rate, recursive=True)
         self._settings_box.Show(self._vol_row, has_vol_pitch, recursive=True)
         self._settings_box.Show(self._pitch_row, has_vol_pitch, recursive=True)
         self._settings_box.Show(self._kok_row, has_kokoro, recursive=True)
+        self._settings_box.Show(self._variant_row, has_variant, recursive=True)
         self._settings_sb.Show(has_any)
         self._settings_box.ShowItems(has_any)
 
@@ -459,7 +497,8 @@ class VoiceBrowserDialog:
         v = self._displayed_voices[idx]
         if not getattr(v, "installed", True):
             return
-        self._preview_fn(eng, v.id)
+        voice_id = self._espeak_combined_voice_id(v.id) if eng == "espeak" else v.id
+        self._preview_fn(eng, voice_id)
 
     def _do_download(self) -> None:
         eng = self._current_engine_id()
@@ -489,7 +528,8 @@ class VoiceBrowserDialog:
         idx = self._voice_lb.GetSelection()
         voice_id = ""
         if 0 <= idx < len(self._displayed_voices):
-            voice_id = self._displayed_voices[idx].id
+            base_id = self._displayed_voices[idx].id
+            voice_id = self._espeak_combined_voice_id(base_id) if eng == "espeak" else base_id
         result = VoiceBrowserResult(
             action="export",
             engine=eng,
@@ -534,7 +574,8 @@ class VoiceBrowserDialog:
         idx = self._voice_lb.GetSelection()
         voice_id = ""
         if 0 <= idx < len(self._displayed_voices):
-            voice_id = self._displayed_voices[idx].id
+            base_id = self._displayed_voices[idx].id
+            voice_id = self._espeak_combined_voice_id(base_id) if eng == "espeak" else base_id
         return VoiceBrowserResult(
             action="select",
             engine=eng,
@@ -553,7 +594,8 @@ class VoiceBrowserDialog:
             idx = self._voice_lb.GetSelection()
             voice_id = ""
             if 0 <= idx < len(self._displayed_voices):
-                voice_id = self._displayed_voices[idx].id
+                base_id = self._displayed_voices[idx].id
+                voice_id = self._espeak_combined_voice_id(base_id) if eng == "espeak" else base_id
             self._result = VoiceBrowserResult(
                 action="select",
                 engine=eng,
