@@ -363,7 +363,7 @@ class SpellingReviewDialog:
     # Public
     # ------------------------------------------------------------------
 
-    def show(self, show_modal_fn: Callable) -> None:
+    def show(self, show_modal_dialog: Callable) -> None:
         """Open the dialog. Populates the first issue then blocks."""
         issue = self._session.current()
         if issue is None:
@@ -373,5 +373,5 @@ class SpellingReviewDialog:
         self._populate_current_issue()
         total = self._session.total()
         self._announcer.announce_opening(self._scope_label, 1, total, issue.word)
-        show_modal_fn(self.dialog, "Spelling Review")
+        show_modal_dialog(self.dialog, "Spelling Review")
         self.dialog.Destroy()
