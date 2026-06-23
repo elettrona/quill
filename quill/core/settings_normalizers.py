@@ -13,7 +13,7 @@ STATUS_BAR_ITEMS: tuple[str, ...] = (
     "word_count",
     "mode",
     # Tab key behaviour: "Indent" (smart line indent) or "Tab char" (literal
-    # tab insertion). Toggled with Ctrl+Alt+M.
+    # tab insertion). Toggled with QUILL Key + U.
     "tab_mode",
     "selection",
     "encoding",

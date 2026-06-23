@@ -108,7 +108,7 @@
     "format.toggle_block_comment": "Shift+Alt+A",
     "format.indent": "Ctrl+]",
     "format.outdent": "Ctrl+[",
-    "format.toggle_tab_insert_mode": "Ctrl+Alt+M",
+    "format.toggle_tab_insert_mode": "Ctrl+Shift+Grave, U",
     "format.list_manager": "Ctrl+Shift+Grave, L",
     "format.bold": "Ctrl+B",
     "format.italic": "Ctrl+I",

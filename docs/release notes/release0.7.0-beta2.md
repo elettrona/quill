@@ -375,7 +375,7 @@ the same behaviour described here.
 
 - **The Tab key can now insert a tab character.** Tab still defaults to smart
   line indent (Shift+Tab outdents; on a Markdown list item it nests or promotes
-  the item). Press **Ctrl+Alt+M** to switch the Tab key to insert a literal tab
+  the item). Press **QUILL Key + U** to switch the Tab key to insert a literal tab
   character at the cursor instead — Quill's take on the VS Code "Tab key" toggle
   (Ctrl+M is reserved for the mark ring). The current mode shows in the new
   **Tab Mode** status-bar cell and the checkable **Format > Tab Key Inserts Tab

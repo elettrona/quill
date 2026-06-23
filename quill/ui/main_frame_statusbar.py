@@ -427,7 +427,7 @@ class StatusBarMixin:
             "line_column": "Go to line",
             "word_count": "Show document statistics",
             "mode": "Toggle overwrite mode",
-            "tab_mode": "Toggle Tab key mode (Ctrl+Alt+M). Indent lines or insert a tab character.",
+            "tab_mode": "Toggle Tab key mode (QUILL Key + U). Indent or insert a tab character.",
             "selection": "Show selection statistics",
             "encoding": "Choose document encoding",
             "line_endings": "Toggle line endings",

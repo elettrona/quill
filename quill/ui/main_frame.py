@@ -1158,7 +1158,7 @@ class MainFrame(
         self._overwrite_mode = False
         # When True, the Tab key inserts a literal tab character at the caret
         # (VS Code-style) instead of running the smart line-indent command.
-        # Session state, mirroring _overwrite_mode; toggled with Ctrl+Alt+M.
+        # Session state, mirroring _overwrite_mode; toggled with QUILL Key + U.
         self._tab_inserts_literal = False
         self._insert_key_down = False
         self._print_data = wx.PrintData()
@@ -4509,7 +4509,7 @@ class MainFrame(
         tab_key = getattr(wx, "WXK_TAB", None)
         if tab_key is not None and event.GetKeyCode() == tab_key:
             self._commit_pending_extend_selection()
-            # Literal-tab mode (Ctrl+Alt+M): forward Tab as a tab character at
+            # Literal-tab mode (QUILL Key + U): forward Tab as a tab character at
             # the caret instead of running the smart indent. Shift+Tab still
             # outdents so a stray indent can be undone without leaving the mode.
             if self._tab_inserts_literal and not event.ShiftDown():

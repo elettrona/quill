@@ -22,7 +22,7 @@ and 13, and likely contributes to 10. A small systemic fix is proposed below.
 2. "Clear All Notifications" added to the notifications status-cell context menu.
 3. Tab indent/outdent (and list nest/promote) now spoken under a screen reader
    via forced announcement.
-4. Tab-character mode: Ctrl+Alt+M toggles Tab between smart indent and inserting
+4. Tab-character mode: QUILL Key + U toggles Tab between smart indent and inserting
    a literal tab; new Tab Mode status cell + checkable Format menu item; spoken.
 5. Removed the unfinished Pandoc Conversion Center menu item and its code.
 6. Documented 1-5 in CHANGELOG, user guide, and release notes.
