@@ -845,7 +845,14 @@ the only 5 candidates
 (<code>on_ai</code>/<code>on_convert</code>/<code>on_ocr</code>/<code>on_open</code>/<code>on_run_macro</code>
 in <code>watch_actions.py</code>) are dataclass callback fields injected
 at construction — correct, not defects.</li>
-<li>Status: Clean (no defect).</li>
+<li><strong>Promoted to a standing CI gate:</strong>
+<code>quill/tools/method_contract_audit.py</code>
+(<code>find_undefined_private_calls</code>) +
+<code>tests/unit/tools/test_method_contract_audit.py</code> fail the
+build if any <code>self._private()</code> call is ever undefined across
+<code>quill/</code>. This permanently guards the exact class that caused
+the historical Settings crash.</li>
+<li>Status: Clean (no defect) and now regression-proofed.</li>
 </ul>
 <h3
 id="bug-mutable-defaults--mutable-default-arguments">BUG-mutable-defaults
@@ -887,9 +894,10 @@ Status: Clean (no defect). This matches the repo's
 <p>Note: <code>ruff</code>'s broader correctness rules (bare
 <code>except</code>, <code>is</code>-with-literal, etc.) are already
 green repo-wide, so those classes are covered by the standing gates. The
-three audit scripts (undefined-method calls, mutable defaults,
-non-daemon threads) are simple AST passes and are good candidates to add
-as standing CI gates.</p>
+undefined-private-method audit is now a standing CI gate (see CALL-001).
+The other two passes (mutable defaults, non-daemon threads) are simple
+AST checks and remain good candidates to promote to gates if those
+classes ever recur.</p>
 <h2 id="full-suite-sweep-drive-detectable-failures-to-zero">Full-suite
 sweep (drive detectable failures to zero)</h2>
 <p>Running the whole <code>tests/unit tests/stability</code> suite (4896

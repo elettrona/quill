@@ -415,7 +415,11 @@ though clean, so the check is on the record and repeatable.
   names, all defined). For public snake_case calls, the only 5 candidates
   (`on_ai`/`on_convert`/`on_ocr`/`on_open`/`on_run_macro` in `watch_actions.py`)
   are dataclass callback fields injected at construction — correct, not defects.
-- Status: Clean (no defect).
+- **Promoted to a standing CI gate:** `quill/tools/method_contract_audit.py`
+  (`find_undefined_private_calls`) + `tests/unit/tools/test_method_contract_audit.py`
+  fail the build if any `self._private()` call is ever undefined across `quill/`.
+  This permanently guards the exact class that caused the historical Settings crash.
+- Status: Clean (no defect) and now regression-proofed.
 
 ### BUG-mutable-defaults — mutable default arguments
 - Audited every function/method default and keyword-default in `quill/` for a
@@ -439,8 +443,9 @@ though clean, so the check is on the record and repeatable.
 
 Note: `ruff`'s broader correctness rules (bare `except`, `is`-with-literal, etc.)
 are already green repo-wide, so those classes are covered by the standing gates.
-The three audit scripts (undefined-method calls, mutable defaults, non-daemon
-threads) are simple AST passes and are good candidates to add as standing CI gates.
+The undefined-private-method audit is now a standing CI gate (see CALL-001). The
+other two passes (mutable defaults, non-daemon threads) are simple AST checks and
+remain good candidates to promote to gates if those classes ever recur.
 
 ## Full-suite sweep (drive detectable failures to zero)
 
