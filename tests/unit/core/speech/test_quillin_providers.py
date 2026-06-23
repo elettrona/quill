@@ -93,6 +93,36 @@ def test_transcribe_file_routes_to_ai_transcription(monkeypatch, tmp_path: Path)
     assert seen["language"] == "es"
 
 
+def test_rest_cloud_provider_routes_to_transcribe_rest(monkeypatch, tmp_path: Path) -> None:
+    audio = tmp_path / "clip.wav"
+    audio.write_bytes(b"x")
+    seen: dict[str, object] = {}
+
+    def fake_transcribe_rest(spec, path, api_key, *, language=None, diarize=False):  # noqa: ANN001, ANN202
+        seen["spec"] = spec
+        seen["path"] = path
+        seen["api_key"] = api_key
+        seen["language"] = language
+        seen["diarize"] = diarize
+        return "groq transcript"
+
+    monkeypatch.setattr(
+        "quill.core.speech.cloud_transcribers.transcribe_rest", fake_transcribe_rest
+    )
+    monkeypatch.setattr(qp, "_resolve_api_key", lambda _label: "gk-test")
+
+    provider = qp.build_provider(_contribution(id="ext.acme.groq", kind="groq"))
+    assert isinstance(provider, qp.RestCloudProvider)
+    result = provider.transcribe_file(
+        TranscriptionRequest(source_path=audio, model_id="cloud", language="en", diarize=True)
+    )
+    assert result.full_text == "groq transcript"
+    assert seen["api_key"] == "gk-test"
+    assert seen["language"] == "en"
+    assert seen["diarize"] is True
+    assert seen["spec"] is provider._spec  # the groq endpoint spec
+
+
 def test_transcribe_file_without_key_raises(monkeypatch, tmp_path: Path) -> None:
     audio = tmp_path / "clip.mp3"
     audio.write_bytes(b"x")

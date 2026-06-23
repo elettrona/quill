@@ -70,13 +70,13 @@ def _safe_mode_active() -> bool:
     return os.environ.get("QUILL_SAFE_MODE") == "1"
 
 
-class OpenAiWhisperProvider:
-    """Cloud transcription via OpenAI Whisper, declared by a Quillin.
+class _CloudProviderBase:
+    """Shared behavior for host-mediated, network-backed cloud providers.
 
-    Implements :class:`SpeechToTextProvider` but is network-backed: it has no
-    downloadable models and reports a single virtual "cloud" model so it can be
-    selected in the transcribe UI. The actual call routes through
-    ``quill.core.ai.transcription`` (GATE-9 reviewed egress).
+    Implements :class:`SpeechToTextProvider` except :meth:`transcribe_file` (the
+    per-provider call). Cloud providers have no downloadable models; they report a
+    single virtual "cloud" model when a key is configured so they are selectable in
+    the transcribe UI, and are unavailable in Safe Mode or without a key.
     """
 
     requires_network = True
@@ -84,7 +84,9 @@ class OpenAiWhisperProvider:
     def __init__(self, contribution: TranscriptionProviderContribution) -> None:
         self.id = contribution.id
         self.display_name = contribution.display_name
-        self.description = contribution.description or "Cloud transcription via OpenAI Whisper."
+        self.description = (
+            contribution.description or f"Cloud transcription via {contribution.display_name}."
+        )
         self._credential_label = contribution.credential
         self._max_file_mb = contribution.max_file_mb
 
@@ -149,11 +151,42 @@ class OpenAiWhisperProvider:
 
     # -- transcription ---------------------------------------------------
 
+    def _checked_key(self, path: Path, default_limit_mb: float) -> str:
+        """Enforce the upload-size ceiling and return the API key, or raise."""
+        limit = int((self._max_file_mb or default_limit_mb) * 1024 * 1024)
+        size = path.stat().st_size if path.exists() else 0
+        if size > limit:
+            raise SpeechError(
+                f"{path.name} is {size / (1024 * 1024):.1f} MB, over the "
+                f"{limit / (1024 * 1024):.0f} MB cloud limit for {self.display_name}."
+            )
+        api_key = _resolve_api_key(self._credential_label)
+        if not api_key:
+            raise SpeechError(f"No API key configured for {self.display_name}.")
+        return api_key
+
+    def transcribe_file(
+        self, request: TranscriptionRequest, progress: ProgressCallback | None = None
+    ) -> TranscriptionResult:
+        raise NotImplementedError
+
+    def cancel(self) -> None:  # pragma: no cover - no cancellation for a single REST call
+        pass
+
+    def unload(self) -> None:  # pragma: no cover - nothing to unload
+        pass
+
+
+class OpenAiWhisperProvider(_CloudProviderBase):
+    """Cloud transcription via OpenAI Whisper (kind ``openai_whisper``).
+
+    Routes through ``quill.core.ai.transcription`` (GATE-9 reviewed egress).
+    """
+
     def transcribe_file(
         self, request: TranscriptionRequest, progress: ProgressCallback | None = None
     ) -> TranscriptionResult:  # noqa: ARG002
         from quill.core.ai.transcription import (
-            MAX_FILE_SIZE_BYTES,
             SUPPORTED_AUDIO_EXTENSIONS,
             TranscriptionError,
             transcribe_file,
@@ -164,35 +197,58 @@ class OpenAiWhisperProvider:
             raise SpeechError(
                 f"{path.name} is not a supported audio format for cloud transcription."
             )
-        limit = (
-            int(self._max_file_mb * 1024 * 1024) if self._max_file_mb > 0 else MAX_FILE_SIZE_BYTES
-        )
-        size = path.stat().st_size if path.exists() else 0
-        if size > limit:
-            raise SpeechError(
-                f"{path.name} is {size / (1024 * 1024):.1f} MB, over the "
-                f"{limit / (1024 * 1024):.0f} MB cloud limit for {self.display_name}."
-            )
-        api_key = _resolve_api_key(self._credential_label)
-        if not api_key:
-            raise SpeechError(f"No API key configured for {self.display_name}.")
+        api_key = self._checked_key(path, 25.0)
         try:
             text = transcribe_file(path, api_key, language=request.language)
         except TranscriptionError as exc:
             raise SpeechError(str(exc)) from exc
         return TranscriptionResult(full_text=text, provider_id=self.id, model_id=_CLOUD_MODEL_ID)
 
-    def cancel(self) -> None:  # pragma: no cover - no cancellation for a single REST call
-        pass
 
-    def unload(self) -> None:  # pragma: no cover - nothing to unload
-        pass
+class RestCloudProvider(_CloudProviderBase):
+    """Generic cloud provider for any kind described in ``CLOUD_REST_SPECS``.
+
+    The host performs the REST call via ``cloud_transcribers.transcribe_rest`` under
+    the network-egress audit; the kind selects the vetted endpoint spec.
+    """
+
+    def __init__(self, contribution: TranscriptionProviderContribution) -> None:
+        super().__init__(contribution)
+        from .cloud_transcribers import CLOUD_REST_SPECS
+
+        self._spec = CLOUD_REST_SPECS[contribution.kind]
+
+    def transcribe_file(
+        self, request: TranscriptionRequest, progress: ProgressCallback | None = None
+    ) -> TranscriptionResult:  # noqa: ARG002
+        from .cloud_transcribers import CloudTranscribeError, transcribe_rest
+
+        path = Path(request.source_path)
+        api_key = self._checked_key(path, self._spec.max_file_mb)
+        try:
+            text = transcribe_rest(
+                self._spec,
+                path,
+                api_key,
+                language=request.language,
+                diarize=request.diarize,
+            )
+        except CloudTranscribeError as exc:
+            raise SpeechError(str(exc)) from exc
+        return TranscriptionResult(full_text=text, provider_id=self.id, model_id=_CLOUD_MODEL_ID)
 
 
 #: Maps a contribution ``kind`` to the host adapter that implements it.
 _ADAPTERS: dict[str, Callable[[TranscriptionProviderContribution], SpeechToTextProvider]] = {
     "openai_whisper": OpenAiWhisperProvider,
 }
+
+# Every config-driven REST kind (Groq, ElevenLabs, ...) is served by the one
+# generic RestCloudProvider, which selects its endpoint spec by ``kind``.
+from .cloud_transcribers import CLOUD_REST_SPECS as _CLOUD_REST_SPECS  # noqa: E402
+
+for _kind in _CLOUD_REST_SPECS:
+    _ADAPTERS.setdefault(_kind, RestCloudProvider)
 
 #: Process-wide active set, populated by the Quillin loader.
 _ACTIVE: list[SpeechToTextProvider] = []

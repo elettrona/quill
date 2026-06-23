@@ -82,6 +82,13 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "verified TLS context, visible progress, blocked in Safe Mode. ffmpeg is not "
         "bundled (GPL/LGPL); QUILL only downloads it on an explicit action."
     ),
+    "core/speech/cloud_transcribers.py::transcribe_rest": (
+        "User-initiated cloud transcription via a Quillin-declared, host-vetted "
+        "provider kind (#669: Groq, ElevenLabs, ...). HTTPS enforced (refuses "
+        "non-https), verified TLS context, API key from the credential store, "
+        "endpoint is always one of the vetted CLOUD_REST_SPECS (never arbitrary), "
+        "blocked in Safe Mode, and only runs on explicit consented transcription."
+    ),
     "core/speech/providers/vosk.py::_download_zip": (
         "User-initiated offline Vosk speech-model download (#669) from the official "
         "alphacephei.com model archive; HTTPS enforced (refuses non-https), verified "
@@ -228,6 +235,21 @@ _REVIEWED_EGRESS: dict[str, str] = {
 # dialogs (File > Open from Remote > GitHub).  A one-time consent dialog fires
 # before any network call on first use.  Tokens are stored in Windows Credential
 # Manager only, never logged.  All PyGithub calls are HTTPS.
+
+# ---------------------------------------------------------------------------
+# pip subprocess egress (Faster Whisper on-demand install) — manually documented
+# ---------------------------------------------------------------------------
+# quill/core/speech/engine_install.py::install_faster_whisper runs the runtime's
+# own pip in a subprocess (`python -m pip install --only-binary=:all: --target
+# <user dir> faster-whisper ...`) to install the optional Faster Whisper engine
+# on demand. The network call is performed by pip reaching PyPI / pythonhosted,
+# not by an urlopen in quill/ source, so the AST scanner above cannot see it; it
+# is documented here for auditability.
+#
+# Gating: triggered only by an explicit user action (Tools > Speech > Whisperer >
+# Download Faster Whisper engine), behind a visible confirmation and progress
+# dialog. Blocked in Safe Mode. Wheel-only (no build backend / arbitrary code).
+# Installs into a user-writable engine-pack folder (no admin). No silent path.
 
 
 def _enclosing_function_name(tree: ast.AST, target: ast.AST) -> str:
