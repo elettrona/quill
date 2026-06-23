@@ -171,7 +171,7 @@ Captured on the current branch (`main`), dev environment, Python 3.12.
 | Docs parity | `scripts/check_docs_artifacts.py` | Pass |
 | Build dist | `tests/unit/scripts/test_build_windows_distribution.py` | Pass (15) |
 | Speech suite | `tests/unit/core/speech/` (subset) | Pass; one Parakeet test hits a `transformers` import timeout in dev (see TEST-001) |
-| Full suite | `pytest tests/unit tests/stability` (ex-Parakeet) | 4884 passed, 12 skipped, 1 fixed flaky failure (TEST-002); re-running without `-x` to confirm no later failures |
+| Full suite | `pytest tests/unit tests/stability tests/integration` (ex-Parakeet) | GREEN: 4857 unit+integration + 38 stability passed, 12 skipped, 0 failures (after the TEST-002 fix, confirmed by a full re-run without `-x`) |
 
 ## Running totals
 
@@ -188,7 +188,7 @@ Captured on the current branch (`main`), dev environment, Python 3.12.
 | Label/field association fixes | 4 dialogs (input controls given accessible names) |
 | Keyboard-trap fixes | 3 prose fields (TE_PROCESS_TAB removed) |
 | Test failures resolved | 1 (TEST-002 flaky watchdog test made deterministic) |
-| Remaining test failures | 0 known (full-suite re-run in progress) |
+| Remaining test failures | 0 (full suite green, confirmed by re-run without -x) |
 | Tests added | 2 files (`test_cloud_transcribers.py`, `test_engine_install.py`) |
 | Remaining known issues | 1 (TEST-001) |
 | Intentional legacy QUILL references reviewed | n/a (no rename; QUILL is the name) |
@@ -402,6 +402,12 @@ excluded for TEST-001) surfaced exactly one failure, now fixed.
   a clear margin past the window. The real watchdog uses 15s defaults, so the
   boundary never bites in production.
 - Status: Fixed and verified.
+
+After the fix, a full re-run **without** `-x` (so failures cannot hide behind an
+early stop) reported **4857 unit+integration passed, 12 skipped, 0 failures**, plus
+38 stability passed. With `ruff`/`mypy` clean, the mechanically-detectable surface
+is at zero known failures. This is the honest meaning of "zero" here: all gates and
+the full test suite are green; it is not a proof that no latent bug exists.
 
 ## Deferred / next wave (not yet done — do not represent as complete)
 

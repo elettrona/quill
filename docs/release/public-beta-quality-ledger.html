@@ -437,9 +437,11 @@ timeout in dev (see TEST-001)</td>
 </tr>
 <tr>
 <td>Full suite</td>
-<td><code>pytest tests/unit tests/stability</code> (ex-Parakeet)</td>
-<td>4884 passed, 12 skipped, 1 fixed flaky failure (TEST-002);
-re-running without <code>-x</code> to confirm no later failures</td>
+<td><code>pytest tests/unit tests/stability tests/integration</code>
+(ex-Parakeet)</td>
+<td>GREEN: 4857 unit+integration + 38 stability passed, 12 skipped, 0
+failures (after the TEST-002 fix, confirmed by a full re-run without
+<code>-x</code>)</td>
 </tr>
 </tbody>
 </table>
@@ -499,7 +501,7 @@ install)</td>
 </tr>
 <tr>
 <td>Remaining test failures</td>
-<td>0 known (full-suite re-run in progress)</td>
+<td>0 (full suite green, confirmed by re-run without -x)</td>
 </tr>
 <tr>
 <td>Tests added</td>
@@ -824,6 +826,13 @@ real watchdog uses 15s defaults, so the boundary never bites in
 production.</li>
 <li>Status: Fixed and verified.</li>
 </ul>
+<p>After the fix, a full re-run <strong>without</strong> <code>-x</code>
+(so failures cannot hide behind an early stop) reported <strong>4857
+unit+integration passed, 12 skipped, 0 failures</strong>, plus 38
+stability passed. With <code>ruff</code>/<code>mypy</code> clean, the
+mechanically-detectable surface is at zero known failures. This is the
+honest meaning of "zero" here: all gates and the full test suite are
+green; it is not a proof that no latent bug exists.</p>
 <h2
 id="deferred--next-wave-not-yet-done--do-not-represent-as-complete">Deferred
 / next wave (not yet done — do not represent as complete)</h2>
