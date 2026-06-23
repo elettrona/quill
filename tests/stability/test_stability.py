@@ -631,23 +631,29 @@ def test_watchdog_stop_joins_thread() -> None:
 
 def test_watchdog_re_dumps_after_recovery_window() -> None:
     # M-20: a brief UI unblock followed by a second block must trigger a second
-    # dump when enough time has passed since the first dump.
+    # dump once enough time has passed since the first dump. Exercises the pure
+    # re-dump policy directly so the assertion does not depend on wall-clock
+    # scheduling (the old time.sleep-based form flaked under load: too-tight 0.05s
+    # windows meant a delayed poll could miss the second window entirely).
     from quill.stability.wx_heartbeat import HeartbeatState, WxHeartbeatWatchdog
 
     state = HeartbeatState()
-    dumps: list[str] = []
-
-    # dump_after_seconds=0.05 so the window is tiny; poll_seconds=0.02.
     watchdog = WxHeartbeatWatchdog(
         state,
-        dump_callback=dumps.append,
+        dump_callback=lambda _m: None,
         warn_after_seconds=0.01,
         dump_after_seconds=0.05,
         poll_seconds=0.02,
     )
-    watchdog.start()
-    time.sleep(0.15)  # long enough for at least two dump windows
-    watchdog.stop(timeout=2.0)
 
-    # At least two dumps should have fired (the recovery window is dump_after_seconds=0.05s).
-    assert len(dumps) >= 2
+    base = 1000.0
+    # Not yet blocked long enough: no dump.
+    assert watchdog._should_dump(age=0.04, now=base, last_dump_time=0.0) is False
+    # Blocked past the window with no prior dump: first dump fires.
+    assert watchdog._should_dump(age=0.06, now=base, last_dump_time=0.0) is True
+    # Still blocked but inside the recovery window since the first dump: suppressed.
+    assert watchdog._should_dump(age=0.09, now=base + 0.02, last_dump_time=base) is False
+    # Recovery window elapsed and still blocked: second dump fires (re-dump).
+    # Use a clear margin past the 0.05s window (not the exact boundary) so the
+    # assertion does not depend on floating-point representability.
+    assert watchdog._should_dump(age=0.12, now=base + 0.06, last_dump_time=base) is True

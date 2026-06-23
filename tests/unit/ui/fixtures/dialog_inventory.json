@@ -139,7 +139,6 @@
   "quill/ui/main_frame.py::MainFrame.manage_snippets::wx.FileDialog#2": "native",
   "quill/ui/main_frame.py::MainFrame.manage_snippets::wx.SingleChoiceDialog": "native",
   "quill/ui/main_frame.py::MainFrame.manage_snippets::wx.SingleChoiceDialog#2": "native",
-  "quill/ui/main_frame.py::MainFrame.open_advanced_pandoc_placeholder::wx.MessageDialog": "native",
   "quill/ui/main_frame.py::MainFrame.open_compare_difference_list::wx.SingleChoiceDialog": "native",
   "quill/ui/main_frame.py::MainFrame.open_general_preferences._build_data_location_block._on_choose::wx.DirDialog": "native",
   "quill/ui/main_frame.py::MainFrame.open_general_preferences._make_control._make_abbr_sound_row._on_browse::wx.FileDialog": "native",

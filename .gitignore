@@ -40,6 +40,9 @@ msg.txt
 # Editor local history (VS Code Local History extension)
 .history/
 
+# Data folder contents (folder tracked, contents ignored)
+/data/*
+
 # Working / scratch files (not part of the project)
 zfix*
 zkey*

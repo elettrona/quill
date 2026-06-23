@@ -526,30 +526,6 @@ def _build_power_tools_registrar() -> FirstPartyRegistrar:
         separator_before=False,
     )
 
-    # Tools > Accessibility ---------------------------------------------
-    add(
-        id="power.speak_cursor_address",
-        title="Speak Cursor Address",
-        top_level="Tools",
-        group="accessibility",
-        label="Speak Cursor &Address",
-        separator_before=True,
-    )
-    add(
-        id="power.speak_document_status",
-        title="Speak Document Status",
-        top_level="Tools",
-        group="accessibility",
-        label="Speak Document Stat&us",
-    )
-    add(
-        id="power.speak_selection_length",
-        title="Speak Selection Length",
-        top_level="Tools",
-        group="accessibility",
-        label="Speak Selection &Length",
-    )
-
     # Edit > Copy Tray --------------------------------------------------
     # The two dialog-level commands are registered through the manifest so they
     # appear in the Command Palette and Keymap Editor. The per-slot copy/paste

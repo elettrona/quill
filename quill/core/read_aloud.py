@@ -352,8 +352,8 @@ def synthesize_with_kokoro(
             samples, sample_rate = _k.create(text, voice=voice, speed=float(speed), lang=lang)
             _sf.write(str(output_path), _np.array(samples), sample_rate)
             return
-        except (ImportError, Exception):
-            pass  # fall through to kokoro + torch
+        except Exception:  # noqa: BLE001 - fall through to kokoro + torch
+            pass
 
     # Fall back to kokoro + torch.
     try:

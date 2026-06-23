@@ -353,15 +353,25 @@ to get one. This automation always uses the on-device engine — it never
 uploads your audio.</p>
 <h3 id="add-a-cloud-transcription-provider-optional">Add a cloud
 transcription provider (optional)</h3>
-<p>Prefer a cloud service for its accuracy? You can now add one as an
-<strong>extension</strong>. Install the bundled <strong>OpenAI Whisper
-Transcription</strong> Quillin and set an OpenAI API key in AI Hub, and
-"OpenAI Whisper" appears as a provider in <strong>Manage Speech
-Models</strong>. Cloud transcription is strictly <strong>opt-in and
-never silent</strong>: audio is uploaded only when you explicitly
-transcribe a file with that provider, never offline and never in Safe
-Mode — and the folder automation above never uses it. Extensions that
-add a provider ship no code and request no network permission; QUILL
+<p>Prefer a cloud service for its accuracy or speed? You can now add one
+as an <strong>extension</strong>. QUILL bundles three, each a purely
+declarative Quillin:</p>
+<ul>
+<li><strong>OpenAI Whisper</strong> — best-in-class accuracy across 99+
+languages (uses your OpenAI API key).</li>
+<li><strong>Groq Whisper</strong> — the same Whisper large-v3-turbo
+model, run on Groq's hardware for very fast turnaround (needs a Groq API
+key).</li>
+<li><strong>ElevenLabs Scribe</strong> — high accuracy with optional
+<strong>speaker diarization</strong>, so the transcript marks who spoke
+each segment (needs an ElevenLabs API key).</li>
+</ul>
+<p>Enable one, set its API key, and the provider appears in
+<strong>Manage Speech Models</strong>. Cloud transcription is strictly
+<strong>opt-in and never silent</strong>: audio is uploaded only when
+you explicitly transcribe a file with that provider, never offline and
+never in Safe Mode — and the folder automation above never uses it.
+These extensions ship no code and request no network permission; QUILL
 itself performs the upload through its audited network path, so the
 extension never sees your audio or your key.</p>
 <h3 id="dictate-into-your-document">Dictate into your document</h3>
@@ -386,22 +396,29 @@ On capable machines you can opt into two more, each by installing an
 optional dependency:</p>
 <ul>
 <li><strong>Faster Whisper</strong> — a higher-throughput multilingual
-engine that uses your <strong>GPU</strong> when one is available
-(<code>fasterwhisper</code> dependency).</li>
+engine that uses your <strong>GPU</strong> when one is available.
+Install it in one step with <strong>Tools &gt; Speech &gt; Whisperer
+&gt; Download Faster Whisper Engine...</strong> (about 110 MB,
+downloaded on demand; no source checkout needed), or from source as the
+<code>fasterwhisper</code> dependency.</li>
 <li><strong>Parakeet (English)</strong> — NVIDIA's high-accuracy
 <strong>English</strong> engine with timestamps, also GPU-oriented
 (<code>parakeet</code> dependency, which pulls in NVIDIA NeMo and
 PyTorch — a large download).</li>
 <li><strong>Vosk (English)</strong> — a <strong>very low-resource,
 CPU-only</strong> engine that runs on a ~40 MB model with no GPU, for
-old or constrained machines (<code>vosk</code> dependency).</li>
+old or constrained machines. It ships <strong>in the Windows
+installer</strong>, so it is available out of the box (no extra
+install); from source it is the <code>vosk</code> dependency. Its model
+still downloads on first use.</li>
 </ul>
 <p><strong>Manage Speech Models</strong> then offers a <strong>Speech
 Engine</strong> chooser, and your choice is used for transcription,
 captions, and dictation; each engine has its own models, so download one
-after switching. All three run <strong>entirely on your
-computer</strong>. (For speaker labels, use the whisper.cpp
-speaker-detection model.)</p>
+after switching. Pressing <strong>Escape</strong> on the engine chooser
+now returns you to the editor rather than opening the default engine's
+model list. All three run <strong>entirely on your computer</strong>.
+(For speaker labels, use the whisper.cpp speaker-detection model.)</p>
 <h2 id="read-and-proof-braille">Read and proof braille</h2>
 <p>Braille Mode gained a real proofreading and quality workflow, and it
 never changes your braille file — progress and notes live in a small
@@ -602,6 +619,50 @@ Older bindings are repaired on startup.</li>
 <li><strong>Closing an unsaved document.</strong> The prompt uses the
 standard Yes/No/Cancel: press <code>Y</code> to save, <code>N</code> to
 discard, or <code>Esc</code> to cancel — or Tab to the buttons.</li>
+</ul>
+<h2 id="editing-and-keyboard-polish">Editing and keyboard polish</h2>
+<ul>
+<li><strong>The Tab key can now insert a tab character.</strong> Tab
+still defaults to smart line indent (Shift+Tab outdents; on a Markdown
+list item it nests or promotes the item). Press <strong>QUILL Key +
+U</strong> to switch the Tab key to insert a literal tab character at
+the cursor instead — Quill's take on the VS Code "Tab key" toggle
+(Ctrl+M is reserved for the mark ring). The current mode shows in the
+new <strong>Tab Mode</strong> status-bar cell and the checkable
+<strong>Format &gt; Tab Key Inserts Tab Character</strong> menu item,
+and the mode change is spoken.</li>
+<li><strong>Tab indent is spoken under a screen reader again.</strong>
+Indenting with Tab now announces aloud even while JAWS or NVDA is
+running, where it had gone silent.</li>
+<li><strong>F6 reaches the document tab bar.</strong> With <strong>Show
+Tab Control</strong> on, F6 now cycles Editor, Document Tabs, Preview,
+and Status Bar, so the tab strip is reachable from the keyboard.</li>
+<li><strong>Clear All Notifications</strong> is now a one-step action on
+the notifications status-cell context menu.</li>
+<li><strong>Hey QUILL Commands is a real on/off toggle.</strong> The
+Reading &gt; Dictation &gt; Hey QUILL Commands menu item is now
+checkable: it flips the setting directly, remembers it, and says "Hey
+QUILL voice commands on" or "off" — it no longer sends you to a settings
+tab.</li>
+<li><strong>Results that don't move the cursor are now spoken.</strong>
+Pressing <strong>F7</strong> or <strong>F8</strong> just after typing a
+misspelling now says "No misspellings ahead; N behind" (and the reverse)
+instead of staying silent, and <strong>Check for External
+Changes</strong> announces when the file still matches what is on
+disk.</li>
+<li><strong>Ctrl+W closes the current document.</strong> If no side
+preview is open, Ctrl+W now closes the active document instead of doing
+nothing.</li>
+<li><strong>Recent Files can tidy itself.</strong> A new General
+setting, <strong>Drop missing recent files automatically</strong> (off
+by default), removes Recent Files entries whose file is gone — but only
+on your fixed internal drives. Files on USB, removable, or network
+drives are left alone, since "missing" there usually just means the
+drive is unplugged or offline.</li>
+<li>The unfinished <strong>Pandoc Conversion Center</strong> menu item
+was removed; use <strong>File &gt; Import</strong> / <strong>File &gt;
+Export</strong> (and <strong>Tools &gt; Batch Conversion</strong> for
+folders).</li>
 </ul>
 <h2 id="opening-and-saving-files-faithfully">Opening and saving files
 faithfully</h2>

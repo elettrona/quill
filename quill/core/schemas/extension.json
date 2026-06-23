@@ -528,7 +528,7 @@
               },
               "display_name": { "type": "string", "minLength": 1, "maxLength": 80 },
               "kind": {
-                "enum": ["openai_whisper"],
+                "enum": ["openai_whisper", "groq", "elevenlabs"],
                 "description": "Host adapter that performs the transcription."
               },
               "description": { "type": "string", "maxLength": 400 },

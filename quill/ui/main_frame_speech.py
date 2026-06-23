@@ -43,12 +43,18 @@ class SpeechCommandsMixin:
                 pass
         return registry.get(DEFAULT_PROVIDER_ID)  # type: ignore[attr-defined]
 
-    def _choose_speech_engine(self) -> object | None:
+    def _choose_speech_engine(self) -> tuple[bool, object | None]:
         """Let the user pick the speech engine when more than one is available.
 
         Persists the choice to ``settings.speech_provider`` so transcription,
-        captions, and dictation all use it. Returns the chosen provider, or None
-        to fall back to the default (including when only one engine exists).
+        captions, and dictation all use it.
+
+        Returns ``(cancelled, provider)``. ``cancelled`` is True only when the
+        user dismissed the chooser with Escape/Cancel, so the caller can abort
+        and return to the editor instead of silently falling through to the
+        default engine's model list (#8). ``provider`` is the chosen provider,
+        or None when no choice was offered (one engine) — the caller then uses
+        the default.
         """
         from quill.core.settings import save_settings
 
@@ -56,7 +62,7 @@ class SpeechCommandsMixin:
         registry = self._speech_registry()
         providers = registry.available()  # type: ignore[attr-defined]
         if len(providers) <= 1:
-            return None
+            return False, None
         labels = [p.display_name for p in providers]
         current = str(getattr(self.settings, "speech_provider", "") or "")
         selected = next((i for i, p in enumerate(providers) if p.id == current), 0)
@@ -65,10 +71,10 @@ class SpeechCommandsMixin:
         ) as dialog:
             dialog.SetSelection(selected)
             if self._show_modal_dialog(dialog, "Speech Engine") != wx.ID_OK:
-                return None
+                return True, None
             choice = dialog.GetSelection()
         if not (0 <= choice < len(providers)):
-            return None
+            return True, None
         provider = providers[choice]
         self.settings.speech_provider = provider.id
         try:
@@ -76,7 +82,7 @@ class SpeechCommandsMixin:
         except Exception:  # noqa: BLE001 - a save failure must not block model management
             pass
         self._announce(f"Speech engine set to {provider.display_name}.")
-        return provider
+        return False, provider
 
     # -- model manager ---------------------------------------------------- #
 
@@ -90,7 +96,14 @@ class SpeechCommandsMixin:
         )
 
         wx = self._wx
-        provider = self._choose_speech_engine() or self._speech_provider()
+        # #8: distinguish "cancelled the engine chooser" (return to the editor)
+        # from "only one engine, no choice offered" (use the default). Without
+        # this, Escape on the chooser fell through to the default engine's model
+        # list instead of closing.
+        cancelled, chosen = self._choose_speech_engine()
+        if cancelled:
+            return
+        provider = chosen or self._speech_provider()
         total_ram = detect_total_ram_gb()
         has_gpu = detect_has_gpu()
         rows = describe_models(provider, total_ram, has_gpu)  # type: ignore[arg-type]
@@ -246,6 +259,90 @@ class SpeechCommandsMixin:
             wx.CallAfter(self._announce, done)
 
         threading.Thread(  # GATE-40-OK: ffmpeg download worker.
+            target=_run, daemon=True
+        ).start()
+
+    def download_faster_whisper(self) -> None:
+        """Install the optional Faster Whisper engine on demand (#669 follow-up).
+
+        QUILL does not bundle Faster Whisper (its CTranslate2/ONNX dependencies are
+        ~110 MB). This installs it wheel-only into a user-writable engine-pack folder
+        on an explicit action, then adds it to sys.path so the engine appears in the
+        speech registry. Runs on a worker thread behind a progress dialog.
+        """
+        import threading
+
+        from quill.core.speech.engine_install import (
+            EngineInstallError,
+            faster_whisper_install_supported,
+            install_faster_whisper,
+            is_faster_whisper_available,
+        )
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
+
+        wx = self._wx
+        if not faster_whisper_install_supported():
+            self._show_message_box(
+                "This build cannot install Faster Whisper automatically. Install it "
+                'from source with: pip install -e ".[fasterwhisper]".',
+                "Download Faster Whisper",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        if is_faster_whisper_available():
+            self._show_message_box(
+                "Faster Whisper is already installed. Choose it in Manage Speech "
+                "Models under Speech Engine.",
+                "Download Faster Whisper",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        confirm = self._show_message_box(
+            "Download and install the Faster Whisper speech engine (about 110 MB)? "
+            "It is a faster, GPU-capable offline engine. The download happens now, "
+            "directly from the Python Package Index; nothing is uploaded.",
+            "Download Faster Whisper",
+            wx.ICON_QUESTION | wx.YES_NO,
+        )
+        if confirm != wx.YES:
+            return
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            self.frame,
+            "Installing Faster Whisper",
+            "Preparing to install Faster Whisper...",
+            on_cancel=cancel.set,
+        )
+        progress.show()
+        self._announce("Installing Faster Whisper.")
+
+        def _on_progress(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise EngineInstallError("Installation cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            progress.set_progress(percent, f"{message} {percent}%")
+
+        def _run() -> None:
+            try:
+                install_faster_whisper(_on_progress)
+            except Exception as exc:  # noqa: BLE001 - surface a clean message
+                wx.CallAfter(progress.close)
+                if cancel.is_set():
+                    wx.CallAfter(self._set_status, "Faster Whisper installation cancelled.")
+                    wx.CallAfter(self._announce, "Faster Whisper installation cancelled.")
+                else:
+                    wx.CallAfter(self._set_status, f"Could not install Faster Whisper: {exc}")
+                    wx.CallAfter(self._announce, f"Could not install Faster Whisper. {exc}")
+                return
+            wx.CallAfter(progress.close)
+            done = (
+                "Faster Whisper installed. Choose it in Manage Speech Models under "
+                "Speech Engine, then download a model for it."
+            )
+            wx.CallAfter(self._set_status, done)
+            wx.CallAfter(self._announce, done)
+
+        threading.Thread(  # GATE-40-OK: Faster Whisper install worker.
             target=_run, daemon=True
         ).start()
 

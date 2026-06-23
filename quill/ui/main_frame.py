@@ -326,7 +326,13 @@ from quill.core.read_aloud import (
 from quill.core.read_aloud import (
     VoiceOption as ReadAloudVoiceOption,
 )
-from quill.core.recent import add_recent_file, clear_recent_files, load_recent_files
+from quill.core.recent import (
+    add_recent_file,
+    clear_recent_files,
+    load_recent_files,
+    prune_missing_recent_files,
+    save_recent_files,
+)
 from quill.core.recovery import (
     begin_session,
     mark_clean_exit,
@@ -858,6 +864,7 @@ class MainFrame(
         "line_column": "Position",
         "word_count": "Word Count",
         "mode": "Keyboard Mode",
+        "tab_mode": "Tab Mode",
         "selection": "Selection Length",
         "encoding": "Encoding",
         "line_endings": "Line Endings",
@@ -884,6 +891,7 @@ class MainFrame(
         "line_column": 140,
         "word_count": 140,
         "mode": 110,
+        "tab_mode": 130,
         "selection": 110,
         "encoding": 120,
         "line_endings": 140,
@@ -910,6 +918,7 @@ class MainFrame(
         "line_column": "core.editor",
         "word_count": "core.analysis",
         "mode": "core.editor",
+        "tab_mode": "core.editor",
         "selection": "core.editor",
         "encoding": "core.file",
         "line_endings": "core.file",
@@ -1050,6 +1059,15 @@ class MainFrame(
             self._active_language = "en"
         self.keymap = dict(DEFAULT_KEYMAP) if safe_mode else load_keymap()
         self.recent_files = [] if safe_mode else load_recent_files()
+        if not safe_mode and getattr(self.settings, "recent_files_auto_clear_missing", False):
+            # #14: drop entries whose file is gone, but only on confirmed fixed
+            # internal drives (never removable/network), then persist the pruned
+            # list so the menu and the on-disk history stay in sync.
+            self.recent_files, _dropped = prune_missing_recent_files(
+                self.recent_files, enabled=True
+            )
+            if _dropped:
+                save_recent_files(self.recent_files)
         self._trusted_locations = set() if safe_mode else load_trusted_locations()
         self.session_id = str(uuid4())
         self._recovery_offers = [] if safe_mode else begin_session(self.session_id)
@@ -1157,6 +1175,10 @@ class MainFrame(
         self._voice_command_aliases: dict[str, str] = {}
         self._voice_command_guard = False
         self._overwrite_mode = False
+        # When True, the Tab key inserts a literal tab character at the caret
+        # (VS Code-style) instead of running the smart line-indent command.
+        # Session state, mirroring _overwrite_mode; toggled with QUILL Key + U.
+        self._tab_inserts_literal = False
         self._insert_key_down = False
         self._print_data = wx.PrintData()
         self._page_setup_data = wx.PageSetupDialogData(self._print_data)
@@ -3116,6 +3138,12 @@ class MainFrame(
             self._binding_for("format.outdent"),
         )
         self.commands.register(
+            "format.toggle_tab_insert_mode",
+            "Toggle Tab Key Mode (Indent / Tab Character)",
+            self.toggle_tab_insert_mode,
+            self._binding_for("format.toggle_tab_insert_mode"),
+        )
+        self.commands.register(
             "format.insert_markdown_tag",
             "Insert Markdown Tag...",
             self.insert_markdown_tag,
@@ -3716,6 +3744,7 @@ class MainFrame(
             "format.toggle_block_comment": self._id_toggle_block_comment,
             "format.indent": self._id_indent,
             "format.outdent": self._id_outdent,
+            "format.toggle_tab_insert_mode": self._id_toggle_tab_mode,
             "format.move_line_up": self._id_move_line_up,
             "format.move_line_down": self._id_move_line_down,
             # PR1 (EdSharp port): section-move command ids.
@@ -4126,12 +4155,11 @@ class MainFrame(
 
     def _create_tab_host(self, show_tab_control: bool) -> object:
         wx = self._wx
-        if show_tab_control:
-            return wx.Notebook(self._documents_panel)
-        simplebook = getattr(wx, "Simplebook", None)
-        if simplebook is not None:
-            return simplebook(self._documents_panel)
-        return wx.Notebook(self._documents_panel)
+        panel = self._documents_panel
+        simplebook = None if show_tab_control else getattr(wx, "Simplebook", None)
+        host = simplebook(panel) if simplebook else wx.Notebook(panel)
+        host.SetName("Open documents")  # SR announces the document tab group, not a bare notebook
+        return host
 
     def _rebuild_tab_host(self, show_tab_control: bool) -> None:
         if show_tab_control == self._tab_control_visible:
@@ -4221,6 +4249,13 @@ class MainFrame(
             splitter = getattr(tab, "splitter", None) if tab is not None else None
             if splitter is not None and splitter.IsSplit():
                 self.toggle_side_preview()
+                return
+            # #11: no side preview to close -> close the active document. The hook
+            # consumes Ctrl+W here, so without this fallback the accelerator never
+            # fires and Ctrl+W appears to do nothing. Guarded to the document
+            # surface so it doesn't hijack Ctrl+W inside a modal/WebView dialog.
+            if tab is not None and self._focus_is_in_document_surface():
+                self.close_current_document()
                 return
         if not self._focus_is_in_document_surface():
             # Modal dialogs (including WebView-hosted HTML surfaces) should
@@ -4560,18 +4595,24 @@ class MainFrame(
         tab_key = getattr(wx, "WXK_TAB", None)
         if tab_key is not None and event.GetKeyCode() == tab_key:
             self._commit_pending_extend_selection()
+            # Literal-tab mode (QUILL Key + U): forward Tab as a tab character at
+            # the caret instead of running the smart indent. Shift+Tab still
+            # outdents so a stray indent can be undone without leaving the mode.
+            if self._tab_inserts_literal and not event.ShiftDown():
+                self.editor.WriteText("\t")
+                return
+            # force_announce so the Tab indent is spoken even under JAWS/NVDA —
+            # the edit has no focus change for the screen reader to pick up.
             if self._is_caret_on_markdown_list_item():
                 if event.ShiftDown():
-                    self.format_outdent()
-                    self._set_status("Promoted list item")
+                    self.format_outdent(status="Promoted list item", force_announce=True)
                 else:
-                    self.format_indent()
-                    self._set_status("Nested list item")
+                    self.format_indent(status="Nested list item", force_announce=True)
                 return
             if event.ShiftDown():
-                self.format_outdent()
+                self.format_outdent(force_announce=True)
             else:
-                self.format_indent()
+                self.format_indent(force_announce=True)
             return
         if (
             hasattr(self, "_dictation")
@@ -5192,7 +5233,9 @@ class MainFrame(
         )
 
         if decision.action == ReloadAction.NONE:
-            self._set_status(f"'{self.document.path.name}' matches the on-disk version.")
+            # No external change. force-speak the result -- nothing moves focus,
+            # so the plain status would be silent under a screen reader (#13).
+            self._announce_result(f"'{self.document.path.name}' matches the on-disk version.")
         elif decision.action == ReloadAction.RELOAD:
             # Force-prompt even though auto_reload_when_clean would normally reload silently.
             self._show_external_change_prompt(ReloadAction.PROMPT_CONFLICT)
@@ -5689,7 +5732,7 @@ class MainFrame(
         self._reveal_in_explorer(logs_path)
 
     def open_startup_logs(self) -> None:
-        """Help > View Startup Logs... — open logs/startup-errors.log directly."""
+        """Tools > Customize & Support > View Startup Logs... — open startup-errors.log directly."""
         log_path = app_data_dir() / "logs" / "startup-errors.log"
         if not log_path.exists():
             self._set_status(
@@ -7075,6 +7118,19 @@ class MainFrame(
         self._status_message = message
         self._refresh_statusbar()
 
+    def _announce_result(self, message: str) -> None:
+        """Set the status bar text and force-speak an explicit command result.
+
+        The announcement engine deliberately stays silent while JAWS/NVDA is
+        active (prism_bridge), on the assumption the screen reader will read
+        whatever focus/control change the command caused. Commands that change
+        nothing focus-wise -- an indent, a "no changes" check, a "nothing found"
+        result -- would therefore update a status the user never hears. Route
+        those results through here: ``force=True`` bypasses the suppression so
+        the confirmation is spoken. The user explicitly invoked the command, so
+        the result is spoken even in Quiet/Meeting verbosity modes."""
+        self._announce(message, force=True)
+
     def _feature_enabled(self, feature_id: str) -> bool:
         feature_manager = getattr(self, "features", None)
         if feature_manager is None:
@@ -7759,20 +7815,6 @@ class MainFrame(
             notify_on_success=True,
             notify_on_error=True,
         )
-
-    def open_advanced_pandoc_placeholder(self) -> None:
-        """Placeholder for the Tier-2 / Tier-3 Pandoc Conversion Center (issue #262)."""
-
-        wx = self._wx
-        with wx.MessageDialog(
-            self.frame,
-            "The advanced Pandoc Conversion Center is coming in a future release.\n\n"
-            "For now, File > Import and File > Export cover the Tier-1 format set, "
-            "and Tools > Batch Conversion runs batch jobs over a folder.",
-            "Coming Soon",
-            style=wx.ICON_INFORMATION | wx.OK,
-        ) as dialog:
-            self._show_modal_dialog(dialog, "Coming Soon")
 
     def _status_tab_indexes(self) -> list[int]:
         getter = getattr(self.notebook, "GetPageText", None)
@@ -8788,6 +8830,33 @@ class MainFrame(
         self._overwrite_mode = next_state
         self._refresh_statusbar()
         self._set_status("Overwrite mode on" if next_state else "Insert mode on")
+
+    def toggle_tab_insert_mode(self, enabled: bool | None = None) -> None:
+        """Toggle whether the Tab key inserts a literal tab or indents lines.
+
+        Default (off) keeps the smart line-indent behaviour. On, Tab types a
+        tab character at the caret like a plain text editor. The new mode is
+        spoken and reflected in the Tab Mode status-bar cell and the Format
+        menu check item."""
+        next_state = (not self._tab_inserts_literal) if enabled is None else enabled
+        self._tab_inserts_literal = next_state
+        self._sync_tab_mode_menu_check()
+        self._refresh_statusbar()
+        self._set_status(
+            "Tab key inserts a tab character" if next_state else "Tab key indents the line"
+        )
+
+    def _sync_tab_mode_menu_check(self) -> None:
+        menu_bar = getattr(self.frame, "GetMenuBar", None)
+        menu_id = getattr(self, "_id_toggle_tab_mode", None)
+        if menu_id is None or not callable(menu_bar):
+            return
+        bar = menu_bar()
+        if bar is None:
+            return
+        item = bar.FindItemById(menu_id)
+        if item is not None and item.IsCheckable():
+            item.Check(self._tab_inserts_literal)
 
     def choose_document_encoding(self) -> None:
         wx = self._wx
@@ -15230,8 +15299,21 @@ class MainFrame(
         Editor and Status Bar are always present. The side preview is only in
         the rotation while it is split open, so screen reader users can F6 into
         the rendered Markdown/HTML and use browse-mode heading navigation, then
-        F6 back out."""
+        F6 back out.
+
+        The document tab bar is only a real, focusable wx.Notebook when the
+        tab control is visible (the hidden Simplebook has no tab strip), so it
+        joins the rotation only then — otherwise F6 would "land" on an
+        unreachable region. This is the fix for the tab bar being unreachable
+        by F6 and by the JAWS cursor when Show Tab Control is on."""
         labels = ["Editor"]
+        if self._tab_control_visible:
+            try:
+                has_tabs = self.notebook.GetPageCount() > 0
+            except (AttributeError, RuntimeError):
+                has_tabs = False
+            if has_tabs:
+                labels.append("Document Tabs")
         tab = self._active_tab()
         if (
             tab is not None
@@ -15262,6 +15344,8 @@ class MainFrame(
         while win is not None:
             if preview_ctrl is not None and win is preview_ctrl and "Preview" in regions:
                 return "Preview"
+            if "Document Tabs" in regions and win is self.notebook:
+                return "Document Tabs"
             if win is self.statusbar:
                 return "Status Bar"
             if win is self.editor:
@@ -15277,6 +15361,9 @@ class MainFrame(
     def _focus_region(self, label: str) -> None:
         if label == "Status Bar":
             self.statusbar.SetFocus()
+            return
+        if label == "Document Tabs":
+            self.notebook.SetFocus()
             return
         if label == "Preview":
             tab = self._active_tab()
@@ -16146,12 +16233,38 @@ class MainFrame(
         self._location_ring.record(selected.start)
         self._set_status(f'Jumped to misspelling "{selected.word}"')
 
+    def _misspellings_behind_message(
+        self, text: str, cursor: int, dictionary: set[str], *, ahead: bool
+    ) -> str:
+        """Build the spoken "none in this direction" result for F7/F8.
+
+        F7/F8 search forward/backward from the caret and don't wrap, so right
+        after typing a misspelling the caret sits past it and there is no *next*
+        one -- the bare "No next misspelling" was both misleading and silent
+        under a screen reader (#9). Count the misspellings in the other
+        direction so the user knows to reverse instead of assuming the document
+        is clean."""
+        direction = "ahead" if ahead else "behind"
+        other_key = "behind" if ahead else "ahead"
+        other = (
+            find_previous_misspelling(text, cursor, dictionary)
+            if ahead
+            else find_next_misspelling(text, cursor, dictionary)
+        )
+        if other is None:
+            return "No misspellings found"
+        count = sum(1 for m in list_misspellings(text, dictionary) if (m.end <= cursor) == ahead)
+        plural = "" if count == 1 else "s"
+        return f"No misspellings {direction}; {count} misspelling{plural} {other_key}"
+
     def next_misspelling(self) -> None:
         dictionary = self._spell_dictionary()
+        text = self.editor.GetValue()
         cursor = self.editor.GetInsertionPoint()
-        item = find_next_misspelling(self.editor.GetValue(), cursor, dictionary)
+        item = find_next_misspelling(text, cursor, dictionary)
         if item is None:
-            self._set_status("No next misspelling")
+            message = self._misspellings_behind_message(text, cursor, dictionary, ahead=True)
+            self._announce_result(message)
             return
         self._record_location_before_jump()
         if self._extend_selection_mode and self._extend_selection_anchor is not None:
@@ -16164,10 +16277,12 @@ class MainFrame(
 
     def previous_misspelling(self) -> None:
         dictionary = self._spell_dictionary()
+        text = self.editor.GetValue()
         cursor = self.editor.GetInsertionPoint()
-        item = find_previous_misspelling(self.editor.GetValue(), cursor, dictionary)
+        item = find_previous_misspelling(text, cursor, dictionary)
         if item is None:
-            self._set_status("No previous misspelling")
+            message = self._misspellings_behind_message(text, cursor, dictionary, ahead=False)
+            self._announce_result(message)
             return
         self._record_location_before_jump()
         if self._extend_selection_mode and self._extend_selection_anchor is not None:
@@ -17281,9 +17396,24 @@ class MainFrame(
             self._set_status("Windows dictation started. Speak into the editor.")
 
     def toggle_dictation_voice_commands(self) -> None:
-        """Open Settings at the Transcription tab where Hey QUILL commands can be toggled."""
-        self.open_general_preferences()
-        self._set_status("Hey QUILL commands setting is in Settings > Transcription")
+        """Flip the Hey QUILL voice-commands setting and reflect it in the menu (#7).
+
+        Previously this jumped to Settings > Transcription and the menu read
+        "...(in Settings)" — a dead link, not a control. It is now a checkable
+        on/off toggle: flip ``settings.voice_commands_enabled``, persist, sync
+        the menu check, and speak the new state."""
+        enabled = not bool(getattr(self.settings, "voice_commands_enabled", False))
+        self.settings.voice_commands_enabled = enabled
+        save_settings(self.settings)
+        self._sync_dictation_voice_commands_menu_check()
+        self._announce_result("Hey QUILL voice commands " + ("on" if enabled else "off"))
+
+    def _sync_dictation_voice_commands_menu_check(self) -> None:
+        """Mirror settings.voice_commands_enabled onto the Hey QUILL Commands
+        check item wherever it was built (#7)."""
+        enabled = bool(getattr(self.settings, "voice_commands_enabled", False))
+        for menu in getattr(self, "_voice_commands_check_menus", ()) or ():
+            menu.Check(self._id_dictation_voice_commands, enabled)
 
     def _bw_include_parakeet_models(self) -> bool:
         if not self._feature_enabled("core.bw_parakeet"):
@@ -17976,7 +18106,9 @@ class MainFrame(
     def show_watch_folder_status(self) -> None:
         """Open the accessible Watch Queue Monitor (WATCH-4)."""
         if not self._feature_enabled("core.watch_folder"):
-            self._set_status("Watch folder is unavailable in this profile")
+            # #10: this early return left focus in the editor with only a silent
+            # status, so the command looked like it "did nothing". Speak it.
+            self._announce_result("Watch folder is unavailable in this profile")
             return
         existing = self._watch_queue_monitor
         if existing is not None:
@@ -18594,6 +18726,16 @@ class MainFrame(
         except Exception:  # pragma: no cover - registry best-effort
             pass
         self._set_status("Removed shell integration")
+
+    def clear_all_notifications(self) -> None:
+        """Clear every stored notification without opening the dialog.
+
+        Wired to the "Clear All Notifications" entry on the notifications cell
+        context menu so the badge can be emptied in one step."""
+        clear_notifications()
+        self._notifications = []
+        self._refresh_statusbar()
+        self._set_status("Cleared all notifications")
 
     def open_notifications(self) -> None:
         wx = self._wx
@@ -22161,7 +22303,9 @@ class MainFrame(
             return "\t"
         return " " * self._indent_width()
 
-    def format_indent(self) -> None:
+    def format_indent(
+        self, *, status: str = "Indented lines", force_announce: bool = False
+    ) -> None:
         self._apply_selection_operation(
             lambda text, start, end: indent_lines(
                 text,
@@ -22169,10 +22313,13 @@ class MainFrame(
                 end,
                 indent_unit=self._indent_unit(),
             ),
-            "Indented lines",
+            status,
+            force_announce=force_announce,
         )
 
-    def format_outdent(self) -> None:
+    def format_outdent(
+        self, *, status: str = "Outdented lines", force_announce: bool = False
+    ) -> None:
         self._apply_selection_operation(
             lambda text, start, end: outdent_lines(
                 text,
@@ -22180,7 +22327,8 @@ class MainFrame(
                 end,
                 indent_unit=self._indent_unit(),
             ),
-            "Outdented lines",
+            status,
+            force_announce=force_announce,
         )
 
     def format_italic(self) -> None:
@@ -23157,6 +23305,7 @@ class MainFrame(
         status: str,
         *,
         no_change_status: str | None = None,
+        force_announce: bool = False,
     ) -> None:
         if not self._feature_enabled("core.format"):
             self._set_status(f"{status} is unavailable in this profile")
@@ -23179,7 +23328,15 @@ class MainFrame(
             self.editor.SetSelection(new_start, new_start)
         else:
             self.editor.SetSelection(new_start, new_end)
-        self._set_status(status)
+        if force_announce:
+            # Speak even while a screen reader is active. A selection edit such
+            # as Tab-indent mutates text with no focus or control change, so the
+            # screen reader has nothing to read and the normal status path is
+            # suppressed by the announcement engine (prism_bridge). force=True is
+            # the same escape hatch the QUILL-key chord prefix uses.
+            self._announce(status, force=True)
+        else:
+            self._set_status(status)
 
     def _apply_text_block_operation(
         self,

@@ -316,7 +316,7 @@ class FileTypeContribution:
 #: so a manifest can never point the host at an arbitrary URL. Add a new kind here
 #: (and a host adapter in ``quill/core/speech/quillin_providers.py``) only after it
 #: is vetted into the network-egress audit.
-TRANSCRIPTION_PROVIDER_KINDS: tuple[str, ...] = ("openai_whisper",)
+TRANSCRIPTION_PROVIDER_KINDS: tuple[str, ...] = ("openai_whisper", "groq", "elevenlabs")
 
 
 @dataclass(frozen=True, slots=True)

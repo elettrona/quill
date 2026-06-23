@@ -369,6 +369,14 @@ def main() -> int:
     apply_pending_data_location_migration()
     _propagate_portable_environment()
     ensure_app_directories()
+    # Add any on-demand-installed speech engine packs (e.g. Faster Whisper) to
+    # sys.path so the speech registry can find them this session (#669 follow-up).
+    try:
+        from quill.core.speech.engine_install import activate_engine_packs
+
+        activate_engine_packs()
+    except Exception:  # noqa: BLE001 - an optional engine must never break startup
+        pass
     log_listener = configure_logging(app_data_dir() / "logs")
     setup_fault_handler()
     _install_excepthook()

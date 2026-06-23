@@ -151,9 +151,11 @@ def test_power_tools_manifest_is_consumed_and_conflict_free() -> None:
     # multi replace, count occurrences, line statistics)
     # 0.6.0: +3 for Emmet-style abbreviation expansion (expand/preview/explain
     # abbreviation)
+    # 0.7.0: -3 for the removed Pandoc Conversion Center placeholder and its
+    # commands (the unfinished open_advanced_pandoc_placeholder menu prune).
     registry = build_first_party_registry(POWER_TOOLS_COMMANDS)
-    assert len(POWER_TOOLS_COMMANDS) == 70
-    assert len(registry.commands) == 70
+    assert len(POWER_TOOLS_COMMANDS) == 67
+    assert len(registry.commands) == 67
     assert registry.conflicts == ()
     for menu in registry.menus:
         assert menu.parent in FIRST_PARTY_MENU_PARENTS

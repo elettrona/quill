@@ -16,6 +16,48 @@ from quill.core.i18n import _
 
 
 class MenuBuilderMixin:
+    def _register_voice_commands_check_menu(self, menu: object) -> None:
+        """Track the menu holding the Hey QUILL Commands check item (#7).
+
+        The checkable item can flip from the menu, the keymap/command palette, or
+        the Settings dialog, so the handler needs a handle to re-sync the visual
+        check wherever it lives (basic and full profiles build different menus)."""
+        menus = getattr(self, "_voice_commands_check_menus", None)
+        if menus is None:
+            menus = self._voice_commands_check_menus = []
+        menus.append(menu)
+
+    def _prune_menu_separators(self, menu: object) -> None:
+        """Remove dangling separators from a built menu (#15).
+
+        A separator the screen reader announces but cannot focus appears when a
+        menu opens or ends with one, or has two in a row -- usually because an
+        optional section above/below was feature-gated out, leaving a section
+        divider with nothing on one side. Strip leading and trailing separators
+        and collapse consecutive runs to one. Safe to call on any menu."""
+        positions_to_remove: list[int] = []
+        count = menu.GetMenuItemCount()
+        prev_was_separator = True  # leading separators have nothing before them
+        for position in range(count):
+            item = menu.FindItemByPosition(position)
+            is_separator = item is not None and item.IsSeparator()
+            if is_separator and prev_was_separator:
+                positions_to_remove.append(position)
+            else:
+                prev_was_separator = is_separator
+        # A trailing separator (last kept item is a separator) is also dangling.
+        for position in range(count - 1, -1, -1):
+            if position in positions_to_remove:
+                continue
+            item = menu.FindItemByPosition(position)
+            if item is not None and item.IsSeparator():
+                positions_to_remove.append(position)
+            break
+        for position in sorted(set(positions_to_remove), reverse=True):
+            item = menu.FindItemByPosition(position)
+            if item is not None:
+                menu.DestroyItem(item)
+
     def _build_menu(self) -> None:
         wx = self._wx
         menu_bar = wx.MenuBar()
@@ -74,7 +116,6 @@ class MenuBuilderMixin:
         self._id_export_other = wx.NewIdRef()  # "Other Pandoc Format..."
         self._id_batch_convert_import = wx.NewIdRef()
         self._id_batch_convert_export = wx.NewIdRef()
-        self._id_advanced_pandoc = wx.NewIdRef()  # placeholder for Tier-2/3
         self._sessions_menu = wx.Menu()
         self._open_documents_menu = wx.Menu()
         self._recent_sessions_menu = wx.Menu()
@@ -619,6 +660,11 @@ class MenuBuilderMixin:
         # Phase 4).
         self._append_power_tools_search_items(search_menu)
         self._append_quillin_menu_items(search_menu, "Search")
+        # #15: the power-tools group's first item declares a separator_before, so
+        # when the regex Find/Replace items above are feature-gated off (basic
+        # profiles) the menu opens with a leading separator the screen reader
+        # reads but can't arrow to. Prune leading/trailing/doubled separators.
+        self._prune_menu_separators(search_menu)
         self._id_send_to_tray = wx.NewIdRef()
         self._id_toggle_tray_mode = wx.NewIdRef()
         self._id_toggle_soft_wrap = wx.NewIdRef()
@@ -905,6 +951,7 @@ class MenuBuilderMixin:
         self._id_toggle_block_comment = wx.NewIdRef()
         self._id_indent = wx.NewIdRef()
         self._id_outdent = wx.NewIdRef()
+        self._id_toggle_tab_mode = wx.NewIdRef()
         self._id_move_line_up = wx.NewIdRef()
         self._id_move_line_down = wx.NewIdRef()
         # PR1 (EdSharp port): section-move ids, distinct from move-line.
@@ -945,6 +992,11 @@ class MenuBuilderMixin:
             self._id_outdent,
             self._menu_label(_("O&utdent"), "format.outdent"),
         )
+        format_menu.AppendCheckItem(
+            self._id_toggle_tab_mode,
+            self._menu_label(_("Tab Key Inserts Tab &Character"), "format.toggle_tab_insert_mode"),
+        )
+        format_menu.Check(self._id_toggle_tab_mode, getattr(self, "_tab_inserts_literal", False))
         format_menu.AppendSeparator()
 
         # --- Case ---
@@ -1378,6 +1430,7 @@ class MenuBuilderMixin:
         self._id_speech_voice_command = wx.NewIdRef()
         self._id_speech_microphone = wx.NewIdRef()
         self._id_speech_ffmpeg = wx.NewIdRef()
+        self._id_speech_engine_dl = wx.NewIdRef()
         self._id_speech_hf_token = wx.NewIdRef()
         self._id_ai_connection = wx.NewIdRef()
         self._id_ai_forget_key = wx.NewIdRef()
@@ -1452,10 +1505,6 @@ class MenuBuilderMixin:
         tools_menu.Append(
             self._id_palette,
             self._menu_label(_("&Command Palette..."), "app.command_palette"),
-        )
-        tools_menu.Append(
-            self._id_advanced_pandoc,
-            self._menu_label(_("&Pandoc Conversion Center..."), "tools.advanced_pandoc"),
         )
         tools_menu.AppendSeparator()
 
@@ -1575,10 +1624,15 @@ class MenuBuilderMixin:
             self._menu_label(_("&Dictation"), "tools.dictation_toggle"),
             _("Press to start dictation, press again to stop and insert"),
         )
-        dictation_submenu.Append(
+        dictation_submenu.AppendCheckItem(
             self._id_dictation_voice_commands,
-            _("Hey QUILL &Commands (in Settings)..."),
+            self._menu_label(_("Hey QUILL &Commands"), "tools.dictation_voice_commands_toggle"),
         )
+        dictation_submenu.Check(
+            self._id_dictation_voice_commands,
+            bool(getattr(self.settings, "voice_commands_enabled", False)),
+        )
+        self._register_voice_commands_check_menu(dictation_submenu)
         reading_menu.AppendSubMenu(dictation_submenu, _("&Dictation"))
         reading_menu.AppendSeparator()
         reading_menu.Append(
@@ -1642,6 +1696,12 @@ class MenuBuilderMixin:
         whisperer_menu.Append(
             self._id_speech_ffmpeg,
             self._menu_label(_("Download &FFmpeg..."), "tools.speech_ffmpeg"),
+        )
+        whisperer_menu.Append(
+            self._id_speech_engine_dl,
+            self._menu_label(
+                _("Download Faster Whisper &Engine..."), "tools.speech_engine_download"
+            ),
         )
         whisperer_menu.Append(
             self._id_speech_hf_token,
@@ -1857,10 +1917,15 @@ class MenuBuilderMixin:
             self._menu_label(_("&Dictation"), "tools.dictation_toggle"),
             _("Press to start dictation, press again to stop and insert"),
         )
-        bw_dictation_menu.Append(
+        bw_dictation_menu.AppendCheckItem(
             self._id_dictation_voice_commands,
-            _("Hey QUILL &Commands (in Settings)..."),
+            self._menu_label(_("Hey QUILL &Commands"), "tools.dictation_voice_commands_toggle"),
         )
+        bw_dictation_menu.Check(
+            self._id_dictation_voice_commands,
+            bool(getattr(self.settings, "voice_commands_enabled", False)),
+        )
+        self._register_voice_commands_check_menu(bw_dictation_menu)
         bw_dictation_menu.AppendSeparator()
         bw_dictation_menu.Append(
             self._id_watch_folder_toggle,
@@ -2087,6 +2152,11 @@ class MenuBuilderMixin:
         customize_support_menu.Append(self._id_notifications, _("Show &Notifications"))
         customize_support_menu.Append(self._id_save_diagnostics, _("Save &Diagnostics..."))
         customize_support_menu.Append(self._id_open_logs_folder, _("Open &Logs Folder"))
+        self._id_view_startup_logs = wx.NewIdRef()
+        customize_support_menu.Append(
+            self._id_view_startup_logs,
+            self._menu_label(_("View &Startup Logs..."), "help.view_startup_logs"),
+        )
         customize_support_menu.Append(
             self._id_open_diagnostics_folder,
             _("Open &Diagnostics Folder"),
@@ -2144,11 +2214,6 @@ class MenuBuilderMixin:
         help_menu.Append(
             self._id_save_diagnostics,
             self._menu_label(_("Save &Diagnostics..."), "help.save_diagnostics"),
-        )
-        self._id_view_startup_logs = wx.NewIdRef()
-        help_menu.Append(
-            self._id_view_startup_logs,
-            self._menu_label(_("View &Startup Logs..."), "help.view_startup_logs"),
         )
         help_menu.AppendSeparator()
         profiles_menu = wx.Menu()
@@ -2348,11 +2413,6 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.run_batch_conversion_wizard(),
             id=self._id_batch_convert_export,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.open_advanced_pandoc_placeholder(),
-            id=self._id_advanced_pandoc,
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_palette(), id=self._id_palette)
         self.frame.Bind(
@@ -2640,6 +2700,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.download_ffmpeg(),
             id=self._id_speech_ffmpeg,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.download_faster_whisper(),
+            id=self._id_speech_engine_dl,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -3100,6 +3165,9 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_indent(), id=self._id_indent)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_outdent(), id=self._id_outdent)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.toggle_tab_insert_mode(), id=self._id_toggle_tab_mode
+        )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.move_line_up(), id=self._id_move_line_up)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.move_line_down(), id=self._id_move_line_down)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.move_section_up(), id=self._id_move_section_up)

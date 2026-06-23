@@ -97,6 +97,16 @@ class WxHeartbeatWatchdog:
         self._stop.set()
         self._thread.join(timeout=timeout)
 
+    def _should_dump(self, age: float, now: float, last_dump_time: float) -> bool:
+        """Whether to fire a stack dump now.
+
+        Dump at most once per ``dump_after_seconds``-length recovery window, so a
+        brief UI unblock followed by a second block triggers a second dump rather
+        than a flood. Pure (no clock/IO) so the re-dump policy is unit-testable
+        without wall-clock timing.
+        """
+        return age >= self.dump_after_seconds and (now - last_dump_time) >= self.dump_after_seconds
+
     def _run(self) -> None:
         last_dump_time = 0.0
         while not self._stop.wait(self.poll_seconds):
@@ -104,9 +114,7 @@ class WxHeartbeatWatchdog:
             now = time.monotonic()
             if age >= self.warn_after_seconds:
                 logger.warning("wx UI heartbeat stale for %.1f seconds", age)
-            # Dump at most once per dump_after_seconds-length recovery window so
-            # a brief UI unblock followed by a second block triggers a second dump.
-            if age >= self.dump_after_seconds and (now - last_dump_time) >= self.dump_after_seconds:
+            if self._should_dump(age, now, last_dump_time):
                 logger.error("wx UI appears blocked for %.1f seconds", age)
                 self.dump_callback(f"wx UI heartbeat stale for {age:.1f} seconds")
                 last_dump_time = now

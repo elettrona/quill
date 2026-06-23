@@ -268,6 +268,7 @@ Use `F6` to move into it. Once there, you can move between cells and activate th
 - line and column
 - word count
 - insert or overwrite mode
+- tab mode (whether the Tab key indents the line or inserts a tab character)
 - selection size
 - encoding
 - line endings
@@ -280,13 +281,21 @@ Use `F6` to move into it. Once there, you can move between cells and activate th
 - file path or unsaved state
 
 You can reorder or hide status items through **Tools → Customize & Support → Status Bar Layout...**.
-Right-click a focused status cell to **Activate**, **Hide this item**, or open **Status bar settings...**.
+Right-click a focused status cell to **Activate**, **Hide this item**, or open **Status bar settings...**. On the **Notifications** (or **Background Tasks**) cell the context menu also offers **Clear All Notifications**, which empties the notification list in one step without opening the dialog.
 Use **Restore Defaults** in status bar settings to reset visibility and order.
 When title mode is set to full path, Quill automatically hides the duplicate file-path status cell.
 
 ### Region cycling
 
 Use `F6` and `Shift+F6` to move between major regions. Quill treats region movement as a first-class accessibility feature. If you write, inspect, and navigate entirely from the keyboard, this becomes second nature quickly.
+
+When **Show Tab Control** is on (View menu) and at least one document is open, the document tab bar joins the F6 rotation as the **Document Tabs** region, so the tab strip is reachable from the keyboard rather than being skipped. The cycle is Editor → Document Tabs → (Preview, when split open) → Status Bar. From the tab bar, the left and right arrows move between tabs, and Enter, Space, or Tab returns focus to the editor on the selected document.
+
+### Tab key: indent or insert a tab character
+
+By default the **Tab** key runs Quill's smart line indent: it adds one indentation level to the current line (or every line in the selection) at the start of the line, and **Shift+Tab** outdents. On a Markdown list item Tab and Shift+Tab nest and promote the item. Each of these actions is spoken, so a screen reader confirms the indent even though the caret stays in place.
+
+If you would rather have Tab type a literal tab character at the cursor — the way a plain text editor behaves — toggle **Tab Mode** with the **QUILL Key + U** chord (this is Quill's equivalent of the VS Code "Tab key" toggle; Ctrl+M itself is reserved for the mark ring, and Ctrl+Alt+ chords are avoided as screen-reader-hostile). The current mode is shown in the **Tab Mode** status-bar cell (**Indent** or **Tab char**), mirrored by the checkable **Format → Tab Key Inserts Tab Character** menu item, and the new mode is announced when you switch. While Tab Mode is set to insert a tab character, Shift+Tab still outdents so a stray indent can be removed without leaving the mode. The setting applies to the current session.
 
 ## The Menu Bar Reference
 
@@ -298,7 +307,7 @@ The **File** menu is the full document lifecycle.
 
 - **New** creates a blank document.
 - **Open...** opens a document from disk.
-- **Open Recent** returns quickly to recently used files.
+- **Open Recent** returns quickly to recently used files. If you turn on **Drop missing recent files automatically** in Settings (General), entries whose file has been deleted from a fixed internal drive are removed from the list. Files on USB, removable, or network drives are always kept, so unplugging a drive never clears its history.
 - **Open from URL...** downloads a document or text resource through an explicit safety flow that confirms host and expected size.
 - **Open from Remote**, **Save to Remote**, **Save Copy to Remote**, and **Manage Remote Sites...** (in the *Open from Remote* submenu) open, save, and administer saved sites over **FTP, SFTP, HTTPS, WebDAV, and Amazon S3 (or any S3-compatible service)**. Each remote operation is explicit, runs over a verified TLS context, announces host and expected size, and never writes to disk before you confirm.
 - **Snapshots** lets you save and reopen groups of documents as a single workspace snapshot, similar to lightweight workspaces in Visual Studio Code.
@@ -1087,7 +1096,7 @@ Status Page behavior:
 BITS Whisperer ships with safe defaults applied automatically; runtime routing changes stay off until you opt in from these Preferences surfaces.
 
 Read Aloud is particularly useful for proofreading by ear. OCR Image handles image-to-text work with an explicit consent and progress flow.
-Dictation uses Windows' own speech input. When Hey QUILL Commands is enabled, Quill stays silent and only listens while dictation is active, then runs the matching action after the wake phrase.
+Dictation uses Windows' own speech input. **Hey QUILL Commands** is a checkable menu item (Reading → Dictation): activate it to turn the feature on or off directly — Quill remembers the setting and announces "Hey QUILL voice commands on" or "off". When it is enabled, Quill stays silent and only listens while dictation is active, then runs the matching action after the wake phrase.
 Watch Folder automation is best for "drop and open" workflows: copy supported files into one
 folder and let Quill open them in the background.
 

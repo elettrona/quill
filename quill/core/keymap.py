@@ -208,6 +208,10 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "format.toggle_block_comment": "Shift+Alt+A",
     "format.indent": "Ctrl+]",
     "format.outdent": "Ctrl+[",
+    # Toggle the Tab key between smart indent and literal tab insertion.
+    # Bound to a QUILL-key chord: plain Ctrl+M / Ctrl+Shift+M are the mark ring,
+    # and Ctrl+Alt+ chords are screen-reader-hostile (§10.8), so neither is usable.
+    "format.toggle_tab_insert_mode": "Ctrl+Shift+Grave, U",
     "format.list_manager": "Ctrl+Shift+Grave, L",
     "format.bold": "Ctrl+B",
     "format.italic": "Ctrl+I",

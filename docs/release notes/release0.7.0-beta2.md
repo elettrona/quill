@@ -148,15 +148,23 @@ profile tells you where to get one. This automation always uses the on-device
 engine — it never uploads your audio.
 
 ### Add a cloud transcription provider (optional)
-Prefer a cloud service for its accuracy? You can now add one as an **extension**.
-Install the bundled **OpenAI Whisper Transcription** Quillin and set an OpenAI API
-key in AI Hub, and "OpenAI Whisper" appears as a provider in **Manage Speech
-Models**. Cloud transcription is strictly **opt-in and never silent**: audio is
-uploaded only when you explicitly transcribe a file with that provider, never
-offline and never in Safe Mode — and the folder automation above never uses it.
-Extensions that add a provider ship no code and request no network permission;
-QUILL itself performs the upload through its audited network path, so the
-extension never sees your audio or your key.
+Prefer a cloud service for its accuracy or speed? You can now add one as an
+**extension**. QUILL bundles three, each a purely declarative Quillin:
+
+- **OpenAI Whisper** — best-in-class accuracy across 99+ languages (uses your
+  OpenAI API key).
+- **Groq Whisper** — the same Whisper large-v3-turbo model, run on Groq's
+  hardware for very fast turnaround (needs a Groq API key).
+- **ElevenLabs Scribe** — high accuracy with optional **speaker diarization**, so
+  the transcript marks who spoke each segment (needs an ElevenLabs API key).
+
+Enable one, set its API key, and the provider appears in **Manage Speech Models**.
+Cloud transcription is strictly **opt-in and never silent**: audio is uploaded
+only when you explicitly transcribe a file with that provider, never offline and
+never in Safe Mode — and the folder automation above never uses it. These
+extensions ship no code and request no network permission; QUILL itself performs
+the upload through its audited network path, so the extension never sees your
+audio or your key.
 
 ### Dictate into your document
 **Dictate (Offline)** lets you speak directly into the editor. Press the command
@@ -178,17 +186,24 @@ The bundled **whisper.cpp** engine needs nothing extra. On capable machines you
 can opt into two more, each by installing an optional dependency:
 
 - **Faster Whisper** — a higher-throughput multilingual engine that uses your
-  **GPU** when one is available (`fasterwhisper` dependency).
+  **GPU** when one is available. Install it in one step with **Tools > Speech >
+  Whisperer > Download Faster Whisper Engine...** (about 110 MB, downloaded on
+  demand; no source checkout needed), or from source as the `fasterwhisper`
+  dependency.
 - **Parakeet (English)** — NVIDIA's high-accuracy **English** engine with
   timestamps, also GPU-oriented (`parakeet` dependency, which pulls in NVIDIA
   NeMo and PyTorch — a large download).
 - **Vosk (English)** — a **very low-resource, CPU-only** engine that runs on a
-  ~40 MB model with no GPU, for old or constrained machines (`vosk` dependency).
+  ~40 MB model with no GPU, for old or constrained machines. It ships **in the
+  Windows installer**, so it is available out of the box (no extra install); from
+  source it is the `vosk` dependency. Its model still downloads on first use.
 
 **Manage Speech Models** then offers a **Speech Engine** chooser, and your choice
 is used for transcription, captions, and dictation; each engine has its own
-models, so download one after switching. All three run **entirely on your
-computer**. (For speaker labels, use the whisper.cpp speaker-detection model.)
+models, so download one after switching. Pressing **Escape** on the engine
+chooser now returns you to the editor rather than opening the default engine's
+model list. All three run **entirely on your computer**. (For speaker labels,
+use the whisper.cpp speaker-detection model.)
 
 ## Read and proof braille
 
@@ -355,6 +370,41 @@ the same behaviour described here.
   startup.
 - **Closing an unsaved document.** The prompt uses the standard Yes/No/Cancel:
   press `Y` to save, `N` to discard, or `Esc` to cancel — or Tab to the buttons.
+
+## Editing and keyboard polish
+
+- **The Tab key can now insert a tab character.** Tab still defaults to smart
+  line indent (Shift+Tab outdents; on a Markdown list item it nests or promotes
+  the item). Press **QUILL Key + U** to switch the Tab key to insert a literal tab
+  character at the cursor instead — Quill's take on the VS Code "Tab key" toggle
+  (Ctrl+M is reserved for the mark ring). The current mode shows in the new
+  **Tab Mode** status-bar cell and the checkable **Format > Tab Key Inserts Tab
+  Character** menu item, and the mode change is spoken.
+- **Tab indent is spoken under a screen reader again.** Indenting with Tab now
+  announces aloud even while JAWS or NVDA is running, where it had gone silent.
+- **F6 reaches the document tab bar.** With **Show Tab Control** on, F6 now cycles
+  Editor, Document Tabs, Preview, and Status Bar, so the tab strip is reachable
+  from the keyboard.
+- **Clear All Notifications** is now a one-step action on the notifications
+  status-cell context menu.
+- **Hey QUILL Commands is a real on/off toggle.** The Reading > Dictation > Hey
+  QUILL Commands menu item is now checkable: it flips the setting directly,
+  remembers it, and says "Hey QUILL voice commands on" or "off" — it no longer
+  sends you to a settings tab.
+- **Results that don't move the cursor are now spoken.** Pressing **F7** or
+  **F8** just after typing a misspelling now says "No misspellings ahead; N
+  behind" (and the reverse) instead of staying silent, and **Check for External
+  Changes** announces when the file still matches what is on disk.
+- **Ctrl+W closes the current document.** If no side preview is open, Ctrl+W now
+  closes the active document instead of doing nothing.
+- **Recent Files can tidy itself.** A new General setting, **Drop missing recent
+  files automatically** (off by default), removes Recent Files entries whose file
+  is gone — but only on your fixed internal drives. Files on USB, removable, or
+  network drives are left alone, since "missing" there usually just means the
+  drive is unplugged or offline.
+- The unfinished **Pandoc Conversion Center** menu item was removed; use
+  **File > Import** / **File > Export** (and **Tools > Batch Conversion** for
+  folders).
 
 ## Opening and saving files faithfully
 

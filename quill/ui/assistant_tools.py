@@ -258,6 +258,7 @@ class PromptStudioDialog:
 
         right.Add(wx.StaticText(self.dialog, label="Title"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         self.title_text = wx.TextCtrl(self.dialog)
+        self.title_text.SetName("Title")
         right.Add(self.title_text, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         right.Add(
             wx.StaticText(
@@ -269,10 +270,12 @@ class PromptStudioDialog:
             8,
         )
         self.template_text = wx.TextCtrl(self.dialog, style=wx.TE_MULTILINE, size=(-1, 220))
+        self.template_text.SetName("Template")
         right.Add(self.template_text, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         row = wx.BoxSizer(wx.HORIZONTAL)
         row.Add(wx.StaticText(self.dialog, label="Tone"), 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
         self.tone_text = wx.TextCtrl(self.dialog)
+        self.tone_text.SetName("Tone")
         row.Add(self.tone_text, 1, wx.RIGHT, 8)
         row.Add(
             wx.StaticText(self.dialog, label="Audience"),
@@ -281,10 +284,12 @@ class PromptStudioDialog:
             8,
         )
         self.audience_text = wx.TextCtrl(self.dialog)
+        self.audience_text.SetName("Audience")
         row.Add(self.audience_text, 1)
         right.Add(row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         right.Add(wx.StaticText(self.dialog, label="Goal"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         self.goal_text = wx.TextCtrl(self.dialog)
+        self.goal_text.SetName("Goal")
         right.Add(self.goal_text, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
         preview_actions = wx.BoxSizer(wx.HORIZONTAL)
@@ -862,10 +867,12 @@ class AgentCenterDialog:
         row = wx.BoxSizer(wx.HORIZONTAL)
         row.Add(wx.StaticText(self.dialog, label="Goal"), 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
         self.goal_text = wx.TextCtrl(self.dialog)
+        self.goal_text.SetName("Goal")
         self.goal_text.SetValue("Help improve this draft.")
         row.Add(self.goal_text, 1, wx.RIGHT, 8)
         row.Add(wx.StaticText(self.dialog, label="Tone"), 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
         self.tone_text = wx.TextCtrl(self.dialog)
+        self.tone_text.SetName("Tone")
         self.tone_text.SetValue("Clear and practical")
         row.Add(self.tone_text, 1)
         root.Add(row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
@@ -878,6 +885,7 @@ class AgentCenterDialog:
             8,
         )
         self.audience_text = wx.TextCtrl(self.dialog)
+        self.audience_text.SetName("Audience")
         self.audience_text.SetValue("General readers")
         row2.Add(self.audience_text, 1)
         root.Add(row2, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
@@ -1026,7 +1034,10 @@ class WritingAssistantDialog:
         preset_row.Add(self.use_document_button, 0)
         root.Add(preset_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
-        self.prompt = wx.TextCtrl(self.dialog, style=wx.TE_MULTILINE | wx.TE_PROCESS_TAB)
+        # No TE_PROCESS_TAB: this is a prose prompt, so Tab must move focus to the
+        # next control rather than insert a tab character (keyboard-trap fix).
+        self.prompt = wx.TextCtrl(self.dialog, style=wx.TE_MULTILINE)
+        self.prompt.SetName("Prompt")
         self.prompt.SetHint("Describe the edit, review, or command you want")
         if initial_prompt.strip():
             self.prompt.SetValue(initial_prompt)
@@ -1227,6 +1238,7 @@ class SearchableModelPickerDialog:
         root = wx.BoxSizer(wx.VERTICAL)
         root.Add(wx.StaticText(self.dialog, label="Search models"), 0, wx.ALL, 8)
         self.query = wx.TextCtrl(self.dialog, style=wx.TE_PROCESS_ENTER)
+        self.query.SetName("Search models")
         root.Add(self.query, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
         self.listbox = wx.ListBox(self.dialog, choices=self._filtered_models)
