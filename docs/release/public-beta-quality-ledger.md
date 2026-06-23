@@ -73,6 +73,91 @@ this repository's existing gates and conventions. Paste it (optionally with a
 > wave summary (what was audited, found, fixed, deferred); the commands run and
 > their results.
 
+## QA and testing process (repeatable)
+
+This is the standing process for adding tests and passing QA gates in QUILL. It is
+a living document: the "Lessons learned" subsection grows as we discover what
+works, so each pass is a little better than the last. Follow it for every change.
+
+### 1. Before you change code
+- Branch first; never work on `main`. Read the files you will touch and state a
+  one or two sentence plan.
+- Identify which layer you are in and its rules: `core`/`io` are wx-free and
+  strict-typed (always in `mypy` scope); `ui` is gradual-typed wxPython;
+  `platform`/`stability`/`tools` have their own gates. Keep imports within the
+  layer boundaries.
+
+### 2. Write the test at the right level
+- Prefer the smallest real boundary. Pure logic -> a `core`/`io` unit test (wx-free,
+  fast, deterministic). UI wiring -> a focused `tests/unit/ui` test with light fakes.
+  Cross-module behavior -> `tests/integration`.
+- Put a regression test next to every non-trivial bug fix, named for the symptom.
+- Do not mock at the wrong level. If a test double (`_Fake*`) is missing a method
+  the real widget has, **fix the double** — never weaken the production change to
+  fit an incomplete stub. (Lesson: a `_FakeNotebook` lacking `SetName` failed
+  after a correct production fix; the double was the bug.)
+- Keep assertions meaningful and specific; do not replace a real assertion with a
+  vague one to make a test pass. Do not regenerate fixtures/snapshots blindly —
+  confirm the behavioral change is intended first.
+- For wx-modal behavior that needs a shown window (e.g. asserting which control
+  holds focus after `ShowModal`), prefer recording it as "needs live validation"
+  over a brittle full-wx harness. Test the wx-free seam where one exists.
+
+### 3. Run the right checks, smallest first
+- The single most relevant test: `pytest tests/unit/<area>/test_x.py -x -q`.
+- Then the area suite, then `pytest tests/unit tests/stability -q` for broad
+  changes. Run with `--timeout=120` so a hang surfaces as a failure, not a stall.
+- Static checks: `ruff check .`, `ruff format --check .`, and **scoped**
+  `mypy quill/core quill/io` (never run unscoped mypy).
+- Quillin changes: `python -m quill.tools.quillin_lint <dir> --strict`.
+
+### 4. The QA gates (all must be green to merge)
+These run in pre-commit and CI; treat a red gate as a real defect, not a nuisance:
+- `ruff` (lint + format) and scoped `mypy`.
+- GATE-11 module-size budget (`module_size_budgets.json`): a ratchet. Prefer
+  net-neutral edits or extraction; only **rebaseline** when growth is warranted,
+  and always add a dated `_rebaseline_<date>_<slug>` note explaining why.
+- GATE-12 announce-gap: every status-bar update needs a screen-reader announce.
+- Dialog gates: `dialog_inventory` (every modal routes through `_show_modal_dialog`),
+  `dialog_button_contract` (OK/escape ids via `apply_modal_ids`), `dialog_zorder`.
+- `network_egress_audit`: every new `urlopen`/`urlretrieve` needs a reviewed entry;
+  subprocess/library egress (pip, PyGithub) is documented in a manual comment block.
+- Docs parity: any changed `docs/**/*.md` must ship regenerated `.html` + `.epub`
+  (`pandoc <f>.md -f gfm -t html5 -s -o <f>.html` and `-t epub3 -o <f>.epub`).
+- Structure (`test_repo_layout`): no stray root modules; root Markdown is allow-listed.
+- Version consistency (GATE-VC) for release-affecting changes.
+
+### 5. Commit and record
+- Small, logical, attributable commits; let pre-commit run (do not bypass hooks).
+  If a hook auto-formats a file, re-stage and re-commit — a hook that modifies a
+  file aborts the commit.
+- Update this ledger: running totals, finding IDs (`A11Y-`/`FOCUS-`/`KEY-`/`CALL-`/
+  `ATTR-`/`PERF-`/`SEC-`/`DOC-`/`TEST-`/`RELEASE-`), severity, root cause,
+  resolution, validation, status. Keep an explicit "Deferred / next wave" list.
+- Never represent unfinished or unverified work as complete. Distinguish
+  code-reviewed-against-expected-behavior from live screen-reader/keyboard testing.
+
+### 6. Definition of done for a wave
+A wave is done when: its findings are fixed or explicitly deferred with a reason;
+the relevant tests + all gates are green; a regression test exists where one could
+be written cleanly; docs/ledger are updated; and the change is committed on the
+branch. "Zero bugs" is never claimed as an absolute — only "all gates and the
+test suite are green, and the audited scope has no known open defects."
+
+### Lessons learned (append-only; make the process better each pass)
+- 2026-06-22: GATE-11 trips on tiny additions (even a 2-line explanatory comment).
+  Prefer net-neutral edits; rebaseline with justification when the comment/code is
+  worth keeping. Don't delete a clarifying comment just to dodge the budget.
+- 2026-06-22: `# noqa: dialog_button_contract` is a cross-tool pragma, not a ruff
+  code — ruff warns but it is intentional. Determine intent before "fixing" a
+  warning; some are foreign pragmas or tested automation handles.
+- 2026-06-22: a snake_case `SetName` value is spoken verbatim by screen readers —
+  always use human-readable accessible names; verify no test pins the literal first.
+- 2026-06-22: the Parakeet test can hang on a heavy `transformers` import in dev;
+  exclude it or add a per-test timeout so it cannot mask real failures (TEST-001).
+- 2026-06-22: a pre-commit format hook that rewrites a file aborts the commit —
+  re-stage and re-commit rather than assuming it landed.
+
 ## Baseline (gate state)
 
 Captured on the current branch (`main`), dev environment, Python 3.12.
@@ -86,6 +171,7 @@ Captured on the current branch (`main`), dev environment, Python 3.12.
 | Docs parity | `scripts/check_docs_artifacts.py` | Pass |
 | Build dist | `tests/unit/scripts/test_build_windows_distribution.py` | Pass (15) |
 | Speech suite | `tests/unit/core/speech/` (subset) | Pass; one Parakeet test hits a `transformers` import timeout in dev (see TEST-001) |
+| Full suite | `pytest tests/unit tests/stability` (ex-Parakeet) | 4884 passed, 12 skipped, 1 fixed flaky failure (TEST-002); re-running without `-x` to confirm no later failures |
 
 ## Running totals
 
@@ -101,6 +187,8 @@ Captured on the current branch (`main`), dev environment, Python 3.12.
 | Focus-management issues fixed | 1 (FOCUS-001 wx.html fallback initial focus) |
 | Label/field association fixes | 4 dialogs (input controls given accessible names) |
 | Keyboard-trap fixes | 3 prose fields (TE_PROCESS_TAB removed) |
+| Test failures resolved | 1 (TEST-002 flaky watchdog test made deterministic) |
+| Remaining test failures | 0 known (full-suite re-run in progress) |
 | Tests added | 2 files (`test_cloud_transcribers.py`, `test_engine_install.py`) |
 | Remaining known issues | 1 (TEST-001) |
 | Intentional legacy QUILL references reviewed | n/a (no rename; QUILL is the name) |
@@ -290,6 +378,30 @@ fixed the clearest gaps.
   Tab/Shift+Tab to demote/promote items and does not Skip. Recorded as intentional
   but flagged: confirm keyboard users can still reach the dialog's buttons (via
   Escape/Enter or an explicit focus path) — needs live keyboard verification.
+
+## Full-suite sweep (drive detectable failures to zero)
+
+Running the whole `tests/unit tests/stability` suite (4896 tests, Parakeet
+excluded for TEST-001) surfaced exactly one failure, now fixed.
+
+### TEST-002 — flaky watchdog re-dump test (timing-dependent)
+- Severity: Medium. Category: Test reliability.
+- `test_watchdog_re_dumps_after_recovery_window` slept 0.15s and asserted >=2
+  stack dumps fired from `WxHeartbeatWatchdog`, with 0.05s dump windows and 0.02s
+  polls. Under load the poll thread is delayed (the heartbeat log showed age
+  jumping 0.0 -> 0.1s), so only one dump window was hit and the test failed — a
+  fragile test tied to wall-clock scheduling, not a product defect.
+- Resolution: extracted the re-dump decision into a pure
+  `WxHeartbeatWatchdog._should_dump(age, now, last_dump_time)` and rewrote the
+  test to assert the policy deterministically (no sleep, no thread): not-yet-blocked
+  -> no dump; blocked past the window with no prior dump -> dump; still blocked
+  within the recovery window -> suppressed; window elapsed -> re-dump. Verified
+  5/5 runs green. The refactor also makes the production re-dump policy unit-testable.
+- Side note: writing the deterministic test exposed a floating-point boundary
+  (`(1000.05 - 1000.0) >= 0.05` is False due to representability); the test now uses
+  a clear margin past the window. The real watchdog uses 15s defaults, so the
+  boundary never bites in production.
+- Status: Fixed and verified.
 
 ## Deferred / next wave (not yet done — do not represent as complete)
 
