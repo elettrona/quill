@@ -214,6 +214,20 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "must configure an external URL to make this a remote call, so consent is "
         "embedded in the provider configuration UI."
     ),
+    "core/node_install.py::_fetch_node_zip_url": (
+        "User-initiated Node.js LTS runtime download (Node Quillin support). Fetches "
+        "a small SHASUMS256.txt index (~5 KB) from nodejs.org/dist/latest-v{N}.x/ over "
+        "verified HTTPS to resolve the current win-x64 zip filename. Runs only on an "
+        "explicit 'Download Node.js runtime' action in the Quillins settings panel; "
+        "blocked in Safe Mode; Windows-only. No user data is sent."
+    ),
+    "core/node_install.py::_download_node_zip": (
+        "User-initiated Node.js LTS runtime download (Node Quillin support). Streams "
+        "the official nodejs.org win-x64 zip (URL resolved from SHASUMS256.txt by "
+        "_fetch_node_zip_url) over verified HTTPS with a visible progress callback. "
+        "Same gating as _fetch_node_zip_url: explicit action, Safe Mode blocked, "
+        "Windows-only. QUILL never redistributes the binary."
+    ),
 }
 
 # ---------------------------------------------------------------------------

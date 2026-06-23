@@ -73,7 +73,7 @@ def run_node_command(
     services: HostServices,
     *,
     master_enabled: bool | None = None,
-    node_executable: str = "node",
+    node_executable: str | None = None,
     timeout: float = 30.0,
     runner: Runner | None = None,
     which: Callable[[str], str | None] | None = None,
@@ -105,6 +105,15 @@ def run_node_command(
 
     if manifest.main is None:
         raise QuillinError("node Quillin manifest has no 'main' module")
+
+    if node_executable is None:
+        try:
+            from quill.core.node_install import node_executable_path
+
+            managed = node_executable_path()
+            node_executable = str(managed) if managed is not None else "node"
+        except Exception:  # noqa: BLE001 - degrade gracefully; probe_engine will surface the error
+            node_executable = "node"
 
     handler_name = _handler_for(manifest, command_id)
     config = EngineConfig(
