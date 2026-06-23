@@ -422,6 +422,15 @@ though clean, so the check is on the record and repeatable.
   mutable literal (`[]`/`{}`/`set()`/`list()`/`dict()`).
 - Result: **0 occurrences**. Status: Clean (no defect).
 
+### BUG-file-handles — `open()` calls outside a `with` (leak risk)
+- Audited every `open()`/`.open()` call in `quill/` (72) for use outside a
+  context manager; flagged 23, all of which are non-leaks on inspection:
+  `webbrowser.open(url)` (not a file), `wave.open(...)` immediately used in
+  `with wf:`, the diagnostics module's deliberately-retained handle list (closed
+  by `close_diagnostic_handles()`), and the IPC/recovery single-instance lock fds
+  (`os.open`/`os.fdopen`, closed on every error path and released at process exit).
+- Result: **0 real leaks**. Status: Clean (no defect).
+
 ### BUG-thread-daemon — non-daemon threads (shutdown-hang risk)
 - Audited every `threading.Thread(...)` construction in `quill/` (58 of them) for a
   `daemon` setting; a non-daemon worker can block interpreter shutdown.

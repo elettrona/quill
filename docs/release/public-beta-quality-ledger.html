@@ -858,6 +858,22 @@ id="bug-mutable-defaults--mutable-default-arguments">BUG-mutable-defaults
 defect).</li>
 </ul>
 <h3
+id="bug-file-handles--open-calls-outside-a-with-leak-risk">BUG-file-handles
+— <code>open()</code> calls outside a <code>with</code> (leak risk)</h3>
+<ul>
+<li>Audited every <code>open()</code>/<code>.open()</code> call in
+<code>quill/</code> (72) for use outside a context manager; flagged 23,
+all of which are non-leaks on inspection:
+<code>webbrowser.open(url)</code> (not a file),
+<code>wave.open(...)</code> immediately used in <code>with wf:</code>,
+the diagnostics module's deliberately-retained handle list (closed by
+<code>close_diagnostic_handles()</code>), and the IPC/recovery
+single-instance lock fds (<code>os.open</code>/<code>os.fdopen</code>,
+closed on every error path and released at process exit).</li>
+<li>Result: <strong>0 real leaks</strong>. Status: Clean (no
+defect).</li>
+</ul>
+<h3
 id="bug-thread-daemon--non-daemon-threads-shutdown-hang-risk">BUG-thread-daemon
 — non-daemon threads (shutdown-hang risk)</h3>
 <ul>
