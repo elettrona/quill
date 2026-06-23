@@ -310,7 +310,7 @@ class AIProgressDialog:
             title=title,
             style=wx.DEFAULT_DIALOG_STYLE,
         )
-        self.dialog.SetSize(wx.Size(480, 160))
+        self.dialog.SetSize(wx.Size(480, 180))
         root = wx.BoxSizer(wx.VERTICAL)
         self._label = wx.StaticText(self.dialog, label=message)
         self._label.Wrap(440)
@@ -318,10 +318,13 @@ class AIProgressDialog:
         self._gauge = wx.Gauge(self.dialog, style=wx.GA_HORIZONTAL | wx.GA_SMOOTH)
         self._gauge.Pulse()
         root.Add(self._gauge, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 12)
+        self._cancel_btn: object = None
         if on_cancel is not None:
             cancel_btn = wx.Button(self.dialog, id=wx.ID_CANCEL, label="&Cancel")
             cancel_btn.Bind(wx.EVT_BUTTON, lambda _e: on_cancel())
             root.Add(cancel_btn, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
+            self._cancel_btn = cancel_btn
+        self._btn_sizer_item_count = root.GetItemCount()
         self.dialog.SetSizer(root)
         from quill.ui.dialog_contract import apply_modal_ids
 
@@ -346,6 +349,48 @@ class AIProgressDialog:
                 self._gauge.SetValue(max(0, min(100, int(percent))))
 
         self._wx.CallAfter(_apply)
+
+    def switch_to_ok(
+        self,
+        message: str,
+        on_ok: Callable[[], None] | None = None,
+    ) -> None:
+        """Thread-safe: complete the download — fill gauge, relabel button to OK.
+
+        Replaces the Cancel button (if any) with an OK button that closes the
+        dialog and optionally runs *on_ok* (e.g. reopening the voice browser).
+        If no cancel button was created, adds a new OK button to the sizer.
+        """
+        wx = self._wx
+
+        def _apply() -> None:
+            self._label.SetLabel(message)
+            self._label.Wrap(440)
+            self._gauge.SetValue(100)
+
+            def _on_click(_e: object) -> None:
+                try:
+                    self.dialog.Destroy()
+                except Exception:  # noqa: BLE001
+                    pass
+                if on_ok is not None:
+                    on_ok()
+
+            btn = self._cancel_btn
+            if btn is not None:
+                btn.SetLabel("&OK")  # type: ignore[attr-defined]
+                btn.Unbind(wx.EVT_BUTTON)  # type: ignore[attr-defined]
+                btn.Bind(wx.EVT_BUTTON, _on_click)  # type: ignore[attr-defined]
+            else:
+                ok_btn = wx.Button(self.dialog, id=wx.ID_OK, label="&OK")
+                ok_btn.Bind(wx.EVT_BUTTON, _on_click)
+                sizer = self.dialog.GetSizer()
+                sizer.Add(ok_btn, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
+                sizer.Layout()
+                self.dialog.Fit()
+            self.dialog.SetTitle(self.dialog.GetTitle() + " — Done")
+
+        wx.CallAfter(_apply)
 
     def close(self) -> None:
         self._wx.CallAfter(self.dialog.Destroy)

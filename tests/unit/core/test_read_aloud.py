@@ -226,7 +226,11 @@ def test_discover_espeak_executable_rejects_unexpected_binary(tmp_path: Path) ->
     assert discover_espeak_executable(str(rogue)) is None
 
 
-def test_discover_dectalk_executable_rejects_unexpected_binary(tmp_path: Path) -> None:
+def test_discover_dectalk_executable_rejects_unexpected_binary(
+    tmp_path: Path, monkeypatch: object
+) -> None:
+    # Patch app_data_dir so the managed speech folder is empty (tmp_path has no DECtalk).
+    monkeypatch.setattr("quill.core.paths.app_data_dir", lambda: tmp_path)
     rogue = tmp_path / "calc.exe"
     rogue.write_text("binary", encoding="utf-8")
     assert read_aloud_module.discover_dectalk_executable(str(rogue)) is None

@@ -52,6 +52,16 @@ _VOSK_MODULE = "vosk"
 # Vosk itself is the only requirement; it bundles its own native libs.
 _VOSK_REQUIREMENTS: tuple[str, ...] = ("vosk>=0.3.45",)
 
+#: The Kokoro ONNX pack's folder name and import name.
+_KOKORO_ONNX_PACK = "kokoro-onnx"
+_KOKORO_ONNX_MODULE = "kokoro_onnx"
+
+# kokoro-onnx pulls in onnxruntime as a transitive dep; soundfile handles WAV I/O.
+_KOKORO_ONNX_REQUIREMENTS: tuple[str, ...] = (
+    "kokoro-onnx>=0.9",
+    "soundfile>=0.12",
+)
+
 _INSTALL_TIMEOUT_S = 1800.0
 
 
@@ -74,8 +84,13 @@ def vosk_pack_dir() -> Path:
     return engine_packs_dir() / _VOSK_PACK
 
 
+def kokoro_onnx_pack_dir() -> Path:
+    """The folder a downloaded Kokoro ONNX engine is installed into."""
+    return engine_packs_dir() / _KOKORO_ONNX_PACK
+
+
 def _known_pack_dirs() -> tuple[Path, ...]:
-    return (faster_whisper_pack_dir(), vosk_pack_dir())
+    return (faster_whisper_pack_dir(), vosk_pack_dir(), kokoro_onnx_pack_dir())
 
 
 def activate_engine_packs() -> None:
@@ -122,6 +137,81 @@ def vosk_install_supported() -> bool:
 def is_vosk_available() -> bool:
     """True when the ``vosk`` module is importable (after activation)."""
     return importlib.util.find_spec(_VOSK_MODULE) is not None
+
+
+def kokoro_onnx_install_supported() -> bool:
+    """True when QUILL can install kokoro-onnx on demand (pip must be importable)."""
+    return importlib.util.find_spec("pip") is not None
+
+
+def is_kokoro_onnx_available() -> bool:
+    """True when the ``kokoro_onnx`` module is importable (after activation)."""
+    return importlib.util.find_spec(_KOKORO_ONNX_MODULE) is not None
+
+
+def install_kokoro_onnx(
+    progress: ProgressCallback | None = None,
+    *,
+    dest_dir: Path | None = None,
+    requirements: Sequence[str] | None = None,
+    python_executable: str | None = None,
+    timeout_seconds: float = _INSTALL_TIMEOUT_S,
+    runner: Callable[..., object] | None = None,
+) -> Path:
+    """Download and install the Kokoro ONNX engine packages, returning the pack folder.
+
+    Mirrors :func:`install_faster_whisper` exactly: wheel-only into a
+    user-writable engine-pack folder, activated on ``sys.path`` immediately.
+    Installs ``kokoro-onnx`` and ``soundfile``; ``onnxruntime`` is a transitive dep.
+    Raises :class:`EngineInstallError` on Safe Mode, unavailable pip, a
+    non-zero pip exit, or if the engine still cannot be imported afterward.
+    """
+    if os.environ.get("QUILL_SAFE_MODE") == "1":
+        raise EngineInstallError("Downloading speech engines is disabled in Safe Mode.")
+    if not kokoro_onnx_install_supported():
+        raise EngineInstallError(
+            "This build cannot install Kokoro ONNX automatically (pip is unavailable). "
+            "Install it from source with: pip install kokoro-onnx soundfile"
+        )
+
+    dest = Path(dest_dir) if dest_dir is not None else kokoro_onnx_pack_dir()
+    dest.mkdir(parents=True, exist_ok=True)
+    reqs = tuple(requirements) if requirements is not None else _KOKORO_ONNX_REQUIREMENTS
+    python_exe = python_executable or sys.executable
+    if not python_exe:
+        raise EngineInstallError("Could not locate the Python runtime to install into.")
+
+    if progress is not None:
+        progress(0.05, "Preparing to install Kokoro ONNX...")
+    command = _pip_command(dest, reqs, python_exe)
+    run = runner if runner is not None else _default_runner
+    if progress is not None:
+        progress(0.15, "Downloading Kokoro ONNX packages (this may take a few minutes)...")
+
+    try:
+        result = run(command, timeout_seconds=timeout_seconds)
+    except Exception as exc:  # noqa: BLE001
+        raise EngineInstallError(f"Could not run the installer: {exc}") from exc
+
+    returncode = int(getattr(result, "returncode", 1))
+    if returncode != 0:
+        detail = _tail(getattr(result, "stderr", "") or getattr(result, "stdout", ""))
+        raise EngineInstallError(
+            f"Kokoro ONNX installation failed (pip exit {returncode}). {detail}"
+        )
+
+    if progress is not None:
+        progress(0.9, "Finishing up...")
+    if str(dest) not in sys.path:
+        sys.path.insert(0, str(dest))
+    importlib.invalidate_caches()
+    if not is_kokoro_onnx_available():
+        raise EngineInstallError(
+            "Kokoro ONNX was installed but could not be imported. Try restarting QUILL."
+        )
+    if progress is not None:
+        progress(1.0, "Done.")
+    return dest
 
 
 def install_vosk(

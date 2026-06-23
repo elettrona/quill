@@ -214,6 +214,19 @@ def discover_dectalk_executable(configured_path: str = "") -> Path | None:
             probe = bundled / relative
             if probe.exists():
                 return probe.resolve()
+    # Also check the user-data download location (set by in-app DECtalk download).
+    from quill.core.paths import app_data_dir
+
+    managed = app_data_dir() / "speech" / "dectalk"
+    for relative in (
+        "speak.exe",
+        "AMD64/speak.exe",
+        "release/AMD64/speak.exe",
+        "release/speak.exe",
+    ):
+        probe = managed / relative
+        if probe.exists():
+            return probe.resolve()
     return None
 
 
@@ -228,6 +241,14 @@ def discover_piper_executable(configured_path: str = "") -> Path | None:
             probe = bundled / relative
             if probe.exists():
                 return probe.resolve()
+    # Also check the user-data download location (set by in-app Piper download).
+    from quill.core.paths import app_data_dir
+
+    managed = app_data_dir() / "speech" / "piper"
+    for relative in ("piper.exe", "piper/piper.exe"):
+        probe = managed / relative
+        if probe.exists():
+            return probe.resolve()
     found = shutil.which("piper") or shutil.which("piper.exe")
     if found:
         return Path(found).resolve()
@@ -306,6 +327,18 @@ def discover_espeak_executable(configured_path: str = "") -> Path | None:
             probe = bundled / relative
             if probe.exists():
                 return probe.resolve()
+    # Also check common user-data locations (installer or future in-app download).
+    from quill.core.paths import app_data_dir
+
+    managed = app_data_dir() / "speech" / "espeak-ng"
+    for relative in (
+        "espeak-ng.exe",
+        "espeak-ng/espeak-ng.exe",
+        "eSpeak NG/espeak-ng.exe",
+    ):
+        probe = managed / relative
+        if probe.exists():
+            return probe.resolve()
     import shutil as _shutil
 
     found = _shutil.which("espeak-ng")
@@ -323,6 +356,7 @@ _KOKORO_ACCENT: dict[str, str] = {
 
 
 def list_kokoro_voices() -> list[VoiceOption]:
+    ready = kokoro_onnx_ready()
     result = []
     for vid, display_name in KOKORO_VOICES:
         accent = _KOKORO_ACCENT.get(vid[:2], "English")
@@ -333,7 +367,13 @@ def list_kokoro_voices() -> list[VoiceOption]:
             parts = [p.strip() for p in inner.split(",")]
             desc = parts[-1] if len(parts) > 1 else ""
         result.append(
-            VoiceOption(id=vid, name=display_name.split(" (")[0], accent=accent, description=desc)
+            VoiceOption(
+                id=vid,
+                name=display_name.split(" (")[0],
+                accent=accent,
+                description=desc,
+                installed=ready,
+            )
         )
     return result
 

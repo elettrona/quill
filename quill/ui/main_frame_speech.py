@@ -46,74 +46,8 @@ class SpeechCommandsMixin:
     # -- model manager ---------------------------------------------------- #
 
     def open_speech_models(self) -> None:
-        from quill.core.settings import save_settings
-        from quill.core.speech.engine_install import (
-            is_faster_whisper_available,
-            is_vosk_available,
-            vosk_install_supported,
-        )
-        from quill.core.speech.ffmpeg import ffmpeg_available
-        from quill.core.speech.providers.whispercpp import resolve_whisper_executable
-        from quill.core.speech.service import (
-            describe_models,
-            detect_has_gpu,
-            detect_total_ram_gb,
-            machine_summary,
-        )
-        from quill.ui.speech_setup_dialog import SpeechSetupDialog
-
-        registry = self._speech_registry()
-        all_providers = list(registry.available())  # type: ignore[attr-defined]
-        provider = self._speech_provider()
-        total_ram = detect_total_ram_gb()
-        has_gpu = detect_has_gpu()
-        rows = describe_models(provider, total_ram, has_gpu)  # type: ignore[arg-type]
-
-        dlg = SpeechSetupDialog(
-            self.frame,
-            provider=provider,
-            rows=rows,
-            machine_summary=machine_summary(total_ram, has_gpu),
-            whispercpp_ok=resolve_whisper_executable() is not None,
-            ffmpeg_ok=ffmpeg_available(),
-            engine_ok=is_faster_whisper_available(),
-            vosk_ok=is_vosk_available(),
-            vosk_can_install=vosk_install_supported(),
-            all_providers=all_providers,
-            total_ram=total_ram,
-            has_gpu=has_gpu,
-        )
-        result = dlg.show(self._show_modal_dialog)
-        if result is None:
-            return
-
-        # Save engine choice when the user switched providers inside the dialog.
-        chosen_provider_id = result.provider_id or ""
-        if chosen_provider_id and chosen_provider_id != str(
-            getattr(self.settings, "speech_provider", "") or ""
-        ):
-            chosen = registry.get(chosen_provider_id)  # type: ignore[attr-defined]
-            if chosen is not None:
-                provider = chosen
-                self.settings.speech_provider = chosen_provider_id
-                try:
-                    save_settings(self.settings)
-                except Exception:  # noqa: BLE001
-                    pass
-                self._announce(f"Speech engine set to {provider.display_name}.")  # type: ignore[attr-defined]
-
-        if result.action == "download" and result.model_row is not None:
-            self._maybe_download_speech_model(provider, result.model_row)
-        elif result.action == "remove" and result.model_id:
-            self._maybe_remove_speech_model(provider, result.model_id)
-        elif result.action == "ffmpeg":
-            self.download_ffmpeg()
-        elif result.action == "engine":
-            self.download_faster_whisper()
-        elif result.action == "vosk":
-            self.download_vosk()
-        elif result.action == "hf_token":
-            self.set_huggingface_token()
+        """Open the unified Speech Hub on the Dictation tab."""
+        self.open_speech_hub(1)
 
     def set_huggingface_token(self) -> None:
         """Store an optional Hugging Face access token for model downloads (#617).
@@ -320,13 +254,13 @@ class SpeechCommandsMixin:
                     wx.CallAfter(self._set_status, f"Could not install Faster Whisper: {exc}")
                     wx.CallAfter(self._announce, f"Could not install Faster Whisper. {exc}")
                 return
-            wx.CallAfter(progress.close)
             done = (
-                "Faster Whisper installed. Choose it in Manage Speech Models under "
-                "Speech Engine, then download a model for it."
+                "Faster Whisper is ready. Click OK to open Manage Speech Models "
+                "and download a model for it."
             )
-            wx.CallAfter(self._set_status, done)
-            wx.CallAfter(self._announce, done)
+            wx.CallAfter(self._set_status, "Faster Whisper installed.")
+            wx.CallAfter(self._announce, "Faster Whisper installed.")
+            progress.switch_to_ok(done, on_ok=self.open_speech_models)
 
         threading.Thread(  # GATE-40-OK: Faster Whisper install worker.
             target=_run, daemon=True
@@ -404,15 +338,330 @@ class SpeechCommandsMixin:
                     wx.CallAfter(self._set_status, f"Could not install Vosk: {exc}")
                     wx.CallAfter(self._announce, f"Could not install Vosk. {exc}")
                 return
-            wx.CallAfter(progress.close)
             done = (
-                "Vosk installed. Choose it in Manage Speech Models under "
-                "Speech Engine, then download a model for it."
+                "Vosk is ready. Click OK to open Manage Speech Models and download a model for it."
             )
-            wx.CallAfter(self._set_status, done)
-            wx.CallAfter(self._announce, done)
+            wx.CallAfter(self._set_status, "Vosk installed.")
+            wx.CallAfter(self._announce, "Vosk installed.")
+            progress.switch_to_ok(done, on_ok=self.open_speech_models)
 
         threading.Thread(  # GATE-40-OK: Vosk install worker.
+            target=_run, daemon=True
+        ).start()
+
+    def download_dectalk_exe(self) -> None:
+        """Download the DECtalk runtime (~30 MB) on demand.
+
+        DECtalk is a classic American English synthesizer with 9 distinct voices.
+        The runtime is downloaded from the dectalk/dectalk GitHub release, verified
+        with a pinned SHA-256 (SEC-6), and saved to the managed speech folder so
+        ``discover_dectalk_executable()`` finds it automatically on next use.
+        Runs on a worker thread behind a progress dialog.
+        """
+        import threading
+
+        from quill.core.dectalk_runtime import download_dectalk_runtime
+        from quill.core.paths import app_data_dir
+        from quill.core.read_aloud import discover_dectalk_executable
+        from quill.core.settings import save_settings
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
+
+        wx = self._wx
+        configured = getattr(self.settings, "read_aloud_dectalk_executable", "")
+        if discover_dectalk_executable(configured) is not None:
+            self._show_message_box(
+                "DECtalk is already installed. Open Manage Voices to select a voice.",
+                "Download DECtalk",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        confirm = self._show_message_box(
+            "Download the DECtalk speech runtime (~30 MB) from GitHub?\n\n"
+            "DECtalk is a classic American English synthesizer with 9 distinct "
+            "voices (Paul, Betty, Harry, and more). The download is SHA-256 "
+            "verified before extraction.",
+            "Download DECtalk",
+            wx.ICON_QUESTION | wx.YES_NO,
+        )
+        if confirm != wx.YES:
+            return
+        speech_root = app_data_dir() / "speech" / "dectalk"
+        progress = AIProgressDialog(
+            self.frame,
+            "Downloading DECtalk",
+            "Downloading DECtalk runtime...",
+            on_cancel=None,
+        )
+        progress.show()
+        self._announce("Downloading DECtalk runtime.")
+
+        def _run() -> None:
+            try:
+                exe = download_dectalk_runtime(speech_root)
+                self.settings.read_aloud_dectalk_executable = str(exe)
+                save_settings(self.settings)
+            except Exception as exc:  # noqa: BLE001
+                wx.CallAfter(progress.close)
+                wx.CallAfter(self._set_status, f"DECtalk download failed: {exc}")
+                wx.CallAfter(self._announce, f"DECtalk download failed. {exc}")
+                return
+            done = "DECtalk is ready. Click OK to open Manage Voices and choose a voice."
+            wx.CallAfter(self._set_status, "DECtalk ready.")
+            wx.CallAfter(self._announce, "DECtalk ready.")
+            progress.switch_to_ok(done, on_ok=self.choose_read_aloud_configuration)
+
+        threading.Thread(  # GATE-40-OK: DECtalk runtime download worker.
+            target=_run, daemon=True
+        ).start()
+
+    def download_piper_exe(self) -> None:
+        """Download the Piper TTS engine (~10 MB) on demand.
+
+        Piper is a fast, local, high-quality neural TTS engine. The Windows AMD64
+        binary is downloaded from the pinned GitHub release, extracted to the
+        managed speech folder, and immediately discoverable without restarting.
+        Runs on a worker thread behind a progress dialog. Windows-only.
+        """
+        import threading
+
+        from quill.core.read_aloud import discover_piper_executable
+        from quill.core.speech.piper_install import (
+            PiperInstallError,
+            install_piper,
+            piper_install_supported,
+        )
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
+
+        wx = self._wx
+        if not piper_install_supported():
+            self._show_message_box(
+                "Automatic Piper download is Windows-only. "
+                "On other platforms, install Piper from "
+                "https://github.com/rhasspy/piper/releases",
+                "Download Piper",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        if discover_piper_executable() is not None:
+            self._show_message_box(
+                "Piper is already installed. Open Manage Voices to download a voice.",
+                "Download Piper",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        confirm = self._show_message_box(
+            "Download the Piper TTS engine (~10 MB) from GitHub?\n\n"
+            "Piper is a fast, local, neural text-to-speech engine with dozens "
+            "of high-quality English voices. After downloading, open Manage "
+            "Voices again to download a Piper voice model.",
+            "Download Piper",
+            wx.ICON_QUESTION | wx.YES_NO,
+        )
+        if confirm != wx.YES:
+            return
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            self.frame,
+            "Downloading Piper",
+            "Preparing download...",
+            on_cancel=cancel.set,
+        )
+        progress.show()
+        self._announce("Downloading Piper TTS engine.")
+
+        def _on_progress(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise PiperInstallError("Download cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            progress.set_progress(percent, f"{message} {percent}%")
+
+        def _run() -> None:
+            try:
+                install_piper(progress=_on_progress)
+            except Exception as exc:  # noqa: BLE001
+                wx.CallAfter(progress.close)
+                if cancel.is_set():
+                    wx.CallAfter(self._set_status, "Piper download cancelled.")
+                    wx.CallAfter(self._announce, "Piper download cancelled.")
+                else:
+                    wx.CallAfter(self._set_status, f"Piper download failed: {exc}")
+                    wx.CallAfter(self._announce, f"Piper download failed. {exc}")
+                return
+            done = "Piper is ready. Click OK to open Manage Voices and download a voice model."
+            wx.CallAfter(self._set_status, "Piper ready.")
+            wx.CallAfter(self._announce, "Piper ready.")
+            progress.switch_to_ok(done, on_ok=self.choose_read_aloud_configuration)
+
+        threading.Thread(  # GATE-40-OK: Piper engine download worker.
+            target=_run, daemon=True
+        ).start()
+
+    def download_espeak_exe(self) -> None:
+        """Download and extract eSpeak-NG (~50 MB) on demand.
+
+        Downloads the official eSpeak-NG Windows x64 MSI from GitHub and
+        extracts it admin-free via ``msiexec /a`` into the managed speech
+        folder. ``discover_espeak_executable()`` picks up the result
+        immediately without restarting. Runs on a worker thread.
+        """
+        import threading
+
+        from quill.core.read_aloud import discover_espeak_executable
+        from quill.core.settings import save_settings
+        from quill.core.speech.espeak_install import (
+            EspeakInstallError,
+            espeak_install_supported,
+            install_espeak,
+        )
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
+
+        wx = self._wx
+        if not espeak_install_supported():
+            self._show_message_box(
+                "Automatic eSpeak-NG download is Windows-only.\n\n"
+                "On macOS install it with Homebrew: brew install espeak-ng\n"
+                "On Linux use your package manager (apt/dnf/pacman).",
+                "Download eSpeak-NG",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        configured = getattr(self.settings, "read_aloud_espeak_executable", "")
+        if discover_espeak_executable(configured) is not None:
+            self._show_message_box(
+                "eSpeak-NG is already installed. Open Manage Voices to select a voice.",
+                "Download eSpeak-NG",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        confirm = self._show_message_box(
+            "Download eSpeak-NG (~50 MB) from GitHub?\n\n"
+            "eSpeak-NG is a compact, open-source speech synthesizer with many "
+            "English accents (British, American, Scottish, Indian, and more). "
+            "It is extracted without admin rights using Windows Installer's "
+            "admin-install mode.",
+            "Download eSpeak-NG",
+            wx.ICON_QUESTION | wx.YES_NO,
+        )
+        if confirm != wx.YES:
+            return
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            self.frame,
+            "Downloading eSpeak-NG",
+            "Preparing download...",
+            on_cancel=cancel.set,
+        )
+        progress.show()
+        self._announce("Downloading eSpeak-NG.")
+
+        def _on_progress(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise EspeakInstallError("Download cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            progress.set_progress(percent, f"{message} {percent}%")
+
+        def _run() -> None:
+            try:
+                exe = install_espeak(_on_progress)
+                # Save so settings-configured path also finds it immediately.
+                self.settings.read_aloud_espeak_executable = str(exe)
+                save_settings(self.settings)
+            except Exception as exc:  # noqa: BLE001
+                wx.CallAfter(progress.close)
+                if cancel.is_set():
+                    wx.CallAfter(self._set_status, "eSpeak-NG download cancelled.")
+                    wx.CallAfter(self._announce, "eSpeak-NG download cancelled.")
+                else:
+                    wx.CallAfter(self._set_status, f"eSpeak-NG download failed: {exc}")
+                    wx.CallAfter(self._announce, f"eSpeak-NG download failed. {exc}")
+                return
+            done = "eSpeak-NG is ready. Click OK to open Manage Voices and choose an accent."
+            wx.CallAfter(self._set_status, "eSpeak-NG ready.")
+            wx.CallAfter(self._announce, "eSpeak-NG ready.")
+            progress.switch_to_ok(done, on_ok=self.choose_read_aloud_configuration)
+
+        threading.Thread(  # GATE-40-OK: eSpeak-NG download worker.
+            target=_run, daemon=True
+        ).start()
+
+    def download_kokoro_engine(self) -> None:
+        """Install the optional Kokoro ONNX engine packages on demand.
+
+        Installs ``kokoro-onnx`` and ``soundfile`` (~20 MB + onnxruntime) via
+        pip into a user-writable engine-pack folder. Use this when the Kokoro
+        model files are already downloaded but the Python packages are missing.
+        Runs on a worker thread behind a progress dialog.
+        """
+        import threading
+
+        from quill.core.speech.engine_install import (
+            EngineInstallError,
+            install_kokoro_onnx,
+            is_kokoro_onnx_available,
+            kokoro_onnx_install_supported,
+        )
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
+
+        wx = self._wx
+        if not kokoro_onnx_install_supported():
+            self._show_message_box(
+                "This build cannot install Kokoro ONNX automatically. Install it "
+                "from source with: pip install kokoro-onnx soundfile",
+                "Install Kokoro ONNX",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        if is_kokoro_onnx_available():
+            self._show_message_box(
+                "Kokoro ONNX is already installed. Choose Kokoro in Manage Voices.",
+                "Install Kokoro ONNX",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        confirm = self._show_message_box(
+            "Download and install the Kokoro ONNX engine (~20 MB)? "
+            "This enables Kokoro's high-quality neural text-to-speech. "
+            "You will also need to download the Kokoro models (~114 MB) from "
+            "Manage Voices if you have not done so already.",
+            "Install Kokoro ONNX",
+            wx.ICON_QUESTION | wx.YES_NO,
+        )
+        if confirm != wx.YES:
+            return
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            self.frame,
+            "Installing Kokoro ONNX",
+            "Preparing to install Kokoro ONNX...",
+            on_cancel=cancel.set,
+        )
+        progress.show()
+        self._announce("Installing Kokoro ONNX.")
+
+        def _on_progress(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise EngineInstallError("Installation cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            progress.set_progress(percent, f"{message} {percent}%")
+
+        def _run() -> None:
+            try:
+                install_kokoro_onnx(_on_progress)
+            except Exception as exc:  # noqa: BLE001
+                wx.CallAfter(progress.close)
+                if cancel.is_set():
+                    wx.CallAfter(self._set_status, "Kokoro ONNX installation cancelled.")
+                    wx.CallAfter(self._announce, "Kokoro ONNX installation cancelled.")
+                else:
+                    wx.CallAfter(self._set_status, f"Could not install Kokoro ONNX: {exc}")
+                    wx.CallAfter(self._announce, f"Could not install Kokoro ONNX. {exc}")
+                return
+            done = "Kokoro ONNX is ready. Click OK to open Manage Voices and choose a Kokoro voice."
+            wx.CallAfter(self._set_status, "Kokoro ONNX installed.")
+            wx.CallAfter(self._announce, "Kokoro ONNX installed.")
+            progress.switch_to_ok(done, on_ok=self.choose_read_aloud_configuration)
+
+        threading.Thread(  # GATE-40-OK: Kokoro ONNX install worker.
             target=_run, daemon=True
         ).start()
 

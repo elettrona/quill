@@ -8,6 +8,7 @@ with a proper, reusable dialog that adds:
   * Preview on Enter key or double-click (no extra button click needed)
   * Export to Speech Audio button (closes and triggers export)
   * Clear installed vs. not-downloaded distinction for Piper/Kokoro voices
+  * Embed mode: build into an existing panel (for SpeechHubDialog notebook tab)
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ class VoiceBrowserResult:
     """What the caller should do after the dialog closes."""
 
     action: str
-    """'select' | 'download' | 'export'"""
+    """'select' | 'download' | 'download_engine' | 'export'"""
     engine: str = ""
     voice_id: str = ""
     rate: int = 175
@@ -57,6 +58,17 @@ class VoiceBrowserDialog:
         ``(engine, voice_id) -> None`` — runs on main thread, must start its own
         background work (does NOT block the UI).  Passed directly from MainFrame's
         ``_preview_voice`` method.
+    engine_available:
+        ``{engine_id: bool}`` mapping — True when the engine binary / packages are
+        installed and ready. Engines marked False show a "Download Engine" button
+        instead of the voice list action button. Defaults to all-True when omitted.
+    embed_in:
+        When given, build the UI into this existing ``wx.Panel`` instead of
+        creating a new ``wx.Dialog``.  In this mode ``show()`` must not be called;
+        use ``collect_result()`` to read the current selection.
+    on_action:
+        Callback invoked (with a ``VoiceBrowserResult``) when the user triggers a
+        download or export action in embed mode.  Ignored when ``embed_in`` is None.
     """
 
     def __init__(
@@ -68,6 +80,9 @@ class VoiceBrowserDialog:
         piper_model_dir: Path,
         settings: object,
         preview_fn: Callable[[str, str], None],
+        engine_available: dict[str, bool] | None = None,
+        embed_in: object | None = None,
+        on_action: Callable[[VoiceBrowserResult], None] | None = None,
     ) -> None:
         import wx
 
@@ -79,17 +94,27 @@ class VoiceBrowserDialog:
         self._piper_model_dir = piper_model_dir
         self._settings = settings
         self._preview_fn = preview_fn
+        self._engine_available: dict[str, bool] = engine_available or {}
         self._result: VoiceBrowserResult | None = None
         self._all_voices: list = []
         self._displayed_voices: list = []
+        self._on_action = on_action
 
-        self.dialog = wx.Dialog(
-            parent,
-            title="Manage Voices & Reading Aloud",
-            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
-        )
-        self.dialog.SetMinSize(wx.Size(580, 520))
-        self.dialog.SetSize(wx.Size(680, 600))
+        if embed_in is not None:
+            self._root = embed_in
+            self.dialog = None  # type: ignore[assignment]
+            self._embed_mode = True
+        else:
+            self.dialog = wx.Dialog(
+                parent,
+                title="Manage Voices & Reading Aloud",
+                style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+            )
+            self.dialog.SetMinSize(wx.Size(580, 520))
+            self.dialog.SetSize(wx.Size(680, 600))
+            self._root = self.dialog
+            self._embed_mode = False
+
         self._build_ui()
 
     # ------------------------------------------------------------------
@@ -100,10 +125,11 @@ class VoiceBrowserDialog:
         wx = self._wx
         s = self._settings
         root = wx.BoxSizer(wx.VERTICAL)
+        parent = self._root
 
         # Engine radio box.
         self._engine_rb = wx.RadioBox(
-            self.dialog,
+            parent,
             label="&Engine",
             choices=self._engine_labels,
             style=wx.RA_SPECIFY_ROWS,
@@ -119,8 +145,8 @@ class VoiceBrowserDialog:
 
         # Filter row.
         filter_row = wx.BoxSizer(wx.HORIZONTAL)
-        filter_lbl = wx.StaticText(self.dialog, label="Filter &voices:")
-        self._filter_ctrl = wx.TextCtrl(self.dialog)
+        filter_lbl = wx.StaticText(parent, label="Filter &voices:")
+        self._filter_ctrl = wx.TextCtrl(parent)
         self._filter_ctrl.SetName("Filter voices")
         self._filter_ctrl.SetHint("type to search by name, accent, or style...")
         filter_row.Add(filter_lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
@@ -128,20 +154,20 @@ class VoiceBrowserDialog:
         root.Add(filter_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
 
         # Voice list.
-        voices_lbl = wx.StaticText(self.dialog, label="&Voices (Enter or double-click to preview):")
+        voices_lbl = wx.StaticText(parent, label="&Voices (Enter or double-click to preview):")
         root.Add(voices_lbl, 0, wx.LEFT | wx.TOP, 10)
-        self._voice_lb = wx.ListBox(self.dialog, style=wx.LB_SINGLE)
+        self._voice_lb = wx.ListBox(parent, style=wx.LB_SINGLE)
         self._voice_lb.SetName("Voices")
         self._voice_lb.SetMinSize(wx.Size(-1, 160))
         root.Add(self._voice_lb, 1, wx.EXPAND | wx.ALL, 10)
 
         # Voice detail.
-        self._detail_lbl = wx.StaticText(self.dialog, label="")
+        self._detail_lbl = wx.StaticText(parent, label="")
         self._detail_lbl.SetName("Voice details")
         root.Add(self._detail_lbl, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         # Settings panel — shown/hidden per engine.
-        settings_box = wx.StaticBoxSizer(wx.StaticBox(self.dialog, label="Settings"), wx.VERTICAL)
+        settings_box = wx.StaticBoxSizer(wx.StaticBox(parent, label="Settings"), wx.VERTICAL)
         sb = settings_box.GetStaticBox()
 
         rate_row = wx.BoxSizer(wx.HORIZONTAL)
@@ -198,24 +224,27 @@ class VoiceBrowserDialog:
 
         # Action buttons.
         btn_row = wx.BoxSizer(wx.HORIZONTAL)
-        self._preview_btn = wx.Button(self.dialog, label="&Preview (Enter)")
+        self._preview_btn = wx.Button(parent, label="&Preview (Enter)")
         self._preview_btn.SetName("Preview selected voice")
-        self._download_btn = wx.Button(self.dialog, label="&Download Voice...")
+        self._download_btn = wx.Button(parent, label="&Download Voice...")
         self._download_btn.SetName("Download voice model")
-        self._export_btn = wx.Button(self.dialog, label="E&xport to Audio File...")
+        self._export_btn = wx.Button(parent, label="E&xport to Audio File...")
         self._export_btn.SetName("Export document to audio file")
-        ok_btn = wx.Button(self.dialog, id=wx.ID_OK)
-        cancel_btn = wx.Button(self.dialog, id=wx.ID_CANCEL)
         btn_row.Add(self._preview_btn, 0, wx.RIGHT, 6)
         btn_row.Add(self._download_btn, 0, wx.RIGHT, 6)
         btn_row.Add(self._export_btn, 0, wx.RIGHT, 6)
-        btn_row.AddStretchSpacer()
-        btn_row.Add(ok_btn, 0, wx.RIGHT, 6)
-        btn_row.Add(cancel_btn, 0)
+
+        if not self._embed_mode:
+            ok_btn = wx.Button(parent, id=wx.ID_OK)
+            cancel_btn = wx.Button(parent, id=wx.ID_CANCEL)
+            btn_row.AddStretchSpacer()
+            btn_row.Add(ok_btn, 0, wx.RIGHT, 6)
+            btn_row.Add(cancel_btn, 0)
+            apply_modal_ids(parent, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+
         root.Add(btn_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
-        apply_modal_ids(self.dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
-        self.dialog.SetSizer(root)
+        self._root.SetSizer(root)
 
         # Bindings.
         self._engine_rb.Bind(wx.EVT_RADIOBOX, lambda _e: self._on_engine_changed())
@@ -345,14 +374,26 @@ class VoiceBrowserDialog:
         self._settings_sb.Show(has_any)
         self._settings_box.ShowItems(has_any)
 
-        show_dl = eng in {"piper", "kokoro"}
-        self._download_btn.Show(show_dl)
-        if eng == "piper":
+        eng_ok = self._engine_available.get(eng, True)
+        if eng == "dectalk" and not eng_ok:
+            self._download_btn.SetLabel("&Download DECtalk Engine (~30 MB)...")
+            self._download_btn.Show(True)
+        elif eng == "piper" and not eng_ok:
+            self._download_btn.SetLabel("&Download Piper Engine (~10 MB)...")
+            self._download_btn.Show(True)
+        elif eng == "piper":
             self._download_btn.SetLabel("&Download Piper Voice...")
+            self._download_btn.Show(True)
         elif eng == "kokoro":
             self._download_btn.SetLabel("&Download Kokoro Models (~114 MB)...")
+            self._download_btn.Show(True)
+        elif eng == "espeak" and not eng_ok:
+            self._download_btn.SetLabel("&Download eSpeak-NG (~50 MB)...")
+            self._download_btn.Show(True)
+        else:
+            self._download_btn.Show(False)
 
-        self.dialog.Layout()
+        self._root.Layout()
 
     # ------------------------------------------------------------------
     # Event handlers
@@ -368,6 +409,21 @@ class VoiceBrowserDialog:
     def _on_voice_selected(self) -> None:
         idx = self._voice_lb.GetSelection()
         wx = self._wx
+        eng = self._current_engine_id()
+        eng_ok = self._engine_available.get(eng, True)
+
+        # When the engine or its required files are missing, show a hint.
+        if not eng_ok:
+            _NOT_READY_MSG = {
+                "dectalk": "DECtalk is not installed. Use the download button to get it.",
+                "piper": "Piper is not installed. Use the download button to get it.",
+                "espeak": "eSpeak-NG is not installed. Use the download button to get it.",
+                "kokoro": "Kokoro models are not downloaded. Use the download button to get them.",
+            }
+            self._detail_lbl.SetLabel(_NOT_READY_MSG.get(eng, f"{eng} is not available."))
+            self._preview_btn.Enable(False)
+            return
+
         if idx == wx.NOT_FOUND or idx >= len(self._displayed_voices):
             self._detail_lbl.SetLabel("")
             self._preview_btn.Enable(False)
@@ -379,9 +435,10 @@ class VoiceBrowserDialog:
         parts = [p for p in [accent, desc] if p]
         detail = " · ".join(parts)
         if not installed:
-            detail = (detail + " — not downloaded") if detail else "Not downloaded"
+            not_dl = "Not downloaded. Use Download Voice to get it."
+            detail = f"{detail} — {not_dl}" if detail else not_dl
         self._detail_lbl.SetLabel(detail)
-        self._preview_btn.Enable(True)
+        self._preview_btn.Enable(bool(installed))
 
     def _on_voice_key_down(self, event: object) -> None:
         wx = self._wx
@@ -396,25 +453,36 @@ class VoiceBrowserDialog:
         wx = self._wx
         if idx == wx.NOT_FOUND or idx >= len(self._displayed_voices):
             return
+        eng = self._current_engine_id()
+        if not self._engine_available.get(eng, True):
+            return  # engine not installed; preview blocked
         v = self._displayed_voices[idx]
         if not getattr(v, "installed", True):
             return
-        eng = self._current_engine_id()
         self._preview_fn(eng, v.id)
 
     def _do_download(self) -> None:
         eng = self._current_engine_id()
-        idx = self._voice_lb.GetSelection()
-        voice_id = ""
-        if 0 <= idx < len(self._displayed_voices):
-            voice_id = self._displayed_voices[idx].id
-        self._result = VoiceBrowserResult(
-            action="download",
-            engine=eng,
-            voice_id=voice_id,
-            **self._collect_settings(eng),
-        )
-        self.dialog.EndModal(self._wx.ID_OK)
+        eng_ok = self._engine_available.get(eng, True)
+        # If the engine binary itself is missing, request an engine download.
+        if not eng_ok and eng in {"dectalk", "piper", "espeak"}:
+            result = VoiceBrowserResult(
+                action="download_engine",
+                engine=eng,
+                **self._collect_settings(eng),
+            )
+        else:
+            idx = self._voice_lb.GetSelection()
+            voice_id = ""
+            if 0 <= idx < len(self._displayed_voices):
+                voice_id = self._displayed_voices[idx].id
+            result = VoiceBrowserResult(
+                action="download",
+                engine=eng,
+                voice_id=voice_id,
+                **self._collect_settings(eng),
+            )
+        self._dispatch_action(result)
 
     def _do_export(self) -> None:
         eng = self._current_engine_id()
@@ -422,13 +490,20 @@ class VoiceBrowserDialog:
         voice_id = ""
         if 0 <= idx < len(self._displayed_voices):
             voice_id = self._displayed_voices[idx].id
-        self._result = VoiceBrowserResult(
+        result = VoiceBrowserResult(
             action="export",
             engine=eng,
             voice_id=voice_id,
             **self._collect_settings(eng),
         )
-        self.dialog.EndModal(self._wx.ID_OK)
+        self._dispatch_action(result)
+
+    def _dispatch_action(self, result: VoiceBrowserResult) -> None:
+        if self._embed_mode and self._on_action is not None:
+            self._on_action(result)
+        else:
+            self._result = result
+            self.dialog.EndModal(self._wx.ID_OK)  # type: ignore[union-attr]
 
     def _collect_settings(self, eng: str) -> dict:
         s = self._settings
@@ -453,8 +528,24 @@ class VoiceBrowserDialog:
     # Public
     # ------------------------------------------------------------------
 
+    def collect_result(self) -> VoiceBrowserResult:
+        """Return the current selection as a 'select' result (for embed mode)."""
+        eng = self._current_engine_id()
+        idx = self._voice_lb.GetSelection()
+        voice_id = ""
+        if 0 <= idx < len(self._displayed_voices):
+            voice_id = self._displayed_voices[idx].id
+        return VoiceBrowserResult(
+            action="select",
+            engine=eng,
+            voice_id=voice_id,
+            **self._collect_settings(eng),
+        )
+
     def show(self, show_modal_dialog: Callable) -> VoiceBrowserResult | None:
         """Open the dialog. Returns what the user chose, or None on cancel."""
+        if self._embed_mode:
+            raise RuntimeError("VoiceBrowserDialog.show() cannot be called in embed mode")
         result_code = show_modal_dialog(self.dialog, "Manage Voices & Reading Aloud")
         if result_code == self._wx.ID_OK and self._result is None:
             # User clicked OK without using a special action button.
@@ -469,5 +560,5 @@ class VoiceBrowserDialog:
                 voice_id=voice_id,
                 **self._collect_settings(eng),
             )
-        self.dialog.Destroy()
+        self.dialog.Destroy()  # type: ignore[union-attr]
         return self._result

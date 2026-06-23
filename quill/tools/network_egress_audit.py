@@ -82,6 +82,22 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "verified TLS context, visible progress, blocked in Safe Mode. ffmpeg is not "
         "bundled (GPL/LGPL); QUILL only downloads it on an explicit action."
     ),
+    "core/speech/piper_install.py::_download_zip": (
+        "User-initiated optional Piper TTS engine download (#669) from the pinned "
+        "rhasspy/piper GitHub release (piper_windows_amd64.zip). HTTPS enforced "
+        "(refuses non-https), verified TLS context, visible progress, blocked in "
+        "Safe Mode, Windows-only. No SHA-256 pin (relies on HTTPS + official GitHub "
+        "release asset). Triggered only by an explicit 'Download Piper Engine' action "
+        "from the Voice Browser dialog."
+    ),
+    "core/speech/espeak_install.py::_download_msi": (
+        "User-initiated optional eSpeak-NG TTS engine download (#669) from the pinned "
+        "espeak-ng GitHub release (x64 MSI). HTTPS enforced (refuses non-https), "
+        "verified TLS context, visible progress, blocked in Safe Mode, Windows-only. "
+        "MSI is then extracted admin-free via msiexec /a (no elevation, no registry). "
+        "Triggered only by an explicit 'Download eSpeak-NG' action from the Voice "
+        "Browser dialog."
+    ),
     "core/speech/cloud_transcribers.py::transcribe_rest": (
         "User-initiated cloud transcription via a Quillin-declared, host-vetted "
         "provider kind (#669: Groq, ElevenLabs, ...). HTTPS enforced (refuses "
@@ -179,13 +195,13 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "developer running `python -m quill.core.contributors` to refresh that tuple. "
         "There is no silent runtime path."
     ),
-    "ui/main_frame.py::_work": (
+    "ui/main_frame.py::_run": (
         "Piper voice model download (_download_piper_voice) or Kokoro model download "
         "(_download_kokoro_models). Both are triggered only when the user clicks "
         "'Download Voice...' in the Voice Browser dialog (Manage Voices & Reading Aloud). "
         "Piper fetches .onnx and .onnx.json from HuggingFace piper-voices; Kokoro fetches "
-        "model and voices files from GitHub releases. Both use HTTPS and run behind a "
-        "visible background task with progress; no silent download."
+        "model and voices files from GitHub releases. Both use HTTPS, show a progress dialog "
+        "with Cancel, and reopen Manage Voices via switch_to_ok on completion."
     ),
     "core/ai/tts.py::request_speech": (
         "OpenAI TTS speech synthesis. Triggered only by an explicit user action: "
@@ -249,19 +265,32 @@ _REVIEWED_EGRESS: dict[str, str] = {
 # Manager only, never logged.  All PyGithub calls are HTTPS.
 
 # ---------------------------------------------------------------------------
-# pip subprocess egress (Faster Whisper on-demand install) — manually documented
+# pip subprocess egress (on-demand engine installs) — manually documented
 # ---------------------------------------------------------------------------
-# quill/core/speech/engine_install.py::install_faster_whisper runs the runtime's
-# own pip in a subprocess (`python -m pip install --only-binary=:all: --target
-# <user dir> faster-whisper ...`) to install the optional Faster Whisper engine
-# on demand. The network call is performed by pip reaching PyPI / pythonhosted,
-# not by an urlopen in quill/ source, so the AST scanner above cannot see it; it
-# is documented here for auditability.
+# The three optional speech-engine installs below each run the runtime's own pip
+# in a subprocess (`python -m pip install --only-binary=:all: --target <user dir>
+# <pkg> ...`).  The network call is performed by pip reaching PyPI / pythonhosted,
+# not by an urlopen in quill/ source, so the AST scanner above cannot see them;
+# they are documented here for auditability.
 #
-# Gating: triggered only by an explicit user action (Tools > Speech > Whisperer >
-# Download Faster Whisper engine), behind a visible confirmation and progress
-# dialog. Blocked in Safe Mode. Wheel-only (no build backend / arbitrary code).
-# Installs into a user-writable engine-pack folder (no admin). No silent path.
+# All three share the same gating pattern: explicit user action only, behind a
+# visible confirmation and progress dialog, blocked in Safe Mode, wheel-only
+# (no build backend / arbitrary code), installed into a user-writable engine-pack
+# folder (no admin), no silent path.
+#
+# quill/core/speech/engine_install.py::install_faster_whisper
+#   Installs faster-whisper>=1.0 and huggingface_hub>=0.20 (~110 MB).
+#   Triggered: Tools > Speech > Whisperer > Download Faster Whisper engine.
+#
+# quill/core/speech/engine_install.py::install_vosk
+#   Installs vosk>=0.3.45 (~50 MB).
+#   Triggered: Manage Speech Models > Install Vosk, or Tools > Speech > Install Vosk.
+#
+# quill/core/speech/engine_install.py::install_kokoro_onnx
+#   Installs kokoro-onnx>=0.9 and soundfile>=0.12 (~20 MB + onnxruntime transitive).
+#   Triggered automatically after the Kokoro model files are downloaded
+#   (Manage Voices > Download Kokoro), or explicitly from Manage Speech Models >
+#   Install Kokoro ONNX, or Tools > Speech > Install Kokoro ONNX.
 
 
 def _enclosing_function_name(tree: ast.AST, target: ast.AST) -> str:
