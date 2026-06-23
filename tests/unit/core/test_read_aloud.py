@@ -309,10 +309,12 @@ def test_synthesize_with_piper_raises_for_failure(monkeypatch, tmp_path: Path) -
 def test_list_espeak_english_voices_covers_key_variants() -> None:
     voices = list_espeak_english_voices()
     ids = [v.id for v in voices]
-    assert "en" in ids
-    assert "en-us" in ids
+    # 8 bundled lang definition files (lang/gmw/en*)
     assert "en-gb" in ids
-    assert "en-au" in ids
+    assert "en-us" in ids
+    assert "en-gb-scotland" in ids
+    assert "en-029" in ids
+    assert len(ids) == 8
     # eSpeak is English-only in Quill — no non-English variants expected
     assert all(id_.startswith("en") for id_ in ids)
 

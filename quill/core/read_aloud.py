@@ -90,20 +90,43 @@ KOKORO_VOICES: list[tuple[str, str]] = [
 ]
 
 ESPEAK_ENGLISH_VOICES: list[tuple[str, str]] = [
-    ("en", "English (default)"),
-    ("en-us", "English (US)"),
-    ("en-gb", "English (UK / RP)"),
-    ("en-au", "English (Australian)"),
-    ("en-ca", "English (Canadian)"),
-    ("en-in", "English (Indian)"),
-    ("en-sc", "English (Scottish)"),
-    ("en-wls", "English (Welsh)"),
-    ("en-rp", "English (Received Pronunciation)"),
-    ("en-gb-x-rp", "English (RP variant)"),
+    # 8 definition files bundled in the QUILL eSpeak NG binary (lang/gmw/en*)
+    ("en-gb", "English (British)"),
+    ("en-us", "English (American)"),
+    ("en-029", "English (Caribbean)"),
+    ("en-gb-scotland", "English (Scottish)"),
+    ("en-gb-x-gbclan", "English (Lancashire)"),
+    ("en-gb-x-gbcwmd", "English (West Midlands)"),
+    ("en-gb-x-rp", "English (Received Pronunciation)"),
+    ("en-us-nyc", "English (New York City)"),
+]
+
+# Generic voice characters appended as ``accent+variant`` (e.g. ``en-gb+m1``).
+# All entries verified in the bundled eSpeak NG voices/!v directory.
+ESPEAK_VARIANTS: list[tuple[str, str]] = [
+    ("", "Default"),
+    ("m1", "Male 1"),
+    ("m2", "Male 2"),
+    ("m3", "Male 3"),
+    ("m4", "Male 4"),
+    ("m5", "Male 5"),
+    ("f1", "Female 1"),
+    ("f2", "Female 2"),
+    ("f3", "Female 3"),
+    ("f4", "Female 4"),
+    ("whisper", "Whisper"),
+    ("whisperf", "Whisper (feminine)"),
+    ("klatt", "Klatt"),
+    ("croak", "Croak"),
+    ("grandma", "Grandma"),
+    ("grandpa", "Grandpa"),
+    ("Tweaky", "Tweaky (robotic)"),
+    ("UniRobot", "UniRobot"),
 ]
 
 PIPER_ENGLISH_VOICES: list[tuple[str, str]] = [
     # British English
+    ("en_GB-alan-low", "Alan (British, low)"),
     ("en_GB-alan-medium", "Alan (British, medium)"),
     ("en_GB-alba-medium", "Alba (British, medium)"),
     ("en_GB-aru-medium", "Aru (British, medium)"),
