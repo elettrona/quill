@@ -470,4 +470,72 @@ the same braille line-ending mismatch already verified pre-existing on
 `origin/main` earlier this session, untouched by this change; provider
 registry gate passed; smoke-launched the app, no traceback.
 
+## 2026-06-23 - Third origin/main sync (25 commits)
+
+Fetched `origin/main`, now at `ff39b5c5` (25 commits ahead of our last
+merge base), mostly speech-provider work (Vosk bundling, on-demand Faster
+Whisper install, Groq/ElevenLabs cloud transcription, Tab-mode/spoken
+indent/notification polish) plus the usual generated-artifact drift.
+`main_frame_menu.py` was touched by 3 of those commits — checked first,
+before merging, that none of the changed regions overlapped the File >
+Publish gating block.
+
+Same 3 conflicts as both previous syncs, all generated/measured artifacts:
+`quill/tools/module_size_budgets.json`, `tests/unit/ui/fixtures/dialog_inventory.json`,
+`tests/unit/ui/fixtures/main_frame_public_surface.json`. Resolved the two
+fixtures by regenerating via their `--write` tools (309 dialog surfaces,
+533 public methods) rather than hand-merging, same as every prior sync.
+Resolved the budgets file with a one-off script: union every
+`_rebaseline_*` comment key from both sides, and for every tracked module
+take `max(our committed budget, main's committed budget, real post-merge
+measured line count)` — never lowering either side's deliberate history,
+never leaving a budget below what the merged tree actually measures.
+Three modules exceeded both sides' individually-committed numbers once
+combined and needed a fresh real-measured bump, recorded under a new
+`_rebaseline_2026_06_23_third_main_merge` comment:
+`quill/__main__.py` 624->628, `quill/ui/main_frame.py` 25686->25843,
+`quill/ui/main_frame_menu.py` 3786->3854.
+
+Given the prior session's lesson that "no CONFLICT reported" does not
+guarantee nothing was lost, spot-checked every publishing-critical file
+by comparing `^def test_` counts (and, for `main_frame_menu.py`, exact
+`_id_publishing*`/`.Append`/`Bind` counts) between pre-merge `HEAD` and
+the merged working tree: `test_publishing_framework.py` 6/6,
+`test_features.py` 23/23, `test_main_frame_menu_contract.py` 10/10,
+`test_main_frame.py` 21/21 (the file that lost 8 tests two syncs ago) —
+all identical, nothing silently dropped this time. `main_frame_menu.py`
+kept all 11 `_id_publishing_*` ids, all 11 `.Append()` calls inside the
+`if self._feature_enabled("future.publishing"):` block, and all 11
+corresponding `Bind()` calls.
+
+Mid-validation, ran `git stash` / `git stash pop` to check whether a
+`mypy` finding in `publishing_validation.py` pre-existed before this
+merge (it did — confirmed identical on pre-merge `HEAD` too, and
+separately confirmed pre-existing on a clean `origin/main` worktree,
+unrelated to this work). The stash round-trip silently cleared
+`.git/MERGE_HEAD` and `.git/MERGE_MSG` even though `HEAD` itself never
+moved — a real git footgun worth remembering: **do not `git stash` while
+a merge's conflicts are resolved-but-uncommitted; it can silently drop
+the merge bookkeeping and turn the eventual commit into a fake
+single-parent commit instead of a real merge.** Caught it before
+committing (parent count check), asked the user before running
+`git reset --hard HEAD` (safe here since `HEAD` hadn't moved and
+everything uncommitted was deterministically reconstructable), then
+redid `git merge origin/main` from scratch through git's normal
+machinery and reapplied the identical conflict resolution — confirmed
+byte-identical results the second time (same 309/533/three rebaseline
+numbers). Committed as a proper 2-parent merge (`f231352`, parents
+`e256d799` and `ff39b5c5`) — no manual editing of `.git/` internals.
+
+Validation on the final committed state: Ruff/`ruff format --check`
+clean (2 pre-existing non-standard `# noqa` warnings from main's own
+commits, not errors); module-size budget gate passed; full suite
+`5038 passed, 1 failed, 16 skipped` — the 1 failure
+(`test_read_open_document_uses_corpus_fixture_byte_identical`) verified
+pre-existing on a clean `origin/main` worktree before merging, untouched
+by this sync; Quillin self-lint 17/17 (main's new `elevenlabs-transcription`
+and `groq-transcription` bundled Quillins included); smoke-checked
+`python -m quill --help` for a clean import. Not pushed pending explicit
+request.
+
 Committed locally; not pushed pending explicit request.
