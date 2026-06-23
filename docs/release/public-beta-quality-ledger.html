@@ -320,7 +320,7 @@ timeout in dev (see TEST-001)</td>
 <tbody>
 <tr>
 <td>Production files modified (this pass)</td>
-<td>15</td>
+<td>19</td>
 </tr>
 <tr>
 <td>Test files added/modified</td>
@@ -350,6 +350,10 @@ install)</td>
 <tr>
 <td>Focus-management issues fixed</td>
 <td>1 (FOCUS-001 wx.html fallback initial focus)</td>
+</tr>
+<tr>
+<td>Label/field association fixes</td>
+<td>4 dialogs (input controls given accessible names)</td>
 </tr>
 <tr>
 <td>Tests added</td>
@@ -562,6 +566,50 @@ a brittle test.</li>
 <li>Status: Fixed. Needs live NVDA/JAWS confirmation.</li>
 </ul>
 <h2
+id="accessibility-audit--wave-3-labelfield-associations">Accessibility
+audit — wave 3 (label/field associations)</h2>
+<p>wxPython does not associate a <code>StaticText</code> label with the
+following control the way HTML <code>&lt;label for&gt;</code> does; on
+some screen readers a field with only a nearby visual label is announced
+without a name. The reliable fix is an explicit <code>SetName</code> on
+each input. Audited input-control naming coverage across the UI and
+fixed the clearest gaps.</p>
+<h3
+id="a11y-003--input-controls-labeled-only-by-an-adjacent-statictext">A11Y-003
+— Input controls labeled only by an adjacent StaticText</h3>
+<ul>
+<li>Severity: Medium. Category: Accessibility (screen-reader field
+naming).</li>
+<li>Fixed across four dialogs:
+<ul>
+<li><code>skill_library_dialog.py</code>: the Skills list and
+Description field, and every dynamically-built parameter control
+(<code>_make_control</code> now sets the accessible name from
+<code>param.label or param.name</code>, covering
+Choice/CheckBox/SpinCtrl/ TextCtrl).</li>
+<li><code>assistant_tools.py</code>: 10 authoring fields across the
+prompt-authoring and model-search dialogs (Title, Tone, Audience, Goal,
+Template, Prompt, Search).</li>
+<li><code>web_form.py</code>: every dynamically-rendered form control is
+named from its field label at the single assignment site
+(<code>SetName(label)</code>).</li>
+<li><code>sticky_notes.py</code>: the Title and Note editors.</li>
+</ul></li>
+<li>GATE-11: <code>assistant_tools.py</code> (+10) and
+<code>skill_library_dialog.py</code> (+6) rebaselined with a dated
+justification (per-control <code>SetName</code> lines are not
+extractable); <code>web_form.py</code>/<code>sticky_notes.py</code>
+stayed within budget.</li>
+<li>Tests: existing dialog suites pass (assistant_tools 12,
+web_form/sticky_notes 24, skill-library routing 1). Naming is
+structural; no behavioral test added.</li>
+<li>Status: Fixed. Needs live NVDA/JAWS confirmation.</li>
+<li>Continued work (next pass): remaining lower-coverage files (e.g.
+<code>batch_wizard_pages.py</code>, read-only display areas in
+<code>info_pages.py</code>) and a broader sweep of single-field
+dialogs.</li>
+</ul>
+<h2
 id="deferred--next-wave-not-yet-done--do-not-represent-as-complete">Deferred
 / next wave (not yet done — do not represent as complete)</h2>
 <p>The master quality-pass scope is repository-wide and multi-session.
@@ -569,11 +617,12 @@ Not yet performed in this pass:</p>
 <ul>
 <li>Full test-suite run with a per-test timeout to neutralize
 TEST-001.</li>
-<li>The accessibility audit continues: wave 1 (tab-group + control
-naming) and wave 2 (initial-focus quality) are done; still to do —
-label/field associations, keyboard-trap spot checks beyond the gate,
-error-to-field association/announcement, and the editor surface itself
-(Sections 11, 24).</li>
+<li>The accessibility audit is a 6-wave plan: wave 1 (tab-group +
+control naming), wave 2 (initial-focus quality), and wave 3 (label/field
+associations) are done. Remaining: wave 4 (keyboard-trap / tab-order
+spot checks beyond the gate), wave 5 (error-to-field association +
+announcement), wave 6 (the editor surface itself). Plus a label/field
+continuation sweep of the lower-coverage dialogs.</li>
 <li>The startup/shutdown initialization-order hardening review (Section
 9).</li>
 <li>The call-site / attribute-contract repository audit (Section

@@ -283,6 +283,9 @@ class _WebFormDialog:
                 control = wx.TextCtrl(self.dialog, value=str(field.get("value", "")), style=style)
                 proportion = 1 if ftype == "textarea" else 0
                 sizer.Add(control, proportion, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+            # Accessible name from the field's visible label so each form control
+            # is announced by name (a separate StaticText is not reliably linked).
+            control.SetName(label)
             self._native_controls[name] = control
         buttons = self.dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
         if buttons is not None:

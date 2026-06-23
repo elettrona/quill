@@ -163,11 +163,13 @@ class StickyNoteEditorDialog:
             8,
         )
         self._native_title = wx.TextCtrl(self.dialog, value=title_value)
+        self._native_title.SetName("Title")
         sizer.Add(self._native_title, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         sizer.Add(wx.StaticText(self.dialog, label="Note"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         self._native_body = wx.TextCtrl(
             self.dialog, value=body_value, style=wx.TE_MULTILINE | wx.TE_PROCESS_TAB
         )
+        self._native_body.SetName("Note")
         sizer.Add(self._native_body, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         buttons = self.dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
         if buttons is not None:

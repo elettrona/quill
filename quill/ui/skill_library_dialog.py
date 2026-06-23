@@ -74,6 +74,7 @@ class SkillLibraryDialog:
 
         root.Add(wx.StaticText(self.dialog, label="&Skills:"), 0, wx.LEFT | wx.TOP, 8)
         self._list = wx.ListBox(self.dialog, style=wx.LB_SINGLE)
+        self._list.SetName("Skills")
         self._list.SetMinSize(wx.Size(-1, 180))
         root.Add(self._list, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 8)
 
@@ -82,6 +83,7 @@ class SkillLibraryDialog:
             self.dialog,
             style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_WORDWRAP,
         )
+        self._desc.SetName("Description")
         self._desc.SetMinSize(wx.Size(-1, 70))
         root.Add(self._desc, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 4)
 
@@ -449,6 +451,10 @@ class _SkillParameterDialog:
             ctrl.SetMinSize(wx.Size(-1, 80))
         else:
             ctrl = wx.TextCtrl(self.dialog, value=default)
+        # Accessible name from the parameter's visible label so screen readers
+        # announce each field by name (the StaticText label alone is not reliably
+        # associated across screen readers).
+        ctrl.SetName(param.label or param.name)
         return ctrl
 
     def show(self) -> int:

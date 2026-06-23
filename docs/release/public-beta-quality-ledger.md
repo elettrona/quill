@@ -91,7 +91,7 @@ Captured on the current branch (`main`), dev environment, Python 3.12.
 
 | Metric | Count |
 | --- | --- |
-| Production files modified (this pass) | 15 |
+| Production files modified (this pass) | 19 |
 | Test files added/modified | 2 |
 | Documentation files modified | 4 (md) + regenerated html/epub |
 | Bugs fixed | 1 (L-001 class reviewed; see notes) |
@@ -99,6 +99,7 @@ Captured on the current branch (`main`), dev environment, Python 3.12.
 | Security/egress items reviewed | 1 (SEC-001, pip subprocess egress documented) |
 | Accessibility issues fixed | 13 (6 unnamed tab groups, 7 literal snake_case names) |
 | Focus-management issues fixed | 1 (FOCUS-001 wx.html fallback initial focus) |
+| Label/field association fixes | 4 dialogs (input controls given accessible names) |
 | Tests added | 2 files (`test_cloud_transcribers.py`, `test_engine_install.py`) |
 | Remaining known issues | 1 (TEST-001) |
 | Intentional legacy QUILL references reviewed | n/a (no rename; QUILL is the name) |
@@ -235,16 +236,47 @@ own focus. The dialog-inventory gate ensures dialogs route through this path.
   needs-live-validation rather than added as a brittle test.
 - Status: Fixed. Needs live NVDA/JAWS confirmation.
 
+## Accessibility audit — wave 3 (label/field associations)
+
+wxPython does not associate a `StaticText` label with the following control the
+way HTML `<label for>` does; on some screen readers a field with only a nearby
+visual label is announced without a name. The reliable fix is an explicit
+`SetName` on each input. Audited input-control naming coverage across the UI and
+fixed the clearest gaps.
+
+### A11Y-003 — Input controls labeled only by an adjacent StaticText
+- Severity: Medium. Category: Accessibility (screen-reader field naming).
+- Fixed across four dialogs:
+  - `skill_library_dialog.py`: the Skills list and Description field, and every
+    dynamically-built parameter control (`_make_control` now sets the accessible
+    name from `param.label or param.name`, covering Choice/CheckBox/SpinCtrl/
+    TextCtrl).
+  - `assistant_tools.py`: 10 authoring fields across the prompt-authoring and
+    model-search dialogs (Title, Tone, Audience, Goal, Template, Prompt, Search).
+  - `web_form.py`: every dynamically-rendered form control is named from its
+    field label at the single assignment site (`SetName(label)`).
+  - `sticky_notes.py`: the Title and Note editors.
+- GATE-11: `assistant_tools.py` (+10) and `skill_library_dialog.py` (+6)
+  rebaselined with a dated justification (per-control `SetName` lines are not
+  extractable); `web_form.py`/`sticky_notes.py` stayed within budget.
+- Tests: existing dialog suites pass (assistant_tools 12, web_form/sticky_notes
+  24, skill-library routing 1). Naming is structural; no behavioral test added.
+- Status: Fixed. Needs live NVDA/JAWS confirmation.
+- Continued work (next pass): remaining lower-coverage files (e.g.
+  `batch_wizard_pages.py`, read-only display areas in `info_pages.py`) and a
+  broader sweep of single-field dialogs.
+
 ## Deferred / next wave (not yet done — do not represent as complete)
 
 The master quality-pass scope is repository-wide and multi-session. Not yet
 performed in this pass:
 
 - Full test-suite run with a per-test timeout to neutralize TEST-001.
-- The accessibility audit continues: wave 1 (tab-group + control naming) and
-  wave 2 (initial-focus quality) are done; still to do — label/field
-  associations, keyboard-trap spot checks beyond the gate, error-to-field
-  association/announcement, and the editor surface itself (Sections 11, 24).
+- The accessibility audit is a 6-wave plan: wave 1 (tab-group + control naming),
+  wave 2 (initial-focus quality), and wave 3 (label/field associations) are done.
+  Remaining: wave 4 (keyboard-trap / tab-order spot checks beyond the gate),
+  wave 5 (error-to-field association + announcement), wave 6 (the editor surface
+  itself). Plus a label/field continuation sweep of the lower-coverage dialogs.
 - The startup/shutdown initialization-order hardening review (Section 9).
 - The call-site / attribute-contract repository audit (Section 7).
 - The performance and visual-polish passes (Sections 13, 14).
