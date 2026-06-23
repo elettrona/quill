@@ -60,8 +60,11 @@ class SpeechSetupDialog:
         provider: object,
         rows: list,
         machine_summary: str,
+        whispercpp_ok: bool,
         ffmpeg_ok: bool,
         engine_ok: bool,
+        vosk_ok: bool,
+        vosk_can_install: bool,
         all_providers: list,
         total_ram: float = 0.0,
         has_gpu: bool = False,
@@ -72,8 +75,11 @@ class SpeechSetupDialog:
         self._provider = provider
         self._rows = rows
         self._machine_summary = machine_summary
+        self._whispercpp_ok = whispercpp_ok
         self._ffmpeg_ok = ffmpeg_ok
         self._engine_ok = engine_ok
+        self._vosk_ok = vosk_ok
+        self._vosk_can_install = vosk_can_install
         self._all_providers = all_providers
         self._total_ram = total_ram
         self._has_gpu = has_gpu
@@ -122,8 +128,22 @@ class SpeechSetupDialog:
         self._summary_text = wx.StaticText(self.dialog, label=self._machine_summary)
         root.Add(self._summary_text, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
-        # Dependencies panel.
-        dep_box = wx.StaticBoxSizer(wx.StaticBox(self.dialog, label="Dependencies"), wx.VERTICAL)
+        # Engine & dependency status panel.
+        dep_box = wx.StaticBoxSizer(
+            wx.StaticBox(self.dialog, label="Engine & Dependency Status"), wx.VERTICAL
+        )
+
+        wc_row = wx.BoxSizer(wx.HORIZONTAL)
+        wc_lbl = wx.StaticText(
+            self.dialog,
+            label=(
+                "Whisper engine binary: Installed"
+                if self._whispercpp_ok
+                else "Whisper engine binary: Not found — re-run the QUILL installer"
+            ),
+        )
+        wc_row.Add(wc_lbl, 1, wx.ALIGN_CENTER_VERTICAL)
+        dep_box.Add(wc_row, 0, wx.EXPAND | wx.ALL, 6)
 
         ffmpeg_row = wx.BoxSizer(wx.HORIZONTAL)
         ffmpeg_lbl = wx.StaticText(
@@ -137,21 +157,37 @@ class SpeechSetupDialog:
             ffmpeg_row.Add(self._btn_ffmpeg, 0, wx.LEFT, 8)
         dep_box.Add(ffmpeg_row, 0, wx.EXPAND | wx.ALL, 6)
 
-        eng_dep_row = wx.BoxSizer(wx.HORIZONTAL)
-        eng_dep_lbl = wx.StaticText(
+        fw_row = wx.BoxSizer(wx.HORIZONTAL)
+        fw_lbl = wx.StaticText(
             self.dialog,
             label=(
                 "Faster Whisper: Installed"
                 if self._engine_ok
-                else "Faster Whisper: Not installed (optional, GPU-accelerated engine)"
+                else "Faster Whisper: Not installed (optional, GPU-accelerated)"
             ),
         )
-        eng_dep_row.Add(eng_dep_lbl, 1, wx.ALIGN_CENTER_VERTICAL)
+        fw_row.Add(fw_lbl, 1, wx.ALIGN_CENTER_VERTICAL)
         if not self._engine_ok:
-            self._btn_engine = wx.Button(self.dialog, label="&Install Faster Whisper...")
+            self._btn_engine = wx.Button(self.dialog, label="Install Faster &Whisper...")
             self._btn_engine.Bind(wx.EVT_BUTTON, lambda _e: self._choose("engine"))
-            eng_dep_row.Add(self._btn_engine, 0, wx.LEFT, 8)
-        dep_box.Add(eng_dep_row, 0, wx.EXPAND | wx.ALL, 6)
+            fw_row.Add(self._btn_engine, 0, wx.LEFT, 8)
+        dep_box.Add(fw_row, 0, wx.EXPAND | wx.ALL, 6)
+
+        vosk_row = wx.BoxSizer(wx.HORIZONTAL)
+        vosk_lbl = wx.StaticText(
+            self.dialog,
+            label=(
+                "Vosk: Installed"
+                if self._vosk_ok
+                else "Vosk: Not installed (optional, very low RAM, old hardware)"
+            ),
+        )
+        vosk_row.Add(vosk_lbl, 1, wx.ALIGN_CENTER_VERTICAL)
+        if not self._vosk_ok and self._vosk_can_install:
+            self._btn_vosk = wx.Button(self.dialog, label="Install &Vosk...")
+            self._btn_vosk.Bind(wx.EVT_BUTTON, lambda _e: self._choose("vosk"))
+            vosk_row.Add(self._btn_vosk, 0, wx.LEFT, 8)
+        dep_box.Add(vosk_row, 0, wx.EXPAND | wx.ALL, 6)
         root.Add(dep_box, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         # Model list.

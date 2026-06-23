@@ -47,8 +47,13 @@ class SpeechCommandsMixin:
 
     def open_speech_models(self) -> None:
         from quill.core.settings import save_settings
-        from quill.core.speech.engine_install import is_faster_whisper_available
+        from quill.core.speech.engine_install import (
+            is_faster_whisper_available,
+            is_vosk_available,
+            vosk_install_supported,
+        )
         from quill.core.speech.ffmpeg import ffmpeg_available
+        from quill.core.speech.providers.whispercpp import resolve_whisper_executable
         from quill.core.speech.service import (
             describe_models,
             detect_has_gpu,
@@ -69,8 +74,11 @@ class SpeechCommandsMixin:
             provider=provider,
             rows=rows,
             machine_summary=machine_summary(total_ram, has_gpu),
+            whispercpp_ok=resolve_whisper_executable() is not None,
             ffmpeg_ok=ffmpeg_available(),
             engine_ok=is_faster_whisper_available(),
+            vosk_ok=is_vosk_available(),
+            vosk_can_install=vosk_install_supported(),
             all_providers=all_providers,
             total_ram=total_ram,
             has_gpu=has_gpu,
@@ -102,6 +110,8 @@ class SpeechCommandsMixin:
             self.download_ffmpeg()
         elif result.action == "engine":
             self.download_faster_whisper()
+        elif result.action == "vosk":
+            self.download_vosk()
         elif result.action == "hf_token":
             self.set_huggingface_token()
 
@@ -319,6 +329,90 @@ class SpeechCommandsMixin:
             wx.CallAfter(self._announce, done)
 
         threading.Thread(  # GATE-40-OK: Faster Whisper install worker.
+            target=_run, daemon=True
+        ).start()
+
+    def download_vosk(self) -> None:
+        """Install the optional Vosk engine on demand (#669 follow-up).
+
+        Vosk (Kaldi-based, ~50 MB) runs on very low RAM hardware with no GPU.
+        Installed wheel-only into a user-writable engine-pack folder and activated
+        on sys.path so the engine appears in the speech registry immediately.
+        Runs on a worker thread behind a progress dialog.
+        """
+        import threading
+
+        from quill.core.speech.engine_install import (
+            EngineInstallError,
+            install_vosk,
+            is_vosk_available,
+            vosk_install_supported,
+        )
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
+
+        wx = self._wx
+        if not vosk_install_supported():
+            self._show_message_box(
+                "This build cannot install Vosk automatically. Install it "
+                "from source with: pip install vosk",
+                "Install Vosk",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        if is_vosk_available():
+            self._show_message_box(
+                "Vosk is already installed. Choose it in Manage Speech Models under Speech Engine.",
+                "Install Vosk",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        confirm = self._show_message_box(
+            "Download and install the Vosk speech engine (about 50 MB)? "
+            "It is a lightweight offline engine designed for low-RAM hardware "
+            "with no GPU. The download happens directly from the Python Package "
+            "Index; nothing is uploaded.",
+            "Install Vosk",
+            wx.ICON_QUESTION | wx.YES_NO,
+        )
+        if confirm != wx.YES:
+            return
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            self.frame,
+            "Installing Vosk",
+            "Preparing to install Vosk...",
+            on_cancel=cancel.set,
+        )
+        progress.show()
+        self._announce("Installing Vosk.")
+
+        def _on_progress(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise EngineInstallError("Installation cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            progress.set_progress(percent, f"{message} {percent}%")
+
+        def _run() -> None:
+            try:
+                install_vosk(_on_progress)
+            except Exception as exc:  # noqa: BLE001 - surface a clean message
+                wx.CallAfter(progress.close)
+                if cancel.is_set():
+                    wx.CallAfter(self._set_status, "Vosk installation cancelled.")
+                    wx.CallAfter(self._announce, "Vosk installation cancelled.")
+                else:
+                    wx.CallAfter(self._set_status, f"Could not install Vosk: {exc}")
+                    wx.CallAfter(self._announce, f"Could not install Vosk. {exc}")
+                return
+            wx.CallAfter(progress.close)
+            done = (
+                "Vosk installed. Choose it in Manage Speech Models under "
+                "Speech Engine, then download a model for it."
+            )
+            wx.CallAfter(self._set_status, done)
+            wx.CallAfter(self._announce, done)
+
+        threading.Thread(  # GATE-40-OK: Vosk install worker.
             target=_run, daemon=True
         ).start()
 

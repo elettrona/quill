@@ -45,6 +45,13 @@ _FASTER_WHISPER_REQUIREMENTS: tuple[str, ...] = (
     "huggingface_hub>=0.20",
 )
 
+#: The Vosk pack's folder name and import name.
+_VOSK_PACK = "vosk"
+_VOSK_MODULE = "vosk"
+
+# Vosk itself is the only requirement; it bundles its own native libs.
+_VOSK_REQUIREMENTS: tuple[str, ...] = ("vosk>=0.3.45",)
+
 _INSTALL_TIMEOUT_S = 1800.0
 
 
@@ -62,8 +69,13 @@ def faster_whisper_pack_dir() -> Path:
     return engine_packs_dir() / _FASTER_WHISPER_PACK
 
 
+def vosk_pack_dir() -> Path:
+    """The folder a downloaded Vosk engine is installed into."""
+    return engine_packs_dir() / _VOSK_PACK
+
+
 def _known_pack_dirs() -> tuple[Path, ...]:
-    return (faster_whisper_pack_dir(),)
+    return (faster_whisper_pack_dir(), vosk_pack_dir())
 
 
 def activate_engine_packs() -> None:
@@ -100,6 +112,78 @@ def faster_whisper_install_supported() -> bool:
 def is_faster_whisper_available() -> bool:
     """True when the ``faster_whisper`` module is importable (after activation)."""
     return importlib.util.find_spec(_FASTER_WHISPER_MODULE) is not None
+
+
+def vosk_install_supported() -> bool:
+    """True when QUILL can install Vosk on demand (pip must be importable)."""
+    return importlib.util.find_spec("pip") is not None
+
+
+def is_vosk_available() -> bool:
+    """True when the ``vosk`` module is importable (after activation)."""
+    return importlib.util.find_spec(_VOSK_MODULE) is not None
+
+
+def install_vosk(
+    progress: ProgressCallback | None = None,
+    *,
+    dest_dir: Path | None = None,
+    requirements: Sequence[str] | None = None,
+    python_executable: str | None = None,
+    timeout_seconds: float = _INSTALL_TIMEOUT_S,
+    runner: Callable[..., object] | None = None,
+) -> Path:
+    """Download and install the Vosk engine, returning its pack folder.
+
+    Mirrors :func:`install_faster_whisper` exactly: wheel-only into a
+    user-writable engine-pack folder, activated on ``sys.path`` immediately.
+    Raises :class:`EngineInstallError` on Safe Mode, unavailable pip, a
+    non-zero pip exit, or if the engine still cannot be imported afterward.
+    """
+    if os.environ.get("QUILL_SAFE_MODE") == "1":
+        raise EngineInstallError("Downloading speech engines is disabled in Safe Mode.")
+    if not vosk_install_supported():
+        raise EngineInstallError(
+            "This build cannot install Vosk automatically (pip is unavailable). "
+            "Install it from source with: pip install vosk"
+        )
+
+    dest = Path(dest_dir) if dest_dir is not None else vosk_pack_dir()
+    dest.mkdir(parents=True, exist_ok=True)
+    reqs = tuple(requirements) if requirements is not None else _VOSK_REQUIREMENTS
+    python_exe = python_executable or sys.executable
+    if not python_exe:
+        raise EngineInstallError("Could not locate the Python runtime to install into.")
+
+    if progress is not None:
+        progress(0.05, "Preparing to install Vosk...")
+    command = _pip_command(dest, reqs, python_exe)
+    run = runner if runner is not None else _default_runner
+    if progress is not None:
+        progress(0.15, "Downloading Vosk (this can take a few minutes)...")
+
+    try:
+        result = run(command, timeout_seconds=timeout_seconds)
+    except Exception as exc:  # noqa: BLE001 - surface a clean message
+        raise EngineInstallError(f"Could not run the installer: {exc}") from exc
+
+    returncode = int(getattr(result, "returncode", 1))
+    if returncode != 0:
+        detail = _tail(getattr(result, "stderr", "") or getattr(result, "stdout", ""))
+        raise EngineInstallError(f"Vosk installation failed (pip exit {returncode}). {detail}")
+
+    if progress is not None:
+        progress(0.9, "Finishing up...")
+    if str(dest) not in sys.path:
+        sys.path.insert(0, str(dest))
+    importlib.invalidate_caches()
+    if not is_vosk_available():
+        raise EngineInstallError(
+            "Vosk was installed but could not be imported. Try restarting QUILL."
+        )
+    if progress is not None:
+        progress(1.0, "Done.")
+    return dest
 
 
 def _pip_command(dest: Path, requirements: Sequence[str], python_executable: str) -> list[str]:
