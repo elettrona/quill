@@ -108,7 +108,6 @@
   "quill/ui/main_frame.py::MainFrame.change_display_language::wx.SingleChoiceDialog": "native",
   "quill/ui/main_frame.py::MainFrame.choose_announcement_backend::wx.SingleChoiceDialog": "native",
   "quill/ui/main_frame.py::MainFrame.choose_document_encoding::wx.SingleChoiceDialog": "native",
-  "quill/ui/main_frame.py::MainFrame.choose_read_aloud_configuration::wx.Dialog": "hardened_custom",
   "quill/ui/main_frame.py::MainFrame.compare_start_with_file::wx.FileDialog": "native",
   "quill/ui/main_frame.py::MainFrame.compare_with_file::wx.FileDialog": "native",
   "quill/ui/main_frame.py::MainFrame.enable_braille_mode::wx.MessageDialog": "native",
@@ -300,5 +299,6 @@
   "quill/ui/vision_prompt_manager_dialog.py::VisionPromptManagerDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/vision_prompt_manager_dialog.py::VisionPromptManagerDialog._on_delete::wx.MessageDialog": "native",
   "quill/ui/vision_prompt_manager_dialog.py::VisionPromptManagerDialog._show_prompt_editor::wx.Dialog": "hardened_custom",
+  "quill/ui/voice_browser_dialog.py::VoiceBrowserDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/web_form.py::_WebFormDialog.__init__::wx.Dialog": "hardened_custom"
 }

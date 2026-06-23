@@ -1360,6 +1360,7 @@ class MenuBuilderMixin:
         self._id_speech_ffmpeg = wx.NewIdRef()
         self._id_speech_engine_dl = wx.NewIdRef()
         self._id_speech_hf_token = wx.NewIdRef()
+        self._id_speech_export_audio = wx.NewIdRef()
         self._id_ai_connection = wx.NewIdRef()
         self._id_ai_forget_key = wx.NewIdRef()
         self._id_ai_rewrite_selection = wx.NewIdRef()
@@ -1636,6 +1637,11 @@ class MenuBuilderMixin:
         speech_menu.Append(
             self._id_speech_hf_token,
             self._menu_label(_("&Hugging Face Token..."), "tools.speech_hf_token"),
+        )
+        speech_menu.AppendSeparator()
+        speech_menu.Append(
+            self._id_speech_export_audio,
+            self._menu_label(_("&Export to Speech Audio..."), "tools.speech_export_audio"),
         )
         tools_menu.AppendSubMenu(speech_menu, _("&Speech"))
 
@@ -2588,6 +2594,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.set_huggingface_token(),
             id=self._id_speech_hf_token,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.generate_speech_audio(),
+            id=self._id_speech_export_audio,
         )
         self.frame.Bind(
             wx.EVT_MENU,

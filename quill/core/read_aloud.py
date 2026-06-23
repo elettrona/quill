@@ -29,6 +29,9 @@ except ImportError:  # pragma: no cover - non-Windows
 class VoiceOption:
     id: str
     name: str
+    accent: str = ""
+    description: str = ""
+    installed: bool = True
 
 
 _MAX_SYNTHESIS_SECONDS: float = 120.0
@@ -143,13 +146,34 @@ def default_piper_model_dir() -> Path:
 
 
 def list_piper_catalog_voices(model_dir: Path | None = None) -> list[VoiceOption]:
-    """Return all catalog Piper voices; name includes download status."""
+    """Return all catalog Piper voices with download status and accent metadata."""
     d = model_dir if model_dir is not None else default_piper_model_dir()
     result = []
     for voice_id, display_name in PIPER_ENGLISH_VOICES:
         downloaded = (d / f"{voice_id}.onnx").exists()
-        suffix = "" if downloaded else " [download first]"
-        result.append(VoiceOption(id=voice_id, name=f"{display_name}{suffix}"))
+        if voice_id.startswith("en_GB"):
+            accent = "British English"
+        elif voice_id.startswith("en_US"):
+            accent = "American English"
+        else:
+            accent = "English"
+        # Extract quality from name, e.g. "medium" from "Alan (British, medium)"
+        desc = ""
+        if "(" in display_name and ")" in display_name:
+            inner = display_name[display_name.index("(") + 1 : display_name.rindex(")")]
+            parts = [p.strip() for p in inner.split(",")]
+            desc = parts[-1] if len(parts) > 1 else ""
+        short_name = display_name.split(" (")[0]
+        suffix = "" if downloaded else " [not downloaded]"
+        result.append(
+            VoiceOption(
+                id=voice_id,
+                name=f"{short_name}{suffix}",
+                accent=accent,
+                description=desc,
+                installed=downloaded,
+            )
+        )
     return result
 
 
@@ -290,8 +314,28 @@ def discover_espeak_executable(configured_path: str = "") -> Path | None:
     return None
 
 
+_KOKORO_ACCENT: dict[str, str] = {
+    "af": "American English",
+    "am": "American English",
+    "bf": "British English",
+    "bm": "British English",
+}
+
+
 def list_kokoro_voices() -> list[VoiceOption]:
-    return [VoiceOption(id=vid, name=name) for vid, name in KOKORO_VOICES]
+    result = []
+    for vid, display_name in KOKORO_VOICES:
+        accent = _KOKORO_ACCENT.get(vid[:2], "English")
+        # Extract style note: "warm" from "Heart (American Female, warm)"
+        desc = ""
+        if "(" in display_name and ")" in display_name:
+            inner = display_name[display_name.index("(") + 1 : display_name.rindex(")")]
+            parts = [p.strip() for p in inner.split(",")]
+            desc = parts[-1] if len(parts) > 1 else ""
+        result.append(
+            VoiceOption(id=vid, name=display_name.split(" (")[0], accent=accent, description=desc)
+        )
+    return result
 
 
 def list_piper_voices(model_search_path: str = "") -> list[VoiceOption]:
@@ -307,8 +351,25 @@ def list_piper_voices(model_search_path: str = "") -> list[VoiceOption]:
     return voices
 
 
+_ESPEAK_ACCENT: dict[str, str] = {
+    "en": "English",
+    "en-us": "American English",
+    "en-gb": "British English",
+    "en-au": "Australian English",
+    "en-ca": "Canadian English",
+    "en-in": "Indian English",
+    "en-sc": "Scottish English",
+    "en-wls": "Welsh English",
+    "en-rp": "British English",
+    "en-gb-x-rp": "British English",
+}
+
+
 def list_espeak_english_voices() -> list[VoiceOption]:
-    return [VoiceOption(id=vid, name=name) for vid, name in ESPEAK_ENGLISH_VOICES]
+    return [
+        VoiceOption(id=vid, name=name, accent=_ESPEAK_ACCENT.get(vid, "English"))
+        for vid, name in ESPEAK_ENGLISH_VOICES
+    ]
 
 
 def default_kokoro_model_dir() -> Path:
@@ -505,15 +566,15 @@ def synthesize_to_file_with_dectalk(
 
 def list_dectalk_voices() -> list[VoiceOption]:
     return [
-        VoiceOption(id="paul", name="Paul"),
-        VoiceOption(id="harry", name="Harry"),
-        VoiceOption(id="dennis", name="Dennis"),
-        VoiceOption(id="frank", name="Frank"),
-        VoiceOption(id="betty", name="Betty"),
-        VoiceOption(id="ursula", name="Ursula"),
-        VoiceOption(id="rita", name="Rita"),
-        VoiceOption(id="wendy", name="Wendy"),
-        VoiceOption(id="kit", name="Kit"),
+        VoiceOption(id="paul", name="Paul", accent="American English", description="Male"),
+        VoiceOption(id="harry", name="Harry", accent="American English", description="Male"),
+        VoiceOption(id="dennis", name="Dennis", accent="American English", description="Male"),
+        VoiceOption(id="frank", name="Frank", accent="American English", description="Male"),
+        VoiceOption(id="betty", name="Betty", accent="American English", description="Female"),
+        VoiceOption(id="ursula", name="Ursula", accent="American English", description="Female"),
+        VoiceOption(id="rita", name="Rita", accent="American English", description="Female"),
+        VoiceOption(id="wendy", name="Wendy", accent="American English", description="Female"),
+        VoiceOption(id="kit", name="Kit", accent="American English", description="Child"),
     ]
 
 

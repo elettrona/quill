@@ -298,11 +298,8 @@ from quill.core.read_aloud import (
     discover_dectalk_executable,
     discover_espeak_executable,
     discover_piper_executable,
-    list_dectalk_voices,
     list_espeak_english_voices,
     list_kokoro_voices,
-    list_piper_catalog_voices,
-    list_voices,
     synthesize_to_file_with_dectalk,
     synthesize_to_file_with_pyttsx3,
     synthesize_with_espeak,
@@ -16258,383 +16255,217 @@ class MainFrame(
             lambda _r: self._set_status("Preview finished"),
         )
 
-    def choose_read_aloud_configuration(self) -> None:  # noqa: PLR0912,PLR0915
-        """Unified Read Aloud dialog: engine selector, voice list, and per-engine settings."""
-        import re as _re
-        import urllib.request as _ureq
-        from pathlib import Path as _Path
+    def choose_read_aloud_configuration(self) -> None:
+        """Open the Voice Browser dialog and apply the user's engine/voice/settings choice."""
+        from quill.core.read_aloud import (
+            discover_dectalk_executable,
+            discover_espeak_executable,
+        )
+        from quill.ui.voice_browser_dialog import VoiceBrowserDialog
 
         wx = self._wx
-        _TITLE = "Read Aloud"
+        _TITLE = "Manage Voices & Reading Aloud"
 
-        dectalk_available = (
+        dectalk_ok = (
             discover_dectalk_executable(self.settings.read_aloud_dectalk_executable) is not None
         )
-        espeak_available = (
+        espeak_ok = (
             discover_espeak_executable(self.settings.read_aloud_espeak_executable) is not None
         )
 
         engine_options: list[tuple[str, str]] = [("Pyttsx3 (System TTS)", "pyttsx3")]
-        if dectalk_available:
+        if dectalk_ok:
             engine_options.append(("DECtalk", "dectalk"))
         engine_options.append(("Piper (neural, offline)", "piper"))
         engine_options.append(("Kokoro (neural, offline)", "kokoro"))
-        if espeak_available:
+        if espeak_ok:
             engine_options.append(("eSpeak-NG (English variants)", "espeak"))
 
-        engine_labels = [lbl for lbl, _ in engine_options]
-        engine_values = [val for _, val in engine_options]
-
         current_engine = self.settings.read_aloud_engine.strip().lower() or "pyttsx3"
-        if current_engine not in engine_values:
+        if current_engine not in {val for _, val in engine_options}:
             current_engine = "pyttsx3"
 
-        _piper_model_dir = default_piper_model_dir()
-
-        def _voices_for_engine(eng: str) -> list[ReadAloudVoiceOption]:
-            if eng == "dectalk":
-                return list_dectalk_voices()
-            if eng == "piper":
-                return list_piper_catalog_voices(_piper_model_dir)
-            if eng == "kokoro":
-                return list_kokoro_voices()
-            if eng == "espeak":
-                return list_espeak_english_voices()
-            return self._english_only_voices("pyttsx3", list_voices())
-
-        def _current_voice_id(eng: str) -> str:
-            if eng == "dectalk":
-                return self.settings.read_aloud_dectalk_voice
-            if eng == "piper":
-                return (
-                    _Path(self.settings.read_aloud_piper_model).stem
-                    if self.settings.read_aloud_piper_model
-                    else ""
-                )
-            if eng == "kokoro":
-                return self.settings.read_aloud_kokoro_voice
-            if eng == "espeak":
-                return self.settings.read_aloud_espeak_voice
-            return self.settings.read_aloud_voice
-
-        dialog = wx.Dialog(self.frame, title=_TITLE, size=(740, 560))
-        outer = wx.BoxSizer(wx.VERTICAL)
-
-        engine_rb = wx.RadioBox(
-            dialog, label="Engine", choices=engine_labels, style=wx.RA_SPECIFY_ROWS
+        dlg = VoiceBrowserDialog(
+            self.frame,
+            engine_options=engine_options,
+            current_engine=current_engine,
+            piper_model_dir=default_piper_model_dir(),
+            settings=self.settings,
+            preview_fn=self._preview_voice,
         )
-        engine_rb.SetName("Engine")
-        engine_rb.SetSelection(
-            engine_values.index(current_engine) if current_engine in engine_values else 0
-        )
-        outer.Add(engine_rb, 0, wx.EXPAND | wx.ALL, 8)
-
-        outer.Add(wx.StaticText(dialog, label="Voice:"), 0, wx.LEFT | wx.RIGHT, 8)
-        voices: list[ReadAloudVoiceOption] = _voices_for_engine(current_engine)
-        voice_lb = wx.ListBox(dialog, choices=[v.name for v in voices], style=wx.LB_SINGLE)
-        voice_lb.SetName("Voice")
-        if voices:
-            cur_vid = _current_voice_id(current_engine)
-            voice_lb.SetSelection(next((i for i, v in enumerate(voices) if v.id == cur_vid), 0))
-        outer.Add(voice_lb, 1, wx.EXPAND | wx.ALL, 8)
-
-        settings_box = wx.StaticBoxSizer(wx.VERTICAL, dialog, "Settings")
-        settings_sb = settings_box.GetStaticBox()
-
-        rate_row = wx.BoxSizer(wx.HORIZONTAL)
-        rate_lbl = wx.StaticText(settings_sb, label="Rate:")
-        rate_spin = wx.SpinCtrl(settings_sb, min=80, max=450, initial=self.settings.read_aloud_rate)
-        rate_spin.SetName("Rate (words per minute)")
-        rate_row.Add(rate_lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-        rate_row.Add(rate_spin, 1, wx.EXPAND)
-        settings_box.Add(rate_row, 0, wx.EXPAND | wx.ALL, 4)
-
-        volume_row = wx.BoxSizer(wx.HORIZONTAL)
-        vol_lbl = wx.StaticText(settings_sb, label="Volume (0-100):")
-        vol_spin = wx.SpinCtrl(settings_sb, min=0, max=100, initial=self.settings.read_aloud_volume)
-        vol_spin.SetName("Volume")
-        volume_row.Add(vol_lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-        volume_row.Add(vol_spin, 1, wx.EXPAND)
-        settings_box.Add(volume_row, 0, wx.EXPAND | wx.ALL, 4)
-
-        pitch_row = wx.BoxSizer(wx.HORIZONTAL)
-        pitch_lbl = wx.StaticText(settings_sb, label="Pitch (0-100):")
-        pitch_spin = wx.SpinCtrl(
-            settings_sb, min=0, max=100, initial=self.settings.read_aloud_pitch
-        )
-        pitch_spin.SetName("Pitch")
-        pitch_row.Add(pitch_lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-        pitch_row.Add(pitch_spin, 1, wx.EXPAND)
-        settings_box.Add(pitch_row, 0, wx.EXPAND | wx.ALL, 4)
-
-        kokoro_row = wx.BoxSizer(wx.HORIZONTAL)
-        kok_lbl = wx.StaticText(settings_sb, label="Speed (0.5-2.0):")
-        kok_spin = wx.SpinCtrlDouble(
-            settings_sb, min=0.5, max=2.0, initial=self.settings.read_aloud_kokoro_speed, inc=0.1
-        )
-        kok_spin.SetName("Speed multiplier")
-        for _kok_child in kok_spin.GetChildren():
-            if isinstance(_kok_child, wx.TextCtrl):
-                _kok_child.SetName("Speed multiplier")
-                break
-        kokoro_row.Add(kok_lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-        kokoro_row.Add(kok_spin, 1, wx.EXPAND)
-        settings_box.Add(kokoro_row, 0, wx.EXPAND | wx.ALL, 4)
-
-        outer.Add(settings_box, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-
-        btn_row = wx.BoxSizer(wx.HORIZONTAL)
-        preview_btn = wx.Button(dialog, label="&Preview")
-        preview_btn.SetName("Preview selected voice")
-        download_btn = wx.Button(dialog, label="&Download voice...")
-        download_btn.SetName("Download selected voice model")
-        ok_btn = wx.Button(dialog, id=wx.ID_OK)
-        cancel_btn = wx.Button(dialog, id=wx.ID_CANCEL)
-        btn_row.Add(preview_btn, 0, wx.RIGHT, 8)
-        btn_row.Add(download_btn, 0, wx.RIGHT, 8)
-        btn_row.AddStretchSpacer(1)
-        btn_row.Add(ok_btn, 0, wx.RIGHT, 8)
-        btn_row.Add(cancel_btn, 0)
-        outer.Add(btn_row, 0, wx.EXPAND | wx.ALL, 8)
-        dialog.SetSizer(outer)
-
-        def _update_for_engine(eng: str) -> None:
-            nonlocal voices
-            voices = _voices_for_engine(eng)
-            voice_lb.Set([v.name for v in voices])
-            if voices:
-                vid = _current_voice_id(eng)
-                voice_lb.SetSelection(next((i for i, vv in enumerate(voices) if vv.id == vid), 0))
-            has_rate = eng in {"pyttsx3", "dectalk", "espeak"}
-            has_vol_pitch = eng == "pyttsx3"
-            has_kokoro = eng == "kokoro"
-            has_settings = has_rate or has_vol_pitch or has_kokoro
-            if eng == "pyttsx3":
-                rate_spin.SetRange(80, 450)
-                rate_spin.SetValue(self.settings.read_aloud_rate)
-            elif eng == "dectalk":
-                rate_spin.SetRange(75, 650)
-                rate_spin.SetValue(self.settings.read_aloud_dectalk_rate)
-            elif eng == "espeak":
-                rate_spin.SetRange(80, 450)
-                rate_spin.SetValue(self.settings.read_aloud_espeak_rate)
-            settings_box.Show(rate_row, has_rate, recursive=True)
-            settings_box.Show(volume_row, has_vol_pitch, recursive=True)
-            settings_box.Show(pitch_row, has_vol_pitch, recursive=True)
-            settings_box.Show(kokoro_row, has_kokoro, recursive=True)
-            settings_sb.Show(has_settings)
-            settings_box.ShowItems(has_settings)
-            show_dl = eng in {"piper", "kokoro"}
-            download_btn.Show(show_dl)
-            if eng == "piper":
-                download_btn.SetLabel("&Download Piper voice...")
-            elif eng == "kokoro":
-                download_btn.SetLabel("&Download Kokoro (~114 MB)...")
-            dialog.Layout()
-
-        _update_for_engine(current_engine)
-
-        def _on_engine_change(_evt: object) -> None:
-            sel = engine_rb.GetSelection()
-            if 0 <= sel < len(engine_values):
-                _update_for_engine(engine_values[sel])
-
-        engine_rb.Bind(wx.EVT_RADIOBOX, _on_engine_change)
-
-        def _on_preview(_evt: object) -> None:
-            eng = engine_values[engine_rb.GetSelection()]
-            idx = voice_lb.GetSelection()
-            if 0 <= idx < len(voices):
-                self._preview_voice(eng, voices[idx].id)
-
-        preview_btn.Bind(wx.EVT_BUTTON, _on_preview)
-
-        def _on_download(_evt: object) -> None:
-            eng = engine_values[engine_rb.GetSelection()]
-            if eng == "piper":
-                idx = voice_lb.GetSelection()
-                if idx < 0 or idx >= len(voices):
-                    return
-                voice_id = voices[idx].id
-                m = _re.match(r"^(en_[A-Z]+)-([^-]+)-(\w+)$", voice_id)
-                if m is None:
-                    self._show_message_box(
-                        f"Cannot determine download URL for: {voice_id}",
-                        _TITLE,
-                        wx.ICON_WARNING | wx.OK,
-                    )
-                    return
-                lang_code, voice_name, quality = m.group(1), m.group(2), m.group(3)
-                lang_family = lang_code.split("_")[0]
-                base = (
-                    "https://huggingface.co/rhasspy/piper-voices/resolve/main"
-                    f"/{lang_family}/{lang_code}/{voice_name}/{quality}"
-                )
-                onnx_url = f"{base}/{voice_id}.onnx"
-                json_url = f"{base}/{voice_id}.onnx.json"
-                onnx_path = _piper_model_dir / f"{voice_id}.onnx"
-                json_path = _piper_model_dir / f"{voice_id}.onnx.json"
-                if onnx_path.exists() and json_path.exists():
-                    self._set_status(f"Already downloaded: {voice_id}")
-                    return
-                _piper_model_dir.mkdir(parents=True, exist_ok=True)
-
-                def _dl_piper(
-                    _progress: Callable[[str, int, int], None],
-                    _ou: str = onnx_url,
-                    _ju: str = json_url,
-                    _op: _Path = onnx_path,
-                    _jp: _Path = json_path,
-                ) -> object:
-                    for url, path in [(_ou, _op), (_ju, _jp)]:
-                        _progress(f"Downloading {path.name}...", 0, 0)
-                        with _ureq.urlopen(url, timeout=120) as resp:  # noqa: S310
-                            total = int(resp.headers.get("Content-Length", 0))
-                            downloaded_bytes = 0
-                            chunks = []
-                            while True:
-                                chunk = resp.read(65536)
-                                if not chunk:
-                                    break
-                                chunks.append(chunk)
-                                downloaded_bytes += len(chunk)
-                                if total:
-                                    _progress(
-                                        f"Downloading {path.name}...",
-                                        downloaded_bytes,
-                                        total,
-                                    )
-                        path.write_bytes(b"".join(chunks))
-                    return None
-
-                def _on_piper_done(_result: object, _vid: str = voice_id) -> None:
-                    self._set_status(f"Piper voice {_vid} downloaded.")
-                    refreshed = list_piper_catalog_voices(_piper_model_dir)
-                    voice_lb.Set([v.name for v in refreshed])
-                    voices[:] = refreshed
-                    new_idx = next((i for i, vv in enumerate(refreshed) if vv.id == _vid), 0)
-                    if refreshed:
-                        voice_lb.SetSelection(new_idx)
-
-                self._run_background_task(
-                    f"Downloading Piper voice {voice_id}", _dl_piper, _on_piper_done
-                )
-
-            elif eng == "kokoro":
-                from quill.core.read_aloud import (
-                    KOKORO_ONNX_MODEL_FILENAME,
-                    KOKORO_ONNX_MODEL_URL,
-                    KOKORO_ONNX_VOICES_FILENAME,
-                    KOKORO_ONNX_VOICES_URL,
-                    default_kokoro_model_dir,
-                    kokoro_onnx_ready,
-                )
-
-                dest_dir = default_kokoro_model_dir()
-                dest_dir.mkdir(parents=True, exist_ok=True)
-                model_path = dest_dir / KOKORO_ONNX_MODEL_FILENAME
-                voices_path = dest_dir / KOKORO_ONNX_VOICES_FILENAME
-
-                def _dl_kokoro(_progress: Callable[[str, int, int], None]) -> object:
-                    for url, path in [
-                        (KOKORO_ONNX_VOICES_URL, voices_path),
-                        (KOKORO_ONNX_MODEL_URL, model_path),
-                    ]:
-                        if path.exists():
-                            _progress(f"{path.name} already present; skipping.", 0, 0)
-                            continue
-                        _progress(f"Downloading {path.name}...", 0, 0)
-                        with _ureq.urlopen(url, timeout=300) as resp:  # noqa: S310
-                            total = int(resp.headers.get("Content-Length", 0))
-                            downloaded_bytes = 0
-                            chunks = []
-                            while True:
-                                chunk = resp.read(65536)
-                                if not chunk:
-                                    break
-                                chunks.append(chunk)
-                                downloaded_bytes += len(chunk)
-                                if total:
-                                    _progress(
-                                        f"Downloading {path.name}...", downloaded_bytes, total
-                                    )
-                        path.write_bytes(b"".join(chunks))
-                    return None
-
-                def _on_kokoro_done(_result: object) -> None:
-                    if kokoro_onnx_ready():
-                        try:
-                            import kokoro_onnx  # noqa: F401
-
-                            self._set_status("Kokoro models ready. Select a voice and click OK.")
-                        except ImportError:
-                            self._set_status(
-                                "Models downloaded. Run 'pip install kokoro-onnx soundfile'"
-                                " to enable synthesis, then restart Quill."
-                            )
-                    else:
-                        self._set_status("Kokoro download failed; check your internet connection.")
-
-                self._run_background_task("Downloading Kokoro models", _dl_kokoro, _on_kokoro_done)
-
-        download_btn.Bind(wx.EVT_BUTTON, _on_download)
-
-        sel_engine: list[str] = [current_engine]
-        sel_voice_idx: list[int] = [-1]
-
-        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
-        try:
-            result = self._show_modal_dialog(dialog, _TITLE)
-            if result == wx.ID_OK:
-                sel_engine[0] = engine_values[engine_rb.GetSelection()]
-                sel_voice_idx[0] = voice_lb.GetSelection()
-        finally:
-            dialog.Destroy()
-
-        if result != wx.ID_OK:
+        result = dlg.show(self._show_modal_dialog)
+        if result is None:
             self._set_status("Read aloud configuration cancelled")
             return
 
-        eng = sel_engine[0]
-        idx = sel_voice_idx[0]
+        if result.action == "download":
+            if result.engine == "piper":
+                self._download_piper_voice(result.voice_id)
+            elif result.engine == "kokoro":
+                self._download_kokoro_models()
+            return
+
+        # action == 'select' or 'export': apply settings.
+        eng = result.engine
+        piper_dir = default_piper_model_dir()
         self.settings.read_aloud_engine = eng
 
-        if 0 <= idx < len(voices):
+        if result.voice_id:
             if eng == "dectalk":
-                self.settings.read_aloud_dectalk_voice = voices[idx].id
+                self.settings.read_aloud_dectalk_voice = result.voice_id
             elif eng == "piper":
-                onnx_path = _piper_model_dir / f"{voices[idx].id}.onnx"
+                onnx_path = piper_dir / f"{result.voice_id}.onnx"
                 if onnx_path.exists():
                     self.settings.read_aloud_piper_model = str(onnx_path)
                 else:
                     self._show_message_box(
-                        f"'{voices[idx].name.split(' [')[0]}' is not downloaded yet.\n"
-                        "Use the Download button to fetch it first.",
+                        f"'{result.voice_id}' is not downloaded yet.\n"
+                        "Use the Download Voice button to fetch it first.",
                         _TITLE,
                         wx.ICON_INFORMATION | wx.OK,
                     )
                     self.settings.read_aloud_engine = current_engine
                     return
             elif eng == "kokoro":
-                self.settings.read_aloud_kokoro_voice = voices[idx].id
+                self.settings.read_aloud_kokoro_voice = result.voice_id
             elif eng == "espeak":
-                self.settings.read_aloud_espeak_voice = voices[idx].id
+                self.settings.read_aloud_espeak_voice = result.voice_id
             else:
-                self.settings.read_aloud_voice = voices[idx].id
+                self.settings.read_aloud_voice = result.voice_id
 
         if eng == "pyttsx3":
-            self.settings.read_aloud_rate = rate_spin.GetValue()
-            self.settings.read_aloud_volume = vol_spin.GetValue()
-            self.settings.read_aloud_pitch = pitch_spin.GetValue()
+            self.settings.read_aloud_rate = result.rate
+            self.settings.read_aloud_volume = result.volume
+            self.settings.read_aloud_pitch = result.pitch
         elif eng == "dectalk":
-            self.settings.read_aloud_dectalk_rate = rate_spin.GetValue()
+            self.settings.read_aloud_dectalk_rate = result.dectalk_rate
         elif eng == "espeak":
-            self.settings.read_aloud_espeak_rate = rate_spin.GetValue()
+            self.settings.read_aloud_espeak_rate = result.espeak_rate
         elif eng == "kokoro":
-            self.settings.read_aloud_kokoro_speed = kok_spin.GetValue()
+            self.settings.read_aloud_kokoro_speed = result.kokoro_speed
 
         save_settings(self.settings)
-        self._set_status(f"Read aloud configured: {engine_labels[engine_values.index(eng)]}")
+        engine_label = dict(engine_options).get(eng, eng)
+        self._set_status(f"Read aloud configured: {engine_label}")
+
+        if result.action == "export":
+            self.generate_speech_audio()
+
+    def _download_piper_voice(self, voice_id: str) -> None:
+        """Download a Piper ONNX voice model in the background."""
+        import re as _re
+        import urllib.request as _ureq
+
+        piper_dir = default_piper_model_dir()
+        m = _re.match(r"^(en_[A-Z]+)-([^-]+)-(\w+)$", voice_id)
+        if m is None:
+            self._show_message_box(
+                f"Cannot determine download URL for: {voice_id}",
+                "Download Piper Voice",
+                self._wx.ICON_WARNING | self._wx.OK,
+            )
+            return
+        lang_code, voice_name, quality = m.group(1), m.group(2), m.group(3)
+        lang_family = lang_code.split("_")[0]
+        base = (
+            "https://huggingface.co/rhasspy/piper-voices/resolve/main"
+            f"/{lang_family}/{lang_code}/{voice_name}/{quality}"
+        )
+        onnx_url = f"{base}/{voice_id}.onnx"
+        json_url = f"{base}/{voice_id}.onnx.json"
+        onnx_path = piper_dir / f"{voice_id}.onnx"
+        json_path = piper_dir / f"{voice_id}.onnx.json"
+        if onnx_path.exists() and json_path.exists():
+            self._set_status(f"Piper voice '{voice_id}' is already downloaded.")
+            return
+        piper_dir.mkdir(parents=True, exist_ok=True)
+
+        def _work(
+            _progress: Callable[[str, int, int], None],
+            _ou: str = onnx_url,
+            _ju: str = json_url,
+            _op: Path = onnx_path,
+            _jp: Path = json_path,
+        ) -> object:
+            for url, path in [(_ou, _op), (_ju, _jp)]:
+                _progress(f"Downloading {path.name}...", 0, 0)
+                with _ureq.urlopen(url, timeout=120) as resp:  # noqa: S310
+                    total = int(resp.headers.get("Content-Length", 0))
+                    got = 0
+                    chunks: list[bytes] = []
+                    while True:
+                        chunk = resp.read(65536)
+                        if not chunk:
+                            break
+                        chunks.append(chunk)
+                        got += len(chunk)
+                        if total:
+                            _progress(f"Downloading {path.name}...", got, total)
+                path.write_bytes(b"".join(chunks))
+            return None
+
+        def _done(_result: object, _vid: str = voice_id) -> None:
+            self._set_status(f"Piper voice '{_vid}' downloaded. Open Manage Voices to select it.")
+
+        self._run_background_task(f"Downloading Piper voice {voice_id}", _work, _done)
+
+    def _download_kokoro_models(self) -> None:
+        """Download the Kokoro ONNX model and voices file in the background."""
+        import urllib.request as _ureq
+
+        from quill.core.read_aloud import (
+            KOKORO_ONNX_MODEL_FILENAME,
+            KOKORO_ONNX_MODEL_URL,
+            KOKORO_ONNX_VOICES_FILENAME,
+            KOKORO_ONNX_VOICES_URL,
+            default_kokoro_model_dir,
+            kokoro_onnx_ready,
+        )
+
+        dest_dir = default_kokoro_model_dir()
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        model_path = dest_dir / KOKORO_ONNX_MODEL_FILENAME
+        voices_path = dest_dir / KOKORO_ONNX_VOICES_FILENAME
+
+        def _work(_progress: Callable[[str, int, int], None]) -> object:
+            for url, path in [
+                (KOKORO_ONNX_VOICES_URL, voices_path),
+                (KOKORO_ONNX_MODEL_URL, model_path),
+            ]:
+                if path.exists():
+                    _progress(f"{path.name} already present; skipping.", 0, 0)
+                    continue
+                _progress(f"Downloading {path.name}...", 0, 0)
+                with _ureq.urlopen(url, timeout=300) as resp:  # noqa: S310
+                    total = int(resp.headers.get("Content-Length", 0))
+                    got = 0
+                    chunks: list[bytes] = []
+                    while True:
+                        chunk = resp.read(65536)
+                        if not chunk:
+                            break
+                        chunks.append(chunk)
+                        got += len(chunk)
+                        if total:
+                            _progress(f"Downloading {path.name}...", got, total)
+                path.write_bytes(b"".join(chunks))
+            return None
+
+        def _done(_result: object) -> None:
+            if kokoro_onnx_ready():
+                try:
+                    import kokoro_onnx  # noqa: F401
+
+                    self._set_status("Kokoro models ready. Open Manage Voices to select a voice.")
+                except ImportError:
+                    self._set_status(
+                        "Models downloaded. Run 'pip install kokoro-onnx soundfile'"
+                        " to enable synthesis, then restart QUILL."
+                    )
+            else:
+                self._set_status("Kokoro download failed; check your internet connection.")
+
+        self._run_background_task("Downloading Kokoro models", _work, _done)
 
     def choose_read_aloud_voice(self) -> None:
         self.choose_read_aloud_configuration()
