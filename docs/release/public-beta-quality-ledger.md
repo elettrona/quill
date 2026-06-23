@@ -9,6 +9,11 @@ plus the baseline gate state; it is not a claim that the entire repository has
 been exhaustively re-audited. Sections marked "Deferred / next wave" are honest
 about what has not yet been done.
 
+Every accessibility/focus/keyboard fix has a matching manual validation case in
+the **screen-reader test plan**: `docs/release/screen-reader-test-plan.md` (NVDA /
+JAWS / keyboard steps + expected announcements). Run it on a packaged build before
+sign-off.
+
 ## Reusable wave prompt (run this for each audit wave)
 
 This is the distilled, repo-tuned instruction set for running one focused wave of
@@ -435,6 +440,19 @@ though clean, so the check is on the record and repeatable.
   (`os.open`/`os.fdopen`, closed on every error path and released at process exit).
 - Result: **0 real leaks**. Status: Clean (no defect).
 
+### EXC-001 — silently-swallowed exceptions (`except ...: pass`) in core/io
+- Audited every `except` handler whose body is only `pass`/`...` in the wx-free
+  `quill/core` and `quill/io` layers (66 found).
+- Most are deliberate best-effort cleanup (closing handles, removing temp files,
+  optional-dependency probes) where failure is acceptable — left as-is.
+- Three used a **redundant exception tuple** that misleads the reader:
+  `except (ImportError, Exception)` (and one with `subprocess.CalledProcessError`),
+  where `Exception` already subsumes the others — functionally identical to
+  `except Exception`. Simplified to `except Exception:` (with the documented
+  `# noqa: BLE001` and a comment naming the fallback) in `core/read_aloud.py` and
+  `io/pages.py` (×2). No behavior change; tests pass (62).
+- Status: Reviewed; 3 redundancies cleaned, the rest are intentional.
+
 ### BUG-thread-daemon — non-daemon threads (shutdown-hang risk)
 - Audited every `threading.Thread(...)` construction in `quill/` (58 of them) for a
   `daemon` setting; a non-daemon worker can block interpreter shutdown.
@@ -443,9 +461,11 @@ though clean, so the check is on the record and repeatable.
 
 Note: `ruff`'s broader correctness rules (bare `except`, `is`-with-literal, etc.)
 are already green repo-wide, so those classes are covered by the standing gates.
-The undefined-private-method audit is now a standing CI gate (see CALL-001). The
-other two passes (mutable defaults, non-daemon threads) are simple AST checks and
-remain good candidates to promote to gates if those classes ever recur.
+Gate coverage check: the undefined-private-method audit is now a standing gate
+(CALL-001); mutable defaults are already gated by ruff's bugbear rule **B006**
+(ruff `select` includes `B`); non-daemon threads are already gated by **GATE-15**
+(and **GATE-40** bans raw `Thread` in `quill/ui`). So all four correctness classes
+audited here are now permanently guarded.
 
 ## Full-suite sweep (drive detectable failures to zero)
 

@@ -185,6 +185,11 @@ not-yet-applied plan and is out of scope here.</p>
 current pass plus the baseline gate state; it is not a claim that the
 entire repository has been exhaustively re-audited. Sections marked
 "Deferred / next wave" are honest about what has not yet been done.</p>
+<p>Every accessibility/focus/keyboard fix has a matching manual
+validation case in the <strong>screen-reader test plan</strong>:
+<code>docs/release/screen-reader-test-plan.md</code> (NVDA / JAWS /
+keyboard steps + expected announcements). Run it on a packaged build
+before sign-off.</p>
 <h2 id="reusable-wave-prompt-run-this-for-each-audit-wave">Reusable wave
 prompt (run this for each audit wave)</h2>
 <p>This is the distilled, repo-tuned instruction set for running one
@@ -881,6 +886,30 @@ closed on every error path and released at process exit).</li>
 defect).</li>
 </ul>
 <h3
+id="exc-001--silently-swallowed-exceptions-except--pass-in-coreio">EXC-001
+— silently-swallowed exceptions (<code>except ...: pass</code>) in
+core/io</h3>
+<ul>
+<li>Audited every <code>except</code> handler whose body is only
+<code>pass</code>/<code>...</code> in the wx-free
+<code>quill/core</code> and <code>quill/io</code> layers (66
+found).</li>
+<li>Most are deliberate best-effort cleanup (closing handles, removing
+temp files, optional-dependency probes) where failure is acceptable —
+left as-is.</li>
+<li>Three used a <strong>redundant exception tuple</strong> that
+misleads the reader: <code>except (ImportError, Exception)</code> (and
+one with <code>subprocess.CalledProcessError</code>), where
+<code>Exception</code> already subsumes the others — functionally
+identical to <code>except Exception</code>. Simplified to
+<code>except Exception:</code> (with the documented
+<code># noqa: BLE001</code> and a comment naming the fallback) in
+<code>core/read_aloud.py</code> and <code>io/pages.py</code> (×2). No
+behavior change; tests pass (62).</li>
+<li>Status: Reviewed; 3 redundancies cleaned, the rest are
+intentional.</li>
+</ul>
+<h3
 id="bug-thread-daemon--non-daemon-threads-shutdown-hang-risk">BUG-thread-daemon
 — non-daemon threads (shutdown-hang risk)</h3>
 <ul>
@@ -893,11 +922,14 @@ Status: Clean (no defect). This matches the repo's
 </ul>
 <p>Note: <code>ruff</code>'s broader correctness rules (bare
 <code>except</code>, <code>is</code>-with-literal, etc.) are already
-green repo-wide, so those classes are covered by the standing gates. The
-undefined-private-method audit is now a standing CI gate (see CALL-001).
-The other two passes (mutable defaults, non-daemon threads) are simple
-AST checks and remain good candidates to promote to gates if those
-classes ever recur.</p>
+green repo-wide, so those classes are covered by the standing gates.
+Gate coverage check: the undefined-private-method audit is now a
+standing gate (CALL-001); mutable defaults are already gated by ruff's
+bugbear rule <strong>B006</strong> (ruff <code>select</code> includes
+<code>B</code>); non-daemon threads are already gated by
+<strong>GATE-15</strong> (and <strong>GATE-40</strong> bans raw
+<code>Thread</code> in <code>quill/ui</code>). So all four correctness
+classes audited here are now permanently guarded.</p>
 <h2 id="full-suite-sweep-drive-detectable-failures-to-zero">Full-suite
 sweep (drive detectable failures to zero)</h2>
 <p>Running the whole <code>tests/unit tests/stability</code> suite (4896
