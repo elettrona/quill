@@ -824,6 +824,42 @@ gap.</li>
 <li>GATE-11 rebaselined +2 (the two SetFocus calls). Status: Fixed;
 needs live keyboard/SR confirmation.</li>
 </ul>
+<h2
+id="correctness-sweep--wave-c1-attributecall-contracts-mutable-defaults">Correctness
+sweep — wave C1 (attribute/call contracts, mutable defaults)</h2>
+<p>Whole-package AST audits for two bug classes the master brief flags.
+Recorded even though clean, so the check is on the record and
+repeatable.</p>
+<h3 id="call-001--calls-to-never-defined-methods-selfmethod">CALL-001 —
+calls to never-defined methods (<code>self.method()</code>)</h3>
+<ul>
+<li>Audited every <code>self.&lt;name&gt;(...)</code> call against all
+<code>def</code>s and instance attributes across <code>quill/</code>
+(4407 defined methods/functions). This is the class that bit the app
+before (the <code>_settings_dialog_apply_refresh</code> crash calling
+never-defined
+<code>set_theme</code>/<code>_set_spellcheck_mode</code>/...).</li>
+<li>Result: <strong>0 calls to undefined private methods</strong> (996
+distinct private call names, all defined). For public snake_case calls,
+the only 5 candidates
+(<code>on_ai</code>/<code>on_convert</code>/<code>on_ocr</code>/<code>on_open</code>/<code>on_run_macro</code>
+in <code>watch_actions.py</code>) are dataclass callback fields injected
+at construction — correct, not defects.</li>
+<li>Status: Clean (no defect).</li>
+</ul>
+<h3
+id="bug-mutable-defaults--mutable-default-arguments">BUG-mutable-defaults
+— mutable default arguments</h3>
+<ul>
+<li>Audited every function/method default and keyword-default in
+<code>quill/</code> for a mutable literal
+(<code>[]</code>/<code>{}</code>/<code>set()</code>/<code>list()</code>/<code>dict()</code>).</li>
+<li>Result: <strong>0 occurrences</strong>. Status: Clean (no
+defect).</li>
+</ul>
+<p>Note: <code>ruff</code>'s broader correctness rules (bare
+<code>except</code>, <code>is</code>-with-literal, etc.) are already
+green repo-wide, so those classes are covered by the standing gates.</p>
 <h2 id="full-suite-sweep-drive-detectable-failures-to-zero">Full-suite
 sweep (drive detectable failures to zero)</h2>
 <p>Running the whole <code>tests/unit tests/stability</code> suite (4896
@@ -878,8 +914,10 @@ lower-coverage dialogs and live keyboard/SR verification of the reorder
 dialog and the wave 1-5 fixes.</li>
 <li>The startup/shutdown initialization-order hardening review (Section
 9).</li>
-<li>The call-site / attribute-contract repository audit (Section
-7).</li>
+<li>The call-site / attribute-contract repository audit (Section 7):
+wave C1 is done and clean (undefined-method calls, mutable defaults).
+Remaining correctness classes: resource/threading lifecycle and
+exception-boundary review.</li>
 <li>The performance and visual-polish passes (Sections 13, 14).</li>
 <li>The documentation audit beyond the release notes / CHANGELOG touched
 here.</li>

@@ -401,6 +401,30 @@ focus half.
 - GATE-11 rebaselined +2 (the two SetFocus calls). Status: Fixed; needs live
   keyboard/SR confirmation.
 
+## Correctness sweep — wave C1 (attribute/call contracts, mutable defaults)
+
+Whole-package AST audits for two bug classes the master brief flags. Recorded even
+though clean, so the check is on the record and repeatable.
+
+### CALL-001 — calls to never-defined methods (`self.method()`)
+- Audited every `self.<name>(...)` call against all `def`s and instance attributes
+  across `quill/` (4407 defined methods/functions). This is the class that bit the
+  app before (the `_settings_dialog_apply_refresh` crash calling never-defined
+  `set_theme`/`_set_spellcheck_mode`/...).
+- Result: **0 calls to undefined private methods** (996 distinct private call
+  names, all defined). For public snake_case calls, the only 5 candidates
+  (`on_ai`/`on_convert`/`on_ocr`/`on_open`/`on_run_macro` in `watch_actions.py`)
+  are dataclass callback fields injected at construction — correct, not defects.
+- Status: Clean (no defect).
+
+### BUG-mutable-defaults — mutable default arguments
+- Audited every function/method default and keyword-default in `quill/` for a
+  mutable literal (`[]`/`{}`/`set()`/`list()`/`dict()`).
+- Result: **0 occurrences**. Status: Clean (no defect).
+
+Note: `ruff`'s broader correctness rules (bare `except`, `is`-with-literal, etc.)
+are already green repo-wide, so those classes are covered by the standing gates.
+
 ## Full-suite sweep (drive detectable failures to zero)
 
 Running the whole `tests/unit tests/stability` suite (4896 tests, Parakeet
@@ -444,7 +468,9 @@ performed in this pass:
   label/field continuation sweep of the lower-coverage dialogs and live
   keyboard/SR verification of the reorder dialog and the wave 1-5 fixes.
 - The startup/shutdown initialization-order hardening review (Section 9).
-- The call-site / attribute-contract repository audit (Section 7).
+- The call-site / attribute-contract repository audit (Section 7): wave C1 is done
+  and clean (undefined-method calls, mutable defaults). Remaining correctness
+  classes: resource/threading lifecycle and exception-boundary review.
 - The performance and visual-polish passes (Sections 13, 14).
 - The documentation audit beyond the release notes / CHANGELOG touched here.
 
