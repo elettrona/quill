@@ -646,19 +646,65 @@ editor surface; AI connection and chat flows remain available.
 QUILL's AI language tools extend the standard AI Assistant with document-aware
 language actions you invoke directly from the AI menu.
 
-#### AI Spell Check (F7 / Shift+F7)
+#### Spelling Review (F7)
 
-- **AI Spell Check** (`AI > AI Spell Check...`, `F7`) sends your document to
-  your configured AI provider and returns a list of spelling corrections.
-  A review dialog lets you accept, skip, or override each suggestion before
-  any change is made to your document.
-- **AI Spell Check Interactive** (`AI > AI Spell Check Interactive...`,
-  `Shift+F7`) works paragraph by paragraph. Corrections for each paragraph
-  are fetched in the background while you review the previous paragraph,
-  keeping the dialog responsive on long documents.
+**F7** starts QUILL's guided local spelling review — no AI provider, no network
+connection, nothing uploaded.
 
-Both modes require an AI provider to be configured and turned on. No text is
-sent until you invoke the command.
+- **Scope.** If you have text selected, QUILL checks only the selection. With
+  no selection, QUILL reviews the entire document starting at your caret.
+- **Dialog.** The **Spelling Review** dialog opens with focus in a read-only
+  **Context** field. The misspelled word is selected within the surrounding
+  sentence so you can hear it in context, navigate it character by character
+  with arrow keys, or copy the text — just like a read-only document.
+- **Tab order.** Context → Change to → Suggestions → Change → Change All →
+  Ignore Once → Ignore All → Add to Dictionary → Undo Last → Close.
+- **Suggestions** — arrow through spelling recommendations; selecting one
+  fills **Change to** automatically.
+- **Change** replaces the current occurrence and advances to the next issue.
+  Pressing **Enter** in the **Change to** field also triggers Change.
+- **Change All** replaces every remaining occurrence in scope, preserving
+  capitalisation (`teh → the`, `Teh → The`, `TEH → THE`).
+- **Ignore Once** skips this occurrence. **Ignore All** skips all occurrences
+  for the current session only.
+- **Add to Dictionary** adds the word to your personal dictionary permanently.
+- **Undo Last** reverses the most recent spelling action without closing the
+  dialog. It is disabled when nothing has been done yet.
+- **Alt+W** returns focus to Context and reselects the current word at any
+  point — useful after arrowing around the context text.
+- When all issues have been handled, QUILL shows a summary (changed, ignored,
+  added to dictionary) and returns focus to the editor.
+
+**Verbosity settings** (`Settings > Spelling Review`):
+
+- **Concise** — progress numbers and action results only.
+- **Balanced** *(default)* — issue type, current word, progress, and results.
+- **Detailed** — adds control hints and scope reminders.
+- **Spell word aloud** — after announcing the misspelling, QUILL reads it
+  letter by letter. The pause before spelling starts is configurable.
+
+**Editor shortcuts** (without opening the dialog):
+
+| Key | Action |
+|---|---|
+| `F7` | Open Spelling Review dialog |
+| `Ctrl+F7` | Jump to next misspelling in editor |
+| `Ctrl+Shift+F7` | Jump to previous misspelling in editor |
+| `Shift+F7` | Thesaurus |
+
+#### AI Spell Check
+
+QUILL can also send your document to your configured AI provider for a
+cloud-assisted spelling check. An AI connection must be configured and turned on;
+no text is sent until you invoke the command.
+
+- **AI Spell Check** (`AI > AI Spell Check...`) sends your document to your
+  configured AI provider and returns a list of corrections. A review dialog
+  lets you accept, skip, or override each suggestion before any change is made.
+- **AI Spell Check Interactive** (`AI > AI Spell Check Interactive...`) works
+  paragraph by paragraph. Corrections for each paragraph are fetched in the
+  background while you review the previous one, keeping the dialog responsive
+  on long documents.
 
 #### AI Grammar and Style Check (F8)
 
@@ -2779,7 +2825,7 @@ If you want a compact set of shortcuts to remember first, start here:
 - `Ctrl+G` and `Ctrl+Shift+G`
 - `Ctrl+K` and `Ctrl+Enter`
 - `Ctrl+Shift+Grave, L` for List Manager
-- `F7`, `Alt+F7`, `Shift+F7`
+- `F7`, `Ctrl+F7`, `Ctrl+Shift+F7`, `Shift+F7`
 - `Ctrl+Shift+W` for Word Count
 - `Ctrl+Tab` and `Ctrl+Shift+Tab`
 - `F6` and `Shift+F6`

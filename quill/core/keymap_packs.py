@@ -140,7 +140,7 @@ KEYBOARD_PACKS: dict[str, KeyboardPack] = {
             "edit.select_line": "Ctrl+L",
             "edit.insert_link": "Ctrl+K",
             "tools.spell_check_dialog": "F7",
-            "tools.next_misspelling": "Alt+F7",
+            "tools.next_misspelling": "Ctrl+F7",
             "tools.thesaurus": "Shift+F7",
             "format.bold": "Ctrl+B",
             "format.italic": "Ctrl+I",

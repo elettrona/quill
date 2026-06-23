@@ -1,9 +1,10 @@
 # QUILL 0.7.0 Beta 2 Release Notes
 
-Beta 2 is the release where QUILL really starts to *talk with you* — and listen.
-You can now decide exactly how much QUILL says and when, transcribe and caption
-audio entirely on your own computer, dictate and even run commands by voice
-offline, save accessible talking books, and work through a real braille
+Beta 2 is the release where QUILL gets serious about proofing, voice, and
+accessibility. You can now walk through every misspelling in a fully accessible
+guided dialog, decide exactly how much QUILL says and when, transcribe and
+caption audio entirely on your own computer, dictate and even run commands by
+voice offline, save accessible talking books, and work through a real braille
 proofreading workflow. Around those headline features sit a smoother upgrade, a
 cleaner startup with no console window for both installed and portable copies,
 stronger macOS and screen-reader support, and a long list of reliability fixes.
@@ -15,6 +16,9 @@ turned off.
 
 ## At a glance
 
+- **Guided F7 Spelling Review.** A fully accessible, guided spelling dialog —
+  local, no AI required — with a readable Context field, all actions by keyboard,
+  configurable announcements, and optional letter-by-letter word spelling.
 - **Verbosity controls.** Choose how quiet or talkative QUILL is, per action,
   with Quiet and Meeting modes for shared rooms.
 - **Private, offline speech.** Transcribe audio/video, make SRT/VTT captions,
@@ -296,6 +300,82 @@ how many of each there are.
 
 ---
 
+## Proof your work: guided F7 Spelling Review
+
+Press **F7** and QUILL walks you through every misspelling in your document — or
+just in your selection — one at a time. No AI, no network, nothing uploaded. It
+runs entirely on your machine using the same local dictionary engine that powers
+as-you-type checking.
+
+The heart of the dialog is a **read-only Context field** that shows the
+misspelled word highlighted inside the surrounding sentence. Focus lands there
+automatically. You can arrow through the sentence character by character, move by
+word, copy the text — just as you would in the editor. When you Tab away to take
+action and then need to re-read the word in context, **Alt+W** brings you back
+and reselects it instantly.
+
+**The actions:**
+
+- **Change** — replace this occurrence and move to the next issue. Press Enter
+  in the Change to field to do the same without reaching for the button.
+- **Change All** — replace every remaining occurrence in scope. QUILL counts
+  them and confirms. Capitalisation is preserved automatically: `teh→the`,
+  `Teh→The`, `TEH→THE`. The whole operation is a single undo step.
+- **Ignore Once** — skip this occurrence and continue.
+- **Ignore All** — skip all remaining occurrences for this session. Resets
+  when you start a new review.
+- **Add to Dictionary** — add the word to your personal dictionary
+  permanently.
+- **Undo Last** — reverse your most recent spelling action without closing the
+  dialog. The button is greyed out until you have done something to undo.
+- **Close** — finish the review. Any changes already made stay in the
+  document's normal undo history.
+
+**Screen-reader first.** QUILL announces the issue, your progress, and the
+result of each action — but only what your screen reader would not already say
+when focus moves. No double-reading of control names or field values.
+
+**Configure it your way.** Every aspect of the spelling review experience is
+tunable under **Settings > Spelling Review**:
+
+- **Announcement verbosity** — three levels so QUILL says exactly as much as
+  you want:
+  - **Concise** — progress numbers and action results only. Best for
+    experienced users who want to move fast.
+  - **Balanced** *(default)* — issue type, current word, progress, and results.
+    The right level for most workflows.
+  - **Detailed** — adds control hints, action reminders, and scope descriptions.
+    Helpful when you are learning the dialog or using it infrequently.
+
+- **Spell word aloud** *(on by default)* — after announcing the misspelling,
+  QUILL reads it letter by letter so you hear exactly what was mistyped. Turn
+  this off if you prefer to navigate the Context field yourself.
+
+- **Pause before spelling** — how long QUILL waits after announcing the word
+  before it starts spelling it out. Adjustable from 100 ms to 3 000 ms;
+  default is 800 ms. Increase it if you want time to process the announcement
+  first; decrease it if you find the pause too long.
+
+- **Context mode** — controls how much surrounding text appears in the Context
+  field:
+  - **Sentence** *(default)* — the current sentence plus adjacent sentences,
+    up to roughly 900 characters. Enough to understand the word in its natural
+    reading flow.
+  - **Paragraph** — the full paragraph containing the issue, useful when
+    sentence boundaries are unclear or when you want broader editorial context.
+
+- **Wrap to beginning** *(on by default)* — when QUILL reaches the end of the
+  document without finding more issues, it wraps back to the beginning and
+  continues to the point where you started. Turn this off if you always want
+  the review to stop at the end of the document.
+
+**Jump without the dialog.** `Ctrl+F7` moves to the next misspelling in the
+editor without opening Spelling Review; `Ctrl+Shift+F7` goes to the previous
+one. Both announce the word and its position so you can deal with a quick fix
+inline before running a full review.
+
+---
+
 ## A smoother upgrade
 
 When you upgrade from QUILL 0.5.0 or Beta 1, QUILL checks your saved settings and
@@ -391,10 +471,12 @@ the same behaviour described here.
   QUILL Commands menu item is now checkable: it flips the setting directly,
   remembers it, and says "Hey QUILL voice commands on" or "off" — it no longer
   sends you to a settings tab.
-- **Results that don't move the cursor are now spoken.** Pressing **F7** or
-  **F8** just after typing a misspelling now says "No misspellings ahead; N
-  behind" (and the reverse) instead of staying silent, and **Check for External
-  Changes** announces when the file still matches what is on disk.
+- **Results that don't move the cursor are now spoken.** Pressing **Ctrl+F7**
+  (next misspelling) or **Ctrl+Shift+F7** (previous misspelling) now says
+  "No misspellings ahead; N behind" (and the reverse) instead of staying silent,
+  and **Check for External Changes** announces when the file still matches what
+  is on disk. (**F7** opens the full Spelling Review dialog; use Ctrl+F7 and
+  Ctrl+Shift+F7 to jump between misspellings without leaving the editor.)
 - **Ctrl+W closes the current document.** If no side preview is open, Ctrl+W now
   closes the active document instead of doing nothing.
 - **Recent Files can tidy itself.** A new General setting, **Drop missing recent
@@ -466,10 +548,7 @@ unavailable there rather than pretending to run.
 ## What is coming next
 
 QUILL's roadmap is tracked openly, and every workstream is targeted to ship.
-**Landed in this beta:** the verbosity system; the offline speech suite
-(transcription, captions, dictation, speaker labels, voice commands, and the
-optional Faster Whisper engine); DAISY talking-book export; and the braille
-proofing, validation, restore-your-place, and back-translation workflow.
+**Landed in this beta:** the guided F7 Spelling Review dialog (local, fully accessible, configurable announcements and letter-spelling); the verbosity system; the offline speech suite (transcription, captions, dictation, speaker labels, voice commands, and the optional Faster Whisper engine); DAISY talking-book export; and the braille proofing, validation, restore-your-place, and back-translation workflow.
 
 **Coming next:** broader publishing options (including direct publishing to
 external platforms and chaptered audiobook export), a unified agentic AI hub, and

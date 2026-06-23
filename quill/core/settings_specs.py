@@ -85,6 +85,11 @@ SETTING_GROUPS: tuple[SettingGroup, ...] = (
         "Braille Mode",
         "Page geometry, page-break heuristic, sidecar, and announcements for braille.",
     ),
+    SettingGroup(
+        "spelling",
+        "Spelling Review",
+        "Behavior of the F7 guided spelling review dialog.",
+    ),
 )
 
 _GROUP_IDS = {group.id for group in SETTING_GROUPS}
@@ -1560,5 +1565,62 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "letter (a, b, c) when a page overflows onto a continuation page.",
         keywords=("braille", "continuation", "status", "speech"),
         feature_id="core.braille",
+    ),
+    # --- Spelling Review (F7) ---------------------------------------------
+    SettingSpec(
+        "spell_review_verbosity",
+        "Spelling review announcement verbosity",
+        "spelling",
+        "choice",
+        "How much information is spoken during the F7 spelling review. "
+        "Concise gives progress only. Balanced includes the issue type and word. "
+        "Detailed adds scope reminders and keyboard hints.",
+        choices=(
+            ("concise", "Concise"),
+            ("balanced", "Balanced"),
+            ("detailed", "Detailed"),
+        ),
+        keywords=("spelling", "review", "verbosity", "speech", "announcement", "f7"),
+    ),
+    SettingSpec(
+        "spell_review_spell_word",
+        "Spell out the misspelled word letter by letter",
+        "spelling",
+        "bool",
+        "After announcing each misspelled word, spell it out letter by letter "
+        "after a short pause. Useful when the word is hard to parse from speech alone.",
+        keywords=("spelling", "spell out", "letters", "review", "f7"),
+    ),
+    SettingSpec(
+        "spell_review_spell_word_pause_ms",
+        "Pause before spelling the word (milliseconds)",
+        "spelling",
+        "int",
+        "How long to wait after announcing the misspelled word before spelling it "
+        "out letter by letter (100 to 3000). Default is 800.",
+        minimum=100,
+        maximum=3000,
+        keywords=("spelling", "pause", "spell out", "timing", "review", "f7"),
+    ),
+    SettingSpec(
+        "spell_review_wrap_to_beginning",
+        "Wrap spelling review to the beginning",
+        "spelling",
+        "bool",
+        "When spelling review reaches the end of the document, offer to continue "
+        "checking from the beginning back to the original caret position.",
+        keywords=("spelling", "wrap", "review", "f7"),
+    ),
+    SettingSpec(
+        "spell_review_context_mode",
+        "Spelling review context display mode",
+        "spelling",
+        "choice",
+        "How much surrounding text is shown in the Context field of the F7 spelling review dialog.",
+        choices=(
+            ("sentence", "Sentence with adjacent sentences"),
+            ("paragraph", "Full paragraph"),
+        ),
+        keywords=("spelling", "context", "review", "f7", "sentence", "paragraph"),
     ),
 )

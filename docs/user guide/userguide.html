@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>userguide</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -1304,22 +1300,99 @@ available.</p>
 <p>QUILL's AI language tools extend the standard AI Assistant with
 document-aware language actions you invoke directly from the AI
 menu.</p>
-<h4 id="ai-spell-check-f7--shiftf7">AI Spell Check (F7 / Shift+F7)</h4>
+<h4 id="spelling-review-f7">Spelling Review (F7)</h4>
+<p><strong>F7</strong> starts QUILL's guided local spelling review — no
+AI provider, no network connection, nothing uploaded.</p>
+<ul>
+<li><strong>Scope.</strong> If you have text selected, QUILL checks only
+the selection. With no selection, QUILL reviews the entire document
+starting at your caret.</li>
+<li><strong>Dialog.</strong> The <strong>Spelling Review</strong> dialog
+opens with focus in a read-only <strong>Context</strong> field. The
+misspelled word is selected within the surrounding sentence so you can
+hear it in context, navigate it character by character with arrow keys,
+or copy the text — just like a read-only document.</li>
+<li><strong>Tab order.</strong> Context → Change to → Suggestions →
+Change → Change All → Ignore Once → Ignore All → Add to Dictionary →
+Undo Last → Close.</li>
+<li><strong>Suggestions</strong> — arrow through spelling
+recommendations; selecting one fills <strong>Change to</strong>
+automatically.</li>
+<li><strong>Change</strong> replaces the current occurrence and advances
+to the next issue. Pressing <strong>Enter</strong> in the <strong>Change
+to</strong> field also triggers Change.</li>
+<li><strong>Change All</strong> replaces every remaining occurrence in
+scope, preserving capitalisation (<code>teh → the</code>,
+<code>Teh → The</code>, <code>TEH → THE</code>).</li>
+<li><strong>Ignore Once</strong> skips this occurrence. <strong>Ignore
+All</strong> skips all occurrences for the current session only.</li>
+<li><strong>Add to Dictionary</strong> adds the word to your personal
+dictionary permanently.</li>
+<li><strong>Undo Last</strong> reverses the most recent spelling action
+without closing the dialog. It is disabled when nothing has been done
+yet.</li>
+<li><strong>Alt+W</strong> returns focus to Context and reselects the
+current word at any point — useful after arrowing around the context
+text.</li>
+<li>When all issues have been handled, QUILL shows a summary (changed,
+ignored, added to dictionary) and returns focus to the editor.</li>
+</ul>
+<p><strong>Verbosity settings</strong>
+(<code>Settings &gt; Spelling Review</code>):</p>
+<ul>
+<li><strong>Concise</strong> — progress numbers and action results
+only.</li>
+<li><strong>Balanced</strong> <em>(default)</em> — issue type, current
+word, progress, and results.</li>
+<li><strong>Detailed</strong> — adds control hints and scope
+reminders.</li>
+<li><strong>Spell word aloud</strong> — after announcing the
+misspelling, QUILL reads it letter by letter. The pause before spelling
+starts is configurable.</li>
+</ul>
+<p><strong>Editor shortcuts</strong> (without opening the dialog):</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>F7</code></td>
+<td>Open Spelling Review dialog</td>
+</tr>
+<tr>
+<td><code>Ctrl+F7</code></td>
+<td>Jump to next misspelling in editor</td>
+</tr>
+<tr>
+<td><code>Ctrl+Shift+F7</code></td>
+<td>Jump to previous misspelling in editor</td>
+</tr>
+<tr>
+<td><code>Shift+F7</code></td>
+<td>Thesaurus</td>
+</tr>
+</tbody>
+</table>
+<h4 id="ai-spell-check">AI Spell Check</h4>
+<p>QUILL can also send your document to your configured AI provider for
+a cloud-assisted spelling check. An AI connection must be configured and
+turned on; no text is sent until you invoke the command.</p>
 <ul>
 <li><strong>AI Spell Check</strong>
-(<code>AI &gt; AI Spell Check...</code>, <code>F7</code>) sends your
-document to your configured AI provider and returns a list of spelling
-corrections. A review dialog lets you accept, skip, or override each
-suggestion before any change is made to your document.</li>
+(<code>AI &gt; AI Spell Check...</code>) sends your document to your
+configured AI provider and returns a list of corrections. A review
+dialog lets you accept, skip, or override each suggestion before any
+change is made.</li>
 <li><strong>AI Spell Check Interactive</strong>
-(<code>AI &gt; AI Spell Check Interactive...</code>,
-<code>Shift+F7</code>) works paragraph by paragraph. Corrections for
-each paragraph are fetched in the background while you review the
-previous paragraph, keeping the dialog responsive on long
+(<code>AI &gt; AI Spell Check Interactive...</code>) works paragraph by
+paragraph. Corrections for each paragraph are fetched in the background
+while you review the previous one, keeping the dialog responsive on long
 documents.</li>
 </ul>
-<p>Both modes require an AI provider to be configured and turned on. No
-text is sent until you invoke the command.</p>
 <h4 id="ai-grammar-and-style-check-f8">AI Grammar and Style Check
 (F8)</h4>
 <p><code>AI &gt; AI Grammar and Style Check...</code> (<code>F8</code>)
@@ -5128,7 +5201,8 @@ here:</p>
 <li><code>Ctrl+G</code> and <code>Ctrl+Shift+G</code></li>
 <li><code>Ctrl+K</code> and <code>Ctrl+Enter</code></li>
 <li><code>Ctrl+Shift+Grave, L</code> for List Manager</li>
-<li><code>F7</code>, <code>Alt+F7</code>, <code>Shift+F7</code></li>
+<li><code>F7</code>, <code>Ctrl+F7</code>, <code>Ctrl+Shift+F7</code>,
+<code>Shift+F7</code></li>
 <li><code>Ctrl+Shift+W</code> for Word Count</li>
 <li><code>Ctrl+Tab</code> and <code>Ctrl+Shift+Tab</code></li>
 <li><code>F6</code> and <code>Shift+F6</code></li>

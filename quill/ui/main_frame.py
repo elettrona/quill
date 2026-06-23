@@ -5338,12 +5338,12 @@ class MainFrame(
             menu.Append(spell_id, self._menu_label("Spell Check...", "tools.spell_check_dialog"))
             menu.Append(
                 next_spell_id,
-                self._menu_label("Next Misspelling\tAlt+F7", "tools.next_misspelling"),
+                self._menu_label("Next Misspelling\tCtrl+F7", "tools.next_misspelling"),
             )
             menu.Append(
                 prev_spell_id,
                 self._menu_label(
-                    "Previous Misspelling\tShift+Alt+F7", "tools.previous_misspelling"
+                    "Previous Misspelling\tCtrl+Shift+F7", "tools.previous_misspelling"
                 ),
             )
             menu.Bind(wx.EVT_MENU, lambda _e: self.open_spell_check_dialog(), id=spell_id)
@@ -15401,62 +15401,73 @@ class MainFrame(
         )
 
     def open_spell_check_dialog(self) -> None:
-        wx = self._wx
-        dictionary = self._spell_dictionary()
+        """Open the guided F7 Spelling Review dialog."""
+        from quill.core.spelling.session import ReviewSession
+        from quill.ui.spelling_review_dialog import SpellingReviewDialog
+
         text = self.editor.GetValue()
-        misspellings = list_misspellings(text, dictionary)
-        if not misspellings:
-            self._set_status("No misspellings found")
+        if not text.strip():
+            self._set_status("Document is empty — nothing to spell check.")
             return
-        # A single typo (the common case, e.g. "This is a bligtest") goes straight
-        # to its corrections. Previously F7 always opened a "choose the misspelling"
-        # chooser first, which showed no correction options and made spell check
-        # look broken (#129). Multiple misspellings still use the chooser so each
-        # can be reviewed in context.
-        if len(misspellings) == 1:
-            item = misspellings[0]
+
+        dictionary = self._spell_dictionary()
+
+        # Determine scope: selection if non-empty, else full document from caret.
+        sel_start, sel_end = self.editor.GetSelection()
+        if sel_start != sel_end:
+            scope_start, scope_end = sel_start, sel_end
+            scope_label = "selected text"
         else:
-            selection = self._choose_misspelling_with_context(misspellings, text, dictionary)
-            if selection == wx.NOT_FOUND:
-                return
-            item = misspellings[selection]
-        suggestions = suggest_words(item.word, dictionary)
-        if suggestions:
-            with wx.SingleChoiceDialog(
-                self.frame,
-                f'Suggestions for "{item.word}":',
-                "Spell Check",
-                choices=suggestions,
-            ) as suggestion_dialog:
-                if self._show_modal_dialog(suggestion_dialog, "Spell Check") == wx.ID_OK:
-                    replacement = suggestion_dialog.GetStringSelection()
-                    if replacement:
-                        self.editor.Replace(item.start, item.end, replacement)
-                        self.document.set_text(self.editor.GetValue())
-                        self._set_status(f'Replaced "{item.word}" with "{replacement}"')
-                        return
-        else:
-            # Announce explicitly so screen-reader users aren't surprised
-            # when the dialog jumps straight to "Add to dictionary".
-            self._set_status(f'No suggestions for "{item.word}"')
-            self._announce(f"No suggestions for {item.word}")
-        scopes = ["Personal dictionary", "Document dictionary", "Project dictionary"]
-        with wx.SingleChoiceDialog(
-            self.frame,
-            f'No suggestions found. Add "{item.word}" to dictionary scope?'
-            if not suggestions
-            else f'Add "{item.word}" to dictionary scope:',
-            "Spell Check",
-            choices=scopes,
-        ) as scope_dialog:
-            if self._show_modal_dialog(scope_dialog, "Spell Check") != wx.ID_OK:
-                self._set_status("Spell check reviewed")
-                return
-            scope = scope_dialog.GetSelection()
-        if scope == wx.NOT_FOUND:
-            self._set_status("Spell check reviewed")
+            scope_start = 0
+            scope_end = len(text)
+            scope_label = "document"
+
+        session = ReviewSession(
+            text=text,
+            dictionary=set(dictionary),
+            scope_start=scope_start,
+            scope_end=scope_end,
+        )
+
+        if session.is_complete():
+            self._set_status("No misspellings found.")
+            self._announce("No misspellings found.")
             return
-        self._add_word_to_dictionary_scope(item.word, scope)
+
+        def _apply(start: int, old_end: int, replacement: str) -> None:
+            self.editor.Replace(start, old_end, replacement)
+            self.document.set_text(self.editor.GetValue())
+
+        doc_path = getattr(self.document, "path", None)
+        from pathlib import Path as _Path
+
+        project_root = _Path.cwd()
+
+        dlg = SpellingReviewDialog(
+            parent=self.frame,
+            session=session,
+            apply_fn=_apply,
+            announce_fn=self._announce,
+            document_path=doc_path,
+            project_root=project_root,
+            settings=self.settings,
+            scope_label=scope_label,
+        )
+
+        self.editor.SetFocus()  # store focus for return
+        dlg.show(self._show_modal_dialog)
+
+        # Invalidate the spell dictionary cache so subsequent inline checks
+        # reflect any words the user added to the dictionary.
+        self._invalidate_spell_dictionary_cache()
+        counters = session.get_counters()
+        if counters.reviewed:
+            self._set_status(
+                f"Spelling review complete: {counters.changed} changed, "
+                f"{counters.ignored_once} ignored."
+            )
+        else:
+            self._set_status("Spelling review closed.")
 
     def _choose_misspelling_with_context(
         self,

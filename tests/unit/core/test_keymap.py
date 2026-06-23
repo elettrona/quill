@@ -189,7 +189,7 @@ def test_build_keymap_for_pack_applies_overlay() -> None:
 
 
 def test_previous_misspelling_shortcut_is_available() -> None:
-    assert DEFAULT_KEYMAP["tools.previous_misspelling"] == "Shift+Alt+F7"
+    assert DEFAULT_KEYMAP["tools.previous_misspelling"] == "Ctrl+Shift+F7"
 
 
 def test_replace_shortcut_is_available() -> None:
