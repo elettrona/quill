@@ -619,6 +619,30 @@ Older bindings are repaired on startup.</li>
 standard Yes/No/Cancel: press <code>Y</code> to save, <code>N</code> to
 discard, or <code>Esc</code> to cancel — or Tab to the buttons.</li>
 </ul>
+<h2 id="editing-and-keyboard-polish">Editing and keyboard polish</h2>
+<ul>
+<li><strong>The Tab key can now insert a tab character.</strong> Tab
+still defaults to smart line indent (Shift+Tab outdents; on a Markdown
+list item it nests or promotes the item). Press
+<strong>Ctrl+Alt+M</strong> to switch the Tab key to insert a literal
+tab character at the cursor instead — Quill's take on the VS Code "Tab
+key" toggle (Ctrl+M is reserved for the mark ring). The current mode
+shows in the new <strong>Tab Mode</strong> status-bar cell and the
+checkable <strong>Format &gt; Tab Key Inserts Tab Character</strong>
+menu item, and the mode change is spoken.</li>
+<li><strong>Tab indent is spoken under a screen reader again.</strong>
+Indenting with Tab now announces aloud even while JAWS or NVDA is
+running, where it had gone silent.</li>
+<li><strong>F6 reaches the document tab bar.</strong> With <strong>Show
+Tab Control</strong> on, F6 now cycles Editor, Document Tabs, Preview,
+and Status Bar, so the tab strip is reachable from the keyboard.</li>
+<li><strong>Clear All Notifications</strong> is now a one-step action on
+the notifications status-cell context menu.</li>
+<li>The unfinished <strong>Pandoc Conversion Center</strong> menu item
+was removed; use <strong>File &gt; Import</strong> / <strong>File &gt;
+Export</strong> (and <strong>Tools &gt; Batch Conversion</strong> for
+folders).</li>
+</ul>
 <h2 id="opening-and-saving-files-faithfully">Opening and saving files
 faithfully</h2>
 <h3 id="plain-text-fidelity">Plain-text fidelity</h3>

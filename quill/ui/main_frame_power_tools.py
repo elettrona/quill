@@ -31,9 +31,6 @@ from pathlib import Path
 from quill.core import format_ops as _fmt
 from quill.core.clipboard_collector import append_collected
 from quill.core.cursor_address import (
-    describe_cursor_address,
-    describe_document_status,
-    describe_selection_length,
     offset_for_percent,
 )
 from quill.core.document import Document
@@ -388,19 +385,6 @@ class PowerToolsActionsMixin:
             self._set_status(str(error))
             return
         self._power_tools_open_text_in_new_buffer(extracted, "Extracted matches")
-
-    # -------------------------------------------------- EDS-14 speech queries
-    def speak_cursor_address(self) -> None:
-        text, cursor = self._power_tools_text_cursor()
-        self._announce(describe_cursor_address(text, cursor))
-
-    def speak_document_status(self) -> None:
-        self._announce(describe_document_status(self.document.modified, self.document.encoding))
-
-    def speak_selection_length(self) -> None:
-        start, end = self.editor.GetSelection()
-        selection = self.editor.GetValue()[start:end]
-        self._announce(describe_selection_length(selection))
 
     # ----------------------------------------------------- EDS-15 go to percent
     def go_to_percent(self) -> None:

@@ -74,7 +74,6 @@ class MenuBuilderMixin:
         self._id_export_other = wx.NewIdRef()  # "Other Pandoc Format..."
         self._id_batch_convert_import = wx.NewIdRef()
         self._id_batch_convert_export = wx.NewIdRef()
-        self._id_advanced_pandoc = wx.NewIdRef()  # placeholder for Tier-2/3
         self._sessions_menu = wx.Menu()
         self._open_documents_menu = wx.Menu()
         self._recent_sessions_menu = wx.Menu()
@@ -832,6 +831,7 @@ class MenuBuilderMixin:
         self._id_toggle_block_comment = wx.NewIdRef()
         self._id_indent = wx.NewIdRef()
         self._id_outdent = wx.NewIdRef()
+        self._id_toggle_tab_mode = wx.NewIdRef()
         self._id_move_line_up = wx.NewIdRef()
         self._id_move_line_down = wx.NewIdRef()
         # PR1 (EdSharp port): section-move ids, distinct from move-line.
@@ -872,6 +872,11 @@ class MenuBuilderMixin:
             self._id_outdent,
             self._menu_label(_("O&utdent"), "format.outdent"),
         )
+        format_menu.AppendCheckItem(
+            self._id_toggle_tab_mode,
+            self._menu_label(_("Tab Key Inserts Tab &Character"), "format.toggle_tab_insert_mode"),
+        )
+        format_menu.Check(self._id_toggle_tab_mode, getattr(self, "_tab_inserts_literal", False))
         format_menu.AppendSeparator()
 
         # --- Case ---
@@ -1380,10 +1385,6 @@ class MenuBuilderMixin:
         tools_menu.Append(
             self._id_palette,
             self._menu_label(_("&Command Palette..."), "app.command_palette"),
-        )
-        tools_menu.Append(
-            self._id_advanced_pandoc,
-            self._menu_label(_("&Pandoc Conversion Center..."), "tools.advanced_pandoc"),
         )
         tools_menu.AppendSeparator()
 
@@ -2021,6 +2022,11 @@ class MenuBuilderMixin:
         customize_support_menu.Append(self._id_notifications, _("Show &Notifications"))
         customize_support_menu.Append(self._id_save_diagnostics, _("Save &Diagnostics..."))
         customize_support_menu.Append(self._id_open_logs_folder, _("Open &Logs Folder"))
+        self._id_view_startup_logs = wx.NewIdRef()
+        customize_support_menu.Append(
+            self._id_view_startup_logs,
+            self._menu_label(_("View &Startup Logs..."), "help.view_startup_logs"),
+        )
         customize_support_menu.Append(
             self._id_open_diagnostics_folder,
             _("Open &Diagnostics Folder"),
@@ -2078,11 +2084,6 @@ class MenuBuilderMixin:
         help_menu.Append(
             self._id_save_diagnostics,
             self._menu_label(_("Save &Diagnostics..."), "help.save_diagnostics"),
-        )
-        self._id_view_startup_logs = wx.NewIdRef()
-        help_menu.Append(
-            self._id_view_startup_logs,
-            self._menu_label(_("View &Startup Logs..."), "help.view_startup_logs"),
         )
         help_menu.AppendSeparator()
         profiles_menu = wx.Menu()
@@ -2282,11 +2283,6 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.run_batch_conversion_wizard(),
             id=self._id_batch_convert_export,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.open_advanced_pandoc_placeholder(),
-            id=self._id_advanced_pandoc,
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_palette(), id=self._id_palette)
         self.frame.Bind(
@@ -2984,6 +2980,9 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_indent(), id=self._id_indent)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_outdent(), id=self._id_outdent)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.toggle_tab_insert_mode(), id=self._id_toggle_tab_mode
+        )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.move_line_up(), id=self._id_move_line_up)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.move_line_down(), id=self._id_move_line_down)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.move_section_up(), id=self._id_move_section_up)

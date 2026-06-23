@@ -208,6 +208,9 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "format.toggle_block_comment": "Shift+Alt+A",
     "format.indent": "Ctrl+]",
     "format.outdent": "Ctrl+[",
+    # VS Code-style toggle (their Ctrl+M was taken by edit.set_mark / pop_mark):
+    # switch the Tab key between smart indent and literal tab insertion.
+    "format.toggle_tab_insert_mode": "Ctrl+Alt+M",
     "format.list_manager": "Ctrl+Shift+Grave, L",
     "format.bold": "Ctrl+B",
     "format.italic": "Ctrl+I",

@@ -369,6 +369,26 @@ the same behaviour described here.
 - **Closing an unsaved document.** The prompt uses the standard Yes/No/Cancel:
   press `Y` to save, `N` to discard, or `Esc` to cancel — or Tab to the buttons.
 
+## Editing and keyboard polish
+
+- **The Tab key can now insert a tab character.** Tab still defaults to smart
+  line indent (Shift+Tab outdents; on a Markdown list item it nests or promotes
+  the item). Press **Ctrl+Alt+M** to switch the Tab key to insert a literal tab
+  character at the cursor instead — Quill's take on the VS Code "Tab key" toggle
+  (Ctrl+M is reserved for the mark ring). The current mode shows in the new
+  **Tab Mode** status-bar cell and the checkable **Format > Tab Key Inserts Tab
+  Character** menu item, and the mode change is spoken.
+- **Tab indent is spoken under a screen reader again.** Indenting with Tab now
+  announces aloud even while JAWS or NVDA is running, where it had gone silent.
+- **F6 reaches the document tab bar.** With **Show Tab Control** on, F6 now cycles
+  Editor, Document Tabs, Preview, and Status Bar, so the tab strip is reachable
+  from the keyboard.
+- **Clear All Notifications** is now a one-step action on the notifications
+  status-cell context menu.
+- The unfinished **Pandoc Conversion Center** menu item was removed; use
+  **File > Import** / **File > Export** (and **Tools > Batch Conversion** for
+  folders).
+
 ## Opening and saving files faithfully
 
 ### Plain-text fidelity

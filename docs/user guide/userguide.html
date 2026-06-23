@@ -686,6 +686,8 @@ status bar can surface:</p>
 <li>line and column</li>
 <li>word count</li>
 <li>insert or overwrite mode</li>
+<li>tab mode (whether the Tab key indents the line or inserts a tab
+character)</li>
 <li>selection size</li>
 <li>encoding</li>
 <li>line endings</li>
@@ -700,15 +702,46 @@ status bar can surface:</p>
 <p>You can reorder or hide status items through <strong>Tools →
 Customize &amp; Support → Status Bar Layout...</strong>. Right-click a
 focused status cell to <strong>Activate</strong>, <strong>Hide this
-item</strong>, or open <strong>Status bar settings...</strong>. Use
-<strong>Restore Defaults</strong> in status bar settings to reset
-visibility and order. When title mode is set to full path, Quill
-automatically hides the duplicate file-path status cell.</p>
+item</strong>, or open <strong>Status bar settings...</strong>. On the
+<strong>Notifications</strong> (or <strong>Background Tasks</strong>)
+cell the context menu also offers <strong>Clear All
+Notifications</strong>, which empties the notification list in one step
+without opening the dialog. Use <strong>Restore Defaults</strong> in
+status bar settings to reset visibility and order. When title mode is
+set to full path, Quill automatically hides the duplicate file-path
+status cell.</p>
 <h3 id="region-cycling">Region cycling</h3>
 <p>Use <code>F6</code> and <code>Shift+F6</code> to move between major
 regions. Quill treats region movement as a first-class accessibility
 feature. If you write, inspect, and navigate entirely from the keyboard,
 this becomes second nature quickly.</p>
+<p>When <strong>Show Tab Control</strong> is on (View menu) and at least
+one document is open, the document tab bar joins the F6 rotation as the
+<strong>Document Tabs</strong> region, so the tab strip is reachable
+from the keyboard rather than being skipped. The cycle is Editor →
+Document Tabs → (Preview, when split open) → Status Bar. From the tab
+bar, the left and right arrows move between tabs, and Enter, Space, or
+Tab returns focus to the editor on the selected document.</p>
+<h3 id="tab-key-indent-or-insert-a-tab-character">Tab key: indent or
+insert a tab character</h3>
+<p>By default the <strong>Tab</strong> key runs Quill's smart line
+indent: it adds one indentation level to the current line (or every line
+in the selection) at the start of the line, and
+<strong>Shift+Tab</strong> outdents. On a Markdown list item Tab and
+Shift+Tab nest and promote the item. Each of these actions is spoken, so
+a screen reader confirms the indent even though the caret stays in
+place.</p>
+<p>If you would rather have Tab type a literal tab character at the
+cursor — the way a plain text editor behaves — toggle <strong>Tab
+Mode</strong> with <strong>Ctrl+Alt+M</strong> (this is Quill's
+equivalent of the VS Code "Tab key" toggle; Ctrl+M itself is reserved
+for the mark ring). The current mode is shown in the <strong>Tab
+Mode</strong> status-bar cell (<strong>Indent</strong> or <strong>Tab
+char</strong>), mirrored by the checkable <strong>Format → Tab Key
+Inserts Tab Character</strong> menu item, and the new mode is announced
+when you switch. While Tab Mode is set to insert a tab character,
+Shift+Tab still outdents so a stray indent can be removed without
+leaving the mode. The setting applies to the current session.</p>
 <h2 id="the-menu-bar-reference">The Menu Bar Reference</h2>
 <p>This section walks the entire menu bar in the order you will
 encounter it.</p>

@@ -154,6 +154,8 @@ class StatusBarMixin:
             return f"{stats.words:,} words"
         if item == "mode":
             return "Overwrite" if getattr(self, "_overwrite_mode", False) else "Insert"
+        if item == "tab_mode":
+            return "Tab char" if getattr(self, "_tab_inserts_literal", False) else "Indent"
         if item == "selection":
             editor = getattr(self, "editor", None)
             if editor is not None and hasattr(editor, "GetSelection"):
@@ -425,6 +427,7 @@ class StatusBarMixin:
             "line_column": "Go to line",
             "word_count": "Show document statistics",
             "mode": "Toggle overwrite mode",
+            "tab_mode": "Toggle Tab key mode (Ctrl+Alt+M). Indent lines or insert a tab character.",
             "selection": "Show selection statistics",
             "encoding": "Choose document encoding",
             "line_endings": "Toggle line endings",
@@ -622,6 +625,7 @@ class StatusBarMixin:
             "line_column": self.go_to_line,
             "word_count": self.show_word_count,
             "mode": self.toggle_overwrite_mode,
+            "tab_mode": self.toggle_tab_insert_mode,
             "selection": self.show_word_count,
             "encoding": self.choose_document_encoding,
             "line_endings": self.toggle_line_endings,
@@ -682,6 +686,14 @@ class StatusBarMixin:
         hide_id = wx.NewIdRef()
         settings_id = wx.NewIdRef()
         menu.Append(activate_id, "Activate")
+        if item in ("notifications", "background_tasks"):
+            clear_notifications_id = wx.NewIdRef()
+            menu.Append(clear_notifications_id, "Clear All Notifications")
+            menu.Bind(
+                wx.EVT_MENU,
+                lambda _e: self.clear_all_notifications(),
+                id=clear_notifications_id,
+            )
         menu.Append(hide_id, "Hide this item")
         menu.Append(settings_id, "Status bar settings...")
         menu.Bind(wx.EVT_MENU, lambda _e: self._activate_statusbar_cell(item), id=activate_id)

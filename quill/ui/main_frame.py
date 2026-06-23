@@ -839,6 +839,7 @@ class MainFrame(
         "line_column": "Position",
         "word_count": "Word Count",
         "mode": "Keyboard Mode",
+        "tab_mode": "Tab Mode",
         "selection": "Selection Length",
         "encoding": "Encoding",
         "line_endings": "Line Endings",
@@ -865,6 +866,7 @@ class MainFrame(
         "line_column": 140,
         "word_count": 140,
         "mode": 110,
+        "tab_mode": 130,
         "selection": 110,
         "encoding": 120,
         "line_endings": 140,
@@ -891,6 +893,7 @@ class MainFrame(
         "line_column": "core.editor",
         "word_count": "core.analysis",
         "mode": "core.editor",
+        "tab_mode": "core.editor",
         "selection": "core.editor",
         "encoding": "core.file",
         "line_endings": "core.file",
@@ -1138,6 +1141,10 @@ class MainFrame(
         self._voice_command_aliases: dict[str, str] = {}
         self._voice_command_guard = False
         self._overwrite_mode = False
+        # When True, the Tab key inserts a literal tab character at the caret
+        # (VS Code-style) instead of running the smart line-indent command.
+        # Session state, mirroring _overwrite_mode; toggled with Ctrl+Alt+M.
+        self._tab_inserts_literal = False
         self._insert_key_down = False
         self._print_data = wx.PrintData()
         self._page_setup_data = wx.PageSetupDialogData(self._print_data)
@@ -3031,6 +3038,12 @@ class MainFrame(
             self._binding_for("format.outdent"),
         )
         self.commands.register(
+            "format.toggle_tab_insert_mode",
+            "Toggle Tab Key Mode (Indent / Tab Character)",
+            self.toggle_tab_insert_mode,
+            self._binding_for("format.toggle_tab_insert_mode"),
+        )
+        self.commands.register(
             "format.insert_markdown_tag",
             "Insert Markdown Tag...",
             self.insert_markdown_tag,
@@ -3631,6 +3644,7 @@ class MainFrame(
             "format.toggle_block_comment": self._id_toggle_block_comment,
             "format.indent": self._id_indent,
             "format.outdent": self._id_outdent,
+            "format.toggle_tab_insert_mode": self._id_toggle_tab_mode,
             "format.move_line_up": self._id_move_line_up,
             "format.move_line_down": self._id_move_line_down,
             # PR1 (EdSharp port): section-move command ids.
@@ -4473,18 +4487,24 @@ class MainFrame(
         tab_key = getattr(wx, "WXK_TAB", None)
         if tab_key is not None and event.GetKeyCode() == tab_key:
             self._commit_pending_extend_selection()
+            # Literal-tab mode (Ctrl+Alt+M): forward Tab as a tab character at
+            # the caret instead of running the smart indent. Shift+Tab still
+            # outdents so a stray indent can be undone without leaving the mode.
+            if self._tab_inserts_literal and not event.ShiftDown():
+                self.editor.WriteText("\t")
+                return
+            # force_announce so the Tab indent is spoken even under JAWS/NVDA —
+            # the edit has no focus change for the screen reader to pick up.
             if self._is_caret_on_markdown_list_item():
                 if event.ShiftDown():
-                    self.format_outdent()
-                    self._set_status("Promoted list item")
+                    self.format_outdent(status="Promoted list item", force_announce=True)
                 else:
-                    self.format_indent()
-                    self._set_status("Nested list item")
+                    self.format_indent(status="Nested list item", force_announce=True)
                 return
             if event.ShiftDown():
-                self.format_outdent()
+                self.format_outdent(force_announce=True)
             else:
-                self.format_indent()
+                self.format_indent(force_announce=True)
             return
         if (
             hasattr(self, "_dictation")
@@ -5602,7 +5622,7 @@ class MainFrame(
         self._reveal_in_explorer(logs_path)
 
     def open_startup_logs(self) -> None:
-        """Help > View Startup Logs... — open logs/startup-errors.log directly."""
+        """Tools > Customize & Support > View Startup Logs... — open startup-errors.log directly."""
         log_path = app_data_dir() / "logs" / "startup-errors.log"
         if not log_path.exists():
             self._set_status(
@@ -7673,20 +7693,6 @@ class MainFrame(
             notify_on_error=True,
         )
 
-    def open_advanced_pandoc_placeholder(self) -> None:
-        """Placeholder for the Tier-2 / Tier-3 Pandoc Conversion Center (issue #262)."""
-
-        wx = self._wx
-        with wx.MessageDialog(
-            self.frame,
-            "The advanced Pandoc Conversion Center is coming in a future release.\n\n"
-            "For now, File > Import and File > Export cover the Tier-1 format set, "
-            "and Tools > Batch Conversion runs batch jobs over a folder.",
-            "Coming Soon",
-            style=wx.ICON_INFORMATION | wx.OK,
-        ) as dialog:
-            self._show_modal_dialog(dialog, "Coming Soon")
-
     def _status_tab_indexes(self) -> list[int]:
         getter = getattr(self.notebook, "GetPageText", None)
         if not callable(getter):
@@ -8698,6 +8704,33 @@ class MainFrame(
         self._overwrite_mode = next_state
         self._refresh_statusbar()
         self._set_status("Overwrite mode on" if next_state else "Insert mode on")
+
+    def toggle_tab_insert_mode(self, enabled: bool | None = None) -> None:
+        """Toggle whether the Tab key inserts a literal tab or indents lines.
+
+        Default (off) keeps the smart line-indent behaviour. On, Tab types a
+        tab character at the caret like a plain text editor. The new mode is
+        spoken and reflected in the Tab Mode status-bar cell and the Format
+        menu check item."""
+        next_state = (not self._tab_inserts_literal) if enabled is None else enabled
+        self._tab_inserts_literal = next_state
+        self._sync_tab_mode_menu_check()
+        self._refresh_statusbar()
+        self._set_status(
+            "Tab key inserts a tab character" if next_state else "Tab key indents the line"
+        )
+
+    def _sync_tab_mode_menu_check(self) -> None:
+        menu_bar = getattr(self.frame, "GetMenuBar", None)
+        menu_id = getattr(self, "_id_toggle_tab_mode", None)
+        if menu_id is None or not callable(menu_bar):
+            return
+        bar = menu_bar()
+        if bar is None:
+            return
+        item = bar.FindItemById(menu_id)
+        if item is not None and item.IsCheckable():
+            item.Check(self._tab_inserts_literal)
 
     def choose_document_encoding(self) -> None:
         wx = self._wx
@@ -14636,8 +14669,21 @@ class MainFrame(
         Editor and Status Bar are always present. The side preview is only in
         the rotation while it is split open, so screen reader users can F6 into
         the rendered Markdown/HTML and use browse-mode heading navigation, then
-        F6 back out."""
+        F6 back out.
+
+        The document tab bar is only a real, focusable wx.Notebook when the
+        tab control is visible (the hidden Simplebook has no tab strip), so it
+        joins the rotation only then — otherwise F6 would "land" on an
+        unreachable region. This is the fix for the tab bar being unreachable
+        by F6 and by the JAWS cursor when Show Tab Control is on."""
         labels = ["Editor"]
+        if self._tab_control_visible:
+            try:
+                has_tabs = self.notebook.GetPageCount() > 0
+            except (AttributeError, RuntimeError):
+                has_tabs = False
+            if has_tabs:
+                labels.append("Document Tabs")
         tab = self._active_tab()
         if (
             tab is not None
@@ -14668,6 +14714,8 @@ class MainFrame(
         while win is not None:
             if preview_ctrl is not None and win is preview_ctrl and "Preview" in regions:
                 return "Preview"
+            if "Document Tabs" in regions and win is self.notebook:
+                return "Document Tabs"
             if win is self.statusbar:
                 return "Status Bar"
             if win is self.editor:
@@ -14683,6 +14731,9 @@ class MainFrame(
     def _focus_region(self, label: str) -> None:
         if label == "Status Bar":
             self.statusbar.SetFocus()
+            return
+        if label == "Document Tabs":
+            self.notebook.SetFocus()
             return
         if label == "Preview":
             tab = self._active_tab()
@@ -18000,6 +18051,16 @@ class MainFrame(
         except Exception:  # pragma: no cover - registry best-effort
             pass
         self._set_status("Removed shell integration")
+
+    def clear_all_notifications(self) -> None:
+        """Clear every stored notification without opening the dialog.
+
+        Wired to the "Clear All Notifications" entry on the notifications cell
+        context menu so the badge can be emptied in one step."""
+        clear_notifications()
+        self._notifications = []
+        self._refresh_statusbar()
+        self._set_status("Cleared all notifications")
 
     def open_notifications(self) -> None:
         wx = self._wx
@@ -21567,7 +21628,9 @@ class MainFrame(
             return "\t"
         return " " * self._indent_width()
 
-    def format_indent(self) -> None:
+    def format_indent(
+        self, *, status: str = "Indented lines", force_announce: bool = False
+    ) -> None:
         self._apply_selection_operation(
             lambda text, start, end: indent_lines(
                 text,
@@ -21575,10 +21638,13 @@ class MainFrame(
                 end,
                 indent_unit=self._indent_unit(),
             ),
-            "Indented lines",
+            status,
+            force_announce=force_announce,
         )
 
-    def format_outdent(self) -> None:
+    def format_outdent(
+        self, *, status: str = "Outdented lines", force_announce: bool = False
+    ) -> None:
         self._apply_selection_operation(
             lambda text, start, end: outdent_lines(
                 text,
@@ -21586,7 +21652,8 @@ class MainFrame(
                 end,
                 indent_unit=self._indent_unit(),
             ),
-            "Outdented lines",
+            status,
+            force_announce=force_announce,
         )
 
     def format_italic(self) -> None:
@@ -22563,6 +22630,7 @@ class MainFrame(
         status: str,
         *,
         no_change_status: str | None = None,
+        force_announce: bool = False,
     ) -> None:
         if not self._feature_enabled("core.format"):
             self._set_status(f"{status} is unavailable in this profile")
@@ -22585,7 +22653,15 @@ class MainFrame(
             self.editor.SetSelection(new_start, new_start)
         else:
             self.editor.SetSelection(new_start, new_end)
-        self._set_status(status)
+        if force_announce:
+            # Speak even while a screen reader is active. A selection edit such
+            # as Tab-indent mutates text with no focus or control change, so the
+            # screen reader has nothing to read and the normal status path is
+            # suppressed by the announcement engine (prism_bridge). force=True is
+            # the same escape hatch the QUILL-key chord prefix uses.
+            self._announce(status, force=True)
+        else:
+            self._set_status(status)
 
     def _apply_text_block_operation(
         self,

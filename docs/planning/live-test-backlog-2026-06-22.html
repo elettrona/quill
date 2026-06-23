@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>live-test-backlog-2026-06-22</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<h1 id="live-test-backlog-2026-06-22">Live-test backlog
+(2026-06-22)</h1>
+<p>Captured during an interactive screen-reader test pass. Items 1-6 are
+done and validated in the working tree (uncommitted). Items 7+ are
+open.</p>
+<h2
+id="root-cause-theme-status-confirmations-are-silent-under-a-screen-reader">Root-cause
+theme: status confirmations are silent under a screen reader</h2>
+<p><code>_set_status(msg)</code> is the standard way commands report
+their result. It updates the status-bar text and calls the announcement
+engine, but the engine <strong>deliberately stays silent while JAWS/NVDA
+is active</strong> (prism_bridge.py:303-314) to avoid talking over the
+screen reader -- on the assumption the screen reader will read whatever
+focus/control change the action caused. Commands that change nothing
+focus-wise (an indent, a "no changes" check, a "nothing found" result)
+therefore produce a visible status the user never hears. The Tab-indent
+fix (item 3) used the <code>force=True</code> escape hatch. The same
+pattern explains items 9 and 13, and likely contributes to 10. A small
+systemic fix is proposed below.</p>
+<h2 id="done-this-session">Done (this session)</h2>
+<ol type="1">
+<li>F6 now reaches the document tab bar (Document Tabs region) when Show
+Tab Control is on.</li>
+<li>"Clear All Notifications" added to the notifications status-cell
+context menu.</li>
+<li>Tab indent/outdent (and list nest/promote) now spoken under a screen
+reader via forced announcement.</li>
+<li>Tab-character mode: Ctrl+Alt+M toggles Tab between smart indent and
+inserting a literal tab; new Tab Mode status cell + checkable Format
+menu item; spoken.</li>
+<li>Removed the unfinished Pandoc Conversion Center menu item and its
+code.</li>
+<li>Documented 1-5 in CHANGELOG, user guide, and release notes.</li>
+</ol>
+<h2 id="open">Open</h2>
+<ol start="7" type="1">
+<li><p><strong>Hey QUILL settings menu item should be a checkable on/off
+toggle.</strong> Today it tries (and fails) to jump to a settings tab.
+Make it a checkable menu item that flips the Hey QUILL setting directly
+and reflects current state.</p></li>
+<li><p><strong>Speech model list is disjointed (largest
+item).</strong></p>
+<ul>
+<li>whisper.cpp is missing from the model/engine list (only
+"fast"/openai show).</li>
+<li>Want other engines added the way Vosk/Parakeet were wired.</li>
+<li>Escape in the model list opens the whisper-models list instead of
+returning to the editor. Needs an escape/back contract and a coherent
+flow.</li>
+</ul></li>
+<li><p><strong>F7 (next misspelling) "does nothing" on a freshly typed
+misspelling.</strong> F7 searches forward from the caret; after typing
+"teest" the caret is past it, so there is no <em>next</em> misspelling
+and the result ("No next misspelling") is silent under a screen reader
+(theme above). Fix: speak the result, and decide whether F7 should wrap
+to misspellings before the caret (recommend wrap, or a spoken "no
+misspellings ahead; N behind").</p></li>
+<li><p><strong>Watch Folder queue "does nothing", returns to
+editor.</strong> Likely an empty-state or no-op path with no spoken
+feedback. Needs investigation.</p></li>
+<li><p><strong>Ctrl+W should also close the active
+document/window.</strong> Today it only closes a split side-preview;
+otherwise it does nothing. Add document close as the fallback.</p></li>
+<li><p><strong>Snapshots submenu confusion.</strong> File &gt; Snapshots
+IS a submenu (workspace snapshots: Save/Open Snapshot, Recent Snapshots,
+Open Documents in Current Workspace) populated by
+<code>_refresh_sessions_menu</code>. User sees right-arrow jump to Edit
+and Enter do nothing, which means it renders empty for them -- a
+population/timing bug to reproduce. Also a terminology collision:
+"Snapshot" is reused under File &gt; Notebook (Save/Restore/Manage
+Snapshots). Decide: fix population, and rename one set to remove the
+collision (e.g. workspace "Snapshots" vs notebook "Versions").</p></li>
+<li><p><strong>"Check for External Changes" says nothing when there are
+no changes.</strong> It calls
+<code>_set_status("'&lt;file&gt;' matches the on-disk version.")</code>
+-&gt; silent under a screen reader (theme above). User wants a dialog or
+at least a spoken result.</p></li>
+<li><p><strong>Recent files: auto-clear missing entries
+(setting).</strong> Add a setting to drop recent-file entries whose
+target no longer exists on disk, but <strong>only for fixed/internal
+drives</strong> -- never for removable/USB, network, or portable drives
+(a file "missing" there usually means the drive is detached, not
+deleted). New setting + drive-type detection.</p></li>
+<li><p><strong>Search menu announces a "Separator" you can't arrow
+to.</strong> The Search menu (<code>search_menu</code>,
+main_frame_menu.py ~530) ends with
+<code>_append_power_tools_search_items</code> +
+<code>_append_quillin_menu_items(... "Search")</code>, which likely
+append a trailing/leading separator even when the following section is
+empty. A dangling separator is read by the screen reader but is not
+focusable. Fix: only append the separator when items actually follow
+it.</p></li>
+<li><p><strong>(DONE) Removed the Tools &gt; Accessibility "Speak"
+items.</strong> Speak Cursor Address, Speak Document Status, and Speak
+Selection Length removed: the three declarative power-tool entries,
+their handlers, the unused cursor_address imports, and the three ids in
+the wiring test. Public-surface snapshot regenerated; power-tools wiring
++ characterization tests pass.</p></li>
+<li><p><strong>(DONE) Moved "View Startup Logs" from Help to
+Tools.</strong> It now sits in Tools &gt; Customize &amp; Support next
+to "Open Logs Folder"; the Help copy is gone. Command id and binding
+unchanged, so the existing menu-id test still passes; handler docstring
+updated. (Note: it was never actually duplicated in Tools; this
+consolidation puts it where the user expected it.)</p></li>
+</ol>
+<h2 id="proposed-systemic-fix-covers-9-13-and-the-class">Proposed
+systemic fix (covers 9, 13, and the class)</h2>
+<p>Add a single helper, e.g. <code>_announce_result(msg)</code>, that
+sets the status text and force-speaks it, and route explicit command
+results that have no focus change through it. Open question for the
+user: in Quiet/Meeting verbosity modes, forced speech bypasses
+suppression -- should explicit, user-invoked results still be spoken in
+those modes (recommended: yes, because the user asked for them), or stay
+suppressed?</p>
+</body>
+</html>
