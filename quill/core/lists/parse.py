@@ -14,7 +14,13 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 
-from quill.core.lists.model import DefinitionEntry, DefinitionList
+from quill.core.lists.model import (
+    DefinitionEntry,
+    DefinitionList,
+    FlatList,
+    ListItem,
+    ListType,
+)
 from quill.core.lists.settings import StructuredListSettings
 
 # Marker shapes for import detection (§6.2). Ordered allows "." or ")".
@@ -47,6 +53,85 @@ def strip_marker(line: str) -> tuple[str, str, bool]:
     if bullet is not None:
         return bullet.group(2), "bullet", False
     return line, "", False
+
+
+def _is_list_line(line: str) -> bool:
+    """True when ``line`` carries a recognizable bullet/ordered/task marker."""
+    return strip_marker(line)[1] != ""
+
+
+def find_list_block(text: str, offset: int) -> tuple[int, int] | None:
+    """Char range of the contiguous list block containing ``offset`` (§4.2).
+
+    A "list line" is one with a recognizable marker (:func:`strip_marker`). The
+    block is the maximal run of consecutive list lines containing the caret's
+    line. Returns ``None`` when the caret is not on a list line, so the caller can
+    fall back to starting a fresh list. The returned range excludes any trailing
+    newline so replacing it leaves the surrounding blank lines intact.
+    """
+    if not text:
+        return None
+    lines = text.split("\n")
+    # Character offset at the start of each line.
+    starts: list[int] = []
+    pos = 0
+    for line in lines:
+        starts.append(pos)
+        pos += len(line) + 1  # +1 for the '\n' that split removed
+    # The caret line is the last line whose start is <= offset.
+    caret_line = 0
+    for i, start in enumerate(starts):
+        if start <= offset:
+            caret_line = i
+        else:
+            break
+    if not _is_list_line(lines[caret_line]):
+        return None
+    top = caret_line
+    while top > 0 and _is_list_line(lines[top - 1]):
+        top -= 1
+    bottom = caret_line
+    while bottom + 1 < len(lines) and _is_list_line(lines[bottom + 1]):
+        bottom += 1
+    block_start = starts[top]
+    block_end = starts[bottom] + len(lines[bottom])
+    return (block_start, block_end)
+
+
+def list_block_to_flat(text: str, settings: StructuredListSettings | None = None) -> FlatList:
+    """Parse a block of existing list lines into a :class:`FlatList`, keeping nesting.
+
+    Indentation widths across the block are ranked so 2-space, 4-space, or tab
+    indents all map to sequential nesting levels (so an edited nested list is not
+    silently flattened). The type is checklist when every line is a task, ordered
+    when every marker is numbered, otherwise bullet. Non-marker and blank lines are
+    skipped. An empty block yields a single empty bullet item.
+    """
+    cfg = settings if settings is not None else StructuredListSettings()
+    parsed: list[tuple[int, str, str, bool]] = []
+    for line in text.split("\n"):
+        if not line.strip():
+            continue
+        content, kind, checked = strip_marker(line)
+        if kind == "":
+            continue
+        indent = len(line) - len(line.lstrip(" \t"))
+        parsed.append((indent, _trim(content, cfg), kind, checked))
+    if not parsed:
+        return FlatList(list_type=ListType.BULLET, items=[ListItem("")])
+    widths = sorted({indent for indent, _c, _k, _ck in parsed})
+    rank = {width: level for level, width in enumerate(widths)}
+    items = [
+        ListItem(text=content, level=rank[indent], checked=checked)
+        for indent, content, _kind, checked in parsed
+    ]
+    if all(kind == "task" for _i, _c, kind, _ck in parsed):
+        list_type = ListType.CHECKLIST
+    elif all(kind == "ordered" for _i, _c, kind, _ck in parsed):
+        list_type = ListType.ORDERED
+    else:
+        list_type = ListType.BULLET
+    return FlatList(list_type=list_type, items=items)
 
 
 def _trim(text: str, settings: StructuredListSettings) -> str:
