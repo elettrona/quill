@@ -80,6 +80,20 @@ class DefinitionEntry:
     def primary_definition(self) -> str:
         return self.definitions[0] if self.definitions else ""
 
+    def terms_text(self) -> str:
+        """This entry's terms as a one-per-line string for an editor field."""
+        return "\n".join(self.terms)
+
+    def set_terms_text(self, text: str) -> None:
+        """Replace the terms from a one-per-line editor field (§15.3).
+
+        Each non-blank line becomes a term (synonyms render as multiple ``<dt>``).
+        Surrounding whitespace is trimmed; an all-blank field keeps a single empty
+        term so the entry still round-trips and never collapses to zero terms.
+        """
+        kept = [line.strip() for line in text.splitlines() if line.strip()]
+        self.terms = kept or [""]
+
     def is_blank(self) -> bool:
         return not any(t.strip() for t in self.terms) and not any(
             d.strip() for d in self.definitions
