@@ -284,12 +284,15 @@ user-configurable — <code>dictation_max_locked_seconds</code>,
 <code>dictation_min_hold_seconds</code> are settings (validated,
 negatives clamped) wired into the controller's
 <code>DictationConfig</code> via <code>_dictation_config()</code>,
-replacing the hardcoded defaults. <em>Remaining:</em> a user-facing
-settings <em>panel</em> for those knobs (plus earcon volume / retention
-/ visual indicator); Dictation History + interactive startup-recovery
-prompt; Dictation Review interface for deferred inserts; distinct
-locked-vs-hold earcons; dedicated Dictation menu + one-time
-onboarding.</li>
+replacing the hardcoded defaults. A <strong>dedicated "Hold &amp; Locked
+Dictation" menu</strong> (Tools &gt; Speech) now surfaces Locked
+Dictation, Pause/Resume, Speak Status, Stop, and Cancel with their
+keybindings (Hold-to-Dictate stays a keyboard-only hold).
+<em>Remaining:</em> a user-facing settings <em>panel</em> for those
+knobs (plus earcon volume / retention / visual indicator); Dictation
+History + interactive startup-recovery prompt; Dictation Review
+interface for deferred inserts; distinct locked-vs-hold earcons; and
+one-time dictation onboarding.</li>
 <li><strong>Watch Folder queue — live repro (#10, live-test).</strong>
 When <code>core.watch_folder</code> is enabled the monitor "feels
 empty"; needs an interactive repro to confirm the live queue populates,

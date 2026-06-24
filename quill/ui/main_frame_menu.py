@@ -1434,6 +1434,13 @@ class MenuBuilderMixin:
         self._id_speech_dictate = wx.NewIdRef()
         self._id_speech_voice_command = wx.NewIdRef()
         self._id_speech_microphone = wx.NewIdRef()
+        # Hold-to-Dictate / Locked Dictation menu items (the commands are also the
+        # remappable F9 family; Hold-to-Dictate itself stays keyboard-only).
+        self._id_dictation_lock = wx.NewIdRef()
+        self._id_dictation_pause = wx.NewIdRef()
+        self._id_dictation_status = wx.NewIdRef()
+        self._id_dictation_stop = wx.NewIdRef()
+        self._id_dictation_cancel = wx.NewIdRef()
         self._id_speech_ffmpeg = wx.NewIdRef()
         self._id_speech_engine_dl = wx.NewIdRef()
         self._id_speech_hf_token = wx.NewIdRef()
@@ -1689,6 +1696,32 @@ class MenuBuilderMixin:
             self._id_speech_microphone,
             self._menu_label(_("Dictation &Microphone..."), "tools.speech_microphone"),
         )
+        # Hold-to-Dictate / Locked Dictation control submenu (#10 discoverability).
+        # Hold-to-Dictate is a hold gesture (F9) that a menu click cannot perform,
+        # so only the discrete controls appear here; the keybinding for each is
+        # shown so the keyboard-first workflow stays obvious.
+        dictation_menu = wx.Menu()
+        dictation_menu.Append(
+            self._id_dictation_lock,
+            self._menu_label(_("&Locked Dictation (start/finish)"), "tools.dictation_lock_toggle"),
+        )
+        dictation_menu.Append(
+            self._id_dictation_pause,
+            self._menu_label(_("&Pause or Resume"), "tools.dictation_pause"),
+        )
+        dictation_menu.Append(
+            self._id_dictation_status,
+            self._menu_label(_("Speak &Status"), "tools.dictation_status"),
+        )
+        dictation_menu.Append(
+            self._id_dictation_stop,
+            self._menu_label(_("S&top (keep speech)"), "tools.dictation_emergency_stop"),
+        )
+        dictation_menu.Append(
+            self._id_dictation_cancel,
+            self._menu_label(_("&Cancel (discard)"), "tools.dictation_cancel"),
+        )
+        speech_menu.AppendSubMenu(dictation_menu, _("&Hold && Locked Dictation"))
         speech_menu.AppendSeparator()
         speech_menu.Append(
             self._id_speech_transcribe,
@@ -2695,6 +2728,21 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.dictate_offline_toggle(), id=self._id_speech_dictate
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.toggle_locked_dictation(), id=self._id_dictation_lock
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.toggle_dictation_pause(), id=self._id_dictation_pause
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.speak_dictation_status(), id=self._id_dictation_status
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.stop_dictation_keep_speech(), id=self._id_dictation_stop
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.cancel_dictation_discard(), id=self._id_dictation_cancel
         )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.voice_command_toggle(), id=self._id_speech_voice_command
