@@ -80,11 +80,13 @@
     `dictation_stop_on_focus_loss`, `dictation_intelligent_spacing`, and
     `dictation_min_hold_seconds` are settings (validated, negatives clamped) wired
     into the controller's `DictationConfig` via `_dictation_config()`, replacing the
-    hardcoded defaults. *Remaining:* a user-facing settings *panel* for those knobs
-    (plus earcon volume / retention / visual indicator); Dictation History +
-    interactive startup-recovery prompt; Dictation Review interface for deferred
-    inserts; distinct locked-vs-hold earcons; dedicated Dictation menu + one-time
-    onboarding.
+    hardcoded defaults. A **dedicated "Hold & Locked Dictation" menu** (Tools >
+    Speech) now surfaces Locked Dictation, Pause/Resume, Speak Status, Stop, and
+    Cancel with their keybindings (Hold-to-Dictate stays a keyboard-only hold).
+    *Remaining:* a user-facing settings *panel* for those knobs (plus earcon volume /
+    retention / visual indicator); Dictation History + interactive startup-recovery
+    prompt; Dictation Review interface for deferred inserts; distinct locked-vs-hold
+    earcons; and one-time dictation onboarding.
 11. **Watch Folder queue — live repro (#10, live-test).** When `core.watch_folder`
     is enabled the monitor "feels empty"; needs an interactive repro to confirm the
     live queue populates, or a fix.
