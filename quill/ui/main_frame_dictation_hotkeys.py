@@ -284,20 +284,26 @@ class DictationHotkeysMixin:
     def _dictation_match(
         self, event: Any, binding: str | None, *, ignore_mods: bool = False
     ) -> bool:
-        parsed = self._parse_keybinding(binding)
-        if parsed is None:
+        # Key routing for this optional feature must never break normal typing:
+        # any failure resolving the binding (e.g. a minimal wx during tests, or a
+        # malformed chord) means "no match" so the editor's own handling proceeds.
+        try:
+            parsed = self._parse_keybinding(binding)
+            if parsed is None:
+                return False
+            flags, key_code = parsed
+            if event.GetKeyCode() != key_code:
+                return False
+            if ignore_mods:
+                return True
+            wx = self._wx
+            return (
+                event.ControlDown() == bool(flags & wx.ACCEL_CTRL)
+                and event.ShiftDown() == bool(flags & wx.ACCEL_SHIFT)
+                and event.AltDown() == bool(flags & wx.ACCEL_ALT)
+            )
+        except Exception:  # noqa: BLE001 - never let dictation routing break a keystroke
             return False
-        flags, key_code = parsed
-        if event.GetKeyCode() != key_code:
-            return False
-        if ignore_mods:
-            return True
-        wx = self._wx
-        return (
-            event.ControlDown() == bool(flags & wx.ACCEL_CTRL)
-            and event.ShiftDown() == bool(flags & wx.ACCEL_SHIFT)
-            and event.AltDown() == bool(flags & wx.ACCEL_ALT)
-        )
 
     def _dictation_handle_key_down(self, event: Any) -> bool:
         """Return True if the key began/affected a dictation session (consumed)."""

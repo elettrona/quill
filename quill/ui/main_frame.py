@@ -6800,7 +6800,11 @@ class MainFrame(
             pass
 
     def _binding_for(self, command_id: str) -> str | None:
-        binding = self.keymap.get(command_id)
+        # Tolerate a not-yet-assigned keymap: key events (e.g. the dictation
+        # hotkeys, matched in the editor key handlers) can fire before/around
+        # full init, so fall back to the default binding rather than raising.
+        keymap = getattr(self, "keymap", None)
+        binding = keymap.get(command_id) if keymap is not None else None
         if binding is None:
             return DEFAULT_KEYMAP.get(command_id)
         cleaned = binding.strip()

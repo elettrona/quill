@@ -71,6 +71,7 @@ _WHISPER_MODELS: tuple[SpeechModelSpec, ...] = (
     ),
 )
 
+
 def speech_models_dir() -> Path:
     path = app_data_dir() / "speech-models"
     path.mkdir(parents=True, exist_ok=True)
