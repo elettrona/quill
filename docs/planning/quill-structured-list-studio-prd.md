@@ -1648,6 +1648,12 @@ for "is this done"; update it as further phases land.
   `DefinitionEntry.terms_text` / `set_terms_text` / `definitions_text` /
   `set_definitions_text` helpers, unit-tested in
   `tests/unit/core/lists/test_model.py`.
+- **In-place editing of the list under the caret (§4.2):** F2 with no selection
+  detects the contiguous list block the caret sits in, loads it into the studio
+  (preserving nesting levels — indentation widths are ranked into levels), and on
+  OK rewrites just that block (the button reads "Replace list"). Driven by the
+  wx-free `find_list_block` / `list_block_to_flat` helpers in `parse.py`,
+  unit-tested in `tests/unit/core/lists/test_find_block.py`.
 
 ## Not yet implemented (planned follow-ups)
 
@@ -1657,9 +1663,6 @@ for "is this done"; update it as further phases land.
 - **Import dialogs with preview** (§6, §17.4–§17.5) and **conversion previews /
   information-loss confirmations** (§12, §19) — the core computes interpretations,
   ambiguity, and loss reasons; the preview/confirmation surfaces are pending.
-- **In-place editing** of the list under the caret (§4.2) — F2 currently converts a
-  selection or starts fresh; the older List Manager still edits an existing Markdown
-  list in place.
 - **Reparse-and-validate before commit** (§26, §28.14) and the definition Markdown
   **profile prompt** (§7.6, §21.3 — the dialog currently falls back to embedded HTML
   when no profile is set).

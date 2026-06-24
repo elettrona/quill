@@ -1798,6 +1798,14 @@ Both run through wx-free <code>DefinitionEntry.terms_text</code> /
 <code>set_terms_text</code> / <code>definitions_text</code> /
 <code>set_definitions_text</code> helpers, unit-tested in
 <code>tests/unit/core/lists/test_model.py</code>.</li>
+<li><strong>In-place editing of the list under the caret
+(§4.2):</strong> F2 with no selection detects the contiguous list block
+the caret sits in, loads it into the studio (preserving nesting levels —
+indentation widths are ranked into levels), and on OK rewrites just that
+block (the button reads "Replace list"). Driven by the wx-free
+<code>find_list_block</code> / <code>list_block_to_flat</code> helpers
+in <code>parse.py</code>, unit-tested in
+<code>tests/unit/core/lists/test_find_block.py</code>.</li>
 </ul>
 <h2 id="not-yet-implemented-planned-follow-ups">Not yet implemented
 (planned follow-ups)</h2>
@@ -1810,9 +1818,6 @@ shipped presets, and import/export. Defaults currently live in
 <strong>conversion previews / information-loss confirmations</strong>
 (§12, §19) — the core computes interpretations, ambiguity, and loss
 reasons; the preview/confirmation surfaces are pending.</li>
-<li><strong>In-place editing</strong> of the list under the caret (§4.2)
-— F2 currently converts a selection or starts fresh; the older List
-Manager still edits an existing Markdown list in place.</li>
 <li><strong>Reparse-and-validate before commit</strong> (§26, §28.14)
 and the definition Markdown <strong>profile prompt</strong> (§7.6, §21.3
 — the dialog currently falls back to embedded HTML when no profile is

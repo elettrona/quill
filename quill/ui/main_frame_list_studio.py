@@ -31,7 +31,9 @@ class ListStudioMixin:
             FlatList,
             ListItem,
             ListType,
+            find_list_block,
             interpret_selection,
+            list_block_to_flat,
         )
         from quill.ui.dialog_contract import apply_modal_ids
         from quill.ui.list_studio_dialog import ListStudioDialog
@@ -42,6 +44,7 @@ class ListStudioMixin:
 
         start, end = self.editor.GetSelection()
         flat = FlatList(list_type=ListType.BULLET, items=[ListItem("")])
+        in_place = False
         if end > start:
             selected = self.editor.GetValue()[start:end]
             interpreted = interpret_selection(selected, settings)
@@ -58,6 +61,16 @@ class ListStudioMixin:
                     else ListType.BULLET
                 )
                 flat = FlatList(list_type=list_type, items=items)
+        else:
+            # No selection: if the caret sits inside an existing list, edit that
+            # list in place (§4.2) rather than starting a fresh one. The detected
+            # block becomes the replace range, so OK rewrites just that list and
+            # its nesting levels are preserved.
+            block = find_list_block(self.editor.GetValue(), self.editor.GetInsertionPoint())
+            if block is not None:
+                start, end = block
+                flat = list_block_to_flat(self.editor.GetValue()[start:end], settings)
+                in_place = True
 
         studio = ListStudioDialog(
             wx,
@@ -77,7 +90,7 @@ class ListStudioMixin:
         apply_modal_ids(
             dialog,
             affirmative_id=wx.ID_OK,
-            affirmative_label="&Insert list",
+            affirmative_label="&Replace list" if in_place else "&Insert list",
             cancel_id=wx.ID_CANCEL,
             cancel_label="Cancel",
         )
@@ -93,16 +106,15 @@ class ListStudioMixin:
         if not source.strip():
             self._set_status("Structured List Studio: nothing to insert")
             return
-        self._apply_list_studio_source(source)
-        self._announce(f"{summary} Inserted. Press Control+Z to undo.")
+        # Replace the captured range: the in-place list block, the original
+        # selection, or the caret (empty range) for a fresh insert.
+        self._apply_list_studio_source(source, start, end)
+        verb = "Replaced" if in_place else "Inserted"
+        self._announce(f"{summary} {verb}. Press Control+Z to undo.")
         self._set_status(summary)
 
-    def _apply_list_studio_source(self, source: str) -> None:
-        """Replace the selection (or insert at the caret) as one undo step."""
-        start, end = self.editor.GetSelection()
-        if end <= start:
-            caret = self.editor.GetInsertionPoint()
-            start = end = caret
+    def _apply_list_studio_source(self, source: str, start: int, end: int) -> None:
+        """Replace the captured ``start``..``end`` range as one undo step."""
         self._atomic_replace(start, end, source)
         self.document.set_text(self.editor.GetValue())
 
