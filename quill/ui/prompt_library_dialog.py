@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 import wx
 
 from quill.core.prompt_library import CATEGORIES, Prompt, PromptLibrary
-from quill.ui.dialog_contract import show_message_box
+from quill.ui.dialog_contract import apply_modal_ids, show_message_box
 
 if TYPE_CHECKING:
     from quill.core.settings import Settings
@@ -120,8 +120,6 @@ class PromptLibraryDialog:
 
         self.dialog.SetSizer(root)
         self.dialog.Layout()
-
-        from quill.ui.dialog_contract import apply_modal_ids
 
         apply_modal_ids(
             self.dialog,
@@ -338,9 +336,9 @@ class PromptLibraryDialog:
             "Delete Prompt",
             wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING,
         )
-        from quill.ui.dialog_contract import apply_modal_ids
-
-        apply_modal_ids(confirm, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO)  # noqa: dialog_button_contract
+        apply_modal_ids(  # dialog_button_contract: exempt
+            confirm, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO
+        )
         try:
             ok = confirm.ShowModal() == wx.ID_YES
         finally:
@@ -473,8 +471,6 @@ class _PromptEditDialog:
         root.Add(btn_sizer, 0, wx.EXPAND | wx.ALL, 8)
 
         self.dialog.SetSizer(root)
-
-        from quill.ui.dialog_contract import apply_modal_ids
 
         apply_modal_ids(
             self.dialog,

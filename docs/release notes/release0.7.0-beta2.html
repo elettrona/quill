@@ -176,7 +176,7 @@
   </style>
 </head>
 <body>
-<h1 id="quill-070-beta-2-release-notes">QUILL 0.7.0 Beta 2 Release
+<h1 id="quill-0.7.0-beta-2-release-notes">QUILL 0.7.0 Beta 2 Release
 Notes</h1>
 <p>Beta 2 is the release where QUILL gets serious about proofing, voice,
 and accessibility. You can now walk through every misspelling in a fully
@@ -224,7 +224,7 @@ says: the Verbosity system</h2>
 friendly context for every action down to near silence — without
 fighting your screen reader. Open <strong>Verbosity Preferences</strong>
 from the command palette (<code>Ctrl+Shift+P</code>, then type
-"verbosity").</p>
+“verbosity”).</p>
 <ul>
 <li><strong>Four profiles.</strong> Pick a level:
 <strong>Beginner</strong> (full context for everything),
@@ -253,7 +253,7 @@ Pack</strong> — all data-only, never code.</li>
 <li><strong>Understand and tune it.</strong> A <strong>Preview
 Lab</strong> lets you hear how a profile sounds against everyday
 scenarios; an <strong>announcement History</strong> lets you replay,
-copy, or ask <strong>"why did QUILL say that?"</strong>; and
+copy, or ask <strong>“why did QUILL say that?”</strong>; and
 <strong>Safe Mode</strong> instantly restores the built-in announcements
 if a custom setup ever misbehaves — without deleting your work.</li>
 </ul>
@@ -281,8 +281,8 @@ fits your computer and gets out of your way while it downloads.</p>
 <li><strong>Machine-aware guidance.</strong> The dialog opens with a
 summary of your machine (RAM, and whether a GPU was found). Each model
 shows roughly how much memory it needs, flags models that are too big
-for your RAM, marks the best fit as <strong>"Recommended for your
-computer,"</strong> and warns when a large model has no GPU to
+for your RAM, marks the best fit as <strong>“Recommended for your
+computer,”</strong> and warns when a large model has no GPU to
 accelerate it.</li>
 <li><strong>Downloads run in the background with a real
 percentage.</strong> A download no longer freezes QUILL — it runs while
@@ -305,28 +305,28 @@ card before anything downloads, and the files are stored only on your
 computer.</li>
 <li><strong>Verified, reproducible downloads.</strong> Models are
 fetched from a pinned version and checked against a known checksum, so a
-silent re-upload can't change a model underneath you. (This also fixed
+silent re-upload can’t change a model underneath you. (This also fixed
 the speaker-detection model, whose download link had gone stale — it
 works again.)</li>
 <li><strong>Optional token, with guidance, if you want higher
 limits.</strong> A token is never required, but if you download many
-models and hit Hugging Face's rate limits you can add a free access
+models and hit Hugging Face’s rate limits you can add a free access
 token under <strong>Tools &gt; Speech &gt; Whisperer &gt; Hugging Face
-Token...</strong>. First time, QUILL walks you through it — the steps to
-create a free "Read" token, with a one-click offer to open the Hugging
+Token…</strong>. First time, QUILL walks you through it — the steps to
+create a free “Read” token, with a one-click offer to open the Hugging
 Face token page in your browser — then you paste it (entered masked,
 stored in Windows Credential Manager, never in a settings file). A
 rate-limit error now points you here instead of showing a raw
 failure.</li>
 </ul>
 <h3 id="transcribe-audio-and-video">Transcribe audio and video</h3>
-<p><strong>Transcribe Audio or Video (Offline)...</strong> turns a
+<p><strong>Transcribe Audio or Video (Offline)…</strong> turns a
 recording into text on your own machine — no cloud account, and your
 audio is never uploaded. Choose the output format (<strong>plain text,
 Markdown, or HTML</strong>); it opens as an editable draft while QUILL
 works in the background. With the speaker-detection model installed,
-transcripts label <strong>who is speaking when</strong> ("Speaker 1",
-"Speaker 2", ...).</p>
+transcripts label <strong>who is speaking when</strong> (“Speaker 1”,
+“Speaker 2”, …).</p>
 <p><strong>Open almost any file.</strong> QUILL now accepts a wide range
 of audio and video formats — MP3, M4A, AAC, FLAC, OGG, Opus, WMA, WAV,
 MP4, M4V, MOV, MKV, WebM, and AVI. When <strong>ffmpeg</strong> is
@@ -335,13 +335,13 @@ transcribing, so you no longer have to prepare a WAV first. (Without
 ffmpeg, the offline Whisper engine still reads 16 kHz mono WAV files;
 the Faster Whisper engine reads the other formats on its own.) QUILL
 does not bundle ffmpeg, but it can fetch it for you: <strong>Tools &gt;
-Speech &gt; Whisperer &gt; Download FFmpeg...</strong> downloads the
+Speech &gt; Whisperer &gt; Download FFmpeg…</strong> downloads the
 official build and sets it up — or install it yourself once with
 <code>winget install Gyan.FFmpeg</code>.</p>
 <h3 id="captions">Captions</h3>
-<p><strong>Generate Captions (Offline)...</strong> transcribes a file
-with timestamps and saves it as <strong>SRT</strong> or
-<strong>VTT</strong> subtitles you can review and ship.</p>
+<p><strong>Generate Captions (Offline)…</strong> transcribes a file with
+timestamps and saves it as <strong>SRT</strong> or <strong>VTT</strong>
+subtitles you can review and ship.</p>
 <h3 id="transcribe-a-whole-folder-automatically">Transcribe a whole
 folder automatically</h3>
 <p>Watch Folder automation can now transcribe for you. Point a watch
@@ -365,7 +365,7 @@ declarative Quillin:</p>
 <li><strong>OpenAI Whisper</strong> — best-in-class accuracy across 99+
 languages (uses your OpenAI API key).</li>
 <li><strong>Groq Whisper</strong> — the same Whisper large-v3-turbo
-model, run on Groq's hardware for very fast turnaround (needs a Groq API
+model, run on Groq’s hardware for very fast turnaround (needs a Groq API
 key).</li>
 <li><strong>ElevenLabs Scribe</strong> — high accuracy with optional
 <strong>speaker diarization</strong>, so the transcript marks who spoke
@@ -382,10 +382,10 @@ extension never sees your audio or your key.</p>
 <h3 id="dictate-into-your-document">Dictate into your document</h3>
 <p><strong>Dictate (Offline)</strong> lets you speak directly into the
 editor. Press the command (or <code>QUILL key + Shift + D</code>) to
-start — you hear a start tone and "Dictation listening" in the status
+start — you hear a start tone and “Dictation listening” in the status
 bar — then press again to stop; QUILL inserts what you said at the
-cursor as a single undoable edit. <strong>Dictation
-Microphone...</strong> picks which microphone to use.</p>
+cursor as a single undoable edit. <strong>Dictation Microphone…</strong>
+picks which microphone to use.</p>
 <h3 id="hold-to-dictate-and-locked-dictation-new">Hold-to-Dictate and
 Locked Dictation (new)</h3>
 <p>Two fast, keyboard-only ways to dictate straight into the document —
@@ -400,7 +400,7 @@ closes, so it is never recorded). Ideal for a phrase or a sentence.</li>
 <li><strong>Locked Dictation — Ctrl+F9.</strong> Press
 <strong>Ctrl+F9</strong> once to start a hands-free recording session
 (no need to keep a key held), and <strong>Ctrl+F9</strong> again to
-finish and insert. QUILL announces "Locked dictation on" so the active
+finish and insert. QUILL announces “Locked dictation on” so the active
 state is unmistakable.</li>
 <li><strong>Always a dependable stop.</strong> While recording,
 <strong>Escape</strong> stops and <em>keeps</em> your speech for
@@ -409,8 +409,8 @@ Locked Dictation also stops automatically after five minutes, and stops
 and preserves your audio if QUILL loses focus.</li>
 <li><strong>Pause and check state.</strong>
 <strong>Ctrl+Shift+F9</strong> pauses or resumes a locked session;
-<strong>Alt+F9</strong> speaks the current state ("Locked dictation is
-recording", "Dictation is being transcribed", and so on) without
+<strong>Alt+F9</strong> speaks the current state (“Locked dictation is
+recording”, “Dictation is being transcribed”, and so on) without
 changing anything.</li>
 <li><strong>Safe by design.</strong> Audio is saved to a recovery folder
 <em>before</em> transcription begins, so a crash or unplugged microphone
@@ -427,12 +427,12 @@ QUILL is the foreground window; pause/resume, recovery review, and an
 optional global key hook are planned follow-ups.</p>
 <h3 id="run-commands-by-voice-new">Run commands by voice (new)</h3>
 <p><strong>Voice Command (Offline)</strong> lets you drive QUILL
-hands-free. Run it, say a command — "save", "bold", "next heading",
-"word count", "command palette" — and run it again to act. Recognition
+hands-free. Run it, say a command — “save”, “bold”, “next heading”,
+“word count”, “command palette” — and run it again to act. Recognition
 is on-device, and voice can only invoke a curated, <strong>safe set of
 commands</strong>, so a misheard phrase can never trigger something
 destructive. It is off by default (turn it on in Settings) and always
-disabled in Safe Mode. Say "cancel" or "never mind" to dismiss without
+disabled in Safe Mode. Say “cancel” or “never mind” to dismiss without
 acting.</p>
 <h3 id="choose-your-engine">Choose your engine</h3>
 <p>The bundled <strong>whisper.cpp</strong> engine needs nothing extra.
@@ -442,8 +442,8 @@ optional dependency:</p>
 <li><strong>Faster Whisper</strong> — a higher-throughput multilingual
 engine that uses your <strong>GPU</strong> when one is available.
 Install it in one step with <strong>Tools &gt; Speech &gt; Whisperer
-&gt; Download Faster Whisper Engine...</strong> (about 110 MB,
-downloaded on demand; no source checkout needed), or from source as the
+&gt; Download Faster Whisper Engine…</strong> (about 110 MB, downloaded
+on demand; no source checkout needed), or from source as the
 <code>fasterwhisper</code> dependency.</li>
 <li><strong>Vosk (English)</strong> — a <strong>very low-resource,
 CPU-only</strong> engine that runs on a ~40 MB model with no GPU, for
@@ -456,7 +456,7 @@ still downloads on first use.</li>
 Engine</strong> chooser, and your choice is used for transcription,
 captions, and dictation; each engine has its own models, so download one
 after switching. Pressing <strong>Escape</strong> on the engine chooser
-now returns you to the editor rather than opening the default engine's
+now returns you to the editor rather than opening the default engine’s
 model list. All three run <strong>entirely on your computer</strong>.
 (For speaker labels, use the whisper.cpp speaker-detection model.)</p>
 <h2 id="read-aloud-more-voices-cloud-and-local">Read aloud: more voices,
@@ -494,8 +494,8 @@ companion file beside it.</p>
 <li><strong>QUILL remembers your place.</strong> Reopen a
 <code>.brf</code>, <code>.brl</code>, <code>.pef</code>, or
 <code>.ueb</code> file and your cursor returns to where you left off,
-announced precisely — for example, "BRF file opened. 87 braille pages
-detected. Last position: braille page 12, line 14, cell 31."</li>
+announced precisely — for example, “BRF file opened. 87 braille pages
+detected. Last position: braille page 12, line 14, cell 31.”</li>
 <li><strong>Track proofreading.</strong> A <strong>Braille &gt;
 Proofing</strong> menu lets you mark a page proofed or needs-review, add
 notes, hear a spoken progress summary, jump to pages that still need
@@ -527,7 +527,7 @@ the Victor Reader Stream, Plextalk, and APH units.</p>
 <li>A DAISY book is a <em>folder</em> (the name you choose), holding the
 three files a player expects; QUILL asks before writing into a folder
 that already has files.</li>
-<li>Your headings become the player's navigation points; a document with
+<li>Your headings become the player’s navigation points; a document with
 no headings gets a title heading so navigation still works.</li>
 <li>The book is text-only, so a player reads it with its own
 text-to-speech — and because it is a standard DAISY book, you can open
@@ -545,12 +545,12 @@ editing.</p>
 <ul>
 <li><strong>Set the language and get its characteristics.</strong>
 <strong>Ctrl+Shift+L</strong> (also <strong>Navigate &gt; Set Document
-Language...</strong>, the new <strong>Format &gt; Document
+Language…</strong>, the new <strong>Format &gt; Document
 Language</strong> list, or Enter on the status-bar
 <strong>Language</strong> segment) pins a language for the current
 document. Once set, <strong>Bold/Italic</strong> insert the right
 markup, the heading/table/list/tag menu items light up, <strong>comment
-toggling</strong> uses that language's syntax, and heading navigation,
+toggling</strong> uses that language’s syntax, and heading navigation,
 the outline, link insertion, and live preview all follow it. The status
 bar shows <strong>(set)</strong> when you chose the language yourself.
 Recognised languages now include HTML, Markdown, CSS, Python,
@@ -585,8 +585,8 @@ lists every navigable element — headings, links, lists,
 <strong>tables</strong>, block quotes, bookmarks, code blocks — with a
 category filter that shows a <strong>live count</strong> of each type,
 plus a type-ahead box to filter and jump.</p>
-<p>It now also lists your document's <strong>misspellings</strong> and,
-when a search is active, the current query's <strong>search
+<p>It now also lists your document’s <strong>misspellings</strong> and,
+when a search is active, the current query’s <strong>search
 hits</strong> as their own navigable types. So you can open one panel
 and jump straight to the next misspelled word, or to any match of your
 last search, the same way you jump to a heading or a link — with a live
@@ -625,7 +625,7 @@ dictionary permanently.</li>
 action without closing the dialog. The button is greyed out until you
 have done something to undo.</li>
 <li><strong>Close</strong> — finish the review. Any changes already made
-stay in the document's normal undo history.</li>
+stay in the document’s normal undo history.</li>
 </ul>
 <p><strong>Screen-reader first.</strong> QUILL announces the issue, your
 progress, and the result of each action — but only what your screen
@@ -683,7 +683,7 @@ settings and keyboard shortcuts as it starts and carries forward
 everything that still works. If an older choice points at a command that
 no longer exists, has an empty shortcut, or conflicts with another
 command, QUILL quietly drops just that entry and uses the current
-default — so a feature never silently appears "broken."</p>
+default — so a feature never silently appears “broken.”</p>
 <ul>
 <li><strong>Familiar shortcuts come back.</strong> Bindings that drifted
 during 0.7.0 development (for example <code>Ctrl+F</code> for Find, plus
@@ -691,7 +691,7 @@ Send to System Tray, Read Aloud, and Dictation) are repaired
 automatically.</li>
 <li><strong>Your customizations are respected.</strong> QUILL starts
 from the current defaults and layers your compatible changes on top;
-importing someone's profile brings in only their real customizations and
+importing someone’s profile brings in only their real customizations and
 leaves your unrelated shortcuts alone.</li>
 <li><strong>Nothing extra to run.</strong> Beta 2 handles the common
 upgrade needs on its own. A fuller migration utility (for larger format
@@ -716,9 +716,9 @@ or desktop shortcut that still pointed at the batch file, so the flash
 does not return.</li>
 <li><strong>Honest identity.</strong> The launcher reports itself as
 <strong>QUILL for All</strong> with the real version and
-<strong>Community Access</strong> as the publisher, so a screen reader's
-"what is this window / what version" commands say something useful
-instead of "Python." On upgrade, a stale shortcut pointing at the old
+<strong>Community Access</strong> as the publisher, so a screen reader’s
+“what is this window / what version” commands say something useful
+instead of “Python.” On upgrade, a stale shortcut pointing at the old
 launcher is replaced.</li>
 <li><strong>Choose where QUILL stores your data.</strong> A first-run
 <strong>Where QUILL stores your data</strong> page offers the
@@ -740,14 +740,14 @@ screen-reader refinements</h2>
 <ul>
 <li><strong>Setup starts on the heading</strong>, and its text is
 readable. Each Setup Wizard page focuses its heading first, so you hear
-the page's purpose before its controls; the explanatory text sits in a
+the page’s purpose before its controls; the explanatory text sits in a
 <strong>read-only field you can arrow through line by line</strong>,
 exactly like the About window, for both Windows screen readers and
 VoiceOver; and the buttons read plainly as <strong>Back</strong> and
-<strong>Next</strong> (no "less than Back").</li>
+<strong>Next</strong> (no “less than Back”).</li>
 <li><strong>A cleaner first launch.</strong> On a fresh install the
 Setup Wizard opens before any Untitled document, so a screen reader
-doesn't announce a stray tab first; a blank document is created after
+doesn’t announce a stray tab first; a blank document is created after
 setup.</li>
 <li><strong>macOS / VoiceOver.</strong> VoiceOver now identifies the
 editor as a real editable text area; the Report a Bug fields have proper
@@ -778,7 +778,7 @@ discard, or <code>Esc</code> to cancel — or Tab to the buttons.</li>
 still defaults to smart line indent (Shift+Tab outdents; on a Markdown
 list item it nests or promotes the item). Press <strong>QUILL Key +
 U</strong> to switch the Tab key to insert a literal tab character at
-the cursor instead — Quill's take on the VS Code "Tab key" toggle
+the cursor instead — Quill’s take on the VS Code “Tab key” toggle
 (Ctrl+M is reserved for the mark ring). The current mode shows in the
 new <strong>Tab Mode</strong> status-bar cell and the checkable
 <strong>Format &gt; Tab Key Inserts Tab Character</strong> menu item,
@@ -793,13 +793,13 @@ and Status Bar, so the tab strip is reachable from the keyboard.</li>
 the notifications status-cell context menu.</li>
 <li><strong>Hey QUILL Commands is a real on/off toggle.</strong> The
 Reading &gt; Dictation &gt; Hey QUILL Commands menu item is now
-checkable: it flips the setting directly, remembers it, and says "Hey
-QUILL voice commands on" or "off" — it no longer sends you to a settings
+checkable: it flips the setting directly, remembers it, and says “Hey
+QUILL voice commands on” or “off” — it no longer sends you to a settings
 tab.</li>
-<li><strong>Results that don't move the cursor are now spoken.</strong>
+<li><strong>Results that don’t move the cursor are now spoken.</strong>
 Pressing <strong>Ctrl+F7</strong> (next misspelling) or
-<strong>Ctrl+Shift+F7</strong> (previous misspelling) now says "No
-misspellings ahead; N behind" (and the reverse) instead of staying
+<strong>Ctrl+Shift+F7</strong> (previous misspelling) now says “No
+misspellings ahead; N behind” (and the reverse) instead of staying
 silent, and <strong>Check for External Changes</strong> announces when
 the file still matches what is on disk. (<strong>F7</strong> opens the
 full Spelling Review dialog; use Ctrl+F7 and Ctrl+Shift+F7 to jump
@@ -811,7 +811,7 @@ nothing.</li>
 setting, <strong>Drop missing recent files automatically</strong> (off
 by default), removes Recent Files entries whose file is gone — but only
 on your fixed internal drives. Files on USB, removable, or network
-drives are left alone, since "missing" there usually just means the
+drives are left alone, since “missing” there usually just means the
 drive is unplugged or offline.</li>
 <li>The unfinished <strong>Pandoc Conversion Center</strong> menu item
 was removed; use <strong>File &gt; Import</strong> / <strong>File &gt;
@@ -833,9 +833,9 @@ text selected it turns your selection into a list (one item per line or
 per paragraph, detected automatically, with any existing
 bullet/number/task markers stripped); with nothing selected it starts a
 new list. The studio is also on the <strong>Insert &gt; List &gt;
-Structured List Studio...</strong> menu. (F2 was previously Insert
-Special Character, which moves to <strong>Shift+F2</strong>; both
-shortcuts are remappable in Keyboard settings.)</li>
+Structured List Studio…</strong> menu. (F2 was previously Insert Special
+Character, which moves to <strong>Shift+F2</strong>; both shortcuts are
+remappable in Keyboard settings.)</li>
 <li><strong>Four list types.</strong> Bulleted, Numbered, Checklist, and
 <strong>Definition (or description) list</strong>. A choice control
 switches between them, and a Markdown/HTML control picks the output; the
@@ -849,7 +849,7 @@ for HTML and a Pandoc-compatible definition syntax for Markdown — it
 never asks you to know which one your renderer supports.</li>
 <li><strong>Accessible by construction.</strong> Every control is
 keyboard-reachable and labelled; the items/entries outline announces
-each item's text, number or checked state, and position; and inserting
+each item’s text, number or checked state, and position; and inserting
 the finished list is a single Ctrl+Z-able edit.</li>
 </ul>
 <p>This first release covers flat (non-nested) lists and the common
@@ -863,7 +863,7 @@ faithfully</h2>
 <h3 id="plain-text-fidelity">Plain-text fidelity</h3>
 <ul>
 <li><strong>No stray byte-order mark.</strong> A UTF-8 BOM is kept out
-of the editable text (so it can't sit under your cursor or be read
+of the editable text (so it can’t sit under your cursor or be read
 aloud) and re-added on save if the original had one.</li>
 <li><strong>Round-trip exactness.</strong> Open and save and you get the
 same file back: Windows <code>CRLF</code> line endings stay
@@ -874,7 +874,7 @@ Text</strong> when you <em>want</em> to flatten formatting.</li>
 <h3 id="simple-file-open-dialog">Simple File Open dialog</h3>
 <p>An opt-in, keyboard-friendly picker (turn on <strong>Settings &gt;
 General &gt; Use simple file open dialog</strong>), reached from the
-same <strong>File &gt; Open...</strong> / <code>Ctrl+O</code>: folders
+same <strong>File &gt; Open…</strong> / <code>Ctrl+O</code>: folders
 first with a <code>[dir]</code> prefix, a small <strong>Filter</strong>
 dropdown, <code>Ctrl+L</code> to focus the path, <code>Enter</code> to
 open or descend, <code>Backspace</code> to go up, <code>Ctrl+H</code>
@@ -885,7 +885,7 @@ retry.</p>
 <h2 id="setup-and-ai-hub-reliability">Setup and AI Hub reliability</h2>
 <ul>
 <li>The <strong>Open AI Hub</strong> button works on a brand-new
-profile, and the Hub's tabs, provider choices, instructions, and image
+profile, and the Hub’s tabs, provider choices, instructions, and image
 styles all load correctly — from the Setup Wizard or the Tools
 menu.</li>
 <li>A new profile no longer triggers a startup typing failure.</li>
@@ -897,7 +897,7 @@ when it cannot delete the marker file.</li>
 reporting</h2>
 <p>Several crashes and rough edges are fixed: <strong>Check for
 Updates</strong> and <strong>Check for GLOW Updates</strong> open
-correctly; choosing <strong>Don't Save</strong> after
+correctly; choosing <strong>Don’t Save</strong> after
 <code>Ctrl+F4</code> no longer crashes; closing the last document is
 safe from a late caret event; <strong>saving settings</strong> (OK,
 Reset to Factory Defaults, or importing) applies theme, spell-check,
@@ -913,7 +913,7 @@ name and encoding, platform and screen-reader info, and the last
 traceback frames, with personal data and credential-shaped strings
 scrubbed first. You choose: <strong>Send</strong> (to the public issue
 tracker, only with a configured token), <strong>Copy to
-clipboard</strong>, or <strong>Don't send</strong> (the default; Escape
+clipboard</strong>, or <strong>Don’t send</strong> (the default; Escape
 triggers it). A local copy is always saved to your crash-reports folder,
 and you can turn the dialog off in <strong>Settings &gt;
 General</strong>.</p>
@@ -926,7 +926,7 @@ menu says <strong>Hide QUILL</strong> / <strong>Quit QUILL</strong>; and
 macOS explains honestly that system-tray mode is unavailable there
 rather than pretending to run.</p>
 <h2 id="what-is-coming-next">What is coming next</h2>
-<p>QUILL's roadmap is tracked openly, and every workstream is targeted
+<p>QUILL’s roadmap is tracked openly, and every workstream is targeted
 to ship. <strong>Landed in this beta:</strong> the guided F7 Spelling
 Review dialog (local, fully accessible, configurable announcements and
 letter-spelling); the verbosity system; the offline speech suite
@@ -958,8 +958,8 @@ Models</strong>.</li>
 <li><strong>ffmpeg, for transcribing anything but WAV.</strong> To
 transcribe or caption MP3, M4A, MP4, MOV, MKV, and other formats you
 need <strong>ffmpeg</strong>. The easiest way is <strong>Tools &gt;
-Speech &gt; Whisperer &gt; Download FFmpeg...</strong>, which fetches
-the official build and sets it up for you; or install it yourself (for
+Speech &gt; Whisperer &gt; Download FFmpeg…</strong>, which fetches the
+official build and sets it up for you; or install it yourself (for
 example, <code>winget install Gyan.FFmpeg</code>) and QUILL finds it on
 your PATH. QUILL does not bundle ffmpeg — it uses the copy on your
 computer — so without it the offline engine reads only 16 kHz mono WAV
@@ -977,7 +977,7 @@ with <code>pip</code> rather than the Windows installer and the
 on-device AI extra, note that <code>llama-cpp-python</code> has prebuilt
 CPU wheels but no Windows wheel on PyPI itself. If <code>pip</code>
 starts a slow source build, force the wheel with
-<code>pip install --only-binary=llama-cpp-python ...</code> (QUILL's
+<code>pip install --only-binary=llama-cpp-python ...</code> (QUILL’s
 requirements already point at the CPU wheel index). Installer users are
 unaffected.</p>
 <p>You should not need to edit <code>keymap.json</code> or rebuild your

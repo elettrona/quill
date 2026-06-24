@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>program-tracker</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -836,6 +832,58 @@ as delivered)</td>
 <td style="text-align: center;">—</td>
 <td style="text-align: center;">⬜</td>
 <td>Offline voice commands (Speech S5, split from #617)</td>
+</tr>
+<tr>
+<td style="text-align: right;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">✅</td>
+<td>Hold-to-Dictate (F9) + Locked Dictation (Ctrl+F9) — Phases 1–2
+shipped and documented (user guide, release notes, CHANGELOG); wx-free
+<code>quill/core/speech/dictation/</code> controller +
+<code>main_frame_dictation_hotkeys.py</code>. The source PRD (formerly
+<code>quill-hold-to-dictate-and-locked-dictation-prd.md</code>) was
+retired to git history once delivered; remaining follow-ups are the rows
+below.</td>
+</tr>
+<tr>
+<td style="text-align: right;">—</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Follow-up] Dictation: Settings surface (max-duration chooser,
+focus-loss/background toggle, verbosity, earcon volume, retention
+periods, visual recording indicator). Controller already reads a
+<code>DictationConfig</code>; only UI/persistence is missing.</td>
+</tr>
+<tr>
+<td style="text-align: right;">—</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Follow-up] Dictation History window + interactive startup-recovery
+prompt (recovery files are written/discoverable; no UI yet).</td>
+</tr>
+<tr>
+<td style="text-align: right;">—</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Follow-up] Dictation Review interface for deferred/unsafe
+insertions (transcript preserved in recovery; review surface
+pending).</td>
+</tr>
+<tr>
+<td style="text-align: right;">—</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Follow-up] Dictation: concurrent/queued sessions; distinct
+locked-vs-hold earcons; dedicated Dictation menu + one-time onboarding
+message.</td>
+</tr>
+<tr>
+<td style="text-align: right;">—</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;">⬜</td>
+<td>[Follow-up] Dictation, later phases: optional global Windows key
+hook; idle-silence detection; dictation intelligence (spoken
+punctuation, commands).</td>
 </tr>
 </tbody>
 </table>
@@ -1841,7 +1889,9 @@ descoped)</td>
 <td style="text-align: center;">—</td>
 <td style="text-align: center;">🧹</td>
 <td>[Planning Archive] Braille Mode design reference - Phases 3/4/6
-deferred from 0.7.0</td>
+deferred from 0.7.0 (full backlog retired to git history; shipped P3/P4
+work — proofing, validation, back-translation — is in the user
+guide).</td>
 </tr>
 </tbody>
 </table>
@@ -2102,14 +2152,17 @@ Med)</h3>
 <tr>
 <td style="text-align: right;">514</td>
 <td style="text-align: center;">P2</td>
-<td style="text-align: center;">⬜</td>
-<td>[Planning] O11 — Un-gate structured Word view + CSV grid</td>
+<td style="text-align: center;">◐</td>
+<td>O11 — Structured Word view un-gated for everyday use (2026-06-24);
+CSV-grid half stays gated as excluded table work</td>
 </tr>
 <tr>
 <td style="text-align: right;">521</td>
 <td style="text-align: center;">P3</td>
-<td style="text-align: center;">⬜</td>
-<td>[Planning] O20 — Extract main_frame_statusbar.py</td>
+<td style="text-align: center;">✅</td>
+<td>O20 — Extracted the rest of the status-bar surface into
+StatusBarMixin (2026-06-24); main_frame.py budget ratcheted
+25957→25727</td>
 </tr>
 <tr>
 <td style="text-align: right;">578</td>

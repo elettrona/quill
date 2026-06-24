@@ -22,11 +22,17 @@ class AccessibilityAnnouncer:
         verbosity: str = "balanced",
         spell_word: bool = True,
         spell_word_pause_ms: int = 800,
+        timer_factory: Callable[..., object] | None = None,
     ) -> None:
         self._announce = announce
         self._verbosity = verbosity if verbosity in _VERBOSITY_LEVELS else "balanced"
         self._spell_word = spell_word
         self._spell_word_pause_ms = spell_word_pause_ms
+        # A one-shot timer factory ``(delay_ms, callable, *args) -> timer`` used
+        # to debounce the spell-aloud follow-up. The UI injects ``wx.CallLater``;
+        # core stays wx-free. When absent (e.g. headless/tests), the delayed
+        # spell-aloud is simply skipped.
+        self._timer_factory = timer_factory
         self._pending_spell_timer: object | None = None
 
     # ------------------------------------------------------------------
@@ -121,15 +127,15 @@ class AccessibilityAnnouncer:
     def _schedule_spell(self, word: str) -> None:
         if not self._spell_word or self._spell_word_pause_ms <= 0:
             return
+        if self._timer_factory is None:
+            return
         try:
-            import wx  # type: ignore[import-untyped]
-
-            self._pending_spell_timer = wx.CallLater(
+            self._pending_spell_timer = self._timer_factory(
                 self._spell_word_pause_ms,
                 self._spell_word_aloud,
                 word,
             )
-        except Exception:  # noqa: BLE001 — wx not available in tests
+        except Exception:  # noqa: BLE001 — timer backend unavailable
             pass
 
     def _cancel_pending_spell(self) -> None:

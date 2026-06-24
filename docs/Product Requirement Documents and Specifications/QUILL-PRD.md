@@ -1906,8 +1906,7 @@ providers".
 > **Offline speech & dictation reengineering (#617).** The full provider-architecture
 > plan — one offline-first speech engine (whisper.cpp default, with Windows, cloud, and
 > Faster Whisper providers), two user verbs (Dictate / Transcribe), an accessible model
-> manager, captions, and gated voice commands — lives in
-> [`docs/planning/dictation-and-speech.md`](../../planning/dictation-and-speech.md) and is
+> manager, captions, and gated voice commands — was
 > sequenced into small waves S0–S5. **Wave S0 (shipped):** the `dictation_engine` setting
 > was made honest — it now uses the `offline`/`windows`/`cloud` model (default `windows`,
 > the only functional engine today), legacy `vosk`/`whisper` values migrate to `offline`,
@@ -3482,9 +3481,9 @@ Quill Spell is a layered local engine:
 
 ### 6.4 F7 Spelling Review — Full Specification
 
-> **Status: Implemented in 0.7.0 Beta 2.** This section was originally maintained as
-> `docs/planning/QUILL_F7_Spelling_Review_PRD.md`. It is reproduced here as the
-> canonical specification for the shipped feature.
+> **Status: Implemented in 0.7.0 Beta 2.** This section is the canonical
+> specification for the shipped feature; the original standalone planning PRD was
+> retired to git history once delivered.
 
 ---
 
@@ -4795,7 +4794,7 @@ Right-to-left UI; additional languages; optional split view (still standard cont
 
 ## 17. Backlog and deferred items
 
-> **Live program tracker.** The authoritative, continuously-updated view of all open work — bucketed into workstreams with per-bucket risk/impact/value/effort, priority totals, status, and execution waves — lives in [`docs/planning/program-tracker.md`](../../planning/program-tracker.md). The full design text for each workstream is consolidated in the companion specs: [`verbosity-system.md`](../../planning/verbosity-system.md), [`dictation-and-speech.md`](../../planning/dictation-and-speech.md) (offline speech-to-text, #617), [`braille-mode-backlog.md`](../../planning/braille-mode-backlog.md), [`roadmap.md`](../../planning/roadmap.md), and [`feature-backlog.md`](../../planning/feature-backlog.md). The current direction is that these items **ship** (the older 2.0-deferral framing is dropped); the tables below are retained as the format-support reference.
+> **Live program tracker.** The authoritative, continuously-updated view of all open work — bucketed into workstreams with per-bucket risk/impact/value/effort, priority totals, status, and execution waves — lives in [`docs/planning/program-tracker.md`](../../planning/program-tracker.md). The full design text for the in-flight workstreams is consolidated in the companion specs: [`verbosity-system.md`](../../planning/verbosity-system.md), [`roadmap.md`](../../planning/roadmap.md), and [`feature-backlog.md`](../../planning/feature-backlog.md). (Shipped workstreams' specs — offline speech-to-text #617 and the braille suite — were retired to git history once delivered; their status lives in the tracker and user guide.) The current direction is that these items **ship** (the older 2.0-deferral framing is dropped); the tables below are retained as the format-support reference.
 
 Everything below is intentionally out of v1.0. Each item is either yellow (achievable but requires more engineering than the v1.0 quality bar permits in time) or red (depends on unstable third-party formats, large native dependencies, or research-flavoured uplift we will not promise without measurement).
 

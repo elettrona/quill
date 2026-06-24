@@ -57,7 +57,7 @@ constants) are skipped because their backing buttons cannot be resolved
 statically.
 
 The escape-id check can be opted out for a single call by adding a trailing
-``# noqa: dialog_button_contract`` comment on the ``apply_modal_ids`` line.
+``# dialog_button_contract: exempt`` comment on the ``apply_modal_ids`` line.
 This is the documented escape hatch for stock wx dialogs (MessageDialog and
 friends) where the synthetic YES / NO buttons live below the AST horizon. A
 call without the pragma is still audited strictly, so the original WCAG
@@ -79,12 +79,16 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PACKAGE_ROOT = _REPO_ROOT / "quill"
 
-# Trailing ``# noqa: dialog_button_contract`` comments on an
-# ``apply_modal_ids`` call opt the call out of the static escape-id audit.
+# A trailing ``# dialog_button_contract: exempt`` comment on an
+# ``apply_modal_ids`` call opts the call out of the static escape-id audit.
 # This is the documented escape hatch for stock wx dialogs whose YES/NO
-# buttons are synthesised at runtime (the static walk cannot see them).
-_NOAQA_RE = re.compile(
-    r"""\#\s*noqa\s*:\s*dialog_button_contract""",
+# buttons are synthesised at runtime (the static walk cannot see them). The
+# marker is deliberately spelled as a plain ``: exempt`` pragma rather than a
+# ruff "noqa" directive, so ruff does not try to parse ``dialog_button_contract``
+# as one of its own rule codes. The legacy "noqa colon dialog_button_contract"
+# spelling is still accepted for back-compat by the regex below.
+_PRAGMA_RE = re.compile(
+    r"""\#\s*(?:noqa\s*:\s*)?dialog_button_contract""",
     re.VERBOSE,
 )
 
@@ -99,7 +103,7 @@ def _source_has_noqa(source: str, line: int) -> bool:
     lines = source.splitlines()
     for offset in range(0, 3):
         index = line - 1 + offset
-        if 0 <= index < len(lines) and _NOAQA_RE.search(lines[index]):
+        if 0 <= index < len(lines) and _PRAGMA_RE.search(lines[index]):
             return True
     return False
 

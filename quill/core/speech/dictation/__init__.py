@@ -1,7 +1,7 @@
 """Hold-to-Dictate and Locked Dictation controller (wx-free core).
 
-This package implements the keyboard-driven dictation feature described in
-``docs/planning/quill-hold-to-dictate-and-locked-dictation-prd.md``. It is the
+This package implements the keyboard-driven dictation feature (Hold-to-Dictate on
+F9, Locked Dictation on Ctrl+F9). It is the
 pure-domain half of the feature: an explicit state machine
 (:class:`DictationController`), the session/insertion-context records, the
 conservative insertion normalization, and the crash-recovery repository. It

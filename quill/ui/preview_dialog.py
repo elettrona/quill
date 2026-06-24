@@ -96,7 +96,7 @@ except ImportError:
 
         def show_modal(self) -> int:
             self.dialog.CentreOnParent()
-            apply_modal_ids(  # noqa: dialog_button_contract
+            apply_modal_ids(  # dialog_button_contract: exempt
                 self.dialog,
                 affirmative_id=self._wx.ID_CANCEL,
                 escape_id=self._wx.ID_CANCEL,

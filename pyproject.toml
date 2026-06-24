@@ -190,6 +190,8 @@ extend-exclude = [
     "release-dist-0.1-r2",
     "kokoro",
     "tmp",
+    # Untracked local scratch dir of third-party sample scripts; not first-party.
+    "Code Samples to Innovate With",
 ]
 
 [tool.ruff.format]
@@ -273,11 +275,5 @@ module = [
     # Optional crash-reporting integration; imported lazily in
     # core/issue_submit.py behind a try/except. Not in the dev extra.
     "feedback_hub",
-    # wxPython is the [ui] extra and is not installed in the scoped-typing CI
-    # job (which installs only .[dev]); a couple of core modules import it
-    # lazily (e.g. spelling/announcements.py uses wx.CallLater to debounce an
-    # announcement). It ships no type stubs, so treat it as untyped here.
-    "wx",
-    "wx.*",
 ]
 ignore_missing_imports = true

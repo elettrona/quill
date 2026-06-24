@@ -730,19 +730,15 @@ class QuillinsMenuMixin:
             item = selected_extension()
             if item is None:
                 return
-            # Stock wx.MessageDialog synthesizes its own ID_YES / ID_NO
-            # buttons at runtime from the YES_NO style flag. The static
-            # dialog_button_contract audit cannot see those synthetic
-            # buttons, so we mark this call as audited-out via the
-            # ``# noqa: dialog_button_contract`` pragma on the next
-            # line; the dialog is keyboard-operable end to end because
-            # the message dialog's ID_YES / ID_NO buttons are wired
-            # automatically. See WCAG 2.1.2 (#124).
-            # H-4-ui: route through the shared modal helper so the
-            # region tracker, screen-reader entry/exit announcement,
-            # and editor focus return on close are all applied.
-            # Direct ShowModal() would skip those for this destructive
-            # confirm — exactly the bug the dialog contract prevents.
+            # Stock wx.MessageDialog synthesizes its ID_YES / ID_NO buttons at
+            # runtime from the YES_NO style, below the static audit's horizon, so
+            # the ``# dialog_button_contract: exempt`` pragma below marks the call
+            # audited-out; the dialog stays keyboard-operable because wx wires
+            # those buttons automatically. See WCAG 2.1.2 (#124).
+            # H-4-ui: route through the shared modal helper so the region tracker,
+            # screen-reader entry/exit announcement, and editor focus return on
+            # close all apply — a direct ShowModal() would skip them for this
+            # destructive confirm, exactly the bug the dialog contract prevents.
             from quill.ui.dialog_contract import apply_modal_ids
 
             confirm = wx.MessageDialog(
@@ -751,7 +747,9 @@ class QuillinsMenuMixin:
                 "Remove Quillin",
                 wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING,
             )
-            apply_modal_ids(confirm, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO)  # noqa: dialog_button_contract
+            apply_modal_ids(  # dialog_button_contract: exempt
+                confirm, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO
+            )
             try:
                 approved = self._show_modal_dialog(confirm, "Remove Quillin") == wx.ID_YES
             finally:

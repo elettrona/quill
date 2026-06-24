@@ -3723,11 +3723,9 @@ Implementation: <code>quill/core/speech/quillin_providers.py</code>, the
 The full provider-architecture plan — one offline-first speech engine
 (whisper.cpp default, with Windows, cloud, and Faster Whisper
 providers), two user verbs (Dictate / Transcribe), an accessible model
-manager, captions, and gated voice commands — lives in <a
-href="../../planning/dictation-and-speech.md"><code>docs/planning/dictation-and-speech.md</code></a>
-and is sequenced into small waves S0–S5. <strong>Wave S0
-(shipped):</strong> the <code>dictation_engine</code> setting was made
-honest — it now uses the
+manager, captions, and gated voice commands — was sequenced into small
+waves S0–S5. <strong>Wave S0 (shipped):</strong> the
+<code>dictation_engine</code> setting was made honest — it now uses the
 <code>offline</code>/<code>windows</code>/<code>cloud</code> model
 (default <code>windows</code>, the only functional engine today), legacy
 <code>vosk</code>/<code>whisper</code> values migrate to
@@ -6499,9 +6497,9 @@ Quill Spell is a layered local engine:
 
 ### 6.4 F7 Spelling Review — Full Specification
 
-&gt; **Status: Implemented in 0.7.0 Beta 2.** This section was originally maintained as
-&gt; `docs/planning/QUILL_F7_Spelling_Review_PRD.md`. It is reproduced here as the
-&gt; canonical specification for the shipped feature.
+&gt; **Status: Implemented in 0.7.0 Beta 2.** This section is the canonical
+&gt; specification for the shipped feature; the original standalone planning PRD was
+&gt; retired to git history once delivered.
 
 ---
 
@@ -9647,18 +9645,17 @@ continuously-updated view of all open work — bucketed into workstreams
 with per-bucket risk/impact/value/effort, priority totals, status, and
 execution waves — lives in <a
 href="../../planning/program-tracker.md"><code>docs/planning/program-tracker.md</code></a>.
-The full design text for each workstream is consolidated in the
-companion specs: <a
+The full design text for the in-flight workstreams is consolidated in
+the companion specs: <a
 href="../../planning/verbosity-system.md"><code>verbosity-system.md</code></a>,
-<a
-href="../../planning/dictation-and-speech.md"><code>dictation-and-speech.md</code></a>
-(offline speech-to-text, #617), <a
-href="../../planning/braille-mode-backlog.md"><code>braille-mode-backlog.md</code></a>,
 <a href="../../planning/roadmap.md"><code>roadmap.md</code></a>, and <a
 href="../../planning/feature-backlog.md"><code>feature-backlog.md</code></a>.
-The current direction is that these items <strong>ship</strong> (the
-older 2.0-deferral framing is dropped); the tables below are retained as
-the format-support reference.</p>
+(Shipped workstreams’ specs — offline speech-to-text #617 and the
+braille suite — were retired to git history once delivered; their status
+lives in the tracker and user guide.) The current direction is that
+these items <strong>ship</strong> (the older 2.0-deferral framing is
+dropped); the tables below are retained as the format-support
+reference.</p>
 </blockquote>
 <p>Everything below is intentionally out of v1.0. Each item is either
 yellow (achievable but requires more engineering than the v1.0 quality

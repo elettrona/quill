@@ -176,11 +176,11 @@
   </style>
 </head>
 <body>
-<h1 id="quill-10--consolidated-plan-of-record">QUILL 1.0 — Consolidated
+<h1 id="quill-1.0-consolidated-plan-of-record">QUILL 1.0 — Consolidated
 Plan of Record</h1>
 <blockquote>
 <p><strong>This is the single 1.0 plan.</strong> It replaces the old
-per-issue "planning archive" dump. Work is organized by
+per-issue “planning archive” dump. Work is organized by
 <strong>workstream</strong>, not by issue id. Each workstream says what
 has shipped, what is next, and where its detailed spec lives. The GitHub
 tracker is reconciled to match this plan: superseded, duplicate, and
@@ -188,7 +188,7 @@ content-free issues are closed with a pointer here; only real,
 actionable work stays open. Live status and counts live in <a
 href="program-tracker.md"><code>program-tracker.md</code></a>.</p>
 <p><strong>Operating principle:</strong> everything in this plan is in
-scope to <strong>ship</strong> for 1.0 (the old "2.0 deferral" framing
+scope to <strong>ship</strong> for 1.0 (the old “2.0 deferral” framing
 is dropped). Simplicity for the screen-reader user is king. QUILL owns
 the editor, focus, undo, and announcements; AI and every integration are
 optional and off by default.</p>
@@ -196,7 +196,7 @@ optional and off by default.</p>
 <p><strong>Last consolidated:</strong> 2026-06-21 against branch
 <code>feature/beta-2</code>.</p>
 <hr />
-<h2 id="0-north-star">0. North star</h2>
+<h2 id="north-star">0. North star</h2>
 <p>QUILL is a screen-reader-first writing environment. It is becoming
 the home for a family of accessibility products that Blind Information
 Technology Solutions (BITS) and CSE Designs have built as separate apps.
@@ -207,6 +207,12 @@ know where they carry brand equity (notably <strong>BITS
 Whisperer</strong> for speech).</p>
 <p>Three sibling products feed this plan:</p>
 <table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
 <thead>
 <tr>
 <th>Product</th>
@@ -224,7 +230,7 @@ on-device), AI translation/summarization, live-mic transcription,
 speaker diarization, plugins, 7 export formats.</td>
 <td><strong>Speech &amp; Dictation</strong> workstream (§2), keeping the
 BITS Whisperer brand. The offline core already shipped in QUILL (#617
-S0–S4); the rest of BW's value is consolidated here.</td>
+S0–S4); the rest of BW’s value is consolidated here.</td>
 </tr>
 <tr>
 <td><strong>GLOW</strong></td>
@@ -245,15 +251,15 @@ DAISY export.</td>
 </tr>
 </tbody>
 </table>
-<p>The discipline for every consolidation: take what clears QUILL's
-quality and accessibility bar, re-home it on QUILL's invariants (atomic
+<p>The discipline for every consolidation: take what clears QUILL’s
+quality and accessibility bar, re-home it on QUILL’s invariants (atomic
 storage, the dialog contract, the announcement grammar, Safe Mode, the
 network-egress audit), and <strong>leave behind</strong> anything
 superseded by what QUILL already ships or that does not serve the
 screen-reader-first mission.</p>
 <hr />
-<h2 id="1-verbosity-system-phase-2--in-progress">1. Verbosity system
-(Phase 2 — in progress)</h2>
+<h2 id="verbosity-system-phase-2-in-progress">1. Verbosity system (Phase
+2 — in progress)</h2>
 <p><strong>Spec:</strong> <a
 href="verbosity-system.md"><code>verbosity-system.md</code></a>.
 <strong>The big in-flight workstream.</strong></p>
@@ -267,16 +273,17 @@ preview (#363). 220 tests.</li>
 token editor, library, history viewer, preview lab, about) (#364); then
 1.5 call-site migration + the <code>VerbositySettings</code> fields
 (#365); then 1.6 final UX polish (#366).</li>
-<li><strong>Polish backlog:</strong> the ~100 "addendum" ideas are
+<li><strong>Polish backlog:</strong> the ~100 “addendum” ideas are
 deduplicated and triaged into a small set of themed features in
-<code>verbosity-system.md</code> (§ "Polish backlog"). Each survivor is
+<code>verbosity-system.md</code> (§ “Polish backlog”). Each survivor is
 a checklist item there, not a separate issue.</li>
 </ul>
-<h2 id="2-speech--dictation--bits-whisperer-partly-shipped">2. Speech
-&amp; Dictation — "BITS Whisperer" (partly shipped)</h2>
-<p><strong>Spec:</strong> <a
-href="dictation-and-speech.md"><code>dictation-and-speech.md</code></a>.
-<strong>Brand: BITS Whisperer</strong> (<code>s:\code\bw</code>).</p>
+<h2 id="speech-dictation-bits-whisperer-partly-shipped">2. Speech &amp;
+Dictation — “BITS Whisperer” (partly shipped)</h2>
+<p><strong>Spec:</strong> shipped — see the user guide (Speech) and
+<code>program-tracker.md</code> (Speech &amp; Dictation) for status; the
+S0–S5 design plan was retired to git history. <strong>Brand: BITS
+Whisperer</strong> (<code>s:\code\bw</code>).</p>
 <ul>
 <li><strong>Shipped (#617 S0–S4):</strong> dictation honesty, the
 offline STT foundation, whisper.cpp + Faster Whisper engines, offline
@@ -289,21 +296,21 @@ auto-transcribe arriving audio on-device — the <strong>Transcribe audio
 wx-free <code>speech/transcribe.py</code>) writes a sibling
 <code>.txt</code> per file, offline and consent-free.</li>
 <li><strong>To consolidate from BITS Whisperer:</strong> the broader
-provider matrix (cloud + on-device tiers) behind QUILL's network-egress
+provider matrix (cloud + on-device tiers) behind QUILL’s network-egress
 audit and Safe Mode; export-format breadth (SRT/VTT); and the guided
-provider/model onboarding. These were the old <code>bw_*</code> "BITS
-Whisperer" tier IDs (BW-1..10, WATCH-8/9) — now folded here, not
+provider/model onboarding. These were the old <code>bw_*</code> “BITS
+Whisperer” tier IDs (BW-1..10, WATCH-8/9) — now folded here, not
 deferred.</li>
 <li><strong>Open:</strong> #617 epic context, #663 offline voice
 commands (S5). Tracked as one consolidation issue, not the old per-ID
 stubs (#515, #567–#577, now closed).</li>
 </ul>
-<h2 id="3-agentic-ai-platform-planned--prd-ready">3. Agentic AI platform
+<h2 id="agentic-ai-platform-planned-prd-ready">3. Agentic AI platform
 (planned — PRD ready)</h2>
 <p><strong>Spec:</strong> <a
 href="quill_end_to_end_agentic_ai_prd.md"><code>quill_end_to_end_agentic_ai_prd.md</code></a>.
 Implementation-grounded delta plan.</p>
-<p>Unify QUILL's already-deep AI stack behind one provider-neutral,
+<p>Unify QUILL’s already-deep AI stack behind one provider-neutral,
 optional, screen-reader-first platform whose front door is the
 <strong>AI Hub</strong>: one provider truth, a Safe Editor Tool Gateway
 + Permission Broker, a real tool-calling agent loop, a declarative agent
@@ -318,10 +325,10 @@ from GLOW (Accessibility Editor, Screen-Reader UX Reviewer, Braille/BRF
 assistant) become catalog agents here (the launch set already promotes
 <code>accessibility_agent.py</code>). The old per-ID AX-A..F stubs are
 consolidated into the tracking issue <strong>#675</strong>.</p>
-<h2 id="4-accessibility-tooling-from-glow">4. Accessibility tooling
-(from GLOW)</h2>
+<h2 id="accessibility-tooling-from-glow">4. Accessibility tooling (from
+GLOW)</h2>
 <p><strong>Source:</strong> <code>s:\code\glow</code>
-(<code>glowplan.md</code>). Consolidate GLOW's durable, in-editor
+(<code>glowplan.md</code>). Consolidate GLOW’s durable, in-editor
 accessibility value.</p>
 <ul>
 <li><strong>Document Audit</strong> — evaluate the current document
@@ -331,40 +338,41 @@ with remediation guidance. Lands as an in-QUILL audit surface (and an
 agent in §3).</li>
 <li><strong>GLOW family:</strong> the seven GLOW capabilities (the old
 #528–#534 stubs) plus the WATCH-8 GLOW watch action (#566), re-homed on
-QUILL's invariants and tracked in the consolidated issue
+QUILL’s invariants and tracked in the consolidated issue
 <strong>#674</strong> rather than as bare per-ID stubs.</li>
-<li><strong>Out of QUILL's scope:</strong> GLOW's
+<li><strong>Out of QUILL’s scope:</strong> GLOW’s
 server/Keycloak/Office-add-in/MCP-deployment surfaces stay in the GLOW
 product; QUILL takes the authoring-time checks.</li>
 </ul>
-<h2 id="5-publishing--audiobook">5. Publishing &amp; audiobook</h2>
+<h2 id="publishing-audiobook">5. Publishing &amp; audiobook</h2>
 <p><strong>Specs:</strong> DAISY (shipped,
 <code>quill/io/daisy.py</code>); ChapterForge
 (<code>c:\code\forum</code>).</p>
 <ul>
 <li><strong>Shipped:</strong> DAISY 2.02 text-only export (#251).</li>
 <li><strong>ChapterForge integration:</strong> turn a folder of audio
-(or a document's sections) into a chaptered audiobook/podcast master —
+(or a document’s sections) into a chaptered audiobook/podcast master —
 screen-reader-first, ties to the DAISY/talking-book story and the BITS
 Whisperer transcription stack.</li>
 <li><strong>Direct publishing (#140):</strong> WordPress and other
 platforms — kept as a long-term, likely-Quillin integration
 (external-API + auth surface), not core editor work.</li>
 </ul>
-<h2 id="6-braille-mode-shipped--phases-34">6. Braille mode (shipped —
+<h2 id="braille-mode-shipped-phases-34">6. Braille mode (shipped —
 Phases 3/4)</h2>
-<p><strong>Spec:</strong> <a
-href="braille-mode-backlog.md"><code>braille-mode-backlog.md</code></a>.</p>
+<p><strong>Spec:</strong> shipped — see the user guide (Braille) and
+<code>program-tracker.md</code> (Braille Mode) for status; the design
+backlog (deferred Phases 3/4/6) was retired to git history.</p>
 <p>Proofing, validation, restore-your-place, and selection-aware
 back-translation shipped (#238–#242, #246). Remaining braille ideas live
 in the backlog doc and the verbosity braille channel.</p>
-<h2 id="7-navigation--editor">7. Navigation &amp; editor</h2>
+<h2 id="navigation-editor">7. Navigation &amp; editor</h2>
 <ul>
 <li>Quick Navigation enhancements (#513); un-gate the structured Word
 view + CSV grid (#514); extract <code>main_frame_statusbar.py</code>
 (#521, GATE-11 decomposition).</li>
 </ul>
-<h2 id="8-platform--distribution">8. Platform &amp; distribution</h2>
+<h2 id="platform-distribution">8. Platform &amp; distribution</h2>
 <ul>
 <li>Live installer smoke on Windows 10/11 (#506); macOS to shipping
 quality (#518); native RTF editing (#516); the Quillin Hub (#517);
@@ -377,7 +385,7 @@ packaging/freeze evaluation (PKG-1 — Nuitka/PyInstaller hardening, was
 <li><strong>Out of scope:</strong> Linux/Unix (#520, #565, #589).
 Platform scope is Windows (primary) and macOS (supported).</li>
 </ul>
-<h2 id="9-docs-tutorials--content">9. Docs, tutorials &amp; content</h2>
+<h2 id="docs-tutorials-content">9. Docs, tutorials &amp; content</h2>
 <p>The old Tier-6 DOC/POD/TUT/CQ backlog (#535–#564) is consolidated
 into one <strong>Documentation &amp; Tutorials</strong> track:
 user-guide coverage, getting-started tutorials, the podcast/walkthrough
@@ -385,8 +393,7 @@ series, and the content-quality (CQ) follow-ups (spell-check preload
 #527, SR sign-off across NVDA/JAWS/Narrator #526). Tracked as a themed
 track, not 30 separate stubs.</p>
 <hr />
-<h2 id="10-issue-consolidation-ledger">10. Issue consolidation
-ledger</h2>
+<h2 id="issue-consolidation-ledger">10. Issue consolidation ledger</h2>
 <p>The tracker was reconciled to this plan on 2026-06-21. Disposition
 buckets:</p>
 <p><strong>Kept open (real, actionable workstreams):</strong> the
@@ -427,14 +434,14 @@ through the relevant workstream above.</li>
 <li><strong>Linux/Unix LINUX-1/2 + O17 (#520, #565, #589)</strong> — not
 a platform target.</li>
 <li>Within the verbosity addenda, the screen-reader-redundant ideas are
-recorded as <strong>"recommend do not build"</strong> in the polish
+recorded as <strong>“recommend do not build”</strong> in the polish
 backlog rather than silently dropped: <strong>Typing Echo</strong> and
 <strong>Command Echo</strong> (the screen reader already echoes
 keys/typing; QUILL doing so double-speaks — the right answer is the
 Screen-Reader Handoff mode), <strong>Speech Rate/Pause knobs</strong>
 (QUILL does not own the SR voice), <strong>Punctuation/Symbol
 Profiles</strong> (a core SR setting; duplicating it fights the SR), and
-the <strong>"Final Recommendation"</strong> meta-issue.</li>
+the <strong>“Final Recommendation”</strong> meta-issue.</li>
 </ul>
 <h3
 id="update-2026-06-22-further-consolidation-into-tracking-issues">Update
@@ -449,7 +456,7 @@ placeholders:</p>
 <strong>#675</strong> (under the Agentic AI PRD, §3).</li>
 <li><strong>2.0-deferred singletons</strong> PKG-1 (#599), COLLAB-1
 (#592), ECO-1 (#590), and SHELL-3 (#525) → <strong>#680</strong>, a
-single "QUILL 2.0 deferred backlog" tracker.</li>
+single “QUILL 2.0 deferred backlog” tracker.</li>
 <li><strong>NAV-10 (#578)</strong> — undefined stub; folded into Quick
 Nav (#513), which shipped the misspellings/search-hits nav types.</li>
 </ul>
@@ -458,11 +465,11 @@ auto-transcription (#668), transcript formats (#670), cloud providers as
 Quillins (#671), and the Vosk (#677) engine this cycle. The Parakeet
 engine (#673) was removed in 2026-06.</p>
 <hr />
-<h2 id="11-source-repos-for-the-consolidations">11. Source repos for the
+<h2 id="source-repos-for-the-consolidations">11. Source repos for the
 consolidations</h2>
 <p>These external repos are the design source for the integrations
 above; QUILL takes the durable, accessibility-first value and re-homes
-it on QUILL's invariants.</p>
+it on QUILL’s invariants.</p>
 <ul>
 <li><strong>BITS Whisperer:</strong> <code>s:\code\bw</code>
 (transcription/speech; brand retained).</li>
