@@ -1806,6 +1806,15 @@ block (the button reads "Replace list"). Driven by the wx-free
 <code>find_list_block</code> / <code>list_block_to_flat</code> helpers
 in <code>parse.py</code>, unit-tested in
 <code>tests/unit/core/lists/test_find_block.py</code>.</li>
+<li><strong>Type-switch conversion with information-loss confirmation
+(§19):</strong> switching between a flat type and a definition list now
+carries the content across (via <code>flat_to_definition</code> /
+<code>definition_to_flat</code>); when the conversion would drop
+structure (checked states, nesting, alternate terms, extra definitions)
+the dialog asks for confirmation through the hardened message box before
+applying, and a decline reverts the type choice. Conversion seam
+unit-tested in
+<code>tests/unit/ui/test_list_studio_dialog.py</code>.</li>
 </ul>
 <h2 id="not-yet-implemented-planned-follow-ups">Not yet implemented
 (planned follow-ups)</h2>
@@ -1814,10 +1823,10 @@ in <code>parse.py</code>, unit-tested in
 (app/format/workspace/ document/this-operation), the Settings category,
 shipped presets, and import/export. Defaults currently live in
 <code>StructuredListSettings</code>.</li>
-<li><strong>Import dialogs with preview</strong> (§6, §17.4–§17.5) and
-<strong>conversion previews / information-loss confirmations</strong>
-(§12, §19) — the core computes interpretations, ambiguity, and loss
-reasons; the preview/confirmation surfaces are pending.</li>
+<li><strong>Import dialogs with preview</strong> (§6, §17.4–§17.5) — the
+core computes interpretations and ambiguity; the import preview surface
+is pending. (The <em>conversion</em> preview/confirmation is covered
+above.)</li>
 <li><strong>Reparse-and-validate before commit</strong> (§26, §28.14)
 and the definition Markdown <strong>profile prompt</strong> (§7.6, §21.3
 — the dialog currently falls back to embedded HTML when no profile is

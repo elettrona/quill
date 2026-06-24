@@ -1654,15 +1654,22 @@ for "is this done"; update it as further phases land.
   OK rewrites just that block (the button reads "Replace list"). Driven by the
   wx-free `find_list_block` / `list_block_to_flat` helpers in `parse.py`,
   unit-tested in `tests/unit/core/lists/test_find_block.py`.
+- **Type-switch conversion with information-loss confirmation (§19):** switching
+  between a flat type and a definition list now carries the content across (via
+  `flat_to_definition` / `definition_to_flat`); when the conversion would drop
+  structure (checked states, nesting, alternate terms, extra definitions) the
+  dialog asks for confirmation through the hardened message box before applying,
+  and a decline reverts the type choice. Conversion seam unit-tested in
+  `tests/unit/ui/test_list_studio_dialog.py`.
 
 ## Not yet implemented (planned follow-ups)
 
 - The full **Settings/preset surface** (§3–§13): scopes (app/format/workspace/
   document/this-operation), the Settings category, shipped presets, and
   import/export. Defaults currently live in `StructuredListSettings`.
-- **Import dialogs with preview** (§6, §17.4–§17.5) and **conversion previews /
-  information-loss confirmations** (§12, §19) — the core computes interpretations,
-  ambiguity, and loss reasons; the preview/confirmation surfaces are pending.
+- **Import dialogs with preview** (§6, §17.4–§17.5) — the core computes
+  interpretations and ambiguity; the import preview surface is pending. (The
+  *conversion* preview/confirmation is covered above.)
 - **Reparse-and-validate before commit** (§26, §28.14) and the definition Markdown
   **profile prompt** (§7.6, §21.3 — the dialog currently falls back to embedded HTML
   when no profile is set).

@@ -15,8 +15,9 @@ class ListStudioMixin:
     """The ``format.list_studio`` command handler (context-sensitive F2)."""
 
     # Relies on MainFrame helpers: _wx, frame, editor, document, settings,
-    # _show_modal_dialog, _set_status, _announce, _atomic_replace,
-    # _feature_enabled, _document_is_read_only, _effective_markup_kind.
+    # _show_modal_dialog, _show_message_box, _set_status, _announce,
+    # _atomic_replace, _feature_enabled, _document_is_read_only,
+    # _effective_markup_kind.
 
     def open_list_studio(self) -> None:
         """Open the Structured List Studio for the selection or a new list (F2)."""
@@ -77,6 +78,7 @@ class ListStudioMixin:
             flat=flat,
             settings=settings,
             target_format=target_format,
+            confirm_conversion=self._confirm_list_conversion,
         )
         dialog = wx.Dialog(
             self.frame,
@@ -117,6 +119,21 @@ class ListStudioMixin:
         """Replace the captured ``start``..``end`` range as one undo step."""
         self._atomic_replace(start, end, source)
         self.document.set_text(self.editor.GetValue())
+
+    def _confirm_list_conversion(self, reasons: list[str]) -> bool:
+        """Warn before a lossy list-type conversion and return the user's choice (§19.4).
+
+        Routed through the hardened message box so the screen-reader entry/exit
+        announcement and focus return apply. Yes proceeds with the conversion; No
+        leaves the list unchanged.
+        """
+        wx = self._wx
+        detail = "\n".join(f"• {reason}" for reason in reasons)
+        message = f"Changing the list type will lose some structure:\n\n{detail}\n\nConvert anyway?"
+        result = self._show_message_box(
+            message, "Convert list type", wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING
+        )
+        return result == wx.ID_YES
 
     def _structured_list_settings(self) -> object:
         """Build the studio settings, resolving the Markdown definition profile.

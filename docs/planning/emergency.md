@@ -69,9 +69,11 @@
    definitions per entry** (terms one-per-line → multiple `<dt>`; definitions
    blank-line-separated → multiple `<dd>`), and **in-place editing of the list under
    the caret** (F2 with no selection detects and replaces the existing list block,
-   preserving nesting). *Remaining:* import-from-file/clipboard with preview,
-   conversion previews + information-loss confirmations, reparse-and-validate before
-   commit, and the Settings/preset surface. *(This is list structure, not the
+   preserving nesting), and **type-switch conversion with information-loss
+   confirmation** (flat↔definition carries content across and confirms before
+   dropping structure). *Remaining:* import-from-file/clipboard with preview,
+   reparse-and-validate before commit, and the Settings/preset surface. *(This is
+   list structure, not the
    excluded table work.)*
 10. **Hold-to-Dictate / Locked Dictation — follow-ups** (migrated into the Speech &
     Dictation table above): Settings surface (max-duration, focus-loss/background,
