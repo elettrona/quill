@@ -28,3 +28,33 @@ def test_terms_text_round_trips_through_set() -> None:
     clone = DefinitionEntry()
     clone.set_terms_text(entry.terms_text())
     assert clone.terms == entry.terms
+
+
+def test_definitions_text_joins_blank_line_separated() -> None:
+    entry = DefinitionEntry(definitions=["first", "second"])
+    assert entry.definitions_text() == "first\n\nsecond"
+
+
+def test_set_definitions_text_splits_on_blank_lines() -> None:
+    entry = DefinitionEntry()
+    entry.set_definitions_text("first def\n\nsecond def\n\n\nthird def\n")
+    assert entry.definitions == ["first def", "second def", "third def"]
+
+
+def test_set_definitions_text_preserves_multi_line_within_a_block() -> None:
+    entry = DefinitionEntry()
+    entry.set_definitions_text("line one\nline two\n\nsecond def")
+    assert entry.definitions == ["line one\nline two", "second def"]
+
+
+def test_set_definitions_text_all_blank_keeps_single_empty() -> None:
+    entry = DefinitionEntry(definitions=["x"])
+    entry.set_definitions_text("\n   \n")
+    assert entry.definitions == [""]
+
+
+def test_definitions_text_round_trips_through_set() -> None:
+    entry = DefinitionEntry(definitions=["alpha", "beta\nstill beta", "gamma"])
+    clone = DefinitionEntry()
+    clone.set_definitions_text(entry.definitions_text())
+    assert clone.definitions == entry.definitions

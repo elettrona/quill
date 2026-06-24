@@ -1641,22 +1641,19 @@ for "is this done"; update it as further phases land.
   unit-tested (`tests/unit/core/lists/test_nesting.py`, 14 cases). The dialog
   enables Indent/Outdent only when structurally valid and hides the row for
   definition lists. Screen readers hear "level N" via the existing announcements.
-- **Multiple terms per entry (§15.3):** the definition editor's Term field takes
-  one synonym per line and renders multiple `<dt>`, via the wx-free
-  `DefinitionEntry.terms_text` / `set_terms_text` helpers (unit-tested in
-  `tests/unit/core/lists/test_model.py`).
+- **Multiple terms and multiple definitions per entry (§15.3–§15.4):** the Term
+  field takes one synonym per line (multiple `<dt>`), and the Definition field
+  takes one definition per blank-line-separated block (multiple `<dd>`, each block
+  still able to span several lines). Both run through wx-free
+  `DefinitionEntry.terms_text` / `set_terms_text` / `definitions_text` /
+  `set_definitions_text` helpers, unit-tested in
+  `tests/unit/core/lists/test_model.py`.
 
 ## Not yet implemented (planned follow-ups)
 
 - The full **Settings/preset surface** (§3–§13): scopes (app/format/workspace/
   document/this-operation), the Settings category, shipped presets, and
   import/export. Defaults currently live in `StructuredListSettings`.
-- **Multiple definitions** editing UI (§15.4) — the model and renderers support
-  several definitions per entry, but the dialog edits only the primary definition
-  (multi-paragraph definitions make a per-definition sub-editor the right surface,
-  pending). *Multiple **terms** (§15.3) is done:* the Term field takes one synonym
-  per line and renders multiple `<dt>` (`DefinitionEntry.terms_text` /
-  `set_terms_text`, unit-tested in `tests/unit/core/lists/test_model.py`).
 - **Import dialogs with preview** (§6, §17.4–§17.5) and **conversion previews /
   information-loss confirmations** (§12, §19) — the core computes interpretations,
   ambiguity, and loss reasons; the preview/confirmation surfaces are pending.

@@ -198,7 +198,9 @@ class ListStudioDialog:
         self._term_text = wx.TextCtrl(dlg, style=wx.TE_MULTILINE)
         self._term_text.Bind(wx.EVT_TEXT, self._on_term_text)
         panel.Add(self._term_text, 1, wx.EXPAND | wx.BOTTOM, 6)
-        self._def_label = wx.StaticText(dlg, label="&Definition or description:")
+        self._def_label = wx.StaticText(
+            dlg, label="&Definition or description (blank line between several):"
+        )
         panel.Add(self._def_label, 0, wx.BOTTOM, 4)
         self._def_text = wx.TextCtrl(dlg, style=wx.TE_MULTILINE)
         self._def_text.Bind(wx.EVT_TEXT, self._on_def_text)
@@ -283,7 +285,7 @@ class ListStudioDialog:
             if self._is_definition():
                 entry = self._definition.entries[index] if index >= 0 else DefinitionEntry()
                 self._term_text.SetValue(entry.terms_text())
-                self._def_text.SetValue(entry.primary_definition)
+                self._def_text.SetValue(entry.definitions_text())
             else:
                 item = self._flat.items[index] if index >= 0 else ListItem("")
                 self._item_text.SetValue(item.text)
@@ -343,7 +345,7 @@ class ListStudioDialog:
             return
         index = self._selected_index()
         if index >= 0:
-            self._definition.entries[index].definitions[0] = self._def_text.GetValue()
+            self._definition.entries[index].set_definitions_text(self._def_text.GetValue())
             self._update_outline_label(index, self._entry_label(index))
             self._refresh_preview()
 
