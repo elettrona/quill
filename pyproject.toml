@@ -81,6 +81,9 @@ fasterwhisper = ["faster-whisper>=1.0", "huggingface_hub>=0.20"]
 # CPU-only models (~40 MB) for old/constrained machines. Models download from
 # alphacephei.com via Manage Speech Models; no GPU needed.
 vosk = ["vosk>=0.3.45"]
+# MP3 chapter markers for batch document-to-speech (§4.8): mutagen writes the
+# ID3v2.3 CHAP/CTOC frames. Imported lazily in quill/core/speech/chapters.py.
+mp3 = ["mutagen>=1.47"]
 # Native Windows OCR (OCR-1): a thin pip wheel projecting the Windows.Media.Ocr
 # WinRT APIs that ship inside Windows 10/11. The OCR engine itself is a built-in
 # OS component, so end users install nothing extra — bundling this wheel makes
@@ -244,6 +247,9 @@ module = [
     "torch",
     # Optional Vosk engine (quill[vosk]); imported lazily in providers/vosk.py.
     "vosk",
+    # Optional MP3 chapter markers (quill[mp3]); imported lazily in speech/chapters.py.
+    "mutagen",
+    "mutagen.*",
     "huggingface_hub",
     "sounddevice",
     "kokoro",

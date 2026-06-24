@@ -26,9 +26,11 @@ __all__ = [
     "SUPPORTED_EXTENSIONS",
 ]
 
-SUPPORTED_EXTENSIONS: tuple[str, ...] = (".md", ".html", ".htm", ".docx")
+SUPPORTED_EXTENSIONS: tuple[str, ...] = (".md", ".html", ".htm", ".docx", ".txt")
 
 BatchStatus = Literal["pending", "processing", "done", "error", "skipped"]
+
+OutputFormat = Literal["wav", "mp3"]
 
 
 @dataclass
@@ -36,8 +38,14 @@ class BatchExportOptions:
     source_folder: Path
     output_folder: Path
     engine: str = "sapi5"
-    extensions: list[str] = field(default_factory=lambda: [".md", ".html", ".docx"])
+    extensions: list[str] = field(default_factory=lambda: [".md", ".html", ".docx", ".txt"])
     recursive: bool = True
+    # Output format (§4.1): "wav" (default, always available) or "mp3" (requires
+    # ffmpeg; falls back to wav with a per-file note when ffmpeg is absent).
+    output_format: OutputFormat = "wav"
+    # Skip-existing / resume (§4.1): when True, a file whose output already exists
+    # is marked "skipped" instead of re-synthesized, so a re-run resumes cheaply.
+    skip_existing: bool = False
     # SAPI 5 (Windows system voice)
     sapi5_voice: str = ""
     sapi5_rate: int = 200
@@ -95,13 +103,18 @@ def discover_files(
     return found
 
 
-def _output_path_for(source: Path, source_root: Path, output_root: Path) -> Path:
-    """Mirror the relative path of *source* under *output_root*, with .wav suffix."""
+def _output_path_for(
+    source: Path,
+    source_root: Path,
+    output_root: Path,
+    output_format: OutputFormat = "wav",
+) -> Path:
+    """Mirror the relative path of *source* under *output_root*, with the format suffix."""
     try:
         rel = source.relative_to(source_root)
     except ValueError:
         rel = Path(source.name)
-    return (output_root / rel).with_suffix(".wav")
+    return (output_root / rel).with_suffix(f".{output_format}")
 
 
 def _synthesize_one(text: str, output_path: Path, opts: BatchExportOptions) -> None:
@@ -170,6 +183,45 @@ def _synthesize_one(text: str, output_path: Path, opts: BatchExportOptions) -> N
         raise ReadAloudUnavailableError(f"Unknown engine: {engine!r}")
 
 
+def _synthesize_to_output(
+    text: str,
+    out: Path,
+    opts: BatchExportOptions,
+    res: BatchFileResult,
+) -> None:
+    """Synthesize *text* to *out*, honoring ``output_format``.
+
+    For WAV, synthesize straight to *out*. For MP3, synthesize to a temp WAV and
+    transcode with ffmpeg; if ffmpeg is unavailable, fall back to a sibling WAV
+    and note it on *res* (never hard-fail the batch — §4.1, Risks table).
+    """
+    if opts.output_format != "mp3":
+        _synthesize_one(text, out, opts)
+        return
+
+    from quill.core.speech.ffmpeg import TranscodeError, ffmpeg_available, transcode_to_mp3
+
+    if not ffmpeg_available():
+        wav_out = out.with_suffix(".wav")
+        _synthesize_one(text, wav_out, opts)
+        res.output_path = wav_out
+        res.error = "ffmpeg not found; saved WAV instead of MP3"
+        return
+
+    import tempfile
+
+    with tempfile.TemporaryDirectory(prefix="quill_batch_mp3_") as tmp:
+        wav_tmp = Path(tmp) / (out.stem + ".wav")
+        _synthesize_one(text, wav_tmp, opts)
+        try:
+            transcode_to_mp3(wav_tmp, out)
+        except TranscodeError as exc:
+            wav_out = out.with_suffix(".wav")
+            wav_tmp.replace(wav_out)
+            res.output_path = wav_out
+            res.error = f"MP3 encode failed ({exc}); saved WAV instead"
+
+
 def run_batch_export(
     options: BatchExportOptions,
     results: list[BatchFileResult],
@@ -188,6 +240,22 @@ def run_batch_export(
     for res in results:
         if cancel_event.is_set():
             res.status = "skipped"
+            on_progress(done, total, res)
+            continue
+
+        out = _output_path_for(
+            res.source_path,
+            options.source_folder,
+            options.output_folder,
+            options.output_format,
+        )
+        # Skip-existing / resume (§4.1): don't re-synthesize a file we already
+        # produced. Checked before any work so a resumed run is cheap.
+        if options.skip_existing and out.exists():
+            res.output_path = out
+            res.status = "skipped"
+            res.error = "Already exported"
+            done += 1
             on_progress(done, total, res)
             continue
 
@@ -217,11 +285,10 @@ def run_batch_export(
                 on_progress(done, total, res)
                 continue
 
-            out = _output_path_for(res.source_path, options.source_folder, options.output_folder)
             out.parent.mkdir(parents=True, exist_ok=True)
             res.output_path = out
 
-            _synthesize_one(text, out, options)
+            _synthesize_to_output(text, out, options, res)
 
             res.status = "done"
             res.duration_s = time.monotonic() - t0

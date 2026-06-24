@@ -334,6 +334,20 @@ class Settings:
     # split long works into multiple top-level chapters are not
     # surprised by a new warning.
     heading_organizer_warn_duplicate_h1: bool = False
+    # Batch document-to-speech chapterization (§4.8). When a document has
+    # headings, the batch exporter can split each article into its own file
+    # ("separate"), embed MP3 CHAP/CTOC chapter markers in one combined file
+    # ("single"), or do neither ("none"). An optional configurable transition
+    # sound plays at each article boundary, and a silence gap is inserted
+    # between articles so listeners hear the transition. Chapter titles come
+    # from the heading text; the lead-in section before the first heading uses
+    # batch_speech_intro_section_title.
+    batch_speech_chapter_mode: str = "none"  # none | single | separate
+    batch_speech_chapter_sound_enabled: bool = False
+    batch_speech_chapter_sound_id: str = ""
+    batch_speech_chapter_sound_volume: int = 100  # 0-100
+    batch_speech_article_gap_ms: int = 1200  # 0-10000
+    batch_speech_intro_section_title: str = "Introduction"
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Settings:
@@ -848,6 +862,26 @@ class Settings:
         heading_organizer_warn_duplicate_h1 = bool(
             data.get("heading_organizer_warn_duplicate_h1", False)
         )
+        # Batch document-to-speech chapterization (§4.8).
+        batch_speech_chapter_mode = (
+            str(data.get("batch_speech_chapter_mode", "none")).strip().lower()
+        )
+        if batch_speech_chapter_mode not in {"none", "single", "separate"}:
+            batch_speech_chapter_mode = "none"
+        batch_speech_chapter_sound_enabled = bool(
+            data.get("batch_speech_chapter_sound_enabled", False)
+        )
+        batch_speech_chapter_sound_id = str(data.get("batch_speech_chapter_sound_id", "")).strip()
+        batch_speech_chapter_sound_volume = _clamp_int(
+            data.get("batch_speech_chapter_sound_volume", 100), 100, 0, 100
+        )
+        batch_speech_article_gap_ms = _clamp_int(
+            data.get("batch_speech_article_gap_ms", 1200), 1200, 0, 10000
+        )
+        batch_speech_intro_section_title = (
+            str(data.get("batch_speech_intro_section_title", "Introduction")).strip()
+            or "Introduction"
+        )
         if recent_files_limit < 1:
             recent_files_limit = 1
         if recent_files_limit > 50:
@@ -1064,6 +1098,12 @@ class Settings:
             hygiene_max_blank_lines=hygiene_max_blank_lines,
             hygiene_rules_disabled=hygiene_rules_disabled,
             heading_organizer_warn_duplicate_h1=heading_organizer_warn_duplicate_h1,
+            batch_speech_chapter_mode=batch_speech_chapter_mode,
+            batch_speech_chapter_sound_enabled=batch_speech_chapter_sound_enabled,
+            batch_speech_chapter_sound_id=batch_speech_chapter_sound_id,
+            batch_speech_chapter_sound_volume=batch_speech_chapter_sound_volume,
+            batch_speech_article_gap_ms=batch_speech_article_gap_ms,
+            batch_speech_intro_section_title=batch_speech_intro_section_title,
         )
 
 

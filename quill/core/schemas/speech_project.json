@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quill.app/schemas/speech_project/1.json",
+  "title": "QUILL Speech Project Profile",
+  "description": "Per-project remembered speech settings, stored at <project>/.quill/speech-project.json. Carries the synthesizer, output format, chapterization, text normalization, and active pronunciation dictionaries so a folder of documents is configured once. See docs/planning/speech-project-format.md and §4.10 of docs/planning/batch-document-to-speech-plan.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Profile schema version. Current is 1."
+    },
+    "synthesizer": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The chosen TTS engine and its voice / pacing.",
+      "properties": {
+        "engine": {
+          "enum": ["sapi5", "dectalk", "piper", "kokoro", "espeak"],
+          "description": "Local synthesis engine. Cloud engines are excluded from batch (§2.3)."
+        },
+        "voice": {
+          "type": "string",
+          "description": "Engine voice id/name (e.g. a SAPI voice token, a Kokoro voice, an eSpeak language)."
+        },
+        "rate": {
+          "type": "integer",
+          "minimum": 50,
+          "maximum": 800,
+          "description": "Words-per-minute style rate (SAPI 5 / eSpeak / DECtalk)."
+        },
+        "volume": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Output volume, 0.0-1.0."
+        },
+        "speed": {
+          "type": "number",
+          "minimum": 0.25,
+          "maximum": 4.0,
+          "description": "Speed multiplier for engines that use one (Kokoro)."
+        },
+        "extra": {
+          "type": "object",
+          "description": "Engine-specific keys. Recognised: piper_executable, piper_model, dectalk_executable, dectalk_dictionary, espeak_executable. Values are paths/strings.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How audio files are written.",
+      "properties": {
+        "format": {
+          "enum": ["wav", "mp3"],
+          "description": "wav (always available) or mp3 (requires ffmpeg; falls back to wav with a note)."
+        },
+        "skip_existing": {
+          "type": "boolean",
+          "description": "Skip a file whose output already exists, so a re-run resumes cheaply."
+        }
+      }
+    },
+    "chapters": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Heading-aware chapterization (§4.8).",
+      "properties": {
+        "mode": {
+          "enum": ["none", "single", "separate"],
+          "description": "none = one flat file; single = one file with MP3 chapter markers; separate = one file per article."
+        },
+        "sound_enabled": {
+          "type": "boolean",
+          "description": "Play a transition earcon at each article boundary; also emits a with-tones file variant."
+        },
+        "sound_id": {
+          "type": "string",
+          "description": "Sound-pack sound id for the transition earcon. \"\" = the bundled placeholder chime."
+        },
+        "sound_volume": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Earcon volume, 0-100."
+        },
+        "article_gap_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Silence inserted between articles, in milliseconds."
+        },
+        "intro_section_title": {
+          "type": "string",
+          "description": "Title for the lead-in section before the first heading (and for documents with no headings)."
+        }
+      }
+    },
+    "normalization": {
+      "type": "object",
+      "description": "Serialized TextNormalizationOptions (§4.9). Empty object = recommended defaults. See quill/core/speech/text_normalize.py.",
+      "additionalProperties": true
+    },
+    "pronunciation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Active pronunciation dictionaries for the project (§4.7).",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Master toggle for pronunciation correction in this project."
+        },
+        "dictionaries": {
+          "type": "array",
+          "description": "Ordered references to the dictionaries this project uses.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Dictionary id (the JSON file stem for quill-json dictionaries)."
+              },
+              "scope": {
+                "enum": ["global", "project"],
+                "description": "global = app data dir; project = the project folder's .quill/pronunciation/."
+              },
+              "format": {
+                "enum": ["quill-json", "sapi-lexicon", "csv"],
+                "description": "Dictionary file format. quill-json is native; sapi-lexicon and csv are reserved for future importers."
+              },
+              "path": {
+                "type": "string",
+                "description": "For project scope: path relative to the project root. \"\" = resolve by id in the standard location."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
