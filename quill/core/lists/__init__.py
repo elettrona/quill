@@ -47,6 +47,8 @@ from quill.core.lists.parse import (
     find_list_block,
     interpret_definition_entries,
     interpret_selection,
+    interpret_text_into_definition,
+    interpret_text_into_flat,
     list_block_to_flat,
     strip_marker,
 )
@@ -80,6 +82,8 @@ __all__ = [
     "indent",
     "interpret_definition_entries",
     "interpret_selection",
+    "interpret_text_into_definition",
+    "interpret_text_into_flat",
     "list_block_to_flat",
     "list_summary",
     "move_subtree",

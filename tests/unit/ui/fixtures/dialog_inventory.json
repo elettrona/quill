@@ -48,6 +48,7 @@
   "quill/ui/info_pages.py::show_bw_capability_matrix_native::wx.Dialog": "hardened_custom",
   "quill/ui/info_pages.py::show_startup_wizard_page_native::wx.Dialog": "hardened_custom",
   "quill/ui/info_pages.py::show_whisperer_about_native::wx.Dialog": "hardened_custom",
+  "quill/ui/list_studio_dialog.py::ListStudioDialog._on_import_file::wx.FileDialog": "native",
   "quill/ui/main_frame.py::MainFrame._build_context_menu_editor_tab._on_rename::wx.TextEntryDialog": "native",
   "quill/ui/main_frame.py::MainFrame._build_menu_items_editor_tab._on_rename::wx.TextEntryDialog": "native",
   "quill/ui/main_frame.py::MainFrame._build_report_bug_form_body.confirm_preflight::wx.MessageDialog": "native",

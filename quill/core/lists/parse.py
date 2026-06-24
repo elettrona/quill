@@ -345,3 +345,40 @@ def _list_from_pairs(pairs: list[tuple[str, str]]) -> DefinitionList:
         DefinitionEntry(terms=[term], definitions=[definition]) for term, definition in pairs
     ]
     return DefinitionList(entries=entries)
+
+
+def interpret_text_into_flat(text: str, settings: StructuredListSettings | None = None) -> FlatList:
+    """Interpret imported/pasted text into a flat list (§17.4 import preview).
+
+    One item per interpreted line or paragraph, with marker detection and a
+    checklist promotion when every line is a task. Empty input yields a single
+    empty item so the studio always has something to edit and preview.
+    """
+    cfg = settings if settings is not None else StructuredListSettings()
+    interpreted = interpret_selection(text, cfg)
+    items = [
+        ListItem(text=content, checked=checked)
+        for content, _kind, checked in interpreted
+        if content.strip() or len(interpreted) == 1
+    ]
+    if not items:
+        items = [ListItem("")]
+    is_checklist = bool(interpreted) and all(kind == "task" for _c, kind, _ck in interpreted)
+    return FlatList(list_type=ListType.CHECKLIST if is_checklist else ListType.BULLET, items=items)
+
+
+def interpret_text_into_definition(
+    text: str, settings: StructuredListSettings | None = None
+) -> DefinitionList:
+    """Interpret imported/pasted text into a definition list (§17.5 import preview).
+
+    Uses a confident term/definition separator when one is detected; an ambiguous
+    or absent separator falls back to one term-only entry per non-blank line rather
+    than guessing a split (§18.2). Empty input yields a single blank entry.
+    """
+    detection = detect_definition_separator(text)
+    if detection.entries and not detection.ambiguous:
+        return _list_from_pairs(detection.entries)
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    entries = [DefinitionEntry(terms=[line]) for line in lines]
+    return DefinitionList(entries=entries or [DefinitionEntry()])
