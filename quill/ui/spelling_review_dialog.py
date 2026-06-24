@@ -73,6 +73,7 @@ class SpellingReviewDialog:
             verbosity=verbosity,
             spell_word=spell_word,
             spell_word_pause_ms=spell_pause,
+            timer_factory=wx.CallLater,
         )
 
         self._current_issue: SpellingIssue | None = None

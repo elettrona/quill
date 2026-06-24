@@ -4,10 +4,9 @@
 system's built-in dictation panel (the Win+H experience) via
 ``launch_windows_dictation``. QUILL does not yet capture or transcribe audio
 itself. The ``engine``/``model``/``language`` fields on :class:`DictationSettings`
-and the ``list_dictation_devices`` helper are forward-looking placeholders for the
-offline speech engine planned in issue #617 (see
-``docs/planning/dictation-and-speech.md``); the controller currently ignores them
-and always drives the OS panel. Keeping this module truthful — rather than
+and the ``list_dictation_devices`` helper are forward-looking placeholders from
+the offline speech engine work (issue #617); the controller currently ignores
+them and always drives the OS panel. Keeping this module truthful — rather than
 pretending a local vosk/whisper recognizer is wired up — is deliberate (Speech
 wave S0).
 """

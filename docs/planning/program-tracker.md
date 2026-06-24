@@ -191,6 +191,12 @@ closed won't-do.
 | 577 | P2 | ⬜ | [Planning] QUILL 2.0 deferred: WATCH-9 — BITS Whisperer WATCH-9 — deferred to QUILL 2.0 |
 | 617 | — | ✅ | Offline Speech-to-Text Provider Architecture (S0–S4 shipped; closed as delivered) |
 | 663 | — | ⬜ | Offline voice commands (Speech S5, split from #617) |
+| — | — | ✅ | Hold-to-Dictate (F9) + Locked Dictation (Ctrl+F9) — Phases 1–2 shipped and documented (user guide, release notes, CHANGELOG); wx-free `quill/core/speech/dictation/` controller + `main_frame_dictation_hotkeys.py`. The source PRD (formerly `quill-hold-to-dictate-and-locked-dictation-prd.md`) was retired to git history once delivered; remaining follow-ups are the rows below. |
+| — | P2 | ⬜ | [Follow-up] Dictation: Settings surface (max-duration chooser, focus-loss/background toggle, verbosity, earcon volume, retention periods, visual recording indicator). Controller already reads a `DictationConfig`; only UI/persistence is missing. |
+| — | P2 | ⬜ | [Follow-up] Dictation History window + interactive startup-recovery prompt (recovery files are written/discoverable; no UI yet). |
+| — | P2 | ⬜ | [Follow-up] Dictation Review interface for deferred/unsafe insertions (transcript preserved in recovery; review surface pending). |
+| — | P2 | ⬜ | [Follow-up] Dictation: concurrent/queued sessions; distinct locked-vs-hold earcons; dedicated Dictation menu + one-time onboarding message. |
+| — | P2 | ⬜ | [Follow-up] Dictation, later phases: optional global Windows key hook; idle-silence detection; dictation intelligence (spoken punctuation, commands). |
 
 ### Verbosity System  (146 issues · Risk Med · Impact High · Value High · Effort High)
 
@@ -354,7 +360,7 @@ closed won't-do.
 | 242 | — | ✅ | [BR-019] Validation commands + Warnings List dialog (Braille Mode P4) |
 | 246 | — | ✅ | [BR-023] Source-to-BRF linking — back-translation (compare/linking descoped) |
 | 600 | P1 | 🧹 | [Planning] Braille Mode Phases 3/4/6 — tracked by #238-#246 |
-| 601 | — | 🧹 | [Planning Archive] Braille Mode design reference - Phases 3/4/6 deferred from 0.7.0 |
+| 601 | — | 🧹 | [Planning Archive] Braille Mode design reference - Phases 3/4/6 deferred from 0.7.0 (full backlog retired to git history; shipped P3/P4 work — proofing, validation, back-translation — is in the user guide). |
 
 ### AI & Agentic  (17 issues · Risk Med · Impact High · Value High · Effort High)
 
@@ -405,8 +411,8 @@ closed won't-do.
 | # | Priority | Status | Title |
 | ---: | :---: | :---: | --- |
 | 513 | P2 | ⬜ | [Planning] O10 — Quick Nav enhancements |
-| 514 | P2 | ⬜ | [Planning] O11 — Un-gate structured Word view + CSV grid |
-| 521 | P3 | ⬜ | [Planning] O20 — Extract main_frame_statusbar.py |
+| 514 | P2 | ◐ | O11 — Structured Word view un-gated for everyday use (2026-06-24); CSV-grid half stays gated as excluded table work |
+| 521 | P3 | ✅ | O20 — Extracted the rest of the status-bar surface into StatusBarMixin (2026-06-24); main_frame.py budget ratcheted 25957→25727 |
 | 578 | P2 | ⬜ | [Planning] QUILL 2.0 deferred: NAV-10 — Navigation NAV-10 — deferred to QUILL 2.0 |
 | 582 | P2 | ⬜ | [Planning] QUILL 2.0 deferred: FEAT-12 — Feature FEAT-12 — deferred to QUILL 2.0 |
 | 583 | P2 | ⬜ | [Planning] QUILL 2.0 deferred: FEAT-13 — Feature FEAT-13 — deferred to QUILL 2.0 |

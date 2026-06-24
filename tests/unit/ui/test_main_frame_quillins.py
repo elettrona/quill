@@ -100,7 +100,11 @@ def test_remove_quillin_confirm_routes_through_dialog_contract() -> None:
         _QUILLINS.index("def on_remove") : _QUILLINS.index("def on_remove") + 2200
     ]
     assert "self._show_modal_dialog(confirm" in on_remove
-    assert "apply_modal_ids(confirm" in on_remove
+    # apply_modal_ids is wrapped across lines to carry the
+    # ``# dialog_button_contract: exempt`` pragma, so match the call and its
+    # argument independently rather than as one literal substring.
+    assert "apply_modal_ids(" in on_remove
+    assert "confirm, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO" in on_remove
     assert "confirm.Destroy()" in on_remove
     # And: no direct ShowModal() on the confirm dialog.
     assert "confirm.ShowModal()" not in on_remove

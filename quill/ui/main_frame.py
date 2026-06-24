@@ -573,12 +573,14 @@ def _wcag_contrast_ratio(fr: int, fg: int, fb: int, br: int, bg: int, bb: int) -
 
 
 def _word_feature_enabled() -> bool:
-    """Structured Word (.docx) view is NOT enabled on this branch.
+    """Structured Word (.docx) view is enabled for everyday use (#514).
 
-    Experimental and not ready for users: hard-disabled,
-    so Word files always open in the normal text editor and there is no env-var
-    override. Developed on the feature/structured-surfaces branch."""
-    return False
+    Un-gated once the accessible Word surface (``word_view.py``,
+    ``WordDocumentSurface``) was complete and tested: opening a ``.doc``/``.docx``
+    honours the ``word_open_mode`` setting (prompt / structured / text), so users
+    can choose the structured Word view or the normal text editor. The CSV-grid
+    half of #514 stays gated (``_csv_feature_enabled``) — that is table work."""
+    return True
 
 
 def _csv_feature_enabled() -> bool:
@@ -5544,27 +5546,6 @@ class MainFrame(
         menu.Bind(wx.EVT_MENU, lambda _e: self.open_palette(), id=palette_id)
         self._popup_context_menu(self.editor, menu, event)
 
-    def _on_statusbar_context_menu(self, event: object) -> None:
-        wx = self._wx
-        menu = wx.Menu()
-        dark_id = wx.NewIdRef()
-        wrap_id = wx.NewIdRef()
-        spell_id = wx.NewIdRef()
-        layout_id = wx.NewIdRef()
-        menu.AppendCheckItem(dark_id, "Dark Mode")
-        menu.Check(dark_id, self.settings.theme == "dark")
-        menu.AppendCheckItem(wrap_id, "Soft Wrap")
-        menu.Check(wrap_id, self.settings.soft_wrap)
-        menu.AppendCheckItem(spell_id, "Spell Check As You Type")
-        menu.Check(spell_id, self.settings.spellcheck_as_you_type)
-        menu.AppendSeparator()
-        menu.Append(layout_id, "Status Bar Layout...")
-        menu.Bind(wx.EVT_MENU, lambda _e: self.toggle_dark_mode(), id=dark_id)
-        menu.Bind(wx.EVT_MENU, lambda _e: self.toggle_soft_wrap(), id=wrap_id)
-        menu.Bind(wx.EVT_MENU, lambda _e: self.toggle_spellcheck_as_you_type(), id=spell_id)
-        menu.Bind(wx.EVT_MENU, lambda _e: self.open_status_bar_settings(), id=layout_id)
-        self._popup_context_menu(self.statusbar, menu, event)
-
     def _on_frame_context_menu(self, event: object) -> None:
         wx = self._wx
         menu = wx.Menu()
@@ -7125,25 +7106,6 @@ class MainFrame(
             if menu_item is not None:
                 menu_item.Enable(html_only)
         self._refresh_language_menu_radio(menu_bar)
-
-    def _set_status(self, message: str) -> None:
-        self._status_message = message
-        self._refresh_statusbar()
-        throttle_ms = int(getattr(self.settings, "announcement_throttle_ms", 0) or 0)
-        if throttle_ms > 0:
-            now = time.monotonic()
-            last = getattr(self, "_last_status_announce_at", 0.0)
-            if (now - last) * 1000.0 < throttle_ms:
-                return
-            self._last_status_announce_at = now
-        announce(message)
-
-    def _set_status_quiet(self, message: str) -> None:
-        """Update the status bar text WITHOUT speaking it. Used for per-keystroke
-        states like "Modified" so the screen reader doesn't repeat it on every
-        character (it already echoes what you type)."""
-        self._status_message = message
-        self._refresh_statusbar()
 
     def _announce_result(self, message: str) -> None:
         """Set the status bar text and force-speak an explicit command result.
@@ -12700,166 +12662,6 @@ class MainFrame(
         self._set_status(f"Updated keybinding for {command_id}")
         return True
 
-    def open_status_bar_settings(self) -> None:
-        wx = self._wx
-        item_order = list(self.settings.status_bar_order)
-        hidden = set(self.settings.status_bar_hidden)
-        dialog = wx.Dialog(self.frame, title="Status Bar Layout", size=(560, 420))
-        # Parent every control directly to the dialog and lay them out in one
-        # sizer (issue #119 pattern). The previous build parented controls to an
-        # inner wx.Panel but added dialog.CreateButtonSizer()'s buttons (children
-        # of the dialog) to the panel's sizer. That parent/sizer mismatch
-        # mislaid the OK/Cancel buttons, and because SetEscapeId(wx.ID_CANCEL)
-        # needs a realized Cancel button, neither the buttons nor Escape could
-        # dismiss the dialog. This matches the working Keymap Editor and search
-        # dialogs.
-        root = wx.BoxSizer(wx.VERTICAL)
-        root.Add(
-            wx.StaticText(
-                dialog,
-                label=(
-                    "Choose visible status items and order. "
-                    "Use Move Up/Down, or right-click for Move Left/Right and Hide/Show."
-                ),
-            ),
-            0,
-            wx.ALL | wx.EXPAND,
-            8,
-        )
-
-        def state_label(item: str, shown: bool) -> str:
-            # Spell out the visibility in the item text so it is obvious without
-            # relying solely on the checkbox state (which some screen readers
-            # announce only on focus, not at a glance).
-            base = self._STATUS_BAR_LABELS.get(item, item)
-            return f"{base} (shown)" if shown else f"{base} (hidden)"
-
-        chooser = wx.CheckListBox(  # A11Y-SR-1-OK: state in label text; pending CheckBox conversion
-            dialog,
-            choices=[state_label(item, item not in hidden) for item in item_order],
-        )
-        for index, item in enumerate(item_order):
-            chooser.Check(index, item not in hidden)
-        root.Add(chooser, 1, wx.ALL | wx.EXPAND, 8)
-
-        def refresh_label(index: int) -> None:
-            if 0 <= index < len(item_order):
-                chooser.SetString(index, state_label(item_order[index], chooser.IsChecked(index)))
-
-        def announce_state(index: int) -> None:
-            if not (0 <= index < len(item_order)):
-                return
-            base = self._STATUS_BAR_LABELS.get(item_order[index], item_order[index])
-            self._set_status(f"{base} {'shown' if chooser.IsChecked(index) else 'hidden'}")
-
-        def toggle_item(index: int) -> None:
-            # Programmatic toggle (context menu) — Check() does not fire
-            # EVT_CHECKLISTBOX, so refresh the label and announce here.
-            if not (0 <= index < len(item_order)):
-                return
-            chooser.Check(index, not chooser.IsChecked(index))
-            refresh_label(index)
-            announce_state(index)
-
-        def on_toggle(event: object) -> None:
-            # Fired by the native checkbox toggle, including the Spacebar.
-            index = event.GetInt() if hasattr(event, "GetInt") else chooser.GetSelection()
-            refresh_label(index)
-            announce_state(index)
-
-        chooser.Bind(wx.EVT_CHECKLISTBOX, on_toggle)
-        controls = wx.BoxSizer(wx.HORIZONTAL)
-        move_up = wx.Button(dialog, label="Move Up")
-        move_down = wx.Button(dialog, label="Move Down")
-        restore_defaults = wx.Button(dialog, label="Restore Defaults")
-        controls.Add(move_up, 0, wx.RIGHT, 8)
-        controls.Add(move_down, 0, wx.RIGHT, 8)
-        controls.Add(restore_defaults, 0, wx.RIGHT, 8)
-        root.Add(controls, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        buttons = dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
-        if buttons is not None:
-            ok_button = dialog.FindWindowById(wx.ID_OK)
-            if ok_button is not None:
-                ok_button.SetDefault()
-            root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
-        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
-        dialog.SetSizer(root)
-        restore_defaults_selected = False
-
-        def swap_items(first: int, second: int) -> None:
-            if first < 0 or second < 0:
-                return
-            if first >= len(item_order) or second >= len(item_order):
-                return
-            item_order[first], item_order[second] = item_order[second], item_order[first]
-            first_checked = chooser.IsChecked(first)
-            second_checked = chooser.IsChecked(second)
-            chooser.Check(first, second_checked)
-            chooser.Check(second, first_checked)
-            chooser.SetString(first, state_label(item_order[first], second_checked))
-            chooser.SetString(second, state_label(item_order[second], first_checked))
-            chooser.SetSelection(second)
-
-        def move_selected(offset: int) -> None:
-            selected = chooser.GetSelection()
-            if selected == wx.NOT_FOUND:
-                return
-            target = selected + offset
-            if target < 0 or target >= len(item_order):
-                return
-            swap_items(selected, target)
-
-        def on_move_up(_event: object) -> None:
-            move_selected(-1)
-
-        def on_move_down(_event: object) -> None:
-            move_selected(1)
-
-        def on_context_menu(event: object) -> None:
-            selected = chooser.GetSelection()
-            if selected == wx.NOT_FOUND:
-                return
-            menu = wx.Menu()
-            move_left_id = wx.NewIdRef()
-            move_right_id = wx.NewIdRef()
-            toggle_id = wx.NewIdRef()
-            menu.Append(move_left_id, "Move Left")
-            menu.Append(move_right_id, "Move Right")
-            menu.AppendSeparator()
-            toggle_label = "Hide Item" if chooser.IsChecked(selected) else "Show Item"
-            menu.Append(toggle_id, toggle_label)
-            menu.Bind(wx.EVT_MENU, lambda _e: move_selected(-1), id=move_left_id)
-            menu.Bind(wx.EVT_MENU, lambda _e: move_selected(1), id=move_right_id)
-            menu.Bind(
-                wx.EVT_MENU,
-                lambda _e: toggle_item(selected),
-                id=toggle_id,
-            )
-            self._popup_context_menu(chooser, menu, event)
-
-        def on_restore_defaults(_event: object) -> None:
-            nonlocal restore_defaults_selected
-            restore_defaults_selected = True
-            self._set_status("Status bar defaults selected")
-
-        move_up.Bind(wx.EVT_BUTTON, on_move_up)
-        move_down.Bind(wx.EVT_BUTTON, on_move_down)
-        restore_defaults.Bind(wx.EVT_BUTTON, on_restore_defaults)
-        chooser.Bind(wx.EVT_CONTEXT_MENU, on_context_menu)
-
-        if self._show_modal_dialog(dialog, "Status Bar Layout") != wx.ID_OK:
-            return
-        if restore_defaults_selected:
-            self._restore_default_statusbar_layout()
-        else:
-            self.settings.status_bar_order = list(item_order)
-            self.settings.status_bar_hidden = [
-                item for index, item in enumerate(item_order) if not chooser.IsChecked(index)
-            ]
-        save_settings(self.settings)
-        self._apply_statusbar_layout()
-        self._set_status("Status bar layout updated")
-
     def open_share_export_dialog(self) -> None:
         """SHARE-1: Export and back up settings, features, and customizations.
 
@@ -13881,7 +13683,7 @@ class MainFrame(
         # call boundary, so this call carries the pragma to acknowledge
         # the cross-scope split. The buttons are real and bound, and
         # Enter/Escape close the dialog at runtime.
-        apply_modal_ids(  # noqa: dialog_button_contract
+        apply_modal_ids(  # dialog_button_contract: exempt
             dialog,
             affirmative_id=wx.ID_OK,
             escape_id=wx.ID_CANCEL,
@@ -16943,7 +16745,12 @@ class MainFrame(
 
         # --- Dictation kwargs ---
         registry = self._speech_registry()
-        all_providers = list(registry.available())  # type: ignore[attr-defined]
+        # Show every *registered* engine, not just the ones usable right now
+        # (#514/#669 model-manager): an engine whose runtime isn't installed yet
+        # — notably whisper.cpp when its binary is missing — must still appear in
+        # the chooser, labelled "(not installed)", so the user can discover it and
+        # reach its guided install path instead of having it silently disappear.
+        all_providers = list(registry.all())  # type: ignore[attr-defined]
         provider = self._speech_provider()
         total_ram = detect_total_ram_gb()
         has_gpu = detect_has_gpu()

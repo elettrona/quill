@@ -61,7 +61,7 @@ single `announcement_verbosity` knob.
 
 ## 2. Speech & Dictation — "BITS Whisperer" (partly shipped)
 
-**Spec:** [`dictation-and-speech.md`](dictation-and-speech.md). **Brand: BITS Whisperer** (`s:\code\bw`).
+**Spec:** shipped — see the user guide (Speech) and `program-tracker.md` (Speech & Dictation) for status; the S0–S5 design plan was retired to git history. **Brand: BITS Whisperer** (`s:\code\bw`).
 
 - **Shipped (#617 S0–S4):** dictation honesty, the offline STT foundation,
   whisper.cpp + Faster Whisper engines, offline transcription, transcript and
@@ -125,7 +125,7 @@ The old per-ID AX-A..F stubs are consolidated into the tracking issue **#675**.
 
 ## 6. Braille mode (shipped — Phases 3/4)
 
-**Spec:** [`braille-mode-backlog.md`](braille-mode-backlog.md).
+**Spec:** shipped — see the user guide (Braille) and `program-tracker.md` (Braille Mode) for status; the design backlog (deferred Phases 3/4/6) was retired to git history.
 
 Proofing, validation, restore-your-place, and selection-aware back-translation
 shipped (#238–#242, #246). Remaining braille ideas live in the backlog doc and

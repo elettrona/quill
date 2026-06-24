@@ -241,7 +241,7 @@
   </style>
 </head>
 <body>
-<h1 id="quill-verbosity-system--consolidated-design-archive">QUILL
+<h1 id="quill-verbosity-system-consolidated-design-archive">QUILL
 Verbosity System — Consolidated Design Archive</h1>
 <blockquote>
 <p><strong>Consolidated workstream design spec.</strong> This file
@@ -252,7 +252,7 @@ href="program-tracker.md"><code>program-tracker.md</code></a>; each
 closes as its implementation ships. Everything here is in scope to ship
 — issue numbers are preserved as section anchors.</p>
 </blockquote>
-<p>The Verbosity System is QUILL's planned screen-reader-first
+<p>The Verbosity System is QUILL’s planned screen-reader-first
 announcement engine: profiles, channels, per-verb token templates,
 Quiet/Meeting modes, a QVP pack format, and a large UX-polish surface.
 It is a major multi-PR initiative beyond 0.7.0 Beta 2.</p>
@@ -267,7 +267,7 @@ The §5–§46 design sections (#367–#404) are the spec these implement
 against.</li>
 <li><strong>Valuable knobs worth keeping in scope:</strong> repetition
 collapse (#409), announcement budget (#408), typing-echo controls
-(#411), 'Where am I?' (#422), 'What changed?' (#423), error coaching
+(#411), ‘Where am I?’ (#422), ‘What changed?’ (#423), error coaching
 (#416), per-category detail levels (#418), Markdown/Code-aware verbosity
 (#427/#428), destructive-action + undo-available warnings
 (#501/#502).</li>
@@ -572,7 +572,7 @@ framing, scoping, risks, and release framing - 0.7.0</li>
 </ul>
 <hr />
 <h2
-id="271--p0-verbosity-rebuild-implement-per-verb-token-registry-from-docsplanningverbositymd">#271
+id="p0-verbosity-rebuild-implement-per-verb-token-registry-from-docsplanningverbosity.md">#271
 — [P0] Verbosity rebuild: implement per-verb token registry from
 docs/planning/verbosity.md</h2>
 <p><strong>Labels:</strong> enhancement, accessibility, feature, p0</p>
@@ -589,40 +589,35 @@ consumer reads them.</p>
 <p>The full design is intact and detailed:</p>
 <p><strong><code>docs/planning/verbosity.md</code></strong> (2,544
 lines, 52 sections)</p>
-<p>The plan specifies:</p>
-<ul>
-<li>23 missing core files (section 36): <code>__init__.py</code>,
-<code>channels.py</code>, <code>styles.py</code>,
-<code>profiles.py</code>, <code>tokens.py</code>,
-<code>parser.py</code>, <code>verbs.py</code>, <code>registry.py</code>,
-<code>data_order.py</code>, <code>engine.py</code>,
-<code>mastery.py</code>, <code>quiet.py</code>, <code>meeting.py</code>,
-<code>storage.py</code>, <code>schema.py</code>,
-<code>preview.py</code>, <code>qvp.py</code>, <code>library.py</code>,
-<code>history.py</code>, <code>explain.py</code>,
-<code>safe_mode.py</code>, <code>import_export.py</code>,
-<code>task_profiles.py</code>, <code>feedback_tuning.py</code></li>
-<li>10 missing UI files (section 37): <code>verbosity_prefs.py</code>,
-<code>verbosity_token_editor.py</code>,
+<p>The plan specifies: - 23 missing core files (section 36):
+<code>__init__.py</code>, <code>channels.py</code>,
+<code>styles.py</code>, <code>profiles.py</code>,
+<code>tokens.py</code>, <code>parser.py</code>, <code>verbs.py</code>,
+<code>registry.py</code>, <code>data_order.py</code>,
+<code>engine.py</code>, <code>mastery.py</code>, <code>quiet.py</code>,
+<code>meeting.py</code>, <code>storage.py</code>,
+<code>schema.py</code>, <code>preview.py</code>, <code>qvp.py</code>,
+<code>library.py</code>, <code>history.py</code>,
+<code>explain.py</code>, <code>safe_mode.py</code>,
+<code>import_export.py</code>, <code>task_profiles.py</code>,
+<code>feedback_tuning.py</code> - 10 missing UI files (section 37):
+<code>verbosity_prefs.py</code>, <code>verbosity_token_editor.py</code>,
 <code>verbosity_data_order.py</code>,
 <code>verbosity_chord_editor.py</code>,
 <code>verbosity_library.py</code>, <code>verbosity_history.py</code>,
 <code>verbosity_preview_lab.py</code>,
 <code>verbosity_safe_mode.py</code>,
-<code>verbosity_import_export.py</code>,
-<code>about_dialog.py</code></li>
-<li>46-step order of work (section 46): channels -&gt; profiles -&gt;
-tokens -&gt; parser -&gt; verbs -&gt; registry -&gt; engine -&gt;
-quiet/meeting -&gt; mastery -&gt; history -&gt; explain -&gt; safe mode
--&gt; QVP -&gt; library -&gt; UI</li>
-<li>49 non-negotiables (section 49): profile ladder, channel model,
-quiet mode, meeting mode, token parser, strict validation,
-simple+advanced token editor, per-verb overrides, keyboard manager
-integration, templates library, QVP JSON packs, announcement history,
-"why did QUILL say that?", safe mode/reset, golden announcement tests,
-screen-reader-first accessibility</li>
-<li>49 success criteria (section 51)</li>
-</ul>
+<code>verbosity_import_export.py</code>, <code>about_dialog.py</code> -
+46-step order of work (section 46): channels -&gt; profiles -&gt; tokens
+-&gt; parser -&gt; verbs -&gt; registry -&gt; engine -&gt; quiet/meeting
+-&gt; mastery -&gt; history -&gt; explain -&gt; safe mode -&gt; QVP
+-&gt; library -&gt; UI - 49 non-negotiables (section 49): profile
+ladder, channel model, quiet mode, meeting mode, token parser, strict
+validation, simple+advanced token editor, per-verb overrides, keyboard
+manager integration, templates library, QVP JSON packs, announcement
+history, “why did QUILL say that?”, safe mode/reset, golden announcement
+tests, screen-reader-first accessibility - 49 success criteria (section
+51)</p>
 <h2 id="explicit-risk-note-section-47">Explicit risk note (section
 47)</h2>
 <p>The original work was lost due to <code>git stash drop</code>.
@@ -956,137 +951,128 @@ Presentation Safety</label></li>
 <li><label><input type="checkbox" />#504 — Addendum #100: Final
 Recommendation</label></li>
 </ul>
-<h2 id="planningmd-children">Planning.md children</h2>
+<h2 id="planning.md-children">Planning.md children</h2>
 <ul class="task-list">
-<li><p><label><input type="checkbox" />#505 — Planning
-parent</label></p></li>
-<li><p><label><input type="checkbox" />#506 — O1 Live installer
-smoke</label></p></li>
-<li><p><label><input type="checkbox" />#507 — O5 Ask QUILL per-message
-buttons</label></p></li>
-<li><p><label><input type="checkbox" />#508 — O5b Unify the two AI
-stacks</label></p></li>
-<li><p><label><input type="checkbox" />#509 — O6 AI Hub
-two-pane</label></p></li>
-<li><p><label><input type="checkbox" />#510 — O7 Azure
-provider</label></p></li>
-<li><p><label><input type="checkbox" />#511 — O8 AI-19
-Copilot</label></p></li>
-<li><p><label><input type="checkbox" />#512 — O9 SHELL-2
-OCR</label></p></li>
-<li><p><label><input type="checkbox" />#513 — O10 Quick
-Nav</label></p></li>
-<li><p><label><input type="checkbox" />#514 — O11 Un-gate
-Word/CSV</label></p></li>
-<li><p><label><input type="checkbox" />#515 — O12 BITS
-Whisperer</label></p></li>
-<li><p><label><input type="checkbox" />#516 — O13 Native
-RTF</label></p></li>
-<li><p><label><input type="checkbox" />#517 — O14 Quillin
-Hub</label></p></li>
-<li><p><label><input type="checkbox" />#518 — O15 macOS
-port</label></p></li>
-<li><p><label><input type="checkbox" />#519 — O16 Plugin
-capability</label></p></li>
-<li><p><label><input type="checkbox" />#520 — O17 Linux
-platform</label></p></li>
-<li><p><label><input type="checkbox" />#521 — O20 statusbar
-extract</label></p></li>
-<li><p><label><input type="checkbox" />#522 — O21 master
-backlog</label></p></li>
-<li><p><label><input type="checkbox" />#523 — AI-19 in
-flight</label></p></li>
-<li><p><label><input type="checkbox" />#524 — SHELL-2 in
-flight</label></p></li>
-<li><p><label><input type="checkbox" />#525 — SHELL-3 in
-flight</label></p></li>
-<li><p><label><input type="checkbox" />#526 — DLG-3.8 in
-flight</label></p></li>
-<li><p><label><input type="checkbox" />#527 — CQ-11 in
-flight</label></p></li>
-<li><p><label><input type="checkbox" />#528 — GLOW-1</label></p></li>
-<li><p><label><input type="checkbox" />#529 — GLOW-2</label></p></li>
-<li><p><label><input type="checkbox" />#530 — GLOW-3</label></p></li>
-<li><p><label><input type="checkbox" />#531 — GLOW-4</label></p></li>
-<li><p><label><input type="checkbox" />#532 — GLOW-5</label></p></li>
-<li><p><label><input type="checkbox" />#533 — GLOW-6</label></p></li>
-<li><p><label><input type="checkbox" />#534 — GLOW-7</label></p></li>
-<li><p><label><input type="checkbox" />#535 — DOC-1</label></p></li>
-<li><p><label><input type="checkbox" />#536 — DOC-2</label></p></li>
-<li><p><label><input type="checkbox" />#537 — DOC-3</label></p></li>
-<li><p><label><input type="checkbox" />#538 — DOC-4</label></p></li>
-<li><p><label><input type="checkbox" />#539 — DOC-5</label></p></li>
-<li><p><label><input type="checkbox" />#540 — DOC-6</label></p></li>
-<li><p><label><input type="checkbox" />#541 — DOC-7</label></p></li>
-<li><p><label><input type="checkbox" />#542 — DOC-8</label></p></li>
-<li><p><label><input type="checkbox" />#543 — DOC-11</label></p></li>
-<li><p><label><input type="checkbox" />#544 — DOC-12</label></p></li>
-<li><p><label><input type="checkbox" />#545 — DOC-14</label></p></li>
-<li><p><label><input type="checkbox" />#546 — DOC-15</label></p></li>
-<li><p><label><input type="checkbox" />#547 — DOC-16</label></p></li>
-<li><p><label><input type="checkbox" />#548 — DOC-17</label></p></li>
-<li><p><label><input type="checkbox" />#549 — DOC-18</label></p></li>
-<li><p><label><input type="checkbox" />#550 — POD-1</label></p></li>
-<li><p><label><input type="checkbox" />#551 — POD-2</label></p></li>
-<li><p><label><input type="checkbox" />#552 — POD-3</label></p></li>
-<li><p><label><input type="checkbox" />#553 — POD-4</label></p></li>
-<li><p><label><input type="checkbox" />#554 — POD-5</label></p></li>
-<li><p><label><input type="checkbox" />#555 — TUT-1</label></p></li>
-<li><p><label><input type="checkbox" />#556 — TUT-2</label></p></li>
-<li><p><label><input type="checkbox" />#557 — TUT-3</label></p></li>
-<li><p><label><input type="checkbox" />#558 — TUT-4</label></p></li>
-<li><p><label><input type="checkbox" />#559 — TUT-5</label></p></li>
-<li><p><label><input type="checkbox" />#560 — TUT-6</label></p></li>
-<li><p><label><input type="checkbox" />#561 — TUT-7</label></p></li>
-<li><p><label><input type="checkbox" />#562 — CQ-14</label></p></li>
-<li><p><label><input type="checkbox" />#563 — CQ-23</label></p></li>
-<li><p><label><input type="checkbox" />#564 — CQ-24</label></p></li>
-<li><p><label><input type="checkbox" />#565 — LINUX-2</label></p></li>
-<li><p><label><input type="checkbox" />#566 — WATCH-8</label></p></li>
-<li><p><label><input type="checkbox" />#567 — BW-1</label></p></li>
-<li><p><label><input type="checkbox" />#568 — BW-2</label></p></li>
-<li><p><label><input type="checkbox" />#569 — BW-3</label></p></li>
-<li><p><label><input type="checkbox" />#570 — BW-4</label></p></li>
-<li><p><label><input type="checkbox" />#571 — BW-5</label></p></li>
-<li><p><label><input type="checkbox" />#572 — BW-6</label></p></li>
-<li><p><label><input type="checkbox" />#573 — BW-7</label></p></li>
-<li><p><label><input type="checkbox" />#574 — BW-8</label></p></li>
-<li><p><label><input type="checkbox" />#575 — BW-9</label></p></li>
-<li><p><label><input type="checkbox" />#576 — BW-10</label></p></li>
-<li><p><label><input type="checkbox" />#577 — WATCH-9</label></p></li>
-<li><p><label><input type="checkbox" />#578 — NAV-10</label></p></li>
-<li><p><label><input type="checkbox" />#579 — AI-11</label></p></li>
-<li><p><label><input type="checkbox" />#580 — AI-12</label></p></li>
-<li><p><label><input type="checkbox" />#581 — AI-18</label></p></li>
-<li><p><label><input type="checkbox" />#582 — FEAT-12</label></p></li>
-<li><p><label><input type="checkbox" />#583 — FEAT-13</label></p></li>
-<li><p><label><input type="checkbox" />#584 — FEAT-14</label></p></li>
-<li><p><label><input type="checkbox" />#585 — FEAT-15</label></p></li>
-<li><p><label><input type="checkbox" />#586 — FEAT-16</label></p></li>
-<li><p><label><input type="checkbox" />#587 — FEAT-17</label></p></li>
-<li><p><label><input type="checkbox" />#588 — FEAT-18</label></p></li>
-<li><p><label><input type="checkbox" />#589 — LINUX-1</label></p></li>
-<li><p><label><input type="checkbox" />#590 — ECO-1</label></p></li>
-<li><p><label><input type="checkbox" />#591 — L10N-1</label></p></li>
-<li><p><label><input type="checkbox" />#592 — COLLAB-1</label></p></li>
-<li><p><label><input type="checkbox" />#593 — AX-A</label></p></li>
-<li><p><label><input type="checkbox" />#594 — AX-B</label></p></li>
-<li><p><label><input type="checkbox" />#595 — AX-C</label></p></li>
-<li><p><label><input type="checkbox" />#596 — AX-D</label></p></li>
-<li><p><label><input type="checkbox" />#597 — AX-E</label></p></li>
-<li><p><label><input type="checkbox" />#598 — AX-F</label></p></li>
-<li><p><label><input type="checkbox" />#599 — PKG-1</label></p></li>
-<li><p><label><input type="checkbox" />#600 — Braille Mode Phases 3/4/6
-pointer</label></p></li>
+<li><label><input type="checkbox" />#505 — Planning parent</label></li>
+<li><label><input type="checkbox" />#506 — O1 Live installer
+smoke</label></li>
+<li><label><input type="checkbox" />#507 — O5 Ask QUILL per-message
+buttons</label></li>
+<li><label><input type="checkbox" />#508 — O5b Unify the two AI
+stacks</label></li>
+<li><label><input type="checkbox" />#509 — O6 AI Hub
+two-pane</label></li>
+<li><label><input type="checkbox" />#510 — O7 Azure
+provider</label></li>
+<li><label><input type="checkbox" />#511 — O8 AI-19 Copilot</label></li>
+<li><label><input type="checkbox" />#512 — O9 SHELL-2 OCR</label></li>
+<li><label><input type="checkbox" />#513 — O10 Quick Nav</label></li>
+<li><label><input type="checkbox" />#514 — O11 Un-gate
+Word/CSV</label></li>
+<li><label><input type="checkbox" />#515 — O12 BITS
+Whisperer</label></li>
+<li><label><input type="checkbox" />#516 — O13 Native RTF</label></li>
+<li><label><input type="checkbox" />#517 — O14 Quillin Hub</label></li>
+<li><label><input type="checkbox" />#518 — O15 macOS port</label></li>
+<li><label><input type="checkbox" />#519 — O16 Plugin
+capability</label></li>
+<li><label><input type="checkbox" />#520 — O17 Linux
+platform</label></li>
+<li><label><input type="checkbox" />#521 — O20 statusbar
+extract</label></li>
+<li><label><input type="checkbox" />#522 — O21 master
+backlog</label></li>
+<li><label><input type="checkbox" />#523 — AI-19 in flight</label></li>
+<li><label><input type="checkbox" />#524 — SHELL-2 in
+flight</label></li>
+<li><label><input type="checkbox" />#525 — SHELL-3 in
+flight</label></li>
+<li><label><input type="checkbox" />#526 — DLG-3.8 in
+flight</label></li>
+<li><label><input type="checkbox" />#527 — CQ-11 in flight</label></li>
+<li><label><input type="checkbox" />#528 — GLOW-1</label></li>
+<li><label><input type="checkbox" />#529 — GLOW-2</label></li>
+<li><label><input type="checkbox" />#530 — GLOW-3</label></li>
+<li><label><input type="checkbox" />#531 — GLOW-4</label></li>
+<li><label><input type="checkbox" />#532 — GLOW-5</label></li>
+<li><label><input type="checkbox" />#533 — GLOW-6</label></li>
+<li><label><input type="checkbox" />#534 — GLOW-7</label></li>
+<li><label><input type="checkbox" />#535 — DOC-1</label></li>
+<li><label><input type="checkbox" />#536 — DOC-2</label></li>
+<li><label><input type="checkbox" />#537 — DOC-3</label></li>
+<li><label><input type="checkbox" />#538 — DOC-4</label></li>
+<li><label><input type="checkbox" />#539 — DOC-5</label></li>
+<li><label><input type="checkbox" />#540 — DOC-6</label></li>
+<li><label><input type="checkbox" />#541 — DOC-7</label></li>
+<li><label><input type="checkbox" />#542 — DOC-8</label></li>
+<li><label><input type="checkbox" />#543 — DOC-11</label></li>
+<li><label><input type="checkbox" />#544 — DOC-12</label></li>
+<li><label><input type="checkbox" />#545 — DOC-14</label></li>
+<li><label><input type="checkbox" />#546 — DOC-15</label></li>
+<li><label><input type="checkbox" />#547 — DOC-16</label></li>
+<li><label><input type="checkbox" />#548 — DOC-17</label></li>
+<li><label><input type="checkbox" />#549 — DOC-18</label></li>
+<li><label><input type="checkbox" />#550 — POD-1</label></li>
+<li><label><input type="checkbox" />#551 — POD-2</label></li>
+<li><label><input type="checkbox" />#552 — POD-3</label></li>
+<li><label><input type="checkbox" />#553 — POD-4</label></li>
+<li><label><input type="checkbox" />#554 — POD-5</label></li>
+<li><label><input type="checkbox" />#555 — TUT-1</label></li>
+<li><label><input type="checkbox" />#556 — TUT-2</label></li>
+<li><label><input type="checkbox" />#557 — TUT-3</label></li>
+<li><label><input type="checkbox" />#558 — TUT-4</label></li>
+<li><label><input type="checkbox" />#559 — TUT-5</label></li>
+<li><label><input type="checkbox" />#560 — TUT-6</label></li>
+<li><label><input type="checkbox" />#561 — TUT-7</label></li>
+<li><label><input type="checkbox" />#562 — CQ-14</label></li>
+<li><label><input type="checkbox" />#563 — CQ-23</label></li>
+<li><label><input type="checkbox" />#564 — CQ-24</label></li>
+<li><label><input type="checkbox" />#565 — LINUX-2</label></li>
+<li><label><input type="checkbox" />#566 — WATCH-8</label></li>
+<li><label><input type="checkbox" />#567 — BW-1</label></li>
+<li><label><input type="checkbox" />#568 — BW-2</label></li>
+<li><label><input type="checkbox" />#569 — BW-3</label></li>
+<li><label><input type="checkbox" />#570 — BW-4</label></li>
+<li><label><input type="checkbox" />#571 — BW-5</label></li>
+<li><label><input type="checkbox" />#572 — BW-6</label></li>
+<li><label><input type="checkbox" />#573 — BW-7</label></li>
+<li><label><input type="checkbox" />#574 — BW-8</label></li>
+<li><label><input type="checkbox" />#575 — BW-9</label></li>
+<li><label><input type="checkbox" />#576 — BW-10</label></li>
+<li><label><input type="checkbox" />#577 — WATCH-9</label></li>
+<li><label><input type="checkbox" />#578 — NAV-10</label></li>
+<li><label><input type="checkbox" />#579 — AI-11</label></li>
+<li><label><input type="checkbox" />#580 — AI-12</label></li>
+<li><label><input type="checkbox" />#581 — AI-18</label></li>
+<li><label><input type="checkbox" />#582 — FEAT-12</label></li>
+<li><label><input type="checkbox" />#583 — FEAT-13</label></li>
+<li><label><input type="checkbox" />#584 — FEAT-14</label></li>
+<li><label><input type="checkbox" />#585 — FEAT-15</label></li>
+<li><label><input type="checkbox" />#586 — FEAT-16</label></li>
+<li><label><input type="checkbox" />#587 — FEAT-17</label></li>
+<li><label><input type="checkbox" />#588 — FEAT-18</label></li>
+<li><label><input type="checkbox" />#589 — LINUX-1</label></li>
+<li><label><input type="checkbox" />#590 — ECO-1</label></li>
+<li><label><input type="checkbox" />#591 — L10N-1</label></li>
+<li><label><input type="checkbox" />#592 — COLLAB-1</label></li>
+<li><label><input type="checkbox" />#593 — AX-A</label></li>
+<li><label><input type="checkbox" />#594 — AX-B</label></li>
+<li><label><input type="checkbox" />#595 — AX-C</label></li>
+<li><label><input type="checkbox" />#596 — AX-D</label></li>
+<li><label><input type="checkbox" />#597 — AX-E</label></li>
+<li><label><input type="checkbox" />#598 — AX-F</label></li>
+<li><label><input type="checkbox" />#599 — PKG-1</label></li>
+<li><label><input type="checkbox" />#600 — Braille Mode Phases 3/4/6
+pointer</label></li>
 </ul>
 <hr />
 <h2
-id="361--verbosity-sub-pr-11--core-foundation-channels-profiles-tokens-parser">#361
+id="verbosity-sub-pr-1.1-core-foundation-channels-profiles-tokens-parser">#361
 — [Verbosity] Sub-PR 1.1 — Core foundation: channels, profiles, tokens,
 parser</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <h2
-id="sub-pr-11--core-foundation-channels-profiles-tokens-parser">Sub-PR
+id="sub-pr-1.1-core-foundation-channels-profiles-tokens-parser">Sub-PR
 1.1 — Core foundation: channels, profiles, tokens, parser</h2>
 <p>Parent: #271 ([P0] Verbosity rebuild).</p>
 <p>Slice of the verbosity rebuild that ships the pure-domain building
@@ -1155,16 +1141,16 @@ consumer.</li>
 system, registry).</p>
 <hr />
 <h2
-id="362--verbosity-sub-pr-12--engine-quiet-meeting-mastery-history-explain-safe-mode">#362
+id="verbosity-sub-pr-1.2-engine-quiet-meeting-mastery-history-explain-safe-mode">#362
 — [Verbosity] Sub-PR 1.2 — Engine, quiet, meeting, mastery, history,
 explain, safe mode</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <h2
-id="sub-pr-12--engine-quiet-meeting-mastery-history-explain-safe-mode-feedback-task-profiles">Sub-PR
+id="sub-pr-1.2-engine-quiet-meeting-mastery-history-explain-safe-mode-feedback-task-profiles">Sub-PR
 1.2 — Engine, quiet, meeting, mastery, history, explain, safe mode,
 feedback, task profiles</h2>
 <p>Parent: #271 ([P0] Verbosity rebuild).</p>
-<p>Builds on sub-PR 1.1's foundation. Adds the central engine, the
+<p>Builds on sub-PR 1.1’s foundation. Adds the central engine, the
 runtime modes, mastery tracking, history, the explain trace, safe mode,
 feedback tuning, task profiles, import/export, and the storage layer. No
 call-site migration yet — only adds the engine so existing
@@ -1185,7 +1171,7 @@ event.</li>
 suggestion timer.</li>
 <li><code>history.py</code> —
 <code>AnnouncementHistory(max_entries=100, redact_text=True)</code>.</li>
-<li><code>explain.py</code> — builds a "Why did QUILL say that?"
+<li><code>explain.py</code> — builds a “Why did QUILL say that?”
 trace.</li>
 <li><code>safe_mode.py</code> — <code>VerbositySafeMode</code> that
 disables custom verbosity and restores built-ins.</li>
@@ -1235,11 +1221,10 @@ and AI hub paths.</li>
 <code>docs/planning/verbosity.md</code> (quiet, meeting, history,
 explain, safe mode, feedback tuning, task profiles, import/export).</p>
 <hr />
-<h2
-id="363--verbosity-sub-pr-13--qvp-library-preview-schema-validation">#363
+<h2 id="verbosity-sub-pr-1.3-qvp-library-preview-schema-validation">#363
 — [Verbosity] Sub-PR 1.3 — QVP, library, preview, schema validation</h2>
 <p><strong>Labels:</strong> feature, p0</p>
-<h2 id="sub-pr-13--qvp-library-preview-schema-validation">Sub-PR 1.3 —
+<h2 id="sub-pr-1.3-qvp-library-preview-schema-validation">Sub-PR 1.3 —
 QVP, library, preview, schema validation</h2>
 <p>Parent: #271 ([P0] Verbosity rebuild).</p>
 <p>Adds the QVP (QUILL Verbosity Pack) format, the library that owns
@@ -1286,12 +1271,12 @@ no hits in the QVP loader.</li>
 profile preview, preview lab, golden tests).</p>
 <hr />
 <h2
-id="364--verbosity-sub-pr-14--ui-preferences-token-editor-library-history-preview-lab-about-dialog">#364
+id="verbosity-sub-pr-1.4-ui-preferences-token-editor-library-history-preview-lab-about-dialog">#364
 — [Verbosity] Sub-PR 1.4 — UI: preferences, token editor, library,
 history, preview lab, about dialog</h2>
 <p><strong>Labels:</strong> accessibility, feature, p0</p>
 <h2
-id="sub-pr-14--ui-preferences-token-editor-library-history-preview-lab-safe-mode-about-dialog">Sub-PR
+id="sub-pr-1.4-ui-preferences-token-editor-library-history-preview-lab-safe-mode-about-dialog">Sub-PR
 1.4 — UI: preferences, token editor, library, history, preview lab, safe
 mode, about dialog</h2>
 <p>Parent: #271 ([P0] Verbosity rebuild).</p>
@@ -1364,12 +1349,12 @@ and pass the A11Y-4 gate.</p>
 templates library, history UI, preview lab, safe mode UI).</p>
 <hr />
 <h2
-id="365--verbosity-sub-pr-15--engine-call-site-migration-keymap-main_frame-wiring">#365
+id="verbosity-sub-pr-1.5-engine-call-site-migration-keymap-main_frame-wiring">#365
 — [Verbosity] Sub-PR 1.5 — Engine call-site migration, keymap,
 main_frame wiring</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <h2
-id="sub-pr-15--engine-call-site-migration-keymap-main_frame-wiring">Sub-PR
+id="sub-pr-1.5-engine-call-site-migration-keymap-main_frame-wiring">Sub-PR
 1.5 — Engine call-site migration, keymap, main_frame wiring</h2>
 <p>Parent: #271 ([P0] Verbosity rebuild).</p>
 <p>The wiring sub-PR. Adds the new chords, registers feature commands,
@@ -1416,7 +1401,7 @@ if badges change menu structure.</li>
 <h3 id="docs">Docs</h3>
 <ul>
 <li><code>docs/release notes/release0.7.0.md</code> — finalize
-"Verbosity System" section with call-site migration note.</li>
+“Verbosity System” section with call-site migration note.</li>
 <li><code>docs/keybinding-standard.md</code> — add new verbosity
 chords.</li>
 <li><code>docs/CONTROL_REFERENCE.md</code> — regenerated by
@@ -1443,10 +1428,10 @@ grows by ~25.</li>
 wizard, feature commands, main_frame wiring).</p>
 <hr />
 <h2
-id="366--verbosity-sub-pr-16--section-53-addendum-100-item-ux-polish">#366
-— [Verbosity] Sub-PR 1.6 — Section 53 addendum (100-item UX polish)</h2>
+id="verbosity-sub-pr-1.6-section-53-addendum-100-item-ux-polish">#366 —
+[Verbosity] Sub-PR 1.6 — Section 53 addendum (100-item UX polish)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
-<h2 id="sub-pr-16--section-53-addendum-100-item-ux-polish">Sub-PR 1.6 —
+<h2 id="sub-pr-1.6-section-53-addendum-100-item-ux-polish">Sub-PR 1.6 —
 Section 53 addendum (100-item UX polish)</h2>
 <p>Parent: #271 ([P0] Verbosity rebuild).</p>
 <p>Implements the 100 addendum items from
@@ -1454,7 +1439,7 @@ Section 53 addendum (100-item UX polish)</h2>
 ship both the 49 non-negotiables from section 49 AND the 100 addendum
 items, both in 0.7.0). Adds new knobs, new UI surfaces, new
 modes/recipes, mastery/tuning, and privacy/safety extensions.</p>
-<h3 id="16a--new-knobs-settings">1.6.a — New knobs (settings)</h3>
+<h3 id="a-new-knobs-settings">1.6.a — New knobs (settings)</h3>
 <p>Add to <code>quill/core/verbosity/settings_knobs.py</code> (extend
 <code>quill/core/settings.py</code> or create a sub-package):</p>
 <ul>
@@ -1485,25 +1470,25 @@ UI)</li>
 <li>53.92 performance knobs (collapse repeats defaults)</li>
 <li>53.95 command echo</li>
 </ul>
-<h3 id="16b--new-ui-surfaces">1.6.b — New UI surfaces</h3>
+<h3 id="b-new-ui-surfaces">1.6.b — New UI surfaces</h3>
 <ul>
 <li>53.2 searchable settings (search bar in prefs)</li>
-<li>53.13 details-on-demand ("Press QUILL key + D for details"
+<li>53.13 details-on-demand (“Press QUILL key + D for details”
 hook)</li>
-<li>53.18 "Where Am I?" command (Ctrl+QUILL key + W) —
+<li>53.18 “Where Am I?” command (Ctrl+QUILL key + W) —
 <code>verbosity_where_am_i.py</code> UI</li>
-<li>53.19 "What Changed?" command</li>
-<li>53.20 "Speak Status Bar" command (Ctrl+QUILL key + S)</li>
-<li>53.42 "Explain My Settings" command</li>
-<li>53.54 "Speak Current Template" in token editor</li>
+<li>53.19 “What Changed?” command</li>
+<li>53.20 “Speak Status Bar” command (Ctrl+QUILL key + S)</li>
+<li>53.42 “Explain My Settings” command</li>
+<li>53.54 “Speak Current Template” in token editor</li>
 <li>53.62 settings change history (extend <code>history.py</code>)</li>
-<li>53.70 "What Will This Change?" confirmation (apply to bulk
+<li>53.70 “What Will This Change?” confirmation (apply to bulk
 actions)</li>
-<li>53.74 "Copy Debug Summary" from explain</li>
+<li>53.74 “Copy Debug Summary” from explain</li>
 <li>53.79 import conflict wizard</li>
-<li>53.80 "Try Without Applying" (session-scoped verbosity)</li>
+<li>53.80 “Try Without Applying” (session-scoped verbosity)</li>
 </ul>
-<h3 id="16c--new-modes--recipes">1.6.c — New modes / recipes</h3>
+<h3 id="c-new-modes-recipes">1.6.c — New modes / recipes</h3>
 <ul>
 <li>53.32 temporary verbosity boost (Ctrl+QUILL key + Up/Down for next
 command)</li>
@@ -1514,16 +1499,16 @@ command)</li>
 (Friendly/Professional/Minimal/Technical/Teaching)</li>
 <li>53.65 accessibility persona setup in setup wizard</li>
 </ul>
-<h3 id="16d--mastery--tuning">1.6.d — Mastery / tuning</h3>
+<h3 id="d-mastery-tuning">1.6.d — Mastery / tuning</h3>
 <ul>
-<li>53.26 "too much / too little / just right" feedback (expand
+<li>53.26 “too much / too little / just right” feedback (expand
 shortcuts)</li>
 <li>53.68 per-announcement suppression</li>
 <li>53.72 better defaults for beginners</li>
 <li>53.73 human-friendly names everywhere (translation layer)</li>
 <li>53.86 microcopy style (above)</li>
 </ul>
-<h3 id="16e--privacy--safety">1.6.e — Privacy / safety</h3>
+<h3 id="e-privacy-safety">1.6.e — Privacy / safety</h3>
 <ul>
 <li>53.45 private document mode</li>
 <li>53.43 export support bundle (extends safe_mode.py)</li>
@@ -1538,12 +1523,12 @@ Settings round-trip tests.</li>
 <h3 id="docs-1">Docs</h3>
 <ul>
 <li><code>docs/Product Requirement Documents and Specifications/QUILL-PRD.md</code>
-— new "Future Verbosity Ideas" appendix listing all 100 items with
+— new “Future Verbosity Ideas” appendix listing all 100 items with
 status. Section 53.1-53.100 each get a short port.</li>
 <li><code>docs/user guide/userguide.md</code> — extend Verbosity chapter
 with all new settings, organized by the three-layer model (53.1).</li>
-<li><code>docs/release notes/release0.7.0.md</code> — "Verbosity System
-Advanced" section.</li>
+<li><code>docs/release notes/release0.7.0.md</code> — “Verbosity System
+Advanced” section.</li>
 <li><code>CHANGELOG.md</code> — single entry summarizing the 100-item
 addendum.</li>
 </ul>
@@ -1565,7 +1550,7 @@ QUILL_SAFE_MODE.</li>
 <p>Replaces section 53 of <code>docs/planning/verbosity.md</code> (the
 100-item addendum).</p>
 <hr />
-<h2 id="367--verbosity-5-locked-design-decisions-12-decisions">#367 —
+<h2 id="verbosity-5-locked-design-decisions-12-decisions">#367 —
 Verbosity: §5 Locked design decisions (12 decisions)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -1647,7 +1632,7 @@ Simple/Advanced.</li>
 <p>Section 5 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
 <h2
-id="368--verbosity-6-profile-model-beginner--normal--expert--quiet--customprofile">#368
+id="verbosity-6-profile-model-beginner-normal-expert-quiet-customprofile">#368
 — Verbosity: §6 Profile model (Beginner / Normal / Expert / Quiet +
 CustomProfile)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
@@ -1694,7 +1679,7 @@ equality.</li>
 <h3 id="closes-7">Closes</h3>
 <p>Section 6 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="369--verbosity-7-channel-system-channel-enum--routing">#369 —
+<h2 id="verbosity-7-channel-system-channel-enum-routing">#369 —
 Verbosity: §7 Channel system (Channel enum + routing)</h2>
 <p><strong>Labels:</strong> accessibility, feature, p0</p>
 <p>Parent: #271</p>
@@ -1730,7 +1715,7 @@ set.</li>
 <h3 id="closes-8">Closes</h3>
 <p>Section 7 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="370--verbosity-8-sound-design-master--per-event-gating">#370 —
+<h2 id="verbosity-8-sound-design-master-per-event-gating">#370 —
 Verbosity: §8 Sound design (master + per-event gating)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -1771,8 +1756,8 @@ errors-only, Quiet silence.</li>
 <h3 id="closes-9">Closes</h3>
 <p>Section 8 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="371--verbosity-9-quiet-mode-controller--chords">#371 —
-Verbosity: §9 Quiet Mode (controller + chords)</h2>
+<h2 id="verbosity-9-quiet-mode-controller-chords">#371 — Verbosity: §9
+Quiet Mode (controller + chords)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 9 of <code>docs/planning/verbosity.md</code>. Each
@@ -1811,8 +1796,8 @@ exit().</li>
 <h3 id="closes-10">Closes</h3>
 <p>Section 9 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="372--verbosity-10-meeting-mode-controller--chords">#372 —
-Verbosity: §10 Meeting Mode (controller + chords)</h2>
+<h2 id="verbosity-10-meeting-mode-controller-chords">#372 — Verbosity:
+§10 Meeting Mode (controller + chords)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 10 of <code>docs/planning/verbosity.md</code>.
@@ -1847,8 +1832,8 @@ exit().</li>
 <h3 id="closes-11">Closes</h3>
 <p>Section 10 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="373--verbosity-11-quiet-undo-ctrlshiftz">#373 — Verbosity: §11
-Quiet Undo (Ctrl+Shift+Z)</h2>
+<h2 id="verbosity-11-quiet-undo-ctrlshiftz">#373 — Verbosity: §11 Quiet
+Undo (Ctrl+Shift+Z)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 11 of <code>docs/planning/verbosity.md</code>.
@@ -1880,8 +1865,8 @@ restores the previous mode.</li>
 <h3 id="closes-12">Closes</h3>
 <p>Section 11 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="374--verbosity-12-token-system-tokenspec--filters">#374 —
-Verbosity: §12 Token system (TokenSpec + filters)</h2>
+<h2 id="verbosity-12-token-system-tokenspec-filters">#374 — Verbosity:
+§12 Token system (TokenSpec + filters)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 12 of <code>docs/planning/verbosity.md</code>.
@@ -1922,7 +1907,7 @@ fields.</li>
 <p>Section 12 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
 <h2
-id="375--verbosity-13-template-validation-strict-allowlist--type-checking">#375
+id="verbosity-13-template-validation-strict-allowlist-type-checking">#375
 — Verbosity: §13 Template validation (strict allowlist + type
 checking)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
@@ -1935,7 +1920,7 @@ track it as code lands.</p>
 <h3 id="scope-7">Scope</h3>
 <ul>
 <li><strong>Strict allowlist.</strong> Every token in a template must
-match the verb's TokenSpec list. Unknown tokens are errors.</li>
+match the verb’s TokenSpec list. Unknown tokens are errors.</li>
 <li><strong>Type checking.</strong> Filters are checked against token
 types. Examples: <code>pad:N</code> requires numeric;
 <code>date_long</code> requires datetime.</li>
@@ -1978,8 +1963,8 @@ disabled.</li>
 <h3 id="closes-14">Closes</h3>
 <p>Section 13 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="376--verbosity-14-data-ordering-model--editor">#376 — Verbosity:
-§14 Data ordering model + editor</h2>
+<h2 id="verbosity-14-data-ordering-model-editor">#376 — Verbosity: §14
+Data ordering model + editor</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 14 of <code>docs/planning/verbosity.md</code>.
@@ -2014,9 +1999,8 @@ instances.</li>
 <h3 id="closes-15">Closes</h3>
 <p>Section 14 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2
-id="377--verbosity-15-verb-registry-verbspec--initial-verb-catalog">#377
-— Verbosity: §15 Verb registry (VerbSpec + initial verb catalog)</h2>
+<h2 id="verbosity-15-verb-registry-verbspec-initial-verb-catalog">#377 —
+Verbosity: §15 Verb registry (VerbSpec + initial verb catalog)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 15 of <code>docs/planning/verbosity.md</code>.
@@ -2072,7 +2056,7 @@ returns a tuple sorted by id.</li>
 <h3 id="closes-16">Closes</h3>
 <p>Section 15 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="378--verbosity-16-per-verb-preferences-ui">#378 — Verbosity: §16
+<h2 id="verbosity-16-per-verb-preferences-ui">#378 — Verbosity: §16
 Per-verb preferences UI</h2>
 <p><strong>Labels:</strong> accessibility, feature, p0</p>
 <p>Parent: #271</p>
@@ -2111,8 +2095,8 @@ SetName/SetHint on the listctrl rows.</li>
 <h3 id="closes-17">Closes</h3>
 <p>Section 16 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="379--verbosity-17-verbosity-preferences-ui-top-level-panel">#379
-— Verbosity: §17 Verbosity Preferences UI (top-level panel)</h2>
+<h2 id="verbosity-17-verbosity-preferences-ui-top-level-panel">#379 —
+Verbosity: §17 Verbosity Preferences UI (top-level panel)</h2>
 <p><strong>Labels:</strong> accessibility, feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 17 of <code>docs/planning/verbosity.md</code>.
@@ -2159,8 +2143,8 @@ politely / assertively per A11Y-4.</li>
 <h3 id="closes-18">Closes</h3>
 <p>Section 17 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="380--verbosity-18-token-editor-ui-simple--advanced">#380 —
-Verbosity: §18 Token editor UI (Simple + Advanced)</h2>
+<h2 id="verbosity-18-token-editor-ui-simple-advanced">#380 — Verbosity:
+§18 Token editor UI (Simple + Advanced)</h2>
 <p><strong>Labels:</strong> accessibility, feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 18 of <code>docs/planning/verbosity.md</code>.
@@ -2201,9 +2185,8 @@ preview, <code>Ctrl+R</code> read assembled template,
 <h3 id="closes-19">Closes</h3>
 <p>Section 18 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2
-id="381--verbosity-19-templates-library-crud--cross-verb-behavior">#381
-— Verbosity: §19 Templates library (CRUD + cross-verb behavior)</h2>
+<h2 id="verbosity-19-templates-library-crud-cross-verb-behavior">#381 —
+Verbosity: §19 Templates library (CRUD + cross-verb behavior)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 19 of <code>docs/planning/verbosity.md</code>.
@@ -2216,7 +2199,7 @@ track it as code lands.</p>
 <li>Full CRUD in v1: Save, Apply, Delete, Rename.</li>
 <li>Flat wx.ListBox or ListCtrl for browsing.</li>
 <li>Per-row dropdown apply.</li>
-<li>Cross-verb behavior: when applying a template to a verb that doesn't
+<li>Cross-verb behavior: when applying a template to a verb that doesn’t
 support all tokens, auto-filter invalid tokens and warn. Example:
 <code>Applied template Concise. Removed 2 tokens because this verb does not track them: cell, region.</code></li>
 <li>No drag-and-drop in 0.7.0.</li>
@@ -2239,8 +2222,8 @@ tokens.</li>
 <h3 id="closes-20">Closes</h3>
 <p>Section 19 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="382--verbosity-20-qvp-file-format-qvpjson-schema">#382 —
-Verbosity: §20 QVP file format (<code>.qvp.json</code> schema)</h2>
+<h2 id="verbosity-20-qvp-file-format-.qvp.json-schema">#382 — Verbosity:
+§20 QVP file format (<code>.qvp.json</code> schema)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 20 of <code>docs/planning/verbosity.md</code>.
@@ -2296,9 +2279,8 @@ returns no hits.</li>
 <p>Section 20 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
 <h2
-id="383--verbosity-21-qvp-install-flow-file-picker--validate--announce">#383
-— Verbosity: §21 QVP install flow (file picker + validate +
-announce)</h2>
+id="verbosity-21-qvp-install-flow-file-picker-validate-announce">#383 —
+Verbosity: §21 QVP install flow (file picker + validate + announce)</h2>
 <p><strong>Labels:</strong> accessibility, feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 21 of <code>docs/planning/verbosity.md</code>.
@@ -2351,8 +2333,8 @@ install dialog.</li>
 <h3 id="closes-22">Closes</h3>
 <p>Section 21 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="384--verbosity-22-profile-preview-on-switch-replay-last-3">#384
-— Verbosity: §22 Profile preview on switch (replay last 3)</h2>
+<h2 id="verbosity-22-profile-preview-on-switch-replay-last-3">#384 —
+Verbosity: §22 Profile preview on switch (replay last 3)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 22 of <code>docs/planning/verbosity.md</code>.
@@ -2388,7 +2370,7 @@ picker has focus.</li>
 <h3 id="closes-23">Closes</h3>
 <p>Section 22 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="385--verbosity-23-preview-lab-scenario-based-renderer">#385 —
+<h2 id="verbosity-23-preview-lab-scenario-based-renderer">#385 —
 Verbosity: §23 Preview Lab (scenario-based renderer)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -2447,9 +2429,8 @@ output.</li>
 <h3 id="closes-24">Closes</h3>
 <p>Section 23 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2
-id="386--verbosity-24-announcement-history-record--replay--filter">#386
-— Verbosity: §24 Announcement history (record + replay + filter)</h2>
+<h2 id="verbosity-24-announcement-history-record-replay-filter">#386 —
+Verbosity: §24 Announcement history (record + replay + filter)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 24 of <code>docs/planning/verbosity.md</code>.
@@ -2498,8 +2479,8 @@ exit, exclude selected document content, clear now.</li>
 <h3 id="closes-25">Closes</h3>
 <p>Section 24 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="387--verbosity-25-why-did-quill-say-that-explanation-trace">#387
-— Verbosity: §25 Why did QUILL say that? (explanation trace)</h2>
+<h2 id="verbosity-25-why-did-quill-say-that-explanation-trace">#387 —
+Verbosity: §25 Why did QUILL say that? (explanation trace)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 25 of <code>docs/planning/verbosity.md</code>.
@@ -2558,9 +2539,8 @@ aloud.</li>
 <p>Section 25 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
 <h2
-id="388--verbosity-26-too-much--too-little--just-right-feedback-tuning">#388
-— Verbosity: §26 Too Much / Too Little / Just Right (feedback
-tuning)</h2>
+id="verbosity-26-too-much-too-little-just-right-feedback-tuning">#388 —
+Verbosity: §26 Too Much / Too Little / Just Right (feedback tuning)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 26 of <code>docs/planning/verbosity.md</code>.
@@ -2600,7 +2580,7 @@ announcement.</li>
 <p>Section 26 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
 <h2
-id="389--verbosity-27-mastery-based-step-down-per-verb-threshold--10-second-timeout">#389
+id="verbosity-27-mastery-based-step-down-per-verb-threshold-10-second-timeout">#389
 — Verbosity: §27 Mastery-based step down (per-verb threshold + 10-second
 timeout)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
@@ -2646,7 +2626,7 @@ raise.</li>
 <p>Section 27 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
 <h2
-id="390--verbosity-28-channel-specific-templates-speech--braille--visual--sound_event">#390
+id="verbosity-28-channel-specific-templates-speech-braille-visual-sound_event">#390
 — Verbosity: §28 Channel-specific templates (speech / braille / visual /
 sound_event)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
@@ -2698,7 +2678,7 @@ channel-specific fields are absent.</li>
 <p>Section 28 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
 <h2
-id="391--verbosity-29-safe-mode-and-reset-per-verb--per-chord--profile--qvp">#391
+id="verbosity-29-safe-mode-and-reset-per-verb-per-chord-profile-qvp">#391
 — Verbosity: §29 Safe Mode and Reset (per-verb / per-chord / profile /
 QVP)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
@@ -2751,8 +2731,7 @@ with built-ins only.</li>
 <h3 id="closes-30">Closes</h3>
 <p>Section 29 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2
-id="392--verbosity-30-import--export-quill-verbosity-profilejson">#392 —
+<h2 id="verbosity-30-import-export-.quill-verbosity-profile.json">#392 —
 Verbosity: §30 Import / Export
 (<code>.quill-verbosity-profile.json</code>)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
@@ -2782,8 +2761,8 @@ track it as code lands.</p>
 </ul>
 <h3 id="use-cases">Use cases</h3>
 <ul>
-<li>Jeff's quiet meeting setup</li>
-<li>Kelly's screen-reader optimized setup</li>
+<li>Jeff’s quiet meeting setup</li>
+<li>Kelly’s screen-reader optimized setup</li>
 <li>Beginner classroom setup</li>
 <li>Expert authoring setup</li>
 <li>Braille-first editing setup</li>
@@ -2816,7 +2795,7 @@ error.</li>
 <p>Section 30 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
 <h2
-id="393--verbosity-31-task-aware-profiles-markdown--code--braille--review--etc">#393
+id="verbosity-31-task-aware-profiles-markdown-code-braille-review-etc.">#393
 — Verbosity: §31 Task-aware profiles (Markdown / Code / Braille / Review
 / etc.)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
@@ -2838,7 +2817,7 @@ track it as code lands.</p>
 <li>Meeting mode</li>
 <li>Training mode</li>
 </ul>
-<h3 id="initial-070-behavior">Initial 0.7.0 behavior</h3>
+<h3 id="initial-0.7.0-behavior">Initial 0.7.0 behavior</h3>
 <ul>
 <li>No forced automatic switching.</li>
 <li>Optional suggestions only.</li>
@@ -2864,8 +2843,7 @@ file type configurable.</li>
 <h3 id="closes-32">Closes</h3>
 <p>Section 31 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2
-id="394--verbosity-32-first-run-verbosity-tour-setup-wizard-page">#394 —
+<h2 id="verbosity-32-first-run-verbosity-tour-setup-wizard-page">#394 —
 Verbosity: §32 First-run Verbosity Tour (setup wizard page)</h2>
 <p><strong>Labels:</strong> accessibility, feature, p0</p>
 <p>Parent: #271</p>
@@ -2914,8 +2892,7 @@ in the x3 accessibility wave).</li>
 <h3 id="closes-33">Closes</h3>
 <p>Section 32 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2
-id="395--verbosity-33-keyboard-manager-integration-verbosity-tab">#395 —
+<h2 id="verbosity-33-keyboard-manager-integration-verbosity-tab">#395 —
 Verbosity: §33 Keyboard Manager integration (Verbosity tab)</h2>
 <p><strong>Labels:</strong> accessibility, feature, p0</p>
 <p>Parent: #271</p>
@@ -2991,8 +2968,8 @@ selected chord.</li>
 <h3 id="closes-34">Closes</h3>
 <p>Section 33 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="396--verbosity-34-hotkey-plan-chords--conflict-resolution">#396
-— Verbosity: §34 Hotkey plan (chords + conflict resolution)</h2>
+<h2 id="verbosity-34-hotkey-plan-chords-conflict-resolution">#396 —
+Verbosity: §34 Hotkey plan (chords + conflict resolution)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 34 of <code>docs/planning/verbosity.md</code>.
@@ -3049,9 +3026,8 @@ move unquote lines to <code>Alt+Shift+Q</code>.</li>
 <p>Section 34 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
 <h2
-id="397--verbosity-35-storage-verbositysettings--verbosity_customjson">#397
-— Verbosity: §35 Storage (VerbositySettings +
-verbosity_custom.json)</h2>
+id="verbosity-35-storage-verbositysettings-verbosity_custom.json">#397 —
+Verbosity: §35 Storage (VerbositySettings + verbosity_custom.json)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 35 of <code>docs/planning/verbosity.md</code>.
@@ -3083,7 +3059,7 @@ section 35.</p>
 <li><code>task_profile_suggestions_enabled</code></li>
 </ul></li>
 </ul>
-<h3 id="custom-data-file-verbosity_customjson">Custom data file:
+<h3 id="custom-data-file-verbosity_custom.json">Custom data file:
 <code>verbosity_custom.json</code></h3>
 <ul>
 <li>User templates.</li>
@@ -3115,7 +3091,7 @@ writes).</li>
 <p>Section 35 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
 <h2
-id="398--verbosity-40-accessibility-requirements-screen-reader-first-contract">#398
+id="verbosity-40-accessibility-requirements-screen-reader-first-contract">#398
 — Verbosity: §40 Accessibility requirements (screen-reader-first
 contract)</h2>
 <p><strong>Labels:</strong> accessibility, feature, p0</p>
@@ -3145,7 +3121,7 @@ track it as code lands.</p>
 <li>Spoken and braille output are primary.</li>
 </ul></li>
 </ul>
-<h3 id="live-regions--status">Live regions / status</h3>
+<h3 id="live-regions-status">Live regions / status</h3>
 <ul>
 <li>Nonblocking warnings: polite.</li>
 <li>Blocking errors: assertive.</li>
@@ -3182,8 +3158,8 @@ notes.</li>
 <h3 id="closes-37">Closes</h3>
 <p>Section 40 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="399--verbosity-41-testing-plan-core--ui--golden">#399 —
-Verbosity: §41 Testing plan (core + UI + golden)</h2>
+<h2 id="verbosity-41-testing-plan-core-ui-golden">#399 — Verbosity: §41
+Testing plan (core + UI + golden)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 41 of <code>docs/planning/verbosity.md</code>.
@@ -3250,9 +3226,8 @@ track it as code lands.</p>
 <p>Section 41 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
 <h2
-id="400--verbosity-42-golden-announcement-tests-testsgoldenverbosity">#400
-— Verbosity: §42 Golden announcement tests
-(tests/golden/verbosity/)</h2>
+id="verbosity-42-golden-announcement-tests-testsgoldenverbosity">#400 —
+Verbosity: §42 Golden announcement tests (tests/golden/verbosity/)</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 42 of <code>docs/planning/verbosity.md</code>.
@@ -3310,7 +3285,7 @@ equality.</li>
 <p>Section 42 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
 <h2
-id="401--verbosity-43-documentation-plan-prd--userguide--control_reference--dev-docs">#401
+id="verbosity-43-documentation-plan-prd-userguide-control_reference-dev-docs">#401
 — Verbosity: §43 Documentation plan (PRD + userguide + CONTROL_REFERENCE
 + dev docs)</h2>
 <p><strong>Labels:</strong> documentation, p0</p>
@@ -3372,8 +3347,8 @@ track it as code lands.</p>
 <h3 id="closes-40">Closes</h3>
 <p>Section 43 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2 id="402--verbosity-44-manual-smoke-test-golden-path-steps-1-65">#402
-— Verbosity: §44 Manual smoke test (golden path steps 1-65)</h2>
+<h2 id="verbosity-44-manual-smoke-test-golden-path-steps-1-65">#402 —
+Verbosity: §44 Manual smoke test (golden path steps 1-65)</h2>
 <p><strong>Labels:</strong> documentation, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 44 of <code>docs/planning/verbosity.md</code>.
@@ -3413,8 +3388,8 @@ release.</li>
 <p>Section 44 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
 <h2
-id="403--verbosity-45-verification-commands-gates-that-must-be-green">#403
-— Verbosity: §45 Verification commands (gates that must be green)</h2>
+id="verbosity-45-verification-commands-gates-that-must-be-green">#403 —
+Verbosity: §45 Verification commands (gates that must be green)</h2>
 <p><strong>Labels:</strong> documentation, p0</p>
 <p>Parent: #271</p>
 <p>Implements section 45 of <code>docs/planning/verbosity.md</code>.
@@ -3455,8 +3430,7 @@ the release notes.</li>
 <h3 id="closes-42">Closes</h3>
 <p>Section 45 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h2
-id="404--verbosity-46-order-of-work-46-steps-sub-prs-follow-this">#404 —
+<h2 id="verbosity-46-order-of-work-46-steps-sub-prs-follow-this">#404 —
 Verbosity: §46 Order of work (46 steps; sub-PRs follow this)</h2>
 <p><strong>Labels:</strong> documentation, p0</p>
 <p>Parent: #271</p>
@@ -3518,26 +3492,26 @@ track it as code lands.</p>
 <h3 id="acceptance-44">Acceptance</h3>
 <ul>
 <li>The 6 sub-PRs (#361-#366) cover steps 1-46 in order.</li>
-<li>Each sub-PR's body references the steps it covers.</li>
+<li>Each sub-PR’s body references the steps it covers.</li>
 <li>After step 46 lands,
 <code>quill/tools/module_size_budgets.json</code> is rebaselined.</li>
 </ul>
 <h3 id="closes-43">Closes</h3>
 <p>Section 46 of <code>docs/planning/verbosity.md</code>.</p>
 <hr />
-<h1 id="polish-backlog-10--consolidated-from-the-100-addenda">Polish
+<h1 id="polish-backlog-1.0-consolidated-from-the-100-addenda">Polish
 backlog (1.0) — consolidated from the 100 addenda</h1>
 <blockquote>
-<p><strong>This is the working backlog.</strong> The 100 "Verbosity
-addendum" sections that follow (#405–#504) are the original brainstorm,
+<p><strong>This is the working backlog.</strong> The 100 “Verbosity
+addendum” sections that follow (#405–#504) are the original brainstorm,
 kept for reference. They are deduplicated and triaged here into a small
 set of themed features. The individual addendum issues are closed on the
-tracker; this section is their home. Most "knobs" are not new features —
+tracker; this section is their home. Most “knobs” are not new features —
 they are per-verb overrides the verb registry already models, so they
 ship as <em>verbs + the per-verb UI</em>, not as bespoke settings.</p>
 </blockquote>
 <h2
-id="already-covered-by-the-shipped-core-or-the-14-ui-no-new-work">Already
+id="already-covered-by-the-shipped-core-or-the-1.4-ui-no-new-work">Already
 covered by the shipped core or the 1.4 UI (no new work)</h2>
 <p>Three-layer settings (#405), searchable settings (#406), settings
 undo/history (#465/#466), test-my-settings (#467), reset granularity
@@ -3549,7 +3523,7 @@ speak-current-template (#458/#459/#460), better defaults for
 experts/beginners (#475/#476). These map to the profile model, the verb
 registry, the QVP loader/library, and the prefs/token editor in sub-PR
 1.4.</p>
-<h2 id="themed-features-worth-building-10">Themed features worth
+<h2 id="themed-features-worth-building-1.0">Themed features worth
 building (1.0)</h2>
 <ol type="1">
 <li><strong>Per-category verbosity, via the verb registry.</strong>
@@ -3557,14 +3531,14 @@ Indentation/whitespace, selection, clipboard, search-result, boundary,
 progress, mode-change, file-operation, and encoding/line-ending
 announcements (#412–#421, #430/#431, #418) are all per-verb overrides —
 ship the verbs and the per-verb table, not ten settings panels.</li>
-<li><strong>Status query commands.</strong> "Where am I?", "What
-changed?", "Speak status bar" (#422/#423/#424) — three small, high-value
+<li><strong>Status query commands.</strong> “Where am I?”, “What
+changed?”, “Speak status bar” (#422/#423/#424) — three small, high-value
 commands.</li>
 <li><strong>Announcement flow control.</strong> Budget, repetition
 collapse, queue policy, notification priority, and the support-bundle
 export (#408/#409/#451/#432/#447).</li>
 <li><strong>Safety announcements.</strong> Destructive-action warnings,
-"undo available", before/after, and "what will this change?"
+“undo available”, before/after, and “what will this change?”
 confirmation (#500/#501/#502/#474).</li>
 <li><strong>Friendly names.</strong> One feature: human-friendly names
 for technical concepts everywhere (consolidates
@@ -3577,7 +3551,7 @@ session profiles, and time-based quiet hours (#434/#435/#485/#486);
 task-aware Markdown/Code modes already exist in core
 (#393/#427/#428).</li>
 <li><strong>Sound learnability.</strong> Earcons-with-text-equivalents
-and a "learn sounds" mode (#453/#454), under the §8 sound design.</li>
+and a “learn sounds” mode (#453/#454), under the §8 sound design.</li>
 <li><strong>Coaching &amp; discovery.</strong> Error coaching,
 details-on-demand, command-discovery announcements, contextual-help
 hooks (#416/#417/#470/#439).</li>
@@ -3596,7 +3570,7 @@ double-speaks or fights the SR. The correct answer is the
 <strong>Screen-Reader Handoff</strong> mode (#410), not a second echo
 engine.</li>
 <li><strong>Speech Rate and Pause knobs (#450)</strong> — QUILL does not
-own the screen reader's voice; rate/pacing is an SR setting.</li>
+own the screen reader’s voice; rate/pacing is an SR setting.</li>
 <li><strong>Punctuation and Symbol Profiles (#426)</strong> —
 punctuation level is a core NVDA/JAWS/Narrator setting; duplicating it
 in QUILL conflicts with the SR. (A braille-only punctuation note may
@@ -3648,10 +3622,9 @@ tests (#400), §43 documentation (#401), §45 verification gates (#403).
 build order — both process, not code.</p>
 <hr />
 <h2
-id="original-addenda-reference-archive--issues-closed-see-backlog-above">Original
+id="original-addenda-reference-archive-issues-closed-see-backlog-above">Original
 addenda (reference archive — issues closed, see backlog above)</h2>
-<h2
-id="405--verbosity-addendum-1-settings-should-have-three-layers">#405 —
+<h2 id="verbosity-addendum-1-settings-should-have-three-layers">#405 —
 Verbosity addendum #1: Settings Should Have Three Layers</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -3714,7 +3687,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="406--verbosity-addendum-2-searchable-settings">#406 — Verbosity
+<h2 id="verbosity-addendum-2-searchable-settings">#406 — Verbosity
 addendum #2: Searchable Settings</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -3759,7 +3732,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="407--verbosity-addendum-3-verbosity-recipes">#407 — Verbosity
+<h2 id="verbosity-addendum-3-verbosity-recipes">#407 — Verbosity
 addendum #3: Verbosity Recipes</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -3809,7 +3782,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="408--verbosity-addendum-4-announcement-budget">#408 — Verbosity
+<h2 id="verbosity-addendum-4-announcement-budget">#408 — Verbosity
 addendum #4: Announcement Budget</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -3859,7 +3832,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="409--verbosity-addendum-5-repetition-collapse">#409 — Verbosity
+<h2 id="verbosity-addendum-5-repetition-collapse">#409 — Verbosity
 addendum #5: Repetition Collapse</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -3904,7 +3877,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="410--verbosity-addendum-6-screen-reader-handoff-mode">#410 —
+<h2 id="verbosity-addendum-6-screen-reader-handoff-mode">#410 —
 Verbosity addendum #6: Screen Reader Handoff Mode</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -3955,7 +3928,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="411--verbosity-addendum-7-typing-echo-controls">#411 — Verbosity
+<h2 id="verbosity-addendum-7-typing-echo-controls">#411 — Verbosity
 addendum #7: Typing Echo Controls</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -3998,8 +3971,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2
-id="412--verbosity-addendum-8-indentation-and-whitespace-verbosity">#412
+<h2 id="verbosity-addendum-8-indentation-and-whitespace-verbosity">#412
 — Verbosity addendum #8: Indentation and Whitespace Verbosity</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -4047,8 +4019,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="413--verbosity-addendum-9-selection-verbosity-knobs">#413 —
-Verbosity addendum #9: Selection Verbosity Knobs</h2>
+<h2 id="verbosity-addendum-9-selection-verbosity-knobs">#413 — Verbosity
+addendum #9: Selection Verbosity Knobs</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -4101,7 +4073,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="414--verbosity-addendum-10-clipboard-verbosity-knobs">#414 —
+<h2 id="verbosity-addendum-10-clipboard-verbosity-knobs">#414 —
 Verbosity addendum #10: Clipboard Verbosity Knobs</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -4151,7 +4123,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="415--verbosity-addendum-11-search-result-verbosity-knobs">#415 —
+<h2 id="verbosity-addendum-11-search-result-verbosity-knobs">#415 —
 Verbosity addendum #11: Search Result Verbosity Knobs</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -4202,8 +4174,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="416--verbosity-addendum-12-error-coaching">#416 — Verbosity
-addendum #12: Error Coaching</h2>
+<h2 id="verbosity-addendum-12-error-coaching">#416 — Verbosity addendum
+#12: Error Coaching</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -4252,7 +4224,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="417--verbosity-addendum-13-details-on-demand">#417 — Verbosity
+<h2 id="verbosity-addendum-13-details-on-demand">#417 — Verbosity
 addendum #13: “Details on Demand”</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -4303,7 +4275,7 @@ user-facing.</li>
 </ul>
 <hr />
 <h2
-id="418--verbosity-addendum-14-announcement-detail-levels-per-category">#418
+id="verbosity-addendum-14-announcement-detail-levels-per-category">#418
 — Verbosity addendum #14: Announcement Detail Levels Per Category</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -4365,8 +4337,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="419--verbosity-addendum-15-boundary-announcements">#419 —
-Verbosity addendum #15: Boundary Announcements</h2>
+<h2 id="verbosity-addendum-15-boundary-announcements">#419 — Verbosity
+addendum #15: Boundary Announcements</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -4416,8 +4388,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="420--verbosity-addendum-16-progress-announcement-controls">#420
-— Verbosity addendum #16: Progress Announcement Controls</h2>
+<h2 id="verbosity-addendum-16-progress-announcement-controls">#420 —
+Verbosity addendum #16: Progress Announcement Controls</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -4463,7 +4435,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="421--verbosity-addendum-17-mode-change-announcements">#421 —
+<h2 id="verbosity-addendum-17-mode-change-announcements">#421 —
 Verbosity addendum #17: Mode Change Announcements</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -4521,7 +4493,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="422--verbosity-addendum-18-where-am-i-command">#422 — Verbosity
+<h2 id="verbosity-addendum-18-where-am-i-command">#422 — Verbosity
 addendum #18: “Where Am I?” Command</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -4581,8 +4553,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="423--verbosity-addendum-19-what-changed-command">#423 —
-Verbosity addendum #19: “What Changed?” Command</h2>
+<h2 id="verbosity-addendum-19-what-changed-command">#423 — Verbosity
+addendum #19: “What Changed?” Command</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -4623,8 +4595,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="424--verbosity-addendum-20-speak-status-bar-command">#424 —
-Verbosity addendum #20: “Speak Status Bar” Command</h2>
+<h2 id="verbosity-addendum-20-speak-status-bar-command">#424 — Verbosity
+addendum #20: “Speak Status Bar” Command</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -4667,8 +4639,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="425--verbosity-addendum-21-braille-specific-knobs">#425 —
-Verbosity addendum #21: Braille-Specific Knobs</h2>
+<h2 id="verbosity-addendum-21-braille-specific-knobs">#425 — Verbosity
+addendum #21: Braille-Specific Knobs</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -4715,8 +4687,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="426--verbosity-addendum-22-punctuation-and-symbol-profiles">#426
-— Verbosity addendum #22: Punctuation and Symbol Profiles</h2>
+<h2 id="verbosity-addendum-22-punctuation-and-symbol-profiles">#426 —
+Verbosity addendum #22: Punctuation and Symbol Profiles</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -4777,8 +4749,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="427--verbosity-addendum-23-markdown-aware-verbosity">#427 —
-Verbosity addendum #23: Markdown-Aware Verbosity</h2>
+<h2 id="verbosity-addendum-23-markdown-aware-verbosity">#427 — Verbosity
+addendum #23: Markdown-Aware Verbosity</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -4830,8 +4802,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="428--verbosity-addendum-24-code-aware-verbosity">#428 —
-Verbosity addendum #24: Code-Aware Verbosity</h2>
+<h2 id="verbosity-addendum-24-code-aware-verbosity">#428 — Verbosity
+addendum #24: Code-Aware Verbosity</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -4883,8 +4855,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="429--verbosity-addendum-25-comparediff-verbosity">#429 —
-Verbosity addendum #25: Compare/Diff Verbosity</h2>
+<h2 id="verbosity-addendum-25-comparediff-verbosity">#429 — Verbosity
+addendum #25: Compare/Diff Verbosity</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -4934,8 +4906,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="430--verbosity-addendum-26-file-operation-verbosity">#430 —
-Verbosity addendum #26: File Operation Verbosity</h2>
+<h2 id="verbosity-addendum-26-file-operation-verbosity">#430 — Verbosity
+addendum #26: File Operation Verbosity</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -4986,9 +4958,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2
-id="431--verbosity-addendum-27-encoding-and-line-ending-verbosity">#431
-— Verbosity addendum #27: Encoding and Line Ending Verbosity</h2>
+<h2 id="verbosity-addendum-27-encoding-and-line-ending-verbosity">#431 —
+Verbosity addendum #27: Encoding and Line Ending Verbosity</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -5027,7 +4998,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="432--verbosity-addendum-28-notification-priority-levels">#432 —
+<h2 id="verbosity-addendum-28-notification-priority-levels">#432 —
 Verbosity addendum #28: Notification Priority Levels</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -5077,8 +5048,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="433--verbosity-addendum-29-verbosity-rules-engine">#433 —
-Verbosity addendum #29: Verbosity Rules Engine</h2>
+<h2 id="verbosity-addendum-29-verbosity-rules-engine">#433 — Verbosity
+addendum #29: Verbosity Rules Engine</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -5116,8 +5087,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="434--verbosity-addendum-30-per-workspace-verbosity">#434 —
-Verbosity addendum #30: Per-Workspace Verbosity</h2>
+<h2 id="verbosity-addendum-30-per-workspace-verbosity">#434 — Verbosity
+addendum #30: Per-Workspace Verbosity</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -5159,7 +5130,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="435--verbosity-addendum-31-per-file-verbosity">#435 — Verbosity
+<h2 id="verbosity-addendum-31-per-file-verbosity">#435 — Verbosity
 addendum #31: Per-File Verbosity</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -5201,7 +5172,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="436--verbosity-addendum-32-temporary-verbosity-boost">#436 —
+<h2 id="verbosity-addendum-32-temporary-verbosity-boost">#436 —
 Verbosity addendum #32: Temporary Verbosity Boost</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -5243,8 +5214,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="437--verbosity-addendum-33-hold-to-explain">#437 — Verbosity
-addendum #33: Hold-to-Explain</h2>
+<h2 id="verbosity-addendum-33-hold-to-explain">#437 — Verbosity addendum
+#33: Hold-to-Explain</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -5278,8 +5249,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="438--verbosity-addendum-34-training-mode">#438 — Verbosity
-addendum #34: Training Mode</h2>
+<h2 id="verbosity-addendum-34-training-mode">#438 — Verbosity addendum
+#34: Training Mode</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -5323,8 +5294,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="439--verbosity-addendum-35-contextual-help-hooks">#439 —
-Verbosity addendum #35: Contextual Help Hooks</h2>
+<h2 id="verbosity-addendum-35-contextual-help-hooks">#439 — Verbosity
+addendum #35: Contextual Help Hooks</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -5366,8 +5337,8 @@ user-facing.</li>
 </ul>
 <hr />
 <h2
-id="440--verbosity-addendum-36-friendly-names-for-technical-concepts">#440
-— Verbosity addendum #36: Friendly Names for Technical Concepts</h2>
+id="verbosity-addendum-36-friendly-names-for-technical-concepts">#440 —
+Verbosity addendum #36: Friendly Names for Technical Concepts</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -5420,8 +5391,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="441--verbosity-addendum-37-confidence-check-wizard">#441 —
-Verbosity addendum #37: “Confidence Check” Wizard</h2>
+<h2 id="verbosity-addendum-37-confidence-check-wizard">#441 — Verbosity
+addendum #37: “Confidence Check” Wizard</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -5461,8 +5432,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="442--verbosity-addendum-38-community-pack-preview-and-diff">#442
-— Verbosity addendum #38: Community Pack Preview and Diff</h2>
+<h2 id="verbosity-addendum-38-community-pack-preview-and-diff">#442 —
+Verbosity addendum #38: Community Pack Preview and Diff</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -5506,7 +5477,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="443--verbosity-addendum-39-qvp-trust-labels">#443 — Verbosity
+<h2 id="verbosity-addendum-39-qvp-trust-labels">#443 — Verbosity
 addendum #39: QVP Trust Labels</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -5545,7 +5516,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="444--verbosity-addendum-40-qvp-copy-as-user-template">#444 —
+<h2 id="verbosity-addendum-40-qvp-copy-as-user-template">#444 —
 Verbosity addendum #40: QVP “Copy as User Template”</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -5579,7 +5550,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="445--verbosity-addendum-41-verbosity-conflict-checker">#445 —
+<h2 id="verbosity-addendum-41-verbosity-conflict-checker">#445 —
 Verbosity addendum #41: Verbosity Conflict Checker</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -5621,7 +5592,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="446--verbosity-addendum-42-explain-my-settings">#446 — Verbosity
+<h2 id="verbosity-addendum-42-explain-my-settings">#446 — Verbosity
 addendum #42: “Explain My Settings”</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -5659,8 +5630,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="447--verbosity-addendum-43-export-support-bundle">#447 —
-Verbosity addendum #43: Export Support Bundle</h2>
+<h2 id="verbosity-addendum-43-export-support-bundle">#447 — Verbosity
+addendum #43: Export Support Bundle</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -5706,7 +5677,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="448--verbosity-addendum-44-privacy-controls">#448 — Verbosity
+<h2 id="verbosity-addendum-44-privacy-controls">#448 — Verbosity
 addendum #44: Privacy Controls</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -5746,8 +5717,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="449--verbosity-addendum-45-private-document-mode">#449 —
-Verbosity addendum #45: Private Document Mode</h2>
+<h2 id="verbosity-addendum-45-private-document-mode">#449 — Verbosity
+addendum #45: Private Document Mode</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -5791,7 +5762,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="450--verbosity-addendum-46-speech-rate-and-pause-knobs">#450 —
+<h2 id="verbosity-addendum-46-speech-rate-and-pause-knobs">#450 —
 Verbosity addendum #46: Speech Rate and Pause Knobs</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -5832,7 +5803,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="451--verbosity-addendum-47-announcement-queue-policy">#451 —
+<h2 id="verbosity-addendum-47-announcement-queue-policy">#451 —
 Verbosity addendum #47: Announcement Queue Policy</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -5870,7 +5841,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="452--verbosity-addendum-48-last-important-announcement">#452 —
+<h2 id="verbosity-addendum-48-last-important-announcement">#452 —
 Verbosity addendum #48: “Last Important Announcement”</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -5914,7 +5885,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="453--verbosity-addendum-49-earcons-with-text-equivalents">#453 —
+<h2 id="verbosity-addendum-49-earcons-with-text-equivalents">#453 —
 Verbosity addendum #49: Earcons With Text Equivalents</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -5955,7 +5926,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="454--verbosity-addendum-50-learn-sounds-mode">#454 — Verbosity
+<h2 id="verbosity-addendum-50-learn-sounds-mode">#454 — Verbosity
 addendum #50: Learn Sounds Mode</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -5997,8 +5968,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="455--verbosity-addendum-51-announcement-favorites">#455 —
-Verbosity addendum #51: Announcement Favorites</h2>
+<h2 id="verbosity-addendum-51-announcement-favorites">#455 — Verbosity
+addendum #51: Announcement Favorites</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -6033,8 +6004,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="456--verbosity-addendum-52-pin-this-status">#456 — Verbosity
-addendum #52: “Pin This Status”</h2>
+<h2 id="verbosity-addendum-52-pin-this-status">#456 — Verbosity addendum
+#52: “Pin This Status”</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -6073,8 +6044,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="457--verbosity-addendum-53-smart-status-rotation">#457 —
-Verbosity addendum #53: Smart Status Rotation</h2>
+<h2 id="verbosity-addendum-53-smart-status-rotation">#457 — Verbosity
+addendum #53: Smart Status Rotation</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -6119,8 +6090,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="458--verbosity-addendum-54-speak-current-template">#458 —
-Verbosity addendum #54: “Speak Current Template”</h2>
+<h2 id="verbosity-addendum-54-speak-current-template">#458 — Verbosity
+addendum #54: “Speak Current Template”</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -6162,8 +6133,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="459--verbosity-addendum-55-token-help-on-demand">#459 —
-Verbosity addendum #55: Token Help on Demand</h2>
+<h2 id="verbosity-addendum-55-token-help-on-demand">#459 — Verbosity
+addendum #55: Token Help on Demand</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -6196,7 +6167,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="460--verbosity-addendum-56-template-examples-per-token">#460 —
+<h2 id="verbosity-addendum-56-template-examples-per-token">#460 —
 Verbosity addendum #56: Template Examples Per Token</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -6234,7 +6205,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="461--verbosity-addendum-57-pack-author-mode">#461 — Verbosity
+<h2 id="verbosity-addendum-57-pack-author-mode">#461 — Verbosity
 addendum #57: Pack Author Mode</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -6273,8 +6244,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="462--verbosity-addendum-58-built-in-sample-qvps">#462 —
-Verbosity addendum #58: Built-In Sample QVPs</h2>
+<h2 id="verbosity-addendum-58-built-in-sample-qvps">#462 — Verbosity
+addendum #58: Built-In Sample QVPs</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -6310,8 +6281,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="463--verbosity-addendum-59-make-this-my-default">#463 —
-Verbosity addendum #59: “Make This My Default”</h2>
+<h2 id="verbosity-addendum-59-make-this-my-default">#463 — Verbosity
+addendum #59: “Make This My Default”</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -6349,8 +6320,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="464--verbosity-addendum-60-bulk-editing">#464 — Verbosity
-addendum #60: Bulk Editing</h2>
+<h2 id="verbosity-addendum-60-bulk-editing">#464 — Verbosity addendum
+#60: Bulk Editing</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -6385,7 +6356,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="465--verbosity-addendum-61-undo-for-settings-changes">#465 —
+<h2 id="verbosity-addendum-61-undo-for-settings-changes">#465 —
 Verbosity addendum #61: Undo for Settings Changes</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -6417,8 +6388,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="466--verbosity-addendum-62-settings-change-history">#466 —
-Verbosity addendum #62: Settings Change History</h2>
+<h2 id="verbosity-addendum-62-settings-change-history">#466 — Verbosity
+addendum #62: Settings Change History</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -6452,8 +6423,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="467--verbosity-addendum-63-test-my-current-settings">#467 —
-Verbosity addendum #63: “Test My Current Settings”</h2>
+<h2 id="verbosity-addendum-63-test-my-current-settings">#467 — Verbosity
+addendum #63: “Test My Current Settings”</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -6495,8 +6466,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2
-id="468--verbosity-addendum-64-recommended-settings-suggestions">#468 —
+<h2 id="verbosity-addendum-64-recommended-settings-suggestions">#468 —
 Verbosity addendum #64: Recommended Settings Suggestions</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -6535,7 +6505,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="469--verbosity-addendum-65-accessibility-persona-setup">#469 —
+<h2 id="verbosity-addendum-65-accessibility-persona-setup">#469 —
 Verbosity addendum #65: Accessibility Persona Setup</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -6575,8 +6545,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="470--verbosity-addendum-66-command-discovery-announcements">#470
-— Verbosity addendum #66: Command Discovery Announcements</h2>
+<h2 id="verbosity-addendum-66-command-discovery-announcements">#470 —
+Verbosity addendum #66: Command Discovery Announcements</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -6621,8 +6591,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="471--verbosity-addendum-67-do-not-say-this-again">#471 —
-Verbosity addendum #67: “Do Not Say This Again”</h2>
+<h2 id="verbosity-addendum-67-do-not-say-this-again">#471 — Verbosity
+addendum #67: “Do Not Say This Again”</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -6656,7 +6626,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="472--verbosity-addendum-68-per-announcement-suppression">#472 —
+<h2 id="verbosity-addendum-68-per-announcement-suppression">#472 —
 Verbosity addendum #68: Per-Announcement Suppression</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -6702,7 +6672,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="473--verbosity-addendum-69-announcement-labels">#473 — Verbosity
+<h2 id="verbosity-addendum-69-announcement-labels">#473 — Verbosity
 addendum #69: Announcement Labels</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -6752,9 +6722,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2
-id="474--verbosity-addendum-70-what-will-this-change-confirmation">#474
-— Verbosity addendum #70: “What Will This Change?” Confirmation</h2>
+<h2 id="verbosity-addendum-70-what-will-this-change-confirmation">#474 —
+Verbosity addendum #70: “What Will This Change?” Confirmation</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -6794,7 +6763,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="475--verbosity-addendum-71-better-defaults-for-experts">#475 —
+<h2 id="verbosity-addendum-71-better-defaults-for-experts">#475 —
 Verbosity addendum #71: Better Defaults for Experts</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -6840,7 +6809,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="476--verbosity-addendum-72-better-defaults-for-beginners">#476 —
+<h2 id="verbosity-addendum-72-better-defaults-for-beginners">#476 —
 Verbosity addendum #72: Better Defaults for Beginners</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -6880,8 +6849,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="477--verbosity-addendum-73-human-friendly-names-everywhere">#477
-— Verbosity addendum #73: Human-Friendly Names Everywhere</h2>
+<h2 id="verbosity-addendum-73-human-friendly-names-everywhere">#477 —
+Verbosity addendum #73: Human-Friendly Names Everywhere</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -6927,7 +6896,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="478--verbosity-addendum-74-copy-debug-summary">#478 — Verbosity
+<h2 id="verbosity-addendum-74-copy-debug-summary">#478 — Verbosity
 addendum #74: “Copy Debug Summary”</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -6971,8 +6940,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="479--verbosity-addendum-75-report-this-announcement">#479 —
-Verbosity addendum #75: “Report This Announcement”</h2>
+<h2 id="verbosity-addendum-75-report-this-announcement">#479 — Verbosity
+addendum #75: “Report This Announcement”</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -7014,7 +6983,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="480--verbosity-addendum-76-documentation-from-settings">#480 —
+<h2 id="verbosity-addendum-76-documentation-from-settings">#480 —
 Verbosity addendum #76: Documentation From Settings</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -7050,7 +7019,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="481--verbosity-addendum-77-default-reset-granularity">#481 —
+<h2 id="verbosity-addendum-77-default-reset-granularity">#481 —
 Verbosity addendum #77: Default Reset Granularity</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -7090,8 +7059,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="482--verbosity-addendum-78-settings-export-preview">#482 —
-Verbosity addendum #78: Settings Export Preview</h2>
+<h2 id="verbosity-addendum-78-settings-export-preview">#482 — Verbosity
+addendum #78: Settings Export Preview</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -7130,8 +7099,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="483--verbosity-addendum-79-import-conflict-wizard">#483 —
-Verbosity addendum #79: Import Conflict Wizard</h2>
+<h2 id="verbosity-addendum-79-import-conflict-wizard">#483 — Verbosity
+addendum #79: Import Conflict Wizard</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -7175,8 +7144,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="484--verbosity-addendum-80-try-without-applying">#484 —
-Verbosity addendum #80: “Try Without Applying”</h2>
+<h2 id="verbosity-addendum-80-try-without-applying">#484 — Verbosity
+addendum #80: “Try Without Applying”</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -7217,7 +7186,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="485--verbosity-addendum-81-session-profiles">#485 — Verbosity
+<h2 id="verbosity-addendum-81-session-profiles">#485 — Verbosity
 addendum #81: Session Profiles</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -7255,8 +7224,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="486--verbosity-addendum-82-time-based-quiet-hours">#486 —
-Verbosity addendum #82: Time-Based Quiet Hours</h2>
+<h2 id="verbosity-addendum-82-time-based-quiet-hours">#486 — Verbosity
+addendum #82: Time-Based Quiet Hours</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -7295,8 +7264,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="487--verbosity-addendum-83-focus-mode">#487 — Verbosity addendum
-#83: Focus Mode</h2>
+<h2 id="verbosity-addendum-83-focus-mode">#487 — Verbosity addendum #83:
+Focus Mode</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -7335,8 +7304,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="488--verbosity-addendum-84-review-mode">#488 — Verbosity
-addendum #84: Review Mode</h2>
+<h2 id="verbosity-addendum-84-review-mode">#488 — Verbosity addendum
+#84: Review Mode</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -7377,8 +7346,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2
-id="489--verbosity-addendum-85-readability--accessibility-verbosity">#489
+<h2 id="verbosity-addendum-85-readability-accessibility-verbosity">#489
 — Verbosity addendum #85: “Readability / Accessibility Verbosity”</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -7421,8 +7389,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="490--verbosity-addendum-86-microcopy-style-settings">#490 —
-Verbosity addendum #86: Microcopy Style Settings</h2>
+<h2 id="verbosity-addendum-86-microcopy-style-settings">#490 — Verbosity
+addendum #86: Microcopy Style Settings</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -7471,7 +7439,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="491--verbosity-addendum-87-use-my-words-custom-labels">#491 —
+<h2 id="verbosity-addendum-87-use-my-words-custom-labels">#491 —
 Verbosity addendum #87: “Use My Words” Custom Labels</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -7507,7 +7475,7 @@ user-facing.</li>
 </ul>
 <hr />
 <h2
-id="492--verbosity-addendum-88-abbreviation-dictionary-for-announcements">#492
+id="verbosity-addendum-88-abbreviation-dictionary-for-announcements">#492
 — Verbosity addendum #88: Abbreviation Dictionary for Announcements</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -7550,8 +7518,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2
-id="493--verbosity-addendum-89-language-and-localization-readiness">#493
+<h2 id="verbosity-addendum-89-language-and-localization-readiness">#493
 — Verbosity addendum #89: Language and Localization Readiness</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -7588,8 +7555,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2
-id="494--verbosity-addendum-90-accessibility-testing-assistant-mode">#494
+<h2 id="verbosity-addendum-90-accessibility-testing-assistant-mode">#494
 — Verbosity addendum #90: Accessibility Testing Assistant Mode</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -7624,7 +7590,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="495--verbosity-addendum-91-developer-trace-verbosity">#495 —
+<h2 id="verbosity-addendum-91-developer-trace-verbosity">#495 —
 Verbosity addendum #91: Developer “Trace Verbosity”</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -7663,7 +7629,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="496--verbosity-addendum-92-performance-knobs">#496 — Verbosity
+<h2 id="verbosity-addendum-92-performance-knobs">#496 — Verbosity
 addendum #92: Performance Knobs</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -7702,8 +7668,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="497--verbosity-addendum-93-status-badges">#497 — Verbosity
-addendum #93: Status Badges</h2>
+<h2 id="verbosity-addendum-93-status-badges">#497 — Verbosity addendum
+#93: Status Badges</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -7742,7 +7708,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="498--verbosity-addendum-94-braille-status-cell">#498 — Verbosity
+<h2 id="verbosity-addendum-94-braille-status-cell">#498 — Verbosity
 addendum #94: Braille Status Cell</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -7775,8 +7741,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="499--verbosity-addendum-95-command-echo">#499 — Verbosity
-addendum #95: “Command Echo”</h2>
+<h2 id="verbosity-addendum-95-command-echo">#499 — Verbosity addendum
+#95: “Command Echo”</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -7819,8 +7785,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="500--verbosity-addendum-96-before-and-after-announcements">#500
-— Verbosity addendum #96: “Before and After” Announcements</h2>
+<h2 id="verbosity-addendum-96-before-and-after-announcements">#500 —
+Verbosity addendum #96: “Before and After” Announcements</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -7861,7 +7827,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="501--verbosity-addendum-97-destructive-action-warnings">#501 —
+<h2 id="verbosity-addendum-97-destructive-action-warnings">#501 —
 Verbosity addendum #97: Destructive Action Warnings</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -7906,7 +7872,7 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="502--verbosity-addendum-98-undo-available-announcements">#502 —
+<h2 id="verbosity-addendum-98-undo-available-announcements">#502 —
 Verbosity addendum #98: “Undo Available” Announcements</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
@@ -7948,9 +7914,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2
-id="503--verbosity-addendum-99-multi-monitor--presentation-safety">#503
-— Verbosity addendum #99: Multi-Monitor / Presentation Safety</h2>
+<h2 id="verbosity-addendum-99-multi-monitor-presentation-safety">#503 —
+Verbosity addendum #99: Multi-Monitor / Presentation Safety</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -7987,8 +7952,8 @@ buttons).</li>
 user-facing.</li>
 </ul>
 <hr />
-<h2 id="504--verbosity-addendum-100-final-recommendation">#504 —
-Verbosity addendum #100: Final Recommendation</h2>
+<h2 id="verbosity-addendum-100-final-recommendation">#504 — Verbosity
+addendum #100: Final Recommendation</h2>
 <p><strong>Labels:</strong> feature, p0</p>
 <p>Parent: #271</p>
 <p>Parent: #271 (Verbosity rebuild). Source:
@@ -8040,7 +8005,7 @@ user-facing.</li>
 </ul>
 <hr />
 <h2
-id="602--planning-archive-verbosity-system-framing-scoping-risks-and-release-framing---070">#602
+id="planning-archive-verbosity-system-framing-scoping-risks-and-release-framing---0.7.0">#602
 — [Planning Archive] Verbosity System framing, scoping, risks, and
 release framing - 0.7.0</h2>
 <p><strong>Labels:</strong> documentation, enhancement</p>
@@ -8049,12 +8014,12 @@ release framing - 0.7.0</h2>
 <code>docs/planning/verbosity.md</code> (2543 lines, 52 sections). The
 implementation work for 0.7.0 Beta 1 is fully tracked by issues
 #361-#366 (verbosity sub-PRs) and #367-#504 (per-verb token scoping, 100
-items, the "screen reader first" list). This issue captures the
+items, the “screen reader first” list). This issue captures the
 remaining design content that is not already tracked in issues, so the
 planning folder can be retired.</p>
 <h2 id="why-captured-here">Why captured here</h2>
 <p>The <code>docs/planning/</code> folder is being retired as part of
-the 0.7.0 release-readiness work. Per the project's planning-folder
+the 0.7.0 release-readiness work. Per the project’s planning-folder
 retirement rule, planning files can be deleted once their content is
 captured in issues. This issue is the canonical archive of the framing
 and scoping content from <code>verbosity.md</code> that is not already
@@ -8069,7 +8034,7 @@ retired)</li>
 <li>The verbosity.md sections §1-§35 and the subsections of §36 (§37 UI
 Modules) that map directly to the sub-PR work above</li>
 </ul>
-<h2 id="content-captured-from-verbositymd-36-52">Content captured from
+<h2 id="content-captured-from-verbosity.md-36-52">Content captured from
 verbosity.md §36-§52</h2>
 <p>The remaining content from §36 onwards is the deployment and
 packaging plan, the module/file list, the feature command list,
@@ -8077,7 +8042,7 @@ accessibility requirements, the testing plan, the risks,
 non-negotiables, release positioning, success criteria, and final
 statement. These are captured below in the order they appear in
 <code>verbosity.md</code>.</p>
-<h3 id="36-core-modules">§36 Core Modules</h3>
+<h3 id="core-modules">§36 Core Modules</h3>
 <p>Recommended new core package: <code>quill/core/verbosity/</code>.</p>
 <p>Files in <code>quill/core/verbosity/</code>:</p>
 <ul>
@@ -8127,9 +8092,9 @@ model; <code>history.py</code> records announcement history;
 <code>safe_mode.py</code> is the safe reset recovery;
 <code>import_export.py</code> imports/exports full profiles;
 <code>task_profiles.py</code> models task-scoped profiles;
-<code>feedback_tuning.py</code> handles the user feedback ("too
-much"/"too little"/"just right") pipeline.</p>
-<h3 id="37-ui-modules">§37 UI Modules</h3>
+<code>feedback_tuning.py</code> handles the user feedback (“too
+much”/“too little”/“just right”) pipeline.</p>
+<h3 id="ui-modules">§37 UI Modules</h3>
 <p>Recommended new UI package: <code>quill/ui/verbosity/</code>. Files:
 <code>verbosity_prefs.py</code> (main settings),
 <code>verbosity_token_editor.py</code> (Simple and Advanced token
@@ -8142,7 +8107,7 @@ preview tool), <code>verbosity_safe_mode.py</code> (recovery and reset
 UI), <code>verbosity_import_export.py</code> (import/export UI for full
 profiles), and <code>about_dialog.py</code> (three-tab About dialog:
 Overview, Dependencies, Links).</p>
-<h3 id="38-files-to-modify">§38 Files to Modify</h3>
+<h3 id="files-to-modify-1">§38 Files to Modify</h3>
 <ul>
 <li><strong>Core</strong>:
 <code>quill/core/feature_command_map.py</code>,
@@ -8169,7 +8134,7 @@ integration).</li>
 <li><strong>Versioning</strong>: <code>quill/__init__.py</code>,
 <code>installer/quill.iss</code> (set to 0.7.0).</li>
 </ul>
-<h3 id="39-feature-commands-to-register">§39 Feature Commands to
+<h3 id="feature-commands-to-register">§39 Feature Commands to
 Register</h3>
 <p><code>feature.verbosity_prefs</code>,
 <code>feature.quiet_mode_toggle</code>,
@@ -8192,8 +8157,7 @@ Register</h3>
 <code>feature.feedback_too_little</code>,
 <code>feature.feedback_just_right</code>,
 <code>feature.preview_lab</code>.</p>
-<h3 id="40-accessibility-requirements">§40 Accessibility
-Requirements</h3>
+<h3 id="accessibility-requirements">§40 Accessibility Requirements</h3>
 <p>The system must be screen-reader-first.</p>
 <p><strong>General</strong>: every dialog must have a useful initial
 focus; every control must have an accessible name; every interactive
@@ -8212,7 +8176,7 @@ JAWS; verify wx.CollapsiblePane behavior; verify modal hotkeys; verify
 ListBox Enter behavior; verify disabled Save announcement; verify status
 bar updates; verify Announcement History workflow; verify Quiet Mode
 recovery; verify Meeting Mode recovery.</p>
-<h3 id="41-testing-plan">§41 Testing Plan</h3>
+<h3 id="testing-plan">§41 Testing Plan</h3>
 <p><strong>Core tests</strong> (<code>tests/unit/core/</code>):</p>
 <p><code>test_verbosity.py</code>,
 <code>test_verbosity_channels.py</code>,
@@ -8252,12 +8216,12 @@ recovery; verify Meeting Mode recovery.</p>
 <p><strong>Script tests</strong> (<code>tests/unit/scripts/</code>):</p>
 <p><code>test_build_windows_distribution.py</code> (extended for
 verbosity artifacts).</p>
-<h3 id="48-risks">§48 Risks</h3>
+<h3 id="risks">§48 Risks</h3>
 <p>The original risks section enumerates eight categories of risk that
 must be managed as the system ships.</p>
 <p><strong>Parser risk</strong> - the template parser is the foundation
 of the customization story. A flaky parser creates untrusted
-customization and breaks the "safe to customize" guarantee. Mitigation:
+customization and breaks the “safe to customize” guarantee. Mitigation:
 strict allowlist of filters, type-checked tokens, golden tests, reject
 invalid overrides on load with a nonblocking warning dialog.</p>
 <p><strong>UI complexity risk</strong> - the system has many surfaces
@@ -8271,13 +8235,13 @@ frequent, or triggered at the wrong moments will be turned off and never
 re-enabled. Mitigation: per-event sound gating; per-profile sound
 character; obvious way to silence globally; never use sound for errors
 alone (visual + status + speech are also required).</p>
-<p><strong>Silent failure risk</strong> - a "QUILL didn't say anything"
+<p><strong>Silent failure risk</strong> - a “QUILL didn’t say anything”
 moment is worse than a noisy moment. Mitigation: assertive live region
-for blocking errors; status line always discoverable; "Repeat Last
-Announcement" command; announcement history viewer.</p>
+for blocking errors; status line always discoverable; “Repeat Last
+Announcement” command; announcement history viewer.</p>
 <p><strong>QVP trust risk</strong> - community-contributed announcement
 packs could ship unsafe wording, broken templates, or content that
-conflicts with QUILL's tone. Mitigation: QVP files are JSON-only (no
+conflicts with QUILL’s tone. Mitigation: QVP files are JSON-only (no
 code); strict schema validation; nonblocking warnings on install; easy
 uninstall; safe reset to recover from broken packs.</p>
 <p><strong>Module-size risk</strong> - the verbosity subsystem is large
@@ -8297,9 +8261,9 @@ by #361-#366); delete stash entries before opening new sub-PRs; keep
 verbosity system risks regressing existing screen-reader behavior if the
 routing engine replaces a path that currently bypasses it. Mitigation:
 golden announcement tests for the existing paths; per-verb override
-defaults to "shipped behavior"; ship Quiet Mode and Meeting Mode behind
+defaults to “shipped behavior”; ship Quiet Mode and Meeting Mode behind
 obvious controls; verify with NVDA and JAWS before declaring done.</p>
-<h3 id="49-non-negotiables-for-070">§49 Non-Negotiables for 0.7.0</h3>
+<h3 id="non-negotiables-for-0.7.0">§49 Non-Negotiables for 0.7.0</h3>
 <p>Do not cut:</p>
 <ol type="1">
 <li>Profile ladder.</li>
@@ -8314,14 +8278,14 @@ obvious controls; verify with NVDA and JAWS before declaring done.</p>
 <li>Templates Library.</li>
 <li>QVP JSON-only packs.</li>
 <li>Announcement History.</li>
-<li>"Why did QUILL say that?" (explain)</li>
+<li>“Why did QUILL say that?” (explain)</li>
 <li>Safe Mode/reset.</li>
 <li>Golden announcement tests.</li>
 <li>Screen-reader-first accessibility commitments.</li>
 </ol>
 <p>These define the system. Without them, the feature becomes a
 preferences panel rather than a trusted announcement architecture.</p>
-<h3 id="50-release-positioning">§50 Release Positioning</h3>
+<h3 id="release-positioning">§50 Release Positioning</h3>
 <p>Suggested release framing:</p>
 <blockquote>
 <p>QUILL 0.7.0 introduces a complete screen-reader-first Verbosity
@@ -8343,7 +8307,7 @@ the editor.</p>
 interface. QUILL 0.7.0 treats announcements as a first-class, testable,
 customizable, recoverable part of the product.</p>
 </blockquote>
-<h3 id="51-success-criteria">§51 Success Criteria</h3>
+<h3 id="success-criteria">§51 Success Criteria</h3>
 <p>QUILL 0.7.0 succeeds if:</p>
 <ul>
 <li>A beginner can choose Beginner mode and feel guided.</li>
@@ -8364,7 +8328,7 @@ path.</li>
 traces.</li>
 <li>QUILL feels calm, intentional, trustworthy, and magical.</li>
 </ul>
-<h3 id="52-final-statement">§52 Final Statement</h3>
+<h3 id="final-statement">§52 Final Statement</h3>
 <p>The QUILL 0.7.0 Verbosity System should be treated as a foundational
 product pillar.</p>
 <p>This is not simply about changing how much the editor talks. It is

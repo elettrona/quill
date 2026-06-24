@@ -7,6 +7,5 @@ registry (:mod:`registry`), and the curated model catalog (:mod:`catalog`).
 
 Everything here is pure and wx-free so it can run on a worker thread. Heavy
 engines (whisper.cpp, Faster Whisper) are optional providers imported only when
-activated; none is imported at QUILL startup. See
-``docs/planning/dictation-and-speech.md``.
+activated; none is imported at QUILL startup.
 """

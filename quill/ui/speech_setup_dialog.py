@@ -50,7 +50,9 @@ class SpeechSetupDialog:
     engine_ok:
         Whether Faster Whisper is installed.
     all_providers:
-        All available providers; enables the engine switcher when > 1.
+        All *registered* providers (available or not); enables the engine switcher
+        when > 1. Not-yet-installed engines are listed and marked "(not installed)"
+        so they stay discoverable and reach their guided install path.
     total_ram:
         Detected RAM in GB (used when repopulating after an engine switch).
     has_gpu:
@@ -130,7 +132,7 @@ class SpeechSetupDialog:
             eng_lbl = wx.StaticText(parent, label="Speech &engine:")
             self._engine_choice = wx.Choice(
                 parent,
-                choices=[p.display_name for p in self._all_providers],
+                choices=[self._provider_label(p) for p in self._all_providers],
             )
             self._engine_choice.SetName("Speech engine")
             current_idx = next(
@@ -146,7 +148,7 @@ class SpeechSetupDialog:
             self._engine_choice = None  # type: ignore[assignment]
             eng_lbl = wx.StaticText(
                 parent,
-                label=f"Engine: {self._provider.display_name}",  # type: ignore[attr-defined]
+                label=f"Engine: {self._provider_label(self._provider)}",
             )
             root.Add(eng_lbl, 0, wx.ALL, 10)
 
@@ -273,6 +275,21 @@ class SpeechSetupDialog:
 
         self._update_buttons()
         self._root.SetSizer(root)
+
+    @staticmethod
+    def _provider_label(provider: object) -> str:
+        """Engine name for the chooser, marked when its runtime isn't installed.
+
+        A registered-but-unavailable engine (e.g. whisper.cpp with no binary) must
+        stay visible and discoverable, so it is shown as "Name (not installed)";
+        the dependency panel below carries the guided install path.
+        """
+        name = str(getattr(provider, "display_name", "Engine"))
+        try:
+            available = bool(provider.is_available())  # type: ignore[attr-defined]
+        except Exception:  # noqa: BLE001 - a broken provider must not break its label
+            available = False
+        return name if available else f"{name} (not installed)"
 
     def _populate_model_list(self) -> None:
         self._model_list.Clear()

@@ -381,15 +381,15 @@ class MenuBuilderMixin:
         notebook_menu.AppendSeparator()
         notebook_menu.Append(
             self._id_notebook_save_snapshot,
-            self._menu_label(_("&Save Snapshot..."), "file.save_snapshot"),
+            self._menu_label(_("&Save Version..."), "file.save_snapshot"),
         )
         notebook_menu.Append(
             self._id_notebook_restore_snapshot,
-            self._menu_label(_("Restore &Snapshot..."), "file.manage_snapshots"),
+            self._menu_label(_("Restore &Version..."), "file.manage_snapshots"),
         )
         notebook_menu.Append(
             self._id_manage_notebook_snapshots,
-            self._menu_label(_("&Manage Snapshots..."), "file.manage_snapshots"),
+            self._menu_label(_("&Manage Versions..."), "file.manage_snapshots"),
         )
         file_menu.AppendSubMenu(notebook_menu, _("&Notebook"))
         file_menu.AppendSeparator()
