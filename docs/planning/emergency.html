@@ -265,11 +265,12 @@ Implementation Status). <strong>Done (2026-06-24):</strong> nested-list
 editing (Indent / Outdent / Add child + subtree-aware Move up/down,
 wx-free in <code>quill/core/lists/nesting.py</code>, 14 unit tests; the
 dialog shows nesting depth and gates controls structurally) and
-<strong>multiple terms per entry</strong> (one synonym per line →
-multiple <code>&lt;dt&gt;</code>). <em>Remaining:</em> multiple
-<em>definitions</em> editing, import-from-file/clipboard with preview,
-conversion previews + information-loss confirmations, in-place editing
-of the list under the caret, reparse-and-validate before commit, and the
+<strong>multiple terms &amp; definitions per entry</strong> (terms
+one-per-line → multiple <code>&lt;dt&gt;</code>; definitions
+blank-line-separated → multiple <code>&lt;dd&gt;</code>).
+<em>Remaining:</em> import-from-file/clipboard with preview, conversion
+previews + information-loss confirmations, in-place editing of the list
+under the caret, reparse-and-validate before commit, and the
 Settings/preset surface. <em>(This is list structure, not the excluded
 table work.)</em></li>
 <li><strong>Hold-to-Dictate / Locked Dictation — follow-ups</strong>

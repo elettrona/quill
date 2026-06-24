@@ -73,3 +73,19 @@ def test_multiple_terms_render_as_multiple_dt() -> None:
     assert "<dt>HTTP</dt>" in rendered
     assert "<dt>HyperText Transfer Protocol</dt>" in rendered
     assert "<dd>A protocol</dd>" in rendered
+
+
+def test_multiple_definitions_render_as_multiple_dd() -> None:
+    # One entry with two definitions (§15.4) emits two <dd> in HTML.
+    dl = DefinitionList(
+        entries=[
+            DefinitionEntry(
+                terms=["bank"],
+                definitions=["A financial institution", "The side of a river"],
+            )
+        ]
+    )
+    studio = _studio(definition=dl, target_format="html")
+    rendered = studio._render()
+    assert "<dd>A financial institution</dd>" in rendered
+    assert "<dd>The side of a river</dd>" in rendered

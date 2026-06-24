@@ -65,12 +65,12 @@
    `quill-structured-list-studio-prd.md` §30 Implementation Status). **Done
    (2026-06-24):** nested-list editing (Indent / Outdent / Add child + subtree-aware
    Move up/down, wx-free in `quill/core/lists/nesting.py`, 14 unit tests; the dialog
-   shows nesting depth and gates controls structurally) and **multiple terms per
-   entry** (one synonym per line → multiple `<dt>`). *Remaining:* multiple
-   *definitions* editing, import-from-file/clipboard with preview, conversion
-   previews + information-loss confirmations, in-place editing of the list under the
-   caret, reparse-and-validate before commit, and the Settings/preset surface.
-   *(This is list structure, not the excluded table work.)*
+   shows nesting depth and gates controls structurally) and **multiple terms &
+   definitions per entry** (terms one-per-line → multiple `<dt>`; definitions
+   blank-line-separated → multiple `<dd>`). *Remaining:* import-from-file/clipboard
+   with preview, conversion previews + information-loss confirmations, in-place
+   editing of the list under the caret, reparse-and-validate before commit, and the
+   Settings/preset surface. *(This is list structure, not the excluded table work.)*
 10. **Hold-to-Dictate / Locked Dictation — follow-ups** (migrated into the Speech &
     Dictation table above): Settings surface (max-duration, focus-loss/background,
     verbosity, earcon volume, retention, visual indicator); Dictation History +

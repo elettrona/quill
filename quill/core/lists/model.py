@@ -94,6 +94,35 @@ class DefinitionEntry:
         kept = [line.strip() for line in text.splitlines() if line.strip()]
         self.terms = kept or [""]
 
+    def definitions_text(self) -> str:
+        """The entry's definitions as one editor string, blank-line separated.
+
+        A blank line separates definitions so each one may itself span several
+        lines (a multi-paragraph definition keeps its internal newlines).
+        """
+        return "\n\n".join(self.definitions)
+
+    def set_definitions_text(self, text: str) -> None:
+        """Replace the definitions from a blank-line-separated editor field (§15.4).
+
+        Each block separated by one or more blank lines becomes a definition
+        (rendered as its own ``<dd>``); internal single newlines are preserved so
+        a definition can be multi-line. Trailing/leading blank lines are ignored;
+        an all-blank field keeps a single empty definition so the entry still
+        round-trips and never collapses to zero definitions.
+        """
+        blocks: list[str] = []
+        current: list[str] = []
+        for line in text.splitlines():
+            if line.strip():
+                current.append(line.rstrip())
+            elif current:
+                blocks.append("\n".join(current).strip())
+                current = []
+        if current:
+            blocks.append("\n".join(current).strip())
+        self.definitions = blocks or [""]
+
     def is_blank(self) -> bool:
         return not any(t.strip() for t in self.terms) and not any(
             d.strip() for d in self.definitions

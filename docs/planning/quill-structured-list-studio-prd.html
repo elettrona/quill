@@ -1789,12 +1789,15 @@ a parent never leaves its children behind. All rules are wx-free in
 dialog enables Indent/Outdent only when structurally valid and hides the
 row for definition lists. Screen readers hear "level N" via the existing
 announcements.</li>
-<li><strong>Multiple terms per entry (§15.3):</strong> the definition
-editor's Term field takes one synonym per line and renders multiple
-<code>&lt;dt&gt;</code>, via the wx-free
-<code>DefinitionEntry.terms_text</code> / <code>set_terms_text</code>
-helpers (unit-tested in
-<code>tests/unit/core/lists/test_model.py</code>).</li>
+<li><strong>Multiple terms and multiple definitions per entry
+(§15.3–§15.4):</strong> the Term field takes one synonym per line
+(multiple <code>&lt;dt&gt;</code>), and the Definition field takes one
+definition per blank-line-separated block (multiple
+<code>&lt;dd&gt;</code>, each block still able to span several lines).
+Both run through wx-free <code>DefinitionEntry.terms_text</code> /
+<code>set_terms_text</code> / <code>definitions_text</code> /
+<code>set_definitions_text</code> helpers, unit-tested in
+<code>tests/unit/core/lists/test_model.py</code>.</li>
 </ul>
 <h2 id="not-yet-implemented-planned-follow-ups">Not yet implemented
 (planned follow-ups)</h2>
@@ -1803,14 +1806,6 @@ helpers (unit-tested in
 (app/format/workspace/ document/this-operation), the Settings category,
 shipped presets, and import/export. Defaults currently live in
 <code>StructuredListSettings</code>.</li>
-<li><strong>Multiple definitions</strong> editing UI (§15.4) — the model
-and renderers support several definitions per entry, but the dialog
-edits only the primary definition (multi-paragraph definitions make a
-per-definition sub-editor the right surface, pending). <em>Multiple
-<strong>terms</strong> (§15.3) is done:</em> the Term field takes one
-synonym per line and renders multiple <code>&lt;dt&gt;</code>
-(<code>DefinitionEntry.terms_text</code> / <code>set_terms_text</code>,
-unit-tested in <code>tests/unit/core/lists/test_model.py</code>).</li>
 <li><strong>Import dialogs with preview</strong> (§6, §17.4–§17.5) and
 <strong>conversion previews / information-loss confirmations</strong>
 (§12, §19) — the core computes interpretations, ambiguity, and loss
