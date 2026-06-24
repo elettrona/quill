@@ -239,8 +239,12 @@ installer, not just from source.</li>
 <li><strong>Spell-check preload half — #527 (CQ-11, P1,
 in-flight).</strong> Close the remaining half so first F7 is not
 slow/cold.</li>
-<li><strong>Windows 11 primary menu — #525 (SHELL-3, P1,
-in-flight).</strong> Finish and verify.</li>
+<li>⏭ <strong>Windows 11 primary menu — #525 (SHELL-3) — deferred to
+QUILL 2.0.</strong> Per <code>roadmap.md</code>, SHELL-3 (the Windows 11
+modern primary-menu / <code>IExplorerCommand</code> shell pass) is
+consolidated into the QUILL 2.0 deferred-backlog tracker (#680), so it
+is <strong>out of scope</strong> for this green bar (the preamble
+already excludes 2.0-deferred items). Not a release blocker.</li>
 </ol>
 <h2
 id="tier-2--shipped-features-with-rough-edges-users-can-already-reach-these">Tier
@@ -318,8 +322,13 @@ knobs (announcement budgets, repetition collapse, typing-echo controls,
 per-category detail levels, destructive-action and undo-available cues)
 and explicitly fold-in-or-defer the speculative rest so the range can
 close.</li>
-<li><strong>Quick Nav enhancements — #513 (P2).</strong> Remaining Quick
-Nav polish.</li>
+<li>✅ <strong>Quick Nav enhancements — #513 (P2) — shipped.</strong>
+The structural quick-nav key family (Heading H, Link A, List L, Item I,
+Table T, Block-quote Q, Bookmark B, Code-block ', Table-of-contents C,
+…) is implemented (<code>quill/core/quill_key_help.py</code> and the
+editor handlers). Per <code>roadmap.md</code> the only named follow-on,
+NAV-10 (#578), was an undefined stub folded into #513, which shipped;
+there is no concrete remaining Quick Nav work on the 1.0 bar.</li>
 <li>✅ <strong>Un-gate structured Word view — #514 (P2) — resolved
 2026-06-24.</strong> The open path was already fully wired
 (<code>_resolve_word_open_mode</code> →

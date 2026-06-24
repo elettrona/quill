@@ -401,7 +401,7 @@ closed won't-do.
 | 518 | P2 | ⬜ | [Planning] O15 — macOS port to shipping quality (#42) |
 | 519 | P2 | ⬜ | [Planning] O16 — Plugin capability, signing, marketplace |
 | 520 | P2 | ❌ | [Planning] O17 — Linux platform layer |
-| 525 | P1 | ⬜ | [Planning] In flight: SHELL-3 Windows 11 primary menu |
+| 525 | P1 | ⏭ | SHELL-3 Windows 11 primary menu — deferred to QUILL 2.0 (#680) |
 | 565 | P2 | ❌ | [Planning] Tier 6 / 1.0 backlog: LINUX-2 |
 | 589 | P2 | ❌ | [Planning] QUILL 2.0 deferred: LINUX-1 — LINUX-1 spike — deferred to QUILL 2.0 |
 | 599 | P2 | ⬜ | [Planning] QUILL 2.0 deferred: PKG-1 — Packaging freezing evaluation PKG-1 — deferred to QUILL 2.0 |
@@ -410,7 +410,7 @@ closed won't-do.
 
 | # | Priority | Status | Title |
 | ---: | :---: | :---: | --- |
-| 513 | P2 | ⬜ | [Planning] O10 — Quick Nav enhancements |
+| 513 | P2 | ✅ | O10 — Quick Nav enhancements shipped (structural quick-nav key family; NAV-10/#578 folded in) |
 | 514 | P2 | ◐ | O11 — Structured Word view un-gated for everyday use (2026-06-24); CSV-grid half stays gated as excluded table work |
 | 521 | P3 | ✅ | O20 — Extracted the rest of the status-bar surface into StatusBarMixin (2026-06-24); main_frame.py budget ratcheted 25957→25727 |
 | 578 | P2 | ⬜ | [Planning] QUILL 2.0 deferred: NAV-10 — Navigation NAV-10 — deferred to QUILL 2.0 |
