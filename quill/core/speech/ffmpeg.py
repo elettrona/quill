@@ -118,6 +118,74 @@ def build_transcode_command(ffmpeg: str, source: Path, out_wav: Path) -> list[st
     ]
 
 
+# Listening-quality MP3 defaults (distinct from the 16 kHz mono transcription
+# profile above): keep speech intelligible at a small size. libmp3lame VBR
+# quality 4 is ~128-165 kbps; the source channels/rate are preserved so a stereo
+# voice stays stereo. Used by the batch document-to-speech MP3 path (§4.1).
+MP3_VBR_QUALITY = "4"
+
+
+def build_mp3_command(ffmpeg: str, source_wav: Path, out_mp3: Path) -> list[str]:
+    """Build the ffmpeg argv that encodes ``source_wav`` to a listening-grade MP3.
+
+    Pure and unit-tested: ``source_wav`` is a controlled, on-disk file produced by
+    a synthesis engine (never untrusted document content), so this is safe to hand
+    to a subprocess. Unlike :func:`build_transcode_command` this does **not**
+    downmix or resample — it preserves the speech WAV's channels/rate and only
+    re-encodes to MP3 at a listening-appropriate VBR.
+    """
+    return [
+        ffmpeg,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        str(source_wav),
+        "-vn",
+        "-c:a",
+        "libmp3lame",
+        "-q:a",
+        MP3_VBR_QUALITY,
+        "-y",
+        str(out_mp3),
+    ]
+
+
+def transcode_to_mp3(
+    source_wav: Path,
+    out_mp3: Path,
+    *,
+    timeout_seconds: float = 600.0,
+) -> Path:
+    """Encode a speech ``source_wav`` to ``out_mp3`` (listening-grade MP3).
+
+    Returns ``out_mp3``. Raises :class:`TranscodeError` if ffmpeg is missing or
+    fails — callers in the batch pipeline catch this and fall back to WAV with a
+    per-file note, never hard-failing the whole batch (§4.1, Risks table).
+    """
+    from quill.stability.safe_subprocess import run_subprocess_safely
+
+    ffmpeg = find_ffmpeg()
+    if ffmpeg is None:
+        raise TranscodeError(f"ffmpeg is not installed. {INSTALL_HINT}")
+    if not source_wav.is_file():
+        raise TranscodeError(f"The audio file was not found: {source_wav}")
+
+    out_mp3.parent.mkdir(parents=True, exist_ok=True)
+    args = build_mp3_command(ffmpeg, source_wav, out_mp3)
+    try:
+        completed = run_subprocess_safely(args, timeout_seconds=timeout_seconds)
+    except OSError as exc:
+        raise TranscodeError(f"Could not run ffmpeg: {exc}") from exc
+    if completed.returncode != 0:
+        detail = (completed.stderr or "").strip()[:300]
+        out_mp3.unlink(missing_ok=True)
+        raise TranscodeError(f"ffmpeg could not encode the MP3. {detail}".strip())
+    if not out_mp3.is_file():
+        raise TranscodeError("ffmpeg produced no output.")
+    return out_mp3
+
+
 def transcode_to_wav(
     source: Path,
     *,
