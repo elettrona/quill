@@ -381,6 +381,10 @@ def main() -> int:
     setup_fault_handler()
     _install_excepthook()
     try:
+        from quill.core.publishing_bundled import bootstrap_bundled_publishing_providers
+
+        bootstrap_bundled_publishing_providers()
+
         try:
             from quill.ui.main_frame import run_app
         except ModuleNotFoundError as exc:

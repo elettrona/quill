@@ -70,8 +70,13 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
             "core.intellisense": FEATURE_STATE_OFF,
             "core.markdown_profiles": FEATURE_STATE_QUIET,
             "core.text_encoding": FEATURE_STATE_QUIET,
+            "future.character_inspector": FEATURE_STATE_OFF,
             "future.cleanup": FEATURE_STATE_OFF,
             "future.ai": FEATURE_STATE_QUIET,
+            # Publishing is writer-tier-and-above only (Writer, Author or
+            # Student, Developer and Power Text, Full Quill); off by default
+            # here, but any user can still enable it individually.
+            "future.publishing": FEATURE_STATE_OFF,
         },
     ),
     PROFILE_WRITER: FeatureProfile(
@@ -96,8 +101,12 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
             "core.ocr": FEATURE_STATE_QUIET,
             "core.markdown_profiles": FEATURE_STATE_QUIET,
             "core.text_encoding": FEATURE_STATE_QUIET,
+            "future.character_inspector": FEATURE_STATE_QUIET,
             "future.cleanup": FEATURE_STATE_QUIET,
             "future.ai": FEATURE_STATE_QUIET,
+            # Writer is one of the writer-tier-and-above profiles with
+            # publishing access (see PROFILE_ESSENTIAL's comment above).
+            "future.publishing": FEATURE_STATE_ON,
         },
     ),
     PROFILE_AUTHOR_STUDENT: FeatureProfile(
@@ -124,8 +133,12 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
             "core.intellisense": FEATURE_STATE_QUIET,
             "core.markdown_profiles": FEATURE_STATE_ON,
             "core.text_encoding": FEATURE_STATE_ON,
+            "future.character_inspector": FEATURE_STATE_QUIET,
             "future.cleanup": FEATURE_STATE_QUIET,
             "future.ai": FEATURE_STATE_QUIET,
+            # Author or Student is one of the writer-tier-and-above profiles
+            # with publishing access (see PROFILE_ESSENTIAL's comment above).
+            "future.publishing": FEATURE_STATE_ON,
         },
     ),
     "reader_and_student": FeatureProfile(
@@ -145,7 +158,9 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
             "core.keymap": FEATURE_STATE_QUIET,
             "core.ocr": FEATURE_STATE_QUIET,
             "core.intellisense": FEATURE_STATE_QUIET,
+            "future.character_inspector": FEATURE_STATE_OFF,
             "future.cleanup": FEATURE_STATE_OFF,
+            "future.publishing": FEATURE_STATE_OFF,
         },
     ),
     "office_and_admin": FeatureProfile(
@@ -165,7 +180,9 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
             "core.keymap": FEATURE_STATE_ON,
             "core.ocr": FEATURE_STATE_QUIET,
             "core.intellisense": FEATURE_STATE_QUIET,
+            "future.character_inspector": FEATURE_STATE_QUIET,
             "future.cleanup": FEATURE_STATE_QUIET,
+            "future.publishing": FEATURE_STATE_OFF,
         },
     ),
     PROFILE_DEVELOPER_POWER_TEXT: FeatureProfile(
@@ -186,7 +203,12 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
             "core.keymap": FEATURE_STATE_ON,
             "core.ocr": FEATURE_STATE_ON,
             "core.intellisense": FEATURE_STATE_QUIET,
+            "future.character_inspector": FEATURE_STATE_QUIET,
             "future.cleanup": FEATURE_STATE_QUIET,
+            # Developer and Power Text is one of the writer-tier-and-above
+            # profiles with publishing access (see PROFILE_ESSENTIAL's
+            # comment above).
+            "future.publishing": FEATURE_STATE_ON,
         },
     ),
     "low_vision": FeatureProfile(
@@ -208,7 +230,9 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
             "core.keymap": FEATURE_STATE_QUIET,
             "core.ocr": FEATURE_STATE_ON,
             "core.intellisense": FEATURE_STATE_QUIET,
+            "future.character_inspector": FEATURE_STATE_QUIET,
             "future.cleanup": FEATURE_STATE_QUIET,
+            "future.publishing": FEATURE_STATE_OFF,
         },
     ),
     "braille_screen_reader_power_user": FeatureProfile(
@@ -230,7 +254,9 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
             "core.keymap": FEATURE_STATE_ON,
             "core.ocr": FEATURE_STATE_ON,
             "core.intellisense": FEATURE_STATE_QUIET,
+            "future.character_inspector": FEATURE_STATE_QUIET,
             "future.cleanup": FEATURE_STATE_QUIET,
+            "future.publishing": FEATURE_STATE_OFF,
         },
     ),
     PROFILE_ACCESSIBILITY_PROFESSIONAL: FeatureProfile(
@@ -250,7 +276,9 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
             "core.keymap": FEATURE_STATE_ON,
             "core.ocr": FEATURE_STATE_ON,
             "core.intellisense": FEATURE_STATE_QUIET,
+            "future.character_inspector": FEATURE_STATE_QUIET,
             "future.cleanup": FEATURE_STATE_QUIET,
+            "future.publishing": FEATURE_STATE_OFF,
         },
     ),
     PROFILE_FULL_QUILL: FeatureProfile(

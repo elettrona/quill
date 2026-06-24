@@ -13,6 +13,10 @@ def test_document_name_uses_file_name() -> None:
     assert document.name == "story.md"
 
 
+def test_document_name_defaults_to_untitled_without_path_or_display_name() -> None:
+    assert Document().name == "Untitled"
+
+
 def test_set_text_marks_document_modified_and_increments_revision() -> None:
     document = Document(text="one")
     document.set_text("two")

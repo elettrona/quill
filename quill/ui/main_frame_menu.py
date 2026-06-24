@@ -180,6 +180,79 @@ class MenuBuilderMixin:
         )
         file_menu.AppendSubMenu(remote_menu, _("Open from &Remote"))
         file_menu.AppendSubMenu(self._sessions_menu, _("&Snapshots"))
+        self._id_publishing_connections = wx.NewIdRef()
+        self._id_publishing_verify_connection = wx.NewIdRef()
+        self._id_publishing_browse_content = wx.NewIdRef()
+        self._id_publishing_create_draft = wx.NewIdRef()
+        self._id_publishing_publish_current = wx.NewIdRef()
+        self._id_publishing_create_page_draft = wx.NewIdRef()
+        self._id_publishing_publish_current_page = wx.NewIdRef()
+        self._id_publishing_compare_remote_item = wx.NewIdRef()
+        self._id_publishing_update_remote_item = wx.NewIdRef()
+        self._id_publishing_publish_remote_item = wx.NewIdRef()
+        self._id_publishing_schedule_publish = wx.NewIdRef()
+        # future.publishing is locked off (quill/core/feature_catalog.py) while
+        # the publishing-providers-framework branch is under review, so the
+        # whole Publish submenu is omitted from a default build. IDs above
+        # stay unconditional (matching the core.glow precedent) so binding
+        # them below is harmless even when the menu is never built.
+        if self._feature_enabled("future.publishing"):
+            self._publishing_file_menu = wx.Menu()
+            self._publishing_file_menu.Append(
+                self._id_publishing_connections,
+                self._menu_label("Publishing &Connections...", "publishing.connections"),
+            )
+            self._publishing_file_menu.Append(
+                self._id_publishing_verify_connection,
+                self._menu_label(
+                    "&Verify Current Publishing Connection",
+                    "publishing.verify_connection",
+                ),
+            )
+            self._publishing_file_menu.Append(
+                self._id_publishing_browse_content,
+                self._menu_label("&Browse Publishing Content...", "publishing.browse_content"),
+            )
+            self._publishing_file_menu.Append(
+                self._id_publishing_create_draft,
+                self._menu_label("Create Post &Draft...", "publishing.create_draft"),
+            )
+            self._publishing_file_menu.Append(
+                self._id_publishing_publish_current,
+                self._menu_label("&Publish Post Now...", "publishing.publish_current"),
+            )
+            self._publishing_file_menu.Append(
+                self._id_publishing_create_page_draft,
+                self._menu_label("Create Page Draft...", "publishing.create_page_draft"),
+            )
+            self._publishing_file_menu.Append(
+                self._id_publishing_publish_current_page,
+                self._menu_label("Publish Page Now...", "publishing.publish_current_page"),
+            )
+            self._publishing_file_menu.Append(
+                self._id_publishing_compare_remote_item,
+                self._menu_label("Compare With Remote...", "publishing.compare_remote_item"),
+            )
+            self._publishing_file_menu.Append(
+                self._id_publishing_update_remote_item,
+                self._menu_label("&Update Remote Content...", "publishing.update_remote_item"),
+            )
+            self._publishing_file_menu.Append(
+                self._id_publishing_publish_remote_item,
+                self._menu_label(
+                    "Publish Open Remote Content...",
+                    "publishing.publish_remote_item",
+                ),
+            )
+            self._publishing_file_menu.Append(
+                self._id_publishing_schedule_publish,
+                self._menu_label("&Schedule Publish...", "publishing.schedule_publish"),
+            )
+            file_menu.AppendSeparator()
+            file_menu.AppendSubMenu(self._publishing_file_menu, _("P&ublish"))
+        # New document from clipboard sits beside New (Power Tools recirculation,
+        # menus.md Phase 4).
+        self._append_power_tools_file_create_items(file_menu)
         file_menu.AppendSeparator()
         # --- Save ---
         file_menu.Append(self._id_save, self._menu_label(_("&Save"), "file.save"))
@@ -2354,6 +2427,61 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_menu_editor(), id=self._id_menu_editor)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.exit_app(), id=self._id_exit)
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self._open_publishing_connections(),
+            id=self._id_publishing_connections,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self._verify_current_publishing_connection(),
+            id=self._id_publishing_verify_connection,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self._browse_publishing_content(),
+            id=self._id_publishing_browse_content,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self._create_publishing_draft(),
+            id=self._id_publishing_create_draft,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self._publish_current_document(),
+            id=self._id_publishing_publish_current,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self._create_publishing_page_draft(),
+            id=self._id_publishing_create_page_draft,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self._publish_current_page(),
+            id=self._id_publishing_publish_current_page,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self._compare_publishing_remote_item(),
+            id=self._id_publishing_compare_remote_item,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self._update_publishing_remote_item(),
+            id=self._id_publishing_update_remote_item,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self._publish_open_remote_item(),
+            id=self._id_publishing_publish_remote_item,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self._schedule_publishing_publish(),
+            id=self._id_publishing_schedule_publish,
+        )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.show_about_quill(), id=self._id_about_quill)
         self.frame.Bind(
             wx.EVT_MENU,

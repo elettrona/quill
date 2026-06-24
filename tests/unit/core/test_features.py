@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from quill.core import paths
 from quill.core.commands import CommandRegistry
 from quill.core.features import (
     FEATURE_STATE_OFF,
@@ -21,6 +22,19 @@ from quill.core.features import (
     find_feature,
     import_feature_profile_file,
 )
+
+
+@pytest.fixture(autouse=True)
+def feature_data_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()
+    data_dir = fake_home / "quill-data"
+    monkeypatch.setattr(paths, "_DEV_BUILD", True)
+    monkeypatch.setattr(paths.Path, "home", classmethod(lambda cls: fake_home))
+    monkeypatch.setenv("QUILL_DATA_DIR", str(data_dir))
+    monkeypatch.delenv("APPDATA", raising=False)
+    monkeypatch.delenv("QUILL_PORTABLE_ROOT", raising=False)
+    return data_dir
 
 
 def test_feature_mapping_infers_command_groups() -> None:
@@ -84,6 +98,9 @@ def test_feature_manager_respects_profile_state() -> None:
     assert manager.state_for("core.file") == FEATURE_STATE_ON
     assert manager.state_for("core.search.regex") == FEATURE_STATE_OFF
     assert manager.state_for("future.ai") == FEATURE_STATE_QUIET
+    # future.publishing is locked_off (publishing-providers-framework branch
+    # under review), which overrides any profile's quiet/on state.
+    assert manager.state_for("future.publishing") == FEATURE_STATE_OFF
 
 
 def test_feature_manager_can_switch_profiles() -> None:
@@ -133,6 +150,10 @@ def test_feature_registry_includes_shipped_profiles() -> None:
 
 def test_intellisense_feature_is_in_registry() -> None:
     assert "core.intellisense" in PROFILE_DEFINITIONS[PROFILE_FULL_QUILL].states
+
+
+def test_publishing_feature_is_in_registry() -> None:
+    assert "future.publishing" in PROFILE_DEFINITIONS[PROFILE_FULL_QUILL].states
 
 
 def test_feature_profile_import_and_export_roundtrip() -> None:

@@ -20,11 +20,12 @@ import subprocess
 import sys
 import tempfile
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 
 from quill.core.speech import models
 
-ProgressCallback = None  # Callable[[float, str], None] — imported lazily
+ProgressCallback = Callable[[float, str], None]
 
 # Pinned to 1.52.0, the latest stable Windows release.
 # The MSI bundles espeak-ng.exe, libespeak-ng.dll, and the full espeak-ng-data
@@ -52,7 +53,7 @@ def managed_espeak_dir() -> Path:
 
 
 def install_espeak(
-    progress_fn: object = None,
+    progress_fn: ProgressCallback | None = None,
     *,
     dest_dir: Path | None = None,
     timeout_seconds: float = _DOWNLOAD_TIMEOUT_S,
@@ -104,7 +105,7 @@ def install_espeak(
 def _download_msi(
     url: str,
     target: Path,
-    progress_fn: object,
+    progress_fn: ProgressCallback | None,
     timeout_seconds: float,
 ) -> None:
     """Stream the eSpeak-NG MSI over verified HTTPS.

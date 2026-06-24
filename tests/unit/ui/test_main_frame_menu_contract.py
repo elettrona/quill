@@ -22,6 +22,8 @@ def _menu_source() -> str:
         + (ui / "main_frame_braille_phase2.py").read_text(encoding="utf-8")
         + "\n"
         + (ui / "main_frame_braille_phase3.py").read_text(encoding="utf-8")
+        + "\n"
+        + (ui / "main_frame_power_tools_menu.py").read_text(encoding="utf-8")
     )
 
 
@@ -143,6 +145,86 @@ def test_insert_link_is_not_duplicated_in_edit_menu() -> None:
         source,
     )
     assert insert_link_appends == ["insert_menu"], insert_link_appends
+
+
+def test_publishing_actions_live_in_file_menu_not_top_level_publishing_menu() -> None:
+    source = _menu_source()
+    assert 'menu_bar.Append(publishing_menu, "P&ublishing")' not in source
+    assert 'file_menu.AppendSubMenu(self._publishing_file_menu, _("P&ublish"))' in source
+    assert (
+        "self._publishing_file_menu.Append(\n                self._id_publishing_connections,"
+        in source
+    )
+    assert (
+        "self._publishing_file_menu.Append(\n"
+        "                self._id_publishing_verify_connection," in source
+    )
+    assert (
+        "self._publishing_file_menu.Append(\n"
+        "                self._id_publishing_browse_content," in source
+    )
+    assert (
+        "self._publishing_file_menu.Append(\n"
+        "                self._id_publishing_create_draft," in source
+    )
+    assert (
+        "self._publishing_file_menu.Append(\n"
+        "                self._id_publishing_publish_current," in source
+    )
+    assert (
+        "self._publishing_file_menu.Append(\n"
+        "                self._id_publishing_create_page_draft," in source
+    )
+    assert (
+        "self._publishing_file_menu.Append(\n"
+        "                self._id_publishing_publish_current_page," in source
+    )
+    assert (
+        "self._publishing_file_menu.Append(\n"
+        "                self._id_publishing_compare_remote_item," in source
+    )
+    assert (
+        "self._publishing_file_menu.Append(\n"
+        "                self._id_publishing_update_remote_item," in source
+    )
+    assert (
+        "self._publishing_file_menu.Append(\n"
+        "                self._id_publishing_publish_remote_item," in source
+    )
+    assert "lambda _e: self._publish_open_remote_item()" in source
+    assert (
+        "self._publishing_file_menu.Append(\n"
+        "                self._id_publishing_schedule_publish," in source
+    )
+    assert "lambda _e: self._schedule_publishing_publish()" in source
+    assert "lambda _e: self._compare_publishing_remote_item()" in source
+
+
+def test_publishing_menu_is_gated_behind_its_locked_off_feature_flag() -> None:
+    # The publishing-providers-framework branch is locked off
+    # (future.publishing, quill/core/feature_catalog.py) so it never reaches
+    # a public release until the gate is deliberately lifted. The whole
+    # Publish submenu must be omitted from menu construction, not just
+    # hidden from the Command Palette -- mirroring the existing core.glow
+    # gating pattern (menu ids stay unconditional; only .Append() is gated).
+    source = _menu_source()
+    assert (
+        'if self._feature_enabled("future.publishing"):\n'
+        "            self._publishing_file_menu = wx.Menu()" in source
+    )
+    assert (
+        "            file_menu.AppendSeparator()\n"
+        '            file_menu.AppendSubMenu(self._publishing_file_menu, _("P&ublish"))' in source
+    )
+
+
+def test_menu_builder_only_calls_power_tools_helpers_that_exist() -> None:
+    source = _menu_source()
+    helper_names = set(re.findall(r"def (_append_power_tools_[A-Za-z0-9_]+)\(", source))
+    called_helpers = set(re.findall(r"self\.(_append_power_tools_[A-Za-z0-9_]+)\(", source))
+
+    missing_helpers = {name for name in called_helpers if name not in helper_names}
+    assert missing_helpers == set()
 
 
 # ---------------------------------------------------------------------------

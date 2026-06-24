@@ -122,7 +122,7 @@ class AccessibilityAnnouncer:
         if not self._spell_word or self._spell_word_pause_ms <= 0:
             return
         try:
-            import wx
+            import wx  # type: ignore[import-untyped]
 
             self._pending_spell_timer = wx.CallLater(
                 self._spell_word_pause_ms,

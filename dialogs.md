@@ -227,6 +227,14 @@ state and lists any installed Quillins read-only.
 - [ ] BITS Capability Matrix: via Tools menu
 - [ ] BITS Download Queue: via Tools menu
 
+## R2. Publishing
+
+- [ ] Publishing Connections: File > Publish > Publishing Connections...
+- [ ] Verify Current Publishing Connection: File > Publish > Verify Current Publishing Connection
+- [ ] Browse Published Content: File > Publish > Browse Published Content...
+- [ ] Edit Publishing Connection: from Publishing Connections
+- [ ] Schedule Publish: File > Publish > Schedule Publish...
+
 ## S. Help: features and profile
 
 - [ ] Switch Feature Profile: `Alt+Shift+P`

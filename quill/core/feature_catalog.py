@@ -418,6 +418,25 @@ FEATURE_DEFINITIONS: dict[str, FeatureDefinition] = {
         privacy="network after confirmation",
         category="future",
     ),
+    "future.publishing": FeatureDefinition(
+        "future.publishing",
+        "Publishing",
+        aliases=("publishing", "publish", "site publishing"),
+        description=(
+            "Publishing connections and provider-aware remote publishing flows. "
+            "Locked off while the publishing-providers-framework branch is under "
+            "review; gating this off keeps it out of the public release until "
+            "the feature is ready to ship. Once enabled, available by default "
+            "in the Casual Writer, Author or Student, Developer and Power "
+            "Text, and Full Quill profiles; off by default elsewhere, but any "
+            "user can still turn it on individually via Manage Individual "
+            "Features."
+        ),
+        maturity="advanced",
+        privacy="network after confirmation",
+        category="future",
+        locked_off=True,
+    ),
     "future.ai_menu_top_level": FeatureDefinition(
         "future.ai_menu_top_level",
         "AI Top-Level Menu",
