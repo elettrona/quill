@@ -236,9 +236,16 @@ engines.</strong> RELEASE-001 (Faster Whisper install path) and
 RELEASE-002 (Vosk reachable for packaged users) are <em>"Fixed; needs
 manual validation on a packaged build."</em> Verify on the real
 installer, not just from source.</li>
-<li><strong>Spell-check preload half — #527 (CQ-11, P1,
-in-flight).</strong> Close the remaining half so first F7 is not
-slow/cold.</li>
+<li>✅ <strong>Spell-check preload half — #527 (CQ-11) — resolved
+2026-06-24.</strong> The startup warm-up already loaded the validation
+backend; it now also builds the length-bucketed <em>suggestion</em>
+index (<code>_length_buckets</code> over the ~370k-word corpus) that
+<code>suggest_words</code> falls back on — the dominant one-time cost on
+the first F7. <code>spellcheck.preload()</code> warms both halves on the
+startup daemon thread, so the first spell review no longer stalls (even
+when enchant is the validator). Unit-tested in
+<code>tests/unit/core/test_reset_caches.py</code>; perf budgets stay
+green.</li>
 <li>⏭ <strong>Windows 11 primary menu — #525 (SHELL-3) — deferred to
 QUILL 2.0.</strong> Per <code>roadmap.md</code>, SHELL-3 (the Windows 11
 modern primary-menu / <code>IExplorerCommand</code> shell pass) is
