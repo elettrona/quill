@@ -122,3 +122,16 @@ def test_lossy_conversion_proceeds_when_approved() -> None:
 def test_approve_loss_without_hook_proceeds() -> None:
     studio = _studio(flat=FlatList(items=[ListItem("x")]))
     assert studio._approve_loss(["dropped something"]) is True
+
+
+def test_validation_issues_clean_for_a_normal_list() -> None:
+    studio = _studio(flat=FlatList(items=[ListItem("apples"), ListItem("oranges")]))
+    studio.result_source = studio._render()
+    assert studio.validation_issues() == []
+
+
+def test_validation_issues_flags_injected_markup() -> None:
+    studio = _studio(flat=FlatList(items=[ListItem("intro\n- sneaky")]))
+    studio.result_source = studio._render()
+    issues = studio.validation_issues()
+    assert issues and "round-trip" in issues[0]

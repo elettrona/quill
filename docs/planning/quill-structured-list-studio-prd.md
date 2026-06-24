@@ -1669,6 +1669,16 @@ for "is this done"; update it as further phases land.
   source preview *is* the interpretation preview, and the import only replaces the
   in-dialog model — nothing reaches the document until OK, so Cancel discards it.
   Helpers unit-tested in `tests/unit/core/lists/test_parse.py`.
+- **Reparse-and-validate before commit (§26, §28.14):** OK runs the wx-free
+  `validate_before_commit` over the model and generated source before it replaces
+  document text. It rejects an empty list, a definition entry with no term, and —
+  for flat Markdown — an item-count round-trip mismatch (the generated source is
+  reparsed; a differing count means some item text injected list markup). Any issue
+  leaves the document unchanged and is surfaced through the hardened message box.
+  Unit-tested in `tests/unit/core/lists/test_validate.py`. (The definition Markdown
+  **profile prompt** when the profile is left unset — §7.6/§21.3 — remains a
+  follow-up; F2 always sets a concrete profile today, so the dialog's silent
+  HTML fallback is currently unreachable in normal use.)
 
 ## Not yet implemented (planned follow-ups)
 

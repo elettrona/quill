@@ -82,9 +82,13 @@
    confirmation** (flat↔definition carries content across and confirms before
    dropping structure), and **import with preview** (Import from clipboard / file →
    interpreted into the live-previewed model; conservative separator detection;
-   nothing reaches the document until OK). *Remaining:* reparse-and-validate before
-   commit, and the Settings/preset surface. *(This is list structure, not the
-   excluded table work.)*
+   nothing reaches the document until OK), and **reparse-and-validate before commit**
+   (§26: OK reparses/validates the generated source — empty list, term-less
+   definition entry, or a flat-Markdown round-trip mismatch from injected markup —
+   and leaves the document unchanged with a warning on any issue). *Remaining:* the
+   Settings/preset surface (large config subsystem), and the definition-Markdown
+   profile prompt (low-value — F2 always sets a concrete profile today). *(This is
+   list structure, not the excluded table work.)*
 10. ◐ **Hold-to-Dictate / Locked Dictation — follow-ups.** **Done (2026-06-24):**
     the dictation *policy* is now user-configurable — `dictation_max_locked_seconds`,
     `dictation_stop_on_focus_loss`, `dictation_intelligent_spacing`, and
