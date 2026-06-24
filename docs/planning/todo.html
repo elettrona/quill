@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>todo</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<h1 id="quill-batch-document-to-speech-road-to-golden-state">QUILL Batch
+Document-to-Speech: Road to Golden State</h1>
+<p><strong>Scope:</strong> what remains to take the batch
+document-to-speech + pronunciation + text-cleanup + chapterization
+feature set from "core complete and proven headlessly" to a shipped,
+polished, fully-wired "golden" state. <strong>As of:</strong> 2026-06-24
+<strong>Companion docs:</strong> <a
+href="batch-document-to-speech-plan.md">batch-document-to-speech-plan.md</a>
+(the full plan, with the §1.1 status table) and <a
+href="speech-project-format.md">speech-project-format.md</a> (the
+project JSON format).</p>
+<p>The <strong>core / non-UI layer is done</strong> (14/14 in §1.1) and
+validated by the headless stress harness
+(<code>tests/unit/core/speech/test_headless_speech_matrix.py</code>).
+What follows is everything still between here and golden.</p>
+<hr />
+<h2 id="1-ui-layer-the-big-remaining-block">1. UI layer (the big
+remaining block)</h2>
+<p>None of the wxPython surface exists yet; the cores are built to be
+wrapped.</p>
+<ol type="1">
+<li><strong>Batch Export dialog</strong> (U1) — folder pickers,
+file-type filter, engine/voice/speed (reuse the Speech Hub helpers),
+results list, Start/Cancel. Must pass the dialog inventory +
+button-contract gates from day one.</li>
+<li><strong>Live Preview button</strong> (U2) — audition the selected
+voice <em>and speed</em> before starting (§4.5).</li>
+<li><strong>Tools menu wiring + background execution</strong> (U3) —
+<code>batch_export_to_speech()</code> on <code>QuillTaskManager</code>,
+dialog-owned cancel <code>Event</code>, throttled announcements.</li>
+<li><strong>Pronunciation manager dialog</strong> (U4) —
+add-from-selection, Play original / Play corrected audition,
+global↔︎project move, all/per-engine scope.</li>
+<li><strong>Chapter controls</strong> (U5) — Chapters mode (none /
+single / separate), transition-sound chooser + volume, inter-article
+pause, and a chapter-list preview that reads back the headings before
+Start.</li>
+<li><strong>Text-cleanup settings panel</strong> (U6) — master toggle,
+Customize panel, presets, per-type (phone/email/URL) speed +
+Preview.</li>
+<li><strong>Project "Remember / Reset"</strong> (U7) — "Remember for
+this project" / "Reset to global", auto-remember on Start.</li>
+</ol>
+<hr />
+<h2 id="2-wire-the-project-profile-into-the-app-410">2. Wire the project
+profile into the app (§4.10)</h2>
+<p>The format, storage, and converters exist; the app does not use them
+yet.</p>
+<ul>
+<li><strong>Apply on open:</strong> when a folder/project opens,
+<code>load_profile()</code> and apply.</li>
+<li><strong>Precedence resolver:</strong> this-run &gt; project &gt;
+global &gt; defaults, unit-tested as one shared path.</li>
+<li><strong>Single <code>current_project_dir()</code></strong> used by
+both settings and pronunciation dictionaries.</li>
+<li><strong>Save points:</strong> the U7 surface plus auto-remember on
+Start.</li>
+</ul>
+<hr />
+<h2 id="3-chapterization-follow-ups-inside-the-done-cores">3.
+Chapterization follow-ups (inside the done cores)</h2>
+<ul>
+<li><strong>M4B native chapters</strong> — only MP3 CHAP/CTOC is
+implemented; add the MP4 chapter-atom path (borrow ChapterForge's M4B
+branch) for the M4B output option.</li>
+<li><strong><code>sound_id</code> resolution</strong> —
+<code>chapters.sound_id</code> is accepted but not yet resolved to a
+real sound-pack file; today a generated placeholder chime
+(<code>earcon.py</code>) is used. Wire <code>sound_id</code> →
+<code>sound_pack.py</code> lookup, keep the placeholder as the
+default/fallback, and let the user pick or supply a WAV.</li>
+<li><strong><code>separate</code> mode end-to-end</strong> —
+<code>chapter_assemble</code> covers <code>single</code>; confirm the
+"separate file per article" path (one transcoded file per section, no
+concat) is wired through <code>batch_export</code> with per-article
+naming from headings.</li>
+<li><strong>Per-file chapter count</strong> in
+<code>BatchFileResult</code> (§4.7.10) surfaced in the results
+list.</li>
+</ul>
+<hr />
+<h2
+id="4-keyboard-activation-accessibility-audit-systemic-surfaced-by-709">4.
+Keyboard-activation accessibility audit (systemic; surfaced by
+#709)</h2>
+<p>#709 (DECtalk preview not firing on Enter/Space) is the visible tip
+of a pattern: a <code>wx.ListBox</code> emits <strong>no</strong>
+item-activated event (unlike <code>wx.ListCtrl</code>'s
+<code>EVT_LIST_ITEM_ACTIVATED</code>), so any list that binds
+<strong>only</strong> <code>EVT_LISTBOX_DCLICK</code> to an action is
+keyboard-inaccessible unless a key handler or the dialog's default
+button covers it. <strong>#709 itself is fixed</strong> (voice browser
+now previews on Enter, NumpadEnter, and Space). The rest to
+audit/fix:</p>
+<ul>
+<li><strong>No key handler at all</strong> (verify Enter/Space activate,
+add if missing): <code>ssh_dialogs.py</code>,
+<code>copy_tray_dialog.py</code>, <code>prompt_library_dialog.py</code>,
+<code>remote_sites_dialog.py</code> (two listboxes),
+<code>main_frame_copy_tray.py</code>,
+<code>skill_library_dialog.py</code>,
+<code>publishing_tools.py</code>.</li>
+<li><strong><code>EVT_LIST_ITEM_ACTIVATED</code> (ListCtrl)</strong>
+handles Enter natively but <strong>not Space</strong> — decide whether
+Space should also activate (<code>info_pages.py</code>,
+<code>github_dialogs.py</code>, <code>sticky_notes.py</code>,
+<code>ai_thesaurus_dialog.py</code>,
+<code>abbreviation_manager_dialog.py</code>).</li>
+<li><strong>Recommended fix:</strong> a small shared helper, e.g.
+<code>apply_listbox_activation(listbox, on_activate)</code>, that binds
+<code>EVT_LISTBOX_DCLICK</code> plus an <code>EVT_KEY_DOWN</code>
+handler for Enter / NumpadEnter / Space, consuming the event so the
+modal default button does not also fire. Apply it everywhere above, and
+add a lightweight gate/test so new <code>EVT_LISTBOX_DCLICK</code>
+bindings must pair with keyboard activation.</li>
+</ul>
+<hr />
+<h2 id="5-ssml-phase-6-sequenced-after-the-ui">5. SSML (Phase 6,
+sequenced after the UI)</h2>
+<ul>
+<li><code>as_ssml</code> flag on the SAPI path
+(<code>_SVSF_IS_XML</code>) and eSpeak markup mode.</li>
+<li>SSML-mode assembly/escaping/validation with graceful
+<code>plain_fallback</code>.</li>
+<li>The guided SSML Builder (audible phoneme/vowel chart, prosody
+sliders, say-as/sub helpers).</li>
+<li>Rich batch-time handling: per-file substitution accounting, dry-run
+transform preview.</li>
+</ul>
+<hr />
+<h2 id="6-testing-and-validation">6. Testing and validation</h2>
+<ul>
+<li><strong>Run the headless matrix against the real sample
+project</strong> — the Word "Screenreader Primer" chapter files the user
+added (gitignored). Confirm <code>extract_sections</code> finds the
+chapter headings and the chaptered MP3 navigates correctly in a real
+player.</li>
+<li><strong>Richer <code>.docx</code> extraction</strong> — tables,
+headers/footers, footnotes, list ordering (today: paragraph
+<code>&lt;w:t&gt;</code> only).</li>
+<li><strong>Long-document chunking</strong> — wire the existing
+<code>tts_chunk.py</code> into the batch/assembly path for very long
+sections.</li>
+<li><strong>Engine-subprocess hardening</strong> — consider migrating
+<code>read_aloud.py</code> subprocess calls to
+<code>stability.safe_subprocess</code> (pre-existing; not a
+blocker).</li>
+</ul>
+<hr />
+<h2 id="7-docs-credits-and-housekeeping">7. Docs, credits, and
+housekeeping</h2>
+<ul>
+<li><strong>User guide + CHANGELOG</strong> entries for batch export,
+chapters, pronunciation, text cleanup, and project profiles.</li>
+<li><strong>THIRD_PARTY / credits</strong> — mutagen (new dependency)
+and the ChapterForge approach credit.</li>
+<li><strong>ChapterForge upstream</strong> — fix the two bugs noted in
+plan §4.8.4 in ChapterForge itself: (1) non-contiguous gap chapters; (2)
+<code>write_tags_and_chapters</code> clobbering existing ID3 tags. (Both
+already fixed in QUILL's <code>chapters.py</code>.)</li>
+<li><strong>ElevenDesk research pass</strong> — review
+<code>D:\code\ElevenDesk</code> (home: drive <code>S:</code>; upstream
+github.com/ivansoto0/ElevenDesk) for queue/library UX, voice browsing,
+and chunking ideas; fold license-compatible, accessible patterns into
+§4.2 / §4.5 / §4.10. (Cloud-only engine, so inspiration not
+dependency.)</li>
+</ul>
+<hr />
+<h2 id="suggested-order">Suggested order</h2>
+<ol type="1">
+<li>Batch Export dialog + Tools wiring + Preview (U1-U3) — makes the
+feature reachable.</li>
+<li>Chapter controls + project Remember/Reset (U5, U7) + apply-on-open
+(§2) — the magical, configure-once flow.</li>
+<li>Pronunciation + text-cleanup panels (U4, U6).</li>
+<li>Keyboard-activation audit (§4) — small, high-value accessibility
+sweep; can land anytime.</li>
+<li>M4B + sound-pack <code>sound_id</code> + richer docx (§3, §6).</li>
+<li>SSML (§5).</li>
+<li>Docs/credits + ChapterForge upstream + ElevenDesk pass (§7).</li>
+</ol>
+</body>
+</html>

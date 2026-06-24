@@ -239,7 +239,7 @@ class VoiceBrowserDialog:
 
         # Action buttons.
         btn_row = wx.BoxSizer(wx.HORIZONTAL)
-        self._preview_btn = wx.Button(parent, label="&Preview (Enter)")
+        self._preview_btn = wx.Button(parent, label="&Preview (Enter or Space)")
         self._preview_btn.SetName("Preview selected voice")
         self._download_btn = wx.Button(parent, label="&Download Voice...")
         self._download_btn.SetName("Download voice model")
@@ -481,7 +481,7 @@ class VoiceBrowserDialog:
     def _on_voice_key_down(self, event: object) -> None:
         wx = self._wx
         key = event.GetKeyCode()  # type: ignore[attr-defined]
-        if key in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
+        if key in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER, wx.WXK_SPACE):
             self._do_preview()
         else:
             event.Skip()  # type: ignore[attr-defined]
