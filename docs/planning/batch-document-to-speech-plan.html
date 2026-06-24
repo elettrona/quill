@@ -1490,10 +1490,13 @@ common patterns — <code>(555) 123-4567</code>,
 <code>555.123.4567</code>, extensions (<code>x123</code>) — and speak
 them as <strong>grouped digits with pauses</strong> ("five five five …
 one two three … four five six seven"), never as subtraction or a date.
-The dashes/dots inside a detected phone number are handled here,
-<em>before</em> the generic dash pass, so a phone number is never
-mangled into "555 minus 1234". A toggle plus a light format choice
-(grouped-digits / digit-by-digit).</li>
+The dashes/dots inside a detected phone number are claimed here,
+<em>before</em> the generic dash pass, so it is never mangled into "555
+minus 1234". Phones get the full <strong>per-type speaking
+profile</strong> of §4.9.7 — including <strong>repeat</strong> (off by
+default, one toggle on, since a phone is easy to miss once) and a
+<strong>slower speed with Preview</strong> — so the user can have
+numbers read back, slowly, and confirm by ear. See §4.9.7.</li>
 <li><strong>Numbers spoken naturally</strong> (opt-in): years
 (<code>1999</code> → "nineteen ninety-nine"), large numbers with
 grouping, decimals, ordinals, currency amounts. Needs a light,
@@ -1550,13 +1553,17 @@ auditable.</li>
 <code>TextNormalizationOptions</code>) in settings — one source of truth
 shared by export and Read Aloud; plus a master
 <code>tts_normalization_enabled: bool</code> (default
-<strong>true</strong>). The §4.9.7 address controls live in the same
-options: <code>tts_address_mode</code> (announce / speak /
-<strong>speak_then_repeat</strong>),
-<code>tts_address_spell_letters: bool</code>,
-<code>tts_address_char_pause_ms: int</code> (inter-segment pause,
-clamped), <code>tts_address_trailing_pause_ms: int</code> (clamped), and
-<code>tts_address_long_url_threshold: int</code>.</li>
+<strong>true</strong>). The §4.9.7 structured-token controls live in the
+same options, <strong>replicated per type</strong>
+(<code>phone_*</code>, <code>email_*</code>, <code>url_*</code>): for
+each — <code>*_mode</code> (announce / speak / speak_then_repeat),
+<code>*_repeat: bool</code>, <code>*_speed</code> (rate adjustment,
+clamped), <code>*_spell_letters: bool</code>,
+<code>*_segment_pause_ms: int</code> (clamped),
+<code>*_trailing_pause_ms: int</code> (clamped) — plus
+<code>url_long_threshold: int</code>. (The shipped Phase-8 core already
+has the shared mechanism; this section refines it to per-type controls
+with the §4.9.7 Preview.)</li>
 <li><strong>Export settings dialog:</strong> a <strong>"Clean up text
 for speech"</strong> section — a master checkbox with great defaults
 active immediately, and a <strong>Customize…</strong> button opening a
@@ -1571,55 +1578,70 @@ speech.</li>
 phone numbers, numbers, acronyms, NFKC)", "Off".</li>
 </ul>
 <h3
-id="497-emails-and-urls--speak-clearly-optionally-repeat-configurable-pacing">4.9.7
-Emails and URLs — speak clearly, optionally repeat, configurable
-pacing</h3>
-<p>Email addresses and web addresses are the hardest things to catch by
-ear and the most painful to get wrong — a listener can't glance back at
-the screen. QUILL treats <strong>emails and URLs identically</strong>
-with a dedicated, magical pass (replacing today's blunt
-<code>URL → "link"</code>):</p>
+id="497-speaking-structured-tokens--phone-numbers-emails-and-urls-per-type-with-speed-and-preview">4.9.7
+Speaking structured tokens — phone numbers, emails, and URLs (per-type,
+with speed and preview)</h3>
+<p>Phone numbers, email addresses, and web addresses are the hardest
+things to catch by ear and the most painful to get wrong — a listener
+can't glance back at the screen. QUILL gives each of these <strong>three
+token types its own independent speaking profile</strong>, driven by one
+shared mechanism but configured <strong>separately per type</strong>
+(the controls are <em>replicated</em>, one set for phones, one for
+emails, one for URLs), replacing today's blunt
+<code>URL → "link"</code>.</p>
+<p><strong>Per-type profile (identical control set, configured
+independently for phone / email / URL):</strong></p>
 <ul>
-<li><strong>Mode</strong> (per the user's request): <em>Announce
-only</em> ("link" / "email address") · <em>Speak it</em> · <strong>Speak
-then repeat</strong> (say the whole address, pause, say it again) —
-default <strong>Speak then repeat</strong> for addresses, so the
-listener gets a second chance. A length guard falls back to <em>Announce
-only</em> for absurdly long URLs (configurable threshold) to avoid
-reading a 300-character tracking link twice.</li>
-<li><strong>Spell-for-clarity with configurable inter-character/segment
-pacing:</strong> the address is spoken with deliberate spacing so each
-part lands. Punctuation becomes words — <code>@ → "at"</code>,
-<code>. → "dot"</code>, <code>/ → "slash"</code>,
+<li><strong>Mode:</strong> <em>Announce only</em> ("phone number" /
+"email address" / "link") · <em>Speak it</em> · <strong>Speak then
+repeat</strong> (say it, pause, say it again so the listener gets a
+second chance). Defaults: addresses <strong>Speak then repeat</strong>;
+phones <strong>Speak</strong> (repeat is opt-in but one toggle away). A
+length guard falls back to <em>Announce only</em> for absurdly long URLs
+(configurable threshold).</li>
+<li><strong>Repeat:</strong> an explicit on/off so <em>any</em> type can
+be said twice — <strong>especially phone numbers</strong>, which are
+easy to miss the first time. Independent of mode for fine control.</li>
+<li><strong>Speed / rate (configurable per type, with live
+Preview):</strong> each type has its <strong>own speech-rate
+adjustment</strong> so the token is spoken slower (or faster) than the
+surrounding narration — a phone number read slowly and clearly, an email
+at a deliberate pace — without changing the document's reading speed.
+Implemented as <code>&lt;prosody rate="…"&gt;</code> on SSML-capable
+engines (SAPI 5 / eSpeak, §4.7.8); on engines without rate markup it
+degrades to <em>more spelling pauses</em> (slower-feeling) so the intent
+survives. <strong>Each speed control has a ▶ Preview button</strong>
+that speaks a representative sample of that type (a sample phone number
+/ email / URL) at the configured rate and repeat, so the user
+<strong>auditions and confirms the setting is right by ear before
+saving</strong> — the magical "tune it, hear it, keep it" loop (reusing
+the §4.5 live-preview machinery, off the UI thread).</li>
+<li><strong>Spell-for-clarity with configurable pacing:</strong> the
+token is spoken with deliberate spacing; punctuation becomes words —
+<code>@ → "at"</code>, <code>. → "dot"</code>, <code>/ → "slash"</code>,
 <code>: → "colon"</code>, <code>- → "dash"</code>,
 <code>_ → "underscore"</code>, <code>~ → "tilde"</code>,
-<code>? → "question mark"</code>, <code>&amp; → "and"</code>,
-<code>= → "equals"</code>, <code># → "hash"</code> — and a
-<strong>configurable inter-segment pause</strong>
-(<code>tts_address_char_pause_ms</code>) is inserted between
-characters/segments so <code>jeff@jeffbishop.com</code> reads as "jeff …
-at … jeffbishop … dot … com" at a pace the user sets (0 = natural,
-higher = spelled slowly). A sub-option spells the <em>local part</em>
-and host <strong>letter-by-letter</strong> for maximum clarity (great
-for unusual addresses), also paced by the same setting.</li>
-<li><strong>Configurable trailing pause:</strong> a settable silence
-<strong>after</strong> the address
-(<code>tts_address_trailing_pause_ms</code>) before the narration
-continues, so it doesn't run straight into the next sentence.</li>
-<li><strong>Implementation of the pauses:</strong> on SSML-capable
-engines (SAPI 5 / eSpeak, §4.7.8) the pauses are exact
-<code>&lt;break time="…ms"/&gt;</code>; on plain engines they degrade to
-comma/period approximations (a comma ≈ short, a period ≈ long) so the
-<em>effect</em> survives everywhere even if the millisecond precision
-doesn't. Detection runs <strong>inside §4.9.5 before the generic
-symbol/dash passes</strong>, so an address's
-<code>.</code>/<code>-</code>/<code>/</code> are claimed here and never
-mangled into "dot dot" or "minus".</li>
-<li><strong>Shared with §4.9.3 phone numbers:</strong> emails, URLs, and
-phone numbers are the three "structured tokens" that get
-spell-with-pacing treatment from one mechanism, with the same pause
-settings family.</li>
+<code># → "hash"</code>, <code>&amp; → "and"</code>,
+<code>= → "equals"</code> — and phone digits are grouped ("five five
+five … one two three …"). A per-type <strong>inter-segment
+pause</strong> sets how deliberately it's spelled (0 = natural; higher =
+spelled slowly); a per-type sub-option spells
+<strong>letter-by-letter</strong> for maximum clarity on unusual
+tokens.</li>
+<li><strong>Configurable trailing pause:</strong> per-type silence
+<strong>after</strong> the token before narration continues, so it
+doesn't run into the next sentence.</li>
 </ul>
+<p><strong>Implementation:</strong> detection runs <strong>inside §4.9.5
+first</strong>, so a token's
+<code>.</code>/<code>-</code>/<code>/</code>/<code>@</code> are claimed
+before the generic symbol/dash passes (never mangled into "dot dot" or
+"minus"). Speed and pauses render as exact
+<code>&lt;prosody&gt;</code>/<code>&lt;break&gt;</code> on SSML engines
+and as spelling-pause / comma-period approximations on plain engines, so
+the effect is present everywhere even if the millisecond precision is
+not. All per-type settings are remembered as part of the project
+(§4.10).</p>
 <h3 id="498-tests">4.9.8 Tests</h3>
 <ul>
 <li><code>normalize_for_tts</code>: each pass in isolation
@@ -1630,12 +1652,15 @@ grouped digits and <strong>not</strong> mangled by the dash pass; the
 escape-hatch map applied last and overriding built-ins; defaults
 round-trip via <code>to_dict</code>/<code>from_dict</code>;
 deterministic ordering.</li>
-<li>Emails/URLs: punctuation→words mapping; speak-then-repeat emits the
-address twice; inter-segment and trailing pauses appear as
-<code>&lt;break&gt;</code> on SSML engines and comma/period
-approximations on plain engines; the address pass claims
-<code>.</code>/<code>-</code>/<code>/</code> before the generic passes;
-the long-URL guard falls back to announce-only.</li>
+<li>Structured tokens (phone / email / URL), per type: punctuation→words
+mapping; repeat emits the token twice; the per-type speed renders as
+<code>&lt;prosody rate&gt;</code> on SSML engines and extra spelling
+pauses on plain engines; inter-segment and trailing pauses appear as
+<code>&lt;break&gt;</code> on SSML and comma/period approximations on
+plain; the pass claims
+<code>.</code>/<code>-</code>/<code>/</code>/<code>@</code> before the
+generic passes; the long-URL guard falls back to announce-only. (Preview
+playback is manual; the per-type option resolution is unit-tested.)</li>
 </ul>
 <h2
 id="410-project-remembered-settings--configure-once-never-again-new-feature">4.10
@@ -2140,14 +2165,14 @@ em/en-dashes, ellipses, invisible spaces, soft hyphens, ligatures,
 bullets, symbols, fractions, emoji, control characters) is cleaned
 before synthesis with excellent defaults, and <strong>phone
 numbers</strong>, <strong>emails</strong>, and <strong>URLs</strong> are
-spoken clearly — phone numbers as grouped digits; emails/URLs handled
-identically with a <strong>speak-then-repeat</strong> option,
-punctuation→words, a configurable <strong>inter-segment pause</strong>
-and <strong>trailing pause</strong> (exact <code>&lt;break&gt;</code> on
-SSML engines, comma/period approximation elsewhere). Everything is
-configurable (per-pass toggles, modes, a user replacement-map, presets)
-and shared by live Read Aloud and batch via one
-<code>normalize_for_tts</code> stage; fully unit-tested.</li>
+spoken clearly — each with its <strong>own</strong> speaking profile
+(mode, <strong>repeat</strong>, a per-type <strong>speed</strong> with a
+▶ <strong>Preview</strong> to audition by ear, spell-letters, and
+inter-segment/trailing pauses), grouped digits for phones,
+punctuation→words for addresses, and a long-URL guard. Everything is
+configurable (per-pass toggles, modes, a user replacement-map, presets),
+remembered per project (§4.10), and shared by live Read Aloud and batch
+via one <code>normalize_for_tts</code> stage; fully unit-tested.</li>
 <li><strong>Project-remembered settings (§4.10):</strong> a project
 (folder of files) carries its whole speech profile — engine/voice/speed,
 output format, chapter options, text-cleanup options, and the active
