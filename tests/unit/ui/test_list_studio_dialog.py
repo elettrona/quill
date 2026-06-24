@@ -89,3 +89,36 @@ def test_multiple_definitions_render_as_multiple_dd() -> None:
     rendered = studio._render()
     assert "<dd>A financial institution</dd>" in rendered
     assert "<dd>The side of a river</dd>" in rendered
+
+
+def test_lossless_flat_to_definition_conversion_carries_content() -> None:
+    studio = _studio(flat=FlatList(items=[ListItem("HTTP: A protocol")]))
+    assert studio._convert_across_boundary(ListType.DEFINITION) is True
+    entry = studio._definition.entries[0]
+    assert entry.primary_term == "HTTP"
+    assert entry.primary_definition == "A protocol"
+
+
+def test_lossy_conversion_blocked_when_declined() -> None:
+    studio = _studio(
+        flat=FlatList(list_type=ListType.CHECKLIST, items=[ListItem("a", checked=True)])
+    )
+    asked: list[list[str]] = []
+    studio._confirm_conversion = lambda reasons: asked.append(reasons) or False
+    assert studio._convert_across_boundary(ListType.DEFINITION) is False
+    assert asked and asked[0]  # the user was warned with reasons
+    assert studio._definition.entries[0].is_blank()  # original model untouched
+
+
+def test_lossy_conversion_proceeds_when_approved() -> None:
+    studio = _studio(
+        flat=FlatList(list_type=ListType.CHECKLIST, items=[ListItem("a", checked=True)])
+    )
+    studio._confirm_conversion = lambda _reasons: True
+    assert studio._convert_across_boundary(ListType.DEFINITION) is True
+    assert studio._definition.entries[0].primary_term == "a"
+
+
+def test_approve_loss_without_hook_proceeds() -> None:
+    studio = _studio(flat=FlatList(items=[ListItem("x")]))
+    assert studio._approve_loss(["dropped something"]) is True

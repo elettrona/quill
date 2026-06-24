@@ -24,7 +24,9 @@ from quill.core.lists import (
     can_indent,
     can_outdent,
     definition_entry_announcement,
+    definition_to_flat,
     flat_item_announcement,
+    flat_to_definition,
     indent,
     list_summary,
     move_subtree,
@@ -67,6 +69,7 @@ class ListStudioDialog:
         definition: DefinitionList | None = None,
         settings: StructuredListSettings | None = None,
         target_format: str = "markdown",
+        confirm_conversion: Any = None,
     ) -> None:
         self._wx = wx
         self._settings = settings if settings is not None else StructuredListSettings()
@@ -78,6 +81,10 @@ class ListStudioDialog:
         self._type: ListType = self._flat.list_type if definition is None else ListType.DEFINITION
         if definition is not None:
             self._type = ListType.DEFINITION
+        # ``confirm_conversion(reasons) -> bool`` lets the caller warn (via the
+        # hardened MessageBox) before a lossy flat<->definition type switch; when
+        # absent the switch proceeds without prompting. See _on_type_changed.
+        self._confirm_conversion = confirm_conversion
         self._suppress = False
         self.result_source: str = ""
         self.dialog: Any = None
@@ -297,12 +304,53 @@ class ListStudioDialog:
     # -- event handlers ---------------------------------------------------- #
 
     def _on_type_changed(self, _event: Any) -> None:
-        choice = self._type_choice.GetSelection()
-        self._type = _TYPE_CHOICES[choice][1]
+        if self._suppress:
+            return
+        old_type = self._type
+        new_type = _TYPE_CHOICES[self._type_choice.GetSelection()][1]
+        if new_type is old_type:
+            return
+        # Crossing the flat<->definition boundary carries content across with a
+        # loss check (§19); switches among flat types are lossless (just relabel).
+        crossing = (old_type is ListType.DEFINITION) != (new_type is ListType.DEFINITION)
+        if crossing and not self._convert_across_boundary(new_type):
+            # The user declined a lossy conversion: restore the previous type.
+            self._suppress = True
+            try:
+                self._type_choice.SetSelection(self._type_index())
+            finally:
+                self._suppress = False
+            return
+        self._type = new_type
         if not self._is_definition():
-            self._flat.list_type = self._type
+            self._flat.list_type = new_type
         self._sync_type_visibility()
         self._reload_outline(select=0)
+
+    def _convert_across_boundary(self, new_type: ListType) -> bool:
+        """Convert the current model to ``new_type``'s side. Return False if declined.
+
+        A lossy conversion (dropped checked states, nesting, alternate terms, or
+        extra definitions) is offered to ``confirm_conversion`` first; returning
+        False leaves both models untouched so the caller can revert the choice.
+        """
+        if new_type is ListType.DEFINITION:
+            converted, loss = flat_to_definition(self._flat)
+            if loss.lossy and not self._approve_loss(loss.reasons):
+                return False
+            self._definition = converted
+        else:
+            converted, loss = definition_to_flat(self._definition, list_type=new_type)
+            if loss.lossy and not self._approve_loss(loss.reasons):
+                return False
+            self._flat = converted
+        return True
+
+    def _approve_loss(self, reasons: list[str]) -> bool:
+        """True when the lossy conversion may proceed (no hook = proceed silently)."""
+        if self._confirm_conversion is None:
+            return True
+        return bool(self._confirm_conversion(reasons))
 
     def _on_format_changed(self, _event: Any) -> None:
         self._format = "markdown" if self._format_choice.GetSelection() == 0 else "html"
