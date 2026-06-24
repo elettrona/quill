@@ -120,6 +120,11 @@ class Settings:
     dictation_stop_on_focus_loss: bool = True  # stop+keep speech when QUILL blurs
     dictation_intelligent_spacing: bool = True  # conservative insertion spacing
     dictation_min_hold_seconds: float = 0.0  # ignore accidental F9 taps below this
+    # Pronunciation dictionaries (batch-document-to-speech-plan §4.7). The
+    # dictionaries themselves live in JSON files (global under app_data_dir, project
+    # under <project>/.quill/pronunciation); settings holds only the selection state.
+    pronunciation_enabled: bool = True
+    pronunciation_enabled_dictionary_ids: list[str] = field(default_factory=list)
     # Offline speech engine: "" = bundled whisper.cpp; "fasterwhisper" opts into
     # the Faster Whisper (CTranslate2) engine on machines that have it.
     speech_provider: str = ""
@@ -526,6 +531,13 @@ class Settings:
         )
         dictation_stop_on_focus_loss = bool(data.get("dictation_stop_on_focus_loss", True))
         dictation_intelligent_spacing = bool(data.get("dictation_intelligent_spacing", True))
+        pronunciation_enabled = bool(data.get("pronunciation_enabled", True))
+        pronunciation_ids_raw = data.get("pronunciation_enabled_dictionary_ids")
+        pronunciation_enabled_dictionary_ids = (
+            [str(i) for i in pronunciation_ids_raw if isinstance(i, str)]
+            if isinstance(pronunciation_ids_raw, list)
+            else []
+        )
         speech_provider = str(data.get("speech_provider", "")).strip().lower()
         if speech_provider not in {"", "whispercpp", "fasterwhisper"}:
             speech_provider = ""
@@ -907,6 +919,8 @@ class Settings:
             dictation_max_locked_seconds=dictation_max_locked_seconds,
             dictation_stop_on_focus_loss=dictation_stop_on_focus_loss,
             dictation_intelligent_spacing=dictation_intelligent_spacing,
+            pronunciation_enabled=pronunciation_enabled,
+            pronunciation_enabled_dictionary_ids=pronunciation_enabled_dictionary_ids,
             dictation_min_hold_seconds=dictation_min_hold_seconds,
             speech_provider=speech_provider,
             bw_speech_selection_mode=bw_speech_selection_mode,
