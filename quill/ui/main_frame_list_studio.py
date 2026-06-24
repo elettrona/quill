@@ -102,11 +102,22 @@ class ListStudioMixin:
                 return
             source = studio.result_source
             summary = studio.summary
+            issues = studio.validation_issues()
         finally:
             dialog.Destroy()
 
         if not source.strip():
             self._set_status("Structured List Studio: nothing to insert")
+            return
+        # §26: reparse-and-validate before replacing document text. On any issue
+        # the document is left unchanged and the problem is surfaced.
+        if issues:
+            self._show_message_box(
+                "The list was not inserted:\n\n" + "\n".join(f"• {issue}" for issue in issues),
+                "Structured List Studio",
+                wx.OK | wx.ICON_WARNING,
+            )
+            self._set_status("Structured List Studio: list not inserted (validation)")
             return
         # Replace the captured range: the in-place list block, the original
         # selection, or the caret (empty range) for a fresh insert.

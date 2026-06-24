@@ -57,6 +57,7 @@ from quill.core.lists.settings import (
     DefinitionMarkdownProfile,
     StructuredListSettings,
 )
+from quill.core.lists.validate import validate_before_commit
 
 __all__ = [
     "ConversionLoss",
@@ -92,4 +93,5 @@ __all__ = [
     "render_markdown",
     "strip_marker",
     "subtree_end",
+    "validate_before_commit",
 ]

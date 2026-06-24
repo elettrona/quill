@@ -35,6 +35,7 @@ from quill.core.lists import (
     outdent,
     render_html,
     render_markdown,
+    validate_before_commit,
 )
 from quill.core.lists.render import DefinitionProfileError
 
@@ -561,3 +562,12 @@ class ListStudioDialog:
     @property
     def summary(self) -> str:
         return list_summary(self._current_model(), self._settings)
+
+    def validation_issues(self) -> list[str]:
+        """Pre-commit issues for the captured result (§26); empty means safe.
+
+        Called by the caller after the dialog returns OK and before the source
+        replaces document text, so a non-empty result can leave the document
+        unchanged.
+        """
+        return validate_before_commit(self._current_model(), self.result_source, self._format)
