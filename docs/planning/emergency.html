@@ -259,17 +259,18 @@ whisper.cpp without its binary) disappearing from the engine
 switcher entries are labelled "(not installed)" so they stay
 discoverable and reach the install path. Unit-tested
 (<code>tests/unit/ui/test_speech_setup_dialog.py</code>).</li>
-<li><strong>Structured List Studio — Phase 2+ follow-ups</strong> (PRD
+<li>◐ <strong>Structured List Studio — Phase 2+ follow-ups</strong> (PRD
 kept; <code>quill-structured-list-studio-prd.md</code> §30
-Implementation Status): nested-list editing UI (Add Child / Indent /
-Outdent / subtree move), multiple terms &amp; definitions editing,
-import-from-file/clipboard with preview, conversion previews
-<ul>
-<li>information-loss confirmations, in-place editing of the list under
-the caret, reparse-and-validate before commit, and the Settings/preset
-surface. <em>(Definition- list table layout is fine; this is list
-structure, not the excluded table work.)</em></li>
-</ul></li>
+Implementation Status). <strong>Nested-list editing is done
+(2026-06-24):</strong> Indent / Outdent / Add child + subtree-aware Move
+up/down, wx-free in <code>quill/core/lists/nesting.py</code> with 14
+unit tests; the dialog shows nesting depth and gates the controls
+structurally. <em>Remaining:</em> multiple terms &amp; definitions
+editing, import-from-file/clipboard with preview, conversion previews +
+information-loss confirmations, in-place editing of the list under the
+caret, reparse-and-validate before commit, and the Settings/preset
+surface. <em>(This is list structure, not the excluded table
+work.)</em></li>
 <li><strong>Hold-to-Dictate / Locked Dictation — follow-ups</strong>
 (migrated into the Speech &amp; Dictation table above): Settings surface
 (max-duration, focus-loss/background, verbosity, earcon volume,

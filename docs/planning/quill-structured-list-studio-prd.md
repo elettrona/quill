@@ -1633,14 +1633,20 @@ for "is this done"; update it as further phases land.
   single-undo apply. Remappable; F2 displaced Insert Special Character to Shift+F2
   with a legacy-binding migration. Excellent defaults work with no Settings visit
   (§2.1).
+- **Nested-list editing (Phase 2):** Indent / Outdent / Add child in the dialog for
+  flat lists, with the outline showing nesting depth and Move up/down reordering a
+  whole subtree among its siblings so a parent never leaves its children behind. All
+  rules are wx-free in `quill/core/lists/nesting.py` (`indent`, `outdent`,
+  `add_child`, `move_subtree`, `can_indent`, `can_outdent`, `subtree_end`) and
+  unit-tested (`tests/unit/core/lists/test_nesting.py`, 14 cases). The dialog
+  enables Indent/Outdent only when structurally valid and hides the row for
+  definition lists. Screen readers hear "level N" via the existing announcements.
 
 ## Not yet implemented (planned follow-ups)
 
 - The full **Settings/preset surface** (§3–§13): scopes (app/format/workspace/
   document/this-operation), the Settings category, shipped presets, and
   import/export. Defaults currently live in `StructuredListSettings`.
-- **Nested-list editing** in the dialog (Phase 2): Add Child / Indent / Outdent /
-  subtree moves. The model and renderers already support item levels.
 - **Multiple terms / multiple definitions** editing UI (§15.3–§15.4) — the model
   and renderers support them; the dialog edits the primary term/definition only.
 - **Import dialogs with preview** (§6, §17.4–§17.5) and **conversion previews /

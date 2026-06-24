@@ -20,9 +20,15 @@ from quill.core.lists import (
     ListItem,
     ListType,
     StructuredListSettings,
+    add_child,
+    can_indent,
+    can_outdent,
     definition_entry_announcement,
     flat_item_announcement,
+    indent,
     list_summary,
+    move_subtree,
+    outdent,
     render_html,
     render_markdown,
 )
@@ -141,6 +147,7 @@ class ListStudioDialog:
 
     def _build_outline_buttons(self, dlg: Any) -> Any:
         wx = self._wx
+        outer = wx.BoxSizer(wx.VERTICAL)
         row = wx.BoxSizer(wx.HORIZONTAL)
         self._btn_add = wx.Button(dlg, label="&Add")
         self._btn_remove = wx.Button(dlg, label="&Remove")
@@ -152,7 +159,23 @@ class ListStudioDialog:
         self._btn_down.Bind(wx.EVT_BUTTON, lambda _e: self._move(1))
         for btn in (self._btn_add, self._btn_remove, self._btn_up, self._btn_down):
             row.Add(btn, 0, wx.RIGHT, 4)
-        return row
+        outer.Add(row, 0, wx.BOTTOM, 4)
+
+        # Nesting row (flat lists only; hidden for definition lists). Indent /
+        # Outdent / Add child operate on the selected item's subtree via the
+        # wx-free quill.core.lists.nesting ops (PRD Phase 2).
+        nest_row = wx.BoxSizer(wx.HORIZONTAL)
+        self._btn_indent = wx.Button(dlg, label="&Indent")
+        self._btn_outdent = wx.Button(dlg, label="&Outdent")
+        self._btn_add_child = wx.Button(dlg, label="Add chil&d")
+        self._btn_indent.Bind(wx.EVT_BUTTON, lambda _e: self._on_indent())
+        self._btn_outdent.Bind(wx.EVT_BUTTON, lambda _e: self._on_outdent())
+        self._btn_add_child.Bind(wx.EVT_BUTTON, lambda _e: self._on_add_child())
+        for btn in (self._btn_indent, self._btn_outdent, self._btn_add_child):
+            nest_row.Add(btn, 0, wx.RIGHT, 4)
+        self._nest_row = nest_row
+        outer.Add(nest_row, 0)
+        return outer
 
     def _build_editor_panel(self, dlg: Any) -> Any:
         wx = self._wx
@@ -199,9 +222,23 @@ class ListStudioDialog:
         for control in (self._item_label, self._item_text):
             control.Show(not definition)
         self._checked_box.Show(not definition and self._type is ListType.CHECKLIST)
+        # Nesting only applies to flat lists; hide the Indent/Outdent/Add-child
+        # row entirely for definition lists.
+        for control in (self._btn_indent, self._btn_outdent, self._btn_add_child):
+            control.Show(not definition)
         self._outline_label.SetLabel("&Entries:" if definition else "&Items:")
+        self._refresh_nesting_buttons()
         if self.dialog is not None:
             self.dialog.Layout()
+
+    def _refresh_nesting_buttons(self) -> None:
+        """Enable Indent/Outdent for the selection per the structural rules."""
+        if self._is_definition():
+            return
+        index = self._selected_index()
+        self._btn_indent.Enable(index >= 0 and can_indent(self._flat.items, index))
+        self._btn_outdent.Enable(index >= 0 and can_outdent(self._flat.items, index))
+        self._btn_add_child.Enable(index >= 0)
 
     # -- outline ----------------------------------------------------------- #
 
@@ -226,7 +263,10 @@ class ListStudioDialog:
         self._refresh_preview()
 
     def _item_label_text(self, index: int) -> str:
-        return flat_item_announcement(self._flat, index, self._settings) or "(empty)"
+        # A leading indent makes nesting visible at a glance; the announcement
+        # itself already carries "level N" for screen readers (announce.py).
+        prefix = "    " * max(0, self._flat.items[index].level)
+        return prefix + (flat_item_announcement(self._flat, index, self._settings) or "(empty)")
 
     def _entry_label(self, index: int) -> str:
         return definition_entry_announcement(self._definition, index, self._settings) or "(empty)"
@@ -249,6 +289,7 @@ class ListStudioDialog:
                 self._checked_box.SetValue(item.checked)
         finally:
             self._suppress = False
+        self._refresh_nesting_buttons()
 
     # -- event handlers ---------------------------------------------------- #
 
@@ -338,14 +379,40 @@ class ListStudioDialog:
         index = self._selected_index()
         if index < 0:
             return
-        collection: list[Any] = (
-            self._definition.entries if self._is_definition() else self._flat.items  # type: ignore[assignment]
-        )
-        target = index + delta
-        if target < 0 or target >= len(collection):
+        if self._is_definition():
+            entries = self._definition.entries
+            target = index + delta
+            if target < 0 or target >= len(entries):
+                return
+            entries[index], entries[target] = entries[target], entries[index]
+            self._reload_outline(select=target)
             return
-        collection[index], collection[target] = collection[target], collection[index]
-        self._reload_outline(select=target)
+        # Flat lists reorder whole subtrees among siblings so a parent never
+        # leaves its children behind (PRD Phase 2 — subtree moves).
+        new_index = move_subtree(self._flat.items, index, 1 if delta > 0 else -1)
+        if new_index != index:
+            self._reload_outline(select=new_index)
+
+    def _on_indent(self) -> None:
+        index = self._selected_index()
+        if index < 0 or self._is_definition():
+            return
+        if indent(self._flat.items, index):
+            self._reload_outline(select=index)
+
+    def _on_outdent(self) -> None:
+        index = self._selected_index()
+        if index < 0 or self._is_definition():
+            return
+        if outdent(self._flat.items, index):
+            self._reload_outline(select=index)
+
+    def _on_add_child(self) -> None:
+        index = self._selected_index()
+        if self._is_definition():
+            return
+        new_index = add_child(self._flat.items, index)
+        self._reload_outline(select=new_index)
 
     # -- preview + commit -------------------------------------------------- #
 
