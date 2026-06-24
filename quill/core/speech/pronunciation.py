@@ -203,6 +203,56 @@ def delete_dictionary(dictionary: PronunciationDictionary, project_dir: Path | N
     (folder / f"{dictionary.id}.json").unlink(missing_ok=True)
 
 
+STARTER_DICTIONARY_ID = "starter"
+
+
+def starter_dictionary() -> PronunciationDictionary:
+    """A small bundled global dictionary of commonly-mangled terms (§4.7.6).
+
+    A starting point users can enable, edit, or remove. Respellings are
+    engine-agnostic so they work on every synthesizer.
+    """
+    pairs = [
+        ("QUILL", "kwill", "product name"),
+        ("GIF", "jiff", ""),
+        ("SQL", "sequel", ""),
+        ("GUI", "gooey", ""),
+        ("PyPI", "pie pee eye", ""),
+        ("GitHub", "git hub", ""),
+        ("NVDA", "N V D A", "screen reader"),
+        ("JAWS", "jaws", "screen reader"),
+        ("API", "A P I", ""),
+        ("URL", "U R L", ""),
+        ("JSON", "jay son", ""),
+        ("OAuth", "oh auth", ""),
+        ("cache", "cash", ""),
+    ]
+    return PronunciationDictionary(
+        id=STARTER_DICTIONARY_ID,
+        name="QUILL starter pronunciations",
+        scope="global",
+        engine=None,
+        enabled=True,
+        entries=[
+            PronunciationEntry(term=term, replacement=say, note=note) for term, say, note in pairs
+        ],
+    )
+
+
+def install_starter_dictionary(*, overwrite: bool = False) -> bool:
+    """Write the starter dictionary to the global store. Return True if written.
+
+    Skips writing when a ``starter.json`` already exists (so a user's edits or
+    deliberate removal are respected) unless ``overwrite`` is set. Safe to call
+    from onboarding or a "restore starter pronunciations" action.
+    """
+    path = global_dir() / f"{STARTER_DICTIONARY_ID}.json"
+    if path.exists() and not overwrite:
+        return False
+    save_dictionary(starter_dictionary())
+    return True
+
+
 def active_dictionaries(
     engine: str,
     *,

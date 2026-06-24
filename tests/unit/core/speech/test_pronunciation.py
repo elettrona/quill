@@ -8,12 +8,15 @@ import pytest
 
 from quill.core.speech import pronunciation as pron
 from quill.core.speech.pronunciation import (
+    STARTER_DICTIONARY_ID,
     PronunciationDictionary,
     PronunciationEntry,
     active_dictionaries,
     apply_pronunciations,
+    install_starter_dictionary,
     load_dictionaries,
     save_dictionary,
+    starter_dictionary,
 )
 
 
@@ -190,3 +193,34 @@ def test_dictionary_round_trips_through_dict() -> None:
     )
     clone = PronunciationDictionary.from_dict(original.to_dict())
     assert clone == original
+
+
+# -- starter dictionary ---------------------------------------------------- #
+
+
+def test_starter_dictionary_is_global_all_engine_with_quill() -> None:
+    d = starter_dictionary()
+    assert d.id == STARTER_DICTIONARY_ID
+    assert d.scope == "global"
+    assert d.engine is None
+    terms = {e.term: e.replacement for e in d.entries}
+    assert terms["QUILL"] == "kwill"
+
+
+def test_starter_dictionary_corrects_quill() -> None:
+    out = apply_pronunciations("I use QUILL daily.", "sapi5", [starter_dictionary()])
+    assert out.text == "I use kwill daily."
+
+
+def test_install_starter_writes_once_and_respects_deletion(speech_home: Path) -> None:
+    assert install_starter_dictionary() is True  # first install
+    loaded = load_dictionaries()
+    assert [d.id for d in loaded] == [STARTER_DICTIONARY_ID]
+    assert install_starter_dictionary() is False  # already present → not rewritten
+    assert install_starter_dictionary(overwrite=True) is True  # explicit restore
+
+
+def test_starter_round_trips_through_storage(speech_home: Path) -> None:
+    install_starter_dictionary()
+    reloaded = load_dictionaries()[0]
+    assert reloaded == starter_dictionary()
