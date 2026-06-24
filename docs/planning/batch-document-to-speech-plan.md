@@ -79,7 +79,7 @@ A user opens **Tools → Batch Export to Speech Audio…**. A dialog appears wit
 2. Choose which file types to include (Word, Markdown, HTML, plain text).
 3. Choose an output folder (defaults to a sibling `Audio` folder).
 4. Pick an engine, a voice, and a speed — pre-filled from their saved Read Aloud preferences — and press **Preview** to hear the chosen voice at the chosen speed before committing.
-5. Optionally choose output format (WAV or MP3), whether to skip files already exported, and which **pronunciation dictionaries** are active so names and jargon are spoken correctly.
+5. Optionally choose output format (WAV or MP3), whether to skip files already exported, which **pronunciation dictionaries** are active so names and jargon are spoken correctly, and — for documents with headings — whether to **chapterize**: one file with chapter markers (named from the headings) or a separate file per article, with an optional **transition tone** between articles and a configurable **pause** between them (§4.8). Think "read me this newspaper and let me jump between stories."
 6. Hear an announced summary: *"42 files found. Estimated output: about 180 megabytes."*
 7. Press **Start**. The dialog shows a live, screen-reader-friendly list: each file announces *"Processing 7 of 42: chapter-three.docx"* then *"Done"* / *"Skipped"* / *"Error: …"*.
 8. Work runs in the background on the task manager; the user can keep editing or cancel at any time.
@@ -347,6 +347,87 @@ When the batch actually converts files, dictionary application should be **rich 
 - **Graceful per-file degradation:** a malformed SSML assembly for one file falls back to plain rendering for *that file only*, is recorded in its result row, and never aborts the batch.
 - **Deterministic and reproducible:** the same files + same active dictionaries + same engine produce identical output; ordering and precedence (§4.7.3) are fixed, so a batch is auditable.
 
+## 4.8 Heading-aware chapterization — article separation, MP3 chapter markers, and transition earcons (new feature)
+
+A long document — or a compiled feed like a newspaper, a set of web articles, or a multi-section report — is much more listenable when the listener can **jump article-to-article** and **hear when a new section begins**. When a source document contains **headings**, QUILL should optionally treat each heading as an **article / chapter boundary** and produce navigable audio. **Chapter titles are taken from the heading text** of the material.
+
+### 4.8.1 The use case
+
+"Read me this newspaper / these articles and let me move between them." The listener wants to (a) skip to the next article with their player's chapter/track controls, and (b) *hear* an unmistakable transition cue so they know, ears-only, that one article ended and the next began — exactly the affordance a sighted reader gets from a headline and white space.
+
+### 4.8.2 Section extraction (structure-aware)
+
+Add a structure-aware extractor alongside the flat `extract_text` (§4.1, `text_polish.py`):
+
+- `extract_sections(path) -> list[DocumentSection]`, each `DocumentSection(title, level, body_text)`:
+  - **Markdown:** ATX (`#`–`######`) and Setext headings start a section; the heading text is the title.
+  - **HTML:** `<h1>`–`<h6>` start a section (title = heading text content).
+  - **DOCX:** paragraphs whose style is a `Heading N` style start a section (reusing/extending the existing shallow `<w:t>` walk to read paragraph `pStyle`).
+  - **TXT:** no reliable heading model → a single section (whole file); chapterization is simply unavailable, never wrong.
+- A document with **no headings** yields **one section** (the whole document). Chapterization then degrades to "single file, no chapters" automatically — the feature is opt-in and never produces a one-chapter oddity unless asked.
+- Leading text *before* the first heading becomes an implicit "Introduction" section (configurable title) so nothing is dropped.
+- Pronunciation correction (§4.7) and `polish_for_tts` run **per section body**, so chaptering composes cleanly with the dictionary pipeline.
+
+### 4.8.3 Output modes
+
+A per-run **Chapters** choice in the batch (and single-document) dialog:
+
+1. **Single file, no chapters** (today's behavior; the default).
+2. **Single file with chapter markers** — the whole document is synthesized into one audio file, and the start time of each section is recorded as a chapter marker the player can navigate. **Per-document** (one chaptered file per source document) or, optionally, **one master file for the whole folder** (each *document* a top-level chapter, each *heading* a sub-section where the container format supports nesting; MP3's flat CTOC lists them in order).
+3. **Separate file per article** — each section is synthesized to its **own** audio file, named from its heading (e.g. `03 - Local Election Results.mp3`), mirrored under the output folder. This is the "one file per article" option for players/workflows that prefer discrete tracks.
+
+### 4.8.4 Chapter model and marker writing (borrow ChapterForge)
+
+A sibling BITS project, **ChapterForge** (`d:\code99\forum`, MIT-licensed, also Community Access / BITS), already solves chapter-marker writing and is the reference to **borrow from** rather than reinvent:
+
+- **Model:** a `Chapter(index, title, start_ms, end_ms)` list — mirror ChapterForge's `core.Chapter` / `compute_chapters`.
+- **MP3 markers:** ID3v2.3 **CHAP + CTOC** frames via **mutagen**, exactly as ChapterForge's `write_tags_and_chapters`: one `CHAP` per chapter (`start_time`/`end_time` in ms, a `TIT2` sub-frame carrying the *heading* as the chapter title) and a top-level ordered `CTOC` listing them. This is the format Apple Podcasts, Overcast, Pocket Casts, VLC, foobar2000, etc. navigate.
+- **M4B markers:** the M4B/AAC path writes native MP4 chapter atoms (ChapterForge's M4B branch) when M4B output is selected.
+- **Dependency note:** mutagen is the new dependency for chapter writing; add it behind the MP3/chapters feature (and the `network_egress_audit`/`THIRD_PARTY` accounting), reusing ffmpeg for transcode (§4.1). Cite ChapterForge in `THIRD_PARTY.md` / code comments as the borrowed approach.
+
+### 4.8.5 Transition earcon (the "sounder") and the with/without-sound pair
+
+- A **configurable transition sound** (earcon) plays at each chapter/article boundary so the listener hears the transition. It reuses QUILL's existing **sound-pack** system (`quill/core/sound_pack.py`, the `quill/assets/sound_packs/` infrastructure already used for editor earcons) plus a bundled "chapter chime"; the user can choose the sound, toggle it on/off, and set its volume.
+- **When the earcon is enabled, produce TWO outputs:** a **clean** file (speech only) **and** a **with-tones** file (the earcon spliced in at each boundary) — e.g. `Daily News.mp3` and `Daily News (with chapter tones).mp3`. The listener picks; some want the cue, some want clean audio with silent chapter markers only. When the earcon is off, only the clean file is produced. The chapter **markers** are written to *both* files identically (the markers are metadata; the tone is audio) — so navigation works either way, the tone is the audible bonus.
+- The earcon's duration is included when computing chapter start times for the with-tones file (the chapter begins at the tone, or immediately after — a per-setting choice), so markers stay frame-accurate in each variant.
+
+**Inter-article pause (controls the pacing/"state" of the reading).** Independently of the earcon, a **configurable silence gap** is inserted **between** articles/chapters so the listener gets a clear, unhurried beat at each transition — the audible equivalent of white space, and the control that sets how relaxed or brisk the reading feels. It is `batch_speech_article_gap_ms` (§4.8.8), a duration in milliseconds (0 = back-to-back). The gap is generated as PCM silence and placed at each section boundary; when the earcon is on, the order at a boundary is **`[half-gap] → earcon → [half-gap]`** (so the tone sits in a pocket of silence rather than colliding with speech), and in the clean variant the *same total* gap of pure silence is used so both variants share identical chapter timing. The gap composes with — and is distinct from — the per-sentence `read_aloud_sentence_pause_ms` that already exists for within-text pacing: this one is specifically the *between-article* beat. ChapterForge's `gap_ms` / `_chapters_with_gaps` is the borrowable precedent for inserting and accounting for these gaps in the chapter offsets.
+
+### 4.8.6 Pipeline (per-section synthesize → measure → concat → tag)
+
+Chapterized output extends the §4.7.4 pipeline with a measure-and-assemble stage, reusing the existing per-engine `synthesize_*` (to-file) functions — **still silent; everything writes to disk, nothing is read aloud** (§silent-batch):
+
+```
+for each section:  extract → apply_pronunciations → polish_for_tts → synthesize_to_temp_wav → measure duration
+assemble:          concat section WAVs, inserting the inter-article gap (PCM silence,
+                   batch_speech_article_gap_ms) between sections — and, for the with-tones
+                   variant, the earcon WAV inside that gap ([half-gap] earcon [half-gap])
+                   → cumulative offsets become Chapter.start_ms/end_ms (titles = headings)
+                   → transcode to MP3/M4B (ffmpeg, §4.1) → write CHAP/CTOC chapter markers (mutagen)
+                   → if earcon on: also emit the clean variant (concat without the earcon WAVs)
+```
+
+- Concatenation and duration measurement are wav-level (stdlib `wave` for PCM, or an ffmpeg concat) — no playback.
+- "Separate file per article" skips concat/tagging and just writes each section's transcoded file.
+- Per-file accounting (§4.7.10) extends to a per-document **chapter count** in `BatchFileResult`.
+
+### 4.8.7 Dialog controls (added to the batch dialog, §4.2)
+
+- **Chapters:** a choice — *None* / *Single file with chapter markers* / *Separate file per article*. Disabled-with-explanation for `.txt`-only selections (no headings).
+- **Chapter transition sound:** on/off checkbox; a sound chooser (reusing the sound-pack picker) and a volume control, enabled only when Chapters ≠ None and the format supports it.
+- **Pause between articles:** a duration control (slider/spin, milliseconds or seconds) bound to `batch_speech_article_gap_ms`, so the user dials in how much silence separates articles. Available whenever Chapters ≠ None (and for "separate file per article" it simply pads each file's tail, or is a no-op — confirm during build).
+- A note that enabling the sound produces **both** a clean and a with-tones file.
+- All controls labelled, in tab order, announced; the chapter list (when "single file with markers" is chosen) is previewable — the headings that will become chapters are read back before Start, so a screen-reader user confirms the structure.
+
+### 4.8.8 Settings
+
+- `batch_speech_chapter_mode: str` (`"none"` / `"single"` / `"separate"`, validated).
+- `batch_speech_chapter_sound_enabled: bool`.
+- `batch_speech_chapter_sound_id: str` (sound-pack sound id; "" = bundled chapter chime).
+- `batch_speech_chapter_sound_volume: int` (0–100, clamped).
+- `batch_speech_article_gap_ms: int` (silence inserted between articles/chapters; 0–10000, clamped; default e.g. 1200). See §4.8.5.
+- `batch_speech_intro_section_title: str` (default "Introduction") for pre-first-heading text.
+
 ---
 
 # 5. Accessibility Requirements
@@ -451,6 +532,9 @@ Build the `pronunciation.py` core module + schema + tests, wire `apply_pronuncia
 **Phase 6 — SSML injection and the SSML Builder (§4.7.8–4.7.10).**
 Flip on the SAPI `_SVSF_IS_XML` path (add `as_ssml`), implement SSML-mode assembly/escaping/validation and graceful fallback, add the SSML entry mode and quick-insert buttons, then build the guided **SSML Builder** (phoneme/vowel chart with per-sound preview, prosody/inflection sliders, say-as/sub helpers) and the rich batch-time handling (per-file substitution accounting, dry-run transform preview, per-file degradation). Layered on Phase 5 so respelling-only dictionaries ship first and SSML is additive.
 
+**Phase 7 — Heading-aware chapterization (§4.8).**
+Add the structure-aware `extract_sections` (Markdown / HTML / DOCX headings; TXT = single section) and the per-section synthesize→measure→concat→tag pipeline. Deliver the three output modes (none / single-file-with-chapters / separate-file-per-article), MP3 **CHAP/CTOC** chapter markers via mutagen and M4B native chapters — **chapter titles from the headings** — borrowing ChapterForge's (`d:\code99\forum`, MIT/BITS) chapter model and writer. Add the configurable **transition earcon** (reusing the sound-pack system) with the **clean + with-tones** output pair, and the configurable **inter-article pause** (`batch_speech_article_gap_ms`). Wire the dialog controls (Chapters mode, transition sound, pause), the new settings, the chapter-list preview/announcement, and tests for section extraction, chapter-offset computation (with gap + earcon accounting), and marker round-tripping. Depends on the MP3 path (Phase 3 + the `transcode_to_mp3` helper); ships after a folder can already produce plain audio.
+
 **Related but separately tracked:** **bestSpeech** legacy TTS support (issue #696) — land it as a SAPI5 voice so it flows through the batch `sapi5` engine unchanged (see §4.4); confirm it in the Phase 2 voice list rather than building batch-specific code for it.
 
 **Deferred (post-v1):** richer `.docx` extraction (tables/headers/footnotes), long-document chunking via `tts_chunk.py`, cloud-engine support, and parallel synthesis.
@@ -487,5 +571,6 @@ Flip on the SAPI `_SVSF_IS_XML` path (add `as_ssml`), implement SSML-mode assemb
 - Settings persist last-used folders, format, filter, and skip-existing; engine/voice/speed pre-fill from Read Aloud preferences.
 - Pronunciation dictionaries (§4.7) exist across **global** and **project** locations and **all-engine** and **per-synthesizer** engine scopes (a project dictionary stored in the project folder travels with it and activates only while that project is open), are selectable, and are applied consistently in **both** live Read Aloud and batch export; a user can add a word from the editor, **Play original** then **Play corrected** to audition the fix before committing, and have it take effect everywhere immediately. The manager dialog passes the gate suite and `apply_pronunciations` is unit-tested for ordering and the project/engine precedence (§4.7.1).
 - SSML injection works on SSML-capable engines (SAPI 5 via the `_SVSF_IS_XML` path; eSpeak subset) with whole-utterance escaping and graceful `plain_fallback` on neural/DECtalk engines; the guided **SSML Builder** lets users author phonemes, vowels, and inflection by ear; and batch conversion applies the dictionary richly with per-file substitution accounting and a dry-run transform preview.
+- **Heading-aware chapterization (§4.8):** a document with headings (Word / Markdown / HTML; plain text has none and is one section) can be produced as a **single file with chapter markers** (MP3 CHAP/CTOC via mutagen, or M4B native chapters, **titled from the headings**) or as **separate files per article**, so a listener can jump article-to-article in their player. A configurable **transition earcon** marks each boundary audibly and, when enabled, yields **both** a clean and a with-tones file; a configurable **inter-article pause** (`batch_speech_article_gap_ms`) sets the spacing between articles. Section extraction, chapter-offset computation (gap + earcon accounted), and marker round-tripping are unit-tested; the chapter list is announced before Start. Approach borrowed from ChapterForge (`d:\code99\forum`, MIT/BITS), credited in `THIRD_PARTY.md`.
 - `ruff`, scoped `mypy quill\core quill\io`, and the test suite are green.
 - User guide and CHANGELOG updated.
