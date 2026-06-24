@@ -28,6 +28,8 @@ from quill.core.lists import (
     flat_item_announcement,
     flat_to_definition,
     indent,
+    interpret_text_into_definition,
+    interpret_text_into_flat,
     list_summary,
     move_subtree,
     outdent,
@@ -181,7 +183,20 @@ class ListStudioDialog:
         for btn in (self._btn_indent, self._btn_outdent, self._btn_add_child):
             nest_row.Add(btn, 0, wx.RIGHT, 4)
         self._nest_row = nest_row
-        outer.Add(nest_row, 0)
+        outer.Add(nest_row, 0, wx.BOTTOM, 4)
+
+        # Import row: pull text from the clipboard or a file into the current list
+        # type; the live source preview below is the "preview" (§17.4–§17.5). The
+        # imported list fully replaces the in-dialog model, so Cancel discards it —
+        # nothing reaches the document until OK.
+        import_row = wx.BoxSizer(wx.HORIZONTAL)
+        self._btn_import_clip = wx.Button(dlg, label="Import from clip&board")
+        self._btn_import_file = wx.Button(dlg, label="Import from fil&e...")
+        self._btn_import_clip.Bind(wx.EVT_BUTTON, lambda _e: self._on_import_clipboard())
+        self._btn_import_file.Bind(wx.EVT_BUTTON, lambda _e: self._on_import_file())
+        for btn in (self._btn_import_clip, self._btn_import_file):
+            import_row.Add(btn, 0, wx.RIGHT, 4)
+        outer.Add(import_row, 0)
         return outer
 
     def _build_editor_panel(self, dlg: Any) -> Any:
@@ -464,6 +479,57 @@ class ListStudioDialog:
             return
         new_index = add_child(self._flat.items, index)
         self._reload_outline(select=new_index)
+
+    # -- import ------------------------------------------------------------ #
+
+    def _on_import_clipboard(self) -> None:
+        wx = self._wx
+        text = ""
+        clipboard = getattr(wx, "TheClipboard", None)
+        if clipboard is not None and clipboard.Open():
+            try:
+                data = wx.TextDataObject()
+                if clipboard.GetData(data):
+                    text = data.GetText()
+            finally:
+                clipboard.Close()
+        self._import_text(text)
+
+    def _on_import_file(self) -> None:
+        wx = self._wx
+        with wx.FileDialog(
+            self.dialog,
+            "Import list from text file",
+            wildcard="Text files (*.txt;*.md)|*.txt;*.md|All files (*.*)|*.*",
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+        ) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:  # GATE-42-OK: native wx.FileDialog
+                return
+            path = dlg.GetPath()
+        try:
+            from pathlib import Path
+
+            text = Path(path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+        self._import_text(text)
+
+    def _import_text(self, text: str) -> None:
+        """Replace the current model with one interpreted from imported text.
+
+        Nothing reaches the document until OK, so a replace is safe; the live
+        source preview is the interpretation preview (§17.4–§17.5).
+        """
+        if not text.strip():
+            return
+        if self._is_definition():
+            self._definition = interpret_text_into_definition(text, self._settings)
+        else:
+            self._flat = interpret_text_into_flat(text, self._settings)
+            self._type = self._flat.list_type
+            self._type_choice.SetSelection(self._type_index())
+        self._sync_type_visibility()
+        self._reload_outline(select=0)
 
     # -- preview + commit -------------------------------------------------- #
 

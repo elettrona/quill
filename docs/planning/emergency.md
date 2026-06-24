@@ -80,9 +80,10 @@
    the caret** (F2 with no selection detects and replaces the existing list block,
    preserving nesting), and **type-switch conversion with information-loss
    confirmation** (flat↔definition carries content across and confirms before
-   dropping structure). *Remaining:* import-from-file/clipboard with preview,
-   reparse-and-validate before commit, and the Settings/preset surface. *(This is
-   list structure, not the
+   dropping structure), and **import with preview** (Import from clipboard / file →
+   interpreted into the live-previewed model; conservative separator detection;
+   nothing reaches the document until OK). *Remaining:* reparse-and-validate before
+   commit, and the Settings/preset surface. *(This is list structure, not the
    excluded table work.)*
 10. ◐ **Hold-to-Dictate / Locked Dictation — follow-ups.** **Done (2026-06-24):**
     the dictation *policy* is now user-configurable — `dictation_max_locked_seconds`,

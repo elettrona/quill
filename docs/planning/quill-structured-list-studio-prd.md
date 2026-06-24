@@ -1661,15 +1661,20 @@ for "is this done"; update it as further phases land.
   dialog asks for confirmation through the hardened message box before applying,
   and a decline reverts the type choice. Conversion seam unit-tested in
   `tests/unit/ui/test_list_studio_dialog.py`.
+- **Import with preview (§6, §17.4–§17.5):** "Import from clipboard" and "Import
+  from file…" buttons pull text into the current list type via the wx-free
+  `interpret_text_into_flat` / `interpret_text_into_definition` helpers (marker
+  detection, checklist promotion, and conservative term/definition-separator
+  detection that falls back to term-only rather than guessing a split). The live
+  source preview *is* the interpretation preview, and the import only replaces the
+  in-dialog model — nothing reaches the document until OK, so Cancel discards it.
+  Helpers unit-tested in `tests/unit/core/lists/test_parse.py`.
 
 ## Not yet implemented (planned follow-ups)
 
 - The full **Settings/preset surface** (§3–§13): scopes (app/format/workspace/
   document/this-operation), the Settings category, shipped presets, and
   import/export. Defaults currently live in `StructuredListSettings`.
-- **Import dialogs with preview** (§6, §17.4–§17.5) — the core computes
-  interpretations and ambiguity; the import preview surface is pending. (The
-  *conversion* preview/confirmation is covered above.)
 - **Reparse-and-validate before commit** (§26, §28.14) and the definition Markdown
   **profile prompt** (§7.6, §21.3 — the dialog currently falls back to embedded HTML
   when no profile is set).

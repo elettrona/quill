@@ -1,12 +1,53 @@
 from __future__ import annotations
 
+from quill.core.lists.model import ListType
 from quill.core.lists.parse import (
     detect_definition_separator,
     interpret_definition_entries,
     interpret_selection,
+    interpret_text_into_definition,
+    interpret_text_into_flat,
     strip_marker,
 )
 from quill.core.lists.settings import StructuredListSettings
+
+
+def test_interpret_text_into_flat_one_item_per_line() -> None:
+    flat = interpret_text_into_flat("apples\noranges\npears")
+    assert flat.list_type is ListType.BULLET
+    assert [i.text for i in flat.items] == ["apples", "oranges", "pears"]
+
+
+def test_interpret_text_into_flat_promotes_checklist() -> None:
+    flat = interpret_text_into_flat("- [ ] todo\n- [x] done")
+    assert flat.list_type is ListType.CHECKLIST
+    assert [(i.text, i.checked) for i in flat.items] == [("todo", False), ("done", True)]
+
+
+def test_interpret_text_into_flat_empty_yields_single_item() -> None:
+    flat = interpret_text_into_flat("   ")
+    assert len(flat.items) == 1
+    assert flat.items[0].text == ""
+
+
+def test_interpret_text_into_definition_uses_detected_separator() -> None:
+    dl = interpret_text_into_definition("HTTP: A protocol\nDNS: Name resolution")
+    assert dl.entries[0].primary_term == "HTTP"
+    assert dl.entries[0].primary_definition == "A protocol"
+    assert dl.entries[1].primary_term == "DNS"
+
+
+def test_interpret_text_into_definition_falls_back_to_term_only() -> None:
+    # No confident separator -> one term-only entry per line, no guessed split.
+    dl = interpret_text_into_definition("apple\nbanana\ncherry")
+    assert [e.primary_term for e in dl.entries] == ["apple", "banana", "cherry"]
+    assert all(e.primary_definition == "" for e in dl.entries)
+
+
+def test_interpret_text_into_definition_empty_yields_single_entry() -> None:
+    dl = interpret_text_into_definition("")
+    assert len(dl.entries) == 1
+    assert dl.entries[0].is_blank()
 
 
 def texts(items: list[tuple[str, str, bool]]) -> list[str]:
