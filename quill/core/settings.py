@@ -25,6 +25,15 @@ __all__ = [
 ]
 
 
+def _coerce_non_negative_float(value: object, default: float) -> float:
+    """Float clamped to >= 0; ``default`` for a malformed value (never raises)."""
+    try:
+        result = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+    return result if result >= 0 else 0.0
+
+
 @dataclass(slots=True)
 class Settings:
     theme: str = "system"
@@ -105,6 +114,12 @@ class Settings:
     dictation_language: str = "en-US"
     dictation_model: str = "base"
     dictation_device_index: int = -1
+    # Hold-to-Dictate / Locked Dictation policy (PRD §10, §20). These feed the
+    # core DictationConfig the controller consults; 0 disables the time limits.
+    dictation_max_locked_seconds: float = 300.0  # locked session cap (5 min)
+    dictation_stop_on_focus_loss: bool = True  # stop+keep speech when QUILL blurs
+    dictation_intelligent_spacing: bool = True  # conservative insertion spacing
+    dictation_min_hold_seconds: float = 0.0  # ignore accidental F9 taps below this
     # Offline speech engine: "" = bundled whisper.cpp; "fasterwhisper" opts into
     # the Faster Whisper (CTranslate2) engine on machines that have it.
     speech_provider: str = ""
@@ -499,6 +514,15 @@ class Settings:
         dictation_device_index = int(data.get("dictation_device_index", -1))
         if dictation_device_index < -1:
             dictation_device_index = -1
+        # Dictation policy: durations clamp non-negative (0 disables a cap).
+        dictation_max_locked_seconds = _coerce_non_negative_float(
+            data.get("dictation_max_locked_seconds", 300.0), 300.0
+        )
+        dictation_min_hold_seconds = _coerce_non_negative_float(
+            data.get("dictation_min_hold_seconds", 0.0), 0.0
+        )
+        dictation_stop_on_focus_loss = bool(data.get("dictation_stop_on_focus_loss", True))
+        dictation_intelligent_spacing = bool(data.get("dictation_intelligent_spacing", True))
         speech_provider = str(data.get("speech_provider", "")).strip().lower()
         if speech_provider not in {"", "whispercpp", "fasterwhisper"}:
             speech_provider = ""
@@ -873,6 +897,10 @@ class Settings:
             dictation_language=dictation_language,
             dictation_model=dictation_model,
             dictation_device_index=dictation_device_index,
+            dictation_max_locked_seconds=dictation_max_locked_seconds,
+            dictation_stop_on_focus_loss=dictation_stop_on_focus_loss,
+            dictation_intelligent_spacing=dictation_intelligent_spacing,
+            dictation_min_hold_seconds=dictation_min_hold_seconds,
             speech_provider=speech_provider,
             bw_speech_selection_mode=bw_speech_selection_mode,
             bw_speech_model_id=bw_speech_model_id,

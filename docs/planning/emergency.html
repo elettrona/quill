@@ -276,13 +276,20 @@ confirms before dropping structure). <em>Remaining:</em>
 import-from-file/clipboard with preview, reparse-and-validate before
 commit, and the Settings/preset surface. <em>(This is list structure,
 not the excluded table work.)</em></li>
-<li><strong>Hold-to-Dictate / Locked Dictation — follow-ups</strong>
-(migrated into the Speech &amp; Dictation table above): Settings surface
-(max-duration, focus-loss/background, verbosity, earcon volume,
-retention, visual indicator); Dictation History + interactive
-startup-recovery prompt; Dictation Review interface for deferred
-inserts; distinct locked-vs-hold earcons; dedicated Dictation menu +
-one-time onboarding.</li>
+<li>◐ <strong>Hold-to-Dictate / Locked Dictation — follow-ups.</strong>
+<strong>Done (2026-06-24):</strong> the dictation <em>policy</em> is now
+user-configurable — <code>dictation_max_locked_seconds</code>,
+<code>dictation_stop_on_focus_loss</code>,
+<code>dictation_intelligent_spacing</code>, and
+<code>dictation_min_hold_seconds</code> are settings (validated,
+negatives clamped) wired into the controller's
+<code>DictationConfig</code> via <code>_dictation_config()</code>,
+replacing the hardcoded defaults. <em>Remaining:</em> a user-facing
+settings <em>panel</em> for those knobs (plus earcon volume / retention
+/ visual indicator); Dictation History + interactive startup-recovery
+prompt; Dictation Review interface for deferred inserts; distinct
+locked-vs-hold earcons; dedicated Dictation menu + one-time
+onboarding.</li>
 <li><strong>Watch Folder queue — live repro (#10, live-test).</strong>
 When <code>core.watch_folder</code> is enabled the monitor "feels
 empty"; needs an interactive repro to confirm the live queue populates,
