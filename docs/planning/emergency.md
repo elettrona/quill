@@ -61,13 +61,15 @@
    fixed: the dialog is now fed `registry.all()` (not `registry.available()`), and
    switcher entries are labelled "(not installed)" so they stay discoverable and
    reach the install path. Unit-tested (`tests/unit/ui/test_speech_setup_dialog.py`).
-9. **Structured List Studio — Phase 2+ follow-ups** (PRD kept;
-   `quill-structured-list-studio-prd.md` §30 Implementation Status): nested-list
-   editing UI (Add Child / Indent / Outdent / subtree move), multiple terms &
-   definitions editing, import-from-file/clipboard with preview, conversion previews
-   + information-loss confirmations, in-place editing of the list under the caret,
-   reparse-and-validate before commit, and the Settings/preset surface. *(Definition-
-   list table layout is fine; this is list structure, not the excluded table work.)*
+9. ◐ **Structured List Studio — Phase 2+ follow-ups** (PRD kept;
+   `quill-structured-list-studio-prd.md` §30 Implementation Status). **Nested-list
+   editing is done (2026-06-24):** Indent / Outdent / Add child + subtree-aware
+   Move up/down, wx-free in `quill/core/lists/nesting.py` with 14 unit tests; the
+   dialog shows nesting depth and gates the controls structurally. *Remaining:*
+   multiple terms & definitions editing, import-from-file/clipboard with preview,
+   conversion previews + information-loss confirmations, in-place editing of the
+   list under the caret, reparse-and-validate before commit, and the Settings/preset
+   surface. *(This is list structure, not the excluded table work.)*
 10. **Hold-to-Dictate / Locked Dictation — follow-ups** (migrated into the Speech &
     Dictation table above): Settings surface (max-duration, focus-loss/background,
     verbosity, earcon volume, retention, visual indicator); Dictation History +

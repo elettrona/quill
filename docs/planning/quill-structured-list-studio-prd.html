@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>quill-structured-list-studio-prd</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -243,7 +239,7 @@
 <body>
 <h1 id="quill-structured-list-studio">QUILL Structured List Studio</h1>
 <h2
-id="product-requirements-document-configuration-and-definition-list-expansion">Product
+id="product-requirements-document--configuration-and-definition-list-expansion">Product
 Requirements Document — Configuration and Definition List Expansion</h2>
 <p><strong>Feature:</strong> Structured List Studio<br />
 <strong>Primary command:</strong> F2<br />
@@ -255,7 +251,7 @@ checklists, nested lists, and definition or description lists<br />
 <strong>Status:</strong> Phase 1 implemented; definition-list
 source/model implemented (2026-06-24)</p>
 <hr />
-<h1 id="product-expansion">1. Product Expansion</h1>
+<h1 id="1-product-expansion">1. Product Expansion</h1>
 <p>The Structured List Studio must be both:</p>
 <ol type="1">
 <li>Immediately understandable with excellent defaults.</li>
@@ -291,8 +287,8 @@ class="sourceCode html"><code class="sourceCode html"><span id="cb1-1"><a href="
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;/</span><span class="kw">dl</span><span class="dt">&gt;</span></span></code></pre></div>
 <p>or format-specific Markdown definition syntax.</p>
 <hr />
-<h1 id="configuration-philosophy">2. Configuration Philosophy</h1>
-<h2 id="excellent-defaults-first">2.1 Excellent defaults first</h2>
+<h1 id="2-configuration-philosophy">2. Configuration Philosophy</h1>
+<h2 id="21-excellent-defaults-first">2.1 Excellent defaults first</h2>
 <p>A user must be able to press F2 and complete the most common task
 without visiting Settings.</p>
 <p>Default behavior should:</p>
@@ -307,7 +303,7 @@ without visiting Settings.</p>
 <li>Avoid silent data loss.</li>
 <li>Show a preview before ambiguous imports.</li>
 </ul>
-<h2 id="progressive-disclosure">2.2 Progressive disclosure</h2>
+<h2 id="22-progressive-disclosure">2.2 Progressive disclosure</h2>
 <p>Advanced settings must not overwhelm the primary dialog.</p>
 <p>The main dialog should expose only controls relevant to the current
 task.</p>
@@ -322,7 +318,7 @@ sections such as:</p>
 <li>Accessibility and Announcements.</li>
 <li>Advanced.</li>
 </ul>
-<h2 id="configurable-at-appropriate-scopes">2.3 Configurable at
+<h2 id="23-configurable-at-appropriate-scopes">2.3 Configurable at
 appropriate scopes</h2>
 <p>Settings should support these scopes:</p>
 <h3 id="application-defaults">Application defaults</h3>
@@ -351,14 +347,14 @@ future defaults.</p>
 <blockquote>
 <p>Save as my default</p>
 </blockquote>
-<h2 id="source-preservation">2.4 Source preservation</h2>
+<h2 id="24-source-preservation">2.4 Source preservation</h2>
 <p>When editing an existing list, preservation of the document’s current
 conventions should normally take precedence over global formatting
 defaults.</p>
 <p>For example, if a Markdown document already uses asterisks for
 bullets, QUILL should preserve them unless the user explicitly requests
 normalization.</p>
-<h2 id="accessible-configuration">2.5 Accessible configuration</h2>
+<h2 id="25-accessible-configuration">2.5 Accessible configuration</h2>
 <p>Every configurable choice must be available through:</p>
 <ul>
 <li>A labeled control.</li>
@@ -370,7 +366,7 @@ normalization.</p>
 <p>Settings must not rely on unlabeled icons, color, or visual
 arrangement.</p>
 <hr />
-<h1 id="configuration-architecture">3. Configuration Architecture</h1>
+<h1 id="3-configuration-architecture">3. Configuration Architecture</h1>
 <p>QUILL should use a structured configuration model rather than
 scattered dialog preferences.</p>
 <p>A representative configuration model is:</p>
@@ -398,10 +394,10 @@ scattered dialog preferences.</p>
 <li>Workspace configuration where applicable.</li>
 </ul>
 <hr />
-<h1 id="general-list-settings">4. General List Settings</h1>
+<h1 id="4-general-list-settings">4. General List Settings</h1>
 <p>Provide a Settings category:</p>
 <p><strong>Editing → Structured List Studio</strong></p>
-<h2 id="default-new-list-type">4.1 Default new-list type</h2>
+<h2 id="41-default-new-list-type">4.1 Default new-list type</h2>
 <p>Options:</p>
 <ul>
 <li>Bulleted.</li>
@@ -415,7 +411,7 @@ scattered dialog preferences.</p>
 <blockquote>
 <p>Bulleted</p>
 </blockquote>
-<h2 id="f2-behavior">4.2 F2 behavior</h2>
+<h2 id="42-f2-behavior">4.2 F2 behavior</h2>
 <p>Options:</p>
 <ul>
 <li>Fully context-sensitive.</li>
@@ -433,7 +429,7 @@ scattered dialog preferences.</p>
 <li>With selected ordinary content: convert the selection.</li>
 <li>Without a list or selection: create a new list.</li>
 </ul>
-<h2 id="initial-focus">4.3 Initial focus</h2>
+<h2 id="43-initial-focus">4.3 Initial focus</h2>
 <p>Options:</p>
 <ul>
 <li>Current item in the items outline.</li>
@@ -447,7 +443,7 @@ scattered dialog preferences.</p>
 <li>New blank list: item content.</li>
 <li>Imported list: first imported item.</li>
 </ul>
-<h2 id="remember-dialog-size-and-layout">4.4 Remember dialog size and
+<h2 id="44-remember-dialog-size-and-layout">4.4 Remember dialog size and
 layout</h2>
 <p>Options:</p>
 <ul>
@@ -461,7 +457,7 @@ layout</h2>
 <p>Remember dialog size but use context-sensitive section
 visibility.</p>
 </blockquote>
-<h2 id="default-insertion-position-for-imported-items">4.5 Default
+<h2 id="45-default-insertion-position-for-imported-items">4.5 Default
 insertion position for imported items</h2>
 <p>Options:</p>
 <ul>
@@ -475,9 +471,9 @@ insertion position for imported items</h2>
 <p>Ask each time when editing an existing list.</p>
 </blockquote>
 <hr />
-<h1 id="selection-conversion-settings">5. Selection Conversion
+<h1 id="5-selection-conversion-settings">5. Selection Conversion
 Settings</h1>
-<h2 id="default-selection-interpretation">5.1 Default selection
+<h2 id="51-default-selection-interpretation">5.1 Default selection
 interpretation</h2>
 <p>Options:</p>
 <ul>
@@ -491,7 +487,7 @@ interpretation</h2>
 <blockquote>
 <p>Automatically detect</p>
 </blockquote>
-<h2 id="blank-line-behavior">5.2 Blank-line behavior</h2>
+<h2 id="52-blank-line-behavior">5.2 Blank-line behavior</h2>
 <p>Options:</p>
 <ul>
 <li>Use blank lines as paragraph separators.</li>
@@ -503,7 +499,7 @@ interpretation</h2>
 <blockquote>
 <p>Use blank lines as separators without creating blank items.</p>
 </blockquote>
-<h2 id="preserve-paragraph-line-breaks">5.3 Preserve paragraph line
+<h2 id="53-preserve-paragraph-line-breaks">5.3 Preserve paragraph line
 breaks</h2>
 <p>Options:</p>
 <ul>
@@ -515,7 +511,7 @@ breaks</h2>
 <blockquote>
 <p>Preserve internal line breaks in paragraph mode.</p>
 </blockquote>
-<h2 id="trim-whitespace">5.4 Trim whitespace</h2>
+<h2 id="54-trim-whitespace">5.4 Trim whitespace</h2>
 <p>Independent options:</p>
 <ul>
 <li>Trim leading whitespace.</li>
@@ -531,8 +527,8 @@ breaks</h2>
 explicitly.</li>
 </ul>
 <hr />
-<h1 id="import-settings">6. Import Settings</h1>
-<h2 id="import-sources">6.1 Import sources</h2>
+<h1 id="6-import-settings">6. Import Settings</h1>
+<h2 id="61-import-sources">6.1 Import sources</h2>
 <p>Users may create or extend lists from:</p>
 <ul>
 <li>Clipboard content.</li>
@@ -548,7 +544,7 @@ explicitly.</li>
 <li>Database results.</li>
 <li>Web page selections.</li>
 </ul>
-<h2 id="existing-marker-detection">6.2 Existing marker detection</h2>
+<h2 id="62-existing-marker-detection">6.2 Existing marker detection</h2>
 <p>Options:</p>
 <ul>
 <li>Detect and remove bullet markers.</li>
@@ -563,7 +559,8 @@ explicitly.</li>
 <p>Detect consistently used markers and display the interpretation in
 the preview.</p>
 </blockquote>
-<h2 id="indentation-interpretation">6.3 Indentation interpretation</h2>
+<h2 id="63-indentation-interpretation">6.3 Indentation
+interpretation</h2>
 <p>Options:</p>
 <ul>
 <li>Never create nesting from indentation.</li>
@@ -584,7 +581,7 @@ the preview.</p>
 <li>Document convention.</li>
 <li>Automatically detect.</li>
 </ul>
-<h2 id="file-encodings">6.4 File encodings</h2>
+<h2 id="64-file-encodings">6.4 File encodings</h2>
 <p>Configuration should include:</p>
 <ul>
 <li>Automatic encoding detection.</li>
@@ -600,7 +597,7 @@ the preview.</p>
 <li>Windows-1252.</li>
 <li>System default.</li>
 </ul>
-<h2 id="large-import-behavior">6.5 Large import behavior</h2>
+<h2 id="65-large-import-behavior">6.5 Large import behavior</h2>
 <p>Options:</p>
 <ul>
 <li>Warn above a configured number of items.</li>
@@ -614,8 +611,8 @@ the preview.</p>
 </blockquote>
 <p>The threshold must be configurable.</p>
 <hr />
-<h1 id="markdown-source-settings">7. Markdown Source Settings</h1>
-<h2 id="bullet-marker-style">7.1 Bullet marker style</h2>
+<h1 id="7-markdown-source-settings">7. Markdown Source Settings</h1>
+<h2 id="71-bullet-marker-style">7.1 Bullet marker style</h2>
 <p>Options:</p>
 <ul>
 <li>Preserve document style.</li>
@@ -628,7 +625,7 @@ the preview.</p>
 <blockquote>
 <p>Preserve document style, otherwise use dash.</p>
 </blockquote>
-<h2 id="ordered-list-marker-strategy">7.2 Ordered-list marker
+<h2 id="72-ordered-list-marker-strategy">7.2 Ordered-list marker
 strategy</h2>
 <p>Options:</p>
 <ul>
@@ -641,14 +638,14 @@ strategy</h2>
 <blockquote>
 <p>Preserve document style, otherwise use sequential numbers.</p>
 </blockquote>
-<h2 id="ordered-delimiter-style">7.3 Ordered delimiter style</h2>
+<h2 id="73-ordered-delimiter-style">7.3 Ordered delimiter style</h2>
 <p>Where supported:</p>
 <ul>
 <li>Period.</li>
 <li>Closing parenthesis.</li>
 <li>Preserve existing delimiter.</li>
 </ul>
-<h2 id="task-marker-style">7.4 Task marker style</h2>
+<h2 id="74-task-marker-style">7.4 Task marker style</h2>
 <p>Options:</p>
 <ul>
 <li><code>[ ]</code> and <code>[x]</code>.</li>
@@ -660,7 +657,7 @@ strategy</h2>
 <blockquote>
 <p>Preserve existing style, otherwise use lowercase <code>x</code>.</p>
 </blockquote>
-<h2 id="tight-and-loose-lists">7.5 Tight and loose lists</h2>
+<h2 id="75-tight-and-loose-lists">7.5 Tight and loose lists</h2>
 <p>Options:</p>
 <ul>
 <li>Preserve existing spacing.</li>
@@ -673,8 +670,8 @@ strategy</h2>
 <p>Preserve existing spacing; use loose formatting when item structure
 requires it.</p>
 </blockquote>
-<h2 id="definition-list-markdown-profile">7.6 Definition-list Markdown
-profile</h2>
+<h2 id="76-definition-list-markdown-profile">7.6 Definition-list
+Markdown profile</h2>
 <p>Markdown definition-list syntax is not universal across all Markdown
 implementations.</p>
 <p>QUILL must provide a configurable <strong>Markdown Definition List
@@ -711,8 +708,8 @@ document.</p>
 option where appropriate.</p>
 </blockquote>
 <hr />
-<h1 id="html-source-settings">8. HTML Source Settings</h1>
-<h2 id="list-indentation">8.1 List indentation</h2>
+<h1 id="8-html-source-settings">8. HTML Source Settings</h1>
+<h2 id="81-list-indentation">8.1 List indentation</h2>
 <p>Options:</p>
 <ul>
 <li>Preserve document indentation.</li>
@@ -725,7 +722,7 @@ option where appropriate.</p>
 <blockquote>
 <p>Preserve document convention.</p>
 </blockquote>
-<h2 id="checkbox-generation">8.2 Checkbox generation</h2>
+<h2 id="82-checkbox-generation">8.2 Checkbox generation</h2>
 <p>Options:</p>
 <ul>
 <li>Disabled checkbox inputs.</li>
@@ -738,7 +735,8 @@ configured.</li>
 <blockquote>
 <p>Disabled native checkbox inputs.</p>
 </blockquote>
-<h2 id="checkbox-label-association">8.3 Checkbox label association</h2>
+<h2 id="83-checkbox-label-association">8.3 Checkbox label
+association</h2>
 <p>Options should ensure that generated checkboxes have readable
 adjacent content.</p>
 <p>Where an explicit HTML <code>&lt;label&gt;</code> is generated, QUILL
@@ -751,7 +749,7 @@ must:</p>
 <p>The default simple representation may keep readable text immediately
 adjacent to the input where that matches the project’s HTML
 conventions.</p>
-<h2 id="attribute-preservation">8.4 Attribute preservation</h2>
+<h2 id="84-attribute-preservation">8.4 Attribute preservation</h2>
 <p>Options:</p>
 <ul>
 <li>Preserve safe global attributes.</li>
@@ -763,7 +761,7 @@ conventions.</p>
 <blockquote>
 <p>Preserve safe attributes and warn before dropping information.</p>
 </blockquote>
-<h2 id="definition-lists">8.5 Definition lists</h2>
+<h2 id="85-definition-lists">8.5 Definition lists</h2>
 <p>HTML definition lists must serialize using:</p>
 <ul>
 <li><code>&lt;dl&gt;</code></li>
@@ -786,7 +784,7 @@ Settings:</p>
 <p>Definition List</p>
 </blockquote>
 <hr />
-<h1 id="numbering-settings">9. Numbering Settings</h1>
+<h1 id="9-numbering-settings">9. Numbering Settings</h1>
 <p>Provide options for:</p>
 <ul>
 <li>Default starting number.</li>
@@ -807,8 +805,8 @@ moving items.</li>
 output format.</li>
 </ul>
 <hr />
-<h1 id="checklist-settings">10. Checklist Settings</h1>
-<h2 id="new-task-state">10.1 New task state</h2>
+<h1 id="10-checklist-settings">10. Checklist Settings</h1>
+<h2 id="101-new-task-state">10.1 New task state</h2>
 <p>Options:</p>
 <ul>
 <li>Unchecked.</li>
@@ -820,14 +818,14 @@ output format.</li>
 <blockquote>
 <p>Unchecked</p>
 </blockquote>
-<h2 id="toggle-key">10.2 Toggle key</h2>
+<h2 id="102-toggle-key">10.2 Toggle key</h2>
 <p>Default:</p>
 <blockquote>
 <p>Space while focus is in the items outline</p>
 </blockquote>
 <p>The command must be remappable through QUILL’s keyboard customization
 system.</p>
-<h2 id="completion-announcements">10.3 Completion announcements</h2>
+<h2 id="103-completion-announcements">10.3 Completion announcements</h2>
 <p>Options:</p>
 <ul>
 <li>State only.</li>
@@ -843,7 +841,7 @@ system.</p>
 <blockquote>
 <p>Checked: Buy coffee. 4 of 10 tasks complete.</p>
 </blockquote>
-<h2 id="parent-and-child-completion">10.4 Parent and child
+<h2 id="104-parent-and-child-completion">10.4 Parent and child
 completion</h2>
 <p>Options for future use:</p>
 <ul>
@@ -857,7 +855,8 @@ completion</h2>
 <p>Parent state remains independent.</p>
 </blockquote>
 <p>Automatic propagation must not be enabled by default.</p>
-<h2 id="checked-item-presentation">10.5 Checked-item presentation</h2>
+<h2 id="105-checked-item-presentation">10.5 Checked-item
+presentation</h2>
 <p>Possible visual options:</p>
 <ul>
 <li>Standard text.</li>
@@ -874,7 +873,7 @@ indication.</li>
 <li>Hiding checked items must be a temporary view filter, never an
 automatic deletion.</li>
 </ul>
-<h2 id="checklist-presets">10.6 Checklist presets</h2>
+<h2 id="106-checklist-presets">10.6 Checklist presets</h2>
 <p>Users may create presets such as:</p>
 <ul>
 <li>Shopping list.</li>
@@ -893,9 +892,9 @@ automatic deletion.</li>
 <li>Preferred import interpretation.</li>
 </ul>
 <hr />
-<h1 id="accessibility-and-announcement-settings">11. Accessibility and
-Announcement Settings</h1>
-<h2 id="announcement-verbosity">11.1 Announcement verbosity</h2>
+<h1 id="11-accessibility-and-announcement-settings">11. Accessibility
+and Announcement Settings</h1>
+<h2 id="111-announcement-verbosity">11.1 Announcement verbosity</h2>
 <p>Provide profiles:</p>
 <h3 id="concise">Concise</h3>
 <p>Announce:</p>
@@ -932,7 +931,7 @@ components.</p>
 <blockquote>
 <p>Standard</p>
 </blockquote>
-<h2 id="operation-announcements">11.2 Operation announcements</h2>
+<h2 id="112-operation-announcements">11.2 Operation announcements</h2>
 <p>Independent settings for:</p>
 <ul>
 <li>Added item.</li>
@@ -946,7 +945,7 @@ components.</p>
 <li>Source validation completed.</li>
 <li>Dialog completion.</li>
 </ul>
-<h2 id="repeated-instructions">11.3 Repeated instructions</h2>
+<h2 id="113-repeated-instructions">11.3 Repeated instructions</h2>
 <p>Options:</p>
 <ul>
 <li>Speak extended instructions on every opening.</li>
@@ -959,7 +958,7 @@ components.</p>
 <p>Speak brief orientation each time and extended instructions only on
 first use.</p>
 </blockquote>
-<h2 id="tree-terminology">11.4 Tree terminology</h2>
+<h2 id="114-tree-terminology">11.4 Tree terminology</h2>
 <p>For flat lists:</p>
 <ul>
 <li>Do not announce “tree” or expand/collapse concepts
@@ -972,7 +971,8 @@ unnecessarily.</li>
 <li>Avoid implementation-oriented phrases such as “tree node” unless the
 screen reader itself supplies them.</li>
 </ul>
-<h2 id="focus-restoration-behavior">11.5 Focus restoration behavior</h2>
+<h2 id="115-focus-restoration-behavior">11.5 Focus restoration
+behavior</h2>
 <p>Configurable options:</p>
 <ul>
 <li>Return to edited item.</li>
@@ -986,7 +986,7 @@ screen reader itself supplies them.</li>
 <p>Return to the item that was selected when OK was activated.</p>
 </blockquote>
 <hr />
-<h1 id="confirmation-settings">12. Confirmation Settings</h1>
+<h1 id="12-confirmation-settings">12. Confirmation Settings</h1>
 <p>Users should be able to configure confirmations while QUILL retains
 safety boundaries.</p>
 <p>Configurable confirmations may include:</p>
@@ -1009,11 +1009,11 @@ document transaction.</p>
 </blockquote>
 <p>with a Settings command to restore all warnings.</p>
 <hr />
-<h1 id="configuration-presets">13. Configuration Presets</h1>
+<h1 id="13-configuration-presets">13. Configuration Presets</h1>
 <p>QUILL should ship with accessible presets.</p>
-<h2 id="recommended">13.1 Recommended</h2>
+<h2 id="131-recommended">13.1 Recommended</h2>
 <p>Balanced defaults for most users.</p>
-<h2 id="screen-reader-detailed">13.2 Screen Reader Detailed</h2>
+<h2 id="132-screen-reader-detailed">13.2 Screen Reader Detailed</h2>
 <ul>
 <li>Detailed item announcements.</li>
 <li>Parent and child information.</li>
@@ -1021,14 +1021,14 @@ document transaction.</p>
 <li>Preview available but collapsed.</li>
 <li>All destructive confirmations enabled.</li>
 </ul>
-<h2 id="screen-reader-concise">13.3 Screen Reader Concise</h2>
+<h2 id="133-screen-reader-concise">13.3 Screen Reader Concise</h2>
 <ul>
 <li>Short item announcements.</li>
 <li>Minimal repetition.</li>
 <li>Operation results enabled.</li>
 <li>Full information available through a command.</li>
 </ul>
-<h2 id="markdown-author">13.4 Markdown Author</h2>
+<h2 id="134-markdown-author">13.4 Markdown Author</h2>
 <ul>
 <li>Preserve source style.</li>
 <li>Markdown-specific preview enabled.</li>
@@ -1036,14 +1036,14 @@ document transaction.</p>
 <li>Sequential numbering configurable.</li>
 <li>Definition-list profile visible.</li>
 </ul>
-<h2 id="html-author">13.5 HTML Author</h2>
+<h2 id="135-html-author">13.5 HTML Author</h2>
 <ul>
 <li>HTML source preview enabled.</li>
 <li>Attribute-preservation warnings enabled.</li>
 <li>Disabled checkbox inputs by default.</li>
 <li>HTML definition-list generation enabled.</li>
 </ul>
-<h2 id="shopping-checklist">13.6 Shopping Checklist</h2>
+<h2 id="136-shopping-checklist">13.6 Shopping Checklist</h2>
 <ul>
 <li>Checklist default.</li>
 <li>New items unchecked.</li>
@@ -1056,8 +1056,9 @@ available.</li>
 <p>Users may create, name, export, import, duplicate, and reset custom
 presets.</p>
 <hr />
-<h1 id="definition-list-experience">14. Definition List Experience</h1>
-<h2 id="purpose">14.1 Purpose</h2>
+<h1 id="14-definition-list-experience">14. Definition List
+Experience</h1>
+<h2 id="141-purpose">14.1 Purpose</h2>
 <p>Definition lists represent related terms and their explanations,
 descriptions, values, or details.</p>
 <p>Common uses include:</p>
@@ -1076,7 +1077,7 @@ descriptions, values, or details.</p>
 knowledge of <code>&lt;dl&gt;</code>, <code>&lt;dt&gt;</code>,
 <code>&lt;dd&gt;</code>, colons, indentation, or Markdown
 extensions.</p>
-<h2 id="user-facing-structure">14.2 User-facing structure</h2>
+<h2 id="142-user-facing-structure">14.2 User-facing structure</h2>
 <p>The primary structure should be:</p>
 <pre class="text"><code>Entry
     One or more terms
@@ -1091,7 +1092,7 @@ Definition</code></pre>
 <li>Reordering definitions within an entry.</li>
 <li>Reordering complete entries.</li>
 </ul>
-<h2 id="simple-definition-list-behavior">14.3 Simple definition list
+<h2 id="143-simple-definition-list-behavior">14.3 Simple definition list
 behavior</h2>
 <p>For the common case of one term and one definition:</p>
 <ul>
@@ -1108,8 +1109,8 @@ behavior</h2>
 <blockquote>
 <p>Entry 2 of 8. Screen reader. One definition.</p>
 </blockquote>
-<h2 id="advanced-definition-list-behavior">14.4 Advanced definition list
-behavior</h2>
+<h2 id="144-advanced-definition-list-behavior">14.4 Advanced definition
+list behavior</h2>
 <p>When an entry contains multiple terms or definitions:</p>
 <ul>
 <li>The outline may expose expandable children.</li>
@@ -1123,18 +1124,18 @@ behavior</h2>
 <p>A flat entry should never be burdened with unnecessary tree
 navigation.</p>
 <hr />
-<h1 id="definition-list-dialog-controls">15. Definition List Dialog
+<h1 id="15-definition-list-dialog-controls">15. Definition List Dialog
 Controls</h1>
 <p>When the selected list type is Definition List, the selected-item
 region changes appropriately.</p>
-<h2 id="term-field">15.1 Term field</h2>
+<h2 id="151-term-field">15.1 Term field</h2>
 <p>Provide a labeled multiline or single-line field:</p>
 <blockquote>
 <p>Term</p>
 </blockquote>
 <p>The initial release may use a multiline field to support long terms
 and reliable screen-reader review.</p>
-<h2 id="definition-field">15.2 Definition field</h2>
+<h2 id="152-definition-field">15.2 Definition field</h2>
 <p>Provide a labeled multiline field:</p>
 <blockquote>
 <p>Definition or description</p>
@@ -1148,7 +1149,7 @@ and reliable screen-reader review.</p>
 <li>Links and emphasis.</li>
 <li>Preserved complex content where safe.</li>
 </ul>
-<h2 id="multiple-terms">15.3 Multiple terms</h2>
+<h2 id="153-multiple-terms">15.3 Multiple terms</h2>
 <p>Provide commands:</p>
 <ul>
 <li>Add alternate term.</li>
@@ -1162,7 +1163,7 @@ controls may appear under:</p>
 <blockquote>
 <p>Additional Terms</p>
 </blockquote>
-<h2 id="multiple-definitions">15.4 Multiple definitions</h2>
+<h2 id="154-multiple-definitions">15.4 Multiple definitions</h2>
 <p>Provide commands:</p>
 <ul>
 <li>Add another definition.</li>
@@ -1175,7 +1176,7 @@ controls may appear under:</p>
 field.</p>
 <p>Additional definitions may be managed through an accessible list and
 separate multiline field.</p>
-<h2 id="entry-operations">15.5 Entry operations</h2>
+<h2 id="155-entry-operations">15.5 Entry operations</h2>
 <p>Provide:</p>
 <ul>
 <li>Add entry before.</li>
@@ -1190,7 +1191,7 @@ separate multiline field.</p>
 </ul>
 <p>Split and merge may be advanced operations.</p>
 <hr />
-<h1 id="definition-list-outline-announcements">16. Definition List
+<h1 id="16-definition-list-outline-announcements">16. Definition List
 Outline Announcements</h1>
 <p>For a simple entry:</p>
 <blockquote>
@@ -1214,8 +1215,8 @@ with disabilities can use a product.</p>
 <code>&lt;dd&gt;</code> element names unless the user has enabled
 source-oriented verbosity.</p>
 <hr />
-<h1 id="creating-definition-lists">17. Creating Definition Lists</h1>
-<h2 id="create-from-scratch">17.1 Create from scratch</h2>
+<h1 id="17-creating-definition-lists">17. Creating Definition Lists</h1>
+<h2 id="171-create-from-scratch">17.1 Create from scratch</h2>
 <p>The user chooses Definition List.</p>
 <p>QUILL creates:</p>
 <ul>
@@ -1225,7 +1226,7 @@ source-oriented verbosity.</p>
 <p>Focus begins in the Term field.</p>
 <p>After the user finishes the term, a configurable command may move to
 the Definition field.</p>
-<h2 id="convert-selected-paragraphs">17.2 Convert selected
+<h2 id="172-convert-selected-paragraphs">17.2 Convert selected
 paragraphs</h2>
 <p>Possible interpretation modes:</p>
 <ul>
@@ -1237,7 +1238,7 @@ definition.</li>
 <li>Open an import preview for confirmation.</li>
 </ul>
 <p>No ambiguous conversion should happen silently.</p>
-<h2 id="convert-selected-lines">17.3 Convert selected lines</h2>
+<h2 id="173-convert-selected-lines">17.3 Convert selected lines</h2>
 <p>Supported patterns may include:</p>
 <pre class="text"><code>Term: Definition</code></pre>
 <pre class="text"><code>Term&lt;TAB&gt;Definition</code></pre>
@@ -1247,7 +1248,7 @@ Definition
 Term
 Definition</code></pre>
 <p>The separator must be configurable and previewed.</p>
-<h2 id="paste-definition-entries">17.4 Paste definition entries</h2>
+<h2 id="174-paste-definition-entries">17.4 Paste definition entries</h2>
 <p>The Paste Items command changes to:</p>
 <blockquote>
 <p>Paste Terms and Definitions…</p>
@@ -1263,7 +1264,7 @@ Definition</code></pre>
 <li>Automatically detect.</li>
 <li>Treat all imported content as ordinary list items instead.</li>
 </ul>
-<h2 id="read-from-file">17.5 Read from file</h2>
+<h2 id="175-read-from-file">17.5 Read from file</h2>
 <p>Definition-list import supports the same line-oriented text files as
 ordinary lists.</p>
 <p>The user must see a preview containing:</p>
@@ -1277,9 +1278,9 @@ ordinary lists.</p>
 <li>Multiline definitions.</li>
 </ul>
 <hr />
-<h1 id="definition-import-configuration">18. Definition Import
+<h1 id="18-definition-import-configuration">18. Definition Import
 Configuration</h1>
-<h2 id="separator-choices">18.1 Separator choices</h2>
+<h2 id="181-separator-choices">18.1 Separator choices</h2>
 <p>Configurable separators include:</p>
 <ul>
 <li>Tab.</li>
@@ -1294,7 +1295,7 @@ Configuration</h1>
 <blockquote>
 <p>Automatically detect and require preview confirmation.</p>
 </blockquote>
-<h2 id="separator-safety">18.2 Separator safety</h2>
+<h2 id="182-separator-safety">18.2 Separator safety</h2>
 <p>QUILL must be conservative.</p>
 <p>For example, a colon may legitimately appear in a sentence or
 URL.</p>
@@ -1304,7 +1305,7 @@ URL.</p>
 definitions.</p>
 </blockquote>
 <p>The user can choose the interpretation from a preview.</p>
-<h2 id="missing-values">18.3 Missing values</h2>
+<h2 id="183-missing-values">18.3 Missing values</h2>
 <p>Options:</p>
 <ul>
 <li>Allow a blank term.</li>
@@ -1317,7 +1318,7 @@ definitions.</p>
 <blockquote>
 <p>Show incomplete entries for correction before import.</p>
 </blockquote>
-<h2 id="duplicate-terms">18.4 Duplicate terms</h2>
+<h2 id="184-duplicate-terms">18.4 Duplicate terms</h2>
 <p>Options:</p>
 <ul>
 <li>Keep duplicate entries.</li>
@@ -1330,9 +1331,9 @@ definitions.</p>
 <p>Highlight duplicates and do not merge automatically.</p>
 </blockquote>
 <hr />
-<h1 id="converting-between-list-types">19. Converting Between List
+<h1 id="19-converting-between-list-types">19. Converting Between List
 Types</h1>
-<h2 id="ordinary-list-to-definition-list">19.1 Ordinary list to
+<h2 id="191-ordinary-list-to-definition-list">19.1 Ordinary list to
 definition list</h2>
 <p>QUILL must not guess the term and definition relationship without
 review.</p>
@@ -1350,8 +1351,8 @@ definition.</li>
 <blockquote>
 <p>Open mapping preview.</p>
 </blockquote>
-<h2 id="definition-list-to-bulleted-or-numbered-list">19.2 Definition
-list to bulleted or numbered list</h2>
+<h2 id="192-definition-list-to-bulleted-or-numbered-list">19.2
+Definition list to bulleted or numbered list</h2>
 <p>Offer conversion formats:</p>
 <ul>
 <li>Term only.</li>
@@ -1366,14 +1367,15 @@ list to bulleted or numbered list</h2>
 <p><code>Term: Definition</code> for simple entries, with explicit
 review for entries containing multiple terms or definitions.</p>
 </blockquote>
-<h2 id="definition-list-to-checklist">19.3 Definition list to
+<h2 id="193-definition-list-to-checklist">19.3 Definition list to
 checklist</h2>
 <p>Possible use case:</p>
 <pre class="text"><code>Term: Description</code></pre>
 <p>becomes an unchecked task.</p>
 <p>Because meaning may change, QUILL must preview the result and require
 confirmation.</p>
-<h2 id="information-loss-warnings">19.4 Information-loss warnings</h2>
+<h2 id="194-information-loss-warnings">19.4 Information-loss
+warnings</h2>
 <p>Warn before a conversion that would discard:</p>
 <ul>
 <li>Alternate terms.</li>
@@ -1385,7 +1387,7 @@ confirmation.</p>
 <li>Complex block content.</li>
 </ul>
 <hr />
-<h1 id="nested-content-in-definitions">20. Nested Content in
+<h1 id="20-nested-content-in-definitions">20. Nested Content in
 Definitions</h1>
 <p>A definition may contain:</p>
 <ul>
@@ -1413,9 +1415,9 @@ operation.</li>
 <p>This opens the appropriate editor while preserving the parent
 definition context.</p>
 <hr />
-<h1 id="definition-list-source-generation">21. Definition List Source
+<h1 id="21-definition-list-source-generation">21. Definition List Source
 Generation</h1>
-<h2 id="html">21.1 HTML</h2>
+<h2 id="211-html">21.1 HTML</h2>
 <p>Generate valid semantic HTML:</p>
 <div class="sourceCode" id="cb10"><pre
 class="sourceCode html"><code class="sourceCode html"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;</span><span class="kw">dl</span><span class="dt">&gt;</span></span>
@@ -1441,7 +1443,7 @@ class="sourceCode html"><code class="sourceCode html"><span id="cb12-1"><a href=
 <span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;/</span><span class="kw">dl</span><span class="dt">&gt;</span></span></code></pre></div>
 <p>QUILL must preserve valid semantic ordering of
 <code>&lt;dt&gt;</code> and <code>&lt;dd&gt;</code> elements.</p>
-<h2 id="markdown">21.2 Markdown</h2>
+<h2 id="212-markdown">21.2 Markdown</h2>
 <p>Generation must follow the active Markdown Definition List
 Profile.</p>
 <p>A representative supported style may resemble:</p>
@@ -1457,7 +1459,7 @@ syntax.</p>
 <blockquote>
 <p>Generated Markdown — Pandoc-compatible definition list</p>
 </blockquote>
-<h2 id="markdown-fallback">21.3 Markdown fallback</h2>
+<h2 id="213-markdown-fallback">21.3 Markdown fallback</h2>
 <p>When native definition-list syntax is unavailable, configurable
 fallback options include:</p>
 <ul>
@@ -1472,7 +1474,7 @@ fallback options include:</p>
 fallback.</p>
 </blockquote>
 <hr />
-<h1 id="definition-list-internal-model">22. Definition List Internal
+<h1 id="22-definition-list-internal-model">22. Definition List Internal
 Model</h1>
 <p>Extend the neutral model:</p>
 <pre class="text"><code>StructuredListDocumentModel
@@ -1518,8 +1520,8 @@ DefinitionDescription
 </ul>
 <p>These identifiers must never appear in the user’s source.</p>
 <hr />
-<h1 id="definition-list-accessibility-requirements">23. Definition List
-Accessibility Requirements</h1>
+<h1 id="23-definition-list-accessibility-requirements">23. Definition
+List Accessibility Requirements</h1>
 <p>A keyboard-only screen-reader user must be able to:</p>
 <ul>
 <li>Determine the number of entries.</li>
@@ -1551,8 +1553,8 @@ Accessibility Requirements</h1>
 <li>Color.</li>
 </ul>
 <hr />
-<h1 id="definition-list-keyboard-commands">24. Definition List Keyboard
-Commands</h1>
+<h1 id="24-definition-list-keyboard-commands">24. Definition List
+Keyboard Commands</h1>
 <p>When focus is in the entries outline:</p>
 <ul>
 <li>Up Arrow: Previous entry.</li>
@@ -1577,7 +1579,7 @@ Commands</h1>
 commands.</li>
 </ul>
 <hr />
-<h1 id="definition-list-summary">25. Definition List Summary</h1>
+<h1 id="25-definition-list-summary">25. Definition List Summary</h1>
 <p>Examples:</p>
 <blockquote>
 <p>Definition list, 12 entries.</p>
@@ -1598,7 +1600,8 @@ definitions.</p>
 <p>Users may choose their preferred label while source semantics remain
 unchanged.</p>
 <hr />
-<h1 id="definition-list-validation">26. Definition List Validation</h1>
+<h1 id="26-definition-list-validation">26. Definition List
+Validation</h1>
 <p>Before committing, validate:</p>
 <ul>
 <li>At least one entry exists.</li>
@@ -1616,7 +1619,7 @@ explicitly allowed.</li>
 </ul>
 <p>Validation errors must leave the document unchanged.</p>
 <hr />
-<h1 id="updated-delivery-plan">27. Updated Delivery Plan</h1>
+<h1 id="27-updated-delivery-plan">27. Updated Delivery Plan</h1>
 <h2 id="phase-1-configurable-flat-list-studio">Phase 1: Configurable
 Flat List Studio</h2>
 <ul>
@@ -1679,7 +1682,7 @@ Customization</h2>
 <li>More structured-data import formats.</li>
 </ul>
 <hr />
-<h1 id="updated-acceptance-criteria">28. Updated Acceptance
+<h1 id="28-updated-acceptance-criteria">28. Updated Acceptance
 Criteria</h1>
 <p>The Structured List Studio is ready when:</p>
 <ol type="1">
@@ -1712,7 +1715,8 @@ replacement.</li>
 keyboard, high contrast, and enlarged display settings.</li>
 </ol>
 <hr />
-<h1 id="updated-definition-of-done">29. Updated Definition of Done</h1>
+<h1 id="29-updated-definition-of-done">29. Updated Definition of
+Done</h1>
 <p>The Structured List Studio is complete when users can create and
 edit:</p>
 <ul>
@@ -1738,10 +1742,10 @@ item, number, task state, nesting relationship, term, definition,
 operation, warning, and generated-source result without needing to
 inspect Markdown syntax or HTML tags.</p>
 <hr />
-<h1 id="implementation-status-2026-06-24">30. Implementation Status
+<h1 id="30-implementation-status-2026-06-24">30. Implementation Status
 (2026-06-24)</h1>
 <p>This section records what has shipped against this PRD. It is the
-source of truth for “is this done”; update it as further phases
+source of truth for "is this done"; update it as further phases
 land.</p>
 <h2 id="implemented">Implemented</h2>
 <ul>
@@ -1773,6 +1777,18 @@ Term/Definition fields, live read-only source preview, and a single-undo
 apply. Remappable; F2 displaced Insert Special Character to Shift+F2
 with a legacy-binding migration. Excellent defaults work with no
 Settings visit (§2.1).</li>
+<li><strong>Nested-list editing (Phase 2):</strong> Indent / Outdent /
+Add child in the dialog for flat lists, with the outline showing nesting
+depth and Move up/down reordering a whole subtree among its siblings so
+a parent never leaves its children behind. All rules are wx-free in
+<code>quill/core/lists/nesting.py</code> (<code>indent</code>,
+<code>outdent</code>, <code>add_child</code>, <code>move_subtree</code>,
+<code>can_indent</code>, <code>can_outdent</code>,
+<code>subtree_end</code>) and unit-tested
+(<code>tests/unit/core/lists/test_nesting.py</code>, 14 cases). The
+dialog enables Indent/Outdent only when structurally valid and hides the
+row for definition lists. Screen readers hear "level N" via the existing
+announcements.</li>
 </ul>
 <h2 id="not-yet-implemented-planned-follow-ups">Not yet implemented
 (planned follow-ups)</h2>
@@ -1781,9 +1797,6 @@ Settings visit (§2.1).</li>
 (app/format/workspace/ document/this-operation), the Settings category,
 shipped presets, and import/export. Defaults currently live in
 <code>StructuredListSettings</code>.</li>
-<li><strong>Nested-list editing</strong> in the dialog (Phase 2): Add
-Child / Indent / Outdent / subtree moves. The model and renderers
-already support item levels.</li>
 <li><strong>Multiple terms / multiple definitions</strong> editing UI
 (§15.3–§15.4) — the model and renderers support them; the dialog edits
 the primary term/definition only.</li>
