@@ -191,18 +191,22 @@ def _try_enchant() -> object | None:
 
 
 def preload() -> None:
-    """Warm the spell-check backend so the first check does not stall.
+    """Warm the spell-check backend *and* the suggestion index so first F7 is warm.
 
-    Resolves the active tier (pyenchant if present, otherwise the bundled
-    wordlist) and forces the wordlist into memory. Safe to call from a
-    background thread at startup; the underlying loaders are idempotent and
-    guarded by ``_BACKEND_LOCK``, so repeat calls are cheap no-ops once warm.
+    Resolves the validation tier (pyenchant if present, otherwise the bundled
+    wordlist) and — the other half of the warm-up (#527) — builds the
+    length-bucketed candidate index over the bundled corpus that
+    :func:`suggest_words` falls back on. That bucket build over the ~370k-word
+    corpus is the dominant one-time cost on the first spell review; doing it here
+    on the startup daemon thread keeps the first F7 from stalling even when
+    enchant is the active validator (its suggestions can still miss and fall
+    through to the corpus). Safe to call from a background thread; every loader is
+    idempotent and lock-guarded, so repeat calls are cheap no-ops once warm.
     """
-    if _try_enchant() is not None:
-        # Enchant resolves its own dictionary lazily; touching it is enough to
-        # avoid a first-use stall. The bundled wordlist is the fallback corpus.
-        return
-    _load_wordlist()
+    _try_enchant()  # resolve (and cache) the validation backend, if available
+    wordlist = _load_wordlist()  # the suggestion fallback corpus
+    if wordlist:
+        _length_buckets(wordlist)  # #527: prebuild the bucketed suggestion index
 
 
 def reset_caches() -> None:
