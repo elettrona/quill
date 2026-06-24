@@ -149,6 +149,25 @@ def test_settings_clamp_negative_dictation_durations(
     assert loaded.dictation_min_hold_seconds == 0.0  # malformed falls back to default
 
 
+def test_settings_persists_list_studio_settings(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    save_settings(Settings(list_studio_settings={"verbosity": "detailed", "markdown_loose": True}))
+    loaded = load_settings()
+    assert loaded.list_studio_settings == {"verbosity": "detailed", "markdown_loose": True}
+
+
+def test_settings_list_studio_settings_defaults_empty_and_ignores_garbage(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    (tmp_path / "settings.json").write_text(
+        '{"list_studio_settings": "not-a-dict"}', encoding="utf-8"
+    )
+    assert load_settings().list_studio_settings == {}
+
+
 def test_settings_clamps_recent_file_limit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
     save_settings(Settings(recent_files_limit=1000))

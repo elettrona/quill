@@ -308,6 +308,9 @@ class Settings:
     vision_disabled_builtin_styles: list[str] = field(default_factory=list)
     vision_custom_prompts: list[dict[str, Any]] = field(default_factory=list)
     vision_builtin_overrides: dict[str, str] = field(default_factory=dict)
+    # Structured List Studio app-scope defaults (serialized StructuredListSettings);
+    # empty means "use the PRD recommended defaults". See quill/core/lists.
+    list_studio_settings: dict[str, Any] = field(default_factory=dict)
     dev_console_consent_accepted: bool = False
     # ERASER: Quill Eraser text hygiene checker.
     hygiene_min_confidence: str = "high"
@@ -798,6 +801,10 @@ class Settings:
             if isinstance(vision_builtin_overrides_raw, dict)
             else {}
         )
+        list_studio_settings_raw = data.get("list_studio_settings")
+        list_studio_settings = (
+            dict(list_studio_settings_raw) if isinstance(list_studio_settings_raw, dict) else {}
+        )
         if vision_default_prompt_style not in BUILTIN_STYLE_IDS and not any(
             e.get("id") == vision_default_prompt_style for e in vision_custom_prompts
         ):
@@ -1025,6 +1032,7 @@ class Settings:
             vision_disabled_builtin_styles=vision_disabled_builtin_styles,
             vision_custom_prompts=vision_custom_prompts,
             vision_builtin_overrides=vision_builtin_overrides,
+            list_studio_settings=list_studio_settings,
             dev_console_consent_accepted=dev_console_consent_accepted,
             hygiene_min_confidence=hygiene_min_confidence,
             hygiene_allow_double_space_after_period=hygiene_allow_double_space_after_period,

@@ -11,8 +11,9 @@ do not change the meaning of any field here.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from enum import Enum
+from typing import Any
 
 
 class DefinitionMarkdownProfile(Enum):
@@ -79,3 +80,62 @@ class StructuredListSettings:
     def newline(self) -> str:
         """The line ending used for generated source (LF; QUILL normalizes)."""
         return "\n"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-safe dict for persistence / export (§3, §13)."""
+        out: dict[str, Any] = {}
+        for f in fields(self):
+            value = getattr(self, f.name)
+            out[f.name] = value.value if isinstance(value, DefinitionMarkdownProfile) else value
+        return out
+
+    @classmethod
+    def from_dict(cls, data: Any) -> StructuredListSettings:
+        """Rebuild from :meth:`to_dict` output, ignoring unknown/invalid fields.
+
+        A malformed value falls back to that field's default, so a hand-edited or
+        out-of-date settings file never breaks the studio.
+        """
+        settings = cls()
+        if not isinstance(data, dict):
+            return settings
+        for f in fields(cls):
+            if f.name not in data:
+                continue
+            raw = data[f.name]
+            current = getattr(settings, f.name)
+            if isinstance(current, DefinitionMarkdownProfile):
+                try:
+                    setattr(settings, f.name, DefinitionMarkdownProfile(str(raw)))
+                except ValueError:
+                    pass
+            elif isinstance(current, bool):  # before int — bool is a subclass of int
+                setattr(settings, f.name, bool(raw))
+            elif isinstance(current, int):
+                try:
+                    setattr(settings, f.name, int(raw))
+                except (TypeError, ValueError):
+                    pass
+            elif isinstance(current, str):
+                setattr(settings, f.name, str(raw))
+        return settings
+
+
+def list_studio_presets() -> dict[str, StructuredListSettings]:
+    """Shipped named starting points the settings surface offers (§13).
+
+    Each is a complete :class:`StructuredListSettings`; selecting one in the
+    settings dialog loads its values, which the user can then tweak and save.
+    """
+    return {
+        "QUILL defaults": StructuredListSettings(),
+        "Markdown (Pandoc definitions)": StructuredListSettings(
+            definition_markdown_profile=DefinitionMarkdownProfile.PANDOC
+        ),
+        "Portable (HTML definitions)": StructuredListSettings(
+            definition_markdown_profile=DefinitionMarkdownProfile.HTML_FALLBACK
+        ),
+        "Loose Markdown lists": StructuredListSettings(markdown_loose=True),
+        "Detailed announcements": StructuredListSettings(verbosity="detailed"),
+        "Concise announcements": StructuredListSettings(verbosity="concise"),
+    }

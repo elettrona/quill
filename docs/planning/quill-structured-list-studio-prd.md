@@ -1675,18 +1675,25 @@ for "is this done"; update it as further phases land.
   for flat Markdown — an item-count round-trip mismatch (the generated source is
   reparsed; a differing count means some item text injected list markup). Any issue
   leaves the document unchanged and is surfaced through the hardened message box.
-  Unit-tested in `tests/unit/core/lists/test_validate.py`. (The definition Markdown
-  **profile prompt** when the profile is left unset — §7.6/§21.3 — remains a
-  follow-up; F2 always sets a concrete profile today, so the dialog's silent
-  HTML fallback is currently unreachable in normal use.)
+  Unit-tested in `tests/unit/core/lists/test_validate.py`.
+- **Settings / preset surface (§3–§13):** a "List Studio Settings…" dialog (Insert
+  › List, command `format.list_studio_settings`) lets the user pick a shipped
+  **preset** (`list_studio_presets()` — QUILL defaults, Pandoc/HTML definitions,
+  loose lists, concise/detailed announcements), tweak the high-value knobs
+  (verbosity, definition-Markdown profile, bullet marker, numbered delimiter, loose
+  lists, new-task state), and **export/import** the configuration as JSON. Choices
+  persist app-wide in `settings.list_studio_settings` (serialized via
+  `StructuredListSettings.to_dict`/`from_dict`) and become the **app-scope**
+  defaults the next F2 starts from; the active document's format still pins the
+  definition-Markdown profile (format/document scope) and the dialog provides the
+  **this-operation** scope. Core persistence + presets unit-tested in
+  `tests/unit/core/lists/test_settings.py` and `tests/unit/core/test_settings.py`.
 
 ## Not yet implemented (planned follow-ups)
 
-- The full **Settings/preset surface** (§3–§13): scopes (app/format/workspace/
-  document/this-operation), the Settings category, shipped presets, and
-  import/export. Defaults currently live in `StructuredListSettings`.
-- **Reparse-and-validate before commit** (§26, §28.14) and the definition Markdown
-  **profile prompt** (§7.6, §21.3 — the dialog currently falls back to embedded HTML
-  when no profile is set).
+- **Intermediate config scopes** (§3 format/workspace/document precedence) beyond
+  the implemented app-default → this-operation layering, and the definition-Markdown
+  **profile prompt** (§7.6, §21.3) — both low-value today: F2 already pins the
+  profile per document, so the silent HTML fallback is unreachable in normal use.
 - A formal **screen-reader pass** (JAWS/NVDA/Narrator, §28.17); only stub-level
-  wiring tests exist so far.
+  wiring tests exist so far. *(Manual — not closable in code.)*

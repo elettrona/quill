@@ -70,9 +70,9 @@
    fixed: the dialog is now fed `registry.all()` (not `registry.available()`), and
    switcher entries are labelled "(not installed)" so they stay discoverable and
    reach the install path. Unit-tested (`tests/unit/ui/test_speech_setup_dialog.py`).
-9. ◐ **Structured List Studio — Phase 2+ follow-ups** (PRD kept;
-   `quill-structured-list-studio-prd.md` §30 Implementation Status). **Done
-   (2026-06-24):** nested-list editing (Indent / Outdent / Add child + subtree-aware
+9. ✅ **Structured List Studio — Phase 2+ follow-ups — code-complete 2026-06-24**
+   (PRD kept; `quill-structured-list-studio-prd.md` §30 Implementation Status).
+   **Done:** nested-list editing (Indent / Outdent / Add child + subtree-aware
    Move up/down, wx-free in `quill/core/lists/nesting.py`, 14 unit tests; the dialog
    shows nesting depth and gates controls structurally), **multiple terms &
    definitions per entry** (terms one-per-line → multiple `<dt>`; definitions
@@ -85,10 +85,13 @@
    nothing reaches the document until OK), and **reparse-and-validate before commit**
    (§26: OK reparses/validates the generated source — empty list, term-less
    definition entry, or a flat-Markdown round-trip mismatch from injected markup —
-   and leaves the document unchanged with a warning on any issue). *Remaining:* the
-   Settings/preset surface (large config subsystem), and the definition-Markdown
-   profile prompt (low-value — F2 always sets a concrete profile today). *(This is
-   list structure, not the excluded table work.)*
+   and leaves the document unchanged with a warning on any issue), and the
+   **Settings / preset surface** (a "List Studio Settings…" dialog with shipped
+   presets, the high-value knobs, and JSON export/import; choices persist app-wide
+   in `settings.list_studio_settings` and seed the next F2). Every code follow-up is
+   delivered; only a formal live **screen-reader pass** (manual) and the low-value
+   profile prompt / intermediate config scopes remain. *(This is list structure, not
+   the excluded table work.)*
 10. ◐ **Hold-to-Dictate / Locked Dictation — follow-ups.** **Done (2026-06-24):**
     the dictation *policy* is now user-configurable — `dictation_max_locked_seconds`,
     `dictation_stop_on_focus_loss`, `dictation_intelligent_spacing`, and

@@ -1833,25 +1833,37 @@ an item-count round-trip mismatch (the generated source is reparsed; a
 differing count means some item text injected list markup). Any issue
 leaves the document unchanged and is surfaced through the hardened
 message box. Unit-tested in
-<code>tests/unit/core/lists/test_validate.py</code>. (The definition
-Markdown <strong>profile prompt</strong> when the profile is left unset
-— §7.6/§21.3 — remains a follow-up; F2 always sets a concrete profile
-today, so the dialog's silent HTML fallback is currently unreachable in
-normal use.)</li>
+<code>tests/unit/core/lists/test_validate.py</code>.</li>
+<li><strong>Settings / preset surface (§3–§13):</strong> a "List Studio
+Settings…" dialog (Insert › List, command
+<code>format.list_studio_settings</code>) lets the user pick a shipped
+<strong>preset</strong> (<code>list_studio_presets()</code> — QUILL
+defaults, Pandoc/HTML definitions, loose lists, concise/detailed
+announcements), tweak the high-value knobs (verbosity,
+definition-Markdown profile, bullet marker, numbered delimiter, loose
+lists, new-task state), and <strong>export/import</strong> the
+configuration as JSON. Choices persist app-wide in
+<code>settings.list_studio_settings</code> (serialized via
+<code>StructuredListSettings.to_dict</code>/<code>from_dict</code>) and
+become the <strong>app-scope</strong> defaults the next F2 starts from;
+the active document's format still pins the definition-Markdown profile
+(format/document scope) and the dialog provides the
+<strong>this-operation</strong> scope. Core persistence + presets
+unit-tested in <code>tests/unit/core/lists/test_settings.py</code> and
+<code>tests/unit/core/test_settings.py</code>.</li>
 </ul>
 <h2 id="not-yet-implemented-planned-follow-ups">Not yet implemented
 (planned follow-ups)</h2>
 <ul>
-<li>The full <strong>Settings/preset surface</strong> (§3–§13): scopes
-(app/format/workspace/ document/this-operation), the Settings category,
-shipped presets, and import/export. Defaults currently live in
-<code>StructuredListSettings</code>.</li>
-<li><strong>Reparse-and-validate before commit</strong> (§26, §28.14)
-and the definition Markdown <strong>profile prompt</strong> (§7.6, §21.3
-— the dialog currently falls back to embedded HTML when no profile is
-set).</li>
+<li><strong>Intermediate config scopes</strong> (§3
+format/workspace/document precedence) beyond the implemented app-default
+→ this-operation layering, and the definition-Markdown <strong>profile
+prompt</strong> (§7.6, §21.3) — both low-value today: F2 already pins
+the profile per document, so the silent HTML fallback is unreachable in
+normal use.</li>
 <li>A formal <strong>screen-reader pass</strong> (JAWS/NVDA/Narrator,
-§28.17); only stub-level wiring tests exist so far.</li>
+§28.17); only stub-level wiring tests exist so far. <em>(Manual — not
+closable in code.)</em></li>
 </ul>
 </body>
 </html>

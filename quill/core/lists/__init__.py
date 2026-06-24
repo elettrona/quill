@@ -56,6 +56,7 @@ from quill.core.lists.render import render_html, render_markdown
 from quill.core.lists.settings import (
     DefinitionMarkdownProfile,
     StructuredListSettings,
+    list_studio_presets,
 )
 from quill.core.lists.validate import validate_before_commit
 
@@ -86,6 +87,7 @@ __all__ = [
     "interpret_text_into_definition",
     "interpret_text_into_flat",
     "list_block_to_flat",
+    "list_studio_presets",
     "list_summary",
     "move_subtree",
     "outdent",

@@ -970,6 +970,7 @@ class MenuBuilderMixin:
         self._id_insert_task_list = wx.NewIdRef()
         self._id_open_list_manager = wx.NewIdRef()
         self._id_open_list_studio = wx.NewIdRef()
+        self._id_list_studio_settings = wx.NewIdRef()
         self._id_insert_code_block = wx.NewIdRef()
         self._id_insert_footnote = wx.NewIdRef()
         self._id_insert_table = wx.NewIdRef()
@@ -1254,6 +1255,10 @@ class MenuBuilderMixin:
         list_menu.Append(
             self._id_open_list_studio,
             self._menu_label(_("Structured List &Studio..."), "format.list_studio"),
+        )
+        list_menu.Append(
+            self._id_list_studio_settings,
+            self._menu_label(_("List Studio Se&ttings..."), "format.list_studio_settings"),
         )
         insert_menu.AppendSubMenu(list_menu, _("&List"))
         insert_menu.Append(
@@ -3297,6 +3302,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.open_list_studio(),
             id=self._id_open_list_studio,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_list_studio_settings(),
+            id=self._id_list_studio_settings,
         )
         self.frame.Bind(
             wx.EVT_MENU,

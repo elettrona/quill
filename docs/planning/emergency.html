@@ -270,30 +270,35 @@ whisper.cpp without its binary) disappearing from the engine
 switcher entries are labelled "(not installed)" so they stay
 discoverable and reach the install path. Unit-tested
 (<code>tests/unit/ui/test_speech_setup_dialog.py</code>).</li>
-<li>◐ <strong>Structured List Studio — Phase 2+ follow-ups</strong> (PRD
-kept; <code>quill-structured-list-studio-prd.md</code> §30
-Implementation Status). <strong>Done (2026-06-24):</strong> nested-list
-editing (Indent / Outdent / Add child + subtree-aware Move up/down,
-wx-free in <code>quill/core/lists/nesting.py</code>, 14 unit tests; the
-dialog shows nesting depth and gates controls structurally),
-<strong>multiple terms &amp; definitions per entry</strong> (terms
-one-per-line → multiple <code>&lt;dt&gt;</code>; definitions
-blank-line-separated → multiple <code>&lt;dd&gt;</code>), and
-<strong>in-place editing of the list under the caret</strong> (F2 with
-no selection detects and replaces the existing list block, preserving
-nesting), and <strong>type-switch conversion with information-loss
-confirmation</strong> (flat↔︎definition carries content across and
-confirms before dropping structure), and <strong>import with
-preview</strong> (Import from clipboard / file → interpreted into the
-live-previewed model; conservative separator detection; nothing reaches
-the document until OK), and <strong>reparse-and-validate before
-commit</strong> (§26: OK reparses/validates the generated source — empty
-list, term-less definition entry, or a flat-Markdown round-trip mismatch
-from injected markup — and leaves the document unchanged with a warning
-on any issue). <em>Remaining:</em> the Settings/preset surface (large
-config subsystem), and the definition-Markdown profile prompt (low-value
-— F2 always sets a concrete profile today). <em>(This is list structure,
-not the excluded table work.)</em></li>
+<li>✅ <strong>Structured List Studio — Phase 2+ follow-ups —
+code-complete 2026-06-24</strong> (PRD kept;
+<code>quill-structured-list-studio-prd.md</code> §30 Implementation
+Status). <strong>Done:</strong> nested-list editing (Indent / Outdent /
+Add child + subtree-aware Move up/down, wx-free in
+<code>quill/core/lists/nesting.py</code>, 14 unit tests; the dialog
+shows nesting depth and gates controls structurally), <strong>multiple
+terms &amp; definitions per entry</strong> (terms one-per-line →
+multiple <code>&lt;dt&gt;</code>; definitions blank-line-separated →
+multiple <code>&lt;dd&gt;</code>), and <strong>in-place editing of the
+list under the caret</strong> (F2 with no selection detects and replaces
+the existing list block, preserving nesting), and <strong>type-switch
+conversion with information-loss confirmation</strong> (flat↔︎definition
+carries content across and confirms before dropping structure), and
+<strong>import with preview</strong> (Import from clipboard / file →
+interpreted into the live-previewed model; conservative separator
+detection; nothing reaches the document until OK), and
+<strong>reparse-and-validate before commit</strong> (§26: OK
+reparses/validates the generated source — empty list, term-less
+definition entry, or a flat-Markdown round-trip mismatch from injected
+markup — and leaves the document unchanged with a warning on any issue),
+and the <strong>Settings / preset surface</strong> (a "List Studio
+Settings…" dialog with shipped presets, the high-value knobs, and JSON
+export/import; choices persist app-wide in
+<code>settings.list_studio_settings</code> and seed the next F2). Every
+code follow-up is delivered; only a formal live <strong>screen-reader
+pass</strong> (manual) and the low-value profile prompt / intermediate
+config scopes remain. <em>(This is list structure, not the excluded
+table work.)</em></li>
 <li>◐ <strong>Hold-to-Dictate / Locked Dictation — follow-ups.</strong>
 <strong>Done (2026-06-24):</strong> the dictation <em>policy</em> is now
 user-configurable — <code>dictation_max_locked_seconds</code>,
