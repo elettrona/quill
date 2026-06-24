@@ -52,26 +52,38 @@ class ListStudioSettingsDialog:
         grid = wx.FlexGridSizer(0, 2, 8, 10)
         grid.AddGrowableCol(1, 1)
 
-        def _add(label_text: str, control: Any) -> None:
+        def _add(label_text: str, make_control: Any) -> Any:
+            # Create the label *before* the control so the static label precedes
+            # its field in Z-order / tab order (GATE: dialog z-order). The control
+            # is built by a factory here, never pre-created by the caller.
             grid.Add(wx.StaticText(dlg, label=label_text), 0, wx.ALIGN_CENTER_VERTICAL)
+            control = make_control()
             grid.Add(control, 0, wx.EXPAND)
+            return control
 
-        self._preset_choice = wx.Choice(dlg, choices=["(Custom)", *list_studio_presets().keys()])
+        self._preset_choice = _add(
+            "Start from &preset:",
+            lambda: wx.Choice(dlg, choices=["(Custom)", *list_studio_presets().keys()]),
+        )
         self._preset_choice.SetSelection(0)
         self._preset_choice.Bind(wx.EVT_CHOICE, self._on_preset_chosen)
-        _add("Start from &preset:", self._preset_choice)
 
-        self._verbosity_choice = wx.Choice(dlg, choices=[label for label, _v in _VERBOSITY])
-        _add("Announcement &verbosity:", self._verbosity_choice)
-
-        self._profile_choice = wx.Choice(dlg, choices=[label for label, _p in _PROFILES])
-        _add("&Definition list Markdown:", self._profile_choice)
-
-        self._bullet_choice = wx.Choice(dlg, choices=[label for label, _b in _BULLETS])
-        _add("&Bullet marker:", self._bullet_choice)
-
-        self._delimiter_choice = wx.Choice(dlg, choices=[label for label, _d in _DELIMITERS])
-        _add("&Numbered list delimiter:", self._delimiter_choice)
+        self._verbosity_choice = _add(
+            "Announcement &verbosity:",
+            lambda: wx.Choice(dlg, choices=[label for label, _v in _VERBOSITY]),
+        )
+        self._profile_choice = _add(
+            "&Definition list Markdown:",
+            lambda: wx.Choice(dlg, choices=[label for label, _p in _PROFILES]),
+        )
+        self._bullet_choice = _add(
+            "&Bullet marker:",
+            lambda: wx.Choice(dlg, choices=[label for label, _b in _BULLETS]),
+        )
+        self._delimiter_choice = _add(
+            "&Numbered list delimiter:",
+            lambda: wx.Choice(dlg, choices=[label for label, _d in _DELIMITERS]),
+        )
 
         self._loose_box = wx.CheckBox(dlg, label="&Loose Markdown lists (blank line between items)")
         grid.Add((0, 0))
