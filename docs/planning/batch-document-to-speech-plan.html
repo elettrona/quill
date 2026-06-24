@@ -1396,17 +1396,18 @@ Text cleanup and normalization for speech — configurable, with great
 defaults (new feature)</h2>
 <p>Real-world documents — especially Word and copy-pasted web content —
 are full of typography that makes TTS engines stumble or "go crazy":
-curly quotes and the apostrophe-lookalikes
-(<code>’ ‘ ʼ ′ ´ \``), em- and en-dashes (</code>—
-–<code>), ellipses (</code>…<code>), non-breaking and zero-width spaces, soft hyphens, ligatures (</code>ﬁ
-ﬂ<code>), bullets and arrows (</code>• ▪ ‣ → ★<code>), symbols (</code>©
-® ™ ° × ÷ § ¶ † ‡<code>), fractions (</code>½
-¾<code>), math operators (</code>≤ ≥ ≠ ± ≈`), stray control characters,
-and emoji. Some engines read these literally ("right single quotation
-mark"), some choke, some insert wrong pauses. QUILL should <strong>clean
-the text deterministically before synthesis</strong>, with
-<strong>excellent defaults</strong> so it "just works," and
-<strong>rich, granular options</strong> for users who want control.</p>
+curly quotes and the apostrophe-lookalikes (’ ‘ ʼ ′ ´ and the grave
+accent), em- and en-dashes (<code>— –</code>), ellipses
+(<code>…</code>), non-breaking and zero-width spaces, soft hyphens,
+ligatures (<code>ﬁ ﬂ</code>), bullets and arrows
+(<code>• ▪ ‣ → ★</code>), symbols (<code>© ® ™ ° × ÷ § ¶ † ‡</code>),
+fractions (<code>½ ¾</code>), math operators (<code>≤ ≥ ≠ ± ≈</code>),
+stray control characters, and emoji. Some engines read these literally
+("right single quotation mark"), some choke, some insert wrong pauses.
+QUILL should <strong>clean the text deterministically before
+synthesis</strong>, with <strong>excellent defaults</strong> so it "just
+works," and <strong>rich, granular options</strong> for users who want
+control.</p>
 <p>This is the deterministic <em>typographic</em> layer; pronunciation
 dictionaries (§4.7) are the <em>semantic</em> per-term layer. Both share
 the one pipeline and improve <strong>all</strong> speech (live Read
@@ -1432,8 +1433,8 @@ Normalization passes (each individually toggleable; defaults in
 <ul>
 <li><strong>Quotes &amp; apostrophes</strong> (<strong>on</strong>):
 curly quotes → straight; all apostrophe-lookalikes → ASCII
-<code>'</code> (so <code>don’t</code>,
-<code>don\</code>t<code>, </code>donʼt` all read as "don't").</li>
+<code>'</code> (so a word typed with a curly, grave, or modifier
+apostrophe all reads as "don't").</li>
 <li><strong>Dashes</strong> (<strong>on</strong>, mode =
 <strong>comma-pause</strong>): em-dash → <code>, </code> (a natural
 pause), en-dash → <code>-</code>; optional <em>smart ranges</em> turns
@@ -1506,9 +1507,9 @@ pronunciation dictionary (a respelling always wins).</li>
 <li><strong>Citations / footnote markers</strong> (opt-in):
 <code>[1]</code>, superscript footnote digits → removed or
 "footnote".</li>
-<li><strong>Inline code / backticks</strong> (opt-in): strip
-<code>\</code>backticks`` (and optionally announce "code") so code spans
-don't read punctuation.</li>
+<li><strong>Inline code / backticks</strong> (opt-in): strip backtick
+characters around inline code (and optionally announce "code") so code
+spans don't read punctuation.</li>
 <li><strong>Acronym dotting</strong> (opt-in): <code>U.S.A.</code> →
 <code>USA</code>.</li>
 <li><strong>Quote/aside cues</strong> (opt-in, verbosity-style):
@@ -1635,6 +1636,90 @@ address twice; inter-segment and trailing pauses appear as
 approximations on plain engines; the address pass claims
 <code>.</code>/<code>-</code>/<code>/</code> before the generic passes;
 the long-URL guard falls back to announce-only.</li>
+</ul>
+<h2
+id="410-project-remembered-settings--configure-once-never-again-new-feature">4.10
+Project-remembered settings — configure once, never again (new
+feature)</h2>
+<p><strong>The principle: set it once per project, then it just
+remembers.</strong> Re-entering an engine, voice, speed, output format,
+chapter options, text-cleanup choices, and dictionary selection every
+time you open a folder is exactly the kind of friction that makes a
+powerful tool feel tedious. A <strong>project</strong> (the folder and
+its files, §4.7.1) should carry its <strong>whole speech
+profile</strong> with it, so the second time you open it, everything is
+already right and Start is one keystroke away.</p>
+<h3 id="4101-what-is-remembered">4.10.1 What is remembered</h3>
+<p>The full export/speech configuration: engine, voice, speed; output
+format (WAV / MP3 / M4B); chapter mode + transition sound +
+inter-article pause (§4.8); the complete <code>tts_normalization</code>
+options incl. email/URL/phone pacing (§4.9); the enabled
+pronunciation-dictionary ids (§4.7); and the source/output folders. In
+short, a project becomes a <strong>self-contained, portable speech
+profile</strong> — open it and press Start.</p>
+<h3 id="4102-where-it-lives-one-quill-project-home">4.10.2 Where it
+lives (one <code>.quill/</code> project home)</h3>
+<ul>
+<li>A single project-data folder <code>&lt;project&gt;/.quill/</code>
+holds <strong>everything project-scoped</strong>:
+<code>pronunciation/</code> (the project dictionaries, §4.7)
+<strong>and</strong> <code>speech-project.json</code> (the remembered
+settings), schema-validated and atomic-written. It travels with the
+folder — shareable, version-controllable — so a colleague who receives
+the folder gets your voice, your pronunciations, your chapter style, for
+free.</li>
+<li>A single <code>current_project_dir()</code> resolver (open Notebook
+root → active document's folder → batch source folder) is the
+<strong>one</strong> source of "which project," reused by §4.7
+dictionaries and §4.10 settings alike (closing the hole of two different
+notions of "project").</li>
+</ul>
+<h3 id="4103-resolution-and-the-save-once-interaction">4.10.3 Resolution
+and the "save once" interaction</h3>
+<ul>
+<li><strong>Precedence, most specific wins:</strong> this-run dialog
+tweaks → <strong>project settings</strong> (when a project is open) →
+global app settings → built-in defaults. Opening a project
+<strong>silently applies</strong> its remembered settings as the
+dialog's starting values; the user can still override for a single run
+without disturbing the saved project profile.</li>
+<li><strong>Saving:</strong> a <strong>"Remember for this
+project"</strong> action writes the current values to
+<code>speech-project.json</code>; an opt-in <strong>auto-remember on
+Start</strong> (default <strong>on</strong> — the "why set it twice"
+default) saves whatever you just ran so the next open matches. A clear,
+always-visible indicator shows the source of the current values
+("Project profile" vs "Global defaults"), and a <strong>"Reset to
+global"</strong> clears the project profile.</li>
+<li><strong>Global stays the fallback and the new-project seed:</strong>
+a brand-new project with no <code>.quill/speech-project.json</code>
+inherits the user's global defaults, so even first use is
+pre-tuned.</li>
+</ul>
+<h3 id="4104-magical--simple">4.10.4 Magical + simple</h3>
+<p>This is the simplicity layer over all the richness: the §4.7–§4.9
+power (dictionaries, chapters, cleanup) is configured <strong>once per
+body of work</strong> and then disappears into the background. Combined,
+a project folder is a living, portable "how this content should sound" —
+set up the newspaper project once, and forever after it reads the way
+you like, with your names pronounced right, your chapter tones, your
+pacing, everywhere.</p>
+<h3 id="4105-settings-ui-tests">4.10.5 Settings, UI, tests</h3>
+<ul>
+<li><strong>Storage/serialization:</strong>
+<code>speech-project.json</code> is the serialized profile (reuse the
+<code>to_dict</code>/<code>from_dict</code> pattern); global equivalents
+stay in app settings (§7). Add
+<code>batch_speech_auto_remember_project: bool</code> (default true) to
+global settings.</li>
+<li><strong>UI:</strong> the batch/speech dialog's "Remember for this
+project" / "Reset to global" actions and the source indicator; project
+profile loads on open.</li>
+<li><strong>Tests (wx-free):</strong> save→reload round-trip of a
+project profile under a temp <code>&lt;project&gt;/.quill/</code>;
+precedence resolution (this-run &gt; project &gt; global &gt; defaults);
+a missing project profile falls back to global; the shared
+<code>current_project_dir()</code> contract.</li>
 </ul>
 <hr />
 <h1 id="5-accessibility-requirements">5. Accessibility Requirements</h1>
@@ -2063,6 +2148,17 @@ SSML engines, comma/period approximation elsewhere). Everything is
 configurable (per-pass toggles, modes, a user replacement-map, presets)
 and shared by live Read Aloud and batch via one
 <code>normalize_for_tts</code> stage; fully unit-tested.</li>
+<li><strong>Project-remembered settings (§4.10):</strong> a project
+(folder of files) carries its whole speech profile — engine/voice/speed,
+output format, chapter options, text-cleanup options, and the active
+pronunciation dictionaries — in
+<code>&lt;project&gt;/.quill/speech-project.json</code>, applied
+automatically when the project opens, so the user configures
+<strong>once per project</strong> and never re-enters it; this-run &gt;
+project &gt; global &gt; defaults precedence is unit-tested, one shared
+<code>current_project_dir()</code> resolves the project for both
+settings and dictionaries, and "Remember for this project" / "Reset to
+global" plus auto-remember-on-Start make it effortless.</li>
 <li><code>ruff</code>, scoped <code>mypy quill\core quill\io</code>, and
 the test suite are green.</li>
 <li>User guide and CHANGELOG updated.</li>
