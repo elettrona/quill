@@ -56,3 +56,20 @@ def test_checklist_render_reflects_checked_state() -> None:
         )
     )
     assert studio._render() == "- [x] done\n- [ ] todo"
+
+
+def test_multiple_terms_render_as_multiple_dt() -> None:
+    # One entry with two synonymous terms (§15.3) emits two <dt> in HTML.
+    dl = DefinitionList(
+        entries=[
+            DefinitionEntry(
+                terms=["HTTP", "HyperText Transfer Protocol"],
+                definitions=["A protocol"],
+            )
+        ]
+    )
+    studio = _studio(definition=dl, target_format="html")
+    rendered = studio._render()
+    assert "<dt>HTTP</dt>" in rendered
+    assert "<dt>HyperText Transfer Protocol</dt>" in rendered
+    assert "<dd>A protocol</dd>" in rendered
