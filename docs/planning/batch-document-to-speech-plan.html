@@ -1390,6 +1390,252 @@ between articles/chapters; 0–10000, clamped; default e.g. 1200). See
 <li><code>batch_speech_intro_section_title: str</code> (default
 "Introduction") for pre-first-heading text.</li>
 </ul>
+<h2
+id="49-text-cleanup-and-normalization-for-speech--configurable-with-great-defaults-new-feature">4.9
+Text cleanup and normalization for speech — configurable, with great
+defaults (new feature)</h2>
+<p>Real-world documents — especially Word and copy-pasted web content —
+are full of typography that makes TTS engines stumble or "go crazy":
+curly quotes and the apostrophe-lookalikes
+(<code>’ ‘ ʼ ′ ´ \``), em- and en-dashes (</code>—
+–<code>), ellipses (</code>…<code>), non-breaking and zero-width spaces, soft hyphens, ligatures (</code>ﬁ
+ﬂ<code>), bullets and arrows (</code>• ▪ ‣ → ★<code>), symbols (</code>©
+® ™ ° × ÷ § ¶ † ‡<code>), fractions (</code>½
+¾<code>), math operators (</code>≤ ≥ ≠ ± ≈`), stray control characters,
+and emoji. Some engines read these literally ("right single quotation
+mark"), some choke, some insert wrong pauses. QUILL should <strong>clean
+the text deterministically before synthesis</strong>, with
+<strong>excellent defaults</strong> so it "just works," and
+<strong>rich, granular options</strong> for users who want control.</p>
+<p>This is the deterministic <em>typographic</em> layer; pronunciation
+dictionaries (§4.7) are the <em>semantic</em> per-term layer. Both share
+the one pipeline and improve <strong>all</strong> speech (live Read
+Aloud, previews, and batch), not just export — though it is surfaced
+prominently in the export settings as requested.</p>
+<h3
+id="491-core-module-quillcorespeechtext_normalizepy-new-wx-free-strict-typed">4.9.1
+Core module (<code>quill/core/speech/text_normalize.py</code>, new,
+wx-free, strict-typed)</h3>
+<ul>
+<li><code>TextNormalizationOptions</code> dataclass — booleans + a few
+small enums, every field defaulting to the recommended value, with
+<code>to_dict</code>/<code>from_dict</code> (persist/round-trip like
+<code>StructuredListSettings</code>).</li>
+<li><code>normalize_for_tts(text, options) -&gt; str</code> — applies
+the enabled passes in a fixed, documented order. Pure and fully
+unit-testable (no engine, no wx).</li>
+</ul>
+<h3
+id="492-normalization-passes-each-individually-toggleable-defaults-in-bold">4.9.2
+Normalization passes (each individually toggleable; defaults in
+<strong>bold</strong>)</h3>
+<ul>
+<li><strong>Quotes &amp; apostrophes</strong> (<strong>on</strong>):
+curly quotes → straight; all apostrophe-lookalikes → ASCII
+<code>'</code> (so <code>don’t</code>,
+<code>don\</code>t<code>, </code>donʼt` all read as "don't").</li>
+<li><strong>Dashes</strong> (<strong>on</strong>, mode =
+<strong>comma-pause</strong>): em-dash → <code>, </code> (a natural
+pause), en-dash → <code>-</code>; optional <em>smart ranges</em> turns
+<code>5–10</code>/<code>Mon–Fri</code> into "5 to 10" / "Mon to Fri".
+Mode choices: comma-pause / hyphen / spoken ("em dash") / remove.</li>
+<li><strong>Ellipsis</strong> (<strong>on</strong>): <code>…</code> and
+<code>...</code> → a single pause (<code>, </code>), so the engine
+doesn't say "dot dot dot" or stall.</li>
+<li><strong>Spaces &amp; invisibles</strong> (<strong>on</strong>):
+non-breaking / figure / narrow / zero-width spaces → normal space;
+zero-width joiners, soft hyphens (<code>­</code>), BOM, and bidi marks →
+removed.</li>
+<li><strong>Ligatures</strong> (<strong>on</strong>):
+<code>ﬁ ﬂ ﬀ ﬃ ﬄ</code> → <code>fi fl ff ffi ffl</code>.</li>
+<li><strong>Bullets &amp; list glyphs</strong> (<strong>on</strong>):
+<code>• ◦ ▪ ‣ ⁃ ● ○ ■ ▶ →</code> at line starts → removed (or
+<code>, </code> mid-line) so lists read as items, not "black
+circle".</li>
+<li><strong>Symbols</strong> (<strong>mode = speak</strong>):
+<code>© → "copyright"</code>, <code>® → "registered"</code>,
+<code>™ → "trademark"</code>, <code>° → "degrees"</code>,
+<code>× → "times"</code>, <code>÷ → "divided by"</code>,
+<code>§ → "section"</code>, <code>¶ → "paragraph"</code>,
+<code>† ‡</code>, arrows/stars/checks, currency
+(<code>$ € £ ¥ → dollars/euros/…</code>, positioned correctly),
+<code>% → "percent"</code>, common math (<code>≤ ≥ ≠ ± ≈ ∞</code>). A
+built-in, <strong>user-extendable</strong> symbol→word map. Mode: speak
+/ strip / keep.</li>
+<li><strong>Fractions</strong> (<strong>on</strong>): <code>½ ¾ ⅓</code>
+→ "one half" etc.</li>
+<li><strong>Emoji &amp; pictographs</strong> (<strong>mode =
+strip</strong>): strip by default; optional "speak name" (e.g. 🎉 →
+"party popper") via a name table; optional "keep".</li>
+<li><strong>Repeated punctuation</strong> (<strong>on</strong>):
+<code>!!!</code>→<code>!</code>, <code>???</code>→<code>?</code>,
+<code>?!?!</code>→<code>?!</code>, runs of
+<code>-</code>/<code>*</code>/<code>=</code> (rule lines) →
+pause/removed.</li>
+<li><strong>Control characters</strong> (<strong>on</strong>): any C0/C1
+control except tab/newline → removed.</li>
+<li><strong>Compatibility normalize (NFKC)</strong>
+(<strong>off</strong> by default — opt-in): fold
+fullwidth/superscript/decorated compatibility characters to canonical
+forms. Off by default because it is heavier and occasionally surprising;
+available for messy input.</li>
+</ul>
+<h3 id="493-magical-optional-passes-off-by-default-power-features">4.9.3
+"Magical" optional passes (off-by-default power features)</h3>
+<ul>
+<li><strong>Phone numbers</strong> (opt-in but high-value): detect
+common patterns — <code>(555) 123-4567</code>,
+<code>555-123-4567</code>, <code>+1 555 123 4567</code>,
+<code>555.123.4567</code>, extensions (<code>x123</code>) — and speak
+them as <strong>grouped digits with pauses</strong> ("five five five …
+one two three … four five six seven"), never as subtraction or a date.
+The dashes/dots inside a detected phone number are handled here,
+<em>before</em> the generic dash pass, so a phone number is never
+mangled into "555 minus 1234". A toggle plus a light format choice
+(grouped-digits / digit-by-digit).</li>
+<li><strong>Numbers spoken naturally</strong> (opt-in): years
+(<code>1999</code> → "nineteen ninety-nine"), large numbers with
+grouping, decimals, ordinals, currency amounts. Needs a light,
+dependency-free heuristic (or a vetted <code>num2words</code>-style
+helper — record the dependency decision during build).</li>
+<li><strong>Acronyms</strong> (opt-in): ALL-CAPS tokens that aren't
+dictionary words → spelled out (<code>SQL</code> → "S Q L"), with an
+allow-list of acronyms that <em>are</em> words (<code>NASA</code>,
+<code>RADAR</code>). Ties into the §4.7 smart-candidate detector and the
+pronunciation dictionary (a respelling always wins).</li>
+<li><strong>Citations / footnote markers</strong> (opt-in):
+<code>[1]</code>, superscript footnote digits → removed or
+"footnote".</li>
+<li><strong>Inline code / backticks</strong> (opt-in): strip
+<code>\</code>backticks`` (and optionally announce "code") so code spans
+don't read punctuation.</li>
+<li><strong>Acronym dotting</strong> (opt-in): <code>U.S.A.</code> →
+<code>USA</code>.</li>
+<li><strong>Quote/aside cues</strong> (opt-in, verbosity-style):
+announce "quote"/"end quote" around quotations or pause around
+parentheticals — for users who want structure cues.</li>
+<li><strong>Heading cue</strong> (ties to §4.8): when chapterizing,
+optionally prefix a section with "Heading: <title>" in addition to the
+chapter marker/tone.</li>
+</ul>
+<h3 id="494-the-escape-hatch--user-characterword-replacement-map">4.9.4
+The escape hatch — user character/word replacement map</h3>
+<ul>
+<li><code>extra_replacements: dict[str, str]</code> (a small,
+user-editable map) for <strong>anything</strong> the built-in passes
+don't cover — paste a weird glyph, type how to say it, done. This is the
+"magical, make-it-yours" lever and complements the §4.7 pronunciation
+dictionaries (which handle whole <em>terms</em>; this handles raw
+<em>characters/sequences</em>). Applied last so it can override
+built-ins.</li>
+</ul>
+<h3 id="495-pipeline-placement-and-scope">4.9.5 Pipeline placement and
+scope</h3>
+<pre><code>extract_text → normalize_for_tts(text, opts) → apply_pronunciations → polish_for_tts → synthesize</code></pre>
+<ul>
+<li>Runs <strong>first</strong> so phone/number detection, pronunciation
+matching, and abbreviation expansion operate on clean, de-typographied
+text (and so the phone pass claims dashes before the generic dash
+pass).</li>
+<li>Shared by <strong>live Read Aloud and batch</strong> (one
+implementation), exactly like §4.7 — a single, consistent "clean voice"
+everywhere.</li>
+<li>Deterministic and order-stable, so output is reproducible and
+auditable.</li>
+</ul>
+<h3 id="496-settings-and-ui">4.9.6 Settings and UI</h3>
+<ul>
+<li>Persist as a <code>tts_normalization</code> dict (serialized
+<code>TextNormalizationOptions</code>) in settings — one source of truth
+shared by export and Read Aloud; plus a master
+<code>tts_normalization_enabled: bool</code> (default
+<strong>true</strong>). The §4.9.7 address controls live in the same
+options: <code>tts_address_mode</code> (announce / speak /
+<strong>speak_then_repeat</strong>),
+<code>tts_address_spell_letters: bool</code>,
+<code>tts_address_char_pause_ms: int</code> (inter-segment pause,
+clamped), <code>tts_address_trailing_pause_ms: int</code> (clamped), and
+<code>tts_address_long_url_threshold: int</code>.</li>
+<li><strong>Export settings dialog:</strong> a <strong>"Clean up text
+for speech"</strong> section — a master checkbox with great defaults
+active immediately, and a <strong>Customize…</strong> button opening a
+grouped, fully-keyboard panel of the §4.9.2/§4.9.3 toggles
+(dash/symbol/emoji modes, the phone-number format), the <strong>Emails
+&amp; URLs</strong> controls (mode, spell-letters, inter-segment pause,
+trailing pause), and the §4.9.4 replacement-map editor. Also reachable
+from Read Aloud settings so the cleanup applies to interactive
+speech.</li>
+<li><strong>Presets</strong> (à la the list-studio presets):
+"Recommended", "Minimal (quotes &amp; spaces only)", "Aggressive (also
+phone numbers, numbers, acronyms, NFKC)", "Off".</li>
+</ul>
+<h3
+id="497-emails-and-urls--speak-clearly-optionally-repeat-configurable-pacing">4.9.7
+Emails and URLs — speak clearly, optionally repeat, configurable
+pacing</h3>
+<p>Email addresses and web addresses are the hardest things to catch by
+ear and the most painful to get wrong — a listener can't glance back at
+the screen. QUILL treats <strong>emails and URLs identically</strong>
+with a dedicated, magical pass (replacing today's blunt
+<code>URL → "link"</code>):</p>
+<ul>
+<li><strong>Mode</strong> (per the user's request): <em>Announce
+only</em> ("link" / "email address") · <em>Speak it</em> · <strong>Speak
+then repeat</strong> (say the whole address, pause, say it again) —
+default <strong>Speak then repeat</strong> for addresses, so the
+listener gets a second chance. A length guard falls back to <em>Announce
+only</em> for absurdly long URLs (configurable threshold) to avoid
+reading a 300-character tracking link twice.</li>
+<li><strong>Spell-for-clarity with configurable inter-character/segment
+pacing:</strong> the address is spoken with deliberate spacing so each
+part lands. Punctuation becomes words — <code>@ → "at"</code>,
+<code>. → "dot"</code>, <code>/ → "slash"</code>,
+<code>: → "colon"</code>, <code>- → "dash"</code>,
+<code>_ → "underscore"</code>, <code>~ → "tilde"</code>,
+<code>? → "question mark"</code>, <code>&amp; → "and"</code>,
+<code>= → "equals"</code>, <code># → "hash"</code> — and a
+<strong>configurable inter-segment pause</strong>
+(<code>tts_address_char_pause_ms</code>) is inserted between
+characters/segments so <code>jeff@jeffbishop.com</code> reads as "jeff …
+at … jeffbishop … dot … com" at a pace the user sets (0 = natural,
+higher = spelled slowly). A sub-option spells the <em>local part</em>
+and host <strong>letter-by-letter</strong> for maximum clarity (great
+for unusual addresses), also paced by the same setting.</li>
+<li><strong>Configurable trailing pause:</strong> a settable silence
+<strong>after</strong> the address
+(<code>tts_address_trailing_pause_ms</code>) before the narration
+continues, so it doesn't run straight into the next sentence.</li>
+<li><strong>Implementation of the pauses:</strong> on SSML-capable
+engines (SAPI 5 / eSpeak, §4.7.8) the pauses are exact
+<code>&lt;break time="…ms"/&gt;</code>; on plain engines they degrade to
+comma/period approximations (a comma ≈ short, a period ≈ long) so the
+<em>effect</em> survives everywhere even if the millisecond precision
+doesn't. Detection runs <strong>inside §4.9.5 before the generic
+symbol/dash passes</strong>, so an address's
+<code>.</code>/<code>-</code>/<code>/</code> are claimed here and never
+mangled into "dot dot" or "minus".</li>
+<li><strong>Shared with §4.9.3 phone numbers:</strong> emails, URLs, and
+phone numbers are the three "structured tokens" that get
+spell-with-pacing treatment from one mechanism, with the same pause
+settings family.</li>
+</ul>
+<h3 id="498-tests">4.9.8 Tests</h3>
+<ul>
+<li><code>normalize_for_tts</code>: each pass in isolation
+(quotes/apostrophes, dashes incl. smart ranges, ellipsis, invisibles,
+ligatures, bullets, symbol speak/strip/keep, fractions, emoji, repeated
+punctuation, control chars, NFKC); phone-number patterns spoken as
+grouped digits and <strong>not</strong> mangled by the dash pass; the
+escape-hatch map applied last and overriding built-ins; defaults
+round-trip via <code>to_dict</code>/<code>from_dict</code>;
+deterministic ordering.</li>
+<li>Emails/URLs: punctuation→words mapping; speak-then-repeat emits the
+address twice; inter-segment and trailing pauses appear as
+<code>&lt;break&gt;</code> on SSML engines and comma/period
+approximations on plain engines; the address pass claims
+<code>.</code>/<code>-</code>/<code>/</code> before the generic passes;
+the long-URL guard falls back to announce-only.</li>
+</ul>
 <hr />
 <h1 id="5-accessibility-requirements">5. Accessibility Requirements</h1>
 <p>This is a screen-reader-first application; the batch UI must be
@@ -1630,6 +1876,19 @@ chapter-offset computation (with gap + earcon accounting), and marker
 round-tripping. Depends on the MP3 path (Phase 3 + the
 <code>transcode_to_mp3</code> helper); ships after a folder can already
 produce plain audio.</p>
+<p><strong>Phase 8 — Text cleanup and normalization (§4.9).</strong>
+Build the wx-free <code>text_normalize.py</code> with
+<code>TextNormalizationOptions</code> and
+<code>normalize_for_tts</code>, implement the §4.9.2 default passes
+(quotes/apostrophes, dashes, ellipsis, invisibles, ligatures, bullets,
+symbols, fractions, emoji, repeated punctuation, control chars, NFKC)
+and the §4.9.3 opt-in passes (phone numbers first-class, numbers,
+acronyms, citations, code, etc.) plus the §4.9.4 user replacement-map,
+wire it as the <strong>first</strong> stage of the shared pipeline (live
+Read Aloud + batch), and surface it in the export and Read Aloud
+settings (master toggle, Customize panel, presets). Fully unit-tested
+(§4.9.7). Independently shippable and an instant win for live speech —
+can land early, before or alongside Phase 5.</p>
 <p><strong>Related but separately tracked:</strong>
 <strong>bestSpeech</strong> legacy TTS support (issue #696) — land it as
 a SAPI5 voice so it flows through the batch <code>sapi5</code> engine
@@ -1790,6 +2049,20 @@ spacing between articles. Section extraction, chapter-offset computation
 chapter list is announced before Start. Approach borrowed from
 ChapterForge (<code>d:\code99\forum</code>, MIT/BITS), credited in
 <code>THIRD_PARTY.md</code>.</li>
+<li><strong>Text cleanup and normalization (§4.9):</strong> weird
+Word/web typography (curly quotes and apostrophe-lookalikes,
+em/en-dashes, ellipses, invisible spaces, soft hyphens, ligatures,
+bullets, symbols, fractions, emoji, control characters) is cleaned
+before synthesis with excellent defaults, and <strong>phone
+numbers</strong>, <strong>emails</strong>, and <strong>URLs</strong> are
+spoken clearly — phone numbers as grouped digits; emails/URLs handled
+identically with a <strong>speak-then-repeat</strong> option,
+punctuation→words, a configurable <strong>inter-segment pause</strong>
+and <strong>trailing pause</strong> (exact <code>&lt;break&gt;</code> on
+SSML engines, comma/period approximation elsewhere). Everything is
+configurable (per-pass toggles, modes, a user replacement-map, presets)
+and shared by live Read Aloud and batch via one
+<code>normalize_for_tts</code> stage; fully unit-tested.</li>
 <li><code>ruff</code>, scoped <code>mypy quill\core quill\io</code>, and
 the test suite are green.</li>
 <li>User guide and CHANGELOG updated.</li>
