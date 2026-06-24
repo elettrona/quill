@@ -108,6 +108,47 @@ def test_settings_round_trip(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
     assert loaded.status_bar_hidden == ["selection"]
 
 
+def test_settings_default_dictation_policy(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    loaded = load_settings()
+    assert loaded.dictation_max_locked_seconds == 300.0
+    assert loaded.dictation_stop_on_focus_loss is True
+    assert loaded.dictation_intelligent_spacing is True
+    assert loaded.dictation_min_hold_seconds == 0.0
+
+
+def test_settings_dictation_policy_round_trip(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    save_settings(
+        Settings(
+            dictation_max_locked_seconds=120.0,
+            dictation_stop_on_focus_loss=False,
+            dictation_intelligent_spacing=False,
+            dictation_min_hold_seconds=0.25,
+        )
+    )
+    loaded = load_settings()
+    assert loaded.dictation_max_locked_seconds == 120.0
+    assert loaded.dictation_stop_on_focus_loss is False
+    assert loaded.dictation_intelligent_spacing is False
+    assert loaded.dictation_min_hold_seconds == 0.25
+
+
+def test_settings_clamp_negative_dictation_durations(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    (tmp_path / "settings.json").write_text(
+        '{"dictation_max_locked_seconds":-5,"dictation_min_hold_seconds":"oops"}',
+        encoding="utf-8",
+    )
+    loaded = load_settings()
+    assert loaded.dictation_max_locked_seconds == 0.0  # negative clamped to 0
+    assert loaded.dictation_min_hold_seconds == 0.0  # malformed falls back to default
+
+
 def test_settings_clamps_recent_file_limit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
     save_settings(Settings(recent_files_limit=1000))

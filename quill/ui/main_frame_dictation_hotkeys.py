@@ -170,11 +170,24 @@ class DictationHotkeysMixin:
     def _ensure_dictation_controller(self) -> Any:
         if self._live_dictation is None:
             from quill.core.speech.dictation import DictationController
-            from quill.core.speech.dictation.controller import DictationConfig
 
             self._dictation_services = _LiveDictationServices(self)
-            self._live_dictation = DictationController(self._dictation_services, DictationConfig())
+            self._live_dictation = DictationController(
+                self._dictation_services, self._dictation_config()
+            )
         return self._live_dictation
+
+    def _dictation_config(self) -> Any:
+        """Build the controller policy from user Settings (PRD §10, §20)."""
+        from quill.core.speech.dictation.controller import DictationConfig
+
+        settings = self.settings
+        return DictationConfig(
+            max_locked_seconds=getattr(settings, "dictation_max_locked_seconds", 300.0),
+            stop_on_focus_loss=getattr(settings, "dictation_stop_on_focus_loss", True),
+            intelligent_spacing=getattr(settings, "dictation_intelligent_spacing", True),
+            min_hold_seconds=getattr(settings, "dictation_min_hold_seconds", 0.0),
+        )
 
     def _register_dictation_hotkey_commands(self) -> None:
         handlers = {

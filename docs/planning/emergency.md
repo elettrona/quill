@@ -75,9 +75,13 @@
    reparse-and-validate before commit, and the Settings/preset surface. *(This is
    list structure, not the
    excluded table work.)*
-10. **Hold-to-Dictate / Locked Dictation — follow-ups** (migrated into the Speech &
-    Dictation table above): Settings surface (max-duration, focus-loss/background,
-    verbosity, earcon volume, retention, visual indicator); Dictation History +
+10. ◐ **Hold-to-Dictate / Locked Dictation — follow-ups.** **Done (2026-06-24):**
+    the dictation *policy* is now user-configurable — `dictation_max_locked_seconds`,
+    `dictation_stop_on_focus_loss`, `dictation_intelligent_spacing`, and
+    `dictation_min_hold_seconds` are settings (validated, negatives clamped) wired
+    into the controller's `DictationConfig` via `_dictation_config()`, replacing the
+    hardcoded defaults. *Remaining:* a user-facing settings *panel* for those knobs
+    (plus earcon volume / retention / visual indicator); Dictation History +
     interactive startup-recovery prompt; Dictation Review interface for deferred
     inserts; distinct locked-vs-hold earcons; dedicated Dictation menu + one-time
     onboarding.
