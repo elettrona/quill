@@ -58,30 +58,30 @@ def test_announcement_engine_falls_back_to_status_when_prism_missing(monkeypatch
     assert "not installed" in state.last_error.lower()
 
 
+class _FakeVoice:
+    """Stand-in SAPI SpVoice that records what was spoken."""
+
+    def __init__(self) -> None:
+        self.messages: list[str] = []
+
+    def Speak(self, message: str, flags: int = 0) -> None:  # noqa: N802 - SAPI API name
+        _ = flags
+        self.messages.append(message)
+
+
 def test_announcement_engine_uses_system_speech_when_prism_is_missing(monkeypatch) -> None:
-    class _FakeSpeechEngine:
-        def __init__(self) -> None:
-            self.messages: list[str] = []
-            self.init_calls = 0
+    voice = _FakeVoice()
+    build_calls = {"n": 0}
 
-        def say(self, message: str) -> None:
-            self.messages.append(message)
+    def _build():
+        build_calls["n"] += 1
+        return voice
 
-        def runAndWait(self) -> None:
-            return None
-
-        def stop(self) -> None:
-            return None
-
-    speech_engine = _FakeSpeechEngine()
-    # The pyttsx3 fallback is the Windows/Linux path; on macOS announcements go
-    # to VoiceOver instead. Pin a non-darwin platform so this exercises the TTS
+    # The SAPI fallback is the Windows path; on macOS announcements go to
+    # VoiceOver instead. Pin a non-darwin platform so this exercises the TTS
     # fallback regardless of the host OS the tests run on.
     monkeypatch.setattr("quill.platform.windows.prism_bridge.sys.platform", "win32")
-    monkeypatch.setattr(
-        "quill.platform.windows.prism_bridge.pyttsx3",
-        types.SimpleNamespace(init=lambda: _counting_init(speech_engine)),
-    )
+    monkeypatch.setattr("quill.platform.windows.prism_bridge._build_tts_voice", _build)
     monkeypatch.setattr(
         "quill.platform.windows.prism_bridge.import_module",
         lambda _name: (_ for _ in ()).throw(ImportError),
@@ -90,25 +90,19 @@ def test_announcement_engine_uses_system_speech_when_prism_is_missing(monkeypatc
         "quill.platform.windows.prism_bridge._screen_reader_active",
         lambda: False,
     )
-    # H5/H6: every AnnouncementEngine re-uses a process-wide singleton,
-    # so a fresh engine after a reset must trigger exactly one
-    # pyttsx3.init() across many announcements.
+    # The SAPI SpVoice is a process-wide singleton built once on the worker
+    # thread, so many announcements must build it exactly once after a reset.
     from quill.platform.windows import prism_bridge
 
-    prism_bridge.reset_pyttsx3_engine_for_tests()
+    prism_bridge.reset_tts_engine_for_tests()
 
     engine = AnnouncementEngine("auto")
     assert engine.announce("hello") is None
     assert engine.announce("world") is None
     prism_bridge.flush_tts_for_tests()
-    assert speech_engine.messages == ["hello", "world"]
-    assert speech_engine.init_calls == 1
+    assert voice.messages == ["hello", "world"]
+    assert build_calls["n"] == 1
     assert engine.state().active_backend == "speech"
-
-
-def _counting_init(engine):
-    engine.init_calls += 1
-    return engine
 
 
 def test_force_speech_bypasses_screen_reader_suppression(monkeypatch) -> None:
@@ -116,26 +110,9 @@ def test_force_speech_bypasses_screen_reader_suppression(monkeypatch) -> None:
     # a screen reader to pick up on its own, so callers narrating that
     # internal-only state pass force_speech=True to still get spoken even
     # while JAWS/NVDA/Narrator is running and no Prism backend is active.
-    class _FakeSpeechEngine:
-        def __init__(self) -> None:
-            self.messages: list[str] = []
-            self.init_calls = 0
-
-        def say(self, message: str) -> None:
-            self.messages.append(message)
-
-        def runAndWait(self) -> None:
-            return None
-
-        def stop(self) -> None:
-            return None
-
-    speech_engine = _FakeSpeechEngine()
+    voice = _FakeVoice()
     monkeypatch.setattr("quill.platform.windows.prism_bridge.sys.platform", "win32")
-    monkeypatch.setattr(
-        "quill.platform.windows.prism_bridge.pyttsx3",
-        types.SimpleNamespace(init=lambda: _counting_init(speech_engine)),
-    )
+    monkeypatch.setattr("quill.platform.windows.prism_bridge._build_tts_voice", lambda: voice)
     monkeypatch.setattr(
         "quill.platform.windows.prism_bridge.import_module",
         lambda _name: (_ for _ in ()).throw(ImportError),
@@ -146,16 +123,16 @@ def test_force_speech_bypasses_screen_reader_suppression(monkeypatch) -> None:
     )
     from quill.platform.windows import prism_bridge
 
-    prism_bridge.reset_pyttsx3_engine_for_tests()
+    prism_bridge.reset_tts_engine_for_tests()
 
     engine = AnnouncementEngine("auto")
     assert engine.announce("quiet while screen reader runs") is None
     prism_bridge.flush_tts_for_tests()
-    assert speech_engine.messages == []
+    assert voice.messages == []
 
     assert engine.announce("QUILL key", force_speech=True) is None
     prism_bridge.flush_tts_for_tests()
-    assert speech_engine.messages == ["QUILL key"]
+    assert voice.messages == ["QUILL key"]
 
 
 def test_macos_announce_error_logged(monkeypatch, caplog) -> None:

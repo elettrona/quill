@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -14,10 +15,10 @@ from quill.core.punctuation_speech import normalize_punctuation_level, verbalize
 from quill.core.sentence_split import SentenceSpan, sentence_spans
 from quill.core.tts_cache import cached_sentence_generator
 
-try:
-    import pyttsx3  # type: ignore[import-untyped]
-except ImportError:  # pragma: no cover - optional runtime dependency
-    pyttsx3 = None
+# Windows system speech (SAPI 5) is reached through
+# quill.platform.windows.sapi5, imported lazily inside the functions that need
+# it so quill.core stays importable on non-Windows and keeps no import-time
+# dependency on the platform layer.
 
 try:
     import winsound as _winsound  # type: ignore[import]
@@ -78,7 +79,7 @@ KOKORO_VOICES: list[tuple[str, str]] = [
     ("am_michael", "Michael (American Male)"),
     ("am_onyx", "Onyx (American Male)"),
     ("am_puck", "Puck (American Male)"),
-    ("am_zeus", "Zeus (American Male)"),
+    ("am_santa", "Santa (American Male)"),
     ("bf_alice", "Alice (British Female)"),
     ("bf_emma", "Emma (British Female)"),
     ("bf_isabella", "Isabella (British Female)"),
@@ -232,29 +233,46 @@ def _validate_configured_executable(
 
 
 def discover_dectalk_executable(configured_path: str = "") -> Path | None:
-    validated = _validate_configured_executable(configured_path, ("speak.exe", "speak"))
-    if validated is not None:
-        return validated
+    """Locate the DECtalk synthesis runtime, returning the ``DECtalk.dll`` path.
+
+    Synthesis is driven through ``DECtalk.dll`` directly (see
+    :mod:`quill.core.speech.dectalk_say`), never through ``speak.exe`` -- the
+    package's ``AMD64/speak.exe`` is the *graphical* "Sample Speak Window" and
+    fast-fails (0xC000041D) when launched as a console program. A configured
+    path may point at ``DECtalk.dll`` or at the folder containing it; a
+    configured ``speak.exe`` is rejected rather than silently honoured.
+
+    The historical name is kept because callers thread the returned path back in
+    as ``executable_path``; it is now the DLL, which the worker understands.
+    """
+    raw = configured_path.strip()
+    if raw:
+        candidate = Path(raw).expanduser()
+        if candidate.is_dir():
+            candidate = candidate / "DECtalk.dll"
+        if candidate.name.lower() == "dectalk.dll" and candidate.is_file():
+            return candidate.resolve()
+        # A stale speak.exe path (or anything else) falls through to discovery.
+
+    relatives = (
+        "DECtalk.dll",
+        "AMD64/DECtalk.dll",
+        "IA32/DECtalk.dll",
+        "release/AMD64/DECtalk.dll",
+        "release/DECtalk.dll",
+    )
+    roots: list[Path] = []
     app_root = os.environ.get("QUILL_APP_ROOT", "").strip()
     if app_root:
-        bundled = Path(app_root) / "tools" / "speech" / "dectalk"
-        for relative in ("speak.exe", "AMD64/speak.exe", "IA32/speak.exe"):
-            probe = bundled / relative
-            if probe.exists():
-                return probe.resolve()
-    # Also check the user-data download location (set by in-app DECtalk download).
+        roots.append(Path(app_root) / "tools" / "speech" / "dectalk")
     from quill.core.paths import app_data_dir
 
-    managed = app_data_dir() / "speech" / "dectalk"
-    for relative in (
-        "speak.exe",
-        "AMD64/speak.exe",
-        "release/AMD64/speak.exe",
-        "release/speak.exe",
-    ):
-        probe = managed / relative
-        if probe.exists():
-            return probe.resolve()
+    roots.append(app_data_dir() / "speech" / "dectalk")
+    for root in roots:
+        for relative in relatives:
+            probe = root / relative
+            if probe.is_file():
+                return probe.resolve()
     return None
 
 
@@ -537,8 +555,15 @@ def synthesize_with_espeak(
         str(bounded_rate),
         "-w",
         str(output_path),
-        text,
     ]
+    # A portable / managed eSpeak-NG (the in-app download and the bundled copy)
+    # ships its espeak-ng-data beside the executable. Without --path eSpeak-NG
+    # falls back to a compiled-in/registry data path that does not exist for a
+    # portable copy and crashes (access violation) instead of failing cleanly,
+    # so point it explicitly at the co-located data directory when present.
+    if (executable_path.parent / "espeak-ng-data").is_dir():
+        command.append(f"--path={executable_path.parent}")
+    command.append(text)
     completed = subprocess.run(command, capture_output=True, check=False)
     if completed.returncode != 0:
         raw = completed.stderr or completed.stdout or b""
@@ -554,7 +579,17 @@ def synthesize_with_espeak(
         )
 
 
-def synthesize_to_file_with_pyttsx3(
+def sapi5_available() -> bool:
+    """True when Windows SAPI 5 speech can be reached on this machine."""
+    try:
+        from quill.platform.windows import sapi5
+
+        return sapi5.available()
+    except Exception:  # noqa: BLE001 - any failure means SAPI is unusable
+        return False
+
+
+def synthesize_to_file_with_sapi5(
     text: str,
     output_path: Path,
     *,
@@ -562,21 +597,30 @@ def synthesize_to_file_with_pyttsx3(
     rate: int = 200,
     volume: float = 1.0,
 ) -> None:
+    """Synthesize ``text`` to a WAV file via Windows SAPI 5 (the system voice)."""
     if not text.strip():
         raise ReadAloudUnavailableError("Cannot generate speech from empty text")
-    if pyttsx3 is None:
-        raise ReadAloudUnavailableError("pyttsx3 is not available")
+    from quill.platform.windows import sapi5
+
+    if not sapi5.available():
+        raise ReadAloudUnavailableError("Windows SAPI 5 speech is not available")
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    engine = pyttsx3.init()
     try:
-        if voice:
-            engine.setProperty("voice", voice)
-        engine.setProperty("rate", int(rate))
-        engine.setProperty("volume", max(0.0, min(float(volume), 1.0)))
-        engine.save_to_file(text, str(output_path))
-        engine.runAndWait()
-    finally:
-        engine.stop()
+        sapi5.synthesize_to_wav(
+            text, output_path, voice_id=voice, rate_wpm=int(rate), volume=float(volume)
+        )
+    except RuntimeError as exc:
+        raise ReadAloudUnavailableError(str(exc)) from exc
+
+
+_DECTALK_SAY_WORKER = Path(__file__).resolve().parent / "speech" / "dectalk_say.py"
+
+
+def build_dectalk_payload(text: str, voice: str, rate: int) -> str:
+    """Compose a DECtalk command string: voice + rate command + text."""
+    voice_cmd = DECTALK_VOICE_COMMANDS.get(voice.strip().lower(), "")
+    bounded_rate = max(75, min(650, int(rate)))
+    return f"{voice_cmd} [:ra {bounded_rate}] {text}".strip()
 
 
 def synthesize_to_file_with_dectalk(
@@ -586,50 +630,67 @@ def synthesize_to_file_with_dectalk(
     executable_path: Path,
     voice: str = "paul",
     rate: int = 180,
-    dictionary_path: Path | None = None,
+    dictionary_path: Path | None = None,  # noqa: ARG001 - kept for call compatibility
 ) -> None:
+    """Synthesize DECtalk speech to ``output_path`` (WAV) via ``DECtalk.dll``.
+
+    ``executable_path`` is the ``DECtalk.dll`` produced by
+    :func:`discover_dectalk_executable`. Synthesis is delegated to the
+    out-of-process console worker (:mod:`quill.core.speech.dectalk_say`), which
+    loads the DLL with the audio device disabled and validates the wave output.
+    ``dictionary_path`` is accepted but unused: DECtalk locates ``dtalk_us.dic``
+    from its own runtime folder, and it is the system dictionary, not a ``-d``
+    user dictionary.
+    """
     if not text.strip():
         raise ReadAloudUnavailableError("Cannot generate speech from empty text")
     if not executable_path.exists():
-        raise ReadAloudUnavailableError("DECtalk executable was not found")
+        raise ReadAloudUnavailableError(
+            f"DECtalk runtime (DECtalk.dll) was not found at {executable_path}."
+        )
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    voice_cmd = DECTALK_VOICE_COMMANDS.get(voice.strip().lower(), "")
-    bounded_rate = max(75, min(650, int(rate)))
-    payload = f"{voice_cmd} [:ra {bounded_rate}] {text}".strip()
-    dict_file = (
-        dictionary_path.expanduser()
-        if dictionary_path is not None
-        else executable_path.parent / "dtalk_us.dic"
-    )
+    payload = build_dectalk_payload(text, voice, rate)
+    _run_dectalk_say(executable_path, payload, output_path)
+
+
+def _run_dectalk_say(dll_path: Path, payload: str, output_path: Path) -> None:
+    """Drive the DECtalk console worker; raise with a rich diagnostic on failure.
+
+    The payload is encoded as Windows-1252 (replacing unsupported characters),
+    the encoding the legacy ``char *`` DECtalk API expects; UTF-8 bytes would be
+    mis-spoken for non-ASCII text.
+    """
+    if not _DECTALK_SAY_WORKER.exists():
+        raise ReadAloudUnavailableError(f"DECtalk worker script is missing: {_DECTALK_SAY_WORKER}")
     create_no_window = int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".txt", delete=False, encoding="utf-8", errors="replace"
-    ) as fh:
-        fh.write(payload)
-        tmp_path = Path(fh.name)
     try:
         completed = subprocess.run(
             [
-                str(executable_path),
-                "-file",
-                str(tmp_path),
-                "-wav",
+                sys.executable,
+                str(_DECTALK_SAY_WORKER),
+                "--dll",
+                str(dll_path),
+                "-w",
                 str(output_path),
-                "-dict",
-                str(dict_file),
             ],
-            cwd=str(executable_path.parent),
+            input=payload.encode("cp1252", errors="replace"),
             capture_output=True,
             creationflags=create_no_window,
             check=False,
+            timeout=_MAX_SYNTHESIS_SECONDS,
         )
-        if completed.returncode != 0:
-            raise ReadAloudUnavailableError(f"DECtalk exited with code {completed.returncode}.")
-    finally:
-        try:
-            tmp_path.unlink(missing_ok=True)
-        except OSError:
-            pass
+    except subprocess.TimeoutExpired as exc:
+        raise ReadAloudUnavailableError(
+            f"DECtalk did not complete within {_MAX_SYNTHESIS_SECONDS:.0f} seconds."
+        ) from exc
+    if completed.returncode != 0:
+        detail = (completed.stderr or b"").decode("utf-8", errors="replace").strip()
+        code = completed.returncode & 0xFFFFFFFF
+        raise ReadAloudUnavailableError(
+            f"DECtalk synthesis failed (exit 0x{code:08X})."
+            + (f" {detail}" if detail else "")
+            + f" [dll={dll_path}]"
+        )
 
 
 def list_dectalk_voices() -> list[VoiceOption]:
@@ -647,20 +708,10 @@ def list_dectalk_voices() -> list[VoiceOption]:
 
 
 def list_voices() -> list[VoiceOption]:
-    if pyttsx3 is None:
-        return []
-    engine = pyttsx3.init()
-    try:
-        voices = []
-        for voice in engine.getProperty("voices") or []:
-            voice_id = str(getattr(voice, "id", "")).strip()
-            if not voice_id:
-                continue
-            name = str(getattr(voice, "name", voice_id)).strip() or voice_id
-            voices.append(VoiceOption(id=voice_id, name=name))
-        return voices
-    finally:
-        engine.stop()
+    """Return the installed Windows SAPI 5 voices as read-aloud options."""
+    from quill.platform.windows import sapi5
+
+    return [VoiceOption(id=v.id, name=v.name) for v in sapi5.list_voices()]
 
 
 class ReadAloudUnavailableError(RuntimeError):
@@ -697,7 +748,7 @@ class ReadAloudController:
         cursor: int,
         voice_id: str,
         *,
-        engine_name: str = "pyttsx3",
+        engine_name: str = "sapi5",
         rate: int | None = None,
         volume: float | None = None,
         pitch: int | None = None,
@@ -719,16 +770,18 @@ class ReadAloudController:
         on_state_change: Callable[[str], None] | None = None,
         on_error: Callable[[str], None] | None = None,
     ) -> None:
-        normalized_engine = engine_name.strip().lower() or "pyttsx3"
+        normalized_engine = engine_name.strip().lower() or "sapi5"
+        if normalized_engine == "pyttsx3":  # migrate the retired engine id
+            normalized_engine = "sapi5"
         _valid_engines = {
-            "pyttsx3",
+            "sapi5",
             "dectalk",
             "piper",
             "kokoro",
             "espeak",
         }
-        if normalized_engine == "pyttsx3" and pyttsx3 is None:
-            raise ReadAloudUnavailableError("pyttsx3 is not available")
+        if normalized_engine == "sapi5" and not sapi5_available():
+            raise ReadAloudUnavailableError("Windows SAPI 5 speech is not available")
         if normalized_engine == "dectalk":
             if discover_dectalk_executable(dectalk_executable) is None:
                 raise ReadAloudUnavailableError("DECtalk executable was not found")
@@ -762,14 +815,13 @@ class ReadAloudController:
 
         def worker() -> None:
             try:
-                if normalized_engine == "pyttsx3":
-                    self._run_pyttsx3(
+                if normalized_engine == "sapi5":
+                    self._run_sapi5(
                         spans,
                         text,
                         voice_id=voice_id,
                         rate=rate,
                         volume=volume,
-                        pitch=pitch,
                         on_progress=on_progress,
                     )
                 elif normalized_engine == "dectalk":
@@ -850,7 +902,7 @@ class ReadAloudController:
                 return
             time.sleep(min(0.05, remaining))
 
-    def _run_pyttsx3(
+    def _run_sapi5(
         self,
         spans: list[SentenceSpan],
         text: str,
@@ -858,41 +910,24 @@ class ReadAloudController:
         voice_id: str,
         rate: int | None,
         volume: float | None,
-        pitch: int | None,
         on_progress: Callable[[int, int], None] | None,
     ) -> None:
-        engine = pyttsx3.init()
-        try:
-            if voice_id:
-                engine.setProperty("voice", voice_id)
-            if rate is not None:
-                engine.setProperty("rate", int(rate))
-            if volume is not None:
-                engine.setProperty("volume", max(0.0, min(float(volume), 1.0)))
-            if pitch is not None:
-                try:
-                    engine.setProperty("pitch", int(pitch))
-                except Exception:  # noqa: BLE001
-                    pass
-            first = True
-            for span in spans:
-                if self._stop_event.is_set() or self._pause_event.is_set():
-                    break
-                sentence = text[span.start : span.end].strip()
-                if not sentence:
-                    continue
-                sentence = verbalize_punctuation(sentence, self._punctuation_level)
-                if not first:
-                    self._inter_sentence_pause()
-                first = False
-                if on_progress is not None:
-                    on_progress(span.start, span.end)
-                engine.say(sentence)
-                engine.runAndWait()
-                with self._lock:
-                    self._cursor = span.end
-        finally:
-            engine.stop()
+        """Play Windows SAPI 5 speech by synthesizing each sentence to WAV.
+
+        Routing through the shared WAV-sentence player (like Piper/Kokoro/eSpeak)
+        gives consistent pause/stop and sentence-cache behaviour. SAPI 5 has no
+        pitch control via the simple property API, so ``pitch`` is not used.
+        """
+        effective_rate = 200 if rate is None else int(rate)
+        effective_volume = 1.0 if volume is None else float(volume)
+
+        def gen(sentence: str, out: Path) -> None:
+            synthesize_to_file_with_sapi5(
+                sentence, out, voice=voice_id, rate=effective_rate, volume=effective_volume
+            )
+
+        self._cache_seed = ("sapi5", voice_id, effective_rate, effective_volume)
+        self._run_wav_sentences(spans, text, on_progress=on_progress, generate_sentence_wav=gen)
 
     def _run_dectalk(
         self,
@@ -902,104 +937,25 @@ class ReadAloudController:
         executable: Path,
         voice_id: str,
         rate: int,
-        dictionary_path: Path | None,
+        dictionary_path: Path | None,  # noqa: ARG002 - kept for call compatibility
         on_progress: Callable[[int, int], None] | None,
     ) -> None:
-        working_dir = executable.parent
-        self._ensure_dectalk_dictionary(working_dir, dictionary_path)
-        first = True
-        for span in spans:
-            if self._stop_event.is_set() or self._pause_event.is_set():
-                break
-            sentence = text[span.start : span.end].strip()
-            if not sentence:
-                continue
-            sentence = verbalize_punctuation(sentence, self._punctuation_level)
-            if not first:
-                self._inter_sentence_pause()
-            first = False
-            if on_progress is not None:
-                on_progress(span.start, span.end)
-            payload = self._build_dectalk_payload(sentence, voice_id, rate)
-            self._speak_sentence_dectalk(executable, payload)
-            with self._lock:
-                self._cursor = span.end
+        """Play DECtalk speech by synthesizing each sentence to WAV and playing it.
 
-    def _build_dectalk_payload(self, sentence: str, voice_id: str, rate: int) -> str:
-        parts: list[str] = []
-        voice_cmd = DECTALK_VOICE_COMMANDS.get(voice_id.strip().lower(), "")
-        if voice_cmd:
-            parts.append(voice_cmd)
-        bounded_rate = max(75, min(650, int(rate)))
-        parts.append(f"[:ra {bounded_rate}]")
-        parts.append(sentence)
-        return " ".join(parts)
+        ``executable`` is the ``DECtalk.dll`` runtime path. Synthesis goes
+        through the out-of-process console worker (see
+        :func:`synthesize_to_file_with_dectalk`), so the broken graphical
+        ``speak.exe`` is never launched and live playback shares the same
+        engine path as preview generation.
+        """
 
-    def _ensure_dectalk_dictionary(self, working_dir: Path, dictionary_path: Path | None) -> None:
-        target = working_dir / "dtalk_us.dic"
-        if target.exists():
-            return
-        candidates: list[Path] = []
-        if dictionary_path is not None:
-            candidates.append(dictionary_path)
-        candidates.extend([
-            working_dir / "dic" / "dtalk_us.dic",
-            working_dir / "dtalk_us.dic",
-        ])
-        source = next((path for path in candidates if path.exists()), None)
-        if source is None:
-            raise ReadAloudUnavailableError(
-                "DECtalk dictionary dtalk_us.dic was not found. "
-                "Configure dictionary path in Speech settings."
+        def gen(sentence: str, out: Path) -> None:
+            synthesize_to_file_with_dectalk(
+                sentence, out, executable_path=executable, voice=voice_id, rate=rate
             )
-        if source.resolve() == target.resolve():
-            return
-        target.write_bytes(source.read_bytes())
 
-    def _speak_sentence_dectalk(self, executable: Path, payload: str) -> None:
-        dict_file = executable.parent / "dtalk_us.dic"
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            delete=False,
-            suffix=".txt",
-            encoding="utf-8",
-            errors="replace",
-        ) as handle:
-            handle.write(payload)
-            temp_path = Path(handle.name)
-        create_no_window = int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
-        try:
-            process = subprocess.Popen(
-                [str(executable), "-file", str(temp_path), "-dict", str(dict_file)],
-                cwd=str(executable.parent),
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                creationflags=create_no_window,
-            )
-            self._active_process = process
-            start = time.monotonic()
-            while process.poll() is None:
-                if self._stop_event.is_set() or self._pause_event.is_set():
-                    process.terminate()
-                    break
-                if time.monotonic() - start >= _MAX_SYNTHESIS_SECONDS:
-                    process.kill()
-                    raise ReadAloudUnavailableError(
-                        f"DECtalk did not complete within {_MAX_SYNTHESIS_SECONDS:.0f} seconds."
-                    )
-                time.sleep(0.05)
-            exit_code = process.wait(timeout=2)
-            if exit_code != 0 and not (self._stop_event.is_set() or self._pause_event.is_set()):
-                raise ReadAloudUnavailableError(
-                    f"DECtalk exited with code {exit_code}. "
-                    "Check executable and dictionary settings."
-                )
-        finally:
-            self._active_process = None
-            try:
-                temp_path.unlink(missing_ok=True)
-            except OSError:
-                pass
+        self._cache_seed = ("dectalk", str(executable), voice_id, rate)
+        self._run_wav_sentences(spans, text, on_progress=on_progress, generate_sentence_wav=gen)
 
     # ------------------------------------------------------------------
     # WAV-based engine helpers

@@ -33,13 +33,13 @@ BatchStatus = Literal["pending", "processing", "done", "error", "skipped"]
 class BatchExportOptions:
     source_folder: Path
     output_folder: Path
-    engine: str = "pyttsx3"
+    engine: str = "sapi5"
     extensions: list[str] = field(default_factory=lambda: [".md", ".html", ".docx"])
     recursive: bool = True
-    # pyttsx3
-    pyttsx3_voice: str = ""
-    pyttsx3_rate: int = 200
-    pyttsx3_volume: float = 1.0
+    # SAPI 5 (Windows system voice)
+    sapi5_voice: str = ""
+    sapi5_rate: int = 200
+    sapi5_volume: float = 1.0
     # DECtalk
     dectalk_executable: Path | None = None
     dectalk_voice: str = "paul"
@@ -99,21 +99,23 @@ def _synthesize_one(text: str, output_path: Path, opts: BatchExportOptions) -> N
     from quill.core.read_aloud import (
         ReadAloudUnavailableError,
         synthesize_to_file_with_dectalk,
-        synthesize_to_file_with_pyttsx3,
+        synthesize_to_file_with_sapi5,
         synthesize_with_espeak,
         synthesize_with_kokoro,
         synthesize_with_piper,
     )
 
     engine = opts.engine.strip().lower()
+    if engine == "pyttsx3":  # migrate the retired engine id
+        engine = "sapi5"
 
-    if engine == "pyttsx3":
-        synthesize_to_file_with_pyttsx3(
+    if engine == "sapi5":
+        synthesize_to_file_with_sapi5(
             text,
             output_path,
-            voice=opts.pyttsx3_voice,
-            rate=opts.pyttsx3_rate,
-            volume=opts.pyttsx3_volume,
+            voice=opts.sapi5_voice,
+            rate=opts.sapi5_rate,
+            volume=opts.sapi5_volume,
         )
     elif engine == "dectalk":
         if opts.dectalk_executable is None:

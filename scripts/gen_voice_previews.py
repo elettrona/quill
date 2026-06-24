@@ -33,7 +33,27 @@ from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _PREVIEW_DIR = _REPO_ROOT / "quill" / "data" / "voice-previews"
-_ALL_ENGINES = ("piper", "kokoro", "espeak", "dectalk")
+_ALL_ENGINES = ("piper", "kokoro", "espeak", "dectalk", "sapi5")
+
+
+def _sapi5_short_name(voice_id: str) -> str:
+    """Mirror MainFrame._pyttsx3_voice_short_name so generated files resolve in the UX.
+
+    'HKEY_..\\TTS_MS_EN-US_DAVID_11.0' -> 'david'. Kept in sync with
+    quill/ui/main_frame.py::_pyttsx3_voice_short_name.
+    """
+    last = voice_id.replace("/", "\\").rsplit("\\", 1)[-1]
+    for part in last.upper().split("_"):
+        if not part or part in {"TTS", "MS"} or "-" in part:
+            continue
+        try:
+            float(part)
+            continue
+        except ValueError:
+            pass
+        if part.isalpha():
+            return part.lower()
+    return last.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -78,7 +98,7 @@ def _gen_piper(
     piper_exe: str | None,
     piper_model_dir: str | None,
     overwrite: bool,
-) -> tuple[int, int]:
+) -> tuple[int, int, int]:
     """Synthesize all catalog Piper voices. Returns (generated, skipped)."""
     from quill.core.read_aloud import (
         default_piper_model_dir,
@@ -95,7 +115,7 @@ def _gen_piper(
     model_dir = Path(piper_model_dir) if piper_model_dir else default_piper_model_dir()
     voices = list_piper_catalog_voices(model_dir)
 
-    generated = skipped = 0
+    generated = skipped = errored = 0
     out_dir.mkdir(parents=True, exist_ok=True)
 
     for voice in voices:
@@ -121,10 +141,11 @@ def _gen_piper(
             generated += 1
         except Exception as exc:  # noqa: BLE001
             print(f" ERROR: {exc}")
+            errored += 1
         finally:
             wav.unlink(missing_ok=True)
 
-    return generated, skipped
+    return generated, skipped, errored
 
 
 def _gen_kokoro(
@@ -132,7 +153,7 @@ def _gen_kokoro(
     out_dir: Path,
     *,
     overwrite: bool,
-) -> tuple[int, int]:
+) -> tuple[int, int, int]:
     """Synthesize all Kokoro voices. Returns (generated, skipped)."""
     from quill.core.read_aloud import kokoro_onnx_ready, list_kokoro_voices, synthesize_with_kokoro
 
@@ -141,7 +162,7 @@ def _gen_kokoro(
         return 0, 0
 
     voices = list_kokoro_voices()
-    generated = skipped = 0
+    generated = skipped = errored = 0
     out_dir.mkdir(parents=True, exist_ok=True)
 
     for voice in voices:
@@ -161,10 +182,61 @@ def _gen_kokoro(
             generated += 1
         except Exception as exc:  # noqa: BLE001
             print(f" ERROR: {exc}")
+            errored += 1
         finally:
             wav.unlink(missing_ok=True)
 
-    return generated, skipped
+    return generated, skipped, errored
+
+
+def _gen_sapi5(
+    text: str,
+    out_dir: Path,
+    *,
+    overwrite: bool,
+) -> tuple[int, int, int]:
+    """Synthesize the installed Windows SAPI 5 voices. Returns counts.
+
+    Files are named by the short voice name (e.g. ``david.mp3``) so the running
+    app resolves them for the matching system voice; voices not present on a
+    user's machine simply fall back to live synthesis.
+    """
+    from quill.core.read_aloud import synthesize_to_file_with_sapi5
+    from quill.platform.windows import sapi5
+
+    if not sapi5.available():
+        print("  [sapi5] SKIP — Windows SAPI 5 is not available")
+        return 0, 0, 0
+    voices = sapi5.list_voices()
+
+    generated = skipped = errored = 0
+    out_dir.mkdir(parents=True, exist_ok=True)
+    seen: set[str] = set()
+    for voice in voices:
+        short = _sapi5_short_name(voice.id)
+        if short in seen:
+            continue  # Desktop + non-Desktop variants share a short name
+        seen.add(short)
+        mp3 = out_dir / f"{short}.mp3"
+        if mp3.exists() and not overwrite:
+            print(f"  [sapi5] skip  {short} (already exists)")
+            skipped += 1
+            continue
+        print(f"  [sapi5] gen   {short} ...", end="", flush=True)
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as fh:
+            wav = Path(fh.name)
+        try:
+            synthesize_to_file_with_sapi5(text, wav, voice=voice.id)
+            _wav_to_mp3(wav, mp3)
+            print(f" OK  ({mp3.stat().st_size // 1024} KB)")
+            generated += 1
+        except Exception as exc:  # noqa: BLE001
+            print(f" ERROR: {exc}")
+            errored += 1
+        finally:
+            wav.unlink(missing_ok=True)
+
+    return generated, skipped, errored
 
 
 def _gen_espeak(
@@ -174,7 +246,7 @@ def _gen_espeak(
     espeak_exe: str | None,
     espeak_rate: int,
     overwrite: bool,
-) -> tuple[int, int]:
+) -> tuple[int, int, int]:
     """Synthesize all eSpeak English voices. Returns (generated, skipped)."""
     from quill.core.read_aloud import (
         discover_espeak_executable,
@@ -188,7 +260,7 @@ def _gen_espeak(
         return 0, 0
 
     voices = list_espeak_english_voices()
-    generated = skipped = 0
+    generated = skipped = errored = 0
     out_dir.mkdir(parents=True, exist_ok=True)
 
     for voice in voices:
@@ -208,10 +280,11 @@ def _gen_espeak(
             generated += 1
         except Exception as exc:  # noqa: BLE001
             print(f" ERROR: {exc}")
+            errored += 1
         finally:
             wav.unlink(missing_ok=True)
 
-    return generated, skipped
+    return generated, skipped, errored
 
 
 def _gen_dectalk(
@@ -221,7 +294,7 @@ def _gen_dectalk(
     dectalk_exe: str | None,
     dectalk_rate: int,
     overwrite: bool,
-) -> tuple[int, int]:
+) -> tuple[int, int, int]:
     """Synthesize all DECTalk voices. Returns (generated, skipped)."""
     from quill.core.read_aloud import (
         discover_dectalk_executable,
@@ -235,7 +308,7 @@ def _gen_dectalk(
         return 0, 0
 
     voices = list_dectalk_voices()
-    generated = skipped = 0
+    generated = skipped = errored = 0
     out_dir.mkdir(parents=True, exist_ok=True)
 
     for voice in voices:
@@ -257,10 +330,11 @@ def _gen_dectalk(
             generated += 1
         except Exception as exc:  # noqa: BLE001
             print(f" ERROR: {exc}")
+            errored += 1
         finally:
             wav.unlink(missing_ok=True)
 
-    return generated, skipped
+    return generated, skipped, errored
 
 
 # ---------------------------------------------------------------------------
@@ -275,7 +349,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "text_file",
-        help="Path to a plain-text file containing the preview text (1–3 sentences).",
+        nargs="?",
+        default=str(_REPO_ROOT / "phrase.txt"),
+        help=(
+            "Path to a plain-text file containing the preview text (1-3 sentences). "
+            "Defaults to phrase.txt in the repo root, the single phrase shared by all demos."
+        ),
     )
     parser.add_argument(
         "--engines",
@@ -295,7 +374,9 @@ def main(argv: list[str] | None = None) -> int:
         "--piper-model-dir", metavar="DIR", help="Directory containing .onnx model files."
     )
     parser.add_argument(
-        "--dectalk-exe", metavar="PATH", help="Path to the DECTalk say.exe executable."
+        "--dectalk-exe",
+        metavar="PATH",
+        help="Path to DECtalk.dll (the synthesis runtime) or its folder.",
     )
     parser.add_argument(
         "--dectalk-rate", type=int, default=180, help="DECTalk words-per-minute rate (default 180)."
@@ -329,11 +410,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Overwrite: {args.overwrite}")
     print()
 
-    total_gen = total_skip = 0
+    total_gen = total_skip = total_err = 0
 
     if "piper" in args.engines:
         print("=== Piper ===")
-        g, s = _gen_piper(
+        g, s, e = _gen_piper(
             text,
             _PREVIEW_DIR / "piper",
             piper_exe=args.piper_exe,
@@ -342,18 +423,20 @@ def main(argv: list[str] | None = None) -> int:
         )
         total_gen += g
         total_skip += s
+        total_err += e
         print()
 
     if "kokoro" in args.engines:
         print("=== Kokoro ===")
-        g, s = _gen_kokoro(text, _PREVIEW_DIR / "kokoro", overwrite=args.overwrite)
+        g, s, e = _gen_kokoro(text, _PREVIEW_DIR / "kokoro", overwrite=args.overwrite)
         total_gen += g
         total_skip += s
+        total_err += e
         print()
 
     if "espeak" in args.engines:
         print("=== eSpeak ===")
-        g, s = _gen_espeak(
+        g, s, e = _gen_espeak(
             text,
             _PREVIEW_DIR / "espeak",
             espeak_exe=args.espeak_exe,
@@ -362,11 +445,12 @@ def main(argv: list[str] | None = None) -> int:
         )
         total_gen += g
         total_skip += s
+        total_err += e
         print()
 
     if "dectalk" in args.engines:
         print("=== DECTalk ===")
-        g, s = _gen_dectalk(
+        g, s, e = _gen_dectalk(
             text,
             _PREVIEW_DIR / "dectalk",
             dectalk_exe=args.dectalk_exe,
@@ -375,10 +459,22 @@ def main(argv: list[str] | None = None) -> int:
         )
         total_gen += g
         total_skip += s
+        total_err += e
         print()
 
-    print(f"Done. Generated: {total_gen}  Skipped: {total_skip}")
-    return 0
+    if "sapi5" in args.engines:
+        print("=== sapi5 (Windows SAPI 5) ===")
+        g, s, e = _gen_sapi5(text, _PREVIEW_DIR / "sapi5", overwrite=args.overwrite)
+        total_gen += g
+        total_skip += s
+        total_err += e
+        print()
+
+    status = "FAILURE" if total_err else "SUCCESS"
+    print(f"{status}. Generated: {total_gen}  Skipped: {total_skip}  Errors: {total_err}")
+    # Non-zero exit when any requested voice failed, so callers (and the batch
+    # wrapper) can detect partial failure even though other voices succeeded.
+    return 1 if total_err else 0
 
 
 if __name__ == "__main__":

@@ -479,7 +479,7 @@ Turns FTP, SFTP, WebDAV, and S3 remote file access on or off. When off, these op
 
 ### Read Aloud Engine
 
-Select the speech engine used when you press the Read Aloud shortcut. 'System (pyttsx3)' works on all Windows machines. Piper, Kokoro, and DECtalk require extra setup.
+Select the speech engine used when you press the Read Aloud shortcut. 'Windows (SAPI 5)' uses the built-in system voices and works on all Windows machines. Piper, Kokoro, eSpeak-NG, and DECtalk require extra setup.
 
 | Key | Action |
 |---|---|

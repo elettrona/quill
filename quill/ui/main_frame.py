@@ -315,7 +315,7 @@ from quill.core.read_aloud import (
     list_espeak_english_voices,
     list_kokoro_voices,
     synthesize_to_file_with_dectalk,
-    synthesize_to_file_with_pyttsx3,
+    synthesize_to_file_with_sapi5,
     synthesize_with_espeak,
     synthesize_with_kokoro,
     synthesize_with_piper,
@@ -463,7 +463,7 @@ from quill.io.pandoc import (
 )
 from quill.io.text import read_text_document
 from quill.platform.windows.high_contrast import is_high_contrast_enabled
-from quill.platform.windows.prism_bridge import AnnouncementEngine, prewarm_pyttsx3_engine
+from quill.platform.windows.prism_bridge import AnnouncementEngine, prewarm_tts_engine
 from quill.platform.windows.shell_integration import (
     apply_shell_verb_settings,
     build_shell_integration_plan,
@@ -588,10 +588,10 @@ def _csv_feature_enabled() -> bool:
     return False
 
 
-def _pyttsx3_voice_short_name(voice_id: str) -> str:
+def _sapi5_voice_short_name(voice_id: str) -> str:
     """Normalize a SAPI5 registry voice ID to a lowercase short name.
 
-    Windows pyttsx3 voices have IDs like:
+    Windows SAPI 5 voices have IDs like:
       'HKEY_LOCAL_MACHINE\\...\\TTS_MS_EN-US_DAVID_11.0'
     This extracts 'david' so we can look up a bundled preview sample.
     """
@@ -1169,7 +1169,7 @@ class MainFrame(
         self._compare_ignore_line_endings = True
         self._empty_workspace_active = False
         self._announcement_engine = AnnouncementEngine(self.settings.announcement_backend)
-        prewarm_pyttsx3_engine()
+        prewarm_tts_engine()
         self._announcement_error_reported = ""
         self._read_aloud = ReadAloudController()
         self._dictation = DictationController()
@@ -6778,7 +6778,7 @@ class MainFrame(
                 self.editor.WriteText("![image]()")
 
     def _check_tts_fallback_on_startup(self) -> None:
-        """§8.2 TTS-FALLBACK-ANNOUNCE: show a status-bar prompt when pyttsx3 fails to init."""
+        """§8.2 TTS-FALLBACK-ANNOUNCE: show a status-bar prompt when SAPI 5 fails to init."""
         try:
             from quill.platform.windows.prism_bridge import tts_init_failed
 
@@ -6789,7 +6789,7 @@ class MainFrame(
                 "Press F8 to toggle overwrite mode / check menus for Retry TTS."
             )
             self._record_notification(
-                "Text-to-speech (pyttsx3) failed to start. "
+                "Text-to-speech (SAPI 5) failed to start. "
                 "Screen reader fallback is active. "
                 "To retry, run Tools > Retry TTS Engine.",
                 "accessibility",
@@ -16610,7 +16610,7 @@ class MainFrame(
                 start = self.editor.GetInsertionPoint()
                 end = None
         try:
-            read_aloud_engine = self.settings.read_aloud_engine.strip().lower() or "pyttsx3"
+            read_aloud_engine = self.settings.read_aloud_engine.strip().lower() or "sapi5"
             self._read_aloud.start(
                 text,
                 start,
@@ -16668,7 +16668,7 @@ class MainFrame(
         }:
             return True
 
-        if engine_name == "pyttsx3":
+        if engine_name == "sapi5":
             english_markers = ("english", "en-", " en", "_en", "en_us", "en_gb", "enu")
             return any(marker in voice_id or marker in voice_name for marker in english_markers)
 
@@ -16717,8 +16717,8 @@ class MainFrame(
         safe_voice = (voice_id or "").strip()
         if not safe_engine or not safe_voice:
             return None
-        if safe_engine == "pyttsx3":
-            safe_voice = _pyttsx3_voice_short_name(safe_voice)
+        if safe_engine == "sapi5":
+            safe_voice = _sapi5_voice_short_name(safe_voice)
             if not safe_voice:
                 return None
         for root in self._voice_preview_catalog_roots():
@@ -16794,15 +16794,15 @@ class MainFrame(
             )
             return
 
-        # pyttsx3: delegate to ReadAloudController so SAPI5/COM runs on its own
+        # sapi5: delegate to ReadAloudController so SAPI5/COM runs on its own
         # dedicated thread, avoiding the "started a loop" error from ThreadPoolExecutor.
-        if engine == "pyttsx3":
+        if engine == "sapi5":
             try:
                 self._read_aloud.start(
                     sample,
                     0,
                     voice_id,
-                    engine_name="pyttsx3",
+                    engine_name="sapi5",
                     rate=s.read_aloud_rate,
                     volume=s.read_aloud_volume / 100.0,
                     pitch=s.read_aloud_pitch,
@@ -16908,7 +16908,7 @@ class MainFrame(
 
         # --- Read Aloud kwargs ---
         engine_available = {
-            "pyttsx3": True,
+            "sapi5": True,
             "dectalk": discover_dectalk_executable(self.settings.read_aloud_dectalk_executable)
             is not None,
             "piper": discover_piper_executable() is not None,
@@ -16917,15 +16917,15 @@ class MainFrame(
             is not None,
         }
         engine_options: list[tuple[str, str]] = [
-            ("Pyttsx3 (System TTS)", "pyttsx3"),
+            ("Windows (SAPI 5)", "sapi5"),
             ("DECtalk", "dectalk"),
             ("Piper (neural, offline)", "piper"),
             ("Kokoro (neural, offline)", "kokoro"),
             ("eSpeak-NG (English variants)", "espeak"),
         ]
-        current_engine = self.settings.read_aloud_engine.strip().lower() or "pyttsx3"
+        current_engine = self.settings.read_aloud_engine.strip().lower() or "sapi5"
         if current_engine not in {val for _, val in engine_options}:
-            current_engine = "pyttsx3"
+            current_engine = "sapi5"
         read_aloud_kwargs: dict = {
             "engine_options": engine_options,
             "current_engine": current_engine,
@@ -17006,7 +17006,7 @@ class MainFrame(
                         self.settings.read_aloud_espeak_voice = ra_result.voice_id
                     else:
                         self.settings.read_aloud_voice = ra_result.voice_id
-                if eng == "pyttsx3":
+                if eng == "sapi5":
                     self.settings.read_aloud_rate = ra_result.rate
                     self.settings.read_aloud_volume = ra_result.volume
                     self.settings.read_aloud_pitch = ra_result.pitch
@@ -17288,7 +17288,7 @@ class MainFrame(
         if output_path.suffix.lower() != ".wav":
             output_path = output_path.with_suffix(".wav")
 
-        engine = self.settings.read_aloud_engine.strip().lower() or "pyttsx3"
+        engine = self.settings.read_aloud_engine.strip().lower() or "sapi5"
         s = self.settings
 
         # Resolve / prompt for engine-specific paths before background work
@@ -17361,8 +17361,8 @@ class MainFrame(
 
         def work(progress: Callable[[str, int, int], None]) -> object:
             progress(f"Starting {_engine}", 0, 1)
-            if _engine == "pyttsx3":
-                synthesize_to_file_with_pyttsx3(
+            if _engine == "sapi5":
+                synthesize_to_file_with_sapi5(
                     _out_text, _out, voice=_voice, rate=_rate, volume=_vol
                 )
             elif _engine == "dectalk":
@@ -18944,7 +18944,7 @@ class MainFrame(
 
         for name, value in [
             ("Engine", settings.read_aloud_engine),
-            ("Voice (pyttsx3)", settings.read_aloud_voice or "(default system)"),
+            ("Voice (SAPI 5)", settings.read_aloud_voice or "(default system)"),
             ("DECtalk executable", settings.read_aloud_dectalk_executable or "Not configured"),
             ("DECtalk voice", settings.read_aloud_dectalk_voice),
             ("Piper model", settings.read_aloud_piper_model or "Not configured"),
@@ -21812,6 +21812,41 @@ class MainFrame(
         except Exception:  # noqa: BLE001
             return ""
 
+    def _get_gemini_api_key(self) -> str:
+        """Return the stored Google Gemini API key, or '' if none."""
+        try:
+            from quill.core.assistant_ai import load_provider_api_key
+
+            return load_provider_api_key("gemini") or ""
+        except Exception:  # noqa: BLE001
+            return ""
+
+    def _resolve_ai_tts_config(self) -> tuple[str, str, str, float, str, str]:
+        """Return (provider, model, voice, speed, api_key, key_hint) for AI Voice.
+
+        Falls back to each provider's default model/voice when settings are blank.
+        ``key_hint`` is the status message to show when ``api_key`` is empty.
+        """
+        from quill.core.ai import cloud_tts
+
+        s = self.settings
+        provider = (getattr(s, "ai_tts_provider", "openai") or "openai").strip().lower()
+        if provider not in cloud_tts.PROVIDERS:
+            provider = "openai"
+        model = (getattr(s, "ai_tts_model", "") or "").strip() or cloud_tts.default_model(provider)
+        voice = (getattr(s, "ai_tts_voice", "") or "").strip() or cloud_tts.default_voice(provider)
+        try:
+            speed = float(getattr(s, "ai_tts_speed", 1.0))
+        except (TypeError, ValueError):
+            speed = 1.0
+        if provider == "gemini":
+            api_key = self._get_gemini_api_key()
+            key_hint = "Gemini API key not configured. Open AI Hub to add your Gemini key."
+        else:
+            api_key = self._get_openai_api_key()
+            key_hint = "OpenAI API key not configured. Open AI Hub to add your key."
+        return provider, model, voice, speed, api_key, key_hint
+
     # ------------------------------------------------------------------
     # AI TTS: Read Aloud via OpenAI TTS provider
     # ------------------------------------------------------------------
@@ -21839,11 +21874,12 @@ class MainFrame(
     def _ai_tts_speak(self, text: str, source: str) -> None:
         import threading
 
-        api_key = self._get_openai_api_key()
+        from quill.core.ai import cloud_tts
+        from quill.core.ai.tts import TTSError
+
+        provider, model, voice, speed, api_key, key_hint = self._resolve_ai_tts_config()
         if not api_key:
-            self._set_status(
-                "OpenAI API key not configured. Open AI Hub to add your key before using AI voice."
-            )
+            self._set_status(key_hint)
             return
 
         # Cancel any in-progress TTS
@@ -21854,21 +21890,23 @@ class MainFrame(
         stop_event = threading.Event()
         self._ai_tts_stop_event = stop_event
 
-        from quill.core.ai.tts import DEFAULT_MODEL, DEFAULT_VOICE, TTSError, speak_text
-
         word_count = len(text.split())
-        self._set_status(f"AI reading {source} ({word_count} words)...")
+        self._set_status(
+            f"AI reading {source} ({word_count} words) with {cloud_tts.provider_label(provider)} "
+            f"voice {voice}..."
+        )
 
         def _run() -> None:
             import wx as _wx
 
             try:
-                speak_text(
+                cloud_tts.speak_text(
+                    provider,
                     text,
-                    api_key=api_key,
-                    model=DEFAULT_MODEL,
-                    voice=DEFAULT_VOICE,
-                    speed=1.0,
+                    api_key,
+                    model=model,
+                    voice=voice,
+                    speed=speed,
                     on_chunk_complete=None,
                     stop_event=stop_event,
                 )
@@ -21882,9 +21920,12 @@ class MainFrame(
     def ai_tts_export_mp3(self) -> None:
         import wx
 
-        api_key = self._get_openai_api_key()
+        from quill.core.ai import cloud_tts
+        from quill.core.ai.tts import TTSError
+
+        provider, model, voice, speed, api_key, key_hint = self._resolve_ai_tts_config()
         if not api_key:
-            self._set_status("OpenAI API key not configured. Open AI Hub to add your key.")
+            self._set_status(key_hint)
             return
 
         text = str(self.editor.GetValue()).strip()
@@ -21892,12 +21933,18 @@ class MainFrame(
             self._set_status("Document is empty.")
             return
 
+        # OpenAI exports MP3; Gemini exports WAV (its native PCM output).
+        if provider == "gemini":
+            wildcard, default_file = "WAV files (*.wav)|*.wav", "document.wav"
+        else:
+            wildcard, default_file = "MP3 files (*.mp3)|*.mp3", "document.mp3"
+
         with wx.FileDialog(
             self.frame,
-            message="Save audio as MP3",
-            wildcard="MP3 files (*.mp3)|*.mp3",
+            message="Save audio",
+            wildcard=wildcard,
             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
-            defaultFile="document.mp3",
+            defaultFile=default_file,
         ) as dlg:
             if dlg.ShowModal() != wx.ID_OK:  # GATE-42-OK: wx.FileDialog, not a custom dialog
                 return
@@ -21906,32 +21953,32 @@ class MainFrame(
         import threading
         from pathlib import Path
 
-        from quill.core.ai.tts import DEFAULT_MODEL, DEFAULT_VOICE, TTSError, export_to_mp3
-
         cancel_event = threading.Event()
         word_count = len(text.split())
-        self._set_status(f"Exporting {word_count} words to MP3...")
+        cost = cloud_tts.estimate_cost_usd(provider, model, len(text))
+        self._set_status(
+            f"Exporting {word_count} words with {cloud_tts.provider_label(provider)} "
+            f"voice {voice}. {cloud_tts.format_cost(cost)}..."
+        )
 
         def _run() -> None:
             import wx as _wx
 
             try:
-                export_to_mp3(
+                written = cloud_tts.export_audio(
+                    provider,
                     text,
-                    output_path=Path(output_path),
-                    api_key=api_key,
-                    model=DEFAULT_MODEL,
-                    voice=DEFAULT_VOICE,
-                    speed=1.0,
+                    Path(output_path),
+                    api_key,
+                    model=model,
+                    voice=voice,
+                    speed=speed,
                     cancel_event=cancel_event,
                     on_progress=None,
                 )
-                _wx.CallAfter(
-                    self._set_status,
-                    f"MP3 exported: {output_path}",
-                )
+                _wx.CallAfter(self._set_status, f"Audio exported: {written}")
             except TTSError as exc:
-                _wx.CallAfter(self._set_status, f"MP3 export failed: {exc}")
+                _wx.CallAfter(self._set_status, f"Audio export failed: {exc}")
 
         threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: AI bg thread
 

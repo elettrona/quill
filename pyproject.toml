@@ -36,7 +36,9 @@ ui = [
     # Accessible wx.html2.WebView surfaces (chat, preview, dialogs) — extracted
     # from Quill and published so any wxPython app can reuse it.
     "wx-accessible-webview>=0.2.0",
-    "pyttsx3>=2.99",
+    # Windows SAPI 5 text-to-speech (Read Aloud system voice + self-voicing
+    # announcement fallback). Windows-only at runtime; harmless elsewhere.
+    "comtypes>=1.4; sys_platform == 'win32'",
     # CA bundle for verified HTTPS update checks (macOS Python lacks trusted roots).
     "certifi>=2026.6.17",
     # Prism screen-reader speech bridge (Windows) — routes announcements to
@@ -257,7 +259,8 @@ module = [
     "markitdown",
     "certifi",
     "pdfplumber",
-    "pyttsx3",
+    "comtypes",
+    "comtypes.client",
     # Optional GLOW shared-core engine, pulled in only by the `glow` extra.
     # core/glow.py imports it behind a guarded try/except; the scoped strict
     # gate must not depend on the extra being installed.

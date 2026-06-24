@@ -281,7 +281,7 @@ class VoiceBrowserDialog:
         idx = self._engine_rb.GetSelection()
         if 0 <= idx < len(self._engine_values):
             return self._engine_values[idx]
-        return self._engine_values[0] if self._engine_values else "pyttsx3"
+        return self._engine_values[0] if self._engine_values else "sapi5"
 
     def _voices_for_engine(self, eng: str) -> list:
 
@@ -301,7 +301,7 @@ class VoiceBrowserDialog:
             return list_kokoro_voices()
         if eng == "espeak":
             return list_espeak_english_voices()
-        # pyttsx3 — English-only system voices
+        # sapi5 — English-only system voices
         all_v = list_voices()
         return [v for v in all_v if "english" in v.name.lower() or not v.name] or all_v
 
@@ -371,12 +371,12 @@ class VoiceBrowserDialog:
 
     def _update_settings_panel(self, eng: str) -> None:
         s = self._settings
-        has_rate = eng in {"pyttsx3", "dectalk", "espeak"}
-        has_vol_pitch = eng == "pyttsx3"
+        has_rate = eng in {"sapi5", "dectalk", "espeak"}
+        has_vol_pitch = eng == "sapi5"
         has_kokoro = eng == "kokoro"
         has_any = has_rate or has_vol_pitch or has_kokoro
 
-        if eng == "pyttsx3":
+        if eng == "sapi5":
             self._rate_spin.SetRange(80, 450)
             self._rate_spin.SetValue(getattr(s, "read_aloud_rate", 175))
         elif eng == "dectalk":

@@ -39,6 +39,25 @@ class SettingGroup:
     description: str = ""
 
 
+def _ai_tts_voice_choices() -> tuple[tuple[str, str], ...]:
+    """Build the AI Voice choice list (provider-prefixed) from the TTS catalogs.
+
+    Falls back to a minimal pair if the optional AI modules cannot be imported,
+    so the settings table never fails to load.
+    """
+    choices: list[tuple[str, str]] = [("", "Provider default")]
+    try:
+        from quill.core.ai.cloud_tts import provider_label, voices_for
+
+        for provider in ("openai", "gemini"):
+            label = provider_label(provider)
+            for voice_id, voice_name in voices_for(provider):
+                choices.append((voice_id, f"{label}: {voice_name}"))
+    except Exception:  # noqa: BLE001 - keep settings loadable without the AI modules
+        choices.extend([("nova", "OpenAI: Nova"), ("Kore", "Gemini: Kore")])
+    return tuple(choices)
+
+
 SETTING_GROUPS: tuple[SettingGroup, ...] = (
     SettingGroup("general", "General", "Appearance, window, and startup behavior."),
     SettingGroup("editing", "Editing", "How the editor behaves while you write."),
@@ -949,7 +968,7 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "choice",
         "Speech engine used for read aloud.",
         choices=(
-            ("pyttsx3", "System (pyttsx3)"),
+            ("sapi5", "Windows (SAPI 5)"),
             ("dectalk", "DECtalk"),
             ("piper", "Piper"),
             ("kokoro", "Kokoro"),
@@ -957,6 +976,46 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         ),
         feature_id="core.read_aloud",
         keywords=("read aloud", "tts", "voice", "engine"),
+    ),
+    SettingSpec(
+        "ai_tts_provider",
+        "AI Voice provider",
+        "read_aloud",
+        "choice",
+        "Cloud provider for the AI Voice read-aloud and audio export actions.",
+        choices=(
+            ("openai", "OpenAI"),
+            ("gemini", "Google Gemini"),
+        ),
+        feature_id="core.read_aloud",
+        keywords=("ai voice", "cloud tts", "openai", "gemini", "provider"),
+    ),
+    SettingSpec(
+        "ai_tts_model",
+        "AI Voice model",
+        "read_aloud",
+        "choice",
+        "Model used by the selected AI Voice provider (blank uses the provider default).",
+        choices=(
+            ("", "Provider default"),
+            ("tts-1", "OpenAI: tts-1 (fast)"),
+            ("tts-1-hd", "OpenAI: tts-1-hd (higher quality)"),
+            ("gemini-2.5-flash-preview-tts", "Gemini: 2.5 Flash (fast)"),
+            ("gemini-2.5-pro-preview-tts", "Gemini: 2.5 Pro (higher quality)"),
+        ),
+        feature_id="core.read_aloud",
+        keywords=("ai voice", "cloud tts", "model"),
+    ),
+    SettingSpec(
+        "ai_tts_voice",
+        "AI Voice",
+        "read_aloud",
+        "choice",
+        "Voice for the AI Voice provider (blank uses the provider default). "
+        "Pick a voice that matches the selected provider.",
+        choices=_ai_tts_voice_choices(),
+        feature_id="core.read_aloud",
+        keywords=("ai voice", "cloud tts", "voice"),
     ),
     SettingSpec(
         "read_aloud_rate",

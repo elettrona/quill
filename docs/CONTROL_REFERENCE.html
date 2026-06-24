@@ -181,7 +181,6 @@
     To update, edit quill/core/help/topics.json and re-run:
         python -m quill.tools.build_docs
 -->
-
 <h1 id="quill-control-reference">QUILL Control Reference</h1>
 <p>This document describes every registered help topic in QUILL. Press
 F1 on any control to see its topic in-app. Press Ctrl+F1 to open the
@@ -193,8 +192,8 @@ User Guide.</p>
 column, word count, encoding, autosave state, and active tasks. Press F6
 to move focus into it, then arrow left and right between cells. Press
 Enter or Space on a cell to activate it. The Section cell (hidden by
-default, opt in via Preferences -&gt; Status Bar) reads 'Section:
-Heading N (ordinal of total)' whenever the caret is on a heading in a
+default, opt in via Preferences -&gt; Status Bar) reads ‘Section:
+Heading N (ordinal of total)’ whenever the caret is on a heading in a
 Markdown or HTML document; plain-text documents and non-heading lines
 show nothing in the cell.</p>
 <table>
@@ -252,6 +251,10 @@ has unsaved changes.</p>
 QUILL supports plain text, Markdown, HTML, and other formats depending
 on the active file type. Your changes are autosaved automatically.</p>
 <table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
 <thead>
 <tr>
 <th>Key</th>
@@ -318,7 +321,7 @@ HTML only)</td>
 </table>
 <h3 id="copy-tray-slots">Copy Tray Slots</h3>
 <p>The Copy Tray holds up to 12 saved text clips. Arrow through the list
-to hear each slot's label and preview. Press Enter to paste the selected
+to hear each slot’s label and preview. Press Enter to paste the selected
 slot into the editor. Ctrl+Shift+1 through Ctrl+Shift+9, 0, -, and =
 paste the twelve slots directly.</p>
 <table>
@@ -344,7 +347,7 @@ paste the twelve slots directly.</p>
 text directly. Changes are saved automatically when you move to another
 slot. Press Ctrl+C to copy this content to the clipboard.</p>
 <h3 id="pin-this-slot">Pin This Slot</h3>
-<p>When a slot is pinned, it is not overwritten by 'Copy to Next Slot'
+<p>When a slot is pinned, it is not overwritten by ‘Copy to Next Slot’
 operations. Use pinned slots for text you want to keep long-term, such
 as frequently used phrases or template text.</p>
 <h3 id="abbreviation-list">Abbreviation List</h3>
@@ -408,7 +411,7 @@ sources.</p>
 </table>
 <h3 id="abbreviation-manager">Abbreviation Manager</h3>
 <p>Create and manage text abbreviations that expand automatically as you
-type. For example, 'addr' can expand to your full mailing address.
+type. For example, ‘addr’ can expand to your full mailing address.
 Abbreviations are saved to your profile and carry across sessions.</p>
 <h2 id="editing">Editing</h2>
 <h3 id="soft-wrap">Soft Wrap</h3>
@@ -421,8 +424,8 @@ Useful for code and structured documents. Toggle quickly with View &gt;
 Line Numbers.</p>
 <h3 id="tab-width">Tab Width</h3>
 <p>The number of spaces shown for each tab character. 4 is a common
-default. This affects display only unless you also enable 'Indent with
-Spaces'.</p>
+default. This affects display only unless you also enable ‘Indent with
+Spaces’.</p>
 <h3 id="indent-with-spaces">Indent with Spaces</h3>
 <p>When on, pressing Tab inserts spaces instead of a tab character.
 Useful for code where consistent spacing matters more than actual tab
@@ -484,14 +487,14 @@ document.</p>
 </tbody>
 </table>
 <h3 id="case-sensitive-search">Case Sensitive Search</h3>
-<p>When checked, the search matches the exact letter case. 'Apple' will
-not match 'apple' when this is on.</p>
+<p>When checked, the search matches the exact letter case. ‘Apple’ will
+not match ‘apple’ when this is on.</p>
 <h3 id="whole-word-search">Whole Word Search</h3>
-<p>When checked, only complete words are matched. Searching for 'cat'
-will not match 'scatter' or 'concatenate'.</p>
+<p>When checked, only complete words are matched. Searching for ‘cat’
+will not match ‘scatter’ or ‘concatenate’.</p>
 <h3 id="regular-expression-search">Regular Expression Search</h3>
 <p>When checked, the search term is treated as a regular expression. For
-example, '\bword\b' matches whole words and '\d+' matches one or more
+example, ‘\bword\b’ matches whole words and ‘\d+’ matches one or more
 digits.</p>
 <table>
 <thead>
@@ -541,7 +544,7 @@ matching.</p>
 blank to delete all matches.</p>
 <h3 id="search-scope">Search Scope</h3>
 <p>Choose whether to search the whole document or only the current
-selection. 'Selection' is useful when you want to replace text within
+selection. ‘Selection’ is useful when you want to replace text within
 one paragraph or section without affecting the rest of the document.</p>
 <h3 id="find-and-replace">Find and Replace</h3>
 <p>Find text in the document and optionally replace it. Type in the
@@ -746,12 +749,12 @@ runs locally with no network calls.</p>
 <p>See also: <code>ai.model</code></p>
 <h3 id="ai-model">AI Model</h3>
 <p>Select the AI model to use with the chosen provider. Different models
-have different strengths and costs. Leave blank to use the provider's
+have different strengths and costs. Leave blank to use the provider’s
 recommended default.</p>
 <p>See also: <code>ai.provider</code></p>
 <h3 id="api-key-credential-manager">API Key (Credential Manager)</h3>
 <p>API keys are stored securely in Windows Credential Manager, never in
-QUILL settings files. Use 'Store API Key...' to add or update your key.
+QUILL settings files. Use ‘Store API Key…’ to add or update your key.
 The key name is listed in the dialog title.</p>
 <h3 id="api-base-url">API Base URL</h3>
 <p>The server URL for a self-hosted or custom AI endpoint. For standard
@@ -761,21 +764,21 @@ URL.</p>
 <h3 id="system-prompt">System Prompt</h3>
 <p>Optional instructions that are sent to the AI model at the start of
 every session, before your own text. Use this to set tone, focus, or
-persona. For example: 'You are a plain-language editor. Rewrite for a
-general audience.'</p>
+persona. For example: ‘You are a plain-language editor. Rewrite for a
+general audience.’</p>
 <h3 id="ai-temperature">AI Temperature</h3>
-<p>Controls how creative or deterministic the AI's responses are. Lower
+<p>Controls how creative or deterministic the AI’s responses are. Lower
 values (0.0-0.3) give consistent, focused answers. Higher values
 (0.7-1.0) give more varied, creative output. Most writing tasks work
 well at 0.3-0.7.</p>
 <h3 id="ai-context-preview">AI Context Preview</h3>
 <p>Shows the text that will be sent to the AI model for this request.
 QUILL sends your selection if you have one, or the entire document if
-nothing is selected. Long documents may be truncated to fit the model's
+nothing is selected. Long documents may be truncated to fit the model’s
 context window.</p>
 <h3 id="prompt-library">Prompt Library</h3>
 <p>A list of saved AI prompts. Arrow through the list to hear each
-prompt's name. Press Enter or Tab to read the full prompt text in the
+prompt’s name. Press Enter or Tab to read the full prompt text in the
 preview panel. Double-click or press Use Prompt to apply it to the
 current selection.</p>
 <table>
@@ -806,7 +809,7 @@ QUILL replaces {{selection}} with your current document selection when
 the prompt is run.</p>
 <h3 id="skill-library">Skill Library</h3>
 <p>Lists available AI-driven skills (multi-step workflows). Arrow
-through to hear each skill's name and description. Press Enter or Run
+through to hear each skill’s name and description. Press Enter or Run
 Skill to execute the selected skill on your document or selection.</p>
 <table>
 <thead>
@@ -918,13 +921,13 @@ conversation panel.</p>
 </tbody>
 </table>
 <h2 id="remote-file-editing">Remote File Editing</h2>
-<h3 id="ssh--sftp-host">SSH / SFTP Host</h3>
+<h3 id="ssh-sftp-host">SSH / SFTP Host</h3>
 <p>Enter the hostname or IP address of the remote server. For SFTP this
 is the server you connect to over SSH. Example: sftp.example.com</p>
-<h3 id="ssh--sftp-port">SSH / SFTP Port</h3>
+<h3 id="ssh-sftp-port">SSH / SFTP Port</h3>
 <p>The port number for the SSH connection. The standard SSH port is 22.
 Change this only if your server uses a non-standard port.</p>
-<h3 id="ssh--sftp-username">SSH / SFTP Username</h3>
+<h3 id="ssh-sftp-username">SSH / SFTP Username</h3>
 <p>The username you use to log in to the remote server. This is your
 account name on the SSH host.</p>
 <h3 id="ssh-authentication-method">SSH Authentication Method</h3>
@@ -946,14 +949,14 @@ RSA, ECDSA, and Ed25519 key types.</p>
 key has no passphrase. QUILL can save this in Windows Credential Manager
 for convenience.</p>
 <h3 id="trust-new-ssh-host-keys">Trust New SSH Host Keys</h3>
-<p>When on, QUILL automatically accepts and saves the SSH server's host
+<p>When on, QUILL automatically accepts and saves the SSH server’s host
 key the first time you connect. When off (default), QUILL rejects
 unknown host keys for security. Only enable this if you are on a trusted
 network.</p>
 <h3 id="site-name">Site Name</h3>
 <p>A short, descriptive label for this connection. Appears in the site
-list and recent connections menu. Choose something memorable like 'Work
-server' or 'Personal VPS'.</p>
+list and recent connections menu. Choose something memorable like ‘Work
+server’ or ‘Personal VPS’.</p>
 <h3 id="connection-timeout">Connection Timeout</h3>
 <p>How many seconds QUILL will wait for an SSH connection before giving
 up. Increase this on slow or high-latency connections. The default is 10
@@ -963,8 +966,8 @@ seconds.</p>
 your home directory. Example: /var/www/html or /home/user/documents</p>
 <h3 id="site-name-1">Site Name</h3>
 <p>A label for this remote connection. Shown in the Open from Remote and
-Save to Remote menus. Use something descriptive: 'Production server' or
-'Documentation host'.</p>
+Save to Remote menus. Use something descriptive: ‘Production server’ or
+‘Documentation host’.</p>
 <h3 id="protocol">Protocol</h3>
 <p>The file transfer method for this site. SFTP (SSH File Transfer
 Protocol) is the most secure choice for most servers. FTP is unencrypted
@@ -998,8 +1001,9 @@ simple.</p>
 <h2 id="read-aloud">Read Aloud</h2>
 <h3 id="read-aloud-engine">Read Aloud Engine</h3>
 <p>Select the speech engine used when you press the Read Aloud shortcut.
-'System (pyttsx3)' works on all Windows machines. Piper, Kokoro, and
-DECtalk require extra setup.</p>
+‘Windows (SAPI 5)’ uses the built-in system voices and works on all
+Windows machines. Piper, Kokoro, eSpeak-NG, and DECtalk require extra
+setup.</p>
 <table>
 <thead>
 <tr>
@@ -1045,26 +1049,26 @@ the saved file.</p>
 <h2 id="general-preferences">General Preferences</h2>
 <h3 id="interface-language">Interface Language</h3>
 <p>Choose the language for menus, dialogs, and announcements. Leave
-blank to use your operating system's language setting. Changes take
+blank to use your operating system’s language setting. Changes take
 effect after restarting QUILL.</p>
 <h3 id="confirm-destructive-actions">Confirm Destructive Actions</h3>
 <p>When on, QUILL asks for confirmation before actions that cannot be
 easily undone, such as closing an unsaved document or replacing all
 matches in a long document. Recommended for most users.</p>
 <h3 id="startup-file">Startup File</h3>
-<p>Choose which file QUILL opens when it starts. 'Last session' reopens
-what you had open when you last quit. 'Blank document' starts fresh.
-'Specific file' opens the same file every time.</p>
+<p>Choose which file QUILL opens when it starts. ‘Last session’ reopens
+what you had open when you last quit. ‘Blank document’ starts fresh.
+‘Specific file’ opens the same file every time.</p>
 <h3 id="recent-files-limit">Recent Files Limit</h3>
 <p>The maximum number of files to show in the File &gt; Recent Files
 list. Set to 0 to disable the recent files list. Higher limits help if
 you work across many files.</p>
 <h3 id="startup-behaviour">Startup Behaviour</h3>
-<p>Choose what QUILL does when it starts. 'Open last session' restores
-what you had open. 'Blank document' starts with a fresh empty file.
-'Open specific file' opens the same file each time.</p>
+<p>Choose what QUILL does when it starts. ‘Open last session’ restores
+what you had open. ‘Blank document’ starts with a fresh empty file.
+‘Open specific file’ opens the same file each time.</p>
 <h3 id="preferences">Preferences</h3>
-<p>The Preferences dialog lets you customise QUILL's behaviour,
+<p>The Preferences dialog lets you customise QUILL’s behaviour,
 appearance, and integrations. Changes in most groups take effect
 immediately. Use the category list on the left to navigate between
 groups.</p>
@@ -1092,8 +1096,8 @@ groups.</p>
 </table>
 <h2 id="keyboard-and-sound">Keyboard and Sound</h2>
 <h3 id="keyboard-pack">Keyboard Pack</h3>
-<p>Select the keyboard layout QUILL uses for all shortcuts. 'QUILL
-Default' is the recommended starting point. You can import custom packs
+<p>Select the keyboard layout QUILL uses for all shortcuts. ‘QUILL
+Default’ is the recommended starting point. You can import custom packs
 from Tools &gt; Keymap.</p>
 <h3 id="sound-effects">Sound Effects</h3>
 <p>When on, QUILL plays short audio cues for mode changes, error events,
@@ -1101,7 +1105,7 @@ and important announcements. If you use a screen reader, QUILL adjusts
 sound behaviour to avoid clashing with speech output.</p>
 <h3 id="keyboard-layout">Keyboard Layout</h3>
 <p>Choose the keyboard shortcut layout that feels most familiar. QUILL
-Default uses QUILL's own layout, optimised for screen-reader users.
+Default uses QUILL’s own layout, optimised for screen-reader users.
 Other packs mimic Word, Notepad++, or VS Code if you are transitioning
 from those tools.</p>
 <h3 id="sound-effects-1">Sound Effects</h3>
@@ -1249,10 +1253,10 @@ instead from the paste confirmation prompt.</p>
 <h3 id="status-bar-braille-cell">Status Bar Braille Cell</h3>
 <p>When a braille file (.brf or .brl) is the active document, the status
 bar shows a live cell that updates as you move the caret. The cell has
-four segments: braille page (e.g. BRF Pg 12/87), line within the page
+four segments: braille page (e.g. BRF Pg 12/87), line within the page
 (Ln 14/25), cell within the line (Cell 31/40), and print page (Print 7).
 When the print-page detector cannot resolve a page, the print segment
-reads 'Print ?' so the fallback is visible rather than silent. Use the
+reads ‘Print ?’ so the fallback is visible rather than silent. Use the
 Braille menu to read the same information as a spoken announcement.</p>
 <h3 id="brf-tools-preferences">BRF Tools Preferences</h3>
 <p>The BRF Tools Quillin adds a four-tab preferences dialog. The
@@ -1275,7 +1279,7 @@ your status verbosity: Normal verbosity speaks the page, line, and cell;
 Verbose adds the print page and running head. The status bar cell
 updates in parallel so sighted and screen-reader users get the same
 information at the same time. Safe to run on a non-braille document -
-QUILL says 'This is not a braille document' and does nothing else.</p>
+QUILL says ‘This is not a braille document’ and does nothing else.</p>
 <h3 id="read-detailed-braille-status">Read Detailed Braille Status</h3>
 <p>Speak the full detailed status: braille page, line within the page,
 cell within the line, print page, running head, proofing state, and
@@ -1284,14 +1288,14 @@ detail in Beginner. Composes the example string from the spec so the
 structure stays stable across releases.</p>
 <h3 id="read-current-print-page">Read Current Print Page</h3>
 <p>Speak the current print page using the BRF page-detection engine. If
-the detector cannot resolve a page, the spoken announcement says 'Print
-page unknown' so the fallback is honest. The status bar print segment
+the detector cannot resolve a page, the spoken announcement says ‘Print
+page unknown’ so the fallback is honest. The status bar print segment
 shows the same value.</p>
 <h3 id="go-to-braille-page">Go to Braille Page</h3>
 <p>Jump to a braille page by number. Opens a small input dialog that
 accepts 1..N. QUILL validates the page against the current page map and
-refuses to move if the number is out of range, announcing 'Braille page
-0 of N' or 'Braille page 412 of 87' as appropriate. After the move, the
+refuses to move if the number is out of range, announcing ‘Braille page
+0 of N’ or ‘Braille page 412 of 87’ as appropriate. After the move, the
 new position is read aloud using Read Braille Status.</p>
 <table>
 <thead>
@@ -1314,9 +1318,9 @@ new position is read aloud using Read Braille Status.</p>
 <h3 id="go-to-print-page">Go to Print Page</h3>
 <p>Jump to a print page by number. QUILL uses the BRF page-detection
 engine to translate the print page into a braille position, then moves
-the caret there. Announces 'Print page N, braille page M of T' on
-arrival. If the print page is not in the page map, says 'Print page N
-not found in this document' and does not move.</p>
+the caret there. Announces ‘Print page N, braille page M of T’ on
+arrival. If the print page is not in the page map, says ‘Print page N
+not found in this document’ and does not move.</p>
 <table>
 <thead>
 <tr>
@@ -1337,14 +1341,14 @@ not found in this document' and does not move.</p>
 </table>
 <h3 id="next-print-page-change">Next Print Page Change</h3>
 <p>Move the caret to the start of the next braille page whose print page
-number differs from the current one. Spoken: 'Print page change. From
-page 7 to page 8.' If the caret is already on the last change, says 'No
-more print page changes.' Inverse of Previous Print Page Change.</p>
+number differs from the current one. Spoken: ‘Print page change. From
+page 7 to page 8.’ If the caret is already on the last change, says ‘No
+more print page changes.’ Inverse of Previous Print Page Change.</p>
 <h3 id="previous-print-page-change">Previous Print Page Change</h3>
 <p>Move the caret to the start of the previous braille page whose print
-page number differs from the current one. Spoken: 'Print page change.
-From page 8 to page 7.' If the caret is on the first change, says 'No
-previous print page changes.' Inverse of Next Print Page Change.</p>
+page number differs from the current one. Spoken: ‘Print page change.
+From page 8 to page 7.’ If the caret is on the first change, says ‘No
+previous print page changes.’ Inverse of Next Print Page Change.</p>
 <h3 id="insert-braille-page-break">Insert Braille Page Break</h3>
 <p>Insert a form-feed character (0x0C) at the caret. The new page break
 is reflected in the page map immediately; the status bar updates to show
@@ -1354,9 +1358,9 @@ Page Break at Cursor from the same menu.</p>
 <h3 id="recalculate-page-map">Recalculate Page Map</h3>
 <p>Rebuild the page map after edits that may have invalidated it. QUILL
 walks the document once and re-emits the page boundaries. Safe to run on
-a non-braille document - says 'This is not a braille document' and does
+a non-braille document - says ‘This is not a braille document’ and does
 nothing else. Recalculate is automatic on every open; this command is
-for the rare case where a manual refresh is wanted (e.g. after a bulk
+for the rare case where a manual refresh is wanted (e.g. after a bulk
 import).</p>
 <h3 id="read-current-line-and-cell">Read Current Line and Cell</h3>
 <p>Speak the current line within the braille page and the cell within
@@ -1366,37 +1370,37 @@ page; the cell segment is 1-based within the current line. Status bar
 updates in parallel.</p>
 <h3 id="read-current-braille-page">Read Current Braille Page</h3>
 <p>Speak the current braille page number, plus the total page count.
-Format: 'Braille page 12 of 87.' This is the page-only equivalent of
+Format: ‘Braille page 12 of 87.’ This is the page-only equivalent of
 Read Braille Status, which also speaks line and cell.</p>
 <h3 id="read-progress-summary">Read Progress Summary</h3>
 <p>Speak a one-line progress summary: which braille page you are on, how
 many pages are proofed, how many need review, and your estimated
-completion percentage. Format example: 'Progress summary. 87 braille
+completion percentage. Format example: ‘Progress summary. 87 braille
 pages. Current page 12. 9 pages proofed. 3 pages need review. Estimated
-completion 10 percent.' The summary comes from the sidecar when present;
+completion 10 percent.’ The summary comes from the sidecar when present;
 on first open the percentages are zero.</p>
 <h3 id="next-braille-page">Next Braille Page</h3>
 <p>Move the caret to the start of the next braille page. Spoken:
-'Braille page 13.' If the caret is already on the last page, says 'No
-next braille page' and does not move. Inverse of Previous Braille
+‘Braille page 13.’ If the caret is already on the last page, says ‘No
+next braille page’ and does not move. Inverse of Previous Braille
 Page.</p>
 <h3 id="previous-braille-page">Previous Braille Page</h3>
 <p>Move the caret to the start of the previous braille page. Spoken:
-'Braille page 11.' If the caret is already on the first page, says 'No
-previous braille page' and does not move. Inverse of Next Braille
+‘Braille page 11.’ If the caret is already on the first page, says ‘No
+previous braille page’ and does not move. Inverse of Next Braille
 Page.</p>
 <h3 id="remove-braille-page-break-at-cursor">Remove Braille Page Break
 at Cursor</h3>
 <p>Delete the form-feed character (0x0C) at the caret. The two adjacent
 pages merge into one; the page map updates immediately. If the caret is
-not on a form-feed, says 'No page break at cursor' and does nothing.
+not on a form-feed, says ‘No page break at cursor’ and does nothing.
 Undoable with Ctrl+Z.</p>
 <h3 id="normalize-line-endings">Normalize Line Endings</h3>
-<p>Convert every line ending in the document to the active document's
+<p>Convert every line ending in the document to the active document’s
 line ending style (CRLF, LF, or CR). The status bar announces the count
 of changes. Currently a placeholder: the command is wired and reachable
 but the in-place transform is reserved for a future release. A spoken
-'Line ending normalization is not yet implemented' is heard when the
+‘Line ending normalization is not yet implemented’ is heard when the
 command runs.</p>
 <h3 id="save-as-clean">Save As Clean</h3>
 <p>Save a copy of the current braille document with trailing whitespace
@@ -1434,8 +1438,8 @@ installed, the command updates it in place.</p>
 Confidence</h2>
 <h3 id="context-help">Context Help</h3>
 <p>This is the context-sensitive help dialog. It shows information about
-the control you were focused on when you pressed F1. Tab to the 'Open
-User Guide' button for the full documentation section, or press Escape
+the control you were focused on when you pressed F1. Tab to the ‘Open
+User Guide’ button for the full documentation section, or press Escape
 to close.</p>
 <table>
 <thead>

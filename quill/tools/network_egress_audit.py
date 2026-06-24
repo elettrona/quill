@@ -222,6 +222,13 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "configured an OpenAI-compatible provider and API key in AI Hub. Request is "
         "HTTPS-only (TTS_ENDPOINT is a hardcoded openai.com URL); no silent background calls."
     ),
+    "core/ai/gemini_tts.py::request_speech_pcm": (
+        "Google Gemini 2.5 TTS speech synthesis. Triggered only by an explicit user "
+        "action: AI Voice read-aloud or export with the provider set to Gemini. The user "
+        "must have configured a Gemini API key. HTTPS-only (endpoint is a hardcoded "
+        "generativelanguage.googleapis.com URL); the key travels in the x-goog-api-key "
+        "header, never in the URL; no silent background calls."
+    ),
     "core/ai/transcription.py::_post_audio": (
         "OpenAI Whisper audio transcription/translation. Triggered only by an explicit "
         "user action: AI > Transcribe Audio File or AI > Translate Audio File. The user "

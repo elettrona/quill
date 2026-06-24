@@ -214,9 +214,9 @@
     "quill/core/publishing_clients.py": 624,
     "quill/core/quillins/validation.py": 1324,
     "quill/core/read_aloud.py": 1244,
-    "quill/core/settings.py": 1010,
+    "quill/core/settings.py": 1030,
     "quill/core/settings_registry.py": 158,
-    "quill/core/settings_specs.py": 1627,
+    "quill/core/settings_specs.py": 1678,
     "quill/core/watch_actions.py": 789,
     "quill/io/structured.py": 664,
     "quill/stability/crash_submit.py": 287,
@@ -230,7 +230,7 @@
     "quill/ui/copy_tray_dialog.py": 285,
     "quill/ui/crash_report_dialog.py": 337,
     "quill/ui/github_dialogs.py": 661,
-    "quill/ui/main_frame.py": 25900,
+    "quill/ui/main_frame.py": 25947,
     "quill/ui/main_frame_abbreviations.py": 205,
     "quill/ui/main_frame_braille.py": 775,
     "quill/ui/main_frame_copy_tray.py": 344,
@@ -261,5 +261,7 @@
   "_rebaseline_2026_06_23_kokoro_28_voices": "read_aloud.py 1155->1160 (+5): added af_alloy, af_jessica, af_nova, af_river, am_zeus to KOKORO_VOICES completing the full 28-voice English catalog (20 American + 8 British) from hexgrad/Kokoro-82M VOICES.md.",
   "_rebaseline_2026_06_23_speech_hub_unified_dialog": "Unified Speech Hub (#669 follow-up). main_frame.py 25191->25307 (+116): choose_read_aloud_configuration() replaced with open_speech_hub(initial_tab) that builds read_aloud_kwargs+dictation_kwargs and shows SpeechHubDialog; handles both ra_result and dict_result. main_frame_speech.py 1295->1223 (-72): open_speech_models() body replaced with one-liner open_speech_hub(1) call, delegating all dictation result handling to main_frame.py. voice_browser_dialog.py 520->566 (+46): embed_in/on_action parameters added; _embed_mode path builds UI into existing wx.Panel instead of wx.Dialog; _dispatch_action() routes to on_action callback or EndModal; collect_result() added for hub OK-without-action path. speech_setup_dialog.py and speech_hub_dialog.py are new files (362 and 142 lines respectively, both under the 600 default cap).",
   "_rebaseline_2026_06_23_espeak_variant_picker": "voice_browser_dialog.py 566->606 (+40): eSpeak voice character variant picker added. read_aloud.py 1160->1183 (+23): ESPEAK_VARIANTS constant (18 entries) added; ESPEAK_ENGLISH_VOICES corrected from 10 (with duplicates/invented codes) to 8 real bundled lang files (en-gb, en-us, en-029, en-gb-scotland, en-gb-x-gbclan, en-gb-x-gbcwmd, en-gb-x-rp, en-us-nyc); en_GB-alan-low added to PIPER_ENGLISH_VOICES. VoiceBrowserDialog gains variant_row (StaticText+Choice) shown only for espeak engine; _update_settings_panel pre-selects stored variant from accent+variant composite ID; _espeak_combined_voice_id() helper builds composite; _do_preview, _do_export, collect_result, show() all use combined ID for espeak. eSpeak preview folder cleaned: en-sc.mp3 renamed to en-gb-scotland.mp3; stale en-au/en-ca/en-in/en-rp/en-wls/en.mp3 removed.",
-  "_rebaseline_2026_06_23_publishing_merge_into_main": "Merge of the publishing-providers-framework PR (#684) into main, on top of the same-day SAPI 5 / DECtalk / cloud-TTS read-aloud work. module_size_budgets.json conflicted as a measured artifact; resolved by unioning both sides' comment keys and taking, per module, the max of (main's budget, the PR's budget, the real post-merge line count). Two modules exceeded both sides once combined and got a fresh measured bump: main_frame.py 25843->25900, main_frame_menu.py 3854->3871. All other entries kept the larger of the two deliberate values; none lowered. future.publishing stays locked_off (dev-only); CQ-1 decomposition lowers these."
+  "_rebaseline_2026_06_23_publishing_merge_into_main": "Merge of the publishing-providers-framework PR (#684) into main, on top of the same-day SAPI 5 / DECtalk / cloud-TTS read-aloud work. module_size_budgets.json conflicted as a measured artifact; resolved by unioning both sides' comment keys and taking, per module, the max of (main's budget, the PR's budget, the real post-merge line count). Two modules exceeded both sides once combined and got a fresh measured bump: main_frame.py 25843->25900, main_frame_menu.py 3854->3871. All other entries kept the larger of the two deliberate values; none lowered. future.publishing stays locked_off (dev-only); CQ-1 decomposition lowers these.",
+  "_rebaseline_2026_06_23_cloud_tts_providers": "Cloud TTS providers (Gemini 2.5 + OpenAI) for the AI Voice feature. settings.py 1010->1030 (+20): ai_tts_provider/ai_tts_model/ai_tts_voice/ai_tts_speed fields with from_dict validation and constructor wiring. settings_specs.py 1627->1678 (+51): the three AI Voice choice specs plus _ai_tts_voice_choices() which builds the 42-voice provider-prefixed list from the TTS catalogs. main_frame.py 25307->25354 (+47): _get_gemini_api_key, _resolve_ai_tts_config, and the provider-dispatched _ai_tts_speak/ai_tts_export_mp3 handlers (now route through quill/core/ai/cloud_tts.py with a cost estimate). The wx-free core lives in new modules (cloud_tts.py, gemini_tts.py, tts_chunk.py), all under the default cap. Budget re-baselined to current size; CQ-1 decomposition is the path to lower it.",
+  "_rebaseline_2026_06_23_read_aloud_into_main": "Merge of the read-aloud branch (SAPI 5 / DECtalk DLL / AI Voice cloud TTS) into main on top of the publishing merge. Budget union-resolved (max per module); main_frame.py needed a measured bump 25900->25947 for the AI Voice provider dispatch handlers (_resolve_ai_tts_config / _get_gemini_api_key / provider-routed _ai_tts_speak / ai_tts_export_mp3) combining with the publishing handlers. No entry lowered; CQ-1 decomposition is the path to lower it."
 }
