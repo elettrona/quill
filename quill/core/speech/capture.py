@@ -72,10 +72,27 @@ class MicRecorder:
     def __init__(self) -> None:
         self._stream: object | None = None
         self._chunks: list[bytes] = []
+        self._paused = False
 
     @property
     def is_recording(self) -> bool:
         return self._stream is not None
+
+    @property
+    def is_paused(self) -> bool:
+        return self._paused
+
+    def pause(self) -> None:
+        """Stop adding microphone samples without closing the stream.
+
+        Used by Locked Dictation's pause/resume: the device stays open (so resume
+        is instant) but incoming frames are dropped while paused, so the captured
+        audio simply skips the paused span.
+        """
+        self._paused = True
+
+    def resume(self) -> None:
+        self._paused = False
 
     def start(self, device_index: int | None = None) -> None:
         """Begin recording. ``device_index`` < 0 or None uses the system default."""
@@ -89,8 +106,11 @@ class MicRecorder:
                 "'sounddevice' package, or use Windows dictation instead."
             ) from exc
         self._chunks = []
+        self._paused = False
 
         def _callback(indata: Any, _frames: int, _time: object, _status: object) -> None:
+            if self._paused:
+                return  # drop frames while paused (Locked Dictation pause/resume)
             self._chunks.append(bytes(indata))
 
         device = device_index if (device_index is not None and device_index >= 0) else None

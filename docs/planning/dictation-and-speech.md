@@ -37,7 +37,7 @@ A candid read of the shipping code, because the plan must build on what exists:
 | Commands / UI | `quill/ui/main_frame.py` | `tools.dictation_toggle` → `toggle_dictation`; `toggle_dictation_voice_commands`; `_on_dictation_state_change`, `_on_dictation_error`. Keymap: `Ctrl+Alt+V` (and a QUILL-Key chord). |
 | File transcription | `quill/core/ai/transcription.py` | **Cloud only** — OpenAI Whisper-1, 25 MB cap, `urlopen` (GATE-9 audited). |
 | Diarization | `quill/core/ai/diarization.py` | **Cloud only** — Deepgram Nova-3 (2 GB cap). |
-| Offline suite | `feature_catalog.py` `core.bw_whisperer` (+ `bw_transcription`, `bw_parakeet`) | "BITS Whisperer" master flag, **locked_off**, was framed as 2.0. Per current direction it **ships**. |
+| Offline suite | `feature_catalog.py` `core.bw_whisperer` (+ `bw_transcription`) | "BITS Whisperer" master flag, **locked_off**, was framed as 2.0. Per current direction it **ships**. |
 | Model download UX precedent | `quill/ui/main_frame.py` read-aloud (Kokoro/Piper), `quill/core/ai/model_manager.py`, `model_tiers.py` | QUILL already downloads models with accessible progress and tiering — proven patterns to reuse, not reinvent. |
 
 **The core problem:** dictation is a thin shim to the OS panel, the local-engine settings are a promise the code breaks, and transcription/diarization are cloud-only — which contradicts QUILL's privacy-first, offline, accessible mission. #617 is the right destination; this plan gets there while keeping the everyday experience trivially simple.

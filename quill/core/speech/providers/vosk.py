@@ -1,7 +1,7 @@
 """Vosk speech-to-text provider (Kaldi) — optional, offline, very low resource.
 
-Vosk is a lightweight offline ASR engine. Unlike whisper.cpp / Faster Whisper /
-Parakeet it needs **no GPU** and runs comfortably on very low-end CPUs with a
+Vosk is a lightweight offline ASR engine. Unlike whisper.cpp / Faster Whisper it
+needs **no GPU** and runs comfortably on very low-end CPUs with a
 ~40 MB English model — which makes it the accessibility-reach option for old or
 constrained machines. It is an optional pip dependency (``vosk``); models are ZIP
 archives on alphacephei.com, pinned by their published MD5.

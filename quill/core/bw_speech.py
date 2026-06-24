@@ -71,30 +71,6 @@ _WHISPER_MODELS: tuple[SpeechModelSpec, ...] = (
     ),
 )
 
-_PARAKEET_MODELS: tuple[SpeechModelSpec, ...] = (
-    SpeechModelSpec(
-        id="parakeet-ctc-0.6b",
-        name="Parakeet CTC 0.6B",
-        family="parakeet",
-        repo_id="nvidia/parakeet-ctc-0.6b",
-        approx_size_gb=1.2,
-        min_ram_gb=4,
-        min_vram_gb=0,
-        description="Phase rollout candidate for advanced offline ASR.",
-    ),
-    SpeechModelSpec(
-        id="parakeet-tdt-0.6b",
-        name="Parakeet TDT 0.6B",
-        family="parakeet",
-        repo_id="nvidia/parakeet-tdt-0.6b",
-        approx_size_gb=1.2,
-        min_ram_gb=4,
-        min_vram_gb=0,
-        description="Phase rollout candidate with stronger timestamp behavior.",
-    ),
-)
-
-
 def speech_models_dir() -> Path:
     path = app_data_dir() / "speech-models"
     path.mkdir(parents=True, exist_ok=True)
@@ -107,15 +83,12 @@ def whisper_cache_dir() -> Path:
     return path
 
 
-def list_models(*, include_parakeet: bool = True) -> list[SpeechModelSpec]:
-    models = list(_WHISPER_MODELS)
-    if include_parakeet:
-        models.extend(_PARAKEET_MODELS)
-    return models
+def list_models() -> list[SpeechModelSpec]:
+    return list(_WHISPER_MODELS)
 
 
-def get_model(model_id: str, *, include_parakeet: bool = True) -> SpeechModelSpec | None:
-    for spec in list_models(include_parakeet=include_parakeet):
+def get_model(model_id: str) -> SpeechModelSpec | None:
+    for spec in list_models():
         if spec.id == model_id:
             return spec
     return None
@@ -143,10 +116,8 @@ def is_downloaded(spec: SpeechModelSpec) -> bool:
     return path.exists() and path.is_dir()
 
 
-def downloaded_model_ids(*, include_parakeet: bool = True) -> set[str]:
-    return {
-        spec.id for spec in list_models(include_parakeet=include_parakeet) if is_downloaded(spec)
-    }
+def downloaded_model_ids() -> set[str]:
+    return {spec.id for spec in list_models() if is_downloaded(spec)}
 
 
 def total_ram_gb() -> float:
@@ -181,11 +152,9 @@ def has_nvidia_gpu() -> bool:
     return result.returncode == 0 and bool(result.stdout.strip())
 
 
-def recommended_model_id(*, include_parakeet: bool = False) -> str:
+def recommended_model_id() -> str:
     ram = total_ram_gb()
     gpu = has_nvidia_gpu()
-    if include_parakeet and ram >= 16 and gpu:
-        return "parakeet-tdt-0.6b"
     if ram < 6:
         return "whisper-tiny"
     if ram < 10:
@@ -259,10 +228,7 @@ def _download_whisper_model(
 
 def download_model(spec: SpeechModelSpec, progress: _ProgressCallback | None = None) -> Path:
     if spec.family != "whisper":
-        raise RuntimeError(
-            "Only whisper model acquisition is enabled in phase 1. "
-            "Parakeet rollout remains gated for later phases."
-        )
+        raise RuntimeError("Only whisper model acquisition is supported.")
     if is_downloaded(spec):
         return model_path(spec)
     return _download_whisper_model(spec, progress=progress)

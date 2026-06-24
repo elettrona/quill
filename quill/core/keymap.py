@@ -102,6 +102,15 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "tools.read_aloud_stop": "Ctrl+Shift+Grave, Shift+R",  # §10.8.2: Shift+P→Shift+R
     "tools.dictation_toggle": "Ctrl+Shift+Grave, D",
     "tools.speech_dictate": "Ctrl+Shift+Grave, Shift+D",
+    # Hold-to-Dictate and Locked Dictation (offline Whisper). All remappable; the
+    # hold key needs a real key-up, so these are matched in the editor key
+    # handlers rather than the accelerator table (no menu accelerators).
+    "tools.dictation_hold": "F9",
+    "tools.dictation_lock_toggle": "Ctrl+F9",
+    "tools.dictation_pause": "Ctrl+Shift+F9",
+    "tools.dictation_status": "Alt+F9",
+    "tools.dictation_emergency_stop": "Escape",  # consumed only while recording
+    "tools.dictation_cancel": "Shift+Escape",  # consumed only while recording
     "tools.describe_image": "Ctrl+Shift+Grave, I",
     "tools.document_intake_report": "Ctrl+Shift+I",
     # #357 keymap consolidation: AI commands move from inline F7/Shift+F7/F8/
@@ -236,7 +245,10 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "format.expand_abbreviation": "Ctrl+Shift+Grave, A",
     "format.manage_abbreviations": "Ctrl+Shift+Grave, Shift+A",
     "format.toggle_abbreviation_expansion": "Ctrl+Shift+Grave, E",
-    "power.insert_special_character": "F2",  # §4.22 advanced-editor parity
+    # Structured List Studio takes the primary F2 slot (its PRD names F2 the
+    # primary command); Insert Special Character moves to the adjacent Shift+F2.
+    "format.list_studio": "F2",
+    "power.insert_special_character": "Shift+F2",  # §4.22 parity; F2 -> List Studio
     "power.number_lines": "Alt+Shift+N",  # §4.22 Number Items parity
     "power.trim_blank_lines": "Ctrl+Shift+Enter",  # §4.22 Trim Blanks parity
     "power.keep_unique_lines": "Alt+Shift+K",  # §4.22 Keep Unique parity
@@ -451,6 +463,9 @@ def merge_keymaps(raw: object) -> dict[str, str]:
         # Alt+Shift+Up/Down slot.
         "edit.expand_selection": ("ALT+SHIFT+UP", "Ctrl+Shift+Grave, J"),
         "edit.shrink_selection": ("ALT+SHIFT+DOWN", "Ctrl+Shift+Grave, Shift+J"),
+        # Structured List Studio claims F2; migrate a saved F2 special-character
+        # binding to its new Shift+F2 home so the muscle-memory pair stays intact.
+        "power.insert_special_character": ("F2", "Shift+F2"),
     }
     # #609: on macOS, a user who saved Alt+Left / Alt+Right for
     # back/forward location on a pre-#609 build has a saved entry that

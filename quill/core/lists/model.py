@@ -1,0 +1,102 @@
+"""Neutral structured-list model (§22).
+
+A format-independent representation the dialog edits and the renderers serialize.
+The same model covers bulleted, numbered, and checklist items (``FlatList``) and
+term/definition entries (``DefinitionList``), so conversions between them are
+plain data transformations rather than text surgery.
+
+Stable ``*_id`` identities exist for the UI (outline selection, reordering) and
+must **never** appear in the user's generated source (§22 final note).
+"""
+
+from __future__ import annotations
+
+import itertools
+from dataclasses import dataclass, field
+from enum import Enum
+
+_ids = itertools.count(1)
+
+
+def _new_id(prefix: str) -> str:
+    return f"{prefix}-{next(_ids)}"
+
+
+class ListType(Enum):
+    """The kind of structure the model represents."""
+
+    BULLET = "bullet"
+    ORDERED = "ordered"
+    CHECKLIST = "checklist"
+    DEFINITION = "definition"
+
+
+@dataclass(slots=True)
+class ListItem:
+    """One item in a flat (or nested) bullet/ordered/checklist list.
+
+    ``level`` is the nesting depth (0 = top level). ``checked`` only applies to
+    checklist items. ``text`` may contain internal newlines for a loose,
+    multi-line item; the renderer handles continuation indentation.
+    """
+
+    text: str = ""
+    level: int = 0
+    checked: bool = False
+    item_id: str = field(default_factory=lambda: _new_id("item"))
+
+
+@dataclass(slots=True)
+class FlatList:
+    """A bullet, ordered, or checklist list (possibly nested via item levels)."""
+
+    list_type: ListType = ListType.BULLET
+    items: list[ListItem] = field(default_factory=list)
+    ordered_start: int = 1
+
+    def is_empty(self) -> bool:
+        return not any(item.text.strip() for item in self.items)
+
+
+@dataclass(slots=True)
+class DefinitionEntry:
+    """One entry: one or more terms, one or more definitions (§22).
+
+    Terms and definitions are stored as plain strings here (the simple, common
+    case the PRD centres on, §14.2). The model permits several of each so the
+    HTML/Markdown renderers can emit multiple ``<dt>``/``<dd>`` and multi-term
+    syntax without the UI having to special-case them.
+    """
+
+    terms: list[str] = field(default_factory=lambda: [""])
+    definitions: list[str] = field(default_factory=lambda: [""])
+    entry_id: str = field(default_factory=lambda: _new_id("entry"))
+
+    @property
+    def primary_term(self) -> str:
+        return self.terms[0] if self.terms else ""
+
+    @property
+    def primary_definition(self) -> str:
+        return self.definitions[0] if self.definitions else ""
+
+    def is_blank(self) -> bool:
+        return not any(t.strip() for t in self.terms) and not any(
+            d.strip() for d in self.definitions
+        )
+
+
+@dataclass(slots=True)
+class DefinitionList:
+    """A definition/description list (§22)."""
+
+    entries: list[DefinitionEntry] = field(default_factory=list)
+
+    def is_empty(self) -> bool:
+        return not self.entries or all(entry.is_blank() for entry in self.entries)
+
+    def term_count(self) -> int:
+        return sum(len([t for t in e.terms if t.strip()]) for e in self.entries)
+
+    def definition_count(self) -> int:
+        return sum(len([d for d in e.definitions if d.strip()]) for e in self.entries)

@@ -506,12 +506,14 @@ from quill.ui.main_frame_braille_phase3 import BrailleProofingCommandsMixin
 from quill.ui.main_frame_browse import BrowseModeMixin
 from quill.ui.main_frame_copy_tray import CopyTrayMixin
 from quill.ui.main_frame_devtools import DevToolsMixin
+from quill.ui.main_frame_dictation_hotkeys import DictationHotkeysMixin
 from quill.ui.main_frame_github import GitHubRemoteMixin
 from quill.ui.main_frame_hygiene import HygieneMixin
 from quill.ui.main_frame_image import ImageCaptureMixin
 from quill.ui.main_frame_intellisense import IntellisensePopupMixin
 from quill.ui.main_frame_language_detect import LanguageDetectMixin
 from quill.ui.main_frame_line_commands import LineCommandsMixin
+from quill.ui.main_frame_list_studio import ListStudioMixin
 from quill.ui.main_frame_menu import MenuBuilderMixin
 from quill.ui.main_frame_notebook import NotebookUIMixin
 from quill.ui.main_frame_power_tools import PowerToolsActionsMixin
@@ -863,6 +865,8 @@ class MainFrame(
     StatusBarMixin,
     IntellisensePopupMixin,
     LineCommandsMixin,
+    ListStudioMixin,
+    DictationHotkeysMixin,
     SectionMoveMixin,
     CopyTrayMixin,
     ProfilePickerMixin,
@@ -2384,13 +2388,6 @@ class MainFrame(
             feature_id="core.bw_transcription",
         )
         self.commands.register(
-            "whisperer.toggle_parakeet",
-            "BITS Whisperer Toggle Parakeet Model Visibility",
-            self.toggle_bw_parakeet_visibility,
-            None,
-            feature_id="core.bw_parakeet",
-        )
-        self.commands.register(
             "whisperer.check_faster_whisper",
             "BITS Whisperer Check faster-whisper Engine",
             self.check_bw_faster_whisper_engine,
@@ -3548,6 +3545,8 @@ class MainFrame(
         self._register_quillins_commands()
         self._register_braille_commands()
         self._register_speech_commands()
+        self._register_list_studio_commands()
+        self._register_dictation_hotkey_commands()
 
     def _apply_accelerators(self) -> None:
         wx = self._wx
@@ -3735,7 +3734,6 @@ class MainFrame(
             "whisperer.model_manager": self._id_bw_model_manager,
             "whisperer.model_status": self._id_bw_model_status,
             "whisperer.model_recommend": self._id_bw_model_recommend,
-            "whisperer.toggle_parakeet": self._id_bw_toggle_parakeet,
             "whisperer.check_faster_whisper": self._id_bw_check_faster_whisper,
             "whisperer.provider_center": self._id_bw_provider_center,
             "whisperer.provider_status": self._id_bw_provider_status,
@@ -4525,12 +4523,16 @@ class MainFrame(
 
     def _on_editor_key_up(self, event: object) -> None:
         wx = self._wx
+        if self._dictation_handle_key_up(event):
+            return
         if event.GetKeyCode() == wx.WXK_INSERT:
             self._insert_key_down = False
         self._on_editor_caret_activity(event)
 
     def _on_editor_key_down(self, event: object) -> None:
         wx = self._wx
+        if self._dictation_handle_key_down(event):
+            return
         if (
             event.ControlDown()
             and not event.AltDown()
@@ -17472,18 +17474,12 @@ class MainFrame(
         for menu in getattr(self, "_voice_commands_check_menus", ()) or ():
             menu.Check(self._id_dictation_voice_commands, enabled)
 
-    def _bw_include_parakeet_models(self) -> bool:
-        if not self._feature_enabled("core.bw_parakeet"):
-            return False
-        return bool(getattr(self.settings, "bw_enable_parakeet_models", False))
-
     def show_bw_model_status(self) -> None:
-        include_parakeet = self._bw_include_parakeet_models()
-        models = bw_list_models(include_parakeet=include_parakeet)
-        downloaded = bw_downloaded_model_ids(include_parakeet=include_parakeet)
+        models = bw_list_models()
+        downloaded = bw_downloaded_model_ids()
         mode = str(getattr(self.settings, "bw_speech_selection_mode", "recommended"))
         current_model = str(getattr(self.settings, "bw_speech_model_id", "whisper-base"))
-        recommended = bw_recommended_model_id(include_parakeet=include_parakeet)
+        recommended = bw_recommended_model_id()
         ok, engine_status = faster_whisper_status()
         status = [
             "BITS Whisperer Speech Model Status",
@@ -17503,22 +17499,11 @@ class MainFrame(
         self._set_status("BITS Whisperer speech model status shown")
 
     def apply_bw_recommended_model(self) -> None:
-        model_id = bw_recommended_model_id(include_parakeet=self._bw_include_parakeet_models())
+        model_id = bw_recommended_model_id()
         self.settings.bw_speech_selection_mode = "recommended"
         self.settings.bw_speech_model_id = model_id
         save_settings(self.settings)
         self._set_status(f"Recommended mode active. Selected speech model: {model_id}")
-
-    def toggle_bw_parakeet_visibility(self) -> None:
-        self.settings.bw_enable_parakeet_models = not bool(
-            getattr(self.settings, "bw_enable_parakeet_models", False)
-        )
-        save_settings(self.settings)
-        item = self.frame.GetMenuBar().FindItemById(self._id_bw_toggle_parakeet)
-        if item is not None:
-            item.Check(self.settings.bw_enable_parakeet_models)
-        state_text = "enabled" if self.settings.bw_enable_parakeet_models else "disabled"
-        self._set_status(f"Parakeet model visibility {state_text}")
 
     def check_bw_faster_whisper_engine(self) -> None:
         ok, detail = faster_whisper_status()
@@ -17688,8 +17673,8 @@ class MainFrame(
         readiness = bw_provider_readiness(provider_id, local_first=local_first)
         recommended_provider_id = bw_recommended_provider_id(local_first=local_first)
         recommended_provider = bw_get_provider(recommended_provider_id, include_cloud=True)
-        downloaded_ids = bw_downloaded_model_ids(include_parakeet=False)
-        available_model_count = len(bw_list_models(include_parakeet=False))
+        downloaded_ids = bw_downloaded_model_ids()
+        available_model_count = len(bw_list_models())
         engine_ok, engine_status = faster_whisper_status()
         return {
             "provider_mode": "local_first" if local_first else "cloud_first",
@@ -17782,12 +17767,6 @@ class MainFrame(
                 "Phase 1",
                 "Ready",
                 "Help Status Page refreshes live with accessibility-aware cadence controls.",
-            ),
-            (
-                "Parakeet runtime",
-                "Phase 2",
-                "Gated",
-                "Parakeet remains intentionally staged to reduce regression risk.",
             ),
             (
                 "Runtime provider routing",
@@ -17944,7 +17923,7 @@ class MainFrame(
             if selection < 0 or selection >= len(failed_ids):
                 return
             model_id = failed_ids[selection]
-            spec = bw_get_model(model_id, include_parakeet=True)
+            spec = bw_get_model(model_id)
             if spec is None:
                 self._set_status(f"Could not retry; model no longer available: {model_id}")
                 return
@@ -17962,10 +17941,9 @@ class MainFrame(
             return
 
     def open_bw_model_manager(self) -> None:
-        include_parakeet = self._bw_include_parakeet_models()
-        models = bw_list_models(include_parakeet=include_parakeet)
-        downloaded = bw_downloaded_model_ids(include_parakeet=include_parakeet)
-        recommended = bw_recommended_model_id(include_parakeet=include_parakeet)
+        models = bw_list_models()
+        downloaded = bw_downloaded_model_ids()
+        recommended = bw_recommended_model_id()
 
         quick_actions = [
             "Use recommended model",
@@ -18034,7 +18012,7 @@ class MainFrame(
             return
 
         model_id = model_ids[selection]
-        spec = bw_get_model(model_id, include_parakeet=include_parakeet)
+        spec = bw_get_model(model_id)
         if spec is None:
             return
 
@@ -18078,15 +18056,6 @@ class MainFrame(
             return
 
         if action == "Download model":
-            if spec.family != "whisper":
-                self._show_message_box(
-                    "Parakeet downloads are intentionally gated in phase 1. "
-                    "Enable only whisper acquisition for now.",
-                    "BITS Whisperer Speech Models",
-                    self._wx.ICON_INFORMATION | self._wx.OK,
-                )
-                self._set_status("Parakeet download remains gated for later phases")
-                return
             if not bw_has_disk_capacity(spec):
                 self._show_message_box(
                     "Not enough disk space for this model plus safety buffer.",
@@ -18917,8 +18886,8 @@ class MainFrame(
                 bw_recommended_provider, include_cloud=True
             )
             bw_ready = bw_provider_readiness(bw_provider_id, local_first=bw_local_first)
-            bw_models = bw_list_models(include_parakeet=False)
-            bw_downloaded = bw_downloaded_model_ids(include_parakeet=False)
+            bw_models = bw_list_models()
+            bw_downloaded = bw_downloaded_model_ids()
             bw_engine_ok, bw_engine_status = faster_whisper_status()
             for name, value in [
                 ("Provider mode", "Local-first" if bw_local_first else "Cloud-first"),

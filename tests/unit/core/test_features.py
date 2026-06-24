@@ -48,7 +48,6 @@ def test_feature_mapping_infers_command_groups() -> None:
     assert feature_for_command("whisperer.model_manager") == "core.bw_transcription"
     assert feature_for_command("whisperer.model_status") == "core.bw_transcription"
     assert feature_for_command("whisperer.model_recommend") == "core.bw_transcription"
-    assert feature_for_command("whisperer.toggle_parakeet") == "core.bw_parakeet"
     assert feature_for_command("whisperer.check_faster_whisper") == "core.bw_transcription"
     assert feature_for_command("whisperer.provider_center") == "core.bw_providers"
     assert feature_for_command("whisperer.provider_status") == "core.bw_providers"
@@ -266,12 +265,12 @@ def test_feature_with_off_dependency_stays_off_even_if_self_on() -> None:
     # FLAG-1: a dependent feature is effectively off when any feature in its
     # dependency chain is off, regardless of how the dependency was disabled.
     manager = FeatureManager(active_profile_id=PROFILE_FULL_QUILL)
-    # core.bw_parakeet -> core.bw_transcription -> core.dictation -> core.editor
+    # core.bw_providers -> core.bw_transcription -> core.dictation -> core.editor
     manager.overrides["core.dictation"] = FEATURE_STATE_OFF
 
-    assert manager.state_for("core.bw_parakeet") == FEATURE_STATE_ON
-    assert manager.is_enabled("core.bw_parakeet") is False
-    assert manager.is_visible("core.bw_parakeet") is False
+    assert manager.state_for("core.bw_providers") == FEATURE_STATE_ON
+    assert manager.is_enabled("core.bw_providers") is False
+    assert manager.is_visible("core.bw_providers") is False
     assert manager.is_enabled("core.bw_transcription") is False
 
 
@@ -308,7 +307,7 @@ def test_bits_whisperer_master_flag_is_locked_off() -> None:
     assert manager.state_for("core.bw_whisperer") == FEATURE_STATE_OFF
     assert manager.is_enabled("core.bw_whisperer") is False
     assert manager.is_enabled("core.bw_transcription") is False
-    assert manager.is_enabled("core.bw_parakeet") is False
+    assert manager.is_enabled("core.bw_providers") is False
     assert manager.is_visible("core.bw_transcription") is False
 
     # A locked-off flag cannot be turned on by a user override either.

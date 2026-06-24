@@ -969,6 +969,7 @@ class MenuBuilderMixin:
         self._id_toggle_numbered_list = wx.NewIdRef()
         self._id_insert_task_list = wx.NewIdRef()
         self._id_open_list_manager = wx.NewIdRef()
+        self._id_open_list_studio = wx.NewIdRef()
         self._id_insert_code_block = wx.NewIdRef()
         self._id_insert_footnote = wx.NewIdRef()
         self._id_insert_table = wx.NewIdRef()
@@ -1250,6 +1251,10 @@ class MenuBuilderMixin:
             self._id_open_list_manager,
             self._menu_label(_("List &Manager..."), "format.list_manager"),
         )
+        list_menu.Append(
+            self._id_open_list_studio,
+            self._menu_label(_("Structured List &Studio..."), "format.list_studio"),
+        )
         insert_menu.AppendSubMenu(list_menu, _("&List"))
         insert_menu.Append(
             self._id_insert_code_block,
@@ -1375,7 +1380,6 @@ class MenuBuilderMixin:
         self._id_bw_model_manager = wx.NewIdRef()
         self._id_bw_model_status = wx.NewIdRef()
         self._id_bw_model_recommend = wx.NewIdRef()
-        self._id_bw_toggle_parakeet = wx.NewIdRef()
         self._id_bw_check_faster_whisper = wx.NewIdRef()
         self._id_bw_provider_center = wx.NewIdRef()
         self._id_bw_provider_status = wx.NewIdRef()
@@ -1960,14 +1964,6 @@ class MenuBuilderMixin:
         bw_models_menu.Append(
             self._id_bw_model_recommend,
             self._menu_label(_("Use &Recommended Model"), "whisperer.model_recommend"),
-        )
-        bw_models_menu.AppendCheckItem(
-            self._id_bw_toggle_parakeet,
-            self._menu_label(_("Show &Parakeet Models"), "whisperer.toggle_parakeet"),
-        )
-        bw_models_menu.Check(
-            self._id_bw_toggle_parakeet,
-            bool(getattr(self.settings, "bw_enable_parakeet_models", False)),
         )
         bw_models_menu.AppendSeparator()
         bw_models_menu.Append(
@@ -3251,6 +3247,11 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU,
+            lambda _e: self.open_list_studio(),
+            id=self._id_open_list_studio,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
             lambda _e: self.format_insert_code_block(),
             id=self._id_insert_code_block,
         )
@@ -3470,11 +3471,6 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.apply_bw_recommended_model(),
             id=self._id_bw_model_recommend,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.toggle_bw_parakeet_visibility(),
-            id=self._id_bw_toggle_parakeet,
         )
         self.frame.Bind(
             wx.EVT_MENU,

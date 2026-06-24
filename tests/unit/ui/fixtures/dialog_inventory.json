@@ -206,6 +206,7 @@
   "quill/ui/main_frame_image.py::ImageCaptureMixin.describe_image_with_ai::wx.ProgressDialog": "native",
   "quill/ui/main_frame_image.py::ImageCaptureMixin.ocr_image_file::wx.FileDialog": "native",
   "quill/ui/main_frame_image.py::ImageCaptureMixin.ocr_screen_capture::wx.SingleChoiceDialog": "native",
+  "quill/ui/main_frame_list_studio.py::ListStudioMixin.open_list_studio::wx.Dialog": "hardened_custom",
   "quill/ui/main_frame_notebook.py::NotebookUIMixin.manage_notebook_snapshots.on_rename::wx.TextEntryDialog": "native",
   "quill/ui/main_frame_notebook.py::NotebookUIMixin.manage_notebook_snapshots::wx.Dialog": "hardened_custom",
   "quill/ui/main_frame_notebook.py::NotebookUIMixin.new_notebook::wx.FileDialog": "native",

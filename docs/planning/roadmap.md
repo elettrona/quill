@@ -210,8 +210,8 @@ issues so the 1.0 tracker holds workstreams, not bare placeholders:
   the misspellings/search-hits nav types.
 
 The BITS Whisperer workstream (#669) shipped offline auto-transcription (#668),
-transcript formats (#670), cloud providers as Quillins (#671), and the Parakeet
-(#673) and Vosk (#677) engines this cycle.
+transcript formats (#670), cloud providers as Quillins (#671), and the Vosk
+(#677) engine this cycle. The Parakeet engine (#673) was removed in 2026-06.
 
 ---
 

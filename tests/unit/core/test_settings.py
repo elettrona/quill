@@ -37,7 +37,6 @@ def test_settings_round_trip(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
             assistant_prompt_style="technical",
             bw_speech_selection_mode="manual",
             bw_speech_model_id="whisper-small",
-            bw_enable_parakeet_models=False,
             bw_provider_id="openai_whisper",
             bw_provider_mode="cloud_first",
             bw_show_cloud_providers=False,
@@ -82,7 +81,6 @@ def test_settings_round_trip(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
     assert loaded.assistant_prompt_style == "technical"
     assert loaded.bw_speech_selection_mode == "manual"
     assert loaded.bw_speech_model_id == "whisper-small"
-    assert loaded.bw_enable_parakeet_models is False
     assert loaded.bw_provider_id == "openai_whisper"
     assert loaded.bw_provider_mode == "cloud_first"
     assert loaded.bw_show_cloud_providers is False

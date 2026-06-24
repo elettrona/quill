@@ -177,6 +177,38 @@ listening" in the status bar — then press again to stop; QUILL inserts what yo
 said at the cursor as a single undoable edit. **Dictation Microphone...** picks
 which microphone to use.
 
+### Hold-to-Dictate and Locked Dictation (new)
+Two fast, keyboard-only ways to dictate straight into the document — no dialog, no
+focus change. They run on the same on-device Whisper engine as everything else, so
+nothing is uploaded.
+
+- **Hold-to-Dictate — hold F9.** Press and hold **F9**, speak, and release: QUILL
+  transcribes what you said and inserts it at the cursor as one undoable edit. A
+  short tone marks the start and stop (the stop tone is played only after the
+  microphone closes, so it is never recorded). Ideal for a phrase or a sentence.
+- **Locked Dictation — Ctrl+F9.** Press **Ctrl+F9** once to start a hands-free
+  recording session (no need to keep a key held), and **Ctrl+F9** again to finish
+  and insert. QUILL announces "Locked dictation on" so the active state is
+  unmistakable.
+- **Always a dependable stop.** While recording, **Escape** stops and *keeps* your
+  speech for transcription; **Shift+Escape** cancels and discards it. Locked
+  Dictation also stops automatically after five minutes, and stops and preserves
+  your audio if QUILL loses focus.
+- **Pause and check state.** **Ctrl+Shift+F9** pauses or resumes a locked session;
+  **Alt+F9** speaks the current state ("Locked dictation is recording", "Dictation
+  is being transcribed", and so on) without changing anything.
+- **Safe by design.** Audio is saved to a recovery folder *before* transcription
+  begins, so a crash or unplugged microphone never loses your words; a missing
+  key-up can never leave the microphone running; and if the transcript cannot be
+  safely inserted it is kept for review rather than dropped.
+- **Every shortcut is remappable.** F9, Ctrl+F9, and the rest are defaults you can
+  change under **Settings > Keyboard** (Keymap Editor); conflicts are detected and
+  explained.
+
+This first release covers Hold-to-Dictate and Locked Dictation while QUILL is the
+foreground window; pause/resume, recovery review, and an optional global key hook
+are planned follow-ups.
+
 ### Run commands by voice (new)
 **Voice Command (Offline)** lets you drive QUILL hands-free. Run it, say a
 command — "save", "bold", "next heading", "word count", "command palette" — and
@@ -194,9 +226,6 @@ can opt into two more, each by installing an optional dependency:
   Whisperer > Download Faster Whisper Engine...** (about 110 MB, downloaded on
   demand; no source checkout needed), or from source as the `fasterwhisper`
   dependency.
-- **Parakeet (English)** — NVIDIA's high-accuracy **English** engine with
-  timestamps, also GPU-oriented (`parakeet` dependency, which pulls in NVIDIA
-  NeMo and PyTorch — a large download).
 - **Vosk (English)** — a **very low-resource, CPU-only** engine that runs on a
   ~40 MB model with no GPU, for old or constrained machines. It ships **in the
   Windows installer**, so it is available out of the box (no extra install); from
@@ -508,6 +537,40 @@ the same behaviour described here.
 - The unfinished **Pandoc Conversion Center** menu item was removed; use
   **File > Import** / **File > Export** (and **Tools > Batch Conversion** for
   folders).
+
+## Structured List Studio: build lists by concept, not syntax (F2)
+
+A new **Structured List Studio** lets you build and edit lists by working with
+plain concepts — item text, a checked box, a term and its definition — while
+QUILL writes the correct Markdown or HTML for you. You never have to type `-`,
+`1.`, `[ ]`, `<ul>`, or `<dl>` by hand.
+
+- **Press F2 to open it.** F2 is context-sensitive: with text selected it turns
+  your selection into a list (one item per line or per paragraph, detected
+  automatically, with any existing bullet/number/task markers stripped); with
+  nothing selected it starts a new list. The studio is also on the
+  **Insert > List > Structured List Studio...** menu. (F2 was previously Insert
+  Special Character, which moves to **Shift+F2**; both shortcuts are remappable
+  in Keyboard settings.)
+- **Four list types.** Bulleted, Numbered, Checklist, and **Definition (or
+  description) list**. A choice control switches between them, and a Markdown/HTML
+  control picks the output; the dialog shows the generated source live, read-only,
+  as you work.
+- **Definition lists without the tags.** Build glossaries, FAQs, and
+  term/description pairs through clearly labelled **Term** and **Definition**
+  fields. QUILL generates valid `<dl>`/`<dt>`/`<dd>` for HTML and a
+  Pandoc-compatible definition syntax for Markdown — it never asks you to know
+  which one your renderer supports.
+- **Accessible by construction.** Every control is keyboard-reachable and
+  labelled; the items/entries outline announces each item's text, number or
+  checked state, and position; and inserting the finished list is a single
+  Ctrl+Z-able edit.
+
+This first release covers flat (non-nested) lists and the common one-term,
+one-definition case. Nested-list editing, multiple terms/definitions per entry,
+import-from-file/clipboard with a preview, conversion previews, and the full
+Settings and preset surface described in the design are planned follow-ups; the
+underlying engine already supports them.
 
 ## Opening and saving files faithfully
 

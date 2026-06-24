@@ -171,13 +171,6 @@ FEATURE_DEFINITIONS: dict[str, FeatureDefinition] = {
         category="accessibility",
         dependencies=("core.dictation", "core.bw_whisperer"),
     ),
-    "core.bw_parakeet": FeatureDefinition(
-        "core.bw_parakeet",
-        "BITS Whisperer Parakeet Models",
-        description="Controls visibility for phased Parakeet model options.",
-        category="accessibility",
-        dependencies=("core.bw_transcription",),
-    ),
     "core.bw_providers": FeatureDefinition(
         "core.bw_providers",
         "BITS Whisperer Provider Onboarding",

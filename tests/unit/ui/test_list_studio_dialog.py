@@ -1,0 +1,58 @@
+"""Wiring tests for ListStudioDialog that do not need a live wx control tree.
+
+The full control behavior is exercised by hand with a screen reader; here we guard
+the seam between the dialog and ``quill.core.lists`` — that the dialog renders the
+model it was given through the right renderer and reports an accurate summary — so
+a regression in that wiring is caught without a wx display.
+"""
+
+from __future__ import annotations
+
+from quill.core.lists import (
+    DefinitionEntry,
+    DefinitionList,
+    FlatList,
+    ListItem,
+    ListType,
+)
+from quill.core.lists.settings import DefinitionMarkdownProfile, StructuredListSettings
+from quill.ui.list_studio_dialog import ListStudioDialog
+
+
+def _studio(**kwargs: object) -> ListStudioDialog:
+    # __init__ only stores its arguments; no wx objects are constructed until
+    # populate(), so a placeholder wx module is fine for these seam tests.
+    return ListStudioDialog(wx=object(), **kwargs)  # type: ignore[arg-type]
+
+
+def test_renders_flat_markdown_by_default() -> None:
+    studio = _studio(flat=FlatList(items=[ListItem("apples"), ListItem("oranges")]))
+    assert studio._render() == "- apples\n- oranges"
+    assert studio.summary == "Bulleted list, 2 items."
+
+
+def test_renders_flat_html_when_format_is_html() -> None:
+    studio = _studio(flat=FlatList(items=[ListItem("a")]), target_format="html")
+    assert studio._render() == "<ul>\n  <li>a</li>\n</ul>"
+
+
+def test_definition_model_selects_definition_type() -> None:
+    dl = DefinitionList(entries=[DefinitionEntry(terms=["Term"], definitions=["Def"])])
+    studio = _studio(
+        definition=dl,
+        settings=StructuredListSettings(
+            definition_markdown_profile=DefinitionMarkdownProfile.PANDOC
+        ),
+    )
+    assert studio._is_definition()
+    assert "Term\n: Def" in studio._render()
+
+
+def test_checklist_render_reflects_checked_state() -> None:
+    studio = _studio(
+        flat=FlatList(
+            list_type=ListType.CHECKLIST,
+            items=[ListItem("done", checked=True), ListItem("todo")],
+        )
+    )
+    assert studio._render() == "- [x] done\n- [ ] todo"

@@ -27,6 +27,16 @@ def test_mic_recorder_starts_unrecording() -> None:
     assert capture.MicRecorder().is_recording is False
 
 
+def test_mic_recorder_pause_resume_toggles_flag() -> None:
+    # pause()/resume() drive Locked Dictation pause without needing a live stream.
+    recorder = capture.MicRecorder()
+    assert recorder.is_paused is False
+    recorder.pause()
+    assert recorder.is_paused is True
+    recorder.resume()
+    assert recorder.is_paused is False
+
+
 def test_list_input_devices_returns_list() -> None:
     # Must not raise whether or not sounddevice is installed.
     assert isinstance(capture.list_input_devices(), list)

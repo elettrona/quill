@@ -175,8 +175,8 @@ Captured on the current branch (`main`), dev environment, Python 3.12.
 | Egress audit | `tests/unit/tools/test_network_egress_audit.py` | Pass |
 | Docs parity | `scripts/check_docs_artifacts.py` | Pass |
 | Build dist | `tests/unit/scripts/test_build_windows_distribution.py` | Pass (15) |
-| Speech suite | `tests/unit/core/speech/` (subset) | Pass; one Parakeet test hits a `transformers` import timeout in dev (see TEST-001) |
-| Full suite | `pytest tests/unit tests/stability tests/integration` (ex-Parakeet) | GREEN: 4857 unit+integration + 38 stability passed, 12 skipped, 0 failures (after the TEST-002 fix, confirmed by a full re-run without `-x`) |
+| Speech suite | `tests/unit/core/speech/` (subset) | Pass (the Parakeet engine and its test were removed 2026-06-24; see TEST-001) |
+| Full suite | `pytest tests/unit tests/stability tests/integration` | GREEN: 4857 unit+integration + 38 stability passed, 12 skipped, 0 failures (after the TEST-002 fix, confirmed by a full re-run without `-x`) |
 
 ## Running totals
 
@@ -246,14 +246,13 @@ Captured on the current branch (`main`), dev environment, Python 3.12.
 
 ### TEST-001 — Parakeet provider test triggers a slow `transformers` import in dev
 - Severity: Low. Category: Test reliability.
-- When `transformers` is installed in the environment, running the full
-  `tests/unit/core/speech/` set can hang on NeMo's `transformers` import-structure
-  scan during a Parakeet test, hitting the suite timeout. Product code is lazy
-  (only `find_spec` at startup), so this is a test-harness artifact, not a runtime
-  defect; Parakeet is unbundled and source-only.
-- Recommended next step: add `@pytest.mark.timeout(...)` to the Parakeet test and
-  ensure it never triggers a real heavy import under collection.
-- Status: Found (deferred).
+- When `transformers` was installed in the environment, running the full
+  `tests/unit/core/speech/` set could hang on NeMo's `transformers` import-structure
+  scan during the Parakeet test, hitting the suite timeout.
+- Status: Resolved (2026-06-24). The NVIDIA Parakeet engine was removed from QUILL
+  entirely — the provider, catalog entries, optional `[parakeet]` extra, BITS
+  Whisperer gating, and `test_parakeet_provider.py` are gone — so the slow import
+  can no longer occur.
 
 ## Accessibility audit — wave 1 (dialogs / tab groups)
 
@@ -491,8 +490,9 @@ audited here are now permanently guarded.
 
 ## Full-suite sweep (drive detectable failures to zero)
 
-Running the whole `tests/unit tests/stability` suite (4896 tests, Parakeet
-excluded for TEST-001) surfaced exactly one failure, now fixed.
+Running the whole `tests/unit tests/stability` suite (4896 tests; the Parakeet
+test referenced under TEST-001 has since been removed) surfaced exactly one
+failure, now fixed.
 
 ### TEST-002 — flaky watchdog re-dump test (timing-dependent)
 - Severity: Medium. Category: Test reliability.

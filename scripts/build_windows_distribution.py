@@ -96,8 +96,8 @@ PIPER_PINNED_SHA256 = "f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc808
 # component or native staging -- installing the wheel makes the engine available,
 # and its ~40 MB model still downloads on demand via Manage Speech Models. It is
 # the accessibility-reach fallback for old/constrained machines, so it ships in
-# the base bundle. The heavier opt-in engines (Faster Whisper, Parakeet) stay
-# pip-only and are not bundled.
+# the base bundle. The heavier opt-in engine (Faster Whisper) stays pip-only and
+# is not bundled.
 DEFAULT_BUNDLED_DEPENDENCY_GROUPS = ("ui", "spellcheck", "ocr", "kokoro", "speech", "vosk")
 
 # Pinned rcedit release (electron/rcedit). Build-tool only -- never copied into

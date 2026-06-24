@@ -110,7 +110,6 @@ class Settings:
     speech_provider: str = ""
     bw_speech_selection_mode: str = "recommended"
     bw_speech_model_id: str = "whisper-base"
-    bw_enable_parakeet_models: bool = False
     bw_provider_id: str = "local_whisper"
     bw_provider_mode: str = "local_first"
     bw_show_cloud_providers: bool = True
@@ -512,7 +511,6 @@ class Settings:
         bw_speech_model_id = (
             str(data.get("bw_speech_model_id", "whisper-base")).strip() or "whisper-base"
         )
-        bw_enable_parakeet_models = bool(data.get("bw_enable_parakeet_models", False))
         bw_provider_id = str(data.get("bw_provider_id", "local_whisper")).strip() or "local_whisper"
         bw_provider_mode = str(data.get("bw_provider_mode", "local_first")).strip().lower()
         if bw_provider_mode not in {"local_first", "cloud_first"}:
@@ -878,7 +876,6 @@ class Settings:
             speech_provider=speech_provider,
             bw_speech_selection_mode=bw_speech_selection_mode,
             bw_speech_model_id=bw_speech_model_id,
-            bw_enable_parakeet_models=bw_enable_parakeet_models,
             bw_provider_id=bw_provider_id,
             bw_provider_mode=bw_provider_mode,
             bw_show_cloud_providers=bw_show_cloud_providers,

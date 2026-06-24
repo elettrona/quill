@@ -371,10 +371,11 @@ The **Insert** menu adds structured content at the cursor.
 
 - **Insert Link...** creates a format-aware link.
 - **Heading** submenu: insert Heading 1 through 6, **Decrease Level** / **Increase Level**, and **Style Headings...** (font, size, alignment) for the current level or all levels.
-- **List** submenu: **Bullet**, **Numbered**, **Task**, and **List Manager...**.
+- **List** submenu: **Bullet**, **Numbered**, **Task**, **List Manager...**, and **Structured List Studio...** (F2).
 - **Insert Code Block**, **Insert Footnote**, **Insert Table...**, **Insert HTML Tag...**, and **Insert Markdown Tag...**.
 - **Insert Snippet...** and **Manage Snippets...** for reusable text with placeholders.
-- **Special Character...** opens a symbol picker.
+- **Special Character...** (`Shift+F2`) opens a symbol picker. (This moved from F2,
+  which now opens the Structured List Studio; both keys are remappable.)
 - **Date and Time** submenu inserts a date, time, or both at the cursor. The bundled `com.quill.bundled.insert-tools` Quillin owns this submenu; it is the canonical home for date and time snippets. See [Date and Time submenu](#date-and-time-submenu) below.
 - **File Content...** inserts the contents of another file at the cursor.
 - **Insert Equation...** (`Ctrl+Shift+E`) opens a two-step prompt for inserting a LaTeX or MathML equation. Type the formula in LaTeX notation — for example `E=mc^2` or `\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}` — or paste a MathML fragment. If the input is LaTeX, a second step asks whether to display it inline (`$...$`) or as a block (`$$...$$`). If a LaTeX equation is already selected when you press `Ctrl+Shift+E`, the delimiters are stripped and the bare formula pre-fills the prompt. MathML input (starting with `<math`) is inserted verbatim without a mode step. Browser Preview and HTML export render equations using MathJax 3.
@@ -819,6 +820,32 @@ not need to enable Artificial Intelligence to use these features. They live unde
   cursor as a single undoable edit (the status bar shows the word count).
 - **Dictation Microphone...** chooses which microphone dictation uses, or the
   system default.
+
+##### Hold-to-Dictate and Locked Dictation (F9 / Ctrl+F9)
+
+Two keyboard-only ways to dictate without opening a dialog or leaving the editor.
+Both use the same on-device Whisper engine and microphone as **Dictate (Offline)**,
+so nothing is uploaded.
+
+- **Hold-to-Dictate — hold F9.** Press and hold **F9**, speak, and release. QUILL
+  transcribes and inserts the text at the cursor as one undoable edit. A short tone
+  marks the start and (after the microphone closes) the stop. Best for a phrase or
+  a sentence.
+- **Locked Dictation — Ctrl+F9.** Press **Ctrl+F9** to start a continuous session
+  without holding a key; QUILL announces "Locked dictation on." Press **Ctrl+F9**
+  again to finish and insert.
+- **Stopping safely.** While recording, **Escape** stops and keeps your speech for
+  transcription; **Shift+Escape** cancels and discards it. A locked session also
+  stops automatically after five minutes, and stops and preserves your audio if
+  QUILL loses focus.
+- **Pause and status.** **Ctrl+Shift+F9** pauses or resumes a locked session;
+  **Alt+F9** speaks the current state without changing it.
+- **Nothing is lost.** Audio is saved to a recovery folder before transcription
+  starts, and a transcript that cannot be safely inserted is kept for review.
+- **Remappable.** F9, Ctrl+F9, and the rest are defaults; change them in the Keymap
+  Editor (**Settings > Keyboard**). You need an offline speech model installed
+  (**Tools > Speech > Whisperer > Manage Speech Models**) and the optional
+  microphone-capture support; in Safe Mode dictation is disabled.
 - **Hugging Face Token...** is optional. QUILL's speech models are open-source
   (MIT) and need **no Hugging Face account** to download. But if you fetch many
   models and hit Hugging Face's rate limits, a free access token raises them. The
@@ -835,9 +862,6 @@ engines, each by installing its dependency:
 - **Faster Whisper** (`fasterwhisper` dependency) — a higher-throughput
   multilingual engine that runs in-process and uses your **GPU** automatically
   when one is present.
-- **Parakeet** (`parakeet` dependency) — NVIDIA's high-accuracy **English-only**
-  engine with timestamps, also GPU-oriented. It installs NVIDIA NeMo and PyTorch,
-  which are a large download, so it is strictly opt-in.
 - **Vosk** (`vosk` dependency) — a **very low-resource, CPU-only English** engine
   that runs on a ~40 MB model with no GPU. Ideal for older or constrained
   machines where the other engines are impractical. Models download from
@@ -847,8 +871,8 @@ When more than one engine is available, **Manage Speech Models** first asks whic
 **Speech Engine** to use; QUILL remembers your choice and applies it to
 transcription, captions, and dictation. Each engine has its own models, so
 download a model after switching. All engines run **entirely on your computer**.
-Note that neither Faster Whisper nor Parakeet labels speakers — for speaker
-attribution, use the whisper.cpp speaker-detection model.
+Note that Faster Whisper does not label speakers — for speaker attribution, use
+the whisper.cpp speaker-detection model.
 
 The offline speech **engine ships with QUILL**: enable the *offline speech engine
 (whisper.cpp)* component in the installer, or place the executable under
@@ -1942,6 +1966,30 @@ Quill applies the per-style rules for you — author order and "et al.", initial
 
 Markdown list editing now follows editor-standard behavior: `Enter` continues the current bullet/numbered/task item, and `Enter` on an empty list marker exits the list. When the caret is on a list item, `Tab` nests it and `Shift+Tab` promotes it. For larger reorganizations, use **Format -> List -> List Manager...** (`Ctrl+Shift+Grave, L`) to move, promote/demote, add, edit, and delete list items from a tree view.
 
+#### Structured List Studio (F2)
+
+The **Structured List Studio** builds and edits lists by concept — item text, a
+checked box, a term and its definition — and writes the correct Markdown or HTML
+for you, so you never type `-`, `1.`, `[ ]`, `<ul>`, or `<dl>` by hand. Press
+**F2** to open it (also at **Insert -> List -> Structured List Studio...**):
+
+- With text selected, F2 turns the selection into a list — one item per line, or
+  one per paragraph when blank lines separate them, detected automatically, with
+  any existing bullet/number/task markers stripped. With nothing selected, it
+  starts a new list.
+- Choose the type — **Bulleted**, **Numbered**, **Checklist**, or **Definition
+  (or description) list** — and the output format (**Markdown** or **HTML**). A
+  read-only **Generated source** field shows exactly what will be inserted as you
+  work, and the items/entries outline announces each item's text, number or checked
+  state, and position.
+- For definition lists, fill in the labelled **Term** and **Definition** fields;
+  QUILL emits valid `<dl>`/`<dt>`/`<dd>` for HTML and a Pandoc-compatible syntax
+  for Markdown. Inserting the finished list is a single undoable edit.
+
+F2 was previously **Insert Special Character**, which is now **Shift+F2**; both
+keys are remappable in the Keymap Editor. This first release covers flat
+(non-nested) lists and the common one-term, one-definition case.
+
 For heading presentation control, open **Insert -> Heading -> Style Headings...**. You can style either all heading levels or the current heading level, then set font family, point size, and alignment. In Markdown documents, styled headings are written as HTML heading tags so the formatting is preserved.
 
 For structure editing, open **Navigate -> Heading Organizer...** (`Ctrl+Shift+Grave, O`). The organizer lists each heading as level + title, supports keyboard promotion/demotion (`Tab` and `Shift+Tab`), lets you move sections up/down, rename headings, and validates heading order (start level, skipped levels, empty headings) before apply.
@@ -2835,7 +2883,10 @@ If you want a compact set of shortcuts to remember first, start here:
 - `Ctrl+F`, `F3`, `Shift+F3`, `Alt+F3`
 - `Ctrl+G` and `Ctrl+Shift+G`
 - `Ctrl+K` and `Ctrl+Enter`
-- `Ctrl+Shift+Grave, L` for List Manager
+- `Ctrl+Shift+Grave, L` for List Manager; `F2` for the Structured List Studio
+  (`Shift+F2` for Insert Special Character)
+- `F9` to hold-to-dictate, `Ctrl+F9` for Locked Dictation (`Alt+F9` speaks the
+  dictation state)
 - `F7`, `Ctrl+F7`, `Ctrl+Shift+F7`, `Shift+F7`
 - `Ctrl+Shift+W` for Word Count
 - `Ctrl+Tab` and `Ctrl+Shift+Tab`

@@ -437,13 +437,12 @@ L-001)</td>
 <tr>
 <td>Speech suite</td>
 <td><code>tests/unit/core/speech/</code> (subset)</td>
-<td>Pass; one Parakeet test hits a <code>transformers</code> import
-timeout in dev (see TEST-001)</td>
+<td>Pass (the Parakeet engine and its test were removed 2026-06-24; see
+TEST-001)</td>
 </tr>
 <tr>
 <td>Full suite</td>
-<td><code>pytest tests/unit tests/stability tests/integration</code>
-(ex-Parakeet)</td>
+<td><code>pytest tests/unit tests/stability tests/integration</code></td>
 <td>GREEN: 4857 unit+integration + 38 stability passed, 12 skipped, 0
 failures (after the TEST-002 fix, confirmed by a full re-run without
 <code>-x</code>)</td>
@@ -600,16 +599,15 @@ id="test-001--parakeet-provider-test-triggers-a-slow-transformers-import-in-dev"
 import in dev</h3>
 <ul>
 <li>Severity: Low. Category: Test reliability.</li>
-<li>When <code>transformers</code> is installed in the environment,
-running the full <code>tests/unit/core/speech/</code> set can hang on
-NeMo's <code>transformers</code> import-structure scan during a Parakeet
-test, hitting the suite timeout. Product code is lazy (only
-<code>find_spec</code> at startup), so this is a test-harness artifact,
-not a runtime defect; Parakeet is unbundled and source-only.</li>
-<li>Recommended next step: add <code>@pytest.mark.timeout(...)</code> to
-the Parakeet test and ensure it never triggers a real heavy import under
-collection.</li>
-<li>Status: Found (deferred).</li>
+<li>When <code>transformers</code> was installed in the environment,
+running the full <code>tests/unit/core/speech/</code> set could hang on
+NeMo's <code>transformers</code> import-structure scan during the
+Parakeet test, hitting the suite timeout.</li>
+<li>Status: Resolved (2026-06-24). The NVIDIA Parakeet engine was
+removed from QUILL entirely — the provider, catalog entries, optional
+<code>[parakeet]</code> extra, BITS Whisperer gating, and
+<code>test_parakeet_provider.py</code> are gone — so the slow import can
+no longer occur.</li>
 </ul>
 <h2 id="accessibility-audit--wave-1-dialogs--tab-groups">Accessibility
 audit — wave 1 (dialogs / tab groups)</h2>
@@ -963,8 +961,8 @@ classes audited here are now permanently guarded.</p>
 <h2 id="full-suite-sweep-drive-detectable-failures-to-zero">Full-suite
 sweep (drive detectable failures to zero)</h2>
 <p>Running the whole <code>tests/unit tests/stability</code> suite (4896
-tests, Parakeet excluded for TEST-001) surfaced exactly one failure, now
-fixed.</p>
+tests; the Parakeet test referenced under TEST-001 has since been
+removed) surfaced exactly one failure, now fixed.</p>
 <h3 id="test-002--flaky-watchdog-re-dump-test-timing-dependent">TEST-002
 — flaky watchdog re-dump test (timing-dependent)</h3>
 <ul>

@@ -121,7 +121,6 @@ COMMAND_FEATURE_MAP: dict[str, str] = {
     "whisperer.model_manager": "core.bw_transcription",
     "whisperer.model_status": "core.bw_transcription",
     "whisperer.model_recommend": "core.bw_transcription",
-    "whisperer.toggle_parakeet": "core.bw_parakeet",
     "whisperer.check_faster_whisper": "core.bw_transcription",
     "whisperer.provider_center": "core.bw_providers",
     "whisperer.provider_status": "core.bw_providers",

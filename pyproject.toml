@@ -77,11 +77,6 @@ speech = ["sounddevice>=0.4"]
 # Manage Speech Models > Speech Engine; the bundled whisper.cpp engine remains
 # the default and needs none of this.
 fasterwhisper = ["faster-whisper>=1.0", "huggingface_hub>=0.20"]
-# Optional high-accuracy English offline engine: NVIDIA Parakeet via NeMo (#669).
-# NeMo + PyTorch are large and GPU-oriented, so this is strictly opt-in; the
-# bundled whisper.cpp engine remains the default and needs none of it. Models are
-# managed in Manage Speech Models. A GPU is strongly recommended.
-parakeet = ["nemo_toolkit[asr]>=2.0", "huggingface_hub>=0.20"]
 # Optional very-low-resource offline English engine: Vosk (Kaldi) (#669). Tiny
 # CPU-only models (~40 MB) for old/constrained machines. Models download from
 # alphacephei.com via Manage Speech Models; no GPU needed.
@@ -241,11 +236,9 @@ module = [
     "keynote_parser.*",
     "faster_whisper",
     "ctranslate2",
-    # Optional Parakeet engine (quill[parakeet]); imported lazily in
-    # providers/parakeet.py behind try/except. NeMo + PyTorch are heavy and not
-    # in the dev extra, so the scoped gate must not depend on them.
-    "nemo",
-    "nemo.*",
+    # Optional kokoro read-aloud fallback (quill[kokoro]) imports torch lazily in
+    # read_aloud.py; heavy and not in the dev extra, so the scoped gate must not
+    # depend on it.
     "torch",
     # Optional Vosk engine (quill[vosk]); imported lazily in providers/vosk.py.
     "vosk",
