@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 
 from quill.core import read_aloud as read_aloud_module
 from quill.core.read_aloud import (
@@ -16,10 +15,29 @@ from quill.core.read_aloud import (
     list_voices,
     sentence_spans,
     synthesize_to_file_with_dectalk,
-    synthesize_to_file_with_pyttsx3,
+    synthesize_to_file_with_sapi5,
     synthesize_with_espeak,
     synthesize_with_piper,
 )
+
+
+def _record_sapi5_synth(monkeypatch) -> list[tuple[str, str]]:
+    """Patch SAPI 5 synthesis to record (text, voice) and skip audio playback.
+
+    Live read-aloud routes SAPI 5 through the shared WAV-sentence player, so the
+    controller calls ``synthesize_to_file_with_sapi5`` per sentence and then
+    plays the file. Recording the synth call and disabling winsound lets tests
+    assert what would be spoken without producing sound.
+    """
+    spoken: list[tuple[str, str]] = []
+
+    def fake_synth(text, output_path, *, voice="", rate=200, volume=1.0) -> None:
+        spoken.append((text, voice))
+        Path(output_path).write_bytes(b"")
+
+    monkeypatch.setattr(read_aloud_module, "synthesize_to_file_with_sapi5", fake_synth)
+    monkeypatch.setattr(read_aloud_module, "_winsound", None)
+    return spoken
 
 
 def test_sentence_spans() -> None:
@@ -28,103 +46,39 @@ def test_sentence_spans() -> None:
 
 
 def test_list_voices_uses_backend(monkeypatch) -> None:
-    class FakeVoice:
-        id = "voice-1"
-        name = "Voice 1"
+    from quill.platform.windows import sapi5 as sapi5_mod
 
-    class FakeEngine:
-        def __init__(self) -> None:
-            self.spoken: list[str] = []
-            self.properties: dict[str, object] = {}
-
-        def getProperty(self, name: str):  # noqa: N802
-            if name == "voices":
-                return [FakeVoice()]
-            return None
-
-        def setProperty(self, name: str, value: object) -> None:  # noqa: N802
-            self.properties[name] = value
-
-        def say(self, text: str) -> None:
-            self.spoken.append(text)
-
-        def runAndWait(self) -> None:  # noqa: N802
-            return None
-
-        def stop(self) -> None:
-            return None
-
-    engine = FakeEngine()
-    monkeypatch.setattr(read_aloud_module, "pyttsx3", SimpleNamespace(init=lambda: engine))
+    monkeypatch.setattr(
+        sapi5_mod, "list_voices", lambda: [sapi5_mod.Sapi5Voice(id="voice-1", name="Voice 1")]
+    )
 
     voices = list_voices()
     assert [(voice.id, voice.name) for voice in voices] == [("voice-1", "Voice 1")]
 
 
 def test_read_aloud_controller_speaks_sentences(monkeypatch) -> None:
-    class FakeEngine:
-        def __init__(self) -> None:
-            self.spoken: list[str] = []
-            self.properties: dict[str, object] = {}
-
-        def getProperty(self, name: str):  # noqa: N802
-            return []
-
-        def setProperty(self, name: str, value: object) -> None:  # noqa: N802
-            self.properties[name] = value
-
-        def say(self, text: str) -> None:
-            self.spoken.append(text)
-
-        def runAndWait(self) -> None:  # noqa: N802
-            return None
-
-        def stop(self) -> None:
-            return None
-
-    engine = FakeEngine()
-    monkeypatch.setattr(read_aloud_module, "pyttsx3", SimpleNamespace(init=lambda: engine))
+    spoken = _record_sapi5_synth(monkeypatch)
 
     controller = ReadAloudController()
     controller.start("One. Two!", 0, "voice-1")
     assert controller._thread is not None
-    controller._thread.join(timeout=1)
+    controller._thread.join(timeout=2)
 
-    assert engine.properties["voice"] == "voice-1"
-    assert engine.spoken == ["One.", "Two!"]
+    assert [text for text, _voice in spoken] == ["One.", "Two!"]
+    assert all(voice == "voice-1" for _text, voice in spoken)
 
 
 def test_read_aloud_controller_applies_punctuation_level(monkeypatch) -> None:
-    class FakeEngine:
-        def __init__(self) -> None:
-            self.spoken: list[str] = []
-
-        def getProperty(self, name: str):  # noqa: N802
-            return []
-
-        def setProperty(self, name: str, value: object) -> None:  # noqa: N802
-            return None
-
-        def say(self, text: str) -> None:
-            self.spoken.append(text)
-
-        def runAndWait(self) -> None:  # noqa: N802
-            return None
-
-        def stop(self) -> None:
-            return None
-
-    engine = FakeEngine()
-    monkeypatch.setattr(read_aloud_module, "pyttsx3", SimpleNamespace(init=lambda: engine))
+    spoken = _record_sapi5_synth(monkeypatch)
 
     controller = ReadAloudController()
     controller.start("Cost is $5.", 0, "voice-1", punctuation_level="all")
     assert controller._thread is not None
-    controller._thread.join(timeout=1)
+    controller._thread.join(timeout=2)
 
-    spoken = " ".join(engine.spoken)
-    assert "dollar" in spoken.split()
-    assert "dot" in spoken.split()
+    text = " ".join(t for t, _ in spoken)
+    assert "dollar" in text.split()
+    assert "dot" in text.split()
 
 
 def test_inter_sentence_pause_zero_returns_immediately() -> None:
@@ -160,27 +114,11 @@ def test_inter_sentence_pause_interrupted_by_stop() -> None:
 
 
 def test_start_records_sentence_pause(monkeypatch) -> None:
-    class FakeEngine:
-        def getProperty(self, name: str):  # noqa: N802
-            return []
-
-        def setProperty(self, name: str, value: object) -> None:  # noqa: N802
-            return None
-
-        def say(self, text: str) -> None:
-            return None
-
-        def runAndWait(self) -> None:  # noqa: N802
-            return None
-
-        def stop(self) -> None:
-            return None
-
-    monkeypatch.setattr(read_aloud_module, "pyttsx3", SimpleNamespace(init=lambda: FakeEngine()))
+    _record_sapi5_synth(monkeypatch)
     controller = ReadAloudController()
     controller.start("One. Two!", 0, "voice-1", sentence_pause_ms=250)
     if controller._thread is not None:
-        controller._thread.join(timeout=1)
+        controller._thread.join(timeout=2)
     assert controller._sentence_pause_ms == 250
 
     voices = list_dectalk_voices()
@@ -190,8 +128,9 @@ def test_start_records_sentence_pause(monkeypatch) -> None:
 
 
 def test_build_dectalk_payload_includes_voice_and_rate() -> None:
-    controller = ReadAloudController()
-    payload = controller._build_dectalk_payload("Hello there", "paul", 200)
+    from quill.core.read_aloud import build_dectalk_payload
+
+    payload = build_dectalk_payload("Hello there", "paul", 200)
     assert "[:np]" in payload
     assert "[:ra 200]" in payload
     assert "Hello there" in payload
@@ -220,7 +159,12 @@ def test_discover_piper_executable_rejects_directory(tmp_path: Path) -> None:
     assert result != folder.resolve()
 
 
-def test_discover_espeak_executable_rejects_unexpected_binary(tmp_path: Path) -> None:
+def test_discover_espeak_executable_rejects_unexpected_binary(tmp_path: Path, monkeypatch) -> None:
+    # Isolate the managed speech folder so a dev machine with eSpeak installed
+    # does not satisfy discovery and mask the rejection.
+    monkeypatch.setattr("quill.core.paths.app_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(read_aloud_module.shutil, "which", lambda _name: None)
+    monkeypatch.delenv("QUILL_APP_ROOT", raising=False)
     rogue = tmp_path / "powershell.exe"
     rogue.write_text("binary", encoding="utf-8")
     assert discover_espeak_executable(str(rogue)) is None
@@ -326,7 +270,10 @@ def test_discover_espeak_executable_explicit_path(tmp_path: Path) -> None:
     assert found == exe.resolve()
 
 
-def test_discover_espeak_executable_missing_returns_none() -> None:
+def test_discover_espeak_executable_missing_returns_none(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("quill.core.paths.app_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(read_aloud_module.shutil, "which", lambda _name: None)
+    monkeypatch.delenv("QUILL_APP_ROOT", raising=False)
     found = discover_espeak_executable("/nonexistent/path/espeak-ng.exe")
     assert found is None
 
@@ -394,6 +341,10 @@ def test_list_kokoro_voices_default_is_af_heart() -> None:
 def test_synthesize_with_kokoro_raises_when_package_missing(monkeypatch, tmp_path: Path) -> None:
     import builtins
 
+    # Force the ONNX fast-path off (a dev machine may have the models) so this
+    # exercises the kokoro+torch fallback, then block that import.
+    monkeypatch.setattr(read_aloud_module, "kokoro_onnx_ready", lambda *a, **k: False)
+
     real_import = builtins.__import__
 
     def _block(name, *args, **kwargs):
@@ -413,35 +364,32 @@ def test_synthesize_with_kokoro_raises_when_package_missing(monkeypatch, tmp_pat
 
 
 # ---------------------------------------------------------------------------
-# Pyttsx3 file synthesis helper
+# SAPI 5 file synthesis helper
 # ---------------------------------------------------------------------------
 
 
-def test_synthesize_to_file_with_pyttsx3_saves_file(monkeypatch, tmp_path: Path) -> None:
+def test_synthesize_to_file_with_sapi5_saves_file(monkeypatch, tmp_path: Path) -> None:
     output = tmp_path / "speech.wav"
+    from quill.platform.windows import sapi5 as sapi5_mod
 
-    class FakeEngine:
-        def __init__(self) -> None:
-            self.properties: dict[str, object] = {}
-            self.saved: list[tuple[str, str]] = []
+    calls: list[dict] = []
 
-        def setProperty(self, name: str, value: object) -> None:  # noqa: N802
-            self.properties[name] = value
+    def fake_synth_to_wav(text, path, *, voice_id="", rate_wpm=200, volume=1.0) -> None:
+        calls.append({
+            "text": text,
+            "path": str(path),
+            "voice": voice_id,
+            "rate": rate_wpm,
+            "vol": volume,
+        })
+        Path(path).write_bytes(b"")
 
-        def save_to_file(self, text: str, path: str) -> None:  # noqa: N802
-            self.saved.append((text, path))
-
-        def runAndWait(self) -> None:  # noqa: N802
-            pass
-
-        def stop(self) -> None:
-            pass
-
-    engine = FakeEngine()
-    monkeypatch.setattr(read_aloud_module, "pyttsx3", SimpleNamespace(init=lambda: engine))
-    synthesize_to_file_with_pyttsx3("Hello", output, voice="voice-1", rate=200, volume=1.0)
-    assert engine.saved == [("Hello", str(output))]
-    assert engine.properties["rate"] == 200
+    monkeypatch.setattr(sapi5_mod, "available", lambda: True)
+    monkeypatch.setattr(sapi5_mod, "synthesize_to_wav", fake_synth_to_wav)
+    synthesize_to_file_with_sapi5("Hello", output, voice="voice-1", rate=200, volume=1.0)
+    assert calls == [
+        {"text": "Hello", "path": str(output), "voice": "voice-1", "rate": 200, "vol": 1.0}
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -449,9 +397,12 @@ def test_synthesize_to_file_with_pyttsx3_saves_file(monkeypatch, tmp_path: Path)
 # ---------------------------------------------------------------------------
 
 
-def test_synthesize_to_file_with_dectalk_calls_wav_flag(monkeypatch, tmp_path: Path) -> None:
-    exe = tmp_path / "speak.exe"
-    exe.write_text("binary", encoding="utf-8")
+def test_synthesize_to_file_with_dectalk_invokes_dll_worker(monkeypatch, tmp_path: Path) -> None:
+    # DECtalk synthesis is driven through DECtalk.dll by the console worker:
+    # python dectalk_say.py --dll <DECtalk.dll> -w <out>, with the DECtalk
+    # payload (voice + rate command + text) supplied on stdin as cp1252.
+    dll = tmp_path / "DECtalk.dll"
+    dll.write_text("binary", encoding="utf-8")
     output = tmp_path / "speech.wav"
 
     class Completed:
@@ -463,13 +414,18 @@ def test_synthesize_to_file_with_dectalk_calls_wav_flag(monkeypatch, tmp_path: P
 
     def fake_run(command, **kwargs):
         called["command"] = command
+        called["input"] = kwargs.get("input")
         return Completed()
 
     monkeypatch.setattr(read_aloud_module.subprocess, "run", fake_run)
-    synthesize_to_file_with_dectalk("Hello", output, executable_path=exe, voice="paul", rate=200)
+    synthesize_to_file_with_dectalk("Hello", output, executable_path=dll, voice="paul", rate=200)
     cmd = called["command"]
-    assert "-wav" in cmd
-    assert str(output) in cmd
+    assert "dectalk_say.py" in cmd[1]
+    assert "--dll" in cmd and str(dll) in cmd
+    assert "-w" in cmd and str(output) in cmd
+    assert "-wav" not in cmd and "-file" not in cmd and "-dict" not in cmd
+    payload = called["input"].decode("cp1252")
+    assert "[:np]" in payload and "[:ra 200]" in payload and "Hello" in payload
 
 
 # ---------------------------------------------------------------------------
@@ -520,7 +476,7 @@ def test_settings_rejects_unknown_engine() -> None:
     from quill.core.settings import Settings
 
     s = Settings.from_dict({"read_aloud_engine": "bananavoice"})
-    assert s.read_aloud_engine == "pyttsx3"
+    assert s.read_aloud_engine == "sapi5"
 
 
 def test_settings_clamps_espeak_rate() -> None:
@@ -546,7 +502,12 @@ def test_settings_clamps_kokoro_speed() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_controller_espeak_raises_when_not_found() -> None:
+def test_controller_espeak_raises_when_not_found(tmp_path: Path, monkeypatch) -> None:
+    # Isolate discovery so a dev machine with eSpeak installed still exercises
+    # the not-found path.
+    monkeypatch.setattr("quill.core.paths.app_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(read_aloud_module.shutil, "which", lambda _name: None)
+    monkeypatch.delenv("QUILL_APP_ROOT", raising=False)
     controller = ReadAloudController()
     try:
         controller.start(
@@ -588,50 +549,29 @@ def test_controller_piper_raises_when_model_missing(tmp_path: Path) -> None:
 
 
 def test_dectalk_killed_after_wall_clock_timeout(monkeypatch, tmp_path: Path) -> None:
-    import threading
-    import time as _time
+    import subprocess
 
     import quill.core.read_aloud as _ra
 
     monkeypatch.setattr(_ra, "_MAX_SYNTHESIS_SECONDS", 0.05)
 
-    exe = tmp_path / "dectalk.exe"
-    exe.write_text("binary", encoding="utf-8")
-    temp_input = tmp_path / "input.txt"
-    temp_input.write_text("payload", encoding="utf-8")
+    # DECtalk synthesis runs the console worker via subprocess.run with a
+    # timeout; a TimeoutExpired must surface as ReadAloudUnavailableError.
+    dll = tmp_path / "DECtalk.dll"
+    dll.write_text("binary", encoding="utf-8")
+    output = tmp_path / "speech.wav"
 
-    killed: list[bool] = []
+    def _raise_timeout(*_a, **_kw):
+        raise subprocess.TimeoutExpired(cmd="dectalk_say", timeout=0.05)
 
-    class _FakeProc:
-        returncode = None
+    monkeypatch.setattr(_ra.subprocess, "run", _raise_timeout)
 
-        def poll(self):
-            _time.sleep(0.01)
-            return None
-
-        def kill(self):
-            killed.append(True)
-            self.returncode = -9
-
-        def terminate(self):
-            pass
-
-        def wait(self, timeout=None):
-            return self.returncode or 0
-
-    monkeypatch.setattr(_ra.subprocess, "Popen", lambda *_a, **_kw: _FakeProc())
-
-    from quill.core.read_aloud import ReadAloudController, ReadAloudUnavailableError
-
-    session = ReadAloudController.__new__(ReadAloudController)
-    session._stop_event = threading.Event()
-    session._pause_event = threading.Event()
-    session._active_process = None
+    from quill.core.read_aloud import ReadAloudUnavailableError, synthesize_to_file_with_dectalk
 
     try:
-        session._speak_sentence_dectalk(exe, "hello")
-    except ReadAloudUnavailableError:
-        assert killed, "process must be killed on timeout"
+        synthesize_to_file_with_dectalk("hello", output, executable_path=dll, voice="paul")
+    except ReadAloudUnavailableError as exc:
+        assert "did not complete" in str(exc)
     else:
         raise AssertionError("Expected ReadAloudUnavailableError")
 

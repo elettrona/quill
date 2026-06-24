@@ -45,10 +45,16 @@ def download_dectalk_runtime(target_dir: Path) -> Path:
     extract_root.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(archive) as zf:
         zf.extractall(extract_root)
+    # Return the synthesis runtime (DECtalk.dll), not the graphical speak.exe.
+    # speak.exe is the "Sample Speak Window" GUI and cannot synthesize from the
+    # command line; QUILL drives DECtalk.dll directly. See
+    # quill.core.speech.dectalk_say and discover_dectalk_executable.
     for candidate in (
-        extract_root / "AMD64" / "speak.exe",
-        extract_root / "speak.exe",
+        extract_root / "AMD64" / "DECtalk.dll",
+        extract_root / "DECtalk.dll",
     ):
         if candidate.exists():
             return candidate.resolve()
-    raise ReadAloudUnavailableError("Downloaded DECtalk package did not contain speak.exe")
+    raise ReadAloudUnavailableError(
+        "Downloaded DECtalk package did not contain DECtalk.dll (the synthesis runtime)."
+    )

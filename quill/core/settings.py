@@ -63,7 +63,7 @@ class Settings:
     title_bar_path_mode: str = "name"
     dirty_title_style: str = "text"
     start_with_no_document_open: bool = False
-    read_aloud_engine: str = "pyttsx3"
+    read_aloud_engine: str = "sapi5"
     read_aloud_voice: str = ""
     read_aloud_rate: int = 200
     read_aloud_volume: int = 100
@@ -80,6 +80,12 @@ class Settings:
     read_aloud_espeak_executable: str = ""
     read_aloud_espeak_voice: str = "en"
     read_aloud_espeak_rate: int = 175
+    # AI Voice (cloud TTS): which provider/model/voice the AI read-aloud and
+    # export actions use. Provider is "openai" or "gemini".
+    ai_tts_provider: str = "openai"
+    ai_tts_model: str = ""
+    ai_tts_voice: str = ""
+    ai_tts_speed: float = 1.0
     announcement_trace_enabled: bool = False
     announcement_startup_tips_enabled: bool = False
     verbosity_speech_enabled: bool = True
@@ -402,16 +408,18 @@ class Settings:
         if dirty_title_style not in {"text", "asterisk", "asterisk_text"}:
             dirty_title_style = "text"
         start_with_no_document_open = bool(data.get("start_with_no_document_open", False))
-        read_aloud_engine = str(data.get("read_aloud_engine", "pyttsx3")).strip().lower()
+        read_aloud_engine = str(data.get("read_aloud_engine", "sapi5")).strip().lower()
+        if read_aloud_engine == "pyttsx3":  # migrate the retired engine id
+            read_aloud_engine = "sapi5"
         _valid_engines = {
-            "pyttsx3",
+            "sapi5",
             "dectalk",
             "piper",
             "kokoro",
             "espeak",
         }
         if read_aloud_engine not in _valid_engines:
-            read_aloud_engine = "pyttsx3"
+            read_aloud_engine = "sapi5"
         read_aloud_voice = str(data.get("read_aloud_voice", ""))
         read_aloud_rate = int(data.get("read_aloud_rate", 200))
         if read_aloud_rate < 80:
@@ -457,6 +465,16 @@ class Settings:
             read_aloud_espeak_rate = 80
         if read_aloud_espeak_rate > 450:
             read_aloud_espeak_rate = 450
+        ai_tts_provider = str(data.get("ai_tts_provider", "openai")).strip().lower()
+        if ai_tts_provider not in {"openai", "gemini"}:
+            ai_tts_provider = "openai"
+        ai_tts_model = str(data.get("ai_tts_model", "")).strip()
+        ai_tts_voice = str(data.get("ai_tts_voice", "")).strip()
+        try:
+            ai_tts_speed = float(data.get("ai_tts_speed", 1.0))
+        except (TypeError, ValueError):
+            ai_tts_speed = 1.0
+        ai_tts_speed = max(0.25, min(4.0, ai_tts_speed))
         if announcement_backend not in {"auto", "prism", "status_only"}:
             announcement_backend = "auto"
         announcement_trace_enabled = bool(data.get("announcement_trace_enabled", False))
@@ -842,6 +860,10 @@ class Settings:
             read_aloud_espeak_executable=read_aloud_espeak_executable,
             read_aloud_espeak_voice=read_aloud_espeak_voice,
             read_aloud_espeak_rate=read_aloud_espeak_rate,
+            ai_tts_provider=ai_tts_provider,
+            ai_tts_model=ai_tts_model,
+            ai_tts_voice=ai_tts_voice,
+            ai_tts_speed=ai_tts_speed,
             announcement_trace_enabled=announcement_trace_enabled,
             announcement_startup_tips_enabled=announcement_startup_tips_enabled,
             verbosity_speech_enabled=verbosity_speech_enabled,

@@ -209,6 +209,27 @@ chooser now returns you to the editor rather than opening the default engine's
 model list. All three run **entirely on your computer**. (For speaker labels,
 use the whisper.cpp speaker-detection model.)
 
+## Read aloud: more voices, cloud and local
+
+Read Aloud now spans local and cloud voices.
+
+- **AI Voice now supports Google Gemini as well as OpenAI.** `AI > Read Selection
+  Aloud (AI Voice)`, `Read Document Aloud (AI Voice)`, and `Export Document as
+  Audio...` can use **OpenAI** (11 voices) or **Google Gemini 2.5** (30 voices).
+  Pick the provider, model, and voice under **Settings > Read Aloud**, and add the
+  matching API key in AI Hub. The status bar shows an **estimated cost** before an
+  export runs; OpenAI exports MP3, Gemini exports WAV.
+- **No more clipped or awkward endings.** Long documents are split for the cloud
+  only on **sentence boundaries** — never mid-word — so the audio never trails off
+  at a strange spot, and Gemini exports add a short trailing pause so the last
+  sentence is never cut off.
+- **Local Read Aloud is broader and more reliable.** The Windows system voice now
+  uses **SAPI 5** directly (pyttsx3 is gone), **DECtalk** works again (driven
+  through its real synthesis runtime instead of the graphical sample that
+  crashed), and **eSpeak-NG**, **Piper**, and **Kokoro** round out the offline
+  engines. Every catalog voice ships a short spoken **preview** so you can hear it
+  before choosing.
+
 ## Read and proof braille
 
 Braille Mode gained a real proofreading and quality workflow, and it never

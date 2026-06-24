@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import atexit
 import logging
 import queue as _queue
 import sys
@@ -12,10 +11,16 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-try:
-    import pyttsx3  # type: ignore[import-untyped]
-except ImportError:  # pragma: no cover - optional runtime dependency
-    pyttsx3 = None
+
+def _sapi_available() -> bool:
+    """True when Windows SAPI 5 speech can be reached (the self-voicing fallback)."""
+    try:
+        from quill.platform.windows import sapi5
+
+        return sapi5.available()
+    except Exception:  # noqa: BLE001
+        return False
+
 
 _VALID_BACKENDS = {"auto", "prism", "status_only"}
 
@@ -50,22 +55,22 @@ def normalize_backend_name(value: str | None) -> str:
     return "auto"
 
 
-# H5/H6: pyttsx3.init() is expensive on Windows (100-300 ms the first
-# time, 30-80 ms on subsequent inits) and rebuilding the engine on
-# every announcement made the screen-reader-less experience feel
-# sluggish after every action feedback. The engine is now a process-
-# wide singleton that is built once and torn down at process exit.
-_pyttsx3_engine: Any | None = None
-_pyttsx3_engine_lock = threading.Lock()
-_pyttsx3_engine_failed: bool = False
+# SAPI/COM voice construction is expensive on the first call (hundreds of ms
+# for voice enumeration), so the self-voicing engine is a process-wide singleton
+# built once on the TTS worker thread and reused for every announcement. A SAPI
+# SpVoice is an apartment-threaded COM object: it must be created and spoken to
+# on the same thread, which is why it lives on the worker thread instead of
+# being shared across callers.
+_tts_voice: Any | None = None
+_tts_engine_failed: bool = False
 
 # TTS-FALLBACK-ANNOUNCE: callers can check this after startup.
-# True means pyttsx3.init() threw and the screen-reader fallback is active.
+# True means SAPI 5 could not be initialised and the screen-reader fallback is active.
 _tts_init_failed: bool = False
 
 
 def tts_init_failed() -> bool:
-    """Return True when pyttsx3.init() failed at engine construction time.
+    """Return True when SAPI 5 failed to initialise for self-voicing.
 
     The UI uses this to show a one-shot status-bar prompt:
     "Screen reader fallback active. Press F8 to retry TTS."
@@ -73,69 +78,49 @@ def tts_init_failed() -> bool:
     return _tts_init_failed
 
 
-def _get_pyttsx3_engine() -> Any | None:
-    """Return a cached pyttsx3 engine, or ``None`` if it cannot be built.
+def _build_tts_voice() -> Any | None:
+    """Create the SAPI ``SpVoice`` on the calling (worker) thread, or None.
 
-    A thread lock guards the singleton construction so two concurrent
-    announcements (rare, but possible during a save that triggers both
-    a status and a separate progress announcement) do not both call
-    ``pyttsx3.init()``.
+    A failure flips self-voicing off until :func:`retry_tts_init` clears it.
     """
-    global _pyttsx3_engine, _pyttsx3_engine_failed
-    if pyttsx3 is None or _pyttsx3_engine_failed:
+    global _tts_engine_failed, _tts_init_failed
+    if _tts_engine_failed:
         return None
-    if _pyttsx3_engine is not None:
-        return _pyttsx3_engine
-    with _pyttsx3_engine_lock:
-        if _pyttsx3_engine is not None:
-            return _pyttsx3_engine
-        try:
-            engine = pyttsx3.init()
-        except Exception:  # noqa: BLE001 - any failure flips us off permanently
-            global _tts_init_failed  # noqa: PLW0603
-            _pyttsx3_engine_failed = True
-            _tts_init_failed = True
-            return None
-        _pyttsx3_engine = engine
-        atexit.register(_shutdown_pyttsx3_engine)
-        return engine
-
-
-def _shutdown_pyttsx3_engine() -> None:
-    """Tear down the cached engine at process exit."""
-    global _pyttsx3_engine
-    engine = _pyttsx3_engine
-    _pyttsx3_engine = None
-    if engine is None:
-        return
     try:
-        engine.stop()
-    except Exception:  # noqa: BLE001 - best-effort teardown
-        pass
+        from quill.platform.windows import sapi5
+
+        if not sapi5.available():
+            raise RuntimeError("SAPI 5 is not available")
+        return sapi5.create_voice()
+    except Exception:  # noqa: BLE001 - any failure flips us off until retried
+        _tts_engine_failed = True
+        _tts_init_failed = True
+        return None
 
 
 def retry_tts_init() -> bool:
-    """Clear the failure flag and attempt to rebuild the pyttsx3 engine.
+    """Clear the failure flag so the worker rebuilds the SAPI voice on next use.
 
-    Returns True when the engine is successfully (re-)initialised, False on
-    failure. Called from the UI when the user presses the F8 retry shortcut
-    shown by the TTS-FALLBACK-ANNOUNCE status-bar prompt.
+    Returns True when SAPI 5 looks usable again. Called from the UI when the user
+    presses the F8 retry shortcut shown by the TTS-FALLBACK-ANNOUNCE prompt.
     """
-    global _pyttsx3_engine_failed, _tts_init_failed
-    _pyttsx3_engine_failed = False
+    global _tts_voice, _tts_engine_failed, _tts_init_failed
+    _tts_voice = None
+    _tts_engine_failed = False
     _tts_init_failed = False
-    result = _get_pyttsx3_engine()
-    if result is None:
+    if not _sapi_available():
         _tts_init_failed = True
-    return result is not None
+        return False
+    _ensure_tts_worker()
+    return True
 
 
-def reset_pyttsx3_engine_for_tests() -> None:
-    """Discard the cached engine and SR cache. Test-only helper."""
-    global _pyttsx3_engine, _pyttsx3_engine_failed, _tts_init_failed
+def reset_tts_engine_for_tests() -> None:
+    """Discard the cached voice and SR cache. Test-only helper."""
+    global _tts_voice, _tts_engine_failed, _tts_init_failed
     global _sr_active_cache, _sr_cache_timestamp
-    _shutdown_pyttsx3_engine()
-    _pyttsx3_engine_failed = False
+    _tts_voice = None
+    _tts_engine_failed = False
     _tts_init_failed = False
     _sr_active_cache = None
     _sr_cache_timestamp = 0.0
@@ -147,7 +132,7 @@ def flush_tts_for_tests(timeout: float = 2.0) -> None:
 
 
 # ------------------------------------------------------------------
-# Non-blocking TTS worker (fix #52: runAndWait() must not block UI thread)
+# Non-blocking TTS worker (fix #52: speech must not block the UI thread)
 # ------------------------------------------------------------------
 
 _tts_queue: _queue.Queue[str | None] = _queue.Queue()
@@ -165,64 +150,39 @@ def _ensure_tts_worker() -> None:
         t.start()
 
 
-def prewarm_pyttsx3_engine() -> None:
-    """Start the TTS worker thread now so it builds its engine ahead of time.
+def prewarm_tts_engine() -> None:
+    """Start the TTS worker thread now so SAPI init cost is paid ahead of time.
 
-    SAPI/COM voice enumeration is the expensive part of "the first
-    announcement of the session" (hundreds of ms, sometimes much more).
-    Calling this at app startup means that cost is paid before the user
-    ever presses the QUILL key, instead of during it — previously that
-    delay ate into the quill_key_timeout_seconds window and the prefix
-    could expire before the user's next keystroke arrived.
-
-    The engine must be built on the same thread that later calls
-    ``engine.say()``/``runAndWait()``: pyttsx3's sapi5 driver is a
-    COM/STA object, and using it from a thread other than the one that
-    created it deadlocks `runAndWait()` instead of raising. So this just
-    starts the worker thread early rather than constructing the engine on
-    a separate throwaway thread.
+    SAPI/COM voice construction is the expensive part of the first announcement
+    of the session (hundreds of ms). Doing it at startup keeps that cost out of
+    the quill_key_timeout window where it could otherwise expire the key prefix
+    before the user's next keystroke arrived. The SpVoice is an apartment COM
+    object, so it is built on the worker thread that later speaks with it.
     """
-    if pyttsx3 is None:
+    if not _sapi_available():
         return
     _ensure_tts_worker()
 
 
 def _tts_worker_loop() -> None:
-    engine = _get_pyttsx3_engine()
-    # The cached engine is a process-wide singleton (H5/H6), reused across
-    # every announcement. Repeated say()/runAndWait() cycles on a reused
-    # SAPI5 engine speak the first utterance and then silently no-op on
-    # every later one (runAndWait() returns normally but nothing is heard)
-    # because each runAndWait() tears down and rebuilds the COM driver
-    # loop. Driving the engine with the external-loop API instead --
-    # startLoop(False) once, then say()+iterate() per message -- keeps the
-    # same driver loop alive for the life of the worker thread, which is
-    # the documented fix for this pyttsx3/SAPI5 reuse bug.
-    if engine is not None:
-        try:
-            engine.startLoop(False)
-        except Exception:  # noqa: BLE001
-            pass
+    global _tts_voice
+    _tts_voice = _build_tts_voice()
     while True:
         msg = _tts_queue.get()
         if msg is None:
             _tts_queue.task_done()
             break
-        engine = _get_pyttsx3_engine()
-        if engine is not None:
+        if _tts_voice is None:
+            _tts_voice = _build_tts_voice()
+        voice = _tts_voice
+        if voice is not None:
             try:
-                engine.say(msg)
-                while engine.isBusy():
-                    engine.iterate()
-                    _time.sleep(0.01)
+                # Synchronous Speak on this dedicated worker thread; the queue
+                # already keeps announcements off the UI thread.
+                voice.Speak(msg, 0)
             except Exception:  # noqa: BLE001
                 pass
         _tts_queue.task_done()
-    if engine is not None:
-        try:
-            engine.endLoop()
-        except Exception:  # noqa: BLE001
-            pass
 
 
 @dataclass(frozen=True, slots=True)
@@ -289,7 +249,7 @@ class AnnouncementEngine:
     def announce(self, message: str, *, force_speech: bool = False) -> str | None:
         if self._runtime_backend is None:
             # macOS: hand the announcement to VoiceOver via the accessibility
-            # API. Never self-voice with pyttsx3 — that talks over VoiceOver
+            # API. Never self-voice with SAPI — that talks over VoiceOver
             # (the system voice the user already hears). If VoiceOver is off the
             # post is a harmless no-op.
             if sys.platform == "darwin":
@@ -309,15 +269,14 @@ class AnnouncementEngine:
             # its own, so without this the message is silently dropped.
             if (
                 self._state.requested_backend == "auto"
-                and pyttsx3 is not None
+                and not _tts_engine_failed
                 and (force_speech or not _screen_reader_active())
             ):
-                # Queue speech to the worker thread without resolving the
-                # engine here: pyttsx3.init() costs 100-300ms+ the first time
-                # (longer on some machines) and the worker resolves/builds the
-                # singleton engine itself, so calling it here would block the
-                # caller (the UI thread) for that long on the first
-                # announcement of the session.
+                # Queue speech to the worker thread without resolving the voice
+                # here: building the SAPI SpVoice costs hundreds of ms the first
+                # time and the worker builds the singleton itself, so resolving
+                # it on the caller (the UI thread) would block for that long on
+                # the first announcement of the session.
                 _ensure_tts_worker()
                 _tts_queue.put_nowait(message)
                 self._state = replace(

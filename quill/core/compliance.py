@@ -30,6 +30,7 @@ def _load_pyproject(path: Path) -> dict[str, object]:
 
 _DEPENDENCY_METADATA_OVERRIDES: dict[str, tuple[str, str]] = {
     "certifi": ("MPL-2.0", "https://github.com/certifi/python-certifi"),
+    "comtypes": ("MIT", "https://github.com/enthought/comtypes"),
     "hatchling": ("MIT", "https://github.com/pypa/hatch"),
     "html_to_text": ("MIT", "https://github.com/accessibleapps/html_to_text"),
     "keynote-parser": ("MIT", "https://pypi.org/project/keynote-parser/"),
@@ -43,7 +44,6 @@ _DEPENDENCY_METADATA_OVERRIDES: dict[str, tuple[str, str]] = {
     "pytest": ("MIT", "https://github.com/pytest-dev/pytest"),
     "pytest-timeout": ("MIT", "https://github.com/pytest-dev/pytest-timeout"),
     "pytest-xdist": ("MIT", "https://github.com/pytest-dev/pytest-xdist"),
-    "pyttsx3": ("MPL-2.0", "https://github.com/nateshmbhat/pyttsx3"),
     "regex": ("Apache-2.0 AND CNRI-Python", "https://github.com/mrabarnett/mrab-regex"),
     "ruff": ("MIT", "https://github.com/astral-sh/ruff"),
     "speechrecognition": ("BSD-3-Clause", "https://github.com/Uberi/speech_recognition"),
@@ -53,6 +53,7 @@ _DEPENDENCY_METADATA_OVERRIDES: dict[str, tuple[str, str]] = {
 
 _DEPENDENCY_USAGE_NOTES: dict[str, str] = {
     "certifi": "Trusted CA bundle for HTTPS verification.",
+    "comtypes": "Windows SAPI 5 text-to-speech integration.",
     "hatchling": "Build backend used for packaging metadata.",
     "html_to_text": (
         "Converts HTML from clipboard pastes to clean plain text"
@@ -69,7 +70,6 @@ _DEPENDENCY_USAGE_NOTES: dict[str, str] = {
     "pytest": "Test runner.",
     "pytest-timeout": "Per-test timeout protection.",
     "pytest-xdist": "Parallel test execution.",
-    "pyttsx3": "System text-to-speech integration.",
     "regex": "Core regular expression engine.",
     "ruff": "Linting and formatting.",
     "speechrecognition": "Speech-recognition helper components.",

@@ -1811,7 +1811,7 @@ class MenuBuilderMixin:
         )
         ai_menu.Append(
             self._id_ai_tts_export_mp3,
-            self._menu_label(_("E&xport Document as MP3..."), "tools.ai_tts_export_mp3"),
+            self._menu_label(_("E&xport Document as Audio..."), "tools.ai_tts_export_mp3"),
         )
         ai_menu.AppendSeparator()
         ai_menu.Append(

@@ -1,8 +1,8 @@
 """Punctuation verbalization for Read Aloud (SET-3).
 
 Screen readers expose a punctuation verbosity level (none / some / most / all)
-so a listener can choose how much punctuation is spoken. No SAPI, Edge, or
-pyttsx3 voice exposes such a parameter, so QUILL implements it itself: before a
+so a listener can choose how much punctuation is spoken. No SAPI or Edge voice
+exposes such a parameter, so QUILL implements it itself: before a
 sentence is handed to any TTS engine, the punctuation marks at or below the
 chosen level are rewritten into their spoken names. This gives Read Aloud the
 same punctuation control a screen reader offers, independent of the engine in
