@@ -463,7 +463,7 @@ This is the deterministic *typographic* layer; pronunciation dictionaries (§4.7
 - **Inline code / backticks** (opt-in): strip backtick characters around inline code (and optionally announce "code") so code spans don't read punctuation.
 - **Acronym dotting** (opt-in): `U.S.A.` → `USA`.
 - **Quote/aside cues** (opt-in, verbosity-style): announce "quote"/"end quote" around quotations or pause around parentheticals — for users who want structure cues.
-- **Heading cue** (ties to §4.8): when chapterizing, optionally prefix a section with "Heading: <title>" in addition to the chapter marker/tone.
+- **Heading cue** (ties to §4.8): when chapterizing, optionally prefix a section with the spoken cue "Heading:" followed by the heading text, in addition to the chapter marker/tone.
 
 ### 4.9.4 The escape hatch — user character/word replacement map
 
