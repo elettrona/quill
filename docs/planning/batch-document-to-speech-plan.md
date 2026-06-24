@@ -27,6 +27,51 @@ The guiding principle: **do not rewrite the engine.** It is well-factored. We bu
 
 ---
 
+# 1.1 Status at a Glance
+
+**Strategy (2026-06-24):** complete every **non-UI (core/io)** piece first so the whole pipeline can be exercised by unit tests against a real sample project (the Word "Screenreader Primer" chapter files), then build the wxPython UI on top of proven cores. The table below is the single source of truth for state and is **kept updated** as work lands.
+
+**Counts — Core / non-UI:** 8 done · 6 to do · 14 total → **57% complete**
+**Counts — UI:** 0 done · 7 to do · 7 total → **0% complete**
+**Counts — Overall:** 8 done · 13 to do · 21 total → **38% complete**
+
+### Core / non-UI (wx-free, unit-testable) — the current focus
+
+| # | Feature | Module(s) | Status | Tests |
+|---|---------|-----------|--------|-------|
+| C1 | Batch export pipeline (scan, extract, synth, write, progress, cancel, per-file isolation) | `speech/batch_export.py` | Done | Thin |
+| C2 | Text normalization for TTS (4.9) | `speech/text_normalize.py` | Done | Yes |
+| C3 | Structured-token speaking: phones/emails/URLs per-type (4.9.7) | `speech/text_normalize.py` | Done | Yes |
+| C4 | Pronunciation dictionaries: global + project, all/per-engine (4.7) | `speech/pronunciation.py` | Done | Yes |
+| C5 | Normalization + pronunciation wired into the batch pipeline | `speech/batch_export.py` | Done | Yes |
+| C6 | MP3 chapter markers: compute_chapters / CHAP+CTOC write/read (4.8.4) | `speech/chapters.py` | Done | Yes |
+| C7 | Chapter settings (6 batch_speech_chapter fields) (4.8.8) | `core/settings.py` | Done | Yes |
+| C8 | mp3 extra + mutagen dependency wiring | `pyproject.toml` | Done | n/a |
+| C9 | .txt support (extractor + SUPPORTED_EXTENSIONS) (4.1) | `speech/text_polish.py`, `batch_export.py` | To do | None |
+| C10 | MP3 output: transcode_to_mp3 + output_format option (4.1) | `speech/ffmpeg.py`, `batch_export.py` | To do | None |
+| C11 | Skip-existing / resume (skip_existing) (4.1) | `speech/batch_export.py` | To do | None |
+| C12 | Heading-aware section extraction (MD/HTML/DOCX to sections; TXT = one) (4.8.2) | `speech/text_polish.py` (new extract_sections) | To do | None |
+| C13 | Per-section synthesize/measure/concat/tag assembly + earcon/gap (4.8.5-4.8.6) | new `speech/chapter_assemble.py` | To do | None |
+| C14 | Project-remembered settings: project .quill/speech-project.json (4.10) | new `speech/project_profile.py` | To do | None |
+
+SSML injection (4.7.8-4.7.10, Phase 6) is sequenced after the above and tracked separately; its core touchpoint is an `as_ssml` flag on the SAPI path.
+
+### UI (wxPython) — deferred until the cores above are green
+
+| # | Feature | Status |
+|---|---------|--------|
+| U1 | Batch Export dialog (folder pickers, engine/voice/speed, results list, Start/Cancel) (4.2) | To do |
+| U2 | Live Preview button: audition voice + speed (4.5) | To do |
+| U3 | Tools menu wiring + background execution on QuillTaskManager (4.6) | To do |
+| U4 | Pronunciation manager dialog + add-from-selection + audition (4.7.5-4.7.6) | To do |
+| U5 | Chapter controls (mode / transition sound / pause) + chapter-list preview (4.8.7) | To do |
+| U6 | Text-cleanup settings panel (master toggle, Customize, presets, per-type previews) (4.9.6) | To do |
+| U7 | "Remember for this project" / "Reset to global" surface (4.10) | To do |
+
+**Status legend:** Done = implemented and merged; To do = not started; Partial = in progress. **Tests:** Yes = covered; Thin = minimal; None = none yet.
+
+---
+
 # 2. Current State Audit
 
 ## 2.1 What exists and works
@@ -385,6 +430,13 @@ A sibling BITS project, **ChapterForge** (`d:\code99\forum`, MIT-licensed, also 
 - **M4B markers:** the M4B/AAC path writes native MP4 chapter atoms (ChapterForge's M4B branch) when M4B output is selected.
 - **Dependency note:** mutagen is the new dependency for chapter writing; add it behind the MP3/chapters feature (and the `network_egress_audit`/`THIRD_PARTY` accounting), reusing ffmpeg for transcode (§4.1). Cite ChapterForge in `THIRD_PARTY.md` / code comments as the borrowed approach.
 
+**Implementation status (2026-06-24): DONE (core).** Implemented in `quill/core/speech/chapters.py` (wx-free, strict-typed): `Chapter`, `ChapterSection`, `compute_chapters(sections, gap_ms)`, `write_mp3_chapters(path, chapters, toc_title)`, `read_mp3_chapters(path)`, and `ChapterSettings`. Behind the new `quill[mp3]` extra (mutagen ≥ 1.47, imported lazily; a clear `RuntimeError` is raised if absent). Settings persisted via the six `batch_speech_chapter_*` fields (§4.8.8). Covered by `tests/unit/core/speech/test_chapters.py` (compute math, contiguity, idempotent write, tag preservation, round-trip) and the settings round-trip tests. M4B atoms and the concat/earcon assembly (§4.8.5–§4.8.6) remain to do.
+
+> **ChapterForge bugs found while borrowing (fix later in ChapterForge — already fixed here in QUILL):**
+>
+> 1. **Non-contiguous gap chapters.** ChapterForge's `_chapters_with_gaps` inserts the inter-article gap *between* chapters but leaves that gap span un-chaptered, so `chapters[i].end_ms < chapters[i+1].start_ms` and the gap silence belongs to no chapter — a player seeking by chapter lands in dead air. **QUILL's `compute_chapters` fix:** the gap is counted as the *trailing* part of the preceding chapter (`end_ms[i] == start_ms[i+1]`), so the timeline is fully tiled with no holes.
+> 2. **`write_tags_and_chapters` clobbers existing tags.** ChapterForge builds a fresh `ID3()` before writing CHAP/CTOC, discarding any pre-existing metadata (title, artist, album art) on the file. **QUILL's `write_mp3_chapters` fix:** it loads the existing tag (`ID3(path)`, falling back to a new tag only on `ID3NoHeaderError`), removes just the `CHAP`/`CTOC` frames (idempotent re-runs), and preserves everything else.
+
 ### 4.8.5 Transition earcon (the "sounder") and the with/without-sound pair
 
 - A **configurable transition sound** (earcon) plays at each chapter/article boundary so the listener hears the transition. It reuses QUILL's existing **sound-pack** system (`quill/core/sound_pack.py`, the `quill/assets/sound_packs/` infrastructure already used for editor earcons) plus a bundled "chapter chime"; the user can choose the sound, toggle it on/off, and set its volume.
@@ -684,3 +736,15 @@ Build the wx-free `text_normalize.py` with `TextNormalizationOptions` and `norma
 - **Project-remembered settings (§4.10):** a project (folder of files) carries its whole speech profile — engine/voice/speed, output format, chapter options, text-cleanup options, and the active pronunciation dictionaries — in `<project>/.quill/speech-project.json`, applied automatically when the project opens, so the user configures **once per project** and never re-enters it; this-run > project > global > defaults precedence is unit-tested, one shared `current_project_dir()` resolves the project for both settings and dictionaries, and "Remember for this project" / "Reset to global" plus auto-remember-on-Start make it effortless.
 - `ruff`, scoped `mypy quill\core quill\io`, and the test suite are green.
 - User guide and CHANGELOG updated.
+
+---
+
+# 11. Appendix: External References / Prior Art
+
+Apps and projects to study for ideas we can adopt in QUILL's speech/audio export. These are **research references** — review for UX patterns, model/voice handling, and pipeline ideas; adopt only what fits QUILL's offline-first, accessibility-first, screen-reader-driven design.
+
+| Project | Location | Why it's interesting / what to learn |
+|---------|----------|--------------------------------------|
+| **ChapterForge** (BITS) | `d:\code99\forum` (MIT/BITS) | The borrowed chapter model + CHAP/CTOC writer (§4.8.4). Already mined; two bugs noted in §4.8.4 to fix upstream. M4B native-chapter branch still to borrow for the M4B path. |
+| **ElevenDesk** | local: `D:\code\ElevenDesk` (home: drive `S:`); upstream: https://github.com/ivansoto0/ElevenDesk | A desktop front-end for high-quality TTS (ElevenLabs-style) document/article-to-audio. **Study for:** (a) document/article → audio UX and queue/library management; (b) voice browsing/selection and per-voice settings UI; (c) long-text chunking and stitching strategy (compare to our `tts_chunk.py`); (d) output/library organization (chapters, metadata, naming); (e) any accessible-export patterns worth mirroring. **Constraints for QUILL:** ElevenLabs is a paid cloud API — gate any cloud path behind explicit consent and `network_egress_audit`; our v1 batch is **local engines only** (§2.3). Treat ElevenDesk as inspiration for *flow and library/UX*, not as a dependency. **Action:** do a focused review pass (TODO) and fold concrete, accessible, license-compatible ideas back into §4.2 / §4.5 / §4.10. |
+

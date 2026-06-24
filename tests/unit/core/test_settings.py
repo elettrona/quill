@@ -180,6 +180,49 @@ def test_settings_persists_tts_normalization(
     assert loaded.tts_normalization == {"dash_mode": "hyphen"}
 
 
+def test_settings_persists_batch_speech_chapter_fields(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    save_settings(
+        Settings(
+            batch_speech_chapter_mode="single",
+            batch_speech_chapter_sound_enabled=True,
+            batch_speech_chapter_sound_id="chime",
+            batch_speech_chapter_sound_volume=60,
+            batch_speech_article_gap_ms=2500,
+            batch_speech_intro_section_title="Lead",
+        )
+    )
+    loaded = load_settings()
+    assert loaded.batch_speech_chapter_mode == "single"
+    assert loaded.batch_speech_chapter_sound_enabled is True
+    assert loaded.batch_speech_chapter_sound_id == "chime"
+    assert loaded.batch_speech_chapter_sound_volume == 60
+    assert loaded.batch_speech_article_gap_ms == 2500
+    assert loaded.batch_speech_intro_section_title == "Lead"
+
+
+def test_settings_batch_speech_chapter_defaults_and_clamps(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    (tmp_path / "settings.json").write_text(
+        (
+            '{"batch_speech_chapter_mode":"bogus",'
+            '"batch_speech_chapter_sound_volume":500,'
+            '"batch_speech_article_gap_ms":-99,'
+            '"batch_speech_intro_section_title":"  "}'
+        ),
+        encoding="utf-8",
+    )
+    loaded = load_settings()
+    assert loaded.batch_speech_chapter_mode == "none"  # unknown mode falls back
+    assert loaded.batch_speech_chapter_sound_volume == 100  # clamped to 0-100
+    assert loaded.batch_speech_article_gap_ms == 0  # negative clamped to 0
+    assert loaded.batch_speech_intro_section_title == "Introduction"  # blank -> default
+
+
 def test_settings_clamps_recent_file_limit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
     save_settings(Settings(recent_files_limit=1000))
