@@ -147,22 +147,69 @@ class ListStudioMixin:
         return result == wx.ID_YES
 
     def _structured_list_settings(self) -> object:
-        """Build the studio settings, resolving the Markdown definition profile.
+        """Resolve the studio settings across scopes (§3).
 
-        Defaults come straight from the PRD's recommended values; a Markdown
-        document advertises a Pandoc-compatible definition profile so the common
-        case generates native definition syntax, while HTML documents always have
-        valid ``<dl>`` output available.
+        App scope: the user's saved defaults (``settings.list_studio_settings``)
+        or the PRD recommended defaults when none are saved. Format/document
+        scope: the active document's markup kind then pins the definition-list
+        Markdown profile (Pandoc for Markdown, embedded ``<dl>`` for HTML) so the
+        generated definition syntax always fits the document — overriding only
+        that one field. This-operation scope lives in the dialog itself.
         """
         from quill.core.lists import StructuredListSettings
         from quill.core.lists.settings import DefinitionMarkdownProfile
 
-        settings = StructuredListSettings()
+        saved = getattr(self.settings, "list_studio_settings", None)
+        settings = StructuredListSettings.from_dict(saved) if saved else StructuredListSettings()
         if self._effective_markup_kind() == "html":
             settings.definition_markdown_profile = DefinitionMarkdownProfile.HTML_FALLBACK
         else:
             settings.definition_markdown_profile = DefinitionMarkdownProfile.PANDOC
         return settings
+
+    def open_list_studio_settings(self) -> None:
+        """Open the Structured List Studio settings surface; persist on Save (§3–§13).
+
+        Saved values become the app-scope defaults the next F2 starts from
+        (the active document's format still pins the definition-Markdown profile).
+        """
+        from quill.core.lists import StructuredListSettings
+        from quill.core.settings import save_settings
+        from quill.ui.dialog_contract import apply_modal_ids
+        from quill.ui.list_studio_settings_dialog import ListStudioSettingsDialog
+
+        wx = self._wx
+        saved = getattr(self.settings, "list_studio_settings", None)
+        current = StructuredListSettings.from_dict(saved) if saved else StructuredListSettings()
+        panel = ListStudioSettingsDialog(wx, settings=current)
+        dialog = wx.Dialog(
+            self.frame,
+            title="Structured List Studio Settings",
+            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+        )
+        outer = panel.populate(dialog)
+        buttons = dialog.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL)
+        outer.Add(buttons, 0, wx.EXPAND | wx.ALL, 10)
+        panel.finalize()
+        apply_modal_ids(
+            dialog,
+            affirmative_id=wx.ID_OK,
+            affirmative_label="&Save",
+            cancel_id=wx.ID_CANCEL,
+            cancel_label="Cancel",
+        )
+        try:
+            if self._show_modal_dialog(dialog, "Structured List Studio Settings") != wx.ID_OK:
+                self._set_status("List Studio settings unchanged")
+                return
+            result = panel.result_settings
+        finally:
+            dialog.Destroy()
+        if result is None:
+            return
+        self.settings.list_studio_settings = result.to_dict()
+        save_settings(self.settings)
+        self._set_status("List Studio settings saved")
 
     def _register_list_studio_commands(self) -> None:
         self.commands.try_register(
@@ -170,5 +217,12 @@ class ListStudioMixin:
             "Structured List Studio",
             self.open_list_studio,
             self._binding_for("format.list_studio"),
+            feature_id="core.format",
+        )
+        self.commands.try_register(
+            "format.list_studio_settings",
+            "Structured List Studio Settings",
+            self.open_list_studio_settings,
+            self._binding_for("format.list_studio_settings"),
             feature_id="core.format",
         )
