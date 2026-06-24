@@ -75,3 +75,30 @@ def test_no_dictionaries_leaves_text_untouched(
 
     assert seen and "QUILL" in seen[0]
     assert results[0].pronunciation_applied == 0
+
+
+def test_normalization_cleans_text_before_synthesis(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from quill.core.speech.text_normalize import TextNormalizationOptions
+
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "doc.md").write_text("“Smart” quotes—and 50%.", encoding="utf-8")
+    out = tmp_path / "out"
+
+    seen: list[str] = []
+    monkeypatch.setattr(
+        batch_export,
+        "_synthesize_one",
+        lambda text, output_path, opts: seen.append(text),
+    )
+
+    options = _options(src, out, normalization=TextNormalizationOptions())
+    results = [BatchFileResult(source_path=src / "doc.md")]
+    run_batch_export(options, results, lambda *_: None, threading.Event())
+
+    assert seen
+    assert "“" not in seen[0] and "”" not in seen[0]  # curly quotes normalized
+    assert "—" not in seen[0]  # em-dash handled
+    assert "percent" in seen[0]  # 50% spoken

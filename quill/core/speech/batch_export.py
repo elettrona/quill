@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Literal
 
 from quill.core.speech.pronunciation import PronunciationDictionary, apply_pronunciations
+from quill.core.speech.text_normalize import TextNormalizationOptions, normalize_for_tts
 from quill.core.speech.text_polish import UnsupportedFormatError, extract_text, polish_for_tts
 
 __all__ = [
@@ -60,6 +61,9 @@ class BatchExportOptions:
     # and (the source folder as) project. Applied as a silent text transform before
     # synthesis — batch writes audio files to disk and never reads aloud.
     pronunciation_dictionaries: list[PronunciationDictionary] = field(default_factory=list)
+    # Text normalization (§4.9): when set, cleans typography/unicode and speaks
+    # phones/emails/URLs clearly before pronunciation + polish. None = skip.
+    normalization: TextNormalizationOptions | None = None
 
 
 @dataclass
@@ -193,6 +197,10 @@ def run_batch_export(
         t0 = time.monotonic()
         try:
             text = extract_text(res.source_path)
+            # §4.9.5: text normalization runs first (cleans typography; speaks
+            # phones/emails/URLs) so pronunciation matching sees clean text.
+            if options.normalization is not None:
+                text = normalize_for_tts(text, options.normalization)
             # §4.7.4: pronunciation correction runs before polishing, as a silent
             # text transform (no audio) — the same stage the live path uses.
             if options.pronunciation_dictionaries:
