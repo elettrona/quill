@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+from quill.core.speech.pronunciation import PronunciationDictionary, apply_pronunciations
 from quill.core.speech.text_polish import UnsupportedFormatError, extract_text, polish_for_tts
 
 __all__ = [
@@ -55,6 +56,10 @@ class BatchExportOptions:
     espeak_executable: Path | None = None
     espeak_voice: str = "en"
     espeak_rate: int = 175
+    # Pronunciation dictionaries (§4.7): the resolved active set for this engine
+    # and (the source folder as) project. Applied as a silent text transform before
+    # synthesis — batch writes audio files to disk and never reads aloud.
+    pronunciation_dictionaries: list[PronunciationDictionary] = field(default_factory=list)
 
 
 @dataclass
@@ -64,6 +69,7 @@ class BatchFileResult:
     status: BatchStatus = "pending"
     error: str | None = None
     duration_s: float | None = None
+    pronunciation_applied: int = 0  # §4.7.10 per-file substitution count
 
 
 ProgressFn = Callable[[int, int, "BatchFileResult"], None]
@@ -187,6 +193,14 @@ def run_batch_export(
         t0 = time.monotonic()
         try:
             text = extract_text(res.source_path)
+            # §4.7.4: pronunciation correction runs before polishing, as a silent
+            # text transform (no audio) — the same stage the live path uses.
+            if options.pronunciation_dictionaries:
+                applied = apply_pronunciations(
+                    text, options.engine, options.pronunciation_dictionaries
+                )
+                text = applied.text
+                res.pronunciation_applied = applied.total_applied
             text = polish_for_tts(text)
             if not text.strip():
                 res.status = "skipped"
