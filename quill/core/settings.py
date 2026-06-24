@@ -125,6 +125,10 @@ class Settings:
     # under <project>/.quill/pronunciation); settings holds only the selection state.
     pronunciation_enabled: bool = True
     pronunciation_enabled_dictionary_ids: list[str] = field(default_factory=list)
+    # TTS text cleanup/normalization (batch-document-to-speech §4.9): master toggle
+    # plus the serialized TextNormalizationOptions (empty = recommended defaults).
+    tts_normalization_enabled: bool = True
+    tts_normalization: dict[str, Any] = field(default_factory=dict)
     # Offline speech engine: "" = bundled whisper.cpp; "fasterwhisper" opts into
     # the Faster Whisper (CTranslate2) engine on machines that have it.
     speech_provider: str = ""
@@ -538,6 +542,11 @@ class Settings:
             if isinstance(pronunciation_ids_raw, list)
             else []
         )
+        tts_normalization_enabled = bool(data.get("tts_normalization_enabled", True))
+        tts_normalization_raw = data.get("tts_normalization")
+        tts_normalization = (
+            dict(tts_normalization_raw) if isinstance(tts_normalization_raw, dict) else {}
+        )
         speech_provider = str(data.get("speech_provider", "")).strip().lower()
         if speech_provider not in {"", "whispercpp", "fasterwhisper"}:
             speech_provider = ""
@@ -921,6 +930,8 @@ class Settings:
             dictation_intelligent_spacing=dictation_intelligent_spacing,
             pronunciation_enabled=pronunciation_enabled,
             pronunciation_enabled_dictionary_ids=pronunciation_enabled_dictionary_ids,
+            tts_normalization_enabled=tts_normalization_enabled,
+            tts_normalization=tts_normalization,
             dictation_min_hold_seconds=dictation_min_hold_seconds,
             speech_provider=speech_provider,
             bw_speech_selection_mode=bw_speech_selection_mode,

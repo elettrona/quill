@@ -168,6 +168,18 @@ def test_settings_list_studio_settings_defaults_empty_and_ignores_garbage(
     assert load_settings().list_studio_settings == {}
 
 
+def test_settings_persists_tts_normalization(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    save_settings(
+        Settings(tts_normalization_enabled=False, tts_normalization={"dash_mode": "hyphen"})
+    )
+    loaded = load_settings()
+    assert loaded.tts_normalization_enabled is False
+    assert loaded.tts_normalization == {"dash_mode": "hyphen"}
+
+
 def test_settings_clamps_recent_file_limit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
     save_settings(Settings(recent_files_limit=1000))
