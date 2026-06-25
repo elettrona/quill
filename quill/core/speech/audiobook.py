@@ -36,8 +36,9 @@ AUDIO_EXTENSIONS: tuple[str, ...] = (
     ".aac",
 )
 # Output formats that carry navigable chapters: MP3 (ID3 CHAP via mutagen) and
-# M4B (native MP4 chapter atoms). These are the audiobook core; FLAC/Opus output
-# is a future addition.
+# M4B (native MP4 chapter atoms). These are the only meaningful audiobook outputs —
+# FLAC/Opus cannot carry the chapter markers an audiobook needs, so they are not
+# offered as output (they are still accepted as source chapter files).
 OUTPUT_FORMATS: tuple[str, ...] = ("mp3", "m4b")
 _COVER_STEMS: tuple[str, ...] = ("cover", "folder", "front", "albumart", "album", "artwork")
 _COVER_EXTENSIONS: tuple[str, ...] = (".jpg", ".jpeg", ".png")
@@ -78,11 +79,23 @@ def find_cover(folder: Path) -> Path | None:
 
 @dataclass(slots=True)
 class AudiobookChapter:
-    """One source file as a chapter: its path, display title, and duration."""
+    """One chapter: a primary file, display title, duration, and any merged files.
+
+    A chapter is normally one source file (``extra_paths`` empty). When the user
+    **merges** adjacent files in the builder, the trailing files land in
+    ``extra_paths`` — they play as part of this chapter (in order, after ``path``)
+    but get no chapter marker of their own. ``duration_ms`` is the sum of all parts.
+    """
 
     path: Path
     title: str
     duration_ms: int
+    extra_paths: list[Path] = field(default_factory=list)
+
+    @property
+    def all_paths(self) -> list[Path]:
+        """The chapter's files in play order: the primary file then any merged ones."""
+        return [self.path, *self.extra_paths]
 
 
 @dataclass(slots=True)
@@ -114,6 +127,32 @@ def build_chapter_list(paths: list[Path]) -> list[AudiobookChapter]:
     return chapters
 
 
+def chapters_from_plan(plan: list[tuple[str, list[Path]]]) -> list[AudiobookChapter]:
+    """Build chapters from an edited ``(title, [files])`` plan, probing durations.
+
+    Each entry is one chapter; entries with more than one file are merged chapters
+    (the first file is primary, the rest go to ``extra_paths``). Used by the builder
+    when the user has renamed / reordered / merged chapters before building.
+    """
+    from quill.core.speech.ffmpeg import probe_duration_ms
+
+    chapters: list[AudiobookChapter] = []
+    for index, (title, files) in enumerate(plan, start=1):
+        if not files:
+            continue
+        parts = [Path(f) for f in files]
+        duration = sum(probe_duration_ms(p) for p in parts)
+        chapters.append(
+            AudiobookChapter(
+                path=parts[0],
+                title=title.strip() or f"Chapter {index}",
+                duration_ms=duration,
+                extra_paths=parts[1:],
+            )
+        )
+    return chapters
+
+
 def _ffconcat_quote(path: Path) -> str:
     """Quote a path for the ffmpeg concat demuxer (single quotes are escaped)."""
     return "'" + str(path).replace("'", "'\\''") + "'"
@@ -133,12 +172,15 @@ def build_audiobook_command(
     ffmetadata: Path | None = None,
     cover: Path | None = None,
     map_chapters: bool = False,
+    acx_normalize: bool = False,
 ) -> list[str]:
     """Build the ffmpeg argv that concatenates the chapter files into *out_path*.
 
     Inputs are ordered: the concat list, then (optional) the FFMETADATA document,
     then (optional) the cover image. Tags/chapters come from the metadata input;
-    the cover is mapped as an attached picture. Pure and unit-tested.
+    the cover is mapped as an attached picture. When *acx_normalize* is set the
+    audio is run through the ``loudnorm`` filter to bring it into ACX loudness range
+    during the (already re-encoding) build. Pure and unit-tested.
     """
     args = [
         ffmpeg,
@@ -169,6 +211,10 @@ def build_audiobook_command(
         args.extend(["-map_metadata", str(meta_index)])
         if map_chapters:
             args.extend(["-map_chapters", str(meta_index)])
+    if acx_normalize:
+        from quill.core.speech.loudness import loudnorm_filter
+
+        args.extend(["-af", loudnorm_filter()])
     if fmt == "m4b":
         args.extend(["-c:a", "aac", "-b:a", "96k", "-c:v", "copy", "-f", "ipod"])
     else:  # mp3
@@ -184,6 +230,7 @@ def build_audiobook(
     output_format: str = "m4b",
     metadata: AudioMetadata | None = None,
     cover: Path | None = None,
+    acx_normalize: bool = False,
     on_progress: Callable[[str], None] | None = None,
     cancel_event: threading.Event | None = None,
 ) -> AudiobookResult:
@@ -229,7 +276,10 @@ def build_audiobook(
     with tempfile.TemporaryDirectory(prefix="quill_audiobook_") as tmp:
         tmp_dir = Path(tmp)
         list_path = tmp_dir / "chapters.txt"
-        list_path.write_text(build_concat_list([c.path for c in speakable]), encoding="utf-8")
+        # A merged chapter contributes all of its files (primary + merged) to the
+        # concat list, in order, but still emits a single chapter marker.
+        concat_paths = [p for c in speakable for p in c.all_paths if p.is_file()]
+        list_path.write_text(build_concat_list(concat_paths), encoding="utf-8")
         meta_path = tmp_dir / "meta.ffmeta"
         # M4B carries chapters natively; MP3 gets tags from ffmpeg and chapters from
         # mutagen afterwards (ffmpeg does not write ID3 CHAP frames reliably).
@@ -243,6 +293,7 @@ def build_audiobook(
             ffmetadata=meta_path,
             cover=cover if (cover and cover.is_file()) else None,
             map_chapters=(fmt == "m4b"),
+            acx_normalize=acx_normalize,
         )
         try:
             completed = run_subprocess_safely(args, timeout_seconds=1800.0)

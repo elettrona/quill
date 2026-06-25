@@ -2034,12 +2034,23 @@ book's tags (title/author/narrator/genre/year) and an auto-detected cover are
 written. The accessible `audiobook_builder_dialog.py` collects the inputs and the
 build runs on the background task pool.
 
-- **Remaining:** in-dialog chapter rename/reorder/merge; FLAC/Opus output; an ACX
-  loudness compliance check + one-click fix. Tracked in `docs/planning/roadmap.md`
-  §1.5.
-- **Deliberately not ported** (future-release, off the current vision): Auphonic
-  post-processing, RSS podcast feeds, SFTP publishing, MusicBrainz/Open Library
-  metadata lookup.
+- **In-dialog chapter editing.** The dialog lists the chapters and lets the user
+  **rename** (inline title field), **reorder** (move up/down), and **merge** an
+  entry into the one above it before building. A merged chapter carries multiple
+  source files in `AudiobookChapter.extra_paths` (played in order, summed duration,
+  one marker); the edited plan flows through `AudiobookRequest.chapter_plan` and
+  `audiobook.chapters_from_plan`. The chapter list is keyboard-activatable (GATE-13).
+- **ACX loudness.** A **Normalize to ACX** option applies an ffmpeg `loudnorm` pass
+  (targeting RMS ≈ -20 dB, true-peak -3.1 dB) during the existing re-encoding build,
+  so chapters/tags are preserved. After the build the master is measured with
+  `volumedetect` and the RMS/peak verdict against ACX's -23…-18 dB / -3 dB window is
+  surfaced in the completion status (`quill/core/speech/loudness.py`). FLAC/Opus
+  *output* is intentionally not offered — neither carries chapter markers (both stay
+  accepted as source files).
+- **Deferred to 2.0** (`docs/planning/roadmap.md` §5): direct publishing (#140,
+  WordPress/etc., a likely-Quillin integration) and the off-vision ChapterForge
+  surfaces — Auphonic post-processing, RSS podcast feeds, SFTP publishing, and
+  MusicBrainz/Open Library metadata lookup.
 
 ### 5.25a Speech Experience Platform (planned before implementation)
 

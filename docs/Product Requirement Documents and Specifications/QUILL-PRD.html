@@ -3971,12 +3971,29 @@ chapter (title from its filename); the book’s tags
 written. The accessible <code>audiobook_builder_dialog.py</code>
 collects the inputs and the build runs on the background task pool.</p>
 <ul>
-<li><strong>Remaining:</strong> in-dialog chapter rename/reorder/merge;
-FLAC/Opus output; an ACX loudness compliance check + one-click fix.
-Tracked in <code>docs/planning/roadmap.md</code> §1.5.</li>
-<li><strong>Deliberately not ported</strong> (future-release, off the
-current vision): Auphonic post-processing, RSS podcast feeds, SFTP
-publishing, MusicBrainz/Open Library metadata lookup.</li>
+<li><strong>In-dialog chapter editing.</strong> The dialog lists the
+chapters and lets the user <strong>rename</strong> (inline title field),
+<strong>reorder</strong> (move up/down), and <strong>merge</strong> an
+entry into the one above it before building. A merged chapter carries
+multiple source files in <code>AudiobookChapter.extra_paths</code>
+(played in order, summed duration, one marker); the edited plan flows
+through <code>AudiobookRequest.chapter_plan</code> and
+<code>audiobook.chapters_from_plan</code>. The chapter list is
+keyboard-activatable (GATE-13).</li>
+<li><strong>ACX loudness.</strong> A <strong>Normalize to ACX</strong>
+option applies an ffmpeg <code>loudnorm</code> pass (targeting RMS ≈ -20
+dB, true-peak -3.1 dB) during the existing re-encoding build, so
+chapters/tags are preserved. After the build the master is measured with
+<code>volumedetect</code> and the RMS/peak verdict against ACX’s -23…-18
+dB / -3 dB window is surfaced in the completion status
+(<code>quill/core/speech/loudness.py</code>). FLAC/Opus <em>output</em>
+is intentionally not offered — neither carries chapter markers (both
+stay accepted as source files).</li>
+<li><strong>Deferred to 2.0</strong>
+(<code>docs/planning/roadmap.md</code> §5): direct publishing (#140,
+WordPress/etc., a likely-Quillin integration) and the off-vision
+ChapterForge surfaces — Auphonic post-processing, RSS podcast feeds,
+SFTP publishing, and MusicBrainz/Open Library metadata lookup.</li>
 </ul>
 <h3
 id="a-speech-experience-platform-planned-before-implementation">5.25a

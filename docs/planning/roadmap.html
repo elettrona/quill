@@ -295,28 +295,30 @@ for 1.0: finish + un-gate, or keep hidden.</li>
 <li>GLOW’s server/Keycloak/Office-add-in/MCP-deployment surfaces stay in
 the GLOW product; QUILL takes the authoring-time checks.</li>
 </ul>
-<h3 id="publishing-audiobook">1.5 Publishing &amp; audiobook</h3>
+<h3 id="publishing-audiobook-complete-for-1.0">1.5 Publishing &amp;
+audiobook ✅ (complete for 1.0)</h3>
 <p>The ChapterForge <strong>folder-of-audio → one chaptered
-master</strong> surface has shipped: <strong>Build Audiobook from
-Folder</strong> (Tools &gt; Speech) combines a folder of audio files
-into a single chaptered <strong>MP3</strong> or <strong>M4B</strong>
-master (native chapter atoms), one chapter per file with titles from
-filenames, plus book tags and an auto-detected cover
-(<code>quill/core/speech/audiobook.py</code>). Remaining, aligned
-ChapterForge surfaces:</p>
+master</strong> surface is <strong>done for 1.0</strong>. <strong>Build
+Audiobook from Folder</strong> (Tools &gt; Speech) combines a folder of
+audio files into a single chaptered <strong>MP3</strong> or
+<strong>M4B</strong> master (native chapter atoms), with book tags and
+an auto-detected cover (<code>quill/core/speech/audiobook.py</code>),
+plus:</p>
 <ul>
-<li><strong>In-dialog chapter editing</strong> — rename/reorder/merge
-chapters before building (today titles come from filenames in
-natural-sort order).</li>
-<li><strong>FLAC / Opus output</strong> and an <strong>ACX loudness
-compliance</strong> check + one-click fix.</li>
-<li><strong>Direct publishing (#140)</strong> — WordPress and other
-platforms; a long-term, likely-Quillin integration (external-API + auth
-surface), not core editor work.</li>
+<li><strong>In-dialog chapter editing</strong> — rename, reorder (move
+up/down), and merge adjacent chapters before building; titles default to
+the filenames (natural-sort order).</li>
+<li><strong>ACX loudness compliance</strong> — a one-click
+<strong>Normalize to ACX</strong> option applies an ffmpeg
+<code>loudnorm</code> pass during the build, and the finished master is
+measured and reported against ACX’s RMS/peak window
+(<code>quill/core/speech/loudness.py</code>).</li>
 </ul>
-<p>Deferred as future-release ChapterForge surfaces (out of the current
-vision): Auphonic post-processing, RSS podcast feeds, SFTP publishing,
-and MusicBrainz / Open Library metadata lookup.</p>
+<p>FLAC/Opus <em>output</em> is intentionally <strong>not</strong>
+offered — those formats can’t carry the chapter markers an audiobook
+needs (they remain accepted as <em>source</em> files).</p>
+<p>Direct publishing (#140) and the remaining ChapterForge surfaces are
+tracked under §5 (2.0).</p>
 <h3 id="platform-distribution">1.6 Platform &amp; distribution</h3>
 <ul>
 <li>Live installer smoke on Windows 10/11 (#506); macOS to shipping
@@ -487,6 +489,14 @@ the Windows 11 modern primary-menu <code>IExplorerCommand</code> pass
 (SHELL-3, #525) and the PyInstaller packaging-hardening evaluation
 (PKG-1, #599). <em>(Nuitka is explicitly out of scope — too much risk /
 not reliable enough.)</em></li>
+<li><strong>Direct publishing (#140)</strong> — publish a finished
+document/audiobook to WordPress and other platforms. A long-term,
+likely-<strong>Quillin</strong> integration (external-API + auth
+surface), not core editor work; early design lives in
+<code>docs/design/publishing/</code>.</li>
+<li><strong>Remaining ChapterForge surfaces</strong> (out of the 1.0
+audiobook vision) — Auphonic post-processing, RSS podcast feeds, SFTP
+publishing, and MusicBrainz / Open Library metadata lookup.</li>
 </ul>
 </body>
 </html>

@@ -17,12 +17,31 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from quill.ui.dialog_contract import apply_modal_ids, show_message_box
+from quill.ui.dialog_contract import (
+    apply_listbox_activation,
+    apply_modal_ids,
+    show_message_box,
+)
 
-# (source_folder, recursive) -> (audio_file_count, detected_cover_path or "")
-ScanFn = Callable[[Path, bool], "tuple[int, str]"]
+# (source_folder, recursive) -> (chapter_rows, detected_cover_path or "")
+# where each chapter row is (audio_file_path, default_title).
+ScanFn = Callable[[Path, bool], "tuple[list[tuple[str, str]], str]"]
 
 _FORMATS = (("M4B audiobook (native chapters)", "m4b"), ("MP3 (with chapter markers)", "mp3"))
+
+
+@dataclass(slots=True)
+class _Chapter:
+    """One editable chapter row in the dialog: a title and its merged file(s)."""
+
+    title: str
+    paths: list[str]
+
+    def label(self) -> str:
+        """List display text, noting a merge so the count is spoken/visible."""
+        if len(self.paths) > 1:
+            return f"{self.title}  ({len(self.paths)} files)"
+        return self.title
 
 
 @dataclass(slots=True)
@@ -39,6 +58,10 @@ class AudiobookRequest:
     genre: str
     year: str
     cover_path: str
+    acx_normalize: bool = False
+    # The edited chapter plan: (title, [file paths]). None means "scan at build
+    # time and use one filename-derived chapter per file" (the unedited default).
+    chapter_plan: list[tuple[str, list[str]]] | None = None
 
 
 class AudiobookBuilderDialog:
@@ -60,6 +83,8 @@ class AudiobookBuilderDialog:
         # (the folder pick changes a StaticText that is not otherwise announced).
         self._announce_fn = announce
         self._result: AudiobookRequest | None = None
+        # The editable chapter plan (one row per chapter), rebuilt on each scan.
+        self._chapters: list[_Chapter] = []
 
         self.dialog = wx.Dialog(
             parent,
@@ -88,6 +113,37 @@ class AudiobookBuilderDialog:
         self._scan_status = wx.StaticText(self.dialog, label="No folder chosen yet.")
         root.Add(self._scan_status, 0, wx.LEFT | wx.TOP, 8)
 
+        # --- Chapters: rename / reorder / merge before building ---
+        label("C&hapters (each is a navigable marker; rename, reorder, or merge):")
+        self._chapter_list = wx.ListBox(self.dialog, style=wx.LB_SINGLE)
+        self._chapter_list.Bind(wx.EVT_LISTBOX, lambda _e: self._on_chapter_selected())
+        apply_listbox_activation(self._chapter_list, lambda _e: self._focus_title_edit())
+        root.Add(self._chapter_list, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 8)
+
+        title_row = wx.BoxSizer(wx.HORIZONTAL)
+        title_row.Add(
+            wx.StaticText(self.dialog, label="Chapter t&itle:"), 0, wx.ALIGN_CENTER_VERTICAL
+        )
+        self._title_edit = wx.TextCtrl(self.dialog, style=wx.TE_PROCESS_ENTER)
+        self._title_edit.Bind(wx.EVT_TEXT_ENTER, lambda _e: self._on_rename())
+        rename_btn = wx.Button(self.dialog, label="Re&name")
+        rename_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_rename())
+        title_row.Add(self._title_edit, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 6)
+        title_row.Add(rename_btn, 0)
+        root.Add(title_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 8)
+
+        order_row = wx.BoxSizer(wx.HORIZONTAL)
+        self._up_btn = wx.Button(self.dialog, label="Move &Up")
+        self._down_btn = wx.Button(self.dialog, label="Move &Down")
+        self._merge_btn = wx.Button(self.dialog, label="&Merge into previous")
+        self._up_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_move(-1))
+        self._down_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_move(1))
+        self._merge_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_merge_up())
+        order_row.Add(self._up_btn, 0, wx.RIGHT, 6)
+        order_row.Add(self._down_btn, 0, wx.RIGHT, 6)
+        order_row.Add(self._merge_btn, 0)
+        root.Add(order_row, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+
         # --- Book details ---
         grid = wx.FlexGridSizer(cols=2, vgap=4, hgap=8)
         grid.AddGrowableCol(1, 1)
@@ -114,6 +170,11 @@ class AudiobookBuilderDialog:
         self._format.SetSelection(0 if defaults.output_format != "mp3" else 1)
         self._format.Bind(wx.EVT_CHOICE, lambda _e: self._sync_output_suffix())
         root.Add(self._format, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+        self._acx = wx.CheckBox(
+            self.dialog, label="&Normalize loudness to ACX (Audible/audiobook) spec"
+        )
+        self._acx.SetValue(defaults.acx_normalize)
+        root.Add(self._acx, 0, wx.LEFT | wx.TOP, 8)
         label("Save &as:")
         out_row = wx.BoxSizer(wx.HORIZONTAL)
         self._output = wx.TextCtrl(self.dialog, value=str(defaults.output_path))
@@ -166,13 +227,20 @@ class AudiobookBuilderDialog:
     def _rescan(self) -> None:
         folder_text = self._source.GetValue().strip()
         if not folder_text or not Path(folder_text).is_dir():
+            self._chapters = []
+            self._refresh_chapter_list()
             self._set_scan_status("No folder chosen yet.")
             return
         try:
-            count, cover = self._on_scan(Path(folder_text), self._recursive.GetValue())
+            rows, cover = self._on_scan(Path(folder_text), self._recursive.GetValue())
         except Exception:  # noqa: BLE001 - a scan failure must not break the dialog
+            self._chapters = []
+            self._refresh_chapter_list()
             self._set_scan_status("Could not scan that folder.")
             return
+        self._chapters = [_Chapter(title=title, paths=[path]) for path, title in rows]
+        self._refresh_chapter_list()
+        count = len(rows)
         self._set_scan_status(
             f"{count} audio file(s) found — each becomes a chapter."
             if count
@@ -183,6 +251,74 @@ class AudiobookBuilderDialog:
         if count and not self._output.GetValue().strip():
             default_out = Path(folder_text) / f"{Path(folder_text).name}.{self._current_format()}"
             self._output.SetValue(str(default_out))
+
+    # -------------------------------------------------------- chapter editing
+
+    def _refresh_chapter_list(self, *, select: int = -1) -> None:
+        """Repaint the chapter list from ``self._chapters`` and refresh edit state."""
+        self._chapter_list.Set([c.label() for c in self._chapters])
+        if self._chapters:
+            index = select if 0 <= select < len(self._chapters) else 0
+            self._chapter_list.SetSelection(index)
+        self._on_chapter_selected()
+
+    def _selected_index(self) -> int:
+        idx = self._chapter_list.GetSelection()
+        return idx if 0 <= idx < len(self._chapters) else -1
+
+    def _focus_title_edit(self) -> None:
+        """Move focus to the rename field (the chapter list's keyboard activation)."""
+        if self._selected_index() >= 0:
+            self._title_edit.SetFocus()
+            self._title_edit.SelectAll()
+
+    def _on_chapter_selected(self) -> None:
+        idx = self._selected_index()
+        has = idx >= 0
+        self._title_edit.SetValue(self._chapters[idx].title if has else "")
+        self._title_edit.Enable(has)
+        self._up_btn.Enable(has and idx > 0)
+        self._down_btn.Enable(has and idx < len(self._chapters) - 1)
+        # Merge folds a chapter into the one above it, so it needs a predecessor.
+        self._merge_btn.Enable(has and idx > 0)
+
+    def _on_rename(self) -> None:
+        idx = self._selected_index()
+        if idx < 0:
+            return
+        new_title = self._title_edit.GetValue().strip()
+        if not new_title:
+            self._error("A chapter title cannot be empty.")
+            return
+        self._chapters[idx].title = new_title
+        self._refresh_chapter_list(select=idx)
+        self._announce(f"Renamed chapter to {new_title}")
+
+    def _on_move(self, delta: int) -> None:
+        idx = self._selected_index()
+        target = idx + delta
+        if idx < 0 or not (0 <= target < len(self._chapters)):
+            return
+        self._chapters[idx], self._chapters[target] = (
+            self._chapters[target],
+            self._chapters[idx],
+        )
+        self._refresh_chapter_list(select=target)
+        self._announce(f"Moved chapter {'up' if delta < 0 else 'down'} to position {target + 1}")
+
+    def _on_merge_up(self) -> None:
+        idx = self._selected_index()
+        if idx <= 0:
+            return
+        previous = self._chapters[idx - 1]
+        folded = self._chapters.pop(idx)
+        previous.paths.extend(folded.paths)
+        self._refresh_chapter_list(select=idx - 1)
+        self._announce(f"Merged into previous chapter — {previous.label()}")
+
+    def _announce(self, text: str) -> None:
+        if self._announce_fn is not None:
+            self._announce_fn(text)
 
     # ------------------------------------------------------------------ events
 
@@ -217,6 +353,7 @@ class AudiobookBuilderDialog:
                 self._output.SetValue(str(Path(dlg.GetPath()).with_suffix(f".{fmt}")))
 
     def _collect(self) -> AudiobookRequest:
+        plan = [(c.title, list(c.paths)) for c in self._chapters] or None
         return AudiobookRequest(
             source_folder=Path(self._source.GetValue().strip()),
             recursive=self._recursive.GetValue(),
@@ -228,6 +365,8 @@ class AudiobookBuilderDialog:
             genre=self._genre.GetValue().strip(),
             year=self._year.GetValue().strip(),
             cover_path=self._cover.GetValue().strip(),
+            acx_normalize=self._acx.GetValue(),
+            chapter_plan=plan,
         )
 
     def _on_build(self, evt: object) -> None:

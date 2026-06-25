@@ -13,6 +13,7 @@ from quill.core.speech.audiobook import (
     build_audiobook_command,
     build_chapter_list,
     build_concat_list,
+    chapters_from_plan,
     find_cover,
     natural_key,
     scan_audio_folder,
@@ -90,6 +91,37 @@ def test_audiobook_command_m4b_maps_chapters_cover_and_uses_ipod() -> None:
     assert "attached_pic" in cmd
     assert cmd[cmd.index("-c:a") + 1] == "aac"
     assert cmd[-1] == "out.m4b"
+
+
+def test_chapters_from_plan_merges_and_sums_durations(monkeypatch: pytest.MonkeyPatch) -> None:
+    import quill.core.speech.ffmpeg as ffmpeg
+
+    monkeypatch.setattr(ffmpeg, "probe_duration_ms", lambda p, **k: 1000)
+    plan = [
+        ("Intro", [Path("a/01.mp3")]),
+        ("Body", [Path("a/02.mp3"), Path("a/03.mp3")]),  # a merged chapter
+        ("", [Path("a/04.mp3")]),  # empty title -> "Chapter N"
+    ]
+    chapters = chapters_from_plan(plan)
+    assert [c.title for c in chapters] == ["Intro", "Body", "Chapter 3"]
+    # The merged chapter carries both files and the summed duration, one marker.
+    body = chapters[1]
+    assert body.path == Path("a/02.mp3")
+    assert body.extra_paths == [Path("a/03.mp3")]
+    assert body.all_paths == [Path("a/02.mp3"), Path("a/03.mp3")]
+    assert body.duration_ms == 2000
+
+
+def test_build_audiobook_command_acx_adds_loudnorm_filter() -> None:
+    cmd = build_audiobook_command(
+        "ffmpeg", Path("list.txt"), Path("out.m4b"), "m4b", acx_normalize=True
+    )
+    assert "-af" in cmd
+    flt = cmd[cmd.index("-af") + 1]
+    assert flt.startswith("loudnorm=")
+    # Without the flag there is no audio filter (byte-identical to the old argv).
+    plain = build_audiobook_command("ffmpeg", Path("list.txt"), Path("out.m4b"), "m4b")
+    assert "-af" not in plain
 
 
 def test_audiobook_command_mp3_skips_chapter_mapping() -> None:

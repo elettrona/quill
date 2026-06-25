@@ -103,23 +103,24 @@ Accessibility Agents from GLOW (AX-A..F, #593–#598) become catalog agents here
 - GLOW's server/Keycloak/Office-add-in/MCP-deployment surfaces stay in the GLOW
   product; QUILL takes the authoring-time checks.
 
-### 1.5 Publishing & audiobook
+### 1.5 Publishing & audiobook ✅ (complete for 1.0)
 
-The ChapterForge **folder-of-audio → one chaptered master** surface has shipped:
-**Build Audiobook from Folder** (Tools > Speech) combines a folder of audio files
-into a single chaptered **MP3** or **M4B** master (native chapter atoms), one
-chapter per file with titles from filenames, plus book tags and an auto-detected
-cover (`quill/core/speech/audiobook.py`). Remaining, aligned ChapterForge surfaces:
+The ChapterForge **folder-of-audio → one chaptered master** surface is **done for
+1.0**. **Build Audiobook from Folder** (Tools > Speech) combines a folder of audio
+files into a single chaptered **MP3** or **M4B** master (native chapter atoms),
+with book tags and an auto-detected cover (`quill/core/speech/audiobook.py`), plus:
 
-- **In-dialog chapter editing** — rename/reorder/merge chapters before building
-  (today titles come from filenames in natural-sort order).
-- **FLAC / Opus output** and an **ACX loudness compliance** check + one-click fix.
-- **Direct publishing (#140)** — WordPress and other platforms; a long-term,
-  likely-Quillin integration (external-API + auth surface), not core editor work.
+- **In-dialog chapter editing** — rename, reorder (move up/down), and merge adjacent
+  chapters before building; titles default to the filenames (natural-sort order).
+- **ACX loudness compliance** — a one-click **Normalize to ACX** option applies an
+  ffmpeg `loudnorm` pass during the build, and the finished master is measured and
+  reported against ACX's RMS/peak window (`quill/core/speech/loudness.py`).
 
-Deferred as future-release ChapterForge surfaces (out of the current vision):
-Auphonic post-processing, RSS podcast feeds, SFTP publishing, and MusicBrainz /
-Open Library metadata lookup.
+FLAC/Opus *output* is intentionally **not** offered — those formats can't carry the
+chapter markers an audiobook needs (they remain accepted as *source* files).
+
+Direct publishing (#140) and the remaining ChapterForge surfaces are tracked under
+§5 (2.0).
 
 ### 1.6 Platform & distribution
 
@@ -244,3 +245,10 @@ Confirmed out of the 1.0 scope. Recorded here so the intent is not lost.
   primary-menu `IExplorerCommand` pass (SHELL-3, #525) and the PyInstaller
   packaging-hardening evaluation (PKG-1, #599). *(Nuitka is explicitly out of scope
   — too much risk / not reliable enough.)*
+- **Direct publishing (#140)** — publish a finished document/audiobook to WordPress
+  and other platforms. A long-term, likely-**Quillin** integration (external-API +
+  auth surface), not core editor work; early design lives in
+  `docs/design/publishing/`.
+- **Remaining ChapterForge surfaces** (out of the 1.0 audiobook vision) — Auphonic
+  post-processing, RSS podcast feeds, SFTP publishing, and MusicBrainz / Open
+  Library metadata lookup.

@@ -2124,9 +2124,17 @@ or speech QUILL exported earlier) into a single master.
 - Point it at a **folder of audio files**; each file becomes one **chapter**, in
   natural-sorted order, with the chapter title taken from the file name (a leading
   track number like `01 - ` is stripped).
+- **Edit the chapters before building.** The dialog lists the chapters; you can
+  **rename** the selected one (type a new title and press Rename or Enter), **move**
+  it **up** or **down**, or **merge** it into the chapter above it (two files then
+  play as a single chapter with one marker). The list is fully keyboard-operable.
 - Choose **M4B audiobook** (native MP4 chapter atoms — the Apple/audiobook format)
   or **MP3** (ID3 chapter markers). Both are navigable in Apple Podcasts, Overcast,
   VLC, foobar2000, and others.
+- Tick **Normalize loudness to ACX (Audible/audiobook) spec** to bring the master
+  into the loudness range audiobook platforms require (RMS between -23 and -18 dB,
+  peak under -3 dB). After the build, QUILL measures the result and reports whether
+  it met the ACX window in the status bar.
 - Fill in the book's **title, author, narrator, genre, and year**. A **cover image**
   in the folder (named like `cover.jpg`, `folder.png`, …) is picked up
   automatically, or browse for one.
