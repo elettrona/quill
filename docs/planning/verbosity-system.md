@@ -1,12 +1,20 @@
 # QUILL Verbosity System — Consolidated Design Archive
 
-> **Consolidated workstream design spec.** This file gathers the full text of
-> every issue in this workstream so the design reads end to end in one place.
-> Status lives in the [`roadmap.md`](roadmap.md) plan of record (§1.1). The
-> verbosity **engine and wxPython UI have shipped**; what remains, and is the live
-> purpose of this file, is the **polish backlog** (the ~100 addenda, #405–#504).
-> Everything here is in scope to ship — issue numbers are preserved as section
-> anchors.
+> **Consolidated workstream design spec / reference archive.** This file gathers the
+> full text of every issue in this workstream so the design reads end to end in one
+> place. Status lives in the [`roadmap.md`](roadmap.md) plan of record (§1.1).
+>
+> **Verbosity is complete for 1.0** (roadmap §1.1): the engine, the eleven `verbosity_*`
+> UI surfaces, the runtime modes (Quiet / Meeting / Quiet-Undo), the status-query
+> commands (Where am I? / What changed? / Speak Status), mastery step-down, history,
+> the explain trace, Safe Mode/reset, QVP packs + library + preview lab, task-aware
+> profiles, import/export, destructive-action confirmation, and **announcement
+> anti-spam** (repetition collapse + budget) have all shipped.
+>
+> What remains is the **speculative slice of the polish backlog** (#405–#504),
+> **deferred to 2.0** (roadmap §5). This file is now the **reference well** for those
+> items — issue numbers are preserved as section anchors; the screen-reader-redundant
+> ideas are flagged "recommend do not build."
 
 The Verbosity System is QUILL's screen-reader-first announcement engine: profiles, channels, per-verb token templates, Quiet/Meeting modes, a QVP pack format, and a large UX-polish surface. The core engine and UI shipped in the 0.7.0 line; the remaining polish set is the multi-item backlog below.
 
