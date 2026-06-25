@@ -65,6 +65,11 @@ _ALLOWLIST: frozenset[str] = frozenset({
     "quill/ui/ai_spell_check_dialog.py",
     "quill/ui/ai_thesaurus_dialog.py",
     "quill/ui/ai_translation_dialog.py",
+    # SsmlBuilderDialog's _status is a per-keystroke well-formed-XML hint; announcing
+    # every change would flood the screen reader. The authoritative validation
+    # outcome IS announced at the decision point: pressing "Use this SSML" with
+    # malformed markup shows an announced message box (show_message_box) and blocks.
+    "quill/ui/ssml_builder_dialog.py",
 })
 
 
