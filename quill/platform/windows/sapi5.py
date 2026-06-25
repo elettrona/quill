@@ -42,10 +42,61 @@ _DEFAULT_RATE_WPM = 200
 
 @dataclass(frozen=True, slots=True)
 class Sapi5Voice:
-    """A SAPI 5 voice: ``id`` is the token id, ``name`` the friendly description."""
+    """A SAPI 5 voice: ``id`` is the token id, ``name`` the friendly description.
+
+    ``language`` is the ISO base subtag (e.g. ``"es"``) read best-effort from the
+    voice token's ``Language`` LCID attribute; ``""`` when unknown.
+    """
 
     id: str
     name: str
+    language: str = ""
+
+
+# A small map from common SAPI/Windows language LCIDs (hex, lowercase) to the ISO
+# 639-1 base subtag. SAPI's "Language" attribute is a hex LCID; we only need the
+# primary-language nibble to pick a base language, so many region LCIDs share a base.
+_LCID_BASE: dict[str, str] = {
+    "9": "en",
+    "a": "es",
+    "c": "fr",
+    "7": "de",
+    "10": "it",
+    "16": "pt",
+    "19": "ru",
+    "11": "ja",
+    "12": "ko",
+    "4": "zh",
+    "d": "he",
+    "1": "ar",
+    "13": "nl",
+    "8": "el",
+    "e": "hu",
+    "15": "pl",
+    "1d": "sv",
+    "5": "cs",
+    "1f": "tr",
+    "22": "uk",
+    "2a": "vi",
+    "39": "hi",
+    "1e": "th",
+    "6": "da",
+    "b": "fi",
+    "14": "no",
+    "21": "id",
+}
+
+
+def _lcid_to_base(lcid_attr: str) -> str:
+    """Map a SAPI ``Language`` LCID attribute (hex, possibly ``;``-separated) to a base."""
+    first = (lcid_attr or "").split(";", 1)[0].strip().lower()
+    if not first:
+        return ""
+    try:
+        primary = int(first, 16) & 0x3FF  # primary-language id (low 10 bits)
+    except ValueError:
+        return ""
+    return _LCID_BASE.get(format(primary, "x"), "")
 
 
 def available() -> bool:
@@ -89,7 +140,11 @@ def list_voices() -> list[Sapi5Voice]:
             name = token.GetDescription()
         except Exception:  # noqa: BLE001
             name = token.Id
-        result.append(Sapi5Voice(id=token.Id, name=name))
+        try:
+            language = _lcid_to_base(str(token.GetAttribute("Language")))
+        except Exception:  # noqa: BLE001 - the attribute is optional/absent on some voices
+            language = ""
+        result.append(Sapi5Voice(id=token.Id, name=name, language=language))
     return result
 
 

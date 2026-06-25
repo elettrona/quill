@@ -232,7 +232,7 @@
     "quill/core/publishing.py": 760,
     "quill/core/publishing_clients.py": 624,
     "quill/core/quillins/validation.py": 1324,
-    "quill/core/read_aloud.py": 1254,
+    "quill/core/read_aloud.py": 1258,
     "quill/core/settings.py": 1152,
     "quill/core/settings_registry.py": 158,
     "quill/core/settings_specs.py": 1702,

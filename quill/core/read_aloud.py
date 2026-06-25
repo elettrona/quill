@@ -34,6 +34,7 @@ class VoiceOption:
     accent: str = ""
     description: str = ""
     installed: bool = True
+    language: str = ""  # ISO base subtag when known (e.g. "es" for a Spanish voice)
 
 
 _MAX_SYNTHESIS_SECONDS: float = 120.0
@@ -796,7 +797,10 @@ def list_voices() -> list[VoiceOption]:
     """Return the installed Windows SAPI 5 voices as read-aloud options."""
     from quill.platform.windows import sapi5
 
-    return [VoiceOption(id=v.id, name=v.name) for v in sapi5.list_voices()]
+    return [
+        VoiceOption(id=v.id, name=v.name, language=getattr(v, "language", ""))
+        for v in sapi5.list_voices()
+    ]
 
 
 class ReadAloudUnavailableError(RuntimeError):
