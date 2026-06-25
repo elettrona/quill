@@ -61,6 +61,7 @@ class ChapterAssembleOptions:
     speak_headings: bool = True  # voice each heading before its body (not just mark it)
     sentence_gap_ms: int = 0  # silence inserted between sentences within a section (0 = off)
     tail_padding_ms: int = 0  # silence appended after each section's speech (anti-clipping)
+    normalize_loudness: bool = False  # two-pass loudnorm to ACX level before encoding
     # Long-document chunking: a section whose text exceeds this many characters is
     # split on safe sentence/word boundaries (via tts_chunk) and synthesized
     # chunk-by-chunk, so a very long section never becomes one over-long synthesis
@@ -327,6 +328,13 @@ def assemble_chaptered_audio(
     # 6. Clean variant: sections + pure silence (same length as the boundary).
     clean_wav = work_dir / "assembled_clean.wav"
     _write_wav(clean_wav, fmt, _join(section_wavs, clean_boundary, fmt))
+    # Loudness normalization (two-pass loudnorm) before encoding, so chapter timing
+    # (loudnorm preserves duration) and the markers added in _finalize both survive.
+    if options.normalize_loudness:
+        from quill.core.speech.loudness import normalize_wav_loudness
+
+        if not normalize_wav_loudness(clean_wav):
+            notes.append("Loudness normalization unavailable (ffmpeg missing); saved as-is.")
     clean_out = _finalize(clean_wav, output_path, options.output_format, chapters, options, notes)
 
     result = ChapterAssembleResult(
@@ -340,6 +348,10 @@ def assemble_chaptered_audio(
     if options.sound_enabled and earcon_frames:
         tones_wav = work_dir / "assembled_tones.wav"
         _write_wav(tones_wav, fmt, _join(section_wavs, boundary, fmt))
+        if options.normalize_loudness:
+            from quill.core.speech.loudness import normalize_wav_loudness
+
+            normalize_wav_loudness(tones_wav)
         result.with_tones_path = _finalize(
             tones_wav,
             _with_tones_name(output_path),

@@ -173,6 +173,10 @@
           "type": "boolean",
           "description": "When true, fold empty (bodyless) headings into the next article before synthesis, joining their titles (ACB-style)."
         },
+        "normalize_loudness": {
+          "type": "boolean",
+          "description": "When true, normalize each output to ACX audiobook loudness with a two-pass loudnorm pass before encoding."
+        },
         "round_robin_voices": {
           "type": "array",
           "items": { "type": "string" },

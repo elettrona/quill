@@ -68,6 +68,8 @@ class BatchSpeechRequest:
     preview: bool = False  # internal: a Preview press, not a Start
     # Combine empty headings into the next article (ACB-style) before synthesis.
     combine_headings: bool = False
+    # Normalize each output to ACX audiobook loudness (two-pass loudnorm).
+    normalize_loudness: bool = False
     # Round-robin voices: ordered voice ids (of the selected engine) cycled one per
     # article/heading. Empty or one voice -> the single `voice` above is used.
     round_robin_voices: tuple[str, ...] = ()
@@ -260,6 +262,11 @@ class BatchSpeechExportDialog:
         )
         self._combine.SetValue(defaults.combine_headings)
         root.Add(self._combine, 0, wx.LEFT | wx.TOP, 8)
+        self._normalize = wx.CheckBox(
+            self.dialog, label="Normalize &loudness to audiobook (ACX) level"
+        )
+        self._normalize.SetValue(defaults.normalize_loudness)
+        root.Add(self._normalize, 0, wx.LEFT | wx.TOP, 8)
         self._dry_run = wx.CheckBox(
             self.dialog, label="Dr&y run: write preview text only (don't synthesize)"
         )
@@ -532,6 +539,7 @@ class BatchSpeechExportDialog:
             dry_run=self._dry_run.GetValue(),
             preview=preview,
             combine_headings=self._combine.GetValue(),
+            normalize_loudness=self._normalize.GetValue(),
             round_robin_voices=tuple(vid for vid, _lbl in self._rr_voices),
             translation_targets=tuple((c, e, v) for c, e, v, _ in self._tr_targets),
             translation_provider=(

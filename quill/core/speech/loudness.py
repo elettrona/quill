@@ -71,6 +71,128 @@ def loudnorm_filter() -> str:
     return f"loudnorm=I={ACX_TARGET_RMS}:TP={ACX_TARGET_TP}:LRA={ACX_TARGET_LRA}"
 
 
+# Two-pass loudnorm (the ChapterForge / ACB method): a first pass *measures* the
+# input, a second pass applies ``loudnorm`` seeded with those measured values for
+# accurate linear normalization. Keys are the ones ffmpeg prints as JSON.
+_LOUDNORM_KEYS = ("input_i", "input_tp", "input_lra", "input_thresh", "target_offset")
+
+
+def build_loudnorm_measure_command(ffmpeg: str, path: Path) -> list[str]:
+    """ffmpeg argv that measures *path* with loudnorm and prints the JSON to stderr."""
+    return [
+        ffmpeg,
+        "-hide_banner",
+        "-nostats",
+        "-i",
+        str(path),
+        "-vn",
+        "-af",
+        f"{loudnorm_filter()}:print_format=json",
+        "-f",
+        "null",
+        "-",
+    ]
+
+
+def parse_loudnorm_json(stderr: str) -> dict[str, str] | None:
+    """Parse the measured loudnorm values from ffmpeg's JSON block (None if absent)."""
+    import json
+    import re
+
+    match = re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", stderr or "", re.DOTALL)
+    if not match:
+        return None
+    try:
+        data = json.loads(match.group(0))
+    except json.JSONDecodeError:
+        return None
+    if not all(key in data for key in _LOUDNORM_KEYS):
+        return None
+    return {key: str(data[key]) for key in _LOUDNORM_KEYS}
+
+
+def build_loudnorm_apply_command(
+    ffmpeg: str, src: Path, out: Path, measured: dict[str, str]
+) -> list[str]:
+    """ffmpeg argv that applies loudnorm to *src* using the *measured* values (PCM WAV out)."""
+    flt = (
+        f"{loudnorm_filter()}"
+        f":measured_I={measured['input_i']}"
+        f":measured_TP={measured['input_tp']}"
+        f":measured_LRA={measured['input_lra']}"
+        f":measured_thresh={measured['input_thresh']}"
+        f":offset={measured['target_offset']}"
+        ":linear=true"
+    )
+    return [
+        ffmpeg,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        str(src),
+        "-vn",
+        "-af",
+        flt,
+        "-c:a",
+        "pcm_s16le",
+        "-y",
+        str(out),
+    ]
+
+
+def normalize_wav_loudness(path: Path, *, timeout_seconds: float = 1800.0) -> bool:
+    """Normalize *path* (a PCM WAV) to the ACX loudness window in place; True on success.
+
+    Two-pass ``loudnorm`` (measure then apply with ``linear=true``, which preserves
+    duration so chapter timing stays valid). Falls back to a single pass if the
+    measurement can't be parsed. Returns ``False`` (leaving the file untouched) when
+    ffmpeg is missing or the encode fails — the caller keeps the un-normalized audio.
+    """
+    import tempfile
+
+    from quill.core.speech.ffmpeg import find_ffmpeg
+    from quill.stability.safe_subprocess import run_subprocess_safely
+
+    ffmpeg = find_ffmpeg()
+    if ffmpeg is None or not path.is_file():
+        return False
+    try:
+        measured_run = run_subprocess_safely(
+            build_loudnorm_measure_command(ffmpeg, path), timeout_seconds=timeout_seconds
+        )
+        measured = parse_loudnorm_json(measured_run.stderr or "")
+        with tempfile.TemporaryDirectory(prefix="quill_loudnorm_") as tmp:
+            out = Path(tmp) / "norm.wav"
+            if measured is not None:
+                args = build_loudnorm_apply_command(ffmpeg, path, out, measured)
+            else:  # single-pass fallback when the measurement JSON is unavailable
+                args = [
+                    ffmpeg,
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    str(path),
+                    "-vn",
+                    "-af",
+                    loudnorm_filter(),
+                    "-c:a",
+                    "pcm_s16le",
+                    "-y",
+                    str(out),
+                ]
+            completed = run_subprocess_safely(args, timeout_seconds=timeout_seconds)
+            if completed.returncode != 0 or not out.is_file() or out.stat().st_size == 0:
+                return False
+            import shutil
+
+            shutil.copyfile(out, path)
+        return True
+    except OSError:
+        return False
+
+
 def build_volumedetect_command(ffmpeg: str, path: Path) -> list[str]:
     """ffmpeg argv that prints a file's mean/max volume (to stderr), decoding to null."""
     return [

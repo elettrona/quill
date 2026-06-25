@@ -183,6 +183,17 @@ def test_translation_targets_add_remove_and_collect(wx_app, tmp_path):
         frame.Destroy()
 
 
+def test_normalize_loudness_checkbox_collects(wx_app, tmp_path):
+    frame, dlg = _make(wx_app, tmp_path)
+    try:
+        assert dlg._collect(preview=False).normalize_loudness is False
+        dlg._normalize.SetValue(True)
+        assert dlg._collect(preview=False).normalize_loudness is True
+    finally:
+        dlg.dialog.Destroy()
+        frame.Destroy()
+
+
 def test_translation_provider_collects(wx_app, tmp_path):
     frame, dlg = _make(wx_app, tmp_path)
     try:

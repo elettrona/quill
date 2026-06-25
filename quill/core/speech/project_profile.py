@@ -269,6 +269,8 @@ class ChapterProfile:
     intro_section_title: str = "Introduction"
     # Fold empty headings into the next article before synthesis (ACB-style).
     combine_headings: bool = False
+    # Normalize each output to ACX audiobook loudness (two-pass loudnorm).
+    normalize_loudness: bool = False
     # Ordered voice ids (of the chosen engine) cycled one per article/heading;
     # empty or a single voice means the single `synthesizer.voice` is used.
     round_robin_voices: tuple[str, ...] = ()
@@ -284,6 +286,7 @@ class ChapterProfile:
             "tail_padding_ms": self.tail_padding_ms,
             "intro_section_title": self.intro_section_title,
             "combine_headings": self.combine_headings,
+            "normalize_loudness": self.normalize_loudness,
             "round_robin_voices": list(self.round_robin_voices),
         }
 
@@ -312,6 +315,7 @@ class ChapterProfile:
             tail_padding_ms=_clamp_int(data.get("tail_padding_ms", 300), 300, 0, 10000),
             intro_section_title=title,
             combine_headings=bool(data.get("combine_headings", False)),
+            normalize_loudness=bool(data.get("normalize_loudness", False)),
             round_robin_voices=voices,
         )
 

@@ -298,6 +298,7 @@ def _apply_project_profile(frame: Any, defaults: BatchSpeechRequest) -> BatchSpe
         tail_padding_ms=ch.tail_padding_ms,
         chapter_mode="separate" if ch.mode == "separate" else "single",
         combine_headings=ch.combine_headings,
+        normalize_loudness=ch.normalize_loudness,
         round_robin_voices=tuple(ch.round_robin_voices),
     )
 
@@ -327,6 +328,7 @@ def _save_project_profile(frame: Any, req: BatchSpeechRequest) -> None:
             sentence_gap_ms=req.sentence_gap_ms,
             tail_padding_ms=req.tail_padding_ms,
             combine_headings=req.combine_headings,
+            normalize_loudness=req.normalize_loudness,
             round_robin_voices=tuple(req.round_robin_voices),
         ),
     )
@@ -404,6 +406,7 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
             speak_headings=req.speak_headings,
             sentence_gap_ms=req.sentence_gap_ms,
             tail_padding_ms=req.tail_padding_ms,
+            normalize_loudness=req.normalize_loudness,
             # Auto-chunk very long sections so a single synthesis call never runs
             # past the engine timeout; short sections are unaffected (one call).
             max_chunk_chars=8000,

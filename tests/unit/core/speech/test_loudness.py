@@ -57,6 +57,45 @@ def test_volumedetect_command_shape() -> None:
     assert "book.m4b" in cmd
 
 
+def test_parse_loudnorm_json_reads_measured_values() -> None:
+    from quill.core.speech.loudness import parse_loudnorm_json
+
+    stderr = """
+    [Parsed_loudnorm_0 @ 0x55]
+    {
+        "input_i" : "-27.61",
+        "input_tp" : "-9.30",
+        "input_lra" : "5.20",
+        "input_thresh" : "-37.85",
+        "output_i" : "-20.10",
+        "target_offset" : "0.10"
+    }
+    """
+    measured = parse_loudnorm_json(stderr)
+    assert measured is not None
+    assert measured["input_i"] == "-27.61" and measured["target_offset"] == "0.10"
+    assert parse_loudnorm_json("no json here") is None
+
+
+def test_two_pass_apply_command_seeds_measured_values() -> None:
+    from pathlib import Path
+
+    from quill.core.speech.loudness import build_loudnorm_apply_command
+
+    measured = {
+        "input_i": "-27.6",
+        "input_tp": "-9.3",
+        "input_lra": "5.2",
+        "input_thresh": "-37.8",
+        "target_offset": "0.1",
+    }
+    cmd = build_loudnorm_apply_command("ffmpeg", Path("a.wav"), Path("b.wav"), measured)
+    flt = cmd[cmd.index("-af") + 1]
+    assert "measured_I=-27.6" in flt and "measured_TP=-9.3" in flt
+    assert "offset=0.1" in flt and "linear=true" in flt
+    assert cmd[cmd.index("-c:a") + 1] == "pcm_s16le"  # WAV out (duration preserved)
+
+
 def test_loudnorm_filter_targets_acx_window() -> None:
     flt = loudnorm_filter()
     assert flt.startswith("loudnorm=")
