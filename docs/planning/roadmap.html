@@ -611,17 +611,40 @@ SFX / voice-changer / history surfaces (§4.4). The 1.0 ElevenLabs slice
 is export-only cloud TTS (§4.1); everything else here is 2.0. Full
 reasoning in <a
 href="eleven-labs.md"><code>eleven-labs.md</code></a>.</li>
-<li><strong>Speech text-normalization polish (from the ACB Azure
-pipeline reference).</strong> Small, high-value normalizer additions
-learned from the reference ACB audio pipeline (its page-turn cue is now
-QUILL’s default transition sound, and its ffmpeg <code>loudnorm</code>
-step is QUILL’s ACX loudness, both shipped): expand <code>Vol.</code>→
-“Volume” / <code>No.</code>→“Number”; speak resolution-style numbers
-(<code>2025-02</code> → “2025 dash 2”); optionally emphasize lead-in cue
-phrases (“Note:”, “Warning:”, “Caution:”, “Updated:”); and a
-language-specific → English → none fallback for pronunciation
-dictionaries. Candidates for
+<li><strong>Learnings from the ACB Azure audio-pipeline
+reference.</strong> Its page-turn cue is now QUILL’s default transition
+sound and its <code>loudnorm</code> step is QUILL’s ACX loudness (both
+shipped). Remaining candidates:
+<ul>
+<li><strong>Translated audio export (highest-value).</strong> The
+reference translates each article (Azure Translator REST) and
+synthesizes it with the target language’s voice, producing a
+per-language audiobook. QUILL already has both halves —
+<code>core/ai/translation.py</code> (AI &gt; Translate) and the
+cloud/local TTS export — so the new feature is to <strong>wire them
+together</strong>: “Export Document as Audio → also in
+&lt;language&gt;”. The reference’s robust REST pattern is worth copying:
+bounded retries with exponential backoff + timeout,
+halt-this-language-on-persistent- failure, and accessible logging of
+every attempt. (QUILL would reuse its own AI-provider translation +
+egress audit rather than adding Azure Translator.)</li>
+<li><strong>Two-pass loudnorm</strong> for the audiobook builder — the
+reference measures (<code>print_format=json</code>) then applies
+<code>loudnorm</code> with the measured values, which is more accurate
+than QUILL’s current single pass. An accuracy upgrade for the ACX
+normalize option (§1.5).</li>
+<li><strong>Voice-failure blacklist</strong> — persist voices that fail
+synthesis and skip them on later runs; a batch-robustness nicety.</li>
+<li><strong>Text-normalization polish</strong> —
+<code>Vol.</code>→“Volume” / <code>No.</code>→“Number”; resolution
+numbers (<code>2025-02</code> → “2025 dash 2”); emphasize lead-in cue
+phrases (“Note:”, “Warning:”, “Updated:”); language-specific → English →
+none pronunciation-dict fallback. Candidates for
 <code>quill/core/speech/text_normalize.py</code>.</li>
+<li><strong>Article-extraction heuristic</strong> — combine consecutive
+headings and only start an article when body text follows (avoids empty
+heading-only chapters).</li>
+</ul></li>
 <li><strong>Native Google Docs support</strong> — read/write/round-trip
 Google Docs from within QUILL (Drive API, OAuth, accessible doc model).
 A full external-service + auth + sync workstream; spec in <a
