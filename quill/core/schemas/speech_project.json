@@ -168,6 +168,15 @@
         "intro_section_title": {
           "type": "string",
           "description": "Title for the lead-in section before the first heading (and for documents with no headings)."
+        },
+        "combine_headings": {
+          "type": "boolean",
+          "description": "When true, fold empty (bodyless) headings into the next article before synthesis, joining their titles (ACB-style)."
+        },
+        "round_robin_voices": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Ordered voice ids (of the chosen engine) cycled one per article/heading. Empty or a single voice uses the single synthesizer voice."
         }
       }
     },

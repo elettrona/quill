@@ -68,6 +68,8 @@ def test_project_profile_save_then_apply_round_trips(tmp_path: Path) -> None:
         sound_volume=70,
         article_gap_ms=900,
         chapter_mode="separate",
+        combine_headings=True,
+        round_robin_voices=("am_liam", "af_heart"),
     )
     _save_project_profile(SimpleNamespace(), chosen)  # writes <tmp_path>/.quill/speech-project.json
     assert (tmp_path / ".quill" / "speech-project.json").is_file()
@@ -78,6 +80,8 @@ def test_project_profile_save_then_apply_round_trips(tmp_path: Path) -> None:
     assert applied.engine == "kokoro" and applied.voice == "am_liam"
     assert applied.output_format == "m4b" and applied.chapter_mode == "separate"
     assert applied.sound_enabled is True and applied.article_gap_ms == 900
+    assert applied.combine_headings is True
+    assert applied.round_robin_voices == ("am_liam", "af_heart")
 
 
 def test_apply_project_profile_no_profile_keeps_defaults(tmp_path: Path) -> None:

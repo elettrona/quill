@@ -203,6 +203,8 @@ def _apply_project_profile(frame: Any, defaults: BatchSpeechRequest) -> BatchSpe
         sentence_gap_ms=ch.sentence_gap_ms,
         tail_padding_ms=ch.tail_padding_ms,
         chapter_mode="separate" if ch.mode == "separate" else "single",
+        combine_headings=ch.combine_headings,
+        round_robin_voices=tuple(ch.round_robin_voices),
     )
 
 
@@ -230,6 +232,8 @@ def _save_project_profile(frame: Any, req: BatchSpeechRequest) -> None:
             article_gap_ms=req.article_gap_ms,
             sentence_gap_ms=req.sentence_gap_ms,
             tail_padding_ms=req.tail_padding_ms,
+            combine_headings=req.combine_headings,
+            round_robin_voices=tuple(req.round_robin_voices),
         ),
     )
     try:

@@ -29,7 +29,12 @@ def _full_profile() -> SpeechProjectProfile:
         ),
         output=OutputProfile(format="mp3", skip_existing=True),
         chapters=ChapterProfile(
-            mode="single", sound_enabled=True, sound_volume=80, article_gap_ms=1500
+            mode="single",
+            sound_enabled=True,
+            sound_volume=80,
+            article_gap_ms=1500,
+            combine_headings=True,
+            round_robin_voices=("en_US-amy", "en_US-ryan"),
         ),
         normalization={"dash_mode": "words"},
         pronunciation=PronunciationProfile(

@@ -267,6 +267,11 @@ class ChapterProfile:
     sentence_gap_ms: int = 0  # 0-10000; silence between sentences within a section (opt-in)
     tail_padding_ms: int = 300  # 0-10000; trailing silence per section (anti-clipping default)
     intro_section_title: str = "Introduction"
+    # Fold empty headings into the next article before synthesis (ACB-style).
+    combine_headings: bool = False
+    # Ordered voice ids (of the chosen engine) cycled one per article/heading;
+    # empty or a single voice means the single `synthesizer.voice` is used.
+    round_robin_voices: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -278,6 +283,8 @@ class ChapterProfile:
             "sentence_gap_ms": self.sentence_gap_ms,
             "tail_padding_ms": self.tail_padding_ms,
             "intro_section_title": self.intro_section_title,
+            "combine_headings": self.combine_headings,
+            "round_robin_voices": list(self.round_robin_voices),
         }
 
     @classmethod
@@ -286,6 +293,15 @@ class ChapterProfile:
         if mode not in _VALID_CHAPTER_MODES:
             mode = "none"
         title = str(data.get("intro_section_title", "Introduction")).strip() or "Introduction"
+        raw_voices = data.get("round_robin_voices", [])
+        voices: tuple[str, ...] = ()
+        if isinstance(raw_voices, list):
+            seen: list[str] = []
+            for item in raw_voices:
+                name = str(item).strip()
+                if name and name not in seen:
+                    seen.append(name)
+            voices = tuple(seen)
         return cls(
             mode=mode,
             sound_enabled=bool(data.get("sound_enabled", False)),
@@ -295,6 +311,8 @@ class ChapterProfile:
             sentence_gap_ms=_clamp_int(data.get("sentence_gap_ms", 0), 0, 0, 10000),
             tail_padding_ms=_clamp_int(data.get("tail_padding_ms", 300), 300, 0, 10000),
             intro_section_title=title,
+            combine_headings=bool(data.get("combine_headings", False)),
+            round_robin_voices=voices,
         )
 
 
