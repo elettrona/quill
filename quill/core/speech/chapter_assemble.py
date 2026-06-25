@@ -32,7 +32,13 @@ from quill.core.speech.chapters import (
     compute_chapters,
     write_mp3_chapters,
 )
-from quill.core.speech.earcon import PcmFormat, silence_frames, write_default_sounder
+from quill.core.speech.earcon import (
+    PcmFormat,
+    conform_wav_frames,
+    default_sound_path,
+    silence_frames,
+    write_default_sounder,
+)
 from quill.core.speech.text_polish import DocumentSection
 
 # (text, out_wav) -> None. Writes a PCM WAV of the spoken text to out_wav. The
@@ -47,7 +53,7 @@ class ChapterAssembleOptions:
 
     article_gap_ms: int = 1200
     sound_enabled: bool = False
-    sound_path: Path | None = None  # None + enabled -> generated placeholder chime
+    sound_path: Path | None = None  # None + enabled -> bundled page-turn (chime fallback)
     sound_volume: int = 100  # 0-100
     intro_section_title: str = "Introduction"
     toc_title: str = "Chapters"
@@ -269,18 +275,20 @@ def assemble_chaptered_audio(
     notes: list[str] = []
     if options.sound_enabled:
         earcon_wav = work_dir / "earcon.wav"
-        if options.sound_path is not None and options.sound_path.is_file():
+        volume = max(0, min(100, options.sound_volume)) / 100.0
+        # Use the chosen sound, else the bundled default page-turn cue. Either is
+        # conformed to the section format (resample/mix), so any WAV splices cleanly
+        # instead of being rejected for a format mismatch.
+        chosen = options.sound_path or default_sound_path()
+        if chosen is not None and chosen.is_file():
             try:
-                earcon_frames = _read_frames(options.sound_path, fmt)
-            except AssembleError:
-                # A user sound in a different format: regenerate the placeholder
-                # at the section format rather than fail the whole assembly.
-                notes.append("Chosen sound format did not match; used default chime.")
-                options = _with_default_sound(options)
+                earcon_frames = conform_wav_frames(chosen, fmt, volume=volume)
+            except (ValueError, wave.Error, OSError):
+                notes.append("Could not read the transition sound; used the default chime.")
         if not earcon_frames:
-            write_default_sounder(
-                earcon_wav, fmt, volume=max(0, min(100, options.sound_volume)) / 100.0
-            )
+            # Last resort: the synthesized placeholder chime, generated at the
+            # section format so it always splices.
+            write_default_sounder(earcon_wav, fmt, volume=volume)
             earcon_frames = _read_frames(earcon_wav, fmt)
 
     base_gap = max(0, options.article_gap_ms)
@@ -409,15 +417,3 @@ def _write_chapter_sidecar(audio_path: Path, chapters: list[Chapter]) -> None:
 
 def _with_tones_name(output_path: Path) -> Path:
     return output_path.with_name(f"{output_path.stem} (with chapter tones){output_path.suffix}")
-
-
-def _with_default_sound(options: ChapterAssembleOptions) -> ChapterAssembleOptions:
-    return ChapterAssembleOptions(
-        article_gap_ms=options.article_gap_ms,
-        sound_enabled=True,
-        sound_path=None,
-        sound_volume=options.sound_volume,
-        intro_section_title=options.intro_section_title,
-        toc_title=options.toc_title,
-        output_format=options.output_format,
-    )

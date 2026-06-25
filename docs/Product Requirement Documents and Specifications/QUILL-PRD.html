@@ -3878,11 +3878,16 @@ chapter markers) or <strong>M4B audiobook</strong> (native MP4 chapter
 atoms via ffmpeg FFMETADATA) output; over-long sections auto-chunk on
 safe sentence/word boundaries (<code>tts_chunk</code>) so no synthesis
 call exceeds the engine timeout; the run reports each document’s chapter
-count. The transition earcon resolves from the <strong>active sound
-pack</strong> (<code>batch_speech_chapter_sound_id</code> → sound-pack
-WAV, falling back to the bundled Ink pack, then the built-in chime) in
-<code>batch_speech_runner._resolve_chapter_sound_path</code>. A
-<strong>Chapter mode</strong> selects one chaptered file or
+count. The transition earcon defaults to the bundled <strong>page-turn
+cue</strong> (<code>quill/assets/audio/page_turn.wav</code>); a
+configured <code>batch_speech_chapter_sound_id</code> overrides it from
+the active sound pack
+(<code>batch_speech_runner._resolve_chapter_sound_path</code>). Any
+chosen or default sound is <strong>conformed</strong> to the section PCM
+format (resample / channel-mix / width via
+<code>earcon.conform_wav_frames</code>) so it splices cleanly regardless
+of its own format — the synthesized chime is only a last-resort
+fallback. A <strong>Chapter mode</strong> selects one chaptered file or
 <strong>Separate file per article</strong>
 (<code>document_speech.synthesize_document_to_separate_files</code>, one
 <code>NNN - &lt;heading&gt;</code> file per section). A <strong>Dry

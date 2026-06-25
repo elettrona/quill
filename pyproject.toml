@@ -165,6 +165,7 @@ packages = ["quill"]
 "quill/core/schemas/extension.json" = "quill/core/schemas/extension.json"
 "quill/core/schemas/sound_pack.json" = "quill/core/schemas/sound_pack.json"
 "quill/assets/sound_packs" = "quill/assets/sound_packs"
+"quill/assets/audio" = "quill/assets/audio"
 "quill/quillins_bundled" = "quill/quillins_bundled"
 # I18N: ship the gettext template and any compiled translation catalogs so the
 # display-language switcher can find them in installed builds.

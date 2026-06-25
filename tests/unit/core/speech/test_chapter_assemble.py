@@ -17,7 +17,7 @@ from quill.core.speech.chapter_assemble import (
     ChapterAssembleOptions,
     assemble_chaptered_audio,
 )
-from quill.core.speech.earcon import DEFAULT_SAMPLE_RATE, PcmFormat, sounder_duration_ms
+from quill.core.speech.earcon import DEFAULT_SAMPLE_RATE, PcmFormat
 from quill.core.speech.text_polish import DocumentSection
 
 _FMT = PcmFormat()
@@ -151,9 +151,16 @@ def test_with_tones_variant_has_identical_timing(tmp_path: Path) -> None:
     assert r.with_tones_path.name == "out (with chapter tones).wav"
     # clean and with-tones must be byte-for-byte the same length
     assert _wav_ms(r.output_path) == _wav_ms(r.with_tones_path)
-    # effective gap folds in the earcon length
-    earcon = sounder_duration_ms(_FMT)
-    assert r.chapters[0].end_ms == 800 + 500 + earcon
+    # The default transition sound is now the bundled page-turn cue, conformed to
+    # the section format. The effective gap folds in its length, computed here the
+    # same way the assembler does (gap split around the earcon).
+    from quill.core.speech.earcon import conform_wav_frames, default_sound_path, silence_frames
+
+    bpf = _FMT.sampwidth * _FMT.channels
+    earcon = conform_wav_frames(default_sound_path(), _FMT, volume=0.8)
+    boundary = silence_frames(_FMT, 250) + earcon + silence_frames(_FMT, 250)
+    eff_gap = (len(boundary) // bpf) * 1000 // _FMT.sample_rate
+    assert r.chapters[0].end_ms == 800 + eff_gap
 
 
 def test_chapters_are_contiguous(tmp_path: Path) -> None:

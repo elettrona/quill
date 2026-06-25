@@ -151,3 +151,86 @@ def write_default_sounder(
 def sounder_duration_ms(fmt: PcmFormat) -> int:
     """Length of the default chime in ms, for chapter-offset accounting."""
     return len(default_sounder_samples(fmt)) * 1000 // fmt.sample_rate
+
+
+def default_sound_path() -> Path | None:
+    """Bundled default article-transition sound (a page-turn), or None if absent.
+
+    A short page-turn cue (`quill/assets/audio/page_turn.wav`) is QUILL's default
+    boundary sound — more natural than the synthesized chime, which remains the
+    last-resort fallback. The asset is conformed to each document's speech format at
+    assembly time via :func:`conform_wav_frames`.
+    """
+    path = Path(__file__).resolve().parents[2] / "assets" / "audio" / "page_turn.wav"
+    return path if path.is_file() else None
+
+
+def _read_wav_mono(path: Path) -> tuple[list[float], int]:
+    """Read any PCM WAV (8/16/32-bit, any channels) to mono floats in [-1, 1] + rate.
+
+    Raises :class:`ValueError` for an unsupported sample width so the caller can
+    fall back to the generated chime.
+    """
+    with wave.open(str(path), "rb") as w:
+        rate, channels, width = w.getframerate(), w.getnchannels(), w.getsampwidth()
+        raw = w.readframes(w.getnframes())
+    if width == 1:  # unsigned 8-bit, centered at 128
+        ints: list[int] = [b - 128 for b in raw]
+        peak = 128.0
+    elif width == 2:
+        ints = list(struct.unpack(f"<{len(raw) // 2}h", raw))
+        peak = 32768.0
+    elif width == 4:
+        ints = list(struct.unpack(f"<{len(raw) // 4}i", raw))
+        peak = 2147483648.0
+    else:
+        raise ValueError(f"Unsupported WAV sample width: {width} bytes")
+    if channels > 1:
+        mono = [sum(ints[i : i + channels]) / channels for i in range(0, len(ints), channels)]
+    else:
+        mono = [float(v) for v in ints]
+    return [s / peak for s in mono], rate
+
+
+def _resample_linear(samples: list[float], src_rate: int, dst_rate: int) -> list[float]:
+    """Linear-interpolation resample (good enough for a short earcon; stdlib-only)."""
+    if src_rate == dst_rate or not samples:
+        return samples
+    ratio = dst_rate / src_rate
+    n_out = max(0, int(len(samples) * ratio))
+    out: list[float] = []
+    for i in range(n_out):
+        pos = i / ratio
+        j = int(pos)
+        frac = pos - j
+        a = samples[j]
+        b = samples[j + 1] if j + 1 < len(samples) else samples[j]
+        out.append(a + (b - a) * frac)
+    return out
+
+
+def conform_wav_frames(path: Path, fmt: PcmFormat, *, volume: float = 1.0) -> bytes:
+    """Read ``path`` and return raw PCM frames conformed to ``fmt`` (rate/channels/width).
+
+    Resamples, mixes to ``fmt.channels``, and converts to ``fmt.sampwidth``, applying
+    ``volume`` (0.0–1.0). This lets any chosen or default boundary sound splice into
+    the speech WAVs regardless of its own format. Raises :class:`ValueError` (caught
+    upstream) when the source width is unsupported.
+    """
+    mono, src_rate = _read_wav_mono(path)
+    mono = _resample_linear(mono, src_rate, fmt.sample_rate)
+    vol = max(0.0, min(1.0, volume))
+    peak = _max_amplitude(fmt.sampwidth)
+    frames = bytearray()
+    for sample in mono:
+        value = int(max(-1.0, min(1.0, sample * vol)) * peak)
+        if fmt.sampwidth == 2:
+            packed = struct.pack("<h", value)
+        elif fmt.sampwidth == 4:
+            packed = struct.pack("<i", value)
+        elif fmt.sampwidth == 1:
+            packed = struct.pack("<B", max(0, min(255, value + 128)))
+        else:
+            raise ValueError(f"Unsupported output sample width: {fmt.sampwidth} bytes")
+        frames += packed * fmt.channels
+    return bytes(frames)
