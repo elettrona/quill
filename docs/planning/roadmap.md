@@ -216,17 +216,85 @@ well-documented product on its supported platforms.*
 
 ## 4. Open-issue ledger (by workstream)
 
+Current outstanding work, by workstream. Items with a live decision attached are
+detailed in §4.1+ so the choice can be made deliberately.
+
 | Workstream | Open work |
 | --- | --- |
-| Verbosity (§1.1) | Polish backlog #405–#504 (in `verbosity-system.md`). |
-| Speech & Dictation (§1.2) | Batch-speech follow-ups (project-profile wiring, sound_id, separate mode, SSML batch handling, richer docx, keyboard-activation audit); dictation follow-ups; BW backlog #515, #566–#577. |
+| Verbosity (§1.1) | Polish backlog #405–#504 (in `verbosity-system.md`). **The last major 1.0 hurdle.** |
+| Speech & Dictation (§1.2) | Feature-complete for 1.0. One open item: **ElevenLabs premium cloud TTS** — see **§4.1** (build now) and **§4.2** (defer). |
 | Agentic AI (§1.3) | #507–#512, #523/#524, #579–#581; Accessibility Agents #593–#598. |
 | GLOW family (§1.4) | #528–#534, #566 (locked_off; decide for 1.0). |
-| Publishing (§1.5) | #140 WordPress; ChapterForge integration. |
+| Publishing & audiobook (§1.5) | Complete for 1.0. Direct publishing (#140) and the off-vision ChapterForge surfaces are in §5. |
 | Platform & distribution (§1.6) | #506, #516, #517, #518, #519; #525/#599 deferred to 2.0 (#680). |
 | Docs & content (§1.7) | #526 SR sign-off; #535–#564, #505, #522, #590, #592. |
 | List Studio (§1.8) | Manual SR pass (#526). |
 | Table Studio (§1.9) | Whole feature (`quill-native-accessible-table-studio-plan.md`). |
+
+### 4.1 ElevenLabs premium cloud TTS — audio export (decision: **build for 1.0**)
+
+**What.** Add **ElevenLabs** as a third provider in QUILL's existing provider-neutral
+cloud-TTS layer (`quill/core/ai/cloud_tts.py`, today OpenAI + Gemini), so a user can
+export their own documents to natural, audiobook-grade narration. This is the headline
+ElevenLabs value for a writing/reading editor (full reasoning in
+[`eleven-labs.md`](eleven-labs.md)).
+
+**Why now / why small.** The seam already exists and already feeds Read Aloud *and*
+export with cost estimation, chunking, and cancellation; ElevenLabs **STT** already
+ships (the `elevenlabs-transcription` Quillin). So this is "register one more provider,"
+not a new architecture. Scope for 1.0:
+
+- New **host-owned gateway** `quill/core/ai/elevenlabs_tts.py` — the *only* module that
+  imports the official `elevenlabs` SDK (per the decided "SDK inside one gateway"
+  posture). It owns credential retrieval (the existing **"ElevenLabs API key"** label),
+  rejects alternate `base_url`, translates SDK errors to a stable QUILL error, and is
+  cancelable.
+- Register `"elevenlabs"` in `cloud_tts.py` (models, voices, default voice/model, a
+  conservative cost estimate, `speak_text` / `export_audio` dispatch).
+- `elevenlabs` ships as an **optional extra** (`pip install quill[elevenlabs]`); the
+  provider is inert/hidden unless the SDK is installed *and* a key is configured. Safe
+  Mode and the per-run consent the AI Voice surface already enforces both apply.
+- A new **network-egress-audit** entry for the gateway's SDK call site (host
+  `api.elevenlabs.io`). No bundled Quillin receives the SDK, key, or audio bytes.
+
+**Sub-decisions (recorded; defaults chosen so this can proceed):**
+
+- *Voice listing.* ElevenLabs voices are account-specific, so the picker can't be a
+  static list like OpenAI/Gemini. **Default:** ship a small built-in fallback list plus
+  a "Refresh from my account" action that calls `voices.get_all()` on demand. *(Alt:
+  always fetch live when the provider is selected.)*
+- *Cost estimate.* ElevenLabs bills per character by subscription tier. **Default:** a
+  conservative per-1,000-character estimate flagged approximate (mirrors the existing
+  OpenAI/Gemini estimate UI), or "unavailable" rather than implying free.
+- *Retry posture.* Read-only calls (voices/models) get bounded backoff; **billable
+  synthesis is retried at most once and only when no audio was received** — never blind
+  re-POST (avoids double-billing).
+
+### 4.2 ElevenLabs live Read-Aloud streaming + continuous consent (decision: **defer to 2.0**)
+
+Live, sentence-by-sentence Read Aloud through ElevenLabs is **one paid API call per
+sentence**, so it needs SDK **streaming** (incremental playback, instant cancel,
+sentence prefetch, aggressive `tts_cache`) and a **continuous, session/document-scoped
+consent model** with a persistent "reading via ElevenLabs (cloud)" indicator — an open
+UX question the original spec flagged for a maintainer decision. Higher cost/latency
+risk, real new UX surface. **Recommendation:** ship §4.1 export first; revisit live
+streaming for 2.0 once the export path proves the gateway.
+
+### 4.3 ElevenLabs voice management — cloning / design / pronunciation (decision: **defer to 2.0**)
+
+"Manage ElevenLabs Voices": instant voice cloning (IVC, recursive audio import as
+ElevenDesk does), voice design from a prompt, and listing/attaching ElevenLabs
+*server-side* pronunciation dictionaries (kept visibly distinct from QUILL's own local
+`speech/pronunciation.py`). Each is a heavier UI + new egress surface and is a Tier-2
+companion, not core writing value. **Recommendation:** 2.0.
+
+### 4.4 ElevenLabs Tier-3 surfaces — SFX / voice-changer / history (decision: **defer or skip**)
+
+Sound-effect generation, speech-to-speech (voice changer), and the generation-history
+browser are far from a writing editor's core. If ever built, they belong as
+**optional, separately-installable Quillins**, not core features. Generation history is
+largely redundant once local caching/export exists. **Recommendation:** 2.0 backlog or
+skip.
 
 ---
 
@@ -252,3 +320,12 @@ Confirmed out of the 1.0 scope. Recorded here so the intent is not lost.
 - **Remaining ChapterForge surfaces** (out of the 1.0 audiobook vision) — Auphonic
   post-processing, RSS podcast feeds, SFTP publishing, and MusicBrainz / Open
   Library metadata lookup.
+- **ElevenLabs beyond export TTS** — live Read-Aloud streaming + continuous-consent
+  model (§4.2), voice management / cloning / design / server-side pronunciation
+  dictionaries (§4.3), and the Tier-3 SFX / voice-changer / history surfaces (§4.4).
+  The 1.0 ElevenLabs slice is export-only cloud TTS (§4.1); everything else here is
+  2.0. Full reasoning in [`eleven-labs.md`](eleven-labs.md).
+- **Native Google Docs support** — read/write/round-trip Google Docs from within
+  QUILL (Drive API, OAuth, accessible doc model). A full external-service +
+  auth + sync workstream; spec in
+  [`QUILL-Native-Google-Docs-Support-PRD.md`](QUILL-Native-Google-Docs-Support-PRD.md).
