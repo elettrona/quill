@@ -163,6 +163,30 @@ def test_with_tones_variant_has_identical_timing(tmp_path: Path) -> None:
     assert r.chapters[0].end_ms == 800 + eff_gap
 
 
+def test_round_robin_synthesizers_cycle_per_section(tmp_path: Path) -> None:
+    # Each section is voiced by the next synthesizer in the rotation (i % len).
+    used: list[str] = []
+
+    def _make(tag: str):
+        def _synth(text: str, out: Path) -> None:
+            used.append(tag)
+            make_fake_synth()(text, out)
+
+        return _synth
+
+    opts = ChapterAssembleOptions(article_gap_ms=0, sound_enabled=False, output_format="wav")
+    assemble_chaptered_audio(
+        _sections(),  # 3 sections
+        tmp_path / "rr.wav",
+        _make("primary"),  # the single fallback, should be unused when rotation is set
+        opts,
+        work_dir=tmp_path / "w",
+        synthesizers=[_make("alice"), _make("bob")],
+    )
+    # 3 sections, 2 voices -> alice, bob, alice (the single 'primary' never fires).
+    assert used == ["alice", "bob", "alice"]
+
+
 def test_chapters_are_contiguous(tmp_path: Path) -> None:
     opts = ChapterAssembleOptions(article_gap_ms=750, sound_enabled=True, output_format="wav")
     r = assemble_chaptered_audio(

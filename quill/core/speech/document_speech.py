@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import re
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -151,6 +151,31 @@ def _wrap_with_pronunciations(
     return _corrected
 
 
+def _build_voice_rotation(
+    spec: SynthesisSpec,
+    voices: list[str] | None,
+    pronunciation_dictionaries: list[Any] | None,
+) -> list[Synthesizer] | None:
+    """One wrapped synthesizer per voice for round-robin, or None when not in use.
+
+    Each voice reuses *spec*'s engine and pace (so every section shares one PCM
+    format and splices cleanly). Fewer than two distinct voices returns None,
+    leaving the single-voice path unchanged.
+    """
+    cleaned: list[str] = []
+    for voice in voices or []:
+        name = voice.strip()
+        if name and name not in cleaned:
+            cleaned.append(name)
+    if len(cleaned) < 2:
+        return None
+    rotation: list[Synthesizer] = []
+    for voice in cleaned:
+        synth = make_synthesizer(replace(spec, voice=voice))
+        rotation.append(_wrap_with_pronunciations(synth, spec.engine, pronunciation_dictionaries))
+    return rotation
+
+
 def synthesize_document_to_chaptered_file(
     source: Path,
     output_path: Path,
@@ -159,6 +184,8 @@ def synthesize_document_to_chaptered_file(
     *,
     work_dir: Path | None = None,
     pronunciation_dictionaries: list[Any] | None = None,
+    combine_headings: bool = False,
+    voice_rotation: list[str] | None = None,
 ) -> ChapterAssembleResult:
     """Convert one document to a chaptered audio file using a real engine.
 
@@ -174,16 +201,21 @@ def synthesize_document_to_chaptered_file(
     :class:`ChapterAssembleResult` (the clean file plus, when the sounder is
     enabled, the with-tones variant carrying identical chapter timing).
     """
-    sections = extract_sections(source)
+    sections = extract_sections(source, combine_headings=combine_headings)
     if not sections:
         raise DocumentSpeechError(f"No readable text found in {source.name}.")
     synth = make_synthesizer(spec)
     synth = _wrap_with_pronunciations(synth, spec.engine, pronunciation_dictionaries)
+    # Round-robin voices: one synthesizer per voice (same engine), cycled per
+    # section by the assembler. Empty/one voice → the single synthesizer above.
+    rotation = _build_voice_rotation(spec, voice_rotation, pronunciation_dictionaries)
 
     owns_work_dir = work_dir is None
     work_dir = work_dir or Path(tempfile.mkdtemp(prefix="quill_docspeech_"))
     try:
-        return assemble_chaptered_audio(sections, output_path, synth, options, work_dir=work_dir)
+        return assemble_chaptered_audio(
+            sections, output_path, synth, options, work_dir=work_dir, synthesizers=rotation
+        )
     finally:
         if owns_work_dir:
             import shutil
@@ -209,6 +241,8 @@ def synthesize_document_to_separate_files(
     *,
     work_dir: Path | None = None,
     pronunciation_dictionaries: list[Any] | None = None,
+    combine_headings: bool = False,
+    voice_rotation: list[str] | None = None,
 ) -> list[Path]:
     """Convert one document to **one audio file per article** (the `separate` mode).
 
@@ -216,14 +250,17 @@ def synthesize_document_to_separate_files(
     ``NNN - <heading>.<ext>`` (natural order preserved, headings made
     filesystem-safe). Each file is produced through the same single-section
     assembly path as the chaptered output (so engine, chunking, pronunciation,
-    and format/encoding match), just without an inter-article boundary. Returns
+    and format/encoding match), just without an inter-article boundary. With
+    *combine_headings*, heading-only sections fold into the next article; with
+    *voice_rotation*, each file is voiced by the next voice in the list. Returns
     the written paths in order.
     """
-    sections = extract_sections(source)
+    sections = extract_sections(source, combine_headings=combine_headings)
     if not sections:
         raise DocumentSpeechError(f"No readable text found in {source.name}.")
     synth = make_synthesizer(spec)
     synth = _wrap_with_pronunciations(synth, spec.engine, pronunciation_dictionaries)
+    rotation = _build_voice_rotation(spec, voice_rotation, pronunciation_dictionaries)
     suffix = f".{options.output_format}" if options.output_format in {"mp3", "m4b"} else ".wav"
 
     owns_work_dir = work_dir is None
@@ -235,8 +272,9 @@ def synthesize_document_to_separate_files(
             title = section.title.strip() or options.intro_section_title
             stem = f"{index:03d} - {_safe_filename(title, f'section_{index:03d}')}"
             out = output_dir / f"{stem}{suffix}"
+            file_synth = rotation[(index - 1) % len(rotation)] if rotation else synth
             result = assemble_chaptered_audio(
-                [section], out, synth, options, work_dir=work_dir / f"sep_{index:04d}"
+                [section], out, file_synth, options, work_dir=work_dir / f"sep_{index:04d}"
             )
             written.append(result.output_path)
     finally:

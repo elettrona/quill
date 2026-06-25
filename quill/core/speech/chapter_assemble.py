@@ -232,11 +232,18 @@ def assemble_chaptered_audio(
     options: ChapterAssembleOptions,
     *,
     work_dir: Path,
+    synthesizers: list[Synthesizer] | None = None,
 ) -> ChapterAssembleResult:
     """Synthesize, concat (with gap/earcon), tag, and write the chaptered file(s).
 
     *work_dir* holds the per-section temp WAVs (caller owns its lifetime). Returns
     a :class:`ChapterAssembleResult`; raises :class:`AssembleError` on bad input.
+
+    When *synthesizers* is given (round-robin voices), section ``i`` is voiced by
+    ``synthesizers[i % len(synthesizers)]`` so each article/heading gets the next
+    voice in the list; otherwise the single *synthesize* is used for every section.
+    All voices must share one PCM format (use voices of a single engine), since the
+    sections are spliced into one file.
     """
     if not sections:
         raise AssembleError("No sections to assemble.")
@@ -245,16 +252,18 @@ def assemble_chaptered_audio(
     resolved = _resolve_titles(
         sections, options.intro_section_title, speak_headings=options.speak_headings
     )
+    rotation = [s for s in (synthesizers or []) if s is not None]
 
     # 1. Synthesize each section to its own WAV and measure it.
     section_wavs: list[Path] = []
     section_durations: list[int] = []
     for i, (_title, spoken) in enumerate(resolved):
         wav = work_dir / f"section_{i:04d}.wav"
+        section_synth = rotation[i % len(rotation)] if rotation else synthesize
         _synthesize_section(
             spoken,
             wav,
-            synthesize,
+            section_synth,
             work_dir,
             i,
             sentence_gap_ms=options.sentence_gap_ms,

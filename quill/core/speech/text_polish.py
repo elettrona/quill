@@ -16,6 +16,7 @@ from pathlib import Path
 __all__ = [
     "extract_text",
     "extract_sections",
+    "combine_heading_only_sections",
     "DocumentSection",
     "polish_for_tts",
     "UnsupportedFormatError",
@@ -425,24 +426,58 @@ def _sections_from_docx(path: Path) -> list[DocumentSection]:
     return sections
 
 
-def extract_sections(path: Path) -> list[DocumentSection]:
+def combine_heading_only_sections(sections: list[DocumentSection]) -> list[DocumentSection]:
+    """Merge heading-only sections into the next section that has body text.
+
+    Mirrors the ACB audio-pipeline rule ("combine consecutive headings; only create
+    an article when body text is found"): a heading with no body folds into the next
+    article that does have body, and the combined title joins the run of headings
+    (``"Part One: Chapter 1"``). A trailing run of bodyless headings becomes one
+    heading-only section so nothing is lost. Used when the user enables
+    *combine empty headings* for a batch run.
+    """
+    out: list[DocumentSection] = []
+    pending: list[str] = []  # heading titles still awaiting a body
+    for section in sections:
+        if not section.text.strip():
+            if section.title.strip():
+                pending.append(section.title.strip())
+            continue
+        if pending:
+            parts = [p for p in (*pending, section.title.strip()) if p]
+            out.append(DocumentSection(": ".join(parts), section.text))
+            pending = []
+        else:
+            out.append(section)
+    if pending:
+        out.append(DocumentSection(": ".join(pending), ""))
+    return out
+
+
+def extract_sections(path: Path, *, combine_headings: bool = False) -> list[DocumentSection]:
     """Split a document into heading-delimited sections (§4.8.2).
 
     Markdown, HTML, and Word headings become section boundaries; the heading text
     becomes the section title. Plain text (and any document without headings)
     returns a single section with an empty title. Each section's ``text`` is the
     same cleaned plain text :func:`extract_text` produces, scoped to that section.
+
+    When *combine_headings* is set, heading-only sections are folded into the next
+    section with body via :func:`combine_heading_only_sections` (an opt-in batch
+    setting), so an article is only emitted where there is something to speak.
     """
     suffix = path.suffix.lower()
     if suffix == ".txt":
-        return [DocumentSection("", _extract_txt(path))]
-    if suffix == ".md":
-        return _sections_from_markdown(path.read_text(encoding="utf-8", errors="replace"))
-    if suffix in {".html", ".htm"}:
-        return _sections_from_html(path.read_text(encoding="utf-8", errors="replace"))
-    if suffix == ".docx":
-        return _sections_from_docx(path)
-    raise UnsupportedFormatError(f"No extractor for {suffix!r}")
+        sections = [DocumentSection("", _extract_txt(path))]
+    elif suffix == ".md":
+        sections = _sections_from_markdown(path.read_text(encoding="utf-8", errors="replace"))
+    elif suffix in {".html", ".htm"}:
+        sections = _sections_from_html(path.read_text(encoding="utf-8", errors="replace"))
+    elif suffix == ".docx":
+        sections = _sections_from_docx(path)
+    else:
+        raise UnsupportedFormatError(f"No extractor for {suffix!r}")
+    return combine_heading_only_sections(sections) if combine_headings else sections
 
 
 def extract_text(path: Path) -> str:

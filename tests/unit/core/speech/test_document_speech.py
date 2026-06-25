@@ -43,6 +43,30 @@ def test_unknown_engine_raises() -> None:
         ds.make_synthesizer(ds.SynthesisSpec(engine="bogus"))
 
 
+def test_build_voice_rotation_one_synth_per_voice(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[str] = []
+
+    def _fake_make(spec: ds.SynthesisSpec):
+        voice = spec.voice
+        return lambda text, out: seen.append(voice) or _write_silence(out)
+
+    monkeypatch.setattr(ds, "make_synthesizer", _fake_make)
+    base = ds.SynthesisSpec(engine="sapi5", voice="x")
+    # Fewer than two distinct voices -> no rotation.
+    assert ds._build_voice_rotation(base, [], None) is None
+    assert ds._build_voice_rotation(base, ["only"], None) is None
+    # Two+ voices -> one synthesizer per voice, in order, de-duplicated.
+    rotation = ds._build_voice_rotation(base, ["Alice", "Bob", "Alice"], None)
+    assert rotation is not None and len(rotation) == 2
+    import pathlib
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as d:
+        for i, synth in enumerate(rotation):
+            synth("hi", pathlib.Path(d) / f"{i}.wav")
+    assert seen == ["Alice", "Bob"]
+
+
 def test_separate_files_one_per_section(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from quill.core.speech.text_polish import DocumentSection
 
@@ -51,7 +75,7 @@ def test_separate_files_one_per_section(tmp_path: Path, monkeypatch: pytest.Monk
         DocumentSection("Chapter One", "one two three"),
         DocumentSection('Bad: name? "x"', "four five"),  # unsafe chars stripped
     ]
-    monkeypatch.setattr(ds, "extract_sections", lambda _src: sections)
+    monkeypatch.setattr(ds, "extract_sections", lambda _src, **_kw: sections)
     monkeypatch.setattr(ds, "make_synthesizer", lambda _spec: lambda text, out: _write_silence(out))
 
     out_dir = tmp_path / "out"
