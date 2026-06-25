@@ -89,19 +89,10 @@ AI issues O5/O5b/O6 (#507–#509), O7 Azure (#510), O8/AI-19 Copilot SDK (#511/#
 O9/SHELL-2 OCR structuring (#512/#524), and AI-11/12/18 (#579–#581). The
 Accessibility Agents from GLOW (AX-A..F, #593–#598) become catalog agents here.
 
-### 1.4 Accessibility tooling (from GLOW)
+### 1.4 Accessibility tooling (from GLOW) — deferred to 2.0
 
-**Source:** `s:\code\glow` (`glowplan.md`).
-
-- **Document Audit** — evaluate the current document against ACB Large-Print
-  Guidelines, Microsoft Accessibility Checker rules, and WCAG 2.2 AA, returning a
-  scored, navigable findings report. Lands as an in-QUILL audit surface (and an
-  agent in §1.3).
-- **GLOW family** — the seven GLOW capabilities (#528–#534) plus the WATCH-8 GLOW
-  watch action (#566), re-homed on QUILL's invariants. Currently `locked_off`
-  (hidden); decide for 1.0: finish + un-gate, or keep hidden.
-- GLOW's server/Keycloak/Office-add-in/MCP-deployment surfaces stay in the GLOW
-  product; QUILL takes the authoring-time checks.
+The GLOW accessibility-tooling family is **deferred to QUILL 2.0** (§5); it is not a
+1.0 workstream. The GLOW contributions remain `locked_off` (hidden) for 1.0.
 
 ### 1.5 Publishing & audiobook ✅ (complete for 1.0)
 
@@ -224,7 +215,7 @@ detailed in §4.1+ so the choice can be made deliberately.
 | Verbosity (§1.1) | Polish backlog #405–#504 (in `verbosity-system.md`). **The last major 1.0 hurdle.** |
 | Speech & Dictation (§1.2) | Feature-complete for 1.0. One open item: **ElevenLabs premium cloud TTS** — see **§4.1** (build now) and **§4.2** (defer). |
 | Agentic AI (§1.3) | #507–#512, #523/#524, #579–#581; Accessibility Agents #593–#598. |
-| GLOW family (§1.4) | #528–#534, #566 (locked_off; decide for 1.0). |
+| GLOW family (§1.4) | Deferred to 2.0 (§5). GLOW contributions stay `locked_off` for 1.0. |
 | Publishing & audiobook (§1.5) | Complete for 1.0. Direct publishing (#140) and the off-vision ChapterForge surfaces are in §5. |
 | Platform & distribution (§1.6) | #506, #516, #517, #518, #519; #525/#599 deferred to 2.0 (#680). |
 | Docs & content (§1.7) | #526 SR sign-off; #535–#564, #505, #522, #590, #592. |
@@ -329,3 +320,9 @@ Confirmed out of the 1.0 scope. Recorded here so the intent is not lost.
   QUILL (Drive API, OAuth, accessible doc model). A full external-service +
   auth + sync workstream; spec in
   [`QUILL-Native-Google-Docs-Support-PRD.md`](QUILL-Native-Google-Docs-Support-PRD.md).
+- **Accessibility tooling from GLOW (§1.4)** — Document Audit (ACB Large-Print
+  Guidelines, Microsoft Accessibility Checker, WCAG 2.2 AA) and the GLOW family
+  (#528–#534) plus the WATCH-8 GLOW watch action (#566), re-homed on QUILL's
+  invariants. Contributions stay `locked_off` for 1.0. GLOW's
+  server/Keycloak/Office-add-in/MCP-deployment surfaces stay in the GLOW product;
+  QUILL would take the authoring-time checks. Source: `s:\code\glow` (`glowplan.md`).
