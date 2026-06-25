@@ -360,3 +360,73 @@ def apply_pronunciations(
     parts.append(text[cursor:])
 
     return PronunciationResult(text="".join(parts), is_ssml=False, applied=applied)
+
+
+# ----------------------------------------------------------------------------
+# SSML authoring (§4.7.8-§4.7.9)
+# ----------------------------------------------------------------------------
+
+#: Engines that can speak SSML markup. Others use an entry's ``plain_fallback``.
+SSML_CAPABLE_ENGINES: frozenset[str] = frozenset({"sapi5", "espeak"})
+
+
+def engine_supports_ssml(engine: str) -> bool:
+    return engine.strip().lower() in SSML_CAPABLE_ENGINES
+
+
+def _xml_escape(text: str) -> str:
+    return (
+        text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    )
+
+
+def validate_ssml_fragment(fragment: str) -> bool:
+    """True when *fragment* is well-formed XML (as the body of a ``<speak>``).
+
+    Wraps the fragment so a bare ``<phoneme .../>`` or text-with-tags validates.
+    Rejects empty input and malformed markup. No external entities are expanded.
+    """
+    if not fragment.strip():
+        return False
+    from quill.core import safe_xml
+
+    try:
+        safe_xml.fromstring(f"<speak>{fragment}</speak>")
+    except safe_xml.ParseError:
+        return False
+    return True
+
+
+def assemble_ssml(fragment: str) -> str:
+    """Wrap a (validated) fragment as a complete ``<speak>`` utterance."""
+    return f"<speak>{fragment}</speak>"
+
+
+def ssml_phoneme(term: str, ipa: str) -> str:
+    """An IPA phoneme fragment: speak *term* using the *ipa* pronunciation."""
+    return f'<phoneme alphabet="ipa" ph="{_xml_escape(ipa)}">{_xml_escape(term)}</phoneme>'
+
+
+def ssml_sub(term: str, alias: str) -> str:
+    """A substitution fragment: say *alias* in place of *term*."""
+    return f'<sub alias="{_xml_escape(alias)}">{_xml_escape(term)}</sub>'
+
+
+def ssml_say_as(term: str, interpret_as: str) -> str:
+    """A say-as fragment (e.g. ``characters``, ``digits``, ``date``)."""
+    return f'<say-as interpret-as="{_xml_escape(interpret_as)}">{_xml_escape(term)}</say-as>'
+
+
+def ssml_break(milliseconds: int) -> str:
+    """A pause fragment of *milliseconds*."""
+    return f'<break time="{max(0, int(milliseconds))}ms"/>'
+
+
+def ssml_prosody(term: str, *, rate: str = "", pitch: str = "") -> str:
+    """A prosody fragment adjusting *rate* and/or *pitch* of *term*."""
+    attrs = ""
+    if rate:
+        attrs += f' rate="{_xml_escape(rate)}"'
+    if pitch:
+        attrs += f' pitch="{_xml_escape(pitch)}"'
+    return f"<prosody{attrs}>{_xml_escape(term)}</prosody>"

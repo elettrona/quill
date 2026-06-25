@@ -53,11 +53,26 @@ class PronunciationEntryDialog:
         self._term = wx.TextCtrl(self.dialog, value=entry.term)
         root.Add(self._term, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 6)
 
+        # SSML entries keep their markup in `replacement`; the visible field shows
+        # the plain fallback (what non-SSML engines speak). Respelling entries show
+        # the replacement directly.
+        self._mode = entry.mode if entry.mode in ("respelling", "ssml") else "respelling"
+        self._ssml_fragment = entry.replacement if self._mode == "ssml" else ""
+        spoken_value = entry.plain_fallback if self._mode == "ssml" else entry.replacement
+
         root.Add(
             wx.StaticText(self.dialog, label="&Spoken as (spell it how it sounds):"), 0, wx.ALL, 6
         )
-        self._spoken = wx.TextCtrl(self.dialog, value=entry.replacement)
+        self._spoken = wx.TextCtrl(self.dialog, value=spoken_value)
         root.Add(self._spoken, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 6)
+
+        ssml_row = wx.BoxSizer(wx.HORIZONTAL)
+        build = wx.Button(self.dialog, label="Build SS&ML...")
+        build.Bind(wx.EVT_BUTTON, self._on_build_ssml)
+        self._mode_label = wx.StaticText(self.dialog, label="")
+        ssml_row.Add(build, 0, wx.RIGHT, 8)
+        ssml_row.Add(self._mode_label, 0, wx.ALIGN_CENTER_VERTICAL)
+        root.Add(ssml_row, 0, wx.LEFT | wx.TOP, 6)
 
         self._whole = wx.CheckBox(self.dialog, label="Match &whole word only")
         self._whole.SetValue(entry.whole_word)
@@ -106,6 +121,28 @@ class PronunciationEntryDialog:
             self._preview.SetLabel(f'"{term}" will be spoken as "{spoken}".')
         else:
             self._preview.SetLabel("Enter a word to add.")
+        self._mode_label.SetLabel(
+            "SSML (with plain fallback above)" if self._mode == "ssml" else ""
+        )
+
+    def _on_build_ssml(self, _evt: object) -> None:
+        from quill.ui.dialog_contract import show_modal_dialog
+        from quill.ui.ssml_builder_dialog import SsmlBuilderDialog
+
+        builder = SsmlBuilderDialog(
+            self.dialog,
+            term=self._term.GetValue().strip(),
+            fragment=self._ssml_fragment,
+            fallback=self._spoken.GetValue().strip(),
+            on_audition=self._on_audition,
+        )
+        result = builder.show(show_modal_dialog)
+        if result is not None:
+            fragment, fallback = result
+            self._mode = "ssml"
+            self._ssml_fragment = fragment
+            self._spoken.SetValue(fallback)
+            self._refresh_preview()
 
     def _audition(self, text: str) -> None:
         if self._on_audition is not None and text.strip():
@@ -121,14 +158,27 @@ class PronunciationEntryDialog:
                 self.dialog,
             )
             return
-        self._result = PronunciationEntry(
-            term=term,
-            replacement=self._spoken.GetValue().strip(),
-            whole_word=self._whole.GetValue(),
-            case_sensitive=self._case.GetValue(),
-            enabled=self._entry.enabled,
-            note=self._entry.note,
-        )
+        fallback = self._spoken.GetValue().strip()
+        if self._mode == "ssml":
+            self._result = PronunciationEntry(
+                term=term,
+                replacement=self._ssml_fragment,
+                mode="ssml",
+                plain_fallback=fallback or term,
+                whole_word=self._whole.GetValue(),
+                case_sensitive=self._case.GetValue(),
+                enabled=self._entry.enabled,
+                note=self._entry.note,
+            )
+        else:
+            self._result = PronunciationEntry(
+                term=term,
+                replacement=fallback,
+                whole_word=self._whole.GetValue(),
+                case_sensitive=self._case.GetValue(),
+                enabled=self._entry.enabled,
+                note=self._entry.note,
+            )
         evt.Skip()
 
     def show(self, show_modal_dialog: Any) -> PronunciationEntry | None:

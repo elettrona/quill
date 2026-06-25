@@ -224,3 +224,41 @@ def test_starter_round_trips_through_storage(speech_home: Path) -> None:
     install_starter_dictionary()
     reloaded = load_dictionaries()[0]
     assert reloaded == starter_dictionary()
+
+
+# --- SSML authoring helpers (§4.7.9) ---------------------------------------- #
+
+
+def test_validate_ssml_fragment():
+    from quill.core.speech.pronunciation import validate_ssml_fragment
+
+    assert validate_ssml_fragment('<phoneme alphabet="ipa" ph="kwɪl">QUILL</phoneme>')
+    assert validate_ssml_fragment('<break time="300ms"/>')
+    assert validate_ssml_fragment("plain text is fine too")
+    assert not validate_ssml_fragment("<bad")
+    assert not validate_ssml_fragment("")
+
+
+def test_ssml_fragment_builders_escape():
+    from quill.core.speech.pronunciation import (
+        assemble_ssml,
+        engine_supports_ssml,
+        ssml_break,
+        ssml_phoneme,
+        ssml_prosody,
+        ssml_say_as,
+        ssml_sub,
+        validate_ssml_fragment,
+    )
+
+    # special characters in the term are escaped, keeping the fragment well-formed
+    frag = ssml_sub("A&B", "A and B")
+    assert "&amp;" in frag and validate_ssml_fragment(frag)
+    assert ssml_phoneme("QUILL", "kwɪl").startswith("<phoneme")
+    assert ssml_say_as("SQL", "characters").endswith("</say-as>")
+    assert ssml_break(250) == '<break time="250ms"/>'
+    assert 'rate="slow"' in ssml_prosody("x", rate="slow")
+    assert validate_ssml_fragment(ssml_prosody("x", rate="slow", pitch="high"))
+    assert assemble_ssml(frag) == f"<speak>{frag}</speak>"
+    assert engine_supports_ssml("sapi5") and engine_supports_ssml("espeak")
+    assert not engine_supports_ssml("kokoro")
