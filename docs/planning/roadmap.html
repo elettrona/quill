@@ -615,6 +615,17 @@ SFX / voice-changer / history surfaces (§4.4). The 1.0 ElevenLabs slice
 is export-only cloud TTS (§4.1); everything else here is 2.0. Full
 reasoning in <a
 href="eleven-labs.md"><code>eleven-labs.md</code></a>.</li>
+<li><strong>Speech text-normalization polish (from the ACB Azure
+pipeline reference).</strong> Small, high-value normalizer additions
+learned from the reference ACB audio pipeline (its page-turn cue is now
+QUILL’s default transition sound, and its ffmpeg <code>loudnorm</code>
+step is QUILL’s ACX loudness, both shipped): expand <code>Vol.</code>→
+“Volume” / <code>No.</code>→“Number”; speak resolution-style numbers
+(<code>2025-02</code> → “2025 dash 2”); optionally emphasize lead-in cue
+phrases (“Note:”, “Warning:”, “Caution:”, “Updated:”); and a
+language-specific → English → none fallback for pronunciation
+dictionaries. Candidates for
+<code>quill/core/speech/text_normalize.py</code>.</li>
 <li><strong>Native Google Docs support</strong> — read/write/round-trip
 Google Docs from within QUILL (Drive API, OAuth, accessible doc model).
 A full external-service + auth + sync workstream; spec in <a

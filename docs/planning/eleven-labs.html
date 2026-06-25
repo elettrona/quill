@@ -1,3 +1,177 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>eleven-labs</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
 <h1 id="plan-integrating-elevendesk-capabilities-into-quill">Plan:
 Integrating ElevenDesk capabilities into QUILL</h1>
 <h2 id="context">Context</h2>
@@ -510,3 +684,128 @@ pronunciation dictionaries, and history.</li>
 long-term reliability decision.</strong> The important constraint is
 that QUILL wraps it rather than letting the SDK become QUILL’s
 architecture.</p>
+<hr />
+<h2
+id="appendix-sdk-call-reference-captured-from-the-elevendesk-source">Appendix:
+SDK call reference (captured from the ElevenDesk source)</h2>
+<blockquote>
+<p>This appendix preserves the exact <code>elevenlabs</code> SDK call
+shapes learned from the reference ElevenDesk client
+(<code>elevendesk/api.py</code>), so the reference clone is no longer
+needed for future expansion. <strong>Status:</strong> only TTS audio
+export is shipped for 1.0 (§4.1,
+<code>quill/core/ai/elevenlabs_tts.py</code>); everything else below is
+the blueprint for the 2.0 features in roadmap §4.2–§4.4. Verify each
+signature against the current SDK when implementing (the API
+evolves).</p>
+</blockquote>
+<p><strong>Client + errors.</strong> -
+<code>from elevenlabs.client import ElevenLabs</code> →
+<code>ElevenLabs(api_key=...)</code> (key passed explicitly; never read
+<code>ELEVENLABS_API_KEY</code> from the environment). -
+<code>from elevenlabs.core import ApiError</code>; on failure
+<code>error.body</code> is a dict whose <code>detail</code> carries
+<code>message</code> and <code>request_id</code>. Catch
+<code>ApiError</code> + <code>httpx.HTTPError</code>,
+<code>OSError</code>, <code>TypeError</code>, <code>ValueError</code>
+and translate to a stable QUILL error. - Audio responses may be
+<code>bytes</code>/<code>bytearray</code> <strong>or</strong> an
+iterator of byte chunks → join with <code>b"".join(response)</code>.</p>
+<p><strong>Endpoints (SDK method → purpose):</strong></p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>SDK call</th>
+<th>Args</th>
+<th>Returns / notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>client.text_to_speech.convert</code></td>
+<td><code>voice_id, text, model_id, voice_settings=VoiceSettings(**...), output_format</code></td>
+<td>audio bytes/iterator (shipped, §4.1)</td>
+</tr>
+<tr>
+<td><code>client.speech_to_text.convert</code></td>
+<td><code>file=audio_bytes, model_id</code></td>
+<td><code>.text</code> (QUILL ships STT via REST today)</td>
+</tr>
+<tr>
+<td><code>client.voices.get_all</code></td>
+<td>—</td>
+<td><code>.voices[]</code>: <code>.voice_id</code>, <code>.name</code>,
+<code>.category</code>, <code>.description</code></td>
+</tr>
+<tr>
+<td><code>client.models.get_all</code></td>
+<td>—</td>
+<td><code>.models[]</code>: <code>.model_id</code>,
+<code>.name</code></td>
+</tr>
+<tr>
+<td><code>client.speech_to_speech.convert</code></td>
+<td><code>audio=bytes, voice_id, model_id, output_format</code></td>
+<td>audio bytes/iterator (voice changer — §4.4)</td>
+</tr>
+<tr>
+<td><code>client.sound_generation.convert</code></td>
+<td><code>text=prompt, duration_seconds</code></td>
+<td>audio bytes (SFX — §4.4)</td>
+</tr>
+<tr>
+<td><code>client.voice_design.create_previews</code></td>
+<td><code>voice_description, text</code></td>
+<td><code>.previews[]</code> → <code>.generated_voice_id</code>
+(§4.3)</td>
+</tr>
+<tr>
+<td><code>client.voice_design.create</code></td>
+<td><code>generated_voice_id, voice_name, voice_description</code></td>
+<td><code>.voice_id</code>, <code>.name</code> (§4.3)</td>
+</tr>
+<tr>
+<td><code>client.voices.ivc.create</code></td>
+<td><code>name, description, files=[open(p,'rb'), …]</code></td>
+<td>instant voice clone; cap the file count (§4.3)</td>
+</tr>
+<tr>
+<td><code>client.history.list</code></td>
+<td><code>page_size</code></td>
+<td><code>.history[]</code>: <code>.history_item_id</code>, date, type,
+voice, model, text (§4.4)</td>
+</tr>
+<tr>
+<td><code>client.history.get_audio</code></td>
+<td><code>history_item_id</code></td>
+<td>audio bytes (§4.4)</td>
+</tr>
+<tr>
+<td><code>client.history.delete</code></td>
+<td><code>history_item_id</code></td>
+<td>— (§4.4)</td>
+</tr>
+<tr>
+<td><code>client.pronunciation.get_all</code> (or
+<code>client.pronunciation_dictionary.get_all</code>)</td>
+<td>—</td>
+<td><code>.pronunciation_dictionaries[]</code>: <code>id</code>,
+<code>name</code>, <code>description</code> (§4.3)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>VoiceSettings</strong>
+(<code>from elevenlabs.types import VoiceSettings</code>) carries the
+per-voice stability / similarity / style knobs — expose in the voice
+config UI when §4.3 lands.</p>
+<p><strong>Streaming</strong> (for §4.2 live Read Aloud): the SDK
+exposes a streaming TTS path that yields audio incrementally — consume
+chunk-by-chunk for responsive start/stop + sentence prefetch + disk
+cache, rather than awaiting a full MP3.</p>
+</body>
+</html>

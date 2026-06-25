@@ -351,3 +351,48 @@ So, yes: **using their official SDK is likely the better long-term reliability d
 [3]: https://github.com/elevenlabs/elevenlabs-python/blob/main/src/elevenlabs/base_client.py "elevenlabs-python/src/elevenlabs/base_client.py at main · elevenlabs/elevenlabs-python · GitHub"
 [4]: https://github.com/elevenlabs/elevenlabs-python/blob/main/pyproject.toml "elevenlabs-python/pyproject.toml at main · elevenlabs/elevenlabs-python · GitHub"
 
+---
+
+## Appendix: SDK call reference (captured from the ElevenDesk source)
+
+> This appendix preserves the exact `elevenlabs` SDK call shapes learned from the
+> reference ElevenDesk client (`elevendesk/api.py`), so the reference clone is no
+> longer needed for future expansion. **Status:** only TTS audio export is shipped
+> for 1.0 (§4.1, `quill/core/ai/elevenlabs_tts.py`); everything else below is the
+> blueprint for the 2.0 features in roadmap §4.2–§4.4. Verify each signature against
+> the current SDK when implementing (the API evolves).
+
+**Client + errors.**
+- `from elevenlabs.client import ElevenLabs` → `ElevenLabs(api_key=...)` (key passed
+  explicitly; never read `ELEVENLABS_API_KEY` from the environment).
+- `from elevenlabs.core import ApiError`; on failure `error.body` is a dict whose
+  `detail` carries `message` and `request_id`. Catch `ApiError` + `httpx.HTTPError`,
+  `OSError`, `TypeError`, `ValueError` and translate to a stable QUILL error.
+- Audio responses may be `bytes`/`bytearray` **or** an iterator of byte chunks →
+  join with `b"".join(response)`.
+
+**Endpoints (SDK method → purpose):**
+
+| SDK call | Args | Returns / notes |
+| --- | --- | --- |
+| `client.text_to_speech.convert` | `voice_id, text, model_id, voice_settings=VoiceSettings(**...), output_format` | audio bytes/iterator (shipped, §4.1) |
+| `client.speech_to_text.convert` | `file=audio_bytes, model_id` | `.text` (QUILL ships STT via REST today) |
+| `client.voices.get_all` | — | `.voices[]`: `.voice_id`, `.name`, `.category`, `.description` |
+| `client.models.get_all` | — | `.models[]`: `.model_id`, `.name` |
+| `client.speech_to_speech.convert` | `audio=bytes, voice_id, model_id, output_format` | audio bytes/iterator (voice changer — §4.4) |
+| `client.sound_generation.convert` | `text=prompt, duration_seconds` | audio bytes (SFX — §4.4) |
+| `client.voice_design.create_previews` | `voice_description, text` | `.previews[]` → `.generated_voice_id` (§4.3) |
+| `client.voice_design.create` | `generated_voice_id, voice_name, voice_description` | `.voice_id`, `.name` (§4.3) |
+| `client.voices.ivc.create` | `name, description, files=[open(p,'rb'), …]` | instant voice clone; cap the file count (§4.3) |
+| `client.history.list` | `page_size` | `.history[]`: `.history_item_id`, date, type, voice, model, text (§4.4) |
+| `client.history.get_audio` | `history_item_id` | audio bytes (§4.4) |
+| `client.history.delete` | `history_item_id` | — (§4.4) |
+| `client.pronunciation.get_all` (or `client.pronunciation_dictionary.get_all`) | — | `.pronunciation_dictionaries[]`: `id`, `name`, `description` (§4.3) |
+
+**VoiceSettings** (`from elevenlabs.types import VoiceSettings`) carries the per-voice
+stability / similarity / style knobs — expose in the voice config UI when §4.3 lands.
+
+**Streaming** (for §4.2 live Read Aloud): the SDK exposes a streaming TTS path that
+yields audio incrementally — consume chunk-by-chunk for responsive start/stop +
+sentence prefetch + disk cache, rather than awaiting a full MP3.
+
