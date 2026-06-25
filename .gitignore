@@ -84,7 +84,15 @@ quill/_vendor/autoupdate/bootstrappers/bootstrap.pb
 # Throwaway UI prototype scratch (Table Studio / accessible CSV editor spikes) —
 # not part of the shipped app and excluded from lint/type gates.
 /docs/planning/test/
+docs/planning/source/test/
 
 # ElevenDesk reference clone (its own git repo) consulted for the §1.2 ElevenLabs
 # integration spec — not QUILL source; excluded from the parent repo's lint gates.
 /docs/planning/eleven-labs/
+
+# ACB audio-pipeline reference (docs/planning/source) is retained for the
+# translated-audio-export work, but its regenerated outputs, sample inputs, and
+# run logs are never committed.
+docs/planning/source/**/output_audio/
+docs/planning/source/**/papers/
+docs/planning/source/**/*.log

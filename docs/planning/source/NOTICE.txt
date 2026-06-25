@@ -1,0 +1,20 @@
+ACB Azure audio-pipeline — retained reference
+=============================================
+
+This folder is a retained design reference (Copilot-generated, for an American
+Council of the Blind accessibility project) kept for QUILL's future
+"translated audio export" work. See roadmap.md §5 ("Learnings from the ACB Azure
+audio-pipeline reference") for the distilled patterns QUILL would reuse.
+
+It is NOT part of QUILL's product code:
+  - It is excluded from QUILL's lint/format/type gates (pyproject [tool.ruff]
+    extend-exclude; mypy is scoped to quill/core + quill/io).
+  - Its API key was scrubbed (config.py reads from the environment only).
+  - Its sample input documents, generated audio output, and run logs were removed
+    and are gitignored so they are never committed.
+
+What QUILL already took from it (shipped): the page-turn transition cue
+(quill/assets/audio/page_turn.wav, derived from page_turn.mp3) and the ffmpeg
+loudnorm step (now QUILL's ACX loudness). The remaining candidates — translated
+audio export, two-pass loudnorm, voice-failure blacklist, text-normalization
+polish, and the article-extraction heuristic — are recorded in roadmap.md §5.
