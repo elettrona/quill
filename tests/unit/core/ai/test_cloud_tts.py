@@ -85,11 +85,47 @@ def test_format_cost() -> None:
 
 
 def test_catalog_defaults() -> None:
-    assert cloud_tts.PROVIDERS == ("openai", "gemini")
+    assert cloud_tts.PROVIDERS == ("openai", "gemini", "elevenlabs")
     assert cloud_tts.default_voice("gemini") == "Kore"
     assert cloud_tts.default_model("gemini") == gemini_tts.DEFAULT_MODEL
     assert len(cloud_tts.voices_for("gemini")) == 30
     assert cloud_tts.voices_for("nope") == []
+
+
+def test_elevenlabs_catalog_and_cost() -> None:
+    from quill.core.ai import elevenlabs_tts
+
+    assert "elevenlabs" in cloud_tts.PROVIDERS
+    assert cloud_tts.provider_label("elevenlabs") == "ElevenLabs"
+    assert cloud_tts.default_voice("elevenlabs") == elevenlabs_tts.DEFAULT_VOICE
+    assert cloud_tts.default_model("elevenlabs") == elevenlabs_tts.DEFAULT_MODEL
+    assert cloud_tts.voices_for("elevenlabs"), "fallback voices should be non-empty"
+    # Cost estimate is the conservative per-1000-char figure (approximate, not None).
+    cost = cloud_tts.estimate_cost_usd("elevenlabs", elevenlabs_tts.DEFAULT_MODEL, 1000)
+    assert cost == pytest.approx(elevenlabs_tts.PRICE_PER_1000_CHARS_USD)
+
+
+def test_elevenlabs_speak_text_is_export_only() -> None:
+    # Live Read Aloud via ElevenLabs is deferred (§4.2); it raises a clear message.
+    with pytest.raises(TTSError, match="export"):
+        cloud_tts.speak_text("elevenlabs", "hi", "key", model="m", voice="v")
+
+
+def test_elevenlabs_export_dispatches_to_gateway(monkeypatch, tmp_path) -> None:
+    from quill.core.ai import elevenlabs_tts
+
+    seen = {}
+
+    def _fake_export(text, out, api_key, **kwargs):
+        seen.update(text=text, out=out, voice=kwargs.get("voice"))
+        return out
+
+    monkeypatch.setattr(elevenlabs_tts, "export_audio", _fake_export)
+    out = cloud_tts.export_audio(
+        "elevenlabs", "hello", tmp_path / "d.mp3", "key", model="m", voice="Rachel"
+    )
+    assert out == tmp_path / "d.mp3"
+    assert seen["text"] == "hello" and seen["voice"] == "Rachel"
 
 
 # ---------------------------------------------------------------------------

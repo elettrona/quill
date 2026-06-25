@@ -509,7 +509,7 @@ class Settings:
         if read_aloud_espeak_rate > 450:
             read_aloud_espeak_rate = 450
         ai_tts_provider = str(data.get("ai_tts_provider", "openai")).strip().lower()
-        if ai_tts_provider not in {"openai", "gemini"}:
+        if ai_tts_provider not in {"openai", "gemini", "elevenlabs"}:
             ai_tts_provider = "openai"
         ai_tts_model = str(data.get("ai_tts_model", "")).strip()
         ai_tts_voice = str(data.get("ai_tts_voice", "")).strip()

@@ -27,6 +27,11 @@ _PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 _EGRESS_CALLEES = frozenset({
     "urlopen",
     "urlretrieve",
+    # The ElevenLabs SDK does its HTTP internally (httpx), so no urlopen appears at
+    # the call site. Treat constructing the SDK client as the reviewable egress
+    # marker — it is the single point where QUILL hands off to the SDK's network
+    # path — so the gateway still gets a recorded, reviewed entry below.
+    "ElevenLabs",
 })
 
 # Reviewed, allowed egress sites: "<relative path>::<enclosing function>" mapped
@@ -53,6 +58,15 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "Opt-in GLOW engine update check (GLOW-8); runs only when the user invokes "
         "'Check for GLOW Updates' or enables the GLOW auto-check setting. Fetches a "
         "signed manifest over a verified TLS context and host-allow-listed HTTPS URL."
+    ),
+    "core/ai/elevenlabs_tts.py::_client": (
+        "Constructs the host-owned ElevenLabs SDK client (roadmap §4.1, audio "
+        "export only). The SDK performs HTTP via httpx, so this construction is the "
+        "reviewed egress marker. Only runs when the user has selected the ElevenLabs "
+        "AI Voice provider, configured an 'ElevenLabs API key', and invoked Export "
+        "Document as Audio; the key is passed explicitly (never from the environment) "
+        "and the SDK talks only to api.elevenlabs.io. Optional 'elevenlabs' extra; "
+        "Safe-Mode and consent are enforced by the AI Voice surface."
     ),
     "core/assistant_ai.py::_fetch_models_from_endpoint": (
         "User-initiated model discovery from the AI Connection dialog (Verify "

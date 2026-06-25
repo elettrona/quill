@@ -1634,8 +1634,9 @@ Extensions that add a provider ship no code and request no network
 permission — QUILL itself performs the upload through its audited
 network path, so the extension never sees your audio or your key.
 (Developers: see the Quillin guide, “Transcription providers”.)</p>
-<h4 id="read-aloud-with-ai-voice-openai-or-google-gemini">Read Aloud
-with AI Voice (OpenAI or Google Gemini)</h4>
+<h4
+id="read-aloud-with-ai-voice-openai-google-gemini-or-elevenlabs">Read
+Aloud with AI Voice (OpenAI, Google Gemini, or ElevenLabs)</h4>
 <p><code>AI &gt; Read Selection Aloud (AI Voice)</code> and
 <code>AI &gt; Read Document Aloud (AI Voice)</code> use a cloud
 text-to-speech service to speak your text in a natural, expressive
@@ -1651,14 +1652,24 @@ Echo, Fable, Nova, Onyx, Sage, Shimmer, Verse) with <code>tts-1</code>
 <li><strong>Google Gemini</strong> — 30 voices (Kore, Puck, Aoede,
 Fenrir, Zephyr, and more) with Gemini 2.5 Flash (fast) or Pro (higher
 quality).</li>
+<li><strong>ElevenLabs (export only)</strong> — premium, audiobook-grade
+narration with Multilingual v2 (high quality) or Turbo v2.5 (fast).
+ElevenLabs is used for <strong>audio export</strong>, not live reading;
+it needs the optional <code>elevenlabs</code> package
+(<code>pip install quill[elevenlabs]</code>) and an <strong>ElevenLabs
+API key</strong> credential (the same key the ElevenLabs transcription
+provider uses).</li>
 </ul>
-<p>Add the matching API key for your chosen provider in AI Hub.</p>
+<p>Add the matching API key for your chosen provider in AI Hub
+(ElevenLabs uses your stored “ElevenLabs API key” credential).</p>
 <ul>
 <li><code>AI &gt; Stop AI Reading</code> cancels playback of the current
 TTS session.</li>
 <li><code>AI &gt; Export Document as Audio...</code> renders the full
-document to a file you choose — MP3 for OpenAI, WAV for Gemini. The
-status bar shows an estimated cost before the export runs.</li>
+document to a file you choose — MP3 for OpenAI and ElevenLabs, WAV for
+Gemini. The status bar shows an estimated cost before the export runs.
+(If you pick ElevenLabs for <em>live</em> reading, QUILL reminds you it
+is export-only for now.)</li>
 </ul>
 <p>Long documents are split only on sentence boundaries (never
 mid-word), so the synthesized audio never cuts off at an awkward spot;
@@ -1963,9 +1974,10 @@ document)</td>
 <tr>
 <td>Read Aloud (AI Voice)</td>
 <td>Selected text or document (split on sentence boundaries)</td>
-<td>OpenAI (<code>api.openai.com</code>) or Google Gemini
-(<code>generativelanguage.googleapis.com</code>), per your Settings &gt;
-Read Aloud choice</td>
+<td>OpenAI (<code>api.openai.com</code>), Google Gemini
+(<code>generativelanguage.googleapis.com</code>), or ElevenLabs
+(<code>api.elevenlabs.io</code>, audio export only), per your Settings
+&gt; Read Aloud choice</td>
 <td>Use a local voice (SAPI 5, Piper, Kokoro, eSpeak, DECtalk)</td>
 </tr>
 <tr>

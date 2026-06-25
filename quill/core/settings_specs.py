@@ -49,7 +49,7 @@ def _ai_tts_voice_choices() -> tuple[tuple[str, str], ...]:
     try:
         from quill.core.ai.cloud_tts import provider_label, voices_for
 
-        for provider in ("openai", "gemini"):
+        for provider in ("openai", "gemini", "elevenlabs"):
             label = provider_label(provider)
             for voice_id, voice_name in voices_for(provider):
                 choices.append((voice_id, f"{label}: {voice_name}"))
@@ -982,13 +982,15 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "AI Voice provider",
         "read_aloud",
         "choice",
-        "Cloud provider for the AI Voice read-aloud and audio export actions.",
+        "Cloud provider for the AI Voice read-aloud and audio export actions. "
+        "ElevenLabs is audio-export only and needs the optional elevenlabs extra.",
         choices=(
             ("openai", "OpenAI"),
             ("gemini", "Google Gemini"),
+            ("elevenlabs", "ElevenLabs (export only)"),
         ),
         feature_id="core.read_aloud",
-        keywords=("ai voice", "cloud tts", "openai", "gemini", "provider"),
+        keywords=("ai voice", "cloud tts", "openai", "gemini", "elevenlabs", "provider"),
     ),
     SettingSpec(
         "ai_tts_model",
@@ -1002,6 +1004,8 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
             ("tts-1-hd", "OpenAI: tts-1-hd (higher quality)"),
             ("gemini-2.5-flash-preview-tts", "Gemini: 2.5 Flash (fast)"),
             ("gemini-2.5-pro-preview-tts", "Gemini: 2.5 Pro (higher quality)"),
+            ("eleven_multilingual_v2", "ElevenLabs: Multilingual v2 (high quality)"),
+            ("eleven_turbo_v2_5", "ElevenLabs: Turbo v2.5 (fast)"),
         ),
         feature_id="core.read_aloud",
         keywords=("ai voice", "cloud tts", "model"),

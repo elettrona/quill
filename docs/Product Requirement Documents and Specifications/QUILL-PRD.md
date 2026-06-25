@@ -3336,7 +3336,7 @@ InstructionSet(task_id, title, default_prompt, user_prompt="", enabled=True)
 | Document Q&A | — | `core/ai/document_qa.py` | `ui/ai_document_qa_dialog.py` |
 | Translate | Ctrl+Shift+T | `core/ai/translation.py` | `ui/ai_translation_dialog.py` |
 | Transcribe Audio | — | `core/ai/transcription.py` | `ui/ai_transcribe_dialog.py` |
-| Read with AI Voice | — | `core/ai/cloud_tts.py` (dispatch), `core/ai/tts.py` (OpenAI), `core/ai/gemini_tts.py` (Gemini), `core/ai/tts_chunk.py` (boundary-safe split) | inline in `main_frame.py` |
+| Read with AI Voice | — | `core/ai/cloud_tts.py` (dispatch), `core/ai/tts.py` (OpenAI), `core/ai/gemini_tts.py` (Gemini), `core/ai/elevenlabs_tts.py` (ElevenLabs SDK gateway, audio export only — roadmap §4.1), `core/ai/tts_chunk.py` (boundary-safe split) | inline in `main_frame.py` |
 | Ask Quill chat | Alt+Q | `core/ai_chat.py` | `ui/ai_chat_dialog.py` |
 
 #### 5.90.5 Agentic task architecture
@@ -3384,7 +3384,7 @@ Every AI feature that transmits data outside the local machine is disclosed in t
 |---|---|---|
 | Selected text or document text | Configured AI provider | Spell check, grammar check, rewrite, summarize, expand, TOC, thesaurus, translate, Document Q&A |
 | Audio file (up to 25 MB chunks) | Deepgram or OpenAI Whisper | Transcription |
-| Selected text or document (TTS, sentence-aware chunks) | OpenAI TTS API or Google Gemini TTS API (per Settings > Read Aloud) | Read with AI Voice, Export Document as Audio |
+| Selected text or document (TTS, sentence-aware chunks) | OpenAI TTS API, Google Gemini TTS API, or ElevenLabs (SDK gateway, audio export only) per Settings > Read Aloud | Read with AI Voice, Export Document as Audio |
 | Document text (up to 80k chars) | Configured AI provider | Document Q&A |
 | Nothing (on-device) | Ollama local | All features when Ollama is the configured provider |
 

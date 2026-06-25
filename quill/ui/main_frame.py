@@ -21618,6 +21618,20 @@ class MainFrame(
         except Exception:  # noqa: BLE001
             return ""
 
+    def _get_elevenlabs_api_key(self) -> str:
+        """Return the stored 'ElevenLabs API key' credential, or '' if none.
+
+        Reuses the single ElevenLabs credential label the transcription provider
+        already uses, so one key unlocks both STT and the export TTS provider.
+        """
+        try:
+            from quill.platform.windows.credential_manager import load_generic_credential
+
+            stored = load_generic_credential("ElevenLabs API key")
+            return (stored.secret if stored else "") or ""
+        except Exception:  # noqa: BLE001
+            return ""
+
     def _resolve_ai_tts_config(self) -> tuple[str, str, str, float, str, str]:
         """Return (provider, model, voice, speed, api_key, key_hint) for AI Voice.
 
@@ -21639,6 +21653,12 @@ class MainFrame(
         if provider == "gemini":
             api_key = self._get_gemini_api_key()
             key_hint = "Gemini API key not configured. Open AI Hub to add your Gemini key."
+        elif provider == "elevenlabs":
+            api_key = self._get_elevenlabs_api_key()
+            key_hint = (
+                "ElevenLabs API key not configured. Add an 'ElevenLabs API key' "
+                "credential (the same key the ElevenLabs transcription provider uses)."
+            )
         else:
             api_key = self._get_openai_api_key()
             key_hint = "OpenAI API key not configured. Open AI Hub to add your key."

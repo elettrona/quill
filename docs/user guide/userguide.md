@@ -913,7 +913,7 @@ QUILL itself performs the upload through its audited network path, so the
 extension never sees your audio or your key. (Developers: see the Quillin guide,
 "Transcription providers".)
 
-#### Read Aloud with AI Voice (OpenAI or Google Gemini)
+#### Read Aloud with AI Voice (OpenAI, Google Gemini, or ElevenLabs)
 
 `AI > Read Selection Aloud (AI Voice)` and `AI > Read Document Aloud (AI Voice)`
 use a cloud text-to-speech service to speak your text in a natural, expressive
@@ -926,13 +926,20 @@ Choose the provider, model, and voice under **Settings > Read Aloud**:
   Sage, Shimmer, Verse) with `tts-1` (fast) or `tts-1-hd` (higher quality).
 - **Google Gemini** — 30 voices (Kore, Puck, Aoede, Fenrir, Zephyr, and more)
   with Gemini 2.5 Flash (fast) or Pro (higher quality).
+- **ElevenLabs (export only)** — premium, audiobook-grade narration with
+  Multilingual v2 (high quality) or Turbo v2.5 (fast). ElevenLabs is used for
+  **audio export**, not live reading; it needs the optional `elevenlabs` package
+  (`pip install quill[elevenlabs]`) and an **ElevenLabs API key** credential (the
+  same key the ElevenLabs transcription provider uses).
 
-Add the matching API key for your chosen provider in AI Hub.
+Add the matching API key for your chosen provider in AI Hub (ElevenLabs uses your
+stored "ElevenLabs API key" credential).
 
 - `AI > Stop AI Reading` cancels playback of the current TTS session.
 - `AI > Export Document as Audio...` renders the full document to a file you
-  choose — MP3 for OpenAI, WAV for Gemini. The status bar shows an estimated
-  cost before the export runs.
+  choose — MP3 for OpenAI and ElevenLabs, WAV for Gemini. The status bar shows an
+  estimated cost before the export runs. (If you pick ElevenLabs for *live*
+  reading, QUILL reminds you it is export-only for now.)
 
 Long documents are split only on sentence boundaries (never mid-word), so the
 synthesized audio never cuts off at an awkward spot; Gemini exports add a short
@@ -1110,7 +1117,7 @@ your request. This section describes exactly what each action sends and where.
 | AI Thesaurus | Word being looked up + one sentence of context (no full document) | Your configured AI provider | Do not invoke the action |
 | Rewrite / Summarize / Expand / TOC | Selected text or full document | Your configured AI provider | Do not invoke the action |
 | Document Q&A | Document text (up to 80 000 chars) + question | Your configured AI provider | Do not invoke the action |
-| Read Aloud (AI Voice) | Selected text or document (split on sentence boundaries) | OpenAI (`api.openai.com`) or Google Gemini (`generativelanguage.googleapis.com`), per your Settings > Read Aloud choice | Use a local voice (SAPI 5, Piper, Kokoro, eSpeak, DECtalk) |
+| Read Aloud (AI Voice) | Selected text or document (split on sentence boundaries) | OpenAI (`api.openai.com`), Google Gemini (`generativelanguage.googleapis.com`), or ElevenLabs (`api.elevenlabs.io`, audio export only), per your Settings > Read Aloud choice | Use a local voice (SAPI 5, Piper, Kokoro, eSpeak, DECtalk) |
 | Transcribe Audio | Audio file bytes (up to 25 MB) | OpenAI Whisper (`api.openai.com`) | Transcribe locally with a Quillin extension |
 | Speaker Diarization | Audio file bytes (up to 2 GB) | Deepgram (`api.deepgram.com`) | Disable diarization in the transcription dialog |
 

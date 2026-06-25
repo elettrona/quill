@@ -13,12 +13,12 @@ import threading
 from collections.abc import Callable
 from pathlib import Path
 
-from quill.core.ai import gemini_tts
+from quill.core.ai import elevenlabs_tts, gemini_tts
 from quill.core.ai import tts as openai_tts
 
-PROVIDERS: tuple[str, ...] = ("openai", "gemini")
+PROVIDERS: tuple[str, ...] = ("openai", "gemini", "elevenlabs")
 
-_PROVIDER_LABELS = {"openai": "OpenAI", "gemini": "Google Gemini"}
+_PROVIDER_LABELS = {"openai": "OpenAI", "gemini": "Google Gemini", "elevenlabs": "ElevenLabs"}
 
 # Pricing for the live cost estimate. OpenAI bills per-character; Gemini bills by
 # tokens, approximated from characters. Figures mirror the AI_TTS_Studio sample
@@ -46,6 +46,8 @@ def models_for(provider: str) -> list[str]:
         return [openai_tts.DEFAULT_MODEL, openai_tts.HD_MODEL]
     if provider == "gemini":
         return [gemini_tts.DEFAULT_MODEL, gemini_tts.PRO_MODEL]
+    if provider == "elevenlabs":
+        return [model_id for model_id, _label in elevenlabs_tts.MODELS]
     return []
 
 
@@ -54,6 +56,8 @@ def voices_for(provider: str) -> list[tuple[str, str]]:
         return list(openai_tts.VOICES)
     if provider == "gemini":
         return list(gemini_tts.VOICES)
+    if provider == "elevenlabs":
+        return list(elevenlabs_tts.VOICES)
     return []
 
 
@@ -62,6 +66,8 @@ def default_voice(provider: str) -> str:
         return openai_tts.DEFAULT_VOICE
     if provider == "gemini":
         return gemini_tts.DEFAULT_VOICE
+    if provider == "elevenlabs":
+        return elevenlabs_tts.DEFAULT_VOICE
     return ""
 
 
@@ -88,6 +94,8 @@ def estimate_cost_usd(provider: str, model: str, char_count: int) -> float | Non
         input_tokens = chars / _CHARS_PER_TOKEN
         output_tokens = chars * _AUDIO_TOKENS_PER_CHAR
         return (input_tokens / 1_000_000.0) * in_rate + (output_tokens / 1_000_000.0) * out_rate
+    if provider == "elevenlabs":
+        return elevenlabs_tts.estimate_cost_usd(chars)
     return None
 
 
@@ -129,6 +137,13 @@ def speak_text(
             on_chunk_complete=on_chunk_complete,
             stop_event=stop_event,
         )
+    elif provider == "elevenlabs":
+        # 1.0 scope is export only; live per-sentence Read Aloud via ElevenLabs
+        # (streaming + continuous consent) is roadmap §4.2 (2.0).
+        raise openai_tts.TTSError(
+            "ElevenLabs is available for audio export. Live Read Aloud through "
+            "ElevenLabs is planned for a future release — use Export Document as Audio."
+        )
     else:
         raise openai_tts.TTSError(f"Unknown TTS provider: {provider}")
 
@@ -147,10 +162,21 @@ def export_audio(
 ) -> Path:
     """Export *text* to an audio file, returning the written path.
 
-    OpenAI exports MP3; Gemini exports WAV (its native PCM output). The caller's
-    chosen extension is honoured where the provider supports it.
+    OpenAI and ElevenLabs export MP3; Gemini exports WAV (its native PCM output).
+    The caller's chosen extension is honoured where the provider supports it.
     """
     out = Path(output_path)
+    if provider == "elevenlabs":
+        return elevenlabs_tts.export_audio(
+            text,
+            out,
+            api_key,
+            model=model,
+            voice=voice,
+            speed=speed,
+            cancel_event=cancel_event,
+            on_progress=on_progress,
+        )
     if provider == "openai":
         openai_tts.export_to_mp3(
             text,
