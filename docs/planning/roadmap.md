@@ -332,26 +332,20 @@ Confirmed out of the 1.0 scope. Recorded here so the intent is not lost.
   dictionaries (§4.3), and the Tier-3 SFX / voice-changer / history surfaces (§4.4).
   The 1.0 ElevenLabs slice is export-only cloud TTS (§4.1); everything else here is
   2.0. Full reasoning in [`eleven-labs.md`](eleven-labs.md).
-- **Learnings from the ACB Azure audio-pipeline reference.** Its page-turn cue is
-  now QUILL's default transition sound and its `loudnorm` step is QUILL's ACX
-  loudness; the **article-combining heuristic** (combine empty headings into the
-  next article) and **round-robin voices** (each article gets the next voice) also
-  **shipped for 1.0** in Batch Export to Speech. With those shipped and the
-  translated-export design captured in §7, the ACB reference folder was **retired**;
-  the reusable patterns below and in §7 are everything QUILL needs from it.
-  Remaining candidates:
-  - **Translated audio export (highest-value)** — the headline 2.0 speech feature.
-    Full design in **§7** below (current providers only, no Azure).
-  - **Two-pass loudnorm — shipped.** `loudness.normalize_wav_loudness` measures
-    (`print_format=json`) then applies `loudnorm` with the measured values
-    (`linear=true`); wired as the **Normalize loudness** option in **batch
-    document-to-speech export** (the audiobook builder already had single-pass ACX).
-  - **Voice-failure blacklist** — persist voices that fail synthesis and skip them on
-    later runs; a batch-robustness nicety (pairs well with round-robin).
-  - **Text-normalization polish** — `Vol.`→"Volume" / `No.`→"Number"; resolution
-    numbers (`2025-02` → "2025 dash 2"); emphasize lead-in cue phrases ("Note:",
-    "Warning:", "Updated:"); language-specific → English → none pronunciation-dict
-    fallback. Candidates for `quill/core/speech/text_normalize.py`.
+- **Learnings from the ACB Azure audio-pipeline reference — fully absorbed.** Every
+  reusable pattern shipped for 1.0, so nothing remains deferred here. Its page-turn
+  cue is QUILL's default transition sound and its `loudnorm` step is QUILL's ACX
+  loudness; the **article-combining heuristic**, **round-robin voices**, **two-pass
+  loudnorm** (`loudness.normalize_wav_loudness` — measure with `print_format=json`,
+  then apply with the measured values and `linear=true`, wired as the **Normalize
+  loudness** batch option), the **voice-failure blacklist**
+  (`speech/voice_blacklist.py` — failed voices are skipped on later runs), and the
+  **text-normalization polish** (`text_normalize.py` — `Vol.`→"Volume",
+  `No.`→"Number", resolution numbers `2025-02`→"2025 dash 2"; the language-specific →
+  all-language pronunciation-dictionary fallback is the `PronunciationDictionary.language`
+  scoping) all shipped in Batch Export to Speech. **Translated audio export** — the
+  headline feature — also shipped in full (local *and* cloud voices); see **§7**. The
+  ACB reference folder was **retired**; QUILL needs nothing further from it.
 - **Native Google Docs support** — read/write/round-trip Google Docs from within
   QUILL (Drive API, OAuth, accessible doc model). A full external-service +
   auth + sync workstream; spec in
@@ -428,18 +422,23 @@ archive was retired. Issue numbers are kept so each idea stays findable.
 
 ---
 
-## 7. Translated audio export — shipping in 1.0 (local voices; cloud + persistence next)
+## 7. Translated audio export — shipped in 1.0 (local **and** cloud voices)
 
-**Status.** The core shipped for 1.0 with **local voices**: language-aware
-pronunciation dictionaries (`PronunciationDictionary.language`), the per-language
-voice model (`speech/voice_languages.py` — eSpeak universal-local + SAPI installed +
-cloud catalog), the robust section translator (`speech/translate_sections.py` — AI
-provider or LibreTranslate, retries/backoff/halt/cache), translated synthesis in
-`document_speech`, and the Batch Export "Also export in other languages" UI + runner
-that writes `<doc> (<Language>).<ext>`. **Remaining (next commits):** cloud-voice
-output (extend `document_speech.make_synthesizer` with cloud engines via `cloud_tts`
-+ ffmpeg-to-WAV) — currently cloud targets are skipped with a clear status — and
-persisting translation targets in the project profile.
+**Status — shipped.** Translated audio export is complete for 1.0:
+language-aware pronunciation dictionaries (`PronunciationDictionary.language`), the
+per-language voice model (`speech/voice_languages.py` — eSpeak universal-local +
+SAPI installed + cloud catalog), the robust section translator
+(`speech/translate_sections.py` — the configured AI provider or LibreTranslate, with
+retries/backoff/halt/cache), translated synthesis in `document_speech` for **local
+and cloud** engines (cloud providers go through `cloud_tts` and are conformed to WAV
+via ffmpeg for chapter splicing), and **two delivery surfaces**: the Batch Export
+"Also export in other languages" UI + runner, and a **single-document** action
+(Tools > Speech > Export to Translated Speech Audio). Both write
+`<doc> (<Language>).<ext>`, reuse the voice-failure blacklist, and **surface a
+combined translation + TTS cost estimate** before any metered cloud run
+(`speech/cost_estimate.py`). The translation backend exposes **all configured AI
+providers** (it rides QUILL's AI gateway) plus LibreTranslate. *Remaining nicety
+(2.0):* persisting the chosen translation targets in the project profile.
 
 **Original design (for reference).** Export a document's audio in one or more
 **additional languages** —
@@ -498,9 +497,17 @@ separate modes, page-turn cue, ACX loudness, article-combining, round-robin voic
   it to a language. Extend QUILL's existing Read Aloud voice preview to the
   per-language pickers.
 
-### Open decision points (2.0)
+### Decision points — resolved (shipped in 1.0)
 
-- Which providers' translation to expose (all configured AI providers vs a curated
-  set), and whether translated export is batch-only or also a single-document action.
-- Cost surfacing — translation **and** TTS are both metered for cloud providers; show
-  a combined estimate before the run.
+- **Which providers' translation to expose:** **all configured AI providers** (the
+  export rides QUILL's AI gateway, so whichever provider the user has set up is used)
+  plus LibreTranslate. *Resolved: all, not a curated set.*
+- **Batch-only or also single-document:** **both.** Batch Export translates a folder;
+  Tools > Speech > Export to Translated Speech Audio translates the current document.
+- **Cost surfacing:** **shipped.** A combined translation + TTS estimate
+  (`speech/cost_estimate.py`) is shown for confirmation before any metered cloud run;
+  local-only runs are never interrupted.
+- **Cloud voices for translated output:** **shipped** (not a follow-up) — OpenAI /
+  Gemini / ElevenLabs voices synthesize translated audio via `cloud_tts` + ffmpeg.
+
+*Only remaining 2.0 item:* persisting translation targets in the project profile.

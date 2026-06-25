@@ -172,7 +172,7 @@
   </style>
 </head>
 <body>
-<h1 id="quill-plan-of-record-outstanding-work">QUILL — Plan of Record
+<h1 id="quill--plan-of-record-outstanding-work">QUILL — Plan of Record
 (outstanding work)</h1>
 <blockquote>
 <p><strong>The single planning document, and it tracks only what is
@@ -200,7 +200,7 @@ and off by default. Platform scope is Windows (primary) and macOS
 </blockquote>
 <p><strong>Last consolidated:</strong> 2026-06-25.</p>
 <hr />
-<h2 id="north-star">0. North star</h2>
+<h2 id="0-north-star">0. North star</h2>
 <p>QUILL is a screen-reader-first writing environment, becoming the home
 for a family of accessibility products that Blind Information Technology
 Solutions (BITS) and CSE Designs built as separate apps. Rather than
@@ -212,15 +212,15 @@ products still feed open work: <strong>BITS Whisperer</strong>
 (<code>s:\code\bw</code>, transcription/speech), <strong>GLOW</strong>
 (<code>s:\code\glow</code>, accessibility audit + agents), and
 <strong>ChapterForge</strong> (<code>c:\code\forum</code>, audio →
-chaptered audiobook). The discipline: take what clears QUILL’s quality
-and accessibility bar, re-home it on QUILL’s invariants (atomic storage,
+chaptered audiobook). The discipline: take what clears QUILL's quality
+and accessibility bar, re-home it on QUILL's invariants (atomic storage,
 the dialog contract, the announcement grammar, Safe Mode, the
 network-egress audit), and leave behind anything superseded or
 off-mission.</p>
 <hr />
-<h2 id="workstreams-open-work">1. Workstreams (open work)</h2>
-<h3 id="verbosity-complete-for-1.0">1.1 Verbosity ✅ (complete for
-1.0)</h3>
+<h2 id="1-workstreams-open-work">1. Workstreams (open work)</h2>
+<h3 id="11-verbosity-white_check_mark-complete-for-10">1.1 Verbosity ✅
+(complete for 1.0)</h3>
 <p>The verbosity system is <strong>done for 1.0</strong>: the engine,
 the eleven <code>verbosity_*</code> UI surfaces, the runtime modes
 (Quiet / Meeting / Quiet-Undo) with status badges, the status-query
@@ -232,15 +232,16 @@ confirmation</strong> and, newly, <strong>announcement
 anti-spam</strong> (repetition collapse + announcement budget at the
 <code>process()</code> choke-point,
 <code>quill/core/verbosity/throttle.py</code>).</p>
-<p>The remaining “polish backlog” long-tail (the speculative slice of
+<p>The remaining "polish backlog" long-tail (the speculative slice of
 the ~100 addenda #405–#504) is <strong>deferred to 2.0</strong> — the
 full distilled backlog, the valuable candidates (error coaching #416,
-per-category detail #418, Markdown/Code-aware #427/#428, “undo
-available” #502), and the “recommend do not build” list (Typing/Command
+per-category detail #418, Markdown/Code-aware #427/#428, "undo
+available" #502), and the "recommend do not build" list (Typing/Command
 Echo, Speech Rate/Pause knobs, Punctuation/Symbol Profiles — the SR
 already owns these) are in <strong>§6</strong>.</p>
-<h3 id="speech-dictation-bits-whisperer-complete-for-1.0">1.2 Speech
-&amp; Dictation — “BITS Whisperer” ✅ (complete for 1.0)</h3>
+<h3
+id="12-speech--dictation--bits-whisperer-white_check_mark-complete-for-10">1.2
+Speech &amp; Dictation — "BITS Whisperer" ✅ (complete for 1.0)</h3>
 <p>The batch document-to-speech and dictation work is <strong>done for
 1.0</strong>:</p>
 <ul>
@@ -266,18 +267,18 @@ timeout (a full migration of every <code>read_aloud</code> subprocess to
 not a blocker).</li>
 </ul>
 <p><strong>External / courtesy (not QUILL code):</strong> offer
-ChapterForge the two fixes already in QUILL’s <code>chapters.py</code>
+ChapterForge the two fixes already in QUILL's <code>chapters.py</code>
 (non-contiguous gap chapters; ID3-tag clobbering).</p>
 <p>The <strong>ElevenLabs / ElevenDesk</strong> premium-cloud-TTS
 integration is its own workstream, tracked in <a
 href="eleven-labs.md"><code>eleven-labs.md</code></a> — <strong>not
-started</strong> (the SDK-in-gateway approach is decided). Dictation’s
+started</strong> (the SDK-in-gateway approach is decided). Dictation's
 larger later-phase capabilities are <strong>2.0</strong> (§5).</p>
-<h3 id="agentic-ai-platform-planned">1.3 Agentic AI platform
+<h3 id="13-agentic-ai-platform-planned">1.3 Agentic AI platform
 (planned)</h3>
 <p><strong>Spec:</strong> <a
 href="quill_end_to_end_agentic_ai_prd.md"><code>quill_end_to_end_agentic_ai_prd.md</code></a>.</p>
-<p>Unify QUILL’s AI stack behind one provider-neutral, optional,
+<p>Unify QUILL's AI stack behind one provider-neutral, optional,
 screen-reader-first platform whose front door is the <strong>AI
 Hub</strong>: one provider truth, a Safe Editor Tool Gateway +
 Permission Broker, a real tool-calling agent loop, a declarative agent
@@ -286,13 +287,13 @@ scattered AI issues O5/O5b/O6 (#507–#509), O7 Azure (#510), O8/AI-19
 Copilot SDK (#511/#523), O9/SHELL-2 OCR structuring (#512/#524), and
 AI-11/12/18 (#579–#581). The Accessibility Agents from GLOW (AX-A..F,
 #593–#598) become catalog agents here.</p>
-<h3 id="accessibility-tooling-from-glow-deferred-to-2.0">1.4
+<h3 id="14-accessibility-tooling-from-glow--deferred-to-20">1.4
 Accessibility tooling (from GLOW) — deferred to 2.0</h3>
 <p>The GLOW accessibility-tooling family is <strong>deferred to QUILL
 2.0</strong> (§5); it is not a 1.0 workstream. The GLOW contributions
 remain <code>locked_off</code> (hidden) for 1.0.</p>
-<h3 id="publishing-audiobook-complete-for-1.0">1.5 Publishing &amp;
-audiobook ✅ (complete for 1.0)</h3>
+<h3 id="15-publishing--audiobook-white_check_mark-complete-for-10">1.5
+Publishing &amp; audiobook ✅ (complete for 1.0)</h3>
 <p>The ChapterForge <strong>folder-of-audio → one chaptered
 master</strong> surface is <strong>done for 1.0</strong>. <strong>Build
 Audiobook from Folder</strong> (Tools &gt; Speech) combines a folder of
@@ -307,15 +308,15 @@ the filenames (natural-sort order).</li>
 <li><strong>ACX loudness compliance</strong> — a one-click
 <strong>Normalize to ACX</strong> option applies an ffmpeg
 <code>loudnorm</code> pass during the build, and the finished master is
-measured and reported against ACX’s RMS/peak window
+measured and reported against ACX's RMS/peak window
 (<code>quill/core/speech/loudness.py</code>).</li>
 </ul>
 <p>FLAC/Opus <em>output</em> is intentionally <strong>not</strong>
-offered — those formats can’t carry the chapter markers an audiobook
+offered — those formats can't carry the chapter markers an audiobook
 needs (they remain accepted as <em>source</em> files).</p>
 <p>Direct publishing (#140) and the remaining ChapterForge surfaces are
 tracked under §5 (2.0).</p>
-<h3 id="platform-distribution">1.6 Platform &amp; distribution</h3>
+<h3 id="16-platform--distribution">1.6 Platform &amp; distribution</h3>
 <ul>
 <li>Live installer smoke on Windows 10/11 (#506); macOS to shipping
 quality (#518); native RTF editing (#516); the Quillin Hub (#517);
@@ -326,39 +327,41 @@ and the packaging/freeze evaluation (PKG-1 — PyInstaller packaging
 hardening, #599). <em>(Nuitka is explicitly out of scope — too much risk
 / not reliable enough.)</em></li>
 </ul>
-<h3 id="docs-tutorials-content">1.7 Docs, tutorials &amp; content</h3>
+<h3 id="17-docs-tutorials--content">1.7 Docs, tutorials &amp;
+content</h3>
 <p>One <strong>Documentation &amp; Tutorials</strong> track: user-guide
 coverage, getting-started tutorials, the podcast/walkthrough series, and
 content-quality follow-ups (#535–#564, #505, #522). In-flight QA:
 <strong>#526</strong> live NVDA/JAWS/Narrator sign-off. Long-horizon
 ecosystem (#590) and collaboration (#592) ideas park here.</p>
-<h3 id="structured-list-studio-manual-sr-pass">1.8 Structured List
+<h3 id="18-structured-list-studio--manual-sr-pass">1.8 Structured List
 Studio — manual SR pass</h3>
 <p>The feature is shipped; the <strong>only</strong> remaining item is a
 formal live <strong>screen-reader pass</strong> (JAWS / NVDA / Narrator)
 — manual, not closable in code; only stub-level wiring tests exist. Part
 of the §2 Tier-1 SR sign-off (#526).</p>
-<h3 id="native-accessible-table-studio-not-started">1.9 Native
+<h3 id="19-native-accessible-table-studio-not-started">1.9 Native
 accessible Table Studio (not started)</h3>
 <p><strong>Spec:</strong> <a
 href="quill-native-accessible-table-studio-plan.md"><code>quill-native-accessible-table-studio-plan.md</code></a>.
 The accessible table-authoring surface (and the CSV-grid half of #514) —
 planned design only.</p>
 <hr />
-<h2 id="release-gap-list-path-to-green">2. Release gap list (path to
+<h2 id="2-release-gap-list-path-to-green">2. Release gap list (path to
 green)</h2>
 <p>What stands between QUILL and a <strong>green, release-ready</strong>
-state. Two senses of “green”: <strong>(A) tooling green</strong> — CI,
+state. Two senses of "green": <strong>(A) tooling green</strong> — CI,
 tests, lint, types, gates; <strong>(B) release-ready</strong> — no
 known-but-unverified defects, shipped features complete/polished.
 Excluded per direction: the AI &amp; Agentic workstream (§1.3) and all
 <strong>table</strong> work (§1.9 + the CSV-grid half of #514).</p>
-<h3 id="tier-1-release-blocking-verification-fixed-but-unconfirmed">Tier
-1 — Release-blocking verification (“fixed” but unconfirmed)</h3>
+<h3
+id="tier-1--release-blocking-verification-fixed-but-unconfirmed">Tier 1
+— Release-blocking verification ("fixed" but unconfirmed)</h3>
 <ol type="1">
 <li><strong>Live screen-reader sign-off — #526.</strong> Walk the
-accessibility fixes marked <em>“Fixed; needs live NVDA/JAWS/Narrator
-confirmation”</em> (notebook tab-group names, snake_case names, label
+accessibility fixes marked <em>"Fixed; needs live NVDA/JAWS/Narrator
+confirmation"</em> (notebook tab-group names, snake_case names, label
 association, initial focus, the Tab keyboard-trap class,
 focus-to-bad-field) — plus the List Studio pass (§1.8) — with JAWS,
 NVDA, and Narrator. <strong>Highest single item.</strong></li>
@@ -369,71 +372,67 @@ clean Win10 and Win11.</li>
 engines</strong> (Faster Whisper install path, Vosk reachability) on the
 real installer, not just from source.</li>
 </ol>
-<h3 id="tier-2-shipped-features-with-rough-edges">Tier 2 — Shipped
+<h3 id="tier-2--shipped-features-with-rough-edges">Tier 2 — Shipped
 features with rough edges</h3>
 <ol start="4" type="1">
 <li><strong>Watch Folder queue — confirm by-design behavior (not a known
-bug).</strong> When a watch is enabled the monitor can “feel empty”
+bug).</strong> When a watch is enabled the monitor can "feel empty"
 because <code>process_existing</code> defaults to <strong>off</strong>:
 every file already present at start is <em>primed</em> (its de-dup slot
 is claimed in <code>watch_queue</code>) and intentionally ignored, so
 only files that appear <strong>after</strong> start enqueue. The
 prime/enqueue de-dup is correct. Live repro to confirm the queue
 populates: drop a <em>new</em> matching file into a running,
-schedule-active profile’s folder, <strong>or</strong> enable “Process
-existing files” on the profile. Optional polish (not a blocker): show “N
-existing files ignored” in the monitor so the empty queue is
+schedule-active profile's folder, <strong>or</strong> enable "Process
+existing files" on the profile. Optional polish (not a blocker): show "N
+existing files ignored" in the monitor so the empty queue is
 self-explanatory.</li>
 <li><strong>Snapshots vs Versions — empty-submenu live repro
-only.</strong> The notebook “Versions” rename is <strong>done</strong>
-user-facing (File &gt; Notebook: Save/Restore/Manage Version; “Version
-name”, “Version N”, “Manage Versions” dialog, “Version saved” status).
+only.</strong> The notebook "Versions" rename is <strong>done</strong>
+user-facing (File &gt; Notebook: Save/Restore/Manage Version; "Version
+name", "Version N", "Manage Versions" dialog, "Version saved" status).
 The internal model stays
 <code>NotebookSnapshot</code>/<code>snapshots</code> by design
-(“formerly Workspace Snapshots”); the separate workspace
+("formerly Workspace Snapshots"); the separate workspace
 <strong>Snapshots</strong> submenu is a different feature and correctly
 keeps its name. Remaining: a live repro of the reported empty-submenu
 render (likely a feature-gated branch — confirm with the
 <code>core.notebook</code> / <code>core.recovery</code> flags
 toggled).</li>
 </ol>
-<h3 id="tier-3-polish">Tier 3 — Polish</h3>
+<h3 id="tier-3--polish">Tier 3 — Polish</h3>
 <ol start="7" type="1">
 <li><strong>Verbosity polish backlog</strong> (§1.1) — land the
 high-value knobs, fold-or-defer the rest so the range can close.</li>
 </ol>
 <hr />
-<h2 id="planned-phase-outcomes">3. Planned phase outcomes</h2>
+<h2 id="3-planned-phase-outcomes">3. Planned phase outcomes</h2>
 <p>What the user will notice as the open work lands, screen-reader
 experience first.</p>
-<h3 id="phase-3-an-ai-that-helps-without-taking-over">Phase 3 — An AI
+<h3 id="phase-3--an-ai-that-helps-without-taking-over">Phase 3 — An AI
 that helps without taking over</h3>
 <p>One coherent AI Hub; agents that read your selection and propose
 edits you preview and undo in one step — never silent changes (§1.3).
 <em>Powerful help that stays reviewable, undoable, and spoken.</em></p>
-<h3 id="phase-4-move-faster-publish-further">Phase 4 — Move faster +
+<h3 id="phase-4--move-faster--publish-further">Phase 4 — Move faster +
 publish further</h3>
 <p>Structured Word/CSV views and the Table Studio surface (§1.9);
-broader publishing, e.g. direct publishing to external platforms (#140);
+broader publishing, e.g. direct publishing to external platforms (#140);
 GLOW family improvements (§1.4). <em>Faster keyboard navigation and
 accessible publishing.</em></p>
-<h3 id="phase-5-solid-on-windows-and-macos">Phase 5 — Solid on Windows
+<h3 id="phase-5--solid-on-windows-and-macos">Phase 5 — Solid on Windows
 and macOS</h3>
 <p>Verified installer behavior on Windows 10/11, shipping-quality
 <strong>macOS</strong>, native RTF editing, the Quillin hub (§1.6);
 better docs/tutorials (§1.7). <em>A dependable, well-documented product
 on its supported platforms.</em></p>
 <hr />
-<h2 id="open-issue-ledger-by-workstream">4. Open-issue ledger (by
+<h2 id="4-open-issue-ledger-by-workstream">4. Open-issue ledger (by
 workstream)</h2>
 <p>Current outstanding work, by workstream. Items with a live decision
 attached are detailed in §4.1+ so the choice can be made
 deliberately.</p>
 <table>
-<colgroup>
-<col style="width: 50%" />
-<col style="width: 50%" />
-</colgroup>
 <thead>
 <tr>
 <th>Workstream</th>
@@ -487,11 +486,11 @@ ChapterForge surfaces are in §5.</td>
 </tbody>
 </table>
 <h3
-id="elevenlabs-premium-cloud-tts-audio-export-decision-build-for-1.0">4.1
+id="41-elevenlabs-premium-cloud-tts--audio-export-decision-build-for-10">4.1
 ElevenLabs premium cloud TTS — audio export (decision: <strong>build for
 1.0</strong>)</h3>
 <p><strong>What.</strong> Add <strong>ElevenLabs</strong> as a third
-provider in QUILL’s existing provider-neutral cloud-TTS layer
+provider in QUILL's existing provider-neutral cloud-TTS layer
 (<code>quill/core/ai/cloud_tts.py</code>, today OpenAI + Gemini), so a
 user can export their own documents to natural, audiobook-grade
 narration. This is the headline ElevenLabs value for a writing/reading
@@ -501,13 +500,13 @@ href="eleven-labs.md"><code>eleven-labs.md</code></a>).</p>
 already feeds Read Aloud <em>and</em> export with cost estimation,
 chunking, and cancellation; ElevenLabs <strong>STT</strong> already
 ships (the <code>elevenlabs-transcription</code> Quillin). So this is
-“register one more provider,” not a new architecture. Scope for 1.0:</p>
+"register one more provider," not a new architecture. Scope for 1.0:</p>
 <ul>
 <li>New <strong>host-owned gateway</strong>
 <code>quill/core/ai/elevenlabs_tts.py</code> — the <em>only</em> module
 that imports the official <code>elevenlabs</code> SDK (per the decided
-“SDK inside one gateway” posture). It owns credential retrieval (the
-existing <strong>“ElevenLabs API key”</strong> label), rejects alternate
+"SDK inside one gateway" posture). It owns credential retrieval (the
+existing <strong>"ElevenLabs API key"</strong> label), rejects alternate
 <code>base_url</code>, translates SDK errors to a stable QUILL error,
 and is cancelable.</li>
 <li>Register <code>"elevenlabs"</code> in <code>cloud_tts.py</code>
@@ -518,7 +517,7 @@ and is cancelable.</li>
 inert/hidden unless the SDK is installed <em>and</em> a key is
 configured. Safe Mode and the per-run consent the AI Voice surface
 already enforces both apply.</li>
-<li>A new <strong>network-egress-audit</strong> entry for the gateway’s
+<li>A new <strong>network-egress-audit</strong> entry for the gateway's
 SDK call site (host <code>api.elevenlabs.io</code>). No bundled Quillin
 receives the SDK, key, or audio bytes.</li>
 </ul>
@@ -526,15 +525,15 @@ receives the SDK, key, or audio bytes.</li>
 proceed):</strong></p>
 <ul>
 <li><em>Voice listing.</em> ElevenLabs voices are account-specific, so
-the picker can’t be a static list like OpenAI/Gemini.
+the picker can't be a static list like OpenAI/Gemini.
 <strong>Default:</strong> ship a small built-in fallback list plus a
-“Refresh from my account” action that calls
+"Refresh from my account" action that calls
 <code>voices.get_all()</code> on demand. <em>(Alt: always fetch live
 when the provider is selected.)</em></li>
 <li><em>Cost estimate.</em> ElevenLabs bills per character by
 subscription tier. <strong>Default:</strong> a conservative
 per-1,000-character estimate flagged approximate (mirrors the existing
-OpenAI/Gemini estimate UI), or “unavailable” rather than implying
+OpenAI/Gemini estimate UI), or "unavailable" rather than implying
 free.</li>
 <li><em>Retry posture.</em> Read-only calls (voices/models) get bounded
 backoff; <strong>billable synthesis is retried at most once and only
@@ -542,7 +541,7 @@ when no audio was received</strong> — never blind re-POST (avoids
 double-billing).</li>
 </ul>
 <h3
-id="elevenlabs-live-read-aloud-streaming-continuous-consent-decision-defer-to-2.0">4.2
+id="42-elevenlabs-live-read-aloud-streaming--continuous-consent-decision-defer-to-20">4.2
 ElevenLabs live Read-Aloud streaming + continuous consent (decision:
 <strong>defer to 2.0</strong>)</h3>
 <p>Live, sentence-by-sentence Read Aloud through ElevenLabs is
@@ -550,34 +549,34 @@ ElevenLabs live Read-Aloud streaming + continuous consent (decision:
 <strong>streaming</strong> (incremental playback, instant cancel,
 sentence prefetch, aggressive <code>tts_cache</code>) and a
 <strong>continuous, session/document-scoped consent model</strong> with
-a persistent “reading via ElevenLabs (cloud)” indicator — an open UX
+a persistent "reading via ElevenLabs (cloud)" indicator — an open UX
 question the original spec flagged for a maintainer decision. Higher
 cost/latency risk, real new UX surface. <strong>Recommendation:</strong>
 ship §4.1 export first; revisit live streaming for 2.0 once the export
 path proves the gateway.</p>
 <h3
-id="elevenlabs-voice-management-cloning-design-pronunciation-decision-defer-to-2.0">4.3
+id="43-elevenlabs-voice-management--cloning--design--pronunciation-decision-defer-to-20">4.3
 ElevenLabs voice management — cloning / design / pronunciation
 (decision: <strong>defer to 2.0</strong>)</h3>
-<p>“Manage ElevenLabs Voices”: instant voice cloning (IVC, recursive
+<p>"Manage ElevenLabs Voices": instant voice cloning (IVC, recursive
 audio import as ElevenDesk does), voice design from a prompt, and
 listing/attaching ElevenLabs <em>server-side</em> pronunciation
-dictionaries (kept visibly distinct from QUILL’s own local
+dictionaries (kept visibly distinct from QUILL's own local
 <code>speech/pronunciation.py</code>). Each is a heavier UI + new egress
 surface and is a Tier-2 companion, not core writing value.
 <strong>Recommendation:</strong> 2.0.</p>
 <h3
-id="elevenlabs-tier-3-surfaces-sfx-voice-changer-history-decision-defer-or-skip">4.4
+id="44-elevenlabs-tier-3-surfaces--sfx--voice-changer--history-decision-defer-or-skip">4.4
 ElevenLabs Tier-3 surfaces — SFX / voice-changer / history (decision:
 <strong>defer or skip</strong>)</h3>
 <p>Sound-effect generation, speech-to-speech (voice changer), and the
-generation-history browser are far from a writing editor’s core. If ever
+generation-history browser are far from a writing editor's core. If ever
 built, they belong as <strong>optional, separately-installable
 Quillins</strong>, not core features. Generation history is largely
 redundant once local caching/export exists.
 <strong>Recommendation:</strong> 2.0 backlog or skip.</p>
 <hr />
-<h2 id="deferred-to-quill-2.0">5. Deferred to QUILL 2.0</h2>
+<h2 id="5-deferred-to-quill-20">5. Deferred to QUILL 2.0</h2>
 <p>Confirmed out of the 1.0 scope. Recorded here so the intent is not
 lost.</p>
 <ul>
@@ -611,37 +610,27 @@ SFX / voice-changer / history surfaces (§4.4). The 1.0 ElevenLabs slice
 is export-only cloud TTS (§4.1); everything else here is 2.0. Full
 reasoning in <a
 href="eleven-labs.md"><code>eleven-labs.md</code></a>.</li>
-<li><strong>Learnings from the ACB Azure audio-pipeline
-reference.</strong> Its page-turn cue is now QUILL’s default transition
-sound and its <code>loudnorm</code> step is QUILL’s ACX loudness; the
-<strong>article-combining heuristic</strong> (combine empty headings
-into the next article) and <strong>round-robin voices</strong> (each
-article gets the next voice) also <strong>shipped for 1.0</strong> in
-Batch Export to Speech. With those shipped and the translated-export
-design captured in §7, the ACB reference folder was
-<strong>retired</strong>; the reusable patterns below and in §7 are
-everything QUILL needs from it. Remaining candidates:
-<ul>
-<li><strong>Translated audio export (highest-value)</strong> — the
-headline 2.0 speech feature. Full design in <strong>§7</strong> below
-(current providers only, no Azure).</li>
-<li><strong>Two-pass loudnorm — shipped.</strong>
-<code>loudness.normalize_wav_loudness</code> measures
-(<code>print_format=json</code>) then applies <code>loudnorm</code> with
-the measured values (<code>linear=true</code>); wired as the
-<strong>Normalize loudness</strong> option in <strong>batch
-document-to-speech export</strong> (the audiobook builder already had
-single-pass ACX).</li>
-<li><strong>Voice-failure blacklist</strong> — persist voices that fail
-synthesis and skip them on later runs; a batch-robustness nicety (pairs
-well with round-robin).</li>
-<li><strong>Text-normalization polish</strong> —
-<code>Vol.</code>→“Volume” / <code>No.</code>→“Number”; resolution
-numbers (<code>2025-02</code> → “2025 dash 2”); emphasize lead-in cue
-phrases (“Note:”, “Warning:”, “Updated:”); language-specific → English →
-none pronunciation-dict fallback. Candidates for
-<code>quill/core/speech/text_normalize.py</code>.</li>
-</ul></li>
+<li><strong>Learnings from the ACB Azure audio-pipeline reference —
+fully absorbed.</strong> Every reusable pattern shipped for 1.0, so
+nothing remains deferred here. Its page-turn cue is QUILL's default
+transition sound and its <code>loudnorm</code> step is QUILL's ACX
+loudness; the <strong>article-combining heuristic</strong>,
+<strong>round-robin voices</strong>, <strong>two-pass loudnorm</strong>
+(<code>loudness.normalize_wav_loudness</code> — measure with
+<code>print_format=json</code>, then apply with the measured values and
+<code>linear=true</code>, wired as the <strong>Normalize
+loudness</strong> batch option), the <strong>voice-failure
+blacklist</strong> (<code>speech/voice_blacklist.py</code> — failed
+voices are skipped on later runs), and the <strong>text-normalization
+polish</strong> (<code>text_normalize.py</code> —
+<code>Vol.</code>→"Volume", <code>No.</code>→"Number", resolution
+numbers <code>2025-02</code>→"2025 dash 2"; the language-specific →
+all-language pronunciation-dictionary fallback is the
+<code>PronunciationDictionary.language</code> scoping) all shipped in
+Batch Export to Speech. <strong>Translated audio export</strong> — the
+headline feature — also shipped in full (local <em>and</em> cloud
+voices); see <strong>§7</strong>. The ACB reference folder was
+<strong>retired</strong>; QUILL needs nothing further from it.</li>
 <li><strong>Native Google Docs support</strong> — read/write/round-trip
 Google Docs from within QUILL (Drive API, OAuth, accessible doc model).
 A full external-service + auth + sync workstream; spec in <a
@@ -649,21 +638,21 @@ href="QUILL-Native-Google-Docs-Support-PRD.md"><code>QUILL-Native-Google-Docs-Su
 <li><strong>Verbosity polish-backlog long tail (§1.1)</strong> — the
 speculative slice of the ~100 addenda (#405–#504) beyond the shipped
 core/UI/modes/anti-spam. The full distilled backlog (valuable candidates
-+ themed reference + “recommend do not build”) is <strong>§6</strong>
++ themed reference + "recommend do not build") is <strong>§6</strong>
 below — consolidated here when the standalone
 <code>verbosity-system.md</code> archive was retired. Shipped design
 lives in PRD §5.91.</li>
 <li><strong>Accessibility tooling from GLOW (§1.4)</strong> — Document
 Audit (ACB Large-Print Guidelines, Microsoft Accessibility Checker, WCAG
 2.2 AA) and the GLOW family (#528–#534) plus the WATCH-8 GLOW watch
-action (#566), re-homed on QUILL’s invariants. Contributions stay
-<code>locked_off</code> for 1.0. GLOW’s
+action (#566), re-homed on QUILL's invariants. Contributions stay
+<code>locked_off</code> for 1.0. GLOW's
 server/Keycloak/Office-add-in/MCP-deployment surfaces stay in the GLOW
 product; QUILL would take the authoring-time checks. Source:
 <code>s:\code\glow</code> (<code>glowplan.md</code>).</li>
 </ul>
 <hr />
-<h2 id="verbosity-2.0-backlog-consolidated">6. Verbosity 2.0 backlog
+<h2 id="6-verbosity-20-backlog-consolidated">6. Verbosity 2.0 backlog
 (consolidated)</h2>
 <p>The verbosity engine, the eleven <code>verbosity_*</code> UI
 surfaces, the runtime modes (Quiet / Meeting / Quiet-Undo), the
@@ -688,7 +677,7 @@ independent verbosity per category (nav / edit / search / system) on top
 of the global profile.</li>
 <li><strong>Markdown-aware (#427) / Code-aware (#428) verbosity</strong>
 — context-sensitive announcements when editing Markdown or source.</li>
-<li><strong>“Undo available” cues (#502)</strong> and richer
+<li><strong>"Undo available" cues (#502)</strong> and richer
 <strong>destructive-action warnings (#501)</strong> (the confirm dialog
 ships; the spoken cue is the increment).</li>
 <li><strong>Boundary announcements (#419)</strong> and
@@ -701,8 +690,8 @@ demand):</strong></p>
 <ul>
 <li><em>Settings UX:</em> searchable settings (#406), recipes (#407),
 bulk edit (#464), undo for settings (#465), change history (#466),
-export preview (#482), import-conflict wizard (#483), “try without
-applying” (#484), reset granularity (#481), explain-my-settings (#446),
+export preview (#482), import-conflict wizard (#483), "try without
+applying" (#484), reset granularity (#481), explain-my-settings (#446),
 test-my-settings (#467), recommended settings (#468), persona setup
 (#469).</li>
 <li><em>Packs:</em> community pack preview/diff (#442), trust labels
@@ -737,45 +726,51 @@ fight its settings): <strong>typing echo (#411)</strong>,
 (#426)</strong>.</p>
 <hr />
 <h2
-id="translated-audio-export-shipping-in-1.0-local-voices-cloud-persistence-next">7.
-Translated audio export — shipping in 1.0 (local voices; cloud +
-persistence next)</h2>
-<p><strong>Status.</strong> The core shipped for 1.0 with <strong>local
-voices</strong>: language-aware pronunciation dictionaries
+id="7-translated-audio-export--shipped-in-10-local-and-cloud-voices">7.
+Translated audio export — shipped in 1.0 (local <strong>and</strong>
+cloud voices)</h2>
+<p><strong>Status — shipped.</strong> Translated audio export is
+complete for 1.0: language-aware pronunciation dictionaries
 (<code>PronunciationDictionary.language</code>), the per-language voice
 model (<code>speech/voice_languages.py</code> — eSpeak universal-local +
 SAPI installed + cloud catalog), the robust section translator
-(<code>speech/translate_sections.py</code> — AI provider or
-LibreTranslate, retries/backoff/halt/cache), translated synthesis in
-<code>document_speech</code>, and the Batch Export “Also export in other
-languages” UI + runner that writes
-<code>&lt;doc&gt; (&lt;Language&gt;).&lt;ext&gt;</code>.
-<strong>Remaining (next commits):</strong> cloud-voice output (extend
-<code>document_speech.make_synthesizer</code> with cloud engines via
-<code>cloud_tts</code> + ffmpeg-to-WAV) — currently cloud targets are
-skipped with a clear status — and persisting translation targets in the
-project profile.</p>
-<p><strong>Original design (for reference).</strong> Export a document’s
+(<code>speech/translate_sections.py</code> — the configured AI provider
+or LibreTranslate, with retries/backoff/halt/cache), translated
+synthesis in <code>document_speech</code> for <strong>local and
+cloud</strong> engines (cloud providers go through
+<code>cloud_tts</code> and are conformed to WAV via ffmpeg for chapter
+splicing), and <strong>two delivery surfaces</strong>: the Batch Export
+"Also export in other languages" UI + runner, and a
+<strong>single-document</strong> action (Tools &gt; Speech &gt; Export
+to Translated Speech Audio). Both write
+<code>&lt;doc&gt; (&lt;Language&gt;).&lt;ext&gt;</code>, reuse the
+voice-failure blacklist, and <strong>surface a combined translation +
+TTS cost estimate</strong> before any metered cloud run
+(<code>speech/cost_estimate.py</code>). The translation backend exposes
+<strong>all configured AI providers</strong> (it rides QUILL's AI
+gateway) plus LibreTranslate. <em>Remaining nicety (2.0):</em>
+persisting the chosen translation targets in the project profile.</p>
+<p><strong>Original design (for reference).</strong> Export a document's
 audio in one or more <strong>additional languages</strong> — translate
 the text, then synthesize each language with a voice for that language.
-<strong>Current providers only (no Azure):</strong> QUILL’s own AI
+<strong>Current providers only (no Azure):</strong> QUILL's own AI
 translation (<code>core/ai/translation.py</code>, AI &gt; Translate)
 plus the existing local engines and cloud TTS (OpenAI / Gemini /
 ElevenLabs). Builds on the shipped batch export (chaptered / separate
 modes, page-turn cue, ACX loudness, article-combining, round-robin
 voices).</p>
-<h3 id="translation-an-ai-feature-wired-per-provider">7.1 Translation —
-an AI feature, wired per provider</h3>
+<h3 id="71-translation--an-ai-feature-wired-per-provider">7.1
+Translation — an AI feature, wired per provider</h3>
 <ul>
 <li>Reuse <code>core/ai/translation.py</code> (provider-neutral, through
-the user’s configured AI provider) — <strong>no new vendor or REST
-client</strong>. Translation rides QUILL’s AI gateway and the existing
+the user's configured AI provider) — <strong>no new vendor or REST
+client</strong>. Translation rides QUILL's AI gateway and the existing
 network-egress audit; Safe Mode and per-action consent apply.</li>
 <li><strong>Per-provider language support:</strong> each AI provider
 exposes the target languages it supports; the export dialog offers only
 those for the active provider.</li>
 <li><strong>Robustness (copied from the ACB reference pattern, on
-QUILL’s AI path):</strong> bounded retries with exponential backoff + a
+QUILL's AI path):</strong> bounded retries with exponential backoff + a
 timeout, <strong>halt-this-language on persistent failure</strong>
 (never emit half-translated audio), and accessible per-attempt
 logging.</li>
@@ -784,11 +779,11 @@ body) so chapter structure and markers survive; <strong>cache</strong>
 translations (keyed by text + target language) to avoid re-billing
 repeats.</li>
 </ul>
-<h3 id="rich-language-support-for-voices-local-cloud">7.2 Rich language
-support for voices (local + cloud)</h3>
+<h3 id="72-rich-language-support-for-voices-local--cloud">7.2 Rich
+language support for voices (local + cloud)</h3>
 <ul>
 <li><strong>Local-model language metadata.</strong> Tag each local
-engine’s voices with the language(s) they speak (Piper/Kokoro models are
+engine's voices with the language(s) they speak (Piper/Kokoro models are
 language-specific; SAPI / eSpeak voices carry a locale), building a
 <code>voice → language(s)</code> map so the export can pick a suitable
 voice for the target language.</li>
@@ -800,42 +795,56 @@ match), reusing the 1.0 round-robin voice picker pattern (combo box +
 reorderable list) so a language can even have its own voice
 rotation.</li>
 </ul>
-<h3 id="cross-language-pronunciation-dictionary-tooling">7.3
+<h3 id="73-cross-language-pronunciation--dictionary-tooling">7.3
 Cross-language pronunciation / dictionary tooling</h3>
 <ul>
 <li>Make the pronunciation system (<code>speech/pronunciation.py</code>)
 <strong>language-aware:</strong> a dictionary can be scoped to a
-language (or “all”), and only matching-language dictionaries apply to a
-given language’s synthesis — mirroring the ACB language-specific →
-English → none fallback. Keep QUILL’s client-side dictionaries distinct
+language (or "all"), and only matching-language dictionaries apply to a
+given language's synthesis — mirroring the ACB language-specific →
+English → none fallback. Keep QUILL's client-side dictionaries distinct
 from any provider server-side ones.</li>
 </ul>
-<h3 id="output-layout-metadata">7.4 Output layout &amp; metadata</h3>
+<h3 id="74-output-layout--metadata">7.4 Output layout &amp;
+metadata</h3>
 <ul>
 <li>Per-language output
 (<code>&lt;doc&gt; (&lt;lang&gt;).&lt;ext&gt;</code> or a per-language
 subfolder), mirroring the existing separate/chaptered layout, with
 audiobook metadata stamped per language.</li>
 </ul>
-<h3 id="pronunciation-audition-from-the-retired-play-reference">7.5
+<h3 id="75-pronunciation-audition-from-the-retired-play-reference">7.5
 Pronunciation audition (from the retired <code>play</code>
 reference)</h3>
 <ul>
 <li>The ACB <code>play/</code> reference was a pronunciation-practice
 GUI (voices, rate/pitch/ volume, accessible tooltips). The reusable
-idea: an <strong>“audition this voice / word”</strong> control — hear a
+idea: an <strong>"audition this voice / word"</strong> control — hear a
 candidate voice speak a sample or a tricky term before committing it to
-a language. Extend QUILL’s existing Read Aloud voice preview to the
+a language. Extend QUILL's existing Read Aloud voice preview to the
 per-language pickers.</li>
 </ul>
-<h3 id="open-decision-points-2.0">Open decision points (2.0)</h3>
+<h3 id="decision-points--resolved-shipped-in-10">Decision points —
+resolved (shipped in 1.0)</h3>
 <ul>
-<li>Which providers’ translation to expose (all configured AI providers
-vs a curated set), and whether translated export is batch-only or also a
-single-document action.</li>
-<li>Cost surfacing — translation <strong>and</strong> TTS are both
-metered for cloud providers; show a combined estimate before the
-run.</li>
+<li><strong>Which providers' translation to expose:</strong> <strong>all
+configured AI providers</strong> (the export rides QUILL's AI gateway,
+so whichever provider the user has set up is used) plus LibreTranslate.
+<em>Resolved: all, not a curated set.</em></li>
+<li><strong>Batch-only or also single-document:</strong>
+<strong>both.</strong> Batch Export translates a folder; Tools &gt;
+Speech &gt; Export to Translated Speech Audio translates the current
+document.</li>
+<li><strong>Cost surfacing:</strong> <strong>shipped.</strong> A
+combined translation + TTS estimate
+(<code>speech/cost_estimate.py</code>) is shown for confirmation before
+any metered cloud run; local-only runs are never interrupted.</li>
+<li><strong>Cloud voices for translated output:</strong>
+<strong>shipped</strong> (not a follow-up) — OpenAI / Gemini /
+ElevenLabs voices synthesize translated audio via <code>cloud_tts</code>
++ ffmpeg.</li>
 </ul>
+<p><em>Only remaining 2.0 item:</em> persisting translation targets in
+the project profile.</p>
 </body>
 </html>

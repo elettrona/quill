@@ -300,13 +300,23 @@ over how they sound.
   a list you build; **normalize loudness** to a consistent audiobook (ACX) level;
   and **dry-run** to write the exact spoken text for proofreading before paying for
   synthesis.
-- **Export in other languages (translated).** Pick one or more languages and a
-  voice for each, and QUILL **translates each document and narrates it** —
-  `<doc> (Spanish).mp3` next to the original. Translation uses your AI provider or a
-  local **LibreTranslate**; voices are offered **local-first** (eSpeak speaks nearly
-  every language offline, plus any installed Windows voice for that language).
-  Pronunciation dictionaries can be scoped to a language. *(Premium cloud voices for
-  translated output are a follow-up.)*
+- **Export in other languages (translated), with local *or* premium cloud voices.**
+  Pick one or more languages and a voice for each, and QUILL **translates each
+  document and narrates it** — `<doc> (Spanish).mp3` next to the original. Do it for
+  a whole folder in **Batch Export to Speech**, or for just the open document with
+  the new **Tools > Speech > Export to Translated Speech Audio**. Translation uses
+  **any AI provider you have configured** or a local **LibreTranslate**; voices are
+  offered **local-first** (eSpeak speaks nearly every language offline, plus any
+  installed Windows voice for that language) with the **premium multilingual cloud
+  voices (OpenAI, Gemini, ElevenLabs)** available as the quality tier. Pronunciation
+  dictionaries can be scoped to a language.
+- **You see the cost before a cloud run.** Translating and narrating with cloud
+  services is metered, so when a run would use them QUILL shows a **combined
+  estimate** and asks before starting. Runs that stay fully local are never
+  interrupted.
+- **A bad voice won't derail a batch.** If a voice fails to synthesize, QUILL
+  **remembers it and skips it next time**, so one broken voice in a rotation no
+  longer keeps stopping your exports.
 - **You are in control of existing files and naming.** When an output already
   exists, choose to **skip** it (cheap resume), **overwrite** it, or **rename**
   so both are kept. Mirror the source folders or **flatten** everything into one
