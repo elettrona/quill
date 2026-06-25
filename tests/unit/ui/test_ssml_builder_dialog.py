@@ -53,12 +53,19 @@ def test_ok_returns_fragment_and_fallback(wx_app):
         frame.Destroy()
 
 
-def test_ok_blocked_on_invalid_ssml(wx_app):
+def test_ok_blocked_on_invalid_ssml(wx_app, monkeypatch):
+    # Invalid SSML pops a modal error; stub it so the test never blocks on a real
+    # wx.MessageBox (which would hang headless CI) while still asserting it fired.
+    import quill.ui.ssml_builder_dialog as ssml_mod
+
+    shown: list[str] = []
+    monkeypatch.setattr(ssml_mod, "show_message_box", lambda *a, **k: shown.append(a[0]))
     frame, dlg = _make(wx_app)
     try:
         dlg._fragment.SetValue("<nope")
         dlg._on_ok(wx.CommandEvent())
         assert dlg._result is None  # invalid -> not accepted
+        assert shown and "SSML" in shown[0]  # the error was surfaced to the user
     finally:
         dlg.dialog.Destroy()
         frame.Destroy()
