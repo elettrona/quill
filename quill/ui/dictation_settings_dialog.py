@@ -43,20 +43,21 @@ class DictationSettingsDialog:
         grid = wx.FlexGridSizer(0, 2, 8, 10)
         grid.AddGrowableCol(1, 1)
 
-        def _add(label_text: str, control: Any) -> Any:
-            # Label before control so it precedes its field in tab order (dialog
-            # z-order gate).
+        def _add(label_text: str, factory: Any) -> Any:
+            # Create the label BEFORE the control (via a factory) so it precedes its
+            # field in tab order — the A11Y z-order contract (dialog z-order gate).
             grid.Add(wx.StaticText(dlg, label=label_text), 0, wx.ALIGN_CENTER_VERTICAL)
+            control = factory()
             grid.Add(control, 0, wx.EXPAND)
             return control
 
         self._max_locked = _add(
             "&Locked Dictation time limit (seconds):",
-            wx.SpinCtrl(dlg, min=30, max=3600),
+            lambda: wx.SpinCtrl(dlg, min=30, max=3600),
         )
         self._min_hold = _add(
             "&Minimum hold to start (seconds; ignores accidental taps):",
-            wx.SpinCtrlDouble(dlg, min=0.0, max=5.0, inc=0.1),
+            lambda: wx.SpinCtrlDouble(dlg, min=0.0, max=5.0, inc=0.1),
         )
         outer.Add(grid, 0, wx.EXPAND | wx.ALL, 12)
 
