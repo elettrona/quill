@@ -113,6 +113,40 @@ def test_build_voice_rotation_one_synth_per_voice(monkeypatch: pytest.MonkeyPatc
     assert seen == ["Alice", "Bob"]
 
 
+def test_build_voice_rotation_skips_blacklisted(monkeypatch: pytest.MonkeyPatch) -> None:
+    from quill.core.speech.voice_blacklist import VoiceBlacklist
+
+    seen: list[str] = []
+    monkeypatch.setattr(ds, "make_synthesizer", lambda spec: lambda t, o: seen.append(spec.voice))
+    bl = VoiceBlacklist()
+    bl.record_failure("sapi5", "Bob")
+    base = ds.SynthesisSpec(engine="sapi5", voice="x")
+    # Bob is blacklisted -> only Alice + Carol remain in the rotation.
+    rotation = ds._build_voice_rotation(base, ["Alice", "Bob", "Carol"], None, bl)
+    assert rotation is not None and len(rotation) == 2
+    import pathlib
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as d:
+        for i, synth in enumerate(rotation):
+            synth("hi", pathlib.Path(d) / f"{i}.wav")
+    assert seen == ["Alice", "Carol"]
+
+
+def test_failure_recording_blacklists_then_reraises() -> None:
+    from quill.core.speech.voice_blacklist import VoiceBlacklist
+
+    bl = VoiceBlacklist()
+
+    def _boom(text: str, out: Path) -> None:
+        raise RuntimeError("synthesis failed")
+
+    wrapped = ds._wrap_with_failure_recording(_boom, "sapi5", "David", bl)
+    with pytest.raises(RuntimeError, match="synthesis failed"):
+        wrapped("hi", Path("ignored.wav"))
+    assert bl.is_blacklisted("sapi5", "David")  # recorded for next run
+
+
 def test_separate_files_one_per_section(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from quill.core.speech.text_polish import DocumentSection
 

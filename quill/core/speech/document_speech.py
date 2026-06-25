@@ -208,28 +208,57 @@ def _wrap_with_pronunciations(
     return _corrected
 
 
+def _wrap_with_failure_recording(
+    synth: Synthesizer, engine: str, voice_id: str, blacklist: Any | None
+) -> Synthesizer:
+    """Record a voice's synthesis failure in *blacklist* (then re-raise) when given.
+
+    Behavior this run is unchanged — the exception still propagates — but the voice
+    is now remembered so a later run can skip it (the voice-failure blacklist,
+    roadmap §5). A ``None`` blacklist or empty voice id is a passthrough.
+    """
+    if blacklist is None or not voice_id.strip():
+        return synth
+
+    def _recorded(text: str, out: Path) -> None:
+        try:
+            synth(text, out)
+        except Exception as exc:  # noqa: BLE001 - record then re-raise unchanged
+            blacklist.record_failure(engine, voice_id, str(exc))
+            raise
+
+    return _recorded
+
+
 def _build_voice_rotation(
     spec: SynthesisSpec,
     voices: list[str] | None,
     pronunciation_dictionaries: list[Any] | None,
+    blacklist: Any | None = None,
 ) -> list[Synthesizer] | None:
     """One wrapped synthesizer per voice for round-robin, or None when not in use.
 
     Each voice reuses *spec*'s engine and pace (so every section shares one PCM
-    format and splices cleanly). Fewer than two distinct voices returns None,
-    leaving the single-voice path unchanged.
+    format and splices cleanly). Voices already on *blacklist* (the voice-failure
+    blacklist) are dropped first, so a known-bad voice is skipped on later runs.
+    Fewer than two distinct usable voices returns None, leaving the single-voice
+    path unchanged.
     """
     cleaned: list[str] = []
     for voice in voices or []:
         name = voice.strip()
-        if name and name not in cleaned:
-            cleaned.append(name)
+        if not name or name in cleaned:
+            continue
+        if blacklist is not None and blacklist.is_blacklisted(spec.engine, name):
+            continue
+        cleaned.append(name)
     if len(cleaned) < 2:
         return None
     rotation: list[Synthesizer] = []
     for voice in cleaned:
         synth = make_synthesizer(replace(spec, voice=voice))
-        rotation.append(_wrap_with_pronunciations(synth, spec.engine, pronunciation_dictionaries))
+        synth = _wrap_with_pronunciations(synth, spec.engine, pronunciation_dictionaries)
+        rotation.append(_wrap_with_failure_recording(synth, spec.engine, voice, blacklist))
     return rotation
 
 
@@ -244,6 +273,7 @@ def synthesize_document_to_chaptered_file(
     combine_headings: bool = False,
     voice_rotation: list[str] | None = None,
     translate: Translator | None = None,
+    voice_blacklist: Any | None = None,
 ) -> ChapterAssembleResult:
     """Convert one document to a chaptered audio file using a real engine.
 
@@ -266,9 +296,12 @@ def synthesize_document_to_chaptered_file(
         sections = translate_sections(sections, translate)
     synth = make_synthesizer(spec)
     synth = _wrap_with_pronunciations(synth, spec.engine, pronunciation_dictionaries)
+    synth = _wrap_with_failure_recording(synth, spec.engine, spec.voice, voice_blacklist)
     # Round-robin voices: one synthesizer per voice (same engine), cycled per
     # section by the assembler. Empty/one voice → the single synthesizer above.
-    rotation = _build_voice_rotation(spec, voice_rotation, pronunciation_dictionaries)
+    rotation = _build_voice_rotation(
+        spec, voice_rotation, pronunciation_dictionaries, voice_blacklist
+    )
 
     owns_work_dir = work_dir is None
     work_dir = work_dir or Path(tempfile.mkdtemp(prefix="quill_docspeech_"))
@@ -304,6 +337,7 @@ def synthesize_document_to_separate_files(
     combine_headings: bool = False,
     voice_rotation: list[str] | None = None,
     translate: Translator | None = None,
+    voice_blacklist: Any | None = None,
 ) -> list[Path]:
     """Convert one document to **one audio file per article** (the `separate` mode).
 
@@ -323,7 +357,10 @@ def synthesize_document_to_separate_files(
         sections = translate_sections(sections, translate)
     synth = make_synthesizer(spec)
     synth = _wrap_with_pronunciations(synth, spec.engine, pronunciation_dictionaries)
-    rotation = _build_voice_rotation(spec, voice_rotation, pronunciation_dictionaries)
+    synth = _wrap_with_failure_recording(synth, spec.engine, spec.voice, voice_blacklist)
+    rotation = _build_voice_rotation(
+        spec, voice_rotation, pronunciation_dictionaries, voice_blacklist
+    )
     suffix = f".{options.output_format}" if options.output_format in {"mp3", "m4b"} else ".wav"
 
     owns_work_dir = work_dir is None

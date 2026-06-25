@@ -224,6 +224,7 @@ def _export_translations(
     chapter_sound: Path | None,
     opts_fn: Any,
     for_language: Any,
+    voice_blacklist: Any = None,
 ) -> int:
     """Export *src* in each configured target language; return chapters produced."""
     import shutil
@@ -272,6 +273,7 @@ def _export_translations(
                 pronunciation_dictionaries=t_dicts,
                 combine_headings=req.combine_headings,
                 translate=for_language(lang_name),
+                voice_blacklist=voice_blacklist,
             )
             shutil.copyfile(result.with_tones_path or result.output_path, out)
             chapters += len(result.chapters)
@@ -427,6 +429,12 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
     suffix = {"mp3": ".mp3", "m4b": ".m4b"}.get(req.output_format, ".wav")
     dictionaries = _active_pronunciation_dictionaries(frame, req.engine, req.source_folder)
     for_language = _build_translator(req)
+    # Voice-failure blacklist (roadmap §5): known-bad voices are skipped in the
+    # round-robin rotation, and any new failure this run is persisted so later runs
+    # skip it too. Loaded once and saved after the batch.
+    from quill.core.speech.voice_blacklist import load_blacklist, save_blacklist
+
+    voice_blacklist = load_blacklist()
 
     def opts(sound_path: Path | None = None) -> ChapterAssembleOptions:
         return ChapterAssembleOptions(
@@ -502,6 +510,7 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                         pronunciation_dictionaries=dictionaries,
                         combine_headings=req.combine_headings,
                         voice_rotation=list(req.round_robin_voices),
+                        voice_blacklist=voice_blacklist,
                     )
                     done += 1
                     total_chapters += len(written)
@@ -537,6 +546,7 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                     pronunciation_dictionaries=dictionaries,
                     combine_headings=req.combine_headings,
                     voice_rotation=list(req.round_robin_voices),
+                    voice_blacklist=voice_blacklist,
                 )
                 deliverable = result.with_tones_path or result.output_path
                 shutil.copyfile(deliverable, final)
@@ -546,7 +556,15 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                 frame._wx.CallAfter(frame._set_status, f"{final.name}: {chapter_count} chapter(s)")
                 if for_language is not None:
                     total_chapters += _export_translations(
-                        frame, req, src, final, suffix, chapter_sound, opts, for_language
+                        frame,
+                        req,
+                        src,
+                        final,
+                        suffix,
+                        chapter_sound,
+                        opts,
+                        for_language,
+                        voice_blacklist,
                     )
             except DocumentSpeechError as exc:
                 errors += 1
@@ -557,6 +575,8 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
             finally:
                 shutil.rmtree(work_dir, ignore_errors=True)
         shutil.rmtree(sound_dir, ignore_errors=True)
+        # Persist any voices that failed this run so later runs skip them.
+        save_blacklist(voice_blacklist)
         return (done, skipped, errors, total_chapters, total_subs)
 
     def on_success(result: object) -> None:
