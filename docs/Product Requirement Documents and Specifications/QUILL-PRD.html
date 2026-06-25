@@ -3797,6 +3797,27 @@ appears in a <strong>Speech Engine</strong> chooser, the choice is saved
 in <code>speech_provider</code>, and it is used for transcription,
 captions, and dictation. whisper.cpp remains the default and needs
 nothing extra; Faster Whisper does not attribute speakers.</p>
+<p><strong>Hold-to-Dictate &amp; Locked Dictation (shipped,
+1.0-complete).</strong> Two keyboard-only dictation modes on the offline
+engine: <strong>Hold F9</strong> to record-and-insert as one undoable
+edit, and <strong>Ctrl+F9</strong> for a hands-free Locked session
+(Ctrl+Shift+F9 pause/resume, Alt+F9 speak-state, Escape keep /
+Shift+Escape discard). Built as a protected transaction in the wx-free
+<code>quill/core/speech/dictation/</code> package: an explicit
+<code>DictationController</code> state machine (single-recorder
+invariant; no bare boolean), audio saved to
+<code>recovery/dictation/</code> <strong>before</strong> transcription,
+a key-up watchdog so a missed release can’t leave the mic open, a
+five-minute / focus-loss auto-stop, and a transcript that can’t be
+safely inserted is kept for review rather than lost. Two accessible
+surfaces under <strong>Tools &gt; Speech &gt; Hold &amp; Locked
+Dictation</strong>: a <strong>Dictation Settings</strong> panel (locked
+time limit, minimum hold, stop on focus loss, intelligent spacing, reset
+of the one-time hint) and a <strong>Dictation History &amp;
+Review</strong> window (insert/copy/discard recovered recordings;
+doubles as the startup-recovery prompt). Locked Dictation has distinct
+earcons and a one-time onboarding hint. File synthesis runs with no
+console-window flash and a timeout.</p>
 </blockquote>
 <p>Phase 1 scope:</p>
 <ul>
@@ -3852,6 +3873,22 @@ pronounce → polish → synthesize), so audition matches output.</p>
 transition earcon, spoken headings, anti-clipping tail pad),
 <code>ffmpeg.py</code> (encode to compressed formats, metadata, WAV
 conform), and <code>document_speech.py</code>.</li>
+<li><strong>Chapterization options.</strong> <strong>MP3</strong> (ID3
+chapter markers) or <strong>M4B audiobook</strong> (native MP4 chapter
+atoms via ffmpeg FFMETADATA) output; over-long sections auto-chunk on
+safe sentence/word boundaries (<code>tts_chunk</code>) so no synthesis
+call exceeds the engine timeout; the run reports each document’s chapter
+count. The transition earcon resolves from the <strong>active sound
+pack</strong> (<code>batch_speech_chapter_sound_id</code> → sound-pack
+WAV, falling back to the bundled Ink pack, then the built-in chime) in
+<code>batch_speech_runner._resolve_chapter_sound_path</code>. A
+<strong>Chapter mode</strong> selects one chaptered file or
+<strong>Separate file per article</strong>
+(<code>document_speech.synthesize_document_to_separate_files</code>, one
+<code>NNN - &lt;heading&gt;</code> file per section). A <strong>Dry
+run</strong> writes a <code>&lt;doc&gt;.preview.txt</code> of the exact
+post-pipeline spoken text (with the substitution count) for proofing
+without synthesizing.</li>
 <li><strong>Discovery.</strong> Extension set, recursion,
 semicolon/comma-separated <strong>include/exclude globs</strong>
 (matched against name and relative path), and a
@@ -3878,7 +3915,17 @@ speech setup in <code>&lt;folder&gt;/.quill/speech-project.json</code>
 (schema <code>quill/core/schemas/speech_project.json</code>):
 synthesizer, discovery, output, chapters, normalization, pronunciation,
 metadata, and execution. <code>project_profile.to_batch_options</code>
-drives the pipeline straight from a project file.</li>
+drives the pipeline straight from a project file. The batch dialog
+<strong>applies the profile on open</strong> and <strong>auto-remembers
+choices on Start</strong>
+(<code>batch_speech_runner._apply_project_profile</code> /
+<code>_save_project_profile</code>), with precedence this-run &gt;
+project profile &gt; global defaults.</li>
+<li><strong>Subprocess hardening.</strong> The Piper and eSpeak-NG
+file-synthesis subprocesses launch with <code>CREATE_NO_WINDOW</code>
+(no console flash between files) and the eSpeak-NG synthesis carries a
+timeout that raises a clean <code>ReadAloudUnavailableError</code>
+rather than stalling the run.</li>
 </ul>
 <p><strong>Pronunciation dictionaries
 (<code>Tools → Speech → Manage Pronunciations…</code>).</strong> Ordered

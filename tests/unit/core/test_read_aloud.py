@@ -597,7 +597,7 @@ def test_piper_long_text_via_temp_file(monkeypatch, tmp_path: Path) -> None:
         stdout = b""
         stderr = b""
 
-    def _fake_run(_cmd, *, stdin, capture_output, check, timeout):
+    def _fake_run(_cmd, *, stdin, capture_output, check, timeout, creationflags=0):
         stdin_objects.append(stdin)
         return _Done()
 

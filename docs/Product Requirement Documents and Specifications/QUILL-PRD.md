@@ -1963,6 +1963,22 @@ providers".
 > choice is saved in `speech_provider`, and it is used for transcription, captions, and
 > dictation. whisper.cpp remains the default and needs nothing extra; Faster Whisper does
 > not attribute speakers.
+>
+> **Hold-to-Dictate & Locked Dictation (shipped, 1.0-complete).** Two keyboard-only
+> dictation modes on the offline engine: **Hold F9** to record-and-insert as one
+> undoable edit, and **Ctrl+F9** for a hands-free Locked session (Ctrl+Shift+F9
+> pause/resume, Alt+F9 speak-state, Escape keep / Shift+Escape discard). Built as a
+> protected transaction in the wx-free `quill/core/speech/dictation/` package: an
+> explicit `DictationController` state machine (single-recorder invariant; no bare
+> boolean), audio saved to `recovery/dictation/` **before** transcription, a key-up
+> watchdog so a missed release can't leave the mic open, a five-minute / focus-loss
+> auto-stop, and a transcript that can't be safely inserted is kept for review rather
+> than lost. Two accessible surfaces under **Tools > Speech > Hold & Locked
+> Dictation**: a **Dictation Settings** panel (locked time limit, minimum hold, stop
+> on focus loss, intelligent spacing, reset of the one-time hint) and a **Dictation
+> History & Review** window (insert/copy/discard recovered recordings; doubles as the
+> startup-recovery prompt). Locked Dictation has distinct earcons and a one-time
+> onboarding hint. File synthesis runs with no console-window flash and a timeout.
 
 Phase 1 scope:
 
@@ -1988,11 +2004,13 @@ QUILL converts whole folders of documents to speech audio and gives the user fin
 **Batch Export to Speech Audio (`Tools → Speech → Batch Export to Speech Audio`).** A keyboard-first dialog collects a source folder and the conversion settings; the run reports per-file progress and is cancelable. The conversion uses the same shared pipeline as live Read Aloud (normalize → pronounce → polish → synthesize), so audition matches output.
 
 - **Pipeline modules.** `quill/core/speech/batch_export.py` (per-file pipeline), `batch_discovery.py` (folder scan + filters), `batch_manifest.py` (run report), `chapters.py` / `chapter_assemble.py` (MP3 ID3v2.3 CHAP/CTOC chapter markers + heading-aware assembly with inter-article/sentence pauses, optional transition earcon, spoken headings, anti-clipping tail pad), `ffmpeg.py` (encode to compressed formats, metadata, WAV conform), and `document_speech.py`.
+- **Chapterization options.** **MP3** (ID3 chapter markers) or **M4B audiobook** (native MP4 chapter atoms via ffmpeg FFMETADATA) output; over-long sections auto-chunk on safe sentence/word boundaries (`tts_chunk`) so no synthesis call exceeds the engine timeout; the run reports each document's chapter count. The transition earcon resolves from the **active sound pack** (`batch_speech_chapter_sound_id` → sound-pack WAV, falling back to the bundled Ink pack, then the built-in chime) in `batch_speech_runner._resolve_chapter_sound_path`. A **Chapter mode** selects one chaptered file or **Separate file per article** (`document_speech.synthesize_document_to_separate_files`, one `NNN - <heading>` file per section). A **Dry run** writes a `<doc>.preview.txt` of the exact post-pipeline spoken text (with the substitution count) for proofing without synthesizing.
 - **Discovery.** Extension set, recursion, semicolon/comma-separated **include/exclude globs** (matched against name and relative path), and a **max-file-size** cap.
 - **Output.** `wav` (always available) plus `mp3`/`m4a`/`m4b`/`opus`/`flac`/`ogg` via `ffmpeg`, falling back to WAV with a per-file note when `ffmpeg` is absent; selectable MP3 VBR quality; optional uniform WAV sample-rate/channel conform; **audiobook metadata** (album, author/narrator, genre, year; per-file title and track derived from heading/index).
 - **Layout and resume.** Existing-file policy `skip`/`overwrite`/`rename`; mirror or `flatten`; `filename_template` (`{stem}`/`{index}`/`{index0}`/`{total}`); optional `manifest.json`/`.csv`.
 - **Reliability and throughput.** Per-file `retry`, `stop_on_error`, and `max_workers` parallelism — clamped to one worker for the single-apartment engines (SAPI 5, Kokoro). Per-engine shaping is exposed for eSpeak (pitch, word gap) and Piper (length/noise scales).
-- **Project profile.** A folder remembers its whole speech setup in `<folder>/.quill/speech-project.json` (schema `quill/core/schemas/speech_project.json`): synthesizer, discovery, output, chapters, normalization, pronunciation, metadata, and execution. `project_profile.to_batch_options` drives the pipeline straight from a project file.
+- **Project profile.** A folder remembers its whole speech setup in `<folder>/.quill/speech-project.json` (schema `quill/core/schemas/speech_project.json`): synthesizer, discovery, output, chapters, normalization, pronunciation, metadata, and execution. `project_profile.to_batch_options` drives the pipeline straight from a project file. The batch dialog **applies the profile on open** and **auto-remembers choices on Start** (`batch_speech_runner._apply_project_profile` / `_save_project_profile`), with precedence this-run > project profile > global defaults.
+- **Subprocess hardening.** The Piper and eSpeak-NG file-synthesis subprocesses launch with `CREATE_NO_WINDOW` (no console flash between files) and the eSpeak-NG synthesis carries a timeout that raises a clean `ReadAloudUnavailableError` rather than stalling the run.
 
 **Pronunciation dictionaries (`Tools → Speech → Manage Pronunciations…`).** Ordered substitution rules (literal or regex, optional case sensitivity, per-engine scope) stored in global (app-data) and project (`<folder>/.quill/pronunciation/`) dictionaries (`quill/core/speech/pronunciation.py`, schema `pronunciation.json`). Applied as a silent text transform before synthesis in **both** batch and live Read Aloud, so a correction is heard everywhere; the manager previews entries with live Read-Aloud audio. A bundled starter dictionary ships common terms.
 

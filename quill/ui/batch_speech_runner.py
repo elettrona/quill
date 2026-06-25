@@ -65,7 +65,7 @@ def _defaults(frame: Any) -> BatchSpeechRequest:
         parent = Path(doc_path).parent
         if parent.is_dir():
             source = parent
-    return BatchSpeechRequest(
+    base = BatchSpeechRequest(
         source_folder=source,
         recursive=False,
         extensions=(".docx", ".md", ".html", ".htm", ".txt"),
@@ -82,6 +82,8 @@ def _defaults(frame: Any) -> BatchSpeechRequest:
         speak_headings=True,
         skip_existing=False,
     )
+    # Apply-on-open: a remembered project profile overlays the global defaults.
+    return _apply_project_profile(frame, base)
 
 
 def _engine_available(frame: Any) -> dict[str, bool]:
@@ -121,6 +123,119 @@ def _active_pronunciation_dictionaries(frame: Any, engine: str, source_folder: P
         return active_dictionaries(engine, project_dir=source_folder, enabled_ids=enabled_ids)
     except Exception:  # noqa: BLE001 - a broken dictionary store must not block export
         return []
+
+
+def _resolve_chapter_sound_path(frame: Any, dest_dir: Path) -> Path | None:
+    """Resolve the configured chapter-transition ``sound_id`` to a real WAV.
+
+    Looks the id up in the active sound pack (``settings.sound_pack_path``, or the
+    bundled Ink pack) and writes the pre-buffered bytes into *dest_dir*. Returns
+    ``None`` when no id is set or it is not in the pack, so chapter assembly falls
+    back to its generated placeholder chime (the format-mismatch fallback in
+    ``chapter_assemble`` also covers a sound that does not match the section audio).
+    """
+    settings = frame.settings
+    sound_id = (getattr(settings, "batch_speech_chapter_sound_id", "") or "").strip()
+    if not sound_id:
+        return None
+    import quill
+    from quill.core.sound_pack import load_sound_pack
+
+    pack_path = (getattr(settings, "sound_pack_path", "") or "").strip()
+    pack = (
+        Path(pack_path)
+        if pack_path
+        else Path(quill.__file__).parent / "assets" / "sound_packs" / "ink"
+    )
+    try:
+        data = load_sound_pack(pack).events.get(sound_id)
+    except Exception:  # noqa: BLE001 - a broken pack must not block export
+        return None
+    if not data:
+        return None
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    out = dest_dir / f"chapter_sound_{sound_id}.wav"
+    out.write_bytes(data)
+    return out
+
+
+def _current_project_dir(frame: Any) -> Path | None:
+    """The active document's folder — the project a batch run is scoped to (§4.10)."""
+    doc_path = getattr(frame, "_active_document_path", lambda: None)()
+    if isinstance(doc_path, (str, Path)) and str(doc_path):
+        parent = Path(doc_path).parent
+        if parent.is_dir():
+            return parent
+    return None
+
+
+def _apply_project_profile(frame: Any, defaults: BatchSpeechRequest) -> BatchSpeechRequest:
+    """Overlay the project's remembered speech profile onto *defaults* (apply-on-open).
+
+    Precedence is this-run > **project** > global > defaults: the dialog still wins
+    (this-run), but a folder that was "remembered" pre-fills the dialog from its
+    `.quill/speech-project.json` instead of the global settings.
+    """
+    import dataclasses
+
+    project_dir = _current_project_dir(frame)
+    if project_dir is None:
+        return defaults
+    from quill.core.speech.project_profile import load_profile
+
+    profile = load_profile(project_dir)
+    if profile is None:
+        return defaults
+    syn, ch = profile.synthesizer, profile.chapters
+    fmt = profile.output.format
+    if fmt not in {"mp3", "m4b", "wav"}:
+        fmt = defaults.output_format
+    return dataclasses.replace(
+        defaults,
+        engine=syn.engine or defaults.engine,
+        voice=syn.voice or defaults.voice,
+        rate=syn.rate or defaults.rate,
+        speed=syn.speed or defaults.speed,
+        output_format=fmt,
+        sound_enabled=ch.sound_enabled,
+        sound_volume=ch.sound_volume,
+        article_gap_ms=ch.article_gap_ms,
+        sentence_gap_ms=ch.sentence_gap_ms,
+        tail_padding_ms=ch.tail_padding_ms,
+        chapter_mode="separate" if ch.mode == "separate" else "single",
+    )
+
+
+def _save_project_profile(frame: Any, req: BatchSpeechRequest) -> None:
+    """Remember this run's choices in the source folder's profile (auto-remember on Start)."""
+    if not req.source_folder.is_dir():
+        return
+    from quill.core.speech.project_profile import (
+        ChapterProfile,
+        OutputProfile,
+        SpeechProjectProfile,
+        SynthesizerProfile,
+        save_profile,
+    )
+
+    profile = SpeechProjectProfile(
+        synthesizer=SynthesizerProfile(
+            engine=req.engine, voice=req.voice, rate=int(req.rate), speed=float(req.speed)
+        ),
+        output=OutputProfile(format=req.output_format),
+        chapters=ChapterProfile(
+            mode=req.chapter_mode,
+            sound_enabled=req.sound_enabled,
+            sound_volume=req.sound_volume,
+            article_gap_ms=req.article_gap_ms,
+            sentence_gap_ms=req.sentence_gap_ms,
+            tail_padding_ms=req.tail_padding_ms,
+        ),
+    )
+    try:
+        save_profile(profile, req.source_folder)
+    except Exception:  # noqa: BLE001 - remembering is best-effort
+        pass
 
 
 def _persist_choices(frame: Any, req: BatchSpeechRequest) -> None:
@@ -180,11 +295,12 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
     suffix = {"mp3": ".mp3", "m4b": ".m4b"}.get(req.output_format, ".wav")
     dictionaries = _active_pronunciation_dictionaries(frame, req.engine, req.source_folder)
 
-    def opts() -> ChapterAssembleOptions:
+    def opts(sound_path: Path | None = None) -> ChapterAssembleOptions:
         return ChapterAssembleOptions(
             article_gap_ms=req.article_gap_ms,
             sound_enabled=req.sound_enabled,
             sound_volume=req.sound_volume,
+            sound_path=sound_path,
             output_format=req.output_format,
             speak_headings=req.speak_headings,
             sentence_gap_ms=req.sentence_gap_ms,
@@ -203,6 +319,10 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
             transform_preview,
         )
 
+        # Resolve the configured chapter-transition sound once for the whole run;
+        # None falls back to the generated placeholder chime in chapter assembly.
+        sound_dir = Path(tempfile.mkdtemp(prefix="quill_batch_snd_"))
+        chapter_sound = _resolve_chapter_sound_path(frame, sound_dir) if req.sound_enabled else None
         done = skipped = errors = total_chapters = total_subs = 0
         for i, src in enumerate(files, start=1):
             progress(src.name, i, total)
@@ -243,7 +363,7 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                         src,
                         out_dir,
                         spec,
-                        opts(),
+                        opts(chapter_sound),
                         work_dir=sep_work / "w",
                         pronunciation_dictionaries=dictionaries,
                     )
@@ -276,7 +396,7 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                     src,
                     staged,
                     spec,
-                    opts(),
+                    opts(chapter_sound),
                     work_dir=work_dir / "w",
                     pronunciation_dictionaries=dictionaries,
                 )
@@ -294,6 +414,7 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                 frame._wx.CallAfter(frame._set_status, f"Error on {src.name}: {exc}")
             finally:
                 shutil.rmtree(work_dir, ignore_errors=True)
+        shutil.rmtree(sound_dir, ignore_errors=True)
         return (done, skipped, errors, total_chapters, total_subs)
 
     def on_success(result: object) -> None:
@@ -341,4 +462,5 @@ def run_batch_export_to_speech(frame: Any) -> None:
         frame._set_status("Batch speech export cancelled")
         return
     _persist_choices(frame, request)
+    _save_project_profile(frame, request)  # auto-remember this run for the project
     _run(frame, request)

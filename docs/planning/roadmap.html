@@ -232,37 +232,40 @@ href="verbosity-system.md"><code>verbosity-system.md</code></a> (§
 “Polish backlog”); the screen-reader-redundant ideas are recorded there
 as “recommend do not build” (Typing/Command Echo, Speech Rate/Pause
 knobs, Punctuation/Symbol Profiles — the SR already owns these).</p>
-<h3 id="speech-dictation-bits-whisperer">1.2 Speech &amp; Dictation —
-“BITS Whisperer”</h3>
-<p><strong>Batch document-to-speech follow-ups:</strong></p>
+<h3 id="speech-dictation-bits-whisperer-complete-for-1.0">1.2 Speech
+&amp; Dictation — “BITS Whisperer” ✅ (complete for 1.0)</h3>
+<p>The batch document-to-speech and dictation work is <strong>done for
+1.0</strong>:</p>
 <ul>
-<li><strong>Project-profile app wiring</strong> — the
-<code>.quill/speech-project.json</code> format, storage, and
-<code>to_batch_options</code> converter exist and are tested, but the
-app does not yet <code>load_profile()</code> on folder open. Needs
-apply-on-open, a precedence resolver (this-run &gt; project &gt; global
-&gt; defaults), a single <code>current_project_dir()</code>, and a
-“Remember for this project / Reset to global” surface (auto-remember on
-Start).</li>
-<li><strong>Chapterization:</strong> <code>sound_id</code> → sound-pack
-resolution (a placeholder chime is the current fallback); confirm the
-<code>separate</code>-file-per-article path end-to-end.</li>
-<li><strong>Extraction/quality:</strong> consider migrating
-<code>read_aloud.py</code> subprocess calls to
-<code>stability.safe_subprocess</code>.</li>
-<li><strong>Upstream:</strong> offer ChapterForge the two fixes already
-in QUILL’s <code>chapters.py</code> (non-contiguous gap chapters;
-ID3-tag clobbering); ElevenDesk research pass (see <a
-href="eleven-labs.md"><code>eleven-labs.md</code></a>).</li>
+<li><strong>Batch Document-to-Speech</strong> with the full flexibility
+surface, chaptered MP3 and M4B (native chapter atoms), pronunciation
+dictionaries, text normalization, the SSML Builder + native playback, a
+<strong>dry-run preview</strong>,
+<strong>separate-file-per-article</strong> mode, <strong>long-document
+chunking</strong>, richer <strong>.docx</strong> extraction
+(tables/footnotes/headers), <strong>chapter-transition sound</strong>
+resolution from the active sound pack, and <strong>configure-once
+project profiles</strong> (apply-on-open + auto-remember on Start,
+precedence this-run &gt; project &gt; global &gt; defaults).</li>
+<li><strong>Hold / Locked dictation</strong> with the <strong>Settings
+panel</strong>, the <strong>History &amp; Review</strong> window
+(insert/copy/discard recovered recordings; doubles as the interactive
+startup-recovery prompt), distinct locked earcons, and one-time
+onboarding.</li>
+<li><strong>Subprocess hardening:</strong> the Piper and eSpeak
+file-synthesis calls no longer flash a console window and carry a
+timeout (a full migration of every <code>read_aloud</code> subprocess to
+<code>stability.safe_subprocess</code> is an optional internal refactor,
+not a blocker).</li>
 </ul>
-<p><strong>Dictation follow-ups:</strong> all 1.0 dictation follow-ups
-have shipped — the <strong>Settings panel</strong> and the
-<strong>History &amp; Review window</strong> (which lists recovered
-recordings to insert/copy/discard, and doubles as the interactive
-startup-recovery prompt), under Tools &gt; Speech &gt; Hold &amp; Locked
-Dictation. The minor earcon-volume / retention / visual-indicator knobs
-and the larger later-phase capabilities are <strong>2.0</strong> (see
-§5).</p>
+<p><strong>External / courtesy (not QUILL code):</strong> offer
+ChapterForge the two fixes already in QUILL’s <code>chapters.py</code>
+(non-contiguous gap chapters; ID3-tag clobbering).</p>
+<p>The <strong>ElevenLabs / ElevenDesk</strong> premium-cloud-TTS
+integration is its own workstream, tracked in <a
+href="eleven-labs.md"><code>eleven-labs.md</code></a> — <strong>not
+started</strong> (the SDK-in-gateway approach is decided). Dictation’s
+larger later-phase capabilities are <strong>2.0</strong> (§5).</p>
 <h3 id="agentic-ai-platform-planned">1.3 Agentic AI platform
 (planned)</h3>
 <p><strong>Spec:</strong> <a

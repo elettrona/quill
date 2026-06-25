@@ -842,6 +842,20 @@ so nothing is uploaded.
   **Alt+F9** speaks the current state without changing it.
 - **Nothing is lost.** Audio is saved to a recovery folder before transcription
   starts, and a transcript that cannot be safely inserted is kept for review.
+- **Dictation Settings.** **Tools > Speech > Hold & Locked Dictation > Dictation
+  Settings…** exposes the knobs the dictation engine reads: the Locked-Dictation
+  time limit, the minimum hold needed to start (so an accidental F9 tap is ignored),
+  stop-and-keep-speech when QUILL loses focus, intelligent insertion spacing, and a
+  reset that shows the one-time first-use hint again.
+- **Dictation History & Review.** **Tools > Speech > Hold & Locked Dictation >
+  Dictation History & Review…** lists every recording whose transcript was never
+  inserted — crash orphans and transcripts that couldn't be placed safely — so you
+  can **insert** one at the cursor, **copy** it, or **discard** it (Enter inserts the
+  selected row). If anything is awaiting review at startup, QUILL announces it and
+  points you here, so dictated speech is never silently lost.
+- **Distinct sound, one-time hint.** Locked Dictation plays its own earcons so a
+  hands-free session sounds different from a press-and-hold one, and the very first
+  time you dictate QUILL speaks a brief one-time hint about the keys.
 - **Remappable.** F9, Ctrl+F9, and the rest are defaults; change them in the Keymap
   Editor (**Settings > Keyboard**). You need an offline speech model installed
   (**Tools > Speech > Whisperer > Manage Speech Models**) and the optional
@@ -2089,13 +2103,15 @@ In the dialog you choose:
 - **Source folder** and whether to include subfolders, the **file types** to include (`.docx`, `.md`, `.html`/`.htm`, `.txt`), and optional **include/exclude filters** (semicolon- or comma-separated globs, matched against the file name and its path) plus a **maximum file size** to skip very large files.
 - **Engine, voice, and pace** — any of the offline engines (SAPI 5, DECtalk, Piper, Kokoro, eSpeak NG), with a **Preview** button to hear the chosen voice first.
 - **Output format** — **WAV** (always available) or, when `ffmpeg` is installed, **MP3, M4A, M4B (audiobook), Opus, FLAC, or OGG**. When `ffmpeg` is missing, compressed formats fall back to WAV with a per-file note rather than failing. MP3 has a selectable quality, and WAV can be conformed to a uniform sample rate / channel count.
-- **Chapters** — turn a long document into a navigable, **chaptered** file. Choose **MP3** (ID3 chapter markers) or **M4B audiobook** (native MP4 chapter atoms — the Apple/audiobook format), both recognized by Apple Podcasts, Overcast, VLC, foobar2000, and others. Options include a **transition sound** between articles, whether each heading is spoken, and configurable pauses between articles and sentences plus an anti-clipping trailing pad.
+- **Chapters** — turn a long document into a navigable, **chaptered** file. Choose **MP3** (ID3 chapter markers) or **M4B audiobook** (native MP4 chapter atoms — the Apple/audiobook format), both recognized by Apple Podcasts, Overcast, VLC, foobar2000, and others. Options include a **transition sound** between articles (taken from your active sound pack, falling back to the bundled Ink earcon), whether each heading is spoken, and configurable pauses between articles and sentences plus an anti-clipping trailing pad. A very long section is split automatically on a safe sentence boundary so no single passage runs past the engine timeout, and the run report lists each document's chapter count.
+- **Chapter mode** — keep the whole document as **one chaptered file**, or choose **Separate file per article** to write each heading-bounded section as its own `NNN - <heading>` audio file in a per-document folder.
+- **Dry run** — instead of synthesizing, write a `<doc>.preview.txt` of the exact text that *would* be spoken (after cleanup, pronunciation correction, and polish) for each document, with the pronunciation-substitution count, so you can proofread what will be said before paying for slow synthesis.
 - **Audiobook metadata** — album, author/narrator, genre, and year stamped onto compressed files (each file's title comes from its heading or name, and its track number from its position).
 - **If a file already exists** — **Skip** (cheap resume), **Overwrite**, or **Rename** so both are kept (`name (2).mp3`).
 - **Output layout** — mirror the source folders or **flatten** into one folder, and optionally rename outputs with a **template** like `{index:03d} - {stem}` (→ `001 - chapter-one`).
 - **Run report** — optionally write a `manifest.json` and `manifest.csv` listing every file's status, output path, duration, and any error.
 
-A folder remembers its whole speech setup in `<folder>/.quill/speech-project.json` — engine, voice, output format, chapters, text cleanup, pronunciation dictionaries, metadata, and run policy — so you configure a project once and re-run it anytime.
+A folder remembers its whole speech setup in `<folder>/.quill/speech-project.json` — engine, voice, output format, chapters, text cleanup, pronunciation dictionaries, metadata, and run policy — so you configure a project once and re-run it anytime. When you open the dialog for a folder you have tuned before, those settings **pre-fill automatically**, and your choices are **remembered when you press Start**; anything you change this run takes precedence over the saved profile, which takes precedence over your global defaults.
 
 ### Build Audiobook from a Folder
 

@@ -51,30 +51,31 @@ backlog"); the screen-reader-redundant ideas are recorded there as "recommend do
 not build" (Typing/Command Echo, Speech Rate/Pause knobs, Punctuation/Symbol
 Profiles — the SR already owns these).
 
-### 1.2 Speech & Dictation — "BITS Whisperer"
+### 1.2 Speech & Dictation — "BITS Whisperer" ✅ (complete for 1.0)
 
-**Batch document-to-speech follow-ups:**
+The batch document-to-speech and dictation work is **done for 1.0**:
 
-- **Project-profile app wiring** — the `.quill/speech-project.json` format,
-  storage, and `to_batch_options` converter exist and are tested, but the app does
-  not yet `load_profile()` on folder open. Needs apply-on-open, a precedence
-  resolver (this-run > project > global > defaults), a single
-  `current_project_dir()`, and a "Remember for this project / Reset to global"
-  surface (auto-remember on Start).
-- **Chapterization:** `sound_id` → sound-pack resolution (a placeholder chime is
-  the current fallback); confirm the `separate`-file-per-article path end-to-end.
-- **Extraction/quality:** consider migrating `read_aloud.py` subprocess calls to
-  `stability.safe_subprocess`.
-- **Upstream:** offer ChapterForge the two fixes already in QUILL's `chapters.py`
-  (non-contiguous gap chapters; ID3-tag clobbering); ElevenDesk research pass (see
-  [`eleven-labs.md`](eleven-labs.md)).
+- **Batch Document-to-Speech** with the full flexibility surface, chaptered MP3 and
+  M4B (native chapter atoms), pronunciation dictionaries, text normalization, the
+  SSML Builder + native playback, a **dry-run preview**, **separate-file-per-article**
+  mode, **long-document chunking**, richer **.docx** extraction
+  (tables/footnotes/headers), **chapter-transition sound** resolution from the active
+  sound pack, and **configure-once project profiles** (apply-on-open + auto-remember
+  on Start, precedence this-run > project > global > defaults).
+- **Hold / Locked dictation** with the **Settings panel**, the **History & Review**
+  window (insert/copy/discard recovered recordings; doubles as the interactive
+  startup-recovery prompt), distinct locked earcons, and one-time onboarding.
+- **Subprocess hardening:** the Piper and eSpeak file-synthesis calls no longer flash
+  a console window and carry a timeout (a full migration of every `read_aloud`
+  subprocess to `stability.safe_subprocess` is an optional internal refactor, not a
+  blocker).
 
-**Dictation follow-ups:** all 1.0 dictation follow-ups have shipped — the
-**Settings panel** and the **History & Review window** (which lists recovered
-recordings to insert/copy/discard, and doubles as the interactive
-startup-recovery prompt), under Tools > Speech > Hold & Locked Dictation. The
-minor earcon-volume / retention / visual-indicator knobs and the larger
-later-phase capabilities are **2.0** (see §5).
+**External / courtesy (not QUILL code):** offer ChapterForge the two fixes already
+in QUILL's `chapters.py` (non-contiguous gap chapters; ID3-tag clobbering).
+
+The **ElevenLabs / ElevenDesk** premium-cloud-TTS integration is its own workstream,
+tracked in [`eleven-labs.md`](eleven-labs.md) — **not started** (the SDK-in-gateway
+approach is decided). Dictation's larger later-phase capabilities are **2.0** (§5).
 
 ### 1.3 Agentic AI platform (planned)
 

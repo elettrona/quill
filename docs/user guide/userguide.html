@@ -1548,6 +1548,25 @@ current state without changing it.</li>
 <li><strong>Nothing is lost.</strong> Audio is saved to a recovery
 folder before transcription starts, and a transcript that cannot be
 safely inserted is kept for review.</li>
+<li><strong>Dictation Settings.</strong> <strong>Tools &gt; Speech &gt;
+Hold &amp; Locked Dictation &gt; Dictation Settings…</strong> exposes
+the knobs the dictation engine reads: the Locked-Dictation time limit,
+the minimum hold needed to start (so an accidental F9 tap is ignored),
+stop-and-keep-speech when QUILL loses focus, intelligent insertion
+spacing, and a reset that shows the one-time first-use hint again.</li>
+<li><strong>Dictation History &amp; Review.</strong> <strong>Tools &gt;
+Speech &gt; Hold &amp; Locked Dictation &gt; Dictation History &amp;
+Review…</strong> lists every recording whose transcript was never
+inserted — crash orphans and transcripts that couldn’t be placed safely
+— so you can <strong>insert</strong> one at the cursor,
+<strong>copy</strong> it, or <strong>discard</strong> it (Enter inserts
+the selected row). If anything is awaiting review at startup, QUILL
+announces it and points you here, so dictated speech is never silently
+lost.</li>
+<li><strong>Distinct sound, one-time hint.</strong> Locked Dictation
+plays its own earcons so a hands-free session sounds different from a
+press-and-hold one, and the very first time you dictate QUILL speaks a
+brief one-time hint about the keys.</li>
 <li><strong>Remappable.</strong> F9, Ctrl+F9, and the rest are defaults;
 change them in the Keymap Editor (<strong>Settings &gt;
 Keyboard</strong>). You need an offline speech model installed
@@ -4042,9 +4061,24 @@ conformed to a uniform sample rate / channel count.</li>
 chapter markers) or <strong>M4B audiobook</strong> (native MP4 chapter
 atoms — the Apple/audiobook format), both recognized by Apple Podcasts,
 Overcast, VLC, foobar2000, and others. Options include a
-<strong>transition sound</strong> between articles, whether each heading
-is spoken, and configurable pauses between articles and sentences plus
-an anti-clipping trailing pad.</li>
+<strong>transition sound</strong> between articles (taken from your
+active sound pack, falling back to the bundled Ink earcon), whether each
+heading is spoken, and configurable pauses between articles and
+sentences plus an anti-clipping trailing pad. A very long section is
+split automatically on a safe sentence boundary so no single passage
+runs past the engine timeout, and the run report lists each document’s
+chapter count.</li>
+<li><strong>Chapter mode</strong> — keep the whole document as
+<strong>one chaptered file</strong>, or choose <strong>Separate file per
+article</strong> to write each heading-bounded section as its own
+<code>NNN - &lt;heading&gt;</code> audio file in a per-document
+folder.</li>
+<li><strong>Dry run</strong> — instead of synthesizing, write a
+<code>&lt;doc&gt;.preview.txt</code> of the exact text that
+<em>would</em> be spoken (after cleanup, pronunciation correction, and
+polish) for each document, with the pronunciation-substitution count, so
+you can proofread what will be said before paying for slow
+synthesis.</li>
 <li><strong>Audiobook metadata</strong> — album, author/narrator, genre,
 and year stamped onto compressed files (each file’s title comes from its
 heading or name, and its track number from its position).</li>
@@ -4063,7 +4097,11 @@ file’s status, output path, duration, and any error.</li>
 <code>&lt;folder&gt;/.quill/speech-project.json</code> — engine, voice,
 output format, chapters, text cleanup, pronunciation dictionaries,
 metadata, and run policy — so you configure a project once and re-run it
-anytime.</p>
+anytime. When you open the dialog for a folder you have tuned before,
+those settings <strong>pre-fill automatically</strong>, and your choices
+are <strong>remembered when you press Start</strong>; anything you
+change this run takes precedence over the saved profile, which takes
+precedence over your global defaults.</p>
 <h3 id="build-audiobook-from-a-folder">Build Audiobook from a
 Folder</h3>
 <p><strong>Tools → Speech → Build Audiobook from Folder…</strong>

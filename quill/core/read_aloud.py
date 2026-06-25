@@ -374,6 +374,8 @@ def synthesize_with_piper(
                 capture_output=True,
                 check=False,
                 timeout=_MAX_SYNTHESIS_SECONDS,
+                # No console window flash for screen-reader users (subprocess hardening).
+                creationflags=int(getattr(subprocess, "CREATE_NO_WINDOW", 0)),
             )
     except subprocess.TimeoutExpired as exc:
         raise ReadAloudUnavailableError(
@@ -635,7 +637,19 @@ def synthesize_with_espeak(
     if (executable_path.parent / "espeak-ng-data").is_dir():
         command.append(f"--path={executable_path.parent}")
     command.append(text)
-    completed = subprocess.run(command, capture_output=True, check=False)
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            check=False,
+            timeout=_MAX_SYNTHESIS_SECONDS,
+            # No console window flash for screen-reader users (subprocess hardening).
+            creationflags=int(getattr(subprocess, "CREATE_NO_WINDOW", 0)),
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ReadAloudUnavailableError(
+            f"eSpeak-NG did not complete within {_MAX_SYNTHESIS_SECONDS:.0f} seconds."
+        ) from exc
     if completed.returncode != 0:
         raw = completed.stderr or completed.stdout or b""
         detail = (
