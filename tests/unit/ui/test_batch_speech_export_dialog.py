@@ -157,6 +157,43 @@ def test_round_robin_add_reorder_remove_and_collect(wx_app, tmp_path):
         frame.Destroy()
 
 
+def test_translation_targets_add_remove_and_collect(wx_app, tmp_path):
+    frame, dlg = _make(wx_app, tmp_path)
+    try:
+        # Pick Spanish, choose its first (local eSpeak) voice, add it.
+        names = [n for n, _c in dlg._tr_lang_pairs]
+        dlg._tr_lang.SetSelection(names.index("Spanish"))
+        dlg._reload_tr_voices()
+        assert dlg._tr_voice_opts, "Spanish should have local eSpeak voices"
+        dlg._tr_voice.SetSelection(0)
+        dlg._on_tr_add()
+        targets = dlg._collect(preview=False).translation_targets
+        assert len(targets) == 1
+        code, engine, _voice = targets[0]
+        assert code == "es" and engine == "espeak"
+        # Duplicate add is a no-op.
+        dlg._on_tr_add()
+        assert len(dlg._collect(preview=False).translation_targets) == 1
+        # Remove it.
+        dlg._tr_list.SetSelection(0)
+        dlg._on_tr_remove()
+        assert dlg._collect(preview=False).translation_targets == ()
+    finally:
+        dlg.dialog.Destroy()
+        frame.Destroy()
+
+
+def test_translation_provider_collects(wx_app, tmp_path):
+    frame, dlg = _make(wx_app, tmp_path)
+    try:
+        assert dlg._collect(preview=False).translation_provider == "ai_assistant"
+        dlg._tr_provider.SetSelection(1)
+        assert dlg._collect(preview=False).translation_provider == "libretranslate"
+    finally:
+        dlg.dialog.Destroy()
+        frame.Destroy()
+
+
 def test_switching_engine_clears_round_robin(wx_app, tmp_path):
     frame, dlg = _make(wx_app, tmp_path)
     try:

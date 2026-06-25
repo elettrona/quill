@@ -122,6 +122,8 @@ class BatchSpeechExportDialog:
         self._result: BatchSpeechRequest | None = None
         # Round-robin rotation: ordered (voice_id, label) for the selected engine.
         self._rr_voices: list[tuple[str, str]] = []
+        # Translation targets: ordered (lang_code, engine, voice_id, display_label).
+        self._tr_targets: list[tuple[str, str, str, str]] = []
 
         self.dialog = wx.Dialog(
             parent,
@@ -287,6 +289,43 @@ class BatchSpeechExportDialog:
         )
         root.Add(gap_grid, 0, wx.LEFT | wx.TOP, 8)
 
+        # --- Translation (also export in other languages) ---
+        label("Also export in other &languages (translated):")
+        from quill.core.ai.translation import SUPPORTED_LANGUAGES
+
+        self._tr_lang_pairs = sorted(SUPPORTED_LANGUAGES.items())  # (name, code)
+        tr_add_row = wx.BoxSizer(wx.HORIZONTAL)
+        self._tr_lang = wx.Choice(self.dialog, choices=[name for name, _c in self._tr_lang_pairs])
+        self._tr_lang.SetName("Translation language")
+        self._tr_lang.Bind(wx.EVT_CHOICE, lambda _e: self._reload_tr_voices())
+        self._tr_voice = wx.Choice(self.dialog, choices=[])
+        self._tr_voice.SetName("Translation voice")
+        tr_add = wx.Button(self.dialog, label="Add lan&guage")
+        tr_add.Bind(wx.EVT_BUTTON, lambda _e: self._on_tr_add())
+        tr_add_row.Add(self._tr_lang, 1, wx.EXPAND | wx.RIGHT, 6)
+        tr_add_row.Add(self._tr_voice, 2, wx.EXPAND | wx.RIGHT, 6)
+        tr_add_row.Add(tr_add, 0)
+        root.Add(tr_add_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        self._tr_list = wx.ListBox(self.dialog, style=wx.LB_SINGLE)
+        self._tr_list.SetName("Translation targets")
+        apply_listbox_activation(self._tr_list, lambda _e: self._tr_lang.SetFocus())
+        root.Add(self._tr_list, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+        tr_btn_row = wx.BoxSizer(wx.HORIZONTAL)
+        tr_remove = wx.Button(self.dialog, label="Remove la&nguage")
+        tr_remove.Bind(wx.EVT_BUTTON, lambda _e: self._on_tr_remove())
+        tr_btn_row.Add(tr_remove, 0, wx.RIGHT, 6)
+        tr_btn_row.Add(
+            wx.StaticText(self.dialog, label="Trans&late with:"), 0, wx.ALIGN_CENTER_VERTICAL
+        )
+        self._tr_provider = wx.Choice(
+            self.dialog, choices=["AI provider (cloud)", "LibreTranslate (local)"]
+        )
+        self._tr_provider.SetSelection(
+            1 if defaults.translation_provider == "libretranslate" else 0
+        )
+        tr_btn_row.Add(self._tr_provider, 0, wx.LEFT, 6)
+        root.Add(tr_btn_row, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
         # --- Buttons (OK = Start) ---
         btn_row = wx.BoxSizer(wx.HORIZONTAL)
         start_btn = wx.Button(self.dialog, id=wx.ID_OK, label="&Start")
@@ -302,6 +341,8 @@ class BatchSpeechExportDialog:
         self.dialog.Fit()
         self._reload_voices(initial_voice=defaults.voice)
         self._seed_rotation(defaults.round_robin_voices)
+        self._reload_tr_voices()
+        self._seed_translations(defaults.translation_targets)
 
     # ------------------------------------------------------------------ helpers
 
@@ -405,6 +446,54 @@ class BatchSpeechExportDialog:
         del self._rr_voices[idx]
         self._refresh_rr_list(select=min(idx, len(self._rr_voices) - 1))
 
+    # -------------------------------------------------- translation targets
+
+    def _current_tr_lang(self) -> tuple[str, str]:
+        idx = self._tr_lang.GetSelection()
+        return self._tr_lang_pairs[idx] if 0 <= idx < len(self._tr_lang_pairs) else ("", "")
+
+    def _reload_tr_voices(self) -> None:
+        from quill.core.speech.voice_languages import voices_for_language
+
+        _name, code = self._current_tr_lang()
+        # Local voices only for now (cloud translated export is a follow-up).
+        self._tr_voice_opts = voices_for_language(code, include_cloud=False) if code else []
+        self._tr_voice.Set([v.display for v in self._tr_voice_opts])
+        if self._tr_voice_opts:
+            self._tr_voice.SetSelection(0)
+
+    def _refresh_tr_list(self, *, select: int = -1) -> None:
+        self._tr_list.Set([t[3] for t in self._tr_targets])
+        if self._tr_targets:
+            index = select if 0 <= select < len(self._tr_targets) else 0
+            self._tr_list.SetSelection(index)
+
+    def _on_tr_add(self) -> None:
+        name, code = self._current_tr_lang()
+        vidx = self._tr_voice.GetSelection()
+        if not code or not (0 <= vidx < len(self._tr_voice_opts)):
+            return
+        v = self._tr_voice_opts[vidx]
+        if any(t[0] == code and t[2] == v.voice_id for t in self._tr_targets):
+            return
+        self._tr_targets.append((code, v.engine, v.voice_id, f"{name}: {v.display}"))
+        self._refresh_tr_list(select=len(self._tr_targets) - 1)
+
+    def _on_tr_remove(self) -> None:
+        idx = self._tr_list.GetSelection()
+        if 0 <= idx < len(self._tr_targets):
+            del self._tr_targets[idx]
+            self._refresh_tr_list(select=min(idx, len(self._tr_targets) - 1))
+
+    def _seed_translations(self, targets: tuple[tuple[str, str, str], ...]) -> None:
+        from quill.core.ai.translation import LANGUAGE_NAMES
+
+        self._tr_targets = [
+            (lang, engine, voice_id, f"{LANGUAGE_NAMES.get(lang, lang)}: {voice_id} — {engine}")
+            for lang, engine, voice_id in targets
+        ]
+        self._refresh_tr_list()
+
     def _collect(self, *, preview: bool) -> BatchSpeechRequest:
         exts: list[str] = []
         for cb, ext in self._ext_boxes:
@@ -444,6 +533,10 @@ class BatchSpeechExportDialog:
             preview=preview,
             combine_headings=self._combine.GetValue(),
             round_robin_voices=tuple(vid for vid, _lbl in self._rr_voices),
+            translation_targets=tuple((c, e, v) for c, e, v, _ in self._tr_targets),
+            translation_provider=(
+                "libretranslate" if self._tr_provider.GetSelection() == 1 else "ai_assistant"
+            ),
         )
 
     # ------------------------------------------------------------------ events
