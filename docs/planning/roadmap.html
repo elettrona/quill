@@ -320,14 +320,27 @@ for 1.0: finish + un-gate, or keep hidden.</li>
 the GLOW product; QUILL takes the authoring-time checks.</li>
 </ul>
 <h3 id="publishing-audiobook">1.5 Publishing &amp; audiobook</h3>
+<p>The ChapterForge <strong>folder-of-audio → one chaptered
+master</strong> surface has shipped: <strong>Build Audiobook from
+Folder</strong> (Tools &gt; Speech) combines a folder of audio files
+into a single chaptered <strong>MP3</strong> or <strong>M4B</strong>
+master (native chapter atoms), one chapter per file with titles from
+filenames, plus book tags and an auto-detected cover
+(<code>quill/core/speech/audiobook.py</code>). Remaining, aligned
+ChapterForge surfaces:</p>
 <ul>
-<li><strong>ChapterForge integration</strong> — turn a folder of audio
-(or a document’s sections) into a chaptered audiobook/podcast master;
-ties to DAISY and the BITS Whisperer stack.</li>
+<li><strong>In-dialog chapter editing</strong> — rename/reorder/merge
+chapters before building (today titles come from filenames in
+natural-sort order).</li>
+<li><strong>FLAC / Opus output</strong> and an <strong>ACX loudness
+compliance</strong> check + one-click fix.</li>
 <li><strong>Direct publishing (#140)</strong> — WordPress and other
 platforms; a long-term, likely-Quillin integration (external-API + auth
 surface), not core editor work.</li>
 </ul>
+<p>Deferred as future-release ChapterForge surfaces (out of the current
+vision): Auphonic post-processing, RSS podcast feeds, SFTP publishing,
+and MusicBrainz / Open Library metadata lookup.</p>
 <h3 id="platform-distribution">1.6 Platform &amp; distribution</h3>
 <ul>
 <li>Live installer smoke on Windows 10/11 (#506); macOS to shipping

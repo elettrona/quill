@@ -123,11 +123,21 @@ Accessibility Agents from GLOW (AX-A..F, #593–#598) become catalog agents here
 
 ### 1.5 Publishing & audiobook
 
-- **ChapterForge integration** — turn a folder of audio (or a document's sections)
-  into a chaptered audiobook/podcast master; ties to DAISY and the BITS Whisperer
-  stack.
+The ChapterForge **folder-of-audio → one chaptered master** surface has shipped:
+**Build Audiobook from Folder** (Tools > Speech) combines a folder of audio files
+into a single chaptered **MP3** or **M4B** master (native chapter atoms), one
+chapter per file with titles from filenames, plus book tags and an auto-detected
+cover (`quill/core/speech/audiobook.py`). Remaining, aligned ChapterForge surfaces:
+
+- **In-dialog chapter editing** — rename/reorder/merge chapters before building
+  (today titles come from filenames in natural-sort order).
+- **FLAC / Opus output** and an **ACX loudness compliance** check + one-click fix.
 - **Direct publishing (#140)** — WordPress and other platforms; a long-term,
   likely-Quillin integration (external-API + auth surface), not core editor work.
+
+Deferred as future-release ChapterForge surfaces (out of the current vision):
+Auphonic post-processing, RSS podcast feeds, SFTP publishing, and MusicBrainz /
+Open Library metadata lookup.
 
 ### 1.6 Platform & distribution
 

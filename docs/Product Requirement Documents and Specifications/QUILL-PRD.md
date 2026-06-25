@@ -2000,6 +2000,29 @@ QUILL converts whole folders of documents to speech audio and gives the user fin
 
 **SSML.** An **SSML Builder** dialog composes `<speak>` markup (emphasis, `<break>`, say-as, phoneme, prosody) from accessible controls with a source preview. Read Aloud renders SSML natively on SAPI 5 and eSpeak-NG (markup mode), passing utterances through intact (no punctuation verbalization that would corrupt the markup).
 
+### 5.25e Build Audiobook from Folder — ChapterForge surface (shipped)
+
+The ChapterForge-aligned "folder of audio → one chaptered master" feature (design
+source: the sibling ChapterForge project; only the surfaces that fit QUILL's
+audiobook vision are ported). **Tools → Speech → Build Audiobook from Folder…**
+combines a folder of audio files into a single chaptered **MP3** (ID3 CHAP/CTOC) or
+**M4B** (native MP4 chapter atoms) master. Implementation: wx-free
+`quill/core/speech/audiobook.py` — folder scan + natural sort, `title_from_filename`
+(strips a leading track prefix), `find_cover` (preferred-name image discovery),
+`probe_duration_ms` (ffprobe), and the ffmpeg concat-demuxer build (chapters from
+`chapters.compute_chapters`, tags + cover from FFMETADATA / attached picture; MP3
+chapters via mutagen). Each source file is one chapter (title from its filename); the
+book's tags (title/author/narrator/genre/year) and an auto-detected cover are
+written. The accessible `audiobook_builder_dialog.py` collects the inputs and the
+build runs on the background task pool.
+
+- **Remaining:** in-dialog chapter rename/reorder/merge; FLAC/Opus output; an ACX
+  loudness compliance check + one-click fix. Tracked in `docs/planning/roadmap.md`
+  §1.5.
+- **Deliberately not ported** (future-release, off the current vision): Auphonic
+  post-processing, RSS podcast feeds, SFTP publishing, MusicBrainz/Open Library
+  metadata lookup.
+
 ### 5.25a Speech Experience Platform (planned before implementation)
 
 This section defines the next speech milestone as a complete user-facing platform, not a single settings dialog.

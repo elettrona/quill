@@ -4064,7 +4064,30 @@ file’s status, output path, duration, and any error.</li>
 output format, chapters, text cleanup, pronunciation dictionaries,
 metadata, and run policy — so you configure a project once and re-run it
 anytime.</p>
-<h3 id="pronunciation-dictionaries">Pronunciation dictionaries</h3>
+<h3 id="build-audiobook-from-a-folder">Build Audiobook from a
+Folder</h3>
+<p><strong>Tools → Speech → Build Audiobook from Folder…</strong>
+combines a folder of existing audio files into one chaptered audiobook —
+the kind your audiobook or podcast app navigates track by track. It
+complements Batch Export to Speech Audio: where that converts documents
+to speech, this stitches a folder of audio (your own recordings, or
+speech QUILL exported earlier) into a single master.</p>
+<ul>
+<li>Point it at a <strong>folder of audio files</strong>; each file
+becomes one <strong>chapter</strong>, in natural-sorted order, with the
+chapter title taken from the file name (a leading track number like
+<code>01 -</code> is stripped).</li>
+<li>Choose <strong>M4B audiobook</strong> (native MP4 chapter atoms —
+the Apple/audiobook format) or <strong>MP3</strong> (ID3 chapter
+markers). Both are navigable in Apple Podcasts, Overcast, VLC,
+foobar2000, and others.</li>
+<li>Fill in the book’s <strong>title, author, narrator, genre, and
+year</strong>. A <strong>cover image</strong> in the folder (named like
+<code>cover.jpg</code>, <code>folder.png</code>, …) is picked up
+automatically, or browse for one.</li>
+<li>The build runs on a background task; the status bar reports when it
+is done.</li>
+</ul>
 <p><strong>Tools → Speech → Manage Pronunciations…</strong> lets you
 teach QUILL how to say specific words — names, brands, acronyms, and
 technical terms. Each entry is a substitution (literal or regular

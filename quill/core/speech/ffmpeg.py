@@ -94,6 +94,39 @@ def ffmpeg_available() -> bool:
     return find_ffmpeg() is not None
 
 
+def build_probe_duration_command(ffprobe: str, path: Path) -> list[str]:
+    """ffprobe argv that prints a media file's duration in seconds (plain number)."""
+    return [
+        ffprobe,
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        str(path),
+    ]
+
+
+def probe_duration_ms(path: Path, *, timeout_seconds: float = 60.0) -> int:
+    """Return *path*'s audio duration in milliseconds via ffprobe (0 if unknown)."""
+    from quill.stability.safe_subprocess import run_subprocess_safely
+
+    ffprobe = find_ffprobe()
+    if ffprobe is None or not path.is_file():
+        return 0
+    try:
+        completed = run_subprocess_safely(
+            build_probe_duration_command(ffprobe, path), timeout_seconds=timeout_seconds
+        )
+    except OSError:
+        return 0
+    try:
+        return int(round(float((completed.stdout or "").strip()) * 1000))
+    except (TypeError, ValueError):
+        return 0
+
+
 def build_transcode_command(ffmpeg: str, source: Path, out_wav: Path) -> list[str]:
     """Build the ffmpeg argv that converts ``source`` to a 16 kHz mono PCM WAV.
 

@@ -3904,6 +3904,34 @@ controls with a source preview. Read Aloud renders SSML natively on SAPI
 5 and eSpeak-NG (markup mode), passing utterances through intact (no
 punctuation verbalization that would corrupt the markup).</p>
 <h3
+id="e-build-audiobook-from-folder-chapterforge-surface-shipped">5.25e
+Build Audiobook from Folder — ChapterForge surface (shipped)</h3>
+<p>The ChapterForge-aligned “folder of audio → one chaptered master”
+feature (design source: the sibling ChapterForge project; only the
+surfaces that fit QUILL’s audiobook vision are ported). <strong>Tools →
+Speech → Build Audiobook from Folder…</strong> combines a folder of
+audio files into a single chaptered <strong>MP3</strong> (ID3 CHAP/CTOC)
+or <strong>M4B</strong> (native MP4 chapter atoms) master.
+Implementation: wx-free <code>quill/core/speech/audiobook.py</code> —
+folder scan + natural sort, <code>title_from_filename</code> (strips a
+leading track prefix), <code>find_cover</code> (preferred-name image
+discovery), <code>probe_duration_ms</code> (ffprobe), and the ffmpeg
+concat-demuxer build (chapters from
+<code>chapters.compute_chapters</code>, tags + cover from FFMETADATA /
+attached picture; MP3 chapters via mutagen). Each source file is one
+chapter (title from its filename); the book’s tags
+(title/author/narrator/genre/year) and an auto-detected cover are
+written. The accessible <code>audiobook_builder_dialog.py</code>
+collects the inputs and the build runs on the background task pool.</p>
+<ul>
+<li><strong>Remaining:</strong> in-dialog chapter rename/reorder/merge;
+FLAC/Opus output; an ACX loudness compliance check + one-click fix.
+Tracked in <code>docs/planning/roadmap.md</code> §1.5.</li>
+<li><strong>Deliberately not ported</strong> (future-release, off the
+current vision): Auphonic post-processing, RSS podcast feeds, SFTP
+publishing, MusicBrainz/Open Library metadata lookup.</li>
+</ul>
+<h3
 id="a-speech-experience-platform-planned-before-implementation">5.25a
 Speech Experience Platform (planned before implementation)</h3>
 <p>This section defines the next speech milestone as a complete

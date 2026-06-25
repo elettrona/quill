@@ -2097,7 +2097,24 @@ In the dialog you choose:
 
 A folder remembers its whole speech setup in `<folder>/.quill/speech-project.json` — engine, voice, output format, chapters, text cleanup, pronunciation dictionaries, metadata, and run policy — so you configure a project once and re-run it anytime.
 
-### Pronunciation dictionaries
+### Build Audiobook from a Folder
+
+**Tools → Speech → Build Audiobook from Folder…** combines a folder of existing
+audio files into one chaptered audiobook — the kind your audiobook or podcast app
+navigates track by track. It complements Batch Export to Speech Audio: where that
+converts documents to speech, this stitches a folder of audio (your own recordings,
+or speech QUILL exported earlier) into a single master.
+
+- Point it at a **folder of audio files**; each file becomes one **chapter**, in
+  natural-sorted order, with the chapter title taken from the file name (a leading
+  track number like `01 - ` is stripped).
+- Choose **M4B audiobook** (native MP4 chapter atoms — the Apple/audiobook format)
+  or **MP3** (ID3 chapter markers). Both are navigable in Apple Podcasts, Overcast,
+  VLC, foobar2000, and others.
+- Fill in the book's **title, author, narrator, genre, and year**. A **cover image**
+  in the folder (named like `cover.jpg`, `folder.png`, …) is picked up
+  automatically, or browse for one.
+- The build runs on a background task; the status bar reports when it is done.
 
 **Tools → Speech → Manage Pronunciations…** lets you teach QUILL how to say specific words — names, brands, acronyms, and technical terms. Each entry is a substitution (literal or regular expression, optionally case-sensitive) that is applied as a silent text transform **before** synthesis, so a correction is heard **everywhere speech happens** — both batch export and live Read Aloud. Dictionaries can be **global** (all projects) or scoped to a single **project**, can target a specific engine, and you can **preview** an entry to hear the result. A small **starter dictionary** ships with common terms already covered.
 
