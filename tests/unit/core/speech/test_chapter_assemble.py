@@ -52,6 +52,49 @@ def _sections() -> list[DocumentSection]:
     ]
 
 
+def test_long_section_is_chunked(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # A section longer than max_chunk_chars is split on safe boundaries and
+    # synthesized chunk-by-chunk; a short section stays a single call.
+    from quill.core.speech import chapter_assemble
+
+    calls: list[str] = []
+
+    def recording_synth(text: str, out: Path) -> None:
+        calls.append(text)
+        make_fake_synth()(text, out)
+
+    long_text = " ".join(f"Sentence number {i}." for i in range(40))  # > 80 chars
+    chapter_assemble._synthesize_section(
+        long_text,
+        tmp_path / "s.wav",
+        recording_synth,
+        tmp_path / "w",
+        0,
+        sentence_gap_ms=0,
+        tail_padding_ms=0,
+        max_chunk_chars=80,
+    )
+    assert len(calls) > 1  # the long section was chunked
+    assert all(len(chunk) <= 80 or len(chunk.split()) == 1 for chunk in calls)
+
+
+def test_short_section_not_chunked(tmp_path: Path) -> None:
+    from quill.core.speech import chapter_assemble
+
+    calls: list[str] = []
+    chapter_assemble._synthesize_section(
+        "short text",
+        tmp_path / "s.wav",
+        lambda t, o: (calls.append(t), make_fake_synth()(t, o)),
+        tmp_path / "w",
+        0,
+        sentence_gap_ms=0,
+        tail_padding_ms=0,
+        max_chunk_chars=8000,
+    )
+    assert calls == ["short text"]  # under the cap -> one call (legacy fast path)
+
+
 def test_m4b_without_ffmpeg_falls_back_to_wav(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

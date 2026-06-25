@@ -55,6 +55,11 @@ class ChapterAssembleOptions:
     speak_headings: bool = True  # voice each heading before its body (not just mark it)
     sentence_gap_ms: int = 0  # silence inserted between sentences within a section (0 = off)
     tail_padding_ms: int = 0  # silence appended after each section's speech (anti-clipping)
+    # Long-document chunking: a section whose text exceeds this many characters is
+    # split on safe sentence/word boundaries (via tts_chunk) and synthesized
+    # chunk-by-chunk, so a very long section never becomes one over-long synthesis
+    # call that risks an engine timeout. 0 = off (one call per section/sentence).
+    max_chunk_chars: int = 0
 
 
 @dataclass(slots=True)
@@ -116,6 +121,25 @@ def _split_sentences(text: str) -> list[str]:
     return parts or [text]
 
 
+def _section_parts(spoken: str, *, sentence_gap_ms: int, max_chunk_chars: int) -> list[str]:
+    """The pieces a section is synthesized in, in priority order.
+
+    Long-document chunking wins: a section longer than ``max_chunk_chars`` is split
+    on safe sentence/word boundaries (``tts_chunk``). Otherwise, sentence splitting
+    applies only when an inter-sentence gap is requested; else the whole section is
+    one piece (the byte-identical legacy fast path).
+    """
+    if max_chunk_chars > 0 and len(spoken) > max_chunk_chars:
+        from quill.core.ai.tts_chunk import chunk_text
+
+        chunks = chunk_text(spoken, max_chunk_chars)
+        if chunks:
+            return chunks
+    if sentence_gap_ms > 0:
+        return _split_sentences(spoken)
+    return [spoken]
+
+
 def _synthesize_section(
     spoken: str,
     out_wav: Path,
@@ -125,18 +149,21 @@ def _synthesize_section(
     *,
     sentence_gap_ms: int,
     tail_padding_ms: int,
+    max_chunk_chars: int = 0,
 ) -> None:
-    """Synthesize one section to *out_wav*, optionally pausing between sentences
-    and padding the tail to prevent end-of-clip cutoff.
+    """Synthesize one section to *out_wav*, optionally pausing between sentences,
+    chunking a very long section, and padding the tail to prevent end-of-clip cutoff.
 
-    With both knobs at 0 this is a single ``synthesize`` call writing *out_wav*
-    directly (byte-identical to the legacy path). Otherwise each sentence is
-    synthesized separately, joined with ``sentence_gap_ms`` of silence, and
-    ``tail_padding_ms`` of silence is appended after the last sentence.
+    With every knob at 0 this is a single ``synthesize`` call writing *out_wav*
+    directly (byte-identical to the legacy path). Otherwise the section is split
+    into pieces (chunks for a long section, else sentences), synthesized separately,
+    joined with ``sentence_gap_ms`` of silence, and padded by ``tail_padding_ms``.
     """
     sentence_gap_ms = max(0, sentence_gap_ms)
     tail_padding_ms = max(0, tail_padding_ms)
-    parts = _split_sentences(spoken) if sentence_gap_ms > 0 else [spoken]
+    parts = _section_parts(
+        spoken, sentence_gap_ms=sentence_gap_ms, max_chunk_chars=max(0, max_chunk_chars)
+    )
 
     # Fast path: nothing to splice -> one call, no re-encoding.
     if len(parts) == 1 and tail_padding_ms == 0:
@@ -226,6 +253,7 @@ def assemble_chaptered_audio(
             i,
             sentence_gap_ms=options.sentence_gap_ms,
             tail_padding_ms=options.tail_padding_ms,
+            max_chunk_chars=options.max_chunk_chars,
         )
         if not wav.is_file():
             raise AssembleError(f"Synthesizer did not produce audio for section {i}.")

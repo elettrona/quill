@@ -188,6 +188,9 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
             speak_headings=req.speak_headings,
             sentence_gap_ms=req.sentence_gap_ms,
             tail_padding_ms=req.tail_padding_ms,
+            # Auto-chunk very long sections so a single synthesis call never runs
+            # past the engine timeout; short sections are unaffected (one call).
+            max_chunk_chars=8000,
         )
 
     total = len(files)
@@ -195,7 +198,7 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
     def work(progress: Any) -> object:
         from quill.core.speech.batch_export import _unique_path
 
-        done = skipped = errors = 0
+        done = skipped = errors = total_chapters = 0
         for i, src in enumerate(files, start=1):
             final = src.with_suffix(suffix)
             progress(src.name, i, total)
@@ -220,6 +223,9 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                 deliverable = result.with_tones_path or result.output_path
                 shutil.copyfile(deliverable, final)
                 done += 1
+                chapter_count = len(result.chapters)
+                total_chapters += chapter_count
+                frame._wx.CallAfter(frame._set_status, f"{final.name}: {chapter_count} chapter(s)")
             except DocumentSpeechError as exc:
                 errors += 1
                 frame._wx.CallAfter(frame._set_status, f"Skipped {src.name}: {exc}")
@@ -228,12 +234,13 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                 frame._wx.CallAfter(frame._set_status, f"Error on {src.name}: {exc}")
             finally:
                 shutil.rmtree(work_dir, ignore_errors=True)
-        return (done, skipped, errors)
+        return (done, skipped, errors, total_chapters)
 
     def on_success(result: object) -> None:
-        done, skipped, errors = result  # type: ignore[misc]
+        done, skipped, errors, total_chapters = result  # type: ignore[misc]
         frame._set_status(
-            f"Batch speech export complete: {done} done, {skipped} skipped, {errors} error(s)"
+            f"Batch speech export complete: {done} done ({total_chapters} chapters), "
+            f"{skipped} skipped, {errors} error(s)"
         )
 
     frame._run_background_task(
