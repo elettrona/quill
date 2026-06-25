@@ -69,10 +69,11 @@ Profiles — the SR already owns these).
   (non-contiguous gap chapters; ID3-tag clobbering); ElevenDesk research pass (see
   [`eleven-labs.md`](eleven-labs.md)).
 
-**Dictation follow-ups:** a settings *panel* for the dictation knobs (plus earcon
-volume / retention / visual recording indicator); Dictation History + interactive
-startup-recovery prompt; a Dictation Review interface for deferred/unsafe
-insertions. (Dictation's larger later-phase capabilities are **2.0** — see §5.)
+**Dictation follow-ups:** Dictation History + interactive startup-recovery prompt;
+a Dictation Review interface for deferred/unsafe insertions. (The dictation
+**settings panel** shipped — Tools > Speech > Hold & Locked Dictation > Dictation
+Settings; the minor earcon-volume / retention / visual-indicator knobs and the
+larger later-phase capabilities are **2.0** — see §5.)
 
 ### 1.3 Agentic AI platform (planned)
 

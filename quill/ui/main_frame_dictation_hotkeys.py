@@ -245,6 +245,48 @@ class DictationHotkeysMixin:
         state = controller.state if controller is not None else DictationState.IDLE
         self._announce(_DICTATION_STATUS_TEXT.get(state, "Dictation is off."), force=True)
 
+    def open_dictation_settings(self) -> None:
+        """Edit the dictation knobs (the controller's DictationConfig) in a dialog."""
+        from quill.core.settings import save_settings
+        from quill.ui.dialog_contract import apply_modal_ids
+        from quill.ui.dictation_settings_dialog import DictationSettingsDialog
+
+        wx = self._wx
+        panel = DictationSettingsDialog(wx, settings=self.settings)
+        dialog = wx.Dialog(self.frame, title="Dictation Settings", style=wx.DEFAULT_DIALOG_STYLE)
+        outer = panel.populate(dialog)
+        buttons = dialog.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL)
+        outer.Add(buttons, 0, wx.EXPAND | wx.ALL, 10)
+        panel.finalize()
+        apply_modal_ids(
+            dialog,
+            affirmative_id=wx.ID_OK,
+            affirmative_label="&Save",
+            cancel_id=wx.ID_CANCEL,
+            cancel_label="Cancel",
+        )
+        try:
+            if self._show_modal_dialog(dialog, "Dictation Settings") != wx.ID_OK:
+                self._set_status("Dictation settings unchanged")
+                return
+            result = panel.result
+        finally:
+            dialog.Destroy()
+        if result is None:
+            return
+        s = self.settings
+        s.dictation_max_locked_seconds = result.max_locked_seconds
+        s.dictation_min_hold_seconds = result.min_hold_seconds
+        s.dictation_stop_on_focus_loss = result.stop_on_focus_loss
+        s.dictation_intelligent_spacing = result.intelligent_spacing
+        if result.reset_onboarding:
+            s.dictation_onboarding_shown = False
+        try:
+            save_settings(s)
+        except Exception:  # noqa: BLE001 - persistence is best-effort
+            pass
+        self._set_status("Dictation settings saved")
+
     # -- preflight + context ---------------------------------------------- #
 
     def _dictation_preflight(self) -> bool:

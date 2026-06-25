@@ -207,6 +207,7 @@
   "quill/ui/main_frame_braille_phase3.py::BrailleProofingCommandsMixin.export_proofing_report::wx.FileDialog": "native",
   "quill/ui/main_frame_copy_tray.py::CopyTrayMixin.clear_all_tray_slots::wx.MessageDialog": "native",
   "quill/ui/main_frame_copy_tray.py::_TraySearchDialog.__init__::wx.Dialog": "hardened_custom",
+  "quill/ui/main_frame_dictation_hotkeys.py::DictationHotkeysMixin.open_dictation_settings::wx.Dialog": "hardened_custom",
   "quill/ui/main_frame_github.py::GitHubRemoteMixin.github_save_back::wx.TextEntryDialog": "native",
   "quill/ui/main_frame_github.py::GitHubRemoteMixin.open_github_file_url::wx.TextEntryDialog": "native",
   "quill/ui/main_frame_image.py::ImageCaptureMixin._pick_image_source::wx.FileDialog": "native",
