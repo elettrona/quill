@@ -98,6 +98,17 @@ def test_switching_engine_reloads_voices(wx_app, tmp_path):
         frame.Destroy()
 
 
+def test_chapter_mode_choice_maps(wx_app, tmp_path):
+    frame, dlg = _make(wx_app, tmp_path)
+    try:
+        assert dlg._collect(preview=False).chapter_mode == "single"  # default
+        dlg._mode.SetSelection(1)
+        assert dlg._collect(preview=False).chapter_mode == "separate"
+    finally:
+        dlg.dialog.Destroy()
+        frame.Destroy()
+
+
 def test_format_choice_maps_each_option(wx_app, tmp_path):
     frame, dlg = _make(wx_app, tmp_path)
     try:

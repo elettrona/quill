@@ -55,6 +55,9 @@ class BatchSpeechRequest:
     max_file_bytes: int = 0
     # What to do when a target audio file already exists.
     on_existing: str = "overwrite"  # skip | overwrite | rename
+    # Chapter mode: "single" = one chaptered file per document; "separate" = one
+    # audio file per article/heading, into a per-document folder.
+    chapter_mode: str = "single"
     preview: bool = False  # internal: a Preview press, not a Start
     _voice_label: str = field(default="", repr=False)
 
@@ -72,6 +75,9 @@ _EXISTING_POLICIES = ("skip", "overwrite", "rename")
 # Output formats, in the order they appear in the format Choice control.
 _FORMAT_CHOICES = ("mp3", "m4b", "wav")
 _FORMAT_INDEX = {fmt: i for i, fmt in enumerate(_FORMAT_CHOICES)}
+# Chapter modes, in the order they appear in the mode Choice control.
+_MODE_CHOICES = ("single", "separate")
+_MODE_INDEX = {mode: i for i, mode in enumerate(_MODE_CHOICES)}
 
 
 class BatchSpeechExportDialog:
@@ -183,6 +189,15 @@ class BatchSpeechExportDialog:
         )
         self._format.SetSelection(_FORMAT_INDEX.get(defaults.output_format, 0))
         root.Add(self._format, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+
+        # --- Chapter mode ---
+        label("Chapter &mode:")
+        self._mode = wx.Choice(
+            self.dialog,
+            choices=["Single chaptered file", "Separate file per article"],
+        )
+        self._mode.SetSelection(_MODE_INDEX.get(defaults.chapter_mode, 0))
+        root.Add(self._mode, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
 
         # --- Chapter options ---
         label("Chapter options:")
@@ -307,6 +322,11 @@ class BatchSpeechExportDialog:
             include_glob=self._include.GetValue().strip(),
             exclude_glob=self._exclude.GetValue().strip(),
             on_existing=on_existing,
+            chapter_mode=(
+                _MODE_CHOICES[self._mode.GetSelection()]
+                if 0 <= self._mode.GetSelection() < len(_MODE_CHOICES)
+                else "single"
+            ),
             preview=preview,
         )
 

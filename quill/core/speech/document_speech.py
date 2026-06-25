@@ -16,6 +16,7 @@ re-deriving it. Local engines only (SAPI 5, Kokoro, Piper, DECtalk, eSpeak-NG).
 
 from __future__ import annotations
 
+import re
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -188,3 +189,59 @@ def synthesize_document_to_chaptered_file(
             import shutil
 
             shutil.rmtree(work_dir, ignore_errors=True)
+
+
+_UNSAFE_NAME = re.compile(r'[\\/:*?"<>|\x00-\x1f]+')
+
+
+def _safe_filename(text: str, fallback: str) -> str:
+    """A filesystem-safe file stem from a heading title, trimmed and de-spaced."""
+    cleaned = _UNSAFE_NAME.sub(" ", text).strip().rstrip(". ")
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    return cleaned[:80].strip() or fallback
+
+
+def synthesize_document_to_separate_files(
+    source: Path,
+    output_dir: Path,
+    spec: SynthesisSpec,
+    options: ChapterAssembleOptions,
+    *,
+    work_dir: Path | None = None,
+    pronunciation_dictionaries: list[Any] | None = None,
+) -> list[Path]:
+    """Convert one document to **one audio file per article** (the `separate` mode).
+
+    Each heading-bounded section becomes its own file in *output_dir*, named
+    ``NNN - <heading>.<ext>`` (natural order preserved, headings made
+    filesystem-safe). Each file is produced through the same single-section
+    assembly path as the chaptered output (so engine, chunking, pronunciation,
+    and format/encoding match), just without an inter-article boundary. Returns
+    the written paths in order.
+    """
+    sections = extract_sections(source)
+    if not sections:
+        raise DocumentSpeechError(f"No readable text found in {source.name}.")
+    synth = make_synthesizer(spec)
+    synth = _wrap_with_pronunciations(synth, spec.engine, pronunciation_dictionaries)
+    suffix = f".{options.output_format}" if options.output_format in {"mp3", "m4b"} else ".wav"
+
+    owns_work_dir = work_dir is None
+    work_dir = work_dir or Path(tempfile.mkdtemp(prefix="quill_docspeech_"))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    written: list[Path] = []
+    try:
+        for index, section in enumerate(sections, start=1):
+            title = section.title.strip() or options.intro_section_title
+            stem = f"{index:03d} - {_safe_filename(title, f'section_{index:03d}')}"
+            out = output_dir / f"{stem}{suffix}"
+            result = assemble_chaptered_audio(
+                [section], out, synth, options, work_dir=work_dir / f"sep_{index:04d}"
+            )
+            written.append(result.output_path)
+    finally:
+        if owns_work_dir:
+            import shutil
+
+            shutil.rmtree(work_dir, ignore_errors=True)
+    return written

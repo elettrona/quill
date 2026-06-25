@@ -157,6 +157,7 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
         DocumentSpeechError,
         SynthesisSpec,
         synthesize_document_to_chaptered_file,
+        synthesize_document_to_separate_files,
     )
 
     files = discover_files(
@@ -200,8 +201,37 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
 
         done = skipped = errors = total_chapters = 0
         for i, src in enumerate(files, start=1):
-            final = src.with_suffix(suffix)
             progress(src.name, i, total)
+            if req.chapter_mode == "separate":
+                out_dir = src.parent / src.stem
+                if req.on_existing == "skip" and out_dir.is_dir() and any(out_dir.iterdir()):
+                    skipped += 1
+                    continue
+                sep_work = Path(tempfile.mkdtemp(prefix="quill_batch_sep_"))
+                try:
+                    written = synthesize_document_to_separate_files(
+                        src,
+                        out_dir,
+                        spec,
+                        opts(),
+                        work_dir=sep_work / "w",
+                        pronunciation_dictionaries=dictionaries,
+                    )
+                    done += 1
+                    total_chapters += len(written)
+                    frame._wx.CallAfter(
+                        frame._set_status, f"{src.stem}: {len(written)} article file(s)"
+                    )
+                except DocumentSpeechError as exc:
+                    errors += 1
+                    frame._wx.CallAfter(frame._set_status, f"Skipped {src.name}: {exc}")
+                except Exception as exc:  # noqa: BLE001 - isolate per-file failures
+                    errors += 1
+                    frame._wx.CallAfter(frame._set_status, f"Error on {src.name}: {exc}")
+                finally:
+                    shutil.rmtree(sep_work, ignore_errors=True)
+                continue
+            final = src.with_suffix(suffix)
             if final.exists():
                 if req.on_existing == "skip":
                     skipped += 1

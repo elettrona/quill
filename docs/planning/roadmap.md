@@ -75,19 +75,7 @@ Profiles — the SR already owns these).
 **Dictation follow-ups:** a settings *panel* for the dictation knobs (plus earcon
 volume / retention / visual recording indicator); Dictation History + interactive
 startup-recovery prompt; a Dictation Review interface for deferred/unsafe
-insertions.
-
-**Deferred — needs your review (post-1.0 candidates):**
-
-- **Dictation later phases** — an optional **global Windows key hook** (system-wide
-  dictation hotkey), **idle-silence detection** (auto-stop on a pause), and
-  **dictation intelligence** (spoken punctuation/commands). *Rationale: each is a
-  sizable capability beyond the keyboard-only Hold/Locked dictation that already
-  ships; they read as post-1.0. Flagged for your call on whether any belongs in
-  1.0.*
-- **BW consolidation backlog (#515, #566–#577)** — the broader provider-matrix
-  tiers and guided onboarding (BW-1..10 / WATCH-8), already tagged **2.0-deferred**
-  in the program history. *Rationale: a large workstream; confirm it stays 2.0.*
+insertions. (Dictation's larger later-phase capabilities are **2.0** — see §5.)
 
 ### 1.3 Agentic AI platform (planned)
 
@@ -238,3 +226,21 @@ well-documented product on its supported platforms.*
 | Docs & content (§1.7) | #526 SR sign-off; #535–#564, #505, #522, #590, #592. |
 | List Studio (§1.8) | Manual SR pass (#526). |
 | Table Studio (§1.9) | Whole feature (`quill-native-accessible-table-studio-plan.md`). |
+
+---
+
+## 5. Deferred to QUILL 2.0
+
+Confirmed out of the 1.0 scope. Recorded here so the intent is not lost.
+
+- **Dictation later phases** — an optional **global Windows key hook** (system-wide
+  dictation hotkey), **idle-silence detection** (auto-stop on a pause), and
+  **dictation intelligence** (spoken punctuation/commands). Each is a sizable
+  capability beyond the keyboard-only Hold/Locked dictation that already ships.
+- **BW consolidation backlog (#515, #566–#577)** — the broader provider-matrix
+  tiers and guided onboarding (BW-1..10 / WATCH-8). A large workstream, already
+  tagged 2.0-deferred in the program history.
+- **Platform / packaging singletons** (tracker #680) — the Windows 11 modern
+  primary-menu `IExplorerCommand` pass (SHELL-3, #525) and the PyInstaller
+  packaging-hardening evaluation (PKG-1, #599). *(Nuitka is explicitly out of scope
+  — too much risk / not reliable enough.)*

@@ -43,6 +43,40 @@ def test_unknown_engine_raises() -> None:
         ds.make_synthesizer(ds.SynthesisSpec(engine="bogus"))
 
 
+def test_separate_files_one_per_section(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from quill.core.speech.text_polish import DocumentSection
+
+    sections = [
+        DocumentSection("", "intro words here"),  # empty heading -> intro title
+        DocumentSection("Chapter One", "one two three"),
+        DocumentSection('Bad: name? "x"', "four five"),  # unsafe chars stripped
+    ]
+    monkeypatch.setattr(ds, "extract_sections", lambda _src: sections)
+    monkeypatch.setattr(ds, "make_synthesizer", lambda _spec: lambda text, out: _write_silence(out))
+
+    out_dir = tmp_path / "out"
+    files = ds.synthesize_document_to_separate_files(
+        tmp_path / "doc.md",
+        out_dir,
+        ds.SynthesisSpec(engine="sapi5"),
+        ChapterAssembleOptions(
+            output_format="wav", article_gap_ms=0, speak_headings=False, intro_section_title="Intro"
+        ),
+    )
+    assert len(files) == 3
+    names = [f.name for f in files]
+    assert names[0] == "001 - Intro.wav"  # empty heading took the intro title
+    assert names[1] == "002 - Chapter One.wav"
+    # Reserved filename characters are stripped from the heading.
+    assert ":" not in names[2] and "?" not in names[2] and '"' not in names[2]
+    assert all(f.exists() for f in files)
+
+
+def test_safe_filename_strips_and_falls_back() -> None:
+    assert ds._safe_filename("a/b:c?", "fallback") == "a b c"
+    assert ds._safe_filename("   ", "fallback") == "fallback"
+
+
 def test_pyttsx3_alias_maps_to_sapi5(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     seen: list[str] = []
 
