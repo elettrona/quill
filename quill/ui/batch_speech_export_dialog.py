@@ -48,6 +48,13 @@ class BatchSpeechRequest:
     tail_padding_ms: int
     speak_headings: bool
     skip_existing: bool
+    # Discovery filters: ;/,-separated globs matched against the file name and the
+    # path relative to the source folder; ``max_file_bytes`` of 0 = no size cap.
+    include_glob: str = ""
+    exclude_glob: str = ""
+    max_file_bytes: int = 0
+    # What to do when a target audio file already exists.
+    on_existing: str = "overwrite"  # skip | overwrite | rename
     preview: bool = False  # internal: a Preview press, not a Start
     _voice_label: str = field(default="", repr=False)
 
@@ -60,6 +67,8 @@ _ALL_EXTENSIONS: list[tuple[str, str]] = [
 ]
 # .html implies .htm in discovery.
 _EXTENSION_GROUPS = {".html": (".html", ".htm")}
+# Existing-file policy choices, in the order they appear in the dialog's Choice.
+_EXISTING_POLICIES = ("skip", "overwrite", "rename")
 
 
 class BatchSpeechExportDialog:
@@ -120,6 +129,14 @@ class BatchSpeechExportDialog:
             self._ext_boxes.append((cb, ext))
         root.Add(ext_row, 0, wx.LEFT | wx.TOP, 8)
 
+        # --- Discovery filters (optional) ---
+        label("Only incl&ude files matching (globs, ; or , separated; blank = all):")
+        self._include = wx.TextCtrl(self.dialog, value=defaults.include_glob)
+        root.Add(self._include, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+        label("E&xclude files matching (globs, ; or , separated):")
+        self._exclude = wx.TextCtrl(self.dialog, value=defaults.exclude_glob)
+        root.Add(self._exclude, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+
         # --- Engine / voice / pace ---
         label("&Engine:")
         self._engine = wx.Choice(
@@ -165,9 +182,14 @@ class BatchSpeechExportDialog:
         self._speak_headings = wx.CheckBox(self.dialog, label="Speak each &heading aloud")
         self._speak_headings.SetValue(defaults.speak_headings)
         root.Add(self._speak_headings, 0, wx.LEFT | wx.TOP, 8)
-        self._skip_existing = wx.CheckBox(self.dialog, label="S&kip files already exported")
-        self._skip_existing.SetValue(defaults.skip_existing)
-        root.Add(self._skip_existing, 0, wx.LEFT | wx.TOP, 8)
+        label("If an audio file already e&xists:")
+        self._on_existing = wx.Choice(
+            self.dialog, choices=["Skip (resume)", "Overwrite", "Rename (keep both)"]
+        )
+        policy = "skip" if defaults.skip_existing else defaults.on_existing
+        policy_idx = _EXISTING_POLICIES.index(policy) if policy in _EXISTING_POLICIES else 1
+        self._on_existing.SetSelection(policy_idx)
+        root.Add(self._on_existing, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
 
         gap_grid = wx.FlexGridSizer(cols=2, vgap=4, hgap=8)
         self._article_gap = self._add_ms_spin(
@@ -250,6 +272,8 @@ class BatchSpeechExportDialog:
         for cb, ext in self._ext_boxes:
             if cb.GetValue():
                 exts.extend(_EXTENSION_GROUPS.get(ext, (ext,)))
+        policy_idx = self._on_existing.GetSelection()
+        on_existing = _EXISTING_POLICIES[policy_idx] if 0 <= policy_idx < 3 else "overwrite"
         return BatchSpeechRequest(
             source_folder=Path(self._source.GetValue().strip()),
             recursive=self._recursive.GetValue(),
@@ -265,7 +289,10 @@ class BatchSpeechExportDialog:
             sentence_gap_ms=int(self._sentence_gap.GetValue()),
             tail_padding_ms=int(self._tail_padding.GetValue()),
             speak_headings=self._speak_headings.GetValue(),
-            skip_existing=self._skip_existing.GetValue(),
+            skip_existing=(on_existing == "skip"),
+            include_glob=self._include.GetValue().strip(),
+            exclude_glob=self._exclude.GetValue().strip(),
+            on_existing=on_existing,
             preview=preview,
         )
 

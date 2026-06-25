@@ -29,9 +29,11 @@ PROFILE_FILENAME = "speech-project.json"
 PROFILE_VERSION = 1
 
 _VALID_ENGINES = {"sapi5", "dectalk", "piper", "kokoro", "espeak"}
-_VALID_FORMATS = {"wav", "mp3"}
+_VALID_FORMATS = {"wav", "mp3", "m4a", "m4b", "opus", "flac", "ogg"}
+_VALID_EXISTING = {"skip", "overwrite", "rename"}
 _VALID_CHAPTER_MODES = {"none", "single", "separate"}
 _VALID_SCOPES = {"global", "project"}
+_DEFAULT_EXTENSIONS = [".docx", ".md", ".html", ".txt"]
 # Dictionary file formats we know how to read. "quill-json" is the native
 # PronunciationDictionary schema; others are reserved for future importers.
 _VALID_DICT_FORMATS = {"quill-json", "sapi-lexicon", "csv"}
@@ -49,6 +51,23 @@ def _as_float(value: Any, default: float, lo: float, hi: float) -> float:
         return max(lo, min(hi, float(value)))
     except (TypeError, ValueError):
         return default
+
+
+def _opt_int(value: Any, lo: int, hi: int) -> int | None:
+    """Clamp ``value`` to [lo, hi], or None when it is missing/blank/invalid."""
+    if value is None or value == "":
+        return None
+    try:
+        return max(lo, min(hi, int(value)))
+    except (TypeError, ValueError):
+        return None
+
+
+def _str_list(value: Any, default: list[str]) -> list[str]:
+    if isinstance(value, list):
+        items = [str(v).strip() for v in value if str(v).strip()]
+        return items or list(default)
+    return list(default)
 
 
 @dataclass(slots=True)
@@ -89,21 +108,151 @@ class SynthesizerProfile:
 
 
 @dataclass(slots=True)
-class OutputProfile:
-    """How the audio is written."""
+class DiscoveryProfile:
+    """Which files in the project folder are converted (§discovery)."""
 
-    format: str = "wav"  # wav | mp3
-    skip_existing: bool = False
+    extensions: list[str] = field(default_factory=lambda: list(_DEFAULT_EXTENSIONS))
+    recursive: bool = True
+    include_glob: str = ""  # ;/,-separated globs; empty = include all
+    exclude_glob: str = ""  # ;/,-separated globs; wins over include
+    max_file_bytes: int = 0  # 0 = no size cap
 
     def to_dict(self) -> dict[str, Any]:
-        return {"format": self.format, "skip_existing": self.skip_existing}
+        return {
+            "extensions": list(self.extensions),
+            "recursive": self.recursive,
+            "include_glob": self.include_glob,
+            "exclude_glob": self.exclude_glob,
+            "max_file_bytes": self.max_file_bytes,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> DiscoveryProfile:
+        return cls(
+            extensions=_str_list(data.get("extensions"), _DEFAULT_EXTENSIONS),
+            recursive=bool(data.get("recursive", True)),
+            include_glob=str(data.get("include_glob", "")).strip(),
+            exclude_glob=str(data.get("exclude_glob", "")).strip(),
+            max_file_bytes=_clamp_int(data.get("max_file_bytes", 0), 0, 0, 1 << 40),
+        )
+
+
+@dataclass(slots=True)
+class OutputProfile:
+    """How the audio is written: format, encode quality, naming, and resume."""
+
+    format: str = "wav"  # wav | mp3 | m4a | m4b | opus | flac | ogg
+    skip_existing: bool = False  # legacy alias for on_existing="skip"
+    on_existing: str = "overwrite"  # skip | overwrite | rename
+    mp3_vbr_quality: int = 4  # libmp3lame -q:a, 0 (best) .. 9 (smallest)
+    wav_sample_rate: int | None = None  # uniform WAV rate; None = leave as synthesized
+    wav_channels: int | None = None  # uniform WAV channels; None = leave as synthesized
+    flatten: bool = False  # collapse the source tree into one output folder
+    filename_template: str = ""  # rename stems, e.g. "{index:03d} - {stem}"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "format": self.format,
+            "skip_existing": self.skip_existing,
+            "on_existing": self.on_existing,
+            "mp3_vbr_quality": self.mp3_vbr_quality,
+            "wav_sample_rate": self.wav_sample_rate,
+            "wav_channels": self.wav_channels,
+            "flatten": self.flatten,
+            "filename_template": self.filename_template,
+        }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> OutputProfile:
         fmt = str(data.get("format", "wav")).strip().lower()
         if fmt not in _VALID_FORMATS:
             fmt = "wav"
-        return cls(format=fmt, skip_existing=bool(data.get("skip_existing", False)))
+        existing = str(data.get("on_existing", "overwrite")).strip().lower()
+        if existing not in _VALID_EXISTING:
+            existing = "overwrite"
+        return cls(
+            format=fmt,
+            skip_existing=bool(data.get("skip_existing", False)),
+            on_existing=existing,
+            mp3_vbr_quality=_clamp_int(data.get("mp3_vbr_quality", 4), 4, 0, 9),
+            wav_sample_rate=_opt_int(data.get("wav_sample_rate"), 8000, 192000),
+            wav_channels=_opt_int(data.get("wav_channels"), 1, 2),
+            flatten=bool(data.get("flatten", False)),
+            filename_template=str(data.get("filename_template", "")).strip(),
+        )
+
+
+@dataclass(slots=True)
+class MetadataProfile:
+    """Audiobook / file tags stamped on compressed outputs (none for WAV)."""
+
+    album: str = ""
+    author: str = ""  # ffmpeg "artist" (the writing/narrating credit)
+    album_artist: str = ""
+    genre: str = ""
+    year: str = ""
+    comment: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "album": self.album,
+            "author": self.author,
+            "album_artist": self.album_artist,
+            "genre": self.genre,
+            "year": self.year,
+            "comment": self.comment,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> MetadataProfile:
+        return cls(
+            album=str(data.get("album", "")),
+            author=str(data.get("author", "")),
+            album_artist=str(data.get("album_artist", "")),
+            genre=str(data.get("genre", "")),
+            year=str(data.get("year", "")),
+            comment=str(data.get("comment", "")),
+        )
+
+    def to_audio_metadata(self) -> Any:
+        """Build a :class:`quill.core.speech.ffmpeg.AudioMetadata` (lazy import)."""
+        from quill.core.speech.ffmpeg import AudioMetadata
+
+        return AudioMetadata(
+            artist=self.author,
+            album=self.album,
+            album_artist=self.album_artist or self.author,
+            genre=self.genre,
+            year=self.year,
+            comment=self.comment,
+        )
+
+
+@dataclass(slots=True)
+class ExecutionProfile:
+    """How the batch runs: error policy, concurrency, and run report."""
+
+    stop_on_error: bool = False
+    retry_count: int = 0  # extra attempts per file on hard failure
+    max_workers: int = 1  # parallel files (clamped to 1 for SAPI 5 / Kokoro)
+    write_manifest: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "stop_on_error": self.stop_on_error,
+            "retry_count": self.retry_count,
+            "max_workers": self.max_workers,
+            "write_manifest": self.write_manifest,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ExecutionProfile:
+        return cls(
+            stop_on_error=bool(data.get("stop_on_error", False)),
+            retry_count=_clamp_int(data.get("retry_count", 0), 0, 0, 10),
+            max_workers=_clamp_int(data.get("max_workers", 1), 1, 1, 16),
+            write_manifest=bool(data.get("write_manifest", False)),
+        )
 
 
 @dataclass(slots=True)
@@ -207,20 +356,26 @@ class SpeechProjectProfile:
 
     version: int = PROFILE_VERSION
     synthesizer: SynthesizerProfile = field(default_factory=SynthesizerProfile)
+    discovery: DiscoveryProfile = field(default_factory=DiscoveryProfile)
     output: OutputProfile = field(default_factory=OutputProfile)
     chapters: ChapterProfile = field(default_factory=ChapterProfile)
     # Serialized TextNormalizationOptions (empty = recommended defaults).
     normalization: dict[str, Any] = field(default_factory=dict)
     pronunciation: PronunciationProfile = field(default_factory=PronunciationProfile)
+    metadata: MetadataProfile = field(default_factory=MetadataProfile)
+    execution: ExecutionProfile = field(default_factory=ExecutionProfile)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "version": self.version,
             "synthesizer": self.synthesizer.to_dict(),
+            "discovery": self.discovery.to_dict(),
             "output": self.output.to_dict(),
             "chapters": self.chapters.to_dict(),
             "normalization": dict(self.normalization),
             "pronunciation": self.pronunciation.to_dict(),
+            "metadata": self.metadata.to_dict(),
+            "execution": self.execution.to_dict(),
         }
 
     @classmethod
@@ -231,10 +386,13 @@ class SpeechProjectProfile:
         return cls(
             version=_clamp_int(data.get("version", PROFILE_VERSION), PROFILE_VERSION, 1, 1000),
             synthesizer=SynthesizerProfile.from_dict(_sub(data, "synthesizer")),
+            discovery=DiscoveryProfile.from_dict(_sub(data, "discovery")),
             output=OutputProfile.from_dict(_sub(data, "output")),
             chapters=ChapterProfile.from_dict(_sub(data, "chapters")),
             normalization=dict(norm) if isinstance(norm, dict) else {},
             pronunciation=PronunciationProfile.from_dict(_sub(data, "pronunciation")),
+            metadata=MetadataProfile.from_dict(_sub(data, "metadata")),
+            execution=ExecutionProfile.from_dict(_sub(data, "execution")),
         )
 
 
@@ -303,14 +461,39 @@ def to_batch_options(
 
     s = profile.synthesizer
     extra = s.extra
+    out = profile.output
+    disc = profile.discovery
+    exec_ = profile.execution
+    norm = profile.normalization
     opts = BatchExportOptions(
         source_folder=source_folder,
         output_folder=output_folder,
         engine=s.engine,
-        output_format=profile.output.format,  # type: ignore[arg-type]
-        skip_existing=profile.output.skip_existing,
+        extensions=list(disc.extensions),
+        recursive=disc.recursive,
+        include_glob=disc.include_glob,
+        exclude_glob=disc.exclude_glob,
+        max_file_bytes=disc.max_file_bytes,
+        output_format=out.format,  # type: ignore[arg-type]
+        mp3_vbr_quality=str(out.mp3_vbr_quality),
+        wav_sample_rate=out.wav_sample_rate,
+        wav_channels=out.wav_channels,
+        on_existing=out.on_existing,  # type: ignore[arg-type]
+        skip_existing=out.skip_existing,
+        flatten=out.flatten,
+        filename_template=out.filename_template,
+        metadata=profile.metadata.to_audio_metadata(),
+        stop_on_error=exec_.stop_on_error,
+        retry_count=exec_.retry_count,
+        max_workers=exec_.max_workers,
+        write_manifest=exec_.write_manifest,
         pronunciation_dictionaries=pronunciation_dictionaries or [],
     )
+    # Carry serialized TextNormalizationOptions through when the project sets any.
+    if norm:
+        from quill.core.speech.text_normalize import TextNormalizationOptions
+
+        opts.normalization = TextNormalizationOptions.from_dict(norm)
     # Engine-specific wiring from the flat profile + extra bag.
     if s.engine == "sapi5":
         opts.sapi5_voice = s.voice
@@ -328,6 +511,9 @@ def to_batch_options(
             opts.piper_executable = Path(str(extra["piper_executable"]))
         if extra.get("piper_model"):
             opts.piper_model = Path(str(extra["piper_model"]))
+        opts.piper_length_scale = _extra_float(extra.get("piper_length_scale"))
+        opts.piper_noise_scale = _extra_float(extra.get("piper_noise_scale"))
+        opts.piper_noise_w = _extra_float(extra.get("piper_noise_w"))
     elif s.engine == "kokoro":
         opts.kokoro_voice = s.voice or "af_heart"
         opts.kokoro_speed = s.speed
@@ -336,4 +522,26 @@ def to_batch_options(
         opts.espeak_rate = s.rate
         if extra.get("espeak_executable"):
             opts.espeak_executable = Path(str(extra["espeak_executable"]))
+        opts.espeak_pitch = _extra_int(extra.get("espeak_pitch"))
+        opts.espeak_word_gap_ms = _extra_int(extra.get("espeak_word_gap_ms"))
     return opts
+
+
+def _extra_float(value: Any) -> float | None:
+    """Parse an optional float from the synthesizer ``extra`` bag (None when absent)."""
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _extra_int(value: Any) -> int | None:
+    """Parse an optional int from the synthesizer ``extra`` bag (None when absent)."""
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None

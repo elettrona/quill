@@ -50,18 +50,77 @@
         }
       }
     },
+    "discovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Which files in the project folder are converted.",
+      "properties": {
+        "extensions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "File extensions to include (e.g. \".docx\", \".md\")."
+        },
+        "recursive": {
+          "type": "boolean",
+          "description": "Descend into subfolders when discovering documents."
+        },
+        "include_glob": {
+          "type": "string",
+          "description": "Semicolon/comma-separated glob list; only matching files are kept (empty = all). Matched against the file name and its path relative to the source folder."
+        },
+        "exclude_glob": {
+          "type": "string",
+          "description": "Semicolon/comma-separated glob list; matching files are dropped (wins over include)."
+        },
+        "max_file_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Skip files larger than this many bytes. 0 = no cap."
+        }
+      }
+    },
     "output": {
       "type": "object",
       "additionalProperties": false,
       "description": "How audio files are written.",
       "properties": {
         "format": {
-          "enum": ["wav", "mp3"],
-          "description": "wav (always available) or mp3 (requires ffmpeg; falls back to wav with a note)."
+          "enum": ["wav", "mp3", "m4a", "m4b", "opus", "flac", "ogg"],
+          "description": "wav (always available) or a compressed format (requires ffmpeg; falls back to wav with a note). m4b is the audiobook container."
         },
         "skip_existing": {
           "type": "boolean",
-          "description": "Skip a file whose output already exists, so a re-run resumes cheaply."
+          "description": "Legacy alias for on_existing=\"skip\": skip a file whose output already exists."
+        },
+        "on_existing": {
+          "enum": ["skip", "overwrite", "rename"],
+          "description": "What to do when the target file exists: skip (cheap resume), overwrite, or write a unique \"name (2).ext\" sibling."
+        },
+        "mp3_vbr_quality": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9,
+          "description": "libmp3lame VBR quality (-q:a): 0 best/largest .. 9 smallest. Only used for mp3 output."
+        },
+        "wav_sample_rate": {
+          "type": ["integer", "null"],
+          "minimum": 8000,
+          "maximum": 192000,
+          "description": "Re-sample WAV output to this rate (requires ffmpeg). null = leave as synthesized."
+        },
+        "wav_channels": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "maximum": 2,
+          "description": "Down-mix WAV output to this many channels (requires ffmpeg). null = leave as synthesized."
+        },
+        "flatten": {
+          "type": "boolean",
+          "description": "Collapse the source folder tree into a single output folder instead of mirroring it."
+        },
+        "filename_template": {
+          "type": "string",
+          "description": "Rename output stems. Fields: {stem}, {index} (1-based), {index0}, {total}; zero-padding like {index:03d} works. Empty = keep the source stem."
         }
       }
     },
@@ -153,6 +212,49 @@
               }
             }
           }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Audiobook / file tags stamped on compressed outputs (none for WAV). The per-file title defaults to the document stem.",
+      "properties": {
+        "album": { "type": "string", "description": "Album / audiobook title." },
+        "author": { "type": "string", "description": "Author or narrator (ffmpeg \"artist\")." },
+        "album_artist": {
+          "type": "string",
+          "description": "Album artist. Empty falls back to author."
+        },
+        "genre": { "type": "string", "description": "Genre tag (e.g. \"Audiobook\")." },
+        "year": { "type": "string", "description": "Release year / date tag." },
+        "comment": { "type": "string", "description": "Free-text comment tag." }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How the batch runs: error policy, concurrency, and run report.",
+      "properties": {
+        "stop_on_error": {
+          "type": "boolean",
+          "description": "Stop the whole batch on the first hard error instead of continuing."
+        },
+        "retry_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Extra synthesis attempts per file on a hard failure (flaky subprocess engines)."
+        },
+        "max_workers": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16,
+          "description": "Files synthesized at once. Clamped to 1 for SAPI 5 and Kokoro (single-apartment engines)."
+        },
+        "write_manifest": {
+          "type": "boolean",
+          "description": "Write manifest.json and manifest.csv of the run into the output folder."
         }
       }
     }

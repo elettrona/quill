@@ -26,6 +26,7 @@ from __future__ import annotations
 import os
 import shutil
 from collections.abc import Callable
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
@@ -124,17 +125,80 @@ def build_transcode_command(ffmpeg: str, source: Path, out_wav: Path) -> list[st
 # voice stays stereo. Used by the batch document-to-speech MP3 path (§4.1).
 MP3_VBR_QUALITY = "4"
 
+# Compressed listening formats QUILL can write from a speech WAV. Each maps a
+# format id to (ffmpeg codec, default extra encode args, container `-f` muxer or
+# ""). m4b is the audiobook container (ipod muxer, AAC) and the natural home for
+# chapter markers + metadata; opus/flac/ogg round out the offline options.
+ENCODE_FORMATS: dict[str, tuple[str, list[str], str]] = {
+    "mp3": ("libmp3lame", [], ""),  # bitrate flag added from vbr_quality below
+    "ogg": ("libvorbis", ["-q:a", "4"], ""),
+    "opus": ("libopus", ["-b:a", "96k"], ""),
+    "flac": ("flac", [], ""),
+    "m4a": ("aac", ["-b:a", "160k"], "ipod"),
+    "m4b": ("aac", ["-b:a", "96k"], "ipod"),
+}
 
-def build_mp3_command(ffmpeg: str, source_wav: Path, out_mp3: Path) -> list[str]:
-    """Build the ffmpeg argv that encodes ``source_wav`` to a listening-grade MP3.
+
+@dataclass(slots=True)
+class AudioMetadata:
+    """Container/ID3 tags stamped on a compressed output (album, author, …).
+
+    Empty fields are omitted, so a default instance adds no ``-metadata`` flags
+    and the encode is byte-identical to an untagged one. Used by the batch
+    document-to-speech pipeline to make a folder of audio a real audiobook.
+    """
+
+    title: str = ""
+    artist: str = ""  # author / narrator
+    album: str = ""
+    album_artist: str = ""
+    genre: str = ""
+    year: str = ""
+    track: str = ""
+    comment: str = ""
+
+    def ffmpeg_args(self) -> list[str]:
+        """The ``-metadata key=value`` argv pairs for the non-empty fields."""
+        mapping = {
+            "title": self.title,
+            "artist": self.artist,
+            "album": self.album,
+            "album_artist": self.album_artist,
+            "genre": self.genre,
+            "date": self.year,
+            "track": self.track,
+            "comment": self.comment,
+        }
+        args: list[str] = []
+        for key, value in mapping.items():
+            text = str(value).strip()
+            if text:
+                args.extend(["-metadata", f"{key}={text}"])
+        return args
+
+
+def build_encode_command(
+    ffmpeg: str,
+    source_wav: Path,
+    out_path: Path,
+    fmt: str,
+    *,
+    mp3_vbr_quality: str = MP3_VBR_QUALITY,
+    metadata: AudioMetadata | None = None,
+) -> list[str]:
+    """Build the ffmpeg argv that encodes ``source_wav`` to ``out_path`` as ``fmt``.
 
     Pure and unit-tested: ``source_wav`` is a controlled, on-disk file produced by
     a synthesis engine (never untrusted document content), so this is safe to hand
-    to a subprocess. Unlike :func:`build_transcode_command` this does **not**
-    downmix or resample — it preserves the speech WAV's channels/rate and only
-    re-encodes to MP3 at a listening-appropriate VBR.
+    to a subprocess. Channels/rate are preserved (no downmix/resample) — only the
+    codec changes. ``fmt`` must be a key of :data:`ENCODE_FORMATS`.
     """
-    return [
+    key = fmt.strip().lower()
+    profile = ENCODE_FORMATS.get(key)
+    if profile is None:
+        raise TranscodeError(f"Unsupported output format: {fmt!r}")
+    codec, extra, muxer = profile
+    args = [
         ffmpeg,
         "-hide_banner",
         "-loglevel",
@@ -143,23 +207,49 @@ def build_mp3_command(ffmpeg: str, source_wav: Path, out_mp3: Path) -> list[str]
         str(source_wav),
         "-vn",
         "-c:a",
-        "libmp3lame",
-        "-q:a",
-        MP3_VBR_QUALITY,
-        "-y",
-        str(out_mp3),
+        codec,
     ]
+    if key == "mp3":
+        args.extend(["-q:a", str(mp3_vbr_quality)])
+    args.extend(extra)
+    if muxer:
+        args.extend(["-f", muxer])
+    if metadata is not None:
+        args.extend(metadata.ffmpeg_args())
+    args.extend(["-y", str(out_path)])
+    return args
 
 
-def transcode_to_mp3(
+def build_mp3_command(
+    ffmpeg: str,
     source_wav: Path,
     out_mp3: Path,
     *,
+    vbr_quality: str = MP3_VBR_QUALITY,
+    metadata: AudioMetadata | None = None,
+) -> list[str]:
+    """Build the ffmpeg argv that encodes ``source_wav`` to a listening-grade MP3.
+
+    Thin wrapper over :func:`build_encode_command` kept for the MP3 call sites and
+    their tests. Preserves the speech WAV's channels/rate; only re-encodes to MP3.
+    """
+    return build_encode_command(
+        ffmpeg, source_wav, out_mp3, "mp3", mp3_vbr_quality=vbr_quality, metadata=metadata
+    )
+
+
+def transcode_audio(
+    source_wav: Path,
+    out_path: Path,
+    fmt: str,
+    *,
+    mp3_vbr_quality: str = MP3_VBR_QUALITY,
+    metadata: AudioMetadata | None = None,
     timeout_seconds: float = 600.0,
 ) -> Path:
-    """Encode a speech ``source_wav`` to ``out_mp3`` (listening-grade MP3).
+    """Encode a speech ``source_wav`` to ``out_path`` in ``fmt`` (mp3/m4b/opus/…).
 
-    Returns ``out_mp3``. Raises :class:`TranscodeError` if ffmpeg is missing or
+    Returns ``out_path``. Raises :class:`TranscodeError` if ffmpeg is missing or
     fails — callers in the batch pipeline catch this and fall back to WAV with a
     per-file note, never hard-failing the whole batch (§4.1, Risks table).
     """
@@ -171,19 +261,96 @@ def transcode_to_mp3(
     if not source_wav.is_file():
         raise TranscodeError(f"The audio file was not found: {source_wav}")
 
-    out_mp3.parent.mkdir(parents=True, exist_ok=True)
-    args = build_mp3_command(ffmpeg, source_wav, out_mp3)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    args = build_encode_command(
+        ffmpeg, source_wav, out_path, fmt, mp3_vbr_quality=mp3_vbr_quality, metadata=metadata
+    )
     try:
         completed = run_subprocess_safely(args, timeout_seconds=timeout_seconds)
     except OSError as exc:
         raise TranscodeError(f"Could not run ffmpeg: {exc}") from exc
     if completed.returncode != 0:
         detail = (completed.stderr or "").strip()[:300]
-        out_mp3.unlink(missing_ok=True)
-        raise TranscodeError(f"ffmpeg could not encode the MP3. {detail}".strip())
-    if not out_mp3.is_file():
+        out_path.unlink(missing_ok=True)
+        raise TranscodeError(f"ffmpeg could not encode the audio. {detail}".strip())
+    if not out_path.is_file():
         raise TranscodeError("ffmpeg produced no output.")
-    return out_mp3
+    return out_path
+
+
+def transcode_to_mp3(
+    source_wav: Path,
+    out_mp3: Path,
+    *,
+    vbr_quality: str = MP3_VBR_QUALITY,
+    metadata: AudioMetadata | None = None,
+    timeout_seconds: float = 600.0,
+) -> Path:
+    """Encode a speech ``source_wav`` to ``out_mp3`` (listening-grade MP3)."""
+    return transcode_audio(
+        source_wav,
+        out_mp3,
+        "mp3",
+        mp3_vbr_quality=vbr_quality,
+        metadata=metadata,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+def build_wav_conform_command(
+    ffmpeg: str,
+    source: Path,
+    out_wav: Path,
+    *,
+    sample_rate: int | None = None,
+    channels: int | None = None,
+) -> list[str]:
+    """Build the ffmpeg argv that re-samples/down-mixes ``source`` to PCM WAV.
+
+    Only the requested attributes are forced; ``None`` leaves that attribute as
+    the engine produced it. Used to give a batch a uniform WAV sample rate /
+    channel count when the user asks for one.
+    """
+    args = [ffmpeg, "-hide_banner", "-loglevel", "error", "-i", str(source), "-vn"]
+    if channels is not None:
+        args.extend(["-ac", str(int(channels))])
+    if sample_rate is not None:
+        args.extend(["-ar", str(int(sample_rate))])
+    args.extend(["-c:a", "pcm_s16le", "-y", str(out_wav)])
+    return args
+
+
+def conform_wav(
+    source: Path,
+    out_wav: Path,
+    *,
+    sample_rate: int | None = None,
+    channels: int | None = None,
+    timeout_seconds: float = 600.0,
+) -> Path:
+    """Re-sample/down-mix ``source`` to ``out_wav`` (PCM s16le). Returns ``out_wav``."""
+    from quill.stability.safe_subprocess import run_subprocess_safely
+
+    ffmpeg = find_ffmpeg()
+    if ffmpeg is None:
+        raise TranscodeError(f"ffmpeg is not installed. {INSTALL_HINT}")
+    if not source.is_file():
+        raise TranscodeError(f"The audio file was not found: {source}")
+    out_wav.parent.mkdir(parents=True, exist_ok=True)
+    args = build_wav_conform_command(
+        ffmpeg, source, out_wav, sample_rate=sample_rate, channels=channels
+    )
+    try:
+        completed = run_subprocess_safely(args, timeout_seconds=timeout_seconds)
+    except OSError as exc:
+        raise TranscodeError(f"Could not run ffmpeg: {exc}") from exc
+    if completed.returncode != 0:
+        detail = (completed.stderr or "").strip()[:300]
+        out_wav.unlink(missing_ok=True)
+        raise TranscodeError(f"ffmpeg could not conform the audio. {detail}".strip())
+    if not out_wav.is_file():
+        raise TranscodeError("ffmpeg produced no output.")
+    return out_wav
 
 
 def transcode_to_wav(

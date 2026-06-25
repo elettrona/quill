@@ -302,12 +302,46 @@ def discover_piper_executable(configured_path: str = "") -> Path | None:
     return None
 
 
+def build_piper_command(
+    executable_path: Path,
+    model_path: Path,
+    output_path: Path,
+    *,
+    length_scale: float | None = None,
+    noise_scale: float | None = None,
+    noise_w: float | None = None,
+) -> list[str]:
+    """Build the Piper argv, appending the optional synthesis-shaping flags.
+
+    ``length_scale`` slows (>1) or speeds (<1) speech; ``noise_scale`` and
+    ``noise_w`` vary timbre/cadence. Each is omitted when None so Piper uses the
+    model's defaults. Pure and unit-tested.
+    """
+    command = [
+        str(executable_path),
+        "--model",
+        str(model_path),
+        "--output_file",
+        str(output_path),
+    ]
+    if length_scale is not None:
+        command += ["--length_scale", f"{float(length_scale):g}"]
+    if noise_scale is not None:
+        command += ["--noise_scale", f"{float(noise_scale):g}"]
+    if noise_w is not None:
+        command += ["--noise_w", f"{float(noise_w):g}"]
+    return command
+
+
 def synthesize_with_piper(
     text: str,
     output_path: Path,
     *,
     executable_path: Path,
     model_path: Path,
+    length_scale: float | None = None,
+    noise_scale: float | None = None,
+    noise_w: float | None = None,
 ) -> None:
     if not text.strip():
         raise ReadAloudUnavailableError("Cannot generate speech from empty text")
@@ -328,13 +362,14 @@ def synthesize_with_piper(
     try:
         with input_path.open("rb") as stdin_fh:
             completed = subprocess.run(
-                [
-                    str(executable_path),
-                    "--model",
-                    str(model_path),
-                    "--output_file",
-                    str(output_path),
-                ],
+                build_piper_command(
+                    executable_path,
+                    model_path,
+                    output_path,
+                    length_scale=length_scale,
+                    noise_scale=noise_scale,
+                    noise_w=noise_w,
+                ),
                 stdin=stdin_fh,
                 capture_output=True,
                 check=False,
@@ -565,6 +600,8 @@ def synthesize_with_espeak(
     executable_path: Path,
     voice: str = "en",
     rate: int = 175,
+    pitch: int | None = None,
+    word_gap_ms: int | None = None,
 ) -> None:
     if not text.strip():
         raise ReadAloudUnavailableError("Cannot generate speech from empty text")
@@ -581,6 +618,11 @@ def synthesize_with_espeak(
         "-w",
         str(output_path),
     ]
+    # Optional voice shaping: -p pitch (0-99), -g word gap in 10 ms units.
+    if pitch is not None:
+        command += ["-p", str(max(0, min(99, int(pitch))))]
+    if word_gap_ms is not None:
+        command += ["-g", str(max(0, int(word_gap_ms) // 10))]
     # SSML/markup input (an assembled <speak> utterance) needs eSpeak-NG's markup
     # mode (-m); otherwise the tags would be read aloud literally.
     if text.lstrip().startswith("<speak"):

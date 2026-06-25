@@ -159,7 +159,14 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
         synthesize_document_to_chaptered_file,
     )
 
-    files = discover_files(req.source_folder, req.extensions, req.recursive)
+    files = discover_files(
+        req.source_folder,
+        list(req.extensions),
+        req.recursive,
+        include_glob=req.include_glob,
+        exclude_glob=req.exclude_glob,
+        max_file_bytes=req.max_file_bytes,
+    )
     if not files:
         frame._show_message_box(
             "No matching documents were found in that folder.",
@@ -186,13 +193,19 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
     total = len(files)
 
     def work(progress: Any) -> object:
+        from quill.core.speech.batch_export import _unique_path
+
         done = skipped = errors = 0
         for i, src in enumerate(files, start=1):
             final = src.with_suffix(suffix)
             progress(src.name, i, total)
-            if req.skip_existing and final.exists():
-                skipped += 1
-                continue
+            if final.exists():
+                if req.on_existing == "skip":
+                    skipped += 1
+                    continue
+                if req.on_existing == "rename":
+                    final = _unique_path(final)
+                # "overwrite": leave ``final`` as-is
             work_dir = Path(tempfile.mkdtemp(prefix="quill_batch_speech_"))
             staged = work_dir / f"out{suffix}"
             try:

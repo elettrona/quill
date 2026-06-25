@@ -74,7 +74,7 @@ def test_from_dict_clamps_and_falls_back() -> None:
     p = SpeechProjectProfile.from_dict({
         "version": 1,
         "synthesizer": {"engine": "bogus", "rate": 99999, "volume": 5, "speed": -1},
-        "output": {"format": "flac"},
+        "output": {"format": "aiff"},  # unsupported -> falls back to wav
         "chapters": {"mode": "weird", "sound_volume": 500, "article_gap_ms": -10},
         "pronunciation": {
             "dictionaries": [
@@ -111,6 +111,77 @@ def test_to_batch_options_piper(tmp_path: Path) -> None:
     assert opts.skip_existing is True
     assert opts.piper_model == Path("C:/m/amy.onnx")
     assert opts.piper_executable == Path("C:/p/piper.exe")
+
+
+def test_new_flexibility_fields_round_trip() -> None:
+    from quill.core.speech.project_profile import (
+        DiscoveryProfile,
+        ExecutionProfile,
+        MetadataProfile,
+    )
+
+    p = SpeechProjectProfile(
+        discovery=DiscoveryProfile(
+            extensions=[".md"], recursive=False, include_glob="keep-*", max_file_bytes=2048
+        ),
+        output=OutputProfile(
+            format="m4b",
+            on_existing="rename",
+            mp3_vbr_quality=2,
+            wav_sample_rate=44100,
+            wav_channels=1,
+            flatten=True,
+            filename_template="{index:03d} - {stem}",
+        ),
+        metadata=MetadataProfile(album="My Book", author="Jeff", genre="Audiobook"),
+        execution=ExecutionProfile(
+            stop_on_error=True, retry_count=3, max_workers=4, write_manifest=True
+        ),
+    )
+    assert SpeechProjectProfile.from_dict(p.to_dict()) == p
+
+
+def test_output_profile_clamps_new_fields() -> None:
+    out = OutputProfile.from_dict({
+        "format": "m4b",
+        "on_existing": "nonsense",  # -> overwrite
+        "mp3_vbr_quality": 99,  # -> clamped to 9
+        "wav_sample_rate": 10,  # below min -> clamped to 8000
+        "wav_channels": "",  # blank -> None
+    })
+    assert out.format == "m4b"
+    assert out.on_existing == "overwrite"
+    assert out.mp3_vbr_quality == 9
+    assert out.wav_sample_rate == 8000
+    assert out.wav_channels is None
+
+
+def test_to_batch_options_threads_flexibility(tmp_path: Path) -> None:
+    from quill.core.speech.project_profile import (
+        DiscoveryProfile,
+        ExecutionProfile,
+        MetadataProfile,
+    )
+
+    profile = SpeechProjectProfile(
+        synthesizer=SynthesizerProfile(engine="piper"),
+        discovery=DiscoveryProfile(include_glob="keep-*", max_file_bytes=4096),
+        output=OutputProfile(format="m4b", on_existing="rename", flatten=True, mp3_vbr_quality=2),
+        metadata=MetadataProfile(album="Book", author="Jeff"),
+        execution=ExecutionProfile(retry_count=2, max_workers=3, write_manifest=True),
+    )
+    opts = to_batch_options(profile, tmp_path / "src", tmp_path / "out")
+    assert opts.output_format == "m4b"
+    assert opts.on_existing == "rename"
+    assert opts.flatten is True
+    assert opts.include_glob == "keep-*"
+    assert opts.max_file_bytes == 4096
+    assert opts.mp3_vbr_quality == "2"
+    assert opts.retry_count == 2
+    assert opts.max_workers == 3
+    assert opts.write_manifest is True
+    assert opts.metadata.album == "Book"
+    assert opts.metadata.artist == "Jeff"
 
 
 def test_to_batch_options_sapi5(tmp_path: Path) -> None:
