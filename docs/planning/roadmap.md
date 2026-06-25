@@ -334,7 +334,11 @@ Confirmed out of the 1.0 scope. Recorded here so the intent is not lost.
   2.0. Full reasoning in [`eleven-labs.md`](eleven-labs.md).
 - **Learnings from the ACB Azure audio-pipeline reference.** Its page-turn cue is
   now QUILL's default transition sound and its `loudnorm` step is QUILL's ACX
-  loudness (both shipped). Remaining candidates:
+  loudness (both shipped). The reference pipeline is kept **locally only**
+  (`docs/planning/source/`, gitignored — it is third-party code with no clear
+  license, a sample document, and a live API key, so it is not committed); the
+  reusable patterns below are captured here so this work needs nothing from it.
+  Remaining candidates:
   - **Translated audio export (highest-value).** The reference translates each
     article (Azure Translator REST) and synthesizes it with the target language's
     voice, producing a per-language audiobook. QUILL already has both halves —
