@@ -174,13 +174,23 @@ all **table** work (§1.9 + the CSV-grid half of #514).
 
 ### Tier 2 — Shipped features with rough edges
 
-4. **Dictation follow-ups** — the settings panel and the History/Review surfaces
-   (§1.2).
-5. **Watch Folder queue — live repro:** when `core.watch_folder` is enabled the
-   monitor "feels empty"; needs an interactive repro to confirm the live queue
-   populates, or a fix.
-6. **Snapshots vs Versions:** the notebook set was renamed to **"Versions"** (code
-   half done); the empty-submenu render still needs a live repro.
+4. **Watch Folder queue — confirm by-design behavior (not a known bug).** When a
+   watch is enabled the monitor can "feel empty" because `process_existing`
+   defaults to **off**: every file already present at start is *primed* (its de-dup
+   slot is claimed in `watch_queue`) and intentionally ignored, so only files that
+   appear **after** start enqueue. The prime/enqueue de-dup is correct. Live repro
+   to confirm the queue populates: drop a *new* matching file into a running,
+   schedule-active profile's folder, **or** enable "Process existing files" on the
+   profile. Optional polish (not a blocker): show "N existing files ignored" in the
+   monitor so the empty queue is self-explanatory.
+5. **Snapshots vs Versions — empty-submenu live repro only.** The notebook
+   "Versions" rename is **done** user-facing (File > Notebook: Save/Restore/Manage
+   Version; "Version name", "Version N", "Manage Versions" dialog, "Version saved"
+   status). The internal model stays `NotebookSnapshot`/`snapshots` by design
+   ("formerly Workspace Snapshots"); the separate workspace **Snapshots** submenu is
+   a different feature and correctly keeps its name. Remaining: a live repro of the
+   reported empty-submenu render (likely a feature-gated branch — confirm with the
+   `core.notebook` / `core.recovery` flags toggled).
 
 ### Tier 3 — Polish
 

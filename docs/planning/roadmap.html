@@ -376,15 +376,30 @@ real installer, not just from source.</li>
 <h3 id="tier-2-shipped-features-with-rough-edges">Tier 2 — Shipped
 features with rough edges</h3>
 <ol start="4" type="1">
-<li><strong>Dictation follow-ups</strong> — the settings panel and the
-History/Review surfaces (§1.2).</li>
-<li><strong>Watch Folder queue — live repro:</strong> when
-<code>core.watch_folder</code> is enabled the monitor “feels empty”;
-needs an interactive repro to confirm the live queue populates, or a
-fix.</li>
-<li><strong>Snapshots vs Versions:</strong> the notebook set was renamed
-to <strong>“Versions”</strong> (code half done); the empty-submenu
-render still needs a live repro.</li>
+<li><strong>Watch Folder queue — confirm by-design behavior (not a known
+bug).</strong> When a watch is enabled the monitor can “feel empty”
+because <code>process_existing</code> defaults to <strong>off</strong>:
+every file already present at start is <em>primed</em> (its de-dup slot
+is claimed in <code>watch_queue</code>) and intentionally ignored, so
+only files that appear <strong>after</strong> start enqueue. The
+prime/enqueue de-dup is correct. Live repro to confirm the queue
+populates: drop a <em>new</em> matching file into a running,
+schedule-active profile’s folder, <strong>or</strong> enable “Process
+existing files” on the profile. Optional polish (not a blocker): show “N
+existing files ignored” in the monitor so the empty queue is
+self-explanatory.</li>
+<li><strong>Snapshots vs Versions — empty-submenu live repro
+only.</strong> The notebook “Versions” rename is <strong>done</strong>
+user-facing (File &gt; Notebook: Save/Restore/Manage Version; “Version
+name”, “Version N”, “Manage Versions” dialog, “Version saved” status).
+The internal model stays
+<code>NotebookSnapshot</code>/<code>snapshots</code> by design
+(“formerly Workspace Snapshots”); the separate workspace
+<strong>Snapshots</strong> submenu is a different feature and correctly
+keeps its name. Remaining: a live repro of the reported empty-submenu
+render (likely a feature-gated branch — confirm with the
+<code>core.notebook</code> / <code>core.recovery</code> flags
+toggled).</li>
 </ol>
 <h3 id="tier-3-polish">Tier 3 — Polish</h3>
 <ol start="7" type="1">
