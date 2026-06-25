@@ -334,32 +334,23 @@ Confirmed out of the 1.0 scope. Recorded here so the intent is not lost.
   2.0. Full reasoning in [`eleven-labs.md`](eleven-labs.md).
 - **Learnings from the ACB Azure audio-pipeline reference.** Its page-turn cue is
   now QUILL's default transition sound and its `loudnorm` step is QUILL's ACX
-  loudness (both shipped). The reference pipeline is kept **locally only**
-  (`docs/planning/source/`, gitignored — it is third-party code with no clear
-  license, a sample document, and a live API key, so it is not committed); the
-  reusable patterns below are captured here so this work needs nothing from it.
+  loudness; the **article-combining heuristic** (combine empty headings into the
+  next article) and **round-robin voices** (each article gets the next voice) also
+  **shipped for 1.0** in Batch Export to Speech. The sanitized reference lives in
+  `docs/planning/source/` (key scrubbed, samples removed — see its `NOTICE.txt`).
   Remaining candidates:
-  - **Translated audio export (highest-value).** The reference translates each
-    article (Azure Translator REST) and synthesizes it with the target language's
-    voice, producing a per-language audiobook. QUILL already has both halves —
-    `core/ai/translation.py` (AI > Translate) and the cloud/local TTS export — so the
-    new feature is to **wire them together**: "Export Document as Audio → also in
-    \<language\>". The reference's robust REST pattern is worth copying: bounded
-    retries with exponential backoff + timeout, halt-this-language-on-persistent-
-    failure, and accessible logging of every attempt. (QUILL would reuse its own
-    AI-provider translation + egress audit rather than adding Azure Translator.)
+  - **Translated audio export (highest-value)** — the headline 2.0 speech feature.
+    Full design in **§7** below (current providers only, no Azure).
   - **Two-pass loudnorm** for the audiobook builder — the reference measures
     (`print_format=json`) then applies `loudnorm` with the measured values, which is
     more accurate than QUILL's current single pass. An accuracy upgrade for the ACX
     normalize option (§1.5).
   - **Voice-failure blacklist** — persist voices that fail synthesis and skip them on
-    later runs; a batch-robustness nicety.
+    later runs; a batch-robustness nicety (pairs well with round-robin).
   - **Text-normalization polish** — `Vol.`→"Volume" / `No.`→"Number"; resolution
     numbers (`2025-02` → "2025 dash 2"); emphasize lead-in cue phrases ("Note:",
     "Warning:", "Updated:"); language-specific → English → none pronunciation-dict
     fallback. Candidates for `quill/core/speech/text_normalize.py`.
-  - **Article-extraction heuristic** — combine consecutive headings and only start an
-    article when body text follows (avoids empty heading-only chapters).
 - **Native Google Docs support** — read/write/round-trip Google Docs from within
   QUILL (Drive API, OAuth, accessible doc model). A full external-service +
   auth + sync workstream; spec in
@@ -433,3 +424,70 @@ archive was retired. Issue numbers are kept so each idea stays findable.
 *alongside* it and must not duplicate or fight its settings): **typing echo (#411)**,
 **command echo (#499)**, **speech rate / pause knobs (#450)**, and
 **punctuation / symbol profiles (#426)**.
+
+---
+
+## 7. Translated audio export (2.0 design)
+
+**Scope.** Export a document's audio in one or more **additional languages** —
+translate the text, then synthesize each language with a voice for that language.
+**Current providers only (no Azure):** QUILL's own AI translation
+(`core/ai/translation.py`, AI > Translate) plus the existing local engines and cloud
+TTS (OpenAI / Gemini / ElevenLabs). Builds on the shipped batch export (chaptered /
+separate modes, page-turn cue, ACX loudness, article-combining, round-robin voices).
+
+### 7.1 Translation — an AI feature, wired per provider
+
+- Reuse `core/ai/translation.py` (provider-neutral, through the user's configured AI
+  provider) — **no new vendor or REST client**. Translation rides QUILL's AI gateway
+  and the existing network-egress audit; Safe Mode and per-action consent apply.
+- **Per-provider language support:** each AI provider exposes the target languages it
+  supports; the export dialog offers only those for the active provider.
+- **Robustness (copied from the ACB reference pattern, on QUILL's AI path):** bounded
+  retries with exponential backoff + a timeout, **halt-this-language on persistent
+  failure** (never emit half-translated audio), and accessible per-attempt logging.
+- Translate at **article/section granularity** (title + body) so chapter structure
+  and markers survive; **cache** translations (keyed by text + target language) to
+  avoid re-billing repeats.
+
+### 7.2 Rich language support for voices (local + cloud)
+
+- **Local-model language metadata.** Tag each local engine's voices with the
+  language(s) they speak (Piper/Kokoro models are language-specific; SAPI / eSpeak
+  voices carry a locale), building a `voice → language(s)` map so the export can pick
+  a suitable voice for the target language.
+- **Cloud voice languages.** Surface per-provider language coverage for
+  OpenAI / Gemini / ElevenLabs voices.
+- **Per-language voice selection** in the dialog: for each target language the user
+  picks the voice (with a sensible default match), reusing the 1.0 round-robin voice
+  picker pattern (combo box + reorderable list) so a language can even have its own
+  voice rotation.
+
+### 7.3 Cross-language pronunciation / dictionary tooling
+
+- Make the pronunciation system (`speech/pronunciation.py`) **language-aware:** a
+  dictionary can be scoped to a language (or "all"), and only matching-language
+  dictionaries apply to a given language's synthesis — mirroring the ACB
+  language-specific → English → none fallback. Keep QUILL's client-side dictionaries
+  distinct from any provider server-side ones.
+
+### 7.4 Output layout & metadata
+
+- Per-language output (`<doc> (<lang>).<ext>` or a per-language subfolder), mirroring
+  the existing separate/chaptered layout, with audiobook metadata stamped per
+  language.
+
+### 7.5 Pronunciation audition (from the retired `play` reference)
+
+- The ACB `play/` reference was a pronunciation-practice GUI (voices, rate/pitch/
+  volume, accessible tooltips). The reusable idea: an **"audition this voice / word"**
+  control — hear a candidate voice speak a sample or a tricky term before committing
+  it to a language. Extend QUILL's existing Read Aloud voice preview to the
+  per-language pickers.
+
+### Open decision points (2.0)
+
+- Which providers' translation to expose (all configured AI providers vs a curated
+  set), and whether translated export is batch-only or also a single-document action.
+- Cost surfacing — translation **and** TTS are both metered for cloud providers; show
+  a combined estimate before the run.

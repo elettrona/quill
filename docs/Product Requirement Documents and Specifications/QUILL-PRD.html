@@ -3894,7 +3894,20 @@ fallback. A <strong>Chapter mode</strong> selects one chaptered file or
 <code>NNN - &lt;heading&gt;</code> file per section). A <strong>Dry
 run</strong> writes a <code>&lt;doc&gt;.preview.txt</code> of the exact
 post-pipeline spoken text (with the substitution count) for proofing
-without synthesizing.</li>
+without synthesizing. <strong>Combine empty headings</strong> (opt-in)
+folds bodyless headings into the next article and joins their titles
+(<code>text_polish.combine_heading_only_sections</code>, the ACB rule).
+<strong>Round-robin voices</strong> voices each section by the next
+entry in a user-ordered voice list
+(<code>assemble_chaptered_audio(..., synthesizers=…)</code>, section
+<em>i</em> → voice <em>i mod N</em>); the rotation uses voices of the
+selected engine so all sections share one PCM format. The batch dialog
+builds the voice list with the accessible add-from-combobox +
+reorderable-ListBox pattern (no checkboxes in lists). Both options
+persist in <code>ChapterProfile</code>
+(<code>.quill/speech-project.json</code>). The <strong>translated audio
+export</strong> that would synthesize a document in additional languages
+is a 2.0 design (roadmap §7, current providers only).</li>
 <li><strong>Discovery.</strong> Extension set, recursion,
 semicolon/comma-separated <strong>include/exclude globs</strong>
 (matched against name and relative path), and a
