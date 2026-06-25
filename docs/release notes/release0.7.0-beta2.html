@@ -480,6 +480,17 @@ provider, model, and voice under <strong>Settings &gt; Read
 Aloud</strong>, and add the matching API key in AI Hub. The status bar
 shows an <strong>estimated cost</strong> before an export runs; OpenAI
 exports MP3, Gemini exports WAV.</li>
+<li><strong>ElevenLabs is a third AI Voice provider for audio
+export.</strong> Choose <strong>ElevenLabs (export only)</strong> under
+Settings &gt; Read Aloud to export your document in ElevenLabs’ natural,
+audiobook-grade narration. It needs the optional <code>elevenlabs</code>
+package and your stored ElevenLabs API key; all calls go through one
+host-owned gateway and the network-egress audit.</li>
+<li><strong>Build Audiobook from Folder gained chapter editing and ACX
+loudness.</strong> Before building, you can <strong>rename, reorder, and
+merge</strong> chapters; and a one-click <strong>Normalize to
+ACX</strong> option brings the master into the loudness range audiobook
+platforms require, with the result measured and reported.</li>
 <li><strong>No more clipped or awkward endings.</strong> Long documents
 are split for the cloud only on <strong>sentence boundaries</strong> —
 never mid-word — so the audio never trails off at a strange spot, and
@@ -513,8 +524,26 @@ year</strong> onto the files (each file’s title comes from its heading,
 and its track number from its position). Long documents become
 <strong>chaptered</strong> audio with real MP3 chapter markers you can
 jump between in any podcast app, with an optional <strong>transition
-sound</strong> and configurable <strong>pauses</strong> between articles
-and sentences.</li>
+sound</strong> (a natural <strong>page-turn</strong> cue by default) and
+configurable <strong>pauses</strong> between articles and
+sentences.</li>
+<li><strong>More ways to shape the audio.</strong> Export <strong>one
+chaptered file</strong> or <strong>a separate file per article</strong>;
+<strong>combine empty headings</strong> so you don’t hear hollow
+“chapter” announcements; <strong>round-robin voices</strong> so each
+article is read by the next voice in a list you build; <strong>normalize
+loudness</strong> to a consistent audiobook (ACX) level; and
+<strong>dry-run</strong> to write the exact spoken text for proofreading
+before paying for synthesis.</li>
+<li><strong>Export in other languages (translated).</strong> Pick one or
+more languages and a voice for each, and QUILL <strong>translates each
+document and narrates it</strong> —
+<code>&lt;doc&gt; (Spanish).mp3</code> next to the original. Translation
+uses your AI provider or a local <strong>LibreTranslate</strong>; voices
+are offered <strong>local-first</strong> (eSpeak speaks nearly every
+language offline, plus any installed Windows voice for that language).
+Pronunciation dictionaries can be scoped to a language. <em>(Premium
+cloud voices for translated output are a follow-up.)</em></li>
 <li><strong>You are in control of existing files and naming.</strong>
 When an output already exists, choose to <strong>skip</strong> it (cheap
 resume), <strong>overwrite</strong> it, or <strong>rename</strong> so

@@ -4092,6 +4092,13 @@ folder.</li>
 polish) for each document, with the pronunciation-substitution count, so
 you can proofread what will be said before paying for slow
 synthesis.</li>
+<li><strong>Normalize loudness</strong> — tick <strong>Normalize
+loudness to audiobook (ACX) level</strong> to bring every exported file
+to a consistent audiobook loudness, the same standard the Build
+Audiobook tool uses. QUILL measures each file and re-levels it (a
+two-pass process), without changing the chapters or their timing. Needs
+ffmpeg; if it’s missing, the file is saved un-normalized with a
+note.</li>
 <li><strong>Combine empty headings</strong> — when a heading has no body
 of its own (a “Part” heading immediately followed by a “Chapter”
 heading), fold it into the next article that <em>does</em> have text and
