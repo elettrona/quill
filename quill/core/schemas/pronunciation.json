@@ -29,6 +29,10 @@
       "type": "boolean",
       "description": "Default on/off; the per-user selection in settings overrides this."
     },
+    "language": {
+      "type": "string",
+      "description": "Language scope (ISO 639-1, e.g. 'es'). Empty = applies to every language; otherwise applies only when synthesizing that language (base subtag compared, so 'es' matches 'es-ES' and 'es-419')."
+    },
     "entries": {
       "type": "array",
       "items": {

@@ -36,6 +36,11 @@ _MODES: frozenset[str] = frozenset({"respelling", "phoneme", "ssml"})
 _SCOPES: frozenset[str] = frozenset({"global", "project"})
 
 
+def _base_language(language: str) -> str:
+    """Normalize a language tag to its lowercase base subtag (``es-ES`` -> ``es``)."""
+    return language.strip().lower().replace("_", "-").split("-", 1)[0]
+
+
 @dataclass(slots=True)
 class PronunciationEntry:
     """One term → spoken-form mapping (§4.7.2)."""
@@ -90,6 +95,11 @@ class PronunciationDictionary:
     scope: str = "global"  # global | project (the storage location)
     engine: str | None = None  # None = all engines; else a synthesizer id
     enabled: bool = True
+    # Language scope (ISO 639-1, e.g. "es"): "" = applies to every language; else
+    # only when synthesizing that language (e.g. a Spanish-only dictionary for the
+    # translated-audio-export path). The base language is compared, so "es" matches
+    # "es", "es-ES", and "es-419".
+    language: str = ""
     entries: list[PronunciationEntry] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -99,6 +109,7 @@ class PronunciationDictionary:
             "scope": self.scope if self.scope in _SCOPES else "global",
             "engine": self.engine if self.engine in ENGINES else None,
             "enabled": self.enabled,
+            "language": self.language,
             "entries": [entry.to_dict() for entry in self.entries],
         }
 
@@ -120,8 +131,19 @@ class PronunciationDictionary:
             scope=scope if scope in _SCOPES else "global",
             engine=engine if engine in ENGINES else None,
             enabled=bool(data.get("enabled", True)),
+            language=_base_language(str(data.get("language", ""))),
             entries=entries,
         )
+
+    def applies_to_language(self, language: str) -> bool:
+        """True when this dictionary applies for synthesizing *language*.
+
+        An all-language dictionary (``language == ""``) always applies; a
+        language-scoped one applies only when the base languages match.
+        """
+        if not self.language:
+            return True
+        return _base_language(language) == self.language
 
     def specificity(self) -> int:
         """Higher = more specific (project+engine 3 … global+all 0)."""
@@ -260,17 +282,22 @@ def active_dictionaries(
     *,
     project_dir: Path | None = None,
     enabled_ids: set[str] | None = None,
+    language: str | None = None,
 ) -> list[PronunciationDictionary]:
     """Enabled, in-scope dictionaries for ``(engine, project)``, most specific first.
 
     A dictionary participates when its engine is ``None`` or matches ``engine``,
     and when it is enabled. ``enabled_ids`` (the per-user selection from settings)
     is authoritative when given; otherwise the dictionary's own ``enabled`` flag
-    is used.
+    is used. When ``language`` is given (the translated-export path), a
+    language-scoped dictionary participates only if it applies to that language;
+    ``None`` (the default) applies no language filter, preserving prior behavior.
     """
     out: list[PronunciationDictionary] = []
     for dictionary in load_dictionaries(project_dir):
         if dictionary.engine is not None and dictionary.engine != engine:
+            continue
+        if language is not None and not dictionary.applies_to_language(language):
             continue
         is_on = (dictionary.id in enabled_ids) if enabled_ids is not None else dictionary.enabled
         if not is_on:

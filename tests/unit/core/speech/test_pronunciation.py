@@ -28,6 +28,34 @@ def _dict(id_: str, entries: list[PronunciationEntry], **kw: object) -> Pronunci
     return PronunciationDictionary(id=id_, entries=entries, **kw)  # type: ignore[arg-type]
 
 
+def test_language_scoped_dictionary_applies_only_to_its_language() -> None:
+    es = _dict("es", [], language="es")
+    alllangs = _dict("all", [])
+    assert es.applies_to_language("es") is True
+    assert es.applies_to_language("es-ES") is True  # base subtag compared
+    assert es.applies_to_language("es-419") is True
+    assert es.applies_to_language("en") is False
+    assert alllangs.applies_to_language("en") is True  # empty = every language
+
+
+def test_active_dictionaries_filters_by_language(tmp_path: Path, monkeypatch) -> None:
+    es = _dict("es", [_entry("hola", "OLA")], language="es")
+    en = _dict("en", [_entry("hi", "HY")], language="en")
+    both = _dict("both", [_entry("ok", "OKAY")])  # no language -> all
+    monkeypatch.setattr(pron, "load_dictionaries", lambda _p=None: [es, en, both])
+    # Spanish synthesis: the Spanish + all-language dicts, not the English one.
+    ids = {d.id for d in active_dictionaries("espeak", language="es")}
+    assert ids == {"es", "both"}
+    # No language filter (default): every dictionary participates (prior behavior).
+    assert {d.id for d in active_dictionaries("espeak")} == {"es", "en", "both"}
+
+
+def test_language_round_trips_through_dict() -> None:
+    d = _dict("x", [], language="es-MX")
+    # from_dict normalizes the base subtag.
+    assert PronunciationDictionary.from_dict(d.to_dict()).language == "es"
+
+
 # -- substitution ---------------------------------------------------------- #
 
 
