@@ -11,7 +11,8 @@ synthesizer and runs the whole pipeline:
 
 It is ``wx``-free and strict-typed (it lives in ``quill/core``), so the future
 batch UI and headless callers can share exactly this resolution logic rather than
-re-deriving it. Local engines only (SAPI 5, Kokoro, Piper, DECtalk, eSpeak-NG).
+re-deriving it. Local engines (SAPI 5, Kokoro, Piper, DECtalk, eSpeak-NG) plus the
+multilingual cloud providers (OpenAI / Gemini / ElevenLabs) for translated export.
 """
 
 from __future__ import annotations
@@ -35,6 +36,11 @@ from quill.core.speech.translate_sections import Translator, translate_sections
 # Engine ids accepted by :func:`make_synthesizer`. These mirror the
 # ``read_aloud_engine`` setting and the batch options' per-engine blocks.
 SUPPORTED_ENGINES = ("sapi5", "kokoro", "piper", "dectalk", "espeak")
+# Multilingual cloud TTS providers (the premium tier for translated export). Each
+# voice can speak any language, so these are the natural fit for a translated
+# document; they require a configured API key and ffmpeg (to conform the provider's
+# MP3/WAV into the splice-ready PCM WAV the assembler expects).
+CLOUD_ENGINES = ("openai", "gemini", "elevenlabs")
 
 
 class DocumentSpeechError(Exception):
@@ -59,6 +65,10 @@ class SynthesisSpec:
     volume: float = 1.0
     piper_model: Path | None = None
     executable: Path | None = None
+    # Cloud-engine credentials (openai/gemini/elevenlabs only). ``api_key`` is
+    # required for those engines; ``model`` falls back to the provider default.
+    api_key: str = ""
+    model: str = ""
 
 
 def make_synthesizer(spec: SynthesisSpec) -> Synthesizer:
@@ -130,9 +140,55 @@ def make_synthesizer(spec: SynthesisSpec) -> Synthesizer:
 
         return _espeak
 
+    if engine in CLOUD_ENGINES:
+        return _make_cloud_synthesizer(engine, spec)
+
     raise DocumentSpeechError(
-        f"Unknown speech engine {spec.engine!r}. Expected one of {SUPPORTED_ENGINES}."
+        f"Unknown speech engine {spec.engine!r}. Expected one of "
+        f"{SUPPORTED_ENGINES + CLOUD_ENGINES}."
     )
+
+
+def _make_cloud_synthesizer(engine: str, spec: SynthesisSpec) -> Synthesizer:
+    """Resolve a cloud provider into a ``(text, out_wav) -> None`` synthesizer.
+
+    The provider exports MP3 (OpenAI/ElevenLabs) or WAV (Gemini); we conform that
+    to the splice-ready PCM WAV the assembler concatenates. Requires an API key and
+    ffmpeg — both raise :class:`DocumentSpeechError` up front when missing so a
+    cloud translated export fails fast rather than mid-batch.
+    """
+    if not spec.api_key:
+        raise DocumentSpeechError(
+            f"A {engine} API key is required for cloud voice synthesis. "
+            "Add the key in AI Hub and try again."
+        )
+    from quill.core.ai import cloud_tts
+    from quill.core.speech.ffmpeg import INSTALL_HINT, conform_wav, find_ffmpeg
+
+    if find_ffmpeg() is None:
+        raise DocumentSpeechError(f"ffmpeg is required to assemble cloud audio. {INSTALL_HINT}")
+    model = spec.model or cloud_tts.default_model(engine)
+    voice = spec.voice or cloud_tts.default_voice(engine)
+
+    def _cloud(text: str, out: Path) -> None:
+        import shutil
+
+        work = Path(tempfile.mkdtemp(prefix="quill_cloudtts_"))
+        try:
+            media = cloud_tts.export_audio(
+                engine,
+                text,
+                work / "segment",
+                spec.api_key,
+                model=model,
+                voice=voice,
+                speed=spec.speed,
+            )
+            conform_wav(Path(media), out)
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+
+    return _cloud
 
 
 def _wrap_with_pronunciations(

@@ -163,7 +163,27 @@ def _resolve_chapter_sound_path(frame: Any, dest_dir: Path) -> Path | None:
     return out
 
 
-_TRANSLATION_LOCAL_ENGINES = frozenset({"sapi5", "kokoro", "piper", "dectalk", "espeak"})
+def _cloud_credentials(frame: Any, provider: str) -> tuple[str, str]:
+    """Return ``(api_key, model)`` for a cloud TTS *provider*, both possibly empty.
+
+    Reuses the frame's per-provider key getters (the same credentials the AI Voice
+    feature reads) and each provider's configured/default model. An empty key means
+    the cloud target is skipped with a status note rather than failing the batch.
+    """
+    from quill.core.ai import cloud_tts
+
+    s = frame.settings
+    if provider == "gemini":
+        api_key = frame._get_gemini_api_key()
+    elif provider == "elevenlabs":
+        api_key = frame._get_elevenlabs_api_key()
+    else:  # openai
+        api_key = frame._get_openai_api_key()
+    model = (getattr(s, "ai_tts_model", "") or "").strip()
+    # Only honor the saved model when it belongs to this provider; otherwise default.
+    if model not in cloud_tts.models_for(provider):
+        model = cloud_tts.default_model(provider)
+    return api_key, model
 
 
 def _build_translator(req: Any) -> Any:
@@ -211,6 +231,7 @@ def _export_translations(
 
     from quill.core.ai.translation import LANGUAGE_NAMES
     from quill.core.speech.document_speech import (
+        CLOUD_ENGINES,
         DocumentSpeechError,
         SynthesisSpec,
         synthesize_document_to_chaptered_file,
@@ -218,17 +239,28 @@ def _export_translations(
 
     chapters = 0
     for lang_code, t_engine, t_voice in req.translation_targets:
-        if t_engine not in _TRANSLATION_LOCAL_ENGINES:
-            frame._wx.CallAfter(
-                frame._set_status, f"Skipped {lang_code} (cloud voices not yet supported)"
-            )
-            continue
         lang_name = LANGUAGE_NAMES.get(lang_code, lang_code)
         out = base_final.with_name(f"{base_final.stem} ({lang_name}){suffix}")
         t_dicts = _active_pronunciation_dictionaries(
             frame, t_engine, req.source_folder, language=lang_code
         )
-        t_spec = SynthesisSpec(engine=t_engine, voice=t_voice, rate=req.rate, speed=req.speed)
+        if t_engine in CLOUD_ENGINES:
+            api_key, model = _cloud_credentials(frame, t_engine)
+            if not api_key:
+                frame._wx.CallAfter(
+                    frame._set_status, f"Skipped {out.name} ({t_engine} API key not configured)"
+                )
+                continue
+            t_spec = SynthesisSpec(
+                engine=t_engine,
+                voice=t_voice,
+                rate=req.rate,
+                speed=req.speed,
+                api_key=api_key,
+                model=model,
+            )
+        else:
+            t_spec = SynthesisSpec(engine=t_engine, voice=t_voice, rate=req.rate, speed=req.speed)
         work = Path(tempfile.mkdtemp(prefix="quill_batch_tr_"))
         try:
             result = synthesize_document_to_chaptered_file(

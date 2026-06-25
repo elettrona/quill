@@ -43,6 +43,22 @@ def test_unknown_engine_raises() -> None:
         ds.make_synthesizer(ds.SynthesisSpec(engine="bogus"))
 
 
+def test_cloud_engine_requires_api_key() -> None:
+    # A cloud provider with no key fails fast (before any synthesis call).
+    with pytest.raises(ds.DocumentSpeechError, match="API key"):
+        ds.make_synthesizer(ds.SynthesisSpec(engine="openai", voice="nova"))
+
+
+def test_cloud_engine_requires_ffmpeg(monkeypatch: pytest.MonkeyPatch) -> None:
+    # With a key but no ffmpeg, the cloud path refuses up front (it needs ffmpeg to
+    # conform the provider's MP3/WAV to the splice-ready PCM WAV).
+    import quill.core.speech.ffmpeg as ffmpeg_mod
+
+    monkeypatch.setattr(ffmpeg_mod, "find_ffmpeg", lambda: None)
+    with pytest.raises(ds.DocumentSpeechError, match="ffmpeg"):
+        ds.make_synthesizer(ds.SynthesisSpec(engine="openai", voice="nova", api_key="sk-x"))
+
+
 def test_translate_applied_before_synthesis(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

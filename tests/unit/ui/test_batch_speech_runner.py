@@ -83,8 +83,12 @@ def test_export_translations_local_engine(tmp_path: Path, monkeypatch) -> None:
     assert (tmp_path / "doc (Spanish).mp3").is_file()
 
 
-def test_export_translations_skips_cloud_engine(tmp_path: Path, monkeypatch) -> None:
+def test_export_translations_skips_cloud_engine_without_key(tmp_path: Path, monkeypatch) -> None:
+    # A cloud target with no configured API key is skipped (no output), so a
+    # missing key never aborts the rest of the batch.
     frame = _tr_frame(tmp_path)
+    frame.settings.ai_tts_model = ""
+    frame._get_openai_api_key = lambda: ""  # no key configured
     src = tmp_path / "doc.md"
     src.write_text("x", encoding="utf-8")
     req = SimpleNamespace(
@@ -94,7 +98,6 @@ def test_export_translations_skips_cloud_engine(tmp_path: Path, monkeypatch) -> 
         combine_headings=False,
         source_folder=tmp_path,
     )
-    # Cloud engines are skipped (not yet supported) -> no chapters, no output.
     chapters = _export_translations(
         frame,
         req,
@@ -107,6 +110,57 @@ def test_export_translations_skips_cloud_engine(tmp_path: Path, monkeypatch) -> 
     )
     assert chapters == 0
     assert not (tmp_path / "doc (Spanish).mp3").exists()
+
+
+def test_export_translations_cloud_engine_with_key(tmp_path: Path, monkeypatch) -> None:
+    # A configured cloud key now ships a translated export: the spec carries the
+    # provider key + model and the document is synthesized with the cloud voice.
+    import quill.core.speech.document_speech as ds
+
+    seen: dict = {}
+
+    class _Result:
+        with_tones_path = None
+
+        def __init__(self, out: Path) -> None:
+            self.output_path = out
+            self.chapters = [1]
+
+    def _fake_synth(src, out, spec, options, **kw):
+        seen["engine"] = spec.engine
+        seen["api_key"] = spec.api_key
+        seen["model"] = spec.model
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(b"RIFF")
+        return _Result(out)
+
+    monkeypatch.setattr(ds, "synthesize_document_to_chaptered_file", _fake_synth)
+    frame = _tr_frame(tmp_path)
+    frame.settings.ai_tts_model = ""
+    frame._get_openai_api_key = lambda: "sk-test"
+    src = tmp_path / "doc.md"
+    src.write_text("# Hi\n\nbody\n", encoding="utf-8")
+    req = SimpleNamespace(
+        translation_targets=(("es", "openai", "nova"),),
+        rate=200,
+        speed=1.0,
+        combine_headings=False,
+        source_folder=tmp_path,
+    )
+    chapters = _export_translations(
+        frame,
+        req,
+        src,
+        tmp_path / "doc.mp3",
+        ".mp3",
+        None,
+        lambda _sp=None: object(),
+        for_language=lambda name: lambda t: t,
+    )
+    assert chapters == 1
+    assert seen["engine"] == "openai" and seen["api_key"] == "sk-test"
+    assert seen["model"]  # defaulted from the provider
+    assert (tmp_path / "doc (Spanish).mp3").is_file()
 
 
 def test_resolve_chapter_sound_from_bundled_ink(tmp_path: Path) -> None:

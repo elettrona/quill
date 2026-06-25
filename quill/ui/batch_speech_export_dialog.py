@@ -463,8 +463,9 @@ class BatchSpeechExportDialog:
         from quill.core.speech.voice_languages import voices_for_language
 
         _name, code = self._current_tr_lang()
-        # Local voices only for now (cloud translated export is a follow-up).
-        self._tr_voice_opts = voices_for_language(code, include_cloud=False) if code else []
+        # Local tiers first (eSpeak/SAPI), then the premium multilingual cloud voices
+        # (OpenAI/Gemini/ElevenLabs) — each needs its provider API key at run time.
+        self._tr_voice_opts = voices_for_language(code) if code else []
         self._tr_voice.Set([v.display for v in self._tr_voice_opts])
         if self._tr_voice_opts:
             self._tr_voice.SetSelection(0)
