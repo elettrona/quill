@@ -143,15 +143,22 @@ def synthesize_to_wav(
     voice_id: str = "",
     rate_wpm: int = _DEFAULT_RATE_WPM,
     volume: float = 1.0,
+    as_ssml: bool | None = None,
 ) -> None:
     """Synthesize ``text`` to a WAV file at ``output_path`` via SAPI 5.
 
-    Raises :class:`RuntimeError` when SAPI is unavailable or synthesis fails.
+    When *as_ssml* is true (or ``None`` and ``text`` begins with a ``<speak>``
+    root) the text is spoken as W3C SSML via the ``_SVSF_IS_XML`` flag; otherwise
+    as plain text. Raises :class:`RuntimeError` when SAPI is unavailable or
+    synthesis fails.
     """
     if not text.strip():
         raise RuntimeError("Cannot synthesize empty text.")
     if _cc is None:
         raise RuntimeError("comtypes is not available; SAPI 5 cannot be used.")
+    if as_ssml is None:
+        as_ssml = text.lstrip().startswith("<speak")
+    speak_flags = _SVSF_IS_XML if as_ssml else 0
     output_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         sp_voice = _cc.CreateObject("SAPI.SpVoice")
@@ -163,7 +170,7 @@ def synthesize_to_wav(
         try:
             apply_settings(sp_voice, voice_id=voice_id, rate_wpm=rate_wpm, volume=volume)
             sp_voice.AudioOutputStream = stream
-            sp_voice.Speak(text, 0)  # synchronous
+            sp_voice.Speak(text, speak_flags)  # synchronous
         finally:
             stream.Close()
     except Exception as exc:  # noqa: BLE001

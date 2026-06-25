@@ -85,15 +85,17 @@ def test_ssml_entry_uses_plain_fallback_no_raw_markup() -> None:
             )
         ],
     )
-    out = apply_pronunciations("Learn SQL today.", "sapi5", [d])
+    # On a non-SSML engine (Kokoro) the entry degrades to its plain fallback.
+    out = apply_pronunciations("Learn SQL today.", "kokoro", [d])
     assert out.text == "Learn ess cue ell today."
     assert "<" not in out.text  # never read raw markup
-    assert out.is_ssml is False  # native SSML rendering is Phase 6
+    assert out.is_ssml is False
 
 
 def test_ssml_entry_without_fallback_is_skipped() -> None:
+    # On a non-SSML engine, an SSML entry with no fallback is skipped (not markup).
     d = _dict("g", [_entry("SQL", "<say-as>SQL</say-as>", mode="ssml", plain_fallback="")])
-    out = apply_pronunciations("SQL", "sapi5", [d])
+    out = apply_pronunciations("SQL", "kokoro", [d])
     assert out.text == "SQL"  # not substituted with raw markup
 
 
@@ -262,3 +264,60 @@ def test_ssml_fragment_builders_escape():
     assert assemble_ssml(frag) == f"<speak>{frag}</speak>"
     assert engine_supports_ssml("sapi5") and engine_supports_ssml("espeak")
     assert not engine_supports_ssml("kokoro")
+
+
+def test_apply_pronunciations_emits_ssml_on_capable_engine():
+    from quill.core.speech.pronunciation import (
+        PronunciationDictionary,
+        PronunciationEntry,
+        apply_pronunciations,
+        validate_ssml_fragment,
+    )
+
+    dicts = [
+        PronunciationDictionary(
+            id="d",
+            entries=[
+                PronunciationEntry(
+                    term="SQL",
+                    replacement='<sub alias="sequel">SQL</sub>',
+                    mode="ssml",
+                    plain_fallback="sequel",
+                )
+            ],
+        )
+    ]
+    # SAPI 5 is SSML-capable: the utterance becomes a <speak> with the raw fragment
+    r = apply_pronunciations("Learn SQL & more.", "sapi5", dicts)
+    assert r.is_ssml is True
+    assert r.text.startswith("<speak>") and r.text.endswith("</speak>")
+    assert '<sub alias="sequel">SQL</sub>' in r.text
+    assert "&amp; more" in r.text  # surrounding text is XML-escaped
+    assert validate_ssml_fragment(r.text)
+
+    # Kokoro is not SSML-capable: the plain fallback is spoken, no markup
+    r2 = apply_pronunciations("Learn SQL & more.", "kokoro", dicts)
+    assert r2.is_ssml is False
+    assert r2.text == "Learn sequel & more."
+
+
+def test_apply_pronunciations_ssml_falls_back_when_malformed():
+    from quill.core.speech.pronunciation import (
+        PronunciationDictionary,
+        PronunciationEntry,
+        apply_pronunciations,
+    )
+
+    dicts = [
+        PronunciationDictionary(
+            id="d",
+            entries=[
+                PronunciationEntry(
+                    term="X", replacement="<broken", mode="ssml", plain_fallback="ex"
+                )
+            ],
+        )
+    ]
+    r = apply_pronunciations("an X here", "sapi5", dicts)
+    assert r.is_ssml is False  # malformed SSML -> plain fallback
+    assert r.text == "an ex here"

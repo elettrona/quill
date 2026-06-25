@@ -14,9 +14,11 @@ mapping a term to how it should be spoken. Scope is two-dimensional
 live paths call, so a fix made once is heard everywhere. Conflict precedence,
 most specific first: project+engine > project+all > global+engine > global+all.
 
-Respelling substitution is fully implemented here. Phoneme/SSML entries degrade
-to their ``plain_fallback`` for now (native SSML rendering is the plan's Phase 6);
-they never emit raw markup into spoken text.
+Respelling substitution is fully implemented. On SSML-capable engines (SAPI 5,
+eSpeak-NG) an ``ssml`` entry renders its markup natively: the utterance becomes a
+validated ``<speak>`` with surrounding text XML-escaped (:func:`apply_pronunciations`
+sets ``is_ssml``). On other engines (Kokoro/Piper/DECtalk) ``ssml``/``phoneme``
+entries degrade to their ``plain_fallback``; raw markup is never read aloud.
 """
 
 from __future__ import annotations
@@ -334,31 +336,57 @@ def apply_pronunciations(
     # substituted replacement — that is the "New York" → "noo york" → "noo yorrk"
     # trap), then resolve overlaps greedily left-to-right, longest match first at a
     # tie. This yields longest-term-first semantics deterministically.
-    matches: list[tuple[int, int, str, str]] = []
+    #
+    # Each match carries both a *plain* payload (spoken on any engine) and an
+    # optional raw *ssml* fragment (only when the engine speaks SSML), so the same
+    # match set renders either way (§4.7.8).
+    ssml_capable = engine_supports_ssml(engine)
+    matches: list[tuple[int, int, str, str | None, str]] = []  # start,end,plain,ssml,term
     for entry in chosen.values():
-        spoken = _spoken_form(entry)
-        if spoken is None:
+        plain = _spoken_form(entry)
+        ssml = entry.replacement if (entry.mode == "ssml" and ssml_capable) else None
+        if plain is None and ssml is None:
             continue
         pattern = _compile(entry)
         if pattern is None:
             continue
         for found in pattern.finditer(text):
             if found.end() > found.start():  # skip zero-width matches
-                matches.append((found.start(), found.end(), spoken, entry.term))
+                matches.append((found.start(), found.end(), plain or "", ssml, entry.term))
 
     matches.sort(key=lambda m: (m[0], -(m[1] - m[0])))
-    parts: list[str] = []
+    selected: list[tuple[int, int, str, str | None, str]] = []
     applied: dict[str, int] = {}
     cursor = 0
-    for start, end, spoken, term in matches:
+    for match in matches:
+        start, end, _plain, _ssml, term = match
         if start < cursor:
             continue  # overlaps an already-applied match
-        parts.append(text[cursor:start])
-        parts.append(spoken)
+        selected.append(match)
         applied[term] = applied.get(term, 0) + 1
         cursor = end
-    parts.append(text[cursor:])
 
+    use_ssml = ssml_capable and any(ssml for _s, _e, _p, ssml, _t in selected)
+    if use_ssml:
+        inner: list[str] = []
+        cursor = 0
+        for start, end, plain, ssml, _term in selected:
+            inner.append(_xml_escape(text[cursor:start]))
+            inner.append(ssml if ssml is not None else _xml_escape(plain or text[start:end]))
+            cursor = end
+        inner.append(_xml_escape(text[cursor:]))
+        body = "".join(inner)
+        if validate_ssml_fragment(body):
+            return PronunciationResult(text=assemble_ssml(body), is_ssml=True, applied=applied)
+        # Malformed assembly: fall through to plain rendering for this utterance.
+
+    parts: list[str] = []
+    cursor = 0
+    for start, end, plain, _ssml, _term in selected:
+        parts.append(text[cursor:start])
+        parts.append(plain if plain else text[start:end])
+        cursor = end
+    parts.append(text[cursor:])
     return PronunciationResult(text="".join(parts), is_ssml=False, applied=applied)
 
 

@@ -655,3 +655,26 @@ def test_read_aloud_controller_applies_pronunciation():
         )
     ]
     assert controller._apply_pronunciation("Say QUILL now.") == "Say kwill now."
+
+
+def test_read_aloud_controller_emits_ssml_on_capable_engine():
+    """On SAPI 5, an SSML entry produces a <speak> utterance (skips verbalize)."""
+    from quill.core.speech.pronunciation import PronunciationDictionary, PronunciationEntry
+
+    controller = read_aloud_module.ReadAloudController()
+    controller._pron_engine = "sapi5"
+    controller._pron_dicts = [
+        PronunciationDictionary(
+            id="d",
+            entries=[
+                PronunciationEntry(
+                    term="SQL",
+                    replacement='<sub alias="sequel">SQL</sub>',
+                    mode="ssml",
+                    plain_fallback="sequel",
+                )
+            ],
+        )
+    ]
+    out = controller._apply_pronunciation("Learn SQL.")
+    assert out.startswith("<speak>") and '<sub alias="sequel">SQL</sub>' in out

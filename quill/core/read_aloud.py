@@ -581,6 +581,10 @@ def synthesize_with_espeak(
         "-w",
         str(output_path),
     ]
+    # SSML/markup input (an assembled <speak> utterance) needs eSpeak-NG's markup
+    # mode (-m); otherwise the tags would be read aloud literally.
+    if text.lstrip().startswith("<speak"):
+        command.append("-m")
     # A portable / managed eSpeak-NG (the in-app download and the bundled copy)
     # ships its espeak-ng-data beside the executable. Without --path eSpeak-NG
     # falls back to a compiled-in/registry data path that does not exist for a
@@ -1034,7 +1038,10 @@ class ReadAloudController:
             if not sentence:
                 continue
             sentence = self._apply_pronunciation(sentence)
-            sentence = verbalize_punctuation(sentence, self._punctuation_level)
+            if not sentence.lstrip().startswith("<speak"):
+                # SSML utterances must reach the engine intact; verbalizing their
+                # punctuation would corrupt the markup.
+                sentence = verbalize_punctuation(sentence, self._punctuation_level)
             if not first:
                 self._inter_sentence_pause()
             first = False
@@ -1130,7 +1137,10 @@ class ReadAloudController:
             if not sentence:
                 continue
             sentence = self._apply_pronunciation(sentence)
-            sentence = verbalize_punctuation(sentence, self._punctuation_level)
+            if not sentence.lstrip().startswith("<speak"):
+                # SSML utterances must reach the engine intact; verbalizing their
+                # punctuation would corrupt the markup.
+                sentence = verbalize_punctuation(sentence, self._punctuation_level)
             if not first:
                 self._inter_sentence_pause()
             first = False
