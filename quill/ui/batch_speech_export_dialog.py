@@ -21,7 +21,11 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from quill.ui.dialog_contract import apply_modal_ids, show_message_box
+from quill.ui.dialog_contract import (
+    apply_listbox_activation,
+    apply_modal_ids,
+    show_message_box,
+)
 
 # (label, engine_id) pairs, mirroring the Speech Hub's engine list.
 EngineOptions = list[tuple[str, str]]
@@ -62,6 +66,11 @@ class BatchSpeechRequest:
     # normalization + pronunciation + polish) for each file, without synthesizing.
     dry_run: bool = False
     preview: bool = False  # internal: a Preview press, not a Start
+    # Combine empty headings into the next article (ACB-style) before synthesis.
+    combine_headings: bool = False
+    # Round-robin voices: ordered voice ids (of the selected engine) cycled one per
+    # article/heading. Empty or one voice -> the single `voice` above is used.
+    round_robin_voices: tuple[str, ...] = ()
     _voice_label: str = field(default="", repr=False)
 
 
@@ -104,6 +113,8 @@ class BatchSpeechExportDialog:
         self._engine_options = engine_options
         self._engine_available = engine_available
         self._result: BatchSpeechRequest | None = None
+        # Round-robin rotation: ordered (voice_id, label) for the selected engine.
+        self._rr_voices: list[tuple[str, str]] = []
 
         self.dialog = wx.Dialog(
             parent,
@@ -154,7 +165,7 @@ class BatchSpeechExportDialog:
         self._engine = wx.Choice(
             self.dialog, choices=[self._engine_label(lbl, eid) for lbl, eid in engine_options]
         )
-        self._engine.Bind(wx.EVT_CHOICE, lambda _e: self._reload_voices())
+        self._engine.Bind(wx.EVT_CHOICE, lambda _e: self._on_engine_change())
         root.Add(self._engine, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         self._select_engine(defaults.engine)
 
@@ -179,6 +190,31 @@ class BatchSpeechExportDialog:
         )
         pace_row.Add(self._speed, 0, wx.LEFT, 6)
         root.Add(pace_row, 0, wx.LEFT | wx.TOP, 8)
+
+        # --- Round-robin voices (optional) ---
+        label("Round-&robin voices (each article gets the next voice; optional):")
+        rr_add_row = wx.BoxSizer(wx.HORIZONTAL)
+        self._rr_pick = wx.Choice(self.dialog, choices=[])
+        self._rr_pick.SetName("Round-robin voice to add")
+        rr_add = wx.Button(self.dialog, label="A&dd voice")
+        rr_add.Bind(wx.EVT_BUTTON, lambda _e: self._on_rr_add())
+        rr_add_row.Add(self._rr_pick, 1, wx.EXPAND | wx.RIGHT, 6)
+        rr_add_row.Add(rr_add, 0)
+        root.Add(rr_add_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        self._rr_list = wx.ListBox(self.dialog, style=wx.LB_SINGLE)
+        self._rr_list.SetName("Round-robin voice order")
+        apply_listbox_activation(self._rr_list, lambda _e: self._rr_pick.SetFocus())
+        root.Add(self._rr_list, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+        rr_btn_row = wx.BoxSizer(wx.HORIZONTAL)
+        self._rr_up = wx.Button(self.dialog, label="Move U&p")
+        self._rr_down = wx.Button(self.dialog, label="Move Dow&n")
+        self._rr_remove = wx.Button(self.dialog, label="Re&move")
+        self._rr_up.Bind(wx.EVT_BUTTON, lambda _e: self._on_rr_move(-1))
+        self._rr_down.Bind(wx.EVT_BUTTON, lambda _e: self._on_rr_move(1))
+        self._rr_remove.Bind(wx.EVT_BUTTON, lambda _e: self._on_rr_remove())
+        for btn in (self._rr_up, self._rr_down, self._rr_remove):
+            rr_btn_row.Add(btn, 0, wx.RIGHT, 6)
+        root.Add(rr_btn_row, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
         # --- Output format ---
         label("Output &format:")
@@ -210,6 +246,11 @@ class BatchSpeechExportDialog:
         self._speak_headings = wx.CheckBox(self.dialog, label="Speak each &heading aloud")
         self._speak_headings.SetValue(defaults.speak_headings)
         root.Add(self._speak_headings, 0, wx.LEFT | wx.TOP, 8)
+        self._combine = wx.CheckBox(
+            self.dialog, label="&Combine empty headings into the next article"
+        )
+        self._combine.SetValue(defaults.combine_headings)
+        root.Add(self._combine, 0, wx.LEFT | wx.TOP, 8)
         self._dry_run = wx.CheckBox(
             self.dialog, label="Dr&y run: write preview text only (don't synthesize)"
         )
@@ -253,6 +294,7 @@ class BatchSpeechExportDialog:
         self.dialog.SetSizer(root)
         self.dialog.Fit()
         self._reload_voices(initial_voice=defaults.voice)
+        self._seed_rotation(defaults.round_robin_voices)
 
     # ------------------------------------------------------------------ helpers
 
@@ -284,7 +326,11 @@ class BatchSpeechExportDialog:
     def _reload_voices(self, *, initial_voice: str = "") -> None:
         engine_id = self._current_engine_id()
         self._voice_pairs = self._voices_for(engine_id)
-        self._voice.Set([lbl for lbl, _vid in self._voice_pairs])
+        labels = [lbl for lbl, _vid in self._voice_pairs]
+        self._voice.Set(labels)
+        self._rr_pick.Set(labels)
+        if labels:
+            self._rr_pick.SetSelection(0)
         target = initial_voice
         chosen = 0
         for i, (_lbl, vid) in enumerate(self._voice_pairs):
@@ -294,11 +340,63 @@ class BatchSpeechExportDialog:
         if self._voice_pairs:
             self._voice.SetSelection(chosen)
 
+    def _on_engine_change(self) -> None:
+        # Voices are engine-specific, so switching engines clears the rotation.
+        self._reload_voices()
+        self._rr_voices = []
+        self._refresh_rr_list()
+
     def _current_voice_id(self) -> str:
         idx = self._voice.GetSelection()
         if 0 <= idx < len(self._voice_pairs):
             return self._voice_pairs[idx][1]
         return ""
+
+    # -------------------------------------------------- round-robin voices
+
+    def _seed_rotation(self, voice_ids: tuple[str, ...]) -> None:
+        """Pre-fill the rotation from saved ids, mapping each to its current label."""
+        by_id = {vid: lbl for lbl, vid in self._voice_pairs}
+        self._rr_voices = [(vid, by_id[vid]) for vid in voice_ids if vid in by_id]
+        self._refresh_rr_list()
+
+    def _refresh_rr_list(self, *, select: int = -1) -> None:
+        self._rr_list.Set([lbl for _vid, lbl in self._rr_voices])
+        if self._rr_voices:
+            index = select if 0 <= select < len(self._rr_voices) else 0
+            self._rr_list.SetSelection(index)
+
+    def _rr_selected_index(self) -> int:
+        idx = self._rr_list.GetSelection()
+        return idx if 0 <= idx < len(self._rr_voices) else -1
+
+    def _on_rr_add(self) -> None:
+        idx = self._rr_pick.GetSelection()
+        if not (0 <= idx < len(self._voice_pairs)):
+            return
+        label, vid = self._voice_pairs[idx]
+        if any(existing == vid for existing, _ in self._rr_voices):
+            return  # already in the rotation
+        self._rr_voices.append((vid, label))
+        self._refresh_rr_list(select=len(self._rr_voices) - 1)
+
+    def _on_rr_move(self, delta: int) -> None:
+        idx = self._rr_selected_index()
+        target = idx + delta
+        if idx < 0 or not (0 <= target < len(self._rr_voices)):
+            return
+        self._rr_voices[idx], self._rr_voices[target] = (
+            self._rr_voices[target],
+            self._rr_voices[idx],
+        )
+        self._refresh_rr_list(select=target)
+
+    def _on_rr_remove(self) -> None:
+        idx = self._rr_selected_index()
+        if idx < 0:
+            return
+        del self._rr_voices[idx]
+        self._refresh_rr_list(select=min(idx, len(self._rr_voices) - 1))
 
     def _collect(self, *, preview: bool) -> BatchSpeechRequest:
         exts: list[str] = []
@@ -337,6 +435,8 @@ class BatchSpeechExportDialog:
             ),
             dry_run=self._dry_run.GetValue(),
             preview=preview,
+            combine_headings=self._combine.GetValue(),
+            round_robin_voices=tuple(vid for vid, _lbl in self._rr_voices),
         )
 
     # ------------------------------------------------------------------ events

@@ -120,6 +120,58 @@ def test_dry_run_checkbox_collects(wx_app, tmp_path):
         frame.Destroy()
 
 
+def test_combine_headings_checkbox_collects(wx_app, tmp_path):
+    frame, dlg = _make(wx_app, tmp_path)
+    try:
+        assert dlg._collect(preview=False).combine_headings is False
+        dlg._combine.SetValue(True)
+        assert dlg._collect(preview=False).combine_headings is True
+    finally:
+        dlg.dialog.Destroy()
+        frame.Destroy()
+
+
+def test_round_robin_add_reorder_remove_and_collect(wx_app, tmp_path):
+    frame, dlg = _make(wx_app, tmp_path)
+    try:
+        # Engine is kokoro -> voices am_liam, af_heart. Add both, in order.
+        dlg._rr_pick.SetSelection(0)  # Liam
+        dlg._on_rr_add()
+        dlg._rr_pick.SetSelection(1)  # Heart
+        dlg._on_rr_add()
+        assert dlg._collect(preview=False).round_robin_voices == ("am_liam", "af_heart")
+        # Adding a duplicate is a no-op.
+        dlg._rr_pick.SetSelection(0)
+        dlg._on_rr_add()
+        assert dlg._collect(preview=False).round_robin_voices == ("am_liam", "af_heart")
+        # Move the second up.
+        dlg._rr_list.SetSelection(1)
+        dlg._on_rr_move(-1)
+        assert dlg._collect(preview=False).round_robin_voices == ("af_heart", "am_liam")
+        # Remove the first.
+        dlg._rr_list.SetSelection(0)
+        dlg._on_rr_remove()
+        assert dlg._collect(preview=False).round_robin_voices == ("am_liam",)
+    finally:
+        dlg.dialog.Destroy()
+        frame.Destroy()
+
+
+def test_switching_engine_clears_round_robin(wx_app, tmp_path):
+    frame, dlg = _make(wx_app, tmp_path)
+    try:
+        dlg._rr_pick.SetSelection(0)
+        dlg._on_rr_add()
+        assert dlg._collect(preview=False).round_robin_voices  # non-empty
+        # Switch engine kokoro -> sapi5: voices differ, rotation clears.
+        dlg._engine.SetSelection(0)  # sapi5 is index 0 in engine_options
+        dlg._on_engine_change()
+        assert dlg._collect(preview=False).round_robin_voices == ()
+    finally:
+        dlg.dialog.Destroy()
+        frame.Destroy()
+
+
 def test_format_choice_maps_each_option(wx_app, tmp_path):
     frame, dlg = _make(wx_app, tmp_path)
     try:

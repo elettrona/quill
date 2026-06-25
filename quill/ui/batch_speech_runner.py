@@ -366,6 +366,8 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                         opts(chapter_sound),
                         work_dir=sep_work / "w",
                         pronunciation_dictionaries=dictionaries,
+                        combine_headings=req.combine_headings,
+                        voice_rotation=list(req.round_robin_voices),
                     )
                     done += 1
                     total_chapters += len(written)
@@ -399,6 +401,8 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                     opts(chapter_sound),
                     work_dir=work_dir / "w",
                     pronunciation_dictionaries=dictionaries,
+                    combine_headings=req.combine_headings,
+                    voice_rotation=list(req.round_robin_voices),
                 )
                 deliverable = result.with_tones_path or result.output_path
                 shutil.copyfile(deliverable, final)
