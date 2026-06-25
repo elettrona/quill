@@ -163,6 +163,46 @@ def test_export_translations_cloud_engine_with_key(tmp_path: Path, monkeypatch) 
     assert (tmp_path / "doc (Spanish).mp3").is_file()
 
 
+def test_confirm_cloud_cost_local_only_no_prompt(monkeypatch) -> None:
+    # Local voices + a free/local translator -> nothing metered, so it proceeds
+    # without ever prompting the user.
+    from quill.ui import batch_speech_runner as bsr
+
+    monkeypatch.setattr(bsr, "_ai_provider_metered", lambda: False)
+    prompted: list[int] = []
+    frame = SimpleNamespace(
+        _wx=SimpleNamespace(ICON_QUESTION=0, YES_NO=0, YES=1),
+        _show_message_box=lambda *a, **k: prompted.append(1) or 1,
+    )
+    ok = bsr.confirm_cloud_cost(
+        frame,
+        translation_provider="libretranslate",
+        targets=(("es", "espeak", "es"),),
+        char_count=10_000,
+    )
+    assert ok is True and not prompted  # never asked
+
+
+def test_confirm_cloud_cost_cloud_prompts_and_respects_no(monkeypatch) -> None:
+    from quill.ui import batch_speech_runner as bsr
+
+    monkeypatch.setattr(bsr, "_ai_provider_metered", lambda: True)
+    monkeypatch.setattr(bsr, "_cloud_credentials", lambda _f, _p: ("key", "tts-1"))
+    shown: list[str] = []
+    frame = SimpleNamespace(
+        _wx=SimpleNamespace(ICON_QUESTION=0, YES_NO=0, YES=1),
+        _show_message_box=lambda msg, *a, **k: shown.append(msg) or 0,  # user says No
+    )
+    ok = bsr.confirm_cloud_cost(
+        frame,
+        translation_provider="ai_assistant",
+        targets=(("es", "openai", "nova"),),
+        char_count=1_000_000,
+    )
+    assert ok is False  # declined
+    assert shown and "Estimated cloud cost" in shown[0]
+
+
 def test_resolve_chapter_sound_from_bundled_ink(tmp_path: Path) -> None:
     # An event id present in the bundled Ink pack resolves to a real WAV on disk.
     out = _resolve_chapter_sound_path(_frame("transcription_started"), tmp_path)

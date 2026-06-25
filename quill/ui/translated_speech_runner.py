@@ -69,7 +69,11 @@ def run_translated_speech_export(frame: Any) -> None:
 def _run(frame: Any, source: Path, request: TranslatedSpeechRequest) -> None:
     from quill.core.speech.chapter_assemble import ChapterAssembleOptions
     from quill.core.speech.voice_blacklist import load_blacklist, save_blacklist
-    from quill.ui.batch_speech_runner import _build_translator, _export_translations
+    from quill.ui.batch_speech_runner import (
+        _build_translator,
+        _export_translations,
+        confirm_cloud_cost,
+    )
 
     s = frame.settings
     suffix = {"mp3": ".mp3", "m4b": ".m4b"}.get(request.output_format, ".wav")
@@ -86,6 +90,23 @@ def _run(frame: Any, source: Path, request: TranslatedSpeechRequest) -> None:
     for_language = _build_translator(req)
     if for_language is None:
         frame._set_status("No translation targets selected")
+        return
+
+    # Cost surfacing (roadmap §7): the document character count is known exactly here,
+    # so the combined translation + TTS estimate is precise. Confirm before metered work.
+    try:
+        from quill.core.speech.text_polish import extract_text
+
+        char_count = len(extract_text(source))
+    except Exception:  # noqa: BLE001 - estimate is best-effort
+        char_count = 0
+    if not confirm_cloud_cost(
+        frame,
+        translation_provider=request.translation_provider,
+        targets=request.targets,
+        char_count=char_count,
+    ):
+        frame._set_status("Translated speech export cancelled")
         return
 
     def opts(_sound_path: Path | None = None) -> ChapterAssembleOptions:

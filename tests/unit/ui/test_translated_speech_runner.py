@@ -63,6 +63,7 @@ def test_run_invokes_export_translations(tmp_path: Path, monkeypatch) -> None:
 
     monkeypatch.setattr(batch, "_export_translations", _fake_export)
     monkeypatch.setattr(batch, "_build_translator", lambda req: lambda name: lambda t: t)
+    monkeypatch.setattr(batch, "confirm_cloud_cost", lambda *a, **k: True)
 
     request = TranslatedSpeechRequest(targets=(("es", "espeak", "es"),), output_format="mp3")
     tsr._run(frame, src, request)

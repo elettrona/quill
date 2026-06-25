@@ -186,6 +186,63 @@ def _cloud_credentials(frame: Any, provider: str) -> tuple[str, str]:
     return api_key, model
 
 
+def _ai_provider_metered() -> bool:
+    """True when the configured AI assistant is a paid cloud provider (needs a key).
+
+    Used to decide whether translation-via-AI adds a metered cost to the estimate; a
+    local model (Ollama/llama.cpp) is free. Defaults to True (show a cost) on error.
+    """
+    try:
+        from quill.core.ai.providers import provider_requires_api_key
+        from quill.core.assistant_ai import load_assistant_connection_settings
+
+        return provider_requires_api_key(load_assistant_connection_settings().provider)
+    except Exception:  # noqa: BLE001 - estimate is best-effort
+        return True
+
+
+def _cloud_tts_targets(frame: Any, targets: Any) -> list[tuple[str, str]]:
+    """The ``(provider, model)`` pairs for the cloud voices among *targets*."""
+    from quill.core.speech.document_speech import CLOUD_ENGINES
+
+    out: list[tuple[str, str]] = []
+    for _code, engine, _voice in targets:
+        if engine in CLOUD_ENGINES:
+            _key, model = _cloud_credentials(frame, engine)
+            out.append((engine, model))
+    return out
+
+
+def confirm_cloud_cost(
+    frame: Any, *, translation_provider: str, targets: Any, char_count: int
+) -> bool:
+    """Show a combined translation + TTS estimate and ask to proceed; True = go.
+
+    Returns True immediately when nothing metered is involved (no cloud voices and a
+    free translation backend), so local-only runs are never interrupted. When a
+    cloud cost is estimated, a Yes/No confirmation surfaces it before the run.
+    """
+    cloud = _cloud_tts_targets(frame, targets)
+    from quill.core.speech.cost_estimate import estimate_combined
+
+    estimate = estimate_combined(
+        translation_provider=translation_provider,
+        cloud_tts_targets=cloud,
+        char_count=char_count,
+        languages=len(tuple(targets)),
+        ai_metered=_ai_provider_metered(),
+    )
+    if not estimate.is_metered:
+        return True
+    wx = frame._wx
+    answer = frame._show_message_box(
+        f"{estimate.summary()}.\n\nThis run uses metered cloud services. Proceed?",
+        "Translated Speech Audio",
+        wx.ICON_QUESTION | wx.YES_NO,
+    )
+    return answer == wx.YES
+
+
 def _build_translator(req: Any) -> Any:
     """Return ``for_language(name) -> translate(text)->text`` or None when not needed.
 
@@ -429,6 +486,19 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
     suffix = {"mp3": ".mp3", "m4b": ".m4b"}.get(req.output_format, ".wav")
     dictionaries = _active_pronunciation_dictionaries(frame, req.engine, req.source_folder)
     for_language = _build_translator(req)
+    # Cost surfacing (roadmap §7): when cloud translated targets are configured,
+    # estimate the combined translation + TTS cost from the corpus size (a byte
+    # proxy for characters) and confirm before any metered work starts.
+    if for_language is not None:
+        corpus_chars = sum(f.stat().st_size for f in files if f.is_file())
+        if not confirm_cloud_cost(
+            frame,
+            translation_provider=req.translation_provider,
+            targets=req.translation_targets,
+            char_count=corpus_chars,
+        ):
+            frame._set_status("Batch speech export cancelled")
+            return
     # Voice-failure blacklist (roadmap §5): known-bad voices are skipped in the
     # round-robin rotation, and any new failure this run is persisted so later runs
     # skip it too. Loaded once and saved after the batch.
