@@ -1845,7 +1845,7 @@ validate, settings, announce — fully unit-tested) behind
   diff from the app-default); and the **List Studio Settings** dialog saves for
   *all documents* or *this document only*.
 - **Remaining:** a formal live screen-reader pass (JAWS/NVDA/Narrator) — manual,
-  tracked in `docs/planning/roadmap.md` §1.10.
+  tracked in `docs/planning/roadmap.md` §1.8.
 
 ### 5.22 Editor essentials
 

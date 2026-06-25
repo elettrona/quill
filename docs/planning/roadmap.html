@@ -172,16 +172,15 @@
   </style>
 </head>
 <body>
-<h1 id="quill-plan-of-record">QUILL — Plan of Record</h1>
+<h1 id="quill-plan-of-record-outstanding-work">QUILL — Plan of Record
+(outstanding work)</h1>
 <blockquote>
-<p><strong>The single planning document.</strong> This is the one source
-of truth for what has shipped, what is still open, and in what order —
-merged from the former separate <code>program-tracker.md</code>,
-<code>wave-outcomes.md</code>, <code>emergency.md</code>,
-<code>feature-backlog.md</code>, the dated live-test backlog, and the
-batch-speech <code>todo.md</code> (all retired into this file). The only
-other files in <code>docs/planning/</code> are the <strong>large
-in-flight feature specs</strong>, each with open work of its own:</p>
+<p><strong>The single planning document, and it tracks only what is
+still open.</strong> Shipped work is not listed here — once something
+lands it leaves this file; its behavior lives in the user guide and
+<code>QUILL-PRD.md</code>. The only other files in
+<code>docs/planning/</code> are the large in-flight feature specs, each
+with open work of its own:</p>
 <ul>
 <li><a href="verbosity-system.md"><code>verbosity-system.md</code></a> —
 verbosity polish backlog.</li>
@@ -195,158 +194,64 @@ href="quill_end_to_end_agentic_ai_prd.md"><code>quill_end_to_end_agentic_ai_prd.
 ElevenLabs / ElevenDesk integration ideas (not started).</li>
 </ul>
 <p><strong>Operating principle:</strong> everything here is in scope to
-<strong>ship</strong> for 1.0 (the old “2.0 deferral” framing is dropped
-except where a row says otherwise). Simplicity for the screen-reader
-user is king. QUILL owns the editor, focus, undo, and announcements; AI
-and every integration are optional and off by default. Shipped design
-specs are <strong>retired to git history</strong> once delivered; their
-status lives here and their behavior in the user guide + PRD.</p>
+<strong>ship</strong> for 1.0 (except a few rows explicitly marked 2.0).
+Simplicity for the screen-reader user is king. QUILL owns the editor,
+focus, undo, and announcements; AI and every integration are optional
+and off by default. Platform scope is Windows (primary) and macOS
+(supported).</p>
 </blockquote>
 <p><strong>Last consolidated:</strong> 2026-06-25.</p>
-<p><strong>Status legend:</strong> ✅ shipped · ◐ partly shipped · 🚧 in
-progress · ⬜ planned · ❌ out of scope.</p>
 <hr />
 <h2 id="north-star">0. North star</h2>
-<p>QUILL is a screen-reader-first writing environment. It is becoming
-the home for a family of accessibility products that Blind Information
-Technology Solutions (BITS) and CSE Designs have built as separate apps.
-Rather than ship four editors, we <strong>consolidate their durable
-value into QUILL</strong> as optional, keyboard-clear,
-screen-reader-first feature families — keeping the names users already
-know where they carry brand equity (notably <strong>BITS
-Whisperer</strong> for speech).</p>
-<p>Three sibling products feed this plan:</p>
-<table>
-<colgroup>
-<col style="width: 25%" />
-<col style="width: 25%" />
-<col style="width: 25%" />
-<col style="width: 25%" />
-</colgroup>
-<thead>
-<tr>
-<th>Product</th>
-<th>Source repo</th>
-<th>What it is</th>
-<th>Where it lands in QUILL</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>BITS Whisperer</strong></td>
-<td><code>s:\code\bw</code></td>
-<td>Accessibility-first audio transcription: ~18 providers (cloud +
-on-device), AI translation/summarization, live-mic transcription,
-speaker diarization, plugins, 7 export formats.</td>
-<td><strong>Speech &amp; Dictation</strong> (§1.2), keeping the BITS
-Whisperer brand. The offline core shipped (#617 S0–S5); the rest of BW’s
-value is consolidated here.</td>
-</tr>
-<tr>
-<td><strong>GLOW</strong></td>
-<td><code>s:\code\glow</code></td>
-<td>Multi-surface accessibility toolkit: Document Audit (ACB Large-Print
-Guidelines, Microsoft Accessibility Checker, WCAG 2.2 AA), accessibility
-agents, Office add-in, MCP server, watch action.</td>
-<td><strong>Accessibility Tooling</strong> (§1.4) and the
-<strong>Agentic AI</strong> agent catalog (§1.3).</td>
-</tr>
-<tr>
-<td><strong>ChapterForge</strong></td>
-<td><code>c:\code\forum</code></td>
-<td>Turns a folder of MP3s into one chaptered audiobook/podcast master,
-screen-reader-first.</td>
-<td><strong>Publishing &amp; Audiobook</strong> (§1.5), beside DAISY
-export.</td>
-</tr>
-</tbody>
-</table>
-<p>The discipline for every consolidation: take what clears QUILL’s
-quality and accessibility bar, re-home it on QUILL’s invariants (atomic
-storage, the dialog contract, the announcement grammar, Safe Mode, the
-network-egress audit), and <strong>leave behind</strong> anything
-superseded by what QUILL already ships or that does not serve the
-screen-reader-first mission.</p>
+<p>QUILL is a screen-reader-first writing environment, becoming the home
+for a family of accessibility products that Blind Information Technology
+Solutions (BITS) and CSE Designs built as separate apps. Rather than
+ship four editors, we <strong>consolidate their durable value into
+QUILL</strong> as optional, keyboard-clear, screen-reader-first feature
+families — keeping names users know where they carry brand equity
+(notably <strong>BITS Whisperer</strong> for speech). Three sibling
+products still feed open work: <strong>BITS Whisperer</strong>
+(<code>s:\code\bw</code>, transcription/speech), <strong>GLOW</strong>
+(<code>s:\code\glow</code>, accessibility audit + agents), and
+<strong>ChapterForge</strong> (<code>c:\code\forum</code>, audio →
+chaptered audiobook). The discipline: take what clears QUILL’s quality
+and accessibility bar, re-home it on QUILL’s invariants (atomic storage,
+the dialog contract, the announcement grammar, Safe Mode, the
+network-egress audit), and leave behind anything superseded or
+off-mission.</p>
 <hr />
-<h2 id="workstreams">1. Workstreams</h2>
-<h3 id="verbosity-system-engine-ui-shipped-polish-backlog-open">1.1
-Verbosity system ✅ (engine + UI shipped; polish backlog open)</h3>
-<p><strong>Spec:</strong> <a
-href="verbosity-system.md"><code>verbosity-system.md</code></a>.</p>
-<p>Per-action, channel-aware, user-customizable announcements that
-replace the single <code>announcement_verbosity</code> knob.</p>
-<ul>
-<li><strong>Shipped:</strong> the pure-domain core (1.1 #361, 1.2 engine
-+ runtime modes #362, 1.3 QVP packs + library + preview #363),
-<strong>the wxPython UI</strong> (prefs panel, token editor, library,
-history viewer, preview lab, about — the <code>verbosity_*.py</code>
-modules), and <strong>call-site wiring</strong> (Quiet/Meeting modes,
-undo, “Where am I?” / “What changed?”, the
-<code>VerbositySettings</code> fields). 220+ tests.</li>
-<li><strong>Open:</strong> the <strong>polish backlog</strong> (the ~100
-addenda, #405–#504) — land the high-value knobs (announcement budgets,
-repetition collapse, typing-echo controls, per-category detail levels,
-destructive-action and undo-available cues) and fold-in-or-defer the
-speculative rest. Each survivor is a checklist item in
-<code>verbosity-system.md</code> (§ “Polish backlog”), not a separate
-issue. The screen-reader-redundant ideas are recorded there as
-<strong>“recommend do not build”</strong> (Typing Echo, Command Echo,
-Speech Rate/Pause knobs, Punctuation/Symbol Profiles — the SR already
-owns these).</li>
-</ul>
-<h3 id="speech-dictation-bits-whisperer-largely-shipped">1.2 Speech
-&amp; Dictation — “BITS Whisperer” ✅◐ (largely shipped)</h3>
-<p><strong>Brand: BITS Whisperer</strong> (<code>s:\code\bw</code>).
-Shipped design specs (the S0–S5 plan, the batch document-to-speech plan,
-the project-format spec, the hold-to-dictate PRD) were retired to git
-history; behavior lives in the user guide (Speech) and
-<strong><code>QUILL-PRD.md</code> §5.25</strong> and §5.25d.</p>
-<p><strong>Shipped:</strong></p>
-<ul>
-<li><strong>Offline STT (#617 S0–S4):</strong> dictation honesty, the
-offline foundation, whisper.cpp + Faster Whisper engines, offline
-transcription, transcript/caption formats (plain/Markdown/HTML,
-SRT/VTT), speaker attribution, dictate-at-cursor (QUILL Key + Shift+D),
-mic selection, the model manager, and the installer component. Plus the
-<strong>Vosk</strong> low-resource engine (#677) and cloud transcription
-providers shipped as Quillins (OpenAI/Groq/ElevenLabs).</li>
-<li><strong>Offline voice commands (#663, Speech S5).</strong></li>
-<li><strong>Watch Folder auto-transcribe (WATCH-9):</strong> on-device,
-consent-free, with selectable transcript format.</li>
-<li><strong>Read Aloud engines:</strong> SAPI 5 system voice (pyttsx3
-removed), DECtalk (via the real DLL runtime), eSpeak-NG, Piper, Kokoro —
-every catalog voice with a spoken preview; AI Voice cloud TTS (OpenAI +
-Google Gemini).</li>
-<li><strong>Hold-to-Dictate (F9) + Locked Dictation (Ctrl+F9)</strong> —
-phases 1–2, with a dedicated Tools &gt; Speech menu and
-user-configurable policy settings.</li>
-<li><strong>Batch Document-to-Speech</strong> (Tools &gt; Speech &gt;
-Batch Export to Speech Audio): folder → chaptered audio, with MP3
-chapter markers, <strong>pronunciation dictionaries</strong>,
-<strong>TTS text normalization</strong>, the <strong>SSML
-Builder</strong> + native SSML playback (SAPI 5 / eSpeak), and the full
-batch-flexibility surface (formats incl. M4B/Opus/FLAC, MP3 quality,
-existing-file policy, naming, audiobook metadata, retry/stop, parallel
-workers, run manifest, eSpeak/Piper engine knobs).</li>
-</ul>
-<p><strong>Open — batch document-to-speech follow-ups</strong> (folded
-in from the former <code>todo.md</code>):</p>
+<h2 id="workstreams-open-work">1. Workstreams (open work)</h2>
+<h3 id="verbosity-polish-backlog">1.1 Verbosity — polish backlog</h3>
+<p>The engine and UI are in; the remaining work is the <strong>polish
+backlog</strong> (the ~100 addenda, #405–#504) — land the high-value
+knobs (announcement budgets, repetition collapse, typing-echo controls,
+per-category detail levels, destructive-action and undo-available cues)
+and fold-in-or-defer the speculative rest. Each survivor is a checklist
+item in <a
+href="verbosity-system.md"><code>verbosity-system.md</code></a> (§
+“Polish backlog”); the screen-reader-redundant ideas are recorded there
+as “recommend do not build” (Typing/Command Echo, Speech Rate/Pause
+knobs, Punctuation/Symbol Profiles — the SR already owns these).</p>
+<h3 id="speech-dictation-bits-whisperer">1.2 Speech &amp; Dictation —
+“BITS Whisperer”</h3>
+<p><strong>Batch document-to-speech follow-ups:</strong></p>
 <ul>
 <li><strong>Project-profile app wiring</strong> — the
 <code>.quill/speech-project.json</code> format, storage, and
-<code>to_batch_options</code> converter ship and are tested, but the app
-does not yet <code>load_profile()</code> on folder open. Needs
+<code>to_batch_options</code> converter exist and are tested, but the
+app does not yet <code>load_profile()</code> on folder open. Needs
 apply-on-open, a precedence resolver (this-run &gt; project &gt; global
 &gt; defaults), a single <code>current_project_dir()</code>, and a
 “Remember for this project / Reset to global” surface (auto-remember on
 Start).</li>
 <li><strong>Chapterization:</strong> M4B <strong>native</strong> chapter
-atoms (today M4B ships as a format but markers are MP3 ID3 CHAP/CTOC);
-<code>sound_id</code> → sound-pack resolution (placeholder chime is the
-current fallback); confirm the <code>separate</code>-file-per-article
-path end-to-end; surface per-file chapter count in results.</li>
+atoms (M4B ships as a format but markers are MP3 ID3 CHAP/CTOC);
+<code>sound_id</code> → sound-pack resolution (a placeholder chime is
+the current fallback); confirm the
+<code>separate</code>-file-per-article path end-to-end; surface per-file
+chapter count in results.</li>
 <li><strong>Keyboard-activation accessibility audit</strong> (systemic;
-surfaced by #709, which is fixed): a <code>wx.ListBox</code> emits no
+surfaced by #709, fixed): a <code>wx.ListBox</code> emits no
 item-activated event, so any list binding only
 <code>EVT_LISTBOX_DCLICK</code> is keyboard-inaccessible. Audit/fix
 <code>ssh_dialogs.py</code>, <code>copy_tray_dialog.py</code>,
@@ -377,32 +282,31 @@ QUILL’s <code>chapters.py</code> (non-contiguous gap chapters; ID3-tag
 clobbering); ElevenDesk research pass (see <a
 href="eleven-labs.md"><code>eleven-labs.md</code></a>).</li>
 </ul>
-<p><strong>Open — dictation follow-ups:</strong> a settings
-<em>panel</em> for the dictation knobs (plus earcon volume / retention /
-visual recording indicator); Dictation History + interactive
-startup-recovery prompt; a Dictation Review interface for
-deferred/unsafe insertions; distinct locked-vs-hold earcons; one-time
-dictation onboarding; and later phases (optional global Windows key
-hook, idle-silence detection, spoken punctuation/commands).</p>
-<p><strong>Open — BW consolidation backlog:</strong> the broader
-provider matrix tiers and guided onboarding tracked as the BW-1..10 /
-WATCH-8 planning markers (#515, #566–#577) — folded here, not a separate
-per-ID stub set.</p>
-<h3 id="agentic-ai-platform-planned-prd-ready">1.3 Agentic AI platform
-⬜ (planned — PRD ready)</h3>
+<p><strong>Dictation follow-ups:</strong> a settings <em>panel</em> for
+the dictation knobs (plus earcon volume / retention / visual recording
+indicator); Dictation History + interactive startup-recovery prompt; a
+Dictation Review interface for deferred/unsafe insertions; distinct
+locked-vs-hold earcons; one-time dictation onboarding; and later phases
+(optional global Windows key hook, idle-silence detection, spoken
+punctuation/commands).</p>
+<p><strong>BW consolidation backlog:</strong> the broader
+provider-matrix tiers and guided onboarding tracked as the BW-1..10 /
+WATCH-8 planning markers (#515, #566–#577).</p>
+<h3 id="agentic-ai-platform-planned">1.3 Agentic AI platform
+(planned)</h3>
 <p><strong>Spec:</strong> <a
 href="quill_end_to_end_agentic_ai_prd.md"><code>quill_end_to_end_agentic_ai_prd.md</code></a>.</p>
-<p>Unify QUILL’s already-deep AI stack behind one provider-neutral,
-optional, screen-reader-first platform whose front door is the
-<strong>AI Hub</strong>: one provider truth, a Safe Editor Tool Gateway
-+ Permission Broker, a real tool-calling agent loop, a declarative agent
+<p>Unify QUILL’s AI stack behind one provider-neutral, optional,
+screen-reader-first platform whose front door is the <strong>AI
+Hub</strong>: one provider truth, a Safe Editor Tool Gateway +
+Permission Broker, a real tool-calling agent loop, a declarative agent
 catalog, an activity log, and an optional harness layer. Supersedes the
 scattered AI issues O5/O5b/O6 (#507–#509), O7 Azure (#510), O8/AI-19
 Copilot SDK (#511/#523), O9/SHELL-2 OCR structuring (#512/#524), and
-AI-11/12/18 (#579–#581). The <strong>Accessibility Agents</strong> from
-GLOW (AX-A..F, #593–#598) become catalog agents here.</p>
+AI-11/12/18 (#579–#581). The Accessibility Agents from GLOW (AX-A..F,
+#593–#598) become catalog agents here.</p>
 <h3 id="accessibility-tooling-from-glow">1.4 Accessibility tooling (from
-GLOW) ⬜</h3>
+GLOW)</h3>
 <p><strong>Source:</strong> <code>s:\code\glow</code>
 (<code>glowplan.md</code>).</p>
 <ul>
@@ -414,39 +318,19 @@ Lands as an in-QUILL audit surface (and an agent in §1.3).</li>
 (#528–#534) plus the WATCH-8 GLOW watch action (#566), re-homed on
 QUILL’s invariants. Currently <code>locked_off</code> (hidden); decide
 for 1.0: finish + un-gate, or keep hidden.</li>
-<li><strong>Out of scope:</strong> GLOW’s
-server/Keycloak/Office-add-in/MCP-deployment surfaces stay in the GLOW
-product; QUILL takes the authoring-time checks.</li>
+<li>GLOW’s server/Keycloak/Office-add-in/MCP-deployment surfaces stay in
+the GLOW product; QUILL takes the authoring-time checks.</li>
 </ul>
-<h3 id="publishing-audiobook">1.5 Publishing &amp; audiobook ◐</h3>
+<h3 id="publishing-audiobook">1.5 Publishing &amp; audiobook</h3>
 <ul>
-<li><strong>Shipped:</strong> DAISY 2.02 text-only export (#251,
-<code>quill/io/daisy.py</code>).</li>
-<li><strong>ChapterForge integration</strong> ⬜ — turn a folder of
-audio (or a document’s sections) into a chaptered audiobook/podcast
-master; ties to DAISY and the BITS Whisperer stack.</li>
-<li><strong>Direct publishing (#140)</strong> ⬜ — WordPress and other
+<li><strong>ChapterForge integration</strong> — turn a folder of audio
+(or a document’s sections) into a chaptered audiobook/podcast master;
+ties to DAISY and the BITS Whisperer stack.</li>
+<li><strong>Direct publishing (#140)</strong> — WordPress and other
 platforms; a long-term, likely-Quillin integration (external-API + auth
 surface), not core editor work.</li>
 </ul>
-<h3 id="braille-mode-phases-34">1.6 Braille mode ✅ (Phases 3/4)</h3>
-<p>Proofing, validation, restore-your-place, and selection-aware
-back-translation shipped (#238–#242, #246). The deferred Phases 3/4/6
-backlog was retired to git history (#600/#601 bookkeeping); remaining
-braille ideas live in the verbosity braille channel.</p>
-<h3 id="navigation-editor">1.7 Navigation &amp; editor ◐</h3>
-<ul>
-<li><strong>Shipped:</strong> Quick Navigation enhancements
-incl. misspellings/search-hits nav types (#513; NAV-10 #578 folded in);
-structured Word view un-gated for everyday use (#514, the CSV-grid half
-stays gated as excluded table work);
-<code>main_frame_statusbar.py</code> / <code>StatusBarMixin</code>
-extraction (#521, GATE-11).</li>
-<li><strong>Open:</strong> the FEAT-12..18 stubs (#582–#588) were
-content-free 2.0-deferred placeholders; if a real feature resurfaces it
-re-enters through the relevant workstream.</li>
-</ul>
-<h3 id="platform-distribution">1.8 Platform &amp; distribution ⬜</h3>
+<h3 id="platform-distribution">1.6 Platform &amp; distribution</h3>
 <ul>
 <li>Live installer smoke on Windows 10/11 (#506); macOS to shipping
 quality (#518); native RTF editing (#516); the Quillin Hub (#517);
@@ -455,126 +339,43 @@ plugin capability + signing + marketplace (#519).</li>
 modern primary-menu <code>IExplorerCommand</code> pass (SHELL-3, #525)
 and the packaging/freeze evaluation (PKG-1 — Nuitka/PyInstaller
 hardening, #599).</li>
-<li><strong>Out of scope:</strong> Linux/Unix (#520, #565, #589).
-Platform scope is Windows (primary) and macOS (supported).</li>
 </ul>
-<h3 id="docs-tutorials-content">1.9 Docs, tutorials &amp; content ◐</h3>
+<h3 id="docs-tutorials-content">1.7 Docs, tutorials &amp; content</h3>
 <p>One <strong>Documentation &amp; Tutorials</strong> track: user-guide
 coverage, getting-started tutorials, the podcast/walkthrough series, and
 content-quality follow-ups (#535–#564, #505, #522). In-flight QA:
-<strong>#526</strong> live NVDA/JAWS/Narrator sign-off;
-<strong>#527</strong> spell-check preload ✅ (resolved 2026-06-24).
-Long-horizon ecosystem (#590) and collaboration (#592) ideas park here.
-Localization L10N-1 (#591) already shipped (display-language switcher +
-translation workflow).</p>
-<h3 id="structured-list-studio-shipped-manual-sr-pass-remains">1.10
-Structured List Studio ✅ (shipped; manual SR pass remains)</h3>
-<p>Build/edit lists by concept (F2):
-Bulleted/Numbered/Checklist/Definition, nested-list editing, multiple
-terms &amp; definitions per entry, in-place editing of the list under
-the caret, type-switch conversion with information-loss confirmation,
-import-with-preview, reparse-and-validate before commit, the
-definition-list <strong>Markdown-profile prompt</strong> (§7.6/§21.3 —
-when no profile is configured the user picks embedded HTML / a native
-profile / a plain “Term: Definition” list, instead of a silent
-fallback), and a Settings/preset surface with <strong>scoped
-precedence</strong> (§3 — app-default → format → document →
-this-operation; the settings dialog saves for <em>all documents</em> or
-<em>this document only</em>; workspace is a supported layer with no
-source today). Behavior is documented in the user guide; the design PRD
-was retired to git history once delivered.</p>
-<p><strong>Open:</strong></p>
-<ul>
-<li>A formal live <strong>screen-reader pass</strong> (JAWS / NVDA /
-Narrator) — manual, not closable in code; only stub-level wiring tests
-exist. Part of the §3 Tier-1 SR sign-off (#526). This is the only
-remaining item.</li>
-</ul>
-<h3 id="native-accessible-table-studio-not-started">1.11 Native
-accessible Table Studio ⬜ (not started)</h3>
+<strong>#526</strong> live NVDA/JAWS/Narrator sign-off. Long-horizon
+ecosystem (#590) and collaboration (#592) ideas park here.</p>
+<h3 id="structured-list-studio-manual-sr-pass">1.8 Structured List
+Studio — manual SR pass</h3>
+<p>The feature is shipped; the <strong>only</strong> remaining item is a
+formal live <strong>screen-reader pass</strong> (JAWS / NVDA / Narrator)
+— manual, not closable in code; only stub-level wiring tests exist. Part
+of the §2 Tier-1 SR sign-off (#526).</p>
+<h3 id="native-accessible-table-studio-not-started">1.9 Native
+accessible Table Studio (not started)</h3>
 <p><strong>Spec:</strong> <a
 href="quill-native-accessible-table-studio-plan.md"><code>quill-native-accessible-table-studio-plan.md</code></a>.
 The accessible table-authoring surface (and the CSV-grid half of #514) —
-excluded from the current green bar; planned design only.</p>
+planned design only.</p>
 <hr />
-<h2 id="phase-outcomes-what-changes-for-the-user">2. Phase outcomes
-(what changes for the user)</h2>
-<p>Written from the user’s chair, screen-reader experience first.
-Status: ✅ shipped · ⬜ planned.</p>
-<h3 id="phase-1-trust-braille-and-private-speech">Phase 1 — Trust,
-braille, and private speech ✅</h3>
-<p>Text round-trip fidelity (#648/#649) and accessible AI-Hub tab names
-(#643/#646); the <strong>braille</strong>
-proofing/validation/restore-place/back-translation suite (#238–#242,
-#246); <strong>dictation honesty + private offline
-transcription</strong> with the model manager, captions,
-dictate-at-cursor, and speaker attribution (#617 S0–S4); and
-<strong>DAISY 2.02 talking-book export</strong> (#251). <em>The editor
-stops doing invisible things to your document; braille transcribers get
-a real spoken proofing workflow; private offline transcription/dictation
-are first-class; talking-book output ships.</em></p>
-<h3 id="phase-2-say-exactly-as-much-as-i-want-verbosity">Phase 2 — Say
-exactly as much as I want (Verbosity) ✅</h3>
-<p>A real verbosity system: choose a profile
-(Beginner/Normal/Expert/Quiet) and QUILL adjusts how much it announces
-per action; <strong>Quiet Mode</strong> and <strong>Meeting
-Mode</strong> by keystroke with a Quiet Undo; announcements stop
-repeating; ask “Where am I?” / “What changed?” on demand. <em>The single
-biggest comfort lever for daily screen-reader use.</em> Remaining: the
-polish backlog (§1.1).</p>
-<h3 id="phase-2.5-documents-into-audio">Phase 2.5 — Documents into audio
-✅</h3>
-<p>Batch Document-to-Speech with chaptered MP3/M4B audiobooks,
-pronunciation dictionaries, text cleanup, and the SSML Builder (§1.2).
-<em>Convert a whole folder to speech and control exactly how it
-sounds.</em></p>
-<h3 id="phase-3-an-ai-that-helps-without-taking-over">Phase 3 — An AI
-that helps without taking over ⬜</h3>
-<p>One coherent AI Hub; agents that read your selection and propose
-edits you preview and undo in one step — never silent changes (§1.3).
-<em>Powerful help that stays reviewable, undoable, and spoken.</em></p>
-<h3 id="phase-4-move-faster-publish-further">Phase 4 — Move faster +
-publish further ⬜</h3>
-<p>Quick Navigation and structured Word/CSV views ungated (§1.7);
-broader publishing, e.g. direct publishing to external platforms (#140);
-GLOW family improvements (§1.4). <em>Faster keyboard navigation and
-accessible publishing.</em></p>
-<h3 id="phase-5-solid-on-windows-and-macos">Phase 5 — Solid on Windows
-and macOS ⬜</h3>
-<p>Verified installer behavior on Windows 10/11, shipping-quality
-<strong>macOS</strong>, native RTF editing, the Quillin hub (§1.8);
-better docs/tutorials (§1.9). Platform scope: Windows (primary) and
-macOS (supported); Linux/Unix out of scope.</p>
-<hr />
-<h2 id="release-gap-list-path-to-green">3. Release gap list (path to
+<h2 id="release-gap-list-path-to-green">2. Release gap list (path to
 green)</h2>
-<p>The prioritized list of what stands between QUILL and a
-<strong>green, release-ready state</strong>. Two senses of “green”:
-<strong>(A) tooling green</strong> — CI, tests, lint, types, gates;
-<strong>(B) release-ready</strong> — no known-but-unverified defects,
-shipped features complete/polished. Excluded per direction: the AI &amp;
-Agentic workstream (§1.3), all <strong>table</strong> work (§1.11 + the
-CSV-grid half of #514), 2.0-deferred items, and Linux.</p>
-<h3 id="tier-0-do-first">Tier 0 — Do first</h3>
+<p>What stands between QUILL and a <strong>green, release-ready</strong>
+state. Two senses of “green”: <strong>(A) tooling green</strong> — CI,
+tests, lint, types, gates; <strong>(B) release-ready</strong> — no
+known-but-unverified defects, shipped features complete/polished.
+Excluded per direction: the AI &amp; Agentic workstream (§1.3) and all
+<strong>table</strong> work (§1.9 + the CSV-grid half of #514).</p>
+<h3 id="tier-1-release-blocking-verification-fixed-but-unconfirmed">Tier
+1 — Release-blocking verification (“fixed” but unconfirmed)</h3>
 <ol type="1">
-<li><strong>Commit and push the in-flight working tree</strong> so
-<code>main</code> CI is green and the tree is clean (regenerate changed
-docs’ HTML/EPUB, run <code>scripts/check_docs_artifacts.py</code>).</li>
-<li><strong>Confirm all CI gates green</strong> on the latest
-<code>main</code>: PR CI, Security CI (scoped mypy), Accessibility CI,
-Docs artifacts.</li>
-</ol>
-<h3
-id="tier-1-release-blocking-verification-b-green-fixed-but-unconfirmed">Tier
-1 — Release-blocking verification (B-green): “fixed” but
-unconfirmed</h3>
-<ol start="3" type="1">
-<li><strong>Live screen-reader sign-off — #526.</strong> Walk the batch
-of accessibility fixes marked <em>“Fixed; needs live NVDA/JAWS/Narrator
+<li><strong>Live screen-reader sign-off — #526.</strong> Walk the
+accessibility fixes marked <em>“Fixed; needs live NVDA/JAWS/Narrator
 confirmation”</em> (notebook tab-group names, snake_case names, label
 association, initial focus, the Tab keyboard-trap class,
-focus-to-bad-field) with JAWS, NVDA, and Narrator. <strong>Highest
-single item.</strong></li>
+focus-to-bad-field) — plus the List Studio pass (§1.8) — with JAWS,
+NVDA, and Narrator. <strong>Highest single item.</strong></li>
 <li><strong>Live installer smoke on Windows 10/11 — #506.</strong> A
 packaged build installs, launches, and the first-run wizard runs on
 clean Win10 and Win11.</li>
@@ -584,45 +385,46 @@ real installer, not just from source.</li>
 </ol>
 <h3 id="tier-2-shipped-features-with-rough-edges">Tier 2 — Shipped
 features with rough edges</h3>
-<ol start="6" type="1">
-<li><strong>Structured List Studio</strong> — the formal live
-screen-reader pass (code-complete; §1.10).</li>
+<ol start="4" type="1">
 <li><strong>Dictation follow-ups</strong> — the settings panel and the
 History/Review surfaces (§1.2).</li>
-<li><strong>Watch Folder queue — live repro</strong> (live-test #10):
-when <code>core.watch_folder</code> is enabled the monitor “feels
-empty”; needs an interactive repro to confirm the live queue populates,
-or a fix.</li>
-<li><strong>Snapshots vs Versions</strong> (live-test #12): the notebook
-set was renamed to <strong>“Versions”</strong> (code half done); the
-empty-submenu render still needs a live repro.</li>
+<li><strong>Watch Folder queue — live repro:</strong> when
+<code>core.watch_folder</code> is enabled the monitor “feels empty”;
+needs an interactive repro to confirm the live queue populates, or a
+fix.</li>
+<li><strong>Snapshots vs Versions:</strong> the notebook set was renamed
+to <strong>“Versions”</strong> (code half done); the empty-submenu
+render still needs a live repro.</li>
 </ol>
-<h3 id="tier-3-polish-navigation-a-green-comfort">Tier 3 — Polish &amp;
-navigation (A-green comfort)</h3>
-<ol start="10" type="1">
+<h3 id="tier-3-polish">Tier 3 — Polish</h3>
+<ol start="7" type="1">
 <li><strong>Verbosity polish backlog</strong> (§1.1) — land the
 high-value knobs, fold-or-defer the rest so the range can close.</li>
 </ol>
-<h3 id="resolved-this-cycle-kept-here-for-the-record">Resolved this
-cycle (kept here for the record)</h3>
-<ul>
-<li>✅ Spell-check preload (#527), structured Word view un-gate (#514),
-status-bar extraction (#521), Quick Nav (#513), model-manager
-installable-engine discoverability,
-<code># dialog_button_contract: exempt</code> ruff respelling, and the
-<code>quill/core/spelling/announcements.py</code> wx-in-core removal —
-all 2026-06-24.</li>
-</ul>
+<hr />
+<h2 id="planned-phase-outcomes">3. Planned phase outcomes</h2>
+<p>What the user will notice as the open work lands, screen-reader
+experience first.</p>
+<h3 id="phase-3-an-ai-that-helps-without-taking-over">Phase 3 — An AI
+that helps without taking over</h3>
+<p>One coherent AI Hub; agents that read your selection and propose
+edits you preview and undo in one step — never silent changes (§1.3).
+<em>Powerful help that stays reviewable, undoable, and spoken.</em></p>
+<h3 id="phase-4-move-faster-publish-further">Phase 4 — Move faster +
+publish further</h3>
+<p>Structured Word/CSV views and the Table Studio surface (§1.9);
+broader publishing, e.g. direct publishing to external platforms (#140);
+GLOW family improvements (§1.4). <em>Faster keyboard navigation and
+accessible publishing.</em></p>
+<h3 id="phase-5-solid-on-windows-and-macos">Phase 5 — Solid on Windows
+and macOS</h3>
+<p>Verified installer behavior on Windows 10/11, shipping-quality
+<strong>macOS</strong>, native RTF editing, the Quillin hub (§1.6);
+better docs/tutorials (§1.7). <em>A dependable, well-documented product
+on its supported platforms.</em></p>
 <hr />
 <h2 id="open-issue-ledger-by-workstream">4. Open-issue ledger (by
 workstream)</h2>
-<p>Live status mirrors the GitHub tracker; only real, actionable work
-stays open. Counts collapsed dramatically in the 2026-06-21
-consolidation (232 → ~42 open) by closing the 100 verbosity addenda (→
-<code>verbosity-system.md</code> backlog), the AI placeholders (→ §1.3),
-the Tier-6 doc stubs (→ §1.9), content-free FEAT stubs, the done
-localization item, Linux (out of scope), and meta/archive
-placeholders.</p>
 <table>
 <colgroup>
 <col style="width: 50%" />
@@ -637,15 +439,14 @@ placeholders.</p>
 <tbody>
 <tr>
 <td>Verbosity (§1.1)</td>
-<td>Polish backlog #405–#504 (in <code>verbosity-system.md</code>).
-Engine + UI #271/#361–#404 shipped.</td>
+<td>Polish backlog #405–#504 (in <code>verbosity-system.md</code>).</td>
 </tr>
 <tr>
 <td>Speech &amp; Dictation (§1.2)</td>
 <td>Batch-speech follow-ups (project-profile wiring, M4B atoms,
 sound_id, separate mode, SSML batch handling, richer docx,
 keyboard-activation audit); dictation follow-ups; BW backlog #515,
-#566–#577. #617/#663 shipped.</td>
+#566–#577.</td>
 </tr>
 <tr>
 <td>Agentic AI (§1.3)</td>
@@ -658,79 +459,26 @@ keyboard-activation audit); dictation follow-ups; BW backlog #515,
 </tr>
 <tr>
 <td>Publishing (§1.5)</td>
-<td>#140 WordPress; ChapterForge integration. #251 DAISY shipped.</td>
+<td>#140 WordPress; ChapterForge integration.</td>
 </tr>
 <tr>
-<td>Navigation &amp; editor (§1.7)</td>
-<td>#582–#588 (content-free 2.0 stubs). #513/#514/#521/#578
-shipped.</td>
-</tr>
-<tr>
-<td>Platform &amp; distribution (§1.8)</td>
+<td>Platform &amp; distribution (§1.6)</td>
 <td>#506, #516, #517, #518, #519; #525/#599 deferred to 2.0 (#680).</td>
 </tr>
 <tr>
-<td>Docs &amp; content (§1.9)</td>
-<td>#526 SR sign-off; #535–#564, #505, #522, #590, #592. #527
-shipped.</td>
+<td>Docs &amp; content (§1.7)</td>
+<td>#526 SR sign-off; #535–#564, #505, #522, #590, #592.</td>
 </tr>
 <tr>
-<td>List Studio (§1.10)</td>
-<td>Manual SR pass (#526) only. Feature shipped (incl. scoped
-settings).</td>
+<td>List Studio (§1.8)</td>
+<td>Manual SR pass (#526).</td>
 </tr>
 <tr>
-<td>Table Studio (§1.11)</td>
+<td>Table Studio (§1.9)</td>
 <td>Whole feature
 (<code>quill-native-accessible-table-studio-plan.md</code>).</td>
 </tr>
 </tbody>
 </table>
-<h3 id="out-of-scope-closed-wont-do">Out of scope (closed won’t-do)</h3>
-<table>
-<colgroup>
-<col style="width: 40%" />
-<col style="width: 30%" />
-<col style="width: 30%" />
-</colgroup>
-<thead>
-<tr>
-<th style="text-align: right;">#</th>
-<th>Title</th>
-<th>Reason</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: right;">520</td>
-<td>O17 — Linux platform layer</td>
-<td>Linux/Unix is not a shipping target</td>
-</tr>
-<tr>
-<td style="text-align: right;">565</td>
-<td>Tier-6 LINUX-2</td>
-<td>Linux/Unix out of scope</td>
-</tr>
-<tr>
-<td style="text-align: right;">589</td>
-<td>LINUX-1 spike</td>
-<td>Linux/Unix out of scope</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="source-repos-for-the-consolidations">5. Source repos for the
-consolidations</h2>
-<p>These external repos are the design source for the integrations
-above; QUILL takes the durable, accessibility-first value and re-homes
-it on QUILL’s invariants.</p>
-<ul>
-<li><strong>BITS Whisperer:</strong> <code>s:\code\bw</code>
-(transcription/speech; brand retained).</li>
-<li><strong>GLOW:</strong> <code>s:\code\glow</code>
-(<code>glowplan.md</code>; accessibility audit + agents).</li>
-<li><strong>ChapterForge:</strong> <code>c:\code\forum</code> (audio →
-chaptered audiobook/podcast).</li>
-</ul>
 </body>
 </html>
