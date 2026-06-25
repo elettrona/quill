@@ -78,12 +78,19 @@ Profiles — the SR already owns these).
 **Dictation follow-ups:** a settings *panel* for the dictation knobs (plus earcon
 volume / retention / visual recording indicator); Dictation History + interactive
 startup-recovery prompt; a Dictation Review interface for deferred/unsafe
-insertions; distinct locked-vs-hold earcons; one-time dictation onboarding; and
-later phases (optional global Windows key hook, idle-silence detection, spoken
-punctuation/commands).
+insertions.
 
-**BW consolidation backlog:** the broader provider-matrix tiers and guided
-onboarding tracked as the BW-1..10 / WATCH-8 planning markers (#515, #566–#577).
+**Deferred — needs your review (post-1.0 candidates):**
+
+- **Dictation later phases** — an optional **global Windows key hook** (system-wide
+  dictation hotkey), **idle-silence detection** (auto-stop on a pause), and
+  **dictation intelligence** (spoken punctuation/commands). *Rationale: each is a
+  sizable capability beyond the keyboard-only Hold/Locked dictation that already
+  ships; they read as post-1.0. Flagged for your call on whether any belongs in
+  1.0.*
+- **BW consolidation backlog (#515, #566–#577)** — the broader provider-matrix
+  tiers and guided onboarding (BW-1..10 / WATCH-8), already tagged **2.0-deferred**
+  in the program history. *Rationale: a large workstream; confirm it stays 2.0.*
 
 ### 1.3 Agentic AI platform (planned)
 
