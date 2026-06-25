@@ -734,16 +734,34 @@ fight its settings): <strong>typing echo (#411)</strong>,
 (#450)</strong>, and <strong>punctuation / symbol profiles
 (#426)</strong>.</p>
 <hr />
-<h2 id="translated-audio-export-2.0-design">7. Translated audio export
-(2.0 design)</h2>
-<p><strong>Scope.</strong> Export a document’s audio in one or more
-<strong>additional languages</strong> — translate the text, then
-synthesize each language with a voice for that language. <strong>Current
-providers only (no Azure):</strong> QUILL’s own AI translation
-(<code>core/ai/translation.py</code>, AI &gt; Translate) plus the
-existing local engines and cloud TTS (OpenAI / Gemini / ElevenLabs).
-Builds on the shipped batch export (chaptered / separate modes,
-page-turn cue, ACX loudness, article-combining, round-robin voices).</p>
+<h2
+id="translated-audio-export-shipping-in-1.0-local-voices-cloud-persistence-next">7.
+Translated audio export — shipping in 1.0 (local voices; cloud +
+persistence next)</h2>
+<p><strong>Status.</strong> The core shipped for 1.0 with <strong>local
+voices</strong>: language-aware pronunciation dictionaries
+(<code>PronunciationDictionary.language</code>), the per-language voice
+model (<code>speech/voice_languages.py</code> — eSpeak universal-local +
+SAPI installed + cloud catalog), the robust section translator
+(<code>speech/translate_sections.py</code> — AI provider or
+LibreTranslate, retries/backoff/halt/cache), translated synthesis in
+<code>document_speech</code>, and the Batch Export “Also export in other
+languages” UI + runner that writes
+<code>&lt;doc&gt; (&lt;Language&gt;).&lt;ext&gt;</code>.
+<strong>Remaining (next commits):</strong> cloud-voice output (extend
+<code>document_speech.make_synthesizer</code> with cloud engines via
+<code>cloud_tts</code> + ffmpeg-to-WAV) — currently cloud targets are
+skipped with a clear status — and persisting translation targets in the
+project profile.</p>
+<p><strong>Original design (for reference).</strong> Export a document’s
+audio in one or more <strong>additional languages</strong> — translate
+the text, then synthesize each language with a voice for that language.
+<strong>Current providers only (no Azure):</strong> QUILL’s own AI
+translation (<code>core/ai/translation.py</code>, AI &gt; Translate)
+plus the existing local engines and cloud TTS (OpenAI / Gemini /
+ElevenLabs). Builds on the shipped batch export (chaptered / separate
+modes, page-turn cue, ACX loudness, article-combining, round-robin
+voices).</p>
 <h3 id="translation-an-ai-feature-wired-per-provider">7.1 Translation —
 an AI feature, wired per provider</h3>
 <ul>

@@ -428,9 +428,21 @@ archive was retired. Issue numbers are kept so each idea stays findable.
 
 ---
 
-## 7. Translated audio export (2.0 design)
+## 7. Translated audio export — shipping in 1.0 (local voices; cloud + persistence next)
 
-**Scope.** Export a document's audio in one or more **additional languages** —
+**Status.** The core shipped for 1.0 with **local voices**: language-aware
+pronunciation dictionaries (`PronunciationDictionary.language`), the per-language
+voice model (`speech/voice_languages.py` — eSpeak universal-local + SAPI installed +
+cloud catalog), the robust section translator (`speech/translate_sections.py` — AI
+provider or LibreTranslate, retries/backoff/halt/cache), translated synthesis in
+`document_speech`, and the Batch Export "Also export in other languages" UI + runner
+that writes `<doc> (<Language>).<ext>`. **Remaining (next commits):** cloud-voice
+output (extend `document_speech.make_synthesizer` with cloud engines via `cloud_tts`
++ ffmpeg-to-WAV) — currently cloud targets are skipped with a clear status — and
+persisting translation targets in the project profile.
+
+**Original design (for reference).** Export a document's audio in one or more
+**additional languages** —
 translate the text, then synthesize each language with a voice for that language.
 **Current providers only (no Azure):** QUILL's own AI translation
 (`core/ai/translation.py`, AI > Translate) plus the existing local engines and cloud
