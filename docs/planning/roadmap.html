@@ -186,9 +186,6 @@ in-flight feature specs</strong>, each with open work of its own:</p>
 <li><a href="verbosity-system.md"><code>verbosity-system.md</code></a> —
 verbosity polish backlog.</li>
 <li><a
-href="quill-structured-list-studio-prd.md"><code>quill-structured-list-studio-prd.md</code></a>
-— List Studio (shipped; manual SR pass + minor scopes remain).</li>
-<li><a
 href="quill-native-accessible-table-studio-plan.md"><code>quill-native-accessible-table-studio-plan.md</code></a>
 — Table Studio (not started).</li>
 <li><a
@@ -470,19 +467,30 @@ content-quality follow-ups (#535–#564, #505, #522). In-flight QA:
 Long-horizon ecosystem (#590) and collaboration (#592) ideas park here.
 Localization L10N-1 (#591) already shipped (display-language switcher +
 translation workflow).</p>
-<h3 id="structured-list-studio-shipped-sr-pass-remains">1.10 Structured
-List Studio ✅ (shipped; SR pass remains)</h3>
-<p><strong>Spec:</strong> <a
-href="quill-structured-list-studio-prd.md"><code>quill-structured-list-studio-prd.md</code></a>
-(§30 Implementation Status).</p>
+<h3 id="structured-list-studio-shipped-manual-sr-pass-remains">1.10
+Structured List Studio ✅ (shipped; manual SR pass remains)</h3>
 <p>Build/edit lists by concept (F2):
 Bulleted/Numbered/Checklist/Definition, nested-list editing, multiple
 terms &amp; definitions per entry, in-place editing of the list under
 the caret, type-switch conversion with information-loss confirmation,
-import-with-preview, reparse-and-validate before commit, and a
-Settings/preset surface that persists app-wide. <strong>Open:</strong> a
-formal live <strong>screen-reader pass</strong> (manual) and the
-low-value profile-prompt / intermediate config scopes.</p>
+import-with-preview, reparse-and-validate before commit, the
+definition-list <strong>Markdown-profile prompt</strong> (§7.6/§21.3 —
+when no profile is configured the user picks embedded HTML / a native
+profile / a plain “Term: Definition” list, instead of a silent
+fallback), and a Settings/preset surface that persists app-wide.
+Behavior is documented in the user guide; the design PRD was retired to
+git history once delivered.</p>
+<p><strong>Open:</strong></p>
+<ul>
+<li>A formal live <strong>screen-reader pass</strong> (JAWS / NVDA /
+Narrator) — manual, not closable in code; only stub-level wiring tests
+exist. Part of the §3 Tier-1 SR sign-off (#526).</li>
+<li><strong>Intermediate config scopes</strong>
+(format/workspace/document precedence beyond the shipped app-default →
+this-operation layering) — deliberately deferred as
+<strong>low-value</strong>: the active document’s format already pins
+the definition-Markdown profile, so the practical case is covered.</li>
+</ul>
 <h3 id="native-accessible-table-studio-not-started">1.11 Native
 accessible Table Studio ⬜ (not started)</h3>
 <p><strong>Spec:</strong> <a
@@ -669,8 +677,8 @@ shipped.</td>
 </tr>
 <tr>
 <td>List Studio (§1.10)</td>
-<td>Manual SR pass + minor scopes
-(<code>quill-structured-list-studio-prd.md</code>).</td>
+<td>Manual SR pass (#526); intermediate config scopes (deferred,
+low-value). Feature shipped.</td>
 </tr>
 <tr>
 <td>Table Studio (§1.11)</td>

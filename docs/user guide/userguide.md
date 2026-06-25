@@ -1984,11 +1984,30 @@ for you, so you never type `-`, `1.`, `[ ]`, `<ul>`, or `<dl>` by hand. Press
   state, and position.
 - For definition lists, fill in the labelled **Term** and **Definition** fields;
   QUILL emits valid `<dl>`/`<dt>`/`<dd>` for HTML and a Pandoc-compatible syntax
-  for Markdown. Inserting the finished list is a single undoable edit.
+  for Markdown. A term can hold several synonyms (one per line → multiple `<dt>`)
+  and a definition several paragraphs (blank-line separated → multiple `<dd>`).
+  Inserting the finished list is a single undoable edit.
+- **Nest, reorder, and edit in place.** Indent / Outdent / Add child build nested
+  lists, and Move up/down carries a whole subtree with its children. Press **F2**
+  with the caret inside an existing list (no selection) to load that list back into
+  the studio and rewrite just that block.
+- **Convert and import safely.** Switching a list's type carries the content across
+  and warns before dropping structure; **Import from clipboard** or **Import from
+  file…** pulls text in with the live preview showing how it was interpreted; and on
+  OK the studio reparses and validates the generated source, so a problem leaves
+  your document unchanged with a clear message.
+- When a Markdown **definition** list has no profile configured for the document,
+  QUILL **asks** how to generate it — **embedded HTML** (the recommended portable
+  choice), a specific **Markdown profile** (Pandoc / Markdown Extra / MultiMarkdown),
+  or a plain **"Term: Definition"** list — rather than guessing a syntax your
+  renderer may not support.
+- Tune defaults and presets in **Insert -> List -> List Studio Settings...**: pick a
+  shipped preset, adjust the high-value options (verbosity, markers, definition
+  profile, loose lists), and export/import the configuration as JSON. Your choices
+  persist and seed the next F2.
 
 F2 was previously **Insert Special Character**, which is now **Shift+F2**; both
-keys are remappable in the Keymap Editor. This first release covers flat
-(non-nested) lists and the common one-term, one-definition case.
+keys are remappable in the Keymap Editor.
 
 For heading presentation control, open **Insert -> Heading -> Style Headings...**. You can style either all heading levels or the current heading level, then set font family, point size, and alignment. In Markdown documents, styled headings are written as HTML heading tags so the formatting is preserved.
 

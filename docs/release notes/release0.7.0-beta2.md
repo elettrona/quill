@@ -609,11 +609,25 @@ QUILL writes the correct Markdown or HTML for you. You never have to type `-`,
   checked state, and position; and inserting the finished list is a single
   Ctrl+Z-able edit.
 
-This first release covers flat (non-nested) lists and the common one-term,
-one-definition case. Nested-list editing, multiple terms/definitions per entry,
-import-from-file/clipboard with a preview, conversion previews, and the full
-Settings and preset surface described in the design are planned follow-ups; the
-underlying engine already supports them.
+- **Nesting, multiple terms/definitions, and editing in place.** Indent / outdent
+  / add-child build nested lists (Move up/down carries a whole subtree); a term can
+  have several synonyms and a definition several paragraphs; and pressing F2 with no
+  selection inside an existing list loads it back into the studio to edit and
+  rewrite just that block.
+- **Convert, import, and stay safe.** Switching a list's type carries the content
+  across and warns before dropping structure; **Import from clipboard / file** pulls
+  text in with the live preview as its interpretation; and on OK the studio reparses
+  and validates the generated source, leaving your document unchanged if anything
+  looks wrong. When a Markdown definition list has no profile configured for the
+  document, QUILL **asks** how to generate it — embedded HTML, a specific Markdown
+  profile (Pandoc / Markdown Extra / MultiMarkdown), or a plain "Term: Definition"
+  list — instead of guessing.
+- **Settings and presets.** A **List Studio Settings…** dialog (Insert > List) picks
+  a shipped preset, tweaks the high-value options, and exports/imports the
+  configuration as JSON; your choices persist and seed the next F2.
+
+A formal screen-reader sign-off across JAWS, NVDA, and Narrator is the remaining
+release-verification step for this feature.
 
 ## Opening and saving files faithfully
 

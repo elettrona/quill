@@ -3772,13 +3772,38 @@ item’s text, number or checked state, and position.</li>
 <li>For definition lists, fill in the labelled <strong>Term</strong> and
 <strong>Definition</strong> fields; QUILL emits valid
 <code>&lt;dl&gt;</code>/<code>&lt;dt&gt;</code>/<code>&lt;dd&gt;</code>
-for HTML and a Pandoc-compatible syntax for Markdown. Inserting the
-finished list is a single undoable edit.</li>
+for HTML and a Pandoc-compatible syntax for Markdown. A term can hold
+several synonyms (one per line → multiple <code>&lt;dt&gt;</code>) and a
+definition several paragraphs (blank-line separated → multiple
+<code>&lt;dd&gt;</code>). Inserting the finished list is a single
+undoable edit.</li>
+<li><strong>Nest, reorder, and edit in place.</strong> Indent / Outdent
+/ Add child build nested lists, and Move up/down carries a whole subtree
+with its children. Press <strong>F2</strong> with the caret inside an
+existing list (no selection) to load that list back into the studio and
+rewrite just that block.</li>
+<li><strong>Convert and import safely.</strong> Switching a list’s type
+carries the content across and warns before dropping structure;
+<strong>Import from clipboard</strong> or <strong>Import from
+file…</strong> pulls text in with the live preview showing how it was
+interpreted; and on OK the studio reparses and validates the generated
+source, so a problem leaves your document unchanged with a clear
+message.</li>
+<li>When a Markdown <strong>definition</strong> list has no profile
+configured for the document, QUILL <strong>asks</strong> how to generate
+it — <strong>embedded HTML</strong> (the recommended portable choice), a
+specific <strong>Markdown profile</strong> (Pandoc / Markdown Extra /
+MultiMarkdown), or a plain <strong>“Term: Definition”</strong> list —
+rather than guessing a syntax your renderer may not support.</li>
+<li>Tune defaults and presets in <strong>Insert -&gt; List -&gt; List
+Studio Settings…</strong>: pick a shipped preset, adjust the high-value
+options (verbosity, markers, definition profile, loose lists), and
+export/import the configuration as JSON. Your choices persist and seed
+the next F2.</li>
 </ul>
 <p>F2 was previously <strong>Insert Special Character</strong>, which is
 now <strong>Shift+F2</strong>; both keys are remappable in the Keymap
-Editor. This first release covers flat (non-nested) lists and the common
-one-term, one-definition case.</p>
+Editor.</p>
 <p>For heading presentation control, open <strong>Insert -&gt; Heading
 -&gt; Style Headings…</strong>. You can style either all heading levels
 or the current heading level, then set font family, point size, and

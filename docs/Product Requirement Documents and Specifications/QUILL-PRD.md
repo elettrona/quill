@@ -1808,6 +1808,41 @@ When the editor cursor enters a Markdown pipe table, a Markdown grid table, or a
 - `Ctrl+Alt+H`: toggle the current row as the header row (Markdown only).
 - Tables remain valid Markdown or HTML on save: Quill re-aligns pipes and pads columns on every edit so the underlying text stays readable as plain text.
 
+### 5.21a Structured List Studio (F2) — shipped
+
+Build and edit lists by concept, not syntax, so the user never types `-`, `1.`,
+`[ ]`, `<ul>`, or `<dl>` by hand. The design PRD was retired to git history once
+delivered; this section is the canonical record. Implementation: wx-free
+`quill/core/lists/` (model, parse/interpretation, render, nesting, convert,
+validate, settings, announce — fully unit-tested) behind
+`quill/ui/list_studio_dialog.py` and `list_studio_settings_dialog.py`.
+
+- **Context-sensitive F2** (also Insert > List > Structured List Studio…): turns a
+  selection into a list or starts a new one; with the caret inside an existing list
+  and no selection, loads that block to edit and rewrites just it. F2 displaced
+  Insert Special Character to Shift+F2 with a legacy-binding migration. Excellent
+  defaults work with no Settings visit.
+- **Four types** (Bulleted / Numbered / Checklist / Definition) in Markdown or HTML,
+  with a live read-only source preview and an accessible items/entries outline that
+  announces text, number/checked state, and position. Apply is one undoable edit.
+- **Nesting** (Indent / Outdent / Add child; Move up/down carries a subtree),
+  **multiple terms and definitions per entry** (multiple `<dt>` / `<dd>`),
+  **type-switch conversion** with information-loss confirmation, **import** from
+  clipboard/file with the preview as the interpretation, and **reparse-and-validate
+  before commit** (rejects an empty list, a term-less definition entry, or injected
+  markup, leaving the document unchanged).
+- **Definition-list Markdown profile** (§7.6/§21.3): HTML emits semantic
+  `<dl>`/`<dt>`/`<dd>`; Markdown follows a configurable profile (Pandoc / Markdown
+  Extra / MultiMarkdown / embedded HTML / plain). When no profile is configured for
+  the document, QUILL **prompts** — embedded HTML (recommended), a native profile,
+  or a plain "Term: Definition" list — rather than silently guessing.
+- **Settings/presets** persist app-wide (`settings.list_studio_settings`) and seed
+  the next F2; the active document's format pins the definition-Markdown profile
+  (format scope) and the dialog provides the this-operation scope.
+- **Remaining:** a formal live screen-reader pass (JAWS/NVDA/Narrator) — manual; and
+  intermediate config scopes (workspace/document precedence) are deferred as
+  low-value. Both tracked in `docs/planning/roadmap.md` §1.10.
+
 ### 5.22 Editor essentials
 
 A group of small, individually unremarkable features whose absence would feel cheap. All ship in v1.0.
@@ -4813,7 +4848,7 @@ Right-to-left UI; additional languages; optional split view (still standard cont
 
 ## 17. Backlog and deferred items
 
-> **Plan of record.** The authoritative, continuously-updated view of all open work — workstreams (shipped/open), phase outcomes, the release gap list, and the open-issue ledger — lives in [`docs/planning/roadmap.md`](../../planning/roadmap.md). The large in-flight feature specs keep their own files: [`verbosity-system.md`](../../planning/verbosity-system.md), [`quill-structured-list-studio-prd.md`](../../planning/quill-structured-list-studio-prd.md), [`quill-native-accessible-table-studio-plan.md`](../../planning/quill-native-accessible-table-studio-plan.md), [`quill_end_to_end_agentic_ai_prd.md`](../../planning/quill_end_to_end_agentic_ai_prd.md), and [`eleven-labs.md`](../../planning/eleven-labs.md). (Shipped workstreams' specs — offline speech-to-text #617, the braille suite, and batch document-to-speech — were retired to git history once delivered; their status lives in the roadmap and user guide.) The current direction is that these items **ship** (the older 2.0-deferral framing is dropped); the tables below are retained as the format-support reference.
+> **Plan of record.** The authoritative, continuously-updated view of all open work — workstreams (shipped/open), phase outcomes, the release gap list, and the open-issue ledger — lives in [`docs/planning/roadmap.md`](../../planning/roadmap.md). The large in-flight feature specs keep their own files: [`verbosity-system.md`](../../planning/verbosity-system.md), [`quill-native-accessible-table-studio-plan.md`](../../planning/quill-native-accessible-table-studio-plan.md), [`quill_end_to_end_agentic_ai_prd.md`](../../planning/quill_end_to_end_agentic_ai_prd.md), and [`eleven-labs.md`](../../planning/eleven-labs.md). (Shipped workstreams' specs — offline speech-to-text #617, the braille suite, batch document-to-speech, and Structured List Studio — were retired to git history once delivered; their status lives in the roadmap and user guide.) The current direction is that these items **ship** (the older 2.0-deferral framing is dropped); the tables below are retained as the format-support reference.
 
 Everything below is intentionally out of v1.0. Each item is either yellow (achievable but requires more engineering than the v1.0 quality bar permits in time) or red (depends on unstable third-party formats, large native dependencies, or research-flavoured uplift we will not promise without measurement).
 

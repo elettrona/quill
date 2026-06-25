@@ -37,7 +37,7 @@ from quill.core.lists import (
     render_markdown,
     validate_before_commit,
 )
-from quill.core.lists.render import DefinitionProfileError
+from quill.core.lists.render import DefinitionProfileError, render_definition_with_choice
 
 _TYPE_CHOICES: list[tuple[str, ListType]] = [
     ("Bulleted", ListType.BULLET),
@@ -73,6 +73,7 @@ class ListStudioDialog:
         settings: StructuredListSettings | None = None,
         target_format: str = "markdown",
         confirm_conversion: Any = None,
+        resolve_definition_fallback: Any = None,
     ) -> None:
         self._wx = wx
         self._settings = settings if settings is not None else StructuredListSettings()
@@ -88,6 +89,11 @@ class ListStudioDialog:
         # hardened MessageBox) before a lossy flat<->definition type switch; when
         # absent the switch proceeds without prompting. See _on_type_changed.
         self._confirm_conversion = confirm_conversion
+        # ``resolve_definition_fallback() -> str | None`` resolves the §7.6/§21.3
+        # prompt when a Markdown definition list has no configured profile. It
+        # returns a choice token (a key of ``DEFINITION_FALLBACK_PROFILES``) or
+        # ``None`` to cancel. When absent, the wx prompt below is used.
+        self._resolve_definition_fallback = resolve_definition_fallback
         self._suppress = False
         self.result_source: str = ""
         self.dialog: Any = None
@@ -551,13 +557,32 @@ class ListStudioDialog:
         return render_markdown(model, self._settings)
 
     def _on_ok(self, event: Any) -> None:
-        try:
-            self.result_source = self._render()
-        except DefinitionProfileError:
-            # Definition Markdown needs a profile; fall back to embedded HTML so the
-            # user is never blocked, matching the PRD's safe portable default (§21.3).
-            self.result_source = render_html(self._current_model(), self._settings)
+        source = self._resolve_source()
+        if source is None:
+            return  # user cancelled the definition-profile prompt; keep the dialog open
+        self.result_source = source
         event.Skip()  # let the dialog close with ID_OK
+
+    def _resolve_source(self) -> str | None:
+        """The source to commit, or None if a needed profile prompt was cancelled.
+
+        For a Markdown definition list with no configured profile, this asks the
+        user how to proceed (§7.6/§21.3) instead of silently emitting HTML.
+        """
+        try:
+            return self._render()
+        except DefinitionProfileError:
+            prompt = self._resolve_definition_fallback or self._prompt_definition_fallback
+            choice = prompt()
+            if choice is None:
+                return None
+            return render_definition_with_choice(self._current_model(), self._settings, choice)
+
+    def _prompt_definition_fallback(self) -> str | None:
+        """Ask how to render a definition list with no Markdown profile (§21.3)."""
+        from quill.ui.list_studio_prompts import prompt_definition_fallback
+
+        return prompt_definition_fallback(self._wx, self.dialog)
 
     @property
     def summary(self) -> str:

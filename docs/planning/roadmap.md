@@ -8,7 +8,6 @@
 > feature specs**, each with open work of its own:
 >
 > - [`verbosity-system.md`](verbosity-system.md) — verbosity polish backlog.
-> - [`quill-structured-list-studio-prd.md`](quill-structured-list-studio-prd.md) — List Studio (shipped; manual SR pass + minor scopes remain).
 > - [`quill-native-accessible-table-studio-plan.md`](quill-native-accessible-table-studio-plan.md) — Table Studio (not started).
 > - [`quill_end_to_end_agentic_ai_prd.md`](quill_end_to_end_agentic_ai_prd.md) — Agentic AI platform (planned).
 > - [`eleven-labs.md`](eleven-labs.md) — ElevenLabs / ElevenDesk integration ideas (not started).
@@ -223,17 +222,27 @@ tutorials, the podcast/walkthrough series, and content-quality follow-ups
 (#590) and collaboration (#592) ideas park here. Localization L10N-1 (#591)
 already shipped (display-language switcher + translation workflow).
 
-### 1.10 Structured List Studio ✅ (shipped; SR pass remains)
-
-**Spec:** [`quill-structured-list-studio-prd.md`](quill-structured-list-studio-prd.md) (§30 Implementation Status).
+### 1.10 Structured List Studio ✅ (shipped; manual SR pass remains)
 
 Build/edit lists by concept (F2): Bulleted/Numbered/Checklist/Definition,
 nested-list editing, multiple terms & definitions per entry, in-place editing of
 the list under the caret, type-switch conversion with information-loss
-confirmation, import-with-preview, reparse-and-validate before commit, and a
-Settings/preset surface that persists app-wide. **Open:** a formal live
-**screen-reader pass** (manual) and the low-value profile-prompt / intermediate
-config scopes.
+confirmation, import-with-preview, reparse-and-validate before commit, the
+definition-list **Markdown-profile prompt** (§7.6/§21.3 — when no profile is
+configured the user picks embedded HTML / a native profile / a plain
+"Term: Definition" list, instead of a silent fallback), and a Settings/preset
+surface that persists app-wide. Behavior is documented in the user guide; the
+design PRD was retired to git history once delivered.
+
+**Open:**
+
+- A formal live **screen-reader pass** (JAWS / NVDA / Narrator) — manual, not
+  closable in code; only stub-level wiring tests exist. Part of the §3 Tier-1 SR
+  sign-off (#526).
+- **Intermediate config scopes** (format/workspace/document precedence beyond the
+  shipped app-default → this-operation layering) — deliberately deferred as
+  **low-value**: the active document's format already pins the definition-Markdown
+  profile, so the practical case is covered.
 
 ### 1.11 Native accessible Table Studio ⬜ (not started)
 
@@ -364,7 +373,7 @@ done localization item, Linux (out of scope), and meta/archive placeholders.
 | Navigation & editor (§1.7) | #582–#588 (content-free 2.0 stubs). #513/#514/#521/#578 shipped. |
 | Platform & distribution (§1.8) | #506, #516, #517, #518, #519; #525/#599 deferred to 2.0 (#680). |
 | Docs & content (§1.9) | #526 SR sign-off; #535–#564, #505, #522, #590, #592. #527 shipped. |
-| List Studio (§1.10) | Manual SR pass + minor scopes (`quill-structured-list-studio-prd.md`). |
+| List Studio (§1.10) | Manual SR pass (#526); intermediate config scopes (deferred, low-value). Feature shipped. |
 | Table Studio (§1.11) | Whole feature (`quill-native-accessible-table-studio-plan.md`). |
 
 ### Out of scope (closed won't-do)

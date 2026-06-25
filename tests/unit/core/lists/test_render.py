@@ -11,10 +11,29 @@ from quill.core.lists.model import (
 )
 from quill.core.lists.render import (
     DefinitionProfileError,
+    render_definition_with_choice,
     render_html,
     render_markdown,
 )
 from quill.core.lists.settings import DefinitionMarkdownProfile, StructuredListSettings
+
+
+def test_render_definition_with_choice_resolves_each_fallback() -> None:
+    # ASK profile (the default) would raise; an explicit choice renders instead,
+    # without mutating the stored settings (§7.6/§21.3).
+    dl = DefinitionList(entries=[DefinitionEntry(terms=["Term"], definitions=["Def"])])
+    cfg = StructuredListSettings()
+    assert cfg.definition_markdown_profile is DefinitionMarkdownProfile.ASK
+
+    assert "<dl>" in render_definition_with_choice(dl, cfg, "html")
+    assert "Term\n: Def" in render_definition_with_choice(dl, cfg, "pandoc")
+    plain = render_definition_with_choice(dl, cfg, "plain")
+    assert "Term" in plain and "Def" in plain
+
+    # The one-off choice did not mutate the caller's settings.
+    assert cfg.definition_markdown_profile is DefinitionMarkdownProfile.ASK
+    with pytest.raises(KeyError):
+        render_definition_with_choice(dl, cfg, "bogus")
 
 
 def _flat(list_type: ListType, *items: ListItem, start: int = 1) -> FlatList:

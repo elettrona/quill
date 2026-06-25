@@ -10,6 +10,7 @@ when the profile is unset, because not every Markdown renderer understands it
 
 from __future__ import annotations
 
+from dataclasses import replace
 from html import escape
 
 from quill.core.lists.model import (
@@ -27,6 +28,34 @@ _MD_INDENT = "  "  # two spaces per nesting level in Markdown
 
 class DefinitionProfileError(ValueError):
     """Raised when definition Markdown is requested without a usable profile."""
+
+
+# The resolutions the §7.6/§21.3 prompt offers when no Markdown definition-list
+# profile is configured (profile is ASK/DISABLED): an explicit choice token maps
+# to the profile used for that one render. "html" is the recommended first
+# semantic fallback (embedded <dl>); "plain" is the "Term: Definition" form; the
+# rest are the native syntaxes.
+DEFINITION_FALLBACK_PROFILES: dict[str, DefinitionMarkdownProfile] = {
+    "html": DefinitionMarkdownProfile.HTML_FALLBACK,
+    "plain": DefinitionMarkdownProfile.PLAIN_FALLBACK,
+    "pandoc": DefinitionMarkdownProfile.PANDOC,
+    "markdown_extra": DefinitionMarkdownProfile.MARKDOWN_EXTRA,
+    "multimarkdown": DefinitionMarkdownProfile.MULTIMARKDOWN,
+}
+
+
+def render_definition_with_choice(
+    model: DefinitionList, settings: StructuredListSettings, choice: str
+) -> str:
+    """Render *model* for a one-off definition-profile *choice* (§7.6/§21.3).
+
+    Used when the configured profile is ``ASK``/``DISABLED`` and the user has
+    resolved the prompt to a specific fallback (a key of
+    :data:`DEFINITION_FALLBACK_PROFILES`). The choice applies to this render only;
+    the stored settings are not mutated. Raises ``KeyError`` on an unknown choice.
+    """
+    profile = DEFINITION_FALLBACK_PROFILES[choice]
+    return render_markdown(model, replace(settings, definition_markdown_profile=profile))
 
 
 # -- Markdown --------------------------------------------------------------- #

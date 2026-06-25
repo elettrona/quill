@@ -51,6 +51,8 @@
   "quill/ui/info_pages.py::show_startup_wizard_page_native::wx.Dialog": "hardened_custom",
   "quill/ui/info_pages.py::show_whisperer_about_native::wx.Dialog": "hardened_custom",
   "quill/ui/list_studio_dialog.py::ListStudioDialog._on_import_file::wx.FileDialog": "native",
+  "quill/ui/list_studio_prompts.py::prompt_definition_fallback::wx.SingleChoiceDialog": "native",
+  "quill/ui/list_studio_prompts.py::prompt_definition_fallback::wx.SingleChoiceDialog#2": "native",
   "quill/ui/list_studio_settings_dialog.py::ListStudioSettingsDialog._on_export::wx.FileDialog": "native",
   "quill/ui/list_studio_settings_dialog.py::ListStudioSettingsDialog._on_import::wx.FileDialog": "native",
   "quill/ui/main_frame.py::MainFrame._build_context_menu_editor_tab._on_rename::wx.TextEntryDialog": "native",

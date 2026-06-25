@@ -48,6 +48,44 @@ def test_definition_model_selects_definition_type() -> None:
     assert "Term\n: Def" in studio._render()
 
 
+def _definition_studio(fallback: object, **kwargs: object) -> ListStudioDialog:
+    dl = DefinitionList(entries=[DefinitionEntry(terms=["Term"], definitions=["Def"])])
+    # Default settings carry the ASK profile, so _render() raises and the
+    # resolution path (the injected prompt) is taken.
+    return _studio(definition=dl, resolve_definition_fallback=fallback, **kwargs)
+
+
+def test_resolve_source_prompts_and_renders_chosen_fallback() -> None:
+    # §7.6/§21.3: when no Markdown definition profile is set, the prompt's choice
+    # decides the source instead of a silent HTML fallback.
+    assert "<dl>" in (_definition_studio(lambda: "html")._resolve_source() or "")
+    assert "Term\n: Def" in (_definition_studio(lambda: "pandoc")._resolve_source() or "")
+    plain = _definition_studio(lambda: "plain")._resolve_source() or ""
+    assert "Term" in plain and "Def" in plain
+
+
+def test_resolve_source_returns_none_when_prompt_cancelled() -> None:
+    # A cancelled prompt leaves the document untouched (the caller keeps the dialog
+    # open) rather than committing a guessed format.
+    assert _definition_studio(lambda: None)._resolve_source() is None
+
+
+def test_resolve_source_skips_prompt_when_profile_configured() -> None:
+    dl = DefinitionList(entries=[DefinitionEntry(terms=["Term"], definitions=["Def"])])
+
+    def _should_not_run() -> str:
+        raise AssertionError("prompt must not fire when a profile is configured")
+
+    studio = _studio(
+        definition=dl,
+        settings=StructuredListSettings(
+            definition_markdown_profile=DefinitionMarkdownProfile.PANDOC
+        ),
+        resolve_definition_fallback=_should_not_run,
+    )
+    assert "Term\n: Def" in (studio._resolve_source() or "")
+
+
 def test_checklist_render_reflects_checked_state() -> None:
     studio = _studio(
         flat=FlatList(

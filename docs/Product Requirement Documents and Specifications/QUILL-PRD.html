@@ -3522,6 +3522,54 @@ the column header in the title.</li>
 and pads columns on every edit so the underlying text stays readable as
 plain text.</li>
 </ul>
+<h3 id="a-structured-list-studio-f2-shipped">5.21a Structured List
+Studio (F2) — shipped</h3>
+<p>Build and edit lists by concept, not syntax, so the user never types
+<code>-</code>, <code>1.</code>, <code>[ ]</code>,
+<code>&lt;ul&gt;</code>, or <code>&lt;dl&gt;</code> by hand. The design
+PRD was retired to git history once delivered; this section is the
+canonical record. Implementation: wx-free <code>quill/core/lists/</code>
+(model, parse/interpretation, render, nesting, convert, validate,
+settings, announce — fully unit-tested) behind
+<code>quill/ui/list_studio_dialog.py</code> and
+<code>list_studio_settings_dialog.py</code>.</p>
+<ul>
+<li><strong>Context-sensitive F2</strong> (also Insert &gt; List &gt;
+Structured List Studio…): turns a selection into a list or starts a new
+one; with the caret inside an existing list and no selection, loads that
+block to edit and rewrites just it. F2 displaced Insert Special
+Character to Shift+F2 with a legacy-binding migration. Excellent
+defaults work with no Settings visit.</li>
+<li><strong>Four types</strong> (Bulleted / Numbered / Checklist /
+Definition) in Markdown or HTML, with a live read-only source preview
+and an accessible items/entries outline that announces text,
+number/checked state, and position. Apply is one undoable edit.</li>
+<li><strong>Nesting</strong> (Indent / Outdent / Add child; Move up/down
+carries a subtree), <strong>multiple terms and definitions per
+entry</strong> (multiple <code>&lt;dt&gt;</code> /
+<code>&lt;dd&gt;</code>), <strong>type-switch conversion</strong> with
+information-loss confirmation, <strong>import</strong> from
+clipboard/file with the preview as the interpretation, and
+<strong>reparse-and-validate before commit</strong> (rejects an empty
+list, a term-less definition entry, or injected markup, leaving the
+document unchanged).</li>
+<li><strong>Definition-list Markdown profile</strong> (§7.6/§21.3): HTML
+emits semantic
+<code>&lt;dl&gt;</code>/<code>&lt;dt&gt;</code>/<code>&lt;dd&gt;</code>;
+Markdown follows a configurable profile (Pandoc / Markdown Extra /
+MultiMarkdown / embedded HTML / plain). When no profile is configured
+for the document, QUILL <strong>prompts</strong> — embedded HTML
+(recommended), a native profile, or a plain “Term: Definition” list —
+rather than silently guessing.</li>
+<li><strong>Settings/presets</strong> persist app-wide
+(<code>settings.list_studio_settings</code>) and seed the next F2; the
+active document’s format pins the definition-Markdown profile (format
+scope) and the dialog provides the this-operation scope.</li>
+<li><strong>Remaining:</strong> a formal live screen-reader pass
+(JAWS/NVDA/Narrator) — manual; and intermediate config scopes
+(workspace/document precedence) are deferred as low-value. Both tracked
+in <code>docs/planning/roadmap.md</code> §1.10.</li>
+</ul>
 <h3 id="editor-essentials">5.22 Editor essentials</h3>
 <p>A group of small, individually unremarkable features whose absence
 would feel cheap. All ship in v1.0.</p>
@@ -9721,19 +9769,17 @@ href="../../planning/roadmap.md"><code>docs/planning/roadmap.md</code></a>.
 The large in-flight feature specs keep their own files: <a
 href="../../planning/verbosity-system.md"><code>verbosity-system.md</code></a>,
 <a
-href="../../planning/quill-structured-list-studio-prd.md"><code>quill-structured-list-studio-prd.md</code></a>,
-<a
 href="../../planning/quill-native-accessible-table-studio-plan.md"><code>quill-native-accessible-table-studio-plan.md</code></a>,
 <a
 href="../../planning/quill_end_to_end_agentic_ai_prd.md"><code>quill_end_to_end_agentic_ai_prd.md</code></a>,
 and <a
 href="../../planning/eleven-labs.md"><code>eleven-labs.md</code></a>.
 (Shipped workstreams’ specs — offline speech-to-text #617, the braille
-suite, and batch document-to-speech — were retired to git history once
-delivered; their status lives in the roadmap and user guide.) The
-current direction is that these items <strong>ship</strong> (the older
-2.0-deferral framing is dropped); the tables below are retained as the
-format-support reference.</p>
+suite, batch document-to-speech, and Structured List Studio — were
+retired to git history once delivered; their status lives in the roadmap
+and user guide.) The current direction is that these items
+<strong>ship</strong> (the older 2.0-deferral framing is dropped); the
+tables below are retained as the format-support reference.</p>
 </blockquote>
 <p>Everything below is intentionally out of v1.0. Each item is either
 yellow (achievable but requires more engineering than the v1.0 quality
