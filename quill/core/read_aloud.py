@@ -10,6 +10,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from quill.core.punctuation_speech import normalize_punctuation_level, verbalize_punctuation
 from quill.core.sentence_split import SentenceSpan, sentence_spans
@@ -469,6 +470,36 @@ def kokoro_onnx_ready(model_dir: Path | None = None) -> bool:
     return (d / KOKORO_ONNX_MODEL_FILENAME).exists() and (d / KOKORO_ONNX_VOICES_FILENAME).exists()
 
 
+# Cache the loaded kokoro-onnx model so repeated synthesis (every section and,
+# with a sentence pause, every sentence of a batch) reuses one ~88 MB model load
+# instead of reloading it per call. The instance is stateless across calls
+# (voice/speed are per-``create``); a lock serializes (re)creation so concurrent
+# callers do not each build their own. Keyed by (model_path, voices_path).
+_KOKORO_ONNX_LOCK = threading.Lock()
+_KOKORO_ONNX_CACHE: dict[tuple[str, str], Any] = {}
+
+
+def _get_cached_kokoro_onnx(model_dir: Path) -> Any:
+    """Return a shared, lazily-built ``kokoro_onnx.Kokoro`` for *model_dir*."""
+    from kokoro_onnx import Kokoro as _KokoroOnnx  # type: ignore[import-not-found,import-untyped]
+
+    model_path = str(model_dir / KOKORO_ONNX_MODEL_FILENAME)
+    voices_path = str(model_dir / KOKORO_ONNX_VOICES_FILENAME)
+    key = (model_path, voices_path)
+    with _KOKORO_ONNX_LOCK:
+        instance = _KOKORO_ONNX_CACHE.get(key)
+        if instance is None:
+            instance = _KokoroOnnx(model_path, voices_path)
+            _KOKORO_ONNX_CACHE[key] = instance
+    return instance
+
+
+def clear_kokoro_cache() -> None:
+    """Drop the cached kokoro-onnx model (frees ~88 MB); the next call reloads it."""
+    with _KOKORO_ONNX_LOCK:
+        _KOKORO_ONNX_CACHE.clear()
+
+
 def synthesize_with_kokoro(
     text: str,
     output_path: Path,
@@ -486,16 +517,10 @@ def synthesize_with_kokoro(
         try:
             import numpy as _np  # type: ignore[import]
             import soundfile as _sf  # type: ignore[import]
-            from kokoro_onnx import (  # type: ignore[import-not-found,import-untyped]
-                Kokoro as _KokoroOnnx,
-            )
 
             output_path.parent.mkdir(parents=True, exist_ok=True)
             lang = "en-gb" if voice.startswith("b") else "en-us"
-            _k = _KokoroOnnx(
-                str(model_dir / KOKORO_ONNX_MODEL_FILENAME),
-                str(model_dir / KOKORO_ONNX_VOICES_FILENAME),
-            )
+            _k = _get_cached_kokoro_onnx(model_dir)
             samples, sample_rate = _k.create(text, voice=voice, speed=float(speed), lang=lang)
             _sf.write(str(output_path), _np.array(samples), sample_rate)
             return

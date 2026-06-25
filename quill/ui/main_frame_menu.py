@@ -13,6 +13,8 @@ from __future__ import annotations
 import platform
 
 from quill.core.i18n import _
+from quill.ui.batch_speech_runner import run_batch_export_to_speech
+from quill.ui.pronunciation_dictionary_dialog import run_pronunciation_manager
 
 
 class MenuBuilderMixin:
@@ -1450,6 +1452,8 @@ class MenuBuilderMixin:
         self._id_speech_engine_dl = wx.NewIdRef()
         self._id_speech_hf_token = wx.NewIdRef()
         self._id_speech_export_audio = wx.NewIdRef()
+        self._id_speech_batch_export = wx.NewIdRef()
+        self._id_speech_pronunciations = wx.NewIdRef()
         self._id_ai_connection = wx.NewIdRef()
         self._id_ai_forget_key = wx.NewIdRef()
         self._id_ai_rewrite_selection = wx.NewIdRef()
@@ -1757,6 +1761,14 @@ class MenuBuilderMixin:
         speech_menu.Append(
             self._id_speech_export_audio,
             self._menu_label(_("&Export to Speech Audio..."), "tools.speech_export_audio"),
+        )
+        speech_menu.Append(
+            self._id_speech_batch_export,
+            self._menu_label(_("&Batch Export to Speech Audio..."), "tools.speech_batch_export"),
+        )
+        speech_menu.Append(
+            self._id_speech_pronunciations,
+            self._menu_label(_("Manage &Pronunciations..."), "tools.speech_pronunciations"),
         )
         tools_menu.AppendSubMenu(speech_menu, _("&Speech"))
 
@@ -2776,6 +2788,16 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.generate_speech_audio(),
             id=self._id_speech_export_audio,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: run_batch_export_to_speech(self),
+            id=self._id_speech_batch_export,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: run_pronunciation_manager(self),
+            id=self._id_speech_pronunciations,
         )
         self.frame.Bind(
             wx.EVT_MENU,

@@ -1,0 +1,115 @@
+"""Tests for the document -> chaptered-speech driver (engine resolution + flow)."""
+
+from __future__ import annotations
+
+import wave
+from pathlib import Path
+
+import pytest
+
+from quill.core.speech import document_speech as ds
+from quill.core.speech.chapter_assemble import ChapterAssembleOptions
+from quill.core.speech.earcon import PcmFormat
+
+
+def _write_silence(out: Path, fmt: PcmFormat | None = None, ms: int = 200) -> None:
+    fmt = fmt or PcmFormat()
+    n = int(fmt.sample_rate * ms / 1000)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(out), "wb") as w:
+        w.setnchannels(fmt.channels)
+        w.setsampwidth(fmt.sampwidth)
+        w.setframerate(fmt.sample_rate)
+        w.writeframes(b"\x00" * (n * fmt.sampwidth * fmt.channels))
+
+
+def test_make_synthesizer_dispatches_to_kokoro(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[tuple[str, str, float]] = []
+
+    def fake_kokoro(text: str, out: Path, *, voice: str = "af_heart", speed: float = 1.0) -> None:
+        calls.append((text, voice, speed))
+        _write_silence(out)
+
+    monkeypatch.setattr(ds.read_aloud, "synthesize_with_kokoro", fake_kokoro)
+    synth = ds.make_synthesizer(ds.SynthesisSpec(engine="kokoro", voice="am_liam", speed=1.0))
+    synth("hello", tmp_path / "out.wav")
+    assert calls and calls[0][1] == "am_liam" and calls[0][2] == 1.0
+
+
+def test_unknown_engine_raises() -> None:
+    with pytest.raises(ds.DocumentSpeechError):
+        ds.make_synthesizer(ds.SynthesisSpec(engine="bogus"))
+
+
+def test_pyttsx3_alias_maps_to_sapi5(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[str] = []
+
+    def fake_sapi(text: str, out: Path, *, voice: str = "", rate: int = 200, volume: float = 1.0):
+        seen.append(voice)
+        _write_silence(out)
+
+    monkeypatch.setattr(ds.read_aloud, "synthesize_to_file_with_sapi5", fake_sapi)
+    synth = ds.make_synthesizer(ds.SynthesisSpec(engine="pyttsx3", voice="David"))
+    synth("hi", tmp_path / "out.wav")
+    assert seen == ["David"]
+
+
+def test_end_to_end_with_fake_engine(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """document -> sections -> assembled chaptered WAV, engine resolved internally."""
+
+    def fake_kokoro(text: str, out: Path, *, voice: str = "af_heart", speed: float = 1.0) -> None:
+        _write_silence(out, ms=max(150, len(text.split()) * 50))
+
+    monkeypatch.setattr(ds.read_aloud, "synthesize_with_kokoro", fake_kokoro)
+
+    md = tmp_path / "doc.md"
+    md.write_text("lead in\n\n# Story A\naaa bbb\n\n# Story B\nccc\n", encoding="utf-8")
+
+    opts = ChapterAssembleOptions(
+        article_gap_ms=600,
+        sound_enabled=True,
+        output_format="wav",  # avoid an ffmpeg dependency in CI
+        intro_section_title="Introduction",
+    )
+    result = ds.synthesize_document_to_chaptered_file(
+        md, tmp_path / "doc.wav", ds.SynthesisSpec(engine="kokoro", voice="am_liam"), opts
+    )
+
+    assert [c.title for c in result.chapters] == ["Introduction", "Story A", "Story B"]
+    assert result.output_path.is_file()
+    assert result.with_tones_path is not None  # sounder enabled
+
+
+def test_pronunciation_dictionaries_reach_the_engine(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Active pronunciation entries are applied to spoken text before synthesis."""
+    from quill.core.speech.pronunciation import PronunciationDictionary, PronunciationEntry
+
+    spoken: list[str] = []
+
+    def fake_kokoro(text: str, out: Path, *, voice: str = "af_heart", speed: float = 1.0) -> None:
+        spoken.append(text)
+        _write_silence(out)
+
+    monkeypatch.setattr(ds.read_aloud, "synthesize_with_kokoro", fake_kokoro)
+
+    md = tmp_path / "doc.md"
+    md.write_text("# Intro\nQUILL is great.\n", encoding="utf-8")
+    dicts = [
+        PronunciationDictionary(
+            id="d", entries=[PronunciationEntry(term="QUILL", replacement="kwill")]
+        )
+    ]
+    opts = ChapterAssembleOptions(output_format="wav", speak_headings=False)
+    ds.synthesize_document_to_chaptered_file(
+        md,
+        tmp_path / "doc.wav",
+        ds.SynthesisSpec(engine="kokoro", voice="am_liam"),
+        opts,
+        pronunciation_dictionaries=dicts,
+    )
+    assert any("kwill" in t for t in spoken)
+    assert not any("QUILL" in t for t in spoken)

@@ -608,3 +608,33 @@ def test_piper_long_text_via_temp_file(monkeypatch, tmp_path: Path) -> None:
 
     assert stdin_objects, "subprocess.run must be called"
     assert hasattr(stdin_objects[0], "read"), "stdin must be a file object, not a pipe"
+
+
+def test_kokoro_onnx_instance_is_cached(tmp_path, monkeypatch):
+    """The kokoro-onnx model is built once and reused across calls (efficiency)."""
+    import sys
+    import types
+
+    builds: list[int] = []
+
+    class _FakeKokoro:
+        def __init__(self, model_path: str, voices_path: str) -> None:
+            builds.append(1)
+
+        def create(self, text, voice, speed, lang):  # pragma: no cover - unused here
+            return ([0.0], 24000)
+
+    fake_mod = types.ModuleType("kokoro_onnx")
+    fake_mod.Kokoro = _FakeKokoro  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "kokoro_onnx", fake_mod)
+
+    read_aloud_module.clear_kokoro_cache()
+    a = read_aloud_module._get_cached_kokoro_onnx(tmp_path)
+    b = read_aloud_module._get_cached_kokoro_onnx(tmp_path)
+    assert a is b
+    assert sum(builds) == 1  # built only once
+
+    read_aloud_module.clear_kokoro_cache()
+    c = read_aloud_module._get_cached_kokoro_onnx(tmp_path)
+    assert c is not a
+    assert sum(builds) == 2  # rebuilt after clear

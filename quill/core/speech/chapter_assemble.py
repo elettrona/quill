@@ -20,6 +20,7 @@ fake synth that writes silent WAVs of controlled length (no TTS engine required)
 
 from __future__ import annotations
 
+import re
 import wave
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -51,6 +52,9 @@ class ChapterAssembleOptions:
     intro_section_title: str = "Introduction"
     toc_title: str = "Chapters"
     output_format: str = "mp3"  # "mp3" | "wav"
+    speak_headings: bool = True  # voice each heading before its body (not just mark it)
+    sentence_gap_ms: int = 0  # silence inserted between sentences within a section (0 = off)
+    tail_padding_ms: int = 0  # silence appended after each section's speech (anti-clipping)
 
 
 @dataclass(slots=True)
@@ -99,17 +103,91 @@ def _write_wav(path: Path, fmt: PcmFormat, frames: bytes) -> None:
         w.writeframes(frames)
 
 
-def _resolve_titles(sections: list[DocumentSection], intro_title: str) -> list[tuple[str, str]]:
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
+
+
+def _split_sentences(text: str) -> list[str]:
+    """Split *text* into sentences on ``.``/``!``/``?`` boundaries (keeping the mark).
+
+    Deliberately simple: a few abbreviations may split early, which only adds a
+    short pause, never drops text. Falls back to the whole text if nothing splits.
+    """
+    parts = [p.strip() for p in _SENTENCE_SPLIT.split(text) if p.strip()]
+    return parts or [text]
+
+
+def _synthesize_section(
+    spoken: str,
+    out_wav: Path,
+    synthesize: Synthesizer,
+    work_dir: Path,
+    idx: int,
+    *,
+    sentence_gap_ms: int,
+    tail_padding_ms: int,
+) -> None:
+    """Synthesize one section to *out_wav*, optionally pausing between sentences
+    and padding the tail to prevent end-of-clip cutoff.
+
+    With both knobs at 0 this is a single ``synthesize`` call writing *out_wav*
+    directly (byte-identical to the legacy path). Otherwise each sentence is
+    synthesized separately, joined with ``sentence_gap_ms`` of silence, and
+    ``tail_padding_ms`` of silence is appended after the last sentence.
+    """
+    sentence_gap_ms = max(0, sentence_gap_ms)
+    tail_padding_ms = max(0, tail_padding_ms)
+    parts = _split_sentences(spoken) if sentence_gap_ms > 0 else [spoken]
+
+    # Fast path: nothing to splice -> one call, no re-encoding.
+    if len(parts) == 1 and tail_padding_ms == 0:
+        synthesize(parts[0], out_wav)
+        return
+
+    part_wavs: list[Path] = []
+    for j, part in enumerate(parts):
+        pw = work_dir / f"section_{idx:04d}_part_{j:03d}.wav"
+        synthesize(part, pw)
+        if not pw.is_file():
+            raise AssembleError(f"Synthesizer did not produce audio for section {idx}, part {j}.")
+        part_wavs.append(pw)
+
+    fmt = PcmFormat.from_wav(part_wavs[0])
+    gap = silence_frames(fmt, sentence_gap_ms)
+    frames = bytearray()
+    last = len(part_wavs) - 1
+    for j, pw in enumerate(part_wavs):
+        frames += _read_frames(pw, fmt)
+        if j < last and sentence_gap_ms > 0:
+            frames += gap
+    if tail_padding_ms > 0:
+        frames += silence_frames(fmt, tail_padding_ms)
+    _write_wav(out_wav, fmt, bytes(frames))
+
+
+def _resolve_titles(
+    sections: list[DocumentSection],
+    intro_title: str,
+    *,
+    speak_headings: bool = True,
+) -> list[tuple[str, str]]:
     """Pair each section with its spoken text and a display title.
 
     An empty heading (the lead-in or a headingless document) takes the configured
-    intro title; a heading with no body speaks its own title so the chapter still
-    has audio.
+    intro title. When *speak_headings* is true the heading is voiced before its
+    body so a listener hears the chapter title (a heading with no body always
+    speaks its own title so the chapter still has audio). The display title — used
+    for the chapter marker — is always the heading text regardless.
     """
     resolved: list[tuple[str, str]] = []
     for sec in sections:
         title = sec.title.strip() or intro_title
-        spoken = sec.text.strip() or title
+        body = sec.text.strip()
+        if not body:
+            spoken = title
+        elif speak_headings and sec.title.strip():
+            spoken = f"{title}.\n{body}"
+        else:
+            spoken = body
         resolved.append((title, spoken))
     return resolved
 
@@ -131,14 +209,24 @@ def assemble_chaptered_audio(
         raise AssembleError("No sections to assemble.")
 
     work_dir.mkdir(parents=True, exist_ok=True)
-    resolved = _resolve_titles(sections, options.intro_section_title)
+    resolved = _resolve_titles(
+        sections, options.intro_section_title, speak_headings=options.speak_headings
+    )
 
     # 1. Synthesize each section to its own WAV and measure it.
     section_wavs: list[Path] = []
     section_durations: list[int] = []
     for i, (_title, spoken) in enumerate(resolved):
         wav = work_dir / f"section_{i:04d}.wav"
-        synthesize(spoken, wav)
+        _synthesize_section(
+            spoken,
+            wav,
+            synthesize,
+            work_dir,
+            i,
+            sentence_gap_ms=options.sentence_gap_ms,
+            tail_padding_ms=options.tail_padding_ms,
+        )
         if not wav.is_file():
             raise AssembleError(f"Synthesizer did not produce audio for section {i}.")
         section_wavs.append(wav)

@@ -94,6 +94,18 @@
           "maximum": 10000,
           "description": "Silence inserted between articles, in milliseconds."
         },
+        "sentence_gap_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Silence inserted between sentences within a section, in milliseconds. 0 = off (one synthesis call per section)."
+        },
+        "tail_padding_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Silence appended after each section's speech, in milliseconds, to prevent end-of-clip cutoff. 0 = off."
+        },
         "intro_section_title": {
           "type": "string",
           "description": "Title for the lead-in section before the first heading (and for documents with no headings)."

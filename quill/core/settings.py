@@ -347,6 +347,8 @@ class Settings:
     batch_speech_chapter_sound_id: str = ""
     batch_speech_chapter_sound_volume: int = 100  # 0-100
     batch_speech_article_gap_ms: int = 1200  # 0-10000
+    batch_speech_sentence_gap_ms: int = 0  # 0-10000; pause between sentences (opt-in; see docs)
+    batch_speech_tail_padding_ms: int = 300  # 0-10000; trailing pad per section (anti-clipping)
     batch_speech_intro_section_title: str = "Introduction"
 
     @classmethod
@@ -878,6 +880,12 @@ class Settings:
         batch_speech_article_gap_ms = _clamp_int(
             data.get("batch_speech_article_gap_ms", 1200), 1200, 0, 10000
         )
+        batch_speech_sentence_gap_ms = _clamp_int(
+            data.get("batch_speech_sentence_gap_ms", 0), 0, 0, 10000
+        )
+        batch_speech_tail_padding_ms = _clamp_int(
+            data.get("batch_speech_tail_padding_ms", 300), 300, 0, 10000
+        )
         batch_speech_intro_section_title = (
             str(data.get("batch_speech_intro_section_title", "Introduction")).strip()
             or "Introduction"
@@ -1103,6 +1111,8 @@ class Settings:
             batch_speech_chapter_sound_id=batch_speech_chapter_sound_id,
             batch_speech_chapter_sound_volume=batch_speech_chapter_sound_volume,
             batch_speech_article_gap_ms=batch_speech_article_gap_ms,
+            batch_speech_sentence_gap_ms=batch_speech_sentence_gap_ms,
+            batch_speech_tail_padding_ms=batch_speech_tail_padding_ms,
             batch_speech_intro_section_title=batch_speech_intro_section_title,
         )
 

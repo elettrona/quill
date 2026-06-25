@@ -53,7 +53,11 @@ def _sections() -> list[DocumentSection]:
 
 
 def test_clean_chapter_offsets_no_sound(tmp_path: Path) -> None:
-    opts = ChapterAssembleOptions(article_gap_ms=500, sound_enabled=False, output_format="wav")
+    # speak_headings=False keeps the spoken word counts equal to the body only, so
+    # the concat/gap math below is exact (heading-speaking is covered separately).
+    opts = ChapterAssembleOptions(
+        article_gap_ms=500, sound_enabled=False, output_format="wav", speak_headings=False
+    )
     r = assemble_chaptered_audio(
         _sections(), tmp_path / "out.wav", make_fake_synth(), opts, work_dir=tmp_path / "w"
     )
@@ -126,6 +130,63 @@ def test_heading_only_section_speaks_its_title(tmp_path: Path) -> None:
     )
     assert r.chapters[0].title == "Chapter With No Body"
     assert _wav_ms(r.output_path) > 0  # the title was spoken, so there is audio
+
+
+def test_speak_headings_voices_the_title_before_body(tmp_path: Path) -> None:
+    """With speak_headings on (default), a section's heading is voiced, so a section
+    with a real heading produces more audio than its body alone would."""
+    secs = [DocumentSection("A Real Heading", "one two")]  # body = 2 words
+    spoken = ChapterAssembleOptions(article_gap_ms=0, output_format="wav", speak_headings=True)
+    silent = ChapterAssembleOptions(article_gap_ms=0, output_format="wav", speak_headings=False)
+    r_spoken = assemble_chaptered_audio(
+        secs, tmp_path / "a.wav", make_fake_synth(), spoken, work_dir=tmp_path / "a"
+    )
+    r_silent = assemble_chaptered_audio(
+        secs, tmp_path / "b.wav", make_fake_synth(), silent, work_dir=tmp_path / "b"
+    )
+    # heading words ("A Real Heading.") add to the spoken text -> longer audio
+    assert _wav_ms(r_spoken.output_path) > _wav_ms(r_silent.output_path)
+    # the chapter marker title is the heading either way
+    assert r_spoken.chapters[0].title == "A Real Heading"
+
+
+def test_tail_padding_extends_each_section(tmp_path: Path) -> None:
+    """A trailing pad adds silence after each section, lengthening the whole file."""
+    secs = [DocumentSection("One", "a b c"), DocumentSection("Two", "d e")]
+    base = ChapterAssembleOptions(
+        article_gap_ms=0, output_format="wav", speak_headings=False, tail_padding_ms=0
+    )
+    padded = ChapterAssembleOptions(
+        article_gap_ms=0, output_format="wav", speak_headings=False, tail_padding_ms=500
+    )
+    r0 = assemble_chaptered_audio(
+        secs, tmp_path / "a.wav", make_fake_synth(), base, work_dir=tmp_path / "a"
+    )
+    r1 = assemble_chaptered_audio(
+        secs, tmp_path / "b.wav", make_fake_synth(), padded, work_dir=tmp_path / "b"
+    )
+    # 2 sections x 500 ms pad = +1000 ms total
+    assert _wav_ms(r1.output_path) - _wav_ms(r0.output_path) == 1000
+
+
+def test_sentence_gap_inserts_pauses_between_sentences(tmp_path: Path) -> None:
+    """With a sentence gap, a multi-sentence section is longer by gap x (n-1)."""
+    secs = [DocumentSection("One", "first sentence. second sentence. third sentence.")]
+    no_gap = ChapterAssembleOptions(
+        article_gap_ms=0, output_format="wav", speak_headings=False, sentence_gap_ms=0
+    )
+    with_gap = ChapterAssembleOptions(
+        article_gap_ms=0, output_format="wav", speak_headings=False, sentence_gap_ms=300
+    )
+    r0 = assemble_chaptered_audio(
+        secs, tmp_path / "a.wav", make_fake_synth(), no_gap, work_dir=tmp_path / "a"
+    )
+    r1 = assemble_chaptered_audio(
+        secs, tmp_path / "b.wav", make_fake_synth(), with_gap, work_dir=tmp_path / "b"
+    )
+    # 3 sentences -> 2 inter-sentence gaps of 300 ms = +600 ms
+    assert _wav_ms(r1.output_path) - _wav_ms(r0.output_path) == 600
+    assert r1.chapters[0].title == "One"
 
 
 def test_empty_sections_raises(tmp_path: Path) -> None:

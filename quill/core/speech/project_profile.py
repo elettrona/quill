@@ -115,6 +115,8 @@ class ChapterProfile:
     sound_id: str = ""  # sound-pack id; "" = bundled placeholder chime
     sound_volume: int = 100  # 0-100
     article_gap_ms: int = 1200  # 0-10000
+    sentence_gap_ms: int = 0  # 0-10000; silence between sentences within a section (opt-in)
+    tail_padding_ms: int = 300  # 0-10000; trailing silence per section (anti-clipping default)
     intro_section_title: str = "Introduction"
 
     def to_dict(self) -> dict[str, Any]:
@@ -124,6 +126,8 @@ class ChapterProfile:
             "sound_id": self.sound_id,
             "sound_volume": self.sound_volume,
             "article_gap_ms": self.article_gap_ms,
+            "sentence_gap_ms": self.sentence_gap_ms,
+            "tail_padding_ms": self.tail_padding_ms,
             "intro_section_title": self.intro_section_title,
         }
 
@@ -139,6 +143,8 @@ class ChapterProfile:
             sound_id=str(data.get("sound_id", "")).strip(),
             sound_volume=_clamp_int(data.get("sound_volume", 100), 100, 0, 100),
             article_gap_ms=_clamp_int(data.get("article_gap_ms", 1200), 1200, 0, 10000),
+            sentence_gap_ms=_clamp_int(data.get("sentence_gap_ms", 0), 0, 0, 10000),
+            tail_padding_ms=_clamp_int(data.get("tail_padding_ms", 300), 300, 0, 10000),
             intro_section_title=title,
         )
 
@@ -275,6 +281,8 @@ def to_chapter_options(profile: SpeechProjectProfile) -> Any:
         sound_volume=ch.sound_volume,
         intro_section_title=ch.intro_section_title,
         output_format=profile.output.format,
+        sentence_gap_ms=ch.sentence_gap_ms,
+        tail_padding_ms=ch.tail_padding_ms,
     )
 
 
