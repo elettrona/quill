@@ -201,9 +201,10 @@ extend-exclude = [
     "tmp",
     # Untracked local scratch dir of third-party sample scripts; not first-party.
     "Code Samples to Innovate With",
-    # Retained reference: the ACB Azure audio-pipeline (the source of QUILL's
-    # page-turn cue + loudnorm/translation learnings). Kept for the translated-
-    # audio-export work (roadmap §5); not first-party, excluded from lint/format.
+    # Local scratch under docs/planning/source (e.g. the gitignored Table Studio /
+    # CSV prototype in source/test). The ACB audio-pipeline reference that once
+    # lived here was retired once its learnings shipped (roadmap §5, §7). Not
+    # first-party; excluded from lint/format.
     "docs/planning/source",
 ]
 

@@ -336,8 +336,9 @@ Confirmed out of the 1.0 scope. Recorded here so the intent is not lost.
   now QUILL's default transition sound and its `loudnorm` step is QUILL's ACX
   loudness; the **article-combining heuristic** (combine empty headings into the
   next article) and **round-robin voices** (each article gets the next voice) also
-  **shipped for 1.0** in Batch Export to Speech. The sanitized reference lives in
-  `docs/planning/source/` (key scrubbed, samples removed — see its `NOTICE.txt`).
+  **shipped for 1.0** in Batch Export to Speech. With those shipped and the
+  translated-export design captured in §7, the ACB reference folder was **retired**;
+  the reusable patterns below and in §7 are everything QUILL needs from it.
   Remaining candidates:
   - **Translated audio export (highest-value)** — the headline 2.0 speech feature.
     Full design in **§7** below (current providers only, no Azure).
