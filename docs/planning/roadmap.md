@@ -231,18 +231,17 @@ confirmation, import-with-preview, reparse-and-validate before commit, the
 definition-list **Markdown-profile prompt** (§7.6/§21.3 — when no profile is
 configured the user picks embedded HTML / a native profile / a plain
 "Term: Definition" list, instead of a silent fallback), and a Settings/preset
-surface that persists app-wide. Behavior is documented in the user guide; the
-design PRD was retired to git history once delivered.
+surface with **scoped precedence** (§3 — app-default → format → document →
+this-operation; the settings dialog saves for *all documents* or *this document
+only*; workspace is a supported layer with no source today). Behavior is
+documented in the user guide; the design PRD was retired to git history once
+delivered.
 
 **Open:**
 
 - A formal live **screen-reader pass** (JAWS / NVDA / Narrator) — manual, not
   closable in code; only stub-level wiring tests exist. Part of the §3 Tier-1 SR
-  sign-off (#526).
-- **Intermediate config scopes** (format/workspace/document precedence beyond the
-  shipped app-default → this-operation layering) — deliberately deferred as
-  **low-value**: the active document's format already pins the definition-Markdown
-  profile, so the practical case is covered.
+  sign-off (#526). This is the only remaining item.
 
 ### 1.11 Native accessible Table Studio ⬜ (not started)
 
@@ -373,7 +372,7 @@ done localization item, Linux (out of scope), and meta/archive placeholders.
 | Navigation & editor (§1.7) | #582–#588 (content-free 2.0 stubs). #513/#514/#521/#578 shipped. |
 | Platform & distribution (§1.8) | #506, #516, #517, #518, #519; #525/#599 deferred to 2.0 (#680). |
 | Docs & content (§1.9) | #526 SR sign-off; #535–#564, #505, #522, #590, #592. #527 shipped. |
-| List Studio (§1.10) | Manual SR pass (#526); intermediate config scopes (deferred, low-value). Feature shipped. |
+| List Studio (§1.10) | Manual SR pass (#526) only. Feature shipped (incl. scoped settings). |
 | Table Studio (§1.11) | Whole feature (`quill-native-accessible-table-studio-plan.md`). |
 
 ### Out of scope (closed won't-do)

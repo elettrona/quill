@@ -35,9 +35,23 @@ _DELIMITERS = [("Period .", "."), ("Parenthesis )", ")")]
 class ListStudioSettingsDialog:
     """Builds the settings controls and exposes the chosen settings after OK."""
 
-    def __init__(self, wx: Any, *, settings: StructuredListSettings | None = None) -> None:
+    def __init__(
+        self,
+        wx: Any,
+        *,
+        settings: StructuredListSettings | None = None,
+        document_scope_available: bool = False,
+        initial_scope: str = "app",
+    ) -> None:
         self._wx = wx
         self._settings = settings if settings is not None else StructuredListSettings()
+        # When a document is open the dialog offers a save scope (§3): "app"
+        # (all documents) or "document" (this document only). ``result_scope`` is
+        # the user's choice after OK, defaulting to ``initial_scope``.
+        self._document_scope_available = document_scope_available
+        self._initial_scope = "document" if initial_scope == "document" else "app"
+        self.result_scope: str = self._initial_scope
+        self._scope_radio: Any = None
         self.result_settings: StructuredListSettings | None = None
         self.dialog: Any = None
         self._outer_sizer: Any = None
@@ -94,6 +108,18 @@ class ListStudioSettingsDialog:
         grid.Add(self._task_checked_box, 0, wx.EXPAND)
 
         outer.Add(grid, 0, wx.EXPAND | wx.ALL, 12)
+
+        # Save scope (§3): only meaningful when a document is open to scope to.
+        if self._document_scope_available:
+            self._scope_radio = wx.RadioBox(
+                dlg,
+                label="Save these settings for",
+                choices=["&All documents (default)", "&This document only"],
+                majorDimension=1,
+                style=wx.RA_SPECIFY_COLS,
+            )
+            self._scope_radio.SetSelection(1 if self._initial_scope == "document" else 0)
+            outer.Add(self._scope_radio, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 12)
 
         io_row = wx.BoxSizer(wx.HORIZONTAL)
         btn_export = wx.Button(dlg, label="&Export...")
@@ -194,6 +220,8 @@ class ListStudioSettingsDialog:
 
     def _on_ok(self, event: Any) -> None:
         self.result_settings = self._settings_from_controls()
+        if self._scope_radio is not None:
+            self.result_scope = "document" if self._scope_radio.GetSelection() == 1 else "app"
         event.Skip()  # let the dialog close with ID_OK
 
 

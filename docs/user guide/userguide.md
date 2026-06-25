@@ -2003,8 +2003,10 @@ for you, so you never type `-`, `1.`, `[ ]`, `<ul>`, or `<dl>` by hand. Press
   renderer may not support.
 - Tune defaults and presets in **Insert -> List -> List Studio Settings...**: pick a
   shipped preset, adjust the high-value options (verbosity, markers, definition
-  profile, loose lists), and export/import the configuration as JSON. Your choices
-  persist and seed the next F2.
+  profile, loose lists), and export/import the configuration as JSON. Choose whether
+  to save **for all documents** (the default the next F2 starts from) or **for this
+  document only** (a per-document override of just the fields you changed). The
+  document's format still picks the definition-list Markdown syntax automatically.
 
 F2 was previously **Insert Special Character**, which is now **Shift+F2**; both
 keys are remappable in the Keymap Editor.

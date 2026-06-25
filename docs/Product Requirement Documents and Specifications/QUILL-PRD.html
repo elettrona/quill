@@ -3561,14 +3561,20 @@ MultiMarkdown / embedded HTML / plain). When no profile is configured
 for the document, QUILL <strong>prompts</strong> — embedded HTML
 (recommended), a native profile, or a plain “Term: Definition” list —
 rather than silently guessing.</li>
-<li><strong>Settings/presets</strong> persist app-wide
-(<code>settings.list_studio_settings</code>) and seed the next F2; the
-active document’s format pins the definition-Markdown profile (format
-scope) and the dialog provides the this-operation scope.</li>
+<li><strong>Settings/presets with scoped precedence (§3).</strong>
+Effective settings resolve as app-default → format → document →
+this-operation (<code>quill/core/lists/scopes.py</code>; workspace is a
+supported layer with no source today, §3 “where applicable”). The
+app-default persists in <code>settings.list_studio_settings</code>; the
+format scope pins the definition-Markdown profile to the document’s
+markup; a per-document override lives on the document
+(<code>source_metadata["list_studio_override"]</code>, stored as the
+diff from the app-default); and the <strong>List Studio
+Settings</strong> dialog saves for <em>all documents</em> or <em>this
+document only</em>.</li>
 <li><strong>Remaining:</strong> a formal live screen-reader pass
-(JAWS/NVDA/Narrator) — manual; and intermediate config scopes
-(workspace/document precedence) are deferred as low-value. Both tracked
-in <code>docs/planning/roadmap.md</code> §1.10.</li>
+(JAWS/NVDA/Narrator) — manual, tracked in
+<code>docs/planning/roadmap.md</code> §1.10.</li>
 </ul>
 <h3 id="editor-essentials">5.22 Editor essentials</h3>
 <p>A group of small, individually unremarkable features whose absence

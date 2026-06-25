@@ -477,19 +477,18 @@ import-with-preview, reparse-and-validate before commit, the
 definition-list <strong>Markdown-profile prompt</strong> (§7.6/§21.3 —
 when no profile is configured the user picks embedded HTML / a native
 profile / a plain “Term: Definition” list, instead of a silent
-fallback), and a Settings/preset surface that persists app-wide.
-Behavior is documented in the user guide; the design PRD was retired to
-git history once delivered.</p>
+fallback), and a Settings/preset surface with <strong>scoped
+precedence</strong> (§3 — app-default → format → document →
+this-operation; the settings dialog saves for <em>all documents</em> or
+<em>this document only</em>; workspace is a supported layer with no
+source today). Behavior is documented in the user guide; the design PRD
+was retired to git history once delivered.</p>
 <p><strong>Open:</strong></p>
 <ul>
 <li>A formal live <strong>screen-reader pass</strong> (JAWS / NVDA /
 Narrator) — manual, not closable in code; only stub-level wiring tests
-exist. Part of the §3 Tier-1 SR sign-off (#526).</li>
-<li><strong>Intermediate config scopes</strong>
-(format/workspace/document precedence beyond the shipped app-default →
-this-operation layering) — deliberately deferred as
-<strong>low-value</strong>: the active document’s format already pins
-the definition-Markdown profile, so the practical case is covered.</li>
+exist. Part of the §3 Tier-1 SR sign-off (#526). This is the only
+remaining item.</li>
 </ul>
 <h3 id="native-accessible-table-studio-not-started">1.11 Native
 accessible Table Studio ⬜ (not started)</h3>
@@ -677,8 +676,8 @@ shipped.</td>
 </tr>
 <tr>
 <td>List Studio (§1.10)</td>
-<td>Manual SR pass (#526); intermediate config scopes (deferred,
-low-value). Feature shipped.</td>
+<td>Manual SR pass (#526) only. Feature shipped (incl. scoped
+settings).</td>
 </tr>
 <tr>
 <td>Table Studio (§1.11)</td>

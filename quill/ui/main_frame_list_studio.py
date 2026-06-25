@@ -146,42 +146,73 @@ class ListStudioMixin:
         )
         return result == wx.ID_YES
 
-    def _structured_list_settings(self) -> object:
-        """Resolve the studio settings across scopes (§3).
-
-        App scope: the user's saved defaults (``settings.list_studio_settings``)
-        or the PRD recommended defaults when none are saved. Format/document
-        scope: the active document's markup kind then pins the definition-list
-        Markdown profile (Pandoc for Markdown, embedded ``<dl>`` for HTML) so the
-        generated definition syntax always fits the document — overriding only
-        that one field. This-operation scope lives in the dialog itself.
-        """
+    def _list_studio_app_default(self) -> object:
+        """The app-scope defaults: saved ``settings.list_studio_settings`` or the PRD defaults."""
         from quill.core.lists import StructuredListSettings
-        from quill.core.lists.settings import DefinitionMarkdownProfile
 
         saved = getattr(self.settings, "list_studio_settings", None)
-        settings = StructuredListSettings.from_dict(saved) if saved else StructuredListSettings()
-        if self._effective_markup_kind() == "html":
-            settings.definition_markdown_profile = DefinitionMarkdownProfile.HTML_FALLBACK
+        return StructuredListSettings.from_dict(saved) if saved else StructuredListSettings()
+
+    def _list_studio_document_override(self) -> dict | None:
+        """The active document's per-document override (§3 document scope), if any."""
+        meta = getattr(self.document, "source_metadata", None)
+        if isinstance(meta, dict):
+            override = meta.get("list_studio_override")
+            if isinstance(override, dict):
+                return override
+        return None
+
+    def _set_list_studio_document_override(self, override: dict | None) -> None:
+        """Store (or clear, when falsy) the per-document list-settings override."""
+        meta = getattr(self.document, "source_metadata", None)
+        if not isinstance(meta, dict):
+            return
+        if override:
+            meta["list_studio_override"] = dict(override)
         else:
-            settings.definition_markdown_profile = DefinitionMarkdownProfile.PANDOC
-        return settings
+            meta.pop("list_studio_override", None)
+
+    def _structured_list_settings(self) -> object:
+        """Resolve the studio settings across scopes (§3): app < format < document.
+
+        The app-default is layered with the format scope (the active document's
+        markup pins the definition-list Markdown profile) and any per-document
+        override, by precedence. The this-operation scope lives in the dialog. The
+        app-default is never mutated — the format pin is a scope override, not a
+        write-back.
+        """
+        from quill.core.lists.scopes import format_scope_override, resolve_settings
+
+        return resolve_settings(
+            self._list_studio_app_default(),
+            format=format_scope_override(self._effective_markup_kind()),
+            document=self._list_studio_document_override(),
+        )
 
     def open_list_studio_settings(self) -> None:
         """Open the Structured List Studio settings surface; persist on Save (§3–§13).
 
-        Saved values become the app-scope defaults the next F2 starts from
-        (the active document's format still pins the definition-Markdown profile).
+        The dialog edits the document-effective settings (app-default plus any
+        per-document override) and offers a **scope**: save for *all documents*
+        (the app-default the next F2 starts from) or *this document only* (a
+        per-document override of just the changed fields). The active document's
+        format still pins the definition-Markdown profile.
         """
-        from quill.core.lists import StructuredListSettings
+        from quill.core.lists.scopes import diff_override, resolve_settings
         from quill.core.settings import save_settings
         from quill.ui.dialog_contract import apply_modal_ids
         from quill.ui.list_studio_settings_dialog import ListStudioSettingsDialog
 
         wx = self._wx
-        saved = getattr(self.settings, "list_studio_settings", None)
-        current = StructuredListSettings.from_dict(saved) if saved else StructuredListSettings()
-        panel = ListStudioSettingsDialog(wx, settings=current)
+        base = self._list_studio_app_default()
+        doc_override = self._list_studio_document_override()
+        current = resolve_settings(base, document=doc_override)
+        panel = ListStudioSettingsDialog(
+            wx,
+            settings=current,
+            document_scope_available=True,
+            initial_scope="document" if doc_override else "app",
+        )
         dialog = wx.Dialog(
             self.frame,
             title="Structured List Studio Settings",
@@ -203,13 +234,26 @@ class ListStudioMixin:
                 self._set_status("List Studio settings unchanged")
                 return
             result = panel.result_settings
+            scope = panel.result_scope
         finally:
             dialog.Destroy()
         if result is None:
             return
+        if scope == "document":
+            override = diff_override(result, base)  # type: ignore[arg-type]
+            self._set_list_studio_document_override(override or None)
+            self._set_status(
+                "List Studio settings saved for this document"
+                if override
+                else "List Studio settings for this document cleared (back to defaults)"
+            )
+            return
+        # App scope: this becomes the global default; drop any per-document override
+        # so the new default takes effect here too.
         self.settings.list_studio_settings = result.to_dict()
+        self._set_list_studio_document_override(None)
         save_settings(self.settings)
-        self._set_status("List Studio settings saved")
+        self._set_status("List Studio settings saved for all documents")
 
     def _register_list_studio_commands(self) -> None:
         self.commands.try_register(

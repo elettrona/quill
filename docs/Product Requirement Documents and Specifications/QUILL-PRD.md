@@ -1836,12 +1836,16 @@ validate, settings, announce — fully unit-tested) behind
   Extra / MultiMarkdown / embedded HTML / plain). When no profile is configured for
   the document, QUILL **prompts** — embedded HTML (recommended), a native profile,
   or a plain "Term: Definition" list — rather than silently guessing.
-- **Settings/presets** persist app-wide (`settings.list_studio_settings`) and seed
-  the next F2; the active document's format pins the definition-Markdown profile
-  (format scope) and the dialog provides the this-operation scope.
-- **Remaining:** a formal live screen-reader pass (JAWS/NVDA/Narrator) — manual; and
-  intermediate config scopes (workspace/document precedence) are deferred as
-  low-value. Both tracked in `docs/planning/roadmap.md` §1.10.
+- **Settings/presets with scoped precedence (§3).** Effective settings resolve as
+  app-default → format → document → this-operation (`quill/core/lists/scopes.py`;
+  workspace is a supported layer with no source today, §3 "where applicable"). The
+  app-default persists in `settings.list_studio_settings`; the format scope pins
+  the definition-Markdown profile to the document's markup; a per-document override
+  lives on the document (`source_metadata["list_studio_override"]`, stored as the
+  diff from the app-default); and the **List Studio Settings** dialog saves for
+  *all documents* or *this document only*.
+- **Remaining:** a formal live screen-reader pass (JAWS/NVDA/Narrator) — manual,
+  tracked in `docs/planning/roadmap.md` §1.10.
 
 ### 5.22 Editor essentials
 
