@@ -80,3 +80,11 @@ quill/_vendor/autoupdate/bootstrappers/bootstrap.pb
 
 # Local sample corpus for batch document-to-speech testing/debugging — never commit.
 /examples/Windows Screenreader Primer Fifth EditionChapter Files in Word/
+
+# Throwaway UI prototype scratch (Table Studio / accessible CSV editor spikes) —
+# not part of the shipped app and excluded from lint/type gates.
+/docs/planning/test/
+
+# ElevenDesk reference clone (its own git repo) consulted for the §1.2 ElevenLabs
+# integration spec — not QUILL source; excluded from the parent repo's lint gates.
+/docs/planning/eleven-labs/
