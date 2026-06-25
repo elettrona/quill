@@ -27,7 +27,11 @@ from quill.core.speech.pronunciation import (
     load_dictionaries,
     save_dictionary,
 )
-from quill.ui.dialog_contract import apply_modal_ids, show_message_box
+from quill.ui.dialog_contract import (
+    apply_listbox_activation,
+    apply_modal_ids,
+    show_message_box,
+)
 
 
 class PronunciationEntryDialog:
@@ -246,7 +250,7 @@ class PronunciationDictionaryDialog:
         right = wx.BoxSizer(wx.VERTICAL)
         right.Add(wx.StaticText(self.dialog, label="&Words in this dictionary:"), 0, wx.BOTTOM, 4)
         self._entry_list = wx.ListBox(self.dialog, choices=[])
-        self._entry_list.Bind(wx.EVT_LISTBOX_DCLICK, lambda _e: self._on_edit_entry(None))
+        apply_listbox_activation(self._entry_list, lambda _e: self._on_edit_entry(None))
         right.Add(self._entry_list, 1, wx.EXPAND)
         e_btns = wx.BoxSizer(wx.HORIZONTAL)
         for lbl, handler in (

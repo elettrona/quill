@@ -67,6 +67,32 @@ def apply_modal_ids(
             button.SetLabel(cancel_label)
 
 
+def apply_listbox_activation(listbox: object, handler: Callable[[object], None]) -> None:
+    """Make a ``wx.ListBox`` activatable by keyboard as well as double-click.
+
+    A ``wx.ListBox`` emits no item-activated event (unlike ``wx.ListCtrl``'s
+    ``EVT_LIST_ITEM_ACTIVATED``), so binding only ``EVT_LISTBOX_DCLICK`` leaves the
+    action unreachable for keyboard and screen-reader users. This binds the
+    double-click **and** Enter / NumpadEnter / Space (when an item is selected),
+    calling *handler* for both. The key event is consumed on activation so the
+    dialog's default button does not also fire. *handler* takes the wx event, so an
+    existing double-click handler works unchanged.
+    """
+    import wx
+
+    listbox.Bind(wx.EVT_LISTBOX_DCLICK, handler)
+
+    def _on_key(event: object) -> None:
+        code = event.GetKeyCode()
+        has_selection = listbox.GetSelection() != wx.NOT_FOUND
+        if has_selection and code in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER, wx.WXK_SPACE):
+            handler(event)
+            return  # consume so the modal default button does not also activate
+        event.Skip()
+
+    listbox.Bind(wx.EVT_KEY_DOWN, _on_key)
+
+
 def _iter_descendant_controls(widget: object) -> Iterable[object]:
     """Yield a widget's descendants in creation (tab) order, depth-first."""
     get_children = getattr(widget, "GetChildren", None)

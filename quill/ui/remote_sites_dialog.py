@@ -36,7 +36,12 @@ from quill.core.remote_sites import (
     save_password,
     upsert_site,
 )
-from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control, show_message_box
+from quill.ui.dialog_contract import (
+    apply_listbox_activation,
+    apply_modal_ids,
+    focus_primary_control,
+    show_message_box,
+)
 
 
 class DialogMode(Enum):
@@ -218,8 +223,8 @@ class RemoteSitesDialog(wx.Dialog):
 
         # --- Bindings ---
         self._site_list.Bind(wx.EVT_LISTBOX, self._on_site_selected)
-        self._site_list.Bind(wx.EVT_LISTBOX_DCLICK, self._on_site_activated)
-        self._dir_list.Bind(wx.EVT_LISTBOX_DCLICK, self._on_dir_activated)
+        apply_listbox_activation(self._site_list, self._on_site_activated)
+        apply_listbox_activation(self._dir_list, self._on_dir_activated)
         self._dir_list.Bind(wx.EVT_LISTBOX, self._on_dir_selected)
         self._target_text.Bind(wx.EVT_TEXT_ENTER, self._on_accept)
         self.Bind(wx.EVT_BUTTON, self._on_new_site, id=self._id_new_site)

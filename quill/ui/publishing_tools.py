@@ -30,7 +30,12 @@ from quill.core.publishing_providers import (
 from quill.core.publishing_schedule import validate_scheduled_publish_time
 from quill.core.publishing_worker import browse_publishing_content_task
 from quill.stability.task_manager import CancelledError, TaskManager
-from quill.ui.dialog_contract import apply_modal_ids, show_message_box, show_modal_dialog
+from quill.ui.dialog_contract import (
+    apply_listbox_activation,
+    apply_modal_ids,
+    show_message_box,
+    show_modal_dialog,
+)
 
 _TIMEZONE_CHOICES = sorted(available_timezones())
 
@@ -414,7 +419,7 @@ class BrowsePublishingContentDialog:
         self.load_button.Bind(wx.EVT_BUTTON, self._on_load)
         self.cancel_load_button.Bind(wx.EVT_BUTTON, self._on_cancel_load)
         self.content_list.Bind(wx.EVT_LISTBOX, self._on_selection_changed)
-        self.content_list.Bind(wx.EVT_LISTBOX_DCLICK, self._on_open)
+        apply_listbox_activation(self.content_list, self._on_open)
         self.open_button.Bind(wx.EVT_BUTTON, self._on_open)
         self._update_summary("Choose Load Content to browse publishing content.")
         self.content_scope.SetFocus()

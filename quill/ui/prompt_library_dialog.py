@@ -17,7 +17,11 @@ from typing import TYPE_CHECKING
 import wx
 
 from quill.core.prompt_library import CATEGORIES, Prompt, PromptLibrary
-from quill.ui.dialog_contract import apply_modal_ids, show_message_box
+from quill.ui.dialog_contract import (
+    apply_listbox_activation,
+    apply_modal_ids,
+    show_message_box,
+)
 
 if TYPE_CHECKING:
     from quill.core.settings import Settings
@@ -130,7 +134,7 @@ class PromptLibraryDialog:
 
         self._search.Bind(wx.EVT_TEXT, self._on_search_changed)
         self._listbox.Bind(wx.EVT_LISTBOX, self._on_selection_changed)
-        self._listbox.Bind(wx.EVT_LISTBOX_DCLICK, self._on_run)
+        apply_listbox_activation(self._listbox, self._on_run)
         self._btn_run.Bind(wx.EVT_BUTTON, self._on_run)
         self._btn_new.Bind(wx.EVT_BUTTON, self._on_new)
         self._btn_edit.Bind(wx.EVT_BUTTON, self._on_edit)

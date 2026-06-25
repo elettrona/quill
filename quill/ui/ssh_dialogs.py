@@ -20,7 +20,11 @@ from quill.core.ssh.sites import (
     load_sites,
     upsert_site,
 )
-from quill.ui.dialog_contract import apply_modal_ids, show_modal_dialog
+from quill.ui.dialog_contract import (
+    apply_listbox_activation,
+    apply_modal_ids,
+    show_modal_dialog,
+)
 
 _AUTH_LABELS = [
     ("Password", AUTH_PASSWORD),
@@ -432,7 +436,7 @@ class RemoteBrowserDialog:
         root.Add(buttons, 0, wx.EXPAND | wx.ALL, 10)
         self.dialog.SetSizer(root)
 
-        self.listbox.Bind(wx.EVT_LISTBOX_DCLICK, self._on_activate)
+        apply_listbox_activation(self.listbox, self._on_activate)
         self._populate()
 
     def _join(self, name: str) -> str:

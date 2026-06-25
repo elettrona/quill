@@ -23,7 +23,11 @@ from quill.core.skill_pack import (
     run_skill,
     validate_skill,
 )
-from quill.ui.dialog_contract import apply_modal_ids, show_message_box
+from quill.ui.dialog_contract import (
+    apply_listbox_activation,
+    apply_modal_ids,
+    show_message_box,
+)
 
 if TYPE_CHECKING:
     from quill.core.settings import Settings
@@ -106,7 +110,7 @@ class SkillLibraryDialog:
         apply_modal_ids(self.dialog)
 
         self._list.Bind(wx.EVT_LISTBOX, self._on_select)
-        self._list.Bind(wx.EVT_LISTBOX_DCLICK, self._on_run_or_cancel)
+        apply_listbox_activation(self._list, self._on_run_or_cancel)
         self._run_btn.Bind(wx.EVT_BUTTON, self._on_run_or_cancel)
         self._import_btn.Bind(wx.EVT_BUTTON, self._on_import)
         close_btn.Bind(wx.EVT_BUTTON, lambda _e: self.close())

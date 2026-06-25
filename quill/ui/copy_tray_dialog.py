@@ -114,7 +114,7 @@ class CopyTrayDialog:
         self.dialog.SetSizer(root)
         self.dialog.Layout()
 
-        from quill.ui.dialog_contract import apply_modal_ids
+        from quill.ui.dialog_contract import apply_listbox_activation, apply_modal_ids
 
         apply_modal_ids(
             self.dialog,
@@ -125,7 +125,7 @@ class CopyTrayDialog:
         )
 
         self._listbox.Bind(wx.EVT_LISTBOX, self._on_slot_changed)
-        self._listbox.Bind(wx.EVT_LISTBOX_DCLICK, self._on_double_click)
+        apply_listbox_activation(self._listbox, self._on_double_click)
         self._btn_paste.Bind(wx.EVT_BUTTON, self._on_paste)
         self._btn_clip.Bind(wx.EVT_BUTTON, self._on_paste_clipboard)
         self._btn_save.Bind(wx.EVT_BUTTON, self._on_save)

@@ -64,16 +64,6 @@ Profiles — the SR already owns these).
 - **Chapterization:** `sound_id` → sound-pack resolution (a placeholder chime is
   the current fallback); confirm the `separate`-file-per-article path end-to-end;
   surface per-file chapter count in results.
-- **Keyboard-activation accessibility audit** (systemic; surfaced by #709, fixed):
-  a `wx.ListBox` emits no item-activated event, so any list binding only
-  `EVT_LISTBOX_DCLICK` is keyboard-inaccessible. Audit/fix `ssh_dialogs.py`,
-  `copy_tray_dialog.py`, `prompt_library_dialog.py`, `remote_sites_dialog.py`,
-  `main_frame_copy_tray.py`, `skill_library_dialog.py`, `publishing_tools.py` (no
-  key handler), and decide Space activation for the `EVT_LIST_ITEM_ACTIVATED`
-  ListCtrls (`info_pages.py`, `github_dialogs.py`, `sticky_notes.py`,
-  `ai_thesaurus_dialog.py`, `abbreviation_manager_dialog.py`). Recommended: a shared
-  `apply_listbox_activation(listbox, on_activate)` helper + a gate so new
-  `EVT_LISTBOX_DCLICK` bindings must pair with keyboard activation.
 - **SSML batch-time handling:** per-file substitution accounting; a dry-run
   transform preview (show the normalized/pronounced/SSML text before running).
 - **Extraction/quality:** richer `.docx` extraction (tables, headers/footers,

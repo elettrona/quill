@@ -248,23 +248,6 @@ Start).</li>
 resolution (a placeholder chime is the current fallback); confirm the
 <code>separate</code>-file-per-article path end-to-end; surface per-file
 chapter count in results.</li>
-<li><strong>Keyboard-activation accessibility audit</strong> (systemic;
-surfaced by #709, fixed): a <code>wx.ListBox</code> emits no
-item-activated event, so any list binding only
-<code>EVT_LISTBOX_DCLICK</code> is keyboard-inaccessible. Audit/fix
-<code>ssh_dialogs.py</code>, <code>copy_tray_dialog.py</code>,
-<code>prompt_library_dialog.py</code>,
-<code>remote_sites_dialog.py</code>,
-<code>main_frame_copy_tray.py</code>,
-<code>skill_library_dialog.py</code>, <code>publishing_tools.py</code>
-(no key handler), and decide Space activation for the
-<code>EVT_LIST_ITEM_ACTIVATED</code> ListCtrls
-(<code>info_pages.py</code>, <code>github_dialogs.py</code>,
-<code>sticky_notes.py</code>, <code>ai_thesaurus_dialog.py</code>,
-<code>abbreviation_manager_dialog.py</code>). Recommended: a shared
-<code>apply_listbox_activation(listbox, on_activate)</code> helper + a
-gate so new <code>EVT_LISTBOX_DCLICK</code> bindings must pair with
-keyboard activation.</li>
 <li><strong>SSML batch-time handling:</strong> per-file substitution
 accounting; a dry-run transform preview (show the
 normalized/pronounced/SSML text before running).</li>
