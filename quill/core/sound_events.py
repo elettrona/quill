@@ -42,6 +42,10 @@ class SoundEvent(StrEnum):
     TRANSCRIPTION_STARTED = "transcription_started"
     TRANSCRIPTION_STOPPED = "transcription_stopped"
     TRANSCRIPTION_WORD_INSERTED = "transcription_word_inserted"
+    # Locked Dictation uses a distinct cue from Hold-to-Dictate so a sustained
+    # hands-free session sounds different from a press-and-hold one.
+    DICTATION_LOCKED_ON = "dictation_locked_on"
+    DICTATION_LOCKED_OFF = "dictation_locked_off"
 
     # Connectivity
     SSH_CONNECTED = "ssh_connected"

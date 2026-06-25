@@ -271,7 +271,27 @@ class DictationHotkeysMixin:
                 return False
         except Exception:  # noqa: BLE001 - a provider probe must not block the editor
             return False
+        self._maybe_show_dictation_onboarding()
         return True
+
+    def _maybe_show_dictation_onboarding(self) -> None:
+        """Speak a one-time first-use hint for dictation, then remember it (§ onboarding)."""
+        settings = self.settings
+        if getattr(settings, "dictation_onboarding_shown", False):
+            return
+        self._announce(
+            "Dictation ready. Hold F9 to dictate and release to insert, or press "
+            "Control F9 for a hands-free locked session. Escape stops and keeps your "
+            "speech; Shift Escape cancels. This hint won't show again.",
+            force=True,
+        )
+        settings.dictation_onboarding_shown = True
+        try:
+            from quill.core.settings import save_settings
+
+            save_settings(settings)
+        except Exception:  # noqa: BLE001 - persistence is best-effort
+            pass
 
     def _dictation_context(self) -> Any:
         from quill.core.speech.dictation import InsertionContext
@@ -429,12 +449,12 @@ def _build_feedback() -> dict:
     return {
         FeedbackEvent.HOLD_START: ("transcription_started", "", "Dictating; release to insert"),
         FeedbackEvent.LOCKED_START: (
-            "transcription_started",
+            "dictation_locked_on",
             "Locked dictation on. Press the lock key again to finish. Escape stops.",
             "Locked dictation - press the lock key to finish; Escape to stop",
         ),
         FeedbackEvent.HOLD_STOP: ("transcription_stopped", "", ""),
-        FeedbackEvent.LOCKED_STOP: ("transcription_stopped", "", ""),
+        FeedbackEvent.LOCKED_STOP: ("dictation_locked_off", "", ""),
         FeedbackEvent.PAUSED: ("", "Dictation paused.", "Locked dictation paused"),
         FeedbackEvent.RESUMED: ("transcription_started", "Dictation resumed.", ""),
         FeedbackEvent.TRANSCRIBING: ("", "Transcribing dictation.", "Transcribing dictation"),

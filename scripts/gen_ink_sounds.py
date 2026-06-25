@@ -403,6 +403,19 @@ def generate_all() -> None:
     # -- transcription_stopped: exact time-reverse of rec_start --------------
     write_wav("rec_stop.wav", list(reversed(rec_start_samples)), vol=0.70)
 
+    # -- dictation_locked_on: firm low->high triangle "lock engaged" (distinct
+    #    timbre and interval from rec_start, so Locked Dictation is recognisably
+    #    different from Hold-to-Dictate) -------------------------------------
+    lock_on_samples = _concat(
+        _tone(330, 70, tri_at, _swell_env(4, 12, 0.5, 25)),
+        _silence(10),
+        _tone(495, 95, tri_at, _swell_env(4, 14, 0.5, 30)),
+    )
+    write_wav("dict_lock_on.wav", lock_on_samples, vol=0.70)
+
+    # -- dictation_locked_off: exact time-reverse of dict_lock_on ------------
+    write_wav("dict_lock_off.wav", list(reversed(lock_on_samples)), vol=0.70)
+
     # -- ssh_connected: two clear ascending beeps ----------------------------
     connect_samples = _concat(
         _tone(660, 60, sine_at, _swell_env(5, 10, 0.5, 20)),

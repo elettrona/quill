@@ -25,6 +25,8 @@
     "ai_error":               "ai_error.wav",
     "transcription_started":  "rec_start.wav",
     "transcription_stopped":  "rec_stop.wav",
+    "dictation_locked_on":    "dict_lock_on.wav",
+    "dictation_locked_off":   "dict_lock_off.wav",
     "ssh_connected":          "connect.wav",
     "ssh_disconnected":       "disconnect.wav",
     "error":                  "error.wav",

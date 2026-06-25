@@ -119,6 +119,7 @@ class Settings:
     dictation_max_locked_seconds: float = 300.0  # locked session cap (5 min)
     dictation_stop_on_focus_loss: bool = True  # stop+keep speech when QUILL blurs
     dictation_intelligent_spacing: bool = True  # conservative insertion spacing
+    dictation_onboarding_shown: bool = False  # one-time first-use dictation hint shown
     dictation_min_hold_seconds: float = 0.0  # ignore accidental F9 taps below this
     # Pronunciation dictionaries (batch-document-to-speech-plan §4.7). The
     # dictionaries themselves live in JSON files (global under app_data_dir, project
@@ -551,6 +552,7 @@ class Settings:
         )
         dictation_stop_on_focus_loss = bool(data.get("dictation_stop_on_focus_loss", True))
         dictation_intelligent_spacing = bool(data.get("dictation_intelligent_spacing", True))
+        dictation_onboarding_shown = bool(data.get("dictation_onboarding_shown", False))
         pronunciation_enabled = bool(data.get("pronunciation_enabled", True))
         pronunciation_ids_raw = data.get("pronunciation_enabled_dictionary_ids")
         pronunciation_enabled_dictionary_ids = (
@@ -970,6 +972,7 @@ class Settings:
             dictation_max_locked_seconds=dictation_max_locked_seconds,
             dictation_stop_on_focus_loss=dictation_stop_on_focus_loss,
             dictation_intelligent_spacing=dictation_intelligent_spacing,
+            dictation_onboarding_shown=dictation_onboarding_shown,
             pronunciation_enabled=pronunciation_enabled,
             pronunciation_enabled_dictionary_ids=pronunciation_enabled_dictionary_ids,
             tts_normalization_enabled=tts_normalization_enabled,
