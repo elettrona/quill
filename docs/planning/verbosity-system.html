@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>verbosity-system</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -245,17 +241,19 @@
 Verbosity System — Consolidated Design Archive</h1>
 <blockquote>
 <p><strong>Consolidated workstream design spec.</strong> This file
-gathers the full text of every open issue in this workstream so the
-design reads end to end in one place. The issues remain <strong>open and
-individually tracked</strong> in <a
-href="program-tracker.md"><code>program-tracker.md</code></a>; each
-closes as its implementation ships. Everything here is in scope to ship
-— issue numbers are preserved as section anchors.</p>
+gathers the full text of every issue in this workstream so the design
+reads end to end in one place. Status lives in the <a
+href="roadmap.md"><code>roadmap.md</code></a> plan of record (§1.1). The
+verbosity <strong>engine and wxPython UI have shipped</strong>; what
+remains, and is the live purpose of this file, is the <strong>polish
+backlog</strong> (the ~100 addenda, #405–#504). Everything here is in
+scope to ship — issue numbers are preserved as section anchors.</p>
 </blockquote>
-<p>The Verbosity System is QUILL’s planned screen-reader-first
-announcement engine: profiles, channels, per-verb token templates,
-Quiet/Meeting modes, a QVP pack format, and a large UX-polish surface.
-It is a major multi-PR initiative beyond 0.7.0 Beta 2.</p>
+<p>The Verbosity System is QUILL’s screen-reader-first announcement
+engine: profiles, channels, per-verb token templates, Quiet/Meeting
+modes, a QVP pack format, and a large UX-polish surface. The core engine
+and UI shipped in the 0.7.0 line; the remaining polish set is the
+multi-item backlog below.</p>
 <h2 id="triage-summary-product-judgment">Triage summary (product
 judgment)</h2>
 <ul>

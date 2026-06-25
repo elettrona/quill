@@ -24,6 +24,9 @@ turned off.
 - **Private, offline speech.** Transcribe audio/video, make SRT/VTT captions,
   dictate into your document, and run commands by voice — all on-device, nothing
   uploaded.
+- **Documents to audio in bulk.** Convert a whole folder to speech with chaptered
+  MP3/M4B audiobooks, custom pronunciation dictionaries, text cleanup, and an SSML
+  builder for fine pronunciation and prosody control.
 - **DAISY talking-book export.** Save any document as a DAISY 2.02 text-only
   talking book for Victor Reader Stream, Plextalk, APH players, and DAISY apps.
 - **Braille proofreading workflow.** Restore-your-place, a proofing tracker,
@@ -258,6 +261,46 @@ Read Aloud now spans local and cloud voices.
   crashed), and **eSpeak-NG**, **Piper**, and **Kokoro** round out the offline
   engines. Every catalog voice ships a short spoken **preview** so you can hear it
   before choosing.
+
+## Turn documents into audio: batch export, pronunciation, and SSML
+
+QUILL can now convert documents to speech audio in bulk and give you fine control
+over how they sound.
+
+- **Batch Export to Speech Audio (Tools > Speech).** Point QUILL at a folder of
+  documents (.docx, .md, .html, .txt), pick an offline engine, voice, and pace,
+  and it converts every document to audio on a background task with progress you
+  can cancel. You can include subfolders and narrow what is converted with
+  **include/exclude filters** and a **maximum file size**.
+- **Audiobook-ready output.** Choose **WAV, MP3, M4A, M4B (audiobook), Opus,
+  FLAC, or OGG**; set the **MP3 quality**; and stamp **album, author/narrator,
+  genre, and year** onto the files (each file's title comes from its heading, and
+  its track number from its position). Long documents become **chaptered** audio
+  with real MP3 chapter markers you can jump between in any podcast app, with an
+  optional **transition sound** and configurable **pauses** between articles and
+  sentences.
+- **You are in control of existing files and naming.** When an output already
+  exists, choose to **skip** it (cheap resume), **overwrite** it, or **rename**
+  so both are kept. Mirror the source folders or **flatten** everything into one
+  folder, and rename outputs with a **template** like `001 - Chapter One`. Turn on
+  a **manifest** to get a `manifest.csv`/`.json` summary of the run.
+- **Set it once per project.** A folder remembers its whole speech setup — engine,
+  voice, output format, chapters, text cleanup, and pronunciation dictionaries —
+  so you configure a project once and re-run it anytime.
+- **Teach QUILL how to say things (pronunciation dictionaries).** **Tools > Speech
+  > Manage Pronunciations…** lets you add corrections (names, brands, acronyms,
+  technical terms) that apply everywhere speech happens — both batch export and
+  live Read Aloud — with a live preview so you can hear the result. Dictionaries
+  can be **global** or specific to a **project**, and a small **starter
+  dictionary** ships with common terms already covered.
+- **Cleaner speech from messy documents.** An optional **text cleanup** pass fixes
+  the typography that trips up speech engines (curly quotes, dashes, ellipses,
+  bullets, symbols, fractions, emoji) and speaks **phone numbers, emails, and
+  URLs** clearly — including an option to say an address, pause, and repeat it.
+- **Fine-tune pronunciation and prosody (SSML).** A new **SSML Builder** composes
+  emphasis, pauses, say-as, phonemes, and prosody from accessible controls, and
+  Read Aloud now plays that markup **natively on SAPI 5 and eSpeak-NG** so the
+  pauses and emphasis actually take effect instead of being read aloud.
 
 ## Read and proof braille
 

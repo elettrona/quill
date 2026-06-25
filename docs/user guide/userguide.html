@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>userguide</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -3978,12 +3974,97 @@ Review, and Inspection</h2>
 <p>Quill earns trust by making difficult files readable and
 inspectable.</p>
 <h3 id="read-aloud">Read Aloud</h3>
-<p>Read Aloud uses local voices with a deterministic support policy.
-DECtalk and eSpeak NG are bundled for immediate local playback. Piper
-and Kokoro are available as explicit downloads from Speech Center so
-base installs stay smaller. You can start, pause, stop, preview, and
-choose a voice. Speech onboarding announces current availability and
-recommended next actions before any download starts.</p>
+<p>Read Aloud uses local voices with a deterministic support policy. The
+Windows system voice runs on <strong>SAPI 5</strong>;
+<strong>DECtalk</strong> and <strong>eSpeak NG</strong> are bundled for
+immediate local playback; <strong>Piper</strong> and
+<strong>Kokoro</strong> (neural, offline) are available as explicit
+downloads from Speech Center so base installs stay smaller. You can
+start, pause, stop, preview, and choose a voice. Speech onboarding
+announces current availability and recommended next actions before any
+download starts. For cloud voices, see <a
+href="#read-aloud-with-ai-voice-openai-or-google-gemini">Read Aloud with
+AI Voice</a>.</p>
+<h3 id="batch-export-to-speech-audio">Batch Export to Speech Audio</h3>
+<p><strong>Tools → Speech → Batch Export to Speech Audio</strong>
+converts a whole folder of documents to speech audio in one pass. The
+conversion runs on a background task with per-file progress that you can
+cancel, and the same shared speech pipeline live Read Aloud uses — so
+the voice you audition is the voice you get.</p>
+<p>In the dialog you choose:</p>
+<ul>
+<li><strong>Source folder</strong> and whether to include subfolders,
+the <strong>file types</strong> to include (<code>.docx</code>,
+<code>.md</code>, <code>.html</code>/<code>.htm</code>,
+<code>.txt</code>), and optional <strong>include/exclude
+filters</strong> (semicolon- or comma-separated globs, matched against
+the file name and its path) plus a <strong>maximum file size</strong> to
+skip very large files.</li>
+<li><strong>Engine, voice, and pace</strong> — any of the offline
+engines (SAPI 5, DECtalk, Piper, Kokoro, eSpeak NG), with a
+<strong>Preview</strong> button to hear the chosen voice first.</li>
+<li><strong>Output format</strong> — <strong>WAV</strong> (always
+available) or, when <code>ffmpeg</code> is installed, <strong>MP3, M4A,
+M4B (audiobook), Opus, FLAC, or OGG</strong>. When <code>ffmpeg</code>
+is missing, compressed formats fall back to WAV with a per-file note
+rather than failing. MP3 has a selectable quality, and WAV can be
+conformed to a uniform sample rate / channel count.</li>
+<li><strong>Chapters</strong> — turn a long document into a navigable,
+<strong>chaptered</strong> file with real MP3 chapter markers
+(recognized by Apple Podcasts, Overcast, VLC, foobar2000, and others).
+Options include a <strong>transition sound</strong> between articles,
+whether each heading is spoken, and configurable pauses between articles
+and sentences plus an anti-clipping trailing pad.</li>
+<li><strong>Audiobook metadata</strong> — album, author/narrator, genre,
+and year stamped onto compressed files (each file’s title comes from its
+heading or name, and its track number from its position).</li>
+<li><strong>If a file already exists</strong> — <strong>Skip</strong>
+(cheap resume), <strong>Overwrite</strong>, or <strong>Rename</strong>
+so both are kept (<code>name (2).mp3</code>).</li>
+<li><strong>Output layout</strong> — mirror the source folders or
+<strong>flatten</strong> into one folder, and optionally rename outputs
+with a <strong>template</strong> like <code>{index:03d} - {stem}</code>
+(→ <code>001 - chapter-one</code>).</li>
+<li><strong>Run report</strong> — optionally write a
+<code>manifest.json</code> and <code>manifest.csv</code> listing every
+file’s status, output path, duration, and any error.</li>
+</ul>
+<p>A folder remembers its whole speech setup in
+<code>&lt;folder&gt;/.quill/speech-project.json</code> — engine, voice,
+output format, chapters, text cleanup, pronunciation dictionaries,
+metadata, and run policy — so you configure a project once and re-run it
+anytime.</p>
+<h3 id="pronunciation-dictionaries">Pronunciation dictionaries</h3>
+<p><strong>Tools → Speech → Manage Pronunciations…</strong> lets you
+teach QUILL how to say specific words — names, brands, acronyms, and
+technical terms. Each entry is a substitution (literal or regular
+expression, optionally case-sensitive) that is applied as a silent text
+transform <strong>before</strong> synthesis, so a correction is heard
+<strong>everywhere speech happens</strong> — both batch export and live
+Read Aloud. Dictionaries can be <strong>global</strong> (all projects)
+or scoped to a single <strong>project</strong>, can target a specific
+engine, and you can <strong>preview</strong> an entry to hear the
+result. A small <strong>starter dictionary</strong> ships with common
+terms already covered.</p>
+<h3 id="text-cleanup-for-speech">Text cleanup for speech</h3>
+<p>Real documents contain typography that makes speech engines stumble.
+QUILL’s optional <strong>text cleanup</strong> pass (enable it in Read
+Aloud settings) deterministically fixes curly quotes, em/en dashes,
+ellipses, invisible spaces, ligatures, bullets, symbols, fractions, and
+emoji, and speaks <strong>phone numbers, emails, and URLs</strong>
+clearly — with a per-type choice to announce them, speak them, or
+speak-then-repeat an address so it is easy to catch. The cleanup runs
+first in the shared pipeline, so live Read Aloud and batch export sound
+the same.</p>
+<h3 id="ssml-builder-and-ssml-playback">SSML Builder and SSML
+playback</h3>
+<p>For fine control over how a passage is spoken, the <strong>SSML
+Builder</strong> dialog composes <code>&lt;speak&gt;</code> markup —
+emphasis, pauses (<code>&lt;break&gt;</code>), say-as, phonemes, and
+prosody — from accessible controls with a read-only source preview, so
+you never hand-write the tags. Read Aloud plays this markup
+<strong>natively on SAPI 5 and eSpeak NG</strong>, so the pauses and
+emphasis take effect instead of being read aloud.</p>
 <h3 id="epub-navigator">EPUB Navigator</h3>
 <p>When you open an EPUB, the navigator gives you chapter-aware movement
 rather than forcing you to scroll blindly through one long

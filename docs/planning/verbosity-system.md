@@ -1,13 +1,14 @@
 # QUILL Verbosity System — Consolidated Design Archive
 
 > **Consolidated workstream design spec.** This file gathers the full text of
-> every open issue in this workstream so the design reads end to end in one
-> place. The issues remain **open and individually tracked** in
-> [`program-tracker.md`](program-tracker.md); each closes as its
-> implementation ships. Everything here is in scope to ship — issue numbers
-> are preserved as section anchors.
+> every issue in this workstream so the design reads end to end in one place.
+> Status lives in the [`roadmap.md`](roadmap.md) plan of record (§1.1). The
+> verbosity **engine and wxPython UI have shipped**; what remains, and is the live
+> purpose of this file, is the **polish backlog** (the ~100 addenda, #405–#504).
+> Everything here is in scope to ship — issue numbers are preserved as section
+> anchors.
 
-The Verbosity System is QUILL's planned screen-reader-first announcement engine: profiles, channels, per-verb token templates, Quiet/Meeting modes, a QVP pack format, and a large UX-polish surface. It is a major multi-PR initiative beyond 0.7.0 Beta 2.
+The Verbosity System is QUILL's screen-reader-first announcement engine: profiles, channels, per-verb token templates, Quiet/Meeting modes, a QVP pack format, and a large UX-polish surface. The core engine and UI shipped in the 0.7.0 line; the remaining polish set is the multi-item backlog below.
 
 
 ## Triage summary (product judgment)

@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>QUILL-PRD</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -3776,6 +3772,83 @@ behavior.</li>
 <li>Broaden model-family support as quality and hardware validation
 mature.</li>
 </ul>
+<h3 id="d-batch-document-to-speech-pronunciation-and-ssml-shipped">5.25d
+Batch Document-to-Speech, pronunciation, and SSML (shipped)</h3>
+<p>QUILL converts whole folders of documents to speech audio and gives
+the user fine control over how that audio sounds. This section records
+the shipped behavior; the original design plan and project-format spec
+were retired to git history once delivered (their remaining follow-ups
+are tracked in <a
+href="../../planning/roadmap.md"><code>roadmap.md</code></a> §1.2). All
+synthesis logic is wx-free and headless-testable; the UI wraps it on the
+background task pool.</p>
+<p><strong>Batch Export to Speech Audio
+(<code>Tools → Speech → Batch Export to Speech Audio</code>).</strong> A
+keyboard-first dialog collects a source folder and the conversion
+settings; the run reports per-file progress and is cancelable. The
+conversion uses the same shared pipeline as live Read Aloud (normalize →
+pronounce → polish → synthesize), so audition matches output.</p>
+<ul>
+<li><strong>Pipeline modules.</strong>
+<code>quill/core/speech/batch_export.py</code> (per-file pipeline),
+<code>batch_discovery.py</code> (folder scan + filters),
+<code>batch_manifest.py</code> (run report), <code>chapters.py</code> /
+<code>chapter_assemble.py</code> (MP3 ID3v2.3 CHAP/CTOC chapter markers
++ heading-aware assembly with inter-article/sentence pauses, optional
+transition earcon, spoken headings, anti-clipping tail pad),
+<code>ffmpeg.py</code> (encode to compressed formats, metadata, WAV
+conform), and <code>document_speech.py</code>.</li>
+<li><strong>Discovery.</strong> Extension set, recursion,
+semicolon/comma-separated <strong>include/exclude globs</strong>
+(matched against name and relative path), and a
+<strong>max-file-size</strong> cap.</li>
+<li><strong>Output.</strong> <code>wav</code> (always available) plus
+<code>mp3</code>/<code>m4a</code>/<code>m4b</code>/<code>opus</code>/<code>flac</code>/<code>ogg</code>
+via <code>ffmpeg</code>, falling back to WAV with a per-file note when
+<code>ffmpeg</code> is absent; selectable MP3 VBR quality; optional
+uniform WAV sample-rate/channel conform; <strong>audiobook
+metadata</strong> (album, author/narrator, genre, year; per-file title
+and track derived from heading/index).</li>
+<li><strong>Layout and resume.</strong> Existing-file policy
+<code>skip</code>/<code>overwrite</code>/<code>rename</code>; mirror or
+<code>flatten</code>; <code>filename_template</code>
+(<code>{stem}</code>/<code>{index}</code>/<code>{index0}</code>/<code>{total}</code>);
+optional <code>manifest.json</code>/<code>.csv</code>.</li>
+<li><strong>Reliability and throughput.</strong> Per-file
+<code>retry</code>, <code>stop_on_error</code>, and
+<code>max_workers</code> parallelism — clamped to one worker for the
+single-apartment engines (SAPI 5, Kokoro). Per-engine shaping is exposed
+for eSpeak (pitch, word gap) and Piper (length/noise scales).</li>
+<li><strong>Project profile.</strong> A folder remembers its whole
+speech setup in <code>&lt;folder&gt;/.quill/speech-project.json</code>
+(schema <code>quill/core/schemas/speech_project.json</code>):
+synthesizer, discovery, output, chapters, normalization, pronunciation,
+metadata, and execution. <code>project_profile.to_batch_options</code>
+drives the pipeline straight from a project file.</li>
+</ul>
+<p><strong>Pronunciation dictionaries
+(<code>Tools → Speech → Manage Pronunciations…</code>).</strong> Ordered
+substitution rules (literal or regex, optional case sensitivity,
+per-engine scope) stored in global (app-data) and project
+(<code>&lt;folder&gt;/.quill/pronunciation/</code>) dictionaries
+(<code>quill/core/speech/pronunciation.py</code>, schema
+<code>pronunciation.json</code>). Applied as a silent text transform
+before synthesis in <strong>both</strong> batch and live Read Aloud, so
+a correction is heard everywhere; the manager previews entries with live
+Read-Aloud audio. A bundled starter dictionary ships common terms.</p>
+<p><strong>TTS text normalization.</strong>
+<code>quill/core/speech/text_normalize.py</code> deterministically
+cleans typography (quotes, dashes, ellipses, invisibles, ligatures,
+bullets, symbols, fractions, emoji) and speaks structured tokens — phone
+numbers, emails, URLs — clearly (announce / speak / speak-then-repeat,
+with a long-URL threshold). Opt-in via the
+<code>tts_normalization</code> setting and carried per project.</p>
+<p><strong>SSML.</strong> An <strong>SSML Builder</strong> dialog
+composes <code>&lt;speak&gt;</code> markup (emphasis,
+<code>&lt;break&gt;</code>, say-as, phoneme, prosody) from accessible
+controls with a source preview. Read Aloud renders SSML natively on SAPI
+5 and eSpeak-NG (markup mode), passing utterances through intact (no
+punctuation verbalization that would corrupt the markup).</p>
 <h3
 id="a-speech-experience-platform-planned-before-implementation">5.25a
 Speech Experience Platform (planned before implementation)</h3>
@@ -9640,22 +9713,27 @@ Slack, Discord, Teams, Zoom, Otter, ChatGPT) as plugins.</p>
 <hr />
 <h2 id="backlog-and-deferred-items">17. Backlog and deferred items</h2>
 <blockquote>
-<p><strong>Live program tracker.</strong> The authoritative,
-continuously-updated view of all open work — bucketed into workstreams
-with per-bucket risk/impact/value/effort, priority totals, status, and
-execution waves — lives in <a
-href="../../planning/program-tracker.md"><code>docs/planning/program-tracker.md</code></a>.
-The full design text for the in-flight workstreams is consolidated in
-the companion specs: <a
+<p><strong>Plan of record.</strong> The authoritative,
+continuously-updated view of all open work — workstreams (shipped/open),
+phase outcomes, the release gap list, and the open-issue ledger — lives
+in <a
+href="../../planning/roadmap.md"><code>docs/planning/roadmap.md</code></a>.
+The large in-flight feature specs keep their own files: <a
 href="../../planning/verbosity-system.md"><code>verbosity-system.md</code></a>,
-<a href="../../planning/roadmap.md"><code>roadmap.md</code></a>, and <a
-href="../../planning/feature-backlog.md"><code>feature-backlog.md</code></a>.
-(Shipped workstreams’ specs — offline speech-to-text #617 and the
-braille suite — were retired to git history once delivered; their status
-lives in the tracker and user guide.) The current direction is that
-these items <strong>ship</strong> (the older 2.0-deferral framing is
-dropped); the tables below are retained as the format-support
-reference.</p>
+<a
+href="../../planning/quill-structured-list-studio-prd.md"><code>quill-structured-list-studio-prd.md</code></a>,
+<a
+href="../../planning/quill-native-accessible-table-studio-plan.md"><code>quill-native-accessible-table-studio-plan.md</code></a>,
+<a
+href="../../planning/quill_end_to_end_agentic_ai_prd.md"><code>quill_end_to_end_agentic_ai_prd.md</code></a>,
+and <a
+href="../../planning/eleven-labs.md"><code>eleven-labs.md</code></a>.
+(Shipped workstreams’ specs — offline speech-to-text #617, the braille
+suite, and batch document-to-speech — were retired to git history once
+delivered; their status lives in the roadmap and user guide.) The
+current direction is that these items <strong>ship</strong> (the older
+2.0-deferral framing is dropped); the tables below are retained as the
+format-support reference.</p>
 </blockquote>
 <p>Everything below is intentionally out of v1.0. Each item is either
 yellow (achievable but requires more engineering than the v1.0 quality

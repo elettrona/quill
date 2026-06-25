@@ -2057,7 +2057,36 @@ Quill earns trust by making difficult files readable and inspectable.
 
 ### Read Aloud
 
-Read Aloud uses local voices with a deterministic support policy. DECtalk and eSpeak NG are bundled for immediate local playback. Piper and Kokoro are available as explicit downloads from Speech Center so base installs stay smaller. You can start, pause, stop, preview, and choose a voice. Speech onboarding announces current availability and recommended next actions before any download starts.
+Read Aloud uses local voices with a deterministic support policy. The Windows system voice runs on **SAPI 5**; **DECtalk** and **eSpeak NG** are bundled for immediate local playback; **Piper** and **Kokoro** (neural, offline) are available as explicit downloads from Speech Center so base installs stay smaller. You can start, pause, stop, preview, and choose a voice. Speech onboarding announces current availability and recommended next actions before any download starts. For cloud voices, see [Read Aloud with AI Voice](#read-aloud-with-ai-voice-openai-or-google-gemini).
+
+### Batch Export to Speech Audio
+
+**Tools → Speech → Batch Export to Speech Audio** converts a whole folder of documents to speech audio in one pass. The conversion runs on a background task with per-file progress that you can cancel, and the same shared speech pipeline live Read Aloud uses — so the voice you audition is the voice you get.
+
+In the dialog you choose:
+
+- **Source folder** and whether to include subfolders, the **file types** to include (`.docx`, `.md`, `.html`/`.htm`, `.txt`), and optional **include/exclude filters** (semicolon- or comma-separated globs, matched against the file name and its path) plus a **maximum file size** to skip very large files.
+- **Engine, voice, and pace** — any of the offline engines (SAPI 5, DECtalk, Piper, Kokoro, eSpeak NG), with a **Preview** button to hear the chosen voice first.
+- **Output format** — **WAV** (always available) or, when `ffmpeg` is installed, **MP3, M4A, M4B (audiobook), Opus, FLAC, or OGG**. When `ffmpeg` is missing, compressed formats fall back to WAV with a per-file note rather than failing. MP3 has a selectable quality, and WAV can be conformed to a uniform sample rate / channel count.
+- **Chapters** — turn a long document into a navigable, **chaptered** file with real MP3 chapter markers (recognized by Apple Podcasts, Overcast, VLC, foobar2000, and others). Options include a **transition sound** between articles, whether each heading is spoken, and configurable pauses between articles and sentences plus an anti-clipping trailing pad.
+- **Audiobook metadata** — album, author/narrator, genre, and year stamped onto compressed files (each file's title comes from its heading or name, and its track number from its position).
+- **If a file already exists** — **Skip** (cheap resume), **Overwrite**, or **Rename** so both are kept (`name (2).mp3`).
+- **Output layout** — mirror the source folders or **flatten** into one folder, and optionally rename outputs with a **template** like `{index:03d} - {stem}` (→ `001 - chapter-one`).
+- **Run report** — optionally write a `manifest.json` and `manifest.csv` listing every file's status, output path, duration, and any error.
+
+A folder remembers its whole speech setup in `<folder>/.quill/speech-project.json` — engine, voice, output format, chapters, text cleanup, pronunciation dictionaries, metadata, and run policy — so you configure a project once and re-run it anytime.
+
+### Pronunciation dictionaries
+
+**Tools → Speech → Manage Pronunciations…** lets you teach QUILL how to say specific words — names, brands, acronyms, and technical terms. Each entry is a substitution (literal or regular expression, optionally case-sensitive) that is applied as a silent text transform **before** synthesis, so a correction is heard **everywhere speech happens** — both batch export and live Read Aloud. Dictionaries can be **global** (all projects) or scoped to a single **project**, can target a specific engine, and you can **preview** an entry to hear the result. A small **starter dictionary** ships with common terms already covered.
+
+### Text cleanup for speech
+
+Real documents contain typography that makes speech engines stumble. QUILL's optional **text cleanup** pass (enable it in Read Aloud settings) deterministically fixes curly quotes, em/en dashes, ellipses, invisible spaces, ligatures, bullets, symbols, fractions, and emoji, and speaks **phone numbers, emails, and URLs** clearly — with a per-type choice to announce them, speak them, or speak-then-repeat an address so it is easy to catch. The cleanup runs first in the shared pipeline, so live Read Aloud and batch export sound the same.
+
+### SSML Builder and SSML playback
+
+For fine control over how a passage is spoken, the **SSML Builder** dialog composes `<speak>` markup — emphasis, pauses (`<break>`), say-as, phonemes, and prosody — from accessible controls with a read-only source preview, so you never hand-write the tags. Read Aloud plays this markup **natively on SAPI 5 and eSpeak NG**, so the pauses and emphasis take effect instead of being read aloud.
 
 ### EPUB Navigator
 

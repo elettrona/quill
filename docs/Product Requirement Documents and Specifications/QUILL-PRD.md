@@ -1942,6 +1942,25 @@ Phase 2+ scope:
 - Expand runtime model execution paths and deeper transcription behavior.
 - Broaden model-family support as quality and hardware validation mature.
 
+### 5.25d Batch Document-to-Speech, pronunciation, and SSML (shipped)
+
+QUILL converts whole folders of documents to speech audio and gives the user fine control over how that audio sounds. This section records the shipped behavior; the original design plan and project-format spec were retired to git history once delivered (their remaining follow-ups are tracked in [`roadmap.md`](../../planning/roadmap.md) §1.2). All synthesis logic is wx-free and headless-testable; the UI wraps it on the background task pool.
+
+**Batch Export to Speech Audio (`Tools → Speech → Batch Export to Speech Audio`).** A keyboard-first dialog collects a source folder and the conversion settings; the run reports per-file progress and is cancelable. The conversion uses the same shared pipeline as live Read Aloud (normalize → pronounce → polish → synthesize), so audition matches output.
+
+- **Pipeline modules.** `quill/core/speech/batch_export.py` (per-file pipeline), `batch_discovery.py` (folder scan + filters), `batch_manifest.py` (run report), `chapters.py` / `chapter_assemble.py` (MP3 ID3v2.3 CHAP/CTOC chapter markers + heading-aware assembly with inter-article/sentence pauses, optional transition earcon, spoken headings, anti-clipping tail pad), `ffmpeg.py` (encode to compressed formats, metadata, WAV conform), and `document_speech.py`.
+- **Discovery.** Extension set, recursion, semicolon/comma-separated **include/exclude globs** (matched against name and relative path), and a **max-file-size** cap.
+- **Output.** `wav` (always available) plus `mp3`/`m4a`/`m4b`/`opus`/`flac`/`ogg` via `ffmpeg`, falling back to WAV with a per-file note when `ffmpeg` is absent; selectable MP3 VBR quality; optional uniform WAV sample-rate/channel conform; **audiobook metadata** (album, author/narrator, genre, year; per-file title and track derived from heading/index).
+- **Layout and resume.** Existing-file policy `skip`/`overwrite`/`rename`; mirror or `flatten`; `filename_template` (`{stem}`/`{index}`/`{index0}`/`{total}`); optional `manifest.json`/`.csv`.
+- **Reliability and throughput.** Per-file `retry`, `stop_on_error`, and `max_workers` parallelism — clamped to one worker for the single-apartment engines (SAPI 5, Kokoro). Per-engine shaping is exposed for eSpeak (pitch, word gap) and Piper (length/noise scales).
+- **Project profile.** A folder remembers its whole speech setup in `<folder>/.quill/speech-project.json` (schema `quill/core/schemas/speech_project.json`): synthesizer, discovery, output, chapters, normalization, pronunciation, metadata, and execution. `project_profile.to_batch_options` drives the pipeline straight from a project file.
+
+**Pronunciation dictionaries (`Tools → Speech → Manage Pronunciations…`).** Ordered substitution rules (literal or regex, optional case sensitivity, per-engine scope) stored in global (app-data) and project (`<folder>/.quill/pronunciation/`) dictionaries (`quill/core/speech/pronunciation.py`, schema `pronunciation.json`). Applied as a silent text transform before synthesis in **both** batch and live Read Aloud, so a correction is heard everywhere; the manager previews entries with live Read-Aloud audio. A bundled starter dictionary ships common terms.
+
+**TTS text normalization.** `quill/core/speech/text_normalize.py` deterministically cleans typography (quotes, dashes, ellipses, invisibles, ligatures, bullets, symbols, fractions, emoji) and speaks structured tokens — phone numbers, emails, URLs — clearly (announce / speak / speak-then-repeat, with a long-URL threshold). Opt-in via the `tts_normalization` setting and carried per project.
+
+**SSML.** An **SSML Builder** dialog composes `<speak>` markup (emphasis, `<break>`, say-as, phoneme, prosody) from accessible controls with a source preview. Read Aloud renders SSML natively on SAPI 5 and eSpeak-NG (markup mode), passing utterances through intact (no punctuation verbalization that would corrupt the markup).
+
 ### 5.25a Speech Experience Platform (planned before implementation)
 
 This section defines the next speech milestone as a complete user-facing platform, not a single settings dialog.
@@ -4794,7 +4813,7 @@ Right-to-left UI; additional languages; optional split view (still standard cont
 
 ## 17. Backlog and deferred items
 
-> **Live program tracker.** The authoritative, continuously-updated view of all open work — bucketed into workstreams with per-bucket risk/impact/value/effort, priority totals, status, and execution waves — lives in [`docs/planning/program-tracker.md`](../../planning/program-tracker.md). The full design text for the in-flight workstreams is consolidated in the companion specs: [`verbosity-system.md`](../../planning/verbosity-system.md), [`roadmap.md`](../../planning/roadmap.md), and [`feature-backlog.md`](../../planning/feature-backlog.md). (Shipped workstreams' specs — offline speech-to-text #617 and the braille suite — were retired to git history once delivered; their status lives in the tracker and user guide.) The current direction is that these items **ship** (the older 2.0-deferral framing is dropped); the tables below are retained as the format-support reference.
+> **Plan of record.** The authoritative, continuously-updated view of all open work — workstreams (shipped/open), phase outcomes, the release gap list, and the open-issue ledger — lives in [`docs/planning/roadmap.md`](../../planning/roadmap.md). The large in-flight feature specs keep their own files: [`verbosity-system.md`](../../planning/verbosity-system.md), [`quill-structured-list-studio-prd.md`](../../planning/quill-structured-list-studio-prd.md), [`quill-native-accessible-table-studio-plan.md`](../../planning/quill-native-accessible-table-studio-plan.md), [`quill_end_to_end_agentic_ai_prd.md`](../../planning/quill_end_to_end_agentic_ai_prd.md), and [`eleven-labs.md`](../../planning/eleven-labs.md). (Shipped workstreams' specs — offline speech-to-text #617, the braille suite, and batch document-to-speech — were retired to git history once delivered; their status lives in the roadmap and user guide.) The current direction is that these items **ship** (the older 2.0-deferral framing is dropped); the tables below are retained as the format-support reference.
 
 Everything below is intentionally out of v1.0. Each item is either yellow (achievable but requires more engineering than the v1.0 quality bar permits in time) or red (depends on unstable third-party formats, large native dependencies, or research-flavoured uplift we will not promise without measurement).
 
