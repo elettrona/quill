@@ -58,6 +58,9 @@ class BatchSpeechRequest:
     # Chapter mode: "single" = one chaptered file per document; "separate" = one
     # audio file per article/heading, into a per-document folder.
     chapter_mode: str = "single"
+    # Dry run: write a ``<doc>.preview.txt`` of the exact spoken text (after
+    # normalization + pronunciation + polish) for each file, without synthesizing.
+    dry_run: bool = False
     preview: bool = False  # internal: a Preview press, not a Start
     _voice_label: str = field(default="", repr=False)
 
@@ -207,6 +210,11 @@ class BatchSpeechExportDialog:
         self._speak_headings = wx.CheckBox(self.dialog, label="Speak each &heading aloud")
         self._speak_headings.SetValue(defaults.speak_headings)
         root.Add(self._speak_headings, 0, wx.LEFT | wx.TOP, 8)
+        self._dry_run = wx.CheckBox(
+            self.dialog, label="Dr&y run: write preview text only (don't synthesize)"
+        )
+        self._dry_run.SetValue(defaults.dry_run)
+        root.Add(self._dry_run, 0, wx.LEFT | wx.TOP, 8)
         label("If an audio file already e&xists:")
         self._on_existing = wx.Choice(
             self.dialog, choices=["Skip (resume)", "Overwrite", "Rename (keep both)"]
@@ -327,6 +335,7 @@ class BatchSpeechExportDialog:
                 if 0 <= self._mode.GetSelection() < len(_MODE_CHOICES)
                 else "single"
             ),
+            dry_run=self._dry_run.GetValue(),
             preview=preview,
         )
 

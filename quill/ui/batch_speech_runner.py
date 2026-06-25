@@ -197,11 +197,41 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
     total = len(files)
 
     def work(progress: Any) -> object:
-        from quill.core.speech.batch_export import _unique_path
+        from quill.core.speech.batch_export import (
+            _unique_path,
+            extract_text,
+            transform_preview,
+        )
 
-        done = skipped = errors = total_chapters = 0
+        done = skipped = errors = total_chapters = total_subs = 0
         for i, src in enumerate(files, start=1):
             progress(src.name, i, total)
+            if req.dry_run:
+                # Write the exact spoken text (after pronunciation + polish) to a
+                # sidecar instead of synthesizing — a cheap review pass.
+                try:
+                    preview = transform_preview(
+                        extract_text(src),
+                        engine=req.engine,
+                        pronunciation_dictionaries=dictionaries,
+                    )
+                    out = src.with_suffix(".preview.txt")
+                    out.write_text(
+                        f"# Dry run preview for {src.name} "
+                        f"({preview.substitutions} pronunciation substitution(s))\n\n"
+                        f"{preview.text}\n",
+                        encoding="utf-8",
+                    )
+                    done += 1
+                    total_subs += preview.substitutions
+                    frame._wx.CallAfter(
+                        frame._set_status,
+                        f"{src.name}: preview written ({preview.substitutions} substitutions)",
+                    )
+                except Exception as exc:  # noqa: BLE001 - isolate per-file failures
+                    errors += 1
+                    frame._wx.CallAfter(frame._set_status, f"Error on {src.name}: {exc}")
+                continue
             if req.chapter_mode == "separate":
                 out_dir = src.parent / src.stem
                 if req.on_existing == "skip" and out_dir.is_dir() and any(out_dir.iterdir()):
@@ -264,10 +294,16 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                 frame._wx.CallAfter(frame._set_status, f"Error on {src.name}: {exc}")
             finally:
                 shutil.rmtree(work_dir, ignore_errors=True)
-        return (done, skipped, errors, total_chapters)
+        return (done, skipped, errors, total_chapters, total_subs)
 
     def on_success(result: object) -> None:
-        done, skipped, errors, total_chapters = result  # type: ignore[misc]
+        done, skipped, errors, total_chapters, total_subs = result  # type: ignore[misc]
+        if req.dry_run:
+            frame._set_status(
+                f"Dry run complete: {done} preview(s) written, {total_subs} "
+                f"substitution(s), {errors} error(s)"
+            )
+            return
         frame._set_status(
             f"Batch speech export complete: {done} done ({total_chapters} chapters), "
             f"{skipped} skipped, {errors} error(s)"

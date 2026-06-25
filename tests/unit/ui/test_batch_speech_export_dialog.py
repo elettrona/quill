@@ -109,6 +109,17 @@ def test_chapter_mode_choice_maps(wx_app, tmp_path):
         frame.Destroy()
 
 
+def test_dry_run_checkbox_collects(wx_app, tmp_path):
+    frame, dlg = _make(wx_app, tmp_path)
+    try:
+        assert dlg._collect(preview=False).dry_run is False
+        dlg._dry_run.SetValue(True)
+        assert dlg._collect(preview=False).dry_run is True
+    finally:
+        dlg.dialog.Destroy()
+        frame.Destroy()
+
+
 def test_format_choice_maps_each_option(wx_app, tmp_path):
     frame, dlg = _make(wx_app, tmp_path)
     try:

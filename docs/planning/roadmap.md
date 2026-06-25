@@ -63,8 +63,6 @@ Profiles — the SR already owns these).
   surface (auto-remember on Start).
 - **Chapterization:** `sound_id` → sound-pack resolution (a placeholder chime is
   the current fallback); confirm the `separate`-file-per-article path end-to-end.
-- **SSML batch-time handling:** per-file substitution accounting; a dry-run
-  transform preview (show the normalized/pronounced/SSML text before running).
 - **Extraction/quality:** consider migrating `read_aloud.py` subprocess calls to
   `stability.safe_subprocess`.
 - **Upstream:** offer ChapterForge the two fixes already in QUILL's `chapters.py`

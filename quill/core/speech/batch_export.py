@@ -25,8 +25,10 @@ from quill.core.speech.text_polish import UnsupportedFormatError, extract_text, 
 __all__ = [
     "BatchExportOptions",
     "BatchFileResult",
+    "TransformPreview",
     "discover_files",
     "run_batch_export",
+    "transform_preview",
     "write_manifest",
     "SUPPORTED_EXTENSIONS",
 ]
@@ -541,3 +543,36 @@ def _run_parallel(
 
 # write_manifest is defined in batch_manifest.py and imported at the top of this
 # module; it remains importable from batch_export for callers and __all__.
+
+
+@dataclass
+class TransformPreview:
+    """The result of the dry-run text transform: what a file will say, and how
+    many pronunciation substitutions were applied."""
+
+    text: str
+    substitutions: int
+
+
+def transform_preview(
+    text: str,
+    *,
+    engine: str = "sapi5",
+    normalization: TextNormalizationOptions | None = None,
+    pronunciation_dictionaries: list[PronunciationDictionary] | None = None,
+) -> TransformPreview:
+    """Run the batch text-transform pipeline without synthesizing (the dry run).
+
+    Mirrors the per-file pipeline in :func:`_process_one` — normalize → pronounce →
+    polish — and returns the exact text a file would speak plus the pronunciation
+    substitution count, so the user can review the transform before paying for
+    synthesis.
+    """
+    if normalization is not None:
+        text = normalize_for_tts(text, normalization)
+    substitutions = 0
+    if pronunciation_dictionaries:
+        applied = apply_pronunciations(text, engine, pronunciation_dictionaries)
+        text = applied.text
+        substitutions = applied.total_applied
+    return TransformPreview(text=polish_for_tts(text), substitutions=substitutions)

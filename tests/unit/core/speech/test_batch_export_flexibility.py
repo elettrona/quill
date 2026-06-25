@@ -274,6 +274,30 @@ def test_encode_command_mp3_quality() -> None:
     assert cmd[cmd.index("-q:a") + 1] == "0"
 
 
+def test_transform_preview_applies_pronunciation_and_counts() -> None:
+    from quill.core.speech.batch_export import transform_preview
+    from quill.core.speech.pronunciation import PronunciationDictionary, PronunciationEntry
+
+    dicts = [
+        PronunciationDictionary(
+            id="d", entries=[PronunciationEntry(term="QUILL", replacement="kwill")]
+        )
+    ]
+    preview = transform_preview(
+        "QUILL meets QUILL.", engine="sapi5", pronunciation_dictionaries=dicts
+    )
+    assert "kwill" in preview.text and "QUILL" not in preview.text
+    assert preview.substitutions >= 1
+
+
+def test_transform_preview_without_dicts_is_polish_only() -> None:
+    from quill.core.speech.batch_export import transform_preview
+
+    preview = transform_preview("Hello world.")
+    assert preview.substitutions == 0
+    assert "Hello" in preview.text
+
+
 def test_wav_conform_command_sets_rate_and_channels() -> None:
     cmd = build_wav_conform_command(
         "ffmpeg", Path("a.wav"), Path("b.wav"), sample_rate=44100, channels=1
