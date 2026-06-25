@@ -5,13 +5,108 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from quill.ui.batch_speech_runner import _resolve_chapter_sound_path
+from quill.ui.batch_speech_runner import (
+    _build_translator,
+    _export_translations,
+    _resolve_chapter_sound_path,
+)
 
 
 def _frame(sound_id: str, pack_path: str = "") -> SimpleNamespace:
     return SimpleNamespace(
         settings=SimpleNamespace(batch_speech_chapter_sound_id=sound_id, sound_pack_path=pack_path)
     )
+
+
+def _tr_frame(tmp_path: Path) -> SimpleNamespace:
+    return SimpleNamespace(
+        settings=SimpleNamespace(
+            pronunciation_enabled=False, pronunciation_enabled_dictionary_ids=[]
+        ),
+        _wx=SimpleNamespace(CallAfter=lambda fn, *a: fn(*a)),
+        _set_status=lambda _msg: None,
+    )
+
+
+def test_build_translator_none_without_targets(tmp_path: Path) -> None:
+    req = SimpleNamespace(translation_targets=())
+    assert _build_translator(req) is None
+
+
+def test_export_translations_local_engine(tmp_path: Path, monkeypatch) -> None:
+    import quill.core.speech.document_speech as ds
+
+    seen: dict = {}
+
+    class _Result:
+        with_tones_path = None
+
+        def __init__(self, out: Path) -> None:
+            self.output_path = out
+            self.chapters = [1, 2]
+
+    def _fake_synth(src, out, spec, options, **kw):
+        seen["engine"] = spec.engine
+        seen["voice"] = spec.voice
+        seen["translate"] = kw.get("translate")
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(b"RIFF")
+        return _Result(out)
+
+    monkeypatch.setattr(ds, "synthesize_document_to_chaptered_file", _fake_synth)
+    frame = _tr_frame(tmp_path)
+    src = tmp_path / "doc.md"
+    src.write_text("# Hi\n\nbody\n", encoding="utf-8")
+    final = tmp_path / "doc.mp3"
+    final.write_bytes(b"orig")
+    req = SimpleNamespace(
+        translation_targets=(("es", "espeak", "es"),),
+        rate=200,
+        speed=1.0,
+        combine_headings=False,
+        source_folder=tmp_path,
+    )
+    chapters = _export_translations(
+        frame,
+        req,
+        src,
+        final,
+        ".mp3",
+        None,
+        lambda _sp=None: object(),
+        for_language=lambda name: lambda t: f"ES[{t}]",
+    )
+    assert chapters == 2
+    assert seen["engine"] == "espeak" and seen["voice"] == "es"
+    assert seen["translate"]("x") == "ES[x]"  # the per-language translator was passed
+    # Output named "<stem> (Spanish).mp3".
+    assert (tmp_path / "doc (Spanish).mp3").is_file()
+
+
+def test_export_translations_skips_cloud_engine(tmp_path: Path, monkeypatch) -> None:
+    frame = _tr_frame(tmp_path)
+    src = tmp_path / "doc.md"
+    src.write_text("x", encoding="utf-8")
+    req = SimpleNamespace(
+        translation_targets=(("es", "openai", "nova"),),
+        rate=200,
+        speed=1.0,
+        combine_headings=False,
+        source_folder=tmp_path,
+    )
+    # Cloud engines are skipped (not yet supported) -> no chapters, no output.
+    chapters = _export_translations(
+        frame,
+        req,
+        src,
+        tmp_path / "doc.mp3",
+        ".mp3",
+        None,
+        lambda _sp=None: object(),
+        for_language=lambda name: lambda t: t,
+    )
+    assert chapters == 0
+    assert not (tmp_path / "doc (Spanish).mp3").exists()
 
 
 def test_resolve_chapter_sound_from_bundled_ink(tmp_path: Path) -> None:

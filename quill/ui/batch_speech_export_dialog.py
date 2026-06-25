@@ -71,6 +71,13 @@ class BatchSpeechRequest:
     # Round-robin voices: ordered voice ids (of the selected engine) cycled one per
     # article/heading. Empty or one voice -> the single `voice` above is used.
     round_robin_voices: tuple[str, ...] = ()
+    # Translated audio export (§7): also export each document in these languages.
+    # Each target is (language_code, engine, voice_id); the document is translated
+    # into the language then synthesized with that voice. Empty = no translation.
+    translation_targets: tuple[tuple[str, str, str], ...] = ()
+    # Translation backend: "ai_assistant" (configured AI provider) or "libretranslate".
+    translation_provider: str = "ai_assistant"
+    libretranslate_url: str = "http://localhost:5000"
     _voice_label: str = field(default="", repr=False)
 
 

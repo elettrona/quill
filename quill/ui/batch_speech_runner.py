@@ -104,7 +104,9 @@ def _engine_available(frame: Any) -> dict[str, bool]:
     }
 
 
-def _active_pronunciation_dictionaries(frame: Any, engine: str, source_folder: Path) -> list[Any]:
+def _active_pronunciation_dictionaries(
+    frame: Any, engine: str, source_folder: Path, *, language: str | None = None
+) -> list[Any]:
     """Resolve the enabled, in-scope pronunciation dictionaries for this batch.
 
     Honors ``settings.pronunciation_enabled`` and the per-user enabled-id
@@ -120,7 +122,9 @@ def _active_pronunciation_dictionaries(frame: Any, engine: str, source_folder: P
     ids = list(getattr(s, "pronunciation_enabled_dictionary_ids", []) or [])
     enabled_ids = set(ids) if ids else None
     try:
-        return active_dictionaries(engine, project_dir=source_folder, enabled_ids=enabled_ids)
+        return active_dictionaries(
+            engine, project_dir=source_folder, enabled_ids=enabled_ids, language=language
+        )
     except Exception:  # noqa: BLE001 - a broken dictionary store must not block export
         return []
 
@@ -157,6 +161,96 @@ def _resolve_chapter_sound_path(frame: Any, dest_dir: Path) -> Path | None:
     out = dest_dir / f"chapter_sound_{sound_id}.wav"
     out.write_bytes(data)
     return out
+
+
+_TRANSLATION_LOCAL_ENGINES = frozenset({"sapi5", "kokoro", "piper", "dectalk", "espeak"})
+
+
+def _build_translator(req: Any) -> Any:
+    """Return ``for_language(name) -> translate(text)->text`` or None when not needed.
+
+    Loads the AI connection/key (or LibreTranslate URL) once; the per-language closure
+    wraps :func:`quill.core.ai.translation.translate_text`.
+    """
+    if not req.translation_targets:
+        return None
+    from quill.core.ai.translation import translate_text
+    from quill.core.assistant_ai import (
+        load_assistant_api_key,
+        load_assistant_connection_settings,
+    )
+
+    conn = load_assistant_connection_settings()
+    api_key = load_assistant_api_key()
+    provider = req.translation_provider or "ai_assistant"
+    lt_url = req.libretranslate_url or "http://localhost:5000"
+
+    def for_language(language_name: str) -> Any:
+        def _translate(text: str) -> str:
+            translated, _src = translate_text(text, language_name, conn, api_key, provider, lt_url)
+            return translated
+
+        return _translate
+
+    return for_language
+
+
+def _export_translations(
+    frame: Any,
+    req: Any,
+    src: Path,
+    base_final: Path,
+    suffix: str,
+    chapter_sound: Path | None,
+    opts_fn: Any,
+    for_language: Any,
+) -> int:
+    """Export *src* in each configured target language; return chapters produced."""
+    import shutil
+    import tempfile
+
+    from quill.core.ai.translation import LANGUAGE_NAMES
+    from quill.core.speech.document_speech import (
+        DocumentSpeechError,
+        SynthesisSpec,
+        synthesize_document_to_chaptered_file,
+    )
+
+    chapters = 0
+    for lang_code, t_engine, t_voice in req.translation_targets:
+        if t_engine not in _TRANSLATION_LOCAL_ENGINES:
+            frame._wx.CallAfter(
+                frame._set_status, f"Skipped {lang_code} (cloud voices not yet supported)"
+            )
+            continue
+        lang_name = LANGUAGE_NAMES.get(lang_code, lang_code)
+        out = base_final.with_name(f"{base_final.stem} ({lang_name}){suffix}")
+        t_dicts = _active_pronunciation_dictionaries(
+            frame, t_engine, req.source_folder, language=lang_code
+        )
+        t_spec = SynthesisSpec(engine=t_engine, voice=t_voice, rate=req.rate, speed=req.speed)
+        work = Path(tempfile.mkdtemp(prefix="quill_batch_tr_"))
+        try:
+            result = synthesize_document_to_chaptered_file(
+                src,
+                work / f"out{suffix}",
+                t_spec,
+                opts_fn(chapter_sound),
+                work_dir=work / "w",
+                pronunciation_dictionaries=t_dicts,
+                combine_headings=req.combine_headings,
+                translate=for_language(lang_name),
+            )
+            shutil.copyfile(result.with_tones_path or result.output_path, out)
+            chapters += len(result.chapters)
+            frame._wx.CallAfter(frame._set_status, f"{out.name}: {len(result.chapters)} chapter(s)")
+        except DocumentSpeechError as exc:
+            frame._wx.CallAfter(frame._set_status, f"Skipped {out.name}: {exc}")
+        except Exception as exc:  # noqa: BLE001 - isolate per-language failures
+            frame._wx.CallAfter(frame._set_status, f"Error on {out.name}: {exc}")
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+    return chapters
 
 
 def _current_project_dir(frame: Any) -> Path | None:
@@ -298,6 +392,7 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
     spec = SynthesisSpec(engine=req.engine, voice=req.voice, rate=req.rate, speed=req.speed)
     suffix = {"mp3": ".mp3", "m4b": ".m4b"}.get(req.output_format, ".wav")
     dictionaries = _active_pronunciation_dictionaries(frame, req.engine, req.source_folder)
+    for_language = _build_translator(req)
 
     def opts(sound_path: Path | None = None) -> ChapterAssembleOptions:
         return ChapterAssembleOptions(
@@ -414,6 +509,10 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                 chapter_count = len(result.chapters)
                 total_chapters += chapter_count
                 frame._wx.CallAfter(frame._set_status, f"{final.name}: {chapter_count} chapter(s)")
+                if for_language is not None:
+                    total_chapters += _export_translations(
+                        frame, req, src, final, suffix, chapter_sound, opts, for_language
+                    )
             except DocumentSpeechError as exc:
                 errors += 1
                 frame._wx.CallAfter(frame._set_status, f"Skipped {src.name}: {exc}")
