@@ -18114,9 +18114,21 @@ class MainFrame(
             failed = counts.get(STATE_FAILED, 0)
             skipped = counts.get(STATE_SKIPPED, 0)
             paused = " (paused)" if self._watch_service.queue.is_paused() else ""
-            summary.SetLabel(
-                f"Pending {queued}, done {done}, failed {failed}, skipped {skipped}{paused}"
-            )
+            label = f"Pending {queued}, done {done}, failed {failed}, skipped {skipped}{paused}"
+            # Explain an apparently-empty queue: profiles default to ignoring files
+            # already present when the watch started (process_existing off), so only
+            # newly-added files appear. Surface that so the monitor isn't confusing.
+            if not items:
+                try:
+                    primed = self._watch_service.primed_count()
+                except Exception:  # noqa: BLE001 - a hint must never break the monitor
+                    primed = 0
+                if primed:
+                    label += (
+                        f". {primed} existing file{'s' if primed != 1 else ''} ignored "
+                        "(turn on 'Process existing files' on a profile, or add a new file)"
+                    )
+            summary.SetLabel(label)
         pause_button = getattr(self, "_watch_queue_pause_button", None)
         if pause_button is not None:
             pause_button.SetLabel("Resume" if self._watch_service.queue.is_paused() else "Pause")
