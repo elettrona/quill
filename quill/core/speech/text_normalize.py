@@ -119,6 +119,10 @@ class TextNormalizationOptions:
     repeated_punctuation: bool = True
     control_chars: bool = True
     nfkc: bool = False
+    # Publication shorthand and resolution numbers (from the ACB pipeline): say
+    # "Vol." as "Volume", "No." as "Number", and "2025-02" as "2025 dash 2".
+    publications: bool = True
+    resolution_numbers: bool = True
     # magical opt-in
     phone_numbers: bool = False
     citations: bool = False
@@ -158,6 +162,18 @@ class TextNormalizationOptions:
             elif isinstance(current, dict) and isinstance(raw, dict):
                 setattr(opts, f.name, {str(k): str(v) for k, v in raw.items()})
         return opts
+
+
+# Publication shorthand and resolution numbers (ACB pipeline learnings).
+_VOL = re.compile(r"\bVol\.\s*(\d+)")
+_NO = re.compile(r"\bNo\.\s*(\d+)")
+# A 4-digit year, a dash, then 1-3 digits (e.g. resolution "2025-02"). The number's
+# leading zero is dropped so it speaks as "2025 dash 2", not "2025 dash zero two".
+_RESOLUTION = re.compile(r"\b(20\d{2})-(\d{1,3})\b")
+
+
+def _resolution_repl(match: re.Match[str]) -> str:
+    return f"{match.group(1)} dash {int(match.group(2))}"
 
 
 # --- structured-token passes (run first; claim their punctuation) ---------- #
@@ -299,6 +315,11 @@ def normalize_for_tts(text: str, options: TextNormalizationOptions | None = None
         result = _CITATION.sub("", result)
     if opts.acronyms:
         result = _ALL_CAPS.sub(_spell_acronym, result)
+    if opts.publications:
+        result = _VOL.sub(r"Volume \1", result)
+        result = _NO.sub(r"Number \1", result)
+    if opts.resolution_numbers:
+        result = _RESOLUTION.sub(_resolution_repl, result)
 
     for src, dst in opts.extra_replacements.items():
         if src:

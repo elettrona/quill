@@ -9,6 +9,17 @@ def _n(text: str, **kw: object) -> str:
     return normalize_for_tts(text, TextNormalizationOptions(**kw))  # type: ignore[arg-type]
 
 
+def test_publication_shorthand_spoken() -> None:
+    assert _n("Vol. 12, No. 3") == "Volume 12, Number 3"
+    assert _n("Vol. 12", publications=False) == "Vol. 12"  # opt-out leaves it
+
+
+def test_resolution_numbers_spoken() -> None:
+    assert _n("Resolution 2025-02 passed") == "Resolution 2025 dash 2 passed"
+    assert _n("2025-123") == "2025 dash 123"
+    assert _n("see 1984") == "see 1984"  # a plain year is untouched
+
+
 def test_smart_quotes_and_apostrophes() -> None:
     assert _n("“Hi” don’t") == '"Hi" don\'t'
 
