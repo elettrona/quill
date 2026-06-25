@@ -23,6 +23,7 @@ from quill.core.verbosity.profiles import DEFAULT_PROFILE, VerbosityProfile, act
 from quill.core.verbosity.quiet import QuietMode, VerbosityUndoStack
 from quill.core.verbosity.registry import VerbRegistry, default_registry
 from quill.core.verbosity.safe_mode import VerbositySafeMode
+from quill.core.verbosity.throttle import AnnouncementThrottle, config_from_settings
 
 __all__ = ["AnnouncementOutcome", "VerbosityController"]
 
@@ -64,6 +65,9 @@ class VerbosityController:
         self._history_enabled = history_enabled
         self.mastery = MasteryTracker(enabled=mastery_enabled)
         self.safe_mode = VerbositySafeMode()
+        # Anti-spam for the spoken channel (repetition collapse + budget). Visual
+        # output is never throttled, so nothing is hidden on the status bar.
+        self.throttle = AnnouncementThrottle()
 
     # -- configuration ------------------------------------------------------
 
@@ -78,6 +82,7 @@ class VerbosityController:
         """Adopt the legacy ``announcement_verbosity`` knob as the active profile."""
         self.set_profile(active_profile(settings))
         self._history_enabled = bool(getattr(settings, "verbosity_history_enabled", True))
+        self.throttle.set_config(config_from_settings(settings))
 
     # -- the announce choke-point ------------------------------------------
 
@@ -111,12 +116,16 @@ class VerbosityController:
         speech = result.speech if result.speech else ("" if result.suppressed else "")
         if verb_id == "_legacy" and not result.suppressed:
             speech = message
+        # Anti-spam the spoken channel only — the status bar always gets `visual`.
+        throttled = bool(speech) and not self.throttle.admit(speech).speak
+        if throttled:
+            speech = ""
         if self._history_enabled and record:
             self.history.record_announcement(result)
         return AnnouncementOutcome(
             speech=speech,
             visual=visual,
-            suppressed=result.suppressed,
+            suppressed=result.suppressed or throttled,
             sound_event=result.sound_event,
         )
 

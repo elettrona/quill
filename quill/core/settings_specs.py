@@ -867,6 +867,26 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("sound", "disable", "mute", "earcon", "events"),
     ),
     SettingSpec(
+        "verbosity_collapse_repeats",
+        "Collapse repeated announcements",
+        "accessibility",
+        "bool",
+        "Skip speaking the same announcement again when it repeats within a moment "
+        "(for example, holding a key at a boundary). The status bar still updates.",
+        keywords=("verbosity", "announcement", "repeat", "collapse", "spam", "duplicate"),
+    ),
+    SettingSpec(
+        "verbosity_max_announcements_per_window",
+        "Announcement budget (per 5 seconds)",
+        "accessibility",
+        "int",
+        "Cap how many announcements are spoken in a 5-second window to avoid floods "
+        "(0 means no cap). Suppressed announcements still appear on the status bar.",
+        minimum=0,
+        maximum=1000,
+        keywords=("verbosity", "announcement", "budget", "limit", "flood", "throttle"),
+    ),
+    SettingSpec(
         "indent_tone_scale",
         "Indentation tones",
         "accessibility",

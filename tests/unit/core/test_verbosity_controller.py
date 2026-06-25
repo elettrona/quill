@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from quill.core.verbosity.controller import VerbosityController
 from quill.core.verbosity.profiles import EXPERT, QUIET
+from quill.core.verbosity.throttle import ThrottleConfig
 
 
 def test_legacy_announcement_passes_through() -> None:
@@ -12,6 +13,38 @@ def test_legacy_announcement_passes_through() -> None:
     assert out.speech == "Saved notes.md"
     assert out.visual == "Saved notes.md"
     assert not out.suppressed
+
+
+def test_repetition_collapse_drops_repeat_speech_keeps_visual() -> None:
+    ctrl = VerbosityController()
+    ctrl.throttle.set_config(ThrottleConfig(collapse_repeats=True))
+    first = ctrl.process("No more results.")
+    second = ctrl.process("No more results.")
+    assert first.speech == "No more results."
+    # The repeat is silenced for speech but the status-bar floor still shows it.
+    assert second.speech == ""
+    assert second.visual == "No more results."
+    assert second.suppressed
+
+
+def test_collapse_disabled_speaks_every_time() -> None:
+    ctrl = VerbosityController()
+    ctrl.throttle.set_config(ThrottleConfig(collapse_repeats=False))
+    assert ctrl.process("ping").speech == "ping"
+    assert ctrl.process("ping").speech == "ping"
+
+
+def test_apply_settings_configures_throttle() -> None:
+    class _S:
+        announcement_verbosity = "normal"
+        verbosity_history_enabled = True
+        verbosity_collapse_repeats = False
+        verbosity_max_announcements_per_window = 9
+
+    ctrl = VerbosityController()
+    ctrl.apply_settings(_S())
+    assert ctrl.throttle.config.collapse_repeats is False
+    assert ctrl.throttle.config.max_per_window == 9
 
 
 def test_quiet_mode_suppresses_speech_keeps_visual() -> None:

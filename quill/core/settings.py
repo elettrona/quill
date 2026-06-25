@@ -201,6 +201,11 @@ class Settings:
     verbosity_history_clear_on_exit: bool = False
     verbosity_task_profile_suggestions: bool = False
     verbosity_safe_mode_enabled: bool = False
+    # Anti-spam for the spoken channel (#408/#409). Repetition collapse drops
+    # identical consecutive speech within a short window; the budget caps spoken
+    # announcements per rolling window (0 = no cap). Visual status is never affected.
+    verbosity_collapse_repeats: bool = True
+    verbosity_max_announcements_per_window: int = 0
     # #181: automatic Document Language detection on paste/typing. One of
     # "off" (default), "hint" (status bar only), "prompt" (announce a suggestion),
     # or "auto" (switch automatically). Only ever acts on unpinned untitled/.txt
@@ -688,6 +693,10 @@ class Settings:
         if language_detection_mode not in {"off", "hint", "prompt", "auto"}:
             language_detection_mode = "off"
         verbosity_history_enabled = bool(data.get("verbosity_history_enabled", True))
+        verbosity_collapse_repeats = bool(data.get("verbosity_collapse_repeats", True))
+        verbosity_max_announcements_per_window = _clamp_int(
+            data.get("verbosity_max_announcements_per_window", 0), 0, 0, 1000
+        )
         verbosity_history_limit = _clamp_int(
             data.get("verbosity_history_limit", 100), 100, 1, 10000
         )
@@ -1033,6 +1042,8 @@ class Settings:
             verbosity_history_clear_on_exit=verbosity_history_clear_on_exit,
             verbosity_task_profile_suggestions=verbosity_task_profile_suggestions,
             verbosity_safe_mode_enabled=verbosity_safe_mode_enabled,
+            verbosity_collapse_repeats=verbosity_collapse_repeats,
+            verbosity_max_announcements_per_window=verbosity_max_announcements_per_window,
             browse_mode_sticky=browse_mode_sticky,
             quill_key_sound_enter=quill_key_sound_enter,
             quill_key_sound_exit=quill_key_sound_exit,
