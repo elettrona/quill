@@ -1595,13 +1595,14 @@ placeholder with the full format picker.</li>
 <li><strong>MarkItDown integration.</strong> Tracked as a follow-up
 issue. The integration belongs in a Quillin so its dependencies stay out
 of the core.</li>
-<li><strong>Per-verb verbosity tokens.</strong> The completion
-announcement routes through the existing <code>announce()</code> shim.
-The pure-domain foundation of the per-verb verbosity rebuild now exists
-in source (<code>quill/core/verbosity/</code>, see §5.91.2), but the
-routing engine and call-site migration are still tracked separately;
-this completion path has not yet been migrated onto it. See
-§5.91.4.</li>
+<li><strong>Dedicated per-verb token for batch completion.</strong> The
+verbosity system has shipped (engine, UI, runtime modes, anti-spam — see
+§5.91.4), and the batch-conversion completion announcement already
+routes through it (<code>MainFrame._announce</code> →
+<code>VerbosityController.process()</code>), today as the
+<code>_legacy</code> passthrough. Binding it to the existing
+<code>system.operation_complete</code> verb with a custom token template
+is optional polish, not done for this release.</li>
 </ul>
 <p>Cross-links: this section is referenced from
 <code>### 5.25b Watch Folder automation</code> (the Watch Folder Quillin
@@ -6603,7 +6604,7 @@ The per-Quillin check exists because the user&#39;s preference for the lifecycle
 
 #### 5.91.4 Verbosity system (shipped)
 
-The full verbosity rebuild (`docs/planning/verbosity-system.md`) replaces the single `announcement_verbosity` knob with a per-verb, channel-aware, user-customizable announcement system. It has **shipped for 1.0**: the pure-domain core lives in `quill/core/verbosity/` (wx-free, strict-typed, in `mypy` scope) and is live in the app. Beyond the foundation table below, the system now includes the **routing engine** (`engine.py`) reached through the single `VerbosityController.process()` choke-point that `main_frame` routes its announce path through; the **runtime modes** Quiet (`Ctrl+Shift+Q`) and Meeting (`Ctrl+Shift+B`) with status-bar badges, **Quiet Undo** (`Ctrl+Shift+Z`), and the status-query commands **Where am I?**, **What changed?**, and **Speak Status**; **mastery step-down**, **announcement history**, the **&quot;Why did QUILL say that?&quot;** explain trace, **Safe Mode/reset**, **QVP packs + library + preview lab**, **task-aware profiles**, and **import/export**; and the eleven `quill/ui/verbosity_*` UI surfaces (preferences, token editor, data-order editor, chord editor, library, history, preview lab, safe-mode reset, import/export, QVP install). **Announcement anti-spam** (`throttle.py`, §1.1 #408/#409): repetition collapse drops identical consecutive *speech* within a short window and an optional budget caps spoken announcements per rolling window — both applied at `process()`, affecting only the spoken channel (the visual status-bar floor is never throttled), configured by `verbosity_collapse_repeats` and `verbosity_max_announcements_per_window`. The remaining speculative &quot;polish backlog&quot; long-tail items are deferred to 2.0 (roadmap §5). The pure-domain foundation table:
+The full verbosity rebuild (roadmap §1.1; the deferred 2.0 polish backlog is consolidated in roadmap §6) replaces the single `announcement_verbosity` knob with a per-verb, channel-aware, user-customizable announcement system. It has **shipped for 1.0**: the pure-domain core lives in `quill/core/verbosity/` (wx-free, strict-typed, in `mypy` scope) and is live in the app. Beyond the foundation table below, the system now includes the **routing engine** (`engine.py`) reached through the single `VerbosityController.process()` choke-point that `main_frame` routes its announce path through; the **runtime modes** Quiet (`Ctrl+Shift+Q`) and Meeting (`Ctrl+Shift+B`) with status-bar badges, **Quiet Undo** (`Ctrl+Shift+Z`), and the status-query commands **Where am I?**, **What changed?**, and **Speak Status**; **mastery step-down**, **announcement history**, the **&quot;Why did QUILL say that?&quot;** explain trace, **Safe Mode/reset**, **QVP packs + library + preview lab**, **task-aware profiles**, and **import/export**; and the eleven `quill/ui/verbosity_*` UI surfaces (preferences, token editor, data-order editor, chord editor, library, history, preview lab, safe-mode reset, import/export, QVP install). **Announcement anti-spam** (`throttle.py`, §1.1 #408/#409): repetition collapse drops identical consecutive *speech* within a short window and an optional budget caps spoken announcements per rolling window — both applied at `process()`, affecting only the spoken channel (the visual status-bar floor is never throttled), configured by `verbosity_collapse_repeats` and `verbosity_max_announcements_per_window`. The remaining speculative &quot;polish backlog&quot; long-tail items are deferred to 2.0 (roadmap §5). The pure-domain foundation table:
 
 | Module | Responsibility |
 |---|---|
@@ -6673,7 +6674,7 @@ The 3-tab About dialog already ships (About Quill, §&quot;About&quot;). Tested 
 
 Sub-PR 1.5 makes the system live. `quill/core/verbosity/controller.py` (`VerbosityController`, wx-free) owns the engine, Quiet/Meeting controllers, the undo stack, announcement history, mastery, and Safe Mode. `MainFrame` gains `VerbosityCommandsMixin` (`quill/ui/main_frame_verbosity.py`) and registers eight `verbosity.*` commands (palette- and Keyboard-Manager-reachable). The announce choke-point (`MainFrame._announce`) routes through `VerbosityController.process` **only once the controller exists** (created on first verbosity use), so the default path is unchanged until then; once live, Quiet/Meeting suppress speech while the status-bar visual floor remains. Default chords avoid all conflicts (`edit.quote_lines` keeps `Ctrl+Shift+Q`): Quiet = QUILL key + Q, Meeting = QUILL key + Shift+Q, Verbosity Undo = `Ctrl+Shift+Z`; the rest are palette/Keyboard-Manager reachable. Eight scalar `verbosity_*` settings persist (mastery enabled/threshold, validation mode, history enabled/limit/clear-on-exit, task-profile suggestions, Safe Mode); collection-typed state stays in `verbosity_custom.json`. Live in-app behavior warrants a manual smoke run before release.
 
-Sub-PR 1.6 (the original &quot;100-item addendum&quot;) was **consolidated** in the 2026-06-21 tracker cleanup into the deduplicated *Polish backlog* in `docs/planning/verbosity-system.md`, which is the authoritative status list for those ideas. Rather than 100 separate features: the duplicates and already-built items are folded into the foundation/engine/UI shipped in 1.1–1.5; the themed survivors (per-category verbosity via the verb registry, status-query commands, announcement flow control, safety announcements, friendly names, status-bar surfacing, scope profiles, sound learnability, coaching/discovery, braille polish) are tracked there; and the screen-reader-redundant items — **typing echo, command echo, speech rate/pause, punctuation/symbol profiles** — are recorded as **recommend do not build**, because QUILL speaks alongside the screen reader and must not duplicate or fight the settings (echo, rate, punctuation level) the screen reader already owns.
+Sub-PR 1.6 (the original &quot;100-item addendum&quot;) was **consolidated** into the deduplicated *Polish backlog*, now the authoritative status list in **roadmap §6** (the standalone `verbosity-system.md` archive was retired once verbosity shipped). Rather than 100 separate features: the duplicates and already-built items are folded into the foundation/engine/UI shipped in 1.1–1.5; the themed survivors (per-category verbosity via the verb registry, status-query commands, announcement flow control, safety announcements, friendly names, status-bar surfacing, scope profiles, sound learnability, coaching/discovery, braille polish) are tracked there; and the screen-reader-redundant items — **typing echo, command echo, speech rate/pause, punctuation/symbol profiles** — are recorded as **recommend do not build**, because QUILL speaks alongside the screen reader and must not duplicate or fight the settings (echo, rate, punctuation level) the screen reader already owns.
 
 ---
 
@@ -9870,19 +9871,19 @@ phase outcomes, the release gap list, and the open-issue ledger — lives
 in <a
 href="../../planning/roadmap.md"><code>docs/planning/roadmap.md</code></a>.
 The large in-flight feature specs keep their own files: <a
-href="../../planning/verbosity-system.md"><code>verbosity-system.md</code></a>,
-<a
 href="../../planning/quill-native-accessible-table-studio-plan.md"><code>quill-native-accessible-table-studio-plan.md</code></a>,
 <a
 href="../../planning/quill_end_to_end_agentic_ai_prd.md"><code>quill_end_to_end_agentic_ai_prd.md</code></a>,
 and <a
 href="../../planning/eleven-labs.md"><code>eleven-labs.md</code></a>.
 (Shipped workstreams’ specs — offline speech-to-text #617, the braille
-suite, batch document-to-speech, and Structured List Studio — were
-retired to git history once delivered; their status lives in the roadmap
-and user guide.) The current direction is that these items
-<strong>ship</strong> (the older 2.0-deferral framing is dropped); the
-tables below are retained as the format-support reference.</p>
+suite, batch document-to-speech, Structured List Studio, and the
+verbosity system — were retired to git history once delivered; their
+status lives in the roadmap and user guide, and the verbosity 2.0
+backlog is consolidated in roadmap §6.) The current direction is that
+these items <strong>ship</strong> (the older 2.0-deferral framing is
+dropped); the tables below are retained as the format-support
+reference.</p>
 </blockquote>
 <p>Everything below is intentionally out of v1.0. Each item is either
 yellow (achievable but requires more engineering than the v1.0 quality

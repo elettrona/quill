@@ -182,8 +182,6 @@ lands it leaves this file; its behavior lives in the user guide and
 <code>docs/planning/</code> are the large in-flight feature specs, each
 with open work of its own:</p>
 <ul>
-<li><a href="verbosity-system.md"><code>verbosity-system.md</code></a> —
-verbosity polish backlog.</li>
 <li><a
 href="quill-native-accessible-table-studio-plan.md"><code>quill-native-accessible-table-studio-plan.md</code></a>
 — Table Studio (not started).</li>
@@ -235,14 +233,12 @@ anti-spam</strong> (repetition collapse + announcement budget at the
 <code>process()</code> choke-point,
 <code>quill/core/verbosity/throttle.py</code>).</p>
 <p>The remaining “polish backlog” long-tail (the speculative slice of
-the ~100 addenda #405–#504) is <strong>deferred to 2.0</strong> (§5).
-The screen-reader-redundant ideas (Typing/Command Echo, Speech
-Rate/Pause knobs, Punctuation/Symbol Profiles — the SR already owns
-these) are recorded as <strong>“recommend do not build”</strong> in <a
-href="verbosity-system.md"><code>verbosity-system.md</code></a>. The
-niche valuable items not built for 1.0 — error coaching (#416),
-per-category detail levels (#418), Markdown/Code-aware verbosity
-(#427/#428), “undo available” cues (#502) — are 2.0 candidates (§5).</p>
+the ~100 addenda #405–#504) is <strong>deferred to 2.0</strong> — the
+full distilled backlog, the valuable candidates (error coaching #416,
+per-category detail #418, Markdown/Code-aware #427/#428, “undo
+available” #502), and the “recommend do not build” list (Typing/Command
+Echo, Speech Rate/Pause knobs, Punctuation/Symbol Profiles — the SR
+already owns these) are in <strong>§6</strong>.</p>
 <h3 id="speech-dictation-bits-whisperer-complete-for-1.0">1.2 Speech
 &amp; Dictation — “BITS Whisperer” ✅ (complete for 1.0)</h3>
 <p>The batch document-to-speech and dictation work is <strong>done for
@@ -632,13 +628,11 @@ A full external-service + auth + sync workstream; spec in <a
 href="QUILL-Native-Google-Docs-Support-PRD.md"><code>QUILL-Native-Google-Docs-Support-PRD.md</code></a>.</li>
 <li><strong>Verbosity polish-backlog long tail (§1.1)</strong> — the
 speculative slice of the ~100 addenda (#405–#504) beyond the shipped
-core/UI/modes/anti-spam: error coaching (#416), per-category detail
-levels (#418), Markdown/Code-aware verbosity (#427/#428), “undo
-available” cues (#502), and the community-pack/diff, pack-author mode,
-abbreviation-dictionary, and similar long-tail ideas. Reference well: <a
-href="verbosity-system.md"><code>verbosity-system.md</code></a>.
-Screen-reader-redundant ideas (typing/command echo, speech-rate knobs,
-punctuation profiles) are “recommend do not build.”</li>
+core/UI/modes/anti-spam. The full distilled backlog (valuable candidates
++ themed reference + “recommend do not build”) is <strong>§6</strong>
+below — consolidated here when the standalone
+<code>verbosity-system.md</code> archive was retired. Shipped design
+lives in PRD §5.91.</li>
 <li><strong>Accessibility tooling from GLOW (§1.4)</strong> — Document
 Audit (ACB Large-Print Guidelines, Microsoft Accessibility Checker, WCAG
 2.2 AA) and the GLOW family (#528–#534) plus the WATCH-8 GLOW watch
@@ -648,5 +642,78 @@ server/Keycloak/Office-add-in/MCP-deployment surfaces stay in the GLOW
 product; QUILL would take the authoring-time checks. Source:
 <code>s:\code\glow</code> (<code>glowplan.md</code>).</li>
 </ul>
+<hr />
+<h2 id="verbosity-2.0-backlog-consolidated">6. Verbosity 2.0 backlog
+(consolidated)</h2>
+<p>The verbosity engine, the eleven <code>verbosity_*</code> UI
+surfaces, the runtime modes (Quiet / Meeting / Quiet-Undo), the
+status-query commands (Where am I? / What changed? / Speak Status),
+mastery step-down, history, the explain trace, Safe Mode/reset, QVP
+packs + library + preview lab, task-aware profiles, import/export,
+destructive-action confirmation, and <strong>announcement
+anti-spam</strong> (#408/#409) all shipped for 1.0 (§1.1). The
+<strong>shipped design</strong> is documented in <strong>PRD
+§5.91</strong>.</p>
+<p>This section is the consolidated reference for the
+<strong>deferred</strong> polish-backlog addenda (#405–#504), absorbed
+here when the standalone <code>verbosity-system.md</code> archive was
+retired. Issue numbers are kept so each idea stays findable.</p>
+<p><strong>Valuable candidates (build first if the range
+reopens):</strong></p>
+<ul>
+<li><strong>Error coaching (#416)</strong> — turn an error announcement
+into a next-step hint.</li>
+<li><strong>Per-category announcement detail levels (#418)</strong> —
+independent verbosity per category (nav / edit / search / system) on top
+of the global profile.</li>
+<li><strong>Markdown-aware (#427) / Code-aware (#428) verbosity</strong>
+— context-sensitive announcements when editing Markdown or source.</li>
+<li><strong>“Undo available” cues (#502)</strong> and richer
+<strong>destructive-action warnings (#501)</strong> (the confirm dialog
+ships; the spoken cue is the increment).</li>
+<li><strong>Boundary announcements (#419)</strong> and
+<strong>progress-announcement controls (#420)</strong>.</li>
+<li><strong>Details-on-demand (#417)</strong> beyond the existing
+status-query commands.</li>
+</ul>
+<p><strong>Themed reference well (speculative; build only on
+demand):</strong></p>
+<ul>
+<li><em>Settings UX:</em> searchable settings (#406), recipes (#407),
+bulk edit (#464), undo for settings (#465), change history (#466),
+export preview (#482), import-conflict wizard (#483), “try without
+applying” (#484), reset granularity (#481), explain-my-settings (#446),
+test-my-settings (#467), recommended settings (#468), persona setup
+(#469).</li>
+<li><em>Packs:</em> community pack preview/diff (#442), trust labels
+(#443), copy-as-user- template (#444), pack-author mode (#461), built-in
+sample QVPs (#462), conflict checker (#445).</li>
+<li><em>Modes / recipes:</em> focus mode (#487), review mode (#488),
+session profiles (#485), time-based quiet hours (#486), temporary boost
+(#436), training mode (#438).</li>
+<li><em>Privacy / support:</em> privacy controls (#448),
+private-document mode (#449), export support bundle (#447), copy debug
+summary (#478), report announcement (#479), developer trace verbosity
+(#495), performance knobs (#496).</li>
+<li><em>Output niceties:</em> last-important announcement (#452), pin
+status (#456), smart status rotation (#457), favorites (#455), labels
+(#473), per-announcement suppression (#471/#472), earcons-with-text
+(#453), learn-sounds mode (#454), status badges (#497), braille status
+cell (#498), before/after announcements (#500).</li>
+<li><em>Content / localization:</em> friendly names (#440/#477),
+microcopy style (#490), use-my-words labels (#491), abbreviation
+dictionary (#492), localization readiness (#493), readability verbosity
+(#489).</li>
+<li><em>Hardware / context:</em> multi-monitor / presentation safety
+(#503), screen-reader handoff mode (#410), command discovery (#470),
+contextual help hooks (#439), hold-to-explain (#437), confidence-check
+wizard (#441).</li>
+</ul>
+<p><strong>Recommend do not build</strong> (the screen reader already
+owns these; QUILL speaks <em>alongside</em> it and must not duplicate or
+fight its settings): <strong>typing echo (#411)</strong>,
+<strong>command echo (#499)</strong>, <strong>speech rate / pause knobs
+(#450)</strong>, and <strong>punctuation / symbol profiles
+(#426)</strong>.</p>
 </body>
 </html>
