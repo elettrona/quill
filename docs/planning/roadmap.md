@@ -62,17 +62,14 @@ Profiles — the SR already owns these).
   `current_project_dir()`, and a "Remember for this project / Reset to global"
   surface (auto-remember on Start).
 - **Chapterization:** `sound_id` → sound-pack resolution (a placeholder chime is
-  the current fallback); confirm the `separate`-file-per-article path end-to-end;
-  surface per-file chapter count in results.
+  the current fallback); confirm the `separate`-file-per-article path end-to-end.
 - **SSML batch-time handling:** per-file substitution accounting; a dry-run
   transform preview (show the normalized/pronounced/SSML text before running).
 - **Extraction/quality:** richer `.docx` extraction (tables, headers/footers,
-  footnotes, list ordering — today paragraph `<w:t>` only); wire `tts_chunk.py`
-  into the batch/assembly path for very long sections; consider migrating
+  footnotes, list ordering — today paragraph `<w:t>` only); consider migrating
   `read_aloud.py` subprocess calls to `stability.safe_subprocess`.
-- **Credits/upstream:** THIRD_PARTY credit for mutagen + the ChapterForge approach;
-  offer ChapterForge the two fixes already in QUILL's `chapters.py` (non-contiguous
-  gap chapters; ID3-tag clobbering); ElevenDesk research pass (see
+- **Upstream:** offer ChapterForge the two fixes already in QUILL's `chapters.py`
+  (non-contiguous gap chapters; ID3-tag clobbering); ElevenDesk research pass (see
   [`eleven-labs.md`](eleven-labs.md)).
 
 **Dictation follow-ups:** a settings *panel* for the dictation knobs (plus earcon
@@ -143,7 +140,8 @@ Open Library metadata lookup.
   marketplace (#519).
 - **Deferred to 2.0** (tracker #680): the Windows 11 modern primary-menu
   `IExplorerCommand` pass (SHELL-3, #525) and the packaging/freeze evaluation
-  (PKG-1 — Nuitka/PyInstaller hardening, #599).
+  (PKG-1 — PyInstaller packaging hardening, #599). *(Nuitka is explicitly out of
+  scope — too much risk / not reliable enough.)*
 
 ### 1.7 Docs, tutorials & content
 

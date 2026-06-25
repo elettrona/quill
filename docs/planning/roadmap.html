@@ -246,21 +246,18 @@ apply-on-open, a precedence resolver (this-run &gt; project &gt; global
 Start).</li>
 <li><strong>Chapterization:</strong> <code>sound_id</code> → sound-pack
 resolution (a placeholder chime is the current fallback); confirm the
-<code>separate</code>-file-per-article path end-to-end; surface per-file
-chapter count in results.</li>
+<code>separate</code>-file-per-article path end-to-end.</li>
 <li><strong>SSML batch-time handling:</strong> per-file substitution
 accounting; a dry-run transform preview (show the
 normalized/pronounced/SSML text before running).</li>
 <li><strong>Extraction/quality:</strong> richer <code>.docx</code>
 extraction (tables, headers/footers, footnotes, list ordering — today
-paragraph <code>&lt;w:t&gt;</code> only); wire <code>tts_chunk.py</code>
-into the batch/assembly path for very long sections; consider migrating
+paragraph <code>&lt;w:t&gt;</code> only); consider migrating
 <code>read_aloud.py</code> subprocess calls to
 <code>stability.safe_subprocess</code>.</li>
-<li><strong>Credits/upstream:</strong> THIRD_PARTY credit for mutagen +
-the ChapterForge approach; offer ChapterForge the two fixes already in
-QUILL’s <code>chapters.py</code> (non-contiguous gap chapters; ID3-tag
-clobbering); ElevenDesk research pass (see <a
+<li><strong>Upstream:</strong> offer ChapterForge the two fixes already
+in QUILL’s <code>chapters.py</code> (non-contiguous gap chapters;
+ID3-tag clobbering); ElevenDesk research pass (see <a
 href="eleven-labs.md"><code>eleven-labs.md</code></a>).</li>
 </ul>
 <p><strong>Dictation follow-ups:</strong> a settings <em>panel</em> for
@@ -341,8 +338,9 @@ quality (#518); native RTF editing (#516); the Quillin Hub (#517);
 plugin capability + signing + marketplace (#519).</li>
 <li><strong>Deferred to 2.0</strong> (tracker #680): the Windows 11
 modern primary-menu <code>IExplorerCommand</code> pass (SHELL-3, #525)
-and the packaging/freeze evaluation (PKG-1 — Nuitka/PyInstaller
-hardening, #599).</li>
+and the packaging/freeze evaluation (PKG-1 — PyInstaller packaging
+hardening, #599). <em>(Nuitka is explicitly out of scope — too much risk
+/ not reliable enough.)</em></li>
 </ul>
 <h3 id="docs-tutorials-content">1.7 Docs, tutorials &amp; content</h3>
 <p>One <strong>Documentation &amp; Tutorials</strong> track: user-guide
