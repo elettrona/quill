@@ -43,6 +43,36 @@ def test_unknown_engine_raises() -> None:
         ds.make_synthesizer(ds.SynthesisSpec(engine="bogus"))
 
 
+def test_translate_applied_before_synthesis(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from quill.core.speech.text_polish import DocumentSection
+
+    spoken: list[str] = []
+    monkeypatch.setattr(
+        ds, "extract_sections", lambda _src, **_kw: [DocumentSection("Hola", "mundo")]
+    )
+
+    def _record_synth(_spec):
+        def _synth(text: str, out: Path) -> None:
+            spoken.append(text)
+            _write_silence(out)
+
+        return _synth
+
+    monkeypatch.setattr(ds, "make_synthesizer", _record_synth)
+    ds.synthesize_document_to_chaptered_file(
+        tmp_path / "doc.md",
+        tmp_path / "out.wav",
+        ds.SynthesisSpec(engine="sapi5", voice="x"),
+        ChapterAssembleOptions(article_gap_ms=0, sound_enabled=False, output_format="wav"),
+        translate=lambda t: f"EN[{t}]",
+    )
+    # The heading title and body were both translated before reaching the engine.
+    joined = " ".join(spoken)
+    assert "EN[Hola]" in joined and "EN[mundo]" in joined
+
+
 def test_build_voice_rotation_one_synth_per_voice(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: list[str] = []
 

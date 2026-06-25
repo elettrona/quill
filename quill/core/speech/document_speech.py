@@ -30,6 +30,7 @@ from quill.core.speech.chapter_assemble import (
     assemble_chaptered_audio,
 )
 from quill.core.speech.text_polish import extract_sections
+from quill.core.speech.translate_sections import Translator, translate_sections
 
 # Engine ids accepted by :func:`make_synthesizer`. These mirror the
 # ``read_aloud_engine`` setting and the batch options' per-engine blocks.
@@ -186,6 +187,7 @@ def synthesize_document_to_chaptered_file(
     pronunciation_dictionaries: list[Any] | None = None,
     combine_headings: bool = False,
     voice_rotation: list[str] | None = None,
+    translate: Translator | None = None,
 ) -> ChapterAssembleResult:
     """Convert one document to a chaptered audio file using a real engine.
 
@@ -204,6 +206,8 @@ def synthesize_document_to_chaptered_file(
     sections = extract_sections(source, combine_headings=combine_headings)
     if not sections:
         raise DocumentSpeechError(f"No readable text found in {source.name}.")
+    if translate is not None:
+        sections = translate_sections(sections, translate)
     synth = make_synthesizer(spec)
     synth = _wrap_with_pronunciations(synth, spec.engine, pronunciation_dictionaries)
     # Round-robin voices: one synthesizer per voice (same engine), cycled per
@@ -243,6 +247,7 @@ def synthesize_document_to_separate_files(
     pronunciation_dictionaries: list[Any] | None = None,
     combine_headings: bool = False,
     voice_rotation: list[str] | None = None,
+    translate: Translator | None = None,
 ) -> list[Path]:
     """Convert one document to **one audio file per article** (the `separate` mode).
 
@@ -258,6 +263,8 @@ def synthesize_document_to_separate_files(
     sections = extract_sections(source, combine_headings=combine_headings)
     if not sections:
         raise DocumentSpeechError(f"No readable text found in {source.name}.")
+    if translate is not None:
+        sections = translate_sections(sections, translate)
     synth = make_synthesizer(spec)
     synth = _wrap_with_pronunciations(synth, spec.engine, pronunciation_dictionaries)
     rotation = _build_voice_rotation(spec, voice_rotation, pronunciation_dictionaries)
