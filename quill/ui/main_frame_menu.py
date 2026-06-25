@@ -1450,6 +1450,7 @@ class MenuBuilderMixin:
         self._id_dictation_stop = wx.NewIdRef()
         self._id_dictation_cancel = wx.NewIdRef()
         self._id_dictation_settings = wx.NewIdRef()
+        self._id_dictation_history = wx.NewIdRef()
         self._id_speech_ffmpeg = wx.NewIdRef()
         self._id_speech_engine_dl = wx.NewIdRef()
         self._id_speech_hf_token = wx.NewIdRef()
@@ -1737,6 +1738,10 @@ class MenuBuilderMixin:
         dictation_menu.Append(
             self._id_dictation_settings,
             self._menu_label(_("Dictation &Settings..."), "tools.dictation_settings"),
+        )
+        dictation_menu.Append(
+            self._id_dictation_history,
+            self._menu_label(_("Dictation &History && Review..."), "tools.dictation_history"),
         )
         speech_menu.AppendSubMenu(dictation_menu, _("&Hold && Locked Dictation"))
         speech_menu.AppendSeparator()
@@ -2775,6 +2780,9 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.open_dictation_settings(), id=self._id_dictation_settings
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.open_dictation_history(), id=self._id_dictation_history
         )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.voice_command_toggle(), id=self._id_speech_voice_command

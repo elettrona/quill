@@ -206,6 +206,11 @@ class DictationHotkeysMixin:
                 self._binding_for(command_id),
                 feature_id="core.dictation",
             )
+        # Deferred so the prompt lands after the startup announcements settle.
+        try:
+            self._wx.CallLater(2000, self.check_dictation_recovery_on_startup)
+        except Exception:  # noqa: BLE001 - the startup prompt is best-effort
+            pass
 
     # -- command handlers (also callable from the command palette) --------- #
 
@@ -286,6 +291,49 @@ class DictationHotkeysMixin:
         except Exception:  # noqa: BLE001 - persistence is best-effort
             pass
         self._set_status("Dictation settings saved")
+
+    def open_dictation_history(self) -> None:
+        """Review recovered dictations: insert, copy, or discard each (PRD §22.4)."""
+        from quill.core.speech.dictation.recovery import DictationRecoveryRepository
+        from quill.ui.dictation_history_dialog import DictationHistoryDialog
+
+        dialog = DictationHistoryDialog(
+            self.frame,
+            repo=DictationRecoveryRepository(),
+            on_insert=self._insert_review_text,
+            on_copy=self._copy_review_text,
+        )
+        dialog.show(self._show_modal_dialog)
+
+    def _insert_review_text(self, text: str) -> None:
+        editor = self.editor
+        editor.WriteText(text)
+        self.document.set_text(editor.GetValue())
+        self._announce("Dictation transcript inserted. Press Control Z to undo.", force=True)
+
+    def _copy_review_text(self, text: str) -> None:
+        wx = self._wx
+        if wx.TheClipboard.Open():
+            try:
+                wx.TheClipboard.SetData(wx.TextDataObject(text))
+            finally:
+                wx.TheClipboard.Close()
+        self._set_status("Dictation transcript copied")
+
+    def check_dictation_recovery_on_startup(self) -> None:
+        """Point the user at the review window when dictations are pending (§22.4)."""
+        from quill.core.speech.dictation.recovery import DictationRecoveryRepository
+
+        try:
+            pending = DictationRecoveryRepository().list_incomplete()
+        except Exception:  # noqa: BLE001 - a broken store must not affect startup
+            return
+        if pending:
+            self._announce(
+                f"{len(pending)} dictation recording(s) await review. Open Tools, "
+                "Speech, Hold and Locked Dictation, Dictation History.",
+                force=True,
+            )
 
     # -- preflight + context ---------------------------------------------- #
 
