@@ -31,6 +31,7 @@ def _load_pyproject(path: Path) -> dict[str, object]:
 _DEPENDENCY_METADATA_OVERRIDES: dict[str, tuple[str, str]] = {
     "certifi": ("MPL-2.0", "https://github.com/certifi/python-certifi"),
     "comtypes": ("MIT", "https://github.com/enthought/comtypes"),
+    "elevenlabs": ("MIT", "https://github.com/elevenlabs/elevenlabs-python"),
     "hatchling": ("MIT", "https://github.com/pypa/hatch"),
     "html_to_text": ("MIT", "https://github.com/accessibleapps/html_to_text"),
     "keynote-parser": ("MIT", "https://pypi.org/project/keynote-parser/"),
@@ -54,6 +55,7 @@ _DEPENDENCY_METADATA_OVERRIDES: dict[str, tuple[str, str]] = {
 _DEPENDENCY_USAGE_NOTES: dict[str, str] = {
     "certifi": "Trusted CA bundle for HTTPS verification.",
     "comtypes": "Windows SAPI 5 text-to-speech integration.",
+    "elevenlabs": "Optional premium cloud TTS (audio export) via the ElevenLabs SDK.",
     "hatchling": "Build backend used for packaging metadata.",
     "html_to_text": (
         "Converts HTML from clipboard pastes to clean plain text"
