@@ -625,11 +625,13 @@ everything QUILL needs from it. Remaining candidates:
 <li><strong>Translated audio export (highest-value)</strong> — the
 headline 2.0 speech feature. Full design in <strong>§7</strong> below
 (current providers only, no Azure).</li>
-<li><strong>Two-pass loudnorm</strong> for the audiobook builder — the
-reference measures (<code>print_format=json</code>) then applies
-<code>loudnorm</code> with the measured values, which is more accurate
-than QUILL’s current single pass. An accuracy upgrade for the ACX
-normalize option (§1.5).</li>
+<li><strong>Two-pass loudnorm — shipped.</strong>
+<code>loudness.normalize_wav_loudness</code> measures
+(<code>print_format=json</code>) then applies <code>loudnorm</code> with
+the measured values (<code>linear=true</code>); wired as the
+<strong>Normalize loudness</strong> option in <strong>batch
+document-to-speech export</strong> (the audiobook builder already had
+single-pass ACX).</li>
 <li><strong>Voice-failure blacklist</strong> — persist voices that fail
 synthesis and skip them on later runs; a batch-robustness nicety (pairs
 well with round-robin).</li>
