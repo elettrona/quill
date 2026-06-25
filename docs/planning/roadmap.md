@@ -65,9 +65,8 @@ Profiles — the SR already owns these).
   the current fallback); confirm the `separate`-file-per-article path end-to-end.
 - **SSML batch-time handling:** per-file substitution accounting; a dry-run
   transform preview (show the normalized/pronounced/SSML text before running).
-- **Extraction/quality:** richer `.docx` extraction (tables, headers/footers,
-  footnotes, list ordering — today paragraph `<w:t>` only); consider migrating
-  `read_aloud.py` subprocess calls to `stability.safe_subprocess`.
+- **Extraction/quality:** consider migrating `read_aloud.py` subprocess calls to
+  `stability.safe_subprocess`.
 - **Upstream:** offer ChapterForge the two fixes already in QUILL's `chapters.py`
   (non-contiguous gap chapters; ID3-tag clobbering); ElevenDesk research pass (see
   [`eleven-labs.md`](eleven-labs.md)).

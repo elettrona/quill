@@ -130,24 +130,104 @@ def _extract_html(path: Path) -> str:
     return parser.result()
 
 
+def _localname(tag: str) -> str:
+    """The local element name without its namespace (``{ns}p`` -> ``p``)."""
+    return tag.rsplit("}", 1)[-1]
+
+
+def _docx_table_rows(tbl: ET.Element) -> list[str]:
+    """One spoken line per table row: the row's cell texts joined by ', '."""
+    rows: list[str] = []
+    for row in tbl.findall(f"{{{_WORD_NS}}}tr"):
+        cells: list[str] = []
+        for cell in row.findall(f"{{{_WORD_NS}}}tc"):
+            cell_text = " ".join(
+                t for p in cell.findall(f"{{{_WORD_NS}}}p") if (t := _docx_paragraph_text(p))
+            )
+            if cell_text:
+                cells.append(cell_text)
+        if cells:
+            rows.append(", ".join(cells))
+    return rows
+
+
+def _docx_block_lines(body: ET.Element) -> list[tuple[bool, str]]:
+    """Walk a body's blocks in order, yielding ``(is_heading, text)`` lines.
+
+    Paragraphs yield their text (flagged when they are a heading); a table yields
+    one line per row (cells joined by ``", "``) so a data table reads sensibly
+    instead of a jumble of cell fragments. Direct children only, so a paragraph
+    inside a table cell is read as part of its row, not twice.
+    """
+    out: list[tuple[bool, str]] = []
+    for child in body:
+        tag = _localname(child.tag)
+        if tag == "p":
+            text = _docx_paragraph_text(child)
+            if text:
+                out.append((_docx_paragraph_is_heading(child), text))
+        elif tag == "tbl":
+            out.extend((False, row) for row in _docx_table_rows(child))
+    return out
+
+
+def _docx_part_paragraphs(zf: zipfile.ZipFile, name: str) -> list[str]:
+    """All non-empty paragraph texts from a docx part (header/footer XML)."""
+    try:
+        with zf.open(name) as fh:
+            tree = ET.parse(fh)
+    except (KeyError, ET.ParseError):
+        return []
+    return [t for p in tree.getroot().iter(f"{{{_WORD_NS}}}p") if (t := _docx_paragraph_text(p))]
+
+
+def _docx_footnotes(zf: zipfile.ZipFile) -> list[str]:
+    """Real footnote texts (skipping the separator/continuation placeholders)."""
+    if "word/footnotes.xml" not in zf.namelist():
+        return []
+    try:
+        with zf.open("word/footnotes.xml") as fh:
+            tree = ET.parse(fh)
+    except ET.ParseError:
+        return []
+    notes: list[str] = []
+    for note in tree.getroot().findall(f"{{{_WORD_NS}}}footnote"):
+        if note.get(f"{{{_WORD_NS}}}type") in {"separator", "continuationSeparator"}:
+            continue
+        text = " ".join(t for p in note.iter(f"{{{_WORD_NS}}}p") if (t := _docx_paragraph_text(p)))
+        if text:
+            notes.append(text)
+    return notes
+
+
+def _docx_body(root: ET.Element) -> ET.Element:
+    body = root.find(f"{{{_WORD_NS}}}body")
+    return body if body is not None else root
+
+
 def _extract_docx(path: Path) -> str:
-    """Extract paragraph text from a Word .docx file using stdlib only."""
-    parts: list[str] = []
+    """Extract readable text from a Word .docx: paragraphs, tables (row by row),
+    footnotes, and header/footer text — using stdlib only."""
     try:
         with zipfile.ZipFile(path, "r") as zf:
             if "word/document.xml" not in zf.namelist():
                 return ""
             with zf.open("word/document.xml") as fh:
                 tree = ET.parse(fh)
+            parts = [text for _is_heading, text in _docx_block_lines(_docx_body(tree.getroot()))]
+            # Header/footer text (stored once per section, not per page): include
+            # distinct, non-trivial lines so running titles/captions are not lost.
+            seen: set[str] = set()
+            for name in sorted(zf.namelist()):
+                base = name.rsplit("/", 1)[-1]
+                if base.startswith(("header", "footer")) and base.endswith(".xml"):
+                    for line in _docx_part_paragraphs(zf, name):
+                        if len(line) > 1 and not line.isdigit() and line not in seen:
+                            seen.add(line)
+                            parts.append(line)
+            parts.extend(_docx_footnotes(zf))
     except (zipfile.BadZipFile, ET.ParseError):
         return ""
-
-    root = tree.getroot()
-    for para in root.iter(f"{{{_WORD_NS}}}p"):
-        texts = [node.text for node in para.iter(f"{{{_WORD_NS}}}t") if node.text]
-        line = "".join(texts).strip()
-        if line:
-            parts.append(line)
     return "\n".join(parts)
 
 
@@ -307,7 +387,6 @@ def _sections_from_docx(path: Path) -> list[DocumentSection]:
     except (zipfile.BadZipFile, ET.ParseError):
         return [DocumentSection("", "")]
 
-    root = tree.getroot()
     sections: list[DocumentSection] = []
     cur_title = ""
     cur_lines: list[str] = []
@@ -318,17 +397,26 @@ def _sections_from_docx(path: Path) -> list[DocumentSection]:
         if cur_title or text:
             sections.append(DocumentSection(cur_title, text))
 
-    for para in root.iter(f"{{{_WORD_NS}}}p"):
-        if _docx_paragraph_is_heading(para):
+    # Structured walk: headings start sections; tables read row by row.
+    for is_heading, line in _docx_block_lines(_docx_body(tree.getroot())):
+        if is_heading:
             flush()
-            cur_title = _docx_paragraph_text(para)
+            cur_title = line
             cur_lines = []
             started = True
         else:
-            line = _docx_paragraph_text(para)
-            if line:
-                cur_lines.append(line)
+            cur_lines.append(line)
     flush()
+
+    # Footnotes become a trailing section so an audiobook still reads them.
+    try:
+        with zipfile.ZipFile(path, "r") as zf:
+            footnotes = _docx_footnotes(zf)
+    except zipfile.BadZipFile:
+        footnotes = []
+    if footnotes:
+        sections.append(DocumentSection("Footnotes", "\n".join(footnotes)))
+        started = True
 
     if not sections:
         return [DocumentSection("", "")]
