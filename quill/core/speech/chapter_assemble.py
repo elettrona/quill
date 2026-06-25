@@ -326,7 +326,7 @@ def _finalize(
     options: ChapterAssembleOptions,
     notes: list[str],
 ) -> Path:
-    """Place the assembled WAV at *target* (transcoding to MP3 if asked) and tag it."""
+    """Place the assembled WAV at *target* (transcoding to MP3/M4B if asked) and tag it."""
     target.parent.mkdir(parents=True, exist_ok=True)
     if output_format == "mp3":
         from quill.core.speech.ffmpeg import TranscodeError, ffmpeg_available, transcode_to_mp3
@@ -340,6 +340,28 @@ def _finalize(
                 notes.append(f"MP3 encode failed ({exc}); saved WAV instead.")
         else:
             notes.append("ffmpeg not found; saved WAV instead of MP3.")
+        target = target.with_suffix(".wav")
+    elif output_format == "m4b":
+        # M4B audiobook with native MP4 chapter atoms (the Apple/audiobook format),
+        # written from the same chapter timing as the MP3 CHAP frames.
+        from quill.core.speech.ffmpeg import (
+            TranscodeError,
+            encode_m4b_with_chapters,
+            ffmpeg_available,
+        )
+
+        if ffmpeg_available():
+            try:
+                encode_m4b_with_chapters(
+                    assembled_wav,
+                    target,
+                    [(c.title, c.start_ms, c.end_ms) for c in chapters],
+                )
+                return target
+            except TranscodeError as exc:
+                notes.append(f"M4B encode failed ({exc}); saved WAV instead.")
+        else:
+            notes.append("ffmpeg not found; saved WAV instead of M4B.")
         target = target.with_suffix(".wav")
 
     # WAV output (or MP3 fallback): WAV has no CHAP frames, so write a sidecar

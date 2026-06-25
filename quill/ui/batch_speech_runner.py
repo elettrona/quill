@@ -176,7 +176,7 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
         return
 
     spec = SynthesisSpec(engine=req.engine, voice=req.voice, rate=req.rate, speed=req.speed)
-    suffix = ".mp3" if req.output_format == "mp3" else ".wav"
+    suffix = {"mp3": ".mp3", "m4b": ".m4b"}.get(req.output_format, ".wav")
     dictionaries = _active_pronunciation_dictionaries(frame, req.engine, req.source_folder)
 
     def opts() -> ChapterAssembleOptions:

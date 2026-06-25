@@ -98,10 +98,14 @@ def test_switching_engine_reloads_voices(wx_app, tmp_path):
         frame.Destroy()
 
 
-def test_format_choice_maps_to_wav(wx_app, tmp_path):
+def test_format_choice_maps_each_option(wx_app, tmp_path):
     frame, dlg = _make(wx_app, tmp_path)
     try:
-        dlg._format.SetSelection(1)  # WAV
+        dlg._format.SetSelection(0)
+        assert dlg._collect(preview=False).output_format == "mp3"
+        dlg._format.SetSelection(1)
+        assert dlg._collect(preview=False).output_format == "m4b"
+        dlg._format.SetSelection(2)
         assert dlg._collect(preview=False).output_format == "wav"
     finally:
         dlg.dialog.Destroy()

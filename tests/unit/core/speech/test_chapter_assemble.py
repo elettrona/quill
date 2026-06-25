@@ -52,6 +52,22 @@ def _sections() -> list[DocumentSection]:
     ]
 
 
+def test_m4b_without_ffmpeg_falls_back_to_wav(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The M4B path needs ffmpeg; without it the assembly must not fail — it saves
+    # the WAV and records a note (mirroring the MP3 fallback).
+    import quill.core.speech.ffmpeg as ffmpeg
+
+    monkeypatch.setattr(ffmpeg, "find_ffmpeg", lambda: None)
+    opts = ChapterAssembleOptions(article_gap_ms=200, output_format="m4b", speak_headings=False)
+    result = assemble_chaptered_audio(
+        _sections(), tmp_path / "book.m4b", make_fake_synth(), opts, work_dir=tmp_path / "w"
+    )
+    assert result.output_path.suffix == ".wav"
+    assert any("M4B" in note for note in result.notes)
+
+
 def test_clean_chapter_offsets_no_sound(tmp_path: Path) -> None:
     # speak_headings=False keeps the spoken word counts equal to the body only, so
     # the concat/gap math below is exact (heading-speaking is covered separately).

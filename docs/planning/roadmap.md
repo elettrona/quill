@@ -61,10 +61,9 @@ Profiles — the SR already owns these).
   resolver (this-run > project > global > defaults), a single
   `current_project_dir()`, and a "Remember for this project / Reset to global"
   surface (auto-remember on Start).
-- **Chapterization:** M4B **native** chapter atoms (M4B ships as a format but
-  markers are MP3 ID3 CHAP/CTOC); `sound_id` → sound-pack resolution (a placeholder
-  chime is the current fallback); confirm the `separate`-file-per-article path
-  end-to-end; surface per-file chapter count in results.
+- **Chapterization:** `sound_id` → sound-pack resolution (a placeholder chime is
+  the current fallback); confirm the `separate`-file-per-article path end-to-end;
+  surface per-file chapter count in results.
 - **Keyboard-activation accessibility audit** (systemic; surfaced by #709, fixed):
   a `wx.ListBox` emits no item-activated event, so any list binding only
   `EVT_LISTBOX_DCLICK` is keyboard-inaccessible. Audit/fix `ssh_dialogs.py`,
@@ -226,7 +225,7 @@ well-documented product on its supported platforms.*
 | Workstream | Open work |
 | --- | --- |
 | Verbosity (§1.1) | Polish backlog #405–#504 (in `verbosity-system.md`). |
-| Speech & Dictation (§1.2) | Batch-speech follow-ups (project-profile wiring, M4B atoms, sound_id, separate mode, SSML batch handling, richer docx, keyboard-activation audit); dictation follow-ups; BW backlog #515, #566–#577. |
+| Speech & Dictation (§1.2) | Batch-speech follow-ups (project-profile wiring, sound_id, separate mode, SSML batch handling, richer docx, keyboard-activation audit); dictation follow-ups; BW backlog #515, #566–#577. |
 | Agentic AI (§1.3) | #507–#512, #523/#524, #579–#581; Accessibility Agents #593–#598. |
 | GLOW family (§1.4) | #528–#534, #566 (locked_off; decide for 1.0). |
 | Publishing (§1.5) | #140 WordPress; ChapterForge integration. |

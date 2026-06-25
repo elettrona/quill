@@ -278,6 +278,121 @@ def transcode_audio(
     return out_path
 
 
+def _escape_ffmetadata(value: str) -> str:
+    """Escape the FFMETADATA special characters (``= ; # \\``) and fold newlines."""
+    out = value.replace("\\", "\\\\")
+    for char in ("=", ";", "#"):
+        out = out.replace(char, "\\" + char)
+    return out.replace("\r", " ").replace("\n", " ")
+
+
+def build_ffmetadata(
+    chapters: list[tuple[str, int, int]], metadata: AudioMetadata | None = None
+) -> str:
+    """Build an ffmpeg FFMETADATA document for native chapter atoms (M4B/MP4).
+
+    Each chapter is ``(title, start_ms, end_ms)``. Fed to ffmpeg as a metadata
+    input (``-i meta -map_metadata 1 -map_chapters 1``), this gives an M4B chapters
+    an audiobook player navigates natively — the MP4 equivalent of the MP3 ID3
+    CHAP/CTOC frames in ``chapters.py``. Global tags (album/author/…) ride along in
+    the header so one document carries both. Pure and unit-tested.
+    """
+    lines = [";FFMETADATA1"]
+    if metadata is not None:
+        header = {
+            "title": metadata.album or metadata.title,
+            "album": metadata.album,
+            "artist": metadata.artist,
+            "album_artist": metadata.album_artist,
+            "genre": metadata.genre,
+            "date": metadata.year,
+            "comment": metadata.comment,
+        }
+        for key, value in header.items():
+            text = str(value).strip()
+            if text:
+                lines.append(f"{key}={_escape_ffmetadata(text)}")
+    for title, start_ms, end_ms in chapters:
+        lines.append("[CHAPTER]")
+        lines.append("TIMEBASE=1/1000")
+        lines.append(f"START={max(0, int(start_ms))}")
+        lines.append(f"END={max(0, int(end_ms))}")
+        lines.append(f"title={_escape_ffmetadata(str(title))}")
+    return "\n".join(lines) + "\n"
+
+
+def build_m4b_command(ffmpeg: str, source: Path, ffmetadata: Path, out_m4b: Path) -> list[str]:
+    """Build the ffmpeg argv that encodes ``source`` to an M4B with native chapters.
+
+    ``ffmetadata`` is the chapter+tag document from :func:`build_ffmetadata`,
+    supplied as a second input and mapped in (``-map_metadata 1 -map_chapters 1``).
+    Pure and unit-tested.
+    """
+    return [
+        ffmpeg,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        str(source),
+        "-i",
+        str(ffmetadata),
+        "-map_metadata",
+        "1",
+        "-map_chapters",
+        "1",
+        "-vn",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "96k",
+        "-f",
+        "ipod",
+        "-y",
+        str(out_m4b),
+    ]
+
+
+def encode_m4b_with_chapters(
+    source: Path,
+    out_m4b: Path,
+    chapters: list[tuple[str, int, int]],
+    *,
+    metadata: AudioMetadata | None = None,
+    timeout_seconds: float = 600.0,
+) -> Path:
+    """Encode ``source`` audio to an M4B audiobook with native chapter atoms.
+
+    Writes the FFMETADATA document to a temp file and runs ffmpeg. Raises
+    :class:`TranscodeError` if ffmpeg is missing or fails.
+    """
+    import tempfile
+
+    from quill.stability.safe_subprocess import run_subprocess_safely
+
+    ffmpeg = find_ffmpeg()
+    if ffmpeg is None:
+        raise TranscodeError(f"ffmpeg is not installed. {INSTALL_HINT}")
+    if not source.is_file():
+        raise TranscodeError(f"The audio file was not found: {source}")
+    out_m4b.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="quill_m4b_") as tmp:
+        meta_path = Path(tmp) / "chapters.ffmeta"
+        meta_path.write_text(build_ffmetadata(chapters, metadata), encoding="utf-8")
+        args = build_m4b_command(ffmpeg, source, meta_path, out_m4b)
+        try:
+            completed = run_subprocess_safely(args, timeout_seconds=timeout_seconds)
+        except OSError as exc:
+            raise TranscodeError(f"Could not run ffmpeg: {exc}") from exc
+    if completed.returncode != 0:
+        detail = (completed.stderr or "").strip()[:300]
+        out_m4b.unlink(missing_ok=True)
+        raise TranscodeError(f"ffmpeg could not encode the M4B. {detail}".strip())
+    if not out_m4b.is_file():
+        raise TranscodeError("ffmpeg produced no output.")
+    return out_m4b
+
+
 def transcode_to_mp3(
     source_wav: Path,
     out_mp3: Path,

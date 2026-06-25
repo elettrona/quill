@@ -69,6 +69,9 @@ _ALL_EXTENSIONS: list[tuple[str, str]] = [
 _EXTENSION_GROUPS = {".html": (".html", ".htm")}
 # Existing-file policy choices, in the order they appear in the dialog's Choice.
 _EXISTING_POLICIES = ("skip", "overwrite", "rename")
+# Output formats, in the order they appear in the format Choice control.
+_FORMAT_CHOICES = ("mp3", "m4b", "wav")
+_FORMAT_INDEX = {fmt: i for i, fmt in enumerate(_FORMAT_CHOICES)}
 
 
 class BatchSpeechExportDialog:
@@ -170,8 +173,15 @@ class BatchSpeechExportDialog:
 
         # --- Output format ---
         label("Output &format:")
-        self._format = wx.Choice(self.dialog, choices=["MP3 (with chapter markers)", "WAV"])
-        self._format.SetSelection(0 if defaults.output_format == "mp3" else 1)
+        self._format = wx.Choice(
+            self.dialog,
+            choices=[
+                "MP3 (with chapter markers)",
+                "M4B audiobook (native chapters)",
+                "WAV",
+            ],
+        )
+        self._format.SetSelection(_FORMAT_INDEX.get(defaults.output_format, 0))
         root.Add(self._format, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
 
         # --- Chapter options ---
@@ -282,7 +292,11 @@ class BatchSpeechExportDialog:
             voice=self._current_voice_id(),
             rate=int(self._rate.GetValue()),
             speed=float(self._speed.GetValue()),
-            output_format="mp3" if self._format.GetSelection() == 0 else "wav",
+            output_format=(
+                _FORMAT_CHOICES[self._format.GetSelection()]
+                if 0 <= self._format.GetSelection() < len(_FORMAT_CHOICES)
+                else "mp3"
+            ),
             sound_enabled=self._sound.GetValue(),
             sound_volume=int(self._sound_volume.GetValue()),
             article_gap_ms=int(self._article_gap.GetValue()),
