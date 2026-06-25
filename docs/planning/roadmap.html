@@ -221,17 +221,28 @@ network-egress audit), and leave behind anything superseded or
 off-mission.</p>
 <hr />
 <h2 id="workstreams-open-work">1. Workstreams (open work)</h2>
-<h3 id="verbosity-polish-backlog">1.1 Verbosity — polish backlog</h3>
-<p>The engine and UI are in; the remaining work is the <strong>polish
-backlog</strong> (the ~100 addenda, #405–#504) — land the high-value
-knobs (announcement budgets, repetition collapse, typing-echo controls,
-per-category detail levels, destructive-action and undo-available cues)
-and fold-in-or-defer the speculative rest. Each survivor is a checklist
-item in <a
-href="verbosity-system.md"><code>verbosity-system.md</code></a> (§
-“Polish backlog”); the screen-reader-redundant ideas are recorded there
-as “recommend do not build” (Typing/Command Echo, Speech Rate/Pause
-knobs, Punctuation/Symbol Profiles — the SR already owns these).</p>
+<h3 id="verbosity-complete-for-1.0">1.1 Verbosity ✅ (complete for
+1.0)</h3>
+<p>The verbosity system is <strong>done for 1.0</strong>: the engine,
+the eleven <code>verbosity_*</code> UI surfaces, the runtime modes
+(Quiet / Meeting / Quiet-Undo) with status badges, the status-query
+commands (Where am I? / What changed? / Speak Status), mastery
+step-down, history, the explain trace, Safe Mode/reset, QVP packs +
+library + preview lab, task-aware profiles, and import/export. The
+high-value polish items shipped too — <strong>destructive-action
+confirmation</strong> and, newly, <strong>announcement
+anti-spam</strong> (repetition collapse + announcement budget at the
+<code>process()</code> choke-point,
+<code>quill/core/verbosity/throttle.py</code>).</p>
+<p>The remaining “polish backlog” long-tail (the speculative slice of
+the ~100 addenda #405–#504) is <strong>deferred to 2.0</strong> (§5).
+The screen-reader-redundant ideas (Typing/Command Echo, Speech
+Rate/Pause knobs, Punctuation/Symbol Profiles — the SR already owns
+these) are recorded as <strong>“recommend do not build”</strong> in <a
+href="verbosity-system.md"><code>verbosity-system.md</code></a>. The
+niche valuable items not built for 1.0 — error coaching (#416),
+per-category detail levels (#418), Markdown/Code-aware verbosity
+(#427/#428), “undo available” cues (#502) — are 2.0 candidates (§5).</p>
 <h3 id="speech-dictation-bits-whisperer-complete-for-1.0">1.2 Speech
 &amp; Dictation — “BITS Whisperer” ✅ (complete for 1.0)</h3>
 <p>The batch document-to-speech and dictation work is <strong>done for
@@ -421,8 +432,8 @@ deliberately.</p>
 <tbody>
 <tr>
 <td>Verbosity (§1.1)</td>
-<td>Polish backlog #405–#504 (in <code>verbosity-system.md</code>).
-<strong>The last major 1.0 hurdle.</strong></td>
+<td>Complete for 1.0 (engine, UI, modes, anti-spam). Speculative
+polish-backlog long tail deferred to 2.0 (§5).</td>
 </tr>
 <tr>
 <td>Speech &amp; Dictation (§1.2)</td>
@@ -593,6 +604,15 @@ href="eleven-labs.md"><code>eleven-labs.md</code></a>.</li>
 Google Docs from within QUILL (Drive API, OAuth, accessible doc model).
 A full external-service + auth + sync workstream; spec in <a
 href="QUILL-Native-Google-Docs-Support-PRD.md"><code>QUILL-Native-Google-Docs-Support-PRD.md</code></a>.</li>
+<li><strong>Verbosity polish-backlog long tail (§1.1)</strong> — the
+speculative slice of the ~100 addenda (#405–#504) beyond the shipped
+core/UI/modes/anti-spam: error coaching (#416), per-category detail
+levels (#418), Markdown/Code-aware verbosity (#427/#428), “undo
+available” cues (#502), and the community-pack/diff, pack-author mode,
+abbreviation-dictionary, and similar long-tail ideas. Reference well: <a
+href="verbosity-system.md"><code>verbosity-system.md</code></a>.
+Screen-reader-redundant ideas (typing/command echo, speech-rate knobs,
+punctuation profiles) are “recommend do not build.”</li>
 <li><strong>Accessibility tooling from GLOW (§1.4)</strong> — Document
 Audit (ACB Large-Print Guidelines, Microsoft Accessibility Checker, WCAG
 2.2 AA) and the GLOW family (#528–#534) plus the WATCH-8 GLOW watch

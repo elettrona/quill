@@ -58,6 +58,12 @@ reader. Open **Verbosity Preferences** from the command palette
 - **Channels you control.** Speech, Braille, and Sound can each be turned on or
   off; the **Visual** status bar is always on and cannot be disabled, so you
   never lose the on-screen status of an action.
+- **Less repetition, no floods.** QUILL no longer re-speaks the same announcement
+  when it repeats within a moment (such as holding a key at the end of a list), and
+  an optional **announcement budget** caps how many are spoken in a burst. Both
+  affect only what is *spoken* — the status bar still shows everything. Find
+  **Collapse repeated announcements** and **Announcement budget** under
+  Preferences > Accessibility.
 - **Make it say exactly what you want.** Advanced users can edit what each action
   announces using simple tokens like `{line}` and filters like `${ordinal:line}`,
   with live validation and a preview before you commit. Save wordings to a

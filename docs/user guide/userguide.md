@@ -2218,6 +2218,13 @@ Manager.
   `[Q]` or `[M]` indicator shows when a mode is active, and the status bar keeps
   updating either way. **Verbosity Undo** (`Ctrl+Shift+Z`) steps back the last
   verbosity change.
+- **Less repetition, no floods.** Under **Preferences > Accessibility**,
+  **Collapse repeated announcements** (on by default) stops QUILL from speaking the
+  exact same announcement again when it repeats within a moment — for example when
+  you hold a key at the top or bottom of a list. An optional **Announcement budget
+  (per 5 seconds)** caps how many announcements are spoken in a burst (0 means no
+  cap). Both affect only what is *spoken*; the status bar always shows every update,
+  so nothing is ever hidden.
 - **Per-action templates.** Advanced users can edit exactly what each action
   says, using tokens like `{line}` and filters like `${ordinal:line}`, with live
   validation and preview. Templates can be saved to a library, shared as

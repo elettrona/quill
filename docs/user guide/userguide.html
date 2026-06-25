@@ -4250,6 +4250,15 @@ Mode</strong> (<code>QUILL key + Shift + Q</code>) hard-mutes sound. A
 active, and the status bar keeps updating either way. <strong>Verbosity
 Undo</strong> (<code>Ctrl+Shift+Z</code>) steps back the last verbosity
 change.</li>
+<li><strong>Less repetition, no floods.</strong> Under
+<strong>Preferences &gt; Accessibility</strong>, <strong>Collapse
+repeated announcements</strong> (on by default) stops QUILL from
+speaking the exact same announcement again when it repeats within a
+moment — for example when you hold a key at the top or bottom of a list.
+An optional <strong>Announcement budget (per 5 seconds)</strong> caps
+how many announcements are spoken in a burst (0 means no cap). Both
+affect only what is <em>spoken</em>; the status bar always shows every
+update, so nothing is ever hidden.</li>
 <li><strong>Per-action templates.</strong> Advanced users can edit
 exactly what each action says, using tokens like <code>{line}</code> and
 filters like <code>${ordinal:line}</code>, with live validation and
