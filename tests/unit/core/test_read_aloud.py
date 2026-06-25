@@ -638,3 +638,20 @@ def test_kokoro_onnx_instance_is_cached(tmp_path, monkeypatch):
     c = read_aloud_module._get_cached_kokoro_onnx(tmp_path)
     assert c is not a
     assert sum(builds) == 2  # rebuilt after clear
+
+
+def test_read_aloud_controller_applies_pronunciation():
+    """Live Read Aloud applies the active pronunciation set per sentence."""
+    from quill.core.speech.pronunciation import PronunciationDictionary, PronunciationEntry
+
+    controller = read_aloud_module.ReadAloudController()
+    # no dictionaries -> sentence unchanged
+    assert controller._apply_pronunciation("Say QUILL now.") == "Say QUILL now."
+    # with a respelling -> applied
+    controller._pron_engine = "kokoro"
+    controller._pron_dicts = [
+        PronunciationDictionary(
+            id="d", entries=[PronunciationEntry(term="QUILL", replacement="kwill")]
+        )
+    ]
+    assert controller._apply_pronunciation("Say QUILL now.") == "Say kwill now."

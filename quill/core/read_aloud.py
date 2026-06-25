@@ -756,6 +756,8 @@ class ReadAloudController:
         self._sentence_pause_ms = 0
         self._punctuation_level = "some"
         self._cache_seed: tuple[object, ...] = ()
+        self._pron_dicts: list[Any] = []
+        self._pron_engine = "sapi5"
 
     @property
     def state(self) -> str:
@@ -791,6 +793,7 @@ class ReadAloudController:
         sentence_pause_ms: int = 0,
         punctuation_level: str = "some",
         end: int | None = None,
+        pronunciation_dictionaries: list[Any] | None = None,
         on_progress: Callable[[int, int], None] | None = None,
         on_state_change: Callable[[str], None] | None = None,
         on_error: Callable[[str], None] | None = None,
@@ -826,6 +829,8 @@ class ReadAloudController:
         self.stop()
         self._sentence_pause_ms = max(0, int(sentence_pause_ms))
         self._punctuation_level = normalize_punctuation_level(punctuation_level)
+        self._pron_dicts = pronunciation_dictionaries or []
+        self._pron_engine = normalized_engine
         spans = [span for span in sentence_spans(text) if span.end > cursor]
         if end is not None:
             spans = [span for span in spans if span.start < end]
@@ -986,6 +991,23 @@ class ReadAloudController:
     # WAV-based engine helpers
     # ------------------------------------------------------------------
 
+    def _apply_pronunciation(self, sentence: str) -> str:
+        """Apply the active pronunciation dictionaries to one spoken sentence.
+
+        Wired so corrections made in the manager are heard in live Read Aloud too,
+        not just batch export (the shared-pipeline, "live everywhere" design). A
+        no-op when no dictionaries are active.
+        """
+        dicts = getattr(self, "_pron_dicts", None)
+        if not dicts:
+            return sentence
+        from quill.core.speech.pronunciation import apply_pronunciations
+
+        try:
+            return apply_pronunciations(sentence, self._pron_engine, dicts).text
+        except Exception:  # noqa: BLE001 - a bad dictionary must never break read-aloud
+            return sentence
+
     def _interrupt_wav(self) -> None:
         """Stop any in-progress winsound WAV playback immediately."""
         if _winsound is not None:
@@ -1011,6 +1033,7 @@ class ReadAloudController:
             sentence = text[span.start : span.end].strip()
             if not sentence:
                 continue
+            sentence = self._apply_pronunciation(sentence)
             sentence = verbalize_punctuation(sentence, self._punctuation_level)
             if not first:
                 self._inter_sentence_pause()
@@ -1106,6 +1129,7 @@ class ReadAloudController:
             sentence = text[span.start : span.end].strip()
             if not sentence:
                 continue
+            sentence = self._apply_pronunciation(sentence)
             sentence = verbalize_punctuation(sentence, self._punctuation_level)
             if not first:
                 self._inter_sentence_pause()

@@ -22,7 +22,6 @@ from typing import Any
 from quill.core.speech.pronunciation import (
     PronunciationDictionary,
     PronunciationEntry,
-    apply_pronunciations,
     delete_dictionary,
     install_starter_dictionary,
     load_dictionaries,
@@ -34,10 +33,17 @@ from quill.ui.dialog_contract import apply_modal_ids, show_message_box
 class PronunciationEntryDialog:
     """Edit one pronunciation entry (term + how it should be spoken)."""
 
-    def __init__(self, parent: object, entry: PronunciationEntry) -> None:
+    def __init__(
+        self,
+        parent: object,
+        entry: PronunciationEntry,
+        *,
+        on_audition: Any = None,
+    ) -> None:
         import wx
 
         self._wx = wx
+        self._on_audition = on_audition
         self._result: PronunciationEntry | None = None
 
         self.dialog = wx.Dialog(parent, title="Pronunciation Entry")
@@ -65,6 +71,20 @@ class PronunciationEntryDialog:
         self._term.Bind(wx.EVT_TEXT, lambda _e: self._refresh_preview())
         self._spoken.Bind(wx.EVT_TEXT, lambda _e: self._refresh_preview())
 
+        # Audition: hear the word as the engine says it today vs. with this entry.
+        if on_audition is not None:
+            hear = wx.BoxSizer(wx.HORIZONTAL)
+            orig = wx.Button(self.dialog, label="Play &original")
+            corr = wx.Button(self.dialog, label="Play &corrected")
+            orig.Bind(wx.EVT_BUTTON, lambda _e: self._audition(self._term.GetValue()))
+            corr.Bind(
+                wx.EVT_BUTTON,
+                lambda _e: self._audition(self._spoken.GetValue().strip() or self._term.GetValue()),
+            )
+            hear.Add(orig, 0, wx.RIGHT, 6)
+            hear.Add(corr, 0)
+            root.Add(hear, 0, wx.LEFT | wx.BOTTOM, 6)
+
         btns = wx.BoxSizer(wx.HORIZONTAL)
         ok = wx.Button(self.dialog, id=wx.ID_OK, label="&Save")
         cancel = wx.Button(self.dialog, id=wx.ID_CANCEL)
@@ -86,6 +106,10 @@ class PronunciationEntryDialog:
             self._preview.SetLabel(f'"{term}" will be spoken as "{spoken}".')
         else:
             self._preview.SetLabel("Enter a word to add.")
+
+    def _audition(self, text: str) -> None:
+        if self._on_audition is not None and text.strip():
+            self._on_audition(text.strip())
 
     def _on_ok(self, evt: object) -> None:
         term = self._term.GetValue().strip()
@@ -117,11 +141,19 @@ class PronunciationEntryDialog:
 class PronunciationDictionaryDialog:
     """Manage pronunciation dictionaries and their entries."""
 
-    def __init__(self, parent: object, *, project_dir: Path | None, enabled_ids: set[str]) -> None:
+    def __init__(
+        self,
+        parent: object,
+        *,
+        project_dir: Path | None,
+        enabled_ids: set[str],
+        on_audition: Any = None,
+    ) -> None:
         import wx
 
         self._wx = wx
         self._project_dir = project_dir
+        self._on_audition = on_audition
         self.dialog = wx.Dialog(
             parent,
             title="Pronunciation Dictionaries",
@@ -285,7 +317,9 @@ class PronunciationDictionaryDialog:
             return
         from quill.ui.dialog_contract import show_modal_dialog
 
-        editor = PronunciationEntryDialog(self.dialog, PronunciationEntry())
+        editor = PronunciationEntryDialog(
+            self.dialog, PronunciationEntry(), on_audition=self._on_audition
+        )
         result = editor.show(show_modal_dialog)
         if result is not None:
             d.entries.append(result)
@@ -298,7 +332,9 @@ class PronunciationDictionaryDialog:
             return
         from quill.ui.dialog_contract import show_modal_dialog
 
-        editor = PronunciationEntryDialog(self.dialog, d.entries[idx])
+        editor = PronunciationEntryDialog(
+            self.dialog, d.entries[idx], on_audition=self._on_audition
+        )
         result = editor.show(show_modal_dialog)
         if result is not None:
             d.entries[idx] = result
@@ -345,6 +381,51 @@ def _slugify(name: str) -> str:
     return "".join(c if c.isalnum() else "_" for c in name.strip().lower()).strip("_")
 
 
+def _make_auditioner(frame: Any) -> Any:
+    """Return ``audition(text)`` that speaks *text* with the user's current voice.
+
+    Synthesizes off the UI thread via the same engine the batch/read-aloud paths
+    use (so Kokoro reuses its cached model) and plays through the frame's preview
+    player. Failures are swallowed to a status message — never a crash.
+    """
+    import tempfile
+
+    s = frame.settings
+
+    def audition(text: str) -> None:
+        engine = (s.read_aloud_engine or "sapi5").strip().lower()
+        voice = {
+            "kokoro": s.read_aloud_kokoro_voice,
+            "dectalk": s.read_aloud_dectalk_voice,
+            "espeak": s.read_aloud_espeak_voice,
+        }.get(engine, s.read_aloud_voice)
+        if engine == "piper" and s.read_aloud_piper_model:
+            voice = Path(s.read_aloud_piper_model).stem
+
+        def work(_progress: Any) -> object:
+            from quill.core.speech.document_speech import SynthesisSpec, make_synthesizer
+
+            synth = make_synthesizer(
+                SynthesisSpec(
+                    engine=engine,
+                    voice=voice or "",
+                    rate=int(s.read_aloud_rate),
+                    speed=float(s.read_aloud_kokoro_speed),
+                )
+            )
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as fh:
+                wav = Path(fh.name)
+            synth(text, wav)
+            frame._play_preview_asset(wav)
+            return None
+
+        frame._run_background_task(
+            "Auditioning pronunciation", work, lambda _r: frame._set_status("Audition finished")
+        )
+
+    return audition
+
+
 def run_pronunciation_manager(frame: Any) -> None:
     """Tools > Speech > Manage Pronunciations entry point."""
     s = frame.settings
@@ -356,7 +437,10 @@ def run_pronunciation_manager(frame: Any) -> None:
             project_dir = parent
     enabled_ids = set(getattr(s, "pronunciation_enabled_dictionary_ids", []) or [])
     dialog = PronunciationDictionaryDialog(
-        frame.frame, project_dir=project_dir, enabled_ids=enabled_ids
+        frame.frame,
+        project_dir=project_dir,
+        enabled_ids=enabled_ids,
+        on_audition=_make_auditioner(frame),
     )
     if dialog.show(frame._show_modal_dialog):
         from quill.core.settings import save_settings

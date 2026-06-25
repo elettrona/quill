@@ -16401,6 +16401,20 @@ class MainFrame(
             occurrences += 1
             search_from = position + len(heading_title)
 
+    def _active_read_aloud_pronunciations(self, engine: str) -> list:
+        """Active pronunciation dictionaries for live Read Aloud (same as batch)."""
+        if not getattr(self.settings, "pronunciation_enabled", True):
+            return []
+        from quill.core.speech.pronunciation import active_dictionaries
+
+        ids = list(getattr(self.settings, "pronunciation_enabled_dictionary_ids", []) or [])
+        try:
+            return active_dictionaries(
+                engine, project_dir=None, enabled_ids=set(ids) if ids else None
+            )
+        except Exception:  # noqa: BLE001 - a broken store must not block read-aloud
+            return []
+
     def toggle_read_aloud(self) -> None:
         wx = self._wx
         state = self._read_aloud.state
@@ -16440,6 +16454,9 @@ class MainFrame(
                 espeak_rate=self.settings.read_aloud_espeak_rate,
                 sentence_pause_ms=self.settings.read_aloud_sentence_pause_ms,
                 punctuation_level=self.settings.announce_punctuation_level,
+                pronunciation_dictionaries=self._active_read_aloud_pronunciations(
+                    read_aloud_engine
+                ),
                 on_progress=lambda progress_start, progress_end: self._wx.CallAfter(
                     self._on_read_aloud_progress,
                     progress_start,
