@@ -2874,7 +2874,7 @@ The paste bindings use the number row directly for maximum speed. The copy bindi
 
 ### 5.78 Abbreviation Expansion — TextExpander-style bare-word shortcuts
 
-Abbreviation Expansion replaces short trigger words with longer text automatically as you type. It complements the snippet system (which requires an explicit trigger prefix) by firing on any bare word followed by a delimiter.
+Abbreviation Expansion replaces short trigger words with longer text automatically as you type, **when enabled** (it ships **off by default** so nothing changes under the user's hands unannounced). It complements the snippet system (which requires an explicit trigger prefix) by firing on any bare word followed by a delimiter.
 
 **Motivation.** Typing common phrases repeatedly is fatiguing and slow. TextExpander and similar tools are widely used but require separate purchase and licensing. QUILL's built-in abbreviation engine gives screen-reader users the same productivity gain with no external dependency and full keyboard control over every setting.
 
@@ -2908,7 +2908,7 @@ Abbreviation Expansion replaces short trigger words with longer text automatical
 
 **Settings.** Four settings in `Editing` preferences:
 
-- `abbreviation_expansion` (bool, default True) — master on/off.
+- `abbreviation_expansion` (bool, default **False**) — master on/off. Off by default so text never auto-changes as the user types without their knowledge; the user opts in and the choice is then remembered.
 - `abbreviation_expansion_sound` (bool, default False) — play a sound on expansion.
 - `abbreviation_expansion_sound_file` (text) — path to a `.wav` file; blank = system default beep.
 - `multi_press_window_ms` (int, default 400, range 100–1000) — time window for double/triple press detection across all multi-press chords (copy tray peek, command palette re-run, etc.).

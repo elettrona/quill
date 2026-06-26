@@ -105,6 +105,7 @@ First pre-release of the 0.7.0 line. Tagged off `release/0.7.0-verbosity` once t
 - **Watch Queue Monitor explains itself when unavailable.** Opening it in a profile without the watch-folder feature now speaks "Watch folder is unavailable in this profile" instead of returning to the editor with only a silent status.
 - **Escape cancels the speech-engine chooser cleanly.** Pressing Escape on the **Manage Speech Models** engine picker now returns to the editor instead of falling through to the default engine's model list.
 - **Optionally drop missing recent files (`recent_files_auto_clear_missing`).** A new General setting (off by default) removes Recent Files entries whose file no longer exists — but only on confirmed fixed/internal drives. Entries on removable, USB, or network drives are never probed and never dropped, because a "missing" file there usually means the drive is disconnected, not deleted.
+- **Abbreviation expansion now ships off by default.** So text never silently changes as you type without your knowledge, `abbreviation_expansion` now defaults to **off**. Turn it on whenever you want it — `Insert > Toggle Abbreviation Expansion` (`Ctrl+Shift+Grave, E`), the **ABR** status-bar cell, or **Abbreviation expansion** in `Preferences > Editing` — and the choice is remembered. The fifteen built-in abbreviations and the manager are unchanged; they simply don't fire until you opt in.
 
 ### Removed
 

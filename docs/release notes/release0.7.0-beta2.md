@@ -584,6 +584,12 @@ the same behaviour described here.
 
 ## Editing and keyboard polish
 
+- **Abbreviation expansion is now off by default.** So nothing you type silently
+  changes under your hands, the TextExpander-style abbreviation feature now starts
+  **disabled**. Turn it on whenever you like — **Insert > Toggle Abbreviation
+  Expansion** (Ctrl+Shift+Grave, E), the **ABR** status-bar cell, or **Abbreviation
+  expansion** in Preferences > Editing — and QUILL remembers your choice. Your
+  abbreviations and the manager are unchanged; they just wait until you opt in.
 - **The Tab key can now insert a tab character.** Tab still defaults to smart
   line indent (Shift+Tab outdents; on a Markdown list item it nests or promotes
   the item). Press **QUILL Key + U** to switch the Tab key to insert a literal tab

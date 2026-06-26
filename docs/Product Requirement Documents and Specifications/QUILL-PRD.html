@@ -5786,9 +5786,11 @@ including "Copy to Next Empty Slot" and "Search Tray Slots...".</p>
 id="578-abbreviation-expansion--textexpander-style-bare-word-shortcuts">5.78
 Abbreviation Expansion — TextExpander-style bare-word shortcuts</h3>
 <p>Abbreviation Expansion replaces short trigger words with longer text
-automatically as you type. It complements the snippet system (which
-requires an explicit trigger prefix) by firing on any bare word followed
-by a delimiter.</p>
+automatically as you type, <strong>when enabled</strong> (it ships
+<strong>off by default</strong> so nothing changes under the user's
+hands unannounced). It complements the snippet system (which requires an
+explicit trigger prefix) by firing on any bare word followed by a
+delimiter.</p>
 <p><strong>Motivation.</strong> Typing common phrases repeatedly is
 fatiguing and slow. TextExpander and similar tools are widely used but
 require separate purchase and licensing. QUILL's built-in abbreviation
@@ -5872,8 +5874,10 @@ with regard to. These are declared as <code>_BUILTINS</code> in
 <p><strong>Settings.</strong> Four settings in <code>Editing</code>
 preferences:</p>
 <ul>
-<li><code>abbreviation_expansion</code> (bool, default True) — master
-on/off.</li>
+<li><code>abbreviation_expansion</code> (bool, default
+<strong>False</strong>) — master on/off. Off by default so text never
+auto-changes as the user types without their knowledge; the user opts in
+and the choice is then remembered.</li>
 <li><code>abbreviation_expansion_sound</code> (bool, default False) —
 play a sound on expansion.</li>
 <li><code>abbreviation_expansion_sound_file</code> (text) — path to a

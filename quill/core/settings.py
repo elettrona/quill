@@ -106,7 +106,7 @@ class Settings:
     citation_style: str = "footnotes"
     auto_clean_html_paste: bool = False
     list_auto_fill_numbers: bool = False
-    abbreviation_expansion: bool = True
+    abbreviation_expansion: bool = False
     abbreviation_expansion_sound: bool = False
     abbreviation_expansion_sound_file: str = ""
     multi_press_window_ms: int = 400
@@ -762,7 +762,7 @@ class Settings:
         except (TypeError, ValueError):
             console_typescript_timeout = 30
         dev_console_consent_accepted = bool(data.get("dev_console_consent_accepted", False))
-        abbreviation_expansion = bool(data.get("abbreviation_expansion", True))
+        abbreviation_expansion = bool(data.get("abbreviation_expansion", False))
         abbreviation_expansion_sound = bool(data.get("abbreviation_expansion_sound", False))
         abbreviation_expansion_sound_file = str(data.get("abbreviation_expansion_sound_file", ""))
         sound_enabled = bool(data.get("sound_enabled", True))

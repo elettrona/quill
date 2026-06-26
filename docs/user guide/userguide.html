@@ -2770,6 +2770,10 @@ writing.</p>
 short trigger word followed by any delimiter character (space, period,
 comma, and so on) and QUILL silently replaces the trigger with the full
 text.</p>
+<p><strong>Off by default.</strong> So that text never changes as you
+type without your knowledge, abbreviation expansion is <strong>disabled
+by default</strong> — turn it on when you want it (see <em>Enabling and
+disabling</em> below). Once on, your choice is remembered.</p>
 <p><strong>Example:</strong> type <code>btw </code> (note the trailing
 space) and QUILL replaces it with <code>by the way </code>.</p>
 <p>QUILL ships with fifteen built-in abbreviations covering common
@@ -2846,8 +2850,9 @@ the built-in ones.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Enabling and disabling.</strong> Abbreviation expansion is on
-by default. To toggle it:</p>
+<p><strong>Enabling and disabling.</strong> Abbreviation expansion is
+<strong>off by default</strong>; enable it any of these ways (and toggle
+it the same ways later):</p>
 <ul>
 <li>Press <code>Ctrl+Shift+Grave, E</code> — or use
 <code>Insert &gt; Toggle Abbreviation Expansion</code>.</li>

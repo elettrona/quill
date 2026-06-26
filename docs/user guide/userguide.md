@@ -1541,6 +1541,8 @@ The wizard can override any of them per run. Preferences is the canonical place 
 
 Abbreviation Expansion is a TextExpander-style feature. You type a short trigger word followed by any delimiter character (space, period, comma, and so on) and QUILL silently replaces the trigger with the full text.
 
+**Off by default.** So that text never changes as you type without your knowledge, abbreviation expansion is **disabled by default** — turn it on when you want it (see *Enabling and disabling* below). Once on, your choice is remembered.
+
 **Example:** type `btw ` (note the trailing space) and QUILL replaces it with `by the way `.
 
 QUILL ships with fifteen built-in abbreviations covering common shorthand. You can add, edit, and disable any abbreviation, including the built-in ones.
@@ -1565,7 +1567,7 @@ QUILL ships with fifteen built-in abbreviations covering common shorthand. You c
 | `ttyl` | talk to you later |
 | `wrt` | with regard to |
 
-**Enabling and disabling.** Abbreviation expansion is on by default. To toggle it:
+**Enabling and disabling.** Abbreviation expansion is **off by default**; enable it any of these ways (and toggle it the same ways later):
 
 - Press `Ctrl+Shift+Grave, E` — or use `Insert > Toggle Abbreviation Expansion`.
 - Click the **ABR: On / ABR: Off** cell in the status bar (if visible; add it via status bar settings).

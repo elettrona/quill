@@ -511,6 +511,15 @@ def test_settings_defaults_announcement_startup_tips_to_off(
     assert loaded.announcement_startup_tips_enabled is False
 
 
+def test_settings_defaults_abbreviation_expansion_to_off(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # Off by default so text never auto-expands without the user opting in.
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    assert Settings().abbreviation_expansion is False
+    assert load_settings().abbreviation_expansion is False
+
+
 def test_settings_round_trip_announcement_startup_tips(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
