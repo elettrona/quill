@@ -21,7 +21,9 @@
 > end.
 
 **Created:** 2026-06-25. **Last updated:** 2026-06-25 (Phase 1 Tier A foundation
-complete; harness layer + all six SDK packs built and tested).
+complete; harness layer + all six SDK packs built; Agent Catalog + launch set,
+Streaming Event Bridge core, and native-backend Responder adapter added — all
+Tier A, dormant, back-portable to main).
 
 ---
 
@@ -64,8 +66,12 @@ Three tiers:
   - `ai/permissions.py` (Permission Broker) — Done.
   - `ai/activity_log.py` (Activity Log) — Done.
   - `ai/tool_gateway.py` (Safe Editor Tool Gateway) — Done.
-  - `ai/context_builder.py` (Context Builder) — pending.
-  - `ai/harness/` protocol + registry + capabilities (types only; no pack imported).
+  - `ai/context_builder.py` (Context Builder) — Done.
+  - `ai/harness/` protocol + registry + capabilities (types only; no pack imported) — Done.
+  - `ai/harness/native.py` Native harness + `responder_from_backend` adapter — Done.
+  - `ai/agent_catalog.py` + `core/schemas/agent.json` + `ai/agents/*.json` launch set — Done.
+  - `ai/event_bridge.py` (Streaming Event Bridge announcement mapping) — Done.
+  - `ai_packs/` all six SDK harness packs (lazy; report unavailable until installed) — Done.
 
 - **Tier B — Invisible-if-careful, fits 1.xx behind tests.** Active consolidation
   that changes an internal path users should not notice if the migration is correct,
@@ -119,18 +125,18 @@ Tier (see §0a): A = invisible/landable in 1.0 now; B = invisible-if-careful, 1.
 
 | Item | PRD | Status |
 | --- | --- | --- |
-| Promote `AIHubDialog` to Home/Agents/Chat/Sessions/Activity/Providers/Harnesses/Audio/Permissions/Advanced (per-tab modules for GATE-11) | §5 | Not started |
-| Streaming Event Bridge -> balanced announcements | §6, §14 | Not started |
-| Concierge "What can I do here?" on Home + status bar | §6 | Not started |
+| Promote `AIHubDialog` to Home/Agents/Chat/Sessions/Activity/Providers/Harnesses/Audio/Permissions/Advanced (per-tab modules for GATE-11) | §5 | Not started (Tier C, visible) |
+| Streaming Event Bridge -> balanced announcements | §6, §14 | Core done (`ai/event_bridge.py`); UI subscription pending (Tier C) |
+| Concierge "What can I do here?" on Home + status bar | §6 | Catalog agent `quill-concierge` exists; UI surface pending (Tier C) |
 
 ### Phase 3 — Declarative Agent Catalog + native tool-calling loop
 
 | Item | PRD | Status |
 | --- | --- | --- |
-| `core/schemas/agent.json` + catalog loader | §13 | Not started |
-| Promote `accessibility_agent` + the four `AgentProfile`s; add Markdown Publisher, Code Doctor, GitHub Maintainer, PRD Architect, Release Notes Builder, Concierge | §13 | Not started |
-| Upgrade native harness to a real broker-gated, event-streamed tool-calling loop | §8.1 | Not started |
-| Selection Action Ring + hunk-preview clean-up + accessibility review on catalog agents | §6 | Not started |
+| `core/schemas/agent.json` + catalog loader (`ai/agent_catalog.py`) | §13 | Done |
+| Promote `accessibility_agent` + the four `AgentProfile`s; add Markdown Publisher, Code Doctor, GitHub Maintainer, PRD Architect, Release Notes Builder, Concierge | §13 | Done (11-agent launch set in `ai/agents/`) |
+| Upgrade native harness to a real broker-gated, event-streamed tool-calling loop | §8.1 | Not started (current Native is single generate-and-apply) |
+| Selection Action Ring + hunk-preview clean-up + accessibility review on catalog agents | §6 | Not started (Tier C, visible) |
 
 ### Phase 4 — Local + BYOK polish
 
