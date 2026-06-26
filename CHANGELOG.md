@@ -1,5 +1,60 @@
 # Changelog
 
+## 2.0.0 (in development) — Agentic AI Platform
+
+The 2.0 line unifies QUILL's AI into one optional, provider-neutral, agentic
+platform: choose an engine (and optionally an advanced harness), pick an agent, and
+transform documents with full review and one-step undo — all screen-reader-first and
+off by default. See `docs/release notes/release2.0.0-dev.md` for the user-facing
+overview and `docs/planning/roadmap-2.0.md` for the build tracker. Foundational work
+is built and tested on the `2.0-dev` branch; the AI Hub command-center UI and a few
+advanced pieces are still landing.
+
+### Agentic core (built and tested; wx-free unless noted)
+
+- **Safe Editor Tool Gateway** (`quill/core/ai/tool_gateway.py`) — the single,
+  typed, permission-checked, audited surface every engine uses. Reads, replace,
+  insert, whole-document patch, and run-command, each routed through the permission
+  broker, the accessible diff preview, an undo checkpoint, and the activity log.
+- **Permission Broker** (`quill/core/ai/permissions.py`) — Careful / Balanced /
+  Power User / Locked Down profiles, monotone risk floor, and a hard `SAFE_TOOL_IDS`
+  floor no profile can widen.
+- **Activity Log** (`quill/core/ai/activity_log.py`) — bounded, atomic, redacted
+  audit trail; "review/undo last AI change."
+- **Context Builder + privacy preview** (`quill/core/ai/context_builder.py`) — scope
+  selection (selection / section / summary / full document) with secret masking and a
+  "what will be sent" summary.
+- **Streaming Event Bridge** (`quill/core/ai/event_bridge.py`) — normalized agent
+  events mapped to Quiet / Balanced / Detailed / Debug announcements; no token spam.
+- **Harness layer** (`quill/core/ai/harness/`) — `Harness` protocol, capability
+  model, registry, and the always-available **Native** harness; `responder_from_backend`
+  runs it on the existing provider stack.
+- **Optional SDK harness packs** (`quill/ai_packs/`) — Copilot, Claude, OpenAI,
+  Microsoft, LangGraph, and OpenHands, each an opt-in extra (`quill[ai-…]`), lazily
+  imported, graceful when uninstalled, and bridged to the same gateway.
+- **Declarative Agent Catalog** (`quill/core/ai/agent_catalog.py`,
+  `quill/core/schemas/agent.json`, `quill/core/ai/agents/*.json`) — validated agent
+  files and the 11-agent launch set.
+- **Native multi-step tool-calling loop** (`quill/core/ai/tool_loop.py`) — planner-
+  driven, gateway-gated, recoverable permission denials, bounded by a step cap.
+- **Concierge + Selection Action Ring** (`quill/core/ai/concierge.py`) — "what can I
+  do here?" suggestions and per-file-type selection transforms.
+- **Enterprise admin policy** (`quill/core/ai/admin_policy.py`) — allowed/blocked
+  providers and bring-your-own-key control.
+- Tests under `tests/unit/core/ai/` (~95 new) plus the UI adapter tests; ruff,
+  scoped `mypy quill/core/ai`, and the banned-pattern / module-size / network-egress
+  gates pass.
+
+### Editor wiring (experimental, opt-in)
+
+- **`quill/ui/agent_editor_host.py`** wires the gateway to the real editor, reusing
+  the shipping replace / undo / diff-review primitives, and runs agents at selection,
+  document, or produce scope with the model call backgrounded and every wx touch on
+  the UI thread. Registered only when `QUILL_AI_AGENT_GATEWAY` is set: an AI-menu item
+  "Run Agent on Selection (experimental)…" plus a `Run Agent: …` command-palette entry
+  per catalog agent. Default builds are unchanged. Validated end-to-end against a live
+  provider.
+
 ## 0.8.0 Beta 1 (in development)
 
 Next public beta. Rolls up the 0.7.0 line plus subsequent fixes. The GitHub Pages update feed is intentionally left pointed at the prior release so existing testers are not prompted to update until 0.8.0 is published as a release.

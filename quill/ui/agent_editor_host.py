@@ -12,10 +12,12 @@ experimental command is enabled (the command is only registered when the
 untouched and remains the default.
 
 :class:`MainFrameEditorHost` implements the gateway's ``EditorHost`` Protocol over
-a MainFrame controller. :func:`run_selection_agent` orchestrates one run with
-correct threading: the provider/model call happens on a background thread (the
-same pattern as ``_run_agent_task``), and every wx touch — the diff preview, the
-apply, the announcements — happens back on the UI thread via ``wx.CallAfter``.
+a MainFrame controller. :func:`run_agent` orchestrates one run with correct
+threading: the provider/model call happens on a background thread (the same
+pattern as ``_run_agent_task``), and every wx touch — the diff preview, the apply,
+the announcements — happens back on the UI thread via ``wx.CallAfter``. The agent's
+scope and write permissions decide whether it transforms the selection, transforms
+the whole document, or opens its output in a new document.
 """
 
 from __future__ import annotations
