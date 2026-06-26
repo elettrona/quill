@@ -69,31 +69,10 @@ class ToolPlanner(Protocol):
 
 
 def _dispatch(gateway: SafeEditorToolGateway, step: ToolStep) -> str:
-    """Run one tool step against the gateway; return a string result for the log."""
-    tool = step.tool
-    args = step.args
-    if tool == "read_selection":
-        return gateway.read_selection()
-    if tool == "read_document":
-        return gateway.read_current_document(args.get("scope", "full"))
-    if tool == "read_outline":
-        return "\n".join(gateway.read_document_outline())
-    if tool == "replace_selection":
-        return str(
-            gateway.replace_selection(args.get("text", ""), label=args.get("label", "Replace"))
-        )
-    if tool == "insert":
-        return str(
-            gateway.insert_at_cursor(args.get("text", ""), label=args.get("label", "Insert"))
-        )
-    if tool == "apply_patch":
-        applied = gateway.apply_text_patch(
-            args.get("original", ""), args.get("proposed", ""), label=args.get("label", "Apply")
-        )
-        return str(applied)
-    if tool == "run_command":
-        return str(gateway.run_quill_command(args.get("command_id", "")))
-    raise ValueError(f"Unknown tool: {tool!r}")
+    """Run one tool step against the gateway via the shared tool surface."""
+    from quill.core.ai.agent_tools import execute_tool
+
+    return execute_tool(gateway, step.tool, step.args)
 
 
 def run_tool_loop(

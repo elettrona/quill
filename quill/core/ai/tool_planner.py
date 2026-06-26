@@ -22,6 +22,7 @@ import json
 import re
 from collections.abc import Callable
 
+from quill.core.ai.agent_tools import TOOL_DESCRIPTORS
 from quill.core.ai.harness import AgentSpec, AIContext
 from quill.core.ai.tool_loop import ToolResult, ToolStep
 
@@ -30,19 +31,19 @@ __all__ = ["ModelResponder", "PromptToolPlanner", "model_responder_from_backend"
 # A raw prompt -> raw text completion. Wraps any backend's blocking respond().
 ModelResponder = Callable[[str], str]
 
-# Tool name -> one-line usage shown to the model. Mirrors tool_loop._dispatch.
-_TOOL_HELP: tuple[tuple[str, str], ...] = (
-    ("read_selection", "read the current selection; no args"),
-    ("read_document", "read the whole document; no args"),
-    ("read_outline", "read the heading outline; no args"),
-    ("replace_selection", 'replace the selection; args {"text": "<new text>"}'),
-    ("insert", 'insert text at the cursor; args {"text": "<text>"}'),
-    (
-        "apply_patch",
-        'replace the whole document; args {"original": "<full>", "proposed": "<new>"}',
-    ),
-    ("run_command", 'run a safe command; args {"command_id": "<id>"}'),
-)
+
+def _tool_help_lines() -> str:
+    """Render the shared tool descriptors for the model prompt (single source)."""
+    lines: list[str] = []
+    for tool in TOOL_DESCRIPTORS:
+        args = (
+            "; args " + ", ".join(f"{k} ({v})" for k, v in tool.parameters.items())
+            if tool.parameters
+            else "; no args"
+        )
+        lines.append(f"- {tool.name}: {tool.description}{args}")
+    return "\n".join(lines)
+
 
 _JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 
@@ -65,7 +66,7 @@ class PromptToolPlanner:
     def _build_prompt(
         self, agent: AgentSpec, ctx: AIContext, transcript: tuple[ToolResult, ...]
     ) -> str:
-        tools = "\n".join(f"- {name}: {help_}" for name, help_ in _TOOL_HELP)
+        tools = _tool_help_lines()
         context = ctx.context_text[: self._max_context_chars]
         history = (
             "\n".join(
