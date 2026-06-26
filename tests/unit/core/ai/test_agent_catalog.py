@@ -39,9 +39,7 @@ def test_parse_builds_agentspec_with_overrides() -> None:
     assert spec.id == "writing-companion"
     assert spec.risk is RiskLevel.LOW
     assert spec.tools == ("edit.undo",)
-    assert spec.overrides_map() == {
-        PermissionCategory.MODIFY_SELECTION: Decision.PREVIEW_REQUIRED
-    }
+    assert spec.overrides_map() == {PermissionCategory.MODIFY_SELECTION: Decision.PREVIEW_REQUIRED}
 
 
 def test_missing_required_fields_reported() -> None:

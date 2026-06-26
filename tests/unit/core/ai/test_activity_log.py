@@ -72,9 +72,7 @@ def test_summary_is_redacted(tmp_path: Path) -> None:
 def test_recent_returns_tail(tmp_path: Path) -> None:
     log = _log(tmp_path)
     for i in range(10):
-        log.append(
-            ActivityEntry.now(kind="x", agent_id=f"a{i}", harness="native", summary=str(i))
-        )
+        log.append(ActivityEntry.now(kind="x", agent_id=f"a{i}", harness="native", summary=str(i)))
     recent = log.recent(3)
     assert [e.agent_id for e in recent] == ["a7", "a8", "a9"]
     assert log.recent(0) == []
@@ -92,7 +90,9 @@ def test_last_undoable_finds_most_recent_change(tmp_path: Path) -> None:
         )
     )
     log.append(
-        ActivityEntry.now(kind="tool_call_completed", agent_id="b", harness="native", summary="read")
+        ActivityEntry.now(
+            kind="tool_call_completed", agent_id="b", harness="native", summary="read"
+        )
     )
     last = log.last_undoable()
     assert last is not None

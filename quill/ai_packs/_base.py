@@ -122,9 +122,7 @@ class _SdkSession:
         if self._cancelled:
             return self._cancelled_result()
 
-        self._emit(
-            AgentEvent(AgentEventKind.AGENT_TEXT_DELTA, f"{self._name} proposed a change.")
-        )
+        self._emit(AgentEvent(AgentEventKind.AGENT_TEXT_DELTA, f"{self._name} proposed a change."))
         if self._agent.default_scope in (ContextScope.SELECTION, ContextScope.CURRENT_SECTION):
             self._gateway.replace_selection(proposed, label=self._name)
         else:
@@ -167,9 +165,7 @@ class SdkHarness:
             return True, None
         missing = modules_missing(self.sdk_modules)
         if missing:
-            return False, (
-                f'Install the {self.pack_name} pack: pip install "quill[{self.extra}]"'
-            )
+            return False, (f'Install the {self.pack_name} pack: pip install "quill[{self.extra}]"')
         return True, None
 
     def capabilities(self) -> HarnessCapabilities:  # pragma: no cover - overridden

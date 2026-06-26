@@ -183,9 +183,7 @@ class SafeEditorToolGateway:
         if result.decision is not Decision.ALLOW:
             if not self._preview(original, proposed, label):
                 return False
-        self._apply(
-            lambda: self._host.apply_document_text(proposed), label, "modify_document"
-        )
+        self._apply(lambda: self._host.apply_document_text(proposed), label, "modify_document")
         return True
 
     def run_quill_command(self, command_id: str) -> bool:
@@ -199,9 +197,7 @@ class SafeEditorToolGateway:
             f"Ran command {command_id}.",
             {"category": "run_command", "command": command_id},
         )
-        self._emit(
-            AgentEvent(AgentEventKind.TOOL_CALL_COMPLETED, f"Ran {command_id}.")
-        )
+        self._emit(AgentEvent(AgentEventKind.TOOL_CALL_COMPLETED, f"Ran {command_id}."))
         return True
 
     def announce_status(self, message: str) -> None:
@@ -269,9 +265,7 @@ class SafeEditorToolGateway:
         """Take an undo checkpoint, perform the edit, log, announce, and emit."""
         self._host.create_undo_checkpoint(label)
         action()
-        self._record(
-            "patch_applied", f"{label}.", {"category": category}, undo_label=label
-        )
+        self._record("patch_applied", f"{label}.", {"category": category}, undo_label=label)
         self._emit(AgentEvent(AgentEventKind.PATCH_APPLIED, f"{label}."))
         self._host.announce(f"{label}. Press Control Z to undo.")
 

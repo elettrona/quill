@@ -59,15 +59,13 @@ class ContextScope(StrEnum):
     GITHUB = "github"
 
 
-_WIRED_SCOPES: frozenset[ContextScope] = frozenset(
-    {
-        ContextScope.PROMPT_ONLY,
-        ContextScope.SELECTION,
-        ContextScope.CURRENT_SECTION,
-        ContextScope.DOCUMENT_SUMMARY,
-        ContextScope.FULL_DOCUMENT,
-    }
-)
+_WIRED_SCOPES: frozenset[ContextScope] = frozenset({
+    ContextScope.PROMPT_ONLY,
+    ContextScope.SELECTION,
+    ContextScope.CURRENT_SECTION,
+    ContextScope.DOCUMENT_SUMMARY,
+    ContextScope.FULL_DOCUMENT,
+})
 
 
 class ContextSource(Protocol):

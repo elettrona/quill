@@ -59,10 +59,8 @@ class AgentEvent:
         return self.kind in _TERMINAL_KINDS
 
 
-_TERMINAL_KINDS: frozenset[AgentEventKind] = frozenset(
-    {
-        AgentEventKind.AGENT_COMPLETED,
-        AgentEventKind.AGENT_CANCELLED,
-        AgentEventKind.ERROR,
-    }
-)
+_TERMINAL_KINDS: frozenset[AgentEventKind] = frozenset({
+    AgentEventKind.AGENT_COMPLETED,
+    AgentEventKind.AGENT_CANCELLED,
+    AgentEventKind.ERROR,
+})

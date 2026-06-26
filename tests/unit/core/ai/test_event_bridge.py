@@ -39,7 +39,9 @@ def test_detailed_adds_tool_chatter_but_not_deltas() -> None:
 
 
 def test_debug_speaks_text_deltas() -> None:
-    assert announce_for(_ev(AgentEventKind.AGENT_TEXT_DELTA, "tok"), AnnouncementLevel.DEBUG) == "tok"
+    assert (
+        announce_for(_ev(AgentEventKind.AGENT_TEXT_DELTA, "tok"), AnnouncementLevel.DEBUG) == "tok"
+    )
 
 
 def test_empty_summary_falls_back_to_generic() -> None:

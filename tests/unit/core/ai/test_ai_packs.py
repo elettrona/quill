@@ -5,8 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import pytest
-
 from quill.ai_packs import all_packs, register_all
 from quill.ai_packs._base import SdkHarness
 from quill.core.ai.activity_log import ActivityLog
@@ -132,7 +130,11 @@ def test_injected_transport_drives_gateway(tmp_path: Path) -> None:
     pack = FakePack(invoke=lambda agent, ctx: "bridged text")
     assert pack.is_available()[0] is True  # override forces availability
     session = pack.start_session(
-        _agent(), AIContext(prompt="go"), gw, PermissionBroker(SafetyProfile.POWER_USER), events.append
+        _agent(),
+        AIContext(prompt="go"),
+        gw,
+        PermissionBroker(SafetyProfile.POWER_USER),
+        events.append,
     )
     result = session.run()
     assert result.ok
@@ -160,7 +162,9 @@ def test_injected_transport_error_is_contained(tmp_path: Path) -> None:
         raise RuntimeError("sdk exploded")
 
     pack = FakePack(invoke=boom)
-    session = pack.start_session(_agent(), AIContext(prompt="x"), gw, PermissionBroker(), events.append)
+    session = pack.start_session(
+        _agent(), AIContext(prompt="x"), gw, PermissionBroker(), events.append
+    )
     result = session.run()
     assert result.status == "error"
     assert "sdk exploded" in result.error

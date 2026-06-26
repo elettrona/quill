@@ -128,7 +128,11 @@ def test_native_session_inserts_for_nonselection_scope(tmp_path: Path) -> None:
     gw = _gateway(tmp_path, host, events)
     harness = NativeHarness(lambda agent, ctx: "drafted")
     session = harness.start_session(
-        _agent(ContextScope.FULL_DOCUMENT), AIContext(prompt="draft"), gw, PermissionBroker(), events.append
+        _agent(ContextScope.FULL_DOCUMENT),
+        AIContext(prompt="draft"),
+        gw,
+        PermissionBroker(),
+        events.append,
     )
     session.run()
     assert host.inserts == ["drafted"]
@@ -139,7 +143,9 @@ def test_native_session_cancel_before_run(tmp_path: Path) -> None:
     events: list[AgentEvent] = []
     gw = _gateway(tmp_path, host, events)
     harness = NativeHarness(lambda agent, ctx: "x")
-    session = harness.start_session(_agent(), AIContext(prompt="p"), gw, PermissionBroker(), events.append)
+    session = harness.start_session(
+        _agent(), AIContext(prompt="p"), gw, PermissionBroker(), events.append
+    )
     session.cancel()
     result = session.run()
     assert result.status == "cancelled"
@@ -156,7 +162,9 @@ def test_native_session_responder_error_is_contained(tmp_path: Path) -> None:
         raise RuntimeError("model down")
 
     harness = NativeHarness(boom)
-    session = harness.start_session(_agent(), AIContext(prompt="p"), gw, PermissionBroker(), events.append)
+    session = harness.start_session(
+        _agent(), AIContext(prompt="p"), gw, PermissionBroker(), events.append
+    )
     result = session.run()
     assert result.status == "error"
     assert "model down" in result.error

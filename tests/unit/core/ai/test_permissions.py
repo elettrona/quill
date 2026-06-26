@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from quill.core.ai.agent import SAFE_TOOL_IDS
 from quill.core.ai.permissions import (
     Decision,
@@ -86,9 +84,7 @@ def test_overrides_are_honored_but_floor_still_applies() -> None:
         is Decision.ALLOW
     )
     # The command floor is independent of overrides.
-    blocked = broker.resolve(
-        _req(PermissionCategory.RUN_COMMAND, command_id="not.allowed")
-    )
+    blocked = broker.resolve(_req(PermissionCategory.RUN_COMMAND, command_id="not.allowed"))
     assert blocked.decision is Decision.DENY
 
 
@@ -97,8 +93,6 @@ def test_result_helpers() -> None:
     allowed = broker.resolve(_req(PermissionCategory.READ_SELECTION))
     assert allowed.allowed_outright is True
     assert allowed.blocked is False
-    denied = broker.resolve(
-        _req(PermissionCategory.RUN_COMMAND, command_id="nope")
-    )
+    denied = broker.resolve(_req(PermissionCategory.RUN_COMMAND, command_id="nope"))
     assert denied.blocked is True
     assert denied.allowed_outright is False

@@ -90,9 +90,7 @@ class ActivityEntry:
     def from_dict(cls, data: dict[str, object]) -> ActivityEntry:
         raw_detail = data.get("detail", {})
         detail = (
-            {str(k): str(v) for k, v in raw_detail.items()}
-            if isinstance(raw_detail, dict)
-            else {}
+            {str(k): str(v) for k, v in raw_detail.items()} if isinstance(raw_detail, dict) else {}
         )
         raw_ts = data.get("timestamp", 0.0)
         timestamp = float(raw_ts) if isinstance(raw_ts, (int, float)) else 0.0
