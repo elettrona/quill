@@ -5,7 +5,10 @@ with a proper, reusable dialog that adds:
 
   * Filter-as-you-type voice search (name, accent, description)
   * Per-voice detail panel (accent · style)
-  * Preview on Enter key or double-click (no extra button click needed)
+  * Preview via the Preview button: a downloaded voice synthesizes the preview
+    phrase with its real model; a not-yet-downloaded voice plays a bundled
+    pre-recorded sample so the user can still hear it. Rate/volume/pitch/speed
+    controls dim until the voice is downloaded. (Enter/double-click still work.)
   * Export to Speech Audio button (closes and triggers export)
   * Clear installed vs. not-downloaded distinction for Piper/Kokoro voices
   * Embed mode: build into an existing panel (for SpeechHubDialog notebook tab)
@@ -79,8 +82,9 @@ class VoiceBrowserDialog:
         current_engine: str,
         piper_model_dir: Path,
         settings: object,
-        preview_fn: Callable[[str, str], None],
+        preview_fn: Callable[..., None],
         engine_available: dict[str, bool] | None = None,
+        has_preview_sample: Callable[[str, str], bool] | None = None,
         embed_in: object | None = None,
         on_action: Callable[[VoiceBrowserResult], None] | None = None,
     ) -> None:
@@ -95,6 +99,8 @@ class VoiceBrowserDialog:
         self._settings = settings
         self._preview_fn = preview_fn
         self._engine_available: dict[str, bool] = engine_available or {}
+        # Whether a bundled pre-recorded preview clip exists for (engine, voice).
+        self._has_preview_sample = has_preview_sample or (lambda _e, _v: False)
         self._result: VoiceBrowserResult | None = None
         self._all_voices: list = []
         self._displayed_voices: list = []
@@ -154,7 +160,7 @@ class VoiceBrowserDialog:
         root.Add(filter_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
 
         # Voice list.
-        voices_lbl = wx.StaticText(parent, label="&Voices (Enter or double-click to preview):")
+        voices_lbl = wx.StaticText(parent, label="&Voices (use the Preview button to hear one):")
         root.Add(voices_lbl, 0, wx.LEFT | wx.TOP, 10)
         self._voice_lb = wx.ListBox(parent, style=wx.LB_SINGLE)
         self._voice_lb.SetName("Voices")
@@ -239,7 +245,7 @@ class VoiceBrowserDialog:
 
         # Action buttons.
         btn_row = wx.BoxSizer(wx.HORIZONTAL)
-        self._preview_btn = wx.Button(parent, label="&Preview (Enter or Space)")
+        self._preview_btn = wx.Button(parent, label="&Preview Selected Voice")
         self._preview_btn.SetName("Preview selected voice")
         self._download_btn = wx.Button(parent, label="&Download Voice...")
         self._download_btn.SetName("Download voice model")
@@ -444,13 +450,36 @@ class VoiceBrowserDialog:
     def _on_filter_changed(self) -> None:
         self._apply_filter(self._filter_ctrl.GetValue())
 
+    def _set_voice_settings_enabled(self, enabled: bool) -> None:
+        """Dim the rate/volume/pitch/speed/character controls.
+
+        They only affect *real synthesis*, so they are disabled until the voice
+        is downloaded (when not downloaded, Preview plays a fixed sample clip).
+        """
+        for name in ("_rate_spin", "_vol_spin", "_pitch_spin", "_kok_spin", "_variant_choice"):
+            ctrl = getattr(self, name, None)
+            if ctrl is not None:
+                ctrl.Enable(enabled)
+
     def _on_voice_selected(self) -> None:
         idx = self._voice_lb.GetSelection()
         wx = self._wx
         eng = self._current_engine_id()
         eng_ok = self._engine_available.get(eng, True)
 
-        # When the engine or its required files are missing, show a hint.
+        if idx == wx.NOT_FOUND or idx >= len(self._displayed_voices):
+            self._detail_lbl.SetLabel("")
+            self._preview_btn.Enable(False)
+            self._set_voice_settings_enabled(False)
+            return
+
+        v = self._displayed_voices[idx]
+        ready = self._voice_is_ready(eng, v)
+        has_sample = bool(self._has_preview_sample(eng, v.id))
+        accent = getattr(v, "accent", "")
+        desc = getattr(v, "description", "")
+        parts = [p for p in [accent, desc] if p]
+        detail = " · ".join(parts)
         if not eng_ok:
             _NOT_READY_MSG = {
                 "dectalk": "DECtalk is not installed. Use the download button to get it.",
@@ -458,25 +487,17 @@ class VoiceBrowserDialog:
                 "espeak": "eSpeak-NG is not installed. Use the download button to get it.",
                 "kokoro": "Kokoro models are not downloaded. Use the download button to get them.",
             }
-            self._detail_lbl.SetLabel(_NOT_READY_MSG.get(eng, f"{eng} is not available."))
-            self._preview_btn.Enable(False)
-            return
-
-        if idx == wx.NOT_FOUND or idx >= len(self._displayed_voices):
-            self._detail_lbl.SetLabel("")
-            self._preview_btn.Enable(False)
-            return
-        v = self._displayed_voices[idx]
-        accent = getattr(v, "accent", "")
-        desc = getattr(v, "description", "")
-        installed = getattr(v, "installed", True)
-        parts = [p for p in [accent, desc] if p]
-        detail = " · ".join(parts)
-        if not installed:
-            not_dl = "Not downloaded. Use Download Voice to get it."
+            hint = _NOT_READY_MSG.get(eng, f"{eng} is not available.")
+            detail = f"{detail} — {hint}" if detail else hint
+        elif not getattr(v, "installed", True):
+            not_dl = "Not downloaded. Preview plays a sample; use Download Voice for full quality."
             detail = f"{detail} — {not_dl}" if detail else not_dl
         self._detail_lbl.SetLabel(detail)
-        self._preview_btn.Enable(bool(installed))
+        # Preview works when the voice is ready (real synthesis) or when a
+        # bundled sample clip exists for it.
+        self._preview_btn.Enable(ready or has_sample)
+        # Rate/volume/pitch/speed/character apply to real synthesis only.
+        self._set_voice_settings_enabled(ready)
 
     def _on_voice_key_down(self, event: object) -> None:
         wx = self._wx
@@ -486,19 +507,24 @@ class VoiceBrowserDialog:
         else:
             event.Skip()  # type: ignore[attr-defined]
 
+    def _voice_is_ready(self, eng: str, voice: object) -> bool:
+        """True when the engine is installed AND the voice's model is present."""
+        return self._engine_available.get(eng, True) and bool(getattr(voice, "installed", True))
+
     def _do_preview(self) -> None:
         idx = self._voice_lb.GetSelection()
         wx = self._wx
         if idx == wx.NOT_FOUND or idx >= len(self._displayed_voices):
             return
         eng = self._current_engine_id()
-        if not self._engine_available.get(eng, True):
-            return  # engine not installed; preview blocked
         v = self._displayed_voices[idx]
-        if not getattr(v, "installed", True):
+        ready = self._voice_is_ready(eng, v)
+        # Downloaded -> real synthesis with the model; not downloaded -> the
+        # bundled pre-recorded sample (if one ships for this voice).
+        if not ready and not self._has_preview_sample(eng, v.id):
             return
         voice_id = self._espeak_combined_voice_id(v.id) if eng == "espeak" else v.id
-        self._preview_fn(eng, voice_id)
+        self._preview_fn(eng, voice_id, live=ready)
 
     def _do_download(self) -> None:
         eng = self._current_engine_id()

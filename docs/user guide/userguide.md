@@ -2049,6 +2049,8 @@ Quill earns trust by making difficult files readable and inspectable.
 
 Read Aloud uses local voices with a deterministic support policy. The Windows system voice runs on **SAPI 5**; **DECtalk** and **eSpeak NG** are bundled for immediate local playback; **Piper** and **Kokoro** (neural, offline) are available as explicit downloads from Speech Center so base installs stay smaller. You can start, pause, stop, preview, and choose a voice. Speech onboarding announces current availability and recommended next actions before any download starts. For cloud voices, see [Read Aloud with AI Voice](#read-aloud-with-ai-voice-openai-or-google-gemini).
 
+To audition a voice in **Manage Voices**, select it and use the **Preview** button. If the voice is already downloaded, Quill synthesises the preview phrase with that voice's real model; if it is not downloaded yet (for example a Kokoro voice), Quill plays a short pre-recorded sample so you can still hear it before deciding to download. The rate, volume, pitch, and speed controls apply to real synthesis, so they stay dimmed until the voice is downloaded.
+
 ### Batch Export to Speech Audio
 
 **Tools → Speech → Batch Export to Speech Audio** converts a whole folder of documents to speech audio in one pass. The conversion runs on a background task with per-file progress that you can cancel, and the same shared speech pipeline live Read Aloud uses — so the voice you audition is the voice you get.

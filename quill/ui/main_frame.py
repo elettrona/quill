@@ -16936,17 +16936,28 @@ class MainFrame(
 
         _os.startfile(str(sample_path))
 
-    def _preview_voice(self, engine: str, voice_id: str) -> None:
-        """Play a short preview of *voice_id* through *engine* on a background thread."""
+    def _preview_voice(self, engine: str, voice_id: str, *, live: bool = False) -> None:
+        """Preview *voice_id* through *engine* on a background thread.
+
+        ``live`` True means the voice is downloaded and ready, so synthesize the
+        preview phrase with the real model. ``live`` False (the voice is not yet
+        downloaded) plays the bundled pre-recorded sample instead, so the user
+        can still hear what the voice sounds like before downloading; if no
+        sample ships for it, we say so rather than failing silently.
+        """
         import tempfile as _tmpfile
         from pathlib import Path as _Path
 
         sample = self._PREVIEW_TEXT
         s = self.settings
 
-        # Check for a bundled preview sample first — fastest path.
-        preview_sample = self._voice_preview_sample_path(engine, voice_id)
-        if preview_sample is not None:
+        # Not downloaded: play the bundled pre-recorded sample (same phrase the
+        # live synthesis uses), or explain that none is available.
+        if not live:
+            preview_sample = self._voice_preview_sample_path(engine, voice_id)
+            if preview_sample is None:
+                self._set_status("Download this voice to hear a preview.")
+                return
 
             def _play_sample(_progress: Callable[[str, int, int], None]) -> object:
                 self._play_preview_asset(preview_sample)
@@ -17098,6 +17109,9 @@ class MainFrame(
             "settings": self.settings,
             "preview_fn": self._preview_voice,
             "engine_available": engine_available,
+            "has_preview_sample": (
+                lambda eng, vid: self._voice_preview_sample_path(eng, vid) is not None
+            ),
         }
 
         # --- Dictation kwargs ---
