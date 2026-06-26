@@ -1693,20 +1693,9 @@ class MenuBuilderMixin:
             self._id_speech_voice_command,
             self._menu_label(_("&Voice Command (Offline)"), "tools.voice_command"),
         )
-        speech_menu.Append(
-            self._id_dictation,
-            self._menu_label(_("&Windows Dictation"), "tools.dictation_toggle"),
-            _("Press to start Windows dictation, press again to stop and insert"),
-        )
-        speech_menu.AppendCheckItem(
-            self._id_dictation_voice_commands,
-            self._menu_label(_("Hey QUILL &Commands"), "tools.dictation_voice_commands_toggle"),
-        )
-        speech_menu.Check(
-            self._id_dictation_voice_commands,
-            bool(getattr(self.settings, "voice_commands_enabled", False)),
-        )
-        self._register_voice_commands_check_menu(speech_menu)
+        # Windows (SAPI) dictation is no longer supported -- offline Whisper
+        # Locked Dictation (Ctrl+F9) replaces it -- so it is not exposed in the
+        # menu. The command machinery stays for back-compat.
         speech_menu.Append(
             self._id_speech_microphone,
             self._menu_label(_("Dictation &Microphone..."), "tools.speech_microphone"),
@@ -1995,22 +1984,9 @@ class MenuBuilderMixin:
             self._id_profile_onboarding,
             self._menu_label(_("&Startup Wizard..."), "help.startup_wizard"),
         )
+        # Windows dictation removed (offline Locked Dictation replaces it); this
+        # submenu is now just Watch Folder.
         bw_dictation_menu = wx.Menu()
-        bw_dictation_menu.Append(
-            self._id_dictation,
-            self._menu_label(_("&Dictation"), "tools.dictation_toggle"),
-            _("Press to start dictation, press again to stop and insert"),
-        )
-        bw_dictation_menu.AppendCheckItem(
-            self._id_dictation_voice_commands,
-            self._menu_label(_("Hey QUILL &Commands"), "tools.dictation_voice_commands_toggle"),
-        )
-        bw_dictation_menu.Check(
-            self._id_dictation_voice_commands,
-            bool(getattr(self.settings, "voice_commands_enabled", False)),
-        )
-        self._register_voice_commands_check_menu(bw_dictation_menu)
-        bw_dictation_menu.AppendSeparator()
         bw_dictation_menu.Append(
             self._id_watch_folder_toggle,
             _("Watch Folder &Monitoring (in Settings)..."),
@@ -2023,7 +1999,7 @@ class MenuBuilderMixin:
             self._id_watch_folder_status,
             self._menu_label(_("Watch Folder &Queue..."), "tools.watch_folder_status"),
         )
-        whisperer_menu.AppendSubMenu(bw_dictation_menu, _("&Dictation and Watch Folder"))
+        whisperer_menu.AppendSubMenu(bw_dictation_menu, _("&Watch Folder"))
         bw_models_menu = wx.Menu()
         self._append_bw_safe_mode_badge(bw_models_menu)
         bw_models_menu.Append(
