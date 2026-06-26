@@ -135,8 +135,8 @@ Tier (see §0a): A = invisible/landable in 1.0 now; B = invisible-if-careful, 1.
 | --- | --- | --- |
 | `core/schemas/agent.json` + catalog loader (`ai/agent_catalog.py`) | §13 | Done |
 | Promote `accessibility_agent` + the four `AgentProfile`s; add Markdown Publisher, Code Doctor, GitHub Maintainer, PRD Architect, Release Notes Builder, Concierge | §13 | Done (11-agent launch set in `ai/agents/`) |
-| Upgrade native harness to a real broker-gated, event-streamed tool-calling loop | §8.1 | Not started (current Native is single generate-and-apply) |
-| Selection Action Ring + hunk-preview clean-up + accessibility review on catalog agents | §6 | Not started (Tier C, visible) |
+| Upgrade native harness to a real broker-gated, event-streamed tool-calling loop | §8.1 | Core done: `ai/tool_loop.py` (planner-driven, gateway-gated, recoverable denials, step cap). Provider function-calling planner is the remaining piece. |
+| Selection Action Ring + hunk-preview clean-up + accessibility review on catalog agents | §6 | Model done: `ai/concierge.py` `ring_actions` (+ Concierge `suggest`); the wx ring/Home UI is the remaining Tier C piece. |
 
 ### Phase 4 — Local + BYOK polish
 
