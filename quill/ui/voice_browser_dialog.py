@@ -277,6 +277,10 @@ class VoiceBrowserDialog:
         self._download_btn.Bind(wx.EVT_BUTTON, lambda _e: self._do_download())
         self._export_btn.Bind(wx.EVT_BUTTON, lambda _e: self._do_export())
 
+        # Preview is the primary action after picking a voice, so place it right
+        # after the voice list in tab order (without moving it visually) (#700).
+        self._preview_btn.MoveAfterInTabOrder(self._voice_lb)
+
         self._refresh_voices(self._current_engine)
 
     # ------------------------------------------------------------------
@@ -415,8 +419,8 @@ class VoiceBrowserDialog:
         self._settings_box.Show(self._pitch_row, has_vol_pitch, recursive=True)
         self._settings_box.Show(self._kok_row, has_kokoro, recursive=True)
         self._settings_box.Show(self._variant_row, has_variant, recursive=True)
+        # No ShowItems() — it would override the per-row Show() above (#700).
         self._settings_sb.Show(has_any)
-        self._settings_box.ShowItems(has_any)
 
         eng_ok = self._engine_available.get(eng, True)
         if eng == "dectalk" and not eng_ok:
@@ -429,7 +433,7 @@ class VoiceBrowserDialog:
             self._download_btn.SetLabel("&Download Piper Voice...")
             self._download_btn.Show(True)
         elif eng == "kokoro":
-            self._download_btn.SetLabel("&Download Kokoro Models (~114 MB)...")
+            self._download_btn.SetLabel("&Download Kokoro — all voices, one pack (~114 MB)...")
             self._download_btn.Show(True)
         elif eng == "espeak" and not eng_ok:
             self._download_btn.SetLabel("&Download eSpeak-NG (~50 MB)...")

@@ -186,10 +186,16 @@ class SpeechSetupDialog:
         # engine" button below — not on selection, so arrowing through the radio
         # with a screen reader never triggers an install (#700).
         self._engine_descriptors = self._build_engine_descriptors()
-        choices = [
-            d["label"] if d["installed"] else f"{d['label']} — not installed"
-            for d in self._engine_descriptors
-        ]
+        choices = []
+        for d in self._engine_descriptors:
+            if d["installed"]:
+                choices.append(d["label"])
+            elif d["install_action"] is None:
+                # A bundled engine (whisper.cpp) whose binary isn't present — it
+                # ships with the installed app, so don't imply the user installs it.
+                choices.append(f"{d['label']} — engine file not found (ships with the app)")
+            else:
+                choices.append(f"{d['label']} — not installed")
         self._engine_radio = wx.RadioBox(
             parent,
             label="Dictation &engine",
@@ -262,6 +268,12 @@ class SpeechSetupDialog:
         self._populate_model_list()
         root.Add(self._model_list, 1, wx.EXPAND | wx.ALL, 10)
 
+        # A live note that tells the user why Download/Remove are unavailable
+        # (e.g. nothing selected) instead of leaving disabled buttons unexplained.
+        self._model_note = wx.StaticText(parent, label="")
+        self._model_note.SetName("Model selection status")
+        root.Add(self._model_note, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
+
         # Action buttons.
         btn_row = wx.BoxSizer(wx.HORIZONTAL)
         self._btn_download = wx.Button(parent, label="&Download Selected")
@@ -317,10 +329,19 @@ class SpeechSetupDialog:
         if sel == self._wx.NOT_FOUND or sel >= len(self._rows):
             self._btn_download.Enable(False)
             self._btn_remove.Enable(False)
+            if not self._rows:
+                self._model_note.SetLabel("No models for this engine yet.")
+            else:
+                self._model_note.SetLabel("Select a model above, then Download or Remove.")
             return
         installed = bool(getattr(self._rows[sel], "installed", False))
         self._btn_download.Enable(not installed)
         self._btn_remove.Enable(installed)
+        self._model_note.SetLabel(
+            "This model is installed — use Remove to delete it."
+            if installed
+            else "This model is not installed — use Download to get it."
+        )
 
     def _on_download(self) -> None:
         sel = self._model_list.GetSelection()
@@ -376,10 +397,16 @@ class SpeechSetupDialog:
         return self._engine_descriptors[idx]
 
     def _sync_engine_install_button(self) -> None:
-        """Enable 'Install selected engine' only for a not-installed selection."""
+        """Enable 'Install selected engine' only for a not-installed, installable
+        engine. Bundled whisper.cpp has no installer, so its button stays
+        disabled — there is nothing for the user to install."""
         descriptor = self._selected_engine()
-        not_installed = descriptor is not None and not descriptor["installed"]
-        self._btn_install_engine.Enable(bool(not_installed))
+        can_install = (
+            descriptor is not None
+            and not descriptor["installed"]
+            and descriptor["install_action"] is not None
+        )
+        self._btn_install_engine.Enable(bool(can_install))
 
     def _on_engine_radio(self, event: object) -> None:
         """Switch to an installed engine on selection. Never installs on select."""

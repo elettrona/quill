@@ -1683,7 +1683,7 @@ class MenuBuilderMixin:
         # voices and dictation models are managed in the same dialog (#700).
         speech_menu.Append(
             self._id_speech_models,
-            self._menu_label(_("&Speech and Voices..."), "tools.speech_models"),
+            self._menu_label(_("&Speech and Dictation..."), "tools.speech_models"),
         )
         speech_menu.AppendSeparator()
         speech_menu.Append(

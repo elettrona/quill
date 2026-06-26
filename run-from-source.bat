@@ -11,7 +11,15 @@ REM the repo and out of your real install, so you can test source changes
 REM without rebuilding. Override either var before calling this script.
 if not defined QUILL_DEV_BUILD set "QUILL_DEV_BUILD=1"
 if not defined QUILL_DATA_DIR set "QUILL_DATA_DIR=%USERPROFILE%\quill-dev-data"
+
+REM Point at an installed QUILL so a source run can discover bundled engine
+REM assets that are not in the source tree (whisper.cpp, DECtalk, Piper under
+REM tools\speech\). Only set when an install is actually present; override by
+REM setting QUILL_APP_ROOT yourself.
+if not defined QUILL_APP_ROOT if exist "C:\quill\tools\speech" set "QUILL_APP_ROOT=C:\quill"
+
 echo [run-from-source] QUILL_DATA_DIR=%QUILL_DATA_DIR%
+if defined QUILL_APP_ROOT echo [run-from-source] QUILL_APP_ROOT=%QUILL_APP_ROOT%
 
 if defined QUILL_PYTHON call :UsePythonIfHasWx "%QUILL_PYTHON%"
 if not defined PYTHON_EXE if defined VIRTUAL_ENV call :UsePythonIfHasWx "%VIRTUAL_ENV%\Scripts\python.exe"
