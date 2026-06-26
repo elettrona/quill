@@ -42,6 +42,7 @@
   "quill/ui/batch_speech_export_dialog.py::BatchSpeechExportDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/batch_speech_export_dialog.py::BatchSpeechExportDialog._on_browse_source::wx.DirDialog": "native",
   "quill/ui/compare_dialog.py::CompareDialog.__init__::wx.Dialog": "hardened_custom",
+  "quill/ui/copilot_onboarding_dialog.py::CopilotOnboardingDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/copy_tray_dialog.py::CopyTrayDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/crash_report_dialog.py::CrashReportDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/dialog_contract.py::show_message_box::wx.MessageBox": "native",

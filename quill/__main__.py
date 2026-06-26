@@ -379,6 +379,14 @@ def main() -> int:
         activate_engine_packs()
     except Exception:  # noqa: BLE001 - an optional engine must never break startup
         pass
+    # Add any on-demand-installed AI SDK packs (Copilot/Claude/OpenAI Agents) to
+    # sys.path so the harness registry can find them this session (Phase 6/10).
+    try:
+        from quill.core.ai.sdk_install import activate_ai_packs
+
+        activate_ai_packs()
+    except Exception:  # noqa: BLE001 - an optional pack must never break startup
+        pass
     log_listener = configure_logging(app_data_dir() / "logs")
     setup_fault_handler()
     _install_excepthook()

@@ -912,6 +912,7 @@ class MainFrame(
         "notebook_goal": "Notebook Goal",
         "braille": "Braille",
         "section_heading": "Section",
+        "ai_engine": "AI Engine",
     }
     _STATUS_BAR_WIDTHS: dict[str, int] = {
         "message": -1,
@@ -939,6 +940,7 @@ class MainFrame(
         "notebook_goal": 200,
         "braille": 320,
         "section_heading": 220,
+        "ai_engine": 200,
     }
     _STATUS_BAR_FEATURES: dict[str, str] = {
         "message": "core.app",
@@ -3624,6 +3626,8 @@ class MainFrame(
             "tools.check_grammar_ai": self._id_check_grammar_ai,
             "tools.ask_quill_chat": self._id_ask_quill_chat,
             "tools.ai_model": self._id_ai_model,
+            "tools.ai_switch_engine": self._id_ai_switch_engine,
+            "tools.copilot_onboarding": self._id_ai_copilot_setup,
             "tools.ai_session_browser": self._id_ai_session_browser,
             "tools.ai_connection": self._id_ai_connection,
             "tools.ai_rewrite_selection": self._id_ai_rewrite_selection,
@@ -21162,6 +21166,8 @@ class MainFrame(
             self._id_ai_hub,
             self._id_ask_quill_chat,
             self._id_ai_model,
+            self._id_ai_switch_engine,
+            self._id_ai_copilot_setup,
             self._id_ai_session_browser,
             self._id_ai_assistant,
             self._id_ai_prompt_studio,

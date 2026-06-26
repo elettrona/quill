@@ -1435,6 +1435,8 @@ class MenuBuilderMixin:
         self._id_ai_status_badge = wx.NewIdRef()
         self._id_ai_status_detail = wx.NewIdRef()
         self._id_ai_model = wx.NewIdRef()
+        self._id_ai_switch_engine = wx.NewIdRef()
+        self._id_ai_copilot_setup = wx.NewIdRef()
         self._id_ai_session_browser = wx.NewIdRef()
         self._id_speech_models = wx.NewIdRef()
         self._id_speech_voices = wx.NewIdRef()
@@ -1859,6 +1861,14 @@ class MenuBuilderMixin:
         )
         # AI Model and Connection were merged into the AI Hub (one place to
         # configure every provider, its key, model, and run Test Chat).
+        ai_menu.Append(
+            self._id_ai_switch_engine,
+            self._menu_label(_("Switch AI &Engine"), "tools.ai_switch_engine"),
+        )
+        ai_menu.Append(
+            self._id_ai_copilot_setup,
+            self._menu_label(_("Set Up GitHub &Copilot..."), "tools.copilot_onboarding"),
+        )
         ai_menu.Append(
             self._id_ai_session_browser,
             self._menu_label(_("Session &Branches..."), "tools.ai_session_browser"),
@@ -2624,6 +2634,16 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.open_ai_hub(),
             id=self._id_ai_hub,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.cycle_ai_engine(),
+            id=self._id_ai_switch_engine,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_copilot_onboarding(),
+            id=self._id_ai_copilot_setup,
         )
         self.frame.Bind(
             wx.EVT_MENU,

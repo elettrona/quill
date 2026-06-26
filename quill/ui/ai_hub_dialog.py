@@ -170,6 +170,7 @@ class AIHubDialog:
         # proxy never reaches wx. Choice/ListBox/ComboBox labels are
         # already coerced in their own builders.
         self._notebook.AddPage(self._build_provider_tab(), str(_("Provider")))
+        self._notebook.AddPage(self._build_harnesses_tab(), str(_("Engines")))
         self._notebook.AddPage(self._build_on_device_tab(), str(_("On-Device")))
         self._notebook.AddPage(self._build_audio_tab(), str(_("Audio Services")))
         self._notebook.AddPage(self._build_instructions_tab(), str(_("Instructions")))
@@ -262,6 +263,23 @@ class AIHubDialog:
         self._reveal_btn.Bind(wx.EVT_TOGGLEBUTTON, self._on_reveal_key)
         self._test_btn.Bind(wx.EVT_BUTTON, self._on_test_connection)
         return panel
+
+    # ------------------------------------------------------------------
+    # Tab: Engines (harnesses) — pick the agentic engine; install / sign in.
+    # All logic lives in the wx-free-of-this-module EnginesPanel so the Hub
+    # stays within its GATE-11 size budget.
+    # ------------------------------------------------------------------
+
+    def _build_harnesses_tab(self) -> object:
+        from quill.ui.ai_hub_engines_panel import EnginesPanel
+
+        self._engines_panel = EnginesPanel(
+            self._notebook,
+            parent_dialog=self.dialog,
+            announce=self._announce,
+            show_modal=self._show_modal,
+        )
+        return self._engines_panel.panel
 
     # ------------------------------------------------------------------
     # Tab 2: On-Device

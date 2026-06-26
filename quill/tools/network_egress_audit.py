@@ -68,6 +68,14 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "and the SDK talks only to api.elevenlabs.io. Optional 'elevenlabs' extra; "
         "Safe-Mode and consent are enforced by the AI Voice surface."
     ),
+    "core/ai/oauth_poster.py::_real_opener": (
+        "OAuth 2.0 device-flow form POST (AI-19 accessible sign-in). Runs only "
+        "when the user starts a provider/Copilot device login from the onboarding "
+        "dialog; the device_login state machine itself stays poster-free so this "
+        "is the single, explicit egress site. Verified TLS context; posts a "
+        "urlencoded form to the provider's configured device/token endpoints and "
+        "parses the JSON reply (including the OAuth error body on HTTP error)."
+    ),
     "core/assistant_ai.py::_fetch_models_from_endpoint": (
         "User-initiated model discovery from the AI Connection dialog (Verify "
         "Connection / List Models). HTTPS uses a verified context."
@@ -325,6 +333,15 @@ _REVIEWED_EGRESS: dict[str, str] = {
 #   Triggered automatically after the Kokoro model files are downloaded
 #   (Manage Voices > Download Kokoro), or explicitly from Manage Speech Models >
 #   Install Kokoro ONNX, or Tools > Speech > Install Kokoro ONNX.
+#
+# quill/core/ai/sdk_install.py::install_pack
+#   On-demand install of an optional agentic SDK pack (GitHub Copilot SDK,
+#   Claude Agent SDK, or OpenAI Agents SDK) into <app data>/ai-packs/<pack>,
+#   wheel-only via `python -m pip install --only-binary=:all: --target <dir>
+#   <requirement>`. Same gating as the speech engines: explicit user action only
+#   (the AI engine switcher / Copilot onboarding dialog), visible progress,
+#   blocked in Safe Mode, no admin, no silent path. The SDKs are deliberately not
+#   bundled in the installer (large, fast-moving, one-of-three).
 
 
 def _enclosing_function_name(tree: ast.AST, target: ast.AST) -> str:

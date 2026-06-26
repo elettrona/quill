@@ -171,6 +171,19 @@ class SdkHarness:
     def capabilities(self) -> HarnessCapabilities:  # pragma: no cover - overridden
         raise NotImplementedError
 
+    def responder(self) -> Invoke:
+        """Return this pack's produce-text transport (override or SDK-backed).
+
+        Same shape as the Native ``Responder`` (``(AgentSpec, AIContext) -> str``),
+        so the agentic run path can swap engines without changing its threading:
+        the call runs on a background thread and QUILL applies the text through its
+        gateway exactly as for Native. Only call when :meth:`is_available` is True —
+        for an uninstalled pack ``_make_invoke`` would fail to import the SDK.
+        """
+        if self._invoke_override is not None:
+            return self._invoke_override
+        return self._make_invoke()
+
     def start_session(
         self,
         agent: AgentSpec,
