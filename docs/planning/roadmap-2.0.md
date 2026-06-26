@@ -245,7 +245,9 @@ here only so the intent is not lost. None gates 2.0.
 
 - **One planning file for 2.0:** this document plus the agentic AI PRD. New 2.0 design
   goes into the PRD or a referenced spec, not inlined here.
-- **Keep the Phase tables current** as commits land; that is the build tracker.
+- **Keep the Phase tables current** as commits land; that is the build tracker. The
+  granular, end-to-end checklist (incl. packaging, distribution, deployment, assets,
+  and the cross-SDK agent test matrix) lives in [`todo.md`](todo.md) — keep both in sync.
 - **Commit frequently**, with detailed messages — they are the source for the
   end-of-cycle docs.
 - **Stay current with main:** merge `main` into `2.0-dev` regularly.
