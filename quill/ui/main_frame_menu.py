@@ -1679,13 +1679,11 @@ class MenuBuilderMixin:
         # and model management (#669). Previously split across Reading & Dictation >
         # Dictation (Windows) and Speech > Whisperer (offline). One menu is simpler.
         speech_menu = wx.Menu()
+        # One unified entry opens the Speech hub (Read Aloud + Dictation tabs);
+        # voices and dictation models are managed in the same dialog (#700).
         speech_menu.Append(
             self._id_speech_models,
-            self._menu_label(_("&Manage Speech Models..."), "tools.speech_models"),
-        )
-        speech_menu.Append(
-            self._id_speech_voices,
-            self._menu_label(_("Manage &Voices && Reading Aloud..."), "tools.speech_voices"),
+            self._menu_label(_("&Speech and Voices..."), "tools.speech_models"),
         )
         speech_menu.AppendSeparator()
         speech_menu.Append(
@@ -2768,13 +2766,8 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU,
-            lambda _e: self.open_speech_models(),
+            lambda _e: self.open_speech_hub(0),
             id=self._id_speech_models,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.choose_read_aloud_configuration(),
-            id=self._id_speech_voices,
         )
         self.frame.Bind(
             wx.EVT_MENU,

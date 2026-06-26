@@ -16401,8 +16401,8 @@ class MainFrame(
             if backend_error and backend_error != self._announcement_error_reported:
                 self._announcement_error_reported = backend_error
                 self._record_notification(backend_error, "accessibility")
-            if backend_error is None and backend.state().active_backend in {"prism", "speech"}:
-                return
+            if backend_error is None and backend.state().active_backend != "status_only":
+                return  # a real backend (prism / accessible_output2 / speech) already spoke
         announce(message)
 
     def open_misspelling_list(self) -> None:

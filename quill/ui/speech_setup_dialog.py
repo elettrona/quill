@@ -32,6 +32,60 @@ class SpeechSetupResult:
     provider_id: str | None = None
 
 
+def build_engine_descriptors(
+    all_providers: list,
+    *,
+    whispercpp_ok: bool,
+    faster_whisper_ok: bool,
+    vosk_ok: bool,
+) -> list[dict]:
+    """Describe every dictation engine as a radio row (installed or not).
+
+    Whisper.cpp is always present (bundled). Faster Whisper and Vosk appear
+    whether or not they are installed: a not-installed row carries an
+    ``install_action`` so selecting it installs the engine. Any other registered
+    provider (e.g. a cloud Quillin) is appended as an already-installed engine.
+    Pure and wx-free so it is unit-testable.
+    """
+    by_id: dict[str, object] = {}
+    for provider in all_providers:
+        pid = str(getattr(provider, "id", "") or "")
+        if pid:
+            by_id[pid] = provider
+    descriptors: list[dict] = [
+        {
+            "label": "Whisper (built in)",
+            "provider": by_id.get("whispercpp"),
+            "installed": whispercpp_ok,
+            "install_action": None,
+        },
+        {
+            "label": "Faster Whisper (faster, GPU-capable)",
+            "provider": by_id.get("fasterwhisper"),
+            "installed": faster_whisper_ok,
+            "install_action": "engine",
+        },
+        {
+            "label": "Vosk (lightweight, low RAM, no GPU)",
+            "provider": by_id.get("vosk"),
+            "installed": vosk_ok,
+            "install_action": "vosk",
+        },
+    ]
+    known = {"whispercpp", "fasterwhisper", "vosk"}
+    for pid, provider in by_id.items():
+        if pid not in known:
+            descriptors.append(
+                {
+                    "label": str(getattr(provider, "display_name", pid)),
+                    "provider": provider,
+                    "installed": True,
+                    "install_action": None,
+                }
+            )
+    return descriptors
+
+
 class SpeechSetupDialog:
     """Rich speech model manager with full install-state visibility.
 
@@ -126,31 +180,39 @@ class SpeechSetupDialog:
         root = wx.BoxSizer(wx.VERTICAL)
         parent = self._root
 
-        # Engine row — only shown when multiple providers are registered.
-        if len(self._all_providers) > 1:
-            eng_row = wx.BoxSizer(wx.HORIZONTAL)
-            eng_lbl = wx.StaticText(parent, label="Speech &engine:")
-            self._engine_choice = wx.Choice(
-                parent,
-                choices=[self._provider_label(p) for p in self._all_providers],
-            )
-            self._engine_choice.SetName("Speech engine")
-            current_idx = next(
-                (i for i, p in enumerate(self._all_providers) if p is self._provider),
-                0,
-            )
-            self._engine_choice.SetSelection(current_idx)
-            eng_row.Add(eng_lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
-            eng_row.Add(self._engine_choice, 1, wx.EXPAND)
-            root.Add(eng_row, 0, wx.EXPAND | wx.ALL, 10)
-            self._engine_choice.Bind(wx.EVT_CHOICE, self._on_engine_changed)
-        else:
-            self._engine_choice = None  # type: ignore[assignment]
-            eng_lbl = wx.StaticText(
-                parent,
-                label=f"Engine: {self._provider_label(self._provider)}",
-            )
-            root.Add(eng_lbl, 0, wx.ALL, 10)
+        # Dictation engine: one radio choice covering every engine, installed or
+        # not. Selecting an installed engine switches to it; a not-installed engine
+        # (Faster Whisper, Vosk) is installed by the explicit "Install selected
+        # engine" button below — not on selection, so arrowing through the radio
+        # with a screen reader never triggers an install (#700).
+        self._engine_descriptors = self._build_engine_descriptors()
+        choices = [
+            d["label"] if d["installed"] else f"{d['label']} — not installed"
+            for d in self._engine_descriptors
+        ]
+        self._engine_radio = wx.RadioBox(
+            parent,
+            label="Dictation &engine",
+            choices=choices,
+            majorDimension=1,
+            style=wx.RA_SPECIFY_COLS,
+        )
+        self._engine_radio.SetName("Dictation engine")
+        current_idx = next(
+            (
+                i
+                for i, d in enumerate(self._engine_descriptors)
+                if d["provider"] is self._provider
+            ),
+            0,
+        )
+        self._engine_radio.SetSelection(current_idx)
+        root.Add(self._engine_radio, 0, wx.EXPAND | wx.ALL, 10)
+        self._engine_radio.Bind(wx.EVT_RADIOBOX, self._on_engine_radio)
+
+        self._btn_install_engine = wx.Button(parent, label="&Install selected engine")
+        self._btn_install_engine.Bind(wx.EVT_BUTTON, lambda _e: self._on_install_engine())
+        root.Add(self._btn_install_engine, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         # Machine summary.
         self._summary_text = wx.StaticText(parent, label=self._machine_summary)
@@ -185,53 +247,6 @@ class SpeechSetupDialog:
             ffmpeg_row.Add(self._btn_ffmpeg, 0, wx.LEFT, 8)
         dep_box.Add(ffmpeg_row, 0, wx.EXPAND | wx.ALL, 6)
 
-        fw_row = wx.BoxSizer(wx.HORIZONTAL)
-        fw_lbl = wx.StaticText(
-            parent,
-            label=(
-                "Faster Whisper: Installed"
-                if self._engine_ok
-                else "Faster Whisper: Not installed (optional, GPU-accelerated)"
-            ),
-        )
-        fw_row.Add(fw_lbl, 1, wx.ALIGN_CENTER_VERTICAL)
-        if not self._engine_ok:
-            self._btn_engine = wx.Button(parent, label="Install Faster &Whisper...")
-            self._btn_engine.Bind(wx.EVT_BUTTON, lambda _e: self._choose("engine"))
-            fw_row.Add(self._btn_engine, 0, wx.LEFT, 8)
-        dep_box.Add(fw_row, 0, wx.EXPAND | wx.ALL, 6)
-
-        vosk_row = wx.BoxSizer(wx.HORIZONTAL)
-        vosk_lbl = wx.StaticText(
-            parent,
-            label=(
-                "Vosk: Installed"
-                if self._vosk_ok
-                else "Vosk: Not installed (optional, very low RAM, old hardware)"
-            ),
-        )
-        vosk_row.Add(vosk_lbl, 1, wx.ALIGN_CENTER_VERTICAL)
-        if not self._vosk_ok and self._vosk_can_install:
-            self._btn_vosk = wx.Button(parent, label="Install &Vosk...")
-            self._btn_vosk.Bind(wx.EVT_BUTTON, lambda _e: self._choose("vosk"))
-            vosk_row.Add(self._btn_vosk, 0, wx.LEFT, 8)
-        dep_box.Add(vosk_row, 0, wx.EXPAND | wx.ALL, 6)
-
-        kokoro_row = wx.BoxSizer(wx.HORIZONTAL)
-        kokoro_lbl = wx.StaticText(
-            parent,
-            label=(
-                "Kokoro ONNX: Installed"
-                if self._kokoro_ok
-                else "Kokoro ONNX: Not installed (optional, high-quality neural TTS)"
-            ),
-        )
-        kokoro_row.Add(kokoro_lbl, 1, wx.ALIGN_CENTER_VERTICAL)
-        if not self._kokoro_ok and self._kokoro_can_install:
-            self._btn_kokoro = wx.Button(parent, label="Install &Kokoro...")
-            self._btn_kokoro.Bind(wx.EVT_BUTTON, lambda _e: self._choose("kokoro_engine"))
-            kokoro_row.Add(self._btn_kokoro, 0, wx.LEFT, 8)
-        dep_box.Add(kokoro_row, 0, wx.EXPAND | wx.ALL, 6)
         root.Add(dep_box, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         # Model list.
@@ -274,6 +289,7 @@ class SpeechSetupDialog:
         self._model_list.Bind(wx.EVT_LISTBOX, lambda _e: self._update_buttons())
 
         self._update_buttons()
+        self._sync_engine_install_button()
         self._root.SetSizer(root)
 
     @staticmethod
@@ -345,15 +361,36 @@ class SpeechSetupDialog:
             self._result = result
             self.dialog.EndModal(self._wx.ID_OK)  # type: ignore[union-attr]
 
-    def _on_engine_changed(self, event: object) -> None:
-        """Switch engine and repopulate the model list without closing."""
-        if self._engine_choice is None:
+    def _build_engine_descriptors(self) -> list[dict]:
+        return build_engine_descriptors(
+            self._all_providers,
+            whispercpp_ok=self._whispercpp_ok,
+            faster_whisper_ok=self._engine_ok,
+            vosk_ok=self._vosk_ok,
+        )
+
+    def _selected_engine(self) -> dict | None:
+        idx = self._engine_radio.GetSelection()
+        if not (0 <= idx < len(self._engine_descriptors)):
+            return None
+        return self._engine_descriptors[idx]
+
+    def _sync_engine_install_button(self) -> None:
+        """Enable 'Install selected engine' only for a not-installed selection."""
+        descriptor = self._selected_engine()
+        not_installed = descriptor is not None and not descriptor["installed"]
+        self._btn_install_engine.Enable(bool(not_installed))
+
+    def _on_engine_radio(self, event: object) -> None:
+        """Switch to an installed engine on selection. Never installs on select."""
+        self._sync_engine_install_button()
+        descriptor = self._selected_engine()
+        if descriptor is None or not descriptor["installed"]:
+            # Not-installed engines are added via the explicit Install button, so
+            # selecting one only updates that button — the model list is unchanged.
             return
-        idx = self._engine_choice.GetSelection()
-        if not (0 <= idx < len(self._all_providers)):
-            return
-        new_provider = self._all_providers[idx]
-        if new_provider is self._provider:
+        new_provider = descriptor["provider"]
+        if new_provider is None or new_provider is self._provider:
             return
         self._provider = new_provider
         from quill.core.speech.service import describe_models
@@ -365,6 +402,15 @@ class SpeechSetupDialog:
             self.dialog.SetTitle(
                 f"Manage Speech Models — {new_provider.display_name}"  # type: ignore[attr-defined]
             )
+
+    def _on_install_engine(self) -> None:
+        """Install the selected not-installed engine via its host action."""
+        descriptor = self._selected_engine()
+        if descriptor is None or descriptor["installed"]:
+            return
+        action = descriptor["install_action"]
+        if action:
+            self._choose(action)
 
     # ------------------------------------------------------------------
     # Public

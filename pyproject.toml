@@ -44,6 +44,10 @@ ui = [
     # Prism screen-reader speech bridge (Windows) — routes announcements to
     # NVDA/JAWS/Narrator instead of speaking over them.
     "prismatoid>=0.16.6; sys_platform == 'win32'",
+    # accessible_output2: fallback screen-reader speech bridge (Windows). Its
+    # per-reader is_active() detection is used when Prism cannot acquire a live
+    # backend, before resorting to the SAPI self-voice. Pulls in libloader.
+    "accessible_output2>=0.17; sys_platform == 'win32'",
     # Pillow: screen capture (PIL.ImageGrab) and clipboard image support.
     # Also a transitive dependency of pillow-heif on platforms where that installs.
     "Pillow>=12.2.0",

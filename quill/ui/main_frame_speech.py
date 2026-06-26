@@ -151,6 +151,7 @@ class SpeechCommandsMixin:
             "Downloading FFmpeg",
             "Preparing to download ffmpeg...",
             on_cancel=cancel.set,
+            status_fn=self._set_status,
         )
         progress.show()
         self._announce("Downloading ffmpeg.")
@@ -232,6 +233,7 @@ class SpeechCommandsMixin:
             "Installing Faster Whisper",
             "Preparing to install Faster Whisper...",
             on_cancel=cancel.set,
+            status_fn=self._set_status,
         )
         progress.show()
         self._announce("Installing Faster Whisper.")
@@ -316,6 +318,7 @@ class SpeechCommandsMixin:
             "Installing Vosk",
             "Preparing to install Vosk...",
             on_cancel=cancel.set,
+            status_fn=self._set_status,
         )
         progress.show()
         self._announce("Installing Vosk.")
@@ -465,6 +468,7 @@ class SpeechCommandsMixin:
             "Downloading Piper",
             "Preparing download...",
             on_cancel=cancel.set,
+            status_fn=self._set_status,
         )
         progress.show()
         self._announce("Downloading Piper TTS engine.")
@@ -550,6 +554,7 @@ class SpeechCommandsMixin:
             "Downloading eSpeak-NG",
             "Preparing download...",
             on_cancel=cancel.set,
+            status_fn=self._set_status,
         )
         progress.show()
         self._announce("Downloading eSpeak-NG.")
@@ -634,6 +639,7 @@ class SpeechCommandsMixin:
             "Installing Kokoro ONNX",
             "Preparing to install Kokoro ONNX...",
             on_cancel=cancel.set,
+            status_fn=self._set_status,
         )
         progress.show()
         self._announce("Installing Kokoro ONNX.")
@@ -744,6 +750,7 @@ class SpeechCommandsMixin:
             "Downloading Speech Model",
             f"Preparing to download the {model_id} model...",
             on_cancel=cancel.set,
+            status_fn=self._set_status,
         )
         progress.show()
         self._announce(f"Downloading the {model_id} speech model.")
@@ -776,9 +783,14 @@ class SpeechCommandsMixin:
                 wx.CallAfter(self._set_status, f"Could not download model: {exc}")
                 wx.CallAfter(self._announce, f"Could not download the model. {exc}")
                 return
-            wx.CallAfter(progress.close)
             wx.CallAfter(self._set_status, f"Downloaded the {model_id} speech model.")
             wx.CallAfter(self._announce, f"Downloaded the {model_id} speech model.")
+            # Confirm completion with a clear OK button (or, if minimized, a status
+            # line) instead of silently closing — the silent close read as "nothing
+            # happened" even when the model downloaded.
+            progress.switch_to_ok(
+                f"Downloaded the {model_id} speech model. It is ready to use for dictation."
+            )
 
         threading.Thread(  # GATE-40-OK: speech model download worker.
             target=_run, daemon=True

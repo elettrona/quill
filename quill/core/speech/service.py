@@ -234,8 +234,11 @@ def describe_models(
         rec_note = " Recommended for your computer." if recommended else ""
         license_name = info.license_name or ""
         license_note = f" {license_name} licensed." if license_name else ""
+        # Lead with the install state so a screen reader announces "Installed" /
+        # "Not installed" before the long descriptor (#669 follow-up): users were
+        # not registering the buried mid-label state.
         label = (
-            f"{info.display_name} — {state} — {_size_text(info.approximate_size_mb)} "
+            f"{state}: {info.display_name} — {_size_text(info.approximate_size_mb)} "
             f"download — {info.accuracy_tier} accuracy, {info.speed_tier} speed. "
             f"{info.recommended_use} {ram_note}"
             f"{(' ' + gpu_note) if gpu_note else ''}{rec_note}{license_note}"
