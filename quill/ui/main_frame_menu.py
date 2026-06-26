@@ -1446,8 +1446,7 @@ class MenuBuilderMixin:
         self._id_speech_dictate = wx.NewIdRef()
         self._id_speech_voice_command = wx.NewIdRef()
         self._id_speech_microphone = wx.NewIdRef()
-        # Hold-to-Dictate / Locked Dictation menu items (the commands are also the
-        # remappable F9 family; Hold-to-Dictate itself stays keyboard-only).
+        # Locked Dictation menu items (the commands are the remappable Ctrl+F9 family).
         self._id_dictation_lock = wx.NewIdRef()
         self._id_dictation_pause = wx.NewIdRef()
         self._id_dictation_status = wx.NewIdRef()
@@ -1712,10 +1711,8 @@ class MenuBuilderMixin:
             self._id_speech_microphone,
             self._menu_label(_("Dictation &Microphone..."), "tools.speech_microphone"),
         )
-        # Hold-to-Dictate / Locked Dictation control submenu (#10 discoverability).
-        # Hold-to-Dictate is a hold gesture (F9) that a menu click cannot perform,
-        # so only the discrete controls appear here; the keybinding for each is
-        # shown so the keyboard-first workflow stays obvious.
+        # Locked Dictation control submenu (#10 discoverability). The keybinding
+        # for each is shown so the keyboard-first workflow stays obvious.
         dictation_menu = wx.Menu()
         dictation_menu.Append(
             self._id_dictation_lock,
