@@ -375,6 +375,7 @@ def _apply_project_profile(frame: Any, defaults: BatchSpeechRequest) -> BatchSpe
     fmt = profile.output.format
     if fmt not in {"mp3", "m4b", "wav"}:
         fmt = defaults.output_format
+    tr = profile.translation
     return dataclasses.replace(
         defaults,
         engine=syn.engine or defaults.engine,
@@ -391,6 +392,10 @@ def _apply_project_profile(frame: Any, defaults: BatchSpeechRequest) -> BatchSpe
         combine_headings=ch.combine_headings,
         normalize_loudness=ch.normalize_loudness,
         round_robin_voices=tuple(ch.round_robin_voices),
+        # Translated-export targets are remembered per project (roadmap §7).
+        translation_targets=tuple((t.language, t.engine, t.voice) for t in tr.targets),
+        translation_provider=tr.provider,
+        libretranslate_url=tr.libretranslate_url,
     )
 
 
@@ -403,6 +408,8 @@ def _save_project_profile(frame: Any, req: BatchSpeechRequest) -> None:
         OutputProfile,
         SpeechProjectProfile,
         SynthesizerProfile,
+        TranslationProfile,
+        TranslationTarget,
         save_profile,
     )
 
@@ -421,6 +428,14 @@ def _save_project_profile(frame: Any, req: BatchSpeechRequest) -> None:
             combine_headings=req.combine_headings,
             normalize_loudness=req.normalize_loudness,
             round_robin_voices=tuple(req.round_robin_voices),
+        ),
+        translation=TranslationProfile(
+            provider=req.translation_provider,
+            libretranslate_url=req.libretranslate_url,
+            targets=[
+                TranslationTarget(language=c, engine=e, voice=v)
+                for c, e, v in req.translation_targets
+            ],
         ),
     )
     try:

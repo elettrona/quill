@@ -11,6 +11,8 @@ from quill.core.speech.project_profile import (
     PronunciationProfile,
     SpeechProjectProfile,
     SynthesizerProfile,
+    TranslationProfile,
+    TranslationTarget,
     load_profile,
     profile_path,
     save_profile,
@@ -44,7 +46,24 @@ def _full_profile() -> SpeechProjectProfile:
                 DictionaryRef(id="tech", scope="global"),
             ],
         ),
+        translation=TranslationProfile(
+            provider="ai_assistant",
+            targets=[
+                TranslationTarget(language="es", engine="espeak", voice="es"),
+                TranslationTarget(language="fr", engine="openai", voice="nova"),
+            ],
+        ),
     )
+
+
+def test_translation_targets_round_trip() -> None:
+    p = _full_profile()
+    restored = SpeechProjectProfile.from_dict(p.to_dict())
+    assert [t.language for t in restored.translation.targets] == ["es", "fr"]
+    assert restored.translation.targets[1].engine == "openai"
+    # An unknown provider falls back to ai_assistant.
+    bad = SpeechProjectProfile.from_dict({"version": 1, "translation": {"provider": "bogus"}})
+    assert bad.translation.provider == "ai_assistant"
 
 
 def test_round_trips_through_dict() -> None:

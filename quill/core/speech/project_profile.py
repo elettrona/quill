@@ -33,6 +33,7 @@ _VALID_FORMATS = {"wav", "mp3", "m4a", "m4b", "opus", "flac", "ogg"}
 _VALID_EXISTING = {"skip", "overwrite", "rename"}
 _VALID_CHAPTER_MODES = {"none", "single", "separate"}
 _VALID_SCOPES = {"global", "project"}
+_VALID_TRANSLATION_PROVIDERS = {"ai_assistant", "libretranslate"}
 _DEFAULT_EXTENSIONS = [".docx", ".md", ".html", ".txt"]
 # Dictionary file formats we know how to read. "quill-json" is the native
 # PronunciationDictionary schema; others are reserved for future importers.
@@ -373,6 +374,64 @@ class PronunciationProfile:
 
 
 @dataclass(slots=True)
+class TranslationTarget:
+    """One translated-export target: a language and the voice that speaks it (§7)."""
+
+    language: str  # ISO 639-1 base code, e.g. "es"
+    engine: str  # espeak | sapi5 | openai | gemini | elevenlabs
+    voice: str  # engine-native voice id
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"language": self.language, "engine": self.engine, "voice": self.voice}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TranslationTarget:
+        return cls(
+            language=str(data.get("language", "")).strip(),
+            engine=str(data.get("engine", "")).strip(),
+            voice=str(data.get("voice", "")).strip(),
+        )
+
+
+@dataclass(slots=True)
+class TranslationProfile:
+    """Remembered translated-export targets and backend for the project (§7)."""
+
+    provider: str = "ai_assistant"  # ai_assistant | libretranslate
+    libretranslate_url: str = "http://localhost:5000"
+    targets: list[TranslationTarget] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "provider": self.provider,
+            "libretranslate_url": self.libretranslate_url,
+            "targets": [t.to_dict() for t in self.targets],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TranslationProfile:
+        provider = str(data.get("provider", "ai_assistant")).strip().lower()
+        if provider not in _VALID_TRANSLATION_PROVIDERS:
+            provider = "ai_assistant"
+        raw = data.get("targets")
+        targets = (
+            [
+                TranslationTarget.from_dict(t)
+                for t in raw
+                if isinstance(t, dict) and str(t.get("language", "")).strip()
+            ]
+            if isinstance(raw, list)
+            else []
+        )
+        url = str(data.get("libretranslate_url", "http://localhost:5000")).strip()
+        return cls(
+            provider=provider,
+            libretranslate_url=url or "http://localhost:5000",
+            targets=targets,
+        )
+
+
+@dataclass(slots=True)
 class SpeechProjectProfile:
     """The complete remembered speech profile for one project folder (§4.10)."""
 
@@ -386,6 +445,7 @@ class SpeechProjectProfile:
     pronunciation: PronunciationProfile = field(default_factory=PronunciationProfile)
     metadata: MetadataProfile = field(default_factory=MetadataProfile)
     execution: ExecutionProfile = field(default_factory=ExecutionProfile)
+    translation: TranslationProfile = field(default_factory=TranslationProfile)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -398,6 +458,7 @@ class SpeechProjectProfile:
             "pronunciation": self.pronunciation.to_dict(),
             "metadata": self.metadata.to_dict(),
             "execution": self.execution.to_dict(),
+            "translation": self.translation.to_dict(),
         }
 
     @classmethod
@@ -415,6 +476,7 @@ class SpeechProjectProfile:
             pronunciation=PronunciationProfile.from_dict(_sub(data, "pronunciation")),
             metadata=MetadataProfile.from_dict(_sub(data, "metadata")),
             execution=ExecutionProfile.from_dict(_sub(data, "execution")),
+            translation=TranslationProfile.from_dict(_sub(data, "translation")),
         )
 
 

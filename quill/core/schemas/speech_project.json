@@ -270,6 +270,45 @@
           "description": "Write manifest.json and manifest.csv of the run into the output folder."
         }
       }
+    },
+    "translation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Remembered translated-export targets and backend (§7).",
+      "properties": {
+        "provider": {
+          "enum": ["ai_assistant", "libretranslate"],
+          "description": "Translation backend: ai_assistant (the configured AI provider) or libretranslate (local)."
+        },
+        "libretranslate_url": {
+          "type": "string",
+          "description": "Base URL of the LibreTranslate server when provider is libretranslate."
+        },
+        "targets": {
+          "type": "array",
+          "description": "Each language to also export, with the voice that speaks it.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["language"],
+            "properties": {
+              "language": {
+                "type": "string",
+                "minLength": 1,
+                "description": "ISO 639-1 base language code, e.g. \"es\"."
+              },
+              "engine": {
+                "type": "string",
+                "description": "Voice engine: espeak | sapi5 | openai | gemini | elevenlabs."
+              },
+              "voice": {
+                "type": "string",
+                "description": "Engine-native voice id for this language."
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

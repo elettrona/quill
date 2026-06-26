@@ -259,6 +259,8 @@ def test_project_profile_save_then_apply_round_trips(tmp_path: Path) -> None:
         chapter_mode="separate",
         combine_headings=True,
         round_robin_voices=("am_liam", "af_heart"),
+        translation_targets=(("es", "espeak", "es"), ("fr", "openai", "nova")),
+        translation_provider="ai_assistant",
     )
     _save_project_profile(SimpleNamespace(), chosen)  # writes <tmp_path>/.quill/speech-project.json
     assert (tmp_path / ".quill" / "speech-project.json").is_file()
@@ -271,6 +273,9 @@ def test_project_profile_save_then_apply_round_trips(tmp_path: Path) -> None:
     assert applied.sound_enabled is True and applied.article_gap_ms == 900
     assert applied.combine_headings is True
     assert applied.round_robin_voices == ("am_liam", "af_heart")
+    # Translated-export targets and backend are remembered per project.
+    assert applied.translation_targets == (("es", "espeak", "es"), ("fr", "openai", "nova"))
+    assert applied.translation_provider == "ai_assistant"
 
 
 def test_apply_project_profile_no_profile_keeps_defaults(tmp_path: Path) -> None:
