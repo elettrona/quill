@@ -45,6 +45,56 @@ permission model, one diff/undo path, one activity log — *then* harnesses.
 
 ---
 
+## 0a. Landing strategy: what can ship in 1.0 / 1.xx invisibly
+
+Much of the 2.0 foundation is **wx-free, additive, and off until something calls
+it.** That work can land on `main` (1.0 / 1.xx) *before* 2.0 ships, with **no
+user-visible change**, to de-risk 2.0 and bring structural stability early. The
+classification below is an explicit implementation decision, not just planning.
+
+Three tiers:
+
+- **Tier A — Invisible, landable in 1.0 now.** Dormant infrastructure: new modules
+  with no menu item, no dialog, no behavior path until wired. Pure additive code +
+  unit tests. Zero user-facing change; benefit is latent (structure, test coverage,
+  a stable surface for 2.0 to build on) and the risk is essentially nil because
+  nothing in the shipping app imports it yet. **Candidate to cherry-pick to `main`.**
+  - `ai/events.py` (event vocabulary) — Done.
+  - `ai/permissions.py` (Permission Broker) — Done.
+  - `ai/activity_log.py` (Activity Log) — Done.
+  - `ai/tool_gateway.py` (Safe Editor Tool Gateway) — Done.
+  - `ai/context_builder.py` (Context Builder) — pending.
+  - `ai/harness/` protocol + registry + capabilities (types only; no pack imported).
+
+- **Tier B — Invisible-if-careful, fits 1.xx behind tests.** Active consolidation
+  that changes an internal path users should not notice if the migration is correct,
+  and that genuinely improves stability *now* by removing seams. Medium risk;
+  gate behind the existing AI tests + reversible migration. Best shipped in a **1.xx**
+  point release, not silently in 1.0 GA.
+  - One provider truth (PRD §7): converge `ai_chat.PROVIDERS` into `assistant_ai`;
+    reversible one-time key migration. Removes the dual-catalog bug surface.
+  - Route the existing Ask Quill / Writing Assistant edits through the gateway +
+    `diff_review` + the activity log. Same diff/undo behavior the user already sees,
+    now uniform and audited. Stability win; must prove no regression.
+  - Native harness wrapping today's `run_agent` loop behind the gateway (no new UI).
+
+- **Tier C — Visible; 2.0 only.** Anything the user can see or that adds surface
+  area. These define 2.0 and must not be slipped into 1.0.
+  - AI Hub command center (Home/Agents/Sessions/Activity/Harnesses/Permissions tabs).
+  - The optional SDK harness packs (Copilot/Claude/OpenAI/Microsoft/LangGraph/
+    OpenHands) and their extras.
+  - Declarative Agent Catalog as a listed, runnable set; Selection Action Ring;
+    Concierge; Streaming announcements wired to the UI.
+
+**Implementation consequence.** Build Tier A on `2.0-dev` (as now), and once a Tier A
+module is proven, it is eligible to cherry-pick onto `main` for a 1.0/1.xx release —
+it carries no behavior and only adds tested, dormant infrastructure. Tier B is the
+natural content of one or more **1.xx** releases that quietly harden the shipping AI
+stack. Tier C stays on `2.0-dev` until the 2.0 release. The Phase tables in §1 below
+tag each row with its tier.
+
+---
+
 ## 1. The 2.0 build: agentic AI platform
 
 Phases below mirror PRD §18 (priority order, not calendar). The status column is the
@@ -52,15 +102,17 @@ live tracker; update it as commits land on `2.0-dev`.
 
 ### Phase 1 — Consolidate and formalize (foundation)
 
-| Item | PRD | Status |
-| --- | --- | --- |
-| Event vocabulary (`ai/events.py`) | §14 | Done |
-| Permission Broker (`ai/permissions.py`) | §10 | Done |
-| Activity Log (`ai/activity_log.py`) | §9, §14 | Done |
-| Safe Editor Tool Gateway (`ai/tool_gateway.py`) | §9 | In progress |
-| Context Builder (`ai/context_builder.py`) | §11 | Not started |
-| One provider truth (converge `ai_chat.PROVIDERS` into `assistant_ai`) | §7 | Not started |
-| Route existing AI edits through gateway + `diff_review` | §12 | Not started |
+Tier (see §0a): A = invisible/landable in 1.0 now; B = invisible-if-careful, 1.xx.
+
+| Item | PRD | Tier | Status |
+| --- | --- | --- | --- |
+| Event vocabulary (`ai/events.py`) | §14 | A | Done |
+| Permission Broker (`ai/permissions.py`) | §10 | A | Done |
+| Activity Log (`ai/activity_log.py`) | §9, §14 | A | Done |
+| Safe Editor Tool Gateway (`ai/tool_gateway.py`) | §9 | A | Done |
+| Context Builder (`ai/context_builder.py`) | §11 | A | Not started |
+| One provider truth (converge `ai_chat.PROVIDERS` into `assistant_ai`) | §7 | B | Not started |
+| Route existing AI edits through gateway + `diff_review` | §12 | B | Not started |
 
 ### Phase 2 — AI Hub as command center
 
