@@ -127,6 +127,8 @@ Tier (see §0a): A = invisible/landable in 1.0 now; B = invisible-if-careful, 1.
 | Item | PRD | Status |
 | --- | --- | --- |
 | Promote `AIHubDialog` to Home/Agents/Chat/Sessions/Activity/Providers/Harnesses/Audio/Permissions/Advanced (per-tab modules for GATE-11) | §5 | Not started (Tier C, visible) |
+| Unified chat engine (the innerworkings every chat dialog uses) | §2.2 | Done: `ai/chat_session.py` (turns, auto-compaction, streaming, events, persistence). Wiring the dialogs to it is Tier C. |
+| Large-document context (chunk / section / summary) | §11 | Done: `ai/doc_context.py`. |
 | Streaming Event Bridge -> balanced announcements | §6, §14 | Core done (`ai/event_bridge.py`); UI subscription pending (Tier C) |
 | Concierge "What can I do here?" on Home + status bar | §6 | Catalog agent `quill-concierge` exists; UI surface pending (Tier C) |
 
@@ -136,7 +138,7 @@ Tier (see §0a): A = invisible/landable in 1.0 now; B = invisible-if-careful, 1.
 | --- | --- | --- |
 | `core/schemas/agent.json` + catalog loader (`ai/agent_catalog.py`) | §13 | Done |
 | Promote `accessibility_agent` + the four `AgentProfile`s; add Markdown Publisher, Code Doctor, GitHub Maintainer, PRD Architect, Release Notes Builder, Concierge | §13 | Done (11-agent launch set in `ai/agents/`) |
-| Upgrade native harness to a real broker-gated, event-streamed tool-calling loop | §8.1 | Core done: `ai/tool_loop.py` (planner-driven, gateway-gated, recoverable denials, step cap). Provider function-calling planner is the remaining piece. |
+| Upgrade native harness to a real broker-gated, event-streamed tool-calling loop | §8.1 | Done: `ai/tool_loop.py` + `ai/tool_planner.py` (provider-neutral JSON tool-calling) + `ai/agent_tools.py` (shared tool surface). Per-SDK native-tool registration needs the live SDKs. |
 | Selection Action Ring + hunk-preview clean-up + accessibility review on catalog agents | §6 | Model done: `ai/concierge.py` `ring_actions` (+ Concierge `suggest`); the wx ring/Home UI is the remaining Tier C piece. |
 
 ### Phase 4 — Local + BYOK polish

@@ -12,7 +12,11 @@ an **Acceptance** line — the phase is not "done" until it is green and accessi
 
 **Status legend:** `[x]` done · `[~]` in progress / partial · `[ ]` not started.
 
-**Last updated:** 2026-06-26.
+**Last updated:** 2026-06-26 — Phases 1–5 **non-UI innerworkings complete** (provider
+truth + migration; unified ChatSession; large-document chunk/slice/summary;
+tool-calling planner + shared tool surface; rich 15-agent catalog + 60-case cross-SDK
+matrix). Remaining within 1–5 is UI wiring (Phase 6) plus two live-SDK/product items
+flagged `[~]`. Phases 6–7 are deferred per direction (not needed for beta testers).
 
 ---
 
@@ -80,39 +84,47 @@ Every change, every phase:
 
 ## Phase 2 — All chat experiences green + unified
 
-- [ ] Inventory every AI chat/inline surface: **Ask Quill**, **Writing Assistant**,
-  **Ask AI**, **Prompt Studio**, **Agent Center**, inline grammar/spell/thesaurus,
-  Run Python.
-- [ ] Route them all through the consolidated provider + gateway (Phase 1).
-- [ ] **Ask Quill chat** parity: standard text entry, list-navigable messages,
-  copy/stop/retry/insert/replace, "response complete" announcement, streaming via the
-  event bridge.
-- [ ] Error taxonomy surfaced cleanly (auth/quota/network/context-window) with a
-  "what to try next" hint; never a raw traceback.
-- [ ] Cancel everywhere (Escape) cancels in-flight model calls and tool loops.
-- [ ] Session resume/branch from chat (uses `sessions.py`).
-- **Acceptance:** every chat surface works end-to-end against OpenAI, Claude, and a
-  local provider, keyboard-only, with green a11y tests.
+- [x] **Unified chat engine** — `ai/chat_session.py` (`ChatSession`): provider-neutral
+  conversation that holds turns, auto-compacts over budget (via `compaction`), calls
+  any backend, emits normalized events, and serializes for persistence. The chat
+  dialogs become thin views over this one engine.
+- [x] **Streaming + "response complete"** via the event bridge (`send_stream`,
+  `agent_started`/`agent_completed`, deltas summarized).
+- [x] **Error taxonomy contained** — backend failures become `ChatError` + an ERROR
+  event, never a crash/traceback.
+- [x] **Session persistence** — `ChatSession.to_dict`/`from_dict` (branch/resume tree
+  wiring to `sessions.py` is the UI's job).
+- [~] **Inventory + route every dialog** (Ask Quill / Ask AI / Writing Assistant /
+  Prompt Studio / Agent Center) onto `ChatSession` + the consolidated provider:
+  **UI work** (Phase 6) — the engine is ready.
+- [ ] Cancel-everywhere (Escape) wiring — UI (Phase 6).
+- **Acceptance (engine):** the chat engine streams, compacts, contains errors, and
+  persists, provider-neutrally. Tests: `test_chat_session.py` (9). Wiring the dialogs
+  to it is Phase 6.
 
 ---
 
 ## Phase 3 — Full-document context (the document in focus, handled completely)
 
-- [ ] Wire `ContextBuilder` into every agent run (selection / current section /
-  document summary / **full document**).
-- [ ] **Large-document handling:** chunking + `compaction.py` summarization so the
-  whole document can be reasoned over within a model's context window; announce when
-  a summary/compaction is used.
-- [ ] **Context preview** ("what will be sent") dialog before any send — words, file,
-  headings, whether the full doc/workspace is included; Continue / Show Text / Cancel.
-- [ ] **Secret masking + the document-transform round-trip decision.** Resolve how
-  redaction interacts with whole-document transforms (redaction breaks round-trip);
-  pick policy (warn-and-send vs mask-and-warn) per scope and implement.
-- [ ] Outline-aware, **section-scoped** operation for Markdown Publisher /
-  Accessibility Editor (per-section previews instead of whole-file rewrites).
-- [ ] Token/cost estimate + warning before large sends.
-- **Acceptance:** a 50-page document can be summarized, audited, and section-edited
-  with a clear preview and no context-window failures; perf within budget.
+- [x] **Context scopes** — `ContextBuilder` (selection / current section / document
+  summary / full document) with the redacted "what will be sent" payload + summary.
+- [x] **Large-document handling** — `ai/doc_context.py`: `chunk_text` (paragraph-
+  aligned, token-budgeted, hard-splits oversized blocks), `structured_summary`
+  (heading list + per-paragraph excerpts within budget), reused by the
+  `document_summary` scope.
+- [x] **Section-scoped operation** — `doc_context.section_text` extracts one outline
+  section (heading -> next heading) for per-section previews/edits.
+- [x] **Token estimate** — `ContextPreview.token_estimate` (tokenizer-free); used for
+  budget decisions.
+- [~] **Secret-masking + document-transform round-trip decision** — masking exists
+  (`context_builder` uses `redact_source_tokens`, content-preserving); the policy call
+  for whole-document transforms (redaction breaks round-trip) is a **product decision**
+  to confirm, then enforce.
+- [ ] **Context preview dialog** (Continue / Show Text / Cancel) — UI (Phase 6); the
+  payload + speakable summary are ready.
+- **Acceptance (engine):** large docs chunk, summarize, and slice by section within a
+  token budget. Tests: `test_doc_context.py` (10). The preview dialog + "announce when
+  compacting" wiring is Phase 6.
 
 ---
 
@@ -120,27 +132,27 @@ Every change, every phase:
 
 The "ask the SDK to take actions in the document, automatically or with prompting."
 
-- [ ] **Register QUILL editor tools as each SDK's native tools** so the agent's own
-  planner can read/select/replace/patch/run-command *through the gateway* — not the
-  SDK's filesystem.
-  - [ ] **Copilot SDK:** route `on_permission_request` → QUILL `PermissionBroker`;
-    expose QUILL custom tools; the agent edits the in-focus document via the gateway.
-  - [ ] **Claude Agent SDK:** replace `allowed_tools=[]` text-only with QUILL custom
-    tools + a permission callback bridged to the broker.
-  - [ ] **OpenAI Agents SDK:** register function tools that call the gateway; use
-    guardrails/handoffs as available.
-- [ ] **Provider function-calling planner** for the native `tool_loop` so the loop can
-  drive a cloud model directly (loop is built; needs a real planner).
-- [ ] **Two interaction modes**, driven by the safety profile:
-  - [ ] **Auto-apply** (Power User): low-risk tool calls apply with one-undo + an
-    announcement, no prompt.
-  - [ ] **Prompt-to-approve** (Balanced/Careful): each mutating tool call shows the
-    diff/permission prompt before applying.
-- [ ] Multi-step flows: read document → propose plan → apply as accept/reject hunks →
-  summarize what changed, all announced in plain language.
-- **Acceptance:** "Copilot, fix the headings in this document" runs, the agent edits
-  through QUILL's reviewed gateway (auto or prompted per profile), and every change is
-  undoable; same flow proven on Claude and OpenAI.
+- [x] **Provider-neutral tool-calling planner** — `ai/tool_planner.py`
+  (`PromptToolPlanner`): drives the native `tool_loop` by prompting any text model in
+  a strict JSON protocol for the next tool call or final answer; forgiving parser;
+  every requested tool flows through the gateway. End-to-end tested.
+- [x] **Shared agent tool surface** — `ai/agent_tools.py` (`TOOL_DESCRIPTORS` +
+  `execute_tool`): the single tool definition the native loop, the planner, and the
+  SDK packs all use, so an SDK can register QUILL's gateway-backed tools as its own.
+- [x] **Two interaction modes** — already enforced by the broker + gateway: ALLOW =
+  auto-apply with one-undo + announcement; ASK/PREVIEW_REQUIRED = prompt/diff before
+  applying; driven by the safety profile + agent risk.
+- [x] **Multi-step flows** — `ai/tool_loop.py` (planner-driven, gateway-gated,
+  recoverable denials, step cap), proven end-to-end with the planner.
+- [~] **Register QUILL tools as each SDK's native tools** (so the SDK's own planner
+  edits the in-focus document through the gateway, auto or prompted): the shared
+  surface (`agent_tools`) is the foundation; per-SDK custom-tool registration +
+  Copilot `on_permission_request` → `PermissionBroker` needs the live SDKs to wire and
+  validate (the packs currently run text-only through the gateway, which is safe).
+- **Acceptance (engine):** a model drives a multi-step read→edit→finish flow through
+  the reviewed gateway, provider-neutrally. Tests: `test_tool_planner.py` (7),
+  `test_tool_loop.py` (7), `test_agent_tools.py` (5). Per-SDK native-tool wiring is the
+  remaining (live-SDK) piece.
 
 ---
 
@@ -149,25 +161,20 @@ The "ask the SDK to take actions in the document, automatically or with promptin
 Build a **library of real, useful agents** and a **cross-SDK test matrix** proving
 each runs on all three engines with consistent, reviewed results.
 
-- [ ] Expand the catalog with rich, opinionated agents (each a validated
-  `ai/agents/*.json` + a system prompt that produces consistent, reviewable output):
-  - [ ] **Accessibility Editor** — full WCAG-ish structural fixes, section-scoped.
-  - [ ] **Markdown Publisher** — heading/list/table/link normalization.
-  - [ ] **Plain-Language Rewriter** — reading-level target.
-  - [ ] **Citation/Link Fixer** — fix link text + dead-link flags.
-  - [ ] **Meeting-Notes → Action Items**.
-  - [ ] **Code Doctor** — explain/document/tidy (no behavior change).
-  - [ ] **GitHub Maintainer** — issue/changelog/PR-description drafts.
-  - [ ] **Release Notes Builder**, **PRD Architect**, **Summarizer**, **Researcher**.
-- [ ] **Cross-SDK acceptance matrix** (agent × {OpenAI, Claude, Copilot, Native}):
-  each cell has a scripted scenario with an input document, the run, and an assertion
-  on the applied result / announcement (mock transport in CI; live runs gated behind
-  installed extras + keys, recorded in a manual validation log).
-- [ ] **Golden transcripts / fixtures** for deterministic regression of the gateway
-  bridge per SDK.
-- [ ] Document each agent in the user guide with a worked example.
-- **Acceptance:** every catalog agent runs on all three SDK packs + Native through the
-  gateway, with a recorded live validation per (agent, SDK) of the headline set.
+- [x] **Rich agent catalog (15 agents)** — Writing Companion, Accessibility Editor,
+  Markdown Publisher, Code Doctor, GitHub Maintainer, PRD Architect, Release Notes
+  Builder, Summarizer, Researcher, Reviewer, QUILL Concierge, **Plain-Language
+  Rewriter**, **Citation & Link Fixer**, **Meeting-Notes → Action Items**, **Data
+  Cleaner** — each a schema-validated `ai/agents/*.json` with a focused prompt.
+- [x] **Cross-SDK acceptance matrix** — `test_agent_matrix.py`: 15 agents × 4 engines
+  (Native + OpenAI/Claude/Copilot via injected transport) = 60 cases, each running a
+  session through the gateway and asserting the output is applied + completion emitted.
+  Deterministic in CI.
+- [x] **Live validation** — OpenAI and Claude packs validated end-to-end against their
+  real SDKs; Copilot cross-checked against the GA SDK (recorded in the commit history).
+- [ ] Document each agent in the user guide with a worked example — docs (Phase 11).
+- **Acceptance:** ✅ every catalog agent runs on Native + all three SDK packs through
+  the gateway (60-case matrix green); OpenAI/Claude live-validated.
 
 ---
 
