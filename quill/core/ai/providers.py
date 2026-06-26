@@ -21,6 +21,36 @@ class ModelRecommendation:
     reason: str
 
 
+# The canonical, ordered set of provider ids the catalog knows about. "off"
+# (AI disabled) and "ollama" (local) need no key; the rest are keyed providers.
+ALL_PROVIDERS: tuple[str, ...] = (
+    "off",
+    "ollama",
+    "ollama_cloud",
+    "openai",
+    "claude",
+    "openrouter",
+    "gemini",
+    "custom",
+)
+
+
+def allowed_providers(policy: object | None = None) -> list[str]:
+    """Return the provider ids selectable under an optional admin policy (§15).
+
+    With no policy (the default), every catalog provider is returned. With an
+    :class:`~quill.core.ai.admin_policy.AdminPolicy`, the org allow/block lists are
+    applied; ``"off"`` is always selectable so AI can never be policy-locked on.
+    """
+    if policy is None:
+        return list(ALL_PROVIDERS)
+    from quill.core.ai.admin_policy import AdminPolicy, is_provider_allowed
+
+    if not isinstance(policy, AdminPolicy):
+        return list(ALL_PROVIDERS)
+    return [p for p in ALL_PROVIDERS if is_provider_allowed(policy, p)]
+
+
 def default_host_for_provider(provider: str) -> str:
     normalized = provider.strip().lower()
     if normalized == "openai":

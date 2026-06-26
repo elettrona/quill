@@ -369,6 +369,15 @@ def main() -> int:
     apply_pending_data_location_migration()
     _propagate_portable_environment()
     ensure_app_directories()
+    # One provider truth (§7): migrate any legacy/global API keys into the canonical
+    # per-provider slots so every AI surface reads one key per provider. Reversible,
+    # non-destructive, and guarded so it can never block startup.
+    try:
+        from quill.core.assistant_ai import consolidate_provider_keys
+
+        consolidate_provider_keys()
+    except Exception:  # noqa: BLE001 - key migration must never break startup
+        pass
     # Add any on-demand-installed speech engine packs (e.g. Faster Whisper) to
     # sys.path so the speech registry can find them this session (#669 follow-up).
     try:

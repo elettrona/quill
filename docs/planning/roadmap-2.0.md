@@ -119,7 +119,7 @@ Tier (see §0a): A = invisible/landable in 1.0 now; B = invisible-if-careful, 1.
 | Activity Log (`ai/activity_log.py`) | §9, §14 | A | Done |
 | Safe Editor Tool Gateway (`ai/tool_gateway.py`) | §9 | A | Done |
 | Context Builder (`ai/context_builder.py`) | §11 | A | Done |
-| One provider truth (converge `ai_chat.PROVIDERS` into `assistant_ai`) | §7 | B | Not started |
+| One provider truth (converge `ai_chat.PROVIDERS` into `assistant_ai`) | §7 | B | Done (data layer): `ai_chat` reads canonical per-provider key targets; reversible `consolidate_provider_keys` migration at startup; `providers.allowed_providers(policy)`. Tests in `test_provider_truth.py`. |
 | Route existing AI edits through gateway + `diff_review` | §12 | B | Opt-in path done: `ui/agent_editor_host.py` (EditorHost over MainFrame) + `tools.ai_agent_gateway` command behind `QUILL_AI_AGENT_GATEWAY`; validated end-to-end vs live Claude. Making it the default path is the remaining Tier B step. |
 
 ### Phase 2 — AI Hub as command center

@@ -56,19 +56,25 @@ Every change, every phase:
 
 ## Phase 1 — Consolidation (Tier B; invisible, ships in 1.xx)
 
-- [ ] **One provider truth (§7).** Converge `ai_chat.PROVIDERS` into `assistant_ai`;
-  reimplement `ai_chat.send_prompt`/`list_models` as shims over `ProviderChatBackend`.
-  - [ ] Reversible one-time **key migration** from the legacy global credential slot
-    to per-provider `provider_credential_target` (evidence found: this machine's key
-    is in the legacy slot).
-  - [ ] All surfaces read/write one store; changing provider/key in one place changes
-    it everywhere.
-- [ ] **Gateway as the default edit path (§12).** Route the existing Ask Quill /
-  Writing Assistant / inline edits through `tool_gateway` + `diff_review`, replacing
-  the loose callbacks; remove the `QUILL_AI_AGENT_GATEWAY` gate once proven.
-- [ ] Wire **admin policy** into the provider catalog + Hub (core done).
-- **Acceptance:** every chat/inline AI surface uses one provider, one gateway, one
-  diff/undo, one activity log; no behavior regression; key migration reversible.
+- [x] **One provider truth (§7).** `ai_chat.PROVIDERS` now uses the **canonical**
+  per-provider credential targets (`assistant_ai.provider_credential_target`), so the
+  lightweight chat client and the main AI stack read/write the **same key** per
+  provider — no caller rewrites needed (all callers resolve `credential_name`).
+  - [x] Reversible, non-destructive, idempotent **key migration**
+    (`assistant_ai.consolidate_provider_keys`) copies keys from the legacy
+    `quill-<provider>-api-key` slots and the global active-key slot into the canonical
+    slots; run guarded at startup in `__main__.main`.
+  - [x] All keyed surfaces read one store; changing the key in one place changes it
+    for Ask Quill, the chat dialogs, and `SimpleChatBackend`.
+- [~] **Gateway as the default edit path (§12).** The gateway + `MainFrameEditorHost`
+  exist and are the canonical apply path (validated live). Rewiring the *existing*
+  Ask Quill / Writing Assistant dialogs to it and removing the
+  `QUILL_AI_AGENT_GATEWAY` gate is **UI work** (Phase 6) needing GUI validation.
+- [x] Wire **admin policy** into the provider catalog — `providers.allowed_providers(policy)`
+  + `ALL_PROVIDERS`. Hub consumption is UI (Phase 6).
+- **Acceptance:** keyed surfaces share one provider key store; migration reversible +
+  idempotent + never breaks startup; admin policy filters the catalog. Tests:
+  `tests/unit/core/ai/test_provider_truth.py` (8). Remaining is the UI rewiring.
 
 ---
 

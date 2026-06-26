@@ -727,6 +727,52 @@ def clear_provider_api_key(provider: str) -> None:
     _cs_delete(provider_credential_target(provider))
 
 
+# Legacy credential-store targets older builds (and the lightweight ``ai_chat``
+# client) used, kept readable only so existing keys migrate into the canonical
+# per-provider slots. The canonical slot is ``provider_credential_target(provider)``.
+_LEGACY_PROVIDER_TARGETS: dict[str, str] = {
+    "openrouter": "quill-openrouter-api-key",
+    "openai": "quill-openai-api-key",
+    "ollama_cloud": "quill-ollama-api-key",
+}
+
+
+def consolidate_provider_keys() -> list[str]:
+    """Fill empty canonical per-provider key slots from legacy storage (§7).
+
+    The 2.0 "one provider truth": every surface reads one key per provider from
+    ``provider_credential_target``. Older keys may sit in the lightweight
+    ``ai_chat`` slots (``quill-<provider>-api-key``) or the single global active-key
+    slot. This copies those into the canonical slots so all surfaces agree.
+
+    Non-destructive, idempotent, and reversible: it only writes a canonical slot
+    that is currently empty, never overwrites a set one, and never deletes the
+    legacy secret (clearing the canonical slot reverts it). Returns the providers
+    migrated. Never raises — a credential-store hiccup must not break startup.
+    """
+    migrated: list[str] = []
+    try:
+        for provider, legacy_target in _LEGACY_PROVIDER_TARGETS.items():
+            if load_provider_api_key(provider):
+                continue
+            legacy_value = (_cs_load(legacy_target) or "").strip()
+            if legacy_value:
+                _cs_save(provider_credential_target(provider), legacy_value)
+                migrated.append(provider)
+
+        # The single global active-key slot -> the active provider's canonical slot.
+        active = load_assistant_connection_settings().provider.strip().lower()
+        if active and active != "off" and not load_provider_api_key(active):
+            global_value = (load_assistant_api_key() or "").strip()
+            if global_value:
+                _cs_save(provider_credential_target(active), global_value)
+                if active not in migrated:
+                    migrated.append(active)
+    except Exception:  # noqa: BLE001 - a migration must never break startup
+        return migrated
+    return migrated
+
+
 def provider_models_path() -> Path:
     """Path to the per-provider default-model map."""
     return assistant_connection_path().parent / "assistant-provider-models.json"
