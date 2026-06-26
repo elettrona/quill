@@ -81,8 +81,13 @@ the field -- the canonical case is restoring **Find** to `Ctrl+F`. Use a
 - It is **opt-out**: users who prefer to keep their own choices set
   `apply_recommended_keymap_updates = False` in Settings, and nothing is forced.
 
-Applied at startup by `MainFrame._apply_recommended_keymap_updates()` after
-settings and keymap load.
+The same mechanism exists for **settings** (`RecommendedSettingsUpdate` +
+`apply_recommended_settings_updates`): because an upgraded settings file from an
+older build is a full snapshot, a changed default would otherwise stay pinned, so
+an important settings-default change can be force-set once the same way. Both are
+applied at startup by `MainFrame._apply_recommended_keymap_updates()` after
+settings and keymap load, share the `apply_recommended_keymap_updates` opt-out,
+and record applied ids in `settings.applied_recommended_updates`.
 
 ## Recipe: rename / retype / split a field (schema bump)
 
@@ -97,11 +102,27 @@ the old file as legacy, it is backed up before the rewrite automatically.
   touched by migration; only the small config files are rewritten, and always
   after a backup.
 - **Corruption tolerant.** A bad value in one field falls back to that field's
-  default without discarding the rest (settings validate field-by-field).
+  default without discarding the rest (settings validate field-by-field). A whole
+  file that is *unparseable* is **quarantined** before reset: the loader catches
+  the decode error, copies the original to `migration-backups/<name>-corrupt-*`,
+  and returns defaults -- so a corrupt config never crashes startup and is always
+  recoverable (`migration_backup.backup_corrupt_file`, used by `load_keymap` and
+  `versioned_store.load_with_migration`).
 - **Best-effort persistence.** A read-only or locked data dir never blocks
   startup; valid state is already in memory and the rewrite retries next launch.
 - **Backward tolerant.** An older build opening a newer delta file ignores
   override keys it does not recognize rather than crashing.
+
+## Enforcement (the gate)
+
+`quill/tools/persistence_audit.py` (and `tests/unit/tools/test_persistence_audit.py`)
+make the contract self-sustaining: an AST scan finds every `write_json_atomic`
+call site, and the test fails if any is **unclassified** in `_REVIEWED_PERSISTENCE`.
+So a new persisted store cannot be added without consciously tagging it
+`versioned`, `framework`, `secret`, `export`, `content`, `cache`, `marker`, or
+`needs-versioning`. The `needs-versioning` tag is the tracked backlog of real
+config stores that should still adopt the versioned-delta contract (run
+`python -m quill.tools.persistence_audit` to see the count).
 
 ## Installer interaction
 

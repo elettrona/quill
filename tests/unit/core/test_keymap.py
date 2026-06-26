@@ -459,3 +459,19 @@ def test_keyboard_pack_preview_mentions_highlights() -> None:
 def test_keyboard_packs_are_known() -> None:
     assert KEYBOARD_PACK_DEFAULT in KEYBOARD_PACKS
     assert "Quill Writer" in KEYBOARD_PACKS
+
+
+def test_corrupt_keymap_file_is_quarantined_then_defaults(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store_path = tmp_path / "keymap-store.json"
+    monkeypatch.setattr(keymap_module, "keymap_path", lambda: store_path)
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    store_path.write_text("not json at all", encoding="utf-8")
+
+    loaded = load_keymap()
+
+    assert loaded == DEFAULT_KEYMAP
+    backups = list((tmp_path / "migration-backups").glob("keymap-corrupt-*.json"))
+    assert len(backups) == 1
+    assert backups[0].read_text(encoding="utf-8") == "not json at all"

@@ -75,6 +75,31 @@ def backup_before_migration(name: str, raw: dict[str, Any], *, version_tag: str)
         _recent_migrations.append(name)
 
 
+def backup_corrupt_file(name: str, path: Path) -> None:
+    """Quarantine an existing-but-unparseable store before it is reset to defaults.
+
+    When a config file is present but cannot be read as a valid document, the
+    loader falls back to defaults -- which would otherwise overwrite the bad file
+    on the next save and lose whatever the user had. Copy its raw bytes to
+    ``migration-backups/<name>-corrupt-<timestamp>.json`` first so the original
+    is always recoverable. Best-effort: never blocks startup.
+    """
+    stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S-%f")
+    backups_dir = migration_backups_dir()
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return
+    try:
+        backups_dir.mkdir(parents=True, exist_ok=True)
+        (backups_dir / f"{name}-corrupt-{stamp}.json").write_bytes(data)
+        _prune(backups_dir, f"{name}-")
+    except OSError as exc:
+        logger.debug("Could not back up corrupt %s file: %s", name, exc)
+    if name not in _recent_migrations:
+        _recent_migrations.append(name)
+
+
 def _prune(backups_dir: Path, prefix: str) -> None:
     backups = sorted(backups_dir.glob(f"{prefix}*.json"), key=lambda p: p.stat().st_mtime)
     for stale in backups[:-_KEEP]:
@@ -87,6 +112,7 @@ def _prune(backups_dir: Path, prefix: str) -> None:
 __all__ = [
     "BACKUP_DIRNAME",
     "backup_before_migration",
+    "backup_corrupt_file",
     "migration_backups_dir",
     "pop_recent_migrations",
 ]

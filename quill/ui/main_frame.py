@@ -13085,28 +13085,45 @@ class MainFrame(
         """
         from quill.core.recommended_updates import (
             RECOMMENDED_KEYMAP_UPDATES,
+            RECOMMENDED_SETTINGS_UPDATES,
             apply_recommended_keymap_updates,
+            apply_recommended_settings_updates,
         )
         from quill.core.settings import save_settings as _save_settings
 
-        updated, newly = apply_recommended_keymap_updates(
+        enabled = getattr(self.settings, "apply_recommended_keymap_updates", True)
+        already = set(getattr(self.settings, "applied_recommended_updates", []))
+
+        # Keymap updates (e.g. Find -> Ctrl+F).
+        updated_keymap, keymap_newly = apply_recommended_keymap_updates(
             self.keymap,
-            getattr(self.settings, "applied_recommended_updates", []),
-            enabled=getattr(self.settings, "apply_recommended_keymap_updates", True),
+            already,
+            enabled=enabled,
             valid_command_ids=frozenset(DEFAULT_KEYMAP),
         )
+        # Settings updates: force a changed settings default once (the settings
+        # analog, so a changed default reaches already-upgraded users too).
+        settings_newly = apply_recommended_settings_updates(
+            lambda field, value: setattr(self.settings, field, value),
+            already | keymap_newly,
+            enabled=enabled,
+            valid_fields=frozenset(self.settings.__dataclass_fields__),
+        )
+        newly = keymap_newly | settings_newly
         if not newly:
             return
-        # Capture what changed, and the prior bindings, so the migration notice
-        # can describe it and offer a one-click Undo (self.keymap still holds the
-        # pre-update values here).
-        applied = [u for u in RECOMMENDED_KEYMAP_UPDATES if u.id in newly]
+        # Capture the prior bindings (self.keymap still holds them) so the
+        # migration notice can offer a one-click Undo of the shortcut change, and
+        # collect human reasons from both kinds of update for the notice.
+        applied_keymap = [u for u in RECOMMENDED_KEYMAP_UPDATES if u.id in keymap_newly]
+        applied_settings = [u for u in RECOMMENDED_SETTINGS_UPDATES if u.id in settings_newly]
         self._recommended_update_undo = {
-            u.command_id: self.keymap.get(u.command_id, "") for u in applied
+            u.command_id: self.keymap.get(u.command_id, "") for u in applied_keymap
         }
-        self._recommended_update_summaries = [u.reason for u in applied]
-        self.keymap = updated
-        already = set(getattr(self.settings, "applied_recommended_updates", []))
+        self._recommended_update_summaries = [u.reason for u in applied_keymap] + [
+            u.reason for u in applied_settings
+        ]
+        self.keymap = updated_keymap
         self.settings.applied_recommended_updates = sorted(already | newly)
         try:
             save_keymap(self.keymap)
@@ -13114,7 +13131,7 @@ class MainFrame(
         except OSError:
             # Best-effort: a locked/read-only data dir must not break startup;
             # the update is in memory and will retry on the next launch.
-            self._report_startup_task_failure("recommended keymap updates")
+            self._report_startup_task_failure("recommended updates")
 
     def _surface_migration_notice(self) -> None:
         """Tell the user, once, that QUILL migrated their settings/shortcuts.

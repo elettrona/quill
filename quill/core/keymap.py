@@ -396,8 +396,19 @@ def load_keymap() -> dict[str, str]:
     the epoch so the one-time clean-up never runs again.
     """
     path = keymap_path()
-    raw = read_json(path, default={})
+    if not path.exists():
+        return DEFAULT_KEYMAP.copy()
+    try:
+        raw = read_json(path, default=None)
+    except (ValueError, OSError):
+        raw = None
     if not isinstance(raw, dict):
+        # A file that exists but does not parse is corrupt: quarantine it before
+        # falling back to defaults, so the user's bindings are recoverable and a
+        # bad file never crashes startup.
+        from quill.core.migration_backup import backup_corrupt_file
+
+        backup_corrupt_file("keymap", path)
         return DEFAULT_KEYMAP.copy()
     cleaned = merge_keymaps(raw)
     desired = _persisted_keymap_document(cleaned)

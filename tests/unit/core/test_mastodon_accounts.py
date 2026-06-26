@@ -81,3 +81,17 @@ def test_display_name_without_handle_is_just_the_nickname(store: dict[str, str])
         access_token="tok",
     )
     assert account.display_name == "Plain"
+
+
+def test_accounts_file_carries_a_schema_version(store: dict[str, str]) -> None:
+    import json as _json
+
+    _add("Main")
+    raw = _json.loads(Path(str(accounts.accounts_path())).read_text(encoding="utf-8"))
+    assert raw["schema_version"] == 1
+    # An older unversioned file (no schema_version) still loads.
+    Path(str(accounts.accounts_path())).write_text(
+        _json.dumps({"accounts": raw["accounts"], "default_id": raw["default_id"]}),
+        encoding="utf-8",
+    )
+    assert [a.nickname for a in accounts.list_accounts()] == ["Main"]

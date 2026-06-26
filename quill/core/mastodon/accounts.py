@@ -24,6 +24,9 @@ from quill.platform.windows.credential_store import (
 )
 
 _ACCOUNTS_FILENAME = "mastodon-accounts.json"
+#: On-disk schema version (per the persistence contract). Bump + migrate in
+#: list_accounts() if the stored shape ever changes incompatibly.
+_ACCOUNTS_SCHEMA_VERSION = 1
 
 
 def _token_cred(account_id: str) -> str:
@@ -103,6 +106,7 @@ def _persist(accounts: list[MastodonAccount], default_id: str | None) -> None:
     write_json_atomic(
         accounts_path(),
         {
+            "schema_version": _ACCOUNTS_SCHEMA_VERSION,
             "accounts": [
                 {
                     "id": a.id,

@@ -93,8 +93,66 @@ def apply_recommended_keymap_updates(
     return updated, newly
 
 
+@dataclass(frozen=True)
+class RecommendedSettingsUpdate:
+    """One important *settings* default we push to existing users, once.
+
+    The settings analog of :class:`RecommendedKeymapUpdate`: because an upgraded
+    settings file from an older build is a full snapshot, a changed default would
+    otherwise stay pinned. A recommended settings update force-sets the field a
+    single time (recorded by ``id``), then leaves it alone, so the user can
+    change it back. ``field`` is a ``Settings`` attribute name; ``value`` is the
+    value to set; ``reason`` is a short human note.
+    """
+
+    id: str
+    field: str
+    value: object
+    reason: str
+
+
+#: Ordered registry of important settings-default changes to push once. Empty
+#: today: it exists so a future changed default that must reach already-upgraded
+#: users has a home, instead of silently staying pinned (the gap that the keymap
+#: registry above closed for shortcuts). Append entries with brand-new ids.
+RECOMMENDED_SETTINGS_UPDATES: tuple[RecommendedSettingsUpdate, ...] = ()
+
+
+def apply_recommended_settings_updates(
+    apply_field: object,
+    applied_ids: Iterable[str],
+    *,
+    enabled: bool,
+    valid_fields: frozenset[str] | None = None,
+) -> set[str]:
+    """Apply not-yet-applied recommended settings updates, returning their ids.
+
+    ``apply_field`` is called as ``apply_field(field, value)`` for each update
+    that fires (the caller sets it on its live ``Settings``). Returns the set of
+    newly applied ids to record. Mirrors the keymap variant: ``enabled`` False
+    is a no-op that marks nothing; an id already in ``applied_ids`` is skipped;
+    ``valid_fields`` guards against a stale entry naming a removed field.
+    """
+    if not enabled:
+        return set()
+    already = set(applied_ids)
+    newly: set[str] = set()
+    setter = apply_field  # type: ignore[assignment]
+    for update in RECOMMENDED_SETTINGS_UPDATES:
+        if update.id in already:
+            continue
+        if valid_fields is not None and update.field not in valid_fields:
+            continue
+        setter(update.field, update.value)  # type: ignore[operator]
+        newly.add(update.id)
+    return newly
+
+
 __all__ = [
     "RECOMMENDED_KEYMAP_UPDATES",
+    "RECOMMENDED_SETTINGS_UPDATES",
     "RecommendedKeymapUpdate",
+    "RecommendedSettingsUpdate",
     "apply_recommended_keymap_updates",
+    "apply_recommended_settings_updates",
 ]

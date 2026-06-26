@@ -28,7 +28,7 @@ import logging
 from collections.abc import Callable
 from pathlib import Path
 
-from quill.core.migration_backup import backup_before_migration
+from quill.core.migration_backup import backup_before_migration, backup_corrupt_file
 from quill.core.storage import read_json, write_json_atomic
 
 logger = logging.getLogger(__name__)
@@ -76,8 +76,18 @@ def load_with_migration[T](
     best-effort: a read-only or locked file never blocks startup -- the valid
     object is already in memory and cleanup retries next launch.
     """
-    raw = read_json(path, default=None)
+    if not path.exists():
+        return default()
+    try:
+        raw = read_json(path, default=None)
+    except (ValueError, OSError):
+        raw = None
     if not isinstance(raw, dict):
+        # A file that exists but does not parse (malformed JSON or the wrong
+        # top-level type) is corrupt: quarantine it before falling back to
+        # defaults (which the next save would overwrite), so the user's original
+        # is always recoverable -- and so a bad file never crashes startup.
+        backup_corrupt_file(store_name, path)
         return default()
     obj = parse(raw)
     desired = serialize(obj)

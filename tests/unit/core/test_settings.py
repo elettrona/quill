@@ -748,3 +748,19 @@ def test_migration_notice_defaults_to_announce_and_validates() -> None:
     # Unknown values fall back to the default.
     assert Settings.from_dict({"migration_notice": "bogus"}).migration_notice == "announce"
     assert Settings.from_dict({"migration_notice": 7}).migration_notice == "announce"
+
+
+def test_corrupt_settings_file_is_quarantined_then_defaults(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # A present-but-unparseable settings file must be backed up (not silently
+    # lost) before load falls back to defaults.
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    settings_path().write_text("{ this is not valid json", encoding="utf-8")
+
+    loaded = load_settings()
+
+    assert loaded == Settings()
+    backups = list((tmp_path / "migration-backups").glob("settings-corrupt-*.json"))
+    assert len(backups) == 1
+    assert backups[0].read_text(encoding="utf-8") == "{ this is not valid json"
