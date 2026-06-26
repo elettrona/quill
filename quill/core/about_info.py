@@ -96,15 +96,6 @@ _OVERVIEW_PARAGRAPHS: tuple[str, ...] = (
     "Manage Speech Models.",
 )
 
-_BIT_WHISPERER_PARA = (
-    "BITS Whisperer brings speech and dictation integration to QUILL, arriving "
-    "in phases: a speech-model manager with machine-aware recommendations, a "
-    "provider center with local-first and cloud planning, readiness checks, and "
-    "a download queue. Bundled Read Aloud voices (DECtalk and eSpeak NG) play "
-    "immediately with no downloads; Piper and Kokoro models install through "
-    "the Speech Center."
-)
-
 
 @dataclass(frozen=True)
 class Link:

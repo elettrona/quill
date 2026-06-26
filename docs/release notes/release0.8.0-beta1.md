@@ -136,7 +136,7 @@ with no jargon and no list of what you will not get. Seven starting profiles, fr
 **Just a Text Editor** (QUILL at its quietest) through **Writer**, **Markdown and
 Web Author**, **Accessibility Professional**, **Braille Professional**,
 **AI-Powered Author**, and **Developer and Power User**, are a curated front door
-to the full catalog. Press **Alt+Shift+P** anytime to switch, reading the same
+to the full catalog of ten built-in feature profiles. Press **Alt+Shift+P** anytime to switch, reading the same
 "what you get" description before you commit. Menus, the Command Palette, Go to
 Anything, the system tray, and even Preferences all adjust instantly — commands
 for features you have not enabled simply do not appear. Cancel the wizard and you

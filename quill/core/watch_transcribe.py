@@ -137,10 +137,10 @@ class WhispererTranscribeAction(_BaseAction):
             if not has_installed_offline_model():
                 return [
                     "No offline speech model is installed. Open Tools > Speech > "
-                    "Whisperer > Manage Speech Models to download one."
+                    "Manage Speech Models to download one."
                 ]
         except Exception:  # noqa: BLE001 - missing optional engine, not a crash
-            return ["The offline Whisperer engine is not available on this machine."]
+            return ["The offline speech engine is not available on this machine."]
         return []
 
     def preview(self, item: WatchItem, options: Mapping[str, object]) -> str:
@@ -149,7 +149,7 @@ class WhispererTranscribeAction(_BaseAction):
         )
         return (
             f"Transcribe {item.source_path.name} on this machine with the offline "
-            f"Whisperer engine and save the transcript as {item.source_path.stem}{ext} "
+            f"speech engine and save the transcript as {item.source_path.stem}{ext} "
             "next to the audio (nothing is uploaded)."
         )
 

@@ -2643,7 +2643,7 @@ The wizard walks you through six short pages (five if you do not enable AI writi
 
 **Important:** The wizard is transactional. Your choices are held in memory until you press Finish. If you close or cancel the wizard, no settings are changed.
 
-**Profiles explained:** The four built-in profiles each start you at a different level of feature density and accessibility support. You can switch profiles at any time from **Tools → Customize & Support → Profiles and Features...** or by pressing `Alt+Shift+P`.
+**Profiles explained:** QUILL ships ten built-in feature profiles, each starting you at a different level of feature density and accessibility support (the first-run wizard surfaces seven of them as plain-English starting points). You can switch profiles at any time from **Tools → Customize & Support → Profiles and Features...** or by pressing `Alt+Shift+P`.
 
 | Profile | Best for |
 |---------|----------|
