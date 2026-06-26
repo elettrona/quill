@@ -236,3 +236,11 @@ class AiActionsMixin:
         self._invalidate_ai_engine_caches()
         self._refresh_statusbar()
         self._request_menu_refresh()
+
+    def open_agent_validator(self) -> None:
+        """Open the Validate Agents dialog (the agent standards linter, in-app)."""
+        from quill.ui.agent_validator_dialog import AgentValidatorDialog
+
+        AgentValidatorDialog(
+            self.frame, self._show_modal_dialog, announce=self._set_status
+        ).show()

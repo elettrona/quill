@@ -1437,6 +1437,7 @@ class MenuBuilderMixin:
         self._id_ai_model = wx.NewIdRef()
         self._id_ai_switch_engine = wx.NewIdRef()
         self._id_ai_copilot_setup = wx.NewIdRef()
+        self._id_ai_validate_agents = wx.NewIdRef()
         self._id_ai_session_browser = wx.NewIdRef()
         self._id_speech_models = wx.NewIdRef()
         self._id_speech_voices = wx.NewIdRef()
@@ -1868,6 +1869,10 @@ class MenuBuilderMixin:
         ai_menu.Append(
             self._id_ai_copilot_setup,
             self._menu_label(_("Set Up GitHub &Copilot..."), "tools.copilot_onboarding"),
+        )
+        ai_menu.Append(
+            self._id_ai_validate_agents,
+            self._menu_label(_("&Validate Agents..."), "tools.validate_agents"),
         )
         ai_menu.Append(
             self._id_ai_session_browser,
@@ -2644,6 +2649,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.open_copilot_onboarding(),
             id=self._id_ai_copilot_setup,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_agent_validator(),
+            id=self._id_ai_validate_agents,
         )
         self.frame.Bind(
             wx.EVT_MENU,

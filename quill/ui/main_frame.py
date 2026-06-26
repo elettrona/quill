@@ -3628,6 +3628,7 @@ class MainFrame(
             "tools.ai_model": self._id_ai_model,
             "tools.ai_switch_engine": self._id_ai_switch_engine,
             "tools.copilot_onboarding": self._id_ai_copilot_setup,
+            "tools.validate_agents": self._id_ai_validate_agents,
             "tools.ai_session_browser": self._id_ai_session_browser,
             "tools.ai_connection": self._id_ai_connection,
             "tools.ai_rewrite_selection": self._id_ai_rewrite_selection,
