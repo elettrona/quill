@@ -21,9 +21,11 @@
 > end.
 
 **Created:** 2026-06-25. **Last updated:** 2026-06-25 (Phase 1 Tier A foundation
-complete; harness layer + all six SDK packs built; Agent Catalog + launch set,
-Streaming Event Bridge core, and native-backend Responder adapter added — all
-Tier A, dormant, back-portable to main).
+complete; harness layer + all six SDK packs; Agent Catalog + launch set; Streaming
+Event Bridge; native-backend Responder; opt-in editor wiring validated vs live
+Claude; Concierge + Selection Action Ring model; native tool-calling loop; admin
+policy. Remaining: provider consolidation (§7, Tier B), the AI Hub UI (Tier C),
+and provider function-calling planner / live SDK-pack validation).
 
 ---
 
@@ -175,9 +177,12 @@ are added when a pack's transport is activated against its SDK.
 
 ### Phase 6 — Enterprise + durable workflows
 
-Admin policy enforcement (`allowedProviders`/`blockedProviders`/`allowUserApiKeys`),
-LangGraph durable pause/resume workflows (release prep, accessibility audit, PRD
-creation) persisted via atomic storage. PRD §15, §18.6.
+Admin policy enforcement (`allowedProviders`/`blockedProviders`/`allowUserApiKeys`):
+**core done** — `ai/admin_policy.py` (`AdminPolicy`, `is_provider_allowed`,
+`filter_providers`, `from_dict`); wiring it into the provider catalog/Hub is the
+remaining piece. LangGraph durable pause/resume workflows (release prep,
+accessibility audit, PRD creation) persisted via atomic storage: not started.
+PRD §15, §18.6.
 
 ### Phase 7 — Developer agents + marketplace
 
