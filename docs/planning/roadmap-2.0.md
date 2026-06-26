@@ -159,8 +159,8 @@ the buffer directly.
 | Harness protocol + registry + capabilities | `ai/harness/__init__.py` | §8.1, §8.2 | Done |
 | Native (default) | `ai/harness/native.py` | §8.1 | Done (single generate-and-apply; tool-loop upgrade is Phase 3) |
 | Copilot SDK | `ai_packs/copilot.py` (`quill[ai-copilot]`) | §18.5 | Done (transport scaffolded; validate with SDK installed) |
-| Claude Agent SDK | `ai_packs/claude.py` (`quill[ai-claude]`) | §18.5 | Done (transport scaffolded; validate with SDK installed) |
-| OpenAI Agents SDK | `ai_packs/openai_agents.py` (`quill[ai-openai]`) | §18.5 | Done (transport scaffolded; validate with SDK installed) |
+| Claude Agent SDK | `ai_packs/claude.py` (`quill[ai-claude]`) | §18.5 | **Done — validated live** against the real SDK (`claude_agent_sdk.query`, AssistantMessage/TextBlock, `allowed_tools=[]` text-only). |
+| OpenAI Agents SDK | `ai_packs/openai_agents.py` (`quill[ai-openai]`) | §18.5 | **Done — validated live** against the real SDK (`agents.Agent` + `Runner.run_sync` -> `final_output`). |
 | Microsoft Agent Framework | `ai_packs/microsoft.py` (`quill[ai-microsoft]`) | §18.6 | Done (transport scaffolded; validate with SDK installed) |
 | LangGraph (durable, human-in-the-loop) | `ai_packs/langgraph.py` (`quill[ai-langgraph]`) | §18.6 | Done (transport scaffolded; validate with SDK installed) |
 | OpenHands (sandboxed, flag-gated) | `ai_packs/openhands.py` (`quill[ai-openhands]`) | §18.7 | Done (transport scaffolded; validate with SDK installed) |

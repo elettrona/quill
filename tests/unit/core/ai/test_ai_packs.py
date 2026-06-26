@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import pytest
+
 from quill.ai_packs import all_packs, register_all
 from quill.ai_packs._base import SdkHarness
 from quill.core.ai.activity_log import ActivityLog
@@ -113,7 +115,11 @@ def test_register_all_into_registry() -> None:
 
 def test_unavailable_session_returns_error_not_crash(tmp_path: Path) -> None:
     events: list[AgentEvent] = []
-    pack = next(p for p in all_packs() if p.id == "claude_agent_sdk")
+    # Pick a pack whose SDK is NOT installed, so this never triggers a real model
+    # call (some SDKs may be installed locally, e.g. openai-agents/claude-agent-sdk).
+    pack = next((p for p in all_packs() if not p.is_available()[0]), None)
+    if pack is None:
+        pytest.skip("all SDK packs are installed in this environment")
     gw = _gateway(tmp_path, FakeHost(), events)
     session = pack.start_session(
         _agent(), AIContext(prompt="hi"), gw, PermissionBroker(), events.append
