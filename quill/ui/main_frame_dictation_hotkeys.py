@@ -24,9 +24,12 @@ they behave normally the rest of the time.
 
 from __future__ import annotations
 
+import logging
 import time
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 _DICTATION_COMMANDS: tuple[tuple[str, str], ...] = (
     ("tools.dictation_lock_toggle", "Locked Dictation (start/finish)"),
@@ -53,21 +56,40 @@ class _LiveDictationServices:
         return self._repo
 
     def start_capture(self, session: Any) -> None:
-        from quill.core.speech.capture import MicRecorder
+        from quill.core.speech.capture import MicRecorder, list_input_devices
         from quill.core.speech.service import load_input_device
 
+        device = load_input_device()
+        try:
+            name = next(
+                (n for i, n in list_input_devices() if i == device),
+                "system default" if device < 0 else f"index {device}",
+            )
+        except Exception:  # noqa: BLE001 - logging must not block capture
+            name = "?"
+        logger.info("dictation: capture start, mic index=%s (%s)", device, name)
         recorder = MicRecorder()
-        recorder.start(load_input_device())  # raises on failure -> MIC_UNAVAILABLE
+        recorder.start(device)  # raises on failure -> MIC_UNAVAILABLE
         self._recorder = recorder
 
     def stop_capture(self, session: Any) -> Path | None:
         recorder = self._recorder
         self._recorder = None
         if recorder is None:
+            logger.info("dictation: stop_capture with no active recorder")
             return None
         try:
-            return recorder.stop()
-        except Exception:  # noqa: BLE001 - capture cleanup must not raise over the result
+            path = recorder.stop()
+            try:
+                size = Path(path).stat().st_size
+            except OSError:
+                size = -1
+            logger.info("dictation: capture stopped, wav=%s size=%d bytes", path, size)
+            if 0 <= size <= 44:  # WAV header only, no audio frames
+                logger.warning("dictation: WAV has no audio — check mic selection / OS mic access")
+            return path
+        except Exception as exc:  # noqa: BLE001 - capture cleanup must not raise over the result
+            logger.warning("dictation: stop_capture failed: %s", exc)
             return None
 
     def pause_capture(self, session: Any) -> None:
@@ -110,14 +132,19 @@ class _LiveDictationServices:
         from quill.core.speech.provider import TranscriptionRequest
 
         request = TranscriptionRequest(source_path=audio_path, model_id=model_id)
+        asize = audio_path.stat().st_size if (audio_path and audio_path.exists()) else -1
+        logger.info("dictation: transcribe model=%s audio size=%d bytes", model_id, asize)
 
         def _work(progress: Any) -> Any:
             try:
                 result = provider.transcribe_file(  # type: ignore[attr-defined]
                     request, lambda f, m: progress(m, int(f * 100), 100)
                 )
-                return ("ok", (getattr(result, "full_text", "") or "").strip())
+                text = (getattr(result, "full_text", "") or "").strip()
+                logger.info("dictation: transcription ok, %d chars: %r", len(text), text[:120])
+                return ("ok", text)
             except Exception as exc:  # noqa: BLE001 - report failure to the controller
+                logger.warning("dictation: transcription failed: %s", exc)
                 return ("error", str(exc))
 
         def _done(payload: Any) -> None:
