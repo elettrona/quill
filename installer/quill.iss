@@ -84,6 +84,35 @@ Name: "speechwhisper"; Description: "Install the offline speech engine (whisper.
 Name: "nodejs"; Description: "Install portable Node.js runtime for Node Quillins and the Developer Console TypeScript interface (~30 MB); not required for Python Quillins"; Flags: checkablealone
 Name: "braillepack"; Description: "Install QUILL Braille Pack (liblouis translation engine, UEB, Standard American English, and international braille profiles, ~15 MB)"; Types: full custom; Flags: checkablealone
 
+[InstallDelete]
+; Upgrade hygiene -- the single most important fix for reliable upgrades.
+; Inno only overlays the new [Files] on top of an existing install; it
+; never removes files the new build no longer ships. So a first-party
+; module renamed, moved, or deleted between releases (and any stale
+; __pycache__) would otherwise linger next to the new code and cause the
+; ImportError / AttributeError version-skew crashes we hit on upgrade.
+;
+; Scope this to exactly what changes release-to-release and is the proven
+; risk: our own 'quill' package. Wiping it before [Files] re-lays it makes
+; every install a clean, self-consistent copy of our code, while leaving
+; the embedded Python runtime and third-party site-packages in place --
+; those keep stable module names, are overwritten as needed by the
+; ignoreversion [Files] entry, and re-extracting the whole runtime every
+; upgrade would only make installs slow for no safety gain. Bundled
+; tools/voices/braille live under {app}\tools and {app}\vendor; user
+; documents live in %APPDATA%\Quill -- neither is touched here.
+Type: filesandordirs; Name: "{app}\python\Lib\site-packages\quill"
+Type: filesandordirs; Name: "{app}\__pycache__"
+; NOTE: user CONFIG in %APPDATA%\Quill (settings.json, keymap.json,
+; features.json) is intentionally NOT deleted here. Those stores now
+; carry forward safely across releases -- each is a delta of the user's
+; overrides stamped with a schema version, so changed/added defaults
+; reach the user automatically while their customizations are preserved,
+; and a pre-migration backup is written before any one-time conversion
+; (see quill.core.settings_migration / keymap.merge_keymaps). An earlier
+; beta reset these on every install for a clean slate; that is no longer
+; needed now that migration protects the data.
+
 [Files]
 Source: "..\portable\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "docs\QUILL-PRD.md,tools\pandoc\*,tools\speech\dectalk\*,tools\speech\espeak-ng\*,tools\speech\piper\*,tools\speech\whispercpp\*,tools\nodejs\*,vendor\braille-pack\*,_tool-download\*,_speech-download\*"
 ; QUILL Braille Pack: liblouis runtime, translation tables, and BRF profiles.

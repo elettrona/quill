@@ -213,6 +213,43 @@ def test_build_inno_setup_script_mentions_portable_bundle() -> None:
     script.encode("ascii")
 
 
+def test_installer_clean_replaces_first_party_package_for_safe_upgrades() -> None:
+    # Upgrade hygiene: Inno only overlays new [Files]; it never removes files a
+    # new build no longer ships. The [InstallDelete] section must wipe our own
+    # 'quill' package (where modules get renamed/moved/deleted between releases,
+    # the proven cause of version-skew ImportError/AttributeError crashes) plus
+    # stray __pycache__, so every install is a self-consistent copy of our code.
+    script = build_inno_setup_script("9.9.9")
+    # Anchor on the section headers (the [Components] comments also mention the
+    # word "[Files]"), so we locate real sections, not prose.
+    assert "\n[InstallDelete]\n" in script
+    files_at = script.index("\n[Files]\n")
+    install_delete_at = script.index("\n[InstallDelete]\n")
+    # The InstallDelete section runs before [Files] re-lays the payload.
+    assert install_delete_at < files_at
+    install_delete = script[install_delete_at:files_at]
+    assert (
+        'Type: filesandordirs; Name: "{app}\\python\\Lib\\site-packages\\quill"' in install_delete
+    )
+    assert 'Type: filesandordirs; Name: "{app}\\__pycache__"' in install_delete
+    # Speed/safety boundary: at INSTALL time we must NOT wipe the whole embedded
+    # runtime (slow, no safety gain) -- only the first-party package. (The
+    # [UninstallDelete] section may still remove {app}\python on uninstall.)
+    assert 'Name: "{app}\\python"' not in install_delete
+
+
+def test_installer_preserves_user_config_and_never_touches_the_data_dir() -> None:
+    # Migration now protects config across releases (delta + schema version +
+    # pre-migration backup), so the installer must NOT delete the user's config
+    # or any user data. Nothing under %APPDATA%\Quill may be removed at install.
+    script = build_inno_setup_script("9.9.9")
+    install_delete = script[script.index("\n[InstallDelete]\n") : script.index("\n[Files]\n")]
+    assert "{userappdata}\\Quill\\settings.json" not in install_delete
+    assert "{userappdata}\\Quill\\keymap.json" not in install_delete
+    assert "{userappdata}\\Quill\\features.json" not in install_delete
+    assert "{userappdata}" not in install_delete
+
+
 def test_shell_verb_registry_lines_cover_every_verb_and_extension() -> None:
     # SHELL-3: the installer's right-click verbs are generated straight from
     # the single core registry, so the menu can never drift from the CLI.

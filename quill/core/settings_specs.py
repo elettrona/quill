@@ -1699,4 +1699,31 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         ),
         keywords=("spelling", "context", "review", "f7", "sentence", "paragraph"),
     ),
+    # --- Administration: upgrade and migration behavior --------------------
+    SettingSpec(
+        "apply_recommended_keymap_updates",
+        "Apply recommended keyboard-shortcut updates",
+        "admin",
+        "bool",
+        "Let QUILL apply important shortcut corrections once on upgrade (for "
+        "example, restoring Find to Ctrl+F). Each fix is applied a single time, "
+        "so you can always rebind it afterward. Turn this off to keep your "
+        "shortcuts exactly as you set them.",
+        keywords=("upgrade", "shortcut", "keymap", "recommended", "find", "ctrl+f", "migration"),
+    ),
+    SettingSpec(
+        "migration_notice",
+        "Upgrade notice",
+        "admin",
+        "choice",
+        "How QUILL tells you when it has migrated your settings or shortcuts "
+        "after an update. A backup is always saved first regardless of this "
+        "choice.",
+        choices=(
+            ("silent", "Silent"),
+            ("announce", "Brief announcement"),
+            ("prompt", "Summary with Undo"),
+        ),
+        keywords=("upgrade", "migration", "notice", "announce", "undo", "settings"),
+    ),
 )

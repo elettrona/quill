@@ -176,6 +176,8 @@ COMMAND_FEATURE_MAP: dict[str, str] = {
     "tools.share_import": "core.view",
     "tools.import_keymap": "core.keymap",
     "tools.reset_keymap": "core.keymap",
+    "tools.reset_all_defaults": "core.keymap",
+    "tools.undo_recommended_updates": "core.keymap",
     "tools.open_welcome_guide": "core.help",
     "tools.open_keyboard_reference": "core.help",
     "tools.cycle_autosave_interval": "core.view",

@@ -463,11 +463,70 @@ invariants:
 
 ## 11. A smoother upgrade, a cleaner start, and a sturdier app
 
+**What happens when you update — and how we kept the impact small.** If you have
+been testing an earlier beta, this build changes how QUILL remembers your
+settings so that future updates stop fighting you. Here is exactly what to
+expect, and the work we did to make sure none of it costs you anything:
+
+1. **You install over your existing copy as usual.** The installer now replaces
+   QUILL's program files cleanly instead of layering new files on top of old
+   ones. That mix of old and new files was the cause of the occasional crash some
+   testers saw right after updating; it cannot happen anymore. To keep installs
+   fast, only QUILL's own code is refreshed — the bundled Python runtime, voices,
+   braille tables, and tools are left in place — and **your documents and settings
+   in `%APPDATA%\Quill` are never touched by the installer.**
+2. **The first launch tidies your settings once — after making a backup.** QUILL
+   converts your old settings file to a new, smaller format that stores only the
+   choices you actually changed. Before it rewrites anything, it copies your
+   original file into a `migration-backups` folder, so the change is always
+   reversible. From now on, anything you customized is kept, brand-new options
+   show up already set to a sensible default, and an improved default reaches you
+   automatically **unless you had changed that option yourself.** This is the fix
+   for the long-standing problem where a better default never reached people who
+   had already used QUILL.
+3. **A few important shortcuts are corrected once.** Where a test build had moved
+   something it should not have — most visibly **Find, which returns to `Ctrl+F`**
+   — QUILL puts it right a single time, then never touches it again, so you stay
+   free to rebind it. Prefer QUILL never change your shortcuts? Turn off **Apply
+   recommended keyboard-shortcut updates** in Settings.
+4. **Old crash noise is cleared away.** The first time you launch the updated app,
+   QUILL clears out the backlog of old log files and crash reports from earlier
+   runs, so you start clean instead of staring at a pile of past problems. This
+   happens once and only removes diagnostic files — **never your documents,
+   autosaves, backups, or recovery data.**
+
+Everything below is the detail behind those four steps.
+
 - **A smoother upgrade.** QUILL checks your saved settings and shortcuts at startup
   and carries forward everything that still works; an entry that points at a removed
   command, has an empty shortcut, or conflicts is quietly dropped for the current
   default — so a feature never silently appears "broken." Familiar bindings that
   drifted during development are repaired automatically.
+- **Your settings come with you, and improvements arrive on their own.** QUILL now
+  remembers only the choices you actually changed, so when you update: anything you
+  customized is kept, brand-new options appear already set to a sensible default, and
+  an improved default reaches you automatically unless you had changed that option
+  yourself. The first launch after an update tidies your old settings file once and
+  keeps a backup first, so nothing is ever lost.
+- **Recommended shortcut fixes — applied once, always your call.** Occasionally a
+  shortcut needs to be put right for everyone — for example, **Find returns to
+  `Ctrl+F`** after some test builds had moved it. QUILL applies a fix like that a
+  single time and then leaves it alone, so you can always rebind it again afterward.
+  Prefer to keep your shortcuts exactly as they are? Turn off **Apply recommended
+  keyboard-shortcut updates** in Settings and QUILL will never change them for you.
+- **Installs that don't leave a mess.** Updating no longer mixes new files with old
+  ones, which used to cause rare crashes right after an upgrade. Each install lays
+  down a clean copy of the app while leaving your documents and settings untouched.
+- **One-step start over.** A new **Reset Everything to Factory Defaults** (under
+  Tools → Customize & Support) puts settings, keyboard shortcuts, menu
+  customizations, and your feature profile back to their originals behind a single
+  confirmation — your documents are never touched. Prefer a narrower reset? **Reset
+  Keymap** and the Settings dialog's **Reset to Factory Defaults** are still there.
+- **You decide how upgrades announce themselves.** The new **Upgrade notice** setting
+  (Administration) chooses what happens when QUILL migrates your settings or fixes a
+  shortcut on update: a **Brief announcement** (default), a **Summary with Undo**
+  dialog, or **Silent**. A backup is always saved either way, and **Undo Recent
+  Shortcut Change** reverts a correction like Find→`Ctrl+F` whenever you want.
 - **A cleaner start.** Installed and portable copies both launch through
   `quill.exe`, a real windowed launcher — **no console window flashing** — with an
   honest identity ("QUILL for All", the real version, "Community Access" as

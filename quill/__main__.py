@@ -9,10 +9,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from quill import __version__
-from quill.core.data_location import apply_pending_data_location_migration
+from quill.core.data_location import (
+    apply_pending_data_location_migration,
+    apply_pending_legacy_import,
+)
 from quill.core.features import reset_feature_profile_store
 from quill.core.paths import app_data_dir, ensure_app_directories
 from quill.core.settings import load_settings as _load_settings
+from quill.core.startup_maintenance import run_pending_startup_maintenance
 from quill.stability.diagnostics import dump_all_thread_stacks, setup_fault_handler
 from quill.stability.logging_config import configure_logging
 
@@ -367,8 +371,15 @@ def main() -> int:
     # Data location) before anything resolves app_data_dir() for real, so
     # logs/settings/recovery land in the new location from this launch on.
     apply_pending_data_location_migration()
+    # Import data stranded in a prior install's location (queued on first run),
+    # before settings are read so the imported files are present this launch.
+    apply_pending_legacy_import()
     _propagate_portable_environment()
     ensure_app_directories()
+    # One-time, epoch-gated cleanup of stale diagnostic clutter (old logs/crash
+    # reports) so upgraders start fresh. Runs before configure_logging opens the
+    # active log file, and only touches regenerable diagnostics -- never user work.
+    run_pending_startup_maintenance()
     # Add any on-demand-installed speech engine packs (e.g. Faster Whisper) to
     # sys.path so the speech registry can find them this session (#669 follow-up).
     try:

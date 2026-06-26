@@ -1416,6 +1416,7 @@ class MenuBuilderMixin:
         self._id_export_keymap = wx.NewIdRef()
         self._id_import_keymap = wx.NewIdRef()
         self._id_reset_keymap = wx.NewIdRef()
+        self._id_reset_all_defaults = wx.NewIdRef()
         self._id_profiles_and_features = wx.NewIdRef()
         self._id_glow_audit_document = wx.NewIdRef()
         self._id_glow_audit_selection = wx.NewIdRef()
@@ -2226,6 +2227,9 @@ class MenuBuilderMixin:
         customize_support_menu.Append(self._id_export_keymap, _("&Export Keymap..."))
         customize_support_menu.Append(self._id_import_keymap, _("&Import Keymap..."))
         customize_support_menu.Append(self._id_reset_keymap, _("&Reset Keymap"))
+        customize_support_menu.Append(
+            self._id_reset_all_defaults, _("Reset &Everything to Factory Defaults...")
+        )
         customize_support_menu.AppendSeparator()
         customize_support_menu.Append(self._id_notifications, _("Show &Notifications"))
         customize_support_menu.Append(self._id_save_diagnostics, _("Save &Diagnostics..."))
@@ -3822,6 +3826,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.reset_keymap_defaults(),
             id=self._id_reset_keymap,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.reset_all_to_factory_defaults(),
+            id=self._id_reset_all_defaults,
         )
         self.frame.Bind(
             wx.EVT_MENU,

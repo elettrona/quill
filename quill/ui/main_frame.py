@@ -1085,6 +1085,8 @@ class MainFrame(
         except Exception:
             self._active_language = "en"
         self.keymap = dict(DEFAULT_KEYMAP) if safe_mode else load_keymap()
+        if not safe_mode:
+            self._apply_recommended_keymap_updates()
         self.recent_files = [] if safe_mode else load_recent_files()
         if not safe_mode and getattr(self.settings, "recent_files_auto_clear_missing", False):
             # #14: drop entries whose file is gone, but only on confirmed fixed
@@ -1441,6 +1443,7 @@ class MainFrame(
             ("WebView2 warm-up", self._prewarm_webview_runtime),
             ("crash recovery", self._offer_crash_recovery),
             ("first-run onboarding", self._maybe_run_first_run_onboarding),
+            ("migration notice", self._surface_migration_notice),
             ("braille pack prompt", self._maybe_prompt_braille_pack_install),
             ("startup profile prompt", self.run_startup_profile_prompt),
             ("watch-folder startup", self._maybe_start_watch_folder),
@@ -2662,6 +2665,18 @@ class MainFrame(
             "tools.reset_keymap",
             "Reset Keymap",
             self.reset_keymap_defaults,
+            None,
+        )
+        self.commands.register(
+            "tools.reset_all_defaults",
+            "Reset Everything to Factory Defaults...",
+            self.reset_all_to_factory_defaults,
+            None,
+        )
+        self.commands.register(
+            "tools.undo_recommended_updates",
+            "Undo Recent Shortcut Change",
+            self.undo_recommended_keymap_updates,
             None,
         )
         self.commands.register(
@@ -10219,6 +10234,73 @@ class MainFrame(
             return
         self.frame.Close()
 
+    def _surface_data_migration_notice(self) -> None:
+        """Announce the one-time data move/import result from a prior launch.
+
+        Covers both the #615 data-location move and the legacy-install import
+        (data_location.apply_pending_legacy_import). The notice is consumed
+        once, so it is spoken/shown only on the launch that applied the change.
+        """
+        try:
+            from quill.core.data_location import pop_pending_migration_notice
+
+            notice = pop_pending_migration_notice()
+        except Exception:
+            return
+        if notice:
+            self._announce_result(notice)
+
+    def _maybe_offer_legacy_data_import(self) -> bool:
+        """Offer to import data stranded in a prior install's location.
+
+        Detected when the current (fresh) data dir has no keymap of its own
+        but a different, populated QUILL data dir exists -- typically after a
+        portable<->installed switch or a lost storage-mode marker on reinstall.
+
+        Returns True when the user accepted and a restart was triggered (the
+        caller must stop onboarding -- the app is relaunching to apply the
+        import before Settings are read).
+        """
+        try:
+            from quill.core.data_location import (
+                decline_legacy_data_import,
+                detect_importable_legacy_dir,
+                legacy_data_import_declined,
+                request_legacy_data_import,
+            )
+
+            legacy = detect_importable_legacy_dir()
+        except Exception:
+            return False
+        if legacy is None or legacy_data_import_declined(legacy):
+            return False
+        wx = self._wx
+        dialog = wx.MessageDialog(
+            self.frame,
+            f"QUILL found data from a previous installation at:\n{legacy}\n\n"
+            "Import your settings, keyboard shortcuts, and documents into this "
+            "copy of QUILL? QUILL will restart to complete the import.",
+            "Import Previous QUILL Data",
+            wx.YES_NO | wx.ICON_QUESTION,
+        )
+        dialog.SetYesNoLabels("Import and Restart", "Not Now")
+        apply_modal_ids(dialog, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO)
+        result = self._show_modal_dialog(dialog, "Import Previous QUILL Data")
+        dialog.Destroy()
+        if result == wx.ID_YES:
+            try:
+                request_legacy_data_import(legacy)
+            except OSError as error:
+                self._set_status(f"Could not queue the data import: {error}.")
+                return False
+            self._relaunch_quill()
+            return True
+        try:
+            decline_legacy_data_import(legacy)
+        except OSError:
+            pass
+        return False
+
     def open_menu_editor(self) -> None:
         """Open the accessible Menu Editor for reordering, hiding, and renaming
         top-level menus, menu items, and context menu items, with one Reset to
@@ -12980,6 +13062,121 @@ class MainFrame(
         self._set_status(summary)
         self._announce(summary)
 
+    def _apply_recommended_keymap_updates(self) -> None:
+        """Force-once important default changes (e.g. Find -> Ctrl+F) at startup.
+
+        Honors the user's opt-out (``settings.apply_recommended_keymap_updates``)
+        and applies each registered update at most once, recording applied ids in
+        ``settings.applied_recommended_updates`` so a binding is never re-forced
+        and the user stays free to rebind afterward. See
+        ``quill.core.recommended_updates``.
+        """
+        from quill.core.recommended_updates import (
+            RECOMMENDED_KEYMAP_UPDATES,
+            apply_recommended_keymap_updates,
+        )
+        from quill.core.settings import save_settings as _save_settings
+
+        updated, newly = apply_recommended_keymap_updates(
+            self.keymap,
+            getattr(self.settings, "applied_recommended_updates", []),
+            enabled=getattr(self.settings, "apply_recommended_keymap_updates", True),
+            valid_command_ids=frozenset(DEFAULT_KEYMAP),
+        )
+        if not newly:
+            return
+        # Capture what changed, and the prior bindings, so the migration notice
+        # can describe it and offer a one-click Undo (self.keymap still holds the
+        # pre-update values here).
+        applied = [u for u in RECOMMENDED_KEYMAP_UPDATES if u.id in newly]
+        self._recommended_update_undo = {
+            u.command_id: self.keymap.get(u.command_id, "") for u in applied
+        }
+        self._recommended_update_summaries = [u.reason for u in applied]
+        self.keymap = updated
+        already = set(getattr(self.settings, "applied_recommended_updates", []))
+        self.settings.applied_recommended_updates = sorted(already | newly)
+        try:
+            save_keymap(self.keymap)
+            _save_settings(self.settings)
+        except OSError:
+            # Best-effort: a locked/read-only data dir must not break startup;
+            # the update is in memory and will retry on the next launch.
+            self._report_startup_task_failure("recommended keymap updates")
+
+    def _surface_migration_notice(self) -> None:
+        """Tell the user, once, that QUILL migrated their settings/shortcuts.
+
+        Gated by the ``migration_notice`` setting (silent / announce / prompt).
+        A backup was already taken during the migration regardless of this
+        choice; "prompt" additionally offers a one-click Undo of any recommended
+        shortcut change.
+        """
+        from quill.core.migration_backup import pop_recent_migrations
+
+        migrated_stores = pop_recent_migrations()
+        shortcut_summaries = list(getattr(self, "_recommended_update_summaries", []))
+        if not migrated_stores and not shortcut_summaries:
+            return
+        mode = getattr(self.settings, "migration_notice", "announce")
+        if mode == "silent":
+            return
+        parts: list[str] = []
+        if migrated_stores:
+            parts.append("QUILL updated your saved settings for this version. A backup was saved.")
+        parts.extend(shortcut_summaries)
+        message = " ".join(parts)
+        can_undo = bool(getattr(self, "_recommended_update_undo", None))
+        if mode == "prompt":
+            self._prompt_migration_summary(message, can_undo=can_undo)
+        else:  # "announce"
+            self._announce_result(message)
+
+    def _prompt_migration_summary(self, message: str, *, can_undo: bool) -> None:
+        wx = self._wx
+        if can_undo:
+            dialog = wx.MessageDialog(
+                self.frame,
+                message + "\n\nUndo the shortcut change?",
+                "QUILL Updated",
+                wx.YES_NO | wx.ICON_INFORMATION,
+            )
+            dialog.SetYesNoLabels("Undo shortcut change", "Keep")
+            apply_modal_ids(dialog, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO)
+            result = self._show_modal_dialog(dialog, "QUILL Updated")
+            dialog.Destroy()
+            if result == wx.ID_YES:
+                self.undo_recommended_keymap_updates()
+            return
+        dialog = wx.MessageDialog(self.frame, message, "QUILL Updated", wx.OK | wx.ICON_INFORMATION)
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_OK)
+        self._show_modal_dialog(dialog, "QUILL Updated")
+        dialog.Destroy()
+
+    def undo_recommended_keymap_updates(self) -> None:
+        """Restore the bindings a recommended update changed this launch.
+
+        The update ids stay recorded as applied, so QUILL will not re-apply the
+        change on the next launch -- the user's restored choice sticks.
+        """
+        undo = getattr(self, "_recommended_update_undo", None)
+        if not undo:
+            self._set_status("Nothing to undo")
+            return
+        for command_id, binding in undo.items():
+            if binding:
+                self.keymap[command_id] = binding
+            else:
+                self.keymap.pop(command_id, None)
+        self._recommended_update_undo = {}
+        self._recommended_update_summaries = []
+        try:
+            save_keymap(self.keymap)
+        except OSError:
+            pass
+        self._reload_shortcuts_from_keymap()
+        self._announce_result("Restored your previous keyboard shortcuts.")
+
     def reset_keymap_defaults(self) -> None:
         wx = self._wx
         result = self._show_message_box(
@@ -12994,6 +13191,54 @@ class MainFrame(
         self._set_keyboard_pack(KEYBOARD_PACK_DEFAULT)
         self._reload_shortcuts_from_keymap()
         self._set_status("Reset keymap to defaults")
+
+    def reset_all_to_factory_defaults(self) -> None:
+        """Reset settings, shortcuts, menus, and the feature profile at once.
+
+        One warning covers everything. Each subsystem is reset to the exact same
+        factory state its own dedicated reset would produce, and persists. User
+        documents, autosaves, backups, and recovery data are never touched.
+        """
+        wx = self._wx
+        result = self._show_message_box(
+            "Reset EVERYTHING to factory defaults?\n\n"
+            "This resets all settings, keyboard shortcuts, menu customizations, "
+            "and your feature profile to their originals. Your documents are not "
+            "affected. This cannot be undone.",
+            "Reset Everything to Factory Defaults",
+            wx.ICON_WARNING | wx.YES_NO | wx.NO_DEFAULT,
+        )
+        if result != wx.YES:
+            self._set_status("Reset everything cancelled")
+            return
+        from quill.core.settings_registry import reset_all as _reset_settings
+
+        # Settings (persisted by _settings_dialog_apply_refresh below).
+        self.settings = _reset_settings()
+        # Keyboard shortcuts (reset_keymap persists the empty delta).
+        self.keymap = reset_keymap()
+        self._set_keyboard_pack(KEYBOARD_PACK_DEFAULT)
+        # Menus: a fresh customization IS the factory layout (an empty delta).
+        try:
+            from quill.core.menu_customization import (
+                MenuCustomization,
+                save_menu_customization,
+            )
+
+            factory_menus = MenuCustomization()
+            save_menu_customization(factory_menus)
+            self._menu_customization = factory_menus
+        except Exception:
+            self._report_startup_task_failure("reset menu customization")
+        # Feature profile back to the default (Essential), overrides cleared.
+        try:
+            self.features.reset_to_essential_profile()
+        except Exception:
+            self._report_startup_task_failure("reset feature profile")
+        # Rebuild commands + menus from the restored keymap/menus, then persist
+        # settings and refresh all settings-derived UI state.
+        self._reload_shortcuts_from_keymap()
+        self._settings_dialog_apply_refresh("Reset everything to factory defaults")
 
     def _reload_shortcuts_from_keymap(self) -> None:
         self.commands = CommandRegistry()
@@ -24886,6 +25131,18 @@ class MainFrame(
             editor = getattr(self, "editor", None)
             if editor is not None and hasattr(editor, "SetFocus"):
                 self._wx.CallAfter(editor.SetFocus)
+
+        # Surface the result of a data move/import that an earlier launch
+        # queued (e.g. the legacy-install import below, applied on restart).
+        self._surface_data_migration_notice()
+
+        # Before the first-run wizard, offer to import data stranded in a
+        # previous install's location (portable<->installed switch, or a lost
+        # storage-mode marker). If the user accepts, QUILL relaunches to apply
+        # the import before Settings are read, so stop onboarding here.
+        if not getattr(self.settings, "setup_wizard_completed", True):
+            if self._maybe_offer_legacy_data_import():
+                return
 
         # New unified first-run wizard: run when setup_wizard_completed is False
         # (i.e., a fresh install that has not seen the wizard yet).  After the

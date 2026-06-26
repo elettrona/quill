@@ -140,10 +140,14 @@ def test_load_keymap_persists_cleaned_map(tmp_path: Path, monkeypatch: pytest.Mo
     assert "definitely.removed.command" not in loaded
     assert loaded["app.command_palette"] == DEFAULT_KEYMAP["app.command_palette"]
 
-    # Surviving user overrides persisted to disk for the next launch.
-    # Only the keys the user had on disk and that survived the merge.
+    # Surviving user overrides persisted to disk for the next launch, as a
+    # delta plus the epoch stamp. Only the keys the user had on disk and that
+    # survived the merge are kept.
     on_disk = keymap_module.read_json(store_path, default={})
-    assert on_disk == {"file.save": "Ctrl+Shift+Alt+S"}
+    assert on_disk == {
+        "file.save": "Ctrl+Shift+Alt+S",
+        "_defaults_epoch": keymap_module.KEYMAP_DEFAULTS_EPOCH,
+    }
     assert "definitely.removed.command" not in on_disk
     assert "app.command_palette" not in on_disk
 
@@ -237,6 +241,117 @@ def test_legacy_find_grave_binding_migrates_to_ctrl_f() -> None:
     # the conventional Ctrl+F on load.
     merged = keymap_module.merge_keymaps({"edit.find": "Ctrl+Shift+Grave, F"})
     assert merged["edit.find"] == "Ctrl+F"
+
+
+def test_legacy_find_grave_z_binding_migrates_to_ctrl_f() -> None:
+    # A pre-release beta also shipped Find on the QUILL-key prefix + Z. The
+    # 0.8.0 beta force rewrites it to Ctrl+F on load so upgraders get the
+    # conventional Find shortcut back.
+    merged = keymap_module.merge_keymaps({"edit.find": "Ctrl+Shift+Grave, Z"})
+    assert merged["edit.find"] == "Ctrl+F"
+
+
+def test_beta_forces_any_quill_leader_find_to_ctrl_f() -> None:
+    # The beta force overwrites *any* saved Find binding on the QUILL-key
+    # leader chord, not just the specific letters earlier betas shipped, so
+    # no upgrader is left with Find unreachable on a leader chord.
+    for stale in ("Ctrl+Shift+Grave, K", "CTRL+SHIFT+GRAVE, Shift+F", "Ctrl+Shift+Grave"):
+        merged = keymap_module.merge_keymaps({"edit.find": stale})
+        assert merged["edit.find"] == "Ctrl+F", stale
+
+
+def test_non_leader_custom_find_binding_is_preserved() -> None:
+    # A user who deliberately rebinds Find to a non-leader chord keeps it; the
+    # beta force only reclaims leader-chord Find bindings.
+    merged = keymap_module.merge_keymaps({"edit.find": "Ctrl+Alt+F"})
+    assert merged["edit.find"] == "Ctrl+Alt+F"
+
+
+# ---------------------------------------------------------------------------
+# Delta storage + defaults epoch (forward-compat for default changes)
+# ---------------------------------------------------------------------------
+
+
+def test_save_keymap_persists_only_the_override_delta_plus_epoch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Passing the full merged map must still persist only the entries that
+    # differ from the default -- that delta is what lets a later default
+    # change reach the user automatically.
+    store_path = tmp_path / "keymap-store.json"
+    monkeypatch.setattr(keymap_module, "keymap_path", lambda: store_path)
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+
+    full = DEFAULT_KEYMAP.copy()
+    full["file.save"] = "Ctrl+Shift+Alt+S"
+    save_keymap(full)
+
+    on_disk = keymap_module.read_json(store_path, default={})
+    assert on_disk == {
+        "file.save": "Ctrl+Shift+Alt+S",
+        "_defaults_epoch": keymap_module.KEYMAP_DEFAULTS_EPOCH,
+    }
+
+
+def test_non_overridden_command_tracks_the_current_default() -> None:
+    # The crux of the forward-compat design: a command absent from the saved
+    # delta resolves to whatever DEFAULT_KEYMAP says today -- so a changed or
+    # newly added default reaches existing users with no migration entry.
+    saved = {
+        "file.save": "Ctrl+Shift+Alt+S",
+        "_defaults_epoch": keymap_module.KEYMAP_DEFAULTS_EPOCH,
+    }
+    merged = keymap_module.merge_keymaps(saved)
+    assert merged["file.save"] == "Ctrl+Shift+Alt+S"
+    assert merged["edit.find"] == DEFAULT_KEYMAP["edit.find"]
+
+
+def test_legacy_full_snapshot_is_converted_to_a_stamped_delta(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # An old full-snapshot file (no epoch, every command pinned to its value
+    # at save time) is cleaned up and rewritten as a delta + epoch on load:
+    # default-valued entries drop out, the stale leader-chord Find is forced
+    # back to Ctrl+F, and only genuine overrides remain.
+    store_path = tmp_path / "keymap-store.json"
+    monkeypatch.setattr(keymap_module, "keymap_path", lambda: store_path)
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    keymap_module.write_json_atomic(
+        store_path,
+        {
+            "file.save": DEFAULT_KEYMAP["file.save"],  # equals default -> dropped
+            "edit.find": "Ctrl+Shift+Grave, Z",  # stale leader chord -> Ctrl+F
+            "format.bold": "Ctrl+Shift+Alt+B",  # genuine override -> kept
+        },
+    )
+
+    loaded = load_keymap()
+    assert loaded["edit.find"] == DEFAULT_KEYMAP["edit.find"]
+    assert loaded["format.bold"] == "Ctrl+Shift+Alt+B"
+
+    on_disk = keymap_module.read_json(store_path, default={})
+    assert on_disk == {
+        "format.bold": "Ctrl+Shift+Alt+B",
+        "_defaults_epoch": keymap_module.KEYMAP_DEFAULTS_EPOCH,
+    }
+
+
+def test_post_epoch_file_respects_a_deliberate_leader_chord_find() -> None:
+    # Once a file is on the current epoch (a delta of deliberate choices), the
+    # one-time legacy clean-up no longer runs: a Find the user chose to put on
+    # the QUILL-key leader chord after upgrading is left alone.
+    saved = {
+        "edit.find": "Ctrl+Shift+Grave, Z",
+        "_defaults_epoch": keymap_module.KEYMAP_DEFAULTS_EPOCH,
+    }
+    merged = keymap_module.merge_keymaps(saved)
+    assert merged["edit.find"] == "Ctrl+Shift+Grave, Z"
+
+
+def test_epoch_metadata_key_is_not_treated_as_a_binding() -> None:
+    merged = keymap_module.merge_keymaps({"_defaults_epoch": 1, "edit.find": "Alt+F"})
+    assert "_defaults_epoch" not in merged
+    assert merged["edit.find"] == "Alt+F"
 
 
 def test_quote_lines_default_is_ctrl_shift_q() -> None:

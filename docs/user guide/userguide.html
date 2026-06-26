@@ -241,6 +241,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">userguide</h1>
+</header>
 <h1 id="quill-user-guide">Quill User Guide</h1>
 <p><strong>QUILL</strong> stands for <strong>Quality, Usable, Inclusive,
 Lightweight, Literate</strong>.</p>
@@ -4487,6 +4490,27 @@ switches the pack label to <strong>Custom</strong>.</p>
 <p>Use the keymap editor when you want to rebind a single command. Quill
 detects conflicts and warns you before reassigning a binding already in
 use.</p>
+<h3 id="recommended-shortcut-updates">Recommended shortcut updates</h3>
+<p>Occasionally a keyboard shortcut needs to be corrected for everyone —
+for example, <strong>Find returns to <code>Ctrl+F</code></strong> after
+some pre-release builds had moved it to a QUILL-key chord. QUILL applies
+a correction like this <strong>once</strong>, and then never touches
+that binding again, so you are always free to rebind it afterward in the
+Keymap Editor.</p>
+<p>If you would rather QUILL never change your shortcuts, turn off
+<strong>Apply recommended keyboard-shortcut updates</strong> in
+Settings. With it off, your bindings are left exactly as you set them,
+even across updates.</p>
+<h3 id="reset-everything-to-factory-defaults">Reset everything to
+factory defaults</h3>
+<p>To start over completely, choose <strong>Tools → Customize &amp;
+Support → Reset Everything to Factory Defaults…</strong>. After a
+confirmation prompt (it defaults to “No”), this resets your settings,
+keyboard shortcuts, menu customizations, and feature profile to their
+originals in one step. Your documents, autosaves, and backups are never
+affected. Smaller, focused resets are also available: <strong>Reset
+Keymap</strong> (shortcuts only) and <strong>Reset to Factory
+Defaults</strong> inside Settings (settings only).</p>
 <h3 id="keyboard-manager-for-quill-quick-nav">Keyboard manager for QUILL
 Quick Nav</h3>
 <p>QUILL Quick Nav actions appear in Keymap Editor as dedicated
@@ -4643,6 +4667,31 @@ a good first step.</p>
 <p>Quill keeps an internal notification center for update and workflow
 events. Update checks verify a signed manifest before offering a
 download.</p>
+<h3 id="your-settings-across-updates">Your settings across updates</h3>
+<p>Quill remembers only the choices you have actually changed. When you
+update, your customizations are kept, brand-new options appear already
+set to a sensible default, and an improved default reaches you
+automatically unless you had changed that option yourself. The first
+launch after an update tidies your old settings file once and writes a
+backup to a <code>migration-backups</code> folder first, so the change
+is always reversible. Your documents, autosaves, and recovery data are
+never touched by this.</p>
+<p>You control how Quill tells you this happened with the
+<strong>Upgrade notice</strong> setting (Administration): <strong>Brief
+announcement</strong> (the default — a short spoken and status-bar
+message), <strong>Summary with Undo</strong> (a small dialog listing
+what changed, including a one-click Undo for any shortcut correction),
+or <strong>Silent</strong>. A backup is saved regardless of the choice,
+and you can also undo a recent shortcut change at any time during the
+session with the <strong>Undo Recent Shortcut Change</strong>
+command.</p>
+<h3 id="a-clean-start-after-an-update">A clean start after an
+update</h3>
+<p>The first time you launch a freshly updated Quill, it clears out the
+old diagnostic clutter from earlier runs — previous log files and crash
+reports — so you begin with a clean slate instead of a backlog of past
+problems. This happens once, automatically, and never removes your
+documents or settings.</p>
 <h2 id="working-with-different-document-types">Working with Different
 Document Types</h2>
 <p>Quill is strongest today with plain text, Markdown, HTML, RTF, EPUB,

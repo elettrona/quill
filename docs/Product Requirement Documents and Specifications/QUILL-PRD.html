@@ -241,6 +241,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">QUILL-PRD</h1>
+</header>
 <h1 id="quill-product-requirements-document">Quill: Product Requirements
 Document</h1>
 <h2
@@ -3301,6 +3304,98 @@ AI</strong>, <strong>Files</strong>, <strong>Appearance</strong>,
 <strong>Backups</strong>, <strong>Keyboard</strong> (see <a
 href="#8-keymap-and-keystroke-reassignment">section 8</a>),
 <strong>Privacy</strong>.</li>
+</ul>
+<h4 id="a-persistence-and-migration-contract">5.14a Persistence and
+migration contract</h4>
+<p>All persisted user state follows one release-to-release contract so
+upgrades never strand users, hide new defaults, or pin stale ones.
+Canonical reference:
+<code>docs/design/persistence-and-migration.md</code>.</p>
+<ul>
+<li><strong>Defaults in code; disk stores only the delta.</strong> Each
+store (<code>settings.json</code>, <code>keymap.json</code>,
+<code>features.json</code>) persists only the fields the user changed
+from the code-defined default, plus a schema/epoch version stamp.
+Consequences: a newly added setting arrives at its default automatically
+(absent from old files); a changed default reaches every user who did
+not override that field; user customizations are the only thing written,
+so they survive verbatim. A full snapshot — the prior
+<code>settings.json</code> shape (<code>schema_version</code> 1) and the
+prior <code>keymap.json</code> shape — pinned every field and was the
+root cause of changed defaults never reaching users; both are now deltas
+(<code>schema_version</code> 2 / <code>_defaults_epoch</code> 1).</li>
+<li><strong>Migrate-and-back-up on load.</strong> A file predating the
+current schema is rewritten to the canonical delta exactly once; the
+original is first copied to
+<code>migration-backups/&lt;store&gt;-v&lt;old&gt;-&lt;timestamp&gt;.json</code>
+(most-recent-few retained) so the conversion is reversible. Validation
+is field-by-field: a corrupt value falls back to its default without
+discarding siblings. Persistence is best-effort (a read-only/locked dir
+never blocks startup).</li>
+<li><strong>Reusable plumbing.</strong>
+<code>quill/core/versioned_store.py</code>
+(<code>load_with_migration(path, *, store_name, parse, serialize, is_legacy, default)</code>)
+encapsulates the load→migrate→backup→resave dance;
+<code>quill/core/migration_backup.py</code> provides the shared
+pre-migration backup. A new store supplies four callables; a new schema
+bump changes <code>serialize</code>/<code>parse</code> and raises the
+version. Settings serialization lives in
+<code>quill/core/settings_migration.py</code>.</li>
+<li><strong>Recommended (force-once) updates.</strong> When an
+<em>important</em> default change must reach users who already overrode
+the field (canonical case: restoring Find to <code>Ctrl+F</code>),
+<code>quill/core/recommended_updates.py</code> holds a versioned
+registry of <code>RecommendedKeymapUpdate</code>s. Each applies at most
+once per user — the applied id is recorded in
+<code>settings.applied_recommended_updates</code> — then the binding is
+never force-touched again. The whole mechanism is opt-out via
+<code>settings.apply_recommended_keymap_updates</code> (default on);
+applied at startup by
+<code>MainFrame._apply_recommended_keymap_updates()</code> after
+settings + keymap load.</li>
+<li><strong>Migration notice (surfacing).</strong> A rich
+<code>migration_notice</code> setting (<code>silent</code> /
+<code>announce</code> / <code>prompt</code>, default
+<code>announce</code>; Administration group, searchable spec) controls
+how a migration is surfaced.
+<code>migration_backup.pop_recent_migrations()</code> reports stores
+migrated this launch; <code>MainFrame._surface_migration_notice()</code>
+(a startup task) briefly announces or shows a summary dialog
+accordingly. Recommended keymap updates are reversible:
+<code>_apply_recommended_keymap_updates</code> captures the prior
+bindings, and <code>undo_recommended_keymap_updates()</code> (command
+<code>tools.undo_recommended_updates</code>, and the prompt’s Undo
+button) restores them while leaving the update ids marked applied so the
+change does not re-fire.</li>
+<li><strong>One-time startup maintenance.</strong>
+<code>quill/core/startup_maintenance.py</code> runs epoch-gated,
+run-once cleanups of regenerable diagnostic clutter (<code>logs/</code>,
+<code>crash-reports/</code>, <code>diagnostics/</code>) so upgraders
+from the early beta start clean. It runs in
+<code>quill.__main__.main()</code> after
+<code>ensure_app_directories()</code> and before
+<code>configure_logging()</code> (so clearing <code>logs/</code> is
+safe), gated by a <code>startup-maintenance.json</code> marker; it never
+touches documents, autosaves, backups, recovery, or settings.</li>
+<li><strong>Installer interaction.</strong> The Windows installer
+(<code>scripts/build_windows_distribution.py</code>,
+<code>[InstallDelete]</code>) cleanly replaces the first-party
+<code>quill</code> package (and stray <code>__pycache__</code>) on every
+install to prevent version-skew import crashes, while leaving the
+embedded runtime, bundled tools, and <code>%APPDATA%\Quill</code> user
+data untouched — the migration contract above, not an installer wipe, is
+what keeps config safe across releases.</li>
+<li><strong>Reset surfaces.</strong> Each subsystem has a factory reset
+behind a warning: Settings dialog <strong>Reset to Factory
+Defaults</strong> (<code>registry.reset_all</code>), <strong>Reset
+Keymap</strong> (<code>reset_keymap</code>), and the Menu Editor reset.
+A unified <strong>Reset Everything to Factory Defaults</strong>
+(<code>tools.reset_all_defaults</code>,
+<code>MainFrame.reset_all_to_factory_defaults</code>, in Tools →
+Customize &amp; Support) resets settings + keymap + menu customization +
+feature profile in one confirmed step; each writes its clean factory
+delta, and user documents/autosaves/backups/recovery are never
+touched.</li>
 </ul>
 <h3 id="plugin-system-v1.1">5.15 Plugin system (v1.1)</h3>
 <ul>

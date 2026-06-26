@@ -14,7 +14,8 @@ from quill.core.settings_normalizers import (
     _normalize_status_bar_hidden,
     _normalize_status_bar_order,
 )
-from quill.core.storage import read_json, write_json_atomic
+from quill.core.storage import write_json_atomic
+from quill.core.versioned_store import load_with_migration
 
 __all__ = [
     "STATUS_BAR_ITEMS",
@@ -57,6 +58,17 @@ class Settings:
     indent_size: int = 4
     auto_check_updates: bool = False
     beta_updates: bool = False
+    # Recommended (force-once) updates to important defaults, e.g. restoring
+    # Find to Ctrl+F for users who had it on a QUILL-key chord. This is the
+    # opt-out toggle (default on); ``applied_recommended_updates`` records which
+    # updates have already fired so each applies at most once per user. See
+    # quill.core.recommended_updates.
+    apply_recommended_keymap_updates: bool = True
+    applied_recommended_updates: list[str] = field(default_factory=list)
+    # How QUILL surfaces a one-time settings/keymap migration after an upgrade:
+    # "silent" (do nothing), "announce" (brief spoken + status message), or
+    # "prompt" (a small dialog summarizing what changed, with an Undo).
+    migration_notice: str = "announce"
     skipped_update_version: str = ""
     last_update_check: str = ""
     recent_files_limit: int = 10
@@ -434,6 +446,16 @@ class Settings:
             indent_size = 4
         auto_check_updates = bool(data.get("auto_check_updates", False))
         beta_updates = bool(data.get("beta_updates", False))
+        apply_recommended_keymap_updates = bool(data.get("apply_recommended_keymap_updates", True))
+        raw_applied = data.get("applied_recommended_updates", [])
+        applied_recommended_updates = (
+            [str(item) for item in raw_applied if isinstance(item, str)]
+            if isinstance(raw_applied, list)
+            else []
+        )
+        migration_notice = str(data.get("migration_notice", "announce")).strip().lower()
+        if migration_notice not in {"silent", "announce", "prompt"}:
+            migration_notice = "announce"
         skipped_update_version = str(data.get("skipped_update_version", "")).strip()
         last_update_check = str(data.get("last_update_check", "")).strip()
         try:
@@ -931,6 +953,9 @@ class Settings:
             indent_size=indent_size,
             auto_check_updates=auto_check_updates,
             beta_updates=beta_updates,
+            apply_recommended_keymap_updates=apply_recommended_keymap_updates,
+            applied_recommended_updates=applied_recommended_updates,
+            migration_notice=migration_notice,
             skipped_update_version=skipped_update_version,
             last_update_check=last_update_check,
             recent_files_limit=recent_files_limit,
@@ -1136,17 +1161,36 @@ def settings_path() -> Path:
 
 
 def load_settings() -> Settings:
-    raw = read_json(settings_path(), default={})
-    if not isinstance(raw, dict):
-        return Settings()
-    # SET-5: read either the nested, versioned document or a legacy flat file.
-    from quill.core.settings_migration import from_versioned
+    """Load settings, converting any legacy file to the canonical delta on the way.
 
-    return from_versioned(raw)
+    The on-disk file is a *delta* of the user's overrides relative to
+    ``Settings()`` plus a ``schema_version`` stamp (see
+    :mod:`quill.core.settings_migration`), so any field the user never
+    customized always tracks the current default. The generic load / migrate /
+    backup / resave is shared with every other versioned store
+    (:func:`quill.core.versioned_store.load_with_migration`): a pre-current-schema
+    file is backed up and rewritten to the canonical delta exactly once.
+    """
+    # SET-5: read the nested versioned document, a legacy flat file, or junk.
+    from quill.core.settings_migration import (
+        from_versioned,
+        is_legacy_settings_document,
+        to_versioned,
+    )
+
+    return load_with_migration(
+        settings_path(),
+        store_name="settings",
+        parse=from_versioned,
+        serialize=to_versioned,
+        is_legacy=is_legacy_settings_document,
+        default=Settings,
+    )
 
 
 def save_settings(settings: Settings) -> None:
-    # SET-5: persist the nested, versioned document shape.
+    # SET-5: persist the nested, versioned *delta* document (overrides only),
+    # so future default changes flow through to the user automatically.
     from quill.core.settings_migration import to_versioned
 
     write_json_atomic(settings_path(), to_versioned(settings))
