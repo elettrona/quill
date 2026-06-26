@@ -43,3 +43,19 @@ The contract is enforced in `quill/core/ai/agent_catalog.py` and mirrors
 `quill/core/schemas/agent.json`. A malformed file is reported and skipped — it
 never breaks the rest of the catalog. Files named `README.md` or starting with
 `_`/`.` are treated as docs and skipped.
+
+## Validate your edits
+
+After editing or adding an agent, run the standards linter:
+
+```
+python -m quill.tools.agent_lint quill/core/ai/agents --strict
+```
+
+It enforces more than the schema floor: the file name must match the `id`, the
+`description` must be a real one-line summary, the `system_prompt` must be
+substantive, `default_harness` must be known, and a **mutating** permission
+(`modify_document`, `create_file`, `github`, ...) may never be `allow` — it must
+keep a human in the loop (`ask` / `preview_required` / `deny`). The bundled agents
+are kept clean by a CI test (`tests/unit/tools/test_agent_lint.py`), so an edit
+that breaks a standard fails the build.
