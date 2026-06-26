@@ -5,6 +5,7 @@ from __future__ import annotations
 import quill.core.assistant_ai as aai
 from quill.core import ai_chat
 from quill.core.ai.admin_policy import AdminPolicy
+from quill.core.ai.key_migration import consolidate_provider_keys
 from quill.core.ai.providers import ALL_PROVIDERS, allowed_providers
 
 
@@ -61,7 +62,7 @@ def test_migration_copies_legacy_into_canonical(monkeypatch) -> None:  # type: i
         aai, "load_assistant_connection_settings", lambda: type("S", (), {"provider": "off"})()
     )
 
-    migrated = aai.consolidate_provider_keys()
+    migrated = consolidate_provider_keys()
 
     assert set(migrated) == {"openai", "openrouter"}
     assert store.load(aai.provider_credential_target("openai")) == "sk-legacy-openai"
@@ -78,7 +79,7 @@ def test_migration_never_overwrites_a_set_canonical_slot(monkeypatch) -> None:  
         aai, "load_assistant_connection_settings", lambda: type("S", (), {"provider": "off"})()
     )
 
-    migrated = aai.consolidate_provider_keys()
+    migrated = consolidate_provider_keys()
 
     assert "openai" not in migrated
     assert store.load(aai.provider_credential_target("openai")) == "sk-canonical"  # untouched
@@ -91,8 +92,8 @@ def test_migration_is_idempotent(monkeypatch) -> None:  # type: ignore[no-untype
         aai, "load_assistant_connection_settings", lambda: type("S", (), {"provider": "off"})()
     )
 
-    first = aai.consolidate_provider_keys()
-    second = aai.consolidate_provider_keys()
+    first = consolidate_provider_keys()
+    second = consolidate_provider_keys()
 
     assert first == ["openai"]
     assert second == []  # nothing left to do
@@ -105,7 +106,7 @@ def test_migration_moves_global_active_key(monkeypatch) -> None:  # type: ignore
     )
     monkeypatch.setattr(aai, "load_assistant_api_key", lambda: "sk-ant-global")
 
-    migrated = aai.consolidate_provider_keys()
+    migrated = consolidate_provider_keys()
 
     assert "claude" in migrated
     assert store.load(aai.provider_credential_target("claude")) == "sk-ant-global"
@@ -120,7 +121,7 @@ def test_migration_never_raises(monkeypatch) -> None:  # type: ignore[no-untyped
         aai, "load_assistant_connection_settings", lambda: type("S", (), {"provider": "off"})()
     )
     # Must not raise even if the store is broken.
-    assert aai.consolidate_provider_keys() == []
+    assert consolidate_provider_keys() == []
 
 
 # -- admin-policy provider filtering ------------------------------------------
