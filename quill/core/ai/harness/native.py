@@ -19,6 +19,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 
+from quill.core.ai.backend import AIBackend
 from quill.core.ai.context_builder import ContextScope
 from quill.core.ai.events import AgentEvent, AgentEventKind
 from quill.core.ai.harness import (
@@ -32,12 +33,36 @@ from quill.core.ai.harness import (
 from quill.core.ai.permissions import PermissionBroker
 from quill.core.ai.tool_gateway import Emit, SafeEditorToolGateway
 
-__all__ = ["Responder", "NativeHarness", "register"]
+__all__ = ["Responder", "NativeHarness", "register", "responder_from_backend", "build_prompt"]
 
 # The model call: given the agent and its built context, return proposed text.
 # Wrapping assistant_ai / ProviderChatBackend is the UI's job; the harness stays
 # transport-agnostic and unit-testable with a plain function.
 Responder = Callable[[AgentSpec, AIContext], str]
+
+
+def build_prompt(agent: AgentSpec, ctx: AIContext) -> str:
+    """Compose the single prompt sent to a backend from the agent + context.
+
+    Stable, harness-neutral shape (system prompt, then the user's ask, then the
+    already-built/previewed context); the SDK packs use the same composition.
+    """
+    return f"{agent.system_prompt}\n\n{ctx.prompt}\n\n{ctx.context_text}".strip()
+
+
+def responder_from_backend(backend: AIBackend) -> Responder:
+    """Adapt any :class:`~quill.core.ai.backend.AIBackend` into a ``Responder``.
+
+    Lets the Native harness run on the existing provider stack
+    (``ProviderChatBackend`` / ``SimpleChatBackend``) with no new transport: the
+    agent + context become one prompt and ``backend.respond`` returns the text.
+    Depends only on the core ABC, so it stays wx-free and dormant until wired.
+    """
+
+    def respond(agent: AgentSpec, ctx: AIContext) -> str:
+        return backend.respond(build_prompt(agent, ctx))
+
+    return respond
 
 
 class _NativeSession:
