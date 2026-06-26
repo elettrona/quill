@@ -276,3 +276,59 @@ def test_load_nonexistent_path_raises(tmp_path: Path) -> None:
 def test_sound_pack_defaults() -> None:
     pack = SoundPack(name="X", author="", description="", license="")
     assert pack.events == {}
+
+
+# ---------------------------------------------------------------------------
+# Bundled pack discovery + setting resolution (sound-pack dropdown)
+# ---------------------------------------------------------------------------
+
+
+def test_available_sound_packs_lists_bundled_default_first() -> None:
+    from quill.core.sound_pack import DEFAULT_SOUND_PACK_ID, available_sound_packs
+
+    packs = available_sound_packs()
+    ids = [p.id for p in packs]
+    # The default QUILL pack ships and is listed first; no indent overlays.
+    assert DEFAULT_SOUND_PACK_ID in ids
+    assert ids[0] == DEFAULT_SOUND_PACK_ID
+    assert not any(i.startswith("indent_") for i in ids)
+    # Each pack exposes a display name and a real directory.
+    for pack in packs:
+        assert pack.name
+        assert pack.path.is_dir()
+
+
+def test_default_pack_setting_value_is_empty_others_prefixed() -> None:
+    from quill.core.sound_pack import DEFAULT_SOUND_PACK_ID, available_sound_packs
+
+    for pack in available_sound_packs():
+        if pack.id == DEFAULT_SOUND_PACK_ID:
+            assert pack.setting_value == ""
+        else:
+            assert pack.setting_value == f"bundled:{pack.id}"
+
+
+def test_resolve_empty_returns_default_bundled_pack() -> None:
+    from quill.core.sound_pack import (
+        DEFAULT_SOUND_PACK_ID,
+        bundled_sound_packs_dir,
+        resolve_sound_pack_path,
+    )
+
+    resolved = resolve_sound_pack_path("")
+    assert resolved == bundled_sound_packs_dir() / DEFAULT_SOUND_PACK_ID
+    assert resolved.is_dir()
+
+
+def test_resolve_bundled_reference_and_custom_path(tmp_path: Path) -> None:
+    from quill.core.sound_pack import resolve_sound_pack_path
+
+    # bundled:<id> resolves against the install (location-independent).
+    assert resolve_sound_pack_path("bundled:ink").name == "ink"
+    # A bundled id that does not exist resolves to None.
+    assert resolve_sound_pack_path("bundled:does-not-exist") is None
+    # A direct path is used when it exists, else None.
+    real = tmp_path / "mypack.qsp"
+    real.write_text("x", encoding="utf-8")
+    assert resolve_sound_pack_path(str(real)) == real
+    assert resolve_sound_pack_path(str(tmp_path / "missing.qsp")) is None

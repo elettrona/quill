@@ -207,9 +207,17 @@ class _SoundManager:
     # ------------------------------------------------------------------
 
     def _load_pack(self, pack_path: str, disabled: frozenset[str]) -> None:
-        from quill.core.sound_pack import SoundPack, SoundPackError, load_sound_pack
+        from quill.core.sound_pack import (
+            SoundPack,
+            SoundPackError,
+            load_sound_pack,
+            resolve_sound_pack_path,
+        )
 
-        path = Path(pack_path) if pack_path else self._bundled_ink_path()
+        # Resolve "", a "bundled:<id>" reference, or a direct path. Using the
+        # resolver (not a stored absolute path) means a bundled choice survives
+        # a move/reinstall, and an empty setting falls back to QUILL's pack.
+        path = resolve_sound_pack_path(pack_path)
         if path is None:
             logger.debug("SoundManager: no pack path and no bundled pack; earcons silent")
             self.player.load_pack(SoundPack(name="(none)", author="", description="", license=""))

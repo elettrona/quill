@@ -563,6 +563,12 @@ Everything below is the detail behind those four steps.
   the account picker, and you can set a default or remove one. Signing in
   registers QUILL on your server and uses a one-time browser authorization;
   your sign-in is kept in the Windows Credential Manager, never in a plain file.
+- **Picking a sound pack is finally simple.** The first-run **Keyboard and
+  Sound** page now offers a **dropdown of the sound packs that ship with QUILL**
+  instead of a file picker that could not actually select them (the bundled
+  packs are folders, not files). It defaults to QUILL's own pack, so turning
+  sound on just works — and your choice now survives a reinstall instead of
+  falling silent.
 
 ---
 

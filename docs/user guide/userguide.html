@@ -4276,8 +4276,12 @@ and off by default for most events; speech is never replaced.</p>
 <li><strong>Sound packs (QSP).</strong> A sound pack is a directory (or
 a <code>.qsp</code> zip) of WAV files with a <code>manifest.json</code>
 mapping event IDs to sounds. Quill ships the <strong>Ink</strong> pack
-of synthesised earcons. Choose a pack in <strong>Preferences →
-Sound</strong>, and set the volume there too.</li>
+of synthesised earcons, and uses it by default whenever you turn sound
+on. In the first-run <strong>Keyboard and Sound</strong> wizard page,
+the <strong>Sound pack</strong> control is now a simple <strong>dropdown
+of the packs that ship with Quill</strong> — just pick one (no hunting
+for a file). The dropdown defaults to Quill’s own pack, so enabling
+sound always gives you working earcons out of the box.</li>
 <li><strong>Per-event control.</strong> Open <strong>Tools → Reading
 &amp; Dictation → Sound Events…</strong> to turn individual events on or
 off. Events are grouped — Earcons, Compare, and (when an indent-tone

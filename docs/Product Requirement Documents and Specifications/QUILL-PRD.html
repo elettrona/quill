@@ -5370,6 +5370,22 @@ so there is no perceptible lag between event and sound. Earcons
 supplement speech; they never replace it. (This section absorbs the
 former <code>docs/wsp.md</code> sound-design notes and
 <code>docs/sound-packs.md</code> pack guide.)</p>
+<p><strong>Pack selection and resolution.</strong> Bundled packs live as
+directories under <code>quill/assets/sound_packs/</code> (the default
+earcon pack is <code>ink</code>, “QUILL’s pack”; <code>indent_*</code>
+are the separate indentation-tone overlays).
+<code>sound_pack.available_sound_packs()</code> discovers the bundled
+earcon packs (default first, <code>indent_*</code> excluded) for the
+<strong>first-run wizard’s Sound-pack dropdown</strong> — which replaced
+a <code>*.qsp</code> file picker that could not select the shipped packs
+at all, since they are folders, not files. The chosen pack is stored in
+<code>settings.sound_pack_path</code> as one of: <code>""</code> (the
+default pack, for back-compat), <code>bundled:&lt;id&gt;</code> (another
+bundled pack, resolved against the install so it survives a
+move/reinstall), or a direct path (a user’s own pack).
+<code>sound_pack.resolve_sound_pack_path()</code> maps any of those to a
+pack path, and <code>SoundManager._load_pack</code> uses it, so enabling
+sound always falls back to QUILL’s pack rather than going silent.</p>
 <h4 id="qsp-format">5.70.1 QSP format</h4>
 <p>A <code>.qsp</code> file is a ZIP archive whose root holds
 <code>manifest.json</code> and the referenced WAV files. During
@@ -5483,6 +5499,40 @@ time, and the user can silence them individually via
 <h4 id="safe-mode">5.70.8 Safe mode</h4>
 <p>When <code>QUILL_SAFE_MODE=1</code>, <code>SoundPlayer.play()</code>
 is a no-op, keeping safe mode strictly minimal-resource.</p>
+<h3 id="a-post-to-mastodon-lean-poster">5.70a Post to Mastodon (lean
+poster)</h3>
+<p>A deliberately small way to publish a status to Mastodon from the
+editor — not a full client (no timelines, replies, media, or polls in
+v1).</p>
+<ul>
+<li><strong>Compose flow.</strong> <code>tools.post_to_mastodon</code>
+(default <strong>QUILL Key + Shift+P</strong>, also <strong>Tools →
+Share → Post to Mastodon…</strong>) takes the editor selection, or the
+whole document when nothing is selected, and opens
+<code>MastodonComposeDialog</code>: editable text, an account picker (by
+nickname), a visibility choice (public/unlisted/private/direct), a live
+character count, and Post. Disabled in Safe Mode. If no account exists,
+the accounts manager is offered first, then compose continues if one was
+added.</li>
+<li><strong>Accounts.</strong>
+<code>tools.manage_mastodon_accounts</code> opens
+<code>MastodonAccountsDialog</code> (add/remove/set-default). Adding
+registers an app named <strong>QUILL</strong> on the user’s instance (so
+posts read “via QUILL”) and uses the OAuth out-of-band flow: open the
+browser to authorize, paste the code back. Non-secret metadata
+(nickname, instance, <code>@handle</code>, client id) is stored in
+<code>mastodon-accounts.json</code>; the access token and client secret
+go to the Windows Credential Manager / DPAPI via
+<code>credential_store</code>, never the JSON.</li>
+<li><strong>Implementation.</strong> All API + account logic is wx-free
+in <code>quill/core/mastodon/</code> — <code>client.py</code> (a single
+audited <code>urllib</code> egress site <code>_http_json</code>,
+HTTPS-only over a verified TLS context: app registration, OAuth token
+exchange, <code>verify_credentials</code>, and status post) and
+<code>accounts.py</code>. Dialogs in
+<code>quill/ui/mastodon_dialogs.py</code>. The one egress site is
+recorded in <code>network_egress_audit.py</code>.</li>
+</ul>
 <h3 id="quiet-mode">5.71 Quiet mode</h3>
 <ul>
 <li><code>View → Quiet Mode</code> (<code>Ctrl+Alt+Q</code> by default)

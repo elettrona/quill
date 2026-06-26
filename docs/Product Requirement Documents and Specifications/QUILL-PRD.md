@@ -2671,6 +2671,8 @@ When Quill detects an autosave snapshot newer than the on-disk file on launch:
 
 QUILL plays short, screen-reader-respectful audio cues (earcons) at meaningful editing moments. The system is built around **QSP (QUILL Sound Packs)**: swappable bundles that map event IDs to audio files. Playback is non-blocking, fire-and-forget, and pre-buffered so there is no perceptible lag between event and sound. Earcons supplement speech; they never replace it. (This section absorbs the former `docs/wsp.md` sound-design notes and `docs/sound-packs.md` pack guide.)
 
+**Pack selection and resolution.** Bundled packs live as directories under `quill/assets/sound_packs/` (the default earcon pack is `ink`, "QUILL's pack"; `indent_*` are the separate indentation-tone overlays). `sound_pack.available_sound_packs()` discovers the bundled earcon packs (default first, `indent_*` excluded) for the **first-run wizard's Sound-pack dropdown** — which replaced a `*.qsp` file picker that could not select the shipped packs at all, since they are folders, not files. The chosen pack is stored in `settings.sound_pack_path` as one of: `""` (the default pack, for back-compat), `bundled:<id>` (another bundled pack, resolved against the install so it survives a move/reinstall), or a direct path (a user's own pack). `sound_pack.resolve_sound_pack_path()` maps any of those to a pack path, and `SoundManager._load_pack` uses it, so enabling sound always falls back to QUILL's pack rather than going silent.
+
 #### 5.70.1 QSP format
 
 A `.qsp` file is a ZIP archive whose root holds `manifest.json` and the referenced WAV files. During development a directory with the same layout is accepted; the loader treats a directory and a ZIP identically. The manifest is validated at load time against `quill/core/schemas/sound_pack.json`:
@@ -2726,6 +2728,14 @@ Settings (group `accessibility`): `sound_enabled` (bool), `sound_pack_path` (tex
 #### 5.70.8 Safe mode
 
 When `QUILL_SAFE_MODE=1`, `SoundPlayer.play()` is a no-op, keeping safe mode strictly minimal-resource.
+
+### 5.70a Post to Mastodon (lean poster)
+
+A deliberately small way to publish a status to Mastodon from the editor — not a full client (no timelines, replies, media, or polls in v1).
+
+- **Compose flow.** `tools.post_to_mastodon` (default **QUILL Key + Shift+P**, also **Tools → Share → Post to Mastodon...**) takes the editor selection, or the whole document when nothing is selected, and opens `MastodonComposeDialog`: editable text, an account picker (by nickname), a visibility choice (public/unlisted/private/direct), a live character count, and Post. Disabled in Safe Mode. If no account exists, the accounts manager is offered first, then compose continues if one was added.
+- **Accounts.** `tools.manage_mastodon_accounts` opens `MastodonAccountsDialog` (add/remove/set-default). Adding registers an app named **QUILL** on the user's instance (so posts read "via QUILL") and uses the OAuth out-of-band flow: open the browser to authorize, paste the code back. Non-secret metadata (nickname, instance, `@handle`, client id) is stored in `mastodon-accounts.json`; the access token and client secret go to the Windows Credential Manager / DPAPI via `credential_store`, never the JSON.
+- **Implementation.** All API + account logic is wx-free in `quill/core/mastodon/` — `client.py` (a single audited `urllib` egress site `_http_json`, HTTPS-only over a verified TLS context: app registration, OAuth token exchange, `verify_credentials`, and status post) and `accounts.py`. Dialogs in `quill/ui/mastodon_dialogs.py`. The one egress site is recorded in `network_egress_audit.py`.
 
 ### 5.71 Quiet mode
 

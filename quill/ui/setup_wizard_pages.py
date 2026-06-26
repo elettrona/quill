@@ -620,22 +620,38 @@ class _KeyboardSoundPage(_WizardPage):
         grid.Add(wx.StaticText(self, label=""), flag=wx.ALIGN_CENTER_VERTICAL)
         grid.Add(self._sound_enabled)
 
+        # Sound pack: a dropdown of the packs that ship with QUILL (the file
+        # picker could not select them -- bundled packs are folders, not .qsp
+        # files). The default pack is QUILL's own; an existing custom pack, if
+        # any, is preserved as a final entry so it is not silently lost.
+        from quill.core.sound_pack import available_sound_packs
+
         self._sound_pack_path = str(getattr(settings, "sound_pack_path", "") or "")
         self._pack_row_label = wx.StaticText(
             self, label=_("Sound pack:"), name="wizard.sound_pack_label"
         )
-        pack_row = wx.BoxSizer(wx.HORIZONTAL)
-        self._sound_pack_display = wx.StaticText(
-            self, label=self._sound_pack_name(), name="wizard.sound_pack_display"
+        packs = available_sound_packs()
+        pack_labels = [p.name for p in packs]
+        self._sound_pack_values = [p.setting_value for p in packs]
+        selection = next(
+            (i for i, v in enumerate(self._sound_pack_values) if v == self._sound_pack_path),
+            -1,
         )
-        self._choose_pack_btn = wx.Button(
-            self, label=_("Choose..."), name="wizard.sound_pack_choose"
+        if selection < 0 and self._sound_pack_path.strip():
+            from pathlib import Path as _Path
+
+            pack_labels.append(
+                _("Custom: %s") % (_Path(self._sound_pack_path).name or self._sound_pack_path)
+            )
+            self._sound_pack_values.append(self._sound_pack_path)
+            selection = len(self._sound_pack_values) - 1
+        self._sound_pack_choice = wx.Choice(
+            self, name="wizard.sound_pack_choice", choices=pack_labels
         )
-        self._choose_pack_btn.Bind(wx.EVT_BUTTON, self._on_choose_sound_pack)
-        pack_row.Add(self._sound_pack_display, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-        pack_row.Add(self._choose_pack_btn, 0)
+        if pack_labels:
+            self._sound_pack_choice.SetSelection(max(0, selection))
         grid.Add(self._pack_row_label, flag=wx.ALIGN_CENTER_VERTICAL)
-        grid.Add(pack_row, flag=wx.EXPAND)
+        grid.Add(self._sound_pack_choice, flag=wx.EXPAND)
 
         self._indent_label = wx.StaticText(
             self, label=_("Indentation tones:"), name="wizard.indent_tone_label"
@@ -663,8 +679,7 @@ class _KeyboardSoundPage(_WizardPage):
         on = self._sound_enabled.GetValue()
         for ctrl in (
             self._pack_row_label,
-            self._sound_pack_display,
-            self._choose_pack_btn,
+            self._sound_pack_choice,
             self._indent_label,
             self._indent,
         ):
@@ -673,30 +688,12 @@ class _KeyboardSoundPage(_WizardPage):
     def _on_sound_toggle(self, _event: wx.CommandEvent) -> None:
         self._apply_sound_enabled_state()
 
-    def _sound_pack_name(self) -> str:
-        if not self._sound_pack_path:
-            return _("Bundled Ink pack (default)")
-        from pathlib import Path
-
-        return Path(self._sound_pack_path).name or self._sound_pack_path
-
-    def _on_choose_sound_pack(self, _event: object) -> None:
-        with wx.FileDialog(
-            self,
-            _("Choose a sound pack (.qsp)"),
-            wildcard="Sound packs (*.qsp)|*.qsp|All files (*.*)|*.*",
-            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
-        ) as dlg:
-            if dlg.ShowModal() != wx.ID_OK:
-                return
-            self._sound_pack_path = dlg.GetPath()
-        self._sound_pack_display.SetLabel(self._sound_pack_name())
-        self.Layout()
-
     def collect(self, settings: Settings, _overrides: dict) -> None:
         settings.keyboard_pack = self._pack.GetStringSelection() or "QUILL Default"
         settings.sound_enabled = self._sound_enabled.GetValue()
-        settings.sound_pack_path = self._sound_pack_path
+        pack_index = self._sound_pack_choice.GetSelection()
+        if 0 <= pack_index < len(self._sound_pack_values):
+            settings.sound_pack_path = self._sound_pack_values[pack_index]
         selection = self._indent.GetSelection()
         if 0 <= selection < len(self._INDENT_TONE_CHOICES):
             settings.indent_tone_scale = self._INDENT_TONE_CHOICES[selection][0]

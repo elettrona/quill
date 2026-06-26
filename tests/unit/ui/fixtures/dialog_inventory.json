@@ -293,7 +293,6 @@
   "quill/ui/quillin_wizard.py::open_quillin_wizard::wx.Dialog": "hardened_custom",
   "quill/ui/session_browser.py::SessionBrowserDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/setup_wizard_pages.py::_DataLocationPage._on_choose_folder::wx.DirDialog": "native",
-  "quill/ui/setup_wizard_pages.py::_KeyboardSoundPage._on_choose_sound_pack::wx.FileDialog": "native",
   "quill/ui/simple_open_dialog.py::SimpleOpenDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/single_convert_dialog.py::prompt_open_in_new_window::wx.MessageDialog": "native",
   "quill/ui/skill_library_dialog.py::SkillLibraryDialog.__init__::wx.Dialog": "hardened_custom",

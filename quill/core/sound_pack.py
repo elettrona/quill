@@ -192,6 +192,89 @@ _path_is_unsafe = is_unsafe_path
 # ---------------------------------------------------------------------------
 
 
+#: The earcon pack QUILL uses by default when sounds are enabled and the user
+#: has not chosen another. This is QUILL's own bundled pack.
+DEFAULT_SOUND_PACK_ID = "ink"
+
+#: Prefix marking a stored choice as a bundled pack referenced by id (rather
+#: than an absolute path), so the choice survives a move/reinstall.
+BUNDLED_PREFIX = "bundled:"
+
+
+@dataclass(frozen=True)
+class BundledSoundPack:
+    """An earcon pack that ships inside QUILL."""
+
+    id: str  # directory name, e.g. "ink"
+    name: str  # display name from the manifest, e.g. "Ink"
+    path: Path
+
+    @property
+    def setting_value(self) -> str:
+        """The value stored in ``settings.sound_pack_path`` for this pack.
+
+        The default pack stores ``""`` (so existing installs keep working);
+        every other bundled pack stores ``bundled:<id>``.
+        """
+        return "" if self.id == DEFAULT_SOUND_PACK_ID else f"{BUNDLED_PREFIX}{self.id}"
+
+
+def bundled_sound_packs_dir() -> Path:
+    """Directory holding the sound packs shipped inside the ``quill`` package."""
+    import quill
+
+    return Path(quill.__file__).resolve().parent / "assets" / "sound_packs"
+
+
+def available_sound_packs() -> list[BundledSoundPack]:
+    """Return the earcon packs that ship with QUILL, the default pack first.
+
+    Indent-tone overlay packs (``indent_*``) are excluded: those are selected
+    separately via the indentation-tones setting, not as the primary earcon pack.
+    """
+    base = bundled_sound_packs_dir()
+    packs: list[BundledSoundPack] = []
+    if not base.is_dir():
+        return packs
+    for child in sorted(base.iterdir()):
+        if not child.is_dir() or child.name.startswith("indent_"):
+            continue
+        if not (child / _MANIFEST_NAME).is_file():
+            continue
+        name = child.name
+        try:
+            raw = json.loads((child / _MANIFEST_NAME).read_text(encoding="utf-8"))
+            if isinstance(raw, dict) and isinstance(raw.get("name"), str) and raw["name"].strip():
+                name = raw["name"].strip()
+        except (OSError, ValueError):
+            pass
+        packs.append(BundledSoundPack(id=child.name, name=name, path=child))
+    packs.sort(key=lambda p: (p.id != DEFAULT_SOUND_PACK_ID, p.name.lower()))
+    return packs
+
+
+def resolve_sound_pack_path(spec: str) -> Path | None:
+    """Resolve a stored ``sound_pack_path`` value to an actual pack path, or None.
+
+    Handles all three storage forms so the loader never has to:
+
+    * ``""`` -> QUILL's default bundled pack (:data:`DEFAULT_SOUND_PACK_ID`).
+    * ``bundled:<id>`` -> that bundled pack, resolved against the install at load
+      time so the choice is not tied to an absolute path that a move/reinstall
+      would break.
+    * anything else -> a direct filesystem path to a ``.qsp`` file or directory.
+    """
+    spec = (spec or "").strip()
+    if not spec:
+        default = bundled_sound_packs_dir() / DEFAULT_SOUND_PACK_ID
+        return default if default.exists() else None
+    if spec.startswith(BUNDLED_PREFIX):
+        bundled = bundled_sound_packs_dir() / spec[len(BUNDLED_PREFIX) :]
+        return bundled if bundled.exists() else None
+    path = Path(spec)
+    return path if path.exists() else None
+
+
 def load_sound_pack(path: Path) -> SoundPack:
     """Load and pre-buffer a QSP sound pack.
 
