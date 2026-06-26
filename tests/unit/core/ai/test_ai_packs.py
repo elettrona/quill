@@ -1,0 +1,188 @@
+"""Optional SDK harness packs: availability, capabilities, registration, bridge."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import pytest
+
+from quill.ai_packs import all_packs, register_all
+from quill.ai_packs._base import SdkHarness
+from quill.core.ai.activity_log import ActivityLog
+from quill.core.ai.context_builder import ContextScope
+from quill.core.ai.events import AgentEvent, AgentEventKind
+from quill.core.ai.harness import AgentSpec, AIContext, HarnessRegistry
+from quill.core.ai.permissions import PermissionBroker, RiskLevel, SafetyProfile
+from quill.core.ai.tool_gateway import AgentIdentity, SafeEditorToolGateway
+
+PACK_IDS = {
+    "copilot",
+    "claude_agent_sdk",
+    "openai_agents",
+    "microsoft_agent_framework",
+    "langgraph",
+    "openhands",
+}
+
+
+@dataclass
+class FakeHost:
+    selection: str = "old"
+    replacements: list[str] = field(default_factory=list)
+    inserts: list[str] = field(default_factory=list)
+    checkpoints: list[str] = field(default_factory=list)
+    announcements: list[str] = field(default_factory=list)
+
+    def get_document(self) -> str:
+        return "doc"
+
+    def get_selection(self) -> str:
+        return self.selection
+
+    def get_outline(self) -> list[str]:
+        return []
+
+    def get_file_type(self) -> str:
+        return "markdown"
+
+    def create_undo_checkpoint(self, label: str) -> None:
+        self.checkpoints.append(label)
+
+    def apply_replacement(self, text: str) -> None:
+        self.replacements.append(text)
+
+    def apply_insert(self, text: str) -> None:
+        self.inserts.append(text)
+
+    def apply_document_text(self, text: str) -> None: ...
+
+    def run_command(self, command_id: str) -> None: ...
+
+    def confirm(self, message: str) -> bool:
+        return True
+
+    def preview_diff(self, review: object) -> bool:
+        return True
+
+    def announce(self, message: str) -> None:
+        self.announcements.append(message)
+
+
+def test_all_six_packs_present() -> None:
+    assert {p.id for p in all_packs()} == PACK_IDS
+
+
+def test_packs_report_unavailable_without_sdk() -> None:
+    # None of these SDKs are installed in CI; each must degrade gracefully.
+    for pack in all_packs():
+        available, reason = pack.is_available()
+        assert available is False
+        assert reason is not None
+        assert pack.extra in reason
+
+
+def test_every_pack_declares_capabilities() -> None:
+    for pack in all_packs():
+        caps = pack.capabilities()
+        assert caps.chat is True
+        assert caps.tool_calling is True
+        assert caps.patch_generation is True
+
+
+def test_register_all_into_registry() -> None:
+    reg = HarnessRegistry()
+    register_all(reg)
+    assert {h.id for h in reg.all()} == PACK_IDS
+    # Uninstalled packs are registered but not "available".
+    assert reg.available() == []
+
+
+def test_unavailable_session_returns_error_not_crash(tmp_path: Path) -> None:
+    events: list[AgentEvent] = []
+    pack = next(p for p in all_packs() if p.id == "claude_agent_sdk")
+    gw = _gateway(tmp_path, FakeHost(), events)
+    session = pack.start_session(
+        _agent(), AIContext(prompt="hi"), gw, PermissionBroker(), events.append
+    )
+    result = session.run()
+    assert result.status == "error"
+    assert pack.extra in result.error
+    assert AgentEventKind.ERROR in [e.kind for e in events]
+
+
+def test_injected_transport_drives_gateway(tmp_path: Path) -> None:
+    # Simulate an installed SDK by injecting a transport; the pack must apply the
+    # result through the gateway exactly like Native.
+    events: list[AgentEvent] = []
+    host = FakeHost()
+    gw = _gateway(tmp_path, host, events)
+
+    class FakePack(SdkHarness):
+        pack_id = "fake"
+        pack_name = "Fake SDK"
+        extra = "ai-fake"
+        sdk_modules = ("definitely_not_installed_xyz",)
+
+        def capabilities(self):  # type: ignore[no-untyped-def]
+            from quill.core.ai.harness import HarnessCapabilities
+
+            return HarnessCapabilities()
+
+    pack = FakePack(invoke=lambda agent, ctx: "bridged text")
+    assert pack.is_available()[0] is True  # override forces availability
+    session = pack.start_session(
+        _agent(), AIContext(prompt="go"), gw, PermissionBroker(SafetyProfile.POWER_USER), events.append
+    )
+    result = session.run()
+    assert result.ok
+    assert result.final_text == "bridged text"
+    assert host.replacements == ["bridged text"]
+    assert AgentEventKind.AGENT_COMPLETED in [e.kind for e in events]
+
+
+def test_injected_transport_error_is_contained(tmp_path: Path) -> None:
+    events: list[AgentEvent] = []
+    gw = _gateway(tmp_path, FakeHost(), events)
+
+    class FakePack(SdkHarness):
+        pack_id = "fake"
+        pack_name = "Fake SDK"
+        extra = "ai-fake"
+        sdk_modules = ()
+
+        def capabilities(self):  # type: ignore[no-untyped-def]
+            from quill.core.ai.harness import HarnessCapabilities
+
+            return HarnessCapabilities()
+
+    def boom(agent: AgentSpec, ctx: AIContext) -> str:
+        raise RuntimeError("sdk exploded")
+
+    pack = FakePack(invoke=boom)
+    session = pack.start_session(_agent(), AIContext(prompt="x"), gw, PermissionBroker(), events.append)
+    result = session.run()
+    assert result.status == "error"
+    assert "sdk exploded" in result.error
+
+
+# -- helpers ---------------------------------------------------------------
+
+
+def _gateway(tmp_path: Path, host: FakeHost, events: list[AgentEvent]) -> SafeEditorToolGateway:
+    return SafeEditorToolGateway(
+        host=host,
+        broker=PermissionBroker(SafetyProfile.POWER_USER),
+        activity=ActivityLog(tmp_path / "a.json"),
+        identity=AgentIdentity(agent_id="a", risk=RiskLevel.LOW),
+        emit=events.append,
+    )
+
+
+def _agent() -> AgentSpec:
+    return AgentSpec(
+        id="writing-companion",
+        display_name="Writing Companion",
+        system_prompt="Improve.",
+        default_scope=ContextScope.SELECTION,
+    )

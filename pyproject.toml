@@ -128,6 +128,18 @@ github = [
     # GitHub repository browser and remote file open/save (File > Open Remote > GitHub).
     "PyGithub>=2.9.1",
 ]
+# Optional agentic-AI harness packs (QUILL 2.0). Each pulls one third-party agent
+# SDK; the matching quill/ai_packs/ module imports it LAZILY only when a session
+# runs, and an uninstalled pack reports "Install the X pack" without crashing.
+# Every pack bridges to the same Safe Editor Tool Gateway + Permission Broker and
+# emits the same normalized events; none edits the buffer directly. Pin loosely;
+# adapters are version-checked and the Native harness always works.
+ai-copilot = ["copilot"]  # TODO: pin to the official GitHub Copilot SDK package name once published
+ai-claude = ["claude-agent-sdk>=0.1.0"]
+ai-openai = ["openai-agents>=0.1.0"]
+ai-microsoft = ["agent-framework>=0.1.0"]
+ai-langgraph = ["langgraph>=0.2.0", "langchain>=0.3.0"]
+ai-openhands = ["openhands-ai>=0.1.0"]
 dev = [
   "pytest>=9.1.1",
   "pytest-xdist>=3.8.0",
