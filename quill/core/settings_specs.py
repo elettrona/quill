@@ -202,6 +202,16 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("recent", "history", "files", "missing", "clean up"),
     ),
     SettingSpec(
+        "first_line_as_title",
+        "Suggest a filename from the first line",
+        "general",
+        "bool",
+        "When you save an untitled document, pre-fill the Save dialog with a name "
+        "taken from the document's first line. Works across formats and strips "
+        "leading markup (a Markdown heading, a quote, or a list bullet).",
+        keywords=("title", "filename", "first line", "save", "name", "heading"),
+    ),
+    SettingSpec(
         "language",
         "Interface language",
         "general",

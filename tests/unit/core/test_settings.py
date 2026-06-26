@@ -764,3 +764,12 @@ def test_corrupt_settings_file_is_quarantined_then_defaults(
     backups = list((tmp_path / "migration-backups").glob("settings-corrupt-*.json"))
     assert len(backups) == 1
     assert backups[0].read_text(encoding="utf-8") == "{ this is not valid json"
+
+
+def test_first_line_as_title_defaults_off_and_round_trips(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    assert Settings().first_line_as_title is False
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    save_settings(Settings(first_line_as_title=True))
+    assert load_settings().first_line_as_title is True

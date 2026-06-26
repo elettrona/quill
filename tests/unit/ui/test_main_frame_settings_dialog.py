@@ -188,3 +188,27 @@ def test_export_import_settings_round_trip() -> None:
 
     assert restored.theme == "dark"
     assert exported["schema_version"] == registry.SCHEMA_VERSION
+
+
+def test_suggested_save_basename_first_line_branches() -> None:
+    import types
+
+    from pathlib import Path as _Path
+
+    frame = MainFrame.__new__(MainFrame)
+    frame.editor = types.SimpleNamespace(GetValue=lambda: "# Meeting Notes\nbody")
+
+    # Untitled + setting on -> first-line title.
+    frame.document = types.SimpleNamespace(path=None, name="Untitled")
+    frame.settings = Settings(first_line_as_title=True)
+    assert frame._suggested_save_basename("Untitled") == "Meeting Notes"
+
+    # Untitled + setting off -> the fallback.
+    frame.settings = Settings(first_line_as_title=False)
+    assert frame._suggested_save_basename("Untitled") == "Untitled"
+    assert frame._suggested_save_basename() == ""
+
+    # Titled document -> its own stem, regardless of the setting.
+    frame.document = types.SimpleNamespace(path=_Path("/tmp/report.md"), name="report.md")
+    frame.settings = Settings(first_line_as_title=True)
+    assert frame._suggested_save_basename("x") == "report"

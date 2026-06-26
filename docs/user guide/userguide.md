@@ -2351,6 +2351,7 @@ Quill's current settings and customization surface covers the things you are mos
 - spell check as you type
 - line-number visibility
 - whether Quill starts with no document open
+- **suggest a filename from the first line** — when on, saving an untitled document pre-fills the Save dialog with a name taken from the first line (across formats; leading markup like a Markdown heading, quote, or list bullet is stripped). Off by default.
 - read-aloud voice selection
 - active feature profile
 - active keyboard pack

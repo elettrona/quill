@@ -73,6 +73,9 @@ class Settings:
     last_update_check: str = ""
     recent_files_limit: int = 10
     recent_files_auto_clear_missing: bool = False
+    # When saving an untitled document, suggest a filename from its first line
+    # (works across formats; strips leading markup). Opt-in.
+    first_line_as_title: bool = False
     tray_enabled: bool = False
     persistent_undo: bool = False
     spellcheck_as_you_type: bool = False
@@ -463,6 +466,7 @@ class Settings:
         except (TypeError, ValueError):
             recent_files_limit = 10
         recent_files_auto_clear_missing = bool(data.get("recent_files_auto_clear_missing", False))
+        first_line_as_title = bool(data.get("first_line_as_title", False))
         tray_enabled = bool(data.get("tray_enabled", False))
         persistent_undo = bool(data.get("persistent_undo", False))
         spellcheck_as_you_type = bool(data.get("spellcheck_as_you_type", False))
@@ -960,6 +964,7 @@ class Settings:
             last_update_check=last_update_check,
             recent_files_limit=recent_files_limit,
             recent_files_auto_clear_missing=recent_files_auto_clear_missing,
+            first_line_as_title=first_line_as_title,
             tray_enabled=tray_enabled,
             persistent_undo=persistent_undo,
             spellcheck_as_you_type=spellcheck_as_you_type,

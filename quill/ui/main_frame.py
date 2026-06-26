@@ -7626,7 +7626,7 @@ class MainFrame(
         label = format_label.display_name if format_label else format_name
         wildcard = f"{label} (*{target_ext})|*{target_ext}|All files (*.*)|*.*"
 
-        default_name = (self.document.path.stem if self.document.path else "Untitled") + target_ext
+        default_name = self._suggested_save_basename("Untitled") + target_ext
         with wx.FileDialog(
             self.frame,
             f"Export as {label}",
@@ -7710,7 +7710,7 @@ class MainFrame(
             return
 
         text = self.editor.GetValue()
-        stem = self.document.path.stem if self.document.path else (self.document.name or "Untitled")
+        stem = self._suggested_save_basename(self.document.name or "Untitled")
         title = stem or "Untitled"
         with wx.FileDialog(
             self.frame,
@@ -9356,12 +9356,32 @@ class MainFrame(
         extension = self._SAVE_FILTER_EXTENSIONS.get(filter_index, ".md")
         return target.with_suffix(extension)
 
+    def _suggested_save_basename(self, fallback: str = "") -> str:
+        """Suggested filename stem for a Save/Export dialog.
+
+        A titled document keeps its current stem. For an untitled document, the
+        'Suggest a filename from the first line' setting (``first_line_as_title``)
+        derives a title from the first line across formats; otherwise *fallback*.
+        """
+        if self.document.path is not None:
+            return self.document.path.stem
+        if getattr(self.settings, "first_line_as_title", False):
+            from quill.core.titles import suggested_title_from_text
+
+            editor = getattr(self, "editor", None)
+            if editor is not None:
+                title = suggested_title_from_text(editor.GetValue())
+                if title:
+                    return title
+        return fallback
+
     def save_file_as(self) -> None:
         wx = self._wx
         with wx.FileDialog(
             self.frame,
             "Save file as",
             defaultDir=self._file_dialog_default_dir(),
+            defaultFile=self._suggested_save_basename(),
             wildcard=(
                 "Text files (*.txt)|*.txt|Markdown files (*.md)|*.md|"
                 "HTML files (*.html;*.htm;*.xhtml)|*.html;*.htm;*.xhtml|"
@@ -9485,6 +9505,7 @@ class MainFrame(
         with wx.FileDialog(
             self.frame,
             "Save as plain text",
+            defaultFile=self._suggested_save_basename(),
             wildcard="Text files (*.txt)|*.txt|All files (*.*)|*.*",
             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
         ) as dialog:
