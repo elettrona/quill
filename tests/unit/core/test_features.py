@@ -294,8 +294,18 @@ def test_visible_commands_hide_features_with_unmet_dependencies() -> None:
 def test_enabled_feature_with_all_dependencies_on_is_visible() -> None:
     manager = FeatureManager(active_profile_id=PROFILE_FULL_QUILL)
 
-    assert manager.is_enabled("core.voice_commands") is True
-    assert manager.is_visible("core.voice_commands") is True
+    assert manager.is_enabled("core.navigate") is True
+    assert manager.is_visible("core.navigate") is True
+
+
+def test_voice_commands_is_locked_off_internal_flag() -> None:
+    # Hey QUILL (core.voice_commands) is gated behind an internal flag for now
+    # (tied to the removed Windows dictation path), so it is hard-disabled and
+    # hidden regardless of profile or override.
+    manager = FeatureManager(active_profile_id=PROFILE_FULL_QUILL)
+
+    assert manager.is_enabled("core.voice_commands") is False
+    assert manager.is_visible("core.voice_commands") is False
 
 
 def test_bits_whisperer_master_flag_is_locked_off() -> None:

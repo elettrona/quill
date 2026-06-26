@@ -1041,16 +1041,15 @@ class MainFrame(
         self.features = FeatureManager.load(persistent=not safe_mode)
         self.macros = MacroManager.load(persistent=not safe_mode)
         self.settings = load_settings()
-        self._first_run_assistant_prompt = (
-            not safe_mode
-            and not load_assistant_onboarding_complete()
-            and not getattr(self.settings, "assistant_enabled", False)
-        )
-        self._first_run_speech_prompt = not safe_mode and not load_speech_onboarding_complete()
-        self._first_run_glow_prompt = not safe_mode and not load_glow_onboarding_complete()
-        self._first_run_watch_folder_prompt = (
-            not safe_mode and not load_watch_folder_onboarding_complete()
-        )
+        # Startup no longer barrages the user with secondary onboarding (AI hub,
+        # watch folder, GLOW); only the setup wizard and trust-consent gate run.
+        # The rest stay available from their menus/buttons. (#700)
+        self._first_run_assistant_prompt = False
+        # Legacy DECtalk/eSpeak/Piper speech onboarding is retired (speech is set
+        # up via Tools > Speech and Dictation); never auto-prompt it on startup.
+        self._first_run_speech_prompt = False
+        self._first_run_glow_prompt = False
+        self._first_run_watch_folder_prompt = False
         # #606: when the setup wizard will run on this launch, defer the
         # default "Untitled" document tab until the wizard returns. macOS
         # VoiceOver announces the focused window's tab name as soon as the

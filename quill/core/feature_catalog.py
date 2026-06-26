@@ -140,6 +140,9 @@ FEATURE_DEFINITIONS: dict[str, FeatureDefinition] = {
         description="Interprets Windows dictation phrases as Quill commands.",
         category="accessibility",
         dependencies=("core.dictation",),
+        # Hey QUILL is gated behind an internal flag for now; remove locked_off
+        # to re-enable. Tied to the now-removed Windows dictation path.
+        locked_off=True,
     ),
     "core.rich_text_lens": FeatureDefinition(
         "core.rich_text_lens",
