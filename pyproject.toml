@@ -134,7 +134,7 @@ github = [
 # Every pack bridges to the same Safe Editor Tool Gateway + Permission Broker and
 # emits the same normalized events; none edits the buffer directly. Pin loosely;
 # adapters are version-checked and the Native harness always works.
-ai-copilot = ["copilot"]  # TODO: pin to the official GitHub Copilot SDK package name once published
+ai-copilot = ["github-copilot-sdk>=1.0"]  # PyPI package; imports as `copilot`
 ai-claude = ["claude-agent-sdk>=0.1.0"]
 ai-openai = ["openai-agents>=0.1.0"]
 ai-microsoft = ["agent-framework>=0.1.0"]

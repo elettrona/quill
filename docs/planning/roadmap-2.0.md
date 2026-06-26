@@ -171,9 +171,13 @@ built and unit-tested (the bridge via an injectable transport, since the SDKs ar
 not installed in CI). Each pack's `_make_invoke` imports its SDK lazily and targets
 the SDK's documented entrypoint; the live transport must be **validated against
 each SDK once its extra is installed** (Phase 5 acceptance) and richer native
-tool-calling against the gateway is a follow-up. The Copilot extra's package name
-is a placeholder pending the official SDK. Per-pack network-egress-audit entries
-are added when a pack's transport is activated against its SDK.
+tool-calling against the gateway is a follow-up. The **Copilot pack is cross-checked
+against the GA GitHub Copilot SDK** (PyPI `github-copilot-sdk`, import `copilot`,
+async `CopilotClient().create_session(...).send(...)`); its bridge denies the SDK's
+own file/shell tools via `on_permission_request` so QUILL applies edits through its
+gateway — routing that permission hook into the QUILL `PermissionBroker` is the deep
+follow-up. Per-pack network-egress-audit entries are added when a pack's transport is
+activated against its SDK.
 
 ### Phase 6 — Enterprise + durable workflows
 

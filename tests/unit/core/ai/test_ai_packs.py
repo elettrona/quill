@@ -80,6 +80,17 @@ def test_packs_report_unavailable_without_sdk() -> None:
         assert pack.extra in reason
 
 
+def test_copilot_pack_matches_real_sdk() -> None:
+    # Cross-check against the GA GitHub Copilot SDK: PyPI `github-copilot-sdk`,
+    # import name `copilot`, OAuth-by-default.
+    copilot = next(p for p in all_packs() if p.id == "copilot")
+    assert copilot.sdk_modules == ("copilot",)
+    assert copilot.extra == "ai-copilot"
+    caps = copilot.capabilities()
+    assert caps.requires_oauth is True
+    assert caps.tool_calling and caps.skills
+
+
 def test_every_pack_declares_capabilities() -> None:
     for pack in all_packs():
         caps = pack.capabilities()
