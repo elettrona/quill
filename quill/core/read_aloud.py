@@ -497,15 +497,39 @@ def list_espeak_english_voices() -> list[VoiceOption]:
     ]
 
 
+def _kokoro_dir_has_models(d: Path) -> bool:
+    return (d / KOKORO_ONNX_MODEL_FILENAME).exists() and (d / KOKORO_ONNX_VOICES_FILENAME).exists()
+
+
+def _bundled_kokoro_model_dir() -> Path | None:
+    """A bundled kokoro-models dir shipped with the app, if present.
+
+    Lets QUILL ship Kokoro in the installer (``{app}/kokoro-models``) so users
+    don't have to download it, and lets a source run discover an installed
+    copy via QUILL_APP_ROOT. Returns None when no bundled copy exists.
+    """
+    app_root = os.environ.get("QUILL_APP_ROOT", "").strip()
+    if app_root:
+        bundled = Path(app_root) / "kokoro-models"
+        if _kokoro_dir_has_models(bundled):
+            return bundled
+    return None
+
+
 def default_kokoro_model_dir() -> Path:
+    """Where Kokoro models live: a user-downloaded copy if present, else the
+    bundled copy shipped with the app, else the (download target) data dir."""
     from quill.core.paths import app_data_dir
 
-    return app_data_dir() / "kokoro-models"
+    data_dir = app_data_dir() / "kokoro-models"
+    if _kokoro_dir_has_models(data_dir):
+        return data_dir
+    bundled = _bundled_kokoro_model_dir()
+    return bundled if bundled is not None else data_dir
 
 
 def kokoro_onnx_ready(model_dir: Path | None = None) -> bool:
-    d = model_dir or default_kokoro_model_dir()
-    return (d / KOKORO_ONNX_MODEL_FILENAME).exists() and (d / KOKORO_ONNX_VOICES_FILENAME).exists()
+    return _kokoro_dir_has_models(model_dir or default_kokoro_model_dir())
 
 
 # Cache the loaded kokoro-onnx model so repeated synthesis (every section and,
@@ -536,6 +560,23 @@ def clear_kokoro_cache() -> None:
     """Drop the cached kokoro-onnx model (frees ~88 MB); the next call reloads it."""
     with _KOKORO_ONNX_LOCK:
         _KOKORO_ONNX_CACHE.clear()
+
+
+def warm_kokoro_onnx() -> bool:
+    """Load the Kokoro ONNX model into the shared cache now (best-effort).
+
+    Returns True when a model was available and loaded (or already cached), so a
+    startup prewarm makes the first preview/synthesis fast instead of paying the
+    ~88 MB load on the first user action.
+    """
+    model_dir = default_kokoro_model_dir()
+    if not kokoro_onnx_ready(model_dir):
+        return False
+    try:
+        _get_cached_kokoro_onnx(model_dir)
+        return True
+    except Exception:  # noqa: BLE001 - prewarm is best-effort
+        return False
 
 
 def synthesize_with_kokoro(

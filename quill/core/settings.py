@@ -76,6 +76,10 @@ class Settings:
     # When saving an untitled document, suggest a filename from its first line
     # (works across formats; strips leading markup). Opt-in.
     first_line_as_title: bool = False
+    # Background model warm-up after startup so the first use is fast. Loads the
+    # model into memory; turn off to save RAM if you don't use the feature.
+    warm_dictation_model: bool = True
+    warm_kokoro_model: bool = True
     tray_enabled: bool = False
     persistent_undo: bool = False
     spellcheck_as_you_type: bool = False
@@ -467,6 +471,8 @@ class Settings:
             recent_files_limit = 10
         recent_files_auto_clear_missing = bool(data.get("recent_files_auto_clear_missing", False))
         first_line_as_title = bool(data.get("first_line_as_title", False))
+        warm_dictation_model = bool(data.get("warm_dictation_model", True))
+        warm_kokoro_model = bool(data.get("warm_kokoro_model", True))
         tray_enabled = bool(data.get("tray_enabled", False))
         persistent_undo = bool(data.get("persistent_undo", False))
         spellcheck_as_you_type = bool(data.get("spellcheck_as_you_type", False))
@@ -965,6 +971,8 @@ class Settings:
             recent_files_limit=recent_files_limit,
             recent_files_auto_clear_missing=recent_files_auto_clear_missing,
             first_line_as_title=first_line_as_title,
+            warm_dictation_model=warm_dictation_model,
+            warm_kokoro_model=warm_kokoro_model,
             tray_enabled=tray_enabled,
             persistent_undo=persistent_undo,
             spellcheck_as_you_type=spellcheck_as_you_type,

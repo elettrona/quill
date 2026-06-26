@@ -67,6 +67,9 @@ class SpeechCommandsMixin:
         (_dictation_provider) keeps the model loaded for later dictations."""
         import threading
 
+        if not bool(getattr(self.settings, "warm_dictation_model", True)):
+            return
+
         def _work() -> None:
             try:
                 from quill.core.speech.capture import capture_available
@@ -85,6 +88,26 @@ class SpeechCommandsMixin:
                 pass
 
         threading.Thread(target=_work, daemon=True, name="quill-dictation-prewarm").start()
+
+    def prewarm_kokoro_model(self) -> None:
+        """Warm the Kokoro ONNX model in the background so the first preview or
+        read-aloud is fast. Best-effort; gated by the warm_kokoro_model setting."""
+        if not bool(getattr(self.settings, "warm_kokoro_model", True)):
+            return
+        import threading
+
+        def _work() -> None:
+            try:
+                from quill.core.read_aloud import warm_kokoro_onnx
+
+                if warm_kokoro_onnx():
+                    import logging
+
+                    logging.getLogger(__name__).info("read-aloud: kokoro model prewarmed")
+            except Exception:  # noqa: BLE001 - prewarm must never break startup
+                pass
+
+        threading.Thread(target=_work, daemon=True, name="quill-kokoro-prewarm").start()
 
     # -- model manager ---------------------------------------------------- #
 

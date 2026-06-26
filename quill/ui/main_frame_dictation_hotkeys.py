@@ -235,6 +235,7 @@ class DictationHotkeysMixin:
         try:
             self._wx.CallLater(2000, self.check_dictation_recovery_on_startup)
             self._wx.CallLater(4000, self.prewarm_dictation_model)  # warm model: fast first use
+            self._wx.CallLater(4500, self.prewarm_kokoro_model)  # warm Kokoro for fast preview
         except Exception:  # noqa: BLE001 - the startup prompt is best-effort
             pass
 

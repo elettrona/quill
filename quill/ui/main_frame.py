@@ -16856,7 +16856,10 @@ class MainFrame(
     # Voice preview and settings for the supported read-aloud engines
     # ------------------------------------------------------------------
 
-    _PREVIEW_TEXT = "Hello, this is a voice preview. The quick brown fox jumps over the lazy dog."
+    _PREVIEW_TEXT = (
+        "QUILL is where your words come to life, turning quiet thoughts into "
+        "finished pages with a little sprinkle of everyday magic."
+    )
 
     def _voice_preview_catalog_roots(self) -> list[Path]:
         roots: list[Path] = []
