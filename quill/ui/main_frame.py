@@ -2050,9 +2050,9 @@ class MainFrame(
             None,
         )
         self.commands.register("tools.ai_thesaurus", "AI Thesaurus", self.open_ai_thesaurus, None)
-        from quill.ui.agent_editor_host import register_experimental_agent_command
+        from quill.ui.agent_editor_host import register_agent_commands
 
-        register_experimental_agent_command(self)  # opt-in via QUILL_AI_AGENT_GATEWAY
+        register_agent_commands(self)  # Run Agent palette entries (one per catalog agent)
         self.commands.register(
             "tools.ai_continue_writing",
             "Continue Writing",

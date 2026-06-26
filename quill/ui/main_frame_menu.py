@@ -1993,9 +1993,9 @@ class MenuBuilderMixin:
             self._id_writing_instructions,
             self._menu_label(_("&Writing Instructions..."), "tools.writing_instructions"),
         )
-        from quill.ui.agent_editor_host import append_experimental_agent_menu
+        from quill.ui.agent_editor_host import append_agent_menu
 
-        append_experimental_agent_menu(self, ai_menu)
+        append_agent_menu(self, ai_menu)
         # "Forget API Key" moved into the AI Hub as a per-provider action
         # ("Forget this provider's key"), since a single global forget is
         # ambiguous once each provider keeps its own key.

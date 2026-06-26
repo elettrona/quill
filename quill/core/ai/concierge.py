@@ -113,8 +113,8 @@ class Suggestion:
 
 
 def _agent_command(agent: AgentSpec) -> str:
-    """The palette command id the experimental wiring registers for an agent."""
-    return "tools.ai_agent." + agent.id.replace("-", "_")
+    """The palette command id registered for an agent (see register_agent_commands)."""
+    return "tools.run_agent." + agent.id.replace("-", "_")
 
 
 def suggest(

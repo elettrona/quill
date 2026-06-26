@@ -37,6 +37,8 @@ __all__ = [
     "MainFrameEditorHost",
     "run_agent",
     "run_selection_agent",
+    "register_agent_commands",
+    "append_agent_menu",
     "register_experimental_agent_command",
     "append_experimental_agent_menu",
     "experimental_gateway_enabled",
@@ -44,59 +46,74 @@ __all__ = [
 
 
 def experimental_gateway_enabled() -> bool:
-    """True when the opt-in 2.0 agentic path is enabled (QUILL_AI_AGENT_GATEWAY)."""
+    """True when the (now legacy) ``QUILL_AI_AGENT_GATEWAY`` override is set.
+
+    The agent run path is wired into the AI menu by default now; this remains only
+    so the env override (and anything reading it) keeps working.
+    """
     import os
 
     return bool(os.environ.get("QUILL_AI_AGENT_GATEWAY"))
 
 
-def append_experimental_agent_menu(controller: Any, ai_menu: Any) -> None:
-    """Append the opt-in 'Run Agent' AI-menu item when the gateway is enabled.
-
-    No-ops unless ``QUILL_AI_AGENT_GATEWAY`` is set, so the default menu is
-    unchanged. Kept here (not in the size-budgeted menu module) so the menu file
-    only needs a single call. Runs the Writing Companion on the selection as the
-    quick 'try it'; the full agent set (incl. document-scoped) is reachable via
-    the ``Run Agent: ...`` command-palette entries.
-    """
-    if not experimental_gateway_enabled():
-        return
-    wx = controller._wx
-    item_id = wx.NewIdRef()
-    ai_menu.AppendSeparator()
-    ai_menu.Append(item_id, "Run &Agent on Selection (experimental)...")
-    controller.frame.Bind(
-        wx.EVT_MENU, lambda _e: run_agent(controller, "writing-companion"), id=item_id
-    )
-
-
-def register_experimental_agent_command(controller: Any) -> None:
-    """Register the opt-in agentic commands, only when explicitly enabled.
-
-    Gated on ``QUILL_AI_AGENT_GATEWAY`` so the default build is unchanged and the
-    commands do not even appear in the palette. Registers a quick selection
-    command plus one ``tools.ai_agent.<id>`` command per catalog agent, so
-    document-scoped agents (Accessibility Editor, Markdown Publisher, ...) are
-    reachable too. Kept here (not in MainFrame) to keep the size-budgeted
-    main_frame module unburdened.
-    """
-    if not experimental_gateway_enabled():
-        return
+def _catalog_agents() -> list[Any]:
+    """The bundled agents, sorted by display name (stable menu/palette order)."""
     from quill.core.ai.agent_catalog import load_catalog
 
+    return sorted(load_catalog().agents, key=lambda a: a.display_name.lower())
+
+
+def append_agent_menu(controller: Any, ai_menu: Any) -> None:
+    """Append a 'Run Agent' submenu listing every catalog agent.
+
+    Each item runs the agent at its declared scope through the reviewed Safe
+    Editor Tool Gateway (permission broker + diff preview + one-step undo). AI
+    on/off and Safe Mode are enforced in :func:`run_agent`, so the items stay
+    reachable but refuse with a clear status when AI is unavailable. Built here
+    (not the size-budgeted menu module) so the menu file only needs one call.
+    """
+    from quill.core.i18n import _
+
+    wx = controller._wx
+    submenu = wx.Menu()
+    for agent in _catalog_agents():
+        item_id = wx.NewIdRef()
+        submenu.Append(item_id, agent.display_name, agent.description or agent.display_name)
+        controller.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e, agent_id=agent.id: run_agent(controller, agent_id),
+            id=item_id,
+        )
+    ai_menu.AppendSeparator()
+    ai_menu.AppendSubMenu(submenu, _("Run &Agent"))
+
+
+def register_agent_commands(controller: Any) -> None:
+    """Register command-palette entries for the agent run path.
+
+    A quick ``tools.run_agent`` (Writing Companion on the selection) plus one
+    ``tools.run_agent.<id>`` per catalog agent, so document-scoped agents are
+    reachable from the palette and bindable in the keymap. AI on/off and Safe Mode
+    are enforced at run time in :func:`run_agent`.
+    """
     controller.commands.register(
-        "tools.ai_agent_gateway",
-        "Run Agent on Selection (experimental)",
+        "tools.run_agent",
+        "Run Agent on Selection",
         lambda: run_agent(controller, "writing-companion"),
         None,
     )
-    for agent in load_catalog().agents:
+    for agent in _catalog_agents():
         controller.commands.register(
-            "tools.ai_agent." + agent.id.replace("-", "_"),
-            f"Run Agent: {agent.display_name} (experimental)",
+            "tools.run_agent." + agent.id.replace("-", "_"),
+            f"Run Agent: {agent.display_name}",
             lambda agent_id=agent.id: run_agent(controller, agent_id),
             None,
         )
+
+
+# Back-compat aliases: the menu/command wiring is no longer gated on the env flag.
+append_experimental_agent_menu = append_agent_menu
+register_experimental_agent_command = register_agent_commands
 
 
 class MainFrameEditorHost:
@@ -307,15 +324,16 @@ def run_agent(
     transform the whole buffer (preview-gated); read-only agents open their output
     in a new document. Threading mirrors ``_run_agent_task``: the provider call is
     on a daemon thread, every wx touch (preview, apply, announce) is marshalled
-    back to the UI thread via ``wx.CallAfter``. Experimental / opt-in only.
+    back to the UI thread via ``wx.CallAfter``.
     """
-    import threading
-
-    import wx
-
     from quill.core.ai.agent_catalog import load_catalog
     from quill.core.ai.model_manager import load_ai_enabled
-    from quill.core.ai.provider_backend import ProviderChatBackend
+
+    # Guards first, before importing wx, so an early bail stays headless-testable
+    # and never spins up the UI/provider stack needlessly.
+    if getattr(controller, "_safe_mode", False):
+        controller._set_status("Agents are unavailable in safe mode.")
+        return
 
     if not load_ai_enabled():
         controller._set_status("AI is turned off. Enable it in the AI menu.")
@@ -330,6 +348,12 @@ def run_agent(
     if source is None:
         controller._set_status(error)
         return
+
+    import threading
+
+    import wx
+
+    from quill.core.ai.provider_backend import ProviderChatBackend
 
     backend = ProviderChatBackend()
     responder, engine_name = _select_responder(backend, controller)

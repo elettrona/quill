@@ -68,13 +68,13 @@ def test_suggest_selection_agents_target_palette_commands() -> None:
     out = suggest(ctx, list(AGENTS))
     agent_suggestions = [s for s in out if s.kind == "agent"]
     assert agent_suggestions
-    assert all(s.target.startswith("tools.ai_agent.") for s in agent_suggestions)
+    assert all(s.target.startswith("tools.run_agent.") for s in agent_suggestions)
 
 
 def test_suggest_surfaces_github_maintainer_in_a_repo_without_duplicates() -> None:
     ctx = ConciergeContext(file_type="md", has_selection=False, in_git_repo=True)
     out = suggest(ctx, list(AGENTS), limit=12)
-    gh_target = "tools.ai_agent.github_maintainer"
+    gh_target = "tools.run_agent.github_maintainer"
     gh = [s for s in out if s.target == gh_target]
     assert len(gh) == 1  # surfaced once, not duplicated by the recommend loop
     assert "git repository" in gh[0].reason
