@@ -28,33 +28,73 @@ from quill.core.ai.diff_review import DiffReview
 from quill.core.ai.event_bridge import AnnouncementLevel, EventBridge
 from quill.core.ai.harness import AIContext
 from quill.core.ai.harness.native import responder_from_backend
-from quill.core.ai.permissions import PermissionBroker, SafetyProfile
+from quill.core.ai.permissions import PermissionBroker, PermissionCategory, SafetyProfile
 from quill.core.ai.tool_gateway import AgentIdentity, SafeEditorToolGateway
 
 __all__ = [
     "MainFrameEditorHost",
+    "run_agent",
     "run_selection_agent",
     "register_experimental_agent_command",
+    "append_experimental_agent_menu",
+    "experimental_gateway_enabled",
 ]
 
 
-def register_experimental_agent_command(controller: Any) -> None:
-    """Register the opt-in agentic command, only when explicitly enabled.
-
-    Gated on ``QUILL_AI_AGENT_GATEWAY`` so the default build is unchanged and the
-    command does not even appear in the palette. Kept here (not in MainFrame) so
-    the wiring adds essentially nothing to the size-budgeted main_frame module.
-    """
+def experimental_gateway_enabled() -> bool:
+    """True when the opt-in 2.0 agentic path is enabled (QUILL_AI_AGENT_GATEWAY)."""
     import os
 
-    if not os.environ.get("QUILL_AI_AGENT_GATEWAY"):
+    return bool(os.environ.get("QUILL_AI_AGENT_GATEWAY"))
+
+
+def append_experimental_agent_menu(controller: Any, ai_menu: Any) -> None:
+    """Append the opt-in 'Run Agent' AI-menu item when the gateway is enabled.
+
+    No-ops unless ``QUILL_AI_AGENT_GATEWAY`` is set, so the default menu is
+    unchanged. Kept here (not in the size-budgeted menu module) so the menu file
+    only needs a single call. Runs the Writing Companion on the selection as the
+    quick 'try it'; the full agent set (incl. document-scoped) is reachable via
+    the ``Run Agent: ...`` command-palette entries.
+    """
+    if not experimental_gateway_enabled():
         return
+    wx = controller._wx
+    item_id = wx.NewIdRef()
+    ai_menu.AppendSeparator()
+    ai_menu.Append(item_id, "Run &Agent on Selection (experimental)...")
+    controller.frame.Bind(
+        wx.EVT_MENU, lambda _e: run_agent(controller, "writing-companion"), id=item_id
+    )
+
+
+def register_experimental_agent_command(controller: Any) -> None:
+    """Register the opt-in agentic commands, only when explicitly enabled.
+
+    Gated on ``QUILL_AI_AGENT_GATEWAY`` so the default build is unchanged and the
+    commands do not even appear in the palette. Registers a quick selection
+    command plus one ``tools.ai_agent.<id>`` command per catalog agent, so
+    document-scoped agents (Accessibility Editor, Markdown Publisher, ...) are
+    reachable too. Kept here (not in MainFrame) to keep the size-budgeted
+    main_frame module unburdened.
+    """
+    if not experimental_gateway_enabled():
+        return
+    from quill.core.ai.agent_catalog import load_catalog
+
     controller.commands.register(
         "tools.ai_agent_gateway",
         "Run Agent on Selection (experimental)",
-        lambda: run_selection_agent(controller),
+        lambda: run_agent(controller, "writing-companion"),
         None,
     )
+    for agent in load_catalog().agents:
+        controller.commands.register(
+            "tools.ai_agent." + agent.id.replace("-", "_"),
+            f"Run Agent: {agent.display_name} (experimental)",
+            lambda agent_id=agent.id: run_agent(controller, agent_id),
+            None,
+        )
 
 
 class MainFrameEditorHost:
@@ -72,6 +112,13 @@ class MainFrameEditorHost:
     def __init__(self, controller: Any) -> None:
         self._c = controller
         self._applied_in_preview = False
+        # Which apply path the preview dialog should use this turn: "selection"
+        # replaces the selection, "document" replaces the whole buffer. The runner
+        # sets it from the agent's scope before driving the gateway.
+        self._apply_mode = "selection"
+
+    def set_apply_mode(self, mode: str) -> None:
+        self._apply_mode = mode
 
     # -- reads -------------------------------------------------------------
 
@@ -139,7 +186,10 @@ class MainFrameEditorHost:
 
         def on_apply(accepted_text: str) -> None:
             self._c._record_persistent_undo_state(str(self._c.editor.GetValue()))
-            self._c._ai_replace_selection(accepted_text)
+            if self._apply_mode == "document":
+                self._c._ai_set_document_text(accepted_text)
+            else:
+                self._c._ai_replace_selection(accepted_text)
             self._applied_in_preview = True
 
         self._c.open_ai_diff_review(review.original, review.accept_all(), on_apply)
@@ -149,17 +199,76 @@ class MainFrameEditorHost:
         self._c._set_status(message)
 
 
-def run_selection_agent(
-    controller: Any,
-    agent_id: str = "writing-companion",
-    *,
-    instruction: str = "Improve the selected text for clarity and tone.",
-) -> None:
-    """Run a catalog agent on the current selection through the gateway.
+_SELECTION_SCOPES = (ContextScope.SELECTION, ContextScope.CURRENT_SECTION)
+_DOCUMENT_SCOPES = (ContextScope.FULL_DOCUMENT, ContextScope.DOCUMENT_SUMMARY)
 
-    Threading mirrors ``_run_agent_task``: the provider call runs on a daemon
-    thread; the gateway apply (preview dialog, replace, announce) is marshalled
-    back to the UI thread with ``wx.CallAfter``. Experimental / opt-in only.
+
+def _source_for_scope(controller: Any, scope: ContextScope) -> tuple[str | None, str]:
+    """Return (source_text, error). ``source_text`` is None when there is an error.
+
+    The scope decides what the agent READS: selection scopes read the selection;
+    document scopes read the whole buffer.
+    """
+    if scope in _SELECTION_SCOPES:
+        selection = controller._selected_text().strip()
+        if not selection:
+            return None, "Select text first."
+        return selection, ""
+    if scope in _DOCUMENT_SCOPES:
+        document = str(controller.editor.GetValue())
+        if not document.strip():
+            return None, "Document is empty."
+        return document, ""
+    return None, "This agent's scope is not supported yet."
+
+
+def _classify(agent: Any) -> tuple[str, str]:
+    """Return (apply_kind, apply_mode) from the agent's WRITE permissions.
+
+    ``apply_kind`` is ``document`` (transform whole buffer), ``selection``
+    (transform the selection), or ``produce`` (output is new content, not an
+    in-place edit -> opened in a new document). ``apply_mode`` tells the host
+    which apply path the preview dialog should use.
+    """
+    overrides = agent.overrides_map()
+    if PermissionCategory.MODIFY_DOCUMENT in overrides:
+        return "document", "document"
+    if PermissionCategory.MODIFY_SELECTION in overrides:
+        return "selection", "selection"
+    return "produce", "selection"
+
+
+def _apply_result(
+    controller: Any,
+    gateway: SafeEditorToolGateway,
+    host: MainFrameEditorHost,
+    agent: Any,
+    apply_kind: str,
+    apply_mode: str,
+    proposed: str,
+) -> None:
+    """Apply the model output per its kind, on the UI thread."""
+    host.set_apply_mode(apply_mode)
+    if apply_kind == "document":
+        original = str(controller.editor.GetValue())
+        gateway.apply_text_patch(original, proposed, label=agent.display_name)
+    elif apply_kind == "selection":
+        gateway.replace_selection(proposed, label=agent.display_name)
+    else:  # produce: non-destructive, open the result in a new document
+        controller._ai_open_new_document(proposed)
+        controller._set_status(f"{agent.display_name}: opened result in a new document.")
+
+
+def run_agent(
+    controller: Any, agent_id: str = "writing-companion", *, instruction: str = ""
+) -> None:
+    """Run a catalog agent through the gateway, at whatever scope it declares.
+
+    Selection-scope agents transform the selection; document-scope agents
+    transform the whole buffer (preview-gated); read-only agents open their output
+    in a new document. Threading mirrors ``_run_agent_task``: the provider call is
+    on a daemon thread, every wx touch (preview, apply, announce) is marshalled
+    back to the UI thread via ``wx.CallAfter``. Experimental / opt-in only.
     """
     import threading
 
@@ -173,9 +282,14 @@ def run_selection_agent(
         controller._set_status("AI is turned off. Enable it in the AI menu.")
         return
 
-    selection = controller._selected_text().strip()
-    if not selection:
-        controller._set_status("Select text first.")
+    agent = next((a for a in load_catalog().agents if a.id == agent_id), None)
+    if agent is None:
+        controller._set_status(f"Unknown agent: {agent_id}")
+        return
+
+    source, error = _source_for_scope(controller, agent.default_scope)
+    if source is None:
+        controller._set_status(error)
         return
 
     backend = ProviderChatBackend()
@@ -184,27 +298,17 @@ def run_selection_agent(
         controller._set_status(reason or "AI provider is not available.")
         return
 
-    agent = next((a for a in load_catalog().agents if a.id == agent_id), None)
-    if agent is None:
-        controller._set_status(f"Unknown agent: {agent_id}")
-        return
-    if agent.default_scope not in (ContextScope.SELECTION, ContextScope.CURRENT_SECTION):
-        # v1 wiring is selection-scoped; document/workspace scopes come later.
-        controller._set_status(f"{agent.display_name} is not a selection agent.")
-        return
-
+    apply_kind, apply_mode = _classify(agent)
     host = MainFrameEditorHost(controller)
-    broker = PermissionBroker(SafetyProfile.BALANCED, overrides=agent.overrides_map())
-    bridge = EventBridge(AnnouncementLevel.BALANCED, controller._set_status)
     gateway = SafeEditorToolGateway(
         host=host,
-        broker=broker,
+        broker=PermissionBroker(SafetyProfile.BALANCED, overrides=agent.overrides_map()),
         activity=ActivityLog(),
         identity=AgentIdentity(agent_id=agent.id, risk=agent.risk),
-        emit=bridge.handle,
+        emit=EventBridge(AnnouncementLevel.BALANCED, controller._set_status).handle,
     )
     responder = responder_from_backend(backend)
-    ctx = AIContext(prompt=instruction, context_text=selection, file_type=host.get_file_type())
+    ctx = AIContext(prompt=instruction, context_text=source, file_type=host.get_file_type())
     controller._set_status(f"{agent.display_name}: generating...")
 
     def _run() -> None:
@@ -216,10 +320,15 @@ def run_selection_agent(
 
         def _apply() -> None:
             try:
-                gateway.replace_selection(proposed, label=agent.display_name)
+                _apply_result(controller, gateway, host, agent, apply_kind, apply_mode, proposed)
             except Exception as exc:  # noqa: BLE001
                 controller._set_status(f"{agent.display_name} error: {exc}")
 
         wx.CallAfter(_apply)
 
     threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: AI bg thread
+
+
+def run_selection_agent(controller: Any, agent_id: str = "writing-companion") -> None:
+    """Back-compat thin wrapper; prefer :func:`run_agent`."""
+    run_agent(controller, agent_id)

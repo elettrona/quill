@@ -1983,6 +1983,9 @@ class MenuBuilderMixin:
             self._id_writing_instructions,
             self._menu_label(_("&Writing Instructions..."), "tools.writing_instructions"),
         )
+        from quill.ui.agent_editor_host import append_experimental_agent_menu
+
+        append_experimental_agent_menu(self, ai_menu)
         # "Forget API Key" moved into the AI Hub as a per-provider action
         # ("Forget this provider's key"), since a single global forget is
         # ambiguous once each provider keeps its own key.
@@ -2865,11 +2868,7 @@ class MenuBuilderMixin:
             lambda _e: self.open_ai_toc(),
             id=self._id_ai_generate_toc,
         )
-        self.frame.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.open_ai_thesaurus(),
-            id=self._id_ai_thesaurus,
-        )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_ai_thesaurus(), id=self._id_ai_thesaurus)
         self.frame.Bind(
             wx.EVT_MENU,
             lambda _e: self.open_ai_continue_writing(),

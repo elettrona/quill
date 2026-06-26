@@ -4,8 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from quill.core.ai.context_builder import ContextScope
 from quill.core.ai.diff_review import build_diff_review
-from quill.ui.agent_editor_host import MainFrameEditorHost
+from quill.core.ai.harness import AgentSpec
+from quill.core.ai.permissions import Decision, PermissionCategory
+from quill.ui.agent_editor_host import (
+    MainFrameEditorHost,
+    _apply_result,
+    _classify,
+    _source_for_scope,
+)
 
 
 @dataclass
@@ -43,9 +51,13 @@ class FakeController:
     checkpoints: list[str] = field(default_factory=list)
     statuses: list[str] = field(default_factory=list)
     commands_run: list[str] = field(default_factory=list)
+    new_docs: list[str] = field(default_factory=list)
     diff_calls: list[tuple[str, str]] = field(default_factory=list)
     # Set by the test to simulate the user accepting hunks in the diff dialog.
     diff_accept_text: str | None = None
+
+    def _selected_text(self) -> str:
+        return self.editor.GetStringSelection()
 
     def _outline_entries(self):
         return [FakeOutline("Intro"), FakeOutline("Body")]
@@ -61,6 +73,9 @@ class FakeController:
 
     def _ai_set_document_text(self, text: str) -> None:
         self.doc_writes.append(text)
+
+    def _ai_open_new_document(self, text: str) -> None:
+        self.new_docs.append(text)
 
     def _ai_run_command(self, command_id: str) -> None:
         self.commands_run.append(command_id)
@@ -136,3 +151,111 @@ def test_preview_declined_returns_false_and_applies_nothing() -> None:
 def test_file_type_empty_when_no_path() -> None:
     c = FakeController(document=FakeDoc(path=None))
     assert MainFrameEditorHost(c).get_file_type() == ""
+
+
+# -- scope/classify/apply broadening --------------------------------------
+
+
+def _spec(scope: ContextScope, perms: dict[PermissionCategory, Decision]) -> AgentSpec:
+    return AgentSpec(
+        id="x",
+        display_name="X",
+        system_prompt="do",
+        default_scope=scope,
+        permission_overrides=tuple(perms.items()),
+    )
+
+
+def test_source_for_scope_selection_and_document() -> None:
+    c = FakeController()
+    c.editor.value = "WHOLE DOCUMENT BODY"
+    c.editor.selection = "sel"
+    src, err = _source_for_scope(c, ContextScope.SELECTION)
+    assert src == "sel" and err == ""
+    src, err = _source_for_scope(c, ContextScope.FULL_DOCUMENT)
+    assert src == "WHOLE DOCUMENT BODY" and err == ""
+
+
+def test_source_for_scope_errors() -> None:
+    c = FakeController()
+    c.editor.selection = "   "
+    src, err = _source_for_scope(c, ContextScope.SELECTION)
+    assert src is None and "Select text" in err
+    c.editor.value = "   "
+    src, err = _source_for_scope(c, ContextScope.FULL_DOCUMENT)
+    assert src is None and "empty" in err
+    src, err = _source_for_scope(c, ContextScope.WORKSPACE_SUMMARY)
+    assert src is None and "not supported" in err
+
+
+def test_classify_document_selection_produce() -> None:
+    doc_agent = _spec(
+        ContextScope.FULL_DOCUMENT,
+        {PermissionCategory.MODIFY_DOCUMENT: Decision.PREVIEW_REQUIRED},
+    )
+    sel_agent = _spec(
+        ContextScope.SELECTION,
+        {PermissionCategory.MODIFY_SELECTION: Decision.PREVIEW_REQUIRED},
+    )
+    produce_agent = _spec(ContextScope.DOCUMENT_SUMMARY, {})
+    assert _classify(doc_agent) == ("document", "document")
+    assert _classify(sel_agent) == ("selection", "selection")
+    assert _classify(produce_agent) == ("produce", "selection")
+
+
+class FakeGateway:
+    def __init__(self) -> None:
+        self.patches: list[tuple[str, str]] = []
+        self.replacements: list[str] = []
+
+    def apply_text_patch(self, original: str, proposed: str, *, label: str = "") -> bool:
+        self.patches.append((original, proposed))
+        return True
+
+    def replace_selection(self, text: str, *, label: str = "") -> bool:
+        self.replacements.append(text)
+        return True
+
+
+def test_apply_result_document_uses_patch() -> None:
+    c = FakeController()
+    c.editor.value = "original document"
+    gw = FakeGateway()
+    host = MainFrameEditorHost(c)
+    agent = _spec(
+        ContextScope.FULL_DOCUMENT, {PermissionCategory.MODIFY_DOCUMENT: Decision.PREVIEW_REQUIRED}
+    )
+    _apply_result(c, gw, host, agent, "document", "document", "revised document")
+    assert gw.patches == [("original document", "revised document")]
+    assert host._apply_mode == "document"
+
+
+def test_apply_result_selection_uses_replace() -> None:
+    c = FakeController()
+    gw = FakeGateway()
+    host = MainFrameEditorHost(c)
+    agent = _spec(
+        ContextScope.SELECTION, {PermissionCategory.MODIFY_SELECTION: Decision.PREVIEW_REQUIRED}
+    )
+    _apply_result(c, gw, host, agent, "selection", "selection", "new sel")
+    assert gw.replacements == ["new sel"]
+
+
+def test_apply_result_produce_opens_new_document() -> None:
+    c = FakeController()
+    gw = FakeGateway()
+    host = MainFrameEditorHost(c)
+    agent = _spec(ContextScope.DOCUMENT_SUMMARY, {})
+    _apply_result(c, gw, host, agent, "produce", "selection", "a summary")
+    assert c.new_docs == ["a summary"]
+    assert gw.patches == [] and gw.replacements == []
+
+
+def test_preview_document_mode_applies_whole_buffer() -> None:
+    c = FakeController(diff_accept_text="revised whole doc")
+    host = MainFrameEditorHost(c)
+    host.set_apply_mode("document")
+    review = build_diff_review("original doc", "revised whole doc")
+    assert host.preview_diff(review) is True
+    assert c.doc_writes == ["revised whole doc"]  # set_document, not replace_selection
+    assert c.replaced == []
