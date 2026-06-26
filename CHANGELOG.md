@@ -29,9 +29,10 @@ advanced pieces are still landing.
 - **Harness layer** (`quill/core/ai/harness/`) — `Harness` protocol, capability
   model, registry, and the always-available **Native** harness; `responder_from_backend`
   runs it on the existing provider stack.
-- **Optional SDK harness packs** (`quill/ai_packs/`) — Copilot, Claude, OpenAI,
-  Microsoft, LangGraph, and OpenHands, each an opt-in extra (`quill[ai-…]`), lazily
-  imported, graceful when uninstalled, and bridged to the same gateway.
+- **Optional SDK harness packs** (`quill/ai_packs/`) — OpenAI Agents, Claude Agent,
+  and GitHub Copilot, each an opt-in extra (`quill[ai-…]`), lazily imported,
+  graceful when uninstalled, and bridged to the same gateway. OpenAI and Claude are
+  validated live against their real SDKs.
 - **Declarative Agent Catalog** (`quill/core/ai/agent_catalog.py`,
   `quill/core/schemas/agent.json`, `quill/core/ai/agents/*.json`) — validated agent
   files and the 11-agent launch set.

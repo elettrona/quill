@@ -21,7 +21,7 @@
 > end.
 
 **Created:** 2026-06-25. **Last updated:** 2026-06-25 (Phase 1 Tier A foundation
-complete; harness layer + all six SDK packs; Agent Catalog + launch set; Streaming
+complete; harness layer + three SDK packs (OpenAI/Claude/Copilot); Agent Catalog + launch set; Streaming
 Event Bridge; native-backend Responder; opt-in editor wiring validated vs live
 Claude; Concierge + Selection Action Ring model; native tool-calling loop; admin
 policy. Remaining: provider consolidation (§7, Tier B), the AI Hub UI (Tier C),
@@ -73,7 +73,7 @@ Three tiers:
   - `ai/harness/native.py` Native harness + `responder_from_backend` adapter — Done.
   - `ai/agent_catalog.py` + `core/schemas/agent.json` + `ai/agents/*.json` launch set — Done.
   - `ai/event_bridge.py` (Streaming Event Bridge announcement mapping) — Done.
-  - `ai_packs/` all six SDK harness packs (lazy; report unavailable until installed) — Done.
+  - `ai_packs/` three SDK harness packs — OpenAI/Claude/Copilot (lazy; report unavailable until installed) — Done.
 
 - **Tier B — Invisible-if-careful, fits 1.xx behind tests.** Active consolidation
   that changes an internal path users should not notice if the migration is correct,
@@ -90,8 +90,7 @@ Three tiers:
 - **Tier C — Visible; 2.0 only.** Anything the user can see or that adds surface
   area. These define 2.0 and must not be slipped into 1.0.
   - AI Hub command center (Home/Agents/Sessions/Activity/Harnesses/Permissions tabs).
-  - The optional SDK harness packs (Copilot/Claude/OpenAI/Microsoft/LangGraph/
-    OpenHands) and their extras.
+  - The optional SDK harness packs (OpenAI/Claude/Copilot) and their extras.
   - Declarative Agent Catalog as a listed, runnable set; Selection Action Ring;
     Concierge; Streaming announcements wired to the UI.
 
@@ -146,9 +145,9 @@ Tier (see §0a): A = invisible/landable in 1.0 now; B = invisible-if-careful, 1.
 | --- | --- | --- |
 | Harden Ollama/local + OpenAI-compatible/LiteLLM base-URL flows on the consolidated store; test-connection, model selector, cost/context warnings | §18.4 | Not started |
 
-### Phase 5 — Harness layer + all harness packs (the multi-harness promise)
+### Phase 5 — Harness layer + harness packs (the multi-harness promise)
 
-The user's directive: **all harnesses are built for 2.0.** Each SDK pack is an
+Three SDK packs ship — **OpenAI Agents, Claude Agent, GitHub Copilot**. Each is an
 optional extra, lazily imported, never required; an uninstalled pack reports
 `(False, "Install the X pack")` and QUILL keeps working. Every pack bridges to the
 **same** gateway + broker + diff/undo and emits normalized `AgentEvent`s; none edits
@@ -161,9 +160,10 @@ the buffer directly.
 | Copilot SDK | `ai_packs/copilot.py` (`quill[ai-copilot]`) | §18.5 | Done (transport scaffolded; validate with SDK installed) |
 | Claude Agent SDK | `ai_packs/claude.py` (`quill[ai-claude]`) | §18.5 | **Done — validated live** against the real SDK (`claude_agent_sdk.query`, AssistantMessage/TextBlock, `allowed_tools=[]` text-only). |
 | OpenAI Agents SDK | `ai_packs/openai_agents.py` (`quill[ai-openai]`) | §18.5 | **Done — validated live** against the real SDK (`agents.Agent` + `Runner.run_sync` -> `final_output`). |
-| Microsoft Agent Framework | `ai_packs/microsoft.py` (`quill[ai-microsoft]`) | §18.6 | Done (transport scaffolded; validate with SDK installed) |
-| LangGraph (durable, human-in-the-loop) | `ai_packs/langgraph.py` (`quill[ai-langgraph]`) | §18.6 | Done (transport scaffolded; validate with SDK installed) |
-| OpenHands (sandboxed, flag-gated) | `ai_packs/openhands.py` (`quill[ai-openhands]`) | §18.7 | Done (transport scaffolded; validate with SDK installed) |
+**Scope note.** QUILL ships exactly three SDK packs — OpenAI Agents, Claude Agent,
+and GitHub Copilot — which cover the field. The Microsoft Agent Framework,
+LangGraph, and OpenHands packs were intentionally removed to keep the surface small
+and well-tested.
 
 **Harness pack status note.** Every pack's identity, capabilities, lazy
 availability detection, graceful-degradation, registration, and gateway bridge are
@@ -184,9 +184,8 @@ activated against its SDK.
 Admin policy enforcement (`allowedProviders`/`blockedProviders`/`allowUserApiKeys`):
 **core done** — `ai/admin_policy.py` (`AdminPolicy`, `is_provider_allowed`,
 `filter_providers`, `from_dict`); wiring it into the provider catalog/Hub is the
-remaining piece. LangGraph durable pause/resume workflows (release prep,
-accessibility audit, PRD creation) persisted via atomic storage: not started.
-PRD §15, §18.6.
+remaining piece. Durable, resumable agent workflows (release prep, accessibility
+audit, PRD creation) persisted via atomic storage: not started. PRD §15.
 
 ### Phase 7 — Developer agents + marketplace
 
@@ -279,8 +278,8 @@ All wx-free, strict-typed `quill/core/ai/*` (plus `quill/ai_packs/*`), additive:
 - `harness/` + `harness/native.py` — Harness protocol/registry/capabilities,
   Native harness, and `responder_from_backend` (runs Native on the existing
   provider stack).
-- `ai_packs/` — all six optional SDK harness packs (Copilot, Claude, OpenAI,
-  Microsoft, LangGraph, OpenHands), lazily imported, graceful when uninstalled.
+- `ai_packs/` — three optional SDK harness packs (OpenAI Agents, Claude Agent,
+  GitHub Copilot), lazily imported, graceful when uninstalled.
 - `agent_catalog.py` + `schemas/agent.json` + `ai/agents/*.json` — declarative
   Agent Catalog + the 11-agent launch set.
 - `event_bridge.py` — verbosity-aware mapping from events to balanced
@@ -324,9 +323,9 @@ independent checks support it:
    `quill/` change is a brand-new file except `pyproject.toml`. No existing line of
    shipping code was modified or removed.
 2. **The one touched existing file is additive and inert at runtime.**
-   `pyproject.toml` gains six *optional-dependency* extras (`ai-copilot`,
-   `ai-claude`, `ai-openai`, `ai-microsoft`, `ai-langgraph`, `ai-openhands`) and two
-   wheel `force-include` lines for the new data files. Optional extras are not in
+   `pyproject.toml` gains three *optional-dependency* extras (`ai-openai`,
+   `ai-claude`, `ai-copilot`) and two wheel `force-include` lines for the new data
+   files (the §0a note predates trimming the pack set). Optional extras are not in
    the default `[ui]`/`[dev]` install, so default install and runtime are unchanged;
    the force-includes only package the new, otherwise-unused JSON.
 3. **Unreachable from the shipping app.** A grep for `import` statements of every

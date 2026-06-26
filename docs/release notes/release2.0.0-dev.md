@@ -23,8 +23,8 @@ choose a cloud provider and send it.
 
 - **One AI, many engines.** A single provider truth and a single safe path behind
   every AI surface, with an optional layer of advanced **harnesses** — Native plus
-  Copilot, Claude, OpenAI, Microsoft, LangGraph, and OpenHands SDK packs — that all
-  drive the *same* safe editor tools.
+  the OpenAI Agents, Claude Agent, and GitHub Copilot SDK packs — that all drive the
+  *same* safe editor tools.
 - **A catalog of agents** you can run on your writing: Writing Companion,
   Accessibility Editor, Markdown Publisher, Code Doctor, GitHub Maintainer, PRD
   Architect, Release Notes Builder, Summarizer, Researcher, Reviewer, and the QUILL
@@ -54,14 +54,11 @@ every agent.
 On top of that single core sits an optional **harness** layer. A harness is the
 engine that drives an agent. QUILL ships a built-in **Native** harness that always
 works. If you want the capabilities of a specific vendor SDK, you can install an
-optional pack:
+optional pack — QUILL focuses on the three that cover the field:
 
-- **Copilot SDK** (`quill[ai-copilot]`)
-- **Claude Agent SDK** (`quill[ai-claude]`)
 - **OpenAI Agents SDK** (`quill[ai-openai]`)
-- **Microsoft Agent Framework** (`quill[ai-microsoft]`)
-- **LangGraph** (`quill[ai-langgraph]`)
-- **OpenHands** (`quill[ai-openhands]`, experimental)
+- **Claude Agent SDK** (`quill[ai-claude]`)
+- **GitHub Copilot SDK** (`quill[ai-copilot]`)
 
 Each pack is **optional and lazily loaded** — QUILL never imports an SDK you have
 not installed, and a missing pack simply reports "Install the … pack" and QUILL
@@ -209,4 +206,4 @@ into the everyday UI, or are deliberately staged as later work:
 - **Live validation of each SDK pack** against its installed vendor SDK, and a
   provider function-calling planner that lets the Native multi-step loop drive a
   cloud model directly.
-- **Durable, resumable agent workflows** and an in-app **Agent Builder**.
+- An in-app **Agent Builder** for defining your own agents.

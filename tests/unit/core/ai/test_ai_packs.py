@@ -20,9 +20,6 @@ PACK_IDS = {
     "copilot",
     "claude_agent_sdk",
     "openai_agents",
-    "microsoft_agent_framework",
-    "langgraph",
-    "openhands",
 }
 
 
@@ -69,7 +66,7 @@ class FakeHost:
         self.announcements.append(message)
 
 
-def test_all_six_packs_present() -> None:
+def test_all_packs_present() -> None:
     assert {p.id for p in all_packs()} == PACK_IDS
 
 
