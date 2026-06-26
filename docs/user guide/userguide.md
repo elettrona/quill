@@ -2434,6 +2434,23 @@ You control how Quill tells you this happened with the **Upgrade notice** settin
 
 The first time you launch a freshly updated Quill, it clears out the old diagnostic clutter from earlier runs — previous log files and crash reports — so you begin with a clean slate instead of a backlog of past problems. This happens once, automatically, and never removes your documents or settings.
 
+## Posting to Mastodon
+
+Quill can publish straight from the editor to Mastodon — no separate app, no leaving your document.
+
+- Press **QUILL Key + Shift+P** (or **Tools → Share → Post to Mastodon...**). Quill takes your current selection, or the whole document if nothing is selected, and opens a compose window.
+- In the compose window you can edit the text, pick which account to post from, choose the visibility (Public, Unlisted, Followers only, or Direct), and watch a live character count. Press **Post** to publish; your post appears with "via QUILL" as its source.
+
+### Adding a Mastodon account
+
+The first time you post, Quill offers to add an account; you can also open **Tools → Share → Mastodon Accounts...** at any time.
+
+1. Choose **Add Account...**, enter your server (for example `mastodon.social`) and a **friendly nickname** (this is what shows in the account picker).
+2. Quill registers itself with your server and opens your browser to authorize. Sign in if needed, approve QUILL, and copy the authorization code your server shows you.
+3. Paste that code back into Quill. Your account is saved.
+
+You can add several accounts, give each its own nickname, **set a default**, or **remove** one (which deletes its saved sign-in from this computer). Your sign-in is stored securely in the Windows Credential Manager, never in a plain file.
+
 ## Working with Different Document Types
 
 Quill is strongest today with plain text, Markdown, HTML, RTF, EPUB, and extracted text workflows. It also has intake and extraction review features for imported material such as PDF/OCR sources and structured import support for Office-style formats.

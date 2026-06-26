@@ -37,6 +37,13 @@ _EGRESS_CALLEES = frozenset({
 # Reviewed, allowed egress sites: "<relative path>::<enclosing function>" mapped
 # to the reason the call is not silent. Update this when adding a network call.
 _REVIEWED_EGRESS: dict[str, str] = {
+    "core/mastodon/client.py::_http_json": (
+        "Single egress site for the 'Post to Mastodon' feature. Reached only by an "
+        "explicit user action -- adding an account (app registration + OAuth token "
+        "exchange) or pressing Post -- to the user's own instance. HTTPS-only over a "
+        "verified TLS context; the access token travels in the Authorization header, "
+        "never the URL."
+    ),
     "core/dectalk_runtime.py::download_dectalk_runtime": (
         "User explicitly installs the optional DECTALK voice runtime; download "
         "runs with a verified TLS context and visible progress."

@@ -4692,6 +4692,36 @@ old diagnostic clutter from earlier runs — previous log files and crash
 reports — so you begin with a clean slate instead of a backlog of past
 problems. This happens once, automatically, and never removes your
 documents or settings.</p>
+<h2 id="posting-to-mastodon">Posting to Mastodon</h2>
+<p>Quill can publish straight from the editor to Mastodon — no separate
+app, no leaving your document.</p>
+<ul>
+<li>Press <strong>QUILL Key + Shift+P</strong> (or <strong>Tools → Share
+→ Post to Mastodon…</strong>). Quill takes your current selection, or
+the whole document if nothing is selected, and opens a compose
+window.</li>
+<li>In the compose window you can edit the text, pick which account to
+post from, choose the visibility (Public, Unlisted, Followers only, or
+Direct), and watch a live character count. Press <strong>Post</strong>
+to publish; your post appears with “via QUILL” as its source.</li>
+</ul>
+<h3 id="adding-a-mastodon-account">Adding a Mastodon account</h3>
+<p>The first time you post, Quill offers to add an account; you can also
+open <strong>Tools → Share → Mastodon Accounts…</strong> at any
+time.</p>
+<ol type="1">
+<li>Choose <strong>Add Account…</strong>, enter your server (for example
+<code>mastodon.social</code>) and a <strong>friendly nickname</strong>
+(this is what shows in the account picker).</li>
+<li>Quill registers itself with your server and opens your browser to
+authorize. Sign in if needed, approve QUILL, and copy the authorization
+code your server shows you.</li>
+<li>Paste that code back into Quill. Your account is saved.</li>
+</ol>
+<p>You can add several accounts, give each its own nickname, <strong>set
+a default</strong>, or <strong>remove</strong> one (which deletes its
+saved sign-in from this computer). Your sign-in is stored securely in
+the Windows Credential Manager, never in a plain file.</p>
 <h2 id="working-with-different-document-types">Working with Different
 Document Types</h2>
 <p>Quill is strongest today with plain text, Markdown, HTML, RTF, EPUB,

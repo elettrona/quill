@@ -550,6 +550,22 @@ Everything below is the detail behind those four steps.
 
 ---
 
+## 12. Share to Mastodon, straight from the editor
+
+- **Post without leaving your document.** Press **QUILL Key + Shift+P** (or
+  **Tools → Share → Post to Mastodon...**). QUILL takes your selection — or the
+  whole document if nothing is selected — and opens a compose window where you
+  edit the text, choose which account to post from, pick the visibility, and
+  watch a live character count. Your post appears **"via QUILL."** This is a
+  deliberately small poster, not a full client.
+- **Several accounts, each with a friendly name.** Add accounts under
+  **Tools → Share → Mastodon Accounts...**; each gets a nickname that shows in
+  the account picker, and you can set a default or remove one. Signing in
+  registers QUILL on your server and uses a one-time browser authorization;
+  your sign-in is kept in the Windows Credential Manager, never in a plain file.
+
+---
+
 ## How QUILL meets you where you are
 
 Read those eleven sections again and notice what is *not* there: no demand. QUILL

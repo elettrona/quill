@@ -1412,6 +1412,8 @@ class MenuBuilderMixin:
         self._id_status_bar_settings = wx.NewIdRef()
         self._id_share_export = wx.NewIdRef()
         self._id_share_import = wx.NewIdRef()
+        self._id_post_mastodon = wx.NewIdRef()
+        self._id_mastodon_accounts = wx.NewIdRef()
         self._id_keymap_editor = wx.NewIdRef()
         self._id_export_keymap = wx.NewIdRef()
         self._id_import_keymap = wx.NewIdRef()
@@ -2083,6 +2085,18 @@ class MenuBuilderMixin:
         whisperer_menu.AppendSubMenu(bw_rollout_menu, _("&Rollout"))
         if self._feature_enabled("core.bw_whisperer"):
             tools_menu.AppendSubMenu(whisperer_menu, _("&BITS Whisperer"))
+
+        # Share (Mastodon) ---------------------------------------------------
+        share_menu = wx.Menu()
+        share_menu.Append(
+            self._id_post_mastodon,
+            self._menu_label(_("&Post to Mastodon..."), "tools.post_to_mastodon"),
+        )
+        share_menu.Append(
+            self._id_mastodon_accounts,
+            self._menu_label(_("Mastodon &Accounts..."), "tools.manage_mastodon_accounts"),
+        )
+        tools_menu.AppendSubMenu(share_menu, _("&Share"))
 
         # Sticky Notes -------------------------------------------------------
         tools_menu.AppendSeparator()
@@ -3831,6 +3845,16 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.reset_all_to_factory_defaults(),
             id=self._id_reset_all_defaults,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.post_to_mastodon(),
+            id=self._id_post_mastodon,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.manage_mastodon_accounts(),
+            id=self._id_mastodon_accounts,
         )
         self.frame.Bind(
             wx.EVT_MENU,

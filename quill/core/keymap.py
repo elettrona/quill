@@ -169,6 +169,9 @@ DEFAULT_KEYMAP: dict[str, str] = {
     # QuillKeyMixin (before chord dispatch), so a bare-N chord here is dead.
     # Sticky-note capture uses the free Shift+N second key (not intercepted).
     "tools.sticky_note_capture": "Ctrl+Shift+Grave, Shift+N",
+    # Post to Mastodon: the QUILL-key chord + Shift+P ("Post"). Bare P is taken
+    # by navigate.speak_full_path; Shift+P is free and stays mnemonic.
+    "tools.post_to_mastodon": "Ctrl+Shift+Grave, Shift+P",
     # #262: Batch Conversion wizard. QUILL-key chord (B is free in the
     # second-key space). The entry moved out of the Tools menu and now
     # sits in File > Import > Batch Conversion... and File > Export >

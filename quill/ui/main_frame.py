@@ -2680,6 +2680,18 @@ class MainFrame(
             None,
         )
         self.commands.register(
+            "tools.post_to_mastodon",
+            "Post to Mastodon...",
+            self.post_to_mastodon,
+            self._binding_for("tools.post_to_mastodon"),
+        )
+        self.commands.register(
+            "tools.manage_mastodon_accounts",
+            "Mastodon Accounts...",
+            self.manage_mastodon_accounts,
+            None,
+        )
+        self.commands.register(
             "tools.open_welcome_guide",
             "Open Welcome Guide",
             self.open_welcome_guide,
@@ -13176,6 +13188,51 @@ class MainFrame(
             pass
         self._reload_shortcuts_from_keymap()
         self._announce_result("Restored your previous keyboard shortcuts.")
+
+    def post_to_mastodon(self) -> None:
+        """Compose and publish the selection (or the whole document) to Mastodon.
+
+        Grabs the editor selection if there is one, otherwise the whole document,
+        then opens the compose dialog. If no account is set up yet, the accounts
+        manager is offered first. Disabled in Safe Mode.
+        """
+        if self._safe_mode:
+            self._announce_result("Mastodon posting is disabled in Safe Mode.")
+            return
+        from quill.core.mastodon import accounts as _accounts
+        from quill.ui.mastodon_dialogs import (
+            MastodonAccountsDialog,
+            MastodonComposeDialog,
+        )
+
+        accounts = _accounts.list_accounts()
+        if not accounts:
+            self._announce_result("Add a Mastodon account to post.")
+            MastodonAccountsDialog(self.frame, announce=self._announce_result).show()
+            accounts = _accounts.list_accounts()
+            if not accounts:
+                return
+        editor = getattr(self, "editor", None)
+        if editor is None:
+            return
+        selected = editor.GetStringSelection()
+        text = selected if selected.strip() else editor.GetValue()
+        dialog = MastodonComposeDialog(
+            self.frame,
+            initial_text=text,
+            accounts=accounts,
+            default_account_id=_accounts.default_account_id(),
+            announce=self._announce_result,
+        )
+        if dialog.show() == self._wx.ID_OK:
+            url = dialog.posted_url or ""
+            self._announce_result("Posted to Mastodon." + (f" {url}" if url else ""))
+
+    def manage_mastodon_accounts(self) -> None:
+        """Open the Mastodon account manager (add, remove, set default)."""
+        from quill.ui.mastodon_dialogs import MastodonAccountsDialog
+
+        MastodonAccountsDialog(self.frame, announce=self._announce_result).show()
 
     def reset_keymap_defaults(self) -> None:
         wx = self._wx
