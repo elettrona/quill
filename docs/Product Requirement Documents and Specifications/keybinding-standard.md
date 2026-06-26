@@ -52,8 +52,8 @@ not a free pass.
 
 | Command id                          | Chord                | Justification                                          |
 |-------------------------------------|----------------------|--------------------------------------------------------|
-| `view.send_to_tray`                 | `Ctrl+Alt+T`         | Windows-shell registration; cannot move to QUILL-key.  |
-| `view.toggle_tab_control`           | `Ctrl+Alt+Shift+T`   | Windows-shell registration; cannot move to QUILL-key.  |
+| `view.send_to_tray`                 | `Ctrl+Shift+Grave, T`        | Allowlisted for legacy `Ctrl+Alt+T`; now bound to the QUILL-key chord (see Migration map). |
+| `view.toggle_tab_control`           | `Ctrl+Shift+Grave, Shift+T`  | Allowlisted for legacy `Ctrl+Alt+Shift+T`; now bound to the QUILL-key chord (see Migration map). |
 | `format.heading_1`                  | `Ctrl+Alt+1`         | Overrides NVDA switch-to-synth-1.                      |
 | `format.heading_2`                  | `Ctrl+Alt+2`         | Overrides NVDA switch-to-synth-2.                      |
 | `format.heading_3`                  | `Ctrl+Alt+3`         | Overrides NVDA switch-to-synth-3.                      |

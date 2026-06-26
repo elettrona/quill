@@ -3678,7 +3678,7 @@ Each `transcription_providers` entry declares:
 
 **Safety and behavior:**
 
-- Cloud providers are **network-backed** and are **excluded from QUILL's offline paths** — the offline Watch Folder "Transcribe audio (Whisperer)" action only ever uses on-device engines, so a cloud provider can never silently upload audio. Cloud transcription happens only through explicit, consented UI.
+- Cloud providers are **network-backed** and are **excluded from QUILL's offline paths** — the offline Watch Folder "Transcribe audio (offline)" action only ever uses on-device engines, so a cloud provider can never silently upload audio. Cloud transcription happens only through explicit, consented UI.
 - A cloud provider is **unavailable in Safe Mode** and when no API key is configured.
 - The bundled `openai-whisper-transcription` Quillin is the reference implementation.
 

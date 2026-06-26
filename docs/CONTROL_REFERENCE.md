@@ -783,32 +783,3 @@ When on, QUILL silently checks for a newer version each time it starts. If one i
 ### Check for Updates on Startup
 
 When on, QUILL silently checks for a new version each time it starts and notifies you when one is available. Recommended if you want to stay current without remembering to check manually.
-
-
-## GLOW Workflows Inside QUILL
-
-### GLOW Issue List
-
-Lists all findings from the GLOW review. Arrow through the list to hear each issue. Press Enter or Tab to move to the detail panel and read the full explanation. Select one or more issues and press Fix Selected to apply automatic repairs.
-
-| Key | Action |
-|---|---|
-| Tab | Move to detail |
-| Alt+F | Fix selected |
-| Ctrl+A | Select all issues |
-
-### Issue Detail
-
-Shows the full description of the selected GLOW issue: what was found, why it matters, and what the automatic fix will do. Read this before applying a fix to understand the change.
-
-### Severity Filter
-
-Filter the issue list by severity level. Error shows items that will likely break accessibility or structure. Warning shows items worth reviewing. Info shows stylistic or enhancement suggestions.
-
-### Before (Original)
-
-Shows the original document text as it was before the GLOW fix was applied. Use this panel to verify what changed. Press Ctrl+C to copy the original if you want to compare it manually.
-
-### After (Fixed)
-
-Shows the document text after the GLOW fix. Compare this to the Before panel to understand the change. Press Accept to apply the fix to your document, or Reject to discard it.

@@ -24,10 +24,10 @@ _TRUST_CONSENT_CHANGE_LOG: dict[int, str] = {
     1: "",
     2: (
         "Trust, privacy, and responsible-AI disclosure updated for QUILL 0.7.0. "
-        "The disclosure now names BITS Whisperer speech recognition, Glow update "
-        "checks, and the new local Quillin extension permission model; cloud AI "
-        "transcripts continue to not be persisted, and API keys continue to be "
-        "stored in Windows Credential Manager with a DPAPI-encrypted fallback."
+        "The disclosure now names on-device speech recognition and the new local "
+        "Quillin extension permission model; cloud AI transcripts continue to not "
+        "be persisted, and API keys continue to be stored in Windows Credential "
+        "Manager with a DPAPI-encrypted fallback."
     ),
 }
 
