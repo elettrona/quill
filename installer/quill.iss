@@ -2,7 +2,7 @@
 ; Edit build_inno_setup_script(), not this file, to change packaging.
 
 #define AppName "QUILL for All"
-#define AppVersion "0.7.0 Beta 1"
+#define AppVersion "0.8.0 Beta 1"
 #define AppPublisher "Community Access"
 #define AppURL "https://github.com/Community-Access/quill"
 #define AppExeName "quill.exe"
@@ -15,7 +15,7 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
 AppUpdatesURL={#AppURL}
-VersionInfoVersion=0.7.0.1
+VersionInfoVersion=0.8.0.1
 VersionInfoCompany={#AppPublisher}
 VersionInfoDescription={#AppName} accessible writing environment
 DefaultDirName={autopf}\{#AppName}
@@ -38,7 +38,7 @@ MinVersion=10.0
 ; The file-association and Send-to-Quill tasks write Explorer keys, so
 ; tell Windows to refresh association/icon caches after install.
 ChangesAssociations=yes
-OutputBaseFilename=Quill-for-All-Setup-0.7.0 Beta 1
+OutputBaseFilename=Quill-for-All-Setup-0.8.0 Beta 1
 Compression=lzma2/ultra
 SolidCompression=yes
 WizardStyle=modern

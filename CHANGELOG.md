@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.0 Beta 1 (in development)
+
+Next public beta. Rolls up the 0.7.0 line plus subsequent fixes. The GitHub Pages update feed is intentionally left pointed at the prior release so existing testers are not prompted to update until 0.8.0 is published as a release.
+
 ## 0.7.0 Beta 1 (in development)
 
 First pre-release of the 0.7.0 line. Tagged off `release/0.7.0-verbosity` once the remaining waves (#271 verbosity rebuild, #238-#246 braille phase 3-4, #300-#359 polish, planning-folder retirement) merge. The GitHub Pages update feed remains pointed at 0.5.0 so testers checking for updates do not see a phantom bump until 0.7.0 ships as a stable release. See `RELEASE.md` for the tag-time flip step and the full pre-tag checklist.
