@@ -130,7 +130,6 @@ Menu structure:
   - Document Intake
   - AI Assistant *(demoted from top level; promotable back via Customize Menus)*
   - Authoring and Automation
-  - GLOW
   - Macros
   - Compare Documents
   - Accessibility *(includes cursor address / document status / selection-length status queries)*
@@ -138,7 +137,6 @@ Menu structure:
   - Customize
   - Power Tools *(editor-behavior power toggles grouped together where no other menu is a natural home)*
   - Quillins *(includes **Text Tools** for line transforms/regex and **Insert Tools** for date/time placeholders)*
-  - Dictation and Watch Folder Automation (BITS Whisperer) appears here when enabled.
 - **Window**: document/tab management actions.
 - **Help**: contextual help, onboarding docs, feature profile support, updates, and About.
 
@@ -776,9 +774,9 @@ source_metadata = {
 | User saves edits back to .docx, loses formatting | Data loss if user relies on styles | Always prompt before save: "Saving as plain text. Continue?" + option to cancel |
 | Memory explosion from embedded media | Out-of-memory crash | Pre-check file size; if > 50 MB, warn; if > 100 MB, offer async extraction |
 
-#### 5.3b.10a Extraction Quality Diagnostics (Inspired by GLOW)
+#### 5.3b.10a Extraction Quality Diagnostics
 
-GLOW's document auditor and fixer provide patterns for deeply analyzing Word documents. Quill adopts similar diagnostic techniques to produce actionable extraction warnings:
+Quill applies accessibility-aware diagnostic techniques to deeply analyze Word documents and produce actionable extraction warnings:
 
 **Paragraph-level diagnostics:**
 
@@ -801,7 +799,7 @@ GLOW's document auditor and fixer provide patterns for deeply analyzing Word doc
 - **Per-paragraph confidence**: If Pandoc succeeded but python-docx fallback was triggered for some content, track which paragraphs used fallback
 - **Engine switch detection**: If Pandoc extracted pages 1–8 but python-docx took pages 9–12, surface this as "Extraction method changed mid-document" warning
 
-**Example source_metadata structure with GLOW-inspired diagnostics:**
+**Example source_metadata structure with accessibility-aware diagnostics:**
 
 ```python
 source_metadata = {
@@ -810,7 +808,7 @@ source_metadata = {
     "engine": "pandoc",
     "engine_version": "3.1.0",
     "quality_score": 78,  # Reduced from 85 due to diagnostics
-    # GLOW-inspired diagnostics
+    # accessibility-aware diagnostics
     "extraction_diagnostics": {
         "fake_lists_detected": 2,  # Manually typed bullets
         "all_caps_paragraphs": 1,  # Heading-like caps text
@@ -1086,11 +1084,10 @@ Quill prioritizes **linear text extraction and speaker notes over slide visual p
 - ❌ Form controls or interactive content
 - ❌ Presenter view or presenter notes as a separate stream
 
-#### 5.3c.4 Slide Linearization with Reading-Order Detection (GLOW-Inspired)
+#### 5.3c.4 Slide Linearization with Reading-Order Detection
+PowerPoint is inherently non-linear. Quill converts to linear text with intelligent, accessibility-aware reading-order analysis:
 
-PowerPoint is inherently non-linear. Quill converts to linear text with intelligent reading-order analysis inspired by GLOW's accessibility auditor:
-
-GLOW discovered that screen readers follow the XML tree order of shapes, not the visual layout. When these don't match, screen readers read slides in the wrong order. Quill analyzes both orders and extracts in visual order (what user sees) while flagging reading-order mismatches to the user.
+Screen readers follow the XML tree order of shapes, not the visual layout. When these don't match, screen readers read slides in the wrong order. Quill analyzes both orders and extracts in visual order (what user sees) while flagging reading-order mismatches to the user.
 
 **Output: Intelligent slide extraction with reading-order diagnostics**
 
@@ -1119,8 +1116,7 @@ Center callout (center position):
   Shapes in reading order: Title → Left → Right → Center
 ```
 
-#### 5.3c.5 Smart Speaker Notes Extraction (GLOW-Inspired)
-
+#### 5.3c.5 Smart Speaker Notes Extraction
 Speaker notes are **always extracted and separately indexed** with intelligent metadata:
 
 - Presence detection: slide has/lacks notes
@@ -1145,9 +1141,8 @@ Example metadata:
 
 > "Slide 5 of 15: Results. Speaker notes mention slide visuals and timing. Notes say: 'Reference the chart. This slide auto-advances in 5 seconds.'"
 
-#### 5.3c.6 Animations and Timing Detection with WCAG Analysis (GLOW-Inspired)
-
-Animations are **detected, categorized, and intelligently reported** using GLOW's WCAG timing analysis:
+#### 5.3c.6 Animations and Timing Detection with WCAG Analysis
+Animations are **detected, categorized, and intelligently reported** using WCAG timing analysis:
 
 - Slide-level auto-advance timing (WCAG 2.2.1): < 3 seconds flagged as violation
 - Shape-level animations: entrance, exit, click-triggered animations categorized
@@ -1167,9 +1162,8 @@ Example output:
   ⚠ Warning: Slide 3 auto-advances in 2.5s (< 3s WCAG recommendation)
 ```
 
-#### 5.3c.7 Slide Title Analysis (GLOW-Inspired)
-
-GLOW discovered that duplicate or missing slide titles break outline navigation. Quill analyzes titles:
+#### 5.3c.7 Slide Title Analysis
+Duplicate or missing slide titles break outline navigation. Quill analyzes titles:
 
 - Missing titles: slide has no title shape
 - Duplicate titles: same title on multiple slides
@@ -1187,17 +1181,15 @@ Example diagnostics:
 }
 ```
 
-#### 5.3c.8 Link and Alt-Text Quality Analysis (GLOW-Inspired)
-
-GLOW discovered accessibility patterns in hyperlinks and alt text. Quill checks for:
+#### 5.3c.8 Link and Alt-Text Quality Analysis
+Quill checks for accessibility patterns in hyperlinks and alt text:
 
 - **Bad link text**: "click here", "here", "link", "more"
 - **Bare URLs**: raw URLs used as link text instead of descriptive text
 - **Missing alt text**: images and charts without descriptions
 - **Filename alt text**: alt text that's just the image filename (unhelpful)
 
-#### 5.3c.9 Chart and Visual Content Analysis (GLOW-Inspired)
-
+#### 5.3c.9 Chart and Visual Content Analysis
 Quill detects charts, SmartArt, and images. For charts:
 
 - Extracts chart type (column, line, pie, etc.)
@@ -1205,9 +1197,9 @@ Quill detects charts, SmartArt, and images. For charts:
 - Checks for alt text describing the chart
 - Attempts to infer data values from label positions (with caution warnings)
 
-#### 5.3c.10 Extraction Quality Diagnostics (GLOW-Inspired Comprehensive Scoring)
+#### 5.3c.10 Extraction Quality Diagnostics (Comprehensive Scoring)
 
-Instead of simple text-density scoring, Quill implements **findings-based quality scoring** modeled after GLOW's audit approach:
+Instead of simple text-density scoring, Quill implements **findings-based quality scoring**:
 
 **Quality scoring system:**
 
@@ -1381,7 +1373,7 @@ def test_animations_detected():
 
 ### 5.4 Excel and CSV support (XLSX / XLS / CSV)
 
-This section specifies Quill's support for tabular data formats: Excel workbooks (.xlsx, .xls) and CSV files (.csv, .tsv). The design prioritizes **accessible grid-based editing mode** as an alternative to traditional spreadsheet UIs, with keyboard-first navigation and GLOW-inspired data quality analysis.
+This section specifies Quill's support for tabular data formats: Excel workbooks (.xlsx, .xls) and CSV files (.csv, .tsv). The design prioritizes **accessible grid-based editing mode** as an alternative to traditional spreadsheet UIs, with keyboard-first navigation and accessibility-aware data quality analysis.
 
 #### 5.4.1 Design Philosophy: Accessible Grid, Not Spreadsheet
 
@@ -1464,13 +1456,13 @@ Traditional spreadsheets (Excel, LibreOffice Calc) are visual-first and mouse-or
 - Shift+Spacebar: Select entire row
 - Ctrl+A: Select all cells
 
-#### 5.4.4 Transformational Features (GLOW-Inspired Data Analysis)
+#### 5.4.4 Transformational Features (Data Quality Analysis)
 
 **Quick stats (Ctrl+Alt+S):**
 When a numeric column is selected, Ctrl+Alt+S opens statistics panel showing Sum, Average, Median, Min, Max, Standard Deviation.
 
 **Data validation and quality (Ctrl+Alt+V):**
-GLOW-inspired findings-based approach: detect empty cells, duplicates, type mismatches, outliers, inconsistent formatting with quality score and auto-fix suggestions.
+Findings-based approach: detect empty cells, duplicates, type mismatches, outliers, inconsistent formatting with quality score and auto-fix suggestions.
 
 **Pivot table (Ctrl+Alt+P):**
 Group by column with aggregation (Sum, Average, Count, Min, Max).
@@ -1494,7 +1486,7 @@ Mark cells based on conditions (e.g., "Salary > $90,000" adds comment).
 
 When opening Excel files with multiple sheets, user is prompted to load sheet, combine all, or create separate documents. Sheet navigation via Ctrl+Page Down/Up.
 
-#### 5.4.6 Format Detection (GLOW-Inspired Type Inference)
+#### 5.4.6 Format Detection (Type Inference)
 
 When opening CSV or Excel files, Quill auto-detects column types (Text, Integer, Float, Date, Boolean, Currency), date format, currency symbols, encoding, and delimiters with quality assessment.
 
@@ -1506,8 +1498,7 @@ Users can save to CSV, TSV, Pipe-delimited, Excel (.xlsx), JSON, HTML table, Mar
 
 Quill uses Microsoft's MarkItDown library as a Tier 1 converter for Excel files, PDF tables, and web tables, converting all tabular formats to CSV for consistent editing.
 
-#### 5.4.9 Data Quality and Accessibility Patterns (GLOW-Inspired)
-
+#### 5.4.9 Data Quality and Accessibility Patterns
 Built-in audits for column type consistency, dataset completeness, duplicate detection, and outlier analysis with actionable suggestions.
 
 #### 5.4.10 Testing Strategy
@@ -1900,7 +1891,7 @@ Quill ships a read-aloud feature that uses a **secondary** voice the user picks 
 
 ### 5.25b Watch Folder automation
 
-Quill provides an optional watch-folder workflow under `BITS Whisperer -> Dictation and Watch Folder` for low-friction
+Quill provides an optional watch-folder workflow under `Tools -> Watch Folder` for low-friction
 document intake. Users can point Quill at one or more folders, drop supported files into them, and have Quill
 process those files automatically without leaving the editor.
 
@@ -1920,10 +1911,12 @@ partial profile can never start a worker.
 - Watch-folder automation is configured from Preferences (Watch Folder Automation). A first-run wizard onboarding step for it is planned (see docs/planning.md).
 - A watch profile can use the same `BatchPlan` shape from `### 5.3a.1` when its action is "convert to QUILL" or "convert from QUILL" - the Watch Service reuses `quill.core.batch_convert.run_batch` so a folder of dropped `.docx` files becomes a folder of opened Markdown tabs without a separate Batch Conversion wizard run. The action field on the watch profile chooses between the inline batch path and the open-in-editor path; both run on the background task pool.
 
-### 5.25c BITS Whisperer phased transcription rollout
+### 5.25c Offline speech and transcription
 
-Quill integrates BITS Whisperer speech capabilities in phased increments to minimize regression risk
-and preserve accessibility reliability.
+Quill's on-device speech engine (whisper.cpp by default) ships under `Tools -> Speech`
+and runs entirely on the user's machine. The detailed rollout/provider-center surface of
+the deferred BITS Whisperer suite (locked off, `core.bw_whisperer`) is captured in
+`docs/planning/deferred-locked-features.md`; this section describes only what ships today.
 
 **Cloud providers ship as Quillins, not core.** Per the consolidation plan (#669), the cloud
 provider matrix is delivered as extensions rather than baked into core. A Quillin declares a
@@ -1979,23 +1972,6 @@ providers".
 > History & Review** window (insert/copy/discard recovered recordings; doubles as the
 > startup-recovery prompt). Locked Dictation has distinct earcons and a one-time
 > onboarding hint. File synthesis runs with no console-window flash and a timeout.
-
-Phase 1 scope:
-
-- Keep current dictation behavior stable while introducing BITS Whisperer speech model management.
-- Surface model controls under `BITS Whisperer -> Speech Models`.
-- Add `BITS Whisperer -> Providers` with guided provider-center flows for staged onboarding.
-- Provide machine-aware default recommendations based on local configuration.
-- Include faster-whisper engine readiness checks and explicit user guidance.
-- Ensure `Help -> Status Page` can remain open and refresh dynamically with speech/BITS rollout task updates.
-- Add rollout-safe insight surfaces under `BITS Whisperer -> Rollout` (readiness check and capability matrix).
-- Add guarded download queue controls for staged model acquisition (retry failed downloads and clear history).
-- Keep advanced runtime paths staged for subsequent phases.
-
-Phase 2+ scope:
-
-- Expand runtime model execution paths and deeper transcription behavior.
-- Broaden model-family support as quality and hardware validation mature.
 
 ### 5.25d Batch Document-to-Speech, pronunciation, and SSML (shipped)
 
@@ -2779,8 +2755,8 @@ When `QUILL_SAFE_MODE=1`, `SoundPlayer.play()` is a no-op, keeping safe mode str
 
 Quill provides two complementary comparison workflows: an accessible interactive compare session and a generated diff report.
 
-- **Compare commands**: `Tools → Compare Documents…`, `Tools → Compare With File…`, `Tools → Compare Open Documents…`, `Tools → Compare Selection With Clipboard`, plus `Tools → Compare Options…`.
-- **Core navigation**: `F8` next difference, `Shift+F8` previous difference, `Ctrl+F8` announce current difference, `Alt+F8` open Difference List, `Ctrl+Alt+F8` toggle synchronized compare navigation.
+- **Compare commands** (`Tools → Comparison`): `Compare with File…`, `Compare Open Documents…`, `Next Difference`, `Previous Difference`, `Announce Current Difference`, `Difference List…`, `Toggle Synchronized Navigation`, `Compare Options…`, `Create Difference Summary`, `Copy Current Difference`, `Copy All Differences`. A `Navigate → Compare` submenu carries the same commands under the `tools.compare_*` ids.
+- **Core navigation** (`Navigate → Compare`, post-#357 chord class): `Ctrl+Alt+Shift+.` next difference, `Ctrl+Alt+Shift+,` previous difference, `Ctrl+Alt+Shift+D` read current difference. The Difference List and Toggle Synchronized Navigation have no default key; assign them in the Keymap Editor.
 - **Interactive session**: focus stays in the active editor; moving to a difference places the cursor on the changed line and announces both sides in plain language.
 - **Difference List**: a stock list control containing all differences with document names, line numbers, type, and a short preview; Enter jumps to the selected difference.
 - **Compare options**: ignore leading/trailing spaces, all whitespace, blank lines, line endings, case, punctuation, repeated spaces, Markdown heading markers, HTML tag differences, and normalized Unicode.
@@ -3329,7 +3305,7 @@ InstructionSet(task_id, title, default_prompt, user_prompt="", enabled=True)
 
 | Feature | Shortcut | Module | Dialog |
 |---|---|---|---|
-| AI Thesaurus | Shift+F8 | `core/ai/thesaurus.py` | `ui/ai_thesaurus_dialog.py` |
+| AI Thesaurus | Ctrl+Alt+Shift+H | `core/ai/thesaurus.py` | `ui/ai_thesaurus_dialog.py` |
 | AI Spell Check | — | `core/ai/spell_check.py` | `ui/ai_spell_check_dialog.py` |
 | AI Grammar Check | — | `core/ai/grammar_check.py` | `ui/ai_grammar_check_dialog.py` |
 | Rewrite Selection | — | `core/ai/agent_session.py` | `ui/ai_agent_result_dialog.py` |
@@ -5230,9 +5206,9 @@ Deferred to v1.1:
 - [x] Add "Show what changed" reporting after profile switches.
 - [x] Add feature-flag coverage tests for new commands and surfaces.
 
-### GLOW implementation roadmap
+### Document-intelligence implementation roadmap
 
-This roadmap is the GLOW-branded implementation order for the shared document-intelligence work now being folded into Quill.
+This roadmap is the implementation order for the shared document-intelligence work now being folded into Quill.
 
 1. **CSV Mode first.** Finish the accessible grid editor, the default-choice prompt, remembered CSV preference, and the ability to return to normal text editing at any time.
 2. **Word support next.** Complete MarkItDown-first Word intake, semantic diagnostics, and review/fix hooks for `.docx` and legacy `.doc` flows.
@@ -5348,7 +5324,7 @@ The wizard (`SetupWizardDialog` in `quill/ui/setup_wizard_pages.py`) is a single
 8. **Startup Behaviour** — start with no document open, check for updates on startup, and system tray icon.
 9. **Summary** — review every decision; Finish applies them.
 
-Planned wizard additions not yet present (tracked in `docs/planning.md`): an interface-language selector page, a watch-folder onboarding step, a GLOW consent step, and dedicated Quillins / Power Tools / Notebook / keyboard-profile pages.
+Planned wizard additions not yet present (tracked in `docs/planning.md`): an interface-language selector page, a watch-folder onboarding step, and dedicated Quillins / Power Tools / Notebook / keyboard-profile pages.
 
 ### §22.3 Feature Gating via FeatureManager
 
@@ -5432,7 +5408,7 @@ The schema (`quill/core/help/topics.json`) currently contains 134 topics coverin
 - Main editor surface, status bar, document tabs
 - All major dialogs: Find/Replace, Spell Check, AI Assistant, Remote/SSH, Preferences pages
 - Startup Wizard pages (F1 on any wizard control explains the effect of each choice)
-- Feature profiles, keyboard packs, read-aloud settings, GLOW workflows
+- Feature profiles, keyboard packs, read-aloud settings
 - All 25 braille commands registered in `quill/core/feature_command_map.py` (status, navigation, page tools, translation, back-translation, pack install, line/cell, progress, save-as-clean, line-ending normalize). A regression test in `tests/unit/tools/test_help_coverage.py` (`test_every_braille_command_has_a_help_topic`) walks the command map and fails CI if a new `braille.*` command ships without a topic.
 
 Full coverage target is 250 topics (all `SetName()` calls in `quill/ui/`).

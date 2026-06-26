@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>deferred-locked-features</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<h1
+id="deferred-locked-features-content-preserved-for-future-consideration">Deferred
+/ Locked Features — content preserved for future consideration</h1>
+<p>This file preserves user-facing documentation content for features
+that are currently <strong>locked off</strong> in
+<code>quill/core/feature_catalog.py</code> and therefore must not appear
+in the shipping user-facing docs (user guide, release notes, control
+reference, PRD). When a feature is unlocked, move its content back into
+the relevant doc.</p>
+<p>Authoritative source of the locked state:
+<code>quill/core/feature_catalog.py</code>
+(<code>locked_off=True</code>). As of this writing the locked-off
+features are:</p>
+<ul>
+<li><code>core.rich_text_lens</code> — <strong>Rich Text Lens</strong>
+(native wxPython rich-text editing for <code>.rtf</code>). Locked off
+pending fuller screen-reader testing; RTF files open as plain text in
+the meantime. Docs must not claim native RTF editing ships.</li>
+<li><code>core.bw_whisperer</code> — <strong>BITS Whisperer</strong>
+transcription suite (the whole branded menu). Deferred to QUILL 2.0. The
+underlying offline speech features still ship as plain QUILL features
+under <strong>Tools &gt; Speech</strong>, so describe those, not the
+brand. (The watch-folder transcription action was rebranded to
+<code>Transcribe audio (offline)</code> in
+<code>quill/core/watch_transcribe.py</code>, so no “Whisperer” brand
+string ships in a default build.)</li>
+<li><code>core.glow</code> — <strong>GLOW Accessibility</strong>
+(document accessibility audit/fix and engine updates). Hidden for now
+while the feature is finished.</li>
+<li><code>future.publishing</code> — <strong>Publishing</strong>
+(publishing connections and provider-aware remote publishing). Locked
+off while the publishing-providers-framework branch is under review. The
+release notes already frame this as a <em>future</em> item, which is
+acceptable.</li>
+<li><code>core.third_party_plugins</code> — <strong>Third-Party
+Plugins</strong> loader (SEC-8). Locked off until the plugin sandbox,
+signing, and review process ship. The release notes already frame
+third-party Quillins and a plugin marketplace as <em>future</em>.</li>
+</ul>
+<hr />
+<h2
+id="glow-control-reference-content-removed-from-docscontrol_reference.md">GLOW
+— control reference content (removed from
+docs/CONTROL_REFERENCE.md)</h2>
+<h3 id="glow-workflows-inside-quill">GLOW Workflows Inside QUILL</h3>
+<h4 id="glow-issue-list">GLOW Issue List</h4>
+<p>Lists all findings from the GLOW review. Arrow through the list to
+hear each issue. Press Enter or Tab to move to the detail panel and read
+the full explanation. Select one or more issues and press Fix Selected
+to apply automatic repairs.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tab</td>
+<td>Move to detail</td>
+</tr>
+<tr>
+<td>Alt+F</td>
+<td>Fix selected</td>
+</tr>
+<tr>
+<td>Ctrl+A</td>
+<td>Select all issues</td>
+</tr>
+</tbody>
+</table>
+<h4 id="issue-detail">Issue Detail</h4>
+<p>Shows the full description of the selected GLOW issue: what was
+found, why it matters, and what the automatic fix will do. Read this
+before applying a fix to understand the change.</p>
+<h4 id="severity-filter">Severity Filter</h4>
+<p>Filter the issue list by severity level. Error shows items that will
+likely break accessibility or structure. Warning shows items worth
+reviewing. Info shows stylistic or enhancement suggestions.</p>
+<h4 id="before-original">Before (Original)</h4>
+<p>Shows the original document text as it was before the GLOW fix was
+applied. Use this panel to verify what changed. Press Ctrl+C to copy the
+original if you want to compare it manually.</p>
+<h4 id="after-fixed">After (Fixed)</h4>
+<p>Shows the document text after the GLOW fix. Compare this to the
+Before panel to understand the change. Press Accept to apply the fix to
+your document, or Reject to discard it.</p>
+<hr />
+<h2 id="bits-whisperer-glow-release-notes-framing-removed">BITS
+Whisperer / GLOW — release-notes framing (removed)</h2>
+<p>The 0.8.0 Beta 1 release notes previously:</p>
+<ul>
+<li>Titled the offline-speech section “## 2. Speak and listen, privately
+— BITS Whisperer” and routed it through “Tools &gt; Speech &gt;
+Whisperer” and “Whisperer &gt; Download FFmpeg…”. Corrected to the
+shipping flat <strong>Tools &gt; Speech</strong> menu, with the section
+renamed to “offline speech”.</li>
+<li>In “What came before”, named <strong>BITS Whisperer</strong> and
+<strong>GLOW</strong> as consolidated apps and asserted “the speech
+suite is still BITS Whisperer.” Removed; the history now names only what
+ships (ChapterForge audiobook workflow and the writing utilities) and
+the on-device speech features without the brand.</li>
+<li>In the roadmap, named the <strong>GLOW</strong> document-audit
+family and “accessibility- audit agents from GLOW.” Reworded to generic
+accessibility-audit / document- audit capability (still future).</li>
+<li>In “About QUILL”, named the <strong>BITS Whisperer</strong> speech
+suite. Reworded to “a private, on-device speech suite.”</li>
+</ul>
+<p>When BITS Whisperer / GLOW are unlocked, restore the brand naming and
+the dedicated menu paths described above.</p>
+<hr />
+<h2
+id="glow-user-guide-content-removed-from-docsuser-guideuserguide.md">GLOW
+— user guide content (removed from docs/user guide/userguide.md)</h2>
+<h3 id="glow-workflows-inside-quill-1">GLOW Workflows Inside Quill</h3>
+<p>Glow in Quill is about guided confidence. It is not trying to turn
+the editor into a giant compliance dashboard. It is trying to make
+accessibility-aware review and safe deterministic fixes feel
+ordinary.</p>
+<h4 id="audit-flows">Audit flows</h4>
+<p>Use document audit when you want the whole file reviewed. Use
+selection audit when you only care about the paragraph, block, or
+snippet in front of you.</p>
+<p>Audit results open as normal Quill tabs. You can read them, search
+them, compare them, or keep them open alongside the source.</p>
+<h4 id="fix-flows">Fix flows</h4>
+<p>Use selection fix for quick cleanup in place. Use document fix when
+you want Quill to generate a preview and immediately compare original
+versus fixed output.</p>
+<p>This is where the native integration matters most. GLOW does not pull
+you away from your working context. It creates another working context
+beside it.</p>
+<h4 id="what-glow-is-best-at-today">What GLOW is best at today</h4>
+<p>The first native slice is strongest with:</p>
+<ul>
+<li>plain text review</li>
+<li>Markdown cleanup</li>
+<li>HTML accessibility-aware cleanup</li>
+<li>link-text review</li>
+<li>heading spacing and heading-level sanity</li>
+<li>lightweight readability guidance</li>
+</ul>
+<p>The 1.0 roadmap expands this into findings navigation,
+export-readiness workflows, and richer extraction-aware review for PDF
+and EPUB.</p>
+<h3 id="glow-menu-tools-removed-from-user-guide">GLOW menu (Tools) —
+removed from user guide</h3>
+<ul>
+<li><strong>Audit Current Document</strong></li>
+<li><strong>Audit Selection</strong></li>
+<li><strong>Fix Current Document</strong></li>
+<li><strong>Fix Selection</strong></li>
+</ul>
+<p>GLOW inside Quill is a guided layout and output workflow for
+deterministic text review. Today it focuses on plain text, Markdown, and
+HTML. It looks for issues such as: missing spaces after Markdown heading
+markers, heading-level jumps, generic link text, missing HTML language
+metadata, missing HTML image alt attributes, tables without HTML header
+cells, and dense paragraphs / plain-language friction.</p>
+<h3 id="glow-glossary-entry-removed-from-user-guide">GLOW glossary entry
+— removed from user guide</h3>
+<p><strong>GLOW (Guided Layout and Output Workflow)</strong> — QUILL’s
+built-in text quality review system. GLOW audits a document for
+structural issues (heading hierarchy, list consistency, spacing,
+encoding artefacts) and offers deterministic fixes. Audit results open
+as readable QUILL tabs; fixing the document opens a named preview and
+starts a compare session. GLOW focuses on plain text, Markdown, and
+HTML.</p>
+<h3
+id="bits-whisperer-rollout-status-page-content-removed-from-user-guide">BITS
+Whisperer rollout / Status Page content — removed from user guide</h3>
+<p>The user guide previously documented a BITS Whisperer phased-rollout
+surface: a two-mode (Recommended / Manual) speech-model selection flow,
+a <strong>Provider Center</strong> and <strong>Provider Status</strong>,
+a live <strong>Help &gt; Status Page</strong> that surfaced BITS
+Whisperer download/provider status, and Preferences &gt; General toggles
+(“Auto-open Status Page when BITS Whisperer model downloads start”,
+“BITS Whisperer safe mode lock”). These belong to the locked
+<code>core.bw_whisperer</code> suite and were removed. The shipping
+offline-speech model management (Recommended-for-your-computer guidance,
+background downloads) is documented in the “Offline transcription (Tools
+&gt; Speech)” section instead.</p>
+</body>
+</html>

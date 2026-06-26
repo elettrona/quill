@@ -101,10 +101,10 @@ class WhispererTranscribeAction(_BaseAction):
     """
 
     action_id: str = "bw_transcribe"
-    label: str = "Transcribe audio (Whisperer)"
+    label: str = "Transcribe audio (offline)"
     description: str = (
         "Transcribe each arriving audio or video file on your machine with the "
-        "offline Whisperer engine and save the transcript next to it (text, SubRip "
+        "offline speech engine and save the transcript next to it (text, SubRip "
         ".srt, WebVTT .vtt, or Markdown)."
     )
     on_transcribe: Callable[[Path, Mapping[str, object]], TranscriptionResult] | None = None

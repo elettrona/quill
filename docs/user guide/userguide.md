@@ -28,7 +28,6 @@ Quill is also in beta. Expect polish, depth, and real daily utility. Also expect
 - [QUILL Quick Nav Mode](#quill-quick-nav-mode)
 - [Formatting and Markup Work](#formatting-and-markup-work)
 - [Tools for Reading, Review, and Inspection](#tools-for-reading-review-and-inspection)
-- [GLOW Workflows Inside Quill](#glow-workflows-inside-quill)
 - [Accessibility and Low-Vision Features](#accessibility-and-low-vision-features)
 - [Quill on macOS](#quill-on-macos)
 - [Profiles, Keyboard Packs, and Customization](#profiles-keyboard-packs-and-customization)
@@ -86,7 +85,7 @@ Quill is built around a few promises.
 - Documents open locally and stay local unless you explicitly choose a network-aware action.
 - The editor should tell you what changed, where you are, and what is possible next.
 
-In practice, that means Quill spends a lot of attention on focus movement, meaningful status updates, discoverable commands, and native Windows controls. It also means Quill tries to reduce fear. When you open a recovered draft, compare two files, inspect extraction quality, or apply a deterministic GLOW fix, the point is not to feel clever. The point is to feel safe.
+In practice, that means Quill spends a lot of attention on focus movement, meaningful status updates, discoverable commands, and native Windows controls. It also means Quill tries to reduce fear. When you open a recovered draft, compare two files, or inspect extraction quality, the point is not to feel clever. The point is to feel safe.
 
 ## Your First Session
 
@@ -100,7 +99,7 @@ From there, a natural first session looks like this:
 2. Read or write in the editor.
 3. Use `Ctrl+Shift+P` to explore commands without memorizing everything.
 4. Use the **Navigate** menu to jump by line, heading, block, region, or page.
-5. Use the **Tools** menu for spelling, word count, extraction review, compare, macros, regex help, and GLOW workflows.
+5. Use the **Tools** menu for spelling, word count, extraction review, compare, macros, and regex help.
 6. Open **Help → Open Keyboard Reference** to see the exact shortcuts that exist in your current configuration. This reference is generated dynamically, so it always reflects your current feature profile and any custom keybindings.
 
 That first session matters because it teaches the most important Quill habit: you do not need to hunt. If an action exists, Quill wants you to be able to reach it from where you already are.
@@ -233,7 +232,7 @@ The menu bar is exhaustive rather than decorative. If Quill can do something, th
 
 ### Editor surface
 
-The editor is the heart of Quill. It is where writing happens, where extracted text lands, where reports open as ordinary tabs, and where GLOW previews and compare summaries feel like first-class documents rather than pop-ups.
+The editor is the heart of Quill. It is where writing happens, where extracted text lands, where reports open as ordinary tabs, and where compare summaries feel like first-class documents rather than pop-ups.
 
 The editor supports:
 
@@ -256,7 +255,7 @@ Quill is multi-document. Each open file lives in a notebook tab. You can:
 - use the tab context menu to close one tab, close other tabs, or close tabs to the right
 - reveal a saved document in File Explorer directly from the tab context menu
 
-Quill also opens generated artifacts as tabs. The welcome guide, keyboard reference, compare summary, GLOW audit report, and GLOW fix preview all feel like normal working tabs. That is deliberate. Artifacts should stay close to the work that created them.
+Quill also opens generated artifacts as tabs. The welcome guide, keyboard reference, and compare summary all feel like normal working tabs. That is deliberate. Artifacts should stay close to the work that created them.
 
 ### Status bar
 
@@ -707,9 +706,9 @@ no text is sent until you invoke the command.
   background while you review the previous one, keeping the dialog responsive
   on long documents.
 
-#### AI Grammar and Style Check (F8)
+#### AI Grammar and Style Check (Ctrl+Alt+Shift+G)
 
-`AI > AI Grammar and Style Check...` (`F8`) analyses the document for grammar,
+`AI > AI Grammar and Style Check...` (`Ctrl+Alt+Shift+G`) analyses the document for grammar,
 punctuation, clarity, style, and word choice. Issues appear in a list grouped
 by category. You can:
 
@@ -719,9 +718,9 @@ by category. You can:
 - Accept all remaining issues.
 - Press Apply and Close to apply accepted fixes as a single undo step.
 
-#### Translate Selection and Translate Document (Ctrl+Shift+T)
+#### Translate Selection and Translate Document (Ctrl+Alt+Shift+T)
 
-`AI > Translate Selection...` (`Ctrl+Shift+T`) and `AI > Translate Document...`
+`AI > Translate Selection...` (`Ctrl+Alt+Shift+T`) and `AI > Translate Document...`
 translate your text into a language you choose from the dialog.
 
 **Providers:**
@@ -766,12 +765,12 @@ open as a new document.
 `AI > Translate Audio File to English...` goes directly to the Whisper
 translation flow, bypassing the language selection step.
 
-### Offline transcription (Tools > Speech > Whisperer)
+### Offline transcription (Tools > Speech)
 
 QUILL can also transcribe **entirely on your computer**, with no cloud account
 and without uploading your audio. **No AI account or key is required** — you do
 not need to enable Artificial Intelligence to use these features. They live under
-**Tools > Speech > Whisperer**:
+**Tools > Speech**:
 
 - **Manage Speech Models...** lists local speech models with their download size,
   accuracy, and speed, and helps you pick one that will actually run well on your
@@ -799,7 +798,7 @@ not need to enable Artificial Intelligence to use these features. They live unde
   MP4, M4V, MOV, MKV, WebM, or AVI. If **ffmpeg** is installed, QUILL converts the
   file automatically before transcribing — you do not have to make a WAV yourself.
   QUILL does not ship ffmpeg, but it can fetch it for you: **Tools > Speech >
-  Whisperer > Download FFmpeg...** downloads the official build (about 110 MB,
+  Download FFmpeg...** downloads the official build (about 110 MB,
   with a cancelable progress bar) and sets it up; or install it yourself once (for
   example, `winget install Gyan.FFmpeg`) and QUILL finds it on your PATH. ffmpeg
   is open-source (GPL/LGPL) and fetched directly from the official builder; QUILL
@@ -858,7 +857,7 @@ so nothing is uploaded.
   time you dictate QUILL speaks a brief one-time hint about the keys.
 - **Remappable.** F9, Ctrl+F9, and the rest are defaults; change them in the Keymap
   Editor (**Settings > Keyboard**). You need an offline speech model installed
-  (**Tools > Speech > Whisperer > Manage Speech Models**) and the optional
+  (**Tools > Speech > Manage Speech Models**) and the optional
   microphone-capture support; in Safe Mode dictation is disabled.
 - **Hugging Face Token...** is optional. QUILL's speech models are open-source
   (MIT) and need **no Hugging Face account** to download. But if you fetch many
@@ -906,7 +905,7 @@ OpenAI API key in AI Hub. It then appears as a provider in Manage Speech Models.
 
 Cloud providers are **opt-in and never silent**: audio is uploaded only when you
 explicitly transcribe a file with that provider, never offline and never in Safe
-Mode. The Watch Folder "Transcribe audio (Whisperer)" automation always uses the
+Mode. The Watch Folder offline transcription automation always uses the
 on-device engines only, so a cloud provider can never auto-upload your audio.
 Extensions that add a provider ship no code and request no network permission —
 QUILL itself performs the upload through its audited network path, so the
@@ -949,16 +948,16 @@ Privacy: text is sent to the provider you select (`api.openai.com` or
 `generativelanguage.googleapis.com`) in sentence-aware chunks. No audio is
 stored by QUILL. See AI Privacy Reference for opt-out options.
 
-#### AI Thesaurus (Shift+F8)
+#### AI Thesaurus (Ctrl+Alt+Shift+H)
 
-`AI > AI Thesaurus...` (`Shift+F8`) looks up synonyms for the selected word
+`AI > AI Thesaurus...` (`Ctrl+Alt+Shift+H`) looks up synonyms for the selected word
 using your configured AI provider. Unlike a static thesaurus, it reads the
 sentence the word appears in and returns synonyms that match the actual meaning
 in context.
 
 To use it:
 1. Place the cursor on a word, or select it.
-2. Press Shift+F8 or choose AI > AI Thesaurus.
+2. Press Ctrl+Alt+Shift+H or choose AI > AI Thesaurus.
 3. The dialog opens with the word pre-filled and synonyms loading.
 4. Arrow through the list; each item shows the synonym and a brief usage note.
 5. Press Enter or click Replace Word to substitute the word in your document.
@@ -1158,75 +1157,22 @@ If you prefer to keep your text on your machine entirely:
 
 Each watch profile runs one action on every file it claims. Besides opening,
 moving, copying, converting, running a macro or a sandboxed transform, and OCR,
-a profile can **Transcribe audio (Whisperer)**: any audio or video file dropped
-into the folder is transcribed on your machine with the offline Whisperer engine
+a profile can **transcribe arriving audio**: any audio or video file dropped
+into the folder is transcribed on your machine with the offline speech engine
 and a transcript is written next to it — nothing is uploaded. Choose the
 **Transcript format** in the profile: plain **Text** (`.txt`), **SubRip captions**
 (`.srt`), **WebVTT captions** (`.vtt`), or **Markdown** (`.md`). The caption
 formats carry timestamps; if the engine returns no timed segments they fall back
 to plain text so you never get an empty caption file. It needs no consent; if no
 speech model is installed yet, the profile tells you to download one from
-**Tools → Speech → Whisperer → Manage Speech Models**. (A separate
+**Tools → Speech → Manage Speech Models**. (A separate
 **Transcribe audio (OpenAI Whisper)** action is available for cloud transcription
 when you have enabled AI and configured a key.)
-
-The broader BITS Whisperer cloud-provider suite remains deferred; when it is
-enabled, Watch Folder also appears in the BITS Whisperer submenu alongside Dictation.
-
-Speech model selection intentionally follows a two-mode flow:
-
-- **Recommended mode**: Quill selects a whisper model using machine-aware guidance (RAM/GPU profile).
-- **Manual mode**: You pick a specific whisper model yourself.
-
-In this phase, model infrastructure and download workflows are enabled while deeper runtime wiring remains staged.
-
-Provider setup follows the same phased safety model:
-
-- Use **Provider Center** for guided local-first or cloud-first setup choices.
-- Use **Provider Status** to understand readiness and next steps.
-- Providers are staged for rollout planning first; live provider routing remains gated in this phase.
-
-Status Page behavior:
-
-- **Help -> Status Page (HTML Preview)** now updates live while open.
-- It surfaces asynchronous speech generation and BITS Whisperer download/provider status so users can monitor progress without blocking dialogs.
-- In **Preferences -> General**, you can enable **Auto-open Status Page when BITS Whisperer model downloads start** (default off).
-- In **Preferences -> General**, set **Status page refresh announcements** to **Quiet**, **Normal**, or **Verbose** to control screen-reader announcement cadence.
-- In **Preferences -> General**, use **Use Artificial Intelligence** to mirror the AI menu toggle from one place.
-- In **Preferences -> General**, enable **BITS Whisperer safe mode lock** to block download/retry actions while keeping status and onboarding surfaces available.
-
-BITS Whisperer ships with safe defaults applied automatically; runtime routing changes stay off until you opt in from these Preferences surfaces.
 
 Read Aloud is particularly useful for proofreading by ear. OCR Image handles image-to-text work with an explicit consent and progress flow.
 Dictation uses Windows' own speech input. **Hey QUILL Commands** is a checkable menu item (Reading → Dictation): activate it to turn the feature on or off directly — Quill remembers the setting and announces "Hey QUILL voice commands on" or "off". When it is enabled, Quill stays silent and only listens while dictation is active, then runs the matching action after the wake phrase.
 Watch Folder automation is best for "drop and open" workflows: copy supported files into one
 folder and let Quill open them in the background.
-
-BITS Whisperer phased rollout note:
-
-- Quill is adopting BITS Whisperer speech capabilities in phases.
-- Phase 1 focuses on machine-aware speech model management and safer setup guidance.
-- Additional BITS Whisperer transcription runtime features, including expanded model execution paths,
-  will be delivered incrementally in future phases.
-
-#### GLOW
-
-- **Audit Current Document**
-- **Audit Selection**
-- **Fix Current Document**
-- **Fix Selection**
-
-GLOW inside Quill is a guided layout and output workflow for deterministic text review. Today it focuses on plain text, Markdown, and HTML. It looks for issues such as:
-
-- missing spaces after Markdown heading markers
-- heading-level jumps
-- generic link text
-- missing HTML language metadata
-- missing HTML image alt attributes
-- tables without HTML header cells
-- dense paragraphs and plain-language friction
-
-The key design choice is how GLOW feels inside Quill. Audit results open as readable Quill tabs. Fixing the current document opens a named preview tab and immediately starts a compare session against the original. Selection fixes apply in place to the current selection, paragraph, or line. That keeps GLOW close to the writing experience instead of making it feel like a detached compliance tool.
 
 #### Comparison
 
@@ -1242,9 +1188,9 @@ The key design choice is how GLOW feels inside Quill. Audit results open as read
 
 Quill's compare model is practical and local. It supports file-to-file review, multi-document review, summary generation, and synchronized movement through differences.
 
-When a comparison is open you can move through it from the keyboard: **F8** for the next difference, **Shift+F8** for the previous one, **Ctrl+F8** to re-announce the current difference, and **Alt+F8** to hear the inline changed words. The compare dialog is a keyboard-first list you can review with a screen reader, one difference at a time.
+When a comparison is open you can move through it from the keyboard: **Ctrl+Alt+Shift+.** for the next difference, **Ctrl+Alt+Shift+,** for the previous one, and **Ctrl+Alt+Shift+D** to read the current difference. The compare dialog is a keyboard-first list you can review with a screen reader, one difference at a time.
 
-If you use a sound pack, compare mode also plays short earcons: one when a comparison opens, one when it closes, distinct ticks for moving to the next or previous difference, and a soft "blocked" tone when you reach the first or last difference with nothing further to show. You can turn any of these on or off individually in **Tools → Reading & Dictation → Sound Events...** under the Compare section. See [Sound notifications and earcons](#sound-notifications-and-earcons).
+If you use a sound pack, compare mode also plays short earcons: one when a comparison opens, one when it closes, distinct ticks for moving to the next or previous difference, and a soft "blocked" tone when you reach the first or last difference with nothing further to show. You can turn any of these on or off individually in **Tools → Reading & Dictation → Manage Sound Events...** under the Compare section. See [Sound notifications and earcons](#sound-notifications-and-earcons).
 
 #### Braille
 
@@ -1255,9 +1201,9 @@ If you use a sound pack, compare mode also plays short earcons: one when a compa
 
 See [Braille and BRF Support](#braille-and-brf-support) for full details on translation and the Universal BRF Pack.
 
-#### Power Tools
+#### Advanced
 
-Power Tools is the expanded home for automation utilities, developer tools, and editor-behavior power toggles.
+The **Advanced** submenu (Tools > Advanced) is the expanded home for automation utilities, developer tools, and editor-behavior power toggles.
 
 **Editor utilities:**
 
@@ -1519,7 +1465,7 @@ When you have a folder full of documents to convert, opening them one at a time 
 - **Never** — existing outputs are skipped automatically. The Status Page shows the count under *skipped* so the total still adds up.
 - **Always** — existing outputs are overwritten without prompting. Useful for re-running a batch with the same plan.
 
-**Live progress and completion announcement.** The batch runs on the background task pool. Open the Status Page (`Help > Status Page` or `F6` to the status bar then `Ctrl+Shift+T`) and the Tasks & Downloads tab shows live rows. The first row is `Batch conversion: scanning <folder>`, then one row per file as the work progresses.
+**Live progress and completion announcement.** The batch runs on the background task pool. Open the Status Page (`Help > Status Page`) and the Tasks & Downloads tab shows live rows. The first row is `Batch conversion: scanning <folder>`, then one row per file as the work progresses.
 
 When the batch finishes, QUILL speaks a single completion line through the announcement backend you have configured. The line names the converted / skipped / failed counts and the elapsed time:
 
@@ -1702,7 +1648,7 @@ Quill uses an anchor-based selection model:
 
 | Key | Command | Purpose |
 | --- | --- | --- |
-| (unassigned by default) | Select paragraph | Selects the paragraph at the cursor; announces scope and word count. Assign a key in the Keyboard Manager or run it from the command palette. |
+| (unassigned by default) | Select paragraph | Selects the paragraph at the cursor; announces scope and word count. Assign a key in the Keymap Editor or run it from the command palette. |
 | Ctrl+Shift+B | Select block | Selects the indented block at the cursor. |
 | Alt+Shift+Up | Expand selection | Grows the selection to the next structural unit (line to paragraph to block to document). |
 | Alt+Shift+Down | Shrink selection | Reverses the last expand step. |
@@ -1746,7 +1692,7 @@ Quill's search tools are both straightforward and layered.
 - `F3` finds next.
 - `Shift+F3` finds previous.
 - `Alt+F3` opens a find-all matches summary.
-- `Ctrl+Shift+H` opens Replace.
+- `Ctrl+H` opens Replace; `Ctrl+Shift+H` replaces all.
 
 ### Search modes
 
@@ -1965,7 +1911,7 @@ Quill detects whether the current surface looks like Markdown, HTML, or plain te
 
 The heading tools do more than insert decoration. They help you maintain usable structure. The list tools speed up common authoring patterns without forcing you into a separate composer.
 
-For inline heading control, press `Ctrl+Alt+1` through `Ctrl+Alt+6` to convert the current line to the matching heading level in Markdown and HTML surfaces. Press the same chord again on an already-matching heading to clear the level. The chord is documented in §10.2 of `docs/keybinding-standard.md` and overrides NVDA's switch-to-synth-1..6; if you use NVDA's synth switcher, you can rebind the QUILL heading chord via the Keymap Editor (`Ctrl+Shift+Grave, K`).
+For inline heading control, press `Ctrl+Alt+1` through `Ctrl+Alt+6` to convert the current line to the matching heading level in Markdown and HTML surfaces. Press the same chord again on an already-matching heading to clear the level. The chord is documented in §10.2 of `docs/keybinding-standard.md` and overrides NVDA's switch-to-synth-1..6; if you use NVDA's synth switcher, you can rebind the QUILL heading chord via the Keymap Editor.
 
 For section-level reorganisation in Markdown and HTML, press `Alt+Shift+Down` while the caret is on a heading to swap that section past its next sibling; `Alt+Shift+Up` swaps it with the previous sibling. The chord is gated on Markdown and HTML — plain-text documents announce the chord is unavailable and the move is skipped. Fenced code blocks are honored, so a `# fake` line inside a ``` fence is never promoted to a real sibling.
 
@@ -1987,7 +1933,7 @@ For research writing, **Insert -> Insert Citation...** builds correctly formatte
 
 Quill applies the per-style rules for you — author order and "et al.", initials, italics, and where each comma and period belongs — so what lands in your document is ready to use. You supply the facts; Quill handles the formatting.
 
-Markdown list editing now follows editor-standard behavior: `Enter` continues the current bullet/numbered/task item, and `Enter` on an empty list marker exits the list. When the caret is on a list item, `Tab` nests it and `Shift+Tab` promotes it. For larger reorganizations, use **Format -> List -> List Manager...** (`Ctrl+Shift+Grave, L`) to move, promote/demote, add, edit, and delete list items from a tree view.
+Markdown list editing now follows editor-standard behavior: `Enter` continues the current bullet/numbered/task item, and `Enter` on an empty list marker exits the list. When the caret is on a list item, `Tab` nests it and `Shift+Tab` promotes it. For larger reorganizations, use **Insert -> List -> List Manager...** (`Ctrl+Shift+Grave, L`) to move, promote/demote, add, edit, and delete list items from a tree view.
 
 #### Structured List Studio (F2)
 
@@ -2061,7 +2007,7 @@ Markdown means different things to different writers: a poet wants every line br
 
 **Selection pre-fill:** If text is selected when you press `Ctrl+Shift+E`, QUILL checks whether the selection is a LaTeX equation. If it is, it strips the delimiters (`$` for inline, `$$` for block), pre-fills the prompt with the bare formula, and surfaces the detected display mode first in the choice list so you can confirm with one keypress.
 
-**Rendering:** Browser Preview (`Ctrl+Shift+V`) and HTML export inject a MathJax 3 script tag so equations render visually in any browser. The document source always contains the raw LaTeX or MathML, which your screen reader reads directly.
+**Rendering:** Browser Preview (`QUILL Key + V`) and HTML export inject a MathJax 3 script tag so equations render visually in any browser. The document source always contains the raw LaTeX or MathML, which your screen reader reads directly.
 
 A collection of ten worked examples — quadratic formula, binomial theorem, integration by parts, Euler's identity, and more — is in `docs/math/latex_testing.md`.
 
@@ -2182,35 +2128,6 @@ OCR is explicit and local. You choose the image, confirm the action, and receive
 
 These commands are where Quill feels especially mature for accessibility-minded reading work. Rather than assuming every import is trustworthy, Quill gives you tools to ask whether the extraction is good enough, what may have been lost, and whether you should quote from the result directly.
 
-## GLOW Workflows Inside Quill
-
-Glow in Quill is about guided confidence. It is not trying to turn the editor into a giant compliance dashboard. It is trying to make accessibility-aware review and safe deterministic fixes feel ordinary.
-
-### Audit flows
-
-Use document audit when you want the whole file reviewed. Use selection audit when you only care about the paragraph, block, or snippet in front of you.
-
-Audit results open as normal Quill tabs. You can read them, search them, compare them, or keep them open alongside the source.
-
-### Fix flows
-
-Use selection fix for quick cleanup in place. Use document fix when you want Quill to generate a preview and immediately compare original versus fixed output.
-
-This is where the native integration matters most. GLOW does not pull you away from your working context. It creates another working context beside it.
-
-### What GLOW is best at today
-
-The first native slice is strongest with:
-
-- plain text review
-- Markdown cleanup
-- HTML accessibility-aware cleanup
-- link-text review
-- heading spacing and heading-level sanity
-- lightweight readability guidance
-
-The 1.0 roadmap expands this into findings navigation, export-readiness workflows, and richer extraction-aware review for PDF and EPUB.
-
 ## Verbosity and Announcements
 
 QUILL lets you control what it announces and when, so the editor is as quiet or
@@ -2226,11 +2143,12 @@ Manager.
 - **Channels.** Choose which channels carry announcements — Speech, Braille,
   Sound — while **Visual** (the status bar) is always on and cannot be turned
   off, so you never lose the on-screen status of an action.
-- **Quiet Mode** (`QUILL key + Q`) silences speech and earcons for a meeting or a
-  shared room; **Meeting Mode** (`QUILL key + Shift + Q`) hard-mutes sound. A
-  `[Q]` or `[M]` indicator shows when a mode is active, and the status bar keeps
-  updating either way. **Verbosity Undo** (`Ctrl+Shift+Z`) steps back the last
-  verbosity change.
+- **Quiet Mode** silences speech and earcons for a meeting or a shared room;
+  **Meeting Mode** quiets sound further. A `[Q]` or `[M]` indicator shows when a
+  mode is active, and the status bar keeps updating either way. **Undo Verbosity
+  Change** steps back the last verbosity change. Toggle these from the Command
+  Palette, or assign your own keys in the Keymap Editor; they have no default
+  shortcut.
 - **Less repetition, no floods.** Under **Preferences > Accessibility**,
   **Collapse repeated announcements** (on by default) stops QUILL from speaking the
   exact same announcement again when it repeats within a moment — for example when
@@ -2506,11 +2424,11 @@ Plain text stays plain. Quill does not force hidden formatting into it.
 
 ### Markdown
 
-Markdown gets structure-aware commands, list helpers, heading helpers, links, code blocks, and GLOW review.
+Markdown gets structure-aware commands, list helpers, heading helpers, links, and code blocks.
 
 ### HTML
 
-HTML gets tag insertion, structure-aware editing help, link handling, and GLOW review focused on language metadata, image alt text, heading order, and table headers.
+HTML gets tag insertion, structure-aware editing help, and link handling.
 
 ### RTF
 
@@ -2731,7 +2649,7 @@ The wizard walks you through six short pages (five if you do not enable AI writi
 |---------|----------|
 | Essential | New users, light daily writing, low-distraction setup |
 | Standard | Most users — balanced feature set with AI and tools available |
-| Power User | All features on; suited to advanced writing, extraction, and GLOW workflows |
+| Power User | All features on; suited to advanced writing and extraction |
 | Accessibility Focus | Screen-reader primary; maximises keyboard coverage and announcements |
 
 ### Recent Fixes in 0.7.0 Beta 2
@@ -2739,7 +2657,7 @@ The wizard walks you through six short pages (five if you do not enable AI writi
 The Beta 2 release includes a sweep of accessibility, macOS, and
 crash-resistance fixes. Where the fix is invisible to the user, the
 note says so; where the fix is user-visible, the note gives the
-user-facing detail. The full list is in the [release notes](../release%20notes/release0.7.0-beta2.md).
+user-facing detail. The full list is in the [release notes](../release%20notes/release0.8.0-beta1.md).
 
 - **#603 — closing the last document no longer crashes the caret
   handler.** Bug-fix; nothing to change. The crash surfaced as
@@ -3281,7 +3199,7 @@ _Consolidated on 2026-06-13 from qdc-tutorial and "QUILL Developer Console and A
 
 > **Status note (2026-06-13, supersedes the per-section "Planned for 1.1" lines below).**
 > The QDC is implemented and reachable in 0.5.0 under the Developer and Power Text
-> and Full QUILL profiles (Tools > Power Tools > Developer Console). The Python
+> and Full QUILL profiles (Tools > Advanced > Developer Console). The Python
 > console and the `q` scripting API are wired (`quill/core/scripting.py`,
 > `quill/ui/main_frame_devtools.py`), including the facades `q.selection`, `q.doc`,
 > `q.editor`, `q.settings`, `q.profile`, `q.bookmarks`, `q.quillins`, `q.macros`
@@ -3299,7 +3217,7 @@ _Consolidated on 2026-06-13 from qdc-tutorial and "QUILL Developer Console and A
 # QUILL Developer Console Tutorial
 
 Status: **Implemented in 0.5.0** (Developer and Power Text / Full QUILL profiles;
-Tools > Power Tools > Developer Console). The Python console and the `q` scripting
+Tools > Advanced > Developer Console). The Python console and the `q` scripting
 API are wired; the TypeScript console runs via a Node subprocess. See the status
 note at the top of this document for the exact `q` surface. (Some passages below
 were written against the original 1.1 plan and may describe a richer API than the
@@ -3332,7 +3250,7 @@ standard accessibility announcement path.
 
 ## Opening the console
 
-Menu: `Tools > Power Tools > Developer Console > Open Python Console`
+Menu: `Tools > Advanced > Developer Console > Open Python Console`
 or `Open TypeScript Console`.
 
 Command palette: `quill.console.openPython` / `quill.console.openTypeScript`.
@@ -3623,7 +3541,7 @@ interface QuillConsoleApi {
 
 ## Console safety settings
 
-`Tools > Power Tools > Developer Console > Console Safety Settings`
+`Tools > Advanced > Developer Console > Console Safety Settings`
 or command `quill.console.openSafetySettings`.
 
 Settings:
@@ -3700,7 +3618,7 @@ ts> console.log(ann);
 ## Implementation status (0.5.0)
 
 The QDC is implemented and reachable under the Developer and Power Text and
-Full QUILL profiles (Tools > Power Tools > Developer Console). Shipped today:
+Full QUILL profiles (Tools > Advanced > Developer Console). Shipped today:
 
 - The Python console and console window (`quill/devtools/python_console.py`,
   `quill/devtools/console_window.py`) wired through `quill/ui/main_frame_devtools.py`.
@@ -3777,7 +3695,7 @@ Every editor-changing action must go through the QUILL command registry or offic
 
 ## 2. Problem statement
 
-QUILL is becoming a rich writing and document environment with commands, macros, Quillins, profiles, diagnostics, GLOW integration, document intake, spell checking, format conversion, and accessibility-aware UI behavior.
+QUILL is becoming a rich writing and document environment with commands, macros, Quillins, profiles, diagnostics, document intake, spell checking, format conversion, and accessibility-aware UI behavior.
 
 Without a developer console and automation API:
 
@@ -5312,7 +5230,7 @@ preview: "Copied to slot 2".
 | --- | --- |
 | `Ctrl+Shift+Grave, X` | Open Copy Tray dialog |
 
-All bindings are reassignable in `Tools > Customize & Support > Keyboard Manager` or the Command
+All bindings are reassignable in `Tools > Customize & Support > Keymap Editor` or the Command
 Palette.
 
 ## Using the Edit Menu
@@ -5621,10 +5539,7 @@ A searchable pop-up listing every registered QUILL command with its current keyb
 A multi-slot clipboard within QUILL that holds up to twelve named text snippets at once. Unlike the Windows clipboard (which holds only one item), the Copy Tray lets you copy different pieces of text to individual numbered slots (`Ctrl+Shift+Grave, Shift+1` through `Shift+9`, `Shift+0`, `Shift+-`, `Shift+=`) and paste from any slot. Open the Copy Tray dialog with `Ctrl+Shift+Grave, X` or `Win+V`-style double QUILL-key press.
 
 **Document Tab**
-A single open file or generated artifact inside the QUILL editor area. QUILL is a tabbed editor; each file, compare summary, GLOW report, or AI output opens as its own document tab. Tabs are announced by name when you switch between them (`Ctrl+Tab`).
-
-**GLOW (Guided Layout and Output Workflow)**
-QUILL's built-in text quality review system. GLOW audits a document for structural issues (heading hierarchy, list consistency, spacing, encoding artefacts) and offers deterministic fixes. Audit results open as readable QUILL tabs; fixing the document opens a named preview and starts a compare session. GLOW focuses on plain text, Markdown, and HTML.
+A single open file or generated artifact inside the QUILL editor area. QUILL is a tabbed editor; each file, compare summary, or AI output opens as its own document tab. Tabs are announced by name when you switch between them (`Ctrl+Tab`).
 
 **Keymap / Keyboard Pack (.kqp)**
 The mapping of keyboard shortcuts to QUILL commands. The keymap is fully editable in **Preferences → Keyboard**. You can export your keymap as a `.kqp` file (Keyboard Pack) to share it with others or import one provided by the community. Resetting the keymap restores factory defaults without affecting other preferences.
@@ -5654,7 +5569,7 @@ A startup mode that disables AI, Watch Folder, and Quillin extensions. Useful wh
 A persistent conversation thread between you and an AI provider inside QUILL. Sessions have a name, a provider, a model, and a message history. You can have multiple named sessions and switch between them. Sessions are stored locally and can be exported. The Writing Assistant always runs inside a session.
 
 **Skill / Skill Library**
-A named, reusable AI workflow defined as a series of steps (prompts, transforms, and conditions). Skills are more structured than single prompts: each step in the skill can feed its output into the next. The Skill Library (`Tools → AI → Skill Library`) lets you browse, run, and author skills. Skills are stored as `.json` files.
+A named, reusable AI workflow defined as a series of steps (prompts, transforms, and conditions). Skills are more structured than single prompts: each step in the skill can feed its output into the next. The Skill Library (`AI → Skill Library`) lets you browse, run, and author skills. Skills are stored as `.json` files.
 
 **Snippet**
 A reusable block of text with optional interactive placeholders that you insert manually at the cursor position. Snippets support variables such as `${input:name}` (a prompted text field), `${choice:a|b}` (a pick-list), `${date}`, `${time}`, and `${cursor}` (where the cursor lands after insertion). Insert with `Ctrl+Shift+Grave, S`; manage with `Ctrl+Shift+Grave, Shift+S`. Compare with abbreviations, which expand automatically.

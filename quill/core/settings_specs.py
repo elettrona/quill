@@ -76,7 +76,7 @@ SETTING_GROUPS: tuple[SettingGroup, ...] = (
     SettingGroup(
         "transcription",
         "Transcription",
-        "BITS Whisperer speech-model and provider behavior.",
+        "Offline speech-model and provider behavior.",
     ),
     SettingGroup(
         "watch",

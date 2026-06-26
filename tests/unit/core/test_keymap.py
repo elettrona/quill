@@ -205,7 +205,7 @@ def test_snippet_shortcuts_are_available() -> None:
 
 
 def test_sticky_note_shortcut_is_available() -> None:
-    assert DEFAULT_KEYMAP["tools.sticky_note_capture"] == "Ctrl+Shift+Grave, N"
+    assert DEFAULT_KEYMAP["tools.sticky_note_capture"] == "Ctrl+Shift+Grave, Shift+N"
 
 
 def test_indent_shortcuts_are_available() -> None:

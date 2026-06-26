@@ -165,7 +165,10 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "edit.replace": "Ctrl+H",
     "tools.search_in_files": "Ctrl+Shift+F",
     "tools.replace_in_files": "Ctrl+Shift+R",
-    "tools.sticky_note_capture": "Ctrl+Shift+Grave, N",
+    # Bare "N" after the QUILL-key prefix is intercepted for browse mode in
+    # QuillKeyMixin (before chord dispatch), so a bare-N chord here is dead.
+    # Sticky-note capture uses the free Shift+N second key (not intercepted).
+    "tools.sticky_note_capture": "Ctrl+Shift+Grave, Shift+N",
     # #262: Batch Conversion wizard. QUILL-key chord (B is free in the
     # second-key space). The entry moved out of the Tools menu and now
     # sits in File > Import > Batch Conversion... and File > Export >
@@ -441,7 +444,7 @@ def merge_keymaps(raw: object) -> dict[str, str]:
         "tools.dictation_toggle": ("CTRL+ALT+V", "Ctrl+Shift+Grave, D"),
         "edit.toggle_extend_selection_mode": ("F8", ""),
         "edit.copy_selection_for_email": ("CTRL+ALT+C", "Ctrl+Shift+Grave, C"),
-        "tools.sticky_note_capture": ("CTRL+ALT+SHIFT+N", "Ctrl+Shift+Grave, N"),
+        "tools.sticky_note_capture": ("CTRL+ALT+SHIFT+N", "Ctrl+Shift+Grave, Shift+N"),
         "view.browser_preview": ("CTRL+ALT+SHIFT+V", "Ctrl+Shift+Grave, V"),
         "format.list_manager": ("CTRL+ALT+L", "Ctrl+Shift+Grave, L"),
         "format.heading_1": ("CTRL+SHIFT+GRAVE, 1", "Ctrl+Alt+1"),
