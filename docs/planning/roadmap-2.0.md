@@ -243,3 +243,119 @@ here only so the intent is not lost. None gates 2.0.
 - **Stay current with main:** merge `main` into `2.0-dev` regularly.
 - **Graduation:** when a 1.xx candidate from §3 is scheduled, move it into
   `roadmap.md` for that release and delete its row here.
+
+---
+
+## 5. Phase 0 — the dormant foundation: what's done, and what 1.xx gains
+
+"Phase 0" is the name we give the **already-built, dormant Tier A foundation** for
+the 2.0 agentic platform (the §1 Phase 1 Tier A rows, plus the harness layer and
+SDK packs). It is finished, tested, and sitting on `2.0-dev`. This section records
+exactly what it is, whether 1.xx gains anything by adopting it, and the evidence
+that doing so is safe — so the decision to port it into a 1.xx release can be made
+from facts, not hope.
+
+### 5.1 What is done (the Phase 0 surface)
+
+All wx-free, strict-typed `quill/core/ai/*` (plus `quill/ai_packs/*`), additive:
+
+- `events.py` — normalized agent-event vocabulary.
+- `permissions.py` — Permission Broker (4 profiles, monotone risk floor, hard
+  `SAFE_TOOL_IDS` floor).
+- `activity_log.py` — bounded, redacted, atomic audit log.
+- `tool_gateway.py` — Safe Editor Tool Gateway (typed host protocol, permission
+  checks, diff-preview routing, undo checkpoints, audit).
+- `context_builder.py` — scoped context + secret-masking "what will be sent"
+  preview.
+- `harness/` + `harness/native.py` — Harness protocol/registry/capabilities,
+  Native harness, and `responder_from_backend` (runs Native on the existing
+  provider stack).
+- `ai_packs/` — all six optional SDK harness packs (Copilot, Claude, OpenAI,
+  Microsoft, LangGraph, OpenHands), lazily imported, graceful when uninstalled.
+- `agent_catalog.py` + `schemas/agent.json` + `ai/agents/*.json` — declarative
+  Agent Catalog + the 11-agent launch set.
+- `event_bridge.py` — verbosity-aware mapping from events to balanced
+  announcements.
+
+Test coverage: ~95 new tests under `tests/unit/core/ai/` (full `tests/unit/core/ai`
+= 448 passing).
+
+### 5.2 Does 1.xx gain anything from it?
+
+**Be precise: Phase 0 adopted on its own delivers no user-facing change and no new
+runtime behavior.** Every module is dormant — nothing in the shipping app calls it
+(proven in §5.3). So a user on a 1.xx build that includes Phase 0 would see and
+feel exactly what they see today.
+
+What 1.xx *does* gain is **latent and strategic, not functional**:
+
+1. **A proven substrate, shipped early.** The permission model, audit log, gateway,
+   diff/undo routing, and event grammar exist as tested code in the release stream,
+   de-risking the later visible 2.0 work and any 1.xx hardening built on top.
+2. **The prerequisite for the real stability win.** The genuine, user-invisible
+   *stability* improvement (one provider truth; routing today's Ask Quill / Writing
+   Assistant edits through one audited gateway + one diff/undo path) is the **Tier B**
+   work in §1. Tier B cannot land without Phase 0 underneath it. Porting Phase 0 to
+   1.xx is what makes a subsequent quiet 1.xx hardening release *possible*.
+3. **No new dependencies for default installs.** The SDK packs are opt-in extras; a
+   normal install pulls none of them.
+
+So the honest answer to "does it gain anything?": **by itself, nothing the user
+notices — it is an enabling foundation.** The payoff is realized only when a
+follow-up Tier B change switches part of it on; that change is separate,
+behavior-changing, and must be proven on its own.
+
+### 5.3 Can we prove it is safe to bring into 1.xx? Yes — evidence
+
+The safety claim is "adopting Phase 0 cannot change how 1.xx behaves." Four
+independent checks support it:
+
+1. **Additive only — zero deletions.** The diff from the 2.0 fork point
+   (`f1e2f87`) is **30 files changed, 2456 insertions, 0 deletions**. Every
+   `quill/` change is a brand-new file except `pyproject.toml`. No existing line of
+   shipping code was modified or removed.
+2. **The one touched existing file is additive and inert at runtime.**
+   `pyproject.toml` gains six *optional-dependency* extras (`ai-copilot`,
+   `ai-claude`, `ai-openai`, `ai-microsoft`, `ai-langgraph`, `ai-openhands`) and two
+   wheel `force-include` lines for the new data files. Optional extras are not in
+   the default `[ui]`/`[dev]` install, so default install and runtime are unchanged;
+   the force-includes only package the new, otherwise-unused JSON.
+3. **Unreachable from the shipping app.** A grep for `import` statements of every
+   new module, across all of `quill/`, excluding the files created on this branch,
+   returns **no pre-existing importer**. Nothing the running app loads imports the
+   Permission Broker, gateway, activity log, events, context builder, event bridge,
+   harness layer, agent catalog, or `ai_packs`. Code that nothing calls cannot
+   change behavior.
+4. **Verified green, all gates.** Full suite passes on both branches
+   (`2.0-dev` 5647 passed; `main` 5580 passed; 0 failures). `ruff check`,
+   `ruff format --check`, and scoped `mypy quill/core/ai` are clean; the
+   banned-patterns, GATE-11 module-size, and network-egress gates pass. No new
+   outbound network call site was added — the SDK packs call their SDKs lazily and
+   only inside a running session, which cannot occur without an installed extra and
+   an explicit user action — so the egress audit is unchanged and Safe Mode's
+   guarantees are untouched.
+
+**Conclusion:** porting Phase 0 into a 1.xx release is safe because it is provably
+inert: additive new files, no shipping importer, optional dependencies, green CI.
+It buys 1.xx a tested foundation with no behavior risk — and nothing more until a
+later, separately-reviewed change wires it in.
+
+### 5.4 Guidance — how to land Phase 0 in 1.xx
+
+1. **Port it as one additive PR.** Cherry-pick or port the Phase 0 files onto a
+   1.xx branch as a single "new files only" change. Because it is inert, review is
+   about code quality and tests, not behavior regression; CI should be green with no
+   diff in any existing behavior test.
+2. **Do not wire anything in.** Add no menu item, command, dialog, or call site in
+   the 1.xx PR. Enabling any of it is Tier B/C and belongs in its own change. Keeping
+   the PR inert is precisely what makes it safe.
+3. **Sequence the real win separately.** Schedule the Tier B hardening (one provider
+   truth, then gateway-routed edits) as a follow-up 1.xx PR, gated by the existing AI
+   tests + a reversible key migration. That PR is where stability is actually
+   delivered and where the careful regression review must focus.
+4. **Leave the SDK packs as optional, unadvertised extras.** Their transports are
+   not yet validated against live SDKs (they require the extras installed); keeping
+   them opt-in and unlisted in 1.xx means that open item cannot affect 1.xx users.
+5. **Keep the egress audit honest.** When a future change first makes a pack's
+   transport reach the network, add its call site to `network_egress_audit.py` in the
+   *same* change — not before.
