@@ -8,8 +8,17 @@ sound-pack stores. Tests assert this module and the JSON schema agree.
 This is wx-free core and additive: it loads bundled agent specs from
 ``quill/core/ai/agents/`` (and any extra directories, e.g. user-installed or
 Quillin-contributed) into :class:`~quill.core.ai.harness.AgentSpec` objects the AI
-Hub lists and any harness can run. Nothing in the shipping UI lists them yet, so
-adding the catalog changes no user-facing behavior.
+Hub lists and any harness can run.
+
+**Authoring format.** Agents are authored as **Markdown with YAML front matter**
+(``<id>.md``) — the same shape as Claude Code / Claude Agent SDK subagents and as
+QUILL's own Skill packs (:mod:`quill.core.skill_pack`): the front matter carries
+the metadata and the Markdown **body is the agent's instructions** (its system
+prompt). This keeps the prompt reviewable and diffable instead of trapped on one
+JSON line. Legacy ``<id>.json`` files (with a ``system_prompt`` string) are still
+loaded for back-compat, so user/Quillin-supplied JSON keeps working. The same
+hand-rolled validator enforces both against ``quill/core/schemas/agent.json``;
+QUILL ships no ``jsonschema``/``PyYAML`` runtime dependency.
 
 Public API:
 
@@ -17,9 +26,11 @@ Public API:
   valid). Never raises for malformed data.
 * :func:`parse_agent` — build an :class:`AgentSpec`, or raise
   :class:`AgentSpecError` carrying every problem found.
-* :func:`load_catalog` — load every ``*.json`` agent file under the given
-  directories, returning a :class:`CatalogLoadResult` (valid specs + per-file
-  errors); a bad file never aborts the load.
+* :func:`parse_agent_markdown` — turn a Markdown-with-front-matter agent file
+  into the same data dict :func:`validate_agent` / :func:`parse_agent` accept.
+* :func:`load_catalog` — load every ``*.md`` and ``*.json`` agent file under the
+  given directories, returning a :class:`CatalogLoadResult` (valid specs +
+  per-file errors); a bad file never aborts the load.
 """
 
 from __future__ import annotations
@@ -39,6 +50,7 @@ __all__ = [
     "CatalogLoadResult",
     "validate_agent",
     "parse_agent",
+    "parse_agent_markdown",
     "bundled_agents_dir",
     "load_catalog",
 ]
@@ -163,17 +175,120 @@ def parse_agent(data: object) -> AgentSpec:
     )
 
 
+# ---------------------------------------------------------------------------
+# Markdown-with-front-matter authoring (the agent standard)
+# ---------------------------------------------------------------------------
+
+
+def _split_front_matter(source: str) -> tuple[str, str]:
+    """Split a leading ``--- ... ---`` front-matter block from the body.
+
+    Returns ``(front_matter_text, body)``. With no front matter the whole source
+    is the body (so a bare prompt file still parses, just missing metadata).
+    """
+    if not source.startswith("---"):
+        return "", source
+    rest = source[3:]
+    nl = rest.find("\n")
+    if nl == -1:
+        return "", source
+    after = rest[nl + 1 :]
+    end = after.find("\n---")
+    if end == -1:
+        return "", source
+    return after[:end], after[end + 4 :].lstrip("\n")
+
+
+def _scalar(value: str) -> object:
+    """Coerce a front-matter scalar: inline list, bool, int, or trimmed string."""
+    value = value.strip()
+    if value.startswith("[") and value.endswith("]"):
+        inner = value[1:-1]
+        return [item.strip().strip("\"'") for item in inner.split(",") if item.strip()]
+    low = value.lower()
+    if low in ("true", "yes"):
+        return True
+    if low in ("false", "no"):
+        return False
+    if value.lstrip("-").isdigit():
+        return int(value)
+    return value.strip("\"'")
+
+
+def _parse_front_matter(text: str) -> dict[str, object]:
+    """Parse the front-matter subset agents need: scalars, inline lists, and a
+    single level of nested ``key: value`` mapping (used by ``permissions``).
+
+    Deliberately tiny and PyYAML-free, matching the project's no-runtime-YAML
+    rule; richer YAML is intentionally unsupported so agent files stay simple.
+    """
+    result: dict[str, object] = {}
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or (len(line) - len(line.lstrip())) > 0:
+            i += 1
+            continue
+        if ":" not in line:
+            i += 1
+            continue
+        key, _, raw = line.partition(":")
+        key = key.strip()
+        raw = raw.strip()
+        if raw == "":
+            # A nested mapping: gather following indented ``k: v`` lines.
+            mapping: dict[str, object] = {}
+            i += 1
+            while i < len(lines):
+                nxt = lines[i]
+                if not nxt.strip():
+                    i += 1
+                    continue
+                if (len(nxt) - len(nxt.lstrip())) == 0:
+                    break  # back to a top-level key
+                if ":" in nxt:
+                    k2, _, v2 = nxt.partition(":")
+                    mapping[k2.strip()] = _scalar(v2)
+                i += 1
+            result[key] = mapping
+        else:
+            result[key] = _scalar(raw)
+            i += 1
+    return result
+
+
+def parse_agent_markdown(source: str) -> dict[str, object]:
+    """Turn a Markdown-with-front-matter agent file into a spec data dict.
+
+    The front matter supplies the metadata; the Markdown **body is the agent's
+    ``system_prompt``** (its instructions). ``schema`` defaults to the current
+    :data:`SCHEMA_ID` so authors do not repeat it. The returned dict is exactly
+    what :func:`validate_agent` / :func:`parse_agent` consume, so validation and
+    error reporting are identical to the JSON path.
+    """
+    front, body = _split_front_matter(source)
+    data: dict[str, object] = dict(_parse_front_matter(front))
+    data.setdefault("schema", SCHEMA_ID)
+    body = body.strip()
+    if body:
+        data["system_prompt"] = body
+    return data
+
+
 def bundled_agents_dir() -> Path:
     """The directory holding QUILL's built-in agent spec files."""
     return Path(__file__).resolve().parent / "agents"
 
 
 def load_catalog(*dirs: Path) -> CatalogLoadResult:
-    """Load every ``*.json`` agent file under ``dirs`` (default: the bundled dir).
+    """Load every ``*.md`` and ``*.json`` agent file under ``dirs``.
 
-    A malformed or duplicate file is recorded in ``errors`` and skipped; it never
-    aborts the load. Later directories override earlier ids (user/extension agents
-    can shadow bundled ones).
+    Default search is the bundled dir. A malformed or duplicate file is recorded
+    in ``errors`` and skipped; it never aborts the load. Later directories
+    override earlier ids (user/extension agents can shadow bundled ones); within a
+    directory, files are loaded in name order.
     """
     search = list(dirs) or [bundled_agents_dir()]
     specs: dict[str, AgentSpec] = {}
@@ -182,9 +297,16 @@ def load_catalog(*dirs: Path) -> CatalogLoadResult:
     for directory in search:
         if not directory.is_dir():
             continue
-        for path in sorted(directory.glob("*.json")):
+        for path in sorted(directory.glob("*.md")) + sorted(directory.glob("*.json")):
+            # Skip documentation/partials so a folder can carry a README or
+            # ``_template`` alongside its agents without failing the load.
+            if path.stem.lower() == "readme" or path.name.startswith(("_", ".")):
+                continue
             try:
-                raw = json.loads(path.read_text(encoding="utf-8"))
+                text = path.read_text(encoding="utf-8")
+                raw: object = (
+                    parse_agent_markdown(text) if path.suffix == ".md" else json.loads(text)
+                )
             except (OSError, ValueError) as exc:
                 errors.append((str(path), f"Could not read/parse: {exc}"))
                 continue
