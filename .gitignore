@@ -11,10 +11,14 @@ quill/_build_info.py
 dist/
 windows-distribution/
 windows-distribution-smoke/
+# Versioned distribution build output (e.g. windows-distribution-0.8.0/).
+windows-distribution-*/
 release-artifacts/
 release-dist-*/
 release-artifacts-*/
 installer-smoke*/
+# Whisper model download cache (populated at runtime/build time).
+.whisper-dl/
 
 # Local profiling / smoke-run artifacts (never committed)
 baseline_stdout.txt
