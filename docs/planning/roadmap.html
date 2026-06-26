@@ -238,7 +238,8 @@ full distilled backlog, the valuable candidates (error coaching #416,
 per-category detail #418, Markdown/Code-aware #427/#428, "undo
 available" #502), and the "recommend do not build" list (Typing/Command
 Echo, Speech Rate/Pause knobs, Punctuation/Symbol Profiles — the SR
-already owns these) are in <strong>§6</strong>.</p>
+already owns these) are in the Verbosity 2.0 polish backlog at the end
+of <strong>§5</strong>.</p>
 <h3
 id="12-speech--dictation--bits-whisperer-white_check_mark-complete-for-10">1.2
 Speech &amp; Dictation — "BITS Whisperer" ✅ (complete for 1.0)</h3>
@@ -427,11 +428,77 @@ and macOS</h3>
 better docs/tutorials (§1.7). <em>A dependable, well-documented product
 on its supported platforms.</em></p>
 <hr />
-<h2 id="4-open-issue-ledger-by-workstream">4. Open-issue ledger (by
+<h2 id="4-feature-ledger-by-workstream">4. Feature ledger (by
 workstream)</h2>
-<p>Current outstanding work, by workstream. Items with a live decision
-attached are detailed in §4.1+ so the choice can be made
+<p>Where every workstream stands: <strong>what shipped for 1.0</strong>
+first, then <strong>what is still open</strong>. Items with a live
+decision attached are detailed in §4.1+ so the choice can be made
 deliberately.</p>
+<h3 id="shipped-in-10">Shipped in 1.0</h3>
+<table>
+<thead>
+<tr>
+<th>Workstream</th>
+<th>Delivered</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Verbosity (§1.1)</td>
+<td>The engine, the eleven <code>verbosity_*</code> UI surfaces, runtime
+modes (Quiet / Meeting / Quiet-Undo), status queries, mastery step-down,
+QVP packs / library / preview, and <strong>announcement
+anti-spam</strong> (#408/#409). Shipped design: PRD §5.91.</td>
+</tr>
+<tr>
+<td>Speech &amp; Dictation (§1.2)</td>
+<td>Offline Whisper transcription, Read Aloud across local
+<strong>and</strong> cloud engines, Hold-to-Dictate / Locked Dictation,
+pronunciation dictionaries, the SSML Builder + native SSML playback, and
+the batch document-to-speech pipeline.</td>
+</tr>
+<tr>
+<td>Batch document-to-speech</td>
+<td>Chaptered <strong>MP3 / M4B</strong>, separate-file mode, the
+<strong>page-turn cue</strong>, configurable pauses, dry-run preview,
+<strong>article-combining</strong> and <strong>round-robin
+voices</strong> (the ACB patterns), audiobook metadata, and
+configure-once <strong>per-project profiles</strong>.</td>
+</tr>
+<tr>
+<td><strong>Translated audio export</strong></td>
+<td>A document narrated in additional languages — <strong>local
+<em>and</em> premium cloud voices</strong> (OpenAI / Gemini / ElevenLabs
+via <code>cloud_tts</code> + ffmpeg), <strong>batch <em>and</em>
+single-document</strong> surfaces, <strong>all configured AI
+providers</strong> plus LibreTranslate, language-aware pronunciation, a
+<strong>combined cost estimate</strong> before any metered cloud run,
+and <strong>per-project memory</strong> of the language targets.
+Language-granular translation with retry/backoff/halt/cache.</td>
+</tr>
+<tr>
+<td>Audio robustness (ACB learnings)</td>
+<td><strong>Two-pass ACX <code>loudnorm</code></strong>
+(Normalize-loudness batch option), the <strong>voice-failure
+blacklist</strong> (failed voices skipped on later runs), and
+<strong>text-normalization polish</strong> (<code>Vol.</code>→"Volume",
+<code>No.</code>→"Number", <code>2025-02</code>→"2025 dash 2"). The ACB
+reference folder is fully absorbed and retired.</td>
+</tr>
+<tr>
+<td>Publishing &amp; audiobook (§1.5)</td>
+<td>Build Audiobook from Folder — MP3 / M4B masters, chapter editing
+(rename / reorder / merge), and one-click ACX loudness.</td>
+</tr>
+<tr>
+<td>ElevenLabs export TTS (§4.1)</td>
+<td>Registered as a third provider in the cloud-TTS layer for
+audiobook-grade export (optional <code>quill[elevenlabs]</code>
+extra).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="still-open">Still open</h3>
 <table>
 <thead>
 <tr>
@@ -441,17 +508,6 @@ deliberately.</p>
 </thead>
 <tbody>
 <tr>
-<td>Verbosity (§1.1)</td>
-<td>Complete for 1.0 (engine, UI, modes, anti-spam). Speculative
-polish-backlog long tail deferred to 2.0 (§5).</td>
-</tr>
-<tr>
-<td>Speech &amp; Dictation (§1.2)</td>
-<td>Feature-complete for 1.0. One open item: <strong>ElevenLabs premium
-cloud TTS</strong> — see <strong>§4.1</strong> (build now) and
-<strong>§4.2</strong> (defer).</td>
-</tr>
-<tr>
 <td>Agentic AI (§1.3)</td>
 <td>#507–#512, #523/#524, #579–#581; Accessibility Agents
 #593–#598.</td>
@@ -460,11 +516,6 @@ cloud TTS</strong> — see <strong>§4.1</strong> (build now) and
 <td>GLOW family (§1.4)</td>
 <td>Deferred to 2.0 (§5). GLOW contributions stay
 <code>locked_off</code> for 1.0.</td>
-</tr>
-<tr>
-<td>Publishing &amp; audiobook (§1.5)</td>
-<td>Complete for 1.0. Direct publishing (#140) and the off-vision
-ChapterForge surfaces are in §5.</td>
 </tr>
 <tr>
 <td>Platform &amp; distribution (§1.6)</td>
@@ -483,11 +534,15 @@ ChapterForge surfaces are in §5.</td>
 <td>Whole feature
 (<code>quill-native-accessible-table-studio-plan.md</code>).</td>
 </tr>
+<tr>
+<td>ElevenLabs beyond export (§4.2–4.4)</td>
+<td>Live streaming Read Aloud, voice management / cloning, and Tier-3
+surfaces — all deferred to 2.0 (§5).</td>
+</tr>
 </tbody>
 </table>
-<h3
-id="41-elevenlabs-premium-cloud-tts--audio-export-decision-build-for-10">4.1
-ElevenLabs premium cloud TTS — audio export (decision: <strong>build for
+<h3 id="41-elevenlabs-premium-cloud-tts--audio-export-shipped-in-10">4.1
+ElevenLabs premium cloud TTS — audio export (<strong>shipped in
 1.0</strong>)</h3>
 <p><strong>What.</strong> Add <strong>ElevenLabs</strong> as a third
 provider in QUILL's existing provider-neutral cloud-TTS layer
@@ -610,27 +665,6 @@ SFX / voice-changer / history surfaces (§4.4). The 1.0 ElevenLabs slice
 is export-only cloud TTS (§4.1); everything else here is 2.0. Full
 reasoning in <a
 href="eleven-labs.md"><code>eleven-labs.md</code></a>.</li>
-<li><strong>Learnings from the ACB Azure audio-pipeline reference —
-fully absorbed.</strong> Every reusable pattern shipped for 1.0, so
-nothing remains deferred here. Its page-turn cue is QUILL's default
-transition sound and its <code>loudnorm</code> step is QUILL's ACX
-loudness; the <strong>article-combining heuristic</strong>,
-<strong>round-robin voices</strong>, <strong>two-pass loudnorm</strong>
-(<code>loudness.normalize_wav_loudness</code> — measure with
-<code>print_format=json</code>, then apply with the measured values and
-<code>linear=true</code>, wired as the <strong>Normalize
-loudness</strong> batch option), the <strong>voice-failure
-blacklist</strong> (<code>speech/voice_blacklist.py</code> — failed
-voices are skipped on later runs), and the <strong>text-normalization
-polish</strong> (<code>text_normalize.py</code> —
-<code>Vol.</code>→"Volume", <code>No.</code>→"Number", resolution
-numbers <code>2025-02</code>→"2025 dash 2"; the language-specific →
-all-language pronunciation-dictionary fallback is the
-<code>PronunciationDictionary.language</code> scoping) all shipped in
-Batch Export to Speech. <strong>Translated audio export</strong> — the
-headline feature — also shipped in full (local <em>and</em> cloud
-voices); see <strong>§7</strong>. The ACB reference folder was
-<strong>retired</strong>; QUILL needs nothing further from it.</li>
 <li><strong>Native Google Docs support</strong> — read/write/round-trip
 Google Docs from within QUILL (Drive API, OAuth, accessible doc model).
 A full external-service + auth + sync workstream; spec in <a
@@ -638,10 +672,10 @@ href="QUILL-Native-Google-Docs-Support-PRD.md"><code>QUILL-Native-Google-Docs-Su
 <li><strong>Verbosity polish-backlog long tail (§1.1)</strong> — the
 speculative slice of the ~100 addenda (#405–#504) beyond the shipped
 core/UI/modes/anti-spam. The full distilled backlog (valuable candidates
-+ themed reference + "recommend do not build") is <strong>§6</strong>
-below — consolidated here when the standalone
-<code>verbosity-system.md</code> archive was retired. Shipped design
-lives in PRD §5.91.</li>
++ themed reference + "recommend do not build") is the <strong>Verbosity
+2.0 polish backlog</strong> subsection at the end of this section —
+consolidated here when the standalone <code>verbosity-system.md</code>
+archive was retired. Shipped design lives in PRD §5.91.</li>
 <li><strong>Accessibility tooling from GLOW (§1.4)</strong> — Document
 Audit (ACB Large-Print Guidelines, Microsoft Accessibility Checker, WCAG
 2.2 AA) and the GLOW family (#528–#534) plus the WATCH-8 GLOW watch
@@ -651,9 +685,8 @@ server/Keycloak/Office-add-in/MCP-deployment surfaces stay in the GLOW
 product; QUILL would take the authoring-time checks. Source:
 <code>s:\code\glow</code> (<code>glowplan.md</code>).</li>
 </ul>
-<hr />
-<h2 id="6-verbosity-20-backlog-consolidated">6. Verbosity 2.0 backlog
-(consolidated)</h2>
+<h3 id="verbosity-20-polish-backlog-consolidated">Verbosity 2.0 polish
+backlog (consolidated)</h3>
 <p>The verbosity engine, the eleven <code>verbosity_*</code> UI
 surfaces, the runtime modes (Quiet / Meeting / Quiet-Undo), the
 status-query commands (Where am I? / What changed? / Speak Status),
@@ -724,127 +757,5 @@ fight its settings): <strong>typing echo (#411)</strong>,
 <strong>command echo (#499)</strong>, <strong>speech rate / pause knobs
 (#450)</strong>, and <strong>punctuation / symbol profiles
 (#426)</strong>.</p>
-<hr />
-<h2
-id="7-translated-audio-export--shipped-in-10-local-and-cloud-voices">7.
-Translated audio export — shipped in 1.0 (local <strong>and</strong>
-cloud voices)</h2>
-<p><strong>Status — shipped.</strong> Translated audio export is
-complete for 1.0: language-aware pronunciation dictionaries
-(<code>PronunciationDictionary.language</code>), the per-language voice
-model (<code>speech/voice_languages.py</code> — eSpeak universal-local +
-SAPI installed + cloud catalog), the robust section translator
-(<code>speech/translate_sections.py</code> — the configured AI provider
-or LibreTranslate, with retries/backoff/halt/cache), translated
-synthesis in <code>document_speech</code> for <strong>local and
-cloud</strong> engines (cloud providers go through
-<code>cloud_tts</code> and are conformed to WAV via ffmpeg for chapter
-splicing), and <strong>two delivery surfaces</strong>: the Batch Export
-"Also export in other languages" UI + runner, and a
-<strong>single-document</strong> action (Tools &gt; Speech &gt; Export
-to Translated Speech Audio). Both write
-<code>&lt;doc&gt; (&lt;Language&gt;).&lt;ext&gt;</code>, reuse the
-voice-failure blacklist, and <strong>surface a combined translation +
-TTS cost estimate</strong> before any metered cloud run
-(<code>speech/cost_estimate.py</code>). The translation backend exposes
-<strong>all configured AI providers</strong> (it rides QUILL's AI
-gateway) plus LibreTranslate. <em>Remaining nicety (2.0):</em>
-persisting the chosen translation targets in the project profile.</p>
-<p><strong>Original design (for reference).</strong> Export a document's
-audio in one or more <strong>additional languages</strong> — translate
-the text, then synthesize each language with a voice for that language.
-<strong>Current providers only (no Azure):</strong> QUILL's own AI
-translation (<code>core/ai/translation.py</code>, AI &gt; Translate)
-plus the existing local engines and cloud TTS (OpenAI / Gemini /
-ElevenLabs). Builds on the shipped batch export (chaptered / separate
-modes, page-turn cue, ACX loudness, article-combining, round-robin
-voices).</p>
-<h3 id="71-translation--an-ai-feature-wired-per-provider">7.1
-Translation — an AI feature, wired per provider</h3>
-<ul>
-<li>Reuse <code>core/ai/translation.py</code> (provider-neutral, through
-the user's configured AI provider) — <strong>no new vendor or REST
-client</strong>. Translation rides QUILL's AI gateway and the existing
-network-egress audit; Safe Mode and per-action consent apply.</li>
-<li><strong>Per-provider language support:</strong> each AI provider
-exposes the target languages it supports; the export dialog offers only
-those for the active provider.</li>
-<li><strong>Robustness (copied from the ACB reference pattern, on
-QUILL's AI path):</strong> bounded retries with exponential backoff + a
-timeout, <strong>halt-this-language on persistent failure</strong>
-(never emit half-translated audio), and accessible per-attempt
-logging.</li>
-<li>Translate at <strong>article/section granularity</strong> (title +
-body) so chapter structure and markers survive; <strong>cache</strong>
-translations (keyed by text + target language) to avoid re-billing
-repeats.</li>
-</ul>
-<h3 id="72-rich-language-support-for-voices-local--cloud">7.2 Rich
-language support for voices (local + cloud)</h3>
-<ul>
-<li><strong>Local-model language metadata.</strong> Tag each local
-engine's voices with the language(s) they speak (Piper/Kokoro models are
-language-specific; SAPI / eSpeak voices carry a locale), building a
-<code>voice → language(s)</code> map so the export can pick a suitable
-voice for the target language.</li>
-<li><strong>Cloud voice languages.</strong> Surface per-provider
-language coverage for OpenAI / Gemini / ElevenLabs voices.</li>
-<li><strong>Per-language voice selection</strong> in the dialog: for
-each target language the user picks the voice (with a sensible default
-match), reusing the 1.0 round-robin voice picker pattern (combo box +
-reorderable list) so a language can even have its own voice
-rotation.</li>
-</ul>
-<h3 id="73-cross-language-pronunciation--dictionary-tooling">7.3
-Cross-language pronunciation / dictionary tooling</h3>
-<ul>
-<li>Make the pronunciation system (<code>speech/pronunciation.py</code>)
-<strong>language-aware:</strong> a dictionary can be scoped to a
-language (or "all"), and only matching-language dictionaries apply to a
-given language's synthesis — mirroring the ACB language-specific →
-English → none fallback. Keep QUILL's client-side dictionaries distinct
-from any provider server-side ones.</li>
-</ul>
-<h3 id="74-output-layout--metadata">7.4 Output layout &amp;
-metadata</h3>
-<ul>
-<li>Per-language output
-(<code>&lt;doc&gt; (&lt;lang&gt;).&lt;ext&gt;</code> or a per-language
-subfolder), mirroring the existing separate/chaptered layout, with
-audiobook metadata stamped per language.</li>
-</ul>
-<h3 id="75-pronunciation-audition-from-the-retired-play-reference">7.5
-Pronunciation audition (from the retired <code>play</code>
-reference)</h3>
-<ul>
-<li>The ACB <code>play/</code> reference was a pronunciation-practice
-GUI (voices, rate/pitch/ volume, accessible tooltips). The reusable
-idea: an <strong>"audition this voice / word"</strong> control — hear a
-candidate voice speak a sample or a tricky term before committing it to
-a language. Extend QUILL's existing Read Aloud voice preview to the
-per-language pickers.</li>
-</ul>
-<h3 id="decision-points--resolved-shipped-in-10">Decision points —
-resolved (shipped in 1.0)</h3>
-<ul>
-<li><strong>Which providers' translation to expose:</strong> <strong>all
-configured AI providers</strong> (the export rides QUILL's AI gateway,
-so whichever provider the user has set up is used) plus LibreTranslate.
-<em>Resolved: all, not a curated set.</em></li>
-<li><strong>Batch-only or also single-document:</strong>
-<strong>both.</strong> Batch Export translates a folder; Tools &gt;
-Speech &gt; Export to Translated Speech Audio translates the current
-document.</li>
-<li><strong>Cost surfacing:</strong> <strong>shipped.</strong> A
-combined translation + TTS estimate
-(<code>speech/cost_estimate.py</code>) is shown for confirmation before
-any metered cloud run; local-only runs are never interrupted.</li>
-<li><strong>Cloud voices for translated output:</strong>
-<strong>shipped</strong> (not a follow-up) — OpenAI / Gemini /
-ElevenLabs voices synthesize translated audio via <code>cloud_tts</code>
-+ ffmpeg.</li>
-</ul>
-<p><em>Only remaining 2.0 item:</em> persisting translation targets in
-the project profile.</p>
 </body>
 </html>
