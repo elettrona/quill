@@ -61,7 +61,10 @@ def load_publishing_linkage_registry() -> dict[str, PublishingLinkageEntry]:
 
 
 def save_publishing_linkage_registry(registry: dict[str, PublishingLinkageEntry]) -> None:
-    payload = {"entries": {key: asdict(entry) for key, entry in registry.items()}}
+    payload = {
+        "schema_version": 1,  # persistence contract
+        "entries": {key: asdict(entry) for key, entry in registry.items()},
+    }
     write_json_atomic(publishing_linkage_path(), payload)
 
 

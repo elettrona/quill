@@ -121,8 +121,20 @@ call site, and the test fails if any is **unclassified** in `_REVIEWED_PERSISTEN
 So a new persisted store cannot be added without consciously tagging it
 `versioned`, `framework`, `secret`, `export`, `content`, `cache`, `marker`, or
 `needs-versioning`. The `needs-versioning` tag is the tracked backlog of real
-config stores that should still adopt the versioned-delta contract (run
-`python -m quill.tools.persistence_audit` to see the count).
+config stores that should still adopt the contract; **today it is empty** -- every
+config store carries a `schema_version` (dict stores stamp the key; bare-list /
+map / raw-dict stores wrap in a `{"schema_version", ...}` envelope with
+back-compatible reads). Run `python -m quill.tools.persistence_audit` to check.
+
+Note that a `schema_version` stamp is the *posture*, not necessarily an active
+migration: most config stores are at v1 with no migration needed yet (old,
+unstamped files still load), exactly like `features.json`. The stamp is what
+makes a *future* shape change expressible.
+
+Underpinning all of this, `storage.read_json` is **corruption-tolerant**: a
+present-but-unparseable file returns the caller's default (and logs) instead of
+raising, so one bad config file can never crash a load path -- and the critical
+stores (settings, keymap) additionally quarantine the bad file first.
 
 ## Installer interaction
 

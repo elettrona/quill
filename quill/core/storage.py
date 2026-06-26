@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import errno
 import json
+import logging
 import os
 import tempfile
 import time
@@ -9,6 +10,8 @@ import uuid
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # On Windows os.replace can transiently fail with PermissionError when another
 # process (an antivirus scanner, a backup agent, or a screen reader's file hook)
@@ -85,10 +88,22 @@ def _atomic_replace(temp_path: Path, path: Path) -> None:
 
 
 def read_json(path: Path, default: Any) -> Any:
+    """Read a JSON file, returning ``default`` when it is missing or unreadable.
+
+    A present-but-corrupt file (malformed JSON, bad encoding, or an I/O error)
+    returns ``default`` rather than raising, so one bad config file can never
+    crash a load path or startup. The corruption is logged. Callers that hold
+    *important* user config (settings, keymap) additionally quarantine the bad
+    file before resetting -- see ``quill.core.migration_backup.backup_corrupt_file``.
+    """
     if not path.exists():
         return default
-    with path.open("r", encoding="utf-8") as file_handle:
-        return json.load(file_handle)
+    try:
+        with path.open("r", encoding="utf-8") as file_handle:
+            return json.load(file_handle)
+    except (ValueError, OSError) as exc:
+        logger.warning("read_json: %s is unreadable (%s); using default", path, exc)
+        return default
 
 
 def write_json_atomic(path: Path, data: Any, *, base: Path | None = None) -> None:

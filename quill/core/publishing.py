@@ -150,7 +150,8 @@ def load_publishing_connections() -> PublishingConnectionStore:
 
 
 def save_publishing_connections(store: PublishingConnectionStore) -> None:
-    payload = {
+    payload: dict[str, object] = {
+        "schema_version": 1,  # persistence contract
         "connections": [asdict(_normalized_profile(item)) for item in store.connections],
         "current_connection_id": store.current_connection_id.strip(),
     }

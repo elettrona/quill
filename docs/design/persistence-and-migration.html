@@ -352,9 +352,22 @@ a new persisted store cannot be added without consciously tagging it
 <code>export</code>, <code>content</code>, <code>cache</code>,
 <code>marker</code>, or <code>needs-versioning</code>. The
 <code>needs-versioning</code> tag is the tracked backlog of real config
-stores that should still adopt the versioned-delta contract (run
-<code>python -m quill.tools.persistence_audit</code> to see the
-count).</p>
+stores that should still adopt the contract; <strong>today it is
+empty</strong> – every config store carries a
+<code>schema_version</code> (dict stores stamp the key; bare-list / map
+/ raw-dict stores wrap in a <code>{"schema_version", ...}</code>
+envelope with back-compatible reads). Run
+<code>python -m quill.tools.persistence_audit</code> to check.</p>
+<p>Note that a <code>schema_version</code> stamp is the
+<em>posture</em>, not necessarily an active migration: most config
+stores are at v1 with no migration needed yet (old, unstamped files
+still load), exactly like <code>features.json</code>. The stamp is what
+makes a <em>future</em> shape change expressible.</p>
+<p>Underpinning all of this, <code>storage.read_json</code> is
+<strong>corruption-tolerant</strong>: a present-but-unparseable file
+returns the caller’s default (and logs) instead of raising, so one bad
+config file can never crash a load path – and the critical stores
+(settings, keymap) additionally quarantine the bad file first.</p>
 <h2 id="installer-interaction">Installer interaction</h2>
 <p>The Windows installer does a clean payload replace (wipes the
 first-party <code>quill</code> package before laying down the new one)

@@ -77,6 +77,7 @@ def _save_deepgram_max_speakers(value: int) -> None:
         except Exception:  # noqa: BLE001
             data = {}
         data[_DEEPGRAM_MAX_SPEAKERS_KEY] = value
+        data["schema_version"] = 1  # persistence contract
         write_json_atomic(path, data)
     except Exception:  # noqa: BLE001
         pass
