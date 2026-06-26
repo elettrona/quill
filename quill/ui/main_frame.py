@@ -2047,12 +2047,10 @@ class MainFrame(
             self.open_ai_toc,
             None,
         )
-        self.commands.register(
-            "tools.ai_thesaurus",
-            "AI Thesaurus",
-            self.open_ai_thesaurus,
-            None,
-        )
+        self.commands.register("tools.ai_thesaurus", "AI Thesaurus", self.open_ai_thesaurus, None)
+        from quill.ui.agent_editor_host import register_experimental_agent_command
+
+        register_experimental_agent_command(self)  # opt-in via QUILL_AI_AGENT_GATEWAY
         self.commands.register(
             "tools.ai_continue_writing",
             "Continue Writing",
