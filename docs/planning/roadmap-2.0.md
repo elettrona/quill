@@ -20,7 +20,8 @@
 > record from which the user guide, release notes, and PRD updates are written at the
 > end.
 
-**Created:** 2026-06-25. **Last updated:** 2026-06-25.
+**Created:** 2026-06-25. **Last updated:** 2026-06-25 (Phase 1 Tier A foundation
+complete; harness layer + all six SDK packs built and tested).
 
 ---
 
@@ -110,7 +111,7 @@ Tier (see §0a): A = invisible/landable in 1.0 now; B = invisible-if-careful, 1.
 | Permission Broker (`ai/permissions.py`) | §10 | A | Done |
 | Activity Log (`ai/activity_log.py`) | §9, §14 | A | Done |
 | Safe Editor Tool Gateway (`ai/tool_gateway.py`) | §9 | A | Done |
-| Context Builder (`ai/context_builder.py`) | §11 | A | Not started |
+| Context Builder (`ai/context_builder.py`) | §11 | A | Done |
 | One provider truth (converge `ai_chat.PROVIDERS` into `assistant_ai`) | §7 | B | Not started |
 | Route existing AI edits through gateway + `diff_review` | §12 | B | Not started |
 
@@ -147,14 +148,24 @@ the buffer directly.
 
 | Harness | Module / extra | PRD | Status |
 | --- | --- | --- | --- |
-| Harness protocol + registry + capabilities | `ai/harness/` | §8.1, §8.2 | Not started |
-| Native (default) | `ai/harness/native.py` | §8.1 | Not started |
-| Copilot SDK | `ai_packs/copilot/` (`quill[ai-copilot]`) | §18.5 | Not started |
-| Claude Agent SDK | `ai_packs/claude/` (`quill[ai-claude]`) | §18.5 | Not started |
-| OpenAI Agents SDK | `ai_packs/openai_agents/` (`quill[ai-openai]`) | §18.5 | Not started |
-| Microsoft Agent Framework | `ai_packs/microsoft/` (`quill[ai-microsoft]`) | §18.6 | Not started |
-| LangGraph (durable, human-in-the-loop) | `ai_packs/langgraph/` (`quill[ai-langgraph]`) | §18.6 | Not started |
-| OpenHands (sandboxed, flag-gated) | `ai_packs/openhands/` (`quill[ai-openhands]`) | §18.7 | Not started |
+| Harness protocol + registry + capabilities | `ai/harness/__init__.py` | §8.1, §8.2 | Done |
+| Native (default) | `ai/harness/native.py` | §8.1 | Done (single generate-and-apply; tool-loop upgrade is Phase 3) |
+| Copilot SDK | `ai_packs/copilot.py` (`quill[ai-copilot]`) | §18.5 | Done (transport scaffolded; validate with SDK installed) |
+| Claude Agent SDK | `ai_packs/claude.py` (`quill[ai-claude]`) | §18.5 | Done (transport scaffolded; validate with SDK installed) |
+| OpenAI Agents SDK | `ai_packs/openai_agents.py` (`quill[ai-openai]`) | §18.5 | Done (transport scaffolded; validate with SDK installed) |
+| Microsoft Agent Framework | `ai_packs/microsoft.py` (`quill[ai-microsoft]`) | §18.6 | Done (transport scaffolded; validate with SDK installed) |
+| LangGraph (durable, human-in-the-loop) | `ai_packs/langgraph.py` (`quill[ai-langgraph]`) | §18.6 | Done (transport scaffolded; validate with SDK installed) |
+| OpenHands (sandboxed, flag-gated) | `ai_packs/openhands.py` (`quill[ai-openhands]`) | §18.7 | Done (transport scaffolded; validate with SDK installed) |
+
+**Harness pack status note.** Every pack's identity, capabilities, lazy
+availability detection, graceful-degradation, registration, and gateway bridge are
+built and unit-tested (the bridge via an injectable transport, since the SDKs are
+not installed in CI). Each pack's `_make_invoke` imports its SDK lazily and targets
+the SDK's documented entrypoint; the live transport must be **validated against
+each SDK once its extra is installed** (Phase 5 acceptance) and richer native
+tool-calling against the gateway is a follow-up. The Copilot extra's package name
+is a placeholder pending the official SDK. Per-pack network-egress-audit entries
+are added when a pack's transport is activated against its SDK.
 
 ### Phase 6 — Enterprise + durable workflows
 
