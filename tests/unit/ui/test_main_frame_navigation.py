@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import types
 from pathlib import Path
 
@@ -569,10 +570,10 @@ def test_window_title_includes_app_version_for_screen_readers() -> None:
     assert main_frame_module._APP_TITLE_VERSION in frame.frame.title
     assert "QUILL for All" in frame.frame.title
     # The version string must include a SemVer-style "N.N.N" so JAWS does
-    # not announce only the brand. build_info.get_short_version() returns
-    # "0.7.0 Beta 1"; the major.minor.patch triple "0.7.0" is the part the
-    # screen reader will speak.
-    assert "0.7.0" in main_frame_module._APP_TITLE_VERSION
+    # not announce only the brand. Assert the major.minor.patch triple is
+    # present without hardcoding the release (build_info drives the actual
+    # value, e.g. "0.8.0 Beta 1"), so this does not go stale on version bumps.
+    assert re.search(r"\d+\.\d+\.\d+", main_frame_module._APP_TITLE_VERSION)
 
 
 def test_feature_coverage_maps_new_surfaces_to_known_features() -> None:
