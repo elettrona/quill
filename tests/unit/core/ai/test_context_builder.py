@@ -75,7 +75,7 @@ def test_document_summary_is_smaller_than_full_document() -> None:
     full = builder.build(ContextRequest(ContextScope.FULL_DOCUMENT))
     assert len(summary.text) < len(full.text)
     assert summary.includes_full_document is False
-    assert "Outline:" in summary.text
+    assert "Headings:" in summary.text
 
 
 def test_outline_included_by_default() -> None:

@@ -34,9 +34,9 @@ __all__ = [
     "ContextBuilder",
 ]
 
-# Heuristic cap for the document-summary scope body (chars), kept small so a
-# "summary" never quietly becomes the whole document.
-_SUMMARY_BODY_CHARS = 800
+# Token budget for the document-summary scope, kept small so a "summary" never
+# quietly becomes the whole document.
+_SUMMARY_TOKEN_BUDGET = 400
 
 
 class ContextScope(StrEnum):
@@ -171,21 +171,18 @@ class ContextBuilder:
         return self._source.get_document(), True
 
     def _summarize(self, document: str) -> str:
-        """Deterministic, tokenizer-free summary: outline + a truncated head.
+        """Deterministic, tokenizer-free, structure-aware summary.
 
-        Not a model call — a cheap, predictable stand-in so the summary scope is
-        always smaller than the full document (the heading list plus a capped
-        excerpt). A model-backed summary can replace this body later without
-        changing the preview contract.
+        Delegates to :func:`quill.core.ai.doc_context.structured_summary` (heading
+        list + per-paragraph leading excerpts within a token budget) so the summary
+        scope is always smaller than the full document. A model-backed summary can
+        replace the body later without changing the preview contract.
         """
-        outline = self._source.get_outline()
-        head = document.strip()[:_SUMMARY_BODY_CHARS]
-        truncated = "..." if len(document.strip()) > _SUMMARY_BODY_CHARS else ""
-        lines = []
-        if outline:
-            lines.append("Outline: " + "; ".join(outline))
-        lines.append("Excerpt: " + head + truncated)
-        return "\n".join(lines)
+        from quill.core.ai.doc_context import structured_summary
+
+        return structured_summary(
+            document, max_tokens=_SUMMARY_TOKEN_BUDGET, outline_titles=self._source.get_outline()
+        )
 
     def _assemble(self, prompt: str, headings: tuple[str, ...], body: str) -> str:
         sections: list[str] = []
