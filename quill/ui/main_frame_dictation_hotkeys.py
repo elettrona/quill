@@ -120,7 +120,7 @@ class _LiveDictationServices:
     def transcribe(self, session: Any) -> None:
         frame = self._frame
         controller = frame._live_dictation
-        provider = frame._speech_provider()
+        provider = frame._dictation_provider()
         installed = provider.list_installed_models()  # type: ignore[attr-defined]
         if not installed:
             controller.transcription_failed(session.session_id, "No speech model installed.")
@@ -234,6 +234,7 @@ class DictationHotkeysMixin:
         # Deferred so the prompt lands after the startup announcements settle.
         try:
             self._wx.CallLater(2000, self.check_dictation_recovery_on_startup)
+            self._wx.CallLater(4000, self.prewarm_dictation_model)  # warm model: fast first use
         except Exception:  # noqa: BLE001 - the startup prompt is best-effort
             pass
 
@@ -365,7 +366,7 @@ class DictationHotkeysMixin:
                 force=True,
             )
             return False
-        provider = self._speech_provider()
+        provider = self._dictation_provider()
         try:
             if not provider.is_available():  # type: ignore[attr-defined]
                 # The engine itself (e.g. the whisper.cpp binary) is missing, so

@@ -43,6 +43,49 @@ class SpeechCommandsMixin:
                 pass
         return registry.get(DEFAULT_PROVIDER_ID)  # type: ignore[attr-defined]
 
+    def _dictation_provider(self) -> object:
+        """Cached speech provider for dictation so a loaded model persists across
+        sessions (and a startup prewarm stays warm). _speech_registry() builds a
+        fresh provider each call, which would reload the model every dictation.
+        Rebuilt when the chosen engine changes."""
+        chosen = str(getattr(self.settings, "speech_provider", "") or "")
+        cached = getattr(self, "_dictation_provider_cache", None)
+        if cached is not None and getattr(self, "_dictation_provider_key", None) == chosen:
+            return cached
+        provider = self._speech_provider()
+        self._dictation_provider_cache = provider
+        self._dictation_provider_key = chosen
+        return provider
+
+    def invalidate_dictation_provider(self) -> None:
+        """Drop the cached dictation provider (after an engine/model change)."""
+        self._dictation_provider_cache = None
+
+    def prewarm_dictation_model(self) -> None:
+        """Load the dictation model in the background so the first dictation is
+        fast. Best-effort; never blocks the UI or raises. The cached provider
+        (_dictation_provider) keeps the model loaded for later dictations."""
+        import threading
+
+        def _work() -> None:
+            try:
+                from quill.core.speech.capture import capture_available
+
+                if not capture_available():
+                    return
+                provider = self._dictation_provider()
+                installed = provider.list_installed_models()  # type: ignore[attr-defined]
+                warm = getattr(provider, "warm", None)
+                if installed and callable(warm):
+                    warm(self._default_model_id(installed))
+                    import logging
+
+                    logging.getLogger(__name__).info("dictation: speech model prewarmed")
+            except Exception:  # noqa: BLE001 - prewarm must never break startup
+                pass
+
+        threading.Thread(target=_work, daemon=True, name="quill-dictation-prewarm").start()
+
     # -- model manager ---------------------------------------------------- #
 
     def open_speech_models(self) -> None:
