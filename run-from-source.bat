@@ -14,9 +14,13 @@ if not defined QUILL_DATA_DIR set "QUILL_DATA_DIR=%USERPROFILE%\quill-dev-data"
 
 REM Point at an installed QUILL so a source run can discover bundled engine
 REM assets that are not in the source tree (whisper.cpp, DECtalk, Piper under
-REM tools\speech\). Only set when an install is actually present; override by
-REM setting QUILL_APP_ROOT yourself.
-if not defined QUILL_APP_ROOT if exist "C:\quill\tools\speech" set "QUILL_APP_ROOT=C:\quill"
+REM tools\speech\). Search the common install locations and use the first that
+REM has the engine folder. Override by setting QUILL_APP_ROOT yourself.
+if not defined QUILL_APP_ROOT (
+    for %%R in ("C:\quill" "%LOCALAPPDATA%\Programs\Quill" "%ProgramFiles%\Quill") do (
+        if not defined QUILL_APP_ROOT if exist "%%~R\tools\speech" set "QUILL_APP_ROOT=%%~R"
+    )
+)
 
 echo [run-from-source] QUILL_DATA_DIR=%QUILL_DATA_DIR%
 if defined QUILL_APP_ROOT echo [run-from-source] QUILL_APP_ROOT=%QUILL_APP_ROOT%

@@ -22,9 +22,13 @@ PYTHON_EXE=""
 export QUILL_DEV_BUILD QUILL_DATA_DIR
 # Point at an installed QUILL so a source run can discover bundled engine assets
 # (whisper.cpp, DECtalk, Piper under tools/speech/) that are not in the source
-# tree. Only set when an install is present; override by exporting it yourself.
-if [ -z "${QUILL_APP_ROOT:-}" ] && [ -d "/c/quill/tools/speech" ]; then
-  export QUILL_APP_ROOT="C:\\quill"
+# tree. Search common install locations; use the first with the engine folder.
+# Override by exporting QUILL_APP_ROOT yourself.
+if [ -z "${QUILL_APP_ROOT:-}" ]; then
+  for _r in "/c/quill:C:\\quill" "$LOCALAPPDATA/Programs/Quill:$LOCALAPPDATA\\Programs\\Quill"; do
+    _probe="${_r%%:*}"; _win="${_r#*:}"
+    if [ -d "$_probe/tools/speech" ]; then export QUILL_APP_ROOT="$_win"; break; fi
+  done
 fi
 echo "[run-from-source] QUILL_DATA_DIR=$QUILL_DATA_DIR"
 [ -n "${QUILL_APP_ROOT:-}" ] && echo "[run-from-source] QUILL_APP_ROOT=$QUILL_APP_ROOT"
