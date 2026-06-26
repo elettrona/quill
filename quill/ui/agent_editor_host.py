@@ -28,7 +28,7 @@ from quill.core.ai.diff_review import DiffReview
 from quill.core.ai.event_bridge import AnnouncementLevel, EventBridge
 from quill.core.ai.harness import AIContext
 from quill.core.ai.harness.native import responder_from_backend
-from quill.core.ai.permissions import PermissionBroker, PermissionCategory, SafetyProfile
+from quill.core.ai.permissions import PermissionBroker, SafetyProfile
 from quill.core.ai.tool_gateway import AgentIdentity, SafeEditorToolGateway
 
 __all__ = [
@@ -223,19 +223,19 @@ def _source_for_scope(controller: Any, scope: ContextScope) -> tuple[str | None,
 
 
 def _classify(agent: Any) -> tuple[str, str]:
-    """Return (apply_kind, apply_mode) from the agent's WRITE permissions.
+    """Return (apply_kind, apply_mode) from the agent's WRITE classification.
 
     ``apply_kind`` is ``document`` (transform whole buffer), ``selection``
     (transform the selection), or ``produce`` (output is new content, not an
     in-place edit -> opened in a new document). ``apply_mode`` tells the host
-    which apply path the preview dialog should use.
+    which apply path the preview dialog should use. Classification lives in core
+    (:func:`quill.core.ai.concierge.write_kind`) so it is shared with the catalog
+    recommendation logic.
     """
-    overrides = agent.overrides_map()
-    if PermissionCategory.MODIFY_DOCUMENT in overrides:
-        return "document", "document"
-    if PermissionCategory.MODIFY_SELECTION in overrides:
-        return "selection", "selection"
-    return "produce", "selection"
+    from quill.core.ai.concierge import write_kind
+
+    kind = write_kind(agent)
+    return (kind, "document") if kind == "document" else (kind, "selection")
 
 
 def _apply_result(
