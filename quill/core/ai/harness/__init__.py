@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 from quill.core.ai.context_builder import ContextScope
-from quill.core.ai.permissions import PermissionBroker, RiskLevel
+from quill.core.ai.permissions import Decision, PermissionBroker, PermissionCategory, RiskLevel
 from quill.core.ai.tool_gateway import Emit, SafeEditorToolGateway
 
 __all__ = [
@@ -65,19 +65,30 @@ class HarnessCapabilities:
 
 @dataclass(frozen=True, slots=True)
 class AgentSpec:
-    """The minimal description of an agent a harness needs to run it.
+    """A declarative Agent Catalog entry a harness can run (PRD §13).
 
-    A subset of the declarative Agent Catalog entry (PRD §13); the catalog loader
-    (Phase 3) produces these. ``default_harness = "auto"`` lets the registry pick.
+    Produced by the catalog loader (:mod:`quill.core.ai.agent_catalog`) from a
+    validated JSON file, or constructed directly. ``default_harness = "auto"``
+    lets the registry pick. ``permission_overrides`` are per-category defaults the
+    UI feeds to a :class:`~quill.core.ai.permissions.PermissionBroker` for this
+    agent (the broker's floor still wins). ``tools`` are the command ids the agent
+    is expected to use (still constrained to ``SAFE_TOOL_IDS`` at call time).
     """
 
     id: str
     display_name: str
     system_prompt: str
+    description: str = ""
     risk: RiskLevel = RiskLevel.LOW
     default_scope: ContextScope = ContextScope.SELECTION
     recommended_file_types: tuple[str, ...] = ()
     default_harness: str = "auto"
+    tools: tuple[str, ...] = ()
+    permission_overrides: tuple[tuple[PermissionCategory, Decision], ...] = ()
+
+    def overrides_map(self) -> dict[PermissionCategory, Decision]:
+        """Return the per-category permission overrides as a dict for the broker."""
+        return dict(self.permission_overrides)
 
 
 @dataclass(frozen=True, slots=True)
