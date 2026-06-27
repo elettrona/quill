@@ -7527,7 +7527,10 @@ class MainFrame(
         wx = self._wx
         exts = pandoc_formats.extensions_for(format_name)
         ext_list = ";".join(f"*{ext}" for ext in sorted(exts)) or "*.*"
-        ext_patterns = ";".join(sorted(exts)) or "*.*"
+        # The wx filter pattern needs the glob form (*.docx), not the bare
+        # extension (.docx) -- otherwise the dialog matches no files and e.g.
+        # .docx documents never appear in the list.
+        ext_patterns = ";".join(f"*{ext}" for ext in sorted(exts)) or "*.*"
         format_label = pandoc_formats.get_format(format_name)
         label = format_label.display_name if format_label else format_name
         wildcard = f"{label} ({ext_list})|{ext_patterns}|All files (*.*)|*.*"
@@ -7545,9 +7548,13 @@ class MainFrame(
 
         self._set_status(f"Importing {source_path.name} via Pandoc...")
         try:
+            # Import always brings the file in as Markdown text (the editor's
+            # format). The output must be a text writer, not the *input* format
+            # -- passing format_name here made Pandoc try to write e.g. docx to
+            # stdout ("Cannot write docx output to terminal").
             result = convert_document_with_pandoc(
                 source_path,
-                format_name,
+                "markdown",
                 from_format=format_name,
             )
         except (PandocUnavailableError, PandocConversionError, ValueError) as error:

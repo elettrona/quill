@@ -48,6 +48,13 @@ WRITER_MAP: dict[str, str] = {
     "plain": "plain",
 }
 
+# Pandoc writers that produce a binary file and cannot be written to stdout.
+# convert_document_with_pandoc captures stdout as text, so asking it for one of
+# these is a programming error -- Pandoc would otherwise fail with the cryptic
+# "Cannot write <fmt> output to terminal". We reject it up front with a clear
+# message so the mistake surfaces wherever it is made.
+_BINARY_WRITERS: frozenset[str] = frozenset({"docx", "odt", "epub", "pdf", "pptx"})
+
 ProgressCallback = Callable[[str, int, int], None]
 
 
@@ -101,6 +108,11 @@ def convert_document_with_pandoc(
         raise PandocConversionError(f"Input file not found: {source_path}")
 
     writer = _resolve_writer(output_kind)
+    if writer in _BINARY_WRITERS:
+        raise PandocConversionError(
+            f"{output_kind!r} is a binary format and cannot be read into the editor as "
+            "text. Choose a text output (markdown, html, or plain text)."
+        )
     if cancel is not None and cancel.is_set():
         raise PandocCancelledError("Cancelled before start.")
 
