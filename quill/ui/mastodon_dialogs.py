@@ -158,9 +158,9 @@ class MastodonAccountsDialog:
 
         row = wx.BoxSizer(wx.HORIZONTAL)
         add_button = wx.Button(self.dialog, label="&Add Account...")
-        remove_button = wx.Button(self.dialog, label="&Remove")
-        default_button = wx.Button(self.dialog, label="Set as &Default")
-        for button in (add_button, remove_button, default_button):
+        self._remove_button = wx.Button(self.dialog, label="&Remove")
+        self._default_button = wx.Button(self.dialog, label="Set as &Default")
+        for button in (add_button, self._remove_button, self._default_button):
             row.Add(button, 0, wx.RIGHT, 8)
         root.Add(row, 0, wx.LEFT | wx.BOTTOM, 12)
 
@@ -178,10 +178,17 @@ class MastodonAccountsDialog:
             escape_id=wx.ID_OK,
         )
         add_button.Bind(wx.EVT_BUTTON, lambda _e: self._on_add())
-        remove_button.Bind(wx.EVT_BUTTON, lambda _e: self._on_remove())
-        default_button.Bind(wx.EVT_BUTTON, lambda _e: self._on_set_default())
+        self._remove_button.Bind(wx.EVT_BUTTON, lambda _e: self._on_remove())
+        self._default_button.Bind(wx.EVT_BUTTON, lambda _e: self._on_set_default())
+        self._list.Bind(wx.EVT_LISTBOX, lambda _e: self._update_button_states())
         self._refresh()
         self._list.SetFocus()
+
+    def _update_button_states(self) -> None:
+        """Enable Remove / Set as Default only when an account is selected."""
+        has_selection = self._selected_id() is not None
+        self._remove_button.Enable(has_selection)
+        self._default_button.Enable(has_selection)
 
     def _refresh(self) -> None:
         accounts = account_store.list_accounts()
@@ -194,6 +201,7 @@ class MastodonAccountsDialog:
         self._account_ids = [a.id for a in accounts]
         if labels:
             self._list.SetSelection(0)
+        self._update_button_states()
 
     def _selected_id(self) -> str | None:
         index = self._list.GetSelection()
@@ -243,10 +251,19 @@ class MastodonAccountsDialog:
         try:
             with self._wx.BusyCursor():
                 token = client.exchange_code(instance, credentials, code)
-                handle = client.verify_credentials(instance, token)
         except client.MastodonError as error:
             self._announce(f"Authorization failed: {error}")
             return
+        # The @handle is for display only; fetching it must never discard a
+        # validly authorized account. If verify_credentials fails (e.g. an
+        # older app registration without read scope), keep the account and
+        # fall back to the nickname for its label.
+        handle = ""
+        try:
+            with self._wx.BusyCursor():
+                handle = client.verify_credentials(instance, token)
+        except client.MastodonError:
+            handle = ""
         account_store.add_account(
             nickname=nickname,
             instance_url=client.normalize_instance_url(instance),

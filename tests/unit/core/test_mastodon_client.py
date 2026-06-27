@@ -19,11 +19,12 @@ def test_normalize_instance_url_rejects_http_and_junk() -> None:
         client.normalize_instance_url("notahost")
 
 
-def test_authorize_url_targets_oauth_with_write_scope() -> None:
+def test_authorize_url_targets_oauth_with_read_and_write_scopes() -> None:
     url = client.authorize_url("mastodon.social", "cid")
     assert url.startswith("https://mastodon.social/oauth/authorize?")
     assert "client_id=cid" in url
-    assert "scope=write%3Astatuses" in url
+    # read:accounts (for verify_credentials) + write:statuses (to post).
+    assert "scope=read%3Aaccounts+write%3Astatuses" in url
     assert "redirect_uri=urn%3Aietf%3Awg%3Aoauth%3A2.0%3Aoob" in url
 
 
@@ -44,7 +45,7 @@ def test_register_app_posts_quill_client_name(monkeypatch: pytest.MonkeyPatch) -
     assert (creds.client_id, creds.client_secret) == ("id", "secret")
     assert calls[0]["url"] == "https://mastodon.social/api/v1/apps"
     assert calls[0]["data"]["client_name"] == "QUILL"
-    assert calls[0]["data"]["scopes"] == "write:statuses"
+    assert calls[0]["data"]["scopes"] == "read:accounts write:statuses"
 
 
 def test_register_app_raises_when_credentials_missing(monkeypatch: pytest.MonkeyPatch) -> None:

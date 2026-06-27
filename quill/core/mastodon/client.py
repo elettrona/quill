@@ -34,8 +34,11 @@ CLIENT_NAME = "QUILL"
 CLIENT_WEBSITE = "https://github.com/Community-Access/quill"
 #: Out-of-band redirect: the instance shows the user a code to paste back.
 REDIRECT_OOB = "urn:ietf:wg:oauth:2.0:oob"
-#: Only the scope needed to publish a status -- nothing more.
-SCOPES = "write:statuses"
+#: Scopes QUILL requests: publish statuses, plus read:accounts so
+#: verify_credentials can fetch the signed-in @handle for display. The GET
+#: /api/v1/accounts/verify_credentials endpoint rejects a write-only token
+#: with 403, so read:accounts is required for sign-in to complete.
+SCOPES = "read:accounts write:statuses"
 
 #: Mastodon's status visibilities, with human labels (stored value, label).
 VISIBILITIES: tuple[tuple[str, str], ...] = (
