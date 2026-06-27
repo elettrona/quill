@@ -299,11 +299,18 @@ class AIProgressDialog:
         title: str,
         message: str,
         on_cancel: Callable[[], None] | None = None,
+        status_fn: Callable[[str], None] | None = None,
     ) -> None:
         import wx
 
         self._wx = wx
         self._on_cancel = on_cancel
+        # When provided, a "Minimize to status bar" button lets the user dismiss
+        # the dialog while the download keeps running, with progress mirrored to
+        # the status bar.
+        self._status_fn = status_fn
+        self._title = title
+        self._minimized = False
 
         self.dialog = wx.Dialog(
             parent,
@@ -319,16 +326,35 @@ class AIProgressDialog:
         self._gauge.Pulse()
         root.Add(self._gauge, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 12)
         self._cancel_btn: object = None
+        btn_row = wx.BoxSizer(wx.HORIZONTAL)
+        btn_row.AddStretchSpacer()
+        if status_fn is not None:
+            min_btn = wx.Button(self.dialog, label="&Minimize to status bar")
+            min_btn.SetName("Minimize to status bar")
+            min_btn.Bind(wx.EVT_BUTTON, lambda _e: self._minimize())
+            btn_row.Add(min_btn, 0, wx.RIGHT, 8)
         if on_cancel is not None:
             cancel_btn = wx.Button(self.dialog, id=wx.ID_CANCEL, label="&Cancel")
             cancel_btn.Bind(wx.EVT_BUTTON, lambda _e: on_cancel())
-            root.Add(cancel_btn, 0, wx.ALIGN_CENTER | wx.BOTTOM, 8)
+            btn_row.Add(cancel_btn, 0)
             self._cancel_btn = cancel_btn
+        btn_row.AddStretchSpacer()
+        root.Add(btn_row, 0, wx.EXPAND | wx.BOTTOM, 8)
         self._btn_sizer_item_count = root.GetItemCount()
         self.dialog.SetSizer(root)
         from quill.ui.dialog_contract import apply_modal_ids
 
         apply_modal_ids(self.dialog, escape_id=wx.ID_CANCEL)
+
+    def _minimize(self) -> None:
+        """Hide the dialog and continue showing progress in the status bar."""
+        self._minimized = True
+        try:
+            self.dialog.Hide()
+        except Exception:  # noqa: BLE001
+            pass
+        if self._status_fn is not None:
+            self._status_fn(f"{self._title} continues in the status bar.")
 
     def update_message(self, message: str) -> None:
         self._wx.CallAfter(self._label.SetLabel, message)
@@ -349,6 +375,10 @@ class AIProgressDialog:
                 self._gauge.SetValue(max(0, min(100, int(percent))))
 
         self._wx.CallAfter(_apply)
+        # When minimized, the dialog is hidden, so mirror progress to the status bar.
+        if self._minimized and self._status_fn is not None and message is not None:
+            pct = f" ({max(0, min(100, int(percent)))}%)" if percent >= 0 else ""
+            self._wx.CallAfter(self._status_fn, f"{self._title}: {message}{pct}")
 
     def switch_to_ok(
         self,
@@ -362,6 +392,16 @@ class AIProgressDialog:
         If no cancel button was created, adds a new OK button to the sizer.
         """
         wx = self._wx
+
+        # If the user minimized the dialog, it is hidden — don't pop an OK button
+        # they can't see. Report completion on the status bar and close. The
+        # caller's on_ok follow-up (which would open another dialog) is skipped
+        # so a minimized download never surprises the user with a popup.
+        if self._minimized:
+            if self._status_fn is not None:
+                self._wx.CallAfter(self._status_fn, message)
+            self.close()
+            return
 
         def _apply() -> None:
             self._label.SetLabel(message)
@@ -396,4 +436,16 @@ class AIProgressDialog:
         self._wx.CallAfter(self.dialog.Destroy)
 
     def show(self) -> None:
+        # Center, raise, and focus so the dialog actually presents itself: a
+        # screen reader announces it and a sighted user sees it on top, instead
+        # of it appearing silently off to the side (or never being perceived).
+        try:
+            self.dialog.Centre()
+        except Exception:  # noqa: BLE001
+            pass
         self.dialog.Show()
+        try:
+            self.dialog.Raise()
+            self.dialog.SetFocus()
+        except Exception:  # noqa: BLE001
+            pass
