@@ -60,28 +60,32 @@ class FontFormatDialog:
         grid = wx.FlexGridSizer(0, 2, 8, 10)
         grid.AddGrowableCol(1, 1)
 
-        def _add(label_text: str, control: Any) -> Any:
-            # Label precedes its control in tab order (the A11Y z-order contract).
+        def _add(label_text: str, make_control: Any) -> Any:
+            # Create the label BEFORE its control so the StaticText precedes the
+            # control in the child-window z-order (== creation order in wxPython).
+            # Screen readers use that order to associate labels with controls, so
+            # the factory must run after the label (the A11Y z-order contract).
             grid.Add(wx.StaticText(dlg, label=label_text), 0, wx.ALIGN_CENTER_VERTICAL)
+            control = make_control()
             grid.Add(control, 0, wx.EXPAND)
             return control
 
         self._family = _add(
             "Font &family (blank to leave unchanged):",
-            wx.ComboBox(dlg, choices=list(_FONT_PRESETS), style=wx.CB_DROPDOWN),
+            lambda: wx.ComboBox(dlg, choices=list(_FONT_PRESETS), style=wx.CB_DROPDOWN),
         )
         self._size = _add(
             "Font &size in points (0 to leave unchanged):",
-            wx.SpinCtrl(dlg, min=0, max=96),
+            lambda: wx.SpinCtrl(dlg, min=0, max=96),
         )
         color_choices = [""] + [name.title() for name in _COLOR_NAMES]
         self._color = _add(
             "Text &color (name or #RRGGBB; blank for none):",
-            wx.ComboBox(dlg, choices=color_choices, style=wx.CB_DROPDOWN),
+            lambda: wx.ComboBox(dlg, choices=color_choices, style=wx.CB_DROPDOWN),
         )
         self._highlight = _add(
             "&Highlight:",
-            wx.Choice(dlg, choices=list(_HIGHLIGHT_CHOICES)),
+            lambda: wx.Choice(dlg, choices=list(_HIGHLIGHT_CHOICES)),
         )
         outer.Add(grid, 0, wx.EXPAND | wx.ALL, 12)
         self._outer_sizer = outer

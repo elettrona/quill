@@ -14,9 +14,13 @@ import quill.platform.windows.prism_bridge as prism_bridge
 
 def _engine_without_backend() -> prism_bridge.AnnouncementEngine:
     engine = prism_bridge.AnnouncementEngine("auto")
-    # Force the no-Prism fallback path deterministically (machine may or may not
-    # have a Prism runtime installed).
+    # Force the no-backend fallback path deterministically. The machine running
+    # the test may have a Prism runtime AND/OR a live screen reader: the latter
+    # populates the accessible_output2 speaker, whose branch in announce() runs
+    # before the macOS branch. Null both so the platform routing under test is
+    # actually reached regardless of the host's assistive-tech state.
     engine._runtime_backend = None
+    engine._ao2_speaker = None
     return engine
 
 
