@@ -135,26 +135,46 @@ class _LiveDictationServices:
         asize = audio_path.stat().st_size if (audio_path and audio_path.exists()) else -1
         logger.info("dictation: transcribe model=%s audio size=%d bytes", model_id, asize)
 
-        def _work(progress: Any) -> Any:
+        import threading
+
+        from quill.core.speech.provider import SpeechError
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
+
+        wx = frame._wx
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            frame.frame,
+            "Transcribing dictation",
+            "Transcribing your dictation...",
+            on_cancel=cancel.set,
+            # Quiet mirroring so a minimized run isn't chatty; the controller's
+            # state feedback announces the start and the inserted word count.
+            status_fn=frame._set_status_quiet,
+        )
+        progress.show()
+
+        def _on_progress(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise SpeechError("Transcription cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            progress.set_progress(percent, f"{message} {percent}%")
+
+        def _run() -> None:
             try:
-                result = provider.transcribe_file(  # type: ignore[attr-defined]
-                    request, lambda f, m: progress(m, int(f * 100), 100)
-                )
+                result = provider.transcribe_file(request, _on_progress)  # type: ignore[attr-defined]
                 text = (getattr(result, "full_text", "") or "").strip()
                 logger.info("dictation: transcription ok, %d chars: %r", len(text), text[:120])
-                return ("ok", text)
             except Exception as exc:  # noqa: BLE001 - report failure to the controller
                 logger.warning("dictation: transcription failed: %s", exc)
-                return ("error", str(exc))
+                wx.CallAfter(progress.close)
+                wx.CallAfter(controller.transcription_failed, session_id, str(exc))
+                return
+            wx.CallAfter(progress.close)
+            wx.CallAfter(controller.transcription_succeeded, session_id, text)
 
-        def _done(payload: Any) -> None:
-            kind, value = payload
-            if kind == "ok":
-                controller.transcription_succeeded(session_id, value)
-            else:
-                controller.transcription_failed(session_id, value)
-
-        frame._run_background_task("Transcribing dictation", _work, _done)
+        threading.Thread(  # GATE-40-OK: dictation transcription worker.
+            target=_run, daemon=True
+        ).start()
 
     def insert(self, session: Any, text: str) -> bool:
         frame = self._frame
