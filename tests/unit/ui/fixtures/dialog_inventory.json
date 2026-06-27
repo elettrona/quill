@@ -316,6 +316,7 @@
   "quill/ui/sticky_notes.py::StickyNotesVaultDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/train_style_dialog.py::TrainStyleDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/translated_speech_export_dialog.py::TranslatedSpeechExportDialog.__init__::wx.Dialog": "hardened_custom",
+  "quill/ui/translated_speech_runner.py::_prompt_output_folder::wx.DirDialog": "native",
   "quill/ui/verbosity_chord_editor.py::VerbosityChordEditorDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/verbosity_data_order.py::VerbosityDataOrderDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/verbosity_history.py::VerbosityHistoryDialog.__init__::wx.Dialog": "hardened_custom",

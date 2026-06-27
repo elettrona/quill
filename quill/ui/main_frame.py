@@ -2361,7 +2361,9 @@ class MainFrame(
             "Voice Command (Offline)",
             self.voice_command_toggle,
             self._binding_for("tools.voice_command"),
-            feature_id="core.dictation",
+            # Locked off for now via the core.voice_commands feature (locked_off=True),
+            # which keeps it hidden from the menu and command palette.
+            feature_id="core.voice_commands",
         )
         self.commands.register(
             "tools.dictation_voice_commands_toggle",
@@ -17453,11 +17455,17 @@ class MainFrame(
     def generate_speech_audio(self) -> None:  # noqa: PLR0912,PLR0915
         wx = self._wx
         _TITLE = "Generate Speech Audio"
-        if not self._document_tabs:
-            self._set_status("No document open")
-            return
-        text = self.editor.GetStringSelection().strip() or self.editor.GetValue().strip()
+        editor = getattr(self, "editor", None)
+        text = ""
+        if editor is not None:
+            text = editor.GetStringSelection().strip() or editor.GetValue().strip()
         if not text:
+            self._show_message_box(
+                "There is nothing to export. Open or type a document first, then "
+                "try Export to Speech Audio again.",
+                _TITLE,
+                wx.ICON_INFORMATION | wx.OK,
+            )
             self._set_status("Nothing to synthesize")
             return
 
@@ -17528,6 +17536,19 @@ class MainFrame(
                 self._set_status("Speech generation cancelled")
                 return
             espeak_exe_snap = exe
+
+        elif engine == "kokoro":
+            from quill.core.read_aloud import kokoro_onnx_ready
+
+            if not kokoro_onnx_ready():
+                self._show_message_box(
+                    "Kokoro (neural, offline) is not installed. Open the Speech Hub "
+                    "(Read Aloud settings) to download it before exporting.",
+                    _TITLE,
+                    wx.ICON_ERROR | wx.OK,
+                )
+                self._set_status("Speech generation cancelled")
+                return
 
         save_settings(s)
         task_label = f"Generating speech audio ({output_path.name}) via {engine}"

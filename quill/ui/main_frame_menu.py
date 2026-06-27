@@ -1689,10 +1689,13 @@ class MenuBuilderMixin:
             self._id_speech_dictate,
             self._menu_label(_("&Dictate (Offline)"), "tools.speech_dictate"),
         )
-        speech_menu.Append(
-            self._id_speech_voice_command,
-            self._menu_label(_("&Voice Command (Offline)"), "tools.voice_command"),
-        )
+        # Voice Command (Offline) is locked off for now (feature core.voice_commands,
+        # locked_off=True). The id, command, handler, and keymap entry all stay
+        # registered for easy re-enable -- restore this Append to surface it again.
+        # speech_menu.Append(
+        #     self._id_speech_voice_command,
+        #     self._menu_label(_("&Voice Command (Offline)"), "tools.voice_command"),
+        # )
         # Windows (SAPI) dictation is no longer supported -- offline Whisper
         # Locked Dictation (Ctrl+F9) replaces it -- so it is not exposed in the
         # menu. The command machinery stays for back-compat.

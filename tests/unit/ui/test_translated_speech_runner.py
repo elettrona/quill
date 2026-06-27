@@ -39,13 +39,16 @@ def _frame(tmp_path: Path, modified: bool = False) -> SimpleNamespace:
     )
 
 
-def test_run_requires_saved_document(tmp_path: Path) -> None:
+def test_unsaved_empty_buffer_warns(tmp_path: Path) -> None:
+    # Unsaved document with an empty buffer: warn instead of exporting nothing.
+    # (A non-empty unsaved buffer now exports without forcing a save.)
     frame = _frame(tmp_path)
     frame.document.path = None
+    frame.editor = SimpleNamespace(GetValue=lambda: "   ")
     msgs: list[str] = []
     frame._show_message_box = lambda msg, *a, **k: msgs.append(msg) or 0
     tsr.run_translated_speech_export(frame)
-    assert msgs and "Save the document first" in msgs[0]
+    assert msgs and "nothing to export" in msgs[0].lower()
 
 
 def test_run_invokes_export_translations(tmp_path: Path, monkeypatch) -> None:
@@ -66,7 +69,14 @@ def test_run_invokes_export_translations(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(batch, "confirm_cloud_cost", lambda *a, **k: True)
 
     request = TranslatedSpeechRequest(targets=(("es", "espeak", "es"),), output_format="mp3")
-    tsr._run(frame, src, request)
+    tsr._run(
+        frame,
+        request,
+        read_source=src,
+        out_dir=src.parent,
+        stem=src.stem,
+        cleanup_source=False,
+    )
     assert seen["targets"] == (("es", "espeak", "es"),)
     assert seen["suffix"] == ".mp3" and seen["source"] == src
     assert frame._captured["result"] == 3

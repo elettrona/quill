@@ -25,10 +25,22 @@ def test_handler_present_and_gated() -> None:
     assert "SAFE_TOOL_IDS" in src  # double-gate before dispatch
 
 
-def test_menu_item_present() -> None:
+def test_menu_item_locked_off() -> None:
+    # The offline Voice Command UI is locked off for now: the menu Append is
+    # commented out, but the id and command id stay for easy re-enable.
     src = _src("quill/ui/main_frame_menu.py")
     assert "_id_speech_voice_command" in src
     assert "tools.voice_command" in src
+    assert "locked off for now" in src
+
+
+def test_command_uses_locked_feature() -> None:
+    # tools.voice_command is gated by the already-locked core.voice_commands
+    # feature, hiding it from the menu and command palette.
+    src = _src("quill/ui/main_frame.py")
+    idx = src.index('"tools.voice_command"')
+    block = src[idx : idx + 400]
+    assert 'feature_id="core.voice_commands"' in block
 
 
 def test_keymap_entry_present_unbound_by_default() -> None:

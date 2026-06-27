@@ -31,42 +31,109 @@ def _active_document(frame: Any) -> Any:
     return getattr(frame, "document", None)
 
 
+_TITLE = "Export to Translated Speech Audio"
+
+
+def _prompt_output_folder(frame: Any) -> Path | None:
+    """Ask where the per-language audio for an unsaved document should be written."""
+    wx = frame._wx
+    with wx.DirDialog(
+        frame.frame,
+        "Choose a folder for the translated speech audio",
+        style=wx.DD_DEFAULT_STYLE,
+    ) as dlg:
+        if frame._show_modal_dialog(dlg, _TITLE) != wx.ID_OK:
+            return None
+        return Path(dlg.GetPath())
+
+
+def _write_temp_source(text: str) -> Path:
+    """Write the current editor buffer to a temp .txt file used as the read source."""
+    temp = Path(tempfile.mkdtemp(prefix="quill_tr_buf_")) / "Untitled.txt"
+    temp.write_text(text, encoding="utf-8")
+    return temp
+
+
 def run_translated_speech_export(frame: Any) -> None:
     """Entry point bound to the Export to Translated Speech Audio menu item."""
     wx = frame._wx
     doc = _active_document(frame)
     path = getattr(doc, "path", None) if doc is not None else None
-    if path is None:
+
+    if path is not None:
+        # Saved document: export reads the on-disk file. Offer to save unsaved
+        # edits so they are spoken; outputs land beside the document.
+        if getattr(doc, "modified", False):
+            choice = frame._show_message_box(
+                "The document has unsaved changes. Save before exporting so they are "
+                "included in the translation?",
+                _TITLE,
+                wx.ICON_QUESTION | wx.YES_NO | wx.CANCEL,
+            )
+            if choice == wx.CANCEL:
+                frame._set_status("Translated speech export cancelled")
+                return
+            if choice == wx.YES:
+                frame.save_file()
+
+        source = Path(path)
+        dialog = TranslatedSpeechExportDialog(frame.frame, document_name=source.name)
+        request = dialog.show(frame._show_modal_dialog)
+        if request is None:
+            frame._set_status("Translated speech export cancelled")
+            return
+        _run(
+            frame,
+            request,
+            read_source=source,
+            out_dir=source.parent,
+            stem=source.stem,
+            cleanup_source=False,
+        )
+        return
+
+    # Unsaved document: export the current buffer without forcing a save to disk.
+    editor = getattr(frame, "editor", None)
+    text = editor.GetValue().strip() if editor is not None else ""
+    if not text:
         frame._show_message_box(
-            "Save the document first, then export it to translated speech audio.",
-            "Export to Translated Speech Audio",
+            "There is nothing to export. Type or open a document first, then try "
+            "Export to Translated Speech Audio again.",
+            _TITLE,
             wx.ICON_INFORMATION | wx.OK,
         )
         return
-    # Export reads the on-disk file; offer to save unsaved edits so they are spoken.
-    if getattr(doc, "modified", False):
-        choice = frame._show_message_box(
-            "The document has unsaved changes. Save before exporting so they are "
-            "included in the translation?",
-            "Export to Translated Speech Audio",
-            wx.ICON_QUESTION | wx.YES_NO | wx.CANCEL,
-        )
-        if choice == wx.CANCEL:
-            frame._set_status("Translated speech export cancelled")
-            return
-        if choice == wx.YES:
-            frame.save_file()
 
-    source = Path(path)
-    dialog = TranslatedSpeechExportDialog(frame.frame, document_name=source.name)
+    dialog = TranslatedSpeechExportDialog(frame.frame, document_name="Untitled")
     request = dialog.show(frame._show_modal_dialog)
     if request is None:
         frame._set_status("Translated speech export cancelled")
         return
-    _run(frame, source, request)
+
+    out_dir = _prompt_output_folder(frame)
+    if out_dir is None:
+        frame._set_status("Translated speech export cancelled")
+        return
+
+    _run(
+        frame,
+        request,
+        read_source=_write_temp_source(text),
+        out_dir=out_dir,
+        stem="Untitled",
+        cleanup_source=True,
+    )
 
 
-def _run(frame: Any, source: Path, request: TranslatedSpeechRequest) -> None:
+def _run(
+    frame: Any,
+    request: TranslatedSpeechRequest,
+    *,
+    read_source: Path,
+    out_dir: Path,
+    stem: str,
+    cleanup_source: bool,
+) -> None:
     from quill.core.speech.chapter_assemble import ChapterAssembleOptions
     from quill.core.speech.voice_blacklist import load_blacklist, save_blacklist
     from quill.ui.batch_speech_runner import (
@@ -77,6 +144,7 @@ def _run(frame: Any, source: Path, request: TranslatedSpeechRequest) -> None:
 
     s = frame.settings
     suffix = {"mp3": ".mp3", "m4b": ".m4b"}.get(request.output_format, ".wav")
+    base_final = out_dir / f"{stem}{suffix}"
     # A req shim carrying just the fields _export_translations / _build_translator read.
     req = SimpleNamespace(
         translation_targets=request.targets,
@@ -85,7 +153,7 @@ def _run(frame: Any, source: Path, request: TranslatedSpeechRequest) -> None:
         rate=int(s.read_aloud_rate),
         speed=float(s.read_aloud_kokoro_speed),
         combine_headings=False,
-        source_folder=source.parent,
+        source_folder=out_dir,
     )
     for_language = _build_translator(req)
     if for_language is None:
@@ -97,7 +165,7 @@ def _run(frame: Any, source: Path, request: TranslatedSpeechRequest) -> None:
     try:
         from quill.core.speech.text_polish import extract_text
 
-        char_count = len(extract_text(source))
+        char_count = len(extract_text(read_source))
     except Exception:  # noqa: BLE001 - estimate is best-effort
         char_count = 0
     if not confirm_cloud_cost(
@@ -123,13 +191,15 @@ def _run(frame: Any, source: Path, request: TranslatedSpeechRequest) -> None:
     voice_blacklist = load_blacklist()
 
     def work(_progress: Any) -> object:
+        import shutil
+
         work_dir = Path(tempfile.mkdtemp(prefix="quill_tr_single_"))
         try:
             chapters = _export_translations(
                 frame,
                 req,
-                source,
-                source.with_suffix(suffix),
+                read_source,
+                base_final,
                 suffix,
                 None,
                 opts,
@@ -137,9 +207,9 @@ def _run(frame: Any, source: Path, request: TranslatedSpeechRequest) -> None:
                 voice_blacklist,
             )
         finally:
-            import shutil
-
             shutil.rmtree(work_dir, ignore_errors=True)
+            if cleanup_source:
+                shutil.rmtree(read_source.parent, ignore_errors=True)
         save_blacklist(voice_blacklist)
         return chapters
 
