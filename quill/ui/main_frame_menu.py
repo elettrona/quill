@@ -358,6 +358,11 @@ class MenuBuilderMixin:
         )
         file_menu.AppendSubMenu(export_menu, _("&Export"))
 
+        file_menu.Append(
+            self._id_convert_file,
+            self._menu_label(_("Con&vert File..."), "file.convert_file"),
+        )
+
         file_menu.AppendSeparator()
         # --- Restore / reload ---
         file_menu.Append(self._id_reload_from_disk, _("&Reload from Disk"))
@@ -1369,7 +1374,7 @@ class MenuBuilderMixin:
         self._id_ocr_screen = wx.NewIdRef()
         self._id_describe_image = wx.NewIdRef()
         self._id_regex_helper = wx.NewIdRef()
-        self._id_pandoc_wizard = wx.NewIdRef()
+        self._id_convert_file = wx.NewIdRef()
         self._id_external_tools = wx.NewIdRef()
         self._id_read_aloud = wx.NewIdRef()
         self._id_read_aloud_stop = wx.NewIdRef()
@@ -1407,7 +1412,6 @@ class MenuBuilderMixin:
         self._id_notifications = wx.NewIdRef()
         self._id_check_updates = wx.NewIdRef()
         self._id_check_glow_updates = wx.NewIdRef()
-        self._id_validate_contrast = wx.NewIdRef()
         self._id_status_bar_settings = wx.NewIdRef()
         self._id_share_export = wx.NewIdRef()
         self._id_share_import = wx.NewIdRef()
@@ -1423,7 +1427,6 @@ class MenuBuilderMixin:
         self._id_glow_audit_selection = wx.NewIdRef()
         self._id_glow_fix_document = wx.NewIdRef()
         self._id_glow_fix_selection = wx.NewIdRef()
-        self._id_link_inventory = wx.NewIdRef()
         self._id_ai_hub = wx.NewIdRef()
         self._id_ai_assistant = wx.NewIdRef()
         self._id_ai_prompt_studio = wx.NewIdRef()
@@ -1522,8 +1525,6 @@ class MenuBuilderMixin:
         self._id_undo_profile_change = wx.NewIdRef()
         self._id_reset_feature_profile = wx.NewIdRef()
         self._id_profile_onboarding = wx.NewIdRef()
-        self._id_keyboard_trap_snapshot = wx.NewIdRef()
-        self._id_accessibility_audit = wx.NewIdRef()
         self._id_yaml_structure_editor = wx.NewIdRef()
         self._id_dev_console_python = wx.NewIdRef()
         self._id_dev_console_ts = wx.NewIdRef()
@@ -2126,10 +2127,6 @@ class MenuBuilderMixin:
             self._menu_label(_("Regular Expression &Helper..."), "tools.regex_helper"),
         )
         power_tools_menu.Append(
-            self._id_pandoc_wizard,
-            self._menu_label(_("Pandoc Conversion &Wizard..."), "tools.pandoc_wizard"),
-        )
-        power_tools_menu.Append(
             self._id_external_tools,
             self._menu_label(
                 _("External Tools and Format &Support..."),
@@ -2168,20 +2165,6 @@ class MenuBuilderMixin:
 
         # Quillins ------------------------------------------------------------
         tools_menu.AppendSubMenu(self._build_quillins_menu(), _("&Quillins"))
-
-        # Accessibility -------------------------------------------------------
-        accessibility_menu = wx.Menu()
-        accessibility_menu.Append(self._id_accessibility_audit, _("Accessibility A&udit..."))
-        accessibility_menu.Append(
-            self._id_keyboard_trap_snapshot,
-            _("&Keyboard Trap && Tab-Order Snapshot..."),
-        )
-        accessibility_menu.Append(self._id_validate_contrast, _("&Validate Contrast..."))
-        accessibility_menu.Append(
-            self._id_link_inventory, _("Link Inventory && Alt-Text Catalo&g...")
-        )
-        self._append_power_tools_accessibility_items(accessibility_menu)
-        tools_menu.AppendSubMenu(accessibility_menu, _("A&ccessibility"))
 
         # Customize & Support (Support + Customize merged per §10.3) ----------
         customize_support_menu = wx.Menu()
@@ -3641,8 +3624,8 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU,
-            lambda _e: self.open_pandoc_wizard(),
-            id=self._id_pandoc_wizard,
+            lambda _e: self.convert_file(),
+            id=self._id_convert_file,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -3676,11 +3659,6 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU,
-            lambda _e: self.validate_contrast(),
-            id=self._id_validate_contrast,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
             lambda _e: self.open_status_bar_settings(),
             id=self._id_status_bar_settings,
         )
@@ -3703,11 +3681,6 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.open_profiles_and_features_settings(),
             id=self._id_profiles_and_features,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.show_link_inventory(),
-            id=self._id_link_inventory,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -3866,11 +3839,6 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU,
-            lambda _e: self.show_accessibility_audit(),
-            id=self._id_accessibility_audit,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
             lambda _e: self.glow_audit_document(),
             id=self._id_glow_audit_document,
         )
@@ -3888,11 +3856,6 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.glow_fix_selection(),
             id=self._id_glow_fix_selection,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.show_keyboard_trap_snapshot(),
-            id=self._id_keyboard_trap_snapshot,
         )
         self.frame.Bind(
             wx.EVT_MENU,

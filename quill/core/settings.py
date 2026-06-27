@@ -180,6 +180,11 @@ class Settings:
     import_export_overwrite: str = "ask"
     import_export_output_layout: str = "subfolder"
     import_export_last_folder: str = ""
+    # File > Convert File dialog memory: the last output folder and the last
+    # chosen output format (a Pandoc writer token, e.g. "gfm", "docx"). Session
+    # memory, not a user-tunable policy, so not exposed in Preferences.
+    convert_file_last_output_dir: str = ""
+    convert_file_last_format: str = "gfm"
     # SET-2: tunable timing and pacing
     autosave_interval_seconds: int = 30
     quick_nav_debounce_ms: int = 250
@@ -653,6 +658,10 @@ class Settings:
         if import_export_output_layout not in {"subfolder", "same_folder"}:
             import_export_output_layout = "subfolder"
         import_export_last_folder = str(data.get("import_export_last_folder", "")).strip()
+        convert_file_last_output_dir = str(data.get("convert_file_last_output_dir", "")).strip()
+        convert_file_last_format = str(data.get("convert_file_last_format", "gfm")).strip()
+        if not convert_file_last_format:
+            convert_file_last_format = "gfm"
         try:
             watch_folder_poll_interval_seconds = int(
                 data.get("watch_folder_poll_interval_seconds", 5)
@@ -1051,6 +1060,8 @@ class Settings:
             import_export_overwrite=import_export_overwrite,
             import_export_output_layout=import_export_output_layout,
             import_export_last_folder=import_export_last_folder,
+            convert_file_last_output_dir=convert_file_last_output_dir,
+            convert_file_last_format=convert_file_last_format,
             autosave_interval_seconds=autosave_interval_seconds,
             quick_nav_debounce_ms=quick_nav_debounce_ms,
             quick_nav_min_chars=quick_nav_min_chars,
