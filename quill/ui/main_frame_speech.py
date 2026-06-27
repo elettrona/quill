@@ -917,17 +917,54 @@ class SpeechCommandsMixin:
             source_path=source, model_id=model_id, output_timestamps=True, diarize=diarize
         )
 
-        def _work(progress):
-            def _on_progress(fraction: float, message: str) -> None:
-                progress(message, int(fraction * 100), 100)
+        import threading
 
-            return provider.transcribe_file(request, _on_progress)  # type: ignore[attr-defined]
+        from quill.core.speech.provider import SpeechError
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
 
-        self._run_background_task(
-            f"Transcribing {source.name}",
-            _work,
-            lambda result: self._open_transcription_result(result, fmt),
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            self.frame,
+            "Transcribing",
+            f"Transcribing {source.name}...",
+            on_cancel=cancel.set,
+            # Quiet status mirroring so a minimized run does not announce every
+            # percentage over and over; the start/finish are announced once.
+            status_fn=self._set_status_quiet,
         )
+        progress.show()
+        self._announce(f"Transcribing {source.name}. This can take a while for long files.")
+
+        def _on_progress(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise SpeechError("Transcription cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            progress.set_progress(percent, f"{message} {percent}%")
+
+        def _run() -> None:
+            try:
+                result = provider.transcribe_file(request, _on_progress)  # type: ignore[attr-defined]
+            except SpeechError as exc:
+                wx.CallAfter(progress.close)
+                msg = (
+                    f"Transcription of {source.name} cancelled."
+                    if cancel.is_set()
+                    else f"Could not transcribe {source.name}: {exc}"
+                )
+                wx.CallAfter(self._set_status, msg)
+                return
+            except Exception as exc:  # noqa: BLE001 - surface a clean message
+                wx.CallAfter(progress.close)
+                wx.CallAfter(self._set_status, f"Could not transcribe {source.name}: {exc}")
+                return
+            # Done: close the progress dialog (which clears its status-bar line) and
+            # open the transcript, which announces the word count once.
+            wx.CallAfter(progress.close)
+            wx.CallAfter(self._open_transcription_result, result, fmt)
+
+        threading.Thread(  # GATE-40-OK: offline transcription worker.
+            target=_run, daemon=True
+        ).start()
 
     def _open_transcription_result(self, result: object, fmt: str = "text") -> None:
         from quill.core.document import Document
