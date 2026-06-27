@@ -46,6 +46,11 @@ _HRULE_RE = re.compile(r"^\s*([-*_])(\s*\1){2,}\s*$")
 
 _IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)]*)\)")
 _LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]*)\)")
+# Hidden-codes run span ``[text]{attrs}`` and alignment fence lines. Plain text
+# keeps only the visible words (the codes are lost — honest fidelity reporting
+# warns about this on plain-text save).
+_SPAN_CODE_RE = re.compile(r"\[([^\]]+)\]\{[^}]*\}")
+_FENCE_LINE_RE = re.compile(r"^:::+(\s*\{[^}]*\}|\s+pagebreak)?\s*$", re.IGNORECASE)
 _CODE_SPAN_RE = re.compile(r"`([^`]+)`")
 _BOLD_STAR_RE = re.compile(r"\*\*([^*]+)\*\*")
 _BOLD_UNDER_RE = re.compile(r"(?<!\w)__([^_]+)__(?!\w)")
@@ -105,6 +110,9 @@ def _strip_inline(text: str, link_style: str = "text") -> str:
         placeholders.append(value)
         return f"\x00{len(placeholders) - 1}\x00"
 
+    # Unwrap hidden-codes run spans to their visible text before any other inline
+    # handling, so ``[text]{font-family="Arial"}`` reads as ``text``.
+    text = _SPAN_CODE_RE.sub(lambda m: m.group(1), text)
     text = _CODE_SPAN_RE.sub(lambda m: _stash(m.group(1)), text)
     if link_style == "markdown":
         text = _IMAGE_RE.sub(lambda m: _stash(m.group(0)), text)
@@ -141,6 +149,9 @@ def markdown_to_plain_text(markdown: str, link_style: str = "text") -> str:
             continue
         if in_fence:
             out.append(raw)
+            continue
+        if _FENCE_LINE_RE.match(raw):
+            # Alignment fenced-div markers carry no visible text.
             continue
         if _HRULE_RE.match(raw):
             out.append("")
@@ -217,19 +228,30 @@ def write_html_document(document: Document, path: Path | None = None) -> Path:
 
 
 def write_docx_document(document: Document, path: Path | None = None) -> Path:
-    """Write a document's Markdown markup out as a Word (.docx) file via Pandoc.
+    """Write a document's Markdown markup out as a Word (.docx) file.
 
-    Pandoc maps Markdown headings, lists, emphasis, links, and simple tables to
-    real Word styles, so the result is a properly structured, screen-reader-
-    navigable document rather than flat text.
+    Prefers the native python-docx writer (:mod:`quill.io.docx_writer`), which
+    carries QUILL's hidden-codes attributes — per-run font family, point size,
+    color, highlight, underline and per-paragraph alignment — onto real Word runs
+    and paragraphs. When python-docx is not installed, falls back to the Pandoc
+    path, which maps headings, lists, emphasis, links, and simple tables to Word
+    styles (but drops the font/size/color/alignment attributes). Either way the
+    result is a properly structured, screen-reader-navigable document.
     """
+    target = path or document.path
+    if target is None:
+        raise ValueError("A path is required to save this document.")
+
+    from quill.io.docx_writer import python_docx_available, write_docx
+
+    if python_docx_available():
+        write_docx(document, Path(target))
+        return Path(target)
+
     import tempfile
 
     from quill.io.pandoc import convert_file_with_pandoc
 
-    target = path or document.path
-    if target is None:
-        raise ValueError("A path is required to save this document.")
     with tempfile.TemporaryDirectory() as tmp:
         source = Path(tmp) / "source.md"
         source.write_text(document.text, encoding="utf-8", newline="\n")

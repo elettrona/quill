@@ -112,6 +112,7 @@
     "format.list_manager": "Ctrl+Shift+Grave, L",
     "format.bold": "Ctrl+B",
     "format.italic": "Ctrl+I",
+    "format.describe_formatting": "Ctrl+Shift+D",
     "format.heading_1": "Ctrl+Shift+Grave, 1",
     "format.heading_2": "Ctrl+Shift+Grave, 2",
     "format.heading_3": "Ctrl+Shift+Grave, 3",

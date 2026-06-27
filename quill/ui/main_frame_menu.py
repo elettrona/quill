@@ -996,6 +996,11 @@ class MenuBuilderMixin:
             self._id_format_underline,
             self._menu_label(_("&Underline"), "format.underline"),
         )
+
+        # Hidden-codes run/paragraph formatting (font, size, align, color,
+        # highlight) plus the describe-formatting interrogation item. Built by
+        # FormatCodesMixin so the bulk stays out of this monolith (GATE-11).
+        self.build_format_codes_submenus(format_menu, wx)
         format_menu.AppendSeparator()
 
         # --- Structural formatting ---
@@ -3278,6 +3283,7 @@ class MenuBuilderMixin:
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.format_underline(), id=self._id_format_underline
         )
+        self.bind_format_codes(wx)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_heading(1), id=self._id_heading_1)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_heading(2), id=self._id_heading_2)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_heading(3), id=self._id_heading_3)
