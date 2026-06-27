@@ -12,7 +12,7 @@ from quill.ui.agent_editor_host import (
     MainFrameEditorHost,
     _apply_result,
     _classify,
-    _source_for_scope,
+    _effective_scope,
 )
 
 
@@ -166,26 +166,34 @@ def _spec(scope: ContextScope, perms: dict[PermissionCategory, Decision]) -> Age
     )
 
 
-def test_source_for_scope_selection_and_document() -> None:
+def test_effective_scope_selection_and_document() -> None:
     c = FakeController()
     c.editor.value = "WHOLE DOCUMENT BODY"
     c.editor.selection = "sel"
-    src, err = _source_for_scope(c, ContextScope.SELECTION)
-    assert src == "sel" and err == ""
-    src, err = _source_for_scope(c, ContextScope.FULL_DOCUMENT)
-    assert src == "WHOLE DOCUMENT BODY" and err == ""
+    scope, err = _effective_scope(c, ContextScope.SELECTION)
+    assert scope is ContextScope.SELECTION and err == ""
+    scope, err = _effective_scope(c, ContextScope.FULL_DOCUMENT)
+    assert scope is ContextScope.FULL_DOCUMENT and err == ""
 
 
-def test_source_for_scope_errors() -> None:
+def test_effective_scope_large_document_downgrades_to_summary() -> None:
+    c = FakeController()
+    c.editor.selection = ""
+    c.editor.value = "word " * 5000  # over the full-document token limit
+    scope, err = _effective_scope(c, ContextScope.FULL_DOCUMENT)
+    assert scope is ContextScope.DOCUMENT_SUMMARY and err == ""
+
+
+def test_effective_scope_errors() -> None:
     c = FakeController()
     c.editor.selection = "   "
-    src, err = _source_for_scope(c, ContextScope.SELECTION)
-    assert src is None and "Select text" in err
+    scope, err = _effective_scope(c, ContextScope.SELECTION)
+    assert scope is None and "Select text" in err
     c.editor.value = "   "
-    src, err = _source_for_scope(c, ContextScope.FULL_DOCUMENT)
-    assert src is None and "empty" in err
-    src, err = _source_for_scope(c, ContextScope.WORKSPACE_SUMMARY)
-    assert src is None and "not supported" in err
+    scope, err = _effective_scope(c, ContextScope.FULL_DOCUMENT)
+    assert scope is None and "empty" in err
+    scope, err = _effective_scope(c, ContextScope.WORKSPACE_SUMMARY)
+    assert scope is None and "not supported" in err
 
 
 def test_classify_document_selection_produce() -> None:

@@ -33,6 +33,7 @@
     "navigate.set_language": "Ctrl+Shift+L",
     "navigate.list_bookmarks": "Alt+Shift+B",
     "tools.ask_quill_chat": "Alt+Q",
+    "tools.ask_quill_conversation": "Alt+Shift+Q",
     "tools.word_count": "Ctrl+Shift+W",
     "tools.spell_check_dialog": "F7",
     "tools.next_misspelling": "Ctrl+F7",

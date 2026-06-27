@@ -93,13 +93,22 @@ def recommend_agents(
 
 @dataclass(frozen=True, slots=True)
 class ConciergeContext:
-    """The lightweight signals the concierge reasons over."""
+    """The lightweight signals the concierge reasons over.
+
+    ``cursor_line`` / ``cursor_column`` (1-based; 0 = unknown) and
+    ``current_section_title`` are the Phase 3 "where am I" signals, so the
+    concierge and the agent can reason about the editing location, not just the
+    document as a whole.
+    """
 
     file_type: str = ""
     has_selection: bool = False
     outline_headings: int = 0
     in_git_repo: bool = False
     ai_enabled: bool = True
+    cursor_line: int = 0
+    cursor_column: int = 0
+    current_section_title: str = ""
 
 
 @dataclass(frozen=True, slots=True)

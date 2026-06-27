@@ -1942,6 +1942,12 @@ class MainFrame(
             self._binding_for("tools.ask_quill_chat"),
         )
         self.commands.register(
+            "tools.ask_quill_conversation",
+            "Ask Quill: Voice Conversation",
+            self.open_ask_quill_conversation,
+            self._binding_for("tools.ask_quill_conversation"),
+        )
+        self.commands.register(
             "tools.ai_model",
             "AI Model",
             self.open_ai_model_settings,
@@ -21202,6 +21208,18 @@ class MainFrame(
             return False
 
     def open_ask_quill_chat(self) -> None:
+        self._open_ask_quill(voice_mode=False)
+
+    def open_ask_quill_conversation(self) -> None:
+        """Open Ask Quill in voice conversation mode (Alt+Shift+Q).
+
+        Same chat, but spoken answers play with transport controls when text-to-
+        speech is available, and Ctrl+F9 captures a spoken question. Falls back to
+        text + screen-reader announcements when voice I/O is unavailable.
+        """
+        self._open_ask_quill(voice_mode=True)
+
+    def _open_ask_quill(self, *, voice_mode: bool) -> None:
         from quill.core.ai.model_manager import load_ai_enabled
 
         if not load_ai_enabled():
@@ -21212,6 +21230,14 @@ class MainFrame(
 
         self._apply_style_to_assistant()
         tool_catalog = allowed_tools(self.commands, getattr(self, "features", None))
+        voice = self._build_voice_services()
+        open_player = None
+        if voice is not None and voice.output_available():
+            from quill.ui.speech_player_dialog import show_speech_player
+
+            def open_player(text: str) -> None:
+                show_speech_player(self, voice, text)
+
         dialog = AskQuillChatDialog(
             self.frame,
             self._get_assistant(),
@@ -21225,8 +21251,124 @@ class MainFrame(
             tool_catalog=tool_catalog,
             announce=self._set_status,
             review_changes=self.open_ai_diff_review,
+            conversation=self._build_companion_conversation(),
+            voice_mode=voice_mode,
+            voice=voice,
+            signal_sound=self._signal_ai_sound,
+            open_speech_player=open_player,
         )
         dialog.show()
+
+    def _signal_ai_sound(self, name: str) -> None:
+        """Play an AI earcon for the chat ('thinking' / 'response' / 'error')."""
+        from quill.core.sound_events import SoundEvent
+        from quill.ui.sound_manager import post_sound
+
+        event = {
+            "thinking": SoundEvent.AI_THINKING_STARTED,
+            "response": SoundEvent.AI_RESPONSE_RECEIVED,
+            "error": SoundEvent.AI_ERROR,
+        }.get(name)
+        if event is not None:
+            try:
+                post_sound(event)
+            except Exception:  # noqa: BLE001 - a missing earcon must never break chat
+                pass
+
+    def _build_voice_services(self):
+        """Build VoiceServices for the chat, or None when voice I/O is unavailable.
+
+        Resolves an installed speech-to-text model (for Ctrl+F9 voice questions) and
+        an OpenAI key (for spoken answers + Save as media). Each piece degrades
+        independently: no mic/model => text input only; no TTS key => screen-reader
+        announcements instead of an audio player.
+        """
+        if getattr(self, "_safe_mode", False):
+            return None
+        try:
+            from quill.ui.voice_services import VoiceServices
+        except Exception:  # noqa: BLE001
+            return None
+
+        provider = None
+        model_id = ""
+        get_provider = getattr(self, "_speech_provider", None)
+        if callable(get_provider):
+            try:
+                candidate = get_provider()
+                if candidate is not None and candidate.is_available():
+                    provider = candidate
+                    installed = candidate.list_installed_models()
+                    if installed:
+                        first = installed[0]
+                        model_id = getattr(first, "model_id", "") or getattr(first, "id", "")
+            except Exception:  # noqa: BLE001
+                provider, model_id = None, ""
+
+        device_index = -1
+        try:
+            from quill.core.speech.service import load_input_device
+
+            device_index = load_input_device()
+        except Exception:  # noqa: BLE001
+            device_index = -1
+
+        tts_key = ""
+        try:
+            from quill.core.assistant_ai import (
+                load_assistant_api_key,
+                load_assistant_connection_settings,
+            )
+
+            conn = load_assistant_connection_settings()
+            if (conn.provider or "").strip().lower() == "openai":
+                tts_key = load_assistant_api_key() or ""
+        except Exception:  # noqa: BLE001
+            tts_key = ""
+
+        return VoiceServices(
+            stt_provider=provider,
+            stt_model_id=model_id,
+            device_index=device_index,
+            tts_api_key=tts_key,
+        )
+
+    def _build_companion_conversation(self):
+        """Build the Phase 1 conversational companion callable, or None to fall back.
+
+        Returns a ``(message, document, selection) -> (answer, edited, error)``
+        callable backed by a :class:`ConversationSession` (multi-step tool loop
+        through the Safe Editor Tool Gateway), or None when Safe Mode is on or no
+        AI provider is available — in which case the dialog uses the legacy path.
+        """
+        if getattr(self, "_safe_mode", False):
+            return None
+        try:
+            from quill.ui.agent_editor_host import build_companion_session
+
+            session, _engine = build_companion_session(self)
+        except Exception:  # noqa: BLE001 - never block the chat from opening
+            return None
+        if session is None:
+            return None
+
+        # Show the "what will be sent" preview once per chat session (PRD §11);
+        # later turns reuse that consent. Redaction always applies underneath.
+        consented = [False]
+
+        def conversation(message: str, document: str, selection: str):
+            from quill.ui.agent_editor_host import prepare_companion_context
+
+            context_text, ok = prepare_companion_context(
+                self, document, selection, need_consent=not consented[0]
+            )
+            if not ok:
+                return "Sharing cancelled. Nothing was sent.", False, ""
+            consented[0] = True
+            result = session.ask(message, context_text=context_text)
+            return result.answer, result.edited, result.error
+
+        return conversation
 
     def open_ask_ai(self) -> None:
         from quill.ui.ai_chat_dialog import AskAIDialog

@@ -25,7 +25,7 @@ from __future__ import annotations
 from typing import Any
 
 from quill.core.ai.activity_log import ActivityLog
-from quill.core.ai.context_builder import ContextScope
+from quill.core.ai.context_builder import ContextScope, choose_context_scope
 from quill.core.ai.diff_review import DiffReview
 from quill.core.ai.event_bridge import AnnouncementLevel, EventBridge
 from quill.core.ai.harness import AIContext
@@ -42,6 +42,7 @@ __all__ = [
     "register_experimental_agent_command",
     "append_experimental_agent_menu",
     "experimental_gateway_enabled",
+    "build_companion_session",
 ]
 
 
@@ -116,6 +117,60 @@ append_experimental_agent_menu = append_agent_menu
 register_experimental_agent_command = register_agent_commands
 
 
+def _cursor_line_col(editor: Any) -> tuple[int, int]:
+    """Return the 1-based (line, column) of the cursor, or (0, 0) on failure."""
+    try:
+        pos = editor.GetInsertionPoint()
+        result = editor.PositionToXY(pos)
+        if isinstance(result, tuple) and len(result) == 3:
+            _ok, col, row = result
+        else:
+            col, row = result
+        return int(row) + 1, int(col) + 1
+    except Exception:  # noqa: BLE001 - cursor position is best-effort context
+        return 0, 0
+
+
+def _current_section_text(controller: Any) -> str:
+    """Return the text of the outline section the cursor is currently in."""
+    try:
+        editor = controller.editor
+        document = str(editor.GetValue())
+        entries = sorted(controller._outline_entries(), key=lambda e: e.position)
+        if not entries:
+            return ""
+        pos = editor.GetInsertionPoint()
+        idx = -1
+        for i, entry in enumerate(entries):
+            if entry.position <= pos:
+                idx = i
+            else:
+                break
+        if idx < 0:
+            return document[: entries[0].position].strip()
+        start = entries[idx].position
+        end = entries[idx + 1].position if idx + 1 < len(entries) else len(document)
+        return document[start:end].strip()
+    except Exception:  # noqa: BLE001 - section is best-effort context
+        return ""
+
+
+def _status_flags(controller: Any) -> dict[str, bool]:
+    """Return which app features are on/off (for the read_app_state tool)."""
+    flags: dict[str, bool] = {}
+    try:
+        from quill.core.ai.model_manager import load_ai_enabled
+
+        flags["ai_enabled"] = bool(load_ai_enabled())
+    except Exception:  # noqa: BLE001
+        pass
+    flags["safe_mode"] = bool(getattr(controller, "_safe_mode", False))
+    document = getattr(controller, "document", None)
+    if document is not None:
+        flags["document_modified"] = bool(getattr(document, "modified", False))
+    return flags
+
+
 class MainFrameEditorHost:
     """``EditorHost`` over a MainFrame controller, reusing existing primitives.
 
@@ -159,6 +214,17 @@ class MainFrameEditorHost:
             return ""
         suffix = str(path).rsplit(".", 1)
         return suffix[-1].lower() if len(suffix) == 2 else ""
+
+    # -- app/editor state (Phase 3) ---------------------------------------
+
+    def get_cursor_position(self) -> tuple[int, int]:
+        return _cursor_line_col(self._c.editor)
+
+    def get_current_section(self) -> str:
+        return _current_section_text(self._c)
+
+    def get_status_flags(self) -> dict[str, bool]:
+        return _status_flags(self._c)
 
     # -- mutations (reusing the shipping undo/replace path) ----------------
 
@@ -222,23 +288,51 @@ _SELECTION_SCOPES = (ContextScope.SELECTION, ContextScope.CURRENT_SECTION)
 _DOCUMENT_SCOPES = (ContextScope.FULL_DOCUMENT, ContextScope.DOCUMENT_SUMMARY)
 
 
-def _source_for_scope(controller: Any, scope: ContextScope) -> tuple[str | None, str]:
-    """Return (source_text, error). ``source_text`` is None when there is an error.
+def _effective_scope(controller: Any, scope: ContextScope) -> tuple[ContextScope | None, str]:
+    """Return (effective_scope, error). ``effective_scope`` is None on error.
 
-    The scope decides what the agent READS: selection scopes read the selection;
-    document scopes read the whole buffer.
+    Keeps the agent's declared intent — selection agents require a selection,
+    document agents require a non-empty buffer — but a whole-document scope is
+    downgraded to a structure-aware summary when the document is too large to send
+    verbatim (Phase 2 large-doc handling).
     """
     if scope in _SELECTION_SCOPES:
-        selection = controller._selected_text().strip()
-        if not selection:
+        if not controller._selected_text().strip():
             return None, "Select text first."
-        return selection, ""
+        return scope, ""
     if scope in _DOCUMENT_SCOPES:
         document = str(controller.editor.GetValue())
         if not document.strip():
             return None, "Document is empty."
-        return document, ""
+        # selection forced empty: pick FULL vs DOCUMENT_SUMMARY purely by size.
+        return choose_context_scope("", document), ""
     return None, "This agent's scope is not supported yet."
+
+
+def _file_name(controller: Any) -> str:
+    """The current document's file name (empty for an unsaved buffer)."""
+    from pathlib import Path
+
+    path = getattr(getattr(controller, "document", None), "path", None)
+    return Path(str(path)).name if path is not None else ""
+
+
+def _context_preview(controller: Any, host: Any, scope: ContextScope) -> Any:
+    """Assemble + redact the context for ``scope`` into a :class:`ContextPreview`."""
+    from quill.core.ai.context_builder import (
+        ContextBuilder,
+        ContextRequest,
+        StringContextSource,
+    )
+
+    source = StringContextSource(
+        document=host.get_document(),
+        selection=host.get_selection(),
+        outline=tuple(host.get_outline()),
+        file_name=_file_name(controller),
+        file_type=host.get_file_type(),
+    )
+    return ContextBuilder(source).build(ContextRequest(scope=scope))
 
 
 def _classify(agent: Any) -> tuple[str, str]:
@@ -344,8 +438,8 @@ def run_agent(
         controller._set_status(f"Unknown agent: {agent_id}")
         return
 
-    source, error = _source_for_scope(controller, agent.default_scope)
-    if source is None:
+    scope, error = _effective_scope(controller, agent.default_scope)
+    if scope is None:
         controller._set_status(error)
         return
 
@@ -363,6 +457,16 @@ def run_agent(
 
     apply_kind, apply_mode = _classify(agent)
     host = MainFrameEditorHost(controller)
+
+    # Assemble + redact the context, then get the user's OK before anything is sent
+    # to a provider (PRD §11). Cancel aborts the run; nothing leaves the machine.
+    from quill.ui.context_preview_dialog import confirm_context_share
+
+    preview = _context_preview(controller, host, scope)
+    if not confirm_context_share(controller, preview):
+        controller._set_status(f"{agent.display_name}: cancelled.")
+        return
+
     gateway = SafeEditorToolGateway(
         host=host,
         broker=PermissionBroker(SafetyProfile.BALANCED, overrides=agent.overrides_map()),
@@ -370,7 +474,7 @@ def run_agent(
         identity=AgentIdentity(agent_id=agent.id, risk=agent.risk),
         emit=EventBridge(AnnouncementLevel.BALANCED, controller._set_status).handle,
     )
-    ctx = AIContext(prompt=instruction, context_text=source, file_type=host.get_file_type())
+    ctx = AIContext(prompt=instruction, context_text=preview.text, file_type=host.get_file_type())
     controller._set_status(f"{agent.display_name} ({engine_name}): generating...")
 
     def _run() -> None:
@@ -394,3 +498,265 @@ def run_agent(
 def run_selection_agent(controller: Any, agent_id: str = "writing-companion") -> None:
     """Back-compat thin wrapper; prefer :func:`run_agent`."""
     run_agent(controller, agent_id)
+
+
+# ---------------------------------------------------------------------------
+# Conversational companion (Companion PRD, Phase 1)
+# ---------------------------------------------------------------------------
+#
+# The single-pass :func:`run_agent` transforms one scope and applies the result.
+# The *companion* is a remembered, multi-turn conversation that drives the native
+# tool loop (:mod:`quill.core.ai.conversation`) so the user can ask questions
+# about the open document, request edits/revisions, and follow up — each turn
+# choosing tools dynamically through the same Safe Editor Tool Gateway.
+
+
+def _run_on_ui(wx: Any, fn: Any) -> Any:
+    """Run ``fn`` on the wx UI thread and block until it returns its value.
+
+    The conversation loop runs on a worker thread (model calls block); the editor
+    host touches wx (reads, the modal diff preview, announcements), and the UI
+    thread must own every widget. When already on the UI thread, call directly.
+    Exceptions are re-raised on the calling thread so the loop sees real failures.
+    """
+    if wx.IsMainThread():
+        return fn()
+
+    import threading
+
+    done = threading.Event()
+    box: dict[str, Any] = {}
+
+    def runner() -> None:
+        try:
+            box["result"] = fn()
+        except BaseException as exc:  # noqa: BLE001 - propagate to the worker thread
+            box["error"] = exc
+        finally:
+            done.set()
+
+    wx.CallAfter(runner)
+    done.wait()
+    if "error" in box:
+        raise box["error"]
+    return box.get("result")
+
+
+class _CompanionEditorHost:
+    """``EditorHost`` for the conversational companion, marshalled to the UI thread.
+
+    Unlike :class:`MainFrameEditorHost` (single-pass transforms that apply *inside*
+    the preview to honor per-hunk choices), the companion loop calls insert,
+    replace-selection, and whole-document edits dynamically. So this host keeps the
+    gateway's intended two-step shape: :meth:`preview_diff` only *reviews* (returns
+    whether the user approved) and the gateway's follow-up step performs the
+    matching mutation through the correct ``_ai_*`` primitive. That keeps every
+    mutation type correct without tracking an apply mode. Reviewing the whole
+    proposed edit (accept/reject) rather than per-hunk is the Phase 1 trade-off.
+    """
+
+    def __init__(self, controller: Any, wx: Any) -> None:
+        self._c = controller
+        self._wx = wx
+
+    # -- reads -------------------------------------------------------------
+
+    def get_document(self) -> str:
+        return _run_on_ui(self._wx, lambda: str(self._c.editor.GetValue()))
+
+    def get_selection(self) -> str:
+        return _run_on_ui(self._wx, lambda: str(self._c.editor.GetStringSelection()))
+
+    def get_outline(self) -> list[str]:
+        def read() -> list[str]:
+            try:
+                return [entry.title for entry in self._c._outline_entries()]
+            except Exception:  # outline is best-effort context, never fatal
+                return []
+
+        return _run_on_ui(self._wx, read)
+
+    def get_file_type(self) -> str:
+        def read() -> str:
+            path = getattr(getattr(self._c, "document", None), "path", None)
+            if path is None:
+                return ""
+            suffix = str(path).rsplit(".", 1)
+            return suffix[-1].lower() if len(suffix) == 2 else ""
+
+        return _run_on_ui(self._wx, read)
+
+    def get_cursor_position(self) -> tuple[int, int]:
+        return _run_on_ui(self._wx, lambda: _cursor_line_col(self._c.editor))
+
+    def get_current_section(self) -> str:
+        return _run_on_ui(self._wx, lambda: _current_section_text(self._c))
+
+    def get_status_flags(self) -> dict[str, bool]:
+        return _run_on_ui(self._wx, lambda: _status_flags(self._c))
+
+    # -- mutations (reusing the shipping undo/replace primitives) -----------
+
+    def create_undo_checkpoint(self, label: str) -> None:
+        _run_on_ui(
+            self._wx,
+            lambda: self._c._record_persistent_undo_state(str(self._c.editor.GetValue())),
+        )
+
+    def apply_replacement(self, text: str) -> None:
+        _run_on_ui(self._wx, lambda: self._c._ai_replace_selection(text))
+
+    def apply_insert(self, text: str) -> None:
+        _run_on_ui(self._wx, lambda: self._c._ai_insert_text(text))
+
+    def apply_document_text(self, text: str) -> None:
+        _run_on_ui(self._wx, lambda: self._c._ai_set_document_text(text))
+
+    def run_command(self, command_id: str) -> None:
+        _run_on_ui(self._wx, lambda: self._c._ai_run_command(command_id))
+
+    # -- prompts -----------------------------------------------------------
+
+    def confirm(self, message: str) -> bool:
+        def ask() -> bool:
+            wx = self._c._wx
+            result = self._c._show_message_box(message, "QUILL", wx.YES_NO | wx.ICON_QUESTION)
+            return bool(result == wx.YES)
+
+        return _run_on_ui(self._wx, ask)
+
+    def preview_diff(self, review: DiffReview) -> bool:
+        """Show the per-hunk review dialog; return whether the user approved.
+
+        The gateway applies the matching mutation on its next step, so this only
+        reviews — it never edits the buffer itself.
+        """
+
+        def show() -> bool:
+            approved = {"v": False}
+
+            def on_apply(_accepted_text: str) -> None:
+                approved["v"] = True
+
+            self._c.open_ai_diff_review(review.original, review.accept_all(), on_apply)
+            return approved["v"]
+
+        return _run_on_ui(self._wx, show)
+
+    def announce(self, message: str) -> None:
+        _run_on_ui(self._wx, lambda: self._c._set_status(message))
+
+
+def _companion_agent() -> Any:
+    """The general conversational companion AgentSpec (PRD §3).
+
+    Reads are allowed (so it can look at the document to answer fact questions);
+    edits are preview-required (so every change is reviewed and undoable). A
+    ``final`` answer with no edit is a plain Q&A response.
+    """
+    from quill.core.ai.context_builder import ContextScope
+    from quill.core.ai.harness import AgentSpec
+    from quill.core.ai.permissions import Decision, PermissionCategory, RiskLevel
+
+    return AgentSpec(
+        id="quill-companion",
+        display_name="Quill",
+        system_prompt=(
+            "You are Quill, the user's writing companion inside the QUILL editor, a "
+            "screen-reader-first word processor. You help with their open document: "
+            "answer questions about its content, explain and discuss topics, and make "
+            "edits or revisions the user asks for. Use the read tools to look at the "
+            "document, selection, outline, current section, or app state before "
+            "answering. You can audit the document for accessibility issues, and — "
+            "with the user's consent — research on the web to gather facts. To change "
+            "the document, propose the edit through the edit tools; the user reviews "
+            "and approves every change before it is applied. If the user only asks a "
+            "question, answer it directly without editing. Keep answers concise and "
+            "clear for screen-reader users."
+        ),
+        description="Your context-aware partner for the open document.",
+        risk=RiskLevel.LOW,
+        default_scope=ContextScope.FULL_DOCUMENT,
+        permission_overrides=(
+            (PermissionCategory.READ_SELECTION, Decision.ALLOW),
+            (PermissionCategory.READ_DOCUMENT, Decision.ALLOW),
+            (PermissionCategory.MODIFY_SELECTION, Decision.PREVIEW_REQUIRED),
+            (PermissionCategory.MODIFY_DOCUMENT, Decision.PREVIEW_REQUIRED),
+        ),
+    )
+
+
+def build_companion_session(controller: Any) -> tuple[Any, str]:
+    """Build a conversational companion session for the Ask Quill dialog.
+
+    Returns ``(session, engine_name)``, or ``(None, reason)`` when no AI provider
+    is available — so the caller can fall back to the legacy chat path (which lets
+    the user configure a provider inline). The session drives the native multi-step
+    tool loop over the user's configured provider through the Safe Editor Tool
+    Gateway, so reads, edits, previews, undo, and audit all apply. SDK-pack native
+    tool loops are a later phase; Phase 1 uses the provider backend.
+    """
+    from quill.core.ai.activity_log import ActivityLog
+    from quill.core.ai.conversation import ConversationSession
+    from quill.core.ai.permissions import PermissionBroker, SafetyProfile
+    from quill.core.ai.provider_backend import ProviderChatBackend
+    from quill.core.ai.tool_gateway import AgentIdentity, SafeEditorToolGateway
+    from quill.core.ai.tool_planner import PromptToolPlanner, model_responder_from_backend
+
+    backend = ProviderChatBackend()
+    available, reason = backend.is_available()
+    if not available:
+        return None, reason or "AI provider is not available."
+
+    import wx
+
+    agent = _companion_agent()
+    emit = EventBridge(AnnouncementLevel.BALANCED, controller._set_status).handle
+    gateway = SafeEditorToolGateway(
+        host=_CompanionEditorHost(controller, wx),
+        broker=PermissionBroker(SafetyProfile.BALANCED, overrides=agent.overrides_map()),
+        activity=ActivityLog(),
+        identity=AgentIdentity(agent_id=agent.id, risk=agent.risk),
+        emit=emit,
+    )
+    planner = PromptToolPlanner(model_responder_from_backend(backend))
+    session = ConversationSession(agent, gateway, planner, emit=emit)
+    return session, "Native (QUILL)"
+
+
+def prepare_companion_context(
+    controller: Any, document: str, selection: str, *, need_consent: bool
+) -> tuple[str, bool]:
+    """Build the redacted context for one companion turn; confirm before sending.
+
+    Returns ``(context_text, ok)``. ``context_text`` is the assembled, redacted
+    payload (a selection, the whole document, or a structure-aware summary when the
+    document is large). ``ok`` is False only when ``need_consent`` is set and the
+    user cancelled the share preview — the caller then aborts the turn so nothing
+    leaves the machine. ``document`` / ``selection`` are passed in (already read on
+    the UI thread); only the consent dialog is marshalled back to the UI thread.
+    """
+    from quill.core.ai.context_builder import (
+        ContextBuilder,
+        ContextRequest,
+        StringContextSource,
+    )
+
+    file_name = _file_name(controller)
+    scope = choose_context_scope(selection, document)
+    source = StringContextSource(
+        document=document,
+        selection=selection,
+        file_name=file_name,
+        file_type=file_name.rsplit(".", 1)[-1].lower() if "." in file_name else "",
+    )
+    preview = ContextBuilder(source).build(ContextRequest(scope=scope))
+
+    if need_consent:
+        import wx
+
+        from quill.ui.context_preview_dialog import confirm_context_share
+
+        if not _run_on_ui(wx, lambda: confirm_context_share(controller, preview)):
+            return "", False
+    return preview.text, True

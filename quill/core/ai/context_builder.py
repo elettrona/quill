@@ -29,14 +29,21 @@ from quill.stability.redaction import redact_source_tokens
 __all__ = [
     "ContextScope",
     "ContextSource",
+    "StringContextSource",
     "ContextRequest",
     "ContextPreview",
     "ContextBuilder",
+    "choose_context_scope",
 ]
 
 # Token budget for the document-summary scope, kept small so a "summary" never
 # quietly becomes the whole document.
 _SUMMARY_TOKEN_BUDGET = 400
+
+# Above this estimated size, a whole document is sent as a structure-aware summary
+# instead of verbatim, so a large file still fits a model's context window. The
+# agent can still pull the full text on demand via the read tools.
+_FULL_DOCUMENT_TOKEN_LIMIT = 3000
 
 
 class ContextScope(StrEnum):
@@ -77,6 +84,59 @@ class ContextSource(Protocol):
     def get_outline(self) -> list[str]: ...
     def get_file_name(self) -> str: ...
     def get_file_type(self) -> str: ...
+
+
+@dataclass(frozen=True, slots=True)
+class StringContextSource:
+    """A :class:`ContextSource` backed by already-read strings.
+
+    Lets a caller that has already captured editor state (e.g. on the UI thread)
+    build context off-thread without touching widgets again. ``current_section``
+    falls back to the selection until cursor-aware sectioning lands (Phase 3).
+    """
+
+    document: str = ""
+    selection: str = ""
+    current_section: str = ""
+    outline: tuple[str, ...] = ()
+    file_name: str = ""
+    file_type: str = ""
+
+    def get_selection(self) -> str:
+        return self.selection
+
+    def get_current_section(self) -> str:
+        return self.current_section or self.selection
+
+    def get_document(self) -> str:
+        return self.document
+
+    def get_outline(self) -> list[str]:
+        return list(self.outline)
+
+    def get_file_name(self) -> str:
+        return self.file_name
+
+    def get_file_type(self) -> str:
+        return self.file_type
+
+
+def choose_context_scope(
+    selection: str, document: str, *, max_full_tokens: int = _FULL_DOCUMENT_TOKEN_LIMIT
+) -> ContextScope:
+    """Pick the scope for an automatic send (chat / one-shot agent).
+
+    A non-empty selection scopes to the selection; otherwise the whole document is
+    sent verbatim when small, or as a structure-aware summary when it would
+    overflow the budget. An empty document scopes to prompt-only.
+    """
+    if selection.strip():
+        return ContextScope.SELECTION
+    if not document.strip():
+        return ContextScope.PROMPT_ONLY
+    if estimate_tokens(document) > max_full_tokens:
+        return ContextScope.DOCUMENT_SUMMARY
+    return ContextScope.FULL_DOCUMENT
 
 
 @dataclass(frozen=True, slots=True)

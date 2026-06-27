@@ -38,6 +38,26 @@ def test_parse_tool_action() -> None:
     assert step.tool == "read_selection"
 
 
+def test_parse_action_is_tool_name_with_top_level_args() -> None:
+    # Deviant but common: the tool name is the action and args are at the top level
+    # (mid-size models do this). It must still be recognized as a tool call.
+    planner = PromptToolPlanner(
+        lambda p: '```json\n{"action": "insert", "text": "hello there"}\n```'
+    )
+    step = planner.next_step(_agent(), _ctx(), ())
+    assert step.kind == "tool"
+    assert step.tool == "insert"
+    assert step.args == {"text": "hello there"}
+
+
+def test_parse_bare_tool_field() -> None:
+    planner = PromptToolPlanner(lambda p: '{"tool": "read_document", "args": {"scope": "full"}}')
+    step = planner.next_step(_agent(), _ctx(), ())
+    assert step.kind == "tool"
+    assert step.tool == "read_document"
+    assert step.args == {"scope": "full"}
+
+
 def test_parse_tool_with_args() -> None:
     planner = PromptToolPlanner(
         lambda p: 'sure: {"action":"tool","tool":"replace_selection","args":{"text":"HELLO"}} done'

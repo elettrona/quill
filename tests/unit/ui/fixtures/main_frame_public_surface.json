@@ -285,6 +285,7 @@
   "open_ai_toc",
   "open_ask_ai",
   "open_ask_quill_chat",
+  "open_ask_quill_conversation",
   "open_bw_model_manager",
   "open_bw_provider_center",
   "open_compare_difference_list",

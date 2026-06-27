@@ -20,6 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from quill.core.ai.agent_tools import MUTATING_TOOL_NAMES
 from quill.core.ai.events import AgentEvent, AgentEventKind
 from quill.core.ai.harness import AgentSpec, AIContext, HarnessResult
 from quill.core.ai.tool_gateway import Emit, PermissionDeniedError, SafeEditorToolGateway
@@ -75,6 +76,20 @@ def _dispatch(gateway: SafeEditorToolGateway, step: ToolStep) -> str:
     return execute_tool(gateway, step.tool, step.args)
 
 
+def _completion_text(transcript: list[ToolResult], applied_edit: bool) -> str:
+    """A human answer when the model ran out of steps without a ``final``.
+
+    After an applied edit, confirm the change (so the chat never surfaces a raw
+    ``"True"``). Otherwise fall back to the most recent readable tool output.
+    """
+    if applied_edit:
+        return "Done. I applied the change to your document."
+    for result in reversed(transcript):
+        if result.ok and result.tool not in MUTATING_TOOL_NAMES and result.output:
+            return result.output
+    return ""
+
+
 def run_tool_loop(
     planner: ToolPlanner,
     agent: AgentSpec,
@@ -93,6 +108,7 @@ def run_tool_loop(
     """
     emit(AgentEvent(AgentEventKind.AGENT_STARTED, f"{agent.display_name} started."))
     transcript: list[ToolResult] = []
+    applied_edit = False
 
     for _ in range(max_steps):
         step = planner.next_step(agent, ctx, tuple(transcript))
@@ -100,6 +116,15 @@ def run_tool_loop(
         if step.kind == "final":
             emit(AgentEvent(AgentEventKind.AGENT_COMPLETED, f"{agent.display_name} finished."))
             return HarnessResult(status="completed", final_text=step.final_text)
+
+        # One edit per turn: once a change has landed, a further edit request means
+        # the model is looping instead of finishing (it never emitted a final). Stop
+        # cleanly with what we have rather than re-applying / duplicating the edit.
+        if applied_edit and step.tool in MUTATING_TOOL_NAMES:
+            emit(AgentEvent(AgentEventKind.AGENT_COMPLETED, f"{agent.display_name} finished."))
+            return HarnessResult(
+                status="completed", final_text=_completion_text(transcript, applied_edit)
+            )
 
         emit(AgentEvent(AgentEventKind.TOOL_CALL_REQUESTED, f"{agent.display_name}: {step.tool}"))
         try:
@@ -115,7 +140,8 @@ def run_tool_loop(
 
         transcript.append(ToolResult(step.tool, ok=True, output=output))
         emit(AgentEvent(AgentEventKind.TOOL_CALL_COMPLETED, f"{step.tool} done."))
+        if step.tool in MUTATING_TOOL_NAMES and output == "True":
+            applied_edit = True
 
     emit(AgentEvent(AgentEventKind.WARNING, "Agent reached the step limit."))
-    last_text = transcript[-1].output if transcript else ""
-    return HarnessResult(status="completed", final_text=last_text)
+    return HarnessResult(status="completed", final_text=_completion_text(transcript, applied_edit))

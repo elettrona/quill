@@ -178,6 +178,41 @@ def test_loop_respects_max_steps(tmp_path: Path) -> None:
     assert AgentEventKind.WARNING in [e.kind for e in events]
 
 
+def test_loop_stops_after_one_applied_edit(tmp_path: Path) -> None:
+    # A planner that keeps trying to insert (the real-world looping bug): the loop
+    # must apply exactly one edit, then finish instead of duplicating it.
+    host = FakeHost()
+    events: list[AgentEvent] = []
+    gw = _gateway(tmp_path, host, events)
+    planner = ScriptedPlanner([
+        ToolStep("tool", "insert", {"text": "para. "}),
+        ToolStep("tool", "insert", {"text": "para again. "}),
+        ToolStep("tool", "insert", {"text": "and again. "}),
+    ])
+    result = run_tool_loop(planner, _agent(), AIContext(prompt="p"), gw, events.append)
+    assert result.status == "completed"
+    assert host.inserts == ["para. "]  # only the first edit applied
+    assert "Done." in result.final_text  # human completion, not a raw "True"
+    assert AgentEventKind.AGENT_COMPLETED in [e.kind for e in events]
+
+
+def test_loop_allows_read_after_edit_then_final(tmp_path: Path) -> None:
+    # An edit followed by a read then a final answer is allowed (only a *second
+    # edit* is blocked), so the model can still finish with a useful answer.
+    host = FakeHost(selection="x")
+    events: list[AgentEvent] = []
+    gw = _gateway(tmp_path, host, events)
+    planner = ScriptedPlanner([
+        ToolStep("tool", "replace_selection", {"text": "y"}),
+        ToolStep("tool", "read_document"),
+        ToolStep("final", final_text="I replaced the selection."),
+    ])
+    result = run_tool_loop(planner, _agent(), AIContext(prompt="p"), gw, events.append)
+    assert result.status == "completed"
+    assert result.final_text == "I replaced the selection."
+    assert host.replacements == ["y"]
+
+
 def test_loop_apply_patch_writes_document(tmp_path: Path) -> None:
     host = FakeHost(document="old doc")
     events: list[AgentEvent] = []

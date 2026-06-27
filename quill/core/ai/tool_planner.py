@@ -81,7 +81,9 @@ class PromptToolPlanner:
             f"You are working on the user's document. Available tools:\n{tools}\n\n"
             f"Document context:\n{context}\n\n"
             f"Steps so far:\n{history}\n\n"
-            "Decide the single next step. Reply with ONE JSON object and nothing "
+            "Decide the single next step. Make at most one edit: if an edit step "
+            "above already succeeded, do NOT edit again — reply with the final answer "
+            "describing what you changed. Reply with ONE JSON object and nothing "
             'else. To use a tool: {"action": "tool", "tool": "<name>", "args": {...}}. '
             'When the task is complete: {"action": "final", "final_text": "<answer>"}.'
         )
@@ -98,15 +100,36 @@ class PromptToolPlanner:
         if not isinstance(data, dict):
             return ToolStep("final", final_text=(raw or "").strip())
 
-        action = str(data.get("action", "")).lower()
-        if action == "tool":
-            tool = str(data.get("tool", "")).strip()
+        # Resolve the tool name, tolerating common model deviations from the
+        # protocol: the strict {"action":"tool","tool":X,"args":{...}}, a bare
+        # {"tool":X,...}, or {"action":X,...} where X is itself a tool name (some
+        # mid-size models emit the tool name as the action and put the arguments at
+        # the top level instead of under "args").
+        from quill.core.ai.agent_tools import tool_names
+
+        known = set(tool_names())
+        action = str(data.get("action", "")).strip()
+        tool_field = str(data.get("tool", "")).strip()
+        chosen = ""
+        if action.lower() == "tool" and tool_field:
+            chosen = tool_field
+        elif action in known:
+            chosen = action
+        elif tool_field in known:
+            chosen = tool_field
+
+        if chosen:
             raw_args = data.get("args", {})
-            args = (
-                {str(k): str(v) for k, v in raw_args.items()} if isinstance(raw_args, dict) else {}
-            )
-            if tool:
-                return ToolStep("tool", tool=tool, args=args)
+            if isinstance(raw_args, dict) and raw_args:
+                args = {str(k): str(v) for k, v in raw_args.items()}
+            else:
+                # Top-level keys as arguments (minus the protocol keys).
+                args = {
+                    str(k): str(v)
+                    for k, v in data.items()
+                    if k not in {"action", "tool", "args", "final_text"}
+                }
+            return ToolStep("tool", tool=chosen, args=args)
         # action == "final" or anything unrecognized -> final.
         return ToolStep("final", final_text=str(data.get("final_text", (raw or "").strip())))
 

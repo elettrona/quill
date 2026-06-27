@@ -87,8 +87,11 @@ def test_style_guide_build_disables_and_reenables_around_the_worker() -> None:
 
 def test_assistant_panel_submit_brackets_the_worker_with_busy_state() -> None:
     source = _read("assistant_panel.py")
-    # Submit enters the busy state before spawning the worker thread.
-    busy_on = source.index("self._set_busy(True)")
+    # Submit enters the busy state before spawning the worker thread. Anchor on
+    # _submit specifically (other async actions, e.g. voice capture, have their own
+    # busy/worker cycles earlier in the file).
+    submit_at = source.index("def _submit(")
+    busy_on = source.index("self._set_busy(True)", submit_at)
     thread_at = source.index("threading.Thread(", busy_on)
     worker_segment = source[busy_on:thread_at]
     assert "except Exception" in worker_segment

@@ -74,6 +74,11 @@ class EditorHost(Protocol):
     def get_selection(self) -> str: ...
     def get_outline(self) -> list[str]: ...
     def get_file_type(self) -> str: ...
+    # Phase 3 (app/editor-state awareness). Optional: the gateway probes these via
+    # getattr and degrades gracefully, so a host may omit them.
+    def get_cursor_position(self) -> tuple[int, int]: ...
+    def get_current_section(self) -> str: ...
+    def get_status_flags(self) -> dict[str, bool]: ...
     def create_undo_checkpoint(self, label: str) -> None: ...
     def apply_replacement(self, text: str) -> None: ...
     def apply_insert(self, text: str) -> None: ...
@@ -109,12 +114,18 @@ class SafeEditorToolGateway:
         activity: ActivityLog,
         identity: AgentIdentity,
         emit: Emit | None = None,
+        web: object | None = None,
     ) -> None:
         self._host = host
         self._broker = broker
         self._activity = activity
         self._who = identity
         self._emit = emit or (lambda _event: None)
+        if web is None:
+            from quill.core.ai.web_research import NullWebResearchProvider
+
+            web = NullWebResearchProvider()
+        self._web = web
 
     # -- read tools --------------------------------------------------------
 
@@ -146,6 +157,96 @@ class SafeEditorToolGateway:
         outline = self._host.get_outline()
         self._record("tool_call_completed", "Read outline.", {"category": "read_selection"})
         return outline
+
+    def read_current_section(self) -> str:
+        """Return the text of the section the cursor is in (document-level read)."""
+        self._require(PermissionCategory.READ_DOCUMENT, "read the current section")
+        getter = getattr(self._host, "get_current_section", None)
+        text = getter() if callable(getter) else ""
+        self._record("tool_call_completed", "Read current section.", {"category": "read_document"})
+        return str(text) if text else ""
+
+    def read_app_state(self) -> str:
+        """Return cursor position + which features are on/off (cheap read).
+
+        App state is not document content, so it is gated at the lowest read level.
+        Host methods are optional (probed via getattr); anything missing is simply
+        omitted, so the tool degrades rather than failing.
+        """
+        self._require(PermissionCategory.READ_SELECTION, "read the app state")
+        lines: list[str] = []
+        cursor = getattr(self._host, "get_cursor_position", None)
+        if callable(cursor):
+            try:
+                line, col = cursor()
+                lines.append(f"Cursor: line {line}, column {col}")
+            except Exception:  # noqa: BLE001 - best-effort context
+                pass
+        file_type = self._host.get_file_type()
+        if file_type:
+            lines.append(f"File type: {file_type}")
+        flags = getattr(self._host, "get_status_flags", None)
+        if callable(flags):
+            try:
+                items = flags()
+                if items:
+                    lines.append(
+                        "Features: "
+                        + "; ".join(f"{k}={'on' if v else 'off'}" for k, v in items.items())
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+        self._record("tool_call_completed", "Read app state.", {"category": "read_selection"})
+        return "\n".join(lines) if lines else "No app state available."
+
+    def audit_accessibility(self) -> str:
+        """Audit the document for accessibility issues and return a findings report."""
+        self._require(PermissionCategory.READ_DOCUMENT, "check accessibility")
+        from quill.core.accessibility_agent import build_plan, build_plan_report
+
+        document = self._host.get_document()
+        file_type = (self._host.get_file_type() or "").lower()
+        markup = "html" if file_type in {"html", "htm"} else "markdown"
+        plan = build_plan("the document", document, markup)
+        report = build_plan_report(plan)
+        self._record(
+            "tool_call_completed",
+            f"Accessibility audit: {len(plan.steps)} finding(s).",
+            {"category": "read_document"},
+        )
+        return report
+
+    def web_search(self, query: str) -> str:
+        """Search the web (WEB permission + consent + audit); off unless configured."""
+        self._require(PermissionCategory.WEB, f"search the web for {query!r}")
+        from quill.core.ai.web_research import WebResearchUnavailable, format_results
+
+        if not self._web.available():  # type: ignore[attr-defined]
+            return "Web research is not configured."
+        try:
+            results = self._web.search(query)  # type: ignore[attr-defined]
+        except WebResearchUnavailable as exc:
+            return str(exc)
+        self._record(
+            "tool_call_completed",
+            f"Web search: {query!r} ({len(results)} result(s)).",
+            {"category": "web"},
+        )
+        return format_results(query, results)
+
+    def web_fetch(self, url: str) -> str:
+        """Fetch a web page as text (WEB permission + consent + audit)."""
+        self._require(PermissionCategory.WEB, f"fetch {url!r}")
+        from quill.core.ai.web_research import WebResearchUnavailable
+
+        if not self._web.available():  # type: ignore[attr-defined]
+            return "Web research is not configured."
+        try:
+            text = self._web.fetch(url)  # type: ignore[attr-defined]
+        except WebResearchUnavailable as exc:
+            return str(exc)
+        self._record("tool_call_completed", f"Web fetch: {url!r}.", {"category": "web"})
+        return str(text)
 
     # -- mutating tools ----------------------------------------------------
 

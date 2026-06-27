@@ -19,7 +19,23 @@ from dataclasses import dataclass, field
 
 from quill.core.ai.tool_gateway import SafeEditorToolGateway
 
-__all__ = ["AgentToolDescriptor", "TOOL_DESCRIPTORS", "tool_names", "execute_tool"]
+__all__ = [
+    "AgentToolDescriptor",
+    "TOOL_DESCRIPTORS",
+    "MUTATING_TOOL_NAMES",
+    "tool_names",
+    "execute_tool",
+]
+
+# Tools that change the document or run a command (as opposed to read-only tools).
+# The single source of truth for "did this step alter state?" — used by the tool
+# loop's one-edit-per-turn guard and by conversation edit detection.
+MUTATING_TOOL_NAMES: frozenset[str] = frozenset({
+    "replace_selection",
+    "insert",
+    "apply_patch",
+    "run_command",
+})
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,6 +69,28 @@ TOOL_DESCRIPTORS: tuple[AgentToolDescriptor, ...] = (
         "run_command",
         "Run a safe, allowlisted QUILL command.",
         {"command_id": "the command id"},
+    ),
+    AgentToolDescriptor(
+        "read_section",
+        "Read the text of the document section the cursor is currently in.",
+    ),
+    AgentToolDescriptor(
+        "read_app_state",
+        "Read where the cursor is and which app features are on or off.",
+    ),
+    AgentToolDescriptor(
+        "audit_accessibility",
+        "Check the document for screen-reader accessibility issues and list them.",
+    ),
+    AgentToolDescriptor(
+        "web_search",
+        "Search the web for information (asks consent; off unless configured).",
+        {"query": "the search query"},
+    ),
+    AgentToolDescriptor(
+        "web_fetch",
+        "Fetch a web page as text (asks consent; off unless configured).",
+        {"url": "the page URL"},
     ),
 )
 
@@ -93,4 +131,14 @@ def execute_tool(gateway: SafeEditorToolGateway, name: str, args: dict[str, str]
         )
     if name == "run_command":
         return str(gateway.run_quill_command(args.get("command_id", "")))
+    if name == "read_section":
+        return gateway.read_current_section()
+    if name == "read_app_state":
+        return gateway.read_app_state()
+    if name == "audit_accessibility":
+        return gateway.audit_accessibility()
+    if name == "web_search":
+        return gateway.web_search(args.get("query", ""))
+    if name == "web_fetch":
+        return gateway.web_fetch(args.get("url", ""))
     raise ValueError(f"Unknown tool: {name!r}")
