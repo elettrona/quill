@@ -39,6 +39,7 @@ __all__ = [
     "run_selection_agent",
     "register_agent_commands",
     "append_agent_menu",
+    "append_action_ring_menu",
     "register_experimental_agent_command",
     "append_experimental_agent_menu",
     "experimental_gateway_enabled",
@@ -87,6 +88,53 @@ def append_agent_menu(controller: Any, ai_menu: Any) -> None:
         )
     ai_menu.AppendSeparator()
     ai_menu.AppendSubMenu(submenu, _("Run &Agent"))
+
+
+def _ring_actions_for(controller: Any) -> list[Any]:
+    """The Selection Action Ring entries for the current document's file type.
+
+    Reads the open document's extension (best-effort) so a code file offers code
+    actions and prose offers writing actions, exactly like the concierge would
+    suggest. Falls back to the general writing ring when the type is unknown.
+    """
+    from quill.core.ai.agent_catalog import load_catalog
+    from quill.core.ai.concierge import ring_actions
+
+    file_type = ""
+    try:
+        path = getattr(getattr(controller, "document", None), "path", None)
+        if path is not None and "." in str(path):
+            file_type = str(path).rsplit(".", 1)[-1].lower()
+    except Exception:  # noqa: BLE001 - file type is best-effort context
+        file_type = ""
+    return ring_actions(file_type, load_catalog().agents)
+
+
+def append_action_ring_menu(controller: Any, ai_menu: Any) -> None:
+    """Append a context 'Rewrite & Improve' submenu from the Selection Action Ring.
+
+    Each item runs a real catalog agent with a focused instruction through the
+    reviewed Safe Editor Tool Gateway, so the entries match what the concierge
+    recommends for the current file type (writing actions for prose, code actions
+    for source). AI on/off and Safe Mode are enforced in :func:`run_agent`. Built
+    here (not the size-budgeted menu module) so the menu file needs one call.
+    """
+    from quill.core.i18n import _
+
+    wx = controller._wx
+    actions = _ring_actions_for(controller)
+    if not actions:
+        return
+    submenu = wx.Menu()
+    for action in actions:
+        item_id = wx.NewIdRef()
+        submenu.Append(item_id, action.label, action.label)
+        controller.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e, a=action: run_agent(controller, a.agent_id, instruction=a.instruction),
+            id=item_id,
+        )
+    ai_menu.AppendSubMenu(submenu, _("&Rewrite && Improve Selection"))
 
 
 def register_agent_commands(controller: Any) -> None:

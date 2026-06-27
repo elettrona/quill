@@ -13,6 +13,7 @@ from quill.core.ai.key_migration import consolidate_provider_keys_quietly
 from quill.core.data_location import apply_pending_data_location_migration
 from quill.core.features import reset_feature_profile_store
 from quill.core.paths import app_data_dir, ensure_app_directories
+from quill.core.prompt_migration import consolidate_prompts_quietly
 from quill.core.settings import load_settings as _load_settings
 from quill.stability.diagnostics import dump_all_thread_stacks, setup_fault_handler
 from quill.stability.logging_config import configure_logging
@@ -371,6 +372,7 @@ def main() -> int:
     _propagate_portable_environment()
     ensure_app_directories()
     consolidate_provider_keys_quietly()  # one provider truth (PRD 7): migrate keys
+    consolidate_prompts_quietly()  # one prompt store (AI Library): merge legacy prompts
     # Add any on-demand-installed speech engine packs (e.g. Faster Whisper) to
     # sys.path so the speech registry can find them this session (#669 follow-up).
     try:

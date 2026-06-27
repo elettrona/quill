@@ -75,6 +75,7 @@ def test_apply_ai_menu_enabled_gates_forget_key_on_presence(monkeypatch) -> None
     for name in (
         "_id_ai_hub",
         "_id_ask_quill_chat",
+        "_id_ask_quill_voice",
         "_id_ai_model",
         "_id_ai_switch_engine",
         "_id_ai_copilot_setup",

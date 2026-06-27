@@ -1433,6 +1433,7 @@ class MenuBuilderMixin:
         self._id_ai_agent_center = wx.NewIdRef()
         self._id_ai_accessibility_agent = wx.NewIdRef()
         self._id_ask_quill_chat = wx.NewIdRef()
+        self._id_ask_quill_voice = wx.NewIdRef()
         self._id_prompt_library = wx.NewIdRef()
         self._id_skill_library = wx.NewIdRef()
         self._id_check_grammar_ai = wx.NewIdRef()
@@ -1841,177 +1842,208 @@ class MenuBuilderMixin:
         )
         tools_menu.AppendSubMenu(watch_folder_menu, _("&Watch Folder"))
 
-        # AI Assistant (Speech submenu removed; read aloud is in Reading & Dictation)
+        # AI menu — promoted to a top-level "&AI" menu (was Tools > AI Assistant).
+        # Structured into four pillars: the conversation (Ask Quill), context
+        # actions + agents, task submenus, and the Library/Hub management surfaces.
+        # See docs/planning/ai-menu-redesign-plan.md.
         ai_menu = wx.Menu()
         from quill.core.ai.model_manager import load_ai_enabled
+        from quill.ui.agent_editor_host import append_action_ring_menu, append_agent_menu
 
-        ai_menu.AppendCheckItem(self._id_ai_enabled, _("Use Artificial &Intelligence"))
-        ai_menu.Check(self._id_ai_enabled, load_ai_enabled())
-        ai_menu.AppendSeparator()
+        # -- The conversation (the front door) --------------------------------
         ai_menu.Append(
             self._id_ask_quill_chat,
             self._menu_label(_("&Ask Quill..."), "tools.ask_quill_chat"),
         )
         ai_menu.Append(
-            self._id_prompt_library,
-            self._menu_label(_("&Prompt Library..."), "tools.prompt_library"),
-        )
-        ai_menu.Append(
-            self._id_skill_library,
-            self._menu_label(_("S&kill Library..."), "tools.skill_library"),
+            self._id_ask_quill_voice,
+            self._menu_label(_("Ask Quill by &Voice..."), "tools.ask_quill_conversation"),
         )
         ai_menu.AppendSeparator()
-        ai_menu.Append(
-            self._id_ai_hub,
-            self._menu_label(_("AI &Hub..."), "tools.ai_hub"),
-        )
-        # AI Model and Connection were merged into the AI Hub (one place to
-        # configure every provider, its key, model, and run Test Chat).
-        ai_menu.Append(
-            self._id_ai_switch_engine,
-            self._menu_label(_("Switch AI &Engine"), "tools.ai_switch_engine"),
-        )
-        ai_menu.Append(
-            self._id_ai_copilot_setup,
-            self._menu_label(_("Set Up GitHub &Copilot..."), "tools.copilot_onboarding"),
-        )
-        ai_menu.Append(
-            self._id_ai_validate_agents,
-            self._menu_label(_("&Validate Agents..."), "tools.validate_agents"),
-        )
-        ai_menu.Append(
-            self._id_ai_session_browser,
-            self._menu_label(_("Session &Branches..."), "tools.ai_session_browser"),
-        )
-        ai_menu.AppendSeparator()
-        ai_menu.Append(
-            self._id_ai_assistant,
-            self._menu_label(_("&Writing Assistant..."), "tools.ai_assistant"),
-        )
-        ai_menu.Append(
-            self._id_ai_prompt_studio,
-            self._menu_label(_("Prompt &Studio..."), "tools.ai_prompt_studio"),
-        )
-        ai_menu.Append(
-            self._id_ai_agent_center,
-            self._menu_label(_("Agent &Center..."), "tools.ai_agent_center"),
-        )
+
+        # -- Context actions + agents -----------------------------------------
+        # Accessibility Tune-Up stays first-class for the screen-reader audience.
         ai_menu.Append(
             self._id_ai_accessibility_agent,
             self._menu_label(_("Accessibility &Tune-Up..."), "tools.ai_accessibility_agent"),
         )
+        # "Rewrite & Improve" is generated from the Selection Action Ring so the
+        # entries fit the current file type; "Run Agent" lists the full catalog.
+        append_action_ring_menu(self, ai_menu)
+        append_agent_menu(self, ai_menu)
         ai_menu.AppendSeparator()
-        ai_menu.Append(
-            self._id_ai_rewrite_selection,
-            self._menu_label(_("&Rewrite Selection"), "tools.ai_rewrite_selection"),
-        )
-        ai_menu.Append(
-            self._id_ai_summarize_selection,
-            self._menu_label(_("&Summarize Selection"), "tools.ai_summarize_selection"),
-        )
-        ai_menu.Append(
-            self._id_ai_expand_selection,
-            self._menu_label(_("E&xpand Selection"), "tools.ai_expand_selection"),
-        )
-        ai_menu.Append(
-            self._id_ai_generate_toc,
-            self._menu_label(_("Generate &Table of Contents"), "tools.ai_generate_toc"),
-        )
-        ai_menu.Append(
-            self._id_ai_continue_writing,
-            self._menu_label(_("&Continue Writing"), "tools.ai_continue_writing"),
-        )
-        ai_menu.Append(
-            self._id_ai_fix_grammar,
-            self._menu_label(_("Fix &Grammar"), "tools.ai_fix_grammar"),
-        )
-        ai_menu.Append(
+
+        # -- Proofread --------------------------------------------------------
+        proofread_menu = wx.Menu()
+        proofread_menu.Append(
             self._id_check_grammar_ai,
             self._menu_label(_("Check Grammar with &AI..."), "tools.check_grammar_ai"),
         )
-        # #357 keymap consolidation: the F7/Shift+F7/F8/Shift+F8/Ctrl+Shift+T
-        # inline accelerators were stripped; the canonical bindings now live
-        # in DEFAULT_KEYMAP as Ctrl+Alt+Shift+S/I/G/T/H (see
-        # quill/core/keymap.py).  Inline accelerators are kept only where
-        # they remain the canonical binding and no chord keymap entry
-        # exists for the command.
-        ai_menu.AppendSeparator()
-        ai_menu.Append(
-            self._id_ai_spell_check,
-            self._menu_label(_("AI &Spell Check..."), "tools.ai_spell_check"),
-        )
-        ai_menu.Append(
-            self._id_ai_spell_check_interactive,
-            self._menu_label(
-                _("AI Spell Check &Interactive..."), "tools.ai_spell_check_interactive"
-            ),
-        )
-        ai_menu.Append(
+        proofread_menu.Append(
             self._id_ai_grammar_style,
-            self._menu_label(_("AI &Grammar and Style Check..."), "tools.ai_grammar_style"),
+            self._menu_label(_("&Grammar and Style Check..."), "tools.ai_grammar_style"),
         )
-        ai_menu.AppendSeparator()
-        ai_menu.Append(
+        proofread_menu.Append(
+            self._id_ai_spell_check,
+            self._menu_label(_("&Spell Check..."), "tools.ai_spell_check"),
+        )
+        proofread_menu.Append(
+            self._id_ai_spell_check_interactive,
+            self._menu_label(_("Spell Check &Interactive..."), "tools.ai_spell_check_interactive"),
+        )
+        ai_menu.AppendSubMenu(proofread_menu, _("&Proofread"))
+
+        # -- Transform Selection (single-shot verbs; canonical Ctrl+Alt+Shift+ chords)
+        transform_menu = wx.Menu()
+        transform_menu.Append(
+            self._id_ai_rewrite_selection,
+            self._menu_label(_("&Rewrite Selection"), "tools.ai_rewrite_selection"),
+        )
+        transform_menu.Append(
+            self._id_ai_summarize_selection,
+            self._menu_label(_("&Summarize Selection"), "tools.ai_summarize_selection"),
+        )
+        transform_menu.Append(
+            self._id_ai_expand_selection,
+            self._menu_label(_("E&xpand Selection"), "tools.ai_expand_selection"),
+        )
+        transform_menu.Append(
+            self._id_ai_continue_writing,
+            self._menu_label(_("&Continue Writing"), "tools.ai_continue_writing"),
+        )
+        transform_menu.Append(
+            self._id_ai_fix_grammar,
+            self._menu_label(_("Fix &Grammar"), "tools.ai_fix_grammar"),
+        )
+        transform_menu.Append(
+            self._id_ai_generate_toc,
+            self._menu_label(_("Generate &Table of Contents"), "tools.ai_generate_toc"),
+        )
+        ai_menu.AppendSubMenu(transform_menu, _("Trans&form Selection"))
+
+        # -- Translate --------------------------------------------------------
+        translate_menu = wx.Menu()
+        translate_menu.Append(
             self._id_ai_translate_selection,
             self._menu_label(_("Translate &Selection..."), "tools.ai_translate_selection"),
         )
-        ai_menu.Append(
+        translate_menu.Append(
             self._id_ai_translate_document,
             self._menu_label(_("Translate &Document..."), "tools.ai_translate_document"),
         )
-        ai_menu.AppendSeparator()
-        ai_menu.Append(
-            self._id_ai_transcribe_audio,
-            self._menu_label(_("Transcri&be Audio File..."), "tools.ai_transcribe_audio"),
-        )
-        ai_menu.Append(
-            self._id_ai_translate_audio,
-            self._menu_label(_("&Translate Audio File to English..."), "tools.ai_translate_audio"),
-        )
-        ai_menu.AppendSeparator()
-        ai_menu.Append(
+        ai_menu.AppendSubMenu(translate_menu, _("Tra&nslate"))
+
+        # -- Read Aloud (AI voice) --------------------------------------------
+        read_aloud_menu = wx.Menu()
+        read_aloud_menu.Append(
             self._id_ai_tts_read_selection,
-            self._menu_label(_("Read &Selection Aloud (AI Voice)"), "tools.ai_tts_read_selection"),
+            self._menu_label(_("Read &Selection Aloud"), "tools.ai_tts_read_selection"),
         )
-        ai_menu.Append(
+        read_aloud_menu.Append(
             self._id_ai_tts_read_document,
-            self._menu_label(_("Read &Document Aloud (AI Voice)"), "tools.ai_tts_read_document"),
+            self._menu_label(_("Read &Document Aloud"), "tools.ai_tts_read_document"),
         )
-        ai_menu.Append(
+        read_aloud_menu.Append(
             self._id_ai_tts_stop,
             self._menu_label(_("Sto&p AI Reading"), "tools.ai_tts_stop"),
         )
-        ai_menu.Append(
+        read_aloud_menu.Append(
             self._id_ai_tts_export_mp3,
             self._menu_label(_("E&xport Document as Audio..."), "tools.ai_tts_export_mp3"),
         )
-        ai_menu.AppendSeparator()
-        ai_menu.Append(
+        ai_menu.AppendSubMenu(read_aloud_menu, _("Read A&loud"))
+
+        # -- Transcribe audio -------------------------------------------------
+        transcribe_menu = wx.Menu()
+        transcribe_menu.Append(
+            self._id_ai_transcribe_audio,
+            self._menu_label(_("Transcri&be Audio File..."), "tools.ai_transcribe_audio"),
+        )
+        transcribe_menu.Append(
+            self._id_ai_translate_audio,
+            self._menu_label(_("&Translate Audio to English..."), "tools.ai_translate_audio"),
+        )
+        ai_menu.AppendSubMenu(transcribe_menu, _("Transcri&be Audio"))
+
+        # -- More -------------------------------------------------------------
+        more_menu = wx.Menu()
+        more_menu.Append(
             self._id_ai_document_qa,
             self._menu_label(_("Document &Q&&A..."), "tools.ai_document_qa"),
         )
-        ai_menu.Append(
+        more_menu.Append(
             self._id_ai_thesaurus,
-            self._menu_label(_("AI &Thesaurus..."), "tools.ai_thesaurus"),
+            self._menu_label(_("AI T&hesaurus..."), "tools.ai_thesaurus"),
         )
-        ai_menu.AppendSeparator()
-        ai_menu.Append(
+        more_menu.Append(
             self._id_train_style,
             self._menu_label(_("&Train Writing Style..."), "tools.train_writing_style"),
         )
-        ai_menu.Append(
+        more_menu.Append(
             self._id_writing_instructions,
             self._menu_label(_("&Writing Instructions..."), "tools.writing_instructions"),
         )
-        from quill.ui.agent_editor_host import append_agent_menu
+        ai_menu.AppendSubMenu(more_menu, _("&More"))
+        ai_menu.AppendSeparator()
 
-        append_agent_menu(self, ai_menu)
+        # -- AI Library (Prompts / Skills / Agents — transitional grouping) ---
+        # These collapse into one unified, tabbed manager next; for now they are
+        # grouped under a single heading so the management surfaces stop scattering.
+        library_menu = wx.Menu()
+        library_menu.Append(
+            self._id_prompt_library,
+            self._menu_label(_("&Prompts..."), "tools.prompt_library"),
+        )
+        library_menu.Append(
+            self._id_skill_library,
+            self._menu_label(_("S&kills..."), "tools.skill_library"),
+        )
+        library_menu.Append(
+            self._id_ai_agent_center,
+            self._menu_label(_("&Agents..."), "tools.ai_agent_center"),
+        )
+        library_menu.Append(
+            self._id_ai_prompt_studio,
+            self._menu_label(_("Prompt &Studio..."), "tools.ai_prompt_studio"),
+        )
+        library_menu.Append(
+            self._id_ai_assistant,
+            self._menu_label(_("&Writing Assistant..."), "tools.ai_assistant"),
+        )
+        library_menu.Append(
+            self._id_ai_validate_agents,
+            self._menu_label(_("&Validate Agents..."), "tools.validate_agents"),
+        )
+        ai_menu.AppendSubMenu(library_menu, _("AI &Library"))
+
+        # -- Configuration ----------------------------------------------------
+        # The AI Hub is the single config front door (provider, key, model, test).
+        ai_menu.Append(
+            self._id_ai_hub,
+            self._menu_label(_("AI &Hub..."), "tools.ai_hub"),
+        )
+        engine_menu = wx.Menu()
+        engine_menu.Append(
+            self._id_ai_switch_engine,
+            self._menu_label(_("Switch AI &Engine"), "tools.ai_switch_engine"),
+        )
+        engine_menu.Append(
+            self._id_ai_session_browser,
+            self._menu_label(_("Session &Branches..."), "tools.ai_session_browser"),
+        )
+        engine_menu.Append(
+            self._id_ai_copilot_setup,
+            self._menu_label(_("Set Up GitHub &Copilot..."), "tools.copilot_onboarding"),
+        )
+        ai_menu.AppendSubMenu(engine_menu, _("&Engine && Sessions"))
+        ai_menu.AppendSeparator()
+
+        # -- Master switch ----------------------------------------------------
+        ai_menu.AppendCheckItem(self._id_ai_enabled, _("Use Artificial &Intelligence"))
+        ai_menu.Check(self._id_ai_enabled, load_ai_enabled())
         # "Forget API Key" moved into the AI Hub as a per-provider action
         # ("Forget this provider's key"), since a single global forget is
         # ambiguous once each provider keeps its own key.
-        _ai_top_level = self._feature_enabled("future.ai_menu_top_level")
-        if not _ai_top_level:
-            tools_menu.AppendSubMenu(ai_menu, _("AI &Assistant"))
 
         # BITS Whisperer (conditional, deferred to QUILL 2.0) ----------------
         # "About Whisperer" was folded into the single About Quill dialog.
@@ -2369,8 +2401,7 @@ class MenuBuilderMixin:
         menu_bar.Append(navigate_menu, _("&Navigate"))
         menu_bar.Append(search_menu, _("&Search"))
         menu_bar.Append(tools_menu, _("&Tools"))
-        if _ai_top_level:
-            menu_bar.Append(ai_menu, _("&AI"))
+        menu_bar.Append(ai_menu, _("&AI"))
         menu_bar.Append(window_menu, _("&Window"))
         menu_bar.Append(help_menu, _("&Help"))
 

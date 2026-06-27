@@ -3634,6 +3634,7 @@ class MainFrame(
             "tools.skill_library": self._id_skill_library,
             "tools.check_grammar_ai": self._id_check_grammar_ai,
             "tools.ask_quill_chat": self._id_ask_quill_chat,
+            "tools.ask_quill_conversation": self._id_ask_quill_voice,
             "tools.ai_model": self._id_ai_model,
             "tools.ai_switch_engine": self._id_ai_switch_engine,
             "tools.copilot_onboarding": self._id_ai_copilot_setup,
@@ -10843,7 +10844,6 @@ class MainFrame(
         ai_value: bool | None = None
         ext_master_value: bool | None = None
         ext_engine_spec: tuple[str, str, bool] | None = None
-        ai_menu_top_level_value: bool | None = None
         data_location_choice: tuple[str, str] | None = None
 
         with wx.Dialog(self.frame, title="Settings") as dialog:
@@ -11437,15 +11437,8 @@ class MainFrame(
                         _ps.Add(_ef, 0, wx.ALL, 6)
                         _ai_refs["ext_engine_enabled_cb"] = _ef
                         _ps.Add(wx.StaticLine(_p), 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 6)
-                        _tl_cb = wx.CheckBox(_p, label="Show AI as a top-level menu")
-                        _tl_cb.SetValue(self._feature_enabled("future.ai_menu_top_level"))
-                        _tl_cb.SetName(
-                            "Show AI as a top-level menu. "
-                            "Promotes AI Assistant from the Tools submenu to its own "
-                            "entry in the menu bar. Takes effect immediately."
-                        )
-                        _ps.Add(_tl_cb, 0, wx.ALL, 6)
-                        _ai_refs["ai_menu_top_level_cb"] = _tl_cb
+                        # AI is always a top-level "&AI" menu now (the former
+                        # opt-in toggle was retired, 2026-06-27).
                         _ps.Add(
                             wx.StaticText(
                                 _p,
@@ -11680,11 +11673,6 @@ class MainFrame(
                             )
                         except ValueError as _ve:
                             self._set_status(str(_ve))
-                _tl_cb2 = _ai_refs.get("ai_menu_top_level_cb")
-                if _tl_cb2 is not None:
-                    self.features.set_feature_enabled(
-                        "future.ai_menu_top_level", bool(_tl_cb2.GetValue())
-                    )
                 self._settings_dialog_apply_refresh("Settings applied")
                 _dirty[0] = False
                 _apply_btn.Enable(False)
@@ -11729,9 +11717,6 @@ class MainFrame(
                         str(_cf.GetValue()),
                         bool(_ef.GetValue()) if _ef is not None else False,
                     )
-                _tl_cb = _ai_refs.get("ai_menu_top_level_cb")
-                if _tl_cb is not None:
-                    ai_menu_top_level_value = bool(_tl_cb.GetValue())
                 _read_data_location = _data_location_refs.get("read")
                 if _read_data_location is not None:
                     data_location_choice = _read_data_location()
@@ -11774,8 +11759,6 @@ class MainFrame(
                     )
                 except ValueError as error:
                     self._set_status(str(error))
-        if ai_menu_top_level_value is not None:
-            self.features.set_feature_enabled("future.ai_menu_top_level", ai_menu_top_level_value)
         if data_location_choice is not None:
             chosen_mode, chosen_custom = data_location_choice
             resolve_target_fn = _data_location_refs.get("resolve_target")
@@ -21176,6 +21159,7 @@ class MainFrame(
         ai_item_ids = (
             self._id_ai_hub,
             self._id_ask_quill_chat,
+            self._id_ask_quill_voice,
             self._id_ai_model,
             self._id_ai_switch_engine,
             self._id_ai_copilot_setup,
