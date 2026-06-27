@@ -375,6 +375,8 @@ class Settings:
     batch_speech_sentence_gap_ms: int = 0  # 0-10000; pause between sentences (opt-in; see docs)
     batch_speech_tail_padding_ms: int = 300  # 0-10000; trailing pad per section (anti-clipping)
     batch_speech_intro_section_title: str = "Introduction"
+    batch_speech_temp_folder: str = ""  # parent for scratch dirs; blank = system temp
+    batch_speech_save_spoken_text: bool = False  # also save the text sent to the engine
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Settings:
@@ -933,6 +935,8 @@ class Settings:
             str(data.get("batch_speech_intro_section_title", "Introduction")).strip()
             or "Introduction"
         )
+        batch_speech_temp_folder = str(data.get("batch_speech_temp_folder", "")).strip()
+        batch_speech_save_spoken_text = bool(data.get("batch_speech_save_spoken_text", False))
         if recent_files_limit < 1:
             recent_files_limit = 1
         if recent_files_limit > 50:
@@ -1165,6 +1169,8 @@ class Settings:
             batch_speech_article_gap_ms=batch_speech_article_gap_ms,
             batch_speech_sentence_gap_ms=batch_speech_sentence_gap_ms,
             batch_speech_tail_padding_ms=batch_speech_tail_padding_ms,
+            batch_speech_temp_folder=batch_speech_temp_folder,
+            batch_speech_save_spoken_text=batch_speech_save_spoken_text,
             batch_speech_intro_section_title=batch_speech_intro_section_title,
         )
 
