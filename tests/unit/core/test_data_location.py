@@ -145,3 +145,86 @@ def test_resolve_target_rejects_portable_without_a_bundle(
     monkeypatch.setattr(storage_mode.sys, "executable", str(fake_exe_dir / "python.exe"))
     with pytest.raises(ValueError, match="Portable mode is not available"):
         data_location.resolve_target("portable")
+
+
+@pytest.fixture
+def legacy_setup(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> tuple[Path, Path]:
+    """A populated prior-install dir plus a fresh, empty current data dir.
+
+    Models the upgrade case the import feature exists for: the active
+    (current) data dir is fresh, while a real QUILL install's data is
+    stranded at a different location -- here the %APPDATA%/Quill default,
+    while the current dir is a separate custom location.
+    """
+    monkeypatch.delenv("QUILL_DATA_DIR", raising=False)
+    monkeypatch.delenv("QUILL_APP_ROOT", raising=False)
+    monkeypatch.setenv("APPDATA", str(tmp_path / "appdata"))
+    legacy = tmp_path / "appdata" / "Quill"
+    legacy.mkdir(parents=True)
+    (legacy / "settings.json").write_text('{"theme": "dark"}', encoding="utf-8")
+    (legacy / "keymap.json").write_text('{"edit.find": "Ctrl+Shift+Grave, Z"}', encoding="utf-8")
+    current = tmp_path / "custom-home"
+    current.mkdir()
+    storage_mode.save_storage_mode("custom", path=current)
+    assert app_data_dir().resolve() == current.resolve()
+    return legacy, current
+
+
+def test_detect_finds_populated_legacy_dir(legacy_setup: tuple[Path, Path]) -> None:
+    legacy, _current = legacy_setup
+    assert data_location.detect_importable_legacy_dir() == legacy.resolve()
+
+
+def test_detect_returns_none_when_current_already_has_a_keymap(
+    legacy_setup: tuple[Path, Path],
+) -> None:
+    _legacy, current = legacy_setup
+    (current / "keymap.json").write_text("{}", encoding="utf-8")
+    assert data_location.detect_importable_legacy_dir() is None
+
+
+def test_detect_returns_none_when_no_legacy_dir_is_populated(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("QUILL_DATA_DIR", raising=False)
+    monkeypatch.delenv("QUILL_APP_ROOT", raising=False)
+    monkeypatch.setenv("APPDATA", str(tmp_path / "appdata"))
+    (tmp_path / "appdata" / "Quill").mkdir(parents=True)
+    assert data_location.detect_importable_legacy_dir() is None
+
+
+def test_apply_legacy_import_moves_content_and_leaves_storage_mode_behind(
+    legacy_setup: tuple[Path, Path],
+) -> None:
+    legacy, current = legacy_setup
+
+    data_location.request_legacy_data_import(legacy)
+    data_location.apply_pending_legacy_import()
+
+    # User content imported into the current (active) dir.
+    assert (current / "settings.json").read_text(encoding="utf-8") == '{"theme": "dark"}'
+    assert (current / "keymap.json").exists()
+    # storage-mode.json is never carried across -- moving it would re-point the
+    # active data dir back at the now-emptied source.
+    assert not (current / "storage-mode.json").exists()
+    assert (legacy / "storage-mode.json").exists()
+    # One-time success notice is queued for the UI to surface.
+    notice = data_location.pop_pending_migration_notice()
+    assert notice is not None and "Imported" in notice
+    # The pending marker is consumed.
+    assert not (current / "pending-legacy-import.json").exists()
+
+
+def test_apply_legacy_import_is_a_noop_without_a_marker(
+    legacy_setup: tuple[Path, Path],
+) -> None:
+    _legacy, current = legacy_setup
+    data_location.apply_pending_legacy_import()
+    assert not (current / "settings.json").exists()
+
+
+def test_decline_legacy_import_round_trips(legacy_setup: tuple[Path, Path]) -> None:
+    legacy, _current = legacy_setup
+    assert data_location.legacy_data_import_declined(legacy) is False
+    data_location.decline_legacy_data_import(legacy)
+    assert data_location.legacy_data_import_declined(legacy) is True

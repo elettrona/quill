@@ -612,6 +612,7 @@ def save_assistant_connection_settings(settings: AssistantConnectionSettings) ->
     payload["provider"] = settings.provider.strip().lower() or "ollama"
     payload["host"] = settings.host.strip() or default_host_for_provider(payload["provider"])
     payload["model"] = settings.model.strip() or default_model_for_provider(payload["provider"])
+    payload["schema_version"] = 1  # persistence contract
     write_json_atomic(assistant_connection_path(), payload)
 
 
@@ -732,25 +733,33 @@ def provider_models_path() -> Path:
     return assistant_connection_path().parent / "assistant-provider-models.json"
 
 
+def _provider_models_map(raw: object) -> dict[str, object]:
+    """Extract the {provider: model} map from the versioned envelope or legacy flat file."""
+    if not isinstance(raw, dict):
+        return {}
+    inner = raw.get("models")
+    if isinstance(inner, dict):
+        return inner
+    # Legacy: the file was the bare flat map (no envelope).
+    return {} if "schema_version" in raw else raw
+
+
 def load_provider_model(provider: str) -> str:
     """Return the saved default model for *provider*, or "" if none."""
-    raw = read_json(provider_models_path(), default={})
-    if not isinstance(raw, dict):
-        return ""
-    return str(raw.get(provider.strip().lower(), "")).strip()
+    models = _provider_models_map(read_json(provider_models_path(), default={}))
+    return str(models.get(provider.strip().lower(), "")).strip()
 
 
 def save_provider_model(provider: str, model: str) -> None:
     """Remember (or clear, when empty) the default model for *provider*."""
     key = provider.strip().lower() or "ollama"
-    raw = read_json(provider_models_path(), default={})
-    data = dict(raw) if isinstance(raw, dict) else {}
+    data = dict(_provider_models_map(read_json(provider_models_path(), default={})))
     value = model.strip()
     if value:
         data[key] = value
     else:
         data.pop(key, None)
-    write_json_atomic(provider_models_path(), data)
+    write_json_atomic(provider_models_path(), {"schema_version": 1, "models": data})
 
 
 def set_active_provider(settings: AssistantConnectionSettings, api_key: str) -> None:

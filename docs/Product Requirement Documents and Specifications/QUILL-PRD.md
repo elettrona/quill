@@ -130,7 +130,6 @@ Menu structure:
   - Document Intake
   - AI Assistant *(demoted from top level; promotable back via Customize Menus)*
   - Authoring and Automation
-  - GLOW
   - Macros
   - Compare Documents
   - Accessibility *(includes cursor address / document status / selection-length status queries)*
@@ -138,7 +137,6 @@ Menu structure:
   - Customize
   - Power Tools *(editor-behavior power toggles grouped together where no other menu is a natural home)*
   - Quillins *(includes **Text Tools** for line transforms/regex and **Insert Tools** for date/time placeholders)*
-  - Dictation and Watch Folder Automation (BITS Whisperer) appears here when enabled.
 - **Window**: document/tab management actions.
 - **Help**: contextual help, onboarding docs, feature profile support, updates, and About.
 
@@ -776,9 +774,9 @@ source_metadata = {
 | User saves edits back to .docx, loses formatting | Data loss if user relies on styles | Always prompt before save: "Saving as plain text. Continue?" + option to cancel |
 | Memory explosion from embedded media | Out-of-memory crash | Pre-check file size; if > 50 MB, warn; if > 100 MB, offer async extraction |
 
-#### 5.3b.10a Extraction Quality Diagnostics (Inspired by GLOW)
+#### 5.3b.10a Extraction Quality Diagnostics
 
-GLOW's document auditor and fixer provide patterns for deeply analyzing Word documents. Quill adopts similar diagnostic techniques to produce actionable extraction warnings:
+Quill applies accessibility-aware diagnostic techniques to deeply analyze Word documents and produce actionable extraction warnings:
 
 **Paragraph-level diagnostics:**
 
@@ -801,7 +799,7 @@ GLOW's document auditor and fixer provide patterns for deeply analyzing Word doc
 - **Per-paragraph confidence**: If Pandoc succeeded but python-docx fallback was triggered for some content, track which paragraphs used fallback
 - **Engine switch detection**: If Pandoc extracted pages 1–8 but python-docx took pages 9–12, surface this as "Extraction method changed mid-document" warning
 
-**Example source_metadata structure with GLOW-inspired diagnostics:**
+**Example source_metadata structure with accessibility-aware diagnostics:**
 
 ```python
 source_metadata = {
@@ -810,7 +808,7 @@ source_metadata = {
     "engine": "pandoc",
     "engine_version": "3.1.0",
     "quality_score": 78,  # Reduced from 85 due to diagnostics
-    # GLOW-inspired diagnostics
+    # accessibility-aware diagnostics
     "extraction_diagnostics": {
         "fake_lists_detected": 2,  # Manually typed bullets
         "all_caps_paragraphs": 1,  # Heading-like caps text
@@ -1086,11 +1084,10 @@ Quill prioritizes **linear text extraction and speaker notes over slide visual p
 - ❌ Form controls or interactive content
 - ❌ Presenter view or presenter notes as a separate stream
 
-#### 5.3c.4 Slide Linearization with Reading-Order Detection (GLOW-Inspired)
+#### 5.3c.4 Slide Linearization with Reading-Order Detection
+PowerPoint is inherently non-linear. Quill converts to linear text with intelligent, accessibility-aware reading-order analysis:
 
-PowerPoint is inherently non-linear. Quill converts to linear text with intelligent reading-order analysis inspired by GLOW's accessibility auditor:
-
-GLOW discovered that screen readers follow the XML tree order of shapes, not the visual layout. When these don't match, screen readers read slides in the wrong order. Quill analyzes both orders and extracts in visual order (what user sees) while flagging reading-order mismatches to the user.
+Screen readers follow the XML tree order of shapes, not the visual layout. When these don't match, screen readers read slides in the wrong order. Quill analyzes both orders and extracts in visual order (what user sees) while flagging reading-order mismatches to the user.
 
 **Output: Intelligent slide extraction with reading-order diagnostics**
 
@@ -1119,8 +1116,7 @@ Center callout (center position):
   Shapes in reading order: Title → Left → Right → Center
 ```
 
-#### 5.3c.5 Smart Speaker Notes Extraction (GLOW-Inspired)
-
+#### 5.3c.5 Smart Speaker Notes Extraction
 Speaker notes are **always extracted and separately indexed** with intelligent metadata:
 
 - Presence detection: slide has/lacks notes
@@ -1145,9 +1141,8 @@ Example metadata:
 
 > "Slide 5 of 15: Results. Speaker notes mention slide visuals and timing. Notes say: 'Reference the chart. This slide auto-advances in 5 seconds.'"
 
-#### 5.3c.6 Animations and Timing Detection with WCAG Analysis (GLOW-Inspired)
-
-Animations are **detected, categorized, and intelligently reported** using GLOW's WCAG timing analysis:
+#### 5.3c.6 Animations and Timing Detection with WCAG Analysis
+Animations are **detected, categorized, and intelligently reported** using WCAG timing analysis:
 
 - Slide-level auto-advance timing (WCAG 2.2.1): < 3 seconds flagged as violation
 - Shape-level animations: entrance, exit, click-triggered animations categorized
@@ -1167,9 +1162,8 @@ Example output:
   ⚠ Warning: Slide 3 auto-advances in 2.5s (< 3s WCAG recommendation)
 ```
 
-#### 5.3c.7 Slide Title Analysis (GLOW-Inspired)
-
-GLOW discovered that duplicate or missing slide titles break outline navigation. Quill analyzes titles:
+#### 5.3c.7 Slide Title Analysis
+Duplicate or missing slide titles break outline navigation. Quill analyzes titles:
 
 - Missing titles: slide has no title shape
 - Duplicate titles: same title on multiple slides
@@ -1187,17 +1181,15 @@ Example diagnostics:
 }
 ```
 
-#### 5.3c.8 Link and Alt-Text Quality Analysis (GLOW-Inspired)
-
-GLOW discovered accessibility patterns in hyperlinks and alt text. Quill checks for:
+#### 5.3c.8 Link and Alt-Text Quality Analysis
+Quill checks for accessibility patterns in hyperlinks and alt text:
 
 - **Bad link text**: "click here", "here", "link", "more"
 - **Bare URLs**: raw URLs used as link text instead of descriptive text
 - **Missing alt text**: images and charts without descriptions
 - **Filename alt text**: alt text that's just the image filename (unhelpful)
 
-#### 5.3c.9 Chart and Visual Content Analysis (GLOW-Inspired)
-
+#### 5.3c.9 Chart and Visual Content Analysis
 Quill detects charts, SmartArt, and images. For charts:
 
 - Extracts chart type (column, line, pie, etc.)
@@ -1205,9 +1197,9 @@ Quill detects charts, SmartArt, and images. For charts:
 - Checks for alt text describing the chart
 - Attempts to infer data values from label positions (with caution warnings)
 
-#### 5.3c.10 Extraction Quality Diagnostics (GLOW-Inspired Comprehensive Scoring)
+#### 5.3c.10 Extraction Quality Diagnostics (Comprehensive Scoring)
 
-Instead of simple text-density scoring, Quill implements **findings-based quality scoring** modeled after GLOW's audit approach:
+Instead of simple text-density scoring, Quill implements **findings-based quality scoring**:
 
 **Quality scoring system:**
 
@@ -1381,7 +1373,7 @@ def test_animations_detected():
 
 ### 5.4 Excel and CSV support (XLSX / XLS / CSV)
 
-This section specifies Quill's support for tabular data formats: Excel workbooks (.xlsx, .xls) and CSV files (.csv, .tsv). The design prioritizes **accessible grid-based editing mode** as an alternative to traditional spreadsheet UIs, with keyboard-first navigation and GLOW-inspired data quality analysis.
+This section specifies Quill's support for tabular data formats: Excel workbooks (.xlsx, .xls) and CSV files (.csv, .tsv). The design prioritizes **accessible grid-based editing mode** as an alternative to traditional spreadsheet UIs, with keyboard-first navigation and accessibility-aware data quality analysis.
 
 #### 5.4.1 Design Philosophy: Accessible Grid, Not Spreadsheet
 
@@ -1464,13 +1456,13 @@ Traditional spreadsheets (Excel, LibreOffice Calc) are visual-first and mouse-or
 - Shift+Spacebar: Select entire row
 - Ctrl+A: Select all cells
 
-#### 5.4.4 Transformational Features (GLOW-Inspired Data Analysis)
+#### 5.4.4 Transformational Features (Data Quality Analysis)
 
 **Quick stats (Ctrl+Alt+S):**
 When a numeric column is selected, Ctrl+Alt+S opens statistics panel showing Sum, Average, Median, Min, Max, Standard Deviation.
 
 **Data validation and quality (Ctrl+Alt+V):**
-GLOW-inspired findings-based approach: detect empty cells, duplicates, type mismatches, outliers, inconsistent formatting with quality score and auto-fix suggestions.
+Findings-based approach: detect empty cells, duplicates, type mismatches, outliers, inconsistent formatting with quality score and auto-fix suggestions.
 
 **Pivot table (Ctrl+Alt+P):**
 Group by column with aggregation (Sum, Average, Count, Min, Max).
@@ -1494,7 +1486,7 @@ Mark cells based on conditions (e.g., "Salary > $90,000" adds comment).
 
 When opening Excel files with multiple sheets, user is prompted to load sheet, combine all, or create separate documents. Sheet navigation via Ctrl+Page Down/Up.
 
-#### 5.4.6 Format Detection (GLOW-Inspired Type Inference)
+#### 5.4.6 Format Detection (Type Inference)
 
 When opening CSV or Excel files, Quill auto-detects column types (Text, Integer, Float, Date, Boolean, Currency), date format, currency symbols, encoding, and delimiters with quality assessment.
 
@@ -1506,8 +1498,7 @@ Users can save to CSV, TSV, Pipe-delimited, Excel (.xlsx), JSON, HTML table, Mar
 
 Quill uses Microsoft's MarkItDown library as a Tier 1 converter for Excel files, PDF tables, and web tables, converting all tabular formats to CSV for consistent editing.
 
-#### 5.4.9 Data Quality and Accessibility Patterns (GLOW-Inspired)
-
+#### 5.4.9 Data Quality and Accessibility Patterns
 Built-in audits for column type consistency, dataset completeness, duplicate detection, and outlier analysis with actionable suggestions.
 
 #### 5.4.10 Testing Strategy
@@ -1708,6 +1699,19 @@ This is a centrepiece of v0.2. See [section 7](#7-command-palette-deep-dive) for
 
 - **General**, **Editing**, **Reading**, **Spell check**, **PDF and AI**, **Files**, **Appearance**, **Backups**, **Keyboard** (see [section 8](#8-keymap-and-keystroke-reassignment)), **Privacy**.
 
+#### 5.14a Persistence and migration contract
+
+All persisted user state follows one release-to-release contract so upgrades never strand users, hide new defaults, or pin stale ones. Canonical reference: `docs/design/persistence-and-migration.md`.
+
+- **Defaults in code; disk stores only the delta.** Each store (`settings.json`, `keymap.json`, `features.json`) persists only the fields the user changed from the code-defined default, plus a schema/epoch version stamp. Consequences: a newly added setting arrives at its default automatically (absent from old files); a changed default reaches every user who did not override that field; user customizations are the only thing written, so they survive verbatim. A full snapshot — the prior `settings.json` shape (`schema_version` 1) and the prior `keymap.json` shape — pinned every field and was the root cause of changed defaults never reaching users; both are now deltas (`schema_version` 2 / `_defaults_epoch` 1).
+- **Migrate-and-back-up on load.** A file predating the current schema is rewritten to the canonical delta exactly once; the original is first copied to `migration-backups/<store>-v<old>-<timestamp>.json` (most-recent-few retained) so the conversion is reversible. Validation is field-by-field: a corrupt value falls back to its default without discarding siblings. Persistence is best-effort (a read-only/locked dir never blocks startup).
+- **Reusable plumbing.** `quill/core/versioned_store.py` (`load_with_migration(path, *, store_name, parse, serialize, is_legacy, default)`) encapsulates the load→migrate→backup→resave dance; `quill/core/migration_backup.py` provides the shared pre-migration backup. A new store supplies four callables; a new schema bump changes `serialize`/`parse` and raises the version. Settings serialization lives in `quill/core/settings_migration.py`.
+- **Recommended (force-once) updates.** When an *important* default change must reach users who already overrode the field (canonical case: restoring Find to `Ctrl+F`), `quill/core/recommended_updates.py` holds a versioned registry of `RecommendedKeymapUpdate`s. Each applies at most once per user — the applied id is recorded in `settings.applied_recommended_updates` — then the binding is never force-touched again. The whole mechanism is opt-out via `settings.apply_recommended_keymap_updates` (default on); applied at startup by `MainFrame._apply_recommended_keymap_updates()` after settings + keymap load.
+- **Migration notice (surfacing).** A rich `migration_notice` setting (`silent` / `announce` / `prompt`, default `announce`; Administration group, searchable spec) controls how a migration is surfaced. `migration_backup.pop_recent_migrations()` reports stores migrated this launch; `MainFrame._surface_migration_notice()` (a startup task) briefly announces or shows a summary dialog accordingly. Recommended keymap updates are reversible: `_apply_recommended_keymap_updates` captures the prior bindings, and `undo_recommended_keymap_updates()` (command `tools.undo_recommended_updates`, and the prompt's Undo button) restores them while leaving the update ids marked applied so the change does not re-fire.
+- **One-time startup maintenance.** `quill/core/startup_maintenance.py` runs epoch-gated, run-once cleanups of regenerable diagnostic clutter (`logs/`, `crash-reports/`, `diagnostics/`) so upgraders from the early beta start clean. It runs in `quill.__main__.main()` after `ensure_app_directories()` and before `configure_logging()` (so clearing `logs/` is safe), gated by a `startup-maintenance.json` marker; it never touches documents, autosaves, backups, recovery, or settings.
+- **Installer interaction.** The Windows installer (`scripts/build_windows_distribution.py`, `[InstallDelete]`) cleanly replaces the first-party `quill` package (and stray `__pycache__`) on every install to prevent version-skew import crashes, while leaving the embedded runtime, bundled tools, and `%APPDATA%\Quill` user data untouched — the migration contract above, not an installer wipe, is what keeps config safe across releases.
+- **Reset surfaces.** Each subsystem has a factory reset behind a warning: Settings dialog **Reset to Factory Defaults** (`registry.reset_all`), **Reset Keymap** (`reset_keymap`), and the Menu Editor reset. A unified **Reset Everything to Factory Defaults** (`tools.reset_all_defaults`, `MainFrame.reset_all_to_factory_defaults`, in Tools → Customize & Support) resets settings + keymap + menu customization + feature profile in one confirmed step; each writes its clean factory delta, and user documents/autosaves/backups/recovery are never touched.
+
 ### 5.15 Plugin system (v1.1)
 
 - Plugins are Python packages discovered in `%APPDATA%\Quill\plugins`.
@@ -1900,7 +1904,7 @@ Quill ships a read-aloud feature that uses a **secondary** voice the user picks 
 
 ### 5.25b Watch Folder automation
 
-Quill provides an optional watch-folder workflow under `BITS Whisperer -> Dictation and Watch Folder` for low-friction
+Quill provides an optional watch-folder workflow under `Tools -> Watch Folder` for low-friction
 document intake. Users can point Quill at one or more folders, drop supported files into them, and have Quill
 process those files automatically without leaving the editor.
 
@@ -1920,10 +1924,12 @@ partial profile can never start a worker.
 - Watch-folder automation is configured from Preferences (Watch Folder Automation). A first-run wizard onboarding step for it is planned (see docs/planning.md).
 - A watch profile can use the same `BatchPlan` shape from `### 5.3a.1` when its action is "convert to QUILL" or "convert from QUILL" - the Watch Service reuses `quill.core.batch_convert.run_batch` so a folder of dropped `.docx` files becomes a folder of opened Markdown tabs without a separate Batch Conversion wizard run. The action field on the watch profile chooses between the inline batch path and the open-in-editor path; both run on the background task pool.
 
-### 5.25c BITS Whisperer phased transcription rollout
+### 5.25c Offline speech and transcription
 
-Quill integrates BITS Whisperer speech capabilities in phased increments to minimize regression risk
-and preserve accessibility reliability.
+Quill's on-device speech engine (whisper.cpp by default) ships under `Tools -> Speech`
+and runs entirely on the user's machine. The detailed rollout/provider-center surface of
+the deferred BITS Whisperer suite (locked off, `core.bw_whisperer`) is captured in
+`docs/planning/deferred-locked-features.md`; this section describes only what ships today.
 
 **Cloud providers ship as Quillins, not core.** Per the consolidation plan (#669), the cloud
 provider matrix is delivered as extensions rather than baked into core. A Quillin declares a
@@ -1980,23 +1986,6 @@ providers".
 > startup-recovery prompt). Locked Dictation has distinct earcons and a one-time
 > onboarding hint. File synthesis runs with no console-window flash and a timeout.
 
-Phase 1 scope:
-
-- Keep current dictation behavior stable while introducing BITS Whisperer speech model management.
-- Surface model controls under `BITS Whisperer -> Speech Models`.
-- Add `BITS Whisperer -> Providers` with guided provider-center flows for staged onboarding.
-- Provide machine-aware default recommendations based on local configuration.
-- Include faster-whisper engine readiness checks and explicit user guidance.
-- Ensure `Help -> Status Page` can remain open and refresh dynamically with speech/BITS rollout task updates.
-- Add rollout-safe insight surfaces under `BITS Whisperer -> Rollout` (readiness check and capability matrix).
-- Add guarded download queue controls for staged model acquisition (retry failed downloads and clear history).
-- Keep advanced runtime paths staged for subsequent phases.
-
-Phase 2+ scope:
-
-- Expand runtime model execution paths and deeper transcription behavior.
-- Broaden model-family support as quality and hardware validation mature.
-
 ### 5.25d Batch Document-to-Speech, pronunciation, and SSML (shipped)
 
 QUILL converts whole folders of documents to speech audio and gives the user fine control over how that audio sounds. This section records the shipped behavior; the original design plan and project-format spec were retired to git history once delivered (their remaining follow-ups are tracked in [`roadmap.md`](../../planning/roadmap.md) §1.2). All synthesis logic is wx-free and headless-testable; the UI wraps it on the background task pool.
@@ -2025,24 +2014,37 @@ QUILL converts whole folders of documents to speech audio and gives the user fin
 
 The ChapterForge-aligned "folder of audio → one chaptered master" feature (design
 source: the sibling ChapterForge project; only the surfaces that fit QUILL's
-audiobook vision are ported). **Tools → Speech → Build Audiobook from Folder…**
-combines a folder of audio files into a single chaptered **MP3** (ID3 CHAP/CTOC) or
-**M4B** (native MP4 chapter atoms) master. Implementation: wx-free
-`quill/core/speech/audiobook.py` — folder scan + natural sort, `title_from_filename`
-(strips a leading track prefix), `find_cover` (preferred-name image discovery),
-`probe_duration_ms` (ffprobe), and the ffmpeg concat-demuxer build (chapters from
-`chapters.compute_chapters`, tags + cover from FFMETADATA / attached picture; MP3
-chapters via mutagen). Each source file is one chapter (title from its filename); the
-book's tags (title/author/narrator/genre/year) and an auto-detected cover are
-written. The accessible `audiobook_builder_dialog.py` collects the inputs and the
-build runs on the background task pool.
+audiobook vision are ported). Audiobook building is folded into **Tools → Speech →
+Batch Export to Speech Audio…**: ticking **Assemble the results into one audiobook**
+reveals the book tags (title/author/narrator/genre/year), a cover-image picker, the
+book format, and a save-as path. After the documents are synthesized (one chapter
+per document), the produced — plus any pre-recorded — audio in the folder is combined
+into a single chaptered **MP3** (ID3 CHAP/CTOC) or **M4B** (native MP4 chapter atoms)
+master. Implementation: wx-free `quill/core/speech/audiobook.py` — folder scan +
+natural sort, `title_from_filename` (strips a leading track prefix), `find_cover`
+(preferred-name image discovery), `probe_duration_ms` (ffprobe), and the ffmpeg
+concat-demuxer build (chapters from `chapters.compute_chapters`, tags + cover from
+FFMETADATA / attached picture; MP3 chapters via mutagen). The book's tags and an
+auto-detected cover are written, and the build runs on the background task pool. (The
+former standalone `audiobook_builder_dialog.py` was retired into this dialog so the
+two near-identical surfaces share one accessible path.)
 
-- **In-dialog chapter editing.** The dialog lists the chapters and lets the user
-  **rename** (inline title field), **reorder** (move up/down), and **merge** an
-  entry into the one above it before building. A merged chapter carries multiple
-  source files in `AudiobookChapter.extra_paths` (played in order, summed duration,
-  one marker); the edited plan flows through `AudiobookRequest.chapter_plan` and
-  `audiobook.chapters_from_plan`. The chapter list is keyboard-activatable (GATE-13).
+- **Run diagnostics and progress.** The batch dialog also exposes a **temporary
+  files folder** (each run gets a `quill-batch-<timestamp>` scratch subfolder) and a
+  **Save the text sent to speech** option (writes a `<doc>.spoken.txt` sidecar of the
+  exact normalized/pronounced/polished text). A timestamped diagnostic log is opened
+  in the output folder *before* conversion starts (`quill/core/speech/conversion_log.py`)
+  and records discovery, per-document progress/timings, skips, errors, and the book
+  build. Progress is shown in a focused, screen-reader-announced `AIProgressDialog`
+  (percentage = words processed / total words) that can be minimized to the status bar.
+- **Chapter granularity and review.** In the consolidated flow each document (or
+  each pre-recorded file) becomes one chapter, titled from its heading/filename.
+  Ticking **Review chapters before building** (and always, for a folder of
+  pre-recorded audio) opens `audiobook_chapter_editor_dialog.py` after synthesis —
+  the rename/reorder/merge editor from the old standalone builder — whose edited
+  plan flows through `audiobook.chapters_from_plan` (`AudiobookChapter.extra_paths`
+  carries merged files). The runner shows it by marshalling the modal to the UI
+  thread and blocking the background worker until the user closes it.
 - **ACX loudness.** A **Normalize to ACX** option applies an ffmpeg `loudnorm` pass
   (targeting RMS ≈ -20 dB, true-peak -3.1 dB) during the existing re-encoding build,
   so chapters/tags are preserved. After the build the master is measured with
@@ -2682,6 +2684,8 @@ When Quill detects an autosave snapshot newer than the on-disk file on launch:
 
 QUILL plays short, screen-reader-respectful audio cues (earcons) at meaningful editing moments. The system is built around **QSP (QUILL Sound Packs)**: swappable bundles that map event IDs to audio files. Playback is non-blocking, fire-and-forget, and pre-buffered so there is no perceptible lag between event and sound. Earcons supplement speech; they never replace it. (This section absorbs the former `docs/wsp.md` sound-design notes and `docs/sound-packs.md` pack guide.)
 
+**Pack selection and resolution.** Bundled packs live as directories under `quill/assets/sound_packs/` (the default earcon pack is `ink`, "QUILL's pack"; `indent_*` are the separate indentation-tone overlays). `sound_pack.available_sound_packs()` discovers the bundled earcon packs (default first, `indent_*` excluded) for the **first-run wizard's Sound-pack dropdown** — which replaced a `*.qsp` file picker that could not select the shipped packs at all, since they are folders, not files. The chosen pack is stored in `settings.sound_pack_path` as one of: `""` (the default pack, for back-compat), `bundled:<id>` (another bundled pack, resolved against the install so it survives a move/reinstall), or a direct path (a user's own pack). `sound_pack.resolve_sound_pack_path()` maps any of those to a pack path, and `SoundManager._load_pack` uses it, so enabling sound always falls back to QUILL's pack rather than going silent.
+
 #### 5.70.1 QSP format
 
 A `.qsp` file is a ZIP archive whose root holds `manifest.json` and the referenced WAV files. During development a directory with the same layout is accepted; the loader treats a directory and a ZIP identically. The manifest is validated at load time against `quill/core/schemas/sound_pack.json`:
@@ -2738,6 +2742,14 @@ Settings (group `accessibility`): `sound_enabled` (bool), `sound_pack_path` (tex
 
 When `QUILL_SAFE_MODE=1`, `SoundPlayer.play()` is a no-op, keeping safe mode strictly minimal-resource.
 
+### 5.70a Post to Mastodon (lean poster)
+
+A deliberately small way to publish a status to Mastodon from the editor — not a full client (no timelines, replies, media, or polls in v1).
+
+- **Compose flow.** `tools.post_to_mastodon` (default **QUILL Key + Shift+P**, also **Tools → Share → Post to Mastodon...**) takes the editor selection, or the whole document when nothing is selected, and opens `MastodonComposeDialog`: editable text, an account picker (by nickname), a visibility choice (public/unlisted/private/direct), a live character count, and Post. Disabled in Safe Mode. If no account exists, the accounts manager is offered first, then compose continues if one was added.
+- **Accounts.** `tools.manage_mastodon_accounts` opens `MastodonAccountsDialog` (add/remove/set-default). Adding registers an app named **QUILL** on the user's instance (so posts read "via QUILL") and uses the OAuth out-of-band flow: open the browser to authorize, paste the code back. Non-secret metadata (nickname, instance, `@handle`, client id) is stored in `mastodon-accounts.json`; the access token and client secret go to the Windows Credential Manager / DPAPI via `credential_store`, never the JSON.
+- **Implementation.** All API + account logic is wx-free in `quill/core/mastodon/` — `client.py` (a single audited `urllib` egress site `_http_json`, HTTPS-only over a verified TLS context: app registration, OAuth token exchange, `verify_credentials`, and status post) and `accounts.py`. Dialogs in `quill/ui/mastodon_dialogs.py`. The one egress site is recorded in `network_egress_audit.py`.
+
 ### 5.71 Quiet mode
 
 - `View → Quiet Mode` (`Ctrl+Alt+Q` by default) is a single toggle that:
@@ -2779,8 +2791,8 @@ When `QUILL_SAFE_MODE=1`, `SoundPlayer.play()` is a no-op, keeping safe mode str
 
 Quill provides two complementary comparison workflows: an accessible interactive compare session and a generated diff report.
 
-- **Compare commands**: `Tools → Compare Documents…`, `Tools → Compare With File…`, `Tools → Compare Open Documents…`, `Tools → Compare Selection With Clipboard`, plus `Tools → Compare Options…`.
-- **Core navigation**: `F8` next difference, `Shift+F8` previous difference, `Ctrl+F8` announce current difference, `Alt+F8` open Difference List, `Ctrl+Alt+F8` toggle synchronized compare navigation.
+- **Compare commands** (`Tools → Comparison`): `Compare with File…`, `Compare Open Documents…`, `Next Difference`, `Previous Difference`, `Announce Current Difference`, `Difference List…`, `Toggle Synchronized Navigation`, `Compare Options…`, `Create Difference Summary`, `Copy Current Difference`, `Copy All Differences`. A `Navigate → Compare` submenu carries the same commands under the `tools.compare_*` ids.
+- **Core navigation** (`Navigate → Compare`, post-#357 chord class): `Ctrl+Alt+Shift+.` next difference, `Ctrl+Alt+Shift+,` previous difference, `Ctrl+Alt+Shift+D` read current difference. The Difference List and Toggle Synchronized Navigation have no default key; assign them in the Keymap Editor.
 - **Interactive session**: focus stays in the active editor; moving to a difference places the cursor on the changed line and announces both sides in plain language.
 - **Difference List**: a stock list control containing all differences with document names, line numbers, type, and a short preview; Enter jumps to the selected difference.
 - **Compare options**: ignore leading/trailing spaces, all whitespace, blank lines, line endings, case, punctuation, repeated spaces, Markdown heading markers, HTML tag differences, and normalized Unicode.
@@ -3329,7 +3341,7 @@ InstructionSet(task_id, title, default_prompt, user_prompt="", enabled=True)
 
 | Feature | Shortcut | Module | Dialog |
 |---|---|---|---|
-| AI Thesaurus | Shift+F8 | `core/ai/thesaurus.py` | `ui/ai_thesaurus_dialog.py` |
+| AI Thesaurus | Ctrl+Alt+Shift+H | `core/ai/thesaurus.py` | `ui/ai_thesaurus_dialog.py` |
 | AI Spell Check | — | `core/ai/spell_check.py` | `ui/ai_spell_check_dialog.py` |
 | AI Grammar Check | — | `core/ai/grammar_check.py` | `ui/ai_grammar_check_dialog.py` |
 | Rewrite Selection | — | `core/ai/agent_session.py` | `ui/ai_agent_result_dialog.py` |
@@ -5230,9 +5242,9 @@ Deferred to v1.1:
 - [x] Add "Show what changed" reporting after profile switches.
 - [x] Add feature-flag coverage tests for new commands and surfaces.
 
-### GLOW implementation roadmap
+### Document-intelligence implementation roadmap
 
-This roadmap is the GLOW-branded implementation order for the shared document-intelligence work now being folded into Quill.
+This roadmap is the implementation order for the shared document-intelligence work now being folded into Quill.
 
 1. **CSV Mode first.** Finish the accessible grid editor, the default-choice prompt, remembered CSV preference, and the ability to return to normal text editing at any time.
 2. **Word support next.** Complete MarkItDown-first Word intake, semantic diagnostics, and review/fix hooks for `.docx` and legacy `.doc` flows.
@@ -5348,7 +5360,7 @@ The wizard (`SetupWizardDialog` in `quill/ui/setup_wizard_pages.py`) is a single
 8. **Startup Behaviour** — start with no document open, check for updates on startup, and system tray icon.
 9. **Summary** — review every decision; Finish applies them.
 
-Planned wizard additions not yet present (tracked in `docs/planning.md`): an interface-language selector page, a watch-folder onboarding step, a GLOW consent step, and dedicated Quillins / Power Tools / Notebook / keyboard-profile pages.
+Planned wizard additions not yet present (tracked in `docs/planning.md`): an interface-language selector page, a watch-folder onboarding step, and dedicated Quillins / Power Tools / Notebook / keyboard-profile pages.
 
 ### §22.3 Feature Gating via FeatureManager
 
@@ -5432,7 +5444,7 @@ The schema (`quill/core/help/topics.json`) currently contains 134 topics coverin
 - Main editor surface, status bar, document tabs
 - All major dialogs: Find/Replace, Spell Check, AI Assistant, Remote/SSH, Preferences pages
 - Startup Wizard pages (F1 on any wizard control explains the effect of each choice)
-- Feature profiles, keyboard packs, read-aloud settings, GLOW workflows
+- Feature profiles, keyboard packs, read-aloud settings
 - All 25 braille commands registered in `quill/core/feature_command_map.py` (status, navigation, page tools, translation, back-translation, pack install, line/cell, progress, save-as-clean, line-ending normalize). A regression test in `tests/unit/tools/test_help_coverage.py` (`test_every_braille_command_has_a_help_topic`) walks the command map and fails CI if a new `braille.*` command ships without a topic.
 
 Full coverage target is 250 topics (all `SetName()` calls in `quill/ui/`).

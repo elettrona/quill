@@ -48,14 +48,14 @@ from quill.branding import APP_DISPLAY_NAME, APP_ORGANIZATION  # noqa: E402
 
 # Pinned Windows embeddable Python. Bumping these values is the only
 # thing needed to ship on a new Python point release.
-EMBEDDED_PYTHON_VERSION = "3.12.6"
+EMBEDDED_PYTHON_VERSION = "3.13.14"
 EMBEDDED_PYTHON_URL = (
     f"https://www.python.org/ftp/python/{EMBEDDED_PYTHON_VERSION}/"
     f"python-{EMBEDDED_PYTHON_VERSION}-embed-amd64.zip"
 )
 # SHA-256 of the official embeddable zip. If python.org rotates the file
 # the build will fail loudly rather than ship an unverified runtime.
-EMBEDDED_PYTHON_SHA256 = "a86a2e28870967745d255cc597d1e4d19ae79e65e927cdc324baa0256202231c"
+EMBEDDED_PYTHON_SHA256 = "90b4e5b9898b72d744650524bff92377c367f44bd5fbd09e3148656c080ad907"
 
 DECTALK_RELEASE_ZIP_URL = (
     "https://github.com/dectalk/dectalk/releases/download/2023-10-30/vs2022.zip"
@@ -82,6 +82,29 @@ PIPER_PINNED_URL = (
     "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip"
 )
 PIPER_PINNED_SHA256 = "f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea"
+
+# Kokoro neural-TTS model + voices. Always STAGED into the portable bundle under
+# kokoro-models/, but the INSTALLER gates the copy behind the optional
+# "speechkokoro" component (Types: full custom) -- so Full installs still ship it
+# while Custom installs can drop ~120 MB; the generic ..\portable\* copy excludes
+# kokoro-models\* to avoid installing it unconditionally. The runtime resolves
+# {app}\kokoro-models (quill.core.read_aloud._bundled_kokoro_model_dir) and, when
+# skipped, downloads on demand to %APPDATA%\Quill\kokoro-models, which it prefers
+# over the bundled copy (default_kokoro_model_dir). The filenames mirror
+# KOKORO_ONNX_MODEL_FILENAME / KOKORO_ONNX_VOICES_FILENAME in read_aloud.py; keep
+# them in sync. _stage_kokoro downloads + SHA-256 verifies these unless a local
+# --kokoro-dir is provided.
+KOKORO_MODEL_FILENAME = "kokoro-v1.0.int8.onnx"
+KOKORO_VOICES_FILENAME = "voices-v1.0.bin"
+KOKORO_MODEL_URL = (
+    "https://github.com/thewh1teagle/kokoro-onnx/releases/download/"
+    "model-files-v1.0/kokoro-v1.0.int8.onnx"
+)
+KOKORO_MODEL_SHA256 = "6e742170d309016e5891a994e1ce1559c702a2ccd0075e67ef7157974f6406cb"
+KOKORO_VOICES_URL = (
+    "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"
+)
+KOKORO_VOICES_SHA256 = "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d"
 
 # GLOW is hidden for 0.5.0 (the core.glow feature is locked off), so the heavy
 # `glow` extra (quill-glow-core[glow], not yet on a public index) is NOT bundled
@@ -154,7 +177,12 @@ def main() -> int:
         "--kokoro-dir",
         type=Path,
         default=None,
-        help="Optional local Kokoro voices/models directory to bundle under portable\\tools\\speech\\kokoro.",
+        help=(
+            "Optional local directory holding the Kokoro model files "
+            "(kokoro-v1.0.int8.onnx, voices-v1.0.bin) to stage under "
+            "portable\\kokoro-models. When omitted the files are downloaded from "
+            "the pinned kokoro-onnx release and SHA-256 verified."
+        ),
     )
     parser.add_argument(
         "--whisper-dir",
@@ -202,11 +230,11 @@ def main() -> int:
                 "pandoc": args.pandoc_dir,
                 "speech/dectalk": args.dectalk_dir,
                 "speech/espeak-ng": args.espeak_dir,
-                "speech/kokoro": args.kokoro_dir,
                 "speech/whispercpp": args.whisper_dir,
             }.items()
             if path is not None
         },
+        kokoro_dir=args.kokoro_dir,
         compile_installer=args.compile_installer,
         iscc_path=args.iscc_path,
     )
@@ -225,6 +253,7 @@ def build_windows_distribution(
     bundle_python: bool = False,
     source_root: Path | None = None,
     bundled_tool_dirs: dict[str, Path] | None = None,
+    kokoro_dir: Path | None = None,
     braille_pack_dir: Path | None = None,
     compile_installer: bool = False,
     iscc_path: Path | None = None,
@@ -261,6 +290,9 @@ def build_windows_distribution(
     if "speech/piper" not in effective_bundled_tools:
         effective_bundled_tools["speech/piper"] = _download_and_stage_piper(portable_dir)
     bundled_tools = _stage_bundled_tools(portable_dir, effective_bundled_tools)
+    # Kokoro is staged separately (not via _stage_bundled_tools): it ships under
+    # the bundle-root kokoro-models/ folder the runtime looks for, not tools/.
+    _stage_kokoro(portable_dir, kokoro_dir)
 
     readme = portable_dir / "README.txt"
     readme.write_text(
@@ -651,16 +683,56 @@ def build_inno_setup_script(
         " (liblouis translation engine, UEB, Standard American English,"
         ' and international braille profiles, ~15 MB)";'
         " Types: full custom; Flags: checkablealone",
+        'Name: "speechkokoro"; Description: "Install bundled Kokoro neural TTS voices'
+        " (~120 MB, high-quality offline speech). If you skip this, you can download"
+        ' Kokoro later from Manage Voices / Speech Hub";'
+        " Types: full custom; Flags: checkablealone",
+        "",
+        "[InstallDelete]",
+        "; Upgrade hygiene -- the single most important fix for reliable upgrades.",
+        "; Inno only overlays the new [Files] on top of an existing install; it",
+        "; never removes files the new build no longer ships. So a first-party",
+        "; module renamed, moved, or deleted between releases (and any stale",
+        "; __pycache__) would otherwise linger next to the new code and cause the",
+        "; ImportError / AttributeError version-skew crashes we hit on upgrade.",
+        ";",
+        "; Scope this to exactly what changes release-to-release and is the proven",
+        "; risk: our own 'quill' package. Wiping it before [Files] re-lays it makes",
+        "; every install a clean, self-consistent copy of our code, while leaving",
+        "; the embedded Python runtime and third-party site-packages in place --",
+        "; those keep stable module names, are overwritten as needed by the",
+        "; ignoreversion [Files] entry, and re-extracting the whole runtime every",
+        "; upgrade would only make installs slow for no safety gain. Bundled",
+        "; tools/voices/braille live under {app}\\tools and {app}\\vendor; user",
+        "; documents live in %APPDATA%\\Quill -- neither is touched here.",
+        'Type: filesandordirs; Name: "{app}\\python\\Lib\\site-packages\\quill"',
+        'Type: filesandordirs; Name: "{app}\\__pycache__"',
+        "; NOTE: user CONFIG in %APPDATA%\\Quill (settings.json, keymap.json,",
+        "; features.json) is intentionally NOT deleted here. Those stores now",
+        "; carry forward safely across releases -- each is a delta of the user's",
+        "; overrides stamped with a schema version, so changed/added defaults",
+        "; reach the user automatically while their customizations are preserved,",
+        "; and a pre-migration backup is written before any one-time conversion",
+        "; (see quill.core.settings_migration / keymap.merge_keymaps). An earlier",
+        "; beta reset these on every install for a clean slate; that is no longer",
+        "; needed now that migration protects the data.",
         "",
         "[Files]",
         'Source: "..\\portable\\*"; DestDir: "{app}";'
         " Flags: ignoreversion recursesubdirs createallsubdirs;"
-        ' Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\speech\\whispercpp\\*,tools\\nodejs\\*,vendor\\braille-pack\\*,_tool-download\\*,_speech-download\\*"',
+        ' Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\speech\\whispercpp\\*,tools\\nodejs\\*,vendor\\braille-pack\\*,kokoro-models\\*,_tool-download\\*,_speech-download\\*"',
         "; QUILL Braille Pack: liblouis runtime, translation tables, and BRF profiles.",
         "; Installed to vendor\\braille-pack so QUILL detects it automatically via QUILL_APP_ROOT.",
         'Source: "..\\portable\\vendor\\braille-pack\\*"; DestDir: "{app}\\vendor\\braille-pack";'
         " Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist;"
         " Components: braillepack",
+        "; Kokoro neural TTS models (~120 MB). Optional component; the runtime",
+        "; resolves {app}\\kokoro-models (QUILL_APP_ROOT). When skipped, QUILL",
+        "; downloads them on demand to %APPDATA%\\Quill\\kokoro-models, which the",
+        "; runtime prefers over the bundled copy (read_aloud.default_kokoro_model_dir).",
+        'Source: "..\\portable\\kokoro-models\\*"; DestDir: "{app}\\kokoro-models";'
+        " Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist;"
+        " Components: speechkokoro",
         'Source: "..\\portable\\tools\\pandoc\\*"; DestDir: "{app}\\tools\\pandoc";'
         " Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist;"
         " Components: pandoc",
@@ -755,23 +827,26 @@ def build_inno_setup_script(
         "",
         "[Code]",
         "// -- Bundled launcher resolution ------------------------------------------------",
-        "// quill.exe at the bundle root is a copy of the embedded runtime's",
-        "// pythonw.exe whose VERSIONINFO has been stamped with the Quill",
-        "// product identity (see _stamp_quill_launcher in",
-        "// build_windows_distribution.py), so JAWS's Ctrl+JAWSKey+V reports",
-        '// the real Quill version instead of "Python 3.x.x" (issue #615).',
-        "// BundledLauncherPath tries the hoisted quill.exe first, then the",
-        "// older python\\quill.exe (kept for back-compat with bundles from",
-        "// before the hoist landed), then plain python\\pythonw.exe, and",
-        "// finally '' so every call site falls back gracefully.",
+        "// IMPORTANT: prefer python\\quill.exe (inside the runtime dir) over the",
+        "// hoisted {app}\\quill.exe at the bundle root. Both are stamped copies of",
+        "// pythonw.exe (issue #615), but the root copy is ORPHANED from the runtime:",
+        "// python313.dll, python313.zip, the .pyd modules, and python313._pth all",
+        "// live in python\\, not at the root. So a root-launched quill.exe cannot",
+        "// find the bundled interpreter and either binds to a system Python (wrong",
+        "// site-packages -> crash) or, on a clean machine with no system Python,",
+        "// fails to start at all -- which broke the Start Menu / Desktop shortcuts.",
+        "// python\\quill.exe sits next to the runtime, so it loads the embedded",
+        "// interpreter in isolation (correct sys.prefix, pywin32 bootstrap runs).",
+        "// The root {app}\\quill.exe stays only as the portable-evidence marker and",
+        "// as a last-resort fallback for dev builds that ship no python\\ runtime.",
         "function BundledLauncherPath(Param: String): String;",
         "begin",
-        "  if FileExists(ExpandConstant('{app}\\quill.exe')) then",
-        "    Result := ExpandConstant('{app}\\quill.exe')",
-        "  else if FileExists(ExpandConstant('{app}\\python\\quill.exe')) then",
+        "  if FileExists(ExpandConstant('{app}\\python\\quill.exe')) then",
         "    Result := ExpandConstant('{app}\\python\\quill.exe')",
         "  else if FileExists(ExpandConstant('{app}\\python\\pythonw.exe')) then",
         "    Result := ExpandConstant('{app}\\python\\pythonw.exe')",
+        "  else if FileExists(ExpandConstant('{app}\\quill.exe')) then",
+        "    Result := ExpandConstant('{app}\\quill.exe')",
         "  else",
         "    Result := '';",
         "end;",
@@ -845,25 +920,114 @@ def build_inno_setup_script(
         "  end;",
         "end;",
         "",
+        "// -- Uninstall: discover a custom data location ----------------------------",
+        "// When the user chose a custom data folder, save_storage_mode writes",
+        '// {"mode":"custom","path":"..."} into storage-mode.json under',
+        "// %APPDATA%\\Quill (quill.core.storage_mode). The pointer therefore lives",
+        "// INSIDE the folder the uninstaller deletes, so it must be read first --",
+        "// otherwise the custom directory is silently orphaned on 'remove all data'.",
+        "// JSON stores backslashes doubled, so they are collapsed after extraction.",
+        "function ReadCustomDataDir(): String;",
+        "var",
+        "  ModeFile: String;",
+        "  Raw: AnsiString;",
+        "  S: String;",
+        "  P, Q: Integer;",
+        "begin",
+        "  Result := '';",
+        "  ModeFile := ExpandConstant('{userappdata}\\Quill\\storage-mode.json');",
+        "  if not FileExists(ModeFile) then",
+        "    Exit;",
+        "  if not LoadStringFromFile(ModeFile, Raw) then",
+        "    Exit;",
+        "  S := String(Raw);",
+        "  // Only honour an explicit custom mode; appdata/portable have no path.",
+        "  if Pos('\"custom\"', S) = 0 then",
+        "    Exit;",
+        "  P := Pos('\"path\"', S);",
+        "  if P = 0 then",
+        "    Exit;",
+        "  S := Copy(S, P + 6, Length(S));",
+        "  P := Pos(':', S);",
+        "  if P = 0 then",
+        "    Exit;",
+        "  S := Copy(S, P + 1, Length(S));",
+        "  P := Pos('\"', S);",
+        "  if P = 0 then",
+        "    Exit;",
+        "  S := Copy(S, P + 1, Length(S));",
+        "  Q := Pos('\"', S);",
+        "  if Q = 0 then",
+        "    Exit;",
+        "  S := Copy(S, 1, Q - 1);",
+        "  StringChangeEx(S, '\\\\', '\\', True);",
+        "  Result := S;",
+        "end;",
+        "",
+        "function NormalizedDir(Dir: String): String;",
+        "begin",
+        "  Result := Lowercase(RemoveBackslashUnlessRoot(Dir));",
+        "end;",
+        "",
+        "// Guard: never let a stray or hostile storage-mode.json point the",
+        "// uninstaller at a drive root, the install dir, or a well-known shell",
+        "// folder. Only an existing directory more specific than a drive root",
+        "// (Length > 3, e.g. not 'c:\\') and outside those locations is eligible.",
+        "function IsSafeCustomDataDir(Dir: String): Boolean;",
+        "var",
+        "  N: String;",
+        "begin",
+        "  Result := False;",
+        "  if Dir = '' then",
+        "    Exit;",
+        "  if not DirExists(Dir) then",
+        "    Exit;",
+        "  N := NormalizedDir(Dir);",
+        "  if Length(N) <= 3 then",
+        "    Exit;",
+        "  if N = NormalizedDir(ExpandConstant('{app}')) then Exit;",
+        "  if N = NormalizedDir(ExpandConstant('{userappdata}')) then Exit;",
+        "  if N = NormalizedDir(ExpandConstant('{userappdata}\\Quill')) then Exit;",
+        "  if N = NormalizedDir(ExpandConstant('{localappdata}')) then Exit;",
+        "  if N = NormalizedDir(ExpandConstant('{userprofile}')) then Exit;",
+        "  if N = NormalizedDir(ExpandConstant('{userdocs}')) then Exit;",
+        "  if N = NormalizedDir(ExpandConstant('{win}')) then Exit;",
+        "  if N = NormalizedDir(ExpandConstant('{sys}')) then Exit;",
+        "  Result := True;",
+        "end;",
+        "",
         "// -- Uninstall: ask before wiping personal data ----------------------------",
         "procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);",
         "var",
         "  DataDir: String;",
+        "  CustomDir: String;",
+        "  Prompt: String;",
+        "  HasCustom: Boolean;",
         "begin",
         "  if CurUninstallStep = usUninstall then",
         "  begin",
         "    DataDir := ExpandConstant('{userappdata}\\Quill');",
-        "    if DirExists(DataDir) then",
+        "    // Read the custom-location pointer BEFORE DataDir is deleted below.",
+        "    CustomDir := ReadCustomDataDir();",
+        "    HasCustom := (CustomDir <> '') and IsSafeCustomDataDir(CustomDir);",
+        "    if DirExists(DataDir) or HasCustom then",
         "    begin",
-        "      if MsgBox('Also remove your Quill data?' + #13#10 + #13#10 +",
-        "                'This deletes your settings, dictionaries, autosaves, backups,'"
-        " + #13#10 +",
-        "                'and onboarding state in:' + #13#10 + DataDir + #13#10 + #13#10 +",
+        "      Prompt := 'Also remove your Quill data?' + #13#10 + #13#10 +",
+        "                'This deletes your settings, dictionaries, autosaves, backups,' + #13#10 +",
+        "                'and onboarding state in:';",
+        "      if DirExists(DataDir) then",
+        "        Prompt := Prompt + #13#10 + DataDir;",
+        "      if HasCustom then",
+        "        Prompt := Prompt + #13#10 + CustomDir;",
+        "      Prompt := Prompt + #13#10 + #13#10 +",
         "                'Choose No to keep your documents and settings for a future' + #13#10 +",
-        "                'reinstall. Choose Yes to remove everything.',",
-        "                mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then",
+        "                'reinstall. Choose Yes to remove everything.';",
+        "      if MsgBox(Prompt, mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then",
         "      begin",
-        "        DelTree(DataDir, True, True, True);",
+        "        if HasCustom then",
+        "          DelTree(CustomDir, True, True, True);",
+        "        if DirExists(DataDir) then",
+        "          DelTree(DataDir, True, True, True);",
         "      end;",
         "    end;",
         "  end;",
@@ -1279,6 +1443,47 @@ def _stage_bundled_tools(portable_dir: Path, bundled_tool_dirs: dict[str, Path])
     return sorted(bundled)
 
 
+def _stage_kokoro(portable_dir: Path, source_dir: Path | None) -> bool:
+    """Stage the Kokoro ONNX model + voices into portable/kokoro-models/.
+
+    The runtime (quill.core.read_aloud._bundled_kokoro_model_dir) resolves a
+    bundled Kokoro copy from {app}/kokoro-models, so the two files ship via the
+    generic ..\\portable\\* installer copy rather than a dedicated component.
+
+    When *source_dir* is given (the --kokoro-dir flag) the model and voices are
+    copied from there; otherwise they are downloaded from the pinned kokoro-onnx
+    release and SHA-256 verified. An already-staged pair is reused. Returns True
+    when both files are present after staging.
+    """
+    target = portable_dir / "kokoro-models"
+    target.mkdir(parents=True, exist_ok=True)
+    model_dst = target / KOKORO_MODEL_FILENAME
+    voices_dst = target / KOKORO_VOICES_FILENAME
+    if model_dst.exists() and voices_dst.exists():
+        print("Kokoro models already staged; skipping.")
+        return True
+
+    if source_dir is not None:
+        model_src = source_dir / KOKORO_MODEL_FILENAME
+        voices_src = source_dir / KOKORO_VOICES_FILENAME
+        missing = [str(p) for p in (model_src, voices_src) if not p.exists()]
+        if missing:
+            raise RuntimeError(
+                "Kokoro source directory is missing required files: " + ", ".join(missing)
+            )
+        shutil.copy2(model_src, model_dst)
+        shutil.copy2(voices_src, voices_dst)
+        print(f"Kokoro models copied from {source_dir} to {target}")
+        return True
+
+    print(f"Downloading Kokoro model from {KOKORO_MODEL_URL}...")
+    _download_with_verification(KOKORO_MODEL_URL, model_dst, expected_sha256=KOKORO_MODEL_SHA256)
+    print(f"Downloading Kokoro voices from {KOKORO_VOICES_URL}...")
+    _download_with_verification(KOKORO_VOICES_URL, voices_dst, expected_sha256=KOKORO_VOICES_SHA256)
+    print(f"Kokoro models staged to {target}")
+    return True
+
+
 def _download_and_stage_dectalk_release(portable_dir: Path) -> Path:
     speech_root = portable_dir / "_speech-download" / "dectalk"
     speech_root.mkdir(parents=True, exist_ok=True)
@@ -1320,6 +1525,18 @@ def _speech_asset_manifest(
             "exists": engine_dir.exists(),
             "downloadable": True,
         }
+    # Kokoro lives at the bundle root (kokoro-models/), not under tools/speech,
+    # because that is where the runtime resolves a bundled copy via QUILL_APP_ROOT.
+    kokoro_dir = portable_dir / "kokoro-models"
+    kokoro_ready = (kokoro_dir / KOKORO_MODEL_FILENAME).exists() and (
+        kokoro_dir / KOKORO_VOICES_FILENAME
+    ).exists()
+    manifest["kokoro"] = {
+        "bundled": kokoro_ready,
+        "path": str(kokoro_dir) if kokoro_ready else "",
+        "exists": kokoro_ready,
+        "downloadable": True,
+    }
     return manifest
 
 

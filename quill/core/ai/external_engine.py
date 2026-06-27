@@ -152,6 +152,7 @@ def external_engines_enabled() -> bool:
 def set_external_engines_enabled(enabled: bool) -> None:
     document = _load_document()
     document["master_enabled"] = bool(enabled)
+    document["schema_version"] = 1  # persistence contract
     write_json_atomic(_config_path(), document)
 
 
@@ -170,6 +171,7 @@ def save_engine_config(config: EngineConfig) -> None:
     engines = dict(document["engines"])
     engines[config.engine_id] = config.to_dict()
     document["engines"] = engines
+    document["schema_version"] = 1  # persistence contract
     write_json_atomic(_config_path(), document)
 
 

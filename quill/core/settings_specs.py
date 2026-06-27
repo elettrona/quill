@@ -76,7 +76,7 @@ SETTING_GROUPS: tuple[SettingGroup, ...] = (
     SettingGroup(
         "transcription",
         "Transcription",
-        "BITS Whisperer speech-model and provider behavior.",
+        "Offline speech-model and provider behavior.",
     ),
     SettingGroup(
         "watch",
@@ -200,6 +200,16 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "fixed internal drives -- never on removable, USB, or network drives "
         "(where a missing file usually means the drive is disconnected).",
         keywords=("recent", "history", "files", "missing", "clean up"),
+    ),
+    SettingSpec(
+        "first_line_as_title",
+        "Suggest a filename from the first line",
+        "general",
+        "bool",
+        "When you save an untitled document, pre-fill the Save dialog with a name "
+        "taken from the document's first line. Works across formats and strips "
+        "leading markup (a Markdown heading, a quote, or a list bullet).",
+        keywords=("title", "filename", "first line", "save", "name", "heading"),
     ),
     SettingSpec(
         "language",
@@ -1698,5 +1708,32 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
             ("paragraph", "Full paragraph"),
         ),
         keywords=("spelling", "context", "review", "f7", "sentence", "paragraph"),
+    ),
+    # --- Administration: upgrade and migration behavior --------------------
+    SettingSpec(
+        "apply_recommended_keymap_updates",
+        "Apply recommended keyboard-shortcut updates",
+        "admin",
+        "bool",
+        "Let QUILL apply important shortcut corrections once on upgrade (for "
+        "example, restoring Find to Ctrl+F). Each fix is applied a single time, "
+        "so you can always rebind it afterward. Turn this off to keep your "
+        "shortcuts exactly as you set them.",
+        keywords=("upgrade", "shortcut", "keymap", "recommended", "find", "ctrl+f", "migration"),
+    ),
+    SettingSpec(
+        "migration_notice",
+        "Upgrade notice",
+        "admin",
+        "choice",
+        "How QUILL tells you when it has migrated your settings or shortcuts "
+        "after an update. A backup is always saved first regardless of this "
+        "choice.",
+        choices=(
+            ("silent", "Silent"),
+            ("announce", "Brief announcement"),
+            ("prompt", "Summary with Undo"),
+        ),
+        keywords=("upgrade", "migration", "notice", "announce", "undo", "settings"),
     ),
 )

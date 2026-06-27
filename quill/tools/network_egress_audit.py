@@ -37,6 +37,13 @@ _EGRESS_CALLEES = frozenset({
 # Reviewed, allowed egress sites: "<relative path>::<enclosing function>" mapped
 # to the reason the call is not silent. Update this when adding a network call.
 _REVIEWED_EGRESS: dict[str, str] = {
+    "core/mastodon/client.py::_http_json": (
+        "Single egress site for the 'Post to Mastodon' feature. Reached only by an "
+        "explicit user action -- adding an account (app registration + OAuth token "
+        "exchange) or pressing Post -- to the user's own instance. HTTPS-only over a "
+        "verified TLS context; the access token travels in the Authorization header, "
+        "never the URL."
+    ),
     "core/dectalk_runtime.py::download_dectalk_runtime": (
         "User explicitly installs the optional DECTALK voice runtime; download "
         "runs with a verified TLS context and visible progress."
@@ -329,7 +336,7 @@ _REVIEWED_EGRESS: dict[str, str] = {
 #   Triggered: Manage Speech Models > Install Vosk, or Tools > Speech > Install Vosk.
 #
 # quill/core/speech/engine_install.py::install_kokoro_onnx
-#   Installs kokoro-onnx>=0.9 and soundfile>=0.12 (~20 MB + onnxruntime transitive).
+#   Installs kokoro-onnx>=0.5.0 and soundfile>=0.14.0 (~20 MB + onnxruntime transitive).
 #   Triggered automatically after the Kokoro model files are downloaded
 #   (Manage Voices > Download Kokoro), or explicitly from Manage Speech Models >
 #   Install Kokoro ONNX, or Tools > Speech > Install Kokoro ONNX.

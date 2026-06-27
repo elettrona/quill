@@ -1,10 +1,19 @@
 from __future__ import annotations
 
+import json
+from dataclasses import asdict
 from pathlib import Path
 
 import pytest
 
-from quill.core.settings import STATUS_BAR_ITEMS, Settings, load_settings, save_settings
+from quill.core.settings import (
+    STATUS_BAR_ITEMS,
+    Settings,
+    load_settings,
+    save_settings,
+    settings_path,
+)
+from quill.core.settings_migration import SETTINGS_SCHEMA_VERSION
 
 
 def test_settings_round_trip(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -635,3 +644,132 @@ def test_settings_wizard_intent_rejects_non_string_payload() -> None:
     # to a string rather than crashing the wizard on the next launch.
     settings = Settings.from_dict({"setup_wizard_intent": 42})
     assert settings.setup_wizard_intent == "42"
+
+
+# ---------------------------------------------------------------------------
+# Release-to-release migration: legacy file -> canonical delta, with backup
+# ---------------------------------------------------------------------------
+
+
+def test_load_settings_migrates_legacy_v1_snapshot_and_backs_it_up(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    # A schema_version 1 file stored every field (a full snapshot).
+    legacy = {"schema_version": 1, "groups": {"_ungrouped": asdict(Settings(theme="dark"))}}
+    settings_path().write_text(json.dumps(legacy), encoding="utf-8")
+
+    loaded = load_settings()
+    assert loaded.theme == "dark"
+
+    # The file is rewritten to the canonical v2 delta: only the real override.
+    on_disk = json.loads(settings_path().read_text(encoding="utf-8"))
+    assert on_disk["schema_version"] == SETTINGS_SCHEMA_VERSION
+    written = {key for bucket in on_disk["groups"].values() for key in bucket}
+    assert written == {"theme"}
+
+    # The original was backed up first, so the conversion is recoverable.
+    backups = list((tmp_path / "migration-backups").glob("settings-v1-*.json"))
+    assert len(backups) == 1
+    assert json.loads(backups[0].read_text(encoding="utf-8")) == legacy
+    # The migration is recorded (consume-once) for the UI to surface.
+    from quill.core.migration_backup import pop_recent_migrations
+
+    assert "settings" in pop_recent_migrations()
+    assert pop_recent_migrations() == []  # cleared by the first pop
+
+
+def test_load_settings_leaves_a_canonical_delta_untouched(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    save_settings(Settings(theme="dark"))  # already the canonical v2 delta
+    mtime_before = settings_path().stat().st_mtime_ns
+
+    load_settings()
+
+    assert settings_path().stat().st_mtime_ns == mtime_before
+    # No backup is taken for a file already on the current schema.
+    assert not (tmp_path / "migration-backups").exists()
+
+
+def test_load_settings_missing_file_returns_defaults_without_writing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    loaded = load_settings()
+    assert loaded == Settings()
+    # A fresh install must not eagerly create settings.json on read.
+    assert not settings_path().exists()
+
+
+def test_new_settings_migrate_in_with_their_defaults_from_an_old_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # A file written by an older build that predates a feature has no entry for
+    # its setting. The field must come in at its current default (this is the
+    # "new settings migrate in as we add features" guarantee).
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    old_file = {"schema_version": 2, "groups": {"general": {"theme": "dark"}}}
+    settings_path().write_text(json.dumps(old_file), encoding="utf-8")
+
+    loaded = load_settings()
+
+    assert loaded.theme == "dark"  # the override survives
+    # Fields the old file never knew about default in:
+    assert loaded.apply_recommended_keymap_updates is True
+    assert loaded.applied_recommended_updates == []
+
+
+def test_recommended_update_settings_round_trip(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    save_settings(
+        Settings(
+            apply_recommended_keymap_updates=False,
+            applied_recommended_updates=["edit.find-ctrl-f-2026-06"],
+        )
+    )
+    loaded = load_settings()
+    assert loaded.apply_recommended_keymap_updates is False
+    assert loaded.applied_recommended_updates == ["edit.find-ctrl-f-2026-06"]
+
+
+def test_applied_recommended_updates_ignores_garbage() -> None:
+    settings = Settings.from_dict({"applied_recommended_updates": ["ok", 5, None, "two"]})
+    assert settings.applied_recommended_updates == ["ok", "two"]
+
+
+def test_migration_notice_defaults_to_announce_and_validates() -> None:
+    assert Settings().migration_notice == "announce"
+    assert Settings.from_dict({"migration_notice": "SILENT"}).migration_notice == "silent"
+    assert Settings.from_dict({"migration_notice": "prompt"}).migration_notice == "prompt"
+    # Unknown values fall back to the default.
+    assert Settings.from_dict({"migration_notice": "bogus"}).migration_notice == "announce"
+    assert Settings.from_dict({"migration_notice": 7}).migration_notice == "announce"
+
+
+def test_corrupt_settings_file_is_quarantined_then_defaults(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # A present-but-unparseable settings file must be backed up (not silently
+    # lost) before load falls back to defaults.
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    settings_path().write_text("{ this is not valid json", encoding="utf-8")
+
+    loaded = load_settings()
+
+    assert loaded == Settings()
+    backups = list((tmp_path / "migration-backups").glob("settings-corrupt-*.json"))
+    assert len(backups) == 1
+    assert backups[0].read_text(encoding="utf-8") == "{ this is not valid json"
+
+
+def test_first_line_as_title_defaults_off_and_round_trips(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    assert Settings().first_line_as_title is False
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    save_settings(Settings(first_line_as_title=True))
+    assert load_settings().first_line_as_title is True

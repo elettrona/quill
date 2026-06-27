@@ -248,7 +248,9 @@ class PowerToolsActionsMixin:
         cached = getattr(self, "_power_tools_read_only_paths", None)
         if cached is None:
             stored = read_json(self._read_only_store_path(), [])
-            cached = {str(item) for item in stored} if isinstance(stored, list) else set()
+            # Versioned envelope {"schema_version", "paths": [...]} or legacy list.
+            items = stored.get("paths", []) if isinstance(stored, dict) else stored
+            cached = {str(item) for item in items} if isinstance(items, list) else set()
             self._power_tools_read_only_paths = cached
         return cached
 
@@ -277,7 +279,10 @@ class PowerToolsActionsMixin:
             else:
                 paths.discard(str(self.document.path))
             try:
-                write_json_atomic(self._read_only_store_path(), sorted(paths))
+                write_json_atomic(
+                    self._read_only_store_path(),
+                    {"schema_version": 1, "paths": sorted(paths)},
+                )
             except OSError:
                 pass
         self._announce("Document is read-only" if read_only else "Document is editable")

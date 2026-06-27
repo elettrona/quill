@@ -102,10 +102,9 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "tools.read_aloud_stop": "Ctrl+Shift+Grave, Shift+R",  # §10.8.2: Shift+P→Shift+R
     "tools.dictation_toggle": "Ctrl+Shift+Grave, D",
     "tools.speech_dictate": "Ctrl+Shift+Grave, Shift+D",
-    # Hold-to-Dictate and Locked Dictation (offline Whisper). All remappable; the
-    # hold key needs a real key-up, so these are matched in the editor key
-    # handlers rather than the accelerator table (no menu accelerators).
-    "tools.dictation_hold": "F9",
+    # Locked Dictation (offline Whisper). All remappable; the
+    # these are matched in the editor key handlers rather than the accelerator
+    # table (no menu accelerators) so Escape can be consumed only while recording.
     "tools.dictation_lock_toggle": "Ctrl+F9",
     "tools.dictation_pause": "Ctrl+Shift+F9",
     "tools.dictation_status": "Alt+F9",
@@ -166,7 +165,13 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "edit.replace": "Ctrl+H",
     "tools.search_in_files": "Ctrl+Shift+F",
     "tools.replace_in_files": "Ctrl+Shift+R",
-    "tools.sticky_note_capture": "Ctrl+Shift+Grave, N",
+    # Bare "N" after the QUILL-key prefix is intercepted for browse mode in
+    # QuillKeyMixin (before chord dispatch), so a bare-N chord here is dead.
+    # Sticky-note capture uses the free Shift+N second key (not intercepted).
+    "tools.sticky_note_capture": "Ctrl+Shift+Grave, Shift+N",
+    # Post to Mastodon: the QUILL-key chord + Shift+P ("Post"). Bare P is taken
+    # by navigate.speak_full_path; Shift+P is free and stays mnemonic.
+    "tools.post_to_mastodon": "Ctrl+Shift+Grave, Shift+P",
     # #262: Batch Conversion wizard. QUILL-key chord (B is free in the
     # second-key space). The entry moved out of the Tools menu and now
     # sits in File > Import > Batch Conversion... and File > Export >
@@ -324,45 +329,93 @@ DEFAULT_KEYMAP: dict[str, str] = {
 
 _PROFILES_DIR = Path(__file__).resolve().parent / "keymap"
 
+# Uppercased prefix of the QUILL-key leader chord, used by the 0.8.0 beta
+# Find force in ``merge_keymaps`` to recognize any saved Find binding that
+# still lives on the leader chord (e.g. "Ctrl+Shift+Grave, Z").
+_QUILL_LEADER_PREFIX = "CTRL+SHIFT+GRAVE"
+
+# Keymap defaults epoch (GATE-keymap-fwdcompat). The on-disk keymap.json is a
+# *delta* of the user's overrides relative to DEFAULT_KEYMAP plus this stamp.
+# Because non-overridden commands are absent from the file, any new or changed
+# default in DEFAULT_KEYMAP automatically reaches every existing user on the
+# next launch -- without a per-binding migration entry. That is the whole point
+# of the delta format: it removes the fragile "remember to add an old->new
+# rebinding for every default change" tax.
+#
+# The epoch is only needed for the one-time conversion of *legacy* keymap.json
+# files, which were full snapshots that pinned every command to its value at
+# save time (so a changed default never reached the user). A file whose stamp
+# is below ``KEYMAP_DEFAULTS_EPOCH`` -- including the unstamped legacy files --
+# gets the curated ``legacy_rebindings`` clean-up and the Find force applied,
+# then is rewritten as a stamped delta so it never needs that treatment again.
+#
+# Bump this ONLY to re-run the legacy-style clean-up against files already on
+# the current epoch (rare). Normal default changes need no bump and no
+# migration entry; just change DEFAULT_KEYMAP.
+KEYMAP_DEFAULTS_EPOCH = 1
+_DEFAULTS_EPOCH_KEY = "_defaults_epoch"
+
 
 def keymap_path() -> Path:
     return app_data_dir() / "keymap.json"
 
 
+def _keymap_overrides(merged: dict[str, str]) -> dict[str, str]:
+    """Return only the entries of *merged* that differ from DEFAULT_KEYMAP.
+
+    This is the delta persisted to disk: omitting defaults is what lets a
+    later DEFAULT_KEYMAP change reach the user automatically (see
+    ``KEYMAP_DEFAULTS_EPOCH``).
+    """
+    return {
+        command_id: chord
+        for command_id, chord in merged.items()
+        if command_id in DEFAULT_KEYMAP and chord != DEFAULT_KEYMAP[command_id]
+    }
+
+
+def _persisted_keymap_document(merged: dict[str, str]) -> dict[str, object]:
+    """The on-disk shape: the override delta plus the current epoch stamp."""
+    document: dict[str, object] = dict(_keymap_overrides(merged))
+    document[_DEFAULTS_EPOCH_KEY] = KEYMAP_DEFAULTS_EPOCH
+    return document
+
+
 def load_keymap() -> dict[str, str]:
     """Load the user's keymap from disk and return the cleaned merged map.
 
-    The on-disk file is the user's saved overrides. ``merge_keymaps``
-    starts from ``DEFAULT_KEYMAP`` and applies only the saved entries
-    that are still valid (recognized command id, non-empty chord, no
-    conflict with another command). Invalid entries are dropped so the
-    default takes effect.
+    The on-disk file is a *delta* of the user's overrides relative to
+    ``DEFAULT_KEYMAP`` plus a ``_defaults_epoch`` stamp. ``merge_keymaps``
+    starts from ``DEFAULT_KEYMAP`` and applies only the saved overrides that
+    are still valid, so any command the user never customized always tracks
+    the current default.
 
-    If the merge dropped any entries the user had on disk, the cleaned
-    subset is persisted back so the saved file reflects "what was
-    actually honored" on the next startup. Files that are already clean
-    (every saved entry survives the merge) are left untouched, so a
-    small per-user delta file stays small.
+    When the on-disk file does not already match the canonical delta+epoch
+    shape -- a legacy full snapshot, an unstamped or older-epoch file, or one
+    that still carries entries equal to the default -- it is rewritten to the
+    canonical shape. That converts legacy snapshots to deltas once and stamps
+    the epoch so the one-time clean-up never runs again.
     """
     path = keymap_path()
-    raw = read_json(path, default={})
+    if not path.exists():
+        return DEFAULT_KEYMAP.copy()
+    try:
+        raw = read_json(path, default=None)
+    except (ValueError, OSError):
+        raw = None
     if not isinstance(raw, dict):
+        # A file that exists but does not parse is corrupt: quarantine it before
+        # falling back to defaults, so the user's bindings are recoverable and a
+        # bad file never crashes startup.
+        from quill.core.migration_backup import backup_corrupt_file
+
+        backup_corrupt_file("keymap", path)
         return DEFAULT_KEYMAP.copy()
     cleaned = merge_keymaps(raw)
-    # Compute the set of dropped keys: present in raw but missing from
-    # cleaned, or present in both but with the default value restored.
-    # These are the entries the user had on disk that did not survive the
-    # merge — they need to be persisted out so the file reflects what we
-    # actually honored.
-    dropped = [k for k in raw if k not in cleaned or cleaned.get(k) == DEFAULT_KEYMAP.get(k)]
-    if dropped:
-        # Persist only the user's surviving overrides, not the full
-        # DEFAULT_KEYMAP, so the on-disk file stays a small delta. The
-        # dropped entries have been logged; they will not reappear on
-        # the next launch because they are no longer in the file.
-        surviving = {k: v for k, v in cleaned.items() if k in raw and v != DEFAULT_KEYMAP.get(k)}
+    desired = _persisted_keymap_document(cleaned)
+    if raw != desired:
         try:
-            write_json_atomic(path, surviving)
+            write_json_atomic(path, desired)
         except OSError as exc:
             # Persistence is best-effort: a read-only install or a locked
             # file should not stop QUILL from launching with the cleaned
@@ -407,7 +460,11 @@ def list_keymap_profiles() -> list[str]:
 
 
 def save_keymap(keymap: dict[str, str]) -> None:
-    write_json_atomic(keymap_path(), keymap)
+    # Persist only the override delta plus the epoch stamp, never the full
+    # map, so future DEFAULT_KEYMAP changes flow through to the user. Callers
+    # pass the full merged map; the delta is computed here so every save site
+    # (editor, reset, import, share) gets the forward-compatible shape.
+    write_json_atomic(keymap_path(), _persisted_keymap_document(keymap))
 
 
 def build_keymap_for_pack(name: str) -> dict[str, str]:
@@ -423,10 +480,17 @@ def merge_keymaps(raw: object) -> dict[str, str]:
     if not isinstance(raw, dict):
         return DEFAULT_KEYMAP.copy()
     merged = DEFAULT_KEYMAP.copy()
+    # A file stamped below the current epoch (or unstamped -- a legacy full
+    # snapshot) gets the one-time clean-up: the curated old->new rebindings and
+    # the leader-chord Find force. Files already on the current epoch are pure
+    # deltas of deliberate overrides, so we apply them as-is and never second-
+    # guess a binding the user chose after upgrading.
+    saved_epoch = raw.get(_DEFAULTS_EPOCH_KEY)
+    is_pre_epoch = not (isinstance(saved_epoch, int) and saved_epoch >= KEYMAP_DEFAULTS_EPOCH)
     legacy_rebindings = {
-        # Find returns to the conventional Ctrl+F. It had briefly defaulted to the
-        # QUILL-key prefix; rewrite that stale saved binding on load.
-        "edit.find": ("CTRL+SHIFT+GRAVE, F", "Ctrl+F"),
+        # NOTE: edit.find is handled separately by the 0.8.0 beta force below,
+        # which overwrites *any* stale QUILL-key-leader Find binding with Ctrl+F
+        # (several pre-release builds defaulted it to different leader chords).
         # #608: Quote Lines moves from Ctrl+Q to Ctrl+Shift+Q so Cmd+Q
         # can quit on macOS. Unquote Lines moves from Ctrl+Shift+Q to
         # Ctrl+Shift+K to stay in the home row and free Ctrl+Q entirely.
@@ -443,7 +507,7 @@ def merge_keymaps(raw: object) -> dict[str, str]:
         "tools.dictation_toggle": ("CTRL+ALT+V", "Ctrl+Shift+Grave, D"),
         "edit.toggle_extend_selection_mode": ("F8", ""),
         "edit.copy_selection_for_email": ("CTRL+ALT+C", "Ctrl+Shift+Grave, C"),
-        "tools.sticky_note_capture": ("CTRL+ALT+SHIFT+N", "Ctrl+Shift+Grave, N"),
+        "tools.sticky_note_capture": ("CTRL+ALT+SHIFT+N", "Ctrl+Shift+Grave, Shift+N"),
         "view.browser_preview": ("CTRL+ALT+SHIFT+V", "Ctrl+Shift+Grave, V"),
         "format.list_manager": ("CTRL+ALT+L", "Ctrl+Shift+Grave, L"),
         "format.heading_1": ("CTRL+SHIFT+GRAVE, 1", "Ctrl+Alt+1"),
@@ -479,6 +543,9 @@ def merge_keymaps(raw: object) -> dict[str, str]:
         legacy_rebindings["navigate.forward_location"] = ("Alt+Right", "Cmd+]")
     for command_id, binding in raw.items():
         if isinstance(command_id, str) and isinstance(binding, str):
+            # Reserved metadata keys (e.g. the epoch stamp) are not bindings.
+            if command_id.startswith("_"):
+                continue
             # A binding for a command id that no longer ships in DEFAULT_KEYMAP
             # is no longer valid; drop it so the default (which is to omit it)
             # takes effect.
@@ -486,12 +553,21 @@ def merge_keymaps(raw: object) -> dict[str, str]:
                 logger.debug("Dropping keymap entry for unknown command: %r", command_id)
                 continue
             normalized = binding
-            legacy_binding = legacy_rebindings.get(command_id)
-            if (
-                legacy_binding is not None
-                and normalized.strip().upper() == legacy_binding[0].upper()
-            ):  # noqa: E501
-                normalized = legacy_binding[1]
+            if is_pre_epoch:
+                legacy_binding = legacy_rebindings.get(command_id)
+                if (
+                    legacy_binding is not None
+                    and normalized.strip().upper() == legacy_binding[0].upper()
+                ):  # noqa: E501
+                    normalized = legacy_binding[1]
+                # Find must be the conventional Ctrl+F. Several pre-release
+                # builds defaulted edit.find to a QUILL-key leader chord
+                # ("Ctrl+Shift+Grave, <key>"); overwrite any such legacy
+                # binding so upgraders are not stranded with Find unreachable.
+                if command_id == "edit.find" and normalized.strip().upper().startswith(
+                    _QUILL_LEADER_PREFIX
+                ):
+                    normalized = DEFAULT_KEYMAP["edit.find"]
             # An empty binding means "use the default" — drop it so the
             # default in DEFAULT_KEYMAP takes effect (do not store "" on top).
             if not normalized.strip():

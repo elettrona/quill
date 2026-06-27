@@ -194,7 +194,7 @@ class WatchProfileDialogMixin:
             convert_row.Add(convert_choice, 1, wx.EXPAND)
             root.Add(convert_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
-            # Transcript output format for the offline "Transcribe audio (Whisperer)"
+            # Transcript output format for the offline "Transcribe audio (offline)"
             # action (WATCH-9). SRT/VTT carry timestamps; they fall back to text
             # when the engine returns no timestamped segments.
             transcribe_formats = ["txt", "srt", "vtt", "md"]

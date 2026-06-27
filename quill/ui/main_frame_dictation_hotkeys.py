@@ -1,4 +1,4 @@
-"""Hold-to-Dictate and Locked Dictation hotkeys (F9 / Ctrl+F9).
+"""Locked Dictation hotkeys (Ctrl+F9 and family).
 
 Wires the wx-free :class:`~quill.core.speech.dictation.DictationController` to the
 live editor: it builds the insertion context from the caret, drives microphone
@@ -6,12 +6,12 @@ capture (:class:`~quill.core.speech.capture.MicRecorder`), runs Whisper on a
 worker thread, secures audio to the recovery repository before transcribing, and
 inserts the transcript as one undoable edit. Key activation is matched against
 the *configured* keymap bindings (so every shortcut is remappable) in the
-editor's key-down/up handlers rather than the accelerator table, because
-Hold-to-Dictate needs a real key-up that accelerators never deliver.
+editor's key-down handlers rather than the accelerator table, so Escape can be
+consumed only while a session is recording. (Hold-to-Dictate was removed: a held
+key repeats and announces itself endlessly; Ctrl+F9 is the toggle.)
 
 Default shortcuts (all remappable in Keyboard settings):
 
-* ``tools.dictation_hold``           F9              hold to record, release to insert
 * ``tools.dictation_lock_toggle``    Ctrl+F9         start / finish Locked Dictation
 * ``tools.dictation_pause``          Ctrl+Shift+F9   pause / resume Locked Dictation
 * ``tools.dictation_status``         Alt+F9          speak the current state
@@ -24,12 +24,14 @@ they behave normally the rest of the time.
 
 from __future__ import annotations
 
+import logging
 import time
 from pathlib import Path
 from typing import Any
 
+logger = logging.getLogger(__name__)
+
 _DICTATION_COMMANDS: tuple[tuple[str, str], ...] = (
-    ("tools.dictation_hold", "Hold-to-Dictate"),
     ("tools.dictation_lock_toggle", "Locked Dictation (start/finish)"),
     ("tools.dictation_pause", "Pause or Resume Dictation"),
     ("tools.dictation_status", "Dictation Status"),
@@ -54,21 +56,40 @@ class _LiveDictationServices:
         return self._repo
 
     def start_capture(self, session: Any) -> None:
-        from quill.core.speech.capture import MicRecorder
+        from quill.core.speech.capture import MicRecorder, list_input_devices
         from quill.core.speech.service import load_input_device
 
+        device = load_input_device()
+        try:
+            name = next(
+                (n for i, n in list_input_devices() if i == device),
+                "system default" if device < 0 else f"index {device}",
+            )
+        except Exception:  # noqa: BLE001 - logging must not block capture
+            name = "?"
+        logger.info("dictation: capture start, mic index=%s (%s)", device, name)
         recorder = MicRecorder()
-        recorder.start(load_input_device())  # raises on failure -> MIC_UNAVAILABLE
+        recorder.start(device)  # raises on failure -> MIC_UNAVAILABLE
         self._recorder = recorder
 
     def stop_capture(self, session: Any) -> Path | None:
         recorder = self._recorder
         self._recorder = None
         if recorder is None:
+            logger.info("dictation: stop_capture with no active recorder")
             return None
         try:
-            return recorder.stop()
-        except Exception:  # noqa: BLE001 - capture cleanup must not raise over the result
+            path = recorder.stop()
+            try:
+                size = Path(path).stat().st_size
+            except OSError:
+                size = -1
+            logger.info("dictation: capture stopped, wav=%s size=%d bytes", path, size)
+            if 0 <= size <= 44:  # WAV header only, no audio frames
+                logger.warning("dictation: WAV has no audio — check mic selection / OS mic access")
+            return path
+        except Exception as exc:  # noqa: BLE001 - capture cleanup must not raise over the result
+            logger.warning("dictation: stop_capture failed: %s", exc)
             return None
 
     def pause_capture(self, session: Any) -> None:
@@ -99,7 +120,7 @@ class _LiveDictationServices:
     def transcribe(self, session: Any) -> None:
         frame = self._frame
         controller = frame._live_dictation
-        provider = frame._speech_provider()
+        provider = frame._dictation_provider()
         installed = provider.list_installed_models()  # type: ignore[attr-defined]
         if not installed:
             controller.transcription_failed(session.session_id, "No speech model installed.")
@@ -111,24 +132,49 @@ class _LiveDictationServices:
         from quill.core.speech.provider import TranscriptionRequest
 
         request = TranscriptionRequest(source_path=audio_path, model_id=model_id)
+        asize = audio_path.stat().st_size if (audio_path and audio_path.exists()) else -1
+        logger.info("dictation: transcribe model=%s audio size=%d bytes", model_id, asize)
 
-        def _work(progress: Any) -> Any:
+        import threading
+
+        from quill.core.speech.provider import SpeechError
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
+
+        wx = frame._wx
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            frame.frame,
+            "Transcribing dictation",
+            "Transcribing your dictation...",
+            on_cancel=cancel.set,
+            # Quiet mirroring so a minimized run isn't chatty; the controller's
+            # state feedback announces the start and the inserted word count.
+            status_fn=frame._set_status_quiet,
+        )
+        progress.show()
+
+        def _on_progress(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise SpeechError("Transcription cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            progress.set_progress(percent, f"{message} {percent}%")
+
+        def _run() -> None:
             try:
-                result = provider.transcribe_file(  # type: ignore[attr-defined]
-                    request, lambda f, m: progress(m, int(f * 100), 100)
-                )
-                return ("ok", (getattr(result, "full_text", "") or "").strip())
+                result = provider.transcribe_file(request, _on_progress)  # type: ignore[attr-defined]
+                text = (getattr(result, "full_text", "") or "").strip()
+                logger.info("dictation: transcription ok, %d chars: %r", len(text), text[:120])
             except Exception as exc:  # noqa: BLE001 - report failure to the controller
-                return ("error", str(exc))
+                logger.warning("dictation: transcription failed: %s", exc)
+                wx.CallAfter(progress.close)
+                wx.CallAfter(controller.transcription_failed, session_id, str(exc))
+                return
+            wx.CallAfter(progress.close)
+            wx.CallAfter(controller.transcription_succeeded, session_id, text)
 
-        def _done(payload: Any) -> None:
-            kind, value = payload
-            if kind == "ok":
-                controller.transcription_succeeded(session_id, value)
-            else:
-                controller.transcription_failed(session_id, value)
-
-        frame._run_background_task("Transcribing dictation", _work, _done)
+        threading.Thread(  # GATE-40-OK: dictation transcription worker.
+            target=_run, daemon=True
+        ).start()
 
     def insert(self, session: Any, text: str) -> bool:
         frame = self._frame
@@ -153,7 +199,7 @@ class _LiveDictationServices:
 
 
 class DictationHotkeysMixin:
-    """F9 Hold-to-Dictate and Ctrl+F9 Locked Dictation, fully remappable."""
+    """Ctrl+F9 Locked Dictation and its controls, fully remappable."""
 
     # Relies on MainFrame helpers: _wx, frame, editor, document, settings,
     # commands, _binding_for, _parse_keybinding, _announce, _set_status,
@@ -191,7 +237,6 @@ class DictationHotkeysMixin:
 
     def _register_dictation_hotkey_commands(self) -> None:
         handlers = {
-            "tools.dictation_hold": self.start_hold_dictation,
             "tools.dictation_lock_toggle": self.toggle_locked_dictation,
             "tools.dictation_pause": self.toggle_dictation_pause,
             "tools.dictation_status": self.speak_dictation_status,
@@ -209,20 +254,12 @@ class DictationHotkeysMixin:
         # Deferred so the prompt lands after the startup announcements settle.
         try:
             self._wx.CallLater(2000, self.check_dictation_recovery_on_startup)
+            self._wx.CallLater(4000, self.prewarm_dictation_model)  # warm model: fast first use
+            self._wx.CallLater(4500, self.prewarm_kokoro_model)  # warm Kokoro for fast preview
         except Exception:  # noqa: BLE001 - the startup prompt is best-effort
             pass
 
     # -- command handlers (also callable from the command palette) --------- #
-
-    def start_hold_dictation(self) -> None:
-        if not self._dictation_preflight():
-            return
-        self._ensure_dictation_controller().start_hold(self._dictation_context())
-        self._start_dictation_watchdog()
-
-    def release_hold_dictation(self) -> None:
-        if self._live_dictation is not None:
-            self._live_dictation.release_hold()
 
     def toggle_locked_dictation(self) -> None:
         controller = self._ensure_dictation_controller()
@@ -350,12 +387,21 @@ class DictationHotkeysMixin:
                 force=True,
             )
             return False
-        provider = self._speech_provider()
+        provider = self._dictation_provider()
         try:
+            if not provider.is_available():  # type: ignore[attr-defined]
+                # The engine itself (e.g. the whisper.cpp binary) is missing, so
+                # recording would capture audio that can never be transcribed.
+                self._announce(
+                    "The speech engine isn't set up on this computer, so dictation can't "
+                    "run. Open Tools, Speech and Dictation to set it up.",
+                    force=True,
+                )
+                return False
             if not provider.list_installed_models():  # type: ignore[attr-defined]
                 self._announce(
-                    "No speech model is installed. Open Tools, Speech, Whisperer, "
-                    "Manage Speech Models.",
+                    "No speech model is installed. Open Tools, Speech and Dictation "
+                    "to download one.",
                     force=True,
                 )
                 return False
@@ -370,9 +416,9 @@ class DictationHotkeysMixin:
         if getattr(settings, "dictation_onboarding_shown", False):
             return
         self._announce(
-            "Dictation ready. Hold F9 to dictate and release to insert, or press "
-            "Control F9 for a hands-free locked session. Escape stops and keeps your "
-            "speech; Shift Escape cancels. This hint won't show again.",
+            "Dictation ready. Press Control F9 to start a hands-free session, then "
+            "Control F9 again or Escape to finish and insert; Shift Escape cancels. "
+            "This hint won't show again.",
             force=True,
         )
         settings.dictation_onboarding_shown = True
@@ -449,21 +495,12 @@ class DictationHotkeysMixin:
         if self._dictation_match(event, self._binding_for("tools.dictation_status")):
             self.speak_dictation_status()
             return True
-        if self._dictation_match(event, self._binding_for("tools.dictation_hold")):
-            self.start_hold_dictation()
-            return True
         return False
 
     def _dictation_handle_key_up(self, event: Any) -> bool:
-        if self._live_dictation is None:
-            return False
-        # Match the hold key by its main key code, ignoring modifiers (they are
-        # often already released by the time the key-up arrives).
-        if self._dictation_match(
-            event, self._binding_for("tools.dictation_hold"), ignore_mods=True
-        ):
-            self.release_hold_dictation()
-            return True
+        # Hold-to-Dictate was removed (a held key repeats and announces itself
+        # endlessly); Locked Dictation (Ctrl+F9) is the toggle. Nothing to do on
+        # key-up now.
         return False
 
     # -- watchdog timer (max duration, missing key-up, focus loss) --------- #
@@ -547,7 +584,11 @@ def _build_feedback() -> dict:
         FeedbackEvent.LOCKED_STOP: ("dictation_locked_off", "", ""),
         FeedbackEvent.PAUSED: ("", "Dictation paused.", "Locked dictation paused"),
         FeedbackEvent.RESUMED: ("transcription_started", "Dictation resumed.", ""),
-        FeedbackEvent.TRANSCRIBING: ("", "Transcribing dictation.", "Transcribing dictation"),
+        FeedbackEvent.TRANSCRIBING: (
+            "",
+            "Transcribing, please wait. The first one loads the model.",
+            "Transcribing...",
+        ),
         FeedbackEvent.INSERTED: ("transcription_word_inserted", "Dictation inserted.", ""),
         FeedbackEvent.NO_SPEECH: ("", "No speech was recognized.", "No speech recognized"),
         FeedbackEvent.REVIEW: (

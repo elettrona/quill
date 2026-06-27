@@ -14,7 +14,8 @@ from quill.core.settings_normalizers import (
     _normalize_status_bar_hidden,
     _normalize_status_bar_order,
 )
-from quill.core.storage import read_json, write_json_atomic
+from quill.core.storage import write_json_atomic
+from quill.core.versioned_store import load_with_migration
 
 __all__ = [
     "STATUS_BAR_ITEMS",
@@ -57,10 +58,28 @@ class Settings:
     indent_size: int = 4
     auto_check_updates: bool = False
     beta_updates: bool = False
+    # Recommended (force-once) updates to important defaults, e.g. restoring
+    # Find to Ctrl+F for users who had it on a QUILL-key chord. This is the
+    # opt-out toggle (default on); ``applied_recommended_updates`` records which
+    # updates have already fired so each applies at most once per user. See
+    # quill.core.recommended_updates.
+    apply_recommended_keymap_updates: bool = True
+    applied_recommended_updates: list[str] = field(default_factory=list)
+    # How QUILL surfaces a one-time settings/keymap migration after an upgrade:
+    # "silent" (do nothing), "announce" (brief spoken + status message), or
+    # "prompt" (a small dialog summarizing what changed, with an Undo).
+    migration_notice: str = "announce"
     skipped_update_version: str = ""
     last_update_check: str = ""
     recent_files_limit: int = 10
     recent_files_auto_clear_missing: bool = False
+    # When saving an untitled document, suggest a filename from its first line
+    # (works across formats; strips leading markup). Opt-in.
+    first_line_as_title: bool = False
+    # Background model warm-up after startup so the first use is fast. Loads the
+    # model into memory; turn off to save RAM if you don't use the feature.
+    warm_dictation_model: bool = True
+    warm_kokoro_model: bool = True
     tray_enabled: bool = False
     persistent_undo: bool = False
     spellcheck_as_you_type: bool = False
@@ -164,6 +183,11 @@ class Settings:
     import_export_overwrite: str = "ask"
     import_export_output_layout: str = "subfolder"
     import_export_last_folder: str = ""
+    # File > Convert File dialog memory: the last output folder and the last
+    # chosen output format (a Pandoc writer token, e.g. "gfm", "docx"). Session
+    # memory, not a user-tunable policy, so not exposed in Preferences.
+    convert_file_last_output_dir: str = ""
+    convert_file_last_format: str = "gfm"
     # SET-2: tunable timing and pacing
     autosave_interval_seconds: int = 30
     quick_nav_debounce_ms: int = 250
@@ -359,6 +383,8 @@ class Settings:
     batch_speech_sentence_gap_ms: int = 0  # 0-10000; pause between sentences (opt-in; see docs)
     batch_speech_tail_padding_ms: int = 300  # 0-10000; trailing pad per section (anti-clipping)
     batch_speech_intro_section_title: str = "Introduction"
+    batch_speech_temp_folder: str = ""  # parent for scratch dirs; blank = system temp
+    batch_speech_save_spoken_text: bool = False  # also save the text sent to the engine
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Settings:
@@ -437,6 +463,16 @@ class Settings:
             indent_size = 4
         auto_check_updates = bool(data.get("auto_check_updates", False))
         beta_updates = bool(data.get("beta_updates", False))
+        apply_recommended_keymap_updates = bool(data.get("apply_recommended_keymap_updates", True))
+        raw_applied = data.get("applied_recommended_updates", [])
+        applied_recommended_updates = (
+            [str(item) for item in raw_applied if isinstance(item, str)]
+            if isinstance(raw_applied, list)
+            else []
+        )
+        migration_notice = str(data.get("migration_notice", "announce")).strip().lower()
+        if migration_notice not in {"silent", "announce", "prompt"}:
+            migration_notice = "announce"
         skipped_update_version = str(data.get("skipped_update_version", "")).strip()
         last_update_check = str(data.get("last_update_check", "")).strip()
         try:
@@ -444,6 +480,9 @@ class Settings:
         except (TypeError, ValueError):
             recent_files_limit = 10
         recent_files_auto_clear_missing = bool(data.get("recent_files_auto_clear_missing", False))
+        first_line_as_title = bool(data.get("first_line_as_title", False))
+        warm_dictation_model = bool(data.get("warm_dictation_model", True))
+        warm_kokoro_model = bool(data.get("warm_kokoro_model", True))
         tray_enabled = bool(data.get("tray_enabled", False))
         persistent_undo = bool(data.get("persistent_undo", False))
         spellcheck_as_you_type = bool(data.get("spellcheck_as_you_type", False))
@@ -623,6 +662,10 @@ class Settings:
         if import_export_output_layout not in {"subfolder", "same_folder"}:
             import_export_output_layout = "subfolder"
         import_export_last_folder = str(data.get("import_export_last_folder", "")).strip()
+        convert_file_last_output_dir = str(data.get("convert_file_last_output_dir", "")).strip()
+        convert_file_last_format = str(data.get("convert_file_last_format", "gfm")).strip()
+        if not convert_file_last_format:
+            convert_file_last_format = "gfm"
         try:
             watch_folder_poll_interval_seconds = int(
                 data.get("watch_folder_poll_interval_seconds", 5)
@@ -905,6 +948,8 @@ class Settings:
             str(data.get("batch_speech_intro_section_title", "Introduction")).strip()
             or "Introduction"
         )
+        batch_speech_temp_folder = str(data.get("batch_speech_temp_folder", "")).strip()
+        batch_speech_save_spoken_text = bool(data.get("batch_speech_save_spoken_text", False))
         if recent_files_limit < 1:
             recent_files_limit = 1
         if recent_files_limit > 50:
@@ -935,10 +980,16 @@ class Settings:
             indent_size=indent_size,
             auto_check_updates=auto_check_updates,
             beta_updates=beta_updates,
+            apply_recommended_keymap_updates=apply_recommended_keymap_updates,
+            applied_recommended_updates=applied_recommended_updates,
+            migration_notice=migration_notice,
             skipped_update_version=skipped_update_version,
             last_update_check=last_update_check,
             recent_files_limit=recent_files_limit,
             recent_files_auto_clear_missing=recent_files_auto_clear_missing,
+            first_line_as_title=first_line_as_title,
+            warm_dictation_model=warm_dictation_model,
+            warm_kokoro_model=warm_kokoro_model,
             tray_enabled=tray_enabled,
             persistent_undo=persistent_undo,
             spellcheck_as_you_type=spellcheck_as_you_type,
@@ -1014,6 +1065,8 @@ class Settings:
             import_export_overwrite=import_export_overwrite,
             import_export_output_layout=import_export_output_layout,
             import_export_last_folder=import_export_last_folder,
+            convert_file_last_output_dir=convert_file_last_output_dir,
+            convert_file_last_format=convert_file_last_format,
             autosave_interval_seconds=autosave_interval_seconds,
             quick_nav_debounce_ms=quick_nav_debounce_ms,
             quick_nav_min_chars=quick_nav_min_chars,
@@ -1132,6 +1185,8 @@ class Settings:
             batch_speech_article_gap_ms=batch_speech_article_gap_ms,
             batch_speech_sentence_gap_ms=batch_speech_sentence_gap_ms,
             batch_speech_tail_padding_ms=batch_speech_tail_padding_ms,
+            batch_speech_temp_folder=batch_speech_temp_folder,
+            batch_speech_save_spoken_text=batch_speech_save_spoken_text,
             batch_speech_intro_section_title=batch_speech_intro_section_title,
         )
 
@@ -1141,17 +1196,36 @@ def settings_path() -> Path:
 
 
 def load_settings() -> Settings:
-    raw = read_json(settings_path(), default={})
-    if not isinstance(raw, dict):
-        return Settings()
-    # SET-5: read either the nested, versioned document or a legacy flat file.
-    from quill.core.settings_migration import from_versioned
+    """Load settings, converting any legacy file to the canonical delta on the way.
 
-    return from_versioned(raw)
+    The on-disk file is a *delta* of the user's overrides relative to
+    ``Settings()`` plus a ``schema_version`` stamp (see
+    :mod:`quill.core.settings_migration`), so any field the user never
+    customized always tracks the current default. The generic load / migrate /
+    backup / resave is shared with every other versioned store
+    (:func:`quill.core.versioned_store.load_with_migration`): a pre-current-schema
+    file is backed up and rewritten to the canonical delta exactly once.
+    """
+    # SET-5: read the nested versioned document, a legacy flat file, or junk.
+    from quill.core.settings_migration import (
+        from_versioned,
+        is_legacy_settings_document,
+        to_versioned,
+    )
+
+    return load_with_migration(
+        settings_path(),
+        store_name="settings",
+        parse=from_versioned,
+        serialize=to_versioned,
+        is_legacy=is_legacy_settings_document,
+        default=Settings,
+    )
 
 
 def save_settings(settings: Settings) -> None:
-    # SET-5: persist the nested, versioned document shape.
+    # SET-5: persist the nested, versioned *delta* document (overrides only),
+    # so future default changes flow through to the user automatically.
     from quill.core.settings_migration import to_versioned
 
     write_json_atomic(settings_path(), to_versioned(settings))

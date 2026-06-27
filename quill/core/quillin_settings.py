@@ -46,6 +46,10 @@ def load_settings(quillin_id: str) -> dict[str, object]:
         data = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(data, dict):
             return {}
+        # Versioned envelope {"schema_version", "settings": {...}}; fall back to
+        # the legacy bare dict (the whole file is the settings) for old files.
+        if "schema_version" in data and isinstance(data.get("settings"), dict):
+            return dict(data["settings"])
         return dict(data)
     except (json.JSONDecodeError, OSError):
         return {}
@@ -60,7 +64,7 @@ def save_settings(quillin_id: str, settings: dict[str, object]) -> None:
     """Atomically persist *settings* for *quillin_id*, replacing all prior data."""
     path = _settings_path(quillin_id)
     path.parent.mkdir(parents=True, exist_ok=True)
-    write_json_atomic(path, copy.deepcopy(settings))
+    write_json_atomic(path, {"schema_version": 1, "settings": copy.deepcopy(settings)})
 
 
 def set_setting(quillin_id: str, key: str, value: object) -> None:

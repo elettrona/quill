@@ -43,6 +43,72 @@ class SpeechCommandsMixin:
                 pass
         return registry.get(DEFAULT_PROVIDER_ID)  # type: ignore[attr-defined]
 
+    def _dictation_provider(self) -> object:
+        """Cached speech provider for dictation so a loaded model persists across
+        sessions (and a startup prewarm stays warm). _speech_registry() builds a
+        fresh provider each call, which would reload the model every dictation.
+        Rebuilt when the chosen engine changes."""
+        chosen = str(getattr(self.settings, "speech_provider", "") or "")
+        cached = getattr(self, "_dictation_provider_cache", None)
+        if cached is not None and getattr(self, "_dictation_provider_key", None) == chosen:
+            return cached
+        provider = self._speech_provider()
+        self._dictation_provider_cache = provider
+        self._dictation_provider_key = chosen
+        return provider
+
+    def invalidate_dictation_provider(self) -> None:
+        """Drop the cached dictation provider (after an engine/model change)."""
+        self._dictation_provider_cache = None
+
+    def prewarm_dictation_model(self) -> None:
+        """Load the dictation model in the background so the first dictation is
+        fast. Best-effort; never blocks the UI or raises. The cached provider
+        (_dictation_provider) keeps the model loaded for later dictations."""
+        import threading
+
+        if not bool(getattr(self.settings, "warm_dictation_model", True)):
+            return
+
+        def _work() -> None:
+            try:
+                from quill.core.speech.capture import capture_available
+
+                if not capture_available():
+                    return
+                provider = self._dictation_provider()
+                installed = provider.list_installed_models()  # type: ignore[attr-defined]
+                warm = getattr(provider, "warm", None)
+                if installed and callable(warm):
+                    warm(self._default_model_id(installed))
+                    import logging
+
+                    logging.getLogger(__name__).info("dictation: speech model prewarmed")
+            except Exception:  # noqa: BLE001 - prewarm must never break startup
+                pass
+
+        threading.Thread(target=_work, daemon=True, name="quill-dictation-prewarm").start()
+
+    def prewarm_kokoro_model(self) -> None:
+        """Warm the Kokoro ONNX model in the background so the first preview or
+        read-aloud is fast. Best-effort; gated by the warm_kokoro_model setting."""
+        if not bool(getattr(self.settings, "warm_kokoro_model", True)):
+            return
+        import threading
+
+        def _work() -> None:
+            try:
+                from quill.core.read_aloud import warm_kokoro_onnx
+
+                if warm_kokoro_onnx():
+                    import logging
+
+                    logging.getLogger(__name__).info("read-aloud: kokoro model prewarmed")
+            except Exception:  # noqa: BLE001 - prewarm must never break startup
+                pass
+
+        threading.Thread(target=_work, daemon=True, name="quill-kokoro-prewarm").start()
+
     # -- model manager ---------------------------------------------------- #
 
     def open_speech_models(self) -> None:
@@ -151,6 +217,7 @@ class SpeechCommandsMixin:
             "Downloading FFmpeg",
             "Preparing to download ffmpeg...",
             on_cancel=cancel.set,
+            status_fn=self._set_status,
         )
         progress.show()
         self._announce("Downloading ffmpeg.")
@@ -232,6 +299,7 @@ class SpeechCommandsMixin:
             "Installing Faster Whisper",
             "Preparing to install Faster Whisper...",
             on_cancel=cancel.set,
+            status_fn=self._set_status,
         )
         progress.show()
         self._announce("Installing Faster Whisper.")
@@ -316,6 +384,7 @@ class SpeechCommandsMixin:
             "Installing Vosk",
             "Preparing to install Vosk...",
             on_cancel=cancel.set,
+            status_fn=self._set_status,
         )
         progress.show()
         self._announce("Installing Vosk.")
@@ -465,6 +534,7 @@ class SpeechCommandsMixin:
             "Downloading Piper",
             "Preparing download...",
             on_cancel=cancel.set,
+            status_fn=self._set_status,
         )
         progress.show()
         self._announce("Downloading Piper TTS engine.")
@@ -550,6 +620,7 @@ class SpeechCommandsMixin:
             "Downloading eSpeak-NG",
             "Preparing download...",
             on_cancel=cancel.set,
+            status_fn=self._set_status,
         )
         progress.show()
         self._announce("Downloading eSpeak-NG.")
@@ -634,6 +705,7 @@ class SpeechCommandsMixin:
             "Installing Kokoro ONNX",
             "Preparing to install Kokoro ONNX...",
             on_cancel=cancel.set,
+            status_fn=self._set_status,
         )
         progress.show()
         self._announce("Installing Kokoro ONNX.")
@@ -744,6 +816,7 @@ class SpeechCommandsMixin:
             "Downloading Speech Model",
             f"Preparing to download the {model_id} model...",
             on_cancel=cancel.set,
+            status_fn=self._set_status,
         )
         progress.show()
         self._announce(f"Downloading the {model_id} speech model.")
@@ -776,9 +849,14 @@ class SpeechCommandsMixin:
                 wx.CallAfter(self._set_status, f"Could not download model: {exc}")
                 wx.CallAfter(self._announce, f"Could not download the model. {exc}")
                 return
-            wx.CallAfter(progress.close)
             wx.CallAfter(self._set_status, f"Downloaded the {model_id} speech model.")
             wx.CallAfter(self._announce, f"Downloaded the {model_id} speech model.")
+            # Confirm completion with a clear OK button (or, if minimized, a status
+            # line) instead of silently closing — the silent close read as "nothing
+            # happened" even when the model downloaded.
+            progress.switch_to_ok(
+                f"Downloaded the {model_id} speech model. It is ready to use for dictation."
+            )
 
         threading.Thread(  # GATE-40-OK: speech model download worker.
             target=_run, daemon=True
@@ -839,17 +917,54 @@ class SpeechCommandsMixin:
             source_path=source, model_id=model_id, output_timestamps=True, diarize=diarize
         )
 
-        def _work(progress):
-            def _on_progress(fraction: float, message: str) -> None:
-                progress(message, int(fraction * 100), 100)
+        import threading
 
-            return provider.transcribe_file(request, _on_progress)  # type: ignore[attr-defined]
+        from quill.core.speech.provider import SpeechError
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
 
-        self._run_background_task(
-            f"Transcribing {source.name}",
-            _work,
-            lambda result: self._open_transcription_result(result, fmt),
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            self.frame,
+            "Transcribing",
+            f"Transcribing {source.name}...",
+            on_cancel=cancel.set,
+            # Quiet status mirroring so a minimized run does not announce every
+            # percentage over and over; the start/finish are announced once.
+            status_fn=self._set_status_quiet,
         )
+        progress.show()
+        self._announce(f"Transcribing {source.name}. This can take a while for long files.")
+
+        def _on_progress(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise SpeechError("Transcription cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            progress.set_progress(percent, f"{message} {percent}%")
+
+        def _run() -> None:
+            try:
+                result = provider.transcribe_file(request, _on_progress)  # type: ignore[attr-defined]
+            except SpeechError as exc:
+                wx.CallAfter(progress.close)
+                msg = (
+                    f"Transcription of {source.name} cancelled."
+                    if cancel.is_set()
+                    else f"Could not transcribe {source.name}: {exc}"
+                )
+                wx.CallAfter(self._set_status, msg)
+                return
+            except Exception as exc:  # noqa: BLE001 - surface a clean message
+                wx.CallAfter(progress.close)
+                wx.CallAfter(self._set_status, f"Could not transcribe {source.name}: {exc}")
+                return
+            # Done: close the progress dialog (which clears its status-bar line) and
+            # open the transcript, which announces the word count once.
+            wx.CallAfter(progress.close)
+            wx.CallAfter(self._open_transcription_result, result, fmt)
+
+        threading.Thread(  # GATE-40-OK: offline transcription worker.
+            target=_run, daemon=True
+        ).start()
 
     def _open_transcription_result(self, result: object, fmt: str = "text") -> None:
         from quill.core.document import Document

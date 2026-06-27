@@ -2,7 +2,23 @@ from __future__ import annotations
 
 import types
 
+import pytest
+
 from quill.platform.windows.prism_bridge import AnnouncementEngine
+
+
+@pytest.fixture(autouse=True)
+def _disable_ao2_fallback(monkeypatch):
+    """Disable the accessible_output2 fallback by default.
+
+    Dev machines that actually run a screen reader with accessible_output2
+    installed would otherwise satisfy the fallback and change Prism-focused
+    assertions. Tests that exercise the fallback override this explicitly.
+    """
+    monkeypatch.setattr(
+        "quill.platform.windows.prism_bridge._ao2_live_screen_reader",
+        lambda: (None, None),
+    )
 
 
 class _FakeFeatures:
@@ -15,9 +31,10 @@ class _FakeBackend:
         self.features = _FakeFeatures(runtime=runtime)
         self.name = "Fake Prism"
         self.messages: list[str] = []
+        self.interrupts: list[bool] = []
 
     def speak(self, message: str, interrupt: bool = False) -> None:
-        _ = interrupt
+        self.interrupts.append(interrupt)
         self.messages.append(message)
 
 
@@ -133,6 +150,111 @@ def test_force_speech_bypasses_screen_reader_suppression(monkeypatch) -> None:
     assert engine.announce("QUILL key", force_speech=True) is None
     prism_bridge.flush_tts_for_tests()
     assert voice.messages == ["QUILL key"]
+
+
+class _FakeBackendId:
+    """Stand-in for prism.BackendId; the probe looks members up by name."""
+
+    JAWS = "JAWS"
+    NVDA = "NVDA"
+
+
+class _NamedBackend(_FakeBackend):
+    def __init__(self, name: str, *, runtime: bool) -> None:
+        super().__init__(runtime=runtime)
+        self.name = name
+
+
+class _MultiBackendContext:
+    """acquire_best() returns an inactive NVDA; acquire(JAWS) returns a live JAWS.
+
+    Mirrors the real bug (#700): acquire_best mis-picks a reader that is not
+    running, so the runtime-aware selector must override it.
+    """
+
+    def __init__(self) -> None:
+        self.jaws = _NamedBackend("JAWS", runtime=True)
+        self.nvda = _NamedBackend("NVDA", runtime=False)
+        self._by_id = {"JAWS": self.jaws, "NVDA": self.nvda}
+
+    def acquire_best(self) -> _NamedBackend:
+        return self.nvda
+
+    def acquire(self, member: str) -> _NamedBackend:
+        backend = self._by_id.get(member)
+        if backend is None:
+            raise RuntimeError("backend not available")
+        return backend
+
+
+def test_selects_live_screen_reader_over_acquire_best(monkeypatch) -> None:
+    ctx = _MultiBackendContext()
+    prism_module = types.SimpleNamespace(Context=lambda: ctx, BackendId=_FakeBackendId)
+    monkeypatch.setattr(
+        "quill.platform.windows.prism_bridge.import_module",
+        lambda name: prism_module if name == "prism" else None,
+    )
+    monkeypatch.setattr(
+        "quill.platform.windows.sr_detect.detect_screen_reader",
+        lambda *a, **k: types.SimpleNamespace(detected=True, name="JAWS", source="jfw.exe"),
+    )
+
+    engine = AnnouncementEngine("auto")
+    state = engine.state()
+
+    assert state.active_backend == "prism"
+    assert state.backend_name == "JAWS"  # not the inactive NVDA from acquire_best()
+
+    # Forced announcements interrupt so the reader actually voices them (#700).
+    assert engine.announce("Indented lines", force_speech=True) is None
+    assert ctx.jaws.messages == ["Indented lines"]
+    assert ctx.jaws.interrupts == [True]
+
+    # Routine status does not interrupt the reader's current utterance.
+    engine.announce("Saved")
+    assert ctx.jaws.interrupts == [True, False]
+
+    # The inactive backend is never spoken through.
+    assert ctx.nvda.messages == []
+
+
+class _FakeAO2Speaker:
+    def __init__(self) -> None:
+        self.messages: list[str] = []
+        self.interrupts: list[bool] = []
+
+    def speak(self, message: str, interrupt: bool = False) -> None:
+        self.messages.append(message)
+        self.interrupts.append(interrupt)
+
+
+def test_falls_back_to_accessible_output2_when_prism_has_no_live_backend(monkeypatch) -> None:
+    # Prism import fails (no live backend); accessible_output2 reports a live JAWS
+    # reader, so announcements route through it instead of the SAPI self-voice.
+    monkeypatch.setattr(
+        "quill.platform.windows.prism_bridge.import_module",
+        lambda _name: (_ for _ in ()).throw(ImportError),
+    )
+    speaker = _FakeAO2Speaker()
+    monkeypatch.setattr(
+        "quill.platform.windows.prism_bridge._ao2_live_screen_reader",
+        lambda: (speaker, "JAWS"),
+    )
+
+    engine = AnnouncementEngine("auto")
+    state = engine.state()
+
+    assert state.active_backend == "accessible_output2"
+    assert state.backend_name == "JAWS"
+
+    # Forced announcements interrupt so the reader actually voices them.
+    assert engine.announce("Indented lines", force_speech=True) is None
+    assert speaker.messages == ["Indented lines"]
+    assert speaker.interrupts == [True]
+
+    # Routine status does not interrupt the reader.
+    engine.announce("Saved")
+    assert speaker.interrupts == [True, False]
 
 
 def test_macos_announce_error_logged(monkeypatch, caplog) -> None:

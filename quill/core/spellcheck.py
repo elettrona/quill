@@ -265,18 +265,20 @@ def is_known_word(token: str, extra: set[str] | frozenset[str] | None = None) ->
     enchant_dict = _try_enchant()
     if enchant_dict is not None:
         try:
-            # enchant.check is case-sensitive for proper nouns; try original
-            # casing first, then lowercase, then title case for sentence
-            # starts.
-            if enchant_dict.check(token):  # type: ignore[attr-defined]
-                return True
-            if enchant_dict.check(lowered):  # type: ignore[attr-defined]
-                return True
+            # enchant.check is case-sensitive for proper nouns; accept either the
+            # original casing (proper nouns) or the lowercase form (sentence
+            # starts). When a real dictionary (hunspell) answers cleanly its
+            # verdict is authoritative: a False means the word is misspelled.
+            # Do NOT fall through to the bundled wordlist here -- that ~370k-word
+            # dump contains junk entries (e.g. "teest") that would otherwise
+            # un-flag genuine typos. The wordlist is only a fallback for when
+            # enchant is absent or errors (handled below).
+            return bool(
+                enchant_dict.check(token)  # type: ignore[attr-defined]
+                or enchant_dict.check(lowered)  # type: ignore[attr-defined]
+            )
         except Exception:
-            pass
-        # If enchant returned False without raising, fall through to the
-        # bundled wordlist as a secondary check. Enchant's installed
-        # dictionary may be incomplete or minimal in some environments.
+            pass  # enchant errored; fall back to the bundled wordlist below
     wordlist = _load_wordlist()
     if wordlist:
         return lowered in wordlist

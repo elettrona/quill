@@ -189,7 +189,6 @@ file as a translator comment so future contributors apply it consistently.
 | Quick Nav | The rapid in-document navigation mode |
 | Skill Library | The library of AI-powered writing skill packs |
 | Prompt Library | The library of saved AI prompts |
-| GLOW | QUILL's guided-learning workflow system |
 
 ---
 

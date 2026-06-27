@@ -55,8 +55,8 @@ _MENU_PATH = _REPO_ROOT / "quill" / "ui" / "main_frame_menu.py"
 # carried from earlier work (view.send_to_tray / view.toggle_tab_control)
 # predate the escape-hatch mechanism but have equivalent justification.
 _CTRL_ALT_DOCUMENTED: frozenset[str] = frozenset({
-    "view.send_to_tray",  # Ctrl+Alt+T — Windows-shell registration
-    "view.toggle_tab_control",  # Ctrl+Alt+Shift+T — Windows-shell registration
+    "view.send_to_tray",  # legacy Ctrl+Alt+T allowance; now a QUILL-key chord
+    "view.toggle_tab_control",  # legacy Ctrl+Alt+Shift+T allowance; now a QUILL-key chord
     # EdSharp port: heading shortcuts override NVDA switch-to-synth-N (Ctrl+Alt+1..6).
     "format.heading_1",
     "format.heading_2",
@@ -98,7 +98,6 @@ _REQUIRED_CLUSTER_LABELS: tuple[tuple[str, str], ...] = (
     # Tools-menu cluster.
     ("Advanced", "&Advanced"),
     ("Quillins", "&Quillins"),
-    ("Accessibility", "A&ccessibility"),
     ("Customize & Support", "&Customize && Support"),
     ("Writing & Language", "&Writing && Language"),
 )

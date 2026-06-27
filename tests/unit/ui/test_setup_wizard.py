@@ -63,7 +63,11 @@ def test_wizard_tab_traversal_not_blocked_by_panel_override() -> None:
 def test_keyboard_sound_page_collects_sound_and_indent_settings() -> None:
     src = _wizard_pages_source()
     assert "settings.sound_enabled = self._sound_enabled.GetValue()" in src
-    assert "settings.sound_pack_path = self._sound_pack_path" in src
+    # The sound pack is now a dropdown of bundled packs (not a file picker), so
+    # collect() reads the selected pack's stored value, not a raw path.
+    assert "settings.sound_pack_path = self._sound_pack_values[pack_index]" in src
+    assert "wizard.sound_pack_choice" in src
+    assert "wizard.sound_pack_choose" not in src  # old "Choose..." file button is gone
     assert "settings.indent_tone_scale =" in src
 
 

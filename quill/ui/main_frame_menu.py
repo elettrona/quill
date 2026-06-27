@@ -13,7 +13,6 @@ from __future__ import annotations
 import platform
 
 from quill.core.i18n import _
-from quill.ui.audiobook_builder_runner import run_build_audiobook
 from quill.ui.batch_speech_runner import run_batch_export_to_speech
 from quill.ui.pronunciation_dictionary_dialog import run_pronunciation_manager
 from quill.ui.translated_speech_runner import run_translated_speech_export
@@ -120,6 +119,11 @@ class MenuBuilderMixin:
         self._id_export_other = wx.NewIdRef()  # "Other Pandoc Format..."
         self._id_batch_convert_import = wx.NewIdRef()
         self._id_batch_convert_export = wx.NewIdRef()
+        # File > Convert File... is appended to the File menu below (~line 362),
+        # so its id must be created here, before that use, not in the later
+        # tools-id block (regression from b28416b caused a launch-time
+        # AttributeError building the File menu).
+        self._id_convert_file = wx.NewIdRef()
         self._sessions_menu = wx.Menu()
         self._open_documents_menu = wx.Menu()
         self._recent_sessions_menu = wx.Menu()
@@ -358,6 +362,11 @@ class MenuBuilderMixin:
             self._menu_label(_("Other Pandoc Format..."), "file.export_other_pandoc"),
         )
         file_menu.AppendSubMenu(export_menu, _("&Export"))
+
+        file_menu.Append(
+            self._id_convert_file,
+            self._menu_label(_("Con&vert File..."), "file.convert_file"),
+        )
 
         file_menu.AppendSeparator()
         # --- Restore / reload ---
@@ -1375,7 +1384,6 @@ class MenuBuilderMixin:
         self._id_ocr_screen = wx.NewIdRef()
         self._id_describe_image = wx.NewIdRef()
         self._id_regex_helper = wx.NewIdRef()
-        self._id_pandoc_wizard = wx.NewIdRef()
         self._id_external_tools = wx.NewIdRef()
         self._id_read_aloud = wx.NewIdRef()
         self._id_read_aloud_stop = wx.NewIdRef()
@@ -1413,20 +1421,21 @@ class MenuBuilderMixin:
         self._id_notifications = wx.NewIdRef()
         self._id_check_updates = wx.NewIdRef()
         self._id_check_glow_updates = wx.NewIdRef()
-        self._id_validate_contrast = wx.NewIdRef()
         self._id_status_bar_settings = wx.NewIdRef()
         self._id_share_export = wx.NewIdRef()
         self._id_share_import = wx.NewIdRef()
+        self._id_post_mastodon = wx.NewIdRef()
+        self._id_mastodon_accounts = wx.NewIdRef()
         self._id_keymap_editor = wx.NewIdRef()
         self._id_export_keymap = wx.NewIdRef()
         self._id_import_keymap = wx.NewIdRef()
         self._id_reset_keymap = wx.NewIdRef()
+        self._id_reset_all_defaults = wx.NewIdRef()
         self._id_profiles_and_features = wx.NewIdRef()
         self._id_glow_audit_document = wx.NewIdRef()
         self._id_glow_audit_selection = wx.NewIdRef()
         self._id_glow_fix_document = wx.NewIdRef()
         self._id_glow_fix_selection = wx.NewIdRef()
-        self._id_link_inventory = wx.NewIdRef()
         self._id_ai_hub = wx.NewIdRef()
         self._id_ai_assistant = wx.NewIdRef()
         self._id_ai_prompt_studio = wx.NewIdRef()
@@ -1452,8 +1461,7 @@ class MenuBuilderMixin:
         self._id_speech_dictate = wx.NewIdRef()
         self._id_speech_voice_command = wx.NewIdRef()
         self._id_speech_microphone = wx.NewIdRef()
-        # Hold-to-Dictate / Locked Dictation menu items (the commands are also the
-        # remappable F9 family; Hold-to-Dictate itself stays keyboard-only).
+        # Locked Dictation menu items (the commands are the remappable Ctrl+F9 family).
         self._id_dictation_lock = wx.NewIdRef()
         self._id_dictation_pause = wx.NewIdRef()
         self._id_dictation_status = wx.NewIdRef()
@@ -1467,7 +1475,6 @@ class MenuBuilderMixin:
         self._id_speech_export_audio = wx.NewIdRef()
         self._id_speech_export_translated = wx.NewIdRef()
         self._id_speech_batch_export = wx.NewIdRef()
-        self._id_speech_build_audiobook = wx.NewIdRef()
         self._id_speech_pronunciations = wx.NewIdRef()
         self._id_ai_connection = wx.NewIdRef()
         self._id_ai_forget_key = wx.NewIdRef()
@@ -1531,8 +1538,6 @@ class MenuBuilderMixin:
         self._id_undo_profile_change = wx.NewIdRef()
         self._id_reset_feature_profile = wx.NewIdRef()
         self._id_profile_onboarding = wx.NewIdRef()
-        self._id_keyboard_trap_snapshot = wx.NewIdRef()
-        self._id_accessibility_audit = wx.NewIdRef()
         self._id_yaml_structure_editor = wx.NewIdRef()
         self._id_dev_console_python = wx.NewIdRef()
         self._id_dev_console_ts = wx.NewIdRef()
@@ -1685,45 +1690,33 @@ class MenuBuilderMixin:
         # and model management (#669). Previously split across Reading & Dictation >
         # Dictation (Windows) and Speech > Whisperer (offline). One menu is simpler.
         speech_menu = wx.Menu()
+        # One unified entry opens the Speech hub (Read Aloud + Dictation tabs);
+        # voices and dictation models are managed in the same dialog (#700).
         speech_menu.Append(
             self._id_speech_models,
-            self._menu_label(_("&Manage Speech Models..."), "tools.speech_models"),
-        )
-        speech_menu.Append(
-            self._id_speech_voices,
-            self._menu_label(_("Manage &Voices && Reading Aloud..."), "tools.speech_voices"),
+            self._menu_label(_("&Speech and Dictation..."), "tools.speech_models"),
         )
         speech_menu.AppendSeparator()
         speech_menu.Append(
             self._id_speech_dictate,
             self._menu_label(_("&Dictate (Offline)"), "tools.speech_dictate"),
         )
-        speech_menu.Append(
-            self._id_speech_voice_command,
-            self._menu_label(_("&Voice Command (Offline)"), "tools.voice_command"),
-        )
-        speech_menu.Append(
-            self._id_dictation,
-            self._menu_label(_("&Windows Dictation"), "tools.dictation_toggle"),
-            _("Press to start Windows dictation, press again to stop and insert"),
-        )
-        speech_menu.AppendCheckItem(
-            self._id_dictation_voice_commands,
-            self._menu_label(_("Hey QUILL &Commands"), "tools.dictation_voice_commands_toggle"),
-        )
-        speech_menu.Check(
-            self._id_dictation_voice_commands,
-            bool(getattr(self.settings, "voice_commands_enabled", False)),
-        )
-        self._register_voice_commands_check_menu(speech_menu)
+        # Voice Command (Offline) is locked off for now (feature core.voice_commands,
+        # locked_off=True). The id, command, handler, and keymap entry all stay
+        # registered for easy re-enable -- restore this Append to surface it again.
+        # speech_menu.Append(
+        #     self._id_speech_voice_command,
+        #     self._menu_label(_("&Voice Command (Offline)"), "tools.voice_command"),
+        # )
+        # Windows (SAPI) dictation is no longer supported -- offline Whisper
+        # Locked Dictation (Ctrl+F9) replaces it -- so it is not exposed in the
+        # menu. The command machinery stays for back-compat.
         speech_menu.Append(
             self._id_speech_microphone,
             self._menu_label(_("Dictation &Microphone..."), "tools.speech_microphone"),
         )
-        # Hold-to-Dictate / Locked Dictation control submenu (#10 discoverability).
-        # Hold-to-Dictate is a hold gesture (F9) that a menu click cannot perform,
-        # so only the discrete controls appear here; the keybinding for each is
-        # shown so the keyboard-first workflow stays obvious.
+        # Locked Dictation control submenu (#10 discoverability). The keybinding
+        # for each is shown so the keyboard-first workflow stays obvious.
         dictation_menu = wx.Menu()
         dictation_menu.Append(
             self._id_dictation_lock,
@@ -1795,10 +1788,6 @@ class MenuBuilderMixin:
         speech_menu.Append(
             self._id_speech_batch_export,
             self._menu_label(_("&Batch Export to Speech Audio..."), "tools.speech_batch_export"),
-        )
-        speech_menu.Append(
-            self._id_speech_build_audiobook,
-            self._menu_label(_("Build &Audiobook from Folder..."), "tools.speech_build_audiobook"),
         )
         speech_menu.Append(
             self._id_speech_pronunciations,
@@ -2052,22 +2041,9 @@ class MenuBuilderMixin:
             self._id_profile_onboarding,
             self._menu_label(_("&Startup Wizard..."), "help.startup_wizard"),
         )
+        # Windows dictation removed (offline Locked Dictation replaces it); this
+        # submenu is now just Watch Folder.
         bw_dictation_menu = wx.Menu()
-        bw_dictation_menu.Append(
-            self._id_dictation,
-            self._menu_label(_("&Dictation"), "tools.dictation_toggle"),
-            _("Press to start dictation, press again to stop and insert"),
-        )
-        bw_dictation_menu.AppendCheckItem(
-            self._id_dictation_voice_commands,
-            self._menu_label(_("Hey QUILL &Commands"), "tools.dictation_voice_commands_toggle"),
-        )
-        bw_dictation_menu.Check(
-            self._id_dictation_voice_commands,
-            bool(getattr(self.settings, "voice_commands_enabled", False)),
-        )
-        self._register_voice_commands_check_menu(bw_dictation_menu)
-        bw_dictation_menu.AppendSeparator()
         bw_dictation_menu.Append(
             self._id_watch_folder_toggle,
             _("Watch Folder &Monitoring (in Settings)..."),
@@ -2080,7 +2056,7 @@ class MenuBuilderMixin:
             self._id_watch_folder_status,
             self._menu_label(_("Watch Folder &Queue..."), "tools.watch_folder_status"),
         )
-        whisperer_menu.AppendSubMenu(bw_dictation_menu, _("&Dictation and Watch Folder"))
+        whisperer_menu.AppendSubMenu(bw_dictation_menu, _("&Watch Folder"))
         bw_models_menu = wx.Menu()
         self._append_bw_safe_mode_badge(bw_models_menu)
         bw_models_menu.Append(
@@ -2137,6 +2113,18 @@ class MenuBuilderMixin:
         whisperer_menu.AppendSubMenu(bw_rollout_menu, _("&Rollout"))
         if self._feature_enabled("core.bw_whisperer"):
             tools_menu.AppendSubMenu(whisperer_menu, _("&BITS Whisperer"))
+
+        # Share (Mastodon) ---------------------------------------------------
+        share_menu = wx.Menu()
+        share_menu.Append(
+            self._id_post_mastodon,
+            self._menu_label(_("&Post to Mastodon..."), "tools.post_to_mastodon"),
+        )
+        share_menu.Append(
+            self._id_mastodon_accounts,
+            self._menu_label(_("Mastodon &Accounts..."), "tools.manage_mastodon_accounts"),
+        )
+        tools_menu.AppendSubMenu(share_menu, _("&Share"))
 
         # Sticky Notes -------------------------------------------------------
         tools_menu.AppendSeparator()
@@ -2198,10 +2186,6 @@ class MenuBuilderMixin:
             self._menu_label(_("Regular Expression &Helper..."), "tools.regex_helper"),
         )
         power_tools_menu.Append(
-            self._id_pandoc_wizard,
-            self._menu_label(_("Pandoc Conversion &Wizard..."), "tools.pandoc_wizard"),
-        )
-        power_tools_menu.Append(
             self._id_external_tools,
             self._menu_label(
                 _("External Tools and Format &Support..."),
@@ -2241,20 +2225,6 @@ class MenuBuilderMixin:
         # Quillins ------------------------------------------------------------
         tools_menu.AppendSubMenu(self._build_quillins_menu(), _("&Quillins"))
 
-        # Accessibility -------------------------------------------------------
-        accessibility_menu = wx.Menu()
-        accessibility_menu.Append(self._id_accessibility_audit, _("Accessibility A&udit..."))
-        accessibility_menu.Append(
-            self._id_keyboard_trap_snapshot,
-            _("&Keyboard Trap && Tab-Order Snapshot..."),
-        )
-        accessibility_menu.Append(self._id_validate_contrast, _("&Validate Contrast..."))
-        accessibility_menu.Append(
-            self._id_link_inventory, _("Link Inventory && Alt-Text Catalo&g...")
-        )
-        self._append_power_tools_accessibility_items(accessibility_menu)
-        tools_menu.AppendSubMenu(accessibility_menu, _("A&ccessibility"))
-
         # Customize & Support (Support + Customize merged per §10.3) ----------
         customize_support_menu = wx.Menu()
         customize_support_menu.Append(
@@ -2281,6 +2251,9 @@ class MenuBuilderMixin:
         customize_support_menu.Append(self._id_export_keymap, _("&Export Keymap..."))
         customize_support_menu.Append(self._id_import_keymap, _("&Import Keymap..."))
         customize_support_menu.Append(self._id_reset_keymap, _("&Reset Keymap"))
+        customize_support_menu.Append(
+            self._id_reset_all_defaults, _("Reset &Everything to Factory Defaults...")
+        )
         customize_support_menu.AppendSeparator()
         customize_support_menu.Append(self._id_notifications, _("Show &Notifications"))
         customize_support_menu.Append(self._id_save_diagnostics, _("Save &Diagnostics..."))
@@ -2819,13 +2792,8 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU,
-            lambda _e: self.open_speech_models(),
+            lambda _e: self.open_speech_hub(0),
             id=self._id_speech_models,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.choose_read_aloud_configuration(),
-            id=self._id_speech_voices,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -2898,11 +2866,6 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: run_batch_export_to_speech(self),
             id=self._id_speech_batch_export,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
-            lambda _e: run_build_audiobook(self),
-            id=self._id_speech_build_audiobook,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -3731,8 +3694,8 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU,
-            lambda _e: self.open_pandoc_wizard(),
-            id=self._id_pandoc_wizard,
+            lambda _e: self.convert_file(),
+            id=self._id_convert_file,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -3766,11 +3729,6 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU,
-            lambda _e: self.validate_contrast(),
-            id=self._id_validate_contrast,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
             lambda _e: self.open_status_bar_settings(),
             id=self._id_status_bar_settings,
         )
@@ -3793,11 +3751,6 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.open_profiles_and_features_settings(),
             id=self._id_profiles_and_features,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.show_link_inventory(),
-            id=self._id_link_inventory,
         )
         self.frame.Bind(
             wx.EVT_MENU,
@@ -3891,6 +3844,21 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU,
+            lambda _e: self.reset_all_to_factory_defaults(),
+            id=self._id_reset_all_defaults,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.post_to_mastodon(),
+            id=self._id_post_mastodon,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.manage_mastodon_accounts(),
+            id=self._id_mastodon_accounts,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
             lambda _e: self.open_welcome_guide(),
             id=self._id_open_welcome_guide,
         )
@@ -3941,11 +3909,6 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU,
-            lambda _e: self.show_accessibility_audit(),
-            id=self._id_accessibility_audit,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
             lambda _e: self.glow_audit_document(),
             id=self._id_glow_audit_document,
         )
@@ -3963,11 +3926,6 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.glow_fix_selection(),
             id=self._id_glow_fix_selection,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.show_keyboard_trap_snapshot(),
-            id=self._id_keyboard_trap_snapshot,
         )
         self.frame.Bind(
             wx.EVT_MENU,

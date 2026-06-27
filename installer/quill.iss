@@ -2,7 +2,7 @@
 ; Edit build_inno_setup_script(), not this file, to change packaging.
 
 #define AppName "QUILL for All"
-#define AppVersion "0.8.0 Beta 1"
+#define AppVersion "0.8.0 Beta 2"
 #define AppPublisher "Community Access"
 #define AppURL "https://github.com/Community-Access/quill"
 #define AppExeName "quill.exe"
@@ -38,7 +38,7 @@ MinVersion=10.0
 ; The file-association and Send-to-Quill tasks write Explorer keys, so
 ; tell Windows to refresh association/icon caches after install.
 ChangesAssociations=yes
-OutputBaseFilename=Quill-for-All-Setup-0.8.0 Beta 1
+OutputBaseFilename=Quill-for-All-Setup-0.8.0 Beta 2
 Compression=lzma2/ultra
 SolidCompression=yes
 WizardStyle=modern
@@ -83,12 +83,47 @@ Name: "speechpiper"; Description: "Install bundled Piper neural TTS runtime"; Ty
 Name: "speechwhisper"; Description: "Install the offline speech engine (whisper.cpp) for private, on-device transcription and dictation (Tools > Speech > Whisperer)"; Types: full custom; Flags: checkablealone
 Name: "nodejs"; Description: "Install portable Node.js runtime for Node Quillins and the Developer Console TypeScript interface (~30 MB); not required for Python Quillins"; Flags: checkablealone
 Name: "braillepack"; Description: "Install QUILL Braille Pack (liblouis translation engine, UEB, Standard American English, and international braille profiles, ~15 MB)"; Types: full custom; Flags: checkablealone
+Name: "speechkokoro"; Description: "Install bundled Kokoro neural TTS voices (~120 MB, high-quality offline speech). If you skip this, you can download Kokoro later from Manage Voices / Speech Hub"; Types: full custom; Flags: checkablealone
+
+[InstallDelete]
+; Upgrade hygiene -- the single most important fix for reliable upgrades.
+; Inno only overlays the new [Files] on top of an existing install; it
+; never removes files the new build no longer ships. So a first-party
+; module renamed, moved, or deleted between releases (and any stale
+; __pycache__) would otherwise linger next to the new code and cause the
+; ImportError / AttributeError version-skew crashes we hit on upgrade.
+;
+; Scope this to exactly what changes release-to-release and is the proven
+; risk: our own 'quill' package. Wiping it before [Files] re-lays it makes
+; every install a clean, self-consistent copy of our code, while leaving
+; the embedded Python runtime and third-party site-packages in place --
+; those keep stable module names, are overwritten as needed by the
+; ignoreversion [Files] entry, and re-extracting the whole runtime every
+; upgrade would only make installs slow for no safety gain. Bundled
+; tools/voices/braille live under {app}\tools and {app}\vendor; user
+; documents live in %APPDATA%\Quill -- neither is touched here.
+Type: filesandordirs; Name: "{app}\python\Lib\site-packages\quill"
+Type: filesandordirs; Name: "{app}\__pycache__"
+; NOTE: user CONFIG in %APPDATA%\Quill (settings.json, keymap.json,
+; features.json) is intentionally NOT deleted here. Those stores now
+; carry forward safely across releases -- each is a delta of the user's
+; overrides stamped with a schema version, so changed/added defaults
+; reach the user automatically while their customizations are preserved,
+; and a pre-migration backup is written before any one-time conversion
+; (see quill.core.settings_migration / keymap.merge_keymaps). An earlier
+; beta reset these on every install for a clean slate; that is no longer
+; needed now that migration protects the data.
 
 [Files]
-Source: "..\portable\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "docs\QUILL-PRD.md,tools\pandoc\*,tools\speech\dectalk\*,tools\speech\espeak-ng\*,tools\speech\piper\*,tools\speech\whispercpp\*,tools\nodejs\*,vendor\braille-pack\*,_tool-download\*,_speech-download\*"
+Source: "..\portable\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "docs\QUILL-PRD.md,tools\pandoc\*,tools\speech\dectalk\*,tools\speech\espeak-ng\*,tools\speech\piper\*,tools\speech\whispercpp\*,tools\nodejs\*,vendor\braille-pack\*,kokoro-models\*,_tool-download\*,_speech-download\*"
 ; QUILL Braille Pack: liblouis runtime, translation tables, and BRF profiles.
 ; Installed to vendor\braille-pack so QUILL detects it automatically via QUILL_APP_ROOT.
 Source: "..\portable\vendor\braille-pack\*"; DestDir: "{app}\vendor\braille-pack"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: braillepack
+; Kokoro neural TTS models (~120 MB). Optional component; the runtime
+; resolves {app}\kokoro-models (QUILL_APP_ROOT). When skipped, QUILL
+; downloads them on demand to %APPDATA%\Quill\kokoro-models, which the
+; runtime prefers over the bundled copy (read_aloud.default_kokoro_model_dir).
+Source: "..\portable\kokoro-models\*"; DestDir: "{app}\kokoro-models"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechkokoro
 Source: "..\portable\tools\pandoc\*"; DestDir: "{app}\tools\pandoc"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: pandoc
 ; All DECtalk voices ship when the DECtalk component is selected.
 Source: "..\portable\tools\speech\dectalk\*"; DestDir: "{app}\tools\speech\dectalk"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: speechdectalk
@@ -292,23 +327,26 @@ Type: filesandordirs; Name: "{app}\python"
 
 [Code]
 // -- Bundled launcher resolution ------------------------------------------------
-// quill.exe at the bundle root is a copy of the embedded runtime's
-// pythonw.exe whose VERSIONINFO has been stamped with the Quill
-// product identity (see _stamp_quill_launcher in
-// build_windows_distribution.py), so JAWS's Ctrl+JAWSKey+V reports
-// the real Quill version instead of "Python 3.x.x" (issue #615).
-// BundledLauncherPath tries the hoisted quill.exe first, then the
-// older python\quill.exe (kept for back-compat with bundles from
-// before the hoist landed), then plain python\pythonw.exe, and
-// finally '' so every call site falls back gracefully.
+// IMPORTANT: prefer python\quill.exe (inside the runtime dir) over the
+// hoisted {app}\quill.exe at the bundle root. Both are stamped copies of
+// pythonw.exe (issue #615), but the root copy is ORPHANED from the runtime:
+// python313.dll, python313.zip, the .pyd modules, and python313._pth all
+// live in python\, not at the root. So a root-launched quill.exe cannot
+// find the bundled interpreter and either binds to a system Python (wrong
+// site-packages -> crash) or, on a clean machine with no system Python,
+// fails to start at all -- which broke the Start Menu / Desktop shortcuts.
+// python\quill.exe sits next to the runtime, so it loads the embedded
+// interpreter in isolation (correct sys.prefix, pywin32 bootstrap runs).
+// The root {app}\quill.exe stays only as the portable-evidence marker and
+// as a last-resort fallback for dev builds that ship no python\ runtime.
 function BundledLauncherPath(Param: String): String;
 begin
-  if FileExists(ExpandConstant('{app}\quill.exe')) then
-    Result := ExpandConstant('{app}\quill.exe')
-  else if FileExists(ExpandConstant('{app}\python\quill.exe')) then
+  if FileExists(ExpandConstant('{app}\python\quill.exe')) then
     Result := ExpandConstant('{app}\python\quill.exe')
   else if FileExists(ExpandConstant('{app}\python\pythonw.exe')) then
     Result := ExpandConstant('{app}\python\pythonw.exe')
+  else if FileExists(ExpandConstant('{app}\quill.exe')) then
+    Result := ExpandConstant('{app}\quill.exe')
   else
     Result := '';
 end;
@@ -381,24 +419,114 @@ begin
   end;
 end;
 
+// -- Uninstall: discover a custom data location ----------------------------
+// When the user chose a custom data folder, save_storage_mode writes
+// {"mode":"custom","path":"..."} into storage-mode.json under
+// %APPDATA%\Quill (quill.core.storage_mode). The pointer therefore lives
+// INSIDE the folder the uninstaller deletes, so it must be read first --
+// otherwise the custom directory is silently orphaned on 'remove all data'.
+// JSON stores backslashes doubled, so they are collapsed after extraction.
+function ReadCustomDataDir(): String;
+var
+  ModeFile: String;
+  Raw: AnsiString;
+  S: String;
+  P, Q: Integer;
+begin
+  Result := '';
+  ModeFile := ExpandConstant('{userappdata}\Quill\storage-mode.json');
+  if not FileExists(ModeFile) then
+    Exit;
+  if not LoadStringFromFile(ModeFile, Raw) then
+    Exit;
+  S := String(Raw);
+  // Only honour an explicit custom mode; appdata/portable have no path.
+  if Pos('"custom"', S) = 0 then
+    Exit;
+  P := Pos('"path"', S);
+  if P = 0 then
+    Exit;
+  S := Copy(S, P + 6, Length(S));
+  P := Pos(':', S);
+  if P = 0 then
+    Exit;
+  S := Copy(S, P + 1, Length(S));
+  P := Pos('"', S);
+  if P = 0 then
+    Exit;
+  S := Copy(S, P + 1, Length(S));
+  Q := Pos('"', S);
+  if Q = 0 then
+    Exit;
+  S := Copy(S, 1, Q - 1);
+  StringChangeEx(S, '\\', '\', True);
+  Result := S;
+end;
+
+function NormalizedDir(Dir: String): String;
+begin
+  Result := Lowercase(RemoveBackslashUnlessRoot(Dir));
+end;
+
+// Guard: never let a stray or hostile storage-mode.json point the
+// uninstaller at a drive root, the install dir, or a well-known shell
+// folder. Only an existing directory more specific than a drive root
+// (Length > 3, e.g. not 'c:\') and outside those locations is eligible.
+function IsSafeCustomDataDir(Dir: String): Boolean;
+var
+  N: String;
+begin
+  Result := False;
+  if Dir = '' then
+    Exit;
+  if not DirExists(Dir) then
+    Exit;
+  N := NormalizedDir(Dir);
+  if Length(N) <= 3 then
+    Exit;
+  if N = NormalizedDir(ExpandConstant('{app}')) then Exit;
+  if N = NormalizedDir(ExpandConstant('{userappdata}')) then Exit;
+  if N = NormalizedDir(ExpandConstant('{userappdata}\Quill')) then Exit;
+  if N = NormalizedDir(ExpandConstant('{localappdata}')) then Exit;
+  if N = NormalizedDir(ExpandConstant('{userprofile}')) then Exit;
+  if N = NormalizedDir(ExpandConstant('{userdocs}')) then Exit;
+  if N = NormalizedDir(ExpandConstant('{win}')) then Exit;
+  if N = NormalizedDir(ExpandConstant('{sys}')) then Exit;
+  Result := True;
+end;
+
 // -- Uninstall: ask before wiping personal data ----------------------------
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   DataDir: String;
+  CustomDir: String;
+  Prompt: String;
+  HasCustom: Boolean;
 begin
   if CurUninstallStep = usUninstall then
   begin
     DataDir := ExpandConstant('{userappdata}\Quill');
-    if DirExists(DataDir) then
+    // Read the custom-location pointer BEFORE DataDir is deleted below.
+    CustomDir := ReadCustomDataDir();
+    HasCustom := (CustomDir <> '') and IsSafeCustomDataDir(CustomDir);
+    if DirExists(DataDir) or HasCustom then
     begin
-      if MsgBox('Also remove your Quill data?' + #13#10 + #13#10 +
+      Prompt := 'Also remove your Quill data?' + #13#10 + #13#10 +
                 'This deletes your settings, dictionaries, autosaves, backups,' + #13#10 +
-                'and onboarding state in:' + #13#10 + DataDir + #13#10 + #13#10 +
+                'and onboarding state in:';
+      if DirExists(DataDir) then
+        Prompt := Prompt + #13#10 + DataDir;
+      if HasCustom then
+        Prompt := Prompt + #13#10 + CustomDir;
+      Prompt := Prompt + #13#10 + #13#10 +
                 'Choose No to keep your documents and settings for a future' + #13#10 +
-                'reinstall. Choose Yes to remove everything.',
-                mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+                'reinstall. Choose Yes to remove everything.';
+      if MsgBox(Prompt, mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
       begin
-        DelTree(DataDir, True, True, True);
+        if HasCustom then
+          DelTree(CustomDir, True, True, True);
+        if DirExists(DataDir) then
+          DelTree(DataDir, True, True, True);
       end;
     end;
   end;

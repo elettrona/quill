@@ -189,6 +189,14 @@ class FasterWhisperProvider:
 
     # -- transcription ---------------------------------------------------- #
 
+    def warm(self, model_id: str) -> None:
+        """Load the model into memory now so the first transcription is fast.
+
+        Best-effort: a missing/unloadable model raises, which the caller (a
+        background prewarm) swallows. No-op once the model is already loaded.
+        """
+        self._ensure_model(model_id)
+
     def _ensure_model(self, model_id: str) -> Any:
         if self._model is not None and self._loaded_model_id == model_id:
             return self._model

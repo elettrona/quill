@@ -89,21 +89,11 @@ _OVERVIEW_PARAGRAPHS: tuple[str, ...] = (
     "https://github.com/accessibleapps) for the open-source accessibility "
     "libraries that QUILL builds on: app_updater, smart_list, accessible_output2, "
     "html_to_text, app_elements, platform_utils, and keyboard_handler.",
-    "BITS Whisperer brings speech and dictation integration to QUILL, arriving "
-    "in phases: a speech-model manager with machine-aware recommendations, a "
-    "provider center with local-first and cloud planning, readiness checks, and "
-    "a download queue. Bundled Read Aloud voices (DECtalk and eSpeak NG) play "
+    "QUILL includes private, on-device speech under Tools > Speech: an offline "
+    "speech-model manager with machine-aware recommendations, plus transcription, "
+    "captions, and dictation. Bundled Read Aloud voices (DECtalk and eSpeak NG) play "
     "immediately with no downloads; Piper and Kokoro models install through "
-    "the Speech Center.",
-)
-
-_BIT_WHISPERER_PARA = (
-    "BITS Whisperer brings speech and dictation integration to QUILL, arriving "
-    "in phases: a speech-model manager with machine-aware recommendations, a "
-    "provider center with local-first and cloud planning, readiness checks, and "
-    "a download queue. Bundled Read Aloud voices (DECtalk and eSpeak NG) play "
-    "immediately with no downloads; Piper and Kokoro models install through "
-    "the Speech Center."
+    "Manage Speech Models.",
 )
 
 

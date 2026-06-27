@@ -35,10 +35,11 @@ def test_status_text_covers_the_user_visible_states() -> None:
         assert state in _DICTATION_STATUS_TEXT
 
 
-def test_all_six_hotkey_commands_are_declared() -> None:
+def test_all_hotkey_commands_are_declared() -> None:
+    # Hold-to-Dictate (F9) was removed: holding a key repeats and announces
+    # itself endlessly. Locked Dictation (Ctrl+F9) is the toggle now.
     ids = {command_id for command_id, _title in _DICTATION_COMMANDS}
     assert ids == {
-        "tools.dictation_hold",
         "tools.dictation_lock_toggle",
         "tools.dictation_pause",
         "tools.dictation_status",

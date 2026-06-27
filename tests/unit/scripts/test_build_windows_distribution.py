@@ -49,7 +49,15 @@ version = "2.4.6"
         encoding="utf-8",
     )
 
-    bundle = build_windows_distribution(pyproject, tmp_path / "dist")
+    # Kokoro ships ~120 MB of model files; stage them from a local fake dir so
+    # this offline test never downloads them (production downloads when no dir
+    # is given). The two filenames must match _stage_kokoro's expectations.
+    fake_kokoro_dir = tmp_path / "kokoro-src"
+    fake_kokoro_dir.mkdir()
+    (fake_kokoro_dir / "kokoro-v1.0.int8.onnx").write_text("model", encoding="utf-8")
+    (fake_kokoro_dir / "voices-v1.0.bin").write_text("voices", encoding="utf-8")
+
+    bundle = build_windows_distribution(pyproject, tmp_path / "dist", kokoro_dir=fake_kokoro_dir)
 
     portable_dir = tmp_path / "dist" / "portable"
     installer_script = tmp_path / "dist" / "installer" / "quill.iss"
@@ -96,6 +104,12 @@ version = "2.4.6"
     assert manifest["speechAssets"]["dectalk"]["downloadable"] is True
     assert manifest["speechAssets"]["espeak"]["downloadable"] is True
     assert manifest["speechAssets"]["piper"]["downloadable"] is True
+    # Kokoro is always STAGED at the portable bundle root (kokoro-models/), the
+    # location the runtime resolves a bundled copy from; the installer gates the
+    # copy behind the optional speechkokoro component (asserted separately).
+    assert manifest["speechAssets"]["kokoro"]["bundled"] is True
+    assert (portable_dir / "kokoro-models" / "kokoro-v1.0.int8.onnx").exists()
+    assert (portable_dir / "kokoro-models" / "voices-v1.0.bin").exists()
 
     assert installer_script.exists()
     assert bundle["installer_script"] == str(installer_script)
@@ -145,10 +159,15 @@ def test_build_inno_setup_script_mentions_portable_bundle() -> None:
     # Tools > Speech > Whisperer.
     assert 'Name: "speechwhisper"; Description: "Install the offline speech engine' in script
     assert "(Tools > Speech > Whisperer)" in script
-    assert "speechkokoro" not in script
+    # Kokoro is an optional component (Types: full custom): Full installs ship it,
+    # Custom installs can drop ~120 MB and download it later. It is excluded from
+    # the unconditional copy and gated behind its own [Files] entry.
+    assert 'Name: "speechkokoro"; Description: "Install bundled Kokoro neural TTS voices' in script
+    assert 'Source: "..\\portable\\kokoro-models\\*"; DestDir: "{app}\\kokoro-models";' in script
+    assert "Components: speechkokoro" in script
     assert "speechopenvoice" not in script
     assert (
-        'Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\speech\\whispercpp\\*,tools\\nodejs\\*,vendor\\braille-pack\\*,_tool-download\\*,_speech-download\\*"'
+        'Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\speech\\whispercpp\\*,tools\\nodejs\\*,vendor\\braille-pack\\*,kokoro-models\\*,_tool-download\\*,_speech-download\\*"'
         in script
     )
     assert 'Source: "..\\portable\\tools\\pandoc\\*"; DestDir: "{app}\\tools\\pandoc";' in script
@@ -211,6 +230,105 @@ def test_build_inno_setup_script_mentions_portable_bundle() -> None:
     assert "HKLM" not in script
     # The script parses as plain ASCII text (catches stray bad characters).
     script.encode("ascii")
+
+
+def test_installer_clean_replaces_first_party_package_for_safe_upgrades() -> None:
+    # Upgrade hygiene: Inno only overlays new [Files]; it never removes files a
+    # new build no longer ships. The [InstallDelete] section must wipe our own
+    # 'quill' package (where modules get renamed/moved/deleted between releases,
+    # the proven cause of version-skew ImportError/AttributeError crashes) plus
+    # stray __pycache__, so every install is a self-consistent copy of our code.
+    script = build_inno_setup_script("9.9.9")
+    # Anchor on the section headers (the [Components] comments also mention the
+    # word "[Files]"), so we locate real sections, not prose.
+    assert "\n[InstallDelete]\n" in script
+    files_at = script.index("\n[Files]\n")
+    install_delete_at = script.index("\n[InstallDelete]\n")
+    # The InstallDelete section runs before [Files] re-lays the payload.
+    assert install_delete_at < files_at
+    install_delete = script[install_delete_at:files_at]
+    assert (
+        'Type: filesandordirs; Name: "{app}\\python\\Lib\\site-packages\\quill"' in install_delete
+    )
+    assert 'Type: filesandordirs; Name: "{app}\\__pycache__"' in install_delete
+    # Speed/safety boundary: at INSTALL time we must NOT wipe the whole embedded
+    # runtime (slow, no safety gain) -- only the first-party package. (The
+    # [UninstallDelete] section may still remove {app}\python on uninstall.)
+    assert 'Name: "{app}\\python"' not in install_delete
+
+
+def test_installer_preserves_user_config_and_never_touches_the_data_dir() -> None:
+    # Migration now protects config across releases (delta + schema version +
+    # pre-migration backup), so the installer must NOT delete the user's config
+    # or any user data. Nothing under %APPDATA%\Quill may be removed at install.
+    script = build_inno_setup_script("9.9.9")
+    install_delete = script[script.index("\n[InstallDelete]\n") : script.index("\n[Files]\n")]
+    assert "{userappdata}\\Quill\\settings.json" not in install_delete
+    assert "{userappdata}\\Quill\\keymap.json" not in install_delete
+    assert "{userappdata}\\Quill\\features.json" not in install_delete
+    assert "{userappdata}" not in install_delete
+
+
+def test_uninstaller_offers_to_remove_custom_data_location() -> None:
+    # A user who chose a custom data folder has its path recorded in
+    # storage-mode.json under %APPDATA%\Quill (quill.core.storage_mode). That
+    # pointer lives inside the very folder the uninstaller deletes, so the
+    # uninstaller must read it BEFORE removing %APPDATA%\Quill -- otherwise the
+    # custom directory is silently orphaned on "remove all data" (the bug this
+    # guards against). The custom dir is then deleted, gated by the safety check.
+    script = build_inno_setup_script("9.9.9")
+    code = script[script.index("\n[Code]\n") :]
+    assert "function ReadCustomDataDir(): String;" in code
+    assert "storage-mode.json" in code
+    # Only an explicit custom mode is honoured (appdata/portable carry no path).
+    assert "'\"custom\"'" in code
+    assert "IsSafeCustomDataDir(CustomDir)" in code
+    assert "DelTree(CustomDir, True, True, True);" in code
+    # The pointer read must precede the %APPDATA%\Quill deletion, or the file
+    # would already be gone when we try to read it.
+    assert code.index("CustomDir := ReadCustomDataDir()") < code.index("DelTree(DataDir")
+
+
+def test_uninstaller_custom_data_guard_refuses_broad_targets() -> None:
+    # The guard must never let a stray or hostile storage-mode.json point the
+    # uninstaller at a drive root, the install dir, or a well-known shell folder.
+    # Each is explicitly excluded, and only an existing directory more specific
+    # than a bare drive root is eligible for deletion.
+    script = build_inno_setup_script("9.9.9")
+    code = script[script.index("\n[Code]\n") :]
+    guard_at = code.index("function IsSafeCustomDataDir")
+    guard = code[guard_at : code.index("\nend;", guard_at)]
+    assert "if not DirExists(Dir) then" in guard  # must be a real existing dir
+    assert "Length(N) <= 3" in guard  # rejects bare drive roots like c:\
+    for constant in (
+        "{app}",
+        "{userappdata}",
+        "{localappdata}",
+        "{userprofile}",
+        "{userdocs}",
+        "{win}",
+        "{sys}",
+    ):
+        assert constant in guard
+
+
+def test_bundled_launcher_prefers_runtime_dir_over_orphaned_root() -> None:
+    # The hoisted {app}\quill.exe at the bundle root is orphaned from the embedded
+    # runtime (python313.dll / _pth / .pyd modules live in python\), so launching
+    # it binds to a system Python or fails outright on a clean machine -- which
+    # broke the Start Menu / Desktop shortcuts. BundledLauncherPath must prefer the
+    # working python\quill.exe (next to the runtime), then python\pythonw.exe, and
+    # use the root quill.exe only as a last-resort fallback.
+    script = build_inno_setup_script("9.9.9")
+    code = script[script.index("\n[Code]\n") :]
+    fn = code[code.index("function BundledLauncherPath") :]
+    fn = fn[: fn.index("\nend;")]
+    i_python_quill = fn.index("{app}\\python\\quill.exe")
+    i_python_pythonw = fn.index("{app}\\python\\pythonw.exe")
+    i_root_quill = fn.index("{app}\\quill.exe")  # distinct from the python\ paths
+    assert i_python_quill < i_python_pythonw < i_root_quill, (
+        "BundledLauncherPath must prefer python\\quill.exe over the orphaned root quill.exe"
+    )
 
 
 def test_shell_verb_registry_lines_cover_every_verb_and_extension() -> None:
@@ -311,11 +429,16 @@ version = "3.0.0"
     fake_pandoc_dir = tmp_path / "pandoc"
     fake_pandoc_dir.mkdir()
     (fake_pandoc_dir / "pandoc.exe").write_text("binary", encoding="utf-8")
+    fake_kokoro_dir = tmp_path / "kokoro-src"
+    fake_kokoro_dir.mkdir()
+    (fake_kokoro_dir / "kokoro-v1.0.int8.onnx").write_text("model", encoding="utf-8")
+    (fake_kokoro_dir / "voices-v1.0.bin").write_text("voices", encoding="utf-8")
 
     bundle = build_windows_distribution(
         pyproject,
         tmp_path / "dist",
         bundled_tool_dirs={"pandoc": fake_pandoc_dir},
+        kokoro_dir=fake_kokoro_dir,
     )
 
     manifest = json.loads(
@@ -324,6 +447,9 @@ version = "3.0.0"
     assert "pandoc" in manifest["bundledTools"]
     assert "speech/piper" in manifest["bundledTools"]
     assert manifest["speechAssets"]["dectalk"]["bundled"] is True
+    # Kokoro is staged to the bundle root, not tools/, and not via bundledTools.
+    assert manifest["speechAssets"]["kokoro"]["bundled"] is True
+    assert (tmp_path / "dist" / "portable" / "kokoro-models" / "voices-v1.0.bin").exists()
     assert (tmp_path / "dist" / "portable" / "tools" / "pandoc" / "pandoc.exe").exists()
     assert bundle["portable_dir"] == str(tmp_path / "dist" / "portable")
 
