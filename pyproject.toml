@@ -84,6 +84,12 @@ vosk = ["vosk>=0.3.45"]
 # MP3 chapter markers for batch document-to-speech (§4.8): mutagen writes the
 # ID3v2.3 CHAP/CTOC frames. Imported lazily in quill/core/speech/chapters.py.
 mp3 = ["mutagen>=1.47"]
+# Native Word (.docx) export with full formatting fidelity (font family, point
+# size, color, highlight, paragraph alignment) for the hidden-codes feature
+# (docs/rich-text-formatting-hidden-codes-design.md). Optional: when absent,
+# write_docx_document falls back to the Pandoc path (which drops those run/
+# paragraph attributes), so docx export still works without this extra.
+docx = ["python-docx>=1.1.0"]
 # Premium cloud TTS via the official ElevenLabs SDK (roadmap §4.1, audio export).
 # Optional: the ElevenLabs AI Voice provider is inert unless this is installed and
 # an "ElevenLabs API key" credential is configured. All calls go through the
@@ -308,5 +314,10 @@ module = [
     # Optional crash-reporting integration; imported lazily in
     # core/issue_submit.py behind a try/except. Not in the dev extra.
     "feedback_hub",
+    # Optional native Word writer (quill[docx]); python-docx is imported lazily in
+    # io/docx_writer.py with a Pandoc fallback, so the scoped gate must not depend
+    # on it being installed.
+    "docx",
+    "docx.*",
 ]
 ignore_missing_imports = true

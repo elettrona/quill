@@ -225,6 +225,7 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "format.list_manager": "Ctrl+Shift+Grave, L",
     "format.bold": "Ctrl+B",
     "format.italic": "Ctrl+I",
+    "format.describe_formatting": "Ctrl+Shift+D",
     "format.heading_1": "Ctrl+Alt+1",  # §edsharp-ok — overrides NVDA switch-to-synth-1
     "format.heading_2": "Ctrl+Alt+2",  # §edsharp-ok — overrides NVDA switch-to-synth-2
     "format.heading_3": "Ctrl+Alt+3",  # §edsharp-ok — overrides NVDA switch-to-synth-3

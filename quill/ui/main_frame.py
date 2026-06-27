@@ -507,6 +507,7 @@ from quill.ui.main_frame_browse import BrowseModeMixin
 from quill.ui.main_frame_copy_tray import CopyTrayMixin
 from quill.ui.main_frame_devtools import DevToolsMixin
 from quill.ui.main_frame_dictation_hotkeys import DictationHotkeysMixin
+from quill.ui.main_frame_format_codes import FormatCodesMixin
 from quill.ui.main_frame_github import GitHubRemoteMixin
 from quill.ui.main_frame_hygiene import HygieneMixin
 from quill.ui.main_frame_image import ImageCaptureMixin
@@ -849,6 +850,7 @@ _APP_TITLE_VERSION = f"QUILL for All {build_info.get_short_version()}"
 class MainFrame(
     AbbreviationsMixin,
     AiActionsMixin,
+    FormatCodesMixin,
     SpeechCommandsMixin,
     VerbosityCommandsMixin,
     LanguageDetectMixin,
@@ -3223,6 +3225,7 @@ class MainFrame(
             self.format_underline,
             self._binding_for("format.underline"),
         )
+        self.register_format_codes_commands()
         self.commands.register(
             "format.heading_1",
             "Insert Heading 1",
@@ -4528,6 +4531,7 @@ class MainFrame(
         try:
             self._maybe_announce_indent()
             self._maybe_play_indent_tone()
+            self._maybe_announce_format_transition()
         except RuntimeError:  # #603/#269: editor can be a dead TextCtrl mid-event.
             pass
         event.Skip()

@@ -121,6 +121,9 @@ class Settings:
     dictation_intelligent_spacing: bool = True  # conservative insertion spacing
     dictation_onboarding_shown: bool = False  # one-time first-use dictation hint shown
     dictation_min_hold_seconds: float = 0.0  # ignore accidental F9 taps below this
+    # Speak the formatting delta as the caret moves (hidden-codes interrogation);
+    # off by default so navigation stays quiet (Describe Formatting is on-demand).
+    announce_formatting_on_move: bool = False
     # Pronunciation dictionaries (batch-document-to-speech-plan §4.7). The
     # dictionaries themselves live in JSON files (global under app_data_dir, project
     # under <project>/.quill/pronunciation); settings holds only the selection state.
@@ -558,6 +561,7 @@ class Settings:
         dictation_stop_on_focus_loss = bool(data.get("dictation_stop_on_focus_loss", True))
         dictation_intelligent_spacing = bool(data.get("dictation_intelligent_spacing", True))
         dictation_onboarding_shown = bool(data.get("dictation_onboarding_shown", False))
+        announce_formatting_on_move = bool(data.get("announce_formatting_on_move", False))
         pronunciation_enabled = bool(data.get("pronunciation_enabled", True))
         pronunciation_ids_raw = data.get("pronunciation_enabled_dictionary_ids")
         pronunciation_enabled_dictionary_ids = (
@@ -981,6 +985,7 @@ class Settings:
             dictation_max_locked_seconds=dictation_max_locked_seconds,
             dictation_stop_on_focus_loss=dictation_stop_on_focus_loss,
             dictation_intelligent_spacing=dictation_intelligent_spacing,
+            announce_formatting_on_move=announce_formatting_on_move,
             dictation_onboarding_shown=dictation_onboarding_shown,
             pronunciation_enabled=pronunciation_enabled,
             pronunciation_enabled_dictionary_ids=pronunciation_enabled_dictionary_ids,
