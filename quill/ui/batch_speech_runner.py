@@ -24,6 +24,7 @@ from quill.ui.batch_speech_export_dialog import BatchSpeechExportDialog, BatchSp
 class _BookReviewCancelled(Exception):
     """Internal: the user cancelled the chapter-review dialog, so skip the book build."""
 
+
 _ENGINE_OPTIONS = [
     ("Windows (SAPI 5)", "sapi5"),
     ("DECtalk", "dectalk"),
