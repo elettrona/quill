@@ -33,9 +33,7 @@ class FakeHost:
     selection: str = ""
     cursor: tuple[int, int] = (1, 1)
     section: str = ""
-    flags: dict[str, bool] = field(
-        default_factory=lambda: {"ai_enabled": True, "safe_mode": False}
-    )
+    flags: dict[str, bool] = field(default_factory=lambda: {"ai_enabled": True, "safe_mode": False})
     replacements: list[str] = field(default_factory=list)
     inserts: list[str] = field(default_factory=list)
     doc_writes: list[str] = field(default_factory=list)

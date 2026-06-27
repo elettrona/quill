@@ -134,8 +134,7 @@ def test_duplicate_ids_across_files(tmp_path: Path) -> None:
     md = (
         "---\nid: dup\ndisplay_name: Dup\n"
         "description: A duplicate agent for testing only.\n"
-        "default_scope: selection\n---\n\n"
-        + ("You are a test agent. " * 6)
+        "default_scope: selection\n---\n\n" + ("You are a test agent. " * 6)
     )
     (tmp_path / "dup.md").write_text(md, encoding="utf-8")
     (tmp_path / "dup-copy.md").write_text(md.replace("dup-copy", "dup"), encoding="utf-8")

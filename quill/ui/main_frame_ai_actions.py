@@ -241,6 +241,4 @@ class AiActionsMixin:
         """Open the Validate Agents dialog (the agent standards linter, in-app)."""
         from quill.ui.agent_validator_dialog import AgentValidatorDialog
 
-        AgentValidatorDialog(
-            self.frame, self._show_modal_dialog, announce=self._set_status
-        ).show()
+        AgentValidatorDialog(self.frame, self._show_modal_dialog, announce=self._set_status).show()

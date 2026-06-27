@@ -78,9 +78,7 @@ class AgentValidatorDialog:
         self.summary = wx.StaticText(self.dialog, label="")
         root.Add(self.summary, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
 
-        root.Add(
-            wx.StaticText(self.dialog, label="Findings:"), 0, wx.LEFT | wx.TOP, 12
-        )
+        root.Add(wx.StaticText(self.dialog, label="Findings:"), 0, wx.LEFT | wx.TOP, 12)
         self.results = wx.ListBox(self.dialog, style=wx.LB_SINGLE)
         self.results.SetName("Validation findings")
         root.Add(self.results, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
