@@ -124,6 +124,23 @@ def test_rename_reorder_and_merge_chapters(wx_app, tmp_path):
         frame.Destroy()
 
 
+def test_sync_output_suffix_ignores_pathless_value(wx_app, tmp_path):
+    # Regression: a value with no filename (e.g. ".") must not crash
+    # _sync_output_suffix -- Path(".").with_suffix(...) raises "empty name".
+    frame, dlg = _make(wx_app, tmp_path)
+    try:
+        dlg._output.SetValue(".")
+        dlg._sync_output_suffix()  # must not raise
+        assert dlg._output.GetValue() == "."
+        # A real filename still gets its suffix synced to the chosen format.
+        dlg._output.SetValue("mybook.wav")
+        dlg._sync_output_suffix()
+        assert dlg._output.GetValue().endswith(".m4b")
+    finally:
+        dlg.dialog.Destroy()
+        frame.Destroy()
+
+
 def test_acx_checkbox_flows_into_request(wx_app, tmp_path):
     frame, dlg = _make(wx_app, tmp_path)
     try:

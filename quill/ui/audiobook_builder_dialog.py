@@ -215,8 +215,14 @@ class AudiobookBuilderDialog:
 
     def _sync_output_suffix(self) -> None:
         text = self._output.GetValue().strip()
-        if text:
-            self._output.SetValue(str(Path(text).with_suffix(f".{self._current_format()}")))
+        if not text:
+            return
+        path = Path(text)
+        # A path with no filename (e.g. "." or a bare separator) has nothing to
+        # attach a suffix to; with_suffix() would raise "empty name". Leave it be.
+        if not path.name:
+            return
+        self._output.SetValue(str(path.with_suffix(f".{self._current_format()}")))
 
     def _set_scan_status(self, text: str) -> None:
         """Update the scan status label and speak it (screen-reader status, GATE-12)."""
