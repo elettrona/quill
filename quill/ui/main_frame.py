@@ -13997,20 +13997,30 @@ class MainFrame(
                 pass
             return None
         frame = wx.Frame(self.frame, title="Report a Bug", size=(860, 720))
+        # #729: host the form in a wx.Panel. A bare wx.Frame gives no Tab
+        # traversal between its child controls (only wx.Dialog / wx.Panel do),
+        # so without this the user could not Tab through the fields and had to
+        # fall back to screen-reader object navigation.
+        panel = wx.Panel(frame)
 
         def submit(payload: dict[str, str], issue_url: str, diagnostics_path: Path | None) -> None:
             self._last_bug_report_diagnostics_path = (
                 diagnostics_path if isinstance(diagnostics_path, Path) else None
             )
+            self._save_bug_reporter_identity(self._bug_report_form_body)
             try:
-                self._complete_bug_report_submission(payload, issue_url, diagnostics_path)
+                frame.Destroy()
             finally:
-                self._save_bug_reporter_identity(self._bug_report_form_body)
-                try:
-                    frame.Destroy()
-                finally:
-                    self._bug_report_frame = None
-                    self._bug_report_form_body = None
+                self._bug_report_frame = None
+                self._bug_report_form_body = None
+            # #729: run completion AFTER the window closes so its "Copied bug
+            # report to clipboard" status announcement lands on the main window
+            # and is not buried by the focus-change chatter. Previously the user
+            # heard nothing on submit and thought the report (which is on the
+            # clipboard) had been lost.
+            self._wx.CallAfter(
+                self._complete_bug_report_submission, payload, issue_url, diagnostics_path
+            )
 
         def cancel() -> None:
             try:
@@ -14019,7 +14029,10 @@ class MainFrame(
                 self._bug_report_frame = None
                 self._bug_report_form_body = None
 
-        body = self._build_report_bug_form_body(frame, on_submit=submit, on_cancel=cancel)
+        body = self._build_report_bug_form_body(panel, on_submit=submit, on_cancel=cancel)
+        frame_sizer = wx.BoxSizer(wx.VERTICAL)
+        frame_sizer.Add(panel, 1, wx.EXPAND)
+        frame.SetSizer(frame_sizer)
         self._bug_report_frame = frame
         self._bug_report_form_body = body
         frame.Bind(wx.EVT_CLOSE, lambda _e: cancel())
@@ -16124,8 +16137,10 @@ class MainFrame(
         )
 
         if session.is_complete():
+            # _set_status already speaks the message (statusbar.announce); a
+            # second explicit _announce spoke it twice (#728). Match the sibling
+            # "No misspellings found" path and announce once via _set_status.
             self._set_status("No misspellings found.")
-            self._announce("No misspellings found.")
             return
 
         def _apply(start: int, old_end: int, replacement: str) -> None:

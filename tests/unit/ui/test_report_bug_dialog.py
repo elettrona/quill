@@ -103,6 +103,32 @@ def test_review_bug_report_dispatches_on_separate_window_setting() -> None:
     assert "_review_bug_report_modal()" in src, "dispatcher must route to _review_bug_report_modal"
 
 
+def test_modeless_path_hosts_form_in_a_panel_for_tab_traversal() -> None:
+    """#729: a bare wx.Frame gives no Tab traversal among child controls, so the
+    modeless form must live in a wx.Panel for keyboard navigation to work."""
+    match = re.search(_REVIEW_BUG_REPORT_MODELESS_PATTERN, MAIN_FRAME, re.MULTILINE | re.DOTALL)
+    assert match is not None, "_review_bug_report_modeless not found"
+    src = match.group(0)
+    assert "wx.Panel(frame)" in src, "modeless form must be hosted in a wx.Panel"
+    assert "_build_report_bug_form_body(panel" in src, (
+        "the form body must be built on the panel, not the frame, for Tab traversal"
+    )
+
+
+def test_modeless_submit_completes_after_closing_the_window() -> None:
+    """#729: completion (clipboard copy + announcement) must run AFTER the window
+    closes so its status announcement lands on the main window and is not buried
+    by focus-change chatter -- otherwise the user hears nothing and thinks the
+    report (which is on the clipboard) was lost."""
+    match = re.search(_REVIEW_BUG_REPORT_MODELESS_PATTERN, MAIN_FRAME, re.MULTILINE | re.DOTALL)
+    assert match is not None, "_review_bug_report_modeless not found"
+    src = match.group(0)
+    assert "CallAfter" in src, "submit must defer completion via CallAfter"
+    assert src.index("frame.Destroy()") < src.index("self._complete_bug_report_submission"), (
+        "the window must be destroyed before _complete_bug_report_submission runs"
+    )
+
+
 def test_modeless_path_uses_wx_frame() -> None:
     """#618: the modeless branch builds a wx.Frame (not wx.Dialog)
     so the user can alt-tab between the form and the editor."""
