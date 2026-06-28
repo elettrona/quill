@@ -121,8 +121,7 @@ Direct publishing (#140) and the remaining ChapterForge surfaces are tracked und
 
 ### 1.6 Platform & distribution
 
-- Live installer smoke on Windows 10/11 (#506); macOS to shipping quality (#518);
-  native RTF editing (#516); the Quillin Hub (#517); plugin capability + signing +
+- Native RTF editing (#516); the Quillin Hub (#517); plugin capability + signing +
   marketplace (#519).
 - **Deferred to 2.0** (tracker #680): the Windows 11 modern primary-menu
   `IExplorerCommand` pass (SHELL-3, #525).
@@ -163,9 +162,7 @@ all **table** work (§1.9 + the CSV-grid half of #514).
    snake_case names, label association, initial focus, the Tab keyboard-trap class,
    focus-to-bad-field) — plus the List Studio pass (§1.8) — with JAWS, NVDA, and
    Narrator. **Highest single item.**
-2. **Live installer smoke on Windows 10/11 — #506.** A packaged build installs,
-   launches, and the first-run wizard runs on clean Win10 and Win11.
-3. **Packaged-build validation of the optional speech engines** (Faster Whisper
+2. **Packaged-build validation of the optional speech engines** (Faster Whisper
    install path, Vosk reachability) on the real installer, not just from source.
 
 ### Tier 2 — Shipped features with rough edges
@@ -212,9 +209,8 @@ e.g. direct publishing to external platforms (#140); GLOW family improvements
 
 ### Phase 5 — Solid on Windows and macOS
 
-Verified installer behavior on Windows 10/11, shipping-quality **macOS**, native
-RTF editing, the Quillin hub (§1.6); better docs/tutorials (§1.7). *A dependable,
-well-documented product on its supported platforms.*
+Native RTF editing and the Quillin hub (§1.6); better docs/tutorials (§1.7). *A
+dependable, well-documented product on its supported platforms.*
 
 ---
 
@@ -226,7 +222,7 @@ well-documented product on its supported platforms.*
 | --- | --- |
 | Agentic AI (§1.3) | #507–#512, #523/#524, #579–#581; Accessibility Agents #593–#598. |
 | GLOW family (§1.4) | Deferred to 2.0 (§5). GLOW contributions stay `locked_off` for 1.0. |
-| Platform & distribution (§1.6) | #506, #516, #517, #518, #519; #525 deferred to 2.0 (#680). |
+| Platform & distribution (§1.6) | #516, #517, #519; #525 deferred to 2.0 (#680). |
 | Docs & content (§1.7) | #526 SR sign-off; #535–#564, #505, #522, #590, #592. |
 | List Studio (§1.8) | Manual SR pass (#526). |
 | Table Studio (§1.9) | Whole feature (`quill-native-accessible-table-studio-plan.md`). |
