@@ -8,7 +8,8 @@ Second public 0.8.0 beta. Rolls up everything in Beta 1 (below) plus the feature
 
 ### What's New in this beta
 
-- _Nothing logged yet. Add the first bullet when the first Beta 2 change lands._
+- **Rich formatting that stays out of your way — hidden codes, spoken on demand.** You can now apply real document formatting — **bold, italic, underline, strikethrough, superscript/subscript, font family and point size, text color and highlight**, plus paragraph **alignment, line spacing, indent, and named styles** — without ever seeing markup clutter in your editor. The buffer stays clean, fast, plain text; the formatting rides along as invisible codes. Apply it from the new **Format** menu (Font/Size/Align/Color/Highlight) or the accessible **Font...** dialog, and ask **"Describe formatting at cursor"** to *hear* exactly what is in effect ("Arial, 14 point, centered, bold"). An optional setting announces formatting changes as you move the caret. The plain-text editor, undo, search, and AI all keep working on the same clean text — nothing about your normal editing changes.
+- **Open and hand back rich documents faithfully, across surfaces.** RTF and Word documents round-trip through QUILL's clean buffer and materialize back to real formatting on export: **Word (.docx)** export now carries font, size, color, highlight, and alignment via a native writer (falls back gracefully if the optional `python-docx` extra is not installed), and **RTF** and **HTML** export carry the same. When a target format genuinely cannot hold something, QUILL tells you before you commit, rather than dropping it silently.
 
 ### Fixes
 

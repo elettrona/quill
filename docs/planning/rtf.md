@@ -1,12 +1,31 @@
 # RTF & Rich Formatting — Plan of Record
 
-> **Status:** Direction decided 2026-06-27 — *hidden-codes first*. This is the
-> actionable delivery plan for the rich-formatting workstream (issue **#516 /
-> RTF-22**). The design rationale lives in
+> **Status:** Direction decided 2026-06-27 — *hidden-codes first*. **P1–P4 landed
+> on `feature/0.8.0-beta2`** on 2026-06-27 by cherry-picking the complete
+> hidden-codes implementation from `2.0-dev` (commit `be02966`, re-applied as
+> `3d16560`). What remains open: **P5** (out-of-band overlay / clean-on-disk
+> end-state) and the **editable WYSIWYG pane** (deferred to 2.0). The design
+> rationale lives in
 > [`rich-text-formatting-hidden-codes-design.md`](rich-text-formatting-hidden-codes-design.md);
 > this file is the plan that turns it into shippable phases and records the
-> decisions. Code still references "rtf.md Part One" (e.g.
+> decisions. Code references "rtf.md Part One" (e.g.
 > `quill/ui/rich_text_surface.py`); this restores that anchor.
+>
+> **What landed (verified green on beta2):** the shared model carries
+> font-family/size/color/highlight/underline/strikethrough/super-subscript run
+> attributes and per-paragraph align/line-spacing/indent/named-style + page
+> breaks (`quill/io/rtf_model.py`); Pandoc attribute-span `[text]{...}` and fenced
+> `::: {align}` parsing with offset integrity; builders in `quill/core/tagging.py`;
+> the RTF reader/writer round-trips the full vocabulary (`quill/io/rtf.py`, incl.
+> `\colortbl`); a native `python-docx` writer with a Pandoc fallback
+> (`quill/io/docx_writer.py`); HTML via `quill/core/browser_preview.py`; the
+> **Format** menu + accessible **Font** dialog + **Describe Formatting** command
+> + announce-on-move setting (`quill/ui/main_frame_format_codes.py`,
+> `quill/ui/font_format_dialog.py`); spoken vocabulary in
+> `quill/core/format_speech.py`. The `core.format` feature is live (not gated);
+> the read-only rich lens (`core.rich_text_lens`) stays gated pending the #526 SR
+> pass. Tests: 171 RTF/format unit tests, plus io+core suites (4165) green;
+> GATE-11, public-surface, dialog-inventory, menu-lint all pass.
 
 ## 1. Intent — meet you where you are, regardless of surface
 
@@ -143,7 +162,9 @@ projection of that markup, rebuilt on change — never a second source of truth.
 
 Aligned with the design note §10; each phase is independently shippable and
 user-visible, and each lands its own changelog/user-guide/PRD updates (per the
-incremental-docs rule).
+incremental-docs rule). **P1–P4 below landed together on 2026-06-27** (see the
+status block at the top); they are kept here for the record. **P5 is the only
+open phase.**
 
 - **P1 — Inline run formatting.** Add `underline`, `font_family`,
   `font_size_pt` to `InlineSpan` / `InlineFormat`; teach the inline walker to
