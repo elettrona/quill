@@ -297,9 +297,13 @@ Confirmed out of the 1.0 scope. Recorded here so the intent is not lost.
   dictation hotkey), **idle-silence detection** (auto-stop on a pause), and
   **dictation intelligence** (spoken punctuation/commands). Each is a sizable
   capability beyond the keyboard-only Hold/Locked dictation that already ships.
-- **BW consolidation backlog (#515, #566–#577)** — the broader provider-matrix
-  tiers and guided onboarding (BW-1..10 / WATCH-8). A large workstream, already
-  tagged 2.0-deferred in the program history.
+- **BITS Whisperer remainder** (tracker #680) — the consolidation shipped for 1.0
+  (four on-device engines, the cloud-as-Quillins framework with OpenAI/Groq/
+  ElevenLabs, offline watch transcription, export breadth, dictation). The
+  leftovers — a Windows SAPI/WinRT zero-download engine, a consented cloud watch
+  action, guided provider onboarding, diarization/live-mic, additional cloud kinds
+  (add on demand), and the Whisperer brand decision — moved to #680 when #669
+  closed.
 - **Platform singleton** (tracker #680) — the Windows 11 modern primary-menu
   `IExplorerCommand` pass (SHELL-3, #525). *(Freeze/compile packaging — PyInstaller
   and Nuitka — is out of scope: the embedded-Python + Inno Setup model is the
