@@ -399,10 +399,25 @@ Each phase ships independently and leaves the menu coherent.
   - **Status-bar engine control — already present** (`open_ai_engine_switcher` is
     the status-bar engine cell's Enter action; `ai_engine_status_text` drives the
     label; `cycle_ai_engine` is the hotkey).
-  - **Deferred:** deleting the superseded Writing Assistant / Ask AI / Agent Center /
-    Prompt Studio shims and the legacy `assistant_prompts` / `assistant_agents`
-    stores. These are kept for one release on purpose (the deprecation window); they
-    are out of every menu but stay reachable as commands. Delete after the window.
+  - **Deferred — and the deletion is NOT mechanical (2026-06-28 finding).** The
+    superseded surfaces are out of every menu but stay command-reachable for the
+    deprecation window. A blind deletion is unsafe because the "legacy" backing is
+    now entangled with *live* code:
+    - `core.assistant_agents` is not dead: `AgentPlan` is used by
+      `core.ai.agent_session`, and `agent_profiles()` / `build_agent_plan()` drive a
+      *live* agent-run path (`main_frame` ~22328) and the Writing Assistant dialog.
+      So this module stays; only the Agent Center **dialog** is deprecated UI.
+    - `core.assistant_prompts` backs the active startup prompt migration
+      (`prompt_migration.consolidate_prompts` reads `load_custom_prompts`). Deleting
+      it would orphan unmigrated user prompts.
+    - The four dialogs live in the 2000-line `assistant_tools.py` alongside *live*
+      dialogs (e.g. `DiffReviewDialog`) and cross-wire (Prompt Studio / Agent Center
+      have "use this prompt" → Writing Assistant handoffs).
+    Safe deletion sequence (a focused, reviewed change — do NOT rush): (1) move the
+    still-live `AgentPlan` / `build_agent_plan` / `agent_profiles` out of the
+    "legacy" module into a clearly-live home; (2) sunset the prompt migration before
+    removing `assistant_prompts`; (3) split the deprecated dialogs out of
+    `assistant_tools.py` and delete them with their commands/ids/bindings and tests.
 
 ## 12. Decision needed: the skills store
 
