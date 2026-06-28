@@ -468,6 +468,18 @@ class AILibraryDialog:
         self.reload()
         self._set_status(f"Imported skill: {skill.name}")
 
+    def skill_build(self) -> None:
+        """Open the guided Action Builder; on save, install and reveal the new skill."""
+        from quill.ui.action_builder_dialog import ActionBuilderDialog
+
+        builder = ActionBuilderDialog(self.dialog, self._skills, announce_cb=self._announce)
+        if builder.show() == wx.ID_OK and builder.get_saved() is not None:
+            saved = builder.get_saved()
+            self.reload()
+            self._skill_page.select_by_id(saved.id)
+            self._set_status(f"Built action: {saved.name}")
+        builder.close()
+
     def skill_export(self, item: LibraryItem) -> None:
         path = self._ask_save(
             "Export Skill Pack", f"{item.id}.sqp", "Skill Quill Pack (*.sqp)|*.sqp"
@@ -617,6 +629,7 @@ _VERBS: dict[str, list[tuple[str, str]]] = {
     ],
     "skill": [
         ("&Run", "run"),
+        ("&Build Action...", "build"),
         ("&Import", "import"),
         ("E&xport", "export"),
         ("Disa&ble", "toggle"),
@@ -717,7 +730,7 @@ class _LibraryPage:
         self._preview.SetValue(it.detail if it else "")
         has = it is not None
         for verb, btn in self._buttons.items():
-            if verb in ("new", "import"):
+            if verb in ("new", "import", "build"):
                 btn.Enable(True)
             elif verb == "delete":
                 btn.Enable(has and it is not None and not it.is_builtin)
@@ -737,6 +750,9 @@ class _LibraryPage:
             return
         if verb == "import":
             (owner.prompt_import if self._kind == "prompt" else owner.skill_import)()
+            return
+        if verb == "build":
+            owner.skill_build()
             return
         it = self.current()
         if it is None:

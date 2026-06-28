@@ -26,7 +26,23 @@ __all__ = [
     "find_action",
     "recommend_actions",
     "transcript_has_speakers",
+    "action_to_skill_source",
 ]
+
+
+def action_to_skill_source(name: str, instruction: str, *, description: str = "") -> str:
+    """Wrap a plain-language action as a saved one-step ``.sqp`` skill source.
+
+    This is what the guided Action Builder saves: a user's own action becomes a
+    runnable, shareable, Promotable Skill that applies its instruction to the open
+    document. The body frames the document as a transcript and carries the
+    ``{document}`` placeholder the skill runner fills at run time, so the saved action
+    works on whatever the user is looking at — a transcript they just made, or any text.
+    """
+    from quill.core.ai.library import prompt_to_skill_source
+
+    body = f"{instruction.strip()}\n\nTRANSCRIPT:\n{{document}}"
+    return prompt_to_skill_source(name, body, description=description)
 
 
 @dataclass(frozen=True, slots=True)

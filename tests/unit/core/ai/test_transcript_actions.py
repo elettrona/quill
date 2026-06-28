@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from quill.core.ai.transcript_actions import (
     BUILTIN_TRANSCRIPT_ACTIONS,
+    action_to_skill_source,
     all_actions,
     find_action,
     recommend_actions,
@@ -73,3 +74,17 @@ def test_recommend_leads_with_qa_for_question_dense_single_voice() -> None:
 def test_recommend_limit_truncates() -> None:
     assert len(recommend_actions("hello", limit=3)) == 3
     assert all_actions() == BUILTIN_TRANSCRIPT_ACTIONS
+
+
+def test_action_to_skill_source_parses_as_a_valid_skill() -> None:
+    from quill.core.skill_pack import parse_skill, validate_skill
+
+    src = action_to_skill_source(
+        "My Standup Notes", "Summarize today's standup in three bullets.", description="x"
+    )
+    pack = parse_skill(src)  # raises on invalid source
+    assert validate_skill(pack) == []
+    assert pack.name == "My Standup Notes"
+    # The instruction and the {document} placeholder both land in the step body.
+    assert "three bullets" in src
+    assert "{document}" in src
