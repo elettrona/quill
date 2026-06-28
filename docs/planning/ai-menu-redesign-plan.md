@@ -321,10 +321,14 @@ Each phase ships independently and leaves the menu coherent.
   Proofread / Transform / Translate / Read Aloud / Transcribe / More /
   AI Library / Engine & Sessions submenus). `menu_lint` gate and its tests
   updated to drop the obsolete "AI Assistant" Tools cluster.
-- **Phase 1 (context-first top) — STARTED.** The "Rewrite & Improve" submenu is
-  generated from the Selection Action Ring (`concierge.ring_actions`) and runs
-  real catalog agents through the gateway. Per-open dynamic rebuild (full
-  Concierge `suggest`) is the next increment.
+- **Phase 1 (context-first top) — DONE.** The "Rewrite & Improve" submenu is
+  generated from the Selection Action Ring (`concierge.ring_actions`), and a new
+  top-of-menu **"What can I do here?..."** item (`quill/ui/concierge_menu.py`)
+  surfaces the full Concierge `suggest`: it builds a `ConciergeContext` from the
+  live file type, selection, outline, and AI state, presents an ordered native
+  single-choice list, and runs the chosen suggestion's command through the
+  registry (unknown targets refused, not raised). Built as its own module so the
+  menu/main_frame size budgets do not grow. Tests in `test_concierge_menu.py`.
 - **Phase 3 store consolidation — DONE (the load-bearing half).** The two
   custom-prompt stores are now one: `quill/core/prompt_migration.py`
   (`consolidate_prompts`) copies every legacy `assistant_prompts` prompt into the
@@ -359,11 +363,36 @@ Each phase ships independently and leaves the menu coherent.
     the generated `.md` for the user to save (a user-agents catalog dir is a
     later enhancement so promoted agents become first-class).
 
-- **Phases 2 UI, 4, 5 — next.** The unified AI Library dialog (wx.Notebook over
-  `library.LibraryItem`, with Run + Promote and handoff to the existing tested
-  editors; real `wx.App` smoke-test per the audiobook-dialog pattern) and its
-  single "AI Library..." menu item; one conversation (shim Writing Assistant +
-  Ask AI into Ask Quill); Hub consolidation.
+- **Phase 2 UI (unified AI Library dialog) — DONE.** `quill/ui/ai_library_dialog.py`
+  is a `wx.Notebook` over `library.LibraryItem` with three tabs (Prompts / Skills /
+  Agents), one uniform verb set, and the real Promote continuum: Prompt -> Skill
+  installs an `.sqp` into `SkillStore`; Skill -> Agent generates a reviewable agent
+  `.md` the user can save (`_PromotedAgentDialog`). Prompt/skill Run reuse the
+  tested `ai_chat.send_prompt` / `skill_pack.run_skill` primitives and the existing
+  `_PromptEditDialog` / `_Skill*Dialog` editors; agent Run goes through the gateway.
+  The Agents-tab **Validate** folds in the full standards-linter dialog (the same
+  one the CI gate uses) via `on_validate_agents`. The transitional six-item submenu
+  collapses to a single **"AI Library..."** item; Prompt Studio / Writing Assistant
+  / Agent Center / Validate Agents stay reachable as commands during the
+  deprecation window. `open_skill_library` was extracted to a module helper to keep
+  `main_frame.py` from growing. Smoke + behavior tests in `test_ai_library_dialog.py`;
+  routing test in `test_main_frame_libraries.py`.
+
+- **Phase 2 (one conversation door) — menu-level DONE.** The AI menu now exposes
+  only Ask Quill + Ask Quill by Voice as chat doors; Writing Assistant and Ask AI
+  are no longer menu entries. Retiring their dialog classes into thin shims and
+  deleting them is Phase 5 (post-deprecation), so no risky redirects were made.
+
+- **Phase 4 (Hub as sole config) — NEXT, needs care.** `AIHubDialog` already has a
+  tabbed Notebook (Provider / Engines / On-Device / Audio Services / Instructions /
+  Advanced), so much of the consolidation exists. Remaining: confirm Switch Engine,
+  Session Branches, and GitHub Copilot setup are each reachable *inside* the Hub
+  before removing the menu's "Engine & Sessions" submenu — otherwise menu removal
+  would cut off access. This is an outward-facing change best done with review.
+
+- **Phase 5 (cleanup) — deferred.** Delete the deprecated shims (Writing Assistant,
+  Ask AI, Agent Center) and the legacy stores after the deprecation window; add a
+  user-agents catalog dir so promoted agents become first-class.
 
 ## 12. Decision needed: the skills store
 
