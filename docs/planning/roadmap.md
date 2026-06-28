@@ -125,9 +125,7 @@ Direct publishing (#140) and the remaining ChapterForge surfaces are tracked und
   native RTF editing (#516); the Quillin Hub (#517); plugin capability + signing +
   marketplace (#519).
 - **Deferred to 2.0** (tracker #680): the Windows 11 modern primary-menu
-  `IExplorerCommand` pass (SHELL-3, #525) and the packaging/freeze evaluation
-  (PKG-1 — PyInstaller packaging hardening, #599). *(Nuitka is explicitly out of
-  scope — too much risk / not reliable enough.)*
+  `IExplorerCommand` pass (SHELL-3, #525).
 
 ### 1.7 Docs, tutorials & content
 
@@ -222,29 +220,13 @@ well-documented product on its supported platforms.*
 
 ## 4. Feature ledger (by workstream)
 
-Where every workstream stands: **what shipped for 1.0** first, then **what is still
-open**. Items with a live decision attached are detailed in §4.1+ so the choice can
-be made deliberately.
-
-### Shipped in 1.0
-
-| Workstream | Delivered |
-| --- | --- |
-| Verbosity (§1.1) | The engine, the eleven `verbosity_*` UI surfaces, runtime modes (Quiet / Meeting / Quiet-Undo), status queries, mastery step-down, QVP packs / library / preview, and **announcement anti-spam** (#408/#409). Shipped design: PRD §5.91. |
-| Speech & Dictation (§1.2) | Offline Whisper transcription, Read Aloud across local **and** cloud engines, Hold-to-Dictate / Locked Dictation, pronunciation dictionaries, the SSML Builder + native SSML playback, and the batch document-to-speech pipeline. |
-| Batch document-to-speech | Chaptered **MP3 / M4B**, separate-file mode, the **page-turn cue**, configurable pauses, dry-run preview, **article-combining** and **round-robin voices** (the ACB patterns), audiobook metadata, and configure-once **per-project profiles**. |
-| **Translated audio export** | A document narrated in additional languages — **local *and* premium cloud voices** (OpenAI / Gemini / ElevenLabs via `cloud_tts` + ffmpeg), **batch *and* single-document** surfaces, **all configured AI providers** plus LibreTranslate, language-aware pronunciation, a **combined cost estimate** before any metered cloud run, and **per-project memory** of the language targets. Language-granular translation with retry/backoff/halt/cache. |
-| Audio robustness (ACB learnings) | **Two-pass ACX `loudnorm`** (Normalize-loudness batch option), the **voice-failure blacklist** (failed voices skipped on later runs), and **text-normalization polish** (`Vol.`→"Volume", `No.`→"Number", `2025-02`→"2025 dash 2"). The ACB reference folder is fully absorbed and retired. |
-| Publishing & audiobook (§1.5) | Build Audiobook from Folder — MP3 / M4B masters, chapter editing (rename / reorder / merge), and one-click ACX loudness. |
-| ElevenLabs export TTS (§4.1) | Registered as a third provider in the cloud-TTS layer for audiobook-grade export (optional `quill[elevenlabs]` extra). |
-
 ### Still open
 
 | Workstream | Open work |
 | --- | --- |
 | Agentic AI (§1.3) | #507–#512, #523/#524, #579–#581; Accessibility Agents #593–#598. |
 | GLOW family (§1.4) | Deferred to 2.0 (§5). GLOW contributions stay `locked_off` for 1.0. |
-| Platform & distribution (§1.6) | #506, #516, #517, #518, #519; #525/#599 deferred to 2.0 (#680). |
+| Platform & distribution (§1.6) | #506, #516, #517, #518, #519; #525 deferred to 2.0 (#680). |
 | Docs & content (§1.7) | #526 SR sign-off; #535–#564, #505, #522, #590, #592. |
 | List Studio (§1.8) | Manual SR pass (#526). |
 | Table Studio (§1.9) | Whole feature (`quill-native-accessible-table-studio-plan.md`). |
@@ -328,10 +310,10 @@ Confirmed out of the 1.0 scope. Recorded here so the intent is not lost.
 - **BW consolidation backlog (#515, #566–#577)** — the broader provider-matrix
   tiers and guided onboarding (BW-1..10 / WATCH-8). A large workstream, already
   tagged 2.0-deferred in the program history.
-- **Platform / packaging singletons** (tracker #680) — the Windows 11 modern
-  primary-menu `IExplorerCommand` pass (SHELL-3, #525) and the PyInstaller
-  packaging-hardening evaluation (PKG-1, #599). *(Nuitka is explicitly out of scope
-  — too much risk / not reliable enough.)*
+- **Platform singleton** (tracker #680) — the Windows 11 modern primary-menu
+  `IExplorerCommand` pass (SHELL-3, #525). *(Freeze/compile packaging — PyInstaller
+  and Nuitka — is out of scope: the embedded-Python + Inno Setup model is the
+  shipping approach.)*
 - **Direct publishing (#140)** — publish a finished document/audiobook to WordPress
   and other platforms. A long-term, likely-**Quillin** integration (external-API +
   auth surface), not core editor work; early design lives in
