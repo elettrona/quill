@@ -261,6 +261,20 @@ def test_resolve_endpoints_honour_overrides(monkeypatch) -> None:
     assert resolve_manifest_url() == feed
 
 
+def test_resolve_endpoints_strip_accidental_surrounding_quotes(monkeypatch) -> None:
+    # A value set via `setx VAR "https://..."` (or copied with quotes) arrives
+    # wrapped in literal quotes; urllib then fails with 'unknown url type: "https'.
+    # The resolver must strip a single surrounding quote pair so the override works.
+    from quill.core.updates import resolve_manifest_url, resolve_releases_api_url
+
+    api = "https://api.github.com/repos/Community-Access/quill-update-selftest/releases"
+    feed = "https://community-access.github.io/quill-update-selftest/feed.json"
+    monkeypatch.setenv("QUILL_UPDATE_API_URL", f'"{api}"')
+    monkeypatch.setenv("QUILL_UPDATE_MANIFEST_URL", f"'{feed}'")
+    assert resolve_releases_api_url() == api
+    assert resolve_manifest_url() == feed
+
+
 def test_fetch_releases_uses_api_override(monkeypatch) -> None:
     # The override must actually reach the network call, not just the resolver:
     # fetch_releases() with no explicit api_url queries the overridden endpoint.

@@ -34,16 +34,28 @@ _MANIFEST_URL_ENV = "QUILL_UPDATE_MANIFEST_URL"
 _STABLE_PRERELEASE_RANK = (9, 0)
 
 
+def _env_url_override(name: str) -> str:
+    """Read a URL override env var, tolerating accidental surrounding quotes.
+
+    A value set with ``setx VAR "https://..."`` (or copied with quotes) can arrive
+    wrapped in literal quote characters. urllib then rejects it with
+    'unknown url type: "https', breaking the update check. Strip whitespace and a
+    single matching pair of surrounding single/double quotes so the override works.
+    """
+    raw = os.getenv(name, "").strip()
+    if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in ("'", '"'):
+        raw = raw[1:-1].strip()
+    return raw
+
+
 def resolve_releases_api_url(default: str = GITHUB_RELEASES_API) -> str:
     """The GitHub Releases API URL, honouring the QUILL_UPDATE_API_URL override."""
-    override = os.getenv(_API_URL_ENV, "").strip()
-    return override or default
+    return _env_url_override(_API_URL_ENV) or default
 
 
 def resolve_manifest_url(default: str = DEFAULT_UPDATE_MANIFEST_URL) -> str:
     """The signed-manifest feed URL, honouring the QUILL_UPDATE_MANIFEST_URL override."""
-    override = os.getenv(_MANIFEST_URL_ENV, "").strip()
-    return override or default
+    return _env_url_override(_MANIFEST_URL_ENV) or default
 
 
 def _ssl_context() -> ssl.SSLContext:
