@@ -237,9 +237,7 @@ def parse_update_manifest(payload: str) -> UpdateManifest:
     return manifest
 
 
-def _canonical_manifest(
-    *, version: str, download_url: str, published_at: str, notes: str
-) -> str:
+def _canonical_manifest(*, version: str, download_url: str, published_at: str, notes: str) -> str:
     """Stable JSON encoding of the signed manifest fields.
 
     Keys are sorted and separators are tight so the publisher and the client
@@ -288,9 +286,7 @@ def manifest_signature(
         version=version, download_url=download_url, published_at=published_at, notes=notes
     )
     if key:
-        return hmac.new(
-            key.encode("utf-8"), canonical.encode("utf-8"), hashlib.sha256
-        ).hexdigest()
+        return hmac.new(key.encode("utf-8"), canonical.encode("utf-8"), hashlib.sha256).hexdigest()
     return hashlib.sha256(f"{canonical}|{_SIGNATURE_SALT}".encode()).hexdigest()
 
 
