@@ -857,16 +857,24 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("braille", "margin", "cell", "richedit", "display", "indent"),
     ),
     SettingSpec(
-        "editor_use_legacy_richedit",
-        "Use the older rich-text engine (braille A/B)",
+        "editor_control_kind",
+        "Editor control type (braille)",
         "accessibility",
-        "bool",
-        "Back the editor with the older RichEdit 2.0 engine instead of 3.0. It "
-        "reports text to JAWS differently and can change braille behaviour; offered "
-        "as an A/B test for the cell-two issue. Takes effect for documents opened "
-        "after the change (restart to apply everywhere). Windows only.",
-        feature_id="core.accessibility",
-        keywords=("braille", "richedit", "jaws", "engine", "legacy", "display"),
+        "choice",
+        (
+            "Which native control backs the editor. RichEdit is the default; some "
+            "braille displays show the first character of every line in cell two "
+            "with a rich control (the long-standing Microsoft Word quirk). "
+            "'Plain edit, like Notepad' uses a simple control that avoids the "
+            "offset and still reads correctly. Takes effect for documents opened "
+            "after the change (restart to apply everywhere). Windows only."
+        ),
+        choices=(
+            ("rich2", "RichEdit 3.0 (default)"),
+            ("rich", "RichEdit 2.0 (older engine)"),
+            ("plain", "Plain edit, like Notepad (best for braille)"),
+        ),
+        keywords=("braille", "richedit", "notepad", "plain", "jaws", "cell", "display"),
     ),
     SettingSpec(
         "announcement_trace_enabled",

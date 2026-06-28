@@ -20,15 +20,22 @@ def test_em_setmargins_constants() -> None:
 def test_settings_round_trip_braille_editor_flags() -> None:
     from quill.core.settings import Settings
 
-    raw = {"editor_zero_richedit_margins": False, "editor_use_legacy_richedit": True}
-    loaded = Settings.from_dict(raw) if hasattr(Settings, "from_dict") else None
-    if loaded is None:
-        import pytest
-
-        pytest.skip("Settings.from_dict unavailable in this build")
+    loaded = Settings.from_dict(
+        {"editor_zero_richedit_margins": False, "editor_control_kind": "plain"}
+    )
     assert loaded.editor_zero_richedit_margins is False
-    assert loaded.editor_use_legacy_richedit is True
-    # Defaults: margin-zero on, legacy engine off.
+    assert loaded.editor_control_kind == "plain"
+    # Defaults: margin-zero on, RichEdit 3.0.
     defaults = Settings()
     assert defaults.editor_zero_richedit_margins is True
-    assert defaults.editor_use_legacy_richedit is False
+    assert defaults.editor_control_kind == "rich2"
+
+
+def test_editor_control_kind_validates_and_is_back_compatible() -> None:
+    from quill.core.settings import Settings
+
+    # Unknown values fall back to the default.
+    assert Settings.from_dict({"editor_control_kind": "bogus"}).editor_control_kind == "rich2"
+    # The retired editor_use_legacy_richedit bool maps to "rich".
+    assert Settings.from_dict({"editor_use_legacy_richedit": True}).editor_control_kind == "rich"
+    assert Settings.from_dict({"editor_use_legacy_richedit": False}).editor_control_kind == "rich2"

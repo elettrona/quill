@@ -88,12 +88,13 @@ def test_create_document_tab_drops_rich2_and_nohidesel_on_macos() -> None:
     # so the Windows screen-reader behaviour from #170 / #5890 is
     # untouched.
     assert re.search(_WIN_EDITOR_BRANCH_PATTERN, src), (
-        "non-macOS branch must keep the rich_flag | TE_NOHIDESEL style"
+        "non-macOS branch must keep the rich_flag | TE_NOHIDESEL style for rich kinds"
     )
-    # Both RichEdit versions remain available: TE_RICH2 default, TE_RICH legacy.
-    assert "wx.TE_RICH2" in src and "wx.TE_RICH\n" in src, (
-        "non-macOS branch must offer TE_RICH2 (default) and TE_RICH (legacy)"
-    )
+    # All three control kinds remain available: RichEdit 3.0 (default), RichEdit
+    # 2.0, and a plain Notepad-style EDIT control for braille.
+    assert "wx.TE_RICH2" in src, "RichEdit 3.0 (default) must remain"
+    assert "wx.TE_RICH if" in src, "RichEdit 2.0 (legacy) option must remain"
+    assert 'kind == "plain"' in src, "plain Notepad-style control option must exist"
 
     # After construction the macOS branch must call the role pinner.
     assert "_pin_macos_editor_accessibility_role(editor)" in src, (

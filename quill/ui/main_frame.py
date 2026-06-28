@@ -4172,19 +4172,20 @@ class MainFrame(
         if sys.platform == "darwin":
             editor = wx.TextCtrl(splitter, style=wx.TE_MULTILINE)
         else:
-            # Experiment 2 (braille cell-2 offset): TE_RICH2 (RichEdit 3.0) is the
-            # default and what #616 validated; TE_RICH (RichEdit 2.0) exposes its
-            # text to JAWS differently and is offered as an opt-in A/B for the
-            # braille leading-cell issue. Either way TE_NOHIDESEL stays.
-            rich_flag = (
-                wx.TE_RICH
-                if bool(getattr(self.settings, "editor_use_legacy_richedit", False))
-                else wx.TE_RICH2
-            )
-            editor = wx.TextCtrl(
-                splitter,
-                style=wx.TE_MULTILINE | rich_flag | wx.TE_NOHIDESEL,
-            )
+            # Braille cell-two offset: the control kind is configurable. "plain"
+            # is a Notepad-style EDIT control -- editable, so it reports its value
+            # to JAWS/NVDA correctly (the #616 RichEdit requirement was for
+            # *read-only* controls) and avoids the RichEdit leading-cell quirk.
+            # "rich"/"rich2" keep a RichEdit (2.0 / 3.0); TE_NOHIDESEL stays there.
+            kind = str(getattr(self.settings, "editor_control_kind", "rich2")).strip().lower()
+            if kind == "plain":
+                editor = wx.TextCtrl(splitter, style=wx.TE_MULTILINE)
+            else:
+                rich_flag = wx.TE_RICH if kind == "rich" else wx.TE_RICH2
+                editor = wx.TextCtrl(
+                    splitter,
+                    style=wx.TE_MULTILINE | rich_flag | wx.TE_NOHIDESEL,
+                )
         editor.SetName("Document")
         if sys.platform == "darwin":
             self._pin_macos_editor_accessibility_role(editor)
