@@ -136,6 +136,16 @@ The QUILL key is its own tiny language: every chord is data-driven from the keym
 
 **Reassigning chord commands.** Open **Preferences → Keyboard → Keymap Editor**, find the command you want to move, and type a new chord binding in the form `Ctrl+Shift+Grave, X` (replacing `X` with the key you want). The Keymap Editor stores chords in this `Ctrl+Shift+Grave, X` grammar; menus and the cheat sheet display them as `QUILL Key + X`. Conflict detection prevents accidental double-bindings.
 
+### The Keyboard Manager: search, record, and diagnose
+
+The Keymap Editor is built for fast, confident customisation, however you think about shortcuts:
+
+- **Search two ways from one box.** Type part of a command's name to filter the list. Or type a *shortcut* — `ctrl+alt+m`, `Control + Shift + K`, even a QUILL chord like `quill, s` — and the editor flips to reverse lookup, telling you exactly which command that key is assigned to, or that it is "unassigned and available." You do not have to remember whether a key is free; ask it.
+- **Forgiving spelling.** Modifiers can be written however you like: `control`, `ctrl`, or `ctl`; in any order (`shift+ctrl+k` equals `ctrl+shift+k`); in any case. QUILL normalises what you type and stores the tidy form, so `mac`-style `Cmd` stays distinct from `Ctrl` and is never confused with it.
+- **Record Keys.** Prefer to *press* the combination rather than spell it? Choose **Record Keys**, press the chord, and QUILL fills it in for you.
+- **Honest conflicts with one-step reassignment.** If you assign a key that is already taken, QUILL names the command that owns it — by its friendly title, not an internal id — and offers to move the key here, freeing it on the other command. No silent clobbering, no guessing.
+- **Diagnostics and self-heal.** **Run Diagnostics** audits your whole keymap and reports duplicate shortcuts, bindings for commands that no longer exist, unreadable bindings, and any key that is "assigned but inert" (one the editor cannot actually fire). For the repairable problems it offers a one-click **Heal** that removes the bad entries and re-applies your keymap so menus and shortcuts line up again.
+
 Default QUILL-key chords:
 
 - `QUILL Key + N` — enter Quick Nav (browse) mode for the next action. If the `browse_mode_sticky` setting is on, the mode stays locked until `Esc`; otherwise it expires on the QUILL-key timeout. Press the QUILL key again (without a chord) to lock it on regardless of the setting.
@@ -2187,6 +2197,22 @@ Manager.
   dialogs. **Announce indentation depth on Tab** (on by default) makes Tab and
   Shift+Tab speak the new depth ("4 spaces", "1 tab") instead of "Indented
   lines". Both affect only speech; the status bar still updates.
+- **Re-read what QUILL just said — the Spoken Echo.** Speech is fleeting: an
+  indent depth, a formatting description, a save result, or a "no matches"
+  scrolls past the instant it is spoken. The **Spoken Echo** remembers the last
+  twenty things QUILL announced and shows them, newest first, in a read-only
+  dialog you can arrow through line by line, review by character, select, and
+  copy. Open it any time with **Alt+Shift+E**, or from **Help > Show Spoken
+  Echo** — it works after *any* announcement, including ones triggered by
+  ordinary editing keys such as Tab, so you can hear "8 spaces", then open the
+  Echo to read and copy it. If you are used to the screen-reader convention of
+  pressing a reporting command twice, **double-pressing** an informational
+  command — Describe Formatting, Document Summary, Context Help, or Announce
+  Contrast — opens the Echo instead of re-speaking the same line. The dedicated
+  Alt+Shift+E key is the universal path and always works; the double-press
+  shortcut can be turned off under **Preferences > Accessibility > Double-press
+  to show the Spoken Echo** (on by default). The Echo only records lines QUILL
+  actually speaks, never your typing.
 - **Per-action templates.** Advanced users can edit exactly what each action
   says, using tokens like `{line}` and filters like `${ordinal:line}`, with live
   validation and preview. Templates can be saved to a library, shared as

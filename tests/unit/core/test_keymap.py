@@ -41,9 +41,9 @@ def test_load_keymap_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -
 
 def test_load_keymap_merges_overrides(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
-    save_keymap({"file.save": "Ctrl+Shift+Alt+S"})
+    save_keymap({"file.save": "Ctrl+Alt+Shift+Y"})
     keymap = load_keymap()
-    assert keymap["file.save"] == "Ctrl+Shift+Alt+S"
+    assert keymap["file.save"] == "Ctrl+Alt+Shift+Y"
     assert keymap["file.open"] == DEFAULT_KEYMAP["file.open"]
 
 
@@ -128,7 +128,7 @@ def test_load_keymap_persists_cleaned_map(tmp_path: Path, monkeypatch: pytest.Mo
 
     # Mix: one valid override, one orphan command id, one conflict.
     save_keymap({
-        "file.save": "Ctrl+Shift+Alt+S",  # valid override, must survive
+        "file.save": "Ctrl+Alt+Shift+Y",  # valid override, must survive
         "definitely.removed.command": "Ctrl+Alt+X",  # unknown id, must be dropped
         "app.command_palette": "Ctrl+S",  # collides with file.save default
     })
@@ -136,7 +136,7 @@ def test_load_keymap_persists_cleaned_map(tmp_path: Path, monkeypatch: pytest.Mo
     loaded = load_keymap()
 
     # Cleaned map in memory.
-    assert loaded["file.save"] == "Ctrl+Shift+Alt+S"
+    assert loaded["file.save"] == "Ctrl+Alt+Shift+Y"
     assert "definitely.removed.command" not in loaded
     assert loaded["app.command_palette"] == DEFAULT_KEYMAP["app.command_palette"]
 
@@ -145,7 +145,7 @@ def test_load_keymap_persists_cleaned_map(tmp_path: Path, monkeypatch: pytest.Mo
     # survived the merge are kept.
     on_disk = keymap_module.read_json(store_path, default={})
     assert on_disk == {
-        "file.save": "Ctrl+Shift+Alt+S",
+        "file.save": "Ctrl+Alt+Shift+Y",
         "_defaults_epoch": keymap_module.KEYMAP_DEFAULTS_EPOCH,
     }
     assert "definitely.removed.command" not in on_disk
@@ -164,7 +164,7 @@ def test_load_keymap_leaves_clean_file_alone(
     monkeypatch.setattr(keymap_module, "keymap_path", lambda: store_path)
     monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
 
-    save_keymap({"file.save": "Ctrl+Shift+Alt+S"})
+    save_keymap({"file.save": "Ctrl+Alt+Shift+Y"})
     mtime_before = store_path.stat().st_mtime_ns
 
     load_keymap()
@@ -283,12 +283,12 @@ def test_save_keymap_persists_only_the_override_delta_plus_epoch(
     monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
 
     full = DEFAULT_KEYMAP.copy()
-    full["file.save"] = "Ctrl+Shift+Alt+S"
+    full["file.save"] = "Ctrl+Alt+Shift+Y"
     save_keymap(full)
 
     on_disk = keymap_module.read_json(store_path, default={})
     assert on_disk == {
-        "file.save": "Ctrl+Shift+Alt+S",
+        "file.save": "Ctrl+Alt+Shift+Y",
         "_defaults_epoch": keymap_module.KEYMAP_DEFAULTS_EPOCH,
     }
 
@@ -298,11 +298,11 @@ def test_non_overridden_command_tracks_the_current_default() -> None:
     # delta resolves to whatever DEFAULT_KEYMAP says today -- so a changed or
     # newly added default reaches existing users with no migration entry.
     saved = {
-        "file.save": "Ctrl+Shift+Alt+S",
+        "file.save": "Ctrl+Alt+Shift+Y",
         "_defaults_epoch": keymap_module.KEYMAP_DEFAULTS_EPOCH,
     }
     merged = keymap_module.merge_keymaps(saved)
-    assert merged["file.save"] == "Ctrl+Shift+Alt+S"
+    assert merged["file.save"] == "Ctrl+Alt+Shift+Y"
     assert merged["edit.find"] == DEFAULT_KEYMAP["edit.find"]
 
 

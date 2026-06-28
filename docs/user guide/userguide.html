@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>userguide</title>
+  <title>QUILL User Guide</title>
   <style>
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -242,7 +242,7 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">userguide</h1>
+<h1 class="title">QUILL User Guide</h1>
 </header>
 <h1 id="quill-user-guide">Quill User Guide</h1>
 <p><strong>QUILL</strong> stands for <strong>Quality, Usable, Inclusive,
@@ -484,6 +484,41 @@ you want). The Keymap Editor stores chords in this
 <code>Ctrl+Shift+Grave, X</code> grammar; menus and the cheat sheet
 display them as <code>QUILL Key + X</code>. Conflict detection prevents
 accidental double-bindings.</p>
+<h3 id="the-keyboard-manager-search-record-and-diagnose">The Keyboard
+Manager: search, record, and diagnose</h3>
+<p>The Keymap Editor is built for fast, confident customisation, however
+you think about shortcuts:</p>
+<ul>
+<li><strong>Search two ways from one box.</strong> Type part of a
+command’s name to filter the list. Or type a <em>shortcut</em> —
+<code>ctrl+alt+m</code>, <code>Control + Shift + K</code>, even a QUILL
+chord like <code>quill, s</code> — and the editor flips to reverse
+lookup, telling you exactly which command that key is assigned to, or
+that it is “unassigned and available.” You do not have to remember
+whether a key is free; ask it.</li>
+<li><strong>Forgiving spelling.</strong> Modifiers can be written
+however you like: <code>control</code>, <code>ctrl</code>, or
+<code>ctl</code>; in any order (<code>shift+ctrl+k</code> equals
+<code>ctrl+shift+k</code>); in any case. QUILL normalises what you type
+and stores the tidy form, so <code>mac</code>-style <code>Cmd</code>
+stays distinct from <code>Ctrl</code> and is never confused with
+it.</li>
+<li><strong>Record Keys.</strong> Prefer to <em>press</em> the
+combination rather than spell it? Choose <strong>Record Keys</strong>,
+press the chord, and QUILL fills it in for you.</li>
+<li><strong>Honest conflicts with one-step reassignment.</strong> If you
+assign a key that is already taken, QUILL names the command that owns it
+— by its friendly title, not an internal id — and offers to move the key
+here, freeing it on the other command. No silent clobbering, no
+guessing.</li>
+<li><strong>Diagnostics and self-heal.</strong> <strong>Run
+Diagnostics</strong> audits your whole keymap and reports duplicate
+shortcuts, bindings for commands that no longer exist, unreadable
+bindings, and any key that is “assigned but inert” (one the editor
+cannot actually fire). For the repairable problems it offers a one-click
+<strong>Heal</strong> that removes the bad entries and re-applies your
+keymap so menus and shortcuts line up again.</li>
+</ul>
 <p>Default QUILL-key chords:</p>
 <ul>
 <li><code>QUILL Key + N</code> — enter Quick Nav (browse) mode for the
@@ -4330,6 +4365,25 @@ and close — turn it off if your screen reader already announces dialogs.
 Tab and Shift+Tab speak the new depth (“4 spaces”, “1 tab”) instead of
 “Indented lines”. Both affect only speech; the status bar still
 updates.</li>
+<li><strong>Re-read what QUILL just said — the Spoken Echo.</strong>
+Speech is fleeting: an indent depth, a formatting description, a save
+result, or a “no matches” scrolls past the instant it is spoken. The
+<strong>Spoken Echo</strong> remembers the last twenty things QUILL
+announced and shows them, newest first, in a read-only dialog you can
+arrow through line by line, review by character, select, and copy. Open
+it any time with <strong>Alt+Shift+E</strong>, or from <strong>Help &gt;
+Show Spoken Echo</strong> — it works after <em>any</em> announcement,
+including ones triggered by ordinary editing keys such as Tab, so you
+can hear “8 spaces”, then open the Echo to read and copy it. If you are
+used to the screen-reader convention of pressing a reporting command
+twice, <strong>double-pressing</strong> an informational command —
+Describe Formatting, Document Summary, Context Help, or Announce
+Contrast — opens the Echo instead of re-speaking the same line. The
+dedicated Alt+Shift+E key is the universal path and always works; the
+double-press shortcut can be turned off under <strong>Preferences &gt;
+Accessibility &gt; Double-press to show the Spoken Echo</strong> (on by
+default). The Echo only records lines QUILL actually speaks, never your
+typing.</li>
 <li><strong>Per-action templates.</strong> Advanced users can edit
 exactly what each action says, using tokens like <code>{line}</code> and
 filters like <code>${ordinal:line}</code>, with live validation and

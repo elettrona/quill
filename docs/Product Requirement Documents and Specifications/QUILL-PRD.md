@@ -8649,6 +8649,78 @@ visible codes even in a saved `.md`) remains the deferred "Option B" end-state i
 [`docs/planning/rtf.md`](../planning/rtf.md); Illumination delivers the clean-text
 round-trip now without that larger overlay rebuild.
 
+### Spoken Echo: re-read the last announcement (shipped 0.8.0 Beta 2)
+
+**Problem.** QUILL speaks a great deal of transient information — indent depth,
+formatting at the caret, save and search results, "no matches" — and speech is
+gone the instant it is spoken. A screen-reader user who missed or wants to copy a
+spoken line had no way to recover it. Screen readers solve this with a "speak,
+double-tap to virtualise" convention; QUILL needed an equivalent that fits its
+architecture.
+
+**Model** (`quill/core/spoken_echo.py`, wx-free). Every spoken line already flows
+through a single choke point in the shell — `_announce` and `_set_status` both
+update the status bar and speak. Those two methods now also call `_record_spoken`,
+which appends to a bounded history (`SPOKEN_ECHO_LIMIT = 20`) via `record_spoken`,
+dropping empty and consecutive-duplicate lines. `format_spoken_echo` renders the
+history newest-first for display. Keeping the history and formatting in core makes
+them unit-testable without a UI; the `deque` lives on the frame.
+
+**Surfaces.** `view.spoken_echo` ("Show Spoken Echo") opens a read-only,
+selectable, copyable dialog (modelled on the QUILL-key help dialog, registered in
+the dialog inventory). It is bound to **Alt+Shift+E** in `DEFAULT_KEYMAP` and both
+shipped profiles, and appears in the Help menu. This dedicated key is the
+**universal** trigger: it works after any announcement, including those produced
+by text-editing keys (Tab's indent depth), with no risk to typing.
+
+**Double-press layer.** For the familiar gesture, `_run_command` detects a second
+press of the same command within `_ECHO_DOUBLE_PRESS_WINDOW` (0.5 s) and opens the
+Echo instead of re-running — but only for a curated set of *informational,
+side-effect-free* commands (`_ECHO_DOUBLE_PRESS_COMMANDS`: describe formatting,
+document summary, context help, announce contrast), where re-running is harmless.
+It is deliberately **not** wired to text-editing keys, and is gated by the
+`spoken_echo_on_double_press` setting (default on). Because accelerator-bound
+commands dispatch through wx menu events rather than `_run_command`, double-press
+currently covers the command-palette and QUILL-key paths; the dedicated key
+covers everything. Extending double-press to specific accelerator keys is a
+possible later enhancement.
+
+### Keyboard Manager: search, record, conflicts, diagnostics (shipped 0.8.0 Beta 2)
+
+**Problem.** The original Keymap Editor was a flat list with a plain text box: you
+typed an exact binding string and hoped. There was no way to ask "what is this key
+bound to?", conflict detection was a brittle ``.upper()`` string compare that
+missed re-ordered spellings (``Shift+Ctrl+K`` vs ``Ctrl+Shift+K``), conflicts were
+reported by raw command id, and there was nothing to catch duplicates or
+assigned-but-inert keys. The goal was a VSCode-class, screen-reader-first
+experience.
+
+**Core grammar** (``quill/core/keymap_query.py``, wx-free). One module owns the
+tolerant parse and canonicalisation: ``parse_binding`` accepts alias modifiers
+(``control``/``ctrl``/``ctl``, ``option``/``opt``), any modifier order, any case,
+named keys, function keys, the QUILL-key chord grammar, and the ``quill`` prefix
+alias; it rejects genuine garbage. ``canonical_binding`` collapses an accepted
+binding to one deterministic string (modifier order Ctrl, Alt, Shift to match
+``DEFAULT_KEYMAP``; macOS ``Cmd`` is a *distinct* token, never folded into Ctrl).
+On top sit ``find_keymap_conflicts`` (all owners of a key, canonical-compared),
+``commands_for_keystroke`` (reverse lookup for search), ``duplicate_bindings``,
+and ``diagnose_keymap`` (duplicates, invalid strings, unknown commands, and
+"missing dispatch" — bound but not firable). ``keymap.find_keymap_conflict`` now
+delegates here, so ``merge_keymaps`` correctly drops a saved override that
+collides with a default under a different spelling.
+
+**Editor** (``quill/ui/keymap_editor.py``, ``KeymapEditorMixin``, extracted from
+``main_frame``). A persistent dialog with: a single smart search box (command-name
+substring, or — when the text parses as a binding — a reverse lookup with live
+"assigned to X / unassigned and available" feedback); a **Record Keys** capture
+dialog that turns a pressed chord into a binding string; alias/any-order tolerant
+assignment that stores the *canonical* form and refuses keys the dispatch layer
+cannot fire (no inert bindings); friendly conflict resolution that names the owning
+command by title and offers a one-step reassign (move here, free there); and a
+**Diagnostics** report with a conservative **Heal** that removes invalid/orphaned
+entries and re-applies the keymap via ``_reload_shortcuts_from_keymap`` (duplicates
+and inert keys are reported for manual resolution rather than guessed at).
+
 ---
 
 ## Part Two: Competitive Study, Ulysses

@@ -17,6 +17,13 @@ from quill.core.keymap_packs import (
     keyboard_pack_names,
     keyboard_pack_preview,
 )
+from quill.core.keymap_query import (
+    canonical_binding,
+    commands_for_keystroke,
+    diagnose_keymap,
+    duplicate_bindings,
+    find_keymap_conflicts,
+)
 from quill.core.paths import app_data_dir
 from quill.core.storage import read_json, write_json_atomic
 
@@ -28,9 +35,14 @@ __all__ = [
     "KeyboardPack",
     "KQP_EXTENSION",
     "build_keymap_for_pack",
+    "canonical_binding",
+    "commands_for_keystroke",
+    "diagnose_keymap",
+    "duplicate_bindings",
     "export_keyboard_pack",
     "export_keymap",
     "find_keymap_conflict",
+    "find_keymap_conflicts",
     "format_binding_for_display",
     "format_quill_key_chord",
     "import_keyboard_pack",
@@ -674,13 +686,17 @@ def find_keymap_conflict(
     keymap: dict[str, str],
     command_id: str,
     binding: str,
+    *,
+    quill_key_prefix: str | None = None,
 ) -> str | None:
-    candidate = binding.strip().upper()
-    if not candidate:
-        return None
-    for existing_command, existing_binding in keymap.items():
-        if existing_command == command_id:
-            continue
-        if existing_binding.strip().upper() == candidate:
-            return existing_command
-    return None
+    """Return the first other command bound to ``binding``, or None.
+
+    Delegates to :func:`quill.core.keymap_query.find_keymap_conflicts`, so the
+    comparison is canonical: a re-ordered or alias spelling ("Shift+Ctrl+K",
+    "control+shift+k") conflicts with a stored "Ctrl+Shift+K". Kept as a
+    first-match convenience wrapper for the editor's existing call site.
+    """
+    conflicts = find_keymap_conflicts(
+        keymap, command_id, binding, quill_key_prefix=quill_key_prefix
+    )
+    return conflicts[0] if conflicts else None

@@ -52,6 +52,35 @@ and drop the formatting. If the `.txt` is edited elsewhere, QUILL notices the
 mismatch and opens it plain rather than mis-applying old formatting; for one
 self-contained file that keeps everything, save as Markdown, Word, or RTF.
 
+**Re-read anything QUILL just said — the Spoken Echo.** Speech is fleeting: an
+indent depth, a formatting description, a save result, a "no matches" — once
+spoken, it is gone. The **Spoken Echo** captures the last twenty things QUILL
+announced and shows them, newest first, in a read-only dialog you can arrow
+through, re-read, and copy. Open it any time with **Alt+Shift+E** (Help → Show
+Spoken Echo), and it works after *every* announcement, including ones produced by
+ordinary editing keys like Tab. For the screen-reader gesture you already know,
+**double-pressing** an informational command — Describe Formatting, Document
+Summary, Context Help, or Announce Contrast — pops the Echo open instead of
+re-speaking; the dedicated key remains the universal path. Toggle the
+double-press behaviour with **Settings → Accessibility → Double-press to show the
+Spoken Echo**.
+
+**A Keyboard Manager that meets you halfway.** Customising shortcuts no longer
+means remembering exact syntax or whether a key is free. The **Keymap Editor**
+(Preferences → Keyboard) now searches two ways from a single box: type part of a
+command's name to filter, or type a *shortcut* — `ctrl+alt+m`, `Control + Shift +
+K`, or a QUILL chord like `quill, s` — and it tells you precisely which command
+owns that key, or that it is unassigned and available. Spelling is forgiving:
+`control`, `ctrl`, or `ctl`, modifiers in any order, any case, with macOS `Cmd`
+kept distinct from `Ctrl`. Don't want to type it? Choose **Record Keys** and
+press the combination. Assigning a key that is already taken names the command
+that holds it — by its friendly title — and offers to move the key there for you,
+rather than silently refusing. And **Run Diagnostics** audits your whole keymap
+for duplicate shortcuts, bindings to commands that no longer exist, unreadable
+bindings, and keys that are assigned but cannot actually fire, with a one-click
+**Heal** that clears the bad entries and re-applies your shortcuts so menus and
+keys line up again.
+
 ### Fixes
 
 - **The portable build launches again, and opens documents.** Double-clicking

@@ -201,7 +201,6 @@ from quill.core.keymap import (
     build_keymap_for_pack,
     export_keyboard_pack,
     export_keymap,
-    find_keymap_conflict,
     format_binding_for_display,
     import_keyboard_pack,
     import_keymap,
@@ -481,6 +480,7 @@ from quill.ui.csv_grid import CsvGridSurface
 from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control, show_modal_dialog
 from quill.ui.editor_surface import PLAIN, RICH, surface_kind
 from quill.ui.html_paste_cleaner import analyze_paste
+from quill.ui.keymap_editor import KeymapEditorMixin
 from quill.ui.main_frame_abbreviations import AbbreviationsMixin
 from quill.ui.main_frame_ai_actions import AiActionsMixin
 from quill.ui.main_frame_braille import BrailleCommandsMixin
@@ -865,6 +865,7 @@ class MainFrame(
     QuillinsMenuMixin,
     ContextHelpMixin,
     WatchProfileDialogMixin,
+    KeymapEditorMixin,
 ):
     _ANNOUNCEMENT_BACKEND_LABELS: dict[str, str] = {
         "auto": "Automatic (use Prism when available)",
@@ -12838,169 +12839,6 @@ class MainFrame(
             target = Path(dialog.GetPath())
         export_keymap(target, self.keymap)
         self._set_status(f"Exported keymap to {target.name}")
-
-    def open_keymap_editor(self) -> None:
-        wx = self._wx
-        quick_nav_actions: list[tuple[str, str]] = [
-            ("QUILL Quick Nav: Heading", "quill.quick_nav.heading"),
-            ("QUILL Quick Nav: Link", "quill.quick_nav.link"),
-            ("QUILL Quick Nav: List", "quill.quick_nav.list"),
-            ("QUILL Quick Nav: List Item", "quill.quick_nav.list_item"),
-            ("QUILL Quick Nav: Table", "quill.quick_nav.table"),
-            ("QUILL Quick Nav: Block Quote", "quill.quick_nav.block_quote"),
-            ("QUILL Quick Nav: Bookmark", "quill.quick_nav.bookmark"),
-            ("QUILL Quick Nav: Code Block", "quill.quick_nav.code_block"),
-            ("QUILL Quick Nav: Table of Contents", "quill.quick_nav.table_of_contents"),
-            ("QUILL Quick Nav: Paragraph", "quill.quick_nav.paragraph"),
-            ("QUILL Quick Nav: Sentence", "quill.quick_nav.sentence"),
-            ("QUILL Quick Nav: Block", "quill.quick_nav.block"),
-            ("QUILL Quick Nav: Skip Forward Past Container", "quill.quick_nav.skip_forward"),
-            ("QUILL Quick Nav: Skip Backward Past Container", "quill.quick_nav.skip_backward"),
-        ]
-        entries: list[tuple[str, str]] = [
-            (command.title, command.id)
-            for command in self.commands.list()
-            if not command.id.startswith("tools.keymap_editor")
-        ]
-        entries.extend(quick_nav_actions)
-        if not entries:
-            self._set_status("No commands available for keymap editing")
-            return
-
-        dialog = wx.Dialog(self.frame, title="Keymap Editor", size=(640, 480))
-        # Parent every control directly to the dialog and lay them out in a
-        # single sizer (issue #119). The previous build parented controls to an
-        # inner wx.Panel but added dialog.CreateButtonSizer()'s buttons (children
-        # of the dialog) to the panel's sizer. That parent/sizer mismatch
-        # mislaid the OK button (it could not dismiss the dialog) and collapsed
-        # the command list. This matches the working _choose_searchable_option.
-        root = wx.BoxSizer(wx.VERTICAL)
-        root.Add(
-            wx.StaticText(
-                dialog,
-                label=(
-                    "Select a command and choose Edit to change its keybinding. "
-                    "The current key (or 'Unassigned') is shown for each command. "
-                    "Choose OK to return to the editor."
-                ),
-            ),
-            0,
-            wx.ALL | wx.EXPAND,
-            8,
-        )
-        listbox = wx.ListBox(dialog, style=wx.LB_SINGLE)
-        root.Add(listbox, 1, wx.ALL | wx.EXPAND, 8)
-        controls = wx.BoxSizer(wx.HORIZONTAL)
-        edit_button = wx.Button(dialog, label="&Edit Keybinding...")
-        controls.Add(edit_button, 0, wx.RIGHT, 8)
-        root.Add(controls, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        buttons = dialog.CreateButtonSizer(wx.OK)
-        if buttons is not None:
-            ok_button = dialog.FindWindowById(wx.ID_OK)
-            if ok_button is not None:
-                ok_button.SetDefault()
-            root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
-        # This editor has only an OK button, so Escape closes via OK rather than
-        # a non-existent Cancel button; SetEscapeId needs an id that a real
-        # button carries or Escape is inert (a keyboard trap, #124).
-        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_OK)
-        dialog.SetSizer(root)
-
-        def refresh_list(keep: int | None = None) -> None:
-            labels = [
-                f"{title} — {self._binding_for(command_id) or 'Unassigned'}"
-                for title, command_id in entries
-            ]
-            listbox.Set(labels)
-            if keep is not None and 0 <= keep < len(entries):
-                listbox.SetSelection(keep)
-
-        def edit_selected(_event: object = None) -> None:
-            selected = listbox.GetSelection()
-            if selected == wx.NOT_FOUND:
-                self._set_status("Select a command to edit")
-                return
-            title, command_id = entries[selected]
-            current_binding = self._binding_for(command_id) or ""
-            with wx.TextEntryDialog(
-                dialog,
-                f"Enter new keybinding for {title} (example: Ctrl+Shift+K):",
-                "Edit Keybinding",
-                value=current_binding,
-            ) as binding_dialog:
-                if self._show_modal_dialog(binding_dialog, "Edit Keybinding") != wx.ID_OK:
-                    return
-                new_binding = binding_dialog.GetValue().strip()
-            if self._apply_keymap_binding(command_id, new_binding):
-                refresh_list(keep=selected)
-
-        edit_button.Bind(wx.EVT_BUTTON, edit_selected)
-        listbox.Bind(wx.EVT_LISTBOX_DCLICK, edit_selected)
-        refresh_list(keep=0)
-
-        self._show_modal_dialog(dialog, "Keymap Editor")
-        dialog.Destroy()
-
-    def _apply_keymap_binding(self, command_id: str, new_binding: str) -> bool:
-        """Validate and persist a new keybinding. Returns True when applied.
-
-        Shared by the Keymap Editor dialog so a single edit returns to the
-        command list (issue #117) rather than dismissing the editor entirely.
-        """
-        wx = self._wx
-        if not new_binding:
-            self._show_message_box(
-                "Keybinding cannot be blank.",
-                "Keymap Editor",
-                wx.ICON_ERROR | wx.OK,
-            )
-            return False
-        is_chord = ", " in new_binding
-        if is_chord:
-            prefix_part, _, second_part = new_binding.partition(", ")
-            second_valid = (
-                second_part.strip()
-                and self._parse_chord_second_key(second_part.strip()) is not None
-            )
-            if self._parse_keybinding(prefix_part) is None or not second_valid:
-                self._show_message_box(
-                    "Keybinding format is invalid. Chord format: Ctrl+Shift+Grave, Key",
-                    "Keymap Editor",
-                    wx.ICON_ERROR | wx.OK,
-                )
-                return False
-        elif self._parse_keybinding(new_binding) is None:
-            self._show_message_box(
-                "Keybinding format is invalid.",
-                "Keymap Editor",
-                wx.ICON_ERROR | wx.OK,
-            )
-            return False
-        if command_id.startswith("quill.quick_nav."):
-            normalized = new_binding.strip().upper()
-            quick_nav_valid = (len(normalized) == 1) or (normalized == "TAB")
-            if not quick_nav_valid:
-                self._show_message_box(
-                    "QUILL Quick Nav bindings must be a single key or TAB.",
-                    "Keymap Editor",
-                    wx.ICON_ERROR | wx.OK,
-                )
-                return False
-        conflict = find_keymap_conflict(self.keymap, command_id, new_binding)
-        if conflict:
-            self._show_message_box(
-                f'Binding conflicts with "{conflict}". Choose a different keybinding.',
-                "Keymap Editor",
-                wx.ICON_WARNING | wx.OK,
-            )
-            self._set_status("Keymap edit cancelled")
-            return False
-        self.keymap[command_id] = new_binding
-        save_keymap(self.keymap)
-        self._mark_keyboard_pack_custom()
-        self._reload_shortcuts_from_keymap()
-        self._set_status(f"Updated keybinding for {command_id}")
-        return True
 
     def open_share_export_dialog(self) -> None:
         """SHARE-1: Export and back up settings, features, and customizations.
