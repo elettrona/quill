@@ -21998,6 +21998,14 @@ class MainFrame(
         dlg.show()
 
     def _show_transcription_result(self, transcript: str, file_name: str) -> None:
+        # The Listening Companion: first ask "what would you like me to make of this?"
+        # and run the chosen Transcript Action. If AI is off/unreachable or the user
+        # opts out, fall back to the plain transcript result below.
+        from quill.ui.transcript_actions_ui import offer_transcript_actions
+
+        if offer_transcript_actions(self, transcript, file_name):
+            return
+
         from quill.ui.ai_transcribe_dialog import AITranscriptionResultDialog
 
         def _on_insert(text: str) -> None:
