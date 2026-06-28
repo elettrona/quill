@@ -62,6 +62,7 @@
   "quill/ui/list_studio_prompts.py::prompt_definition_fallback::wx.SingleChoiceDialog#2": "native",
   "quill/ui/list_studio_settings_dialog.py::ListStudioSettingsDialog._on_export::wx.FileDialog": "native",
   "quill/ui/list_studio_settings_dialog.py::ListStudioSettingsDialog._on_import::wx.FileDialog": "native",
+  "quill/ui/main_frame.py::MainFrame._ask_plain_text_formatting_choice::wx.SingleChoiceDialog": "native",
   "quill/ui/main_frame.py::MainFrame._build_context_menu_editor_tab._on_rename::wx.TextEntryDialog": "native",
   "quill/ui/main_frame.py::MainFrame._build_menu_items_editor_tab._on_rename::wx.TextEntryDialog": "native",
   "quill/ui/main_frame.py::MainFrame._build_report_bug_form_body.confirm_preflight::wx.MessageDialog": "native",

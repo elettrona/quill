@@ -8149,6 +8149,29 @@ class MainFrame(
             csv_mode = self._resolve_csv_open_mode(selected_path)
         finish(read_open_document(selected_path, suffix, csv_mode=csv_mode))
 
+    def _maybe_apply_illumination(self, loaded: object, selected_path: Path, suffix: str) -> bool:
+        """Restore hidden formatting from a ``<name>.illumination`` sidecar when
+        opening a plain-text file, so a .txt saved with an Illumination reopens
+        fully formatted. No-op (returns False) when there is no sidecar, the
+        version is unknown, or the text drifted (edited outside QUILL) — the file
+        then opens as plain text. Returns True when formatting was restored."""
+        if suffix != ".txt":
+            return False
+        text = getattr(loaded, "text", None)
+        if not isinstance(text, str):
+            return False
+        from quill.io.illumination import read_illumination, restore_markup
+
+        illumination = read_illumination(selected_path)
+        if illumination is None:
+            return False
+        restored = restore_markup(illumination, text)
+        if restored is None:
+            return False
+        loaded.text = restored
+        loaded.modified = False
+        return True
+
     def _finish_open_document(
         self,
         result: object,
@@ -8168,6 +8191,7 @@ class MainFrame(
         """
         assert isinstance(result, tuple)
         loaded, epub_book = result
+        illuminated = self._maybe_apply_illumination(loaded, selected_path, suffix)
         self._epub_book = epub_book if suffix == ".epub" else None
         linkage_entry = get_publishing_linkage(selected_path)
         if linkage_entry is not None:
@@ -8198,7 +8222,12 @@ class MainFrame(
             self._record_recent(selected_path)
         self._refresh_title()
         self._last_intake_report = build_intake_report(loaded)
-        self._set_status(build_intake_summary(loaded))
+        if illuminated:
+            self._set_status(
+                f"Opened {selected_path.name}; formatting restored from its Illumination"
+            )
+        else:
+            self._set_status(build_intake_summary(loaded))
         # Switch to the profile mapped to this file's extension, if one is set (#138).
         self.maybe_switch_profile_for_open(selected_path)
         # FEAT-19: (re)start the external change watcher for the freshly loaded document.
@@ -9503,17 +9532,93 @@ class MainFrame(
                 return
             target = Path(dialog.GetPath())
 
-        plain_doc = Document(
-            text=self.editor.GetValue(),
-            path=target,
-            modified=True,
-            encoding="utf-8",
-            line_ending="\n",
+        if self._save_plain_text_honoring_formatting(target, self.editor.GetValue()):
+            self._record_recent(target)
+
+    def _save_plain_text_honoring_formatting(self, target: Path, text: str) -> bool:
+        """Save *text* as plain text at *target*, honouring the
+        ``plain_text_with_formatting`` policy when the document carries hidden
+        formatting. Writes/refreshes or removes the ``<name>.illumination`` sidecar
+        as appropriate. Returns ``False`` only if the user cancelled."""
+        from quill.io.illumination import (
+            build_illumination,
+            illumination_path_for,
+            markup_has_formatting,
+            write_illumination,
         )
+
         link_style = str(getattr(self.settings, "plain_text_link_style", "text_url"))
-        write_plain_text_document(plain_doc, target, link_style=link_style)
-        self._record_recent(target)
-        self._set_status(f"Saved plain text to {target.name}")
+
+        def _write_plain() -> None:
+            plain_doc = Document(
+                text=text, path=target, modified=True, encoding="utf-8", line_ending="\n"
+            )
+            write_plain_text_document(plain_doc, target, link_style=link_style)
+
+        def _illuminate() -> None:
+            _write_plain()
+            sidecar = write_illumination(target, build_illumination(text))
+            self._set_status(
+                f"Saved plain text to {target.name} with an Illumination ({sidecar.name})"
+            )
+
+        def _drop_and_clear_sidecar() -> None:
+            _write_plain()
+            stale = illumination_path_for(target)
+            try:
+                if stale.is_file():
+                    stale.unlink()
+            except OSError:
+                pass
+            self._set_status(f"Saved plain text to {target.name} (formatting not kept)")
+
+        if not markup_has_formatting(text):
+            _write_plain()
+            self._set_status(f"Saved plain text to {target.name}")
+            return True
+
+        policy = str(getattr(self.settings, "plain_text_with_formatting", "ask"))
+        if policy == "illuminate":
+            _illuminate()
+            return True
+        if policy == "plain":
+            _drop_and_clear_sidecar()
+            return True
+
+        choice = self._ask_plain_text_formatting_choice()
+        if choice is None:
+            return False
+        if choice == "keep":
+            # Let the user pick a format that carries formatting (.md / .rtf / .docx).
+            self.save_file_as()
+            return True
+        if choice == "illuminate":
+            _illuminate()
+            return True
+        _drop_and_clear_sidecar()
+        return True
+
+    def _ask_plain_text_formatting_choice(self) -> str | None:
+        """Offer keep / illuminate / plain; returns 'keep' | 'illuminate' | 'plain'
+        or ``None`` if the user cancelled."""
+        wx = self._wx
+        choices = [
+            "Keep my formatting — save as Markdown, Word, or RTF instead",
+            "Save plain text plus an Illumination sidecar (keeps formatting in QUILL)",
+            "Save plain text only — remove the formatting",
+        ]
+        with wx.SingleChoiceDialog(
+            self.frame,
+            (
+                "This document has formatting (fonts, colours, alignment) that a plain "
+                "text file cannot hold. What would you like to do?"
+            ),
+            "Save as plain text",
+            choices,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Save as plain text") != wx.ID_OK:
+                return None
+            return ("keep", "illuminate", "plain")[dialog.GetSelection()]
 
     def clear_recent_files(self) -> None:
         clear_recent_files()
