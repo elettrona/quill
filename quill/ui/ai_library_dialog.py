@@ -77,6 +77,7 @@ def open_ai_library(controller: Any) -> None:
         document=str(controller.editor.GetValue()),
         title=controller._current_document_title(),
         on_run_agent=lambda agent_id: run_agent(controller, agent_id),
+        on_validate_agents=controller.open_agent_validator,
         on_insert=controller._ai_insert_text,
         announce_cb=controller._announce,
     )
@@ -99,6 +100,7 @@ class AILibraryDialog:
         document: str = "",
         title: str = "",
         on_run_agent: Callable[[str], None] | None = None,
+        on_validate_agents: Callable[[], None] | None = None,
         on_insert: Callable[[str], None] | None = None,
         announce_cb: Callable[[str], None] | None = None,
     ) -> None:
@@ -108,6 +110,7 @@ class AILibraryDialog:
         self._settings = settings
         self._context = {"selection": selection, "document": document, "title": title}
         self._on_run_agent = on_run_agent
+        self._on_validate_agents = on_validate_agents
         self._on_insert = on_insert
         self._announce = announce_cb or (lambda _: None)
         self._running = False
@@ -498,6 +501,11 @@ class AILibraryDialog:
     # -- agent verbs ----------------------------------------------------------
 
     def agent_validate(self, item: LibraryItem) -> None:
+        # Prefer the full standards linter dialog (the same one the CI gate uses)
+        # when the host provides it; fall back to a quick per-spec schema check.
+        if self._on_validate_agents is not None:
+            self._on_validate_agents()
+            return
         from quill.core.ai.agent_catalog import validate_agent
 
         spec = next((a for a in self._agents if a.id == item.id), None)

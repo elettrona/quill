@@ -44,10 +44,13 @@ def test_summary_announces_findings() -> None:
     assert "error(s)" in body and "warning(s)" in body
 
 
-def test_menu_and_handler_are_wired() -> None:
-    menu = Path("quill/ui/main_frame_menu.py").read_text(encoding="utf-8")
-    assert '"tools.validate_agents"' in menu
-    assert "open_agent_validator()" in menu
+def test_handler_is_wired_into_ai_library() -> None:
+    # Validate Agents folded out of its own menu item into the AI Library Agents
+    # tab (redesign §4.1): the Library's Validate opens this same dialog via the
+    # host's open_agent_validator, and the handler still constructs it.
+    library = Path("quill/ui/ai_library_dialog.py").read_text(encoding="utf-8")
+    assert "on_validate_agents=controller.open_agent_validator" in library
+    assert "self._on_validate_agents()" in library
     actions = Path("quill/ui/main_frame_ai_actions.py").read_text(encoding="utf-8")
     assert "def open_agent_validator(self)" in actions
     assert "AgentValidatorDialog(" in actions

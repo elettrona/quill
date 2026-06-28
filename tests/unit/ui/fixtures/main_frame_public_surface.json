@@ -298,6 +298,7 @@
   "open_ai_expand_selection",
   "open_ai_fix_grammar",
   "open_ai_hub",
+  "open_ai_library",
   "open_ai_model_settings",
   "open_ai_preferences",
   "open_ai_rewrite_selection",
