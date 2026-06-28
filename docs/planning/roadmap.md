@@ -121,8 +121,7 @@ Direct publishing (#140) and the remaining ChapterForge surfaces are tracked und
 
 ### 1.6 Platform & distribution
 
-- Native RTF editing (#516); the Quillin Hub (#517); plugin capability + signing +
-  marketplace (#519).
+- The Quillin Hub (#517); plugin capability + signing + marketplace (#519).
 - **Deferred to 2.0** (tracker #680): the Windows 11 modern primary-menu
   `IExplorerCommand` pass (SHELL-3, #525).
 
@@ -204,8 +203,8 @@ e.g. direct publishing to external platforms (#140); GLOW family improvements
 
 ### Phase 5 — Solid on Windows and macOS
 
-Native RTF editing and the Quillin hub (§1.6); better docs/tutorials (§1.7). *A
-dependable, well-documented product on its supported platforms.*
+The Quillin hub (§1.6); better docs/tutorials (§1.7). *A dependable,
+well-documented product on its supported platforms.*
 
 ---
 
@@ -217,7 +216,7 @@ dependable, well-documented product on its supported platforms.*
 | --- | --- |
 | Agentic AI (§1.3) | #507–#512, #523/#524, #579–#581; Accessibility Agents #593–#598. |
 | GLOW family (§1.4) | Deferred to 2.0 (§5). GLOW contributions stay `locked_off` for 1.0. |
-| Platform & distribution (§1.6) | #516, #517, #519; #525 deferred to 2.0 (#680). |
+| Platform & distribution (§1.6) | #517, #519; #525 deferred to 2.0 (#680). |
 | Docs & content (§1.7) | #535–#564, #505, #522, #590, #592. |
 | Table Studio (§1.9) | Whole feature (`quill-native-accessible-table-studio-plan.md`). |
 | ElevenLabs beyond export (§4.2–4.4) | Live streaming Read Aloud, voice management / cloning, and Tier-3 surfaces — all deferred to 2.0 (§5). |
