@@ -8332,6 +8332,24 @@ safer path is offered.
 
 ## Part One: Native RTF Editing as an Optional Surface
 
+> **What shipped (0.8.0 Beta 2) — hidden-codes first.** The plan of record for this
+> work became **hidden-codes formatting** rather than a WYSIWYG editing surface;
+> the full design and phasing are in
+> [`docs/planning/rtf.md`](../planning/rtf.md). What is delivered: real document
+> formatting (font family/size, colour, highlight, underline, strikethrough,
+> super/subscript; paragraph alignment, line spacing, indent, named styles, page
+> breaks) applied from the **Format** menu and the accessible **Font…** dialog,
+> stored as *invisible* codes over the clean plain-text buffer, interrogated on
+> demand with **Describe Formatting at Cursor** (and an optional announce-on-move),
+> and **materialised at export** to Word (`.docx`, native writer + Pandoc
+> fallback), RTF, and HTML — with honest-fidelity warnings before any lossy save.
+> The plain-text buffer stays the single editing surface, so undo, search, the
+> outline, metrics, read-aloud, and AI keep working unchanged. The **read-only
+> rich-text lens** below remains an opt-in preview gated behind
+> `core.rich_text_lens` (pending the live JAWS/NVDA/Narrator pass), and the fully
+> **editable WYSIWYG surface** described in this Part is **deferred to QUILL 2.0**.
+> The vision narrative is retained below for the record.
+
 ### The idea in one sentence
 
 Let a writer open Preferences and choose their editing surface: keep the current
