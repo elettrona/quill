@@ -59,10 +59,10 @@ def experimental_gateway_enabled() -> bool:
 
 
 def _catalog_agents() -> list[Any]:
-    """The bundled agents, sorted by display name (stable menu/palette order)."""
-    from quill.core.ai.agent_catalog import load_catalog
+    """Bundled + user/promoted agents, sorted by display name (stable order)."""
+    from quill.core.ai.agent_catalog import load_full_catalog
 
-    return sorted(load_catalog().agents, key=lambda a: a.display_name.lower())
+    return sorted(load_full_catalog().agents, key=lambda a: a.display_name.lower())
 
 
 def append_agent_menu(controller: Any, ai_menu: Any) -> None:
@@ -468,7 +468,7 @@ def run_agent(
     on a daemon thread, every wx touch (preview, apply, announce) is marshalled
     back to the UI thread via ``wx.CallAfter``.
     """
-    from quill.core.ai.agent_catalog import load_catalog
+    from quill.core.ai.agent_catalog import load_full_catalog
     from quill.core.ai.model_manager import load_ai_enabled
 
     # Guards first, before importing wx, so an early bail stays headless-testable
@@ -481,7 +481,7 @@ def run_agent(
         controller._set_status("AI is turned off. Enable it in the AI menu.")
         return
 
-    agent = next((a for a in load_catalog().agents if a.id == agent_id), None)
+    agent = next((a for a in load_full_catalog().agents if a.id == agent_id), None)
     if agent is None:
         controller._set_status(f"Unknown agent: {agent_id}")
         return

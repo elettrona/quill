@@ -545,7 +545,23 @@ class AILibraryDialog:
             if skill is None:
                 return
             markdown = library.skill_to_agent_markdown(skill)
-            _PromotedAgentDialog(self.dialog, item.name, markdown, announce=self._announce).show()
+            _PromotedAgentDialog(
+                self.dialog,
+                item.name,
+                markdown,
+                announce=self._announce,
+                on_saved=self._on_agent_promoted,
+            ).show()
+
+    def _on_agent_promoted(self, spec: object) -> None:
+        """A skill was saved as a first-class user agent: refresh + reveal it."""
+        from quill.ui.agent_editor_host import _catalog_agents
+
+        self._agents = _catalog_agents()
+        self.reload()
+        self._notebook.SetSelection(2)
+        self._agent_page.select_by_id(getattr(spec, "id", ""))
+        self._set_status(f"Promoted skill to agent: {getattr(spec, 'display_name', '')}")
 
     # -- small helpers --------------------------------------------------------
 
@@ -744,7 +760,12 @@ class _LibraryPage:
 
 
 class _PromotedAgentDialog:
-    """Show a generated agent ``.md`` scaffold with Copy and Save to file."""
+    """Show a generated agent ``.md`` scaffold: save it as a first-class user agent.
+
+    "Save to My Agents" writes the spec into the user agents dir so it appears in
+    the Agents tab and runs through the gateway immediately; Copy and Save to File
+    remain for users who keep their agents elsewhere.
+    """
 
     def __init__(
         self,
@@ -753,9 +774,11 @@ class _PromotedAgentDialog:
         markdown: str,
         *,
         announce: Callable[[str], None] | None = None,
+        on_saved: Callable[[object], None] | None = None,
     ) -> None:
         self._markdown = markdown
         self._announce = announce or (lambda _: None)
+        self._on_saved = on_saved
         self.dialog = wx.Dialog(
             parent,
             title=f"Promote to Agent — {skill_name}",
@@ -766,7 +789,8 @@ class _PromotedAgentDialog:
         root.Add(
             wx.StaticText(
                 self.dialog,
-                label="Generated agent definition. Save it to your agents folder to run it:",
+                label="Generated agent definition. Save it to My Agents to run it from "
+                "the Agents tab:",
             ),
             0,
             wx.ALL,
@@ -780,9 +804,11 @@ class _PromotedAgentDialog:
         text.SetName("Generated agent definition")
         root.Add(text, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         btns = wx.BoxSizer(wx.HORIZONTAL)
+        add_btn = wx.Button(self.dialog, label="Save to My &Agents")
         copy_btn = wx.Button(self.dialog, label="&Copy")
         save_btn = wx.Button(self.dialog, label="&Save to File...")
         close_btn = wx.Button(self.dialog, wx.ID_CANCEL, label="C&lose")
+        btns.Add(add_btn, 0, wx.RIGHT, 6)
         btns.Add(copy_btn, 0, wx.RIGHT, 6)
         btns.Add(save_btn, 0, wx.RIGHT, 6)
         btns.AddStretchSpacer()
@@ -793,9 +819,30 @@ class _PromotedAgentDialog:
         apply_modal_ids(
             self.dialog, affirmative_id=wx.ID_CANCEL, cancel_id=wx.ID_CANCEL, cancel_label="Close"
         )
+        add_btn.Bind(wx.EVT_BUTTON, self._on_add_to_agents)
         copy_btn.Bind(wx.EVT_BUTTON, self._on_copy)
         save_btn.Bind(wx.EVT_BUTTON, self._on_save)
-        text.SetFocus()
+        add_btn.SetFocus()
+
+    def _on_add_to_agents(self, _event: object) -> None:
+        from quill.core.ai.agent_catalog import save_user_agent
+
+        try:
+            spec = save_user_agent(self._markdown)
+        except Exception as exc:  # noqa: BLE001
+            show_message_box(
+                f"Could not save the agent: {exc}",
+                "Promote to Agent",
+                wx.OK | wx.ICON_ERROR,
+                self.dialog,
+                announce=self._announce,
+            )
+            return
+        self._announce(f"Saved agent: {spec.display_name}")
+        if self._on_saved is not None:
+            self._on_saved(spec)
+        if self.dialog.IsModal():
+            self.dialog.EndModal(wx.ID_OK)
 
     def show(self) -> int:
         return self.dialog.ShowModal()

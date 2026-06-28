@@ -7,12 +7,15 @@ from pathlib import Path
 
 import pytest
 
+from quill.core.ai import agent_catalog
 from quill.core.ai.agent_catalog import (
     SCHEMA_ID,
     AgentSpecError,
     bundled_agents_dir,
     load_catalog,
+    load_full_catalog,
     parse_agent,
+    save_user_agent,
     validate_agent,
 )
 from quill.core.ai.permissions import Decision, PermissionCategory, RiskLevel
@@ -28,6 +31,42 @@ _GOOD = {
     "tools": ["edit.undo"],
     "permissions": {"modify_selection": "preview_required"},
 }
+
+
+_AGENT_MD = """---
+id: topic-mapper
+display_name: Topic Mapper
+description: Map and summarise topics.
+risk: low
+default_scope: full_document
+---
+
+You are Topic Mapper. Help the user map and summarise topics.
+"""
+
+
+def test_save_user_agent_writes_and_load_full_catalog_finds_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(agent_catalog, "user_agents_dir", lambda: tmp_path / "agents")
+    spec = save_user_agent(_AGENT_MD)
+    assert spec.id == "topic-mapper"
+    # The file landed in the user agents dir and the combined catalog includes it.
+    assert (tmp_path / "agents" / "topic-mapper.md").is_file()
+    full = load_full_catalog()
+    assert "topic-mapper" in full.ids()
+    # Bundled agents are still present (user agents are additive).
+    assert len(full.agents) > 1
+
+
+def test_save_user_agent_rejects_invalid_markdown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(agent_catalog, "user_agents_dir", lambda: tmp_path / "agents")
+    with pytest.raises(AgentSpecError):
+        save_user_agent("---\nid: bad\n---\n\nMissing display_name and a usable spec.")
+    # Nothing was written on failure.
+    assert not (tmp_path / "agents").exists() or not list((tmp_path / "agents").glob("*.md"))
 
 
 def test_valid_spec_has_no_problems() -> None:

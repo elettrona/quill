@@ -52,7 +52,10 @@ __all__ = [
     "parse_agent",
     "parse_agent_markdown",
     "bundled_agents_dir",
+    "user_agents_dir",
     "load_catalog",
+    "load_full_catalog",
+    "save_user_agent",
 ]
 
 SCHEMA_ID = "quill.agent/1"
@@ -280,6 +283,46 @@ def parse_agent_markdown(source: str) -> dict[str, object]:
 def bundled_agents_dir() -> Path:
     """The directory holding QUILL's built-in agent spec files."""
     return Path(__file__).resolve().parent / "agents"
+
+
+def user_agents_dir() -> Path:
+    """The directory holding the user's saved/promoted agent spec files.
+
+    This is where Promote-to-Agent writes, so a skill graduated into an agent
+    becomes first-class: it shows up in the AI Library Agents tab and runs through
+    the gateway like a bundled agent. Created on demand by the writer.
+    """
+    from quill.core.paths import app_data_dir
+
+    return app_data_dir() / "agents"
+
+
+def load_full_catalog() -> CatalogLoadResult:
+    """Load bundled agents plus the user's saved/promoted agents.
+
+    User agents are loaded after the bundled ones, so a user agent with the same
+    id shadows the bundled one (the documented :func:`load_catalog` precedence).
+    A missing user dir is simply skipped.
+    """
+    return load_catalog(bundled_agents_dir(), user_agents_dir())
+
+
+def save_user_agent(markdown: str) -> AgentSpec:
+    """Validate an agent ``.md`` and save it into the user agents dir.
+
+    Returns the parsed :class:`AgentSpec`. Raises :class:`AgentSpecError` if the
+    markdown is not a valid agent spec, so a malformed promotion never lands a bad
+    file in the catalog.
+    """
+    raw = parse_agent_markdown(markdown)
+    problems = validate_agent(raw)
+    if problems:
+        raise AgentSpecError(problems)
+    spec = parse_agent(raw)
+    target_dir = user_agents_dir()
+    target_dir.mkdir(parents=True, exist_ok=True)
+    (target_dir / f"{spec.id}.md").write_text(markdown, encoding="utf-8")
+    return spec
 
 
 def load_catalog(*dirs: Path) -> CatalogLoadResult:

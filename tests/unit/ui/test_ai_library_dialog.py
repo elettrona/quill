@@ -16,7 +16,7 @@ wx = pytest.importorskip("wx")
 
 from quill.core.prompt_library import PromptLibrary  # noqa: E402
 from quill.core.skill_store import SkillStore  # noqa: E402
-from quill.ui.ai_library_dialog import AILibraryDialog  # noqa: E402
+from quill.ui.ai_library_dialog import AILibraryDialog, _PromotedAgentDialog  # noqa: E402
 
 
 @dataclass
@@ -114,6 +114,35 @@ def test_agent_validate_reports_valid(wx_app, tmp_path):
         assert "valid" in dlg._status.GetLabel().lower()
     finally:
         dlg.close()
+        frame.Destroy()
+
+
+_AGENT_MD = """---
+id: topic-mapper
+display_name: Topic Mapper
+description: Map and summarise topics.
+risk: low
+default_scope: full_document
+---
+
+You are Topic Mapper. Help the user map and summarise topics.
+"""
+
+
+def test_promote_to_agent_saves_first_class_user_agent(wx_app, tmp_path, monkeypatch):
+    from quill.core.ai import agent_catalog
+
+    monkeypatch.setattr(agent_catalog, "user_agents_dir", lambda: tmp_path / "agents")
+    frame = wx.Frame(None)
+    saved = []
+    dlg = _PromotedAgentDialog(frame, "Topic Mapper", _AGENT_MD, on_saved=saved.append)
+    try:
+        dlg._on_add_to_agents(None)
+        # Written into the user agents dir and the callback got the parsed spec.
+        assert (tmp_path / "agents" / "topic-mapper.md").is_file()
+        assert saved and saved[0].id == "topic-mapper"
+    finally:
+        dlg.dialog.Destroy()
         frame.Destroy()
 
 
