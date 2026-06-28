@@ -180,20 +180,25 @@ always one keystroke away and never in the way.
   Save) that writes a Skill via `transcript_actions.action_to_skill_source` + `skill_store`,
   reached from the AI Library Skills tab ("Build Action..."). Inherits Run/Edit/Enable/
   Export/Promote automatically.
-- **Phase C — Reference attachments — NEXT.** Extend the context layer so an action can carry
-  consented reference docs; surface "Attach a reference..." in the builder and at run.
-- **Phase D — Automation — NEXT (high value).** The watch engine already has `AiAction` and
-  transcribe actions; wire watch-folder profiles to chain "transcribe → run a Transcript
-  Action → save the doc", DND-aware, with gentle completion announcements. Needs a small
-  profile-editor affordance to pick the action.
-- **Phase E — Live & diarized actions.** Stream actions over live, diarized transcription;
-  same review surface. (Larger — its own effort.)
-- **Phase F — Experience modes & onboarding.** A Basic/Guided first-run for the listening
-  workflow; per-action welcome text; "grow into power" prompts.
+- **Phase C — Reference attachments — SHIPPED (2026-06-28).** The Action Builder's
+  "Attach a reference..." loads a document (txt/md directly, docx via markitdown) and
+  weaves it into the saved Skill via `action_to_skill_source(reference_text=...)`, so
+  output matches the user's template. `read_reference_text` is capped and tolerant.
+- **Phase D — Automation — SHIPPED (2026-06-28).** A transcribe watch profile chains
+  "transcribe → run a Transcript Action → save the doc" next to the audio
+  (`watch_transcribe._maybe_make_action_document`), DND-aware; AI off / no provider /
+  a failed action skips with a clear note and always keeps the transcript. The profile
+  editor gained a "Then make" action picker.
+- **Phase E — Live & diarized actions — FUTURE.** Stream actions over live, diarized
+  transcription; same review surface. A larger feature (needs live capture infra) — its
+  own effort.
+- **Phase F — Experience modes & onboarding — FUTURE.** A Basic/Guided first-run for the
+  listening workflow; per-action welcome text; "grow into power" prompts.
 
-Each phase ships independently and leaves a coherent, delightful product. **Status:** the
-headline magic (A + B) is live and green; C–F remain, with D (automation) the
-highest-value next step.
+Each phase ships independently and leaves a coherent, delightful product. **Status:**
+A + B + C + D are live and green (Transcript Actions, the guided Action Builder,
+reference attachments, and watch-folder automation); E (live streaming) and F
+(experience modes) remain as future, larger efforts.
 
 ---
 
