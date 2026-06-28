@@ -369,6 +369,7 @@ from quill.core.spellcheck import (
 from quill.core.spellcheck import (
     previous_misspelling as find_previous_misspelling,
 )
+from quill.core.spoken_echo import format_spoken_echo, new_history, record_spoken
 from quill.core.sticky_notes import save_sticky_note
 from quill.core.structure_nav import (
     find_matching_bracket,
@@ -3501,6 +3502,12 @@ class MainFrame(
             None,
         )
         self.commands.register(
+            "view.spoken_echo",
+            "Show Spoken Echo",
+            self.show_spoken_echo,
+            self._binding_for("view.spoken_echo"),
+        )
+        self.commands.register(
             "help.why_unavailable",
             "Why Is This Unavailable?",
             self.explain_unavailable_feature,
@@ -3729,6 +3736,7 @@ class MainFrame(
             "help.status_page": self._id_help_status_page,
             "help.startup_wizard": self._id_profile_onboarding,
             "help.context_help": self._id_announce_context_shortcuts,
+            "view.spoken_echo": self._id_show_spoken_echo,
             "whisperer.model_manager": self._id_bw_model_manager,
             "whisperer.model_status": self._id_bw_model_status,
             "whisperer.model_recommend": self._id_bw_model_recommend,
@@ -7138,6 +7146,7 @@ class MainFrame(
 
     def _announce(self, message: str, *, force: bool = False) -> None:
         self._status_message = message
+        self._record_spoken(message)
         self._refresh_statusbar()
         # Verbosity routing (sub-PR 1.5): once the user has engaged verbosity, the
         # controller exists and decides whether Quiet/Meeting suppress speech. The
@@ -7155,6 +7164,78 @@ class MainFrame(
         if backend_error and backend_error != self._announcement_error_reported:
             self._announcement_error_reported = backend_error
             self._record_notification(backend_error, "accessibility")
+
+    def _record_spoken(self, message: object) -> None:
+        """Add a spoken line to the Spoken Echo history (newest kept last).
+
+        Called from the announcement choke points (``_announce`` and
+        ``_set_status``). The history is created lazily so stub frames in tests
+        that never run ``__init__`` stay safe, and empty/consecutive-duplicate
+        lines are dropped by ``record_spoken``.
+        """
+        history = getattr(self, "_spoken_echo_history", None)
+        if history is None:
+            history = new_history()
+            self._spoken_echo_history = history
+        record_spoken(history, message)
+
+    def show_spoken_echo(self) -> None:
+        """Virtualise the recent spoken announcements into a read-only dialog.
+
+        This is the universal "Echo" review surface: after QUILL speaks
+        anything (an indent depth, a formatting description, a save result),
+        opening the Echo shows the last several announcements newest-first in a
+        navigable, selectable, copyable control so the text can be re-read at
+        leisure instead of chasing it in speech.
+        """
+        wx = self._wx
+        history = getattr(self, "_spoken_echo_history", None)
+        text = format_spoken_echo(list(history) if history else [])
+        title = "Spoken Echo"
+        dialog = wx.Dialog(
+            self.frame,
+            title=title,
+            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+            size=(560, 420),
+        )
+        try:
+            inner = wx.BoxSizer(wx.VERTICAL)
+            inner.Add(
+                wx.StaticText(
+                    dialog,
+                    label=(
+                        "The most recent things QUILL announced, newest first. "
+                        "Arrow through to re-read, select to copy."
+                    ),
+                ),
+                0,
+                wx.ALL | wx.EXPAND,
+                8,
+            )
+            review = wx.TextCtrl(
+                dialog,
+                value=text,
+                style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_DONTWRAP,
+            )
+            review.SetName("Spoken Echo — read-only history of recent announcements")
+            inner.Add(review, 1, wx.ALL | wx.EXPAND, 8)
+            close_button = wx.Button(dialog, id=wx.ID_OK, label="Close")
+            buttons = wx.StdDialogButtonSizer()
+            buttons.AddButton(close_button)
+            buttons.Realize()
+            inner.Add(buttons, 0, wx.ALL | wx.EXPAND, 8)
+            dialog.SetSizer(inner)
+            close_button.SetDefault()
+            apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_OK)
+            call_after = getattr(wx, "CallAfter", None)
+            if callable(call_after):
+                call_after(review.SetFocus)
+            else:
+                review.SetFocus()
+            self._show_modal_dialog(dialog, title)
+        finally:
+            dialog.Destroy()
+            self.editor.SetFocus()
 
     def _fire_quillin_event(self, event_name: str, context: dict) -> None:
         """Dispatch a Quillin document-lifecycle event if the mixin is loaded.
@@ -10045,11 +10126,57 @@ class MainFrame(
         except Exception:  # noqa: BLE001
             self._announce("Could not repeat last palette command")
 
+    #: Informational, side-effect-free commands where a rapid second press means
+    #: "show me what you just said" rather than "do it again". Re-running any of
+    #: these is harmless, so hijacking the second press to open the Spoken Echo
+    #: loses nothing. The dedicated Echo key works for every announcement; this
+    #: set only governs the optional double-press shortcut.
+    _ECHO_DOUBLE_PRESS_COMMANDS = frozenset(
+        {
+            "format.describe_formatting",
+            "document.summary",
+            "help.context_help",
+            "view.announce_contrast",
+        }
+    )
+
+    #: Maximum gap (seconds) between two presses to count as a double-press.
+    _ECHO_DOUBLE_PRESS_WINDOW = 0.5
+
     def _run_command(self, command_id: str) -> None:
+        if self._maybe_echo_on_double_press(command_id):
+            return
         try:
             self.commands.run(command_id)
         except Exception:  # noqa: BLE001
             self._set_status(f"Command failed: {command_id}")
+
+    def _maybe_echo_on_double_press(self, command_id: str) -> bool:
+        """Return True (and open the Echo) on a rapid second press of an
+        informational command, when the double-press shortcut is enabled.
+
+        Always records the press for the next comparison. Returns False — letting
+        the command run normally — for non-informational commands, when the
+        setting is off, or on a first/slow press.
+        """
+        now = time.monotonic()
+        previous = getattr(self, "_last_echo_command", None)
+        previous_at = getattr(self, "_last_echo_command_at", 0.0)
+        self._last_echo_command = command_id
+        self._last_echo_command_at = now
+        if command_id not in self._ECHO_DOUBLE_PRESS_COMMANDS:
+            return False
+        enabled = bool(
+            getattr(getattr(self, "settings", None), "spoken_echo_on_double_press", True)
+        )
+        if not enabled:
+            return False
+        if previous == command_id and (now - previous_at) <= self._ECHO_DOUBLE_PRESS_WINDOW:
+            # Reset so a third press re-runs the command rather than re-opening.
+            self._last_echo_command = None
+            self.show_spoken_echo()
+            return True
+        return False
 
     def create_sticky_note(self) -> None:
         if self._safe_mode:

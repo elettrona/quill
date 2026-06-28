@@ -152,6 +152,7 @@
     "navigate.go_to_anything": "Ctrl+Shift+Grave, G",
     "help.key_cheatsheet": "Alt+Shift+/",
     "view.announce_contrast": "Ctrl+Shift+Grave, Shift+C",
+    "view.spoken_echo": "Alt+Shift+E",
     "help.why_unavailable": "Alt+F1",
     "edit.magic_paste": "",
     "edit.open_copy_tray": "Ctrl+Shift+Grave, X",

@@ -835,6 +835,17 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("indent", "tab", "spaces", "announcement", "depth"),
     ),
     SettingSpec(
+        "spoken_echo_on_double_press",
+        "Double-press to show the Spoken Echo",
+        "accessibility",
+        "bool",
+        "Double-press an informational command (Describe Formatting, Document "
+        "Summary, Context Help, Announce Contrast) to open the Spoken Echo review "
+        "dialog instead of re-speaking. The dedicated Echo key always works.",
+        feature_id="core.accessibility",
+        keywords=("echo", "double-press", "review", "announcement", "virtualize"),
+    ),
+    SettingSpec(
         "announcement_trace_enabled",
         "Record announcement trace",
         "accessibility",

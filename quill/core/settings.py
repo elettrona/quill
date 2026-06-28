@@ -151,6 +151,11 @@ class Settings:
     # indents, instead of the terse "Indented lines". Aware of indent_with_tabs
     # and indent_size; on by default, off restores the terse message.
     announce_indent_depth: bool = True
+    # Double-press an informational command (Describe Formatting, Document
+    # Summary, Context Help, Announce Contrast) to open the Spoken Echo review
+    # dialog instead of re-speaking. The dedicated Echo key works regardless; this
+    # only governs the double-press shortcut. See quill/core/spoken_echo.py.
+    spoken_echo_on_double_press: bool = True
     # What to do when a document that carries hidden formatting is saved as plain
     # text: "ask" (offer to keep the formatting), "illuminate" (always write a
     # <name>.illumination sidecar so the .txt round-trips formatting in QUILL), or
@@ -616,6 +621,7 @@ class Settings:
         announce_formatting_on_move = bool(data.get("announce_formatting_on_move", False))
         announce_dialog_transitions = bool(data.get("announce_dialog_transitions", True))
         announce_indent_depth = bool(data.get("announce_indent_depth", True))
+        spoken_echo_on_double_press = bool(data.get("spoken_echo_on_double_press", True))
         plain_text_with_formatting = str(data.get("plain_text_with_formatting", "ask"))
         if plain_text_with_formatting not in {"ask", "illuminate", "plain"}:
             plain_text_with_formatting = "ask"
@@ -1057,6 +1063,7 @@ class Settings:
             announce_formatting_on_move=announce_formatting_on_move,
             announce_dialog_transitions=announce_dialog_transitions,
             announce_indent_depth=announce_indent_depth,
+            spoken_echo_on_double_press=spoken_echo_on_double_press,
             plain_text_with_formatting=plain_text_with_formatting,
             dictation_onboarding_shown=dictation_onboarding_shown,
             pronunciation_enabled=pronunciation_enabled,

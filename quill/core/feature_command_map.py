@@ -74,6 +74,7 @@ COMMAND_FEATURE_MAP: dict[str, str] = {
     "view.toggle_tab_control": "core.view",
     "view.toggle_soft_wrap": "core.view",
     "view.toggle_dark_mode": "core.view",
+    "view.spoken_echo": "core.view",
     "view.toggle_persistent_undo": "core.view",
     "view.toggle_spellcheck_as_you_type": "core.view",
     "view.toggle_intellisense_as_you_type": "core.view",

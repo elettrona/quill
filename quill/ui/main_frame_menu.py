@@ -1527,6 +1527,7 @@ class MenuBuilderMixin:
         self._id_help_on_control = wx.NewIdRef()
         self._id_context_help = wx.NewIdRef()
         self._id_announce_context_shortcuts = wx.NewIdRef()
+        self._id_show_spoken_echo = wx.NewIdRef()
         self._id_help_status_page = wx.NewIdRef()
         self._id_why_dont_i_see_feature = wx.NewIdRef()
         self._id_switch_feature_profile = wx.NewIdRef()
@@ -2241,6 +2242,10 @@ class MenuBuilderMixin:
             self._menu_label(_("Announce Mode &Shortcuts"), "help.context_help"),
         )
         help_menu.Append(
+            self._id_show_spoken_echo,
+            self._menu_label(_("Show Spoken &Echo"), "view.spoken_echo"),
+        )
+        help_menu.Append(
             self._id_help_status_page,
             self._menu_label(_("Status &Page"), "help.status_page"),
         )
@@ -2556,6 +2561,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.announce_context_mode_shortcuts(),
             id=self._id_announce_context_shortcuts,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.show_spoken_echo(),
+            id=self._id_show_spoken_echo,
         )
         self.frame.Bind(
             wx.EVT_MENU,

@@ -750,6 +750,7 @@ class StatusBarMixin:
 
     def _set_status(self, message: str) -> None:
         self._status_message = message
+        self._record_spoken(message)
         self._refresh_statusbar()
         throttle_ms = int(getattr(self.settings, "announcement_throttle_ms", 0) or 0)
         if throttle_ms > 0:

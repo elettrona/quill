@@ -284,6 +284,10 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "help.key_cheatsheet": "Alt+Shift+/",
     # §8.1 — live contrast check announcement.
     "view.announce_contrast": "Ctrl+Shift+Grave, Shift+C",
+    # Spoken Echo — virtualise the last several announcements into a read-only
+    # review dialog (E for Echo). Alt+Shift+E is free (Alt+Shift+letter chords
+    # are used elsewhere, e.g. Z/N/K) and not screen-reader-hostile.
+    "view.spoken_echo": "Alt+Shift+E",
     # §8.2 — explain why the focused item is unavailable ("Why don't I see…?").
     "help.why_unavailable": "Alt+F1",
     # §10.8 — magic paste moves to QUILL key, V (handled in QuillKeyMixin prefix

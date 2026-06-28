@@ -75,6 +75,7 @@ _REVIEWED_PERSISTENCE: dict[str, str] = {
     "core/share_package.py::write_package_file": "export",
     "core/speech/batch_manifest.py::write_manifest": "export",
     "core/brf_sidecar.py::write_sidecar": "export",
+    "io/illumination.py::write_illumination": "export",
     # --- secret (credential store) ---
     "core/assistant_ai.py::save_assistant_api_key": "secret",
     "platform/windows/credential_store.py::_write_store": "secret",
