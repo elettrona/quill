@@ -175,6 +175,7 @@ class AIHubDialog:
         self._notebook.AddPage(self._build_on_device_tab(), str(_("On-Device")))
         self._notebook.AddPage(self._build_audio_tab(), str(_("Audio Services")))
         self._notebook.AddPage(self._build_instructions_tab(), str(_("Instructions")))
+        self._notebook.AddPage(self._build_sessions_tab(), str(_("Sessions")))
         self._notebook.AddPage(self._build_advanced_tab(), str(_("Advanced")))
 
         btn_sizer = wx.StdDialogButtonSizer()
@@ -715,6 +716,14 @@ class AIHubDialog:
     # ------------------------------------------------------------------
     # Tab 5: Advanced  (P7-1)
     # ------------------------------------------------------------------
+
+    def _build_sessions_tab(self) -> object:
+        from quill.ui.ai_hub_sessions_panel import SessionsPanel
+
+        self._sessions_panel = SessionsPanel(
+            self._notebook, parent_dialog=self.dialog, announce=self._announce
+        )
+        return self._sessions_panel.panel
 
     def _build_advanced_tab(self) -> object:
         wx = self._wx
