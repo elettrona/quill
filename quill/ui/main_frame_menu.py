@@ -1956,6 +1956,20 @@ class MenuBuilderMixin:
             self._id_ai_translate_audio,
             self._menu_label(_("&Translate Audio to English..."), "tools.ai_translate_audio"),
         )
+        # The Listening Companion: run a Transcript Action (Meeting Minutes, Action
+        # Items, Clean Up & Draft, ...) on the current selection or document — the same
+        # magic offered after transcription, reachable anytime. Bound directly so the
+        # size-budgeted main_frame module does not need to grow.
+        from quill.ui.transcript_actions_ui import run_transcript_actions_on_document
+
+        transcribe_menu.AppendSeparator()
+        _ta_actions_id = wx.NewIdRef()
+        transcribe_menu.Append(_ta_actions_id, _("Transcript &Actions..."))
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: run_transcript_actions_on_document(self),
+            id=_ta_actions_id,
+        )
         ai_menu.AppendSubMenu(transcribe_menu, _("Transcri&be Audio"))
 
         # -- More -------------------------------------------------------------

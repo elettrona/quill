@@ -97,6 +97,28 @@ def offer_transcript_actions(controller: Any, transcript: str, file_name: str) -
     return True
 
 
+def run_transcript_actions_on_document(controller: Any) -> None:
+    """Offer Transcript Actions for the current selection or document (anytime).
+
+    Makes the post-transcription magic reachable from the menu: paste any transcript
+    or notes, then turn them into minutes / action items / a clean draft. Gives a
+    gentle hint when there is nothing to work on or AI is off.
+    """
+    editor = getattr(controller, "editor", None)
+    text = ""
+    if editor is not None:
+        text = str(editor.GetStringSelection()) or str(editor.GetValue())
+    if not text.strip():
+        controller._set_status("Open or select a transcript first, then try again.")
+        return
+    if offer_transcript_actions(controller, text, "the current document"):
+        return
+    from quill.core.ai.model_manager import load_ai_enabled
+
+    if not load_ai_enabled():
+        controller._set_status("Turn on AI (in the AI menu) to use Transcript Actions.")
+
+
 def _run_action(
     controller: Any,
     action: TranscriptAction,

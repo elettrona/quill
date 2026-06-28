@@ -8,7 +8,20 @@ from quill.ui.transcript_actions_ui import (
     build_action_labels,
     generate_action_text,
     offer_transcript_actions,
+    run_transcript_actions_on_document,
 )
+
+
+class _Editor:
+    def __init__(self, value: str = "", selection: str = "") -> None:
+        self._value = value
+        self._selection = selection
+
+    def GetValue(self) -> str:
+        return self._value
+
+    def GetStringSelection(self) -> str:
+        return self._selection
 
 
 class _Backend:
@@ -81,6 +94,22 @@ def test_offer_falls_back_when_empty_or_no_ai(monkeypatch) -> None:
     # AI off / no provider: the backend is None, so it falls back to the plain result.
     monkeypatch.setattr(ta_ui, "_action_backend", lambda: None)
     assert offer_transcript_actions(ctrl, "real transcript text", "x.mp3") is False
+
+
+def test_run_on_document_hints_when_empty() -> None:
+    ctrl = _Controller()
+    ctrl.editor = _Editor(value="   ")
+    run_transcript_actions_on_document(ctrl)
+    assert ctrl.statuses and "transcript" in ctrl.statuses[0].lower()
+
+
+def test_run_on_document_hints_to_enable_ai(monkeypatch) -> None:
+    ctrl = _Controller()
+    ctrl.editor = _Editor(value="Speaker 0: hello\nSpeaker 1: hi")
+    monkeypatch.setattr(ta_ui, "_action_backend", lambda: None)  # AI off / unreachable
+    monkeypatch.setattr("quill.core.ai.model_manager.load_ai_enabled", lambda: False)
+    run_transcript_actions_on_document(ctrl)
+    assert any("Turn on AI" in s for s in ctrl.statuses)
 
 
 class _NoopProgress:
