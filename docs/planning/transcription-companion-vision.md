@@ -189,16 +189,24 @@ always one keystroke away and never in the way.
   (`watch_transcribe._maybe_make_action_document`), DND-aware; AI off / no provider /
   a failed action skips with a clear note and always keeps the transcript. The profile
   editor gained a "Then make" action picker.
-- **Phase E — Live & diarized actions — FUTURE.** Stream actions over live, diarized
-  transcription; same review surface. A larger feature (needs live capture infra) — its
-  own effort.
-- **Phase F — Experience modes & onboarding — FUTURE.** A Basic/Guided first-run for the
-  listening workflow; per-action welcome text; "grow into power" prompts.
+- **Phase F — Experience modes & onboarding — SHIPPED (2026-06-28).** The magical AI
+  Setup Wizard (`quill/ui/ai_setup_wizard.py` over wx-free `quill/core/ai/onboarding.py`),
+  Basic vs Advanced experience mode (defaults to advanced; Basic hides the agentic
+  entries), and `maybe_offer_ai_setup` turning AI dead-ends into on-ramps at Ask Quill,
+  the AI Library, and Transcript Actions. The AI Library Run was unified onto the AI Hub
+  provider so one setup powers everything.
+- **Phase E — Live & diarized actions — DROPPED (2026-06-28).** Deliberately not built.
+  Most of its value is already delivered by file transcription + watch-folder automation;
+  its one genuinely unique high-value kernel (live captioning) is a separate accessibility
+  feature that would need real-time capture infrastructure, and the "live actions" layer
+  on top is heavy, SR-risky, and low marginal value. If live captioning is ever wanted, it
+  should be scoped as its own deliberate feature, not as part of this companion.
 
-Each phase ships independently and leaves a coherent, delightful product. **Status:**
-A + B + C + D are live and green (Transcript Actions, the guided Action Builder,
-reference attachments, and watch-folder automation); E (live streaming) and F
-(experience modes) remain as future, larger efforts.
+**Status: COMPLETE.** A + B + C + D + F are live and green — Transcript Actions (seven
+plus Follow-Up Email / Key Quotes / Decisions Log), the guided Action Builder, reference
+attachments, watch-folder automation, and the AI Setup Wizard with Basic mode and
+on-ramps everywhere. Polish shipped: more bundled actions, on-ramp at every AI door, and
+the unified Library provider. The Listening Companion is done.
 
 ---
 
