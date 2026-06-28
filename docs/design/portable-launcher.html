@@ -221,14 +221,24 @@ the runtime (<code>scripts/build_windows_distribution.py</code> →
 <code>bundle_embedded_python()</code> right after the <code>._pth</code>
 is patched to enable <code>import site</code>).</p>
 <p>Python auto-imports <code>sitecustomize</code> at interpreter startup
-whenever <code>site</code> is enabled. The hook checks two things and,
-only when both hold, starts QUILL and exits:</p>
+whenever <code>site</code> is enabled. The hook only acts when the
+running executable is <strong><code>quill.exe</code></strong>
+(<code>os.path.basename(sys.executable)</code>), and then handles two
+cases:</p>
 <ul>
-<li>the running executable is <strong><code>quill.exe</code></strong>
-(<code>os.path.basename(sys.executable)</code>), and</li>
-<li><strong>no script/module/args</strong> were given — the argv a bare
-double-click produces
-(<code>len(sys.argv) &lt;= 1 and (not sys.argv or sys.argv[0] == "")</code>).</li>
+<li><strong>Bare launch</strong> — the argv a double-click produces
+(<code>len(sys.argv) &lt;= 1 and (not sys.argv or sys.argv[0] == "")</code>):
+start QUILL with no file.</li>
+<li><strong>File association</strong> — when QUILL is set as the default
+app for a document type, the OS runs
+<code>quill.exe "&lt;path&gt;"</code>. Because <code>quill.exe</code> is
+a renamed <code>pythonw.exe</code>, that path arrives as
+<code>sys.argv[0]</code> and Python would otherwise try to <em>run the
+document as a script</em>. The hook detects an existing,
+non-<code>__main__.py</code> <code>sys.argv[0]</code> and forwards it to
+QUILL as a file to open (<code>sys.argv = ["quill", doc]</code> then
+<code>main()</code>), so the document opens instead of silently doing
+nothing.</li>
 </ul>
 <p>So:</p>
 <table>
@@ -247,13 +257,20 @@ double-click produces
 <tbody>
 <tr>
 <td>Double-click <code>quill.exe</code></td>
-<td>self-run</td>
+<td>bare launch</td>
 <td>QUILL launches (no console, no <code>-m</code>)</td>
 </tr>
 <tr>
-<td><code>quill.exe -m quill</code></td>
-<td>no-op</td>
-<td>normal <code>-m quill</code> runs (shortcuts use this)</td>
+<td>Open a <code>.docx</code> with QUILL as default app
+(<code>quill.exe "doc.docx"</code>)</td>
+<td>file association</td>
+<td>QUILL opens the document</td>
+</tr>
+<tr>
+<td><code>quill.exe -m quill [args]</code></td>
+<td>no-op (argv[0] is quill’s <code>__main__.py</code>)</td>
+<td>normal <code>-m quill</code> runs (shortcuts, file-assoc/verbs the
+installer registers)</td>
 </tr>
 <tr>
 <td><code>python.exe ...</code>, <code>pip ...</code> (incl. during the
@@ -266,7 +283,15 @@ build)</td>
 <p>The result is a launcher that needs <strong>no <code>-m</code>, no
 console window, and no <code>.cmd</code> shim</strong> (an earlier
 <code>run-quill.cmd</code> approach was rejected because the console
-window flashed on launch).</p>
+window flashed on launch). The installer additionally registers its
+file-association <em>open</em> command and right-click “Send to QUILL”
+verbs as
+<code>quill.exe -m quill ["%1" | --action &lt;verb&gt; "%1"]</code> —
+the <code>-m quill</code> is required because <code>pythonw</code>
+rejects a bare <code>--action</code> option and would otherwise run the
+file as a script; the <code>sitecustomize</code> file-association branch
+above is the safety net for associations a user sets manually (whose
+command is just <code>quill.exe "%1"</code>).</p>
 <h2 id="the-layout-flat-not-nested">3. The layout: flat, not nested</h2>
 <p>The portable bundle and the installed app both use a
 <strong>flat</strong> layout — the embedded runtime is unpacked at the
@@ -378,6 +403,12 @@ string.</li>
 — the generated <code>sitecustomize.py</code> guards on
 <code>quill.exe</code> + bare argv and calls
 <code>quill.__main__:main</code>.</li>
+<li><code>test_self_run_sitecustomize_opens_file_associations</code> —
+the hook forwards an OS-passed document (<code>quill.exe "doc"</code>)
+to QUILL via <code>argv</code> instead of running it as a script.</li>
+<li><code>test_shell_verb_command_launches_quill_exe_with_action</code>
+— the installer’s open/verb commands pass <code>-m quill</code> so
+<code>pythonw</code> runs QUILL, not the file.</li>
 <li><code>test_portable_bundle_flattens_runtime_to_root</code> — a built
 portable bundle has <code>quill.exe</code>,
 <code>sitecustomize.py</code>, <code>python313.dll</code>, and

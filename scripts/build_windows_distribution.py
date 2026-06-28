@@ -416,44 +416,78 @@ def build_windows_distribution(
     return result
 
 
-def _self_run_sitecustomize_source() -> str:
-    """Return the sitecustomize.py that makes quill.exe self-running.
+# The sitecustomize.py written next to the bundled quill.exe. Auto-imported at
+# interpreter startup (the embeddable runtime's python<ver>._pth enables site),
+# it makes quill.exe both self-running (bare double-click) and file-association
+# aware, so quill.exe never needs "-m quill", a console window, or a .cmd shim.
+# See docs/design/portable-launcher.md.
+_SELF_RUN_SITECUSTOMIZE = '''\
+"""Launcher hook for the bundled quill.exe (build-generated).
 
-    Auto-imported at interpreter startup (the embeddable runtime's
-    ``python<ver>._pth`` enables ``import site``). When the running executable is
-    the stamped ``quill.exe`` and no script/module/args were given -- the argv a
-    bare double-click produces -- it launches QUILL directly and exits, so the
-    user never needs ``-m quill`` and there is no console window or .cmd flash.
-    Any other use of the embedded interpreter (``python.exe``, ``pip``,
-    ``quill.exe -m quill``) takes the no-op path and behaves normally.
+Auto-imported at startup because the embeddable runtime's python<ver>._pth
+enables site. See docs/design/portable-launcher.md.
+"""
+import os
+import sys
+
+
+def _is_quill_exe():
+    return os.path.basename(sys.executable).lower() == "quill.exe"
+
+
+def _bare_launch():
+    # A bare double-click gives the no-script interactive argv: [''] (or empty).
+    return len(sys.argv) <= 1 and (not sys.argv or sys.argv[0] == "")
+
+
+def _associated_file():
+    # The OS opened a document with quill.exe (a renamed pythonw.exe): pythonw
+    # treats the document path as the "script" in sys.argv[0]. Return it so we
+    # open it in QUILL instead of letting Python run the document as code.
+    # Skipped for `quill.exe -m quill ...`, where argv[0] is quill's __main__.py.
+    if not sys.argv:
+        return None
+    first = sys.argv[0]
+    if not first or os.path.basename(first).lower() == "__main__.py":
+        return None
+    return first if os.path.isfile(first) else None
+
+
+def _run(paths):
+    try:
+        sys.argv = ["quill", *paths]
+        from quill.__main__ import main
+
+        main()
+    except SystemExit:
+        raise
+    except BaseException:
+        import traceback
+
+        traceback.print_exc()
+    finally:
+        os._exit(0)
+
+
+if _is_quill_exe():
+    if _bare_launch():
+        _run([])
+    else:
+        _doc = _associated_file()
+        if _doc is not None:
+            _run([_doc])
+'''
+
+
+def _self_run_sitecustomize_source() -> str:
+    """The sitecustomize.py that makes quill.exe self-running and
+    file-association aware (docs/design/portable-launcher.md). A bare
+    double-click launches QUILL; opening a document with quill.exe set as the
+    default app forwards that document to QUILL instead of letting pythonw try
+    to run it as a script. ``python.exe``, ``pip``, and ``quill.exe -m quill``
+    take the no-op path and behave normally.
     """
-    return (
-        '"""Self-running launcher hook for the bundled quill.exe (build-generated)."""\n'
-        "import os\n"
-        "import sys\n"
-        "\n"
-        "\n"
-        "def _looks_like_bare_launch():\n"
-        '    if os.path.basename(sys.executable).lower() != "quill.exe":\n'
-        "        return False\n"
-        "    # A double-click gives the no-script interactive argv: [''] (or empty).\n"
-        '    return len(sys.argv) <= 1 and (not sys.argv or sys.argv[0] == "")\n'
-        "\n"
-        "\n"
-        "if _looks_like_bare_launch():\n"
-        "    try:\n"
-        "        from quill.__main__ import main\n"
-        "\n"
-        "        main()\n"
-        "    except SystemExit:\n"
-        "        raise\n"
-        "    except BaseException:\n"
-        "        import traceback\n"
-        "\n"
-        "        traceback.print_exc()\n"
-        "    finally:\n"
-        "        os._exit(0)\n"
-    )
+    return _SELF_RUN_SITECUSTOMIZE
 
 
 def _render_readme(
@@ -545,10 +579,11 @@ def build_shell_verb_registry_lines(
     default association. Every key is gated behind the opt-in ``shellverbs`` task
     and tagged ``uninsdeletekey`` so a full uninstall removes the verbs cleanly.
 
-    The launch command is ``"{app}\\{#AppExeName}" --action <action> "%1"``;
-    quill.exe is the bundled launcher (a stamped copy of pythonw.exe), so
-    the selected file path and verb reach the same dispatch used by the
-    in-app menu.
+    The launch command is ``"{app}\\{#AppExeName}" -m quill --action <action>
+    "%1"``. quill.exe is the bundled launcher (a stamped copy of pythonw.exe);
+    the ``-m quill`` is required so pythonw runs QUILL with the verb and file as
+    arguments rather than trying to execute the selected file as a script, and
+    the file path and verb then reach the same dispatch as the in-app menu.
     """
 
     selected = tuple(verbs) if verbs is not None else default_shell_verbs()
@@ -557,7 +592,7 @@ def build_shell_verb_registry_lines(
         key_name = f"Quill.{verb.verb_id}"
         label = verb.label.replace('"', '""')
         # Inno escapes a literal double-quote inside a string value as "".
-        command = f'"""{{app}}\\{{#AppExeName}}"" --action {verb.action} ""%1"""'
+        command = f'"""{{app}}\\{{#AppExeName}}"" -m quill --action {verb.action} ""%1"""'
         for extension in verb.extensions:
             base = f"Software\\Classes\\SystemFileAssociations\\{extension}\\shell\\{key_name}"
             lines.append(
@@ -851,7 +886,7 @@ def build_inno_setup_script(
             "Root: HKCU;"
             ' Subkey: "Software\\Classes\\Applications\\{#AppExeName}\\shell\\open\\command";'
             ' ValueType: string; ValueName: "";'
-            ' ValueData: """{app}\\{#AppExeName}"" ""%1""";'
+            ' ValueData: """{app}\\{#AppExeName}"" -m quill ""%1""";'
             " Flags: uninsdeletekey; Tasks: fileassoc"
         ),
     ]

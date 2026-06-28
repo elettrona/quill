@@ -342,21 +342,37 @@ def test_installer_script_has_no_nested_python_launcher_path() -> None:
 
 
 def test_self_run_sitecustomize_launches_quill_for_a_bare_exe() -> None:
-    # The generated sitecustomize.py is what makes the portable quill.exe a
-    # self-running launcher: no "-m quill", no console window, no .cmd flash.
-    # It must (a) only act when the executable is quill.exe, (b) only on a bare
-    # double-click (no script/module/args), and (c) start QUILL via
-    # quill.__main__:main. Every other use of the runtime (python.exe, pip during
-    # the build, an explicit "quill.exe -m quill") must take the no-op path.
+    # The generated sitecustomize.py makes the portable quill.exe a self-running
+    # launcher: no "-m quill", no console window, no .cmd flash. It must (a) only
+    # act when the executable is quill.exe, (b) start QUILL via quill.__main__:main
+    # on a bare double-click, and (c) leave python.exe / pip / "quill.exe -m quill"
+    # untouched (the -m case has argv[0] == quill's __main__.py).
     from scripts.build_windows_distribution import _self_run_sitecustomize_source
 
     src = _self_run_sitecustomize_source()
-    assert 'os.path.basename(sys.executable).lower() != "quill.exe"' in src
+    assert 'os.path.basename(sys.executable).lower() == "quill.exe"' in src
     assert "len(sys.argv) <= 1" in src
     assert "from quill.__main__ import main" in src
     assert "main()" in src
+    assert '"__main__.py"' in src, "must skip the `quill.exe -m quill` path"
     # It must be importable, valid Python.
     compile(src, "sitecustomize.py", "exec")
+
+
+def test_self_run_sitecustomize_opens_file_associations() -> None:
+    # #729-adjacent (file association): setting quill.exe as the default app for a
+    # document type makes the OS run `quill.exe "<doc>"`. Because quill.exe is a
+    # renamed pythonw.exe, that path arrives as sys.argv[0] and Python would try
+    # to run the document as a script. The hook must instead forward the document
+    # to QUILL as a file to open.
+    from scripts.build_windows_distribution import _self_run_sitecustomize_source
+
+    src = _self_run_sitecustomize_source()
+    assert "_associated_file" in src, "must detect an OS-passed document path"
+    assert "os.path.isfile" in src, "only an existing file is treated as a document"
+    assert 'sys.argv = ["quill", *paths]' in src, (
+        "the document must be forwarded to QUILL via argv so __main__ opens it"
+    )
 
 
 def test_portable_bundle_flattens_runtime_to_root(tmp_path: Path, monkeypatch) -> None:
@@ -466,14 +482,15 @@ def test_shell_verb_registry_lines_are_optin_and_uninstall_clean() -> None:
 
 
 def test_shell_verb_command_launches_quill_exe_with_action() -> None:
-    # The launch command routes through quill.exe (AppExeName), which is the
-    # hoisted launcher at the bundle root -- a stamped copy of pythonw.exe
-    # that runs `python -m quill` with %1 passed in as the file to act on.
+    # The launch command routes through quill.exe (AppExeName), a stamped copy of
+    # pythonw.exe. It MUST pass "-m quill" before "--action" so pythonw runs QUILL
+    # with the verb + file as arguments; without it pythonw rejects "--action" as
+    # an unknown option (or tries to run %1 as a script). See the launcher contract.
     lines = build_shell_verb_registry_lines()
     command_lines = [line for line in lines if "\\command" in line]
     assert command_lines
     for line in command_lines:
-        assert 'ValueData: """{app}\\{#AppExeName}"" --action ' in line
+        assert 'ValueData: """{app}\\{#AppExeName}"" -m quill --action ' in line
         assert '""%1"""' in line
 
 
