@@ -58,10 +58,14 @@ class AISetupWizard:
         self._heading.SetFont(font)
         root.Add(self._heading, 0, wx.ALL, 12)
 
-        self._body = wx.Panel(self.dialog)
+        # Parent the per-step controls directly on the dialog (no intermediate
+        # wx.Panel): an empty container panel becomes a stray keyboard tab stop, which
+        # is confusing for screen-reader users. ``_body`` aliases the dialog so the
+        # render code reads naturally; ``_body_sizer`` is a section of the root sizer we
+        # clear and rebuild each step.
+        self._body = self.dialog
         self._body_sizer = wx.BoxSizer(wx.VERTICAL)
-        self._body.SetSizer(self._body_sizer)
-        root.Add(self._body, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+        root.Add(self._body_sizer, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
 
         self._status = wx.StaticText(self.dialog, label="")
         self._status.SetName("AI setup status")
@@ -102,11 +106,26 @@ class AISetupWizard:
     def _clear_body(self) -> None:
         self._body_sizer.Clear(delete_windows=True)
 
-    def _add_text(self, text: str, *, wrap: int = 560) -> wx.StaticText:
-        label = wx.StaticText(self._body, label=text)
-        label.Wrap(wrap)
-        self._body_sizer.Add(label, 0, wx.BOTTOM, 8)
-        return label
+    def _add_text(self, text: str, *, grow: bool = False, name: str = "Information") -> wx.TextCtrl:
+        """A read-only, multiline, word-wrapped edit control for prose.
+
+        Screen readers can arrow through a read-only edit line by line, which a plain
+        StaticText does not allow, so all wizard prose uses this. ``grow`` lets the main
+        block fill the step; secondary blocks (hints) get a height that fits the text.
+        """
+        ctrl = wx.TextCtrl(
+            self._body,
+            value=text,
+            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_WORDWRAP,
+        )
+        ctrl.SetName(name)
+        if grow:
+            self._body_sizer.Add(ctrl, 1, wx.EXPAND | wx.BOTTOM, 8)
+        else:
+            n_lines = text.count("\n") + 3
+            ctrl.SetMinSize(wx.Size(-1, ctrl.GetCharHeight() * n_lines + 14))
+            self._body_sizer.Add(ctrl, 0, wx.EXPAND | wx.BOTTOM, 8)
+        return ctrl
 
     # -- rendering ------------------------------------------------------------
 
@@ -128,11 +147,11 @@ class AISetupWizard:
 
     def _render_welcome(self) -> None:
         self._heading.SetLabel(ob.WELCOME_TITLE)
-        self._add_text(ob.WELCOME_BODY)
+        body = self._add_text(ob.WELCOME_BODY, grow=True, name="About QUILL's AI")
+        body.SetFocus()
 
     def _render_path(self) -> None:
         self._heading.SetLabel("How would you like AI to run?")
-        self._add_text("Pick one. You can change this any time.")
         self._path_choice = wx.RadioBox(
             self._body,
             label="",
@@ -140,19 +159,21 @@ class AISetupWizard:
             majorDimension=1,
             style=wx.RA_SPECIFY_COLS,
         )
-        self._path_choice.SetName("How AI should run")
+        self._path_choice.SetName("How AI should run — pick one; you can change it any time")
         idx = next((i for i, p in enumerate(ob.ONBOARDING_PATHS) if p.id == self._path), 0)
         self._path_choice.SetSelection(idx)
         self._body_sizer.Add(self._path_choice, 0, wx.EXPAND | wx.BOTTOM, 8)
-        self._path_detail = self._add_text(ob.ONBOARDING_PATHS[idx].detail)
+        self._path_detail = self._add_text(
+            ob.ONBOARDING_PATHS[idx].detail, grow=True, name="What this means"
+        )
         self._path_choice.Bind(wx.EVT_RADIOBOX, self._on_path_changed)
+        self._path_choice.SetFocus()
 
     def _on_path_changed(self, _event: object) -> None:
         idx = self._path_choice.GetSelection()
         path = ob.ONBOARDING_PATHS[idx]
         self._path = path.id
-        self._path_detail.SetLabel(path.detail)
-        self._path_detail.Wrap(560)
+        self._path_detail.SetValue(path.detail)
         self._body.Layout()
         self._announce(f"{path.title}. {path.summary}")
 
@@ -174,7 +195,7 @@ class AISetupWizard:
         self._provider_choice.SetSelection(pidx)
         self._body_sizer.Add(wx.StaticText(self._body, label="&Provider:"), 0, wx.BOTTOM, 2)
         self._body_sizer.Add(self._provider_choice, 0, wx.EXPAND | wx.BOTTOM, 8)
-        self._provider_hint = self._add_text(self._cloud_hint(pidx))
+        self._provider_hint = self._add_text(self._cloud_hint(pidx), name="About this provider")
         self._body_sizer.Add(wx.StaticText(self._body, label="API &key:"), 0, wx.BOTTOM, 2)
         self._key_ctrl = wx.TextCtrl(self._body, style=wx.TE_PASSWORD)
         self._key_ctrl.SetName("API key")
@@ -194,23 +215,23 @@ class AISetupWizard:
         opt = ob.CLOUD_PROVIDER_OPTIONS[pidx]
         self._provider = opt.id
         self._provider_name = opt.name
-        self._provider_hint.SetLabel(self._cloud_hint(pidx))
-        self._provider_hint.Wrap(560)
+        self._provider_hint.SetValue(self._cloud_hint(pidx))
         self._body.Layout()
 
     def _render_on_device_config(self) -> None:
         self._heading.SetLabel("Connect to Ollama on your computer")
-        self._add_text(ob.onboarding_path("on_device").detail)
-        self._add_text(
-            "When you click Next, QUILL points itself at Ollama on this computer "
-            "(http://localhost:11434). If Ollama isn't running yet, install it from "
-            "ollama.com and come back — nothing is lost."
+        body = (
+            ob.onboarding_path("on_device").detail
+            + "\n\nWhen you click Next, QUILL checks for Ollama on this computer "
+            "(http://localhost:11434) and connects to it. If Ollama isn't running yet, "
+            "install it free from ollama.com and come back — nothing is lost."
         )
+        self._add_text(body, grow=True, name="On-device setup").SetFocus()
 
     def _render_done(self) -> None:
         self._heading.SetLabel("You're all set")
-        for line in ob.celebration_lines(self._path, provider_name=self._provider_name):
-            self._add_text(line)
+        lines = ob.celebration_lines(self._path, provider_name=self._provider_name)
+        text = self._add_text("\n".join(lines), grow=True, name="You're all set")
         if self._path != "skip":
             self._basic_cb = wx.CheckBox(
                 self._body, label="Keep it simple — show only the essentials (Basic mode)"
@@ -218,6 +239,9 @@ class AISetupWizard:
             self._basic_cb.SetName("Keep AI simple (Basic mode)")
             self._basic_cb.SetValue(True)
             self._body_sizer.Add(self._basic_cb, 0, wx.TOP, 8)
+            self._basic_cb.SetFocus()
+        else:
+            text.SetFocus()
 
     # -- navigation -----------------------------------------------------------
 
@@ -354,9 +378,7 @@ def maybe_offer_ai_setup(controller: Any, *, reason: str = "") -> bool:
         "Would you like to set up AI now? It only takes a few seconds, and you can "
         "choose a private on-device option or connect an account."
     )
-    dlg = wx.MessageDialog(
-        controller.frame, prompt, "Set Up AI", wx.YES_NO | wx.ICON_QUESTION
-    )
+    dlg = wx.MessageDialog(controller.frame, prompt, "Set Up AI", wx.YES_NO | wx.ICON_QUESTION)
     apply_modal_ids(dlg, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO)
     try:
         yes = dlg.ShowModal() == wx.ID_YES

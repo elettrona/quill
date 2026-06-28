@@ -23,6 +23,28 @@ def _wizard(wx_app):
     return frame, dlg
 
 
+def test_prose_is_readonly_edit_and_no_stray_panel(wx_app):
+    # Screen-reader fixes: wizard prose must be navigable read-only edit controls
+    # (not StaticText), and there must be no intermediate container panel (it became
+    # a stray keyboard tab stop). Controls parent directly on the dialog.
+    frame, dlg = _wizard(wx_app)
+    try:
+        for step in range(4):
+            dlg._step = step
+            dlg._render()
+            kids = dlg.dialog.GetChildren()
+            assert not any(isinstance(c, wx.Panel) for c in kids), f"stray panel on step {step}"
+            ro_edits = [
+                c
+                for c in kids
+                if isinstance(c, wx.TextCtrl) and (c.GetWindowStyleFlag() & wx.TE_READONLY)
+            ]
+            assert ro_edits, f"step {step} prose should be a read-only edit control"
+    finally:
+        dlg.close()
+        frame.Destroy()
+
+
 def test_welcome_then_path_then_config_cloud(wx_app, monkeypatch):
     frame, dlg = _wizard(wx_app)
     applied = {}
