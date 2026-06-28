@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.8.0 Beta 2 (in development)
+
+Second public 0.8.0 beta. Rolls up everything in Beta 1 (below) plus the features, fixes, and enhancements landed on `feature/0.8.0-beta2`. This section doubles as the in-app release notes: the same text appears when you **Check for Updates** and any time from **Help > What's New**.
+
+> Logging note: add a one-line bullet here as each change merges, grouped under the headings below. Keep entries user-facing and screen-reader-friendly. Remove this note before the beta is tagged.
+
+### What's New in this beta
+
+- _Nothing logged yet. Add the first bullet when the first Beta 2 change lands._
+
+### Fixes
+
+- _None yet._
+
+### Enhancements
+
+- _None yet._
+
 ## 0.8.0 Beta 1 (in development)
 
 First public 0.8.0 beta. Rolls up the 0.7.0 line plus the changes below. This section doubles as the in-app release notes: the same text appears when you **Check for Updates** and any time from **Help > What's New**.
