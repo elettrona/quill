@@ -16,7 +16,7 @@
 > are optional and off by default. Platform scope is Windows (primary) and macOS
 > (supported).
 
-**Last consolidated:** 2026-06-25.
+**Last consolidated:** 2026-06-27.
 
 ---
 
@@ -179,8 +179,8 @@ all **table** work (§1.9 + the CSV-grid half of #514).
    appear **after** start enqueue. The prime/enqueue de-dup is correct. Live repro
    to confirm the queue populates: drop a *new* matching file into a running,
    schedule-active profile's folder, **or** enable "Process existing files" on the
-   profile. Optional polish (not a blocker): show "N existing files ignored" in the
-   monitor so the empty queue is self-explanatory.
+   profile. *(The self-explanatory "N existing files ignored" monitor hint shipped —
+   `main_frame.py` watch-queue summary.)*
 5. **Snapshots vs Versions — empty-submenu live repro only.** The notebook
    "Versions" rename is **done** user-facing (File > Notebook: Save/Restore/Manage
    Version; "Version name", "Version N", "Manage Versions" dialog, "Version saved"
@@ -190,10 +190,9 @@ all **table** work (§1.9 + the CSV-grid half of #514).
    reported empty-submenu render (likely a feature-gated branch — confirm with the
    `core.notebook` / `core.recovery` flags toggled).
 
-### Tier 3 — Polish
-
-7. **Verbosity polish backlog** (§1.1) — land the high-value knobs, fold-or-defer
-   the rest so the range can close.
+*(Verbosity polish is resolved: the high-value core/UI/modes/anti-spam shipped for
+1.0 (§1.1); the speculative long tail is deferred to 2.0 (§5). No Tier-3 polish row
+remains open.)*
 
 ---
 
