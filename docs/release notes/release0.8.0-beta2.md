@@ -52,9 +52,7 @@ dropping it silently.
 - **"No misspellings found" is no longer spoken twice.** (#728)
 - **Report a Bug is keyboard-navigable again, and submitting no longer seems to
   lose your text** — you can Tab through the form, and QUILL reliably confirms the
-  report was copied to your clipboard on submit. (#729)
-- **A quoted update-feed override no longer breaks Check for Updates** (a hardening
-  fix for a maintainer/rehearsal misconfiguration).
+  report was copied to your clipboard on submit for NVDA users. (#729)
 
 ### Enhancements
 
