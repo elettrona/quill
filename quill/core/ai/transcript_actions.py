@@ -58,7 +58,9 @@ def run_action_by_id(
     return generate_action_text(action, transcript, backend)
 
 
-def action_to_skill_source(name: str, instruction: str, *, description: str = "") -> str:
+def action_to_skill_source(
+    name: str, instruction: str, *, description: str = "", reference_text: str = ""
+) -> str:
     """Wrap a plain-language action as a saved one-step ``.sqp`` skill source.
 
     This is what the guided Action Builder saves: a user's own action becomes a
@@ -66,10 +68,23 @@ def action_to_skill_source(name: str, instruction: str, *, description: str = ""
     document. The body frames the document as a transcript and carries the
     ``{document}`` placeholder the skill runner fills at run time, so the saved action
     works on whatever the user is looking at — a transcript they just made, or any text.
+
+    ``reference_text`` is an optional grounding document (an agenda, a house style, a
+    prior good example) baked into the action so its output matches *your* template —
+    "make minutes that look like last month's". It is included as a reference block the
+    model is told to follow.
     """
     from quill.core.ai.library import prompt_to_skill_source
 
-    body = f"{instruction.strip()}\n\nTRANSCRIPT:\n{{document}}"
+    parts = [instruction.strip()]
+    ref = reference_text.strip()
+    if ref:
+        parts.append(
+            "Use the following reference as the template/example to match in style, "
+            "structure, and terminology:\n\nREFERENCE:\n" + ref
+        )
+    parts.append("TRANSCRIPT:\n{document}")
+    body = "\n\n".join(parts)
     return prompt_to_skill_source(name, body, description=description)
 
 

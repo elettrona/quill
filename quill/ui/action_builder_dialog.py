@@ -24,6 +24,42 @@ from quill.ui.dialog_contract import apply_modal_ids, show_message_box
 
 _BLANK = "Blank (write my own)"
 
+#: Cap a reference document so a huge file never bloats the prompt; a template or
+#: example only needs to fit in a screenful or two of context.
+_REFERENCE_CHAR_CAP = 8000
+
+
+def read_reference_text(path: Any) -> str:
+    """Best-effort plain text from a reference file, capped at a sensible size.
+
+    Reads ``.txt``/``.md`` directly; for richer documents (``.docx`` and friends) it
+    uses the optional ``markitdown`` converter when available. Returns '' when nothing
+    readable comes out, so the caller can warn cleanly instead of saving binary noise.
+    """
+    from pathlib import Path
+
+    p = Path(path)
+    suffix = p.suffix.lower()
+    if suffix in (".txt", ".md", ".markdown", "", ".text"):
+        try:
+            text = p.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    else:
+        text = _read_rich_reference(p)
+    return text.strip()[:_REFERENCE_CHAR_CAP]
+
+
+def _read_rich_reference(path: Any) -> str:
+    """Convert a rich document (docx, etc.) to text via markitdown, or '' if absent."""
+    try:
+        from markitdown import MarkItDown
+
+        result = MarkItDown().convert(str(path))
+        return str(getattr(result, "text_content", "") or "")
+    except Exception:  # noqa: BLE001 - markitdown missing or conversion failed
+        return ""
+
 
 class ActionBuilderDialog:
     """Build an AI Action: name + plain-language instructions -> a saved Skill."""
@@ -40,6 +76,7 @@ class ActionBuilderDialog:
         self._announce = announce_cb or (lambda _m: None)
         self._on_preview = on_preview
         self._saved: Any | None = None
+        self._reference_text = ""
 
         self.dialog = wx.Dialog(
             parent,
@@ -97,6 +134,16 @@ class ActionBuilderDialog:
         self._instructions.SetName("Action instructions")
         root.Add(self._instructions, 1, wx.EXPAND | wx.ALL, 8)
 
+        # Optional reference (an agenda, a house style, a prior good example) baked
+        # into the action so its output matches your template.
+        ref_row = wx.BoxSizer(wx.HORIZONTAL)
+        self._ref_btn = wx.Button(self.dialog, label="Attach Re&ference...")
+        self._ref_label = wx.StaticText(self.dialog, label="No reference attached.")
+        self._ref_label.SetName("Attached reference")
+        ref_row.Add(self._ref_btn, 0, wx.RIGHT, 8)
+        ref_row.Add(self._ref_label, 1, wx.ALIGN_CENTER_VERTICAL)
+        root.Add(ref_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
         self._status = wx.StaticText(self.dialog, label="")
         self._status.SetName("Action builder status")
         root.Add(self._status, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
@@ -121,6 +168,7 @@ class ActionBuilderDialog:
 
         self._preset.Bind(wx.EVT_CHOICE, self._on_preset)
         self._preview_btn.Bind(wx.EVT_BUTTON, self._on_preview_clicked)
+        self._ref_btn.Bind(wx.EVT_BUTTON, self._on_attach_reference)
         save_btn.Bind(wx.EVT_BUTTON, self._on_save)
         self._name.SetFocus()
 
@@ -164,13 +212,33 @@ class ActionBuilderDialog:
             return
         self._on_preview(name or "Preview", instruction)
 
+    def _on_attach_reference(self, _event: object) -> None:
+        with wx.FileDialog(
+            self.dialog,
+            "Attach a reference document",
+            wildcard="Text and documents (*.txt;*.md;*.docx)|*.txt;*.md;*.docx|All files (*.*)|*.*",
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+        ) as fdlg:
+            if fdlg.ShowModal() != wx.ID_OK:
+                return
+            path = fdlg.GetPath()
+        from pathlib import Path
+
+        text = read_reference_text(Path(path))
+        if not text.strip():
+            self._set_status("Could not read any text from that file.")
+            return
+        self._reference_text = text
+        self._ref_label.SetLabel(f"Reference attached: {Path(path).name}")
+        self._set_status(f"Reference attached: {Path(path).name}")
+
     def _on_save(self, _event: object) -> None:
         name, instruction = self._values()
         if not name or not instruction:
             self._set_status("Give your action a name and some instructions first.")
             return
         try:
-            source = action_to_skill_source(name, instruction)
+            source = action_to_skill_source(name, instruction, reference_text=self._reference_text)
             self._saved = self._skills.add_source(source)
         except Exception as exc:  # noqa: BLE001
             show_message_box(

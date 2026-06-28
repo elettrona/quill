@@ -88,3 +88,19 @@ def test_action_to_skill_source_parses_as_a_valid_skill() -> None:
     # The instruction and the {document} placeholder both land in the step body.
     assert "three bullets" in src
     assert "{document}" in src
+
+
+def test_action_to_skill_source_weaves_in_a_reference() -> None:
+    from quill.core.skill_pack import parse_skill, validate_skill
+
+    src = action_to_skill_source(
+        "Minutes Like Last Month",
+        "Write meeting minutes.",
+        reference_text="## Acme Weekly\n- Attendees:\n- Decisions:",
+    )
+    assert validate_skill(parse_skill(src)) == []
+    assert "REFERENCE:" in src
+    assert "Acme Weekly" in src
+    # No reference -> no reference block.
+    plain = action_to_skill_source("X", "do it")
+    assert "REFERENCE:" not in plain
