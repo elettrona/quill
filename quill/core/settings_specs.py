@@ -294,6 +294,24 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("wrap", "word wrap", "lines"),
     ),
     SettingSpec(
+        "plain_text_with_formatting",
+        "Saving formatted text as plain text",
+        "editing",
+        "choice",
+        (
+            "What QUILL does when a document that carries hidden formatting (fonts, "
+            "colours, alignment) is saved as plain text. An Illumination is a small "
+            "<name>.illumination sidecar that keeps the formatting so the clean .txt "
+            "round-trips it in QUILL, while staying plain for every other tool."
+        ),
+        choices=(
+            ("ask", "Ask each time (keep formatting, illuminate, or save plain)"),
+            ("illuminate", "Always save an Illumination sidecar"),
+            ("plain", "Save plain text and drop the formatting"),
+        ),
+        keywords=("plain text", "illumination", "formatting", "sidecar", "preserve"),
+    ),
+    SettingSpec(
         "language_detection_mode",
         "Auto-detect document language",
         "editing",

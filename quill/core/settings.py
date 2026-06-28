@@ -151,6 +151,11 @@ class Settings:
     # indents, instead of the terse "Indented lines". Aware of indent_with_tabs
     # and indent_size; on by default, off restores the terse message.
     announce_indent_depth: bool = True
+    # What to do when a document that carries hidden formatting is saved as plain
+    # text: "ask" (offer to keep the formatting), "illuminate" (always write a
+    # <name>.illumination sidecar so the .txt round-trips formatting in QUILL), or
+    # "plain" (drop the formatting, the classic lossy save). See quill/io/illumination.py.
+    plain_text_with_formatting: str = "ask"
     # Pronunciation dictionaries (batch-document-to-speech-plan §4.7). The
     # dictionaries themselves live in JSON files (global under app_data_dir, project
     # under <project>/.quill/pronunciation); settings holds only the selection state.
@@ -611,6 +616,9 @@ class Settings:
         announce_formatting_on_move = bool(data.get("announce_formatting_on_move", False))
         announce_dialog_transitions = bool(data.get("announce_dialog_transitions", True))
         announce_indent_depth = bool(data.get("announce_indent_depth", True))
+        plain_text_with_formatting = str(data.get("plain_text_with_formatting", "ask"))
+        if plain_text_with_formatting not in {"ask", "illuminate", "plain"}:
+            plain_text_with_formatting = "ask"
         pronunciation_enabled = bool(data.get("pronunciation_enabled", True))
         pronunciation_ids_raw = data.get("pronunciation_enabled_dictionary_ids")
         pronunciation_enabled_dictionary_ids = (
@@ -1049,6 +1057,7 @@ class Settings:
             announce_formatting_on_move=announce_formatting_on_move,
             announce_dialog_transitions=announce_dialog_transitions,
             announce_indent_depth=announce_indent_depth,
+            plain_text_with_formatting=plain_text_with_formatting,
             dictation_onboarding_shown=dictation_onboarding_shown,
             pronunciation_enabled=pronunciation_enabled,
             pronunciation_enabled_dictionary_ids=pronunciation_enabled_dictionary_ids,
