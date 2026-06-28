@@ -45,8 +45,10 @@ _MACOS_EDITOR_BRANCH_PATTERN = (
     r'if\s+sys\.platform\s*==\s*"darwin":\s*\n\s*editor\s*=\s*wx\.TextCtrl\('
     r"[^)]*style\s*=\s*wx\.TE_MULTILINE\s*\)"
 )
+# The non-macOS branch now selects the RichEdit version via ``rich_flag``
+# (TE_RICH2 default, TE_RICH opt-in for the braille A/B), keeping TE_NOHIDESEL.
 _WIN_EDITOR_BRANCH_PATTERN = (
-    r"style\s*=\s*wx\.TE_MULTILINE\s*\|\s*wx\.TE_RICH2\s*\|\s*wx\.TE_NOHIDESEL"
+    r"style\s*=\s*wx\.TE_MULTILINE\s*\|\s*rich_flag\s*\|\s*wx\.TE_NOHIDESEL"
 )
 
 
@@ -86,7 +88,11 @@ def test_create_document_tab_drops_rich2_and_nohidesel_on_macos() -> None:
     # so the Windows screen-reader behaviour from #170 / #5890 is
     # untouched.
     assert re.search(_WIN_EDITOR_BRANCH_PATTERN, src), (
-        "non-macOS branch must keep TE_RICH2 + TE_NOHIDESEL"
+        "non-macOS branch must keep the rich_flag | TE_NOHIDESEL style"
+    )
+    # Both RichEdit versions remain available: TE_RICH2 default, TE_RICH legacy.
+    assert "wx.TE_RICH2" in src and "wx.TE_RICH\n" in src, (
+        "non-macOS branch must offer TE_RICH2 (default) and TE_RICH (legacy)"
     )
 
     # After construction the macOS branch must call the role pinner.

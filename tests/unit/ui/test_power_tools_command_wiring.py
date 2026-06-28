@@ -201,9 +201,10 @@ def test_read_only_state_refreshes_on_tab_switch() -> None:
 
 def test_read_only_state_refreshes_on_open() -> None:
     # Newly opened/selected tabs must re-apply a persisted read-only guard.
-    # #616: the macOS branch and its explanatory comment add ~30 lines to
-    # _create_document_tab before the refresh call, so widen the slice.
-    create_tab = _SOURCE[_SOURCE.index("def _create_document_tab") :][:2700]
+    # #616: the macOS branch and its explanatory comment, plus the braille
+    # RichEdit-version/margin handling, add lines to _create_document_tab before
+    # the refresh call, so widen the slice.
+    create_tab = _SOURCE[_SOURCE.index("def _create_document_tab") :][:3500]
     assert "self._refresh_read_only_state()" in create_tab
 
 

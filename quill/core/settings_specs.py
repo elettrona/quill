@@ -846,6 +846,29 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("echo", "double-press", "review", "announcement", "virtualize"),
     ),
     SettingSpec(
+        "editor_zero_richedit_margins",
+        "Remove the editor's left margin for braille",
+        "accessibility",
+        "bool",
+        "Remove the rich editor's internal left/right margin. Some braille "
+        "displays mirror that margin and show the first character in cell two; "
+        "turning this on (default) pulls text back to cell one. Windows only.",
+        feature_id="core.accessibility",
+        keywords=("braille", "margin", "cell", "richedit", "display", "indent"),
+    ),
+    SettingSpec(
+        "editor_use_legacy_richedit",
+        "Use the older rich-text engine (braille A/B)",
+        "accessibility",
+        "bool",
+        "Back the editor with the older RichEdit 2.0 engine instead of 3.0. It "
+        "reports text to JAWS differently and can change braille behaviour; offered "
+        "as an A/B test for the cell-two issue. Takes effect for documents opened "
+        "after the change (restart to apply everywhere). Windows only.",
+        feature_id="core.accessibility",
+        keywords=("braille", "richedit", "jaws", "engine", "legacy", "display"),
+    ),
+    SettingSpec(
         "announcement_trace_enabled",
         "Record announcement trace",
         "accessibility",

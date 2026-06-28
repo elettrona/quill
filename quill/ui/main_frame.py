@@ -4002,6 +4002,29 @@ class MainFrame(
         except Exception:
             pass
 
+    def _apply_windows_editor_margins(self, editor: object) -> None:
+        """Experiment 1 (braille cell-2 offset): zero the RichEdit gutter.
+
+        When ``editor_zero_richedit_margins`` is on (default), remove the
+        RichEdit control's internal left/right margin so screen readers that
+        mirror that gutter on a braille display (JAWS, via its Word-style rich
+        path) no longer push the first character into cell two. Windows-only and
+        fully defensive -- any failure leaves the editor untouched.
+        """
+        if sys.platform != "win32":
+            return
+        if not bool(getattr(self.settings, "editor_zero_richedit_margins", True)):
+            return
+        handle = getattr(editor, "GetHandle", None)
+        if not callable(handle):
+            return
+        try:
+            from quill.platform.windows.richedit import zero_richedit_margins
+
+            zero_richedit_margins(handle())
+        except Exception:
+            pass
+
     def _on_container_focus(self, event: object) -> None:
         # Fires when focus lands directly on a layout container (splitter or
         # panel).  Redirect synchronously to the active editor so screen readers
@@ -4149,13 +4172,24 @@ class MainFrame(
         if sys.platform == "darwin":
             editor = wx.TextCtrl(splitter, style=wx.TE_MULTILINE)
         else:
+            # Experiment 2 (braille cell-2 offset): TE_RICH2 (RichEdit 3.0) is the
+            # default and what #616 validated; TE_RICH (RichEdit 2.0) exposes its
+            # text to JAWS differently and is offered as an opt-in A/B for the
+            # braille leading-cell issue. Either way TE_NOHIDESEL stays.
+            rich_flag = (
+                wx.TE_RICH
+                if bool(getattr(self.settings, "editor_use_legacy_richedit", False))
+                else wx.TE_RICH2
+            )
             editor = wx.TextCtrl(
                 splitter,
-                style=wx.TE_MULTILINE | wx.TE_RICH2 | wx.TE_NOHIDESEL,
+                style=wx.TE_MULTILINE | rich_flag | wx.TE_NOHIDESEL,
             )
         editor.SetName("Document")
         if sys.platform == "darwin":
             self._pin_macos_editor_accessibility_role(editor)
+        else:
+            self._apply_windows_editor_margins(editor)
         splitter.Initialize(editor)
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(splitter, 1, wx.EXPAND)

@@ -98,6 +98,15 @@ keys line up again.
 - **Report a Bug is keyboard-navigable again, and submitting no longer seems to
   lose your text** — you can Tab through the form, and QUILL reliably confirms the
   report was copied to your clipboard on submit for NVDA users. (#729)
+- **Braille displays no longer start each line in cell two.** QUILL's editor is a
+  rich-text control (required so screen readers report its contents correctly),
+  and that control's small internal margin could be mirrored by a braille
+  display, pushing the first character into cell two — the same quirk long-time
+  Word users will recognise. QUILL now strips that margin by default (toggle:
+  **Preferences → Accessibility → Remove the editor's left margin for braille**).
+  If a display still shows the offset, a second Windows-only option, **Use the
+  older rich-text engine (braille A/B)**, switches to the older RichEdit engine,
+  which exposes text to JAWS differently.
 
 ### Enhancements
 

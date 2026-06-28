@@ -4384,6 +4384,20 @@ double-press shortcut can be turned off under <strong>Preferences &gt;
 Accessibility &gt; Double-press to show the Spoken Echo</strong> (on by
 default). The Echo only records lines QUILL actually speaks, never your
 typing.</li>
+<li><strong>Braille display showing the first character in cell
+two?</strong> QUILL’s editor is a rich-text control (it has to be, so
+screen readers report its contents correctly), and that control carries
+a small internal left margin. Some braille displays mirror that margin
+and shift each line one cell to the right — the same long-standing quirk
+you may remember from Microsoft Word. Two Windows-only controls under
+<strong>Preferences &gt; Accessibility</strong> address it:
+<strong>Remove the editor’s left margin for braille</strong> (on by
+default) strips that margin so text returns to cell one; and if your
+display still shows the offset, <strong>Use the older rich-text engine
+(braille A/B)</strong> backs the editor with the older RichEdit engine,
+which reports text to JAWS differently — switch it on, reopen your
+document (or restart), and compare. These affect only how the control is
+presented; your text is never changed.</li>
 <li><strong>Per-action templates.</strong> Advanced users can edit
 exactly what each action says, using tokens like <code>{line}</code> and
 filters like <code>${ordinal:line}</code>, with live validation and
