@@ -111,7 +111,17 @@ class SessionsMixin:
             doc_id = self._wx.NewIdRef()
             name = getattr(tab.document, "name", f"Document {i + 1}")
             suffix = " (active)" if i == active else ""
-            window_menu.Append(doc_id, f"&{i + 1}: {name}{suffix}")
+            # Surface the global Alt+digit hotkey on the first ten documents so it
+            # is discoverable from the menu. Shown inline rather than as a "\t"
+            # accelerator: the functional accelerator already lives in the frame
+            # table, and a second menu accelerator for the same key (on a
+            # different, dynamically-created id) would conflict.
+            accel = ""
+            if i < 10:
+                binding = self._binding_for(f"window.go_to_document_{i + 1}")
+                if binding:
+                    accel = f" ({binding})"
+            window_menu.Append(doc_id, f"&{i + 1}: {name}{accel}{suffix}")
             ids[int(doc_id)] = i
         self._window_doc_menu_ids = ids
 

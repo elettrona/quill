@@ -1723,6 +1723,15 @@ class MainFrame(
             self.previous_document,
             self._binding_for("window.previous_document"),
         )
+        # Jump straight to the Nth open document (Alt+1..Alt+9, Alt+0 = 10th).
+        for _position in range(1, 11):
+            command_id = f"window.go_to_document_{_position}"
+            self.commands.register(
+                command_id,
+                f"Go to Document {_position}",
+                (lambda position=_position: self.go_to_document(position)),
+                self._binding_for(command_id),
+            )
         self.commands.register(
             "window.close_other_documents",
             "Close Other Documents",
@@ -3611,6 +3620,16 @@ class MainFrame(
             "file.print": self._id_print,
             "window.next_document": self._id_next_document,
             "window.previous_document": self._id_previous_document,
+            "window.go_to_document_1": self._id_go_to_document[0],
+            "window.go_to_document_2": self._id_go_to_document[1],
+            "window.go_to_document_3": self._id_go_to_document[2],
+            "window.go_to_document_4": self._id_go_to_document[3],
+            "window.go_to_document_5": self._id_go_to_document[4],
+            "window.go_to_document_6": self._id_go_to_document[5],
+            "window.go_to_document_7": self._id_go_to_document[6],
+            "window.go_to_document_8": self._id_go_to_document[7],
+            "window.go_to_document_9": self._id_go_to_document[8],
+            "window.go_to_document_10": self._id_go_to_document[9],
             "window.close_other_documents": self._id_close_other_documents,
             "view.send_to_tray": self._id_send_to_tray,
             "view.toggle_soft_wrap": self._id_toggle_soft_wrap,
@@ -4002,29 +4021,6 @@ class MainFrame(
         except Exception:
             pass
 
-    def _apply_windows_editor_margins(self, editor: object) -> None:
-        """Experiment 1 (braille cell-2 offset): zero the RichEdit gutter.
-
-        When ``editor_zero_richedit_margins`` is on (default), remove the
-        RichEdit control's internal left/right margin so screen readers that
-        mirror that gutter on a braille display (JAWS, via its Word-style rich
-        path) no longer push the first character into cell two. Windows-only and
-        fully defensive -- any failure leaves the editor untouched.
-        """
-        if sys.platform != "win32":
-            return
-        if not bool(getattr(self.settings, "editor_zero_richedit_margins", True)):
-            return
-        handle = getattr(editor, "GetHandle", None)
-        if not callable(handle):
-            return
-        try:
-            from quill.platform.windows.richedit import zero_richedit_margins
-
-            zero_richedit_margins(handle())
-        except Exception:
-            pass
-
     def _on_container_focus(self, event: object) -> None:
         # Fires when focus lands directly on a layout container (splitter or
         # panel).  Redirect synchronously to the active editor so screen readers
@@ -4189,8 +4185,6 @@ class MainFrame(
         editor.SetName("Document")
         if sys.platform == "darwin":
             self._pin_macos_editor_accessibility_role(editor)
-        else:
-            self._apply_windows_editor_margins(editor)
         splitter.Initialize(editor)
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(splitter, 1, wx.EXPAND)
@@ -6808,24 +6802,60 @@ class MainFrame(
                 self.editor.WriteText("![image]()")
 
     def _check_tts_fallback_on_startup(self) -> None:
-        """§8.2 TTS-FALLBACK-ANNOUNCE: show a status-bar prompt when SAPI 5 fails to init."""
+        """When SAPI 5 self-voicing fails to initialise, record it -- and only
+        *speak* it when no screen reader is handling speech.
+
+        SAPI 5 is QUILL's own fallback voice, used only when no screen reader is
+        present. When a reader is doing the talking, a SAPI failure is benign, so
+        announcing "TTS failed" is alarming noise. We always log a diagnostic
+        note; we speak a (corrected) prompt only when the user would otherwise
+        have no voice at all.
+        """
         try:
             from quill.platform.windows.prism_bridge import tts_init_failed
-
-            if not tts_init_failed():
-                return
-            self._set_status(
-                "Screen reader fallback active. TTS engine failed to start. "
-                "Press F8 to toggle overwrite mode / check menus for Retry TTS."
-            )
-            self._record_notification(
-                "Text-to-speech (SAPI 5) failed to start. "
-                "Screen reader fallback is active. "
-                "To retry, run Tools > Retry TTS Engine.",
-                "accessibility",
-            )
         except ImportError:
-            pass
+            return
+        if not tts_init_failed():
+            return
+        self._record_notification(
+            "Text-to-speech (the SAPI 5 self-voice) did not start. If you use a "
+            "screen reader, QUILL speaks through it and no action is needed. To "
+            "use QUILL's own voice instead, run Tools > Retry TTS Engine.",
+            "accessibility",
+        )
+        if self._screen_reader_handling_speech():
+            # The screen reader is doing the talking; the self-voice is not
+            # needed. Show a quiet, unspoken note rather than announcing a failure.
+            self._set_status_quiet("Speaking through your screen reader.")
+            return
+        # No screen reader: the self-voice was the only voice, so this is a real
+        # problem the user must hear. (F8 toggles overwrite mode -- the retry is
+        # Tools > Retry TTS Engine.)
+        self._set_status(
+            "Text-to-speech failed to start, so QUILL has no voice. "
+            "Run Tools > Retry TTS Engine to try again."
+        )
+
+    def _screen_reader_handling_speech(self) -> bool:
+        """True when a screen reader is voicing QUILL's announcements.
+
+        Either the announcement engine acquired a screen-reader backend
+        (Prism / accessible_output2), or a known reader is running and will read
+        the status bar and focus changes itself.
+        """
+        engine = getattr(self, "_announcement_engine", None)
+        if engine is not None:
+            try:
+                if engine.state().active_backend in {"prism", "accessible_output2"}:
+                    return True
+            except Exception:  # noqa: BLE001 - never let a status check raise
+                pass
+        try:
+            from quill.platform.windows.sr_detect import detect_screen_reader
+
+            return bool(detect_screen_reader().detected)
+        except Exception:  # noqa: BLE001
+            return False
 
     def _binding_for(self, command_id: str) -> str | None:
         # Tolerate a not-yet-assigned keymap: key events (e.g. the dictation
@@ -8591,6 +8621,20 @@ class MainFrame(
 
     def previous_document(self) -> None:
         self._switch_document(reverse=True)
+
+    def go_to_document(self, position: int) -> None:
+        """Switch to the document in tab ``position`` (1-based; 10 == Alt+0).
+
+        Out-of-range positions (no such tab open) just announce that nothing is
+        there rather than switching. A single status update carries the spoken
+        feedback — ``_activate_tab`` does not speak, so there is no double-talk.
+        """
+        index = position - 1
+        if 0 <= index < len(self._document_tabs):
+            self._select_tab(index)
+            self._set_status(f"Switched to {self.document.name}")
+        else:
+            self._set_status(f"No document {position} open")
 
     def close_other_documents(self) -> None:
         self._close_other_tabs(self._active_tab_index)

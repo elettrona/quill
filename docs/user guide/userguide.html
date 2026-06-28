@@ -2346,6 +2346,12 @@ them.</p>
 next open document.</li>
 <li><strong>Previous Document</strong> (<code>Ctrl+Shift+Tab</code>) —
 move to the previous open document.</li>
+<li><strong>Go to Document 1–10</strong> (<code>Alt+1</code> …
+<code>Alt+9</code>, and <code>Alt+0</code> for the tenth) — jump
+straight to a document by its position instead of cycling. If no
+document is open at that position, QUILL says so and stays where you
+are. Like every shortcut, these are remappable in the Keymap
+Editor.</li>
 <li><strong>Send to System Tray</strong> — hide QUILL to the
 notification area without closing it.</li>
 <li><strong>1: filename.txt (active)</strong>, <strong>2:
@@ -4385,23 +4391,19 @@ Accessibility &gt; Double-press to show the Spoken Echo</strong> (on by
 default). The Echo only records lines QUILL actually speaks, never your
 typing.</li>
 <li><strong>Braille display showing the first character in cell
-two?</strong> QUILL’s editor is a rich-text control (it has to be, so
-screen readers report its contents correctly), and that control carries
-a small internal left margin. Some braille displays mirror that margin
-and shift each line one cell to the right — the same long-standing quirk
-you may remember from Microsoft Word. Two Windows-only controls under
-<strong>Preferences &gt; Accessibility</strong> address it.
-<strong>Remove the editor’s left margin for braille</strong> (on by
-default) strips that margin so text returns to cell one. <strong>Editor
-control type (braille)</strong> goes further: if your display still
-shows the offset, set it to <strong>Plain edit, like Notepad</strong>
-and the editor uses a simple control with no offset at all — the rich
-control was only ever needed for <em>read-only</em> views, so an
-editable plain control still reads correctly. (RichEdit 2.0 is offered
-as a middle option.) Changing the control type takes effect for
-documents opened afterward, so reopen your document or restart to
-compare. These affect only how the control is presented; your text is
-never changed.</li>
+two?</strong> QUILL’s editor defaults to a rich-text control (so screen
+readers report its contents correctly), and some braille displays shift
+each line of a rich control one cell to the right — the same
+long-standing quirk you may remember from Microsoft Word.
+<strong>Preferences &gt; Accessibility &gt; Editor control type
+(braille)</strong> lets you change the native control: if your display
+shows the offset, set it to <strong>Plain edit, like Notepad</strong>, a
+simple control that the rich control was only ever needed in place of
+for <em>read-only</em> views (an editable plain control still reads
+correctly). RichEdit 2.0 is offered as a middle option. Changing the
+control type takes effect for documents opened afterward, so reopen your
+document or restart to compare. This affects only how the control is
+presented; your text is never changed.</li>
 <li><strong>Per-action templates.</strong> Advanced users can edit
 exactly what each action says, using tokens like <code>{line}</code> and
 filters like <code>${ordinal:line}</code>, with live validation and
@@ -4419,6 +4421,13 @@ customizations.</li>
 <p>These controls are screen-reader-first: QUILL speaks alongside your
 screen reader, it does not replace it, so it never duplicates the typing
 echo or punctuation settings your screen reader already provides.</p>
+<p><strong>About QUILL’s own voice.</strong> When you run a screen
+reader, QUILL speaks through it. QUILL also has its own built-in voice
+(Windows SAPI 5) used only as a fallback for people who do not run a
+screen reader. If that built-in voice ever fails to start, QUILL does
+not interrupt you about it while your screen reader is doing the talking
+— it simply notes it quietly. If you do want QUILL’s own voice and it
+did not start, run <strong>Tools &gt; Retry TTS Engine</strong>.</p>
 <h2 id="accessibility-and-low-vision-features">Accessibility and
 Low-Vision Features</h2>
 <p>Quill is designed so accessibility is visible, not hidden.</p>

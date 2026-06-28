@@ -156,16 +156,11 @@ class Settings:
     # dialog instead of re-speaking. The dedicated Echo key works regardless; this
     # only governs the double-press shortcut. See quill/core/spoken_echo.py.
     spoken_echo_on_double_press: bool = True
-    # Braille leading-cell experiments. The editor defaults to a Windows RichEdit;
-    # some braille displays show the first character in cell two with a rich
-    # control (the long-standing Word quirk). "editor_zero_richedit_margins"
-    # strips the RichEdit's internal gutter. "editor_control_kind" picks the
-    # native control: "rich2" (RichEdit 3.0, default), "rich" (RichEdit 2.0), or
-    # "plain" (a Notepad-style EDIT control, which avoids the offset entirely;
-    # the #616 RichEdit requirement was for *read-only* controls, so an editable
-    # plain control still reports its value to JAWS/NVDA). See
-    # quill/platform/windows/richedit.py.
-    editor_zero_richedit_margins: bool = True
+    # Braille leading-cell experiment. The editor defaults to a Windows RichEdit
+    # for accessible value reporting (#616). "editor_control_kind" lets a braille
+    # user switch the native control: "rich2" (RichEdit 3.0, default), "rich"
+    # (RichEdit 2.0), or "plain" (a Notepad-style EDIT control). Takes effect for
+    # documents opened after the change.
     editor_control_kind: str = "rich2"
     # What to do when a document that carries hidden formatting is saved as plain
     # text: "ask" (offer to keep the formatting), "illuminate" (always write a
@@ -633,7 +628,6 @@ class Settings:
         announce_dialog_transitions = bool(data.get("announce_dialog_transitions", True))
         announce_indent_depth = bool(data.get("announce_indent_depth", True))
         spoken_echo_on_double_press = bool(data.get("spoken_echo_on_double_press", True))
-        editor_zero_richedit_margins = bool(data.get("editor_zero_richedit_margins", True))
         editor_control_kind = str(data.get("editor_control_kind", "")).strip().lower()
         if editor_control_kind not in {"rich2", "rich", "plain"}:
             # Back-compat: the earlier editor_use_legacy_richedit bool -> "rich".
@@ -1082,7 +1076,6 @@ class Settings:
             announce_dialog_transitions=announce_dialog_transitions,
             announce_indent_depth=announce_indent_depth,
             spoken_echo_on_double_press=spoken_echo_on_double_press,
-            editor_zero_richedit_margins=editor_zero_richedit_margins,
             editor_control_kind=editor_control_kind,
             plain_text_with_formatting=plain_text_with_formatting,
             dictation_onboarding_shown=dictation_onboarding_shown,

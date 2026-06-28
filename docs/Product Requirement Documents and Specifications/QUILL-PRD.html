@@ -15819,6 +15819,55 @@ there); and a <strong>Diagnostics</strong> report with a conservative
 re-applies the keymap via <code>_reload_shortcuts_from_keymap</code>
 (duplicates and inert keys are reported for manual resolution rather
 than guessed at).</p>
+<h3 id="go-to-document-by-position-shipped-0.8.0-beta-2">Go to Document
+by position (shipped 0.8.0 Beta 2)</h3>
+<p>With several documents open, cycling Next/Previous (Ctrl+Tab) is
+slow. <strong>Alt+1</strong> through <strong>Alt+9</strong>, plus
+<strong>Alt+0</strong> for the tenth, jump straight to a document by its
+position. Ten <code>window.go_to_document_N</code> commands back a
+single <code>go_to_document(position)</code> method (built on the
+existing <code>_select_tab</code>); out-of-range positions announce
+rather than switch. The bindings live in <code>DEFAULT_KEYMAP</code> (so
+they flow to every profile and are remappable in the Keyboard Manager)
+and are applied through the frame accelerator table via accelerator-only
+menu ids. The Window menu’s dynamic open-document list shows each
+shortcut inline (<code>&amp;1: Notes (Alt+1)</code>) for
+discoverability; <code>Alt+digit</code> is free default key-space and,
+unlike <code>Ctrl+Alt+</code> chords, is not screen-reader-hostile.</p>
+<h3 id="braille-editor-control-type-shipped-0.8.0-beta-2">Braille editor
+control type (shipped 0.8.0 Beta 2)</h3>
+<p>Some braille displays render the first character of every line in
+cell two for a rich-text control — the long-standing Microsoft Word
+quirk. Because QUILL’s editor must be a RichEdit for correct
+accessible-value reporting (#616, a <em>read-only</em> constraint),
+<strong>Settings → Accessibility → Editor control type
+(braille)</strong> lets a braille user pick the native control:
+<code>rich2</code> (RichEdit 3.0, default), <code>rich</code> (RichEdit
+2.0), or <code>plain</code> (a Notepad-style EDIT control — editable, so
+it still reports its value to JAWS/NVDA). It applies at editor
+construction (new documents/restart). Field note: this is exposed for
+users to A/B against their own display; where the offset reproduces in
+Notepad itself, the cause is the braille display / screen-reader
+configuration (e.g. left status cells), not the control.</p>
+<h3
+id="self-voice-fallback-is-logged-not-announced-shipped-0.8.0-beta-2">Self-voice
+fallback is logged, not announced (shipped 0.8.0 Beta 2)</h3>
+<p>QUILL’s SAPI 5 self-voice
+(<code>sapi5.py</code>/<code>prism_bridge</code>) is a <em>fallback</em>
+used only when no screen reader is present; announcements otherwise
+route to the reader via Prism / accessible_output2. A SAPI init failure
+was being <em>spoken</em> on startup with an alarming, mis-worded prompt
+even while a reader was handling speech.
+<code>_check_tts_fallback_on_startup</code> now always records a quiet
+diagnostic note and only <em>speaks</em> — with the correct
+<strong>Tools → Retry TTS Engine</strong> path — when
+<code>_screen_reader_handling_speech()</code> is false (no SR backend
+and none detected), i.e. when the user genuinely has no voice.
+Separately, comtypes’ generated-wrapper cache is redirected to a
+writable per-user dir so SAPI initialises under a read-only install, and
+the screen-reader detection’s <code>tasklist</code> probe runs with
+<code>CREATE_NO_WINDOW</code> so it no longer flashes a console window a
+braille display would announce.</p>
 <hr />
 <h2 id="part-two-competitive-study-ulysses">Part Two: Competitive Study,
 Ulysses</h2>

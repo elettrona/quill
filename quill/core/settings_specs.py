@@ -846,17 +846,6 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("echo", "double-press", "review", "announcement", "virtualize"),
     ),
     SettingSpec(
-        "editor_zero_richedit_margins",
-        "Remove the editor's left margin for braille",
-        "accessibility",
-        "bool",
-        "Remove the rich editor's internal left/right margin. Some braille "
-        "displays mirror that margin and show the first character in cell two; "
-        "turning this on (default) pulls text back to cell one. Windows only.",
-        feature_id="core.accessibility",
-        keywords=("braille", "margin", "cell", "richedit", "display", "indent"),
-    ),
-    SettingSpec(
         "editor_control_kind",
         "Editor control type (braille)",
         "accessibility",

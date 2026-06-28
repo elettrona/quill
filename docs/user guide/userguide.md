@@ -1304,6 +1304,10 @@ The **Window** menu is small but useful.
 
 - **Next Document** (`Ctrl+Tab`) — move to the next open document.
 - **Previous Document** (`Ctrl+Shift+Tab`) — move to the previous open document.
+- **Go to Document 1–10** (`Alt+1` … `Alt+9`, and `Alt+0` for the tenth) — jump
+  straight to a document by its position instead of cycling. If no document is
+  open at that position, QUILL says so and stays where you are. Like every
+  shortcut, these are remappable in the Keymap Editor.
 - **Send to System Tray** — hide QUILL to the notification area without closing it.
 - **1: filename.txt (active)**, **2: other.md**, … — every open document appears directly on the menu, numbered. Press `Alt+W` to open the Window menu and then the number key to jump straight to that document. The active document is marked. The list updates automatically when you open or close a file, and updates the name immediately when you save an untitled document.
 
@@ -2213,20 +2217,18 @@ Manager.
   shortcut can be turned off under **Preferences > Accessibility > Double-press
   to show the Spoken Echo** (on by default). The Echo only records lines QUILL
   actually speaks, never your typing.
-- **Braille display showing the first character in cell two?** QUILL's editor is
-  a rich-text control (it has to be, so screen readers report its contents
-  correctly), and that control carries a small internal left margin. Some braille
-  displays mirror that margin and shift each line one cell to the right — the same
-  long-standing quirk you may remember from Microsoft Word. Two Windows-only
-  controls under **Preferences > Accessibility** address it. **Remove the editor's
-  left margin for braille** (on by default) strips that margin so text returns to
-  cell one. **Editor control type (braille)** goes further: if your display still
-  shows the offset, set it to **Plain edit, like Notepad** and the editor uses a
-  simple control with no offset at all — the rich control was only ever needed for
-  *read-only* views, so an editable plain control still reads correctly. (RichEdit
-  2.0 is offered as a middle option.) Changing the control type takes effect for
-  documents opened afterward, so reopen your document or restart to compare. These
-  affect only how the control is presented; your text is never changed.
+- **Braille display showing the first character in cell two?** QUILL's editor
+  defaults to a rich-text control (so screen readers report its contents
+  correctly), and some braille displays shift each line of a rich control one
+  cell to the right — the same long-standing quirk you may remember from
+  Microsoft Word. **Preferences > Accessibility > Editor control type (braille)**
+  lets you change the native control: if your display shows the offset, set it to
+  **Plain edit, like Notepad**, a simple control that the rich control was only
+  ever needed in place of for *read-only* views (an editable plain control still
+  reads correctly). RichEdit 2.0 is offered as a middle option. Changing the
+  control type takes effect for documents opened afterward, so reopen your
+  document or restart to compare. This affects only how the control is presented;
+  your text is never changed.
 - **Per-action templates.** Advanced users can edit exactly what each action
   says, using tokens like `{line}` and filters like `${ordinal:line}`, with live
   validation and preview. Templates can be saved to a library, shared as
@@ -2241,6 +2243,13 @@ Manager.
 These controls are screen-reader-first: QUILL speaks alongside your screen
 reader, it does not replace it, so it never duplicates the typing echo or
 punctuation settings your screen reader already provides.
+
+**About QUILL's own voice.** When you run a screen reader, QUILL speaks through
+it. QUILL also has its own built-in voice (Windows SAPI 5) used only as a
+fallback for people who do not run a screen reader. If that built-in voice ever
+fails to start, QUILL does not interrupt you about it while your screen reader is
+doing the talking — it simply notes it quietly. If you do want QUILL's own voice
+and it did not start, run **Tools > Retry TTS Engine**.
 
 ## Accessibility and Low-Vision Features
 

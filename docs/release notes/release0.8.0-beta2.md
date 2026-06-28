@@ -98,16 +98,25 @@ keys line up again.
 - **Report a Bug is keyboard-navigable again, and submitting no longer seems to
   lose your text** — you can Tab through the form, and QUILL reliably confirms the
   report was copied to your clipboard on submit for NVDA users. (#729)
-- **Braille displays no longer start each line in cell two.** On a rich-text
-  editor control, some braille displays show every line's first character in cell
-  two — the same quirk long-time Word users will recognise. Two Windows-only
-  controls under **Preferences → Accessibility** address it. **Remove the editor's
-  left margin for braille** (on by default) strips the rich control's internal
-  gutter. And **Editor control type (braille)** can switch the editor to **Plain
-  edit, like Notepad** — a simple control that has no offset and still reads
-  correctly, since the rich control was only ever needed for *read-only* views
-  (#616); RichEdit 2.0 is offered as a middle option. The control-type change
-  applies to documents opened after it (restart to apply everywhere).
+- **No alarming "text-to-speech failed" when your screen reader is running.**
+  QUILL's own SAPI voice is only a fallback for people with no screen reader; if
+  it failed to start, QUILL spoke a scary "TTS engine failed" message (with a
+  wrong "press F8" instruction) even though the screen reader was handling speech.
+  That case is now logged quietly and not spoken — QUILL only speaks up when you
+  genuinely have no other voice, pointing you to the real **Tools → Retry TTS
+  Engine**. The SAPI voice also initialises correctly under a read-only install
+  now (its helper cache moved to a writable per-user folder), so self-voicing
+  works for those who rely on it. Relatedly, the screen-reader detection no longer
+  flashes a brief console window that a braille display could announce.
+- **A control-type choice for braille displays that start each line in cell
+  two.** On a rich-text editor control, some braille displays show every line's
+  first character in cell two — the same quirk long-time Word users will
+  recognise. **Preferences → Accessibility → Editor control type (braille)** can
+  switch the editor to **Plain edit, like Notepad** — a simple control that the
+  rich control was only ever needed in place of for *read-only* views (#616), so
+  an editable plain control still reads correctly. RichEdit 2.0 is offered as a
+  middle option. The control-type change applies to documents opened after it
+  (restart to apply everywhere).
 
 ### Enhancements
 
@@ -118,6 +127,12 @@ keys line up again.
 - **Quieter dialogs, your choice.** A new **Announce entering and leaving dialogs**
   setting (Settings → Accessibility) turns off the spoken "Entered / Exited *name*
   dialog" cues for people whose screen reader already announces dialogs.
+- **Jump straight to an open document.** With several documents open, press
+  **Alt+1** through **Alt+9** (and **Alt+0** for the tenth) to go directly to that
+  document by its position, instead of cycling with Ctrl+Tab. If nothing is open
+  at that position, QUILL tells you and stays put. The Window menu also lists your
+  open documents with these shortcuts shown beside them, and the keys are
+  remappable in the Keymap Editor.
 
 ---
 

@@ -1345,6 +1345,9 @@ class MenuBuilderMixin:
         insert_menu.AppendSubMenu(date_time_menu, _("Date and &Time"))
         self._id_next_document = wx.NewIdRef()
         self._id_previous_document = wx.NewIdRef()
+        # Accelerator-only ids for Go to Document 1..10 (Alt+1..Alt+9, Alt+0).
+        # They carry the Alt+digit accelerators in the table; no menu items.
+        self._id_go_to_document = [wx.NewIdRef() for _ in range(10)]
         self._id_close_other_documents = wx.NewIdRef()
         window_menu = wx.Menu()
         window_menu.Append(
@@ -2978,6 +2981,12 @@ class MenuBuilderMixin:
             lambda _e: self.previous_document(),
             id=self._id_previous_document,
         )
+        for _position in range(1, 11):
+            self.frame.Bind(
+                wx.EVT_MENU,
+                lambda _e, position=_position: self.go_to_document(position),
+                id=self._id_go_to_document[_position - 1],
+            )
         self.frame.Bind(
             wx.EVT_MENU,
             lambda _e: self.close_other_documents(),

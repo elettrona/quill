@@ -34,6 +34,11 @@ def detect_screen_reader(process_snapshot: str | None = None) -> ScreenReaderDet
 
 
 def _tasklist_snapshot() -> str:
+    # quill.exe is a GUI process (pythonw). Without CREATE_NO_WINDOW the console
+    # app `tasklist` flashes a visible terminal window, which a screen reader
+    # announces (e.g. JAWS reading "C:\WINDOWS\SYSTEM32\tasklist.exe"). The flag
+    # is Windows-only; getattr falls back to 0 elsewhere so this stays portable.
+    creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     try:
         completed = subprocess.run(
             ["tasklist", "/fo", "csv", "/nh"],
@@ -42,6 +47,7 @@ def _tasklist_snapshot() -> str:
             text=True,
             encoding="utf-8",
             errors="replace",
+            creationflags=creationflags,
         )
     except OSError:
         return ""
