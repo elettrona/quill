@@ -7,10 +7,62 @@ from quill.core.updates import (
     _MANIFEST_KEY_ENV,
     DEFAULT_UPDATE_MANIFEST_URL,
     GitHubRelease,
+    _pick_asset,
     is_newer_version,
     parse_update_manifest,
     select_latest,
 )
+
+
+def _release_assets() -> list[dict]:
+    """Assets mirroring a real windows-release: installer, portable zip, and the
+    unrelated delta update zip plus a metadata json."""
+    return [
+        {
+            "name": "Quill-for-All-Setup-0.8.0.exe",
+            "browser_download_url": "https://example.test/Quill-for-All-Setup-0.8.0.exe",
+        },
+        {
+            "name": "Quill-Portable-v0.8.0.zip",
+            "browser_download_url": "https://example.test/Quill-Portable-v0.8.0.zip",
+        },
+        {
+            "name": "quill-v0.8.0-update-windows.zip",
+            "browser_download_url": "https://example.test/quill-v0.8.0-update-windows.zip",
+        },
+        {
+            "name": "sbom.json",
+            "browser_download_url": "https://example.test/sbom.json",
+        },
+    ]
+
+
+def _force_windows_suffixes(monkeypatch) -> None:
+    # Asset selection past the portable branch is platform-specific; pin it to the
+    # Windows installer order so these tests are deterministic on Linux CI too.
+    monkeypatch.setattr(
+        "quill.core.updates._platform_asset_suffixes",
+        lambda: (".exe", ".msi", ".zip"),
+    )
+
+
+def test_pick_asset_portable_prefers_portable_zip() -> None:
+    # The portable branch runs before any platform-specific ordering.
+    url = _pick_asset(_release_assets(), prefer_portable=True)
+    assert url == "https://example.test/Quill-Portable-v0.8.0.zip"
+
+
+def test_pick_asset_installed_prefers_installer_exe(monkeypatch) -> None:
+    _force_windows_suffixes(monkeypatch)
+    url = _pick_asset(_release_assets(), prefer_portable=False)
+    assert url == "https://example.test/Quill-for-All-Setup-0.8.0.exe"
+
+
+def test_pick_asset_portable_falls_back_to_installer_without_portable_zip(monkeypatch) -> None:
+    _force_windows_suffixes(monkeypatch)
+    assets = [a for a in _release_assets() if "portable" not in a["name"].lower()]
+    url = _pick_asset(assets, prefer_portable=True)
+    assert url == "https://example.test/Quill-for-All-Setup-0.8.0.exe"
 
 _TEST_DEPLOY_KEY = "quill-test-deploy-key-for-unit-tests"
 

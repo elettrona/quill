@@ -1164,6 +1164,18 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         feature_id="core.read_aloud",
         keywords=("read aloud", "pause", "pacing", "timing"),
     ),
+    SettingSpec(
+        "read_aloud_follow_cursor",
+        "Move cursor to follow Read Aloud",
+        "read_aloud",
+        "bool",
+        "Select each sentence in the editor as it is spoken so you can follow "
+        "along. Off by default, because with a screen reader running this makes "
+        "it announce the selection over the Read Aloud voice. Turn it on if you "
+        "want the cursor to track what is being read.",
+        feature_id="core.read_aloud",
+        keywords=("read aloud", "follow", "cursor", "highlight", "selection", "screen reader"),
+    ),
     # --- AI and assistant --------------------------------------------------
     SettingSpec(
         "assistant_enabled",

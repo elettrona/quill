@@ -432,7 +432,10 @@ class VoiceBrowserDialog:
         elif eng == "piper":
             self._download_btn.SetLabel("&Download Piper Voice...")
             self._download_btn.Show(True)
-        elif eng == "kokoro":
+        elif eng == "kokoro" and not eng_ok:
+            # Kokoro ships as one pack; once the models are downloaded there is
+            # nothing more to fetch, so hide the button rather than offer a
+            # redundant 114 MB re-download.
             self._download_btn.SetLabel("&Download Kokoro — all voices, one pack (~114 MB)...")
             self._download_btn.Show(True)
         elif eng == "espeak" and not eng_ok:

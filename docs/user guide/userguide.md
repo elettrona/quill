@@ -1178,6 +1178,7 @@ If you prefer to keep your text on your machine entirely:
 - **Stop Reading** stops current read-aloud immediately
 - **Say Selected** reads the current selection aloud
 - **Read All** reads from the cursor to the end of the document
+- **Move cursor to follow Read Aloud** (Settings → Read Aloud) makes the cursor select each sentence as it is read, so the caret tracks what you hear and stops where the reading stopped. It is **off by default**: with a screen reader running, moving the selection makes the screen reader announce "selected" over the Read Aloud voice. Sighted and low-vision users who want the cursor to follow the reading can turn it on.
 - **Dictation** submenu for Windows dictation, plus an opt-in **Hey QUILL Commands** toggle that lets dictation phrases trigger Quill commands instead of inserting text.
 - **OCR Image...** converts an image to text via optical character recognition.
 
@@ -1326,7 +1327,7 @@ The **Help** menu is where Quill becomes a guide.
 - **Feature Profiles** commands let you switch profile, run health checks, undo the last profile change, reset to Essential, and run onboarding.
 - **Personalise QUILL...** (the first-run setup wizard) can be rerun at any time to adjust your keyboard pack, feature profile, remote access, AI, reading and accessibility, writing tools, data location, and startup behaviour.
 - **Report a Bug...** opens an in-app review screen, copies the environment summary to the clipboard, and then opens the Community Access support-hub issue form.
-- **Check for Updates...** verifies the signed update manifest, opens the installer download page, and can close Quill so setup can run immediately.
+- **Check for Updates...** verifies the signed update manifest, offers the download, and can close Quill so setup can run immediately. If you are running the **portable** build, QUILL recognises this and offers the portable `.zip` for the new version instead of pushing the installer at you — it downloads to your updates folder with an **Open folder** button so you can swap it into place. Installed copies keep receiving the installer.
 - **About Quill** shows version, publisher details, and linked third-party dependency attribution with license and version metadata.
 - **Open Third-Party Notices** opens a full notices document with dependency tables and bundled license texts.
 

@@ -218,6 +218,11 @@ class Settings:
     quick_nav_min_chars: int = 1
     announcement_throttle_ms: int = 0
     read_aloud_sentence_pause_ms: int = 0
+    # When True, Read Aloud selects each sentence as it is spoken so sighted
+    # users can follow along. Off by default: QUILL is screen-reader-first, and
+    # moving the selection makes the screen reader announce "selected" over
+    # QUILL's chosen voice. Sighted/low-vision users can opt in.
+    read_aloud_follow_cursor: bool = False
     # OCR-2: image-to-text engine selection
     ocr_engine: str = "auto"
     # SHELL-1: file-manager "Send to Quill" context-menu verbs
@@ -723,6 +728,7 @@ class Settings:
         read_aloud_sentence_pause_ms = _clamp_int(
             data.get("read_aloud_sentence_pause_ms", 0), 0, 0, 2000
         )
+        read_aloud_follow_cursor = bool(data.get("read_aloud_follow_cursor", False))
         # OCR-2: image-to-text engine selection
         ocr_engine = str(data.get("ocr_engine", "auto")).strip().lower()
         if ocr_engine not in {"auto", "windows"}:
@@ -1113,6 +1119,7 @@ class Settings:
             quick_nav_min_chars=quick_nav_min_chars,
             announcement_throttle_ms=announcement_throttle_ms,
             read_aloud_sentence_pause_ms=read_aloud_sentence_pause_ms,
+            read_aloud_follow_cursor=read_aloud_follow_cursor,
             ocr_engine=ocr_engine,
             shell_integration_enabled=shell_integration_enabled,
             shell_verb_ocr=shell_verb_ocr,

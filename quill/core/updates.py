@@ -157,8 +157,33 @@ def _platform_asset_suffixes() -> tuple[str, ...]:
     return (".appimage", ".tar.gz", ".zip")
 
 
-def _pick_asset(assets: list) -> str:
-    """Choose the real installer for this platform; skip provenance/checksums/etc."""
+def running_portable() -> bool:
+    """True when this QUILL is a verified portable bundle (not an installed copy).
+
+    A portable user updates by replacing the bundle, so they should be handed the
+    portable .zip rather than the installer. Best-effort: any failure (or a
+    non-portable install) reports False so asset selection falls back to the
+    installer as before.
+    """
+    try:
+        from quill.core.storage_mode import portable_root_dir
+
+        return portable_root_dir() is not None
+    except Exception:  # noqa: BLE001 - detection must never break update checks
+        return False
+
+
+def _pick_asset(assets: list, *, prefer_portable: bool | None = None) -> str:
+    """Choose the real installer for this platform; skip provenance/checksums/etc.
+
+    On a portable install we prefer the portable bundle .zip (e.g.
+    ``Quill-Portable-<version>.zip``) and skip the installer .exe, so Check for
+    Updates does not push the installer onto a portable user. The portable bundle
+    is matched by name ("portable") so the unrelated delta ``*-update-windows.zip``
+    artifact is never mistaken for it.
+    """
+    if prefer_portable is None:
+        prefer_portable = running_portable()
     usable: list[tuple[str, str]] = []
     for asset in assets:
         if not isinstance(asset, dict):
@@ -172,6 +197,12 @@ def _pick_asset(assets: list) -> str:
         if any(keyword in name for keyword in _SKIP_ASSET_KEYWORDS):
             continue
         usable.append((name, str(url)))
+    # Portable installs: prefer the portable bundle .zip over the installer.
+    if prefer_portable:
+        for name, url in usable:
+            if name.endswith(".zip") and "portable" in name:
+                return url
+        # No portable asset published — fall through to the normal order.
     # Prefer the current platform's installer extension.
     for suffix in _platform_asset_suffixes():
         for name, url in usable:
@@ -478,6 +509,7 @@ __all__ = [
     "parse_update_manifest",
     "resolve_manifest_url",
     "resolve_releases_api_url",
+    "running_portable",
     "manifest_signature",
     "verify_manifest_signature",
 ]

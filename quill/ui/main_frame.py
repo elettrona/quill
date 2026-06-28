@@ -403,6 +403,7 @@ from quill.core.updates import (
     fetch_update_manifest,
     find_release,
     is_newer_version,
+    running_portable,
     select_latest,
 )
 from quill.core.url_ops import format_content_length
@@ -17249,18 +17250,24 @@ class MainFrame(
 
         # --- Handle Read Aloud result ---
         if ra_result is not None:
+            # Downloads open a non-modal progress dialog. The hub modal is still
+            # tearing down here, so creating it inline lets focus snap back to the
+            # editor and the screen reader never announces the progress window
+            # (the user is "thrown back to the document with no notification").
+            # Deferring with CallAfter runs the download after the modal fully
+            # closes, so the progress dialog presents and is announced.
             if ra_result.action == "download":
                 if ra_result.engine == "piper":
-                    self._download_piper_voice(ra_result.voice_id)
+                    wx.CallAfter(self._download_piper_voice, ra_result.voice_id)
                 elif ra_result.engine == "kokoro":
-                    self._download_kokoro_models()
+                    wx.CallAfter(self._download_kokoro_models)
             elif ra_result.action == "download_engine":
                 if ra_result.engine == "dectalk":
-                    self.download_dectalk_exe()
+                    wx.CallAfter(self.download_dectalk_exe)
                 elif ra_result.engine == "piper":
-                    self.download_piper_exe()
+                    wx.CallAfter(self.download_piper_exe)
                 elif ra_result.engine == "espeak":
-                    self.download_espeak_exe()
+                    wx.CallAfter(self.download_espeak_exe)
             else:  # 'select' or 'export'
                 eng = ra_result.engine
                 piper_dir = default_piper_model_dir()
@@ -17708,8 +17715,12 @@ class MainFrame(
         )
 
     def _on_read_aloud_progress(self, start: int, end: int) -> None:
-        self.editor.SetSelection(start, end)
-        self.editor.SetFocus()
+        # Following along selects each sentence as it is spoken. With a screen
+        # reader running this makes it announce the selection over QUILL's voice,
+        # so it is gated behind a setting screen-reader users can turn off.
+        if self.settings.read_aloud_follow_cursor:
+            self.editor.SetSelection(start, end)
+            self.editor.SetFocus()
         self._set_status("Read aloud speaking")
 
     def _on_read_aloud_state_change(self, state: str) -> None:
@@ -19303,19 +19314,26 @@ class MainFrame(
 
         beta = bool(getattr(self.settings, "beta_updates", False))
         self._update_check_in_progress = True
+        # Portable installs update by replacing the bundle, not by running the
+        # installer. The signed manifest feed only carries the installer URL, so
+        # for a portable build we skip it and use the GitHub releases path, which
+        # exposes every asset and (via _pick_asset) selects the portable .zip.
+        portable = running_portable()
 
         def _run_fetch():
             manifest: UpdateManifest | None = None
             releases: list[GitHubRelease] | None = None
             fetch_error: str | None = None
             try:
-                try:
-                    # URL resolves the QUILL_UPDATE_MANIFEST_URL override (default:
-                    # the production signed-manifest feed) so a release can be
-                    # rehearsed against a throwaway feed without code changes.
-                    manifest = fetch_update_manifest()
-                except (URLError, ValueError, OSError):
-                    pass
+                if not portable:
+                    try:
+                        # URL resolves the QUILL_UPDATE_MANIFEST_URL override
+                        # (default: the production signed-manifest feed) so a
+                        # release can be rehearsed against a throwaway feed
+                        # without code changes.
+                        manifest = fetch_update_manifest()
+                    except (URLError, ValueError, OSError):
+                        pass
                 if manifest is None or not is_newer_version(current_version, manifest.version):
                     releases = fetch_releases()
             except (URLError, ValueError, OSError) as exc:

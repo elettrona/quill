@@ -117,6 +117,14 @@ keys line up again.
   an editable plain control still reads correctly. RichEdit 2.0 is offered as a
   middle option. The control-type change applies to documents opened after it
   (restart to apply everywhere).
+- **Downloading Kokoro voices now shows its progress instead of dropping you back
+  at the document.** Starting the Kokoro voice-pack download from Manage Voices
+  appeared to do nothing: focus snapped back to the editor and the progress window
+  was never announced, because it opened while the Manage Voices dialog was still
+  closing. The download now opens after that dialog is fully gone, so the progress
+  window presents and your screen reader announces it. Once the Kokoro models are
+  present, the redundant 114 MB download button is hidden rather than offered
+  again.
 
 ### Enhancements
 
@@ -133,6 +141,19 @@ keys line up again.
   at that position, QUILL tells you and stays put. The Window menu also lists your
   open documents with these shortcuts shown beside them, and the keys are
   remappable in the Keymap Editor.
+- **Quieter Read Aloud for screen-reader users.** While Read Aloud played, QUILL
+  selected each sentence in the editor to follow along — which made your screen
+  reader announce the selection ("...selected") over QUILL's chosen voice. This
+  follow-along is now **off by default**, so the cursor stays put and only the
+  Read Aloud voice is heard. Sighted and low-vision users who want the cursor to
+  track what is being read can turn it back on with the new **Move cursor to
+  follow Read Aloud** setting (Settings → Read Aloud).
+- **Portable installs update to the portable build, not the installer.** Check for
+  Updates now recognises when you are running the portable bundle and offers the
+  portable **.zip** for that release instead of pushing the Windows installer at
+  you. The download lands in your updates folder with an **Open folder** button so
+  you can swap it into place; installed copies keep getting the installer exactly
+  as before.
 
 ---
 
