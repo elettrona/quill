@@ -55,7 +55,11 @@ OPTIONS = {
     # ``.dylibs`` (libjpeg, libfreetype, libwebp, ...); inside the zip those
     # dylibs cannot be code-signed, which fails notarization. Keeping PIL
     # unzipped puts them in ``PIL/.dylibs/`` where the inside-out signing pass
-    # in build_macos.sh reaches them.
+    # in build_macos.sh reaches them. protobuf ships the native
+    # ``google/_upb/_message.abi3.so`` for the same reason, but ``google`` is a
+    # PEP 420 namespace package (no ``__init__.py``) that py2app's package
+    # finder cannot resolve, so it cannot be listed here. build_macos.sh instead
+    # lifts any native binary out of python311.zip before signing.
     "packages": ["quill", "PIL"],
     "includes": ["wx"],
     "plist": {

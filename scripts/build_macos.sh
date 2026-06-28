@@ -13,6 +13,27 @@ python scripts/setup_macos.py py2app
 APP="dist/Quill.app"
 DMG="dist/Quill.dmg"
 
+# Lift native binaries out of python311.zip. py2app packs pure-Python packages
+# into python311.zip, but a package that ships an extension module (protobuf's
+# google/_upb/_message.abi3.so) gets zipped along with its .so. dlopen cannot
+# load a Mach-O from inside a zip, and codesign cannot sign one there either, so
+# notarization rejects it ("binary is not signed"). PIL avoids this by being
+# listed in setup_macos.py's `packages`, but `google` is a PEP 420 namespace
+# package py2app's finder can't resolve. Extract any top-level package that
+# carries a native binary into the on-disk site dir (already on sys.path) and
+# drop it from the zip, so the inside-out signing pass below reaches the .so.
+ZIP="$APP/Contents/Resources/lib/python311.zip"
+SITE="$APP/Contents/Resources/lib/python3.11"
+if [[ -f "$ZIP" ]]; then
+  NATIVE_PKGS=$(unzip -Z1 "$ZIP" | grep -iE '\.(so|dylib)$' | grep -v '\.dSYM/' \
+    | cut -d/ -f1 | sort -u)
+  for pkg in $NATIVE_PKGS; do
+    echo "==> Lifting native package '$pkg' out of python311.zip"
+    ( cd "$SITE" && unzip -oq "../python311.zip" "$pkg/*" )
+    zip -dq "$ZIP" "$pkg/*"
+  done
+fi
+
 if [[ -n "${IDENTITY:-}" ]]; then
   echo "==> Codesigning (hardened runtime, inside-out)"
   # --deep is unreliable: it leaves nested .so/.dylib without a Developer ID
