@@ -1006,6 +1006,45 @@ markup-aware editing of existing text.</p>
 <li>Bold</li>
 <li>Italic</li>
 </ul>
+<p><strong>Rich formatting with hidden codes (new in 0.8.0 Beta
+2).</strong> Beyond Bold and Italic, the Format menu now applies real
+document formatting that stays invisible in your editor:
+<strong>Underline</strong>, <strong>Strikethrough</strong>,
+<strong>Superscript</strong>, <strong>Subscript</strong>,
+<strong>Font</strong> (family), <strong>Size</strong> (point size),
+<strong>Text Colour</strong>, <strong>Highlight</strong>, and paragraph
+<strong>Alignment</strong> (Left / Centre / Right / Justify), line
+spacing, indent, and named styles. The idea is <em>hidden codes</em>:
+your editing buffer stays clean, fast, plain text — the formatting is
+stored as invisible markup, never as on-screen clutter — and is
+materialised into real formatting only when you export. So you read and
+edit clean prose, and the document still becomes a properly formatted
+Word, RTF, or HTML file on save.</p>
+<ul>
+<li><strong>Apply it</strong> from the Format menu’s Font / Size / Align
+/ Colour / Highlight items, or from the accessible
+<strong>Font…</strong> dialog, which gathers font family, point size,
+colour, and highlight in one place. With text selected, the formatting
+applies to the selection; with no selection it applies as you type.</li>
+<li><strong>Hear what’s there.</strong> Because the codes are hidden,
+<strong>Describe Formatting at Cursor</strong> speaks exactly what is in
+effect at the caret — for example “Arial, 14 point, centred, bold”. Turn
+on <strong>Announce formatting on caret move</strong> (Settings →
+Accessibility) to hear formatting changes as you arrow through a
+document.</li>
+<li><strong>It exports faithfully.</strong> On <strong>Save As</strong>
+(or Export) to <strong>Word (.docx)</strong>, <strong>Rich Text
+(.rtf)</strong>, or <strong>HTML</strong>, the hidden codes become real
+formatting — font, size, colour, highlight, alignment, and the rest.
+Word export uses a native writer when the optional
+<code>python-docx</code> component is present and falls back to Pandoc
+otherwise. If a target format genuinely cannot carry something, Quill
+tells you before you commit rather than dropping it silently; saving to
+plain text drops the formatting with the same honest warning.</li>
+</ul>
+<p>Everything that makes Quill fast still works on the same clean text:
+undo, search, the outline, word counts, read-aloud, and the AI tools all
+operate on your prose, not on markup.</p>
 <p>The <strong>Transform Lines</strong> submenu gathers every line and
 text transform in one place: <strong>Number Lines…</strong>,
 <strong>Number Lines (Advanced)…</strong>, <strong>Hard-Wrap

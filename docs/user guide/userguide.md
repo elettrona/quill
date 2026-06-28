@@ -442,6 +442,14 @@ Inline emphasis:
 - Bold
 - Italic
 
+**Rich formatting with hidden codes (new in 0.8.0 Beta 2).** Beyond Bold and Italic, the Format menu now applies real document formatting that stays invisible in your editor: **Underline**, **Strikethrough**, **Superscript**, **Subscript**, **Font** (family), **Size** (point size), **Text Colour**, **Highlight**, and paragraph **Alignment** (Left / Centre / Right / Justify), line spacing, indent, and named styles. The idea is *hidden codes*: your editing buffer stays clean, fast, plain text — the formatting is stored as invisible markup, never as on-screen clutter — and is materialised into real formatting only when you export. So you read and edit clean prose, and the document still becomes a properly formatted Word, RTF, or HTML file on save.
+
+- **Apply it** from the Format menu's Font / Size / Align / Colour / Highlight items, or from the accessible **Font...** dialog, which gathers font family, point size, colour, and highlight in one place. With text selected, the formatting applies to the selection; with no selection it applies as you type.
+- **Hear what's there.** Because the codes are hidden, **Describe Formatting at Cursor** speaks exactly what is in effect at the caret — for example "Arial, 14 point, centred, bold". Turn on **Announce formatting on caret move** (Settings → Accessibility) to hear formatting changes as you arrow through a document.
+- **It exports faithfully.** On **Save As** (or Export) to **Word (.docx)**, **Rich Text (.rtf)**, or **HTML**, the hidden codes become real formatting — font, size, colour, highlight, alignment, and the rest. Word export uses a native writer when the optional `python-docx` component is present and falls back to Pandoc otherwise. If a target format genuinely cannot carry something, Quill tells you before you commit rather than dropping it silently; saving to plain text drops the formatting with the same honest warning.
+
+Everything that makes Quill fast still works on the same clean text: undo, search, the outline, word counts, read-aloud, and the AI tools all operate on your prose, not on markup.
+
 The **Transform Lines** submenu gathers every line and text transform in one place: **Number Lines...**, **Number Lines (Advanced)...**, **Hard-Wrap Lines...**, **Sort Lines Ascending**, **Sort Lines Descending**, **Reverse Lines**, **Remove Duplicate Lines**, **Trim Trailing Whitespace**, **Normalize Whitespace**, **Convert Indentation to Spaces**, and **Convert Indentation to Tabs**. **Number Lines (Advanced)...** adds a starting number, increment, digit or Roman-numeral style, zero-padding width, a custom suffix, and left or right alignment, for cases the simple version doesn't cover.
 
 ### Navigate
