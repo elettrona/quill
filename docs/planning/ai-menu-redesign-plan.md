@@ -399,25 +399,31 @@ Each phase ships independently and leaves the menu coherent.
   - **Status-bar engine control — already present** (`open_ai_engine_switcher` is
     the status-bar engine cell's Enter action; `ai_engine_status_text` drives the
     label; `cycle_ai_engine` is the hotkey).
-  - **Deferred — and the deletion is NOT mechanical (2026-06-28 finding).** The
-    superseded surfaces are out of every menu but stay command-reachable for the
-    deprecation window. A blind deletion is unsafe because the "legacy" backing is
-    now entangled with *live* code:
-    - `core.assistant_agents` is not dead: `AgentPlan` is used by
-      `core.ai.agent_session`, and `agent_profiles()` / `build_agent_plan()` drive a
-      *live* agent-run path (`main_frame` ~22328) and the Writing Assistant dialog.
-      So this module stays; only the Agent Center **dialog** is deprecated UI.
-    - `core.assistant_prompts` backs the active startup prompt migration
-      (`prompt_migration.consolidate_prompts` reads `load_custom_prompts`). Deleting
-      it would orphan unmigrated user prompts.
-    - The four dialogs live in the 2000-line `assistant_tools.py` alongside *live*
-      dialogs (e.g. `DiffReviewDialog`) and cross-wire (Prompt Studio / Agent Center
-      have "use this prompt" → Writing Assistant handoffs).
-    Safe deletion sequence (a focused, reviewed change — do NOT rush): (1) move the
-    still-live `AgentPlan` / `build_agent_plan` / `agent_profiles` out of the
-    "legacy" module into a clearly-live home; (2) sunset the prompt migration before
-    removing `assistant_prompts`; (3) split the deprecated dialogs out of
-    `assistant_tools.py` and delete them with their commands/ids/bindings and tests.
+  - **Deprecated dialogs — RETIRED (2026-06-28).** Chat is now one magical door,
+    and the redundant management dialogs are gone:
+    - **Ask AI → Ask Quill.** `AskAIDialog` deleted (`ai_chat_dialog.py` is now just
+      the read-only `AIResponseDialog`); `open_ask_ai` / `tools.ask_ai` removed. The
+      unified, context-aware companion (`tools.ask_quill_chat`) is the only chat door.
+    - **Prompt Studio → AI Library (Prompts).** `PromptStudioDialog` deleted; its
+      entry points redirect to `open_ai_library`.
+    - **Agent Center → AI Library (Agents).** `AgentCenterDialog` deleted; redirects
+      to `open_ai_library`.
+    `assistant_tools.py` ratcheted 2020 → 1577; the live dialogs (RunPython,
+    AccessibilityAgent, DiffReview, ModelPicker, Hub, Connection) are untouched, and
+    the live `assistant_agents` / `assistant_prompts` modules stay (they back the
+    agent-run path and the prompt migration). Dialog-specific tests removed;
+    inventory + public-surface snapshots regenerated.
+  - **Writing Assistant — RETAINED on purpose (not a chat door).** It is the result
+    surface for the inline writing-action verbs (rewrite / summarize / continue /
+    fix grammar), which carry nuanced behavior — paragraph-vs-document fallback and a
+    `summarize` agent via `build_agent_plan`. Those verbs are already out of the menu
+    (the Action Ring + Run Agent are the menu path); fully retiring the dialog means
+    rebuilding the verb→result flow onto the gateway, a deliberate feature refactor
+    rather than a deprecation. Scoped as a future change; nothing user-facing depends
+    on it as a "door" today.
+  - `core.assistant_prompts` stays until the startup prompt migration
+    (`prompt_migration.consolidate_prompts`) is sunset — removing it would orphan
+    unmigrated user prompts.
 
 ## 12. Decision needed: the skills store
 
