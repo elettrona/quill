@@ -106,6 +106,7 @@ _REVIEWED_PERSISTENCE: dict[str, str] = {
     "core/ai/external_engine.py::set_external_engines_enabled": "marker",
     "core/speech/service.py::save_input_device": "marker",
     "core/ai/quick_switch.py::save_preferred_harness_id": "marker",
+    "core/ai/onboarding.py::_save_state": "marker",
     # --- content (user-created data; additive) ---
     "core/abbreviations.py::save_abbreviation_library": "content",
     "core/assistant_prompts.py::save_custom_prompts": "content",
