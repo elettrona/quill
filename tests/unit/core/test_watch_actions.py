@@ -524,6 +524,53 @@ def test_whisperer_transcribe_writes_sibling_transcript(tmp_path: Path) -> None:
     assert captured["model_id"] == "base"
 
 
+class _FakeActionBackend:
+    def __init__(self, *_a: object, **_k: object) -> None: ...
+
+    def is_available(self) -> tuple[bool, None]:
+        return (True, None)
+
+    def respond(self, _prompt: str) -> str:
+        return "## Minutes\n- decided to ship"
+
+
+def test_whisperer_transcribe_then_runs_ai_action(tmp_path: Path, monkeypatch) -> None:
+    import quill.core.ai.model_manager as mm
+    import quill.core.ai.provider_backend as pb
+
+    monkeypatch.setattr(mm, "load_ai_enabled", lambda: True)
+    monkeypatch.setattr(pb, "ProviderChatBackend", _FakeActionBackend)
+
+    audio = tmp_path / "standup.mp3"
+    audio.write_bytes(b"x")
+    action = WhispererTranscribeAction(on_transcribe=_transcriber(_result("we decided to ship")))
+    outcome = action.run(_item(audio), {"transcript_action": "meeting-minutes"})
+
+    assert outcome.status == OUTCOME_DONE
+    # The transcript and the action document are both written next to the audio.
+    assert audio.with_suffix(".txt").read_text(encoding="utf-8") == "we decided to ship\n"
+    doc = audio.with_name("standup-meeting-minutes.md")
+    assert doc.read_text(encoding="utf-8").startswith("## Minutes")
+    assert "standup-meeting-minutes.md" in outcome.message
+
+
+def test_transcribe_action_skipped_when_ai_off_keeps_transcript(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import quill.core.ai.model_manager as mm
+
+    monkeypatch.setattr(mm, "load_ai_enabled", lambda: False)
+    audio = tmp_path / "note.mp3"
+    audio.write_bytes(b"x")
+    action = WhispererTranscribeAction(on_transcribe=_transcriber(_result("hello")))
+    outcome = action.run(_item(audio), {"transcript_action": "meeting-minutes"})
+
+    assert outcome.status == OUTCOME_DONE  # the transcript still succeeds
+    assert audio.with_suffix(".txt").exists()
+    assert not audio.with_name("note-meeting-minutes.md").exists()
+    assert "AI is off" in outcome.message
+
+
 def test_whisperer_transcribe_srt_writes_timestamped_captions(tmp_path: Path) -> None:
     audio = tmp_path / "talk.mp3"
     audio.write_bytes(b"x")

@@ -18,8 +18,19 @@ from __future__ import annotations
 import threading
 from typing import TYPE_CHECKING, Any
 
+# generate_action_text lives in core now (shared with the watch worker); re-exported
+# here so existing callers/tests keep importing it from this module.
+from quill.core.ai.transcript_actions import generate_action_text
+
 if TYPE_CHECKING:
     from quill.core.ai.transcript_actions import TranscriptAction
+
+__all__ = [
+    "build_action_labels",
+    "generate_action_text",
+    "offer_transcript_actions",
+    "run_transcript_actions_on_document",
+]
 
 _JUST_TRANSCRIPT = "Just keep the transcript"
 
@@ -29,17 +40,6 @@ def build_action_labels(actions: list[TranscriptAction]) -> list[str]:
     labels = [f"{a.name} — {a.description}" for a in actions]
     labels.append(_JUST_TRANSCRIPT)
     return labels
-
-
-def generate_action_text(
-    action: TranscriptAction, transcript: str, backend: Any
-) -> tuple[str | None, str | None]:
-    """Run one action over the transcript via ``backend``. Returns (text, error)."""
-    try:
-        text = backend.respond(action.build_prompt(transcript))
-    except Exception as exc:  # noqa: BLE001 - surface a clean message, never crash
-        return None, str(exc)
-    return (text or ""), None
 
 
 def _action_backend() -> Any | None:

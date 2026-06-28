@@ -27,7 +27,35 @@ __all__ = [
     "recommend_actions",
     "transcript_has_speakers",
     "action_to_skill_source",
+    "generate_action_text",
+    "run_action_by_id",
 ]
+
+
+def generate_action_text(
+    action: TranscriptAction, transcript: str, backend: object
+) -> tuple[str | None, str | None]:
+    """Run one action over the transcript via ``backend``. Returns (text, error).
+
+    ``backend`` is anything with a ``respond(prompt) -> str`` method (e.g.
+    :class:`~quill.core.ai.provider_backend.ProviderChatBackend`). Errors are
+    returned, never raised, so callers (UI dialog, watch worker) stay alive.
+    """
+    try:
+        text = backend.respond(action.build_prompt(transcript))  # type: ignore[attr-defined]
+    except Exception as exc:  # noqa: BLE001 - surface a clean message, never crash
+        return None, str(exc)
+    return (text or ""), None
+
+
+def run_action_by_id(
+    transcript: str, action_id: str, backend: object
+) -> tuple[str | None, str | None]:
+    """Find an action by id and run it over the transcript. Returns (text, error)."""
+    action = find_action(action_id)
+    if action is None:
+        return None, f"Unknown transcript action: {action_id!r}."
+    return generate_action_text(action, transcript, backend)
 
 
 def action_to_skill_source(name: str, instruction: str, *, description: str = "") -> str:
