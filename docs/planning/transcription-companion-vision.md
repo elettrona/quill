@@ -168,24 +168,32 @@ always one keystroke away and never in the way.
 
 ## 7. Phased delivery (grounded, shippable)
 
-- **Phase A — Transcript Actions as bundled skills.** Port the seven BW presets into
-  QUILL skill packs; add the post-transcription "What would you like me to make of this?"
-  Concierge moment over the existing transcription result path. *No new stores — reuses
-  the AI Library + gateway.*
-- **Phase B — The guided Action Builder.** A wx wizard that writes Skills / user Agents
-  via `skill_store` / `save_user_agent`, with presets, plain-language instructions,
-  preview, and Save. Inherits Run/Promote/Share automatically.
-- **Phase C — Reference attachments.** Extend the context layer so an action can carry
+- **Phase A — Transcript Actions — SHIPPED (2026-06-28).** `quill/core/ai/transcript_actions.py`
+  (wx-free): the seven BW-derived actions as named, plain-language, adjustable instructions
+  with a prompt builder and context-aware `recommend_actions`. `quill/ui/transcript_actions_ui.py`
+  adds the post-transcription "What would you like me to make of this?" chooser (runs the
+  picked action through the configured provider, opens the result in a new buffer) **and** a
+  "Transcript Actions..." menu item (AI > Transcribe) so the magic is reachable on the
+  current document anytime. Reuses the provider stack; degrades gently when AI is off.
+- **Phase B — The guided Action Builder — SHIPPED (2026-06-28).** `quill/ui/action_builder_dialog.py`:
+  a no-syntax form (name, Start-from preset, plain-language instructions, optional Preview,
+  Save) that writes a Skill via `transcript_actions.action_to_skill_source` + `skill_store`,
+  reached from the AI Library Skills tab ("Build Action..."). Inherits Run/Edit/Enable/
+  Export/Promote automatically.
+- **Phase C — Reference attachments — NEXT.** Extend the context layer so an action can carry
   consented reference docs; surface "Attach a reference..." in the builder and at run.
-- **Phase D — Automation.** Connect watch-folder profiles and the scheduler to AI
-  Actions ("transcribe → run action → save"), DND-aware, with gentle completion
-  announcements.
-- **Phase E — Live & diarized actions.** Stream actions over live, diarized
-  transcription; same review surface.
+- **Phase D — Automation — NEXT (high value).** The watch engine already has `AiAction` and
+  transcribe actions; wire watch-folder profiles to chain "transcribe → run a Transcript
+  Action → save the doc", DND-aware, with gentle completion announcements. Needs a small
+  profile-editor affordance to pick the action.
+- **Phase E — Live & diarized actions.** Stream actions over live, diarized transcription;
+  same review surface. (Larger — its own effort.)
 - **Phase F — Experience modes & onboarding.** A Basic/Guided first-run for the listening
   workflow; per-action welcome text; "grow into power" prompts.
 
-Each phase ships independently and leaves a coherent, delightful product.
+Each phase ships independently and leaves a coherent, delightful product. **Status:** the
+headline magic (A + B) is live and green; C–F remain, with D (automation) the
+highest-value next step.
 
 ---
 
