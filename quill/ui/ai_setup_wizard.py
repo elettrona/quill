@@ -266,7 +266,14 @@ class AISetupWizard:
                 return False
             ob.apply_cloud_setup(self._provider, key)
         else:
-            ob.apply_on_device_setup()
+            # Don't "configure" Ollama before it's actually there — verify it's
+            # reachable with a model, and use one the user genuinely has installed.
+            self._set_status("Checking for Ollama on your computer...")
+            ok, message, model = ob.ollama_status()
+            if not ok:
+                self._set_status(message)
+                return False
+            ob.apply_on_device_setup(model=model)
         self._configured = True
         return True
 

@@ -70,9 +70,34 @@ def test_skip_path_jumps_to_done_without_configuring(wx_app, monkeypatch):
         frame.Destroy()
 
 
+def test_on_device_blocks_when_ollama_missing_then_proceeds(wx_app, monkeypatch):
+    frame, dlg = _wizard(wx_app)
+    applied = []
+    monkeypatch.setattr(ob, "apply_on_device_setup", lambda **k: applied.append(k.get("model")))
+    try:
+        dlg._go_next()  # path
+        dev_idx = next(i for i, p in enumerate(ob.ONBOARDING_PATHS) if p.id == "on_device")
+        dlg._path_choice.SetSelection(dev_idx)
+        dlg._on_path_changed(None)
+        dlg._go_next()  # -> on-device config
+        # Ollama not present: Next does not advance, shows guidance, configures nothing.
+        monkeypatch.setattr(ob, "ollama_status", lambda *a, **k: (False, "install ollama", ""))
+        dlg._go_next()
+        assert dlg._step == 2 and applied == []
+        assert "ollama" in dlg._status.GetLabel().lower()
+        # Ollama present with a model: now it applies (using that model) and advances.
+        monkeypatch.setattr(ob, "ollama_status", lambda *a, **k: (True, "", "llama3.2:1b"))
+        dlg._go_next()
+        assert dlg._step == 3 and applied == ["llama3.2:1b"]
+    finally:
+        dlg.close()
+        frame.Destroy()
+
+
 def test_finish_persists_experience_mode_and_completion(wx_app, tmp_path, monkeypatch):
     monkeypatch.setattr(ob, "onboarding_state_path", lambda: tmp_path / "ai" / "onboarding.json")
     monkeypatch.setattr(ob, "apply_on_device_setup", lambda *a, **k: None)
+    monkeypatch.setattr(ob, "ollama_status", lambda *a, **k: (True, "", "llama3.2:1b"))
     frame, dlg = _wizard(wx_app)
     try:
         dlg._go_next()  # path

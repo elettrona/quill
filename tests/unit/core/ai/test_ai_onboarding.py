@@ -58,6 +58,25 @@ def test_completion_state_persists_and_resets(tmp_path, monkeypatch) -> None:
     assert ob.onboarding_complete() is False
 
 
+def test_ollama_status_classifies_reachability(monkeypatch) -> None:
+    import quill.core.assistant_ai as aa
+
+    # Reachable with models -> ok, returns a real installed model.
+    monkeypatch.setattr(aa, "list_assistant_models", lambda *a, **k: (["gemma3:4b", "x"], None))
+    ok, msg, model = ob.ollama_status()
+    assert ok is True and msg == "" and model == "gemma3:4b"
+
+    # Not running (error) -> not ok, friendly guidance, no model.
+    monkeypatch.setattr(aa, "list_assistant_models", lambda *a, **k: ([], "connection refused"))
+    ok, msg, model = ob.ollama_status()
+    assert ok is False and "ollama.com" in msg.lower() and model == ""
+
+    # Running but no models -> not ok, guidance to pull a model.
+    monkeypatch.setattr(aa, "list_assistant_models", lambda *a, **k: ([], None))
+    ok, msg, _model = ob.ollama_status()
+    assert ok is False and "pull" in msg.lower()
+
+
 def test_apply_cloud_setup_configures_provider_key_and_enables(monkeypatch) -> None:
     import quill.core.ai.model_manager as mm
     import quill.core.assistant_ai as aa

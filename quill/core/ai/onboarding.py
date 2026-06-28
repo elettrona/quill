@@ -7,10 +7,10 @@ possible, and the persisted state (was setup done, and is the user in the gentle
 the chosen configuration through the existing settings/provider functions, so the
 whole flow is unit-testable and the copy lives in one reviewable place.
 
-Design promises: no jargon, no dead ends, no required account. Every path can be
-finished or skipped in seconds, the on-device path needs nothing but a download, and
-the user lands in Basic mode by default so the AI surface stays small until they reach
-for more.
+Design promises: no jargon, no dead ends, no broken configurations. Every path can be
+finished or skipped in seconds; the on-device path verifies a usable local Ollama
+before it commits (``ollama_status``) so the user is never left "configured but not
+working"; and the wizard's "keep it simple" checkbox puts a newcomer in Basic mode.
 """
 
 from __future__ import annotations
@@ -39,6 +39,7 @@ __all__ = [
     "celebration_lines",
     "apply_cloud_setup",
     "apply_on_device_setup",
+    "ollama_status",
 ]
 
 EXPERIENCE_BASIC = "basic"
@@ -277,6 +278,47 @@ def apply_cloud_setup(provider_id: str, api_key: str, *, model: str = "") -> Non
         save_provider_api_key(provider_id, api_key.strip())
     save_provider_model(provider_id, chosen_model)
     save_ai_enabled(True)
+
+
+def ollama_status(host: str = "http://localhost:11434") -> tuple[bool, str, str]:
+    """Check whether a usable local Ollama is present. Returns ``(ok, message, model)``.
+
+    Used by the on-device setup path so QUILL never "configures" Ollama before it is
+    actually there to talk to. On success, ``model`` is a model that is genuinely
+    installed (so we never point the user at a model they don't have); on failure,
+    ``message`` is plain-language guidance to fix it. Fast-fails (short timeout, single
+    attempt) — a missing Ollama refuses the connection immediately.
+    """
+    from quill.core.ai.providers import default_model_for_provider
+    from quill.core.assistant_ai import AssistantConnectionSettings, list_assistant_models
+
+    settings = AssistantConnectionSettings(
+        provider="ollama", host=host, model=default_model_for_provider("ollama")
+    )
+    try:
+        models, error = list_assistant_models(settings, "", timeout_seconds=3.0, max_attempts=1)
+    except Exception:  # noqa: BLE001 - any failure means "not reachable", with guidance
+        return (
+            False,
+            "Could not reach Ollama on this computer. Install it free from ollama.com, "
+            "then try again — or choose 'Use an AI account' instead.",
+            "",
+        )
+    if error or not models:
+        if error:
+            return (
+                False,
+                "Ollama isn't running on this computer. Install it free from ollama.com "
+                "and start it, then try again — or choose 'Use an AI account' instead.",
+                "",
+            )
+        return (
+            False,
+            "Ollama is running but has no models yet. In a terminal run, for example, "
+            "'ollama pull llama3.2', then try again.",
+            "",
+        )
+    return True, "", models[0]
 
 
 def apply_on_device_setup(*, host: str = "http://localhost:11434", model: str = "") -> None:

@@ -3306,7 +3306,11 @@ announced focus context): a welcome, the one real choice — **on your device wi
 Ollama** (private, free), **use an AI account** (Claude / OpenAI / Gemini / OpenRouter
 / Ollama Cloud, with a key pasted once and stored in the OS secure store, plus a
 **Test connection** button), or **not right now** — a frictionless connect step, and a
-tailored celebration. The wx-free model owns the copy, the paths, the cloud-provider
+tailored celebration. Neither path lets the user finish into a broken state: cloud
+offers Test connection, and the on-device path **verifies a reachable local Ollama with
+an installed model (`ollama_status`) before it commits** — if Ollama isn't running or
+has no models, the step stays put with plain-language guidance (install from
+ollama.com / `ollama pull ...`) rather than configuring something that won't work. The wx-free model owns the copy, the paths, the cloud-provider
 options, the apply helpers (`apply_cloud_setup` / `apply_on_device_setup`), and the
 persisted state, so it is fully unit-testable. Reachable as the first AI menu item
 (**"Set Up AI... (start here)"** until done).
