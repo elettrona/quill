@@ -59,7 +59,13 @@ def test_unconfigured_falls_back_to_cli_sign_in() -> None:
     assert "gh auth login" in body
 
 
-def test_menu_wires_the_setup_item() -> None:
+def test_setup_is_reachable_from_the_hub_engines_tab() -> None:
+    # The standalone "Set Up GitHub Copilot" menu item folded into the AI Hub
+    # Engines tab (redesign §6.5): picking Copilot there and choosing Set Up opens
+    # this onboarding dialog. The status-bar engine cell also opens it via
+    # open_copilot_onboarding(), which remains wired in the menu module.
+    engines = Path("quill/ui/ai_hub_engines_panel.py").read_text(encoding="utf-8")
+    assert "CopilotOnboardingDialog(" in engines
+    assert 'harness_id == "copilot"' in engines
     menu = Path("quill/ui/main_frame_menu.py").read_text(encoding="utf-8")
-    assert '"tools.copilot_onboarding"' in menu
     assert "open_copilot_onboarding()" in menu

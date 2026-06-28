@@ -1990,25 +1990,19 @@ class MenuBuilderMixin:
         )
 
         # -- Configuration ----------------------------------------------------
-        # The AI Hub is the single config front door (provider, key, model, test).
+        # The AI Hub is the single config front door. Engine switching and GitHub
+        # Copilot setup now live in the Hub's Engines tab (and the status-bar
+        # engine cell + cycle hotkey), so the old "Engine & Sessions" submenu
+        # collapses: only Session Branches — which is a browser, not config —
+        # stays as a direct item alongside the Hub.
         ai_menu.Append(
             self._id_ai_hub,
             self._menu_label(_("AI &Hub..."), "tools.ai_hub"),
         )
-        engine_menu = wx.Menu()
-        engine_menu.Append(
-            self._id_ai_switch_engine,
-            self._menu_label(_("Switch AI &Engine"), "tools.ai_switch_engine"),
-        )
-        engine_menu.Append(
+        ai_menu.Append(
             self._id_ai_session_browser,
-            self._menu_label(_("Session &Branches..."), "tools.ai_session_browser"),
+            self._menu_label(_("AI Session &Branches..."), "tools.ai_session_browser"),
         )
-        engine_menu.Append(
-            self._id_ai_copilot_setup,
-            self._menu_label(_("Set Up GitHub &Copilot..."), "tools.copilot_onboarding"),
-        )
-        ai_menu.AppendSubMenu(engine_menu, _("&Engine && Sessions"))
         ai_menu.AppendSeparator()
 
         # -- Master switch ----------------------------------------------------
