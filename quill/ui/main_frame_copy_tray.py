@@ -155,7 +155,7 @@ class CopyTrayMixin:
         self._tray().copy_to(n, text)
         slot = self._tray().slot(n)
         label = f" ({slot.label})" if slot.label else ""
-        self._set_status(f"Copied to slot {n}{label}: {slot.preview(50)}")
+        self._set_status_quiet(f"Copied to slot {n}{label}: {slot.preview(50)}")
         self._announce(f"Copied to slot {n}{label}")
         self._update_paste_tray_labels()
         self._refresh_statusbar()
@@ -174,7 +174,7 @@ class CopyTrayMixin:
         self._tray().copy_to(n, text)
         slot = self._tray().slot(n)
         label = f" ({slot.label})" if slot.label else ""
-        self._set_status(f"Copied to slot {n}{label} (first empty): {slot.preview(50)}")
+        self._set_status_quiet(f"Copied to slot {n}{label} (first empty): {slot.preview(50)}")
         self._announce(f"Copied to slot {n} (first empty){label}")
         self._update_paste_tray_labels()
         self._refresh_statusbar()
@@ -233,7 +233,6 @@ class CopyTrayMixin:
         slot = self._tray().slot(n)
         label = f" ({slot.label})" if slot.label else ""
         self._set_status(f"Pasted from slot {n}{label}")
-        self._announce(f"Pasted from slot {n}{label}")
 
     def _peek_tray_slot(self, n: int) -> None:
         slot = self._tray().slot(n)
@@ -316,7 +315,6 @@ class CopyTrayMixin:
             slot = tray.slot(n)
             label = f" ({slot.label})" if slot.label else ""
             self._set_status(f"Pasted from slot {n}{label}")
-            self._announce(f"Pasted from slot {n}{label}")
         dlg.close()
         self._update_paste_tray_labels()
         self._refresh_statusbar()

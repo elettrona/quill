@@ -15,7 +15,7 @@ Second public 0.8.0 beta. Rolls up everything in Beta 1 (below) plus the feature
 ### Fixes
 
 - **Opening Word (and other) documents with QUILL set as the default app now works.** Pressing Enter on a document in your file manager (with QUILL as its default app) did nothing, because the launcher tried to *run* the document instead of opening it. QUILL now opens the file as expected. The installer's "Open" and right-click "Send to QUILL" commands were hardened too.
-- **"No misspellings found" is no longer spoken twice.** The interactive spell check announced the all-clear message through two paths; it now speaks once. (#728)
+- **Far less double-spoken chatter.** "No misspellings found" was one of many actions QUILL spoke twice — once from the status bar and again from an explicit announcement (because updating the status bar already speaks). Across the editor — updates, GitHub, SSH, dictation, the copy tray, profile switches, and more — these are now spoken exactly once, with the status bar still showing its (sometimes longer) text. A guard keeps the pattern from creeping back. (#728)
 - **Report a Bug is keyboard-navigable again, and submitting no longer seems to lose your text.** You can now Tab through the form (it was built on a window that did not pass Tab between fields), and on submit QUILL reliably announces that the report was copied to your clipboard — previously that confirmation was spoken as the window closed and got lost, so it looked like nothing happened. (#729)
 
 ### Enhancements

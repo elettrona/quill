@@ -89,7 +89,7 @@ class ProfilePickerMixin:
         else:
             self.features.switch_profile(result.profile_id)
             self._apply_accelerators()
-        self._set_status(f"Profile: {result.profile_name}")
+        self._set_status_quiet(f"Profile: {result.profile_name}")
         self._announce(f"Profile {result.profile_name}")
         self._persist_profile_startup_choices(result, config)
 
@@ -128,7 +128,7 @@ class ProfilePickerMixin:
         self._apply_accelerators()
         name = PROFILE_DEFINITIONS[target].name
         extension = normalize_extension(Path(str(path)).suffix)
-        self._set_status(f"Switched to {name} for {extension} files")
+        self._set_status_quiet(f"Switched to {name} for {extension} files")
         self._announce(f"Profile {name}")
 
     def _shift_held_at_launch(self) -> bool:

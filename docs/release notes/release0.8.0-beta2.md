@@ -62,7 +62,10 @@ self-contained file that keeps everything, save as Markdown, Word, or RTF.
 - **The AI Hub opens instead of crashing.** Activating the AI Hub on the 0.7.0
   line failed with a "lazy string" / lazy-loading error; it now opens to the
   provider/authorisation screen. (Community-Access/support #51, #53)
-- **"No misspellings found" is no longer spoken twice.** (#728)
+- **Far less double-spoken chatter.** "No misspellings found" was one of many
+  actions QUILL spoke twice — once from the status bar (which already speaks) and
+  again from a separate announcement. Across updates, GitHub, SSH, dictation, the
+  copy tray, and profile switches, these now speak exactly once. (#728)
 - **Report a Bug is keyboard-navigable again, and submitting no longer seems to
   lose your text** — you can Tab through the form, and QUILL reliably confirms the
   report was copied to your clipboard on submit for NVDA users. (#729)

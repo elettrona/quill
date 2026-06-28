@@ -7135,7 +7135,6 @@ class MainFrame(
     def _announce_brf_save_warning(self, message: str) -> None:
         """Surface the soft BRF save warning (#235): status + announcement."""
         self._set_status(message)
-        self._announce(message)
 
     def _announce(self, message: str, *, force: bool = False) -> None:
         self._status_message = message
@@ -7185,7 +7184,9 @@ class MainFrame(
         # The "Entered/Exited <name> dialog" cues are opt-out via the
         # announce_dialog_transitions setting; region tracking is unaffected.
         announce_transitions = (
-            announce if getattr(self.settings, "announce_dialog_transitions", True) else None
+            announce
+            if getattr(getattr(self, "settings", None), "announce_dialog_transitions", True)
+            else None
         )
         result = show_modal_dialog(
             dialog,
@@ -7217,7 +7218,9 @@ class MainFrame(
         return result
 
     def _show_message_box(self, message: str, caption: str, style: int) -> int:
-        speak_transitions = getattr(self.settings, "announce_dialog_transitions", True)
+        speak_transitions = getattr(
+            getattr(self, "settings", None), "announce_dialog_transitions", True
+        )
         self._region_tracker.enter(caption)
         if speak_transitions:
             announce(f"Entered {caption} dialog")
@@ -7558,7 +7561,7 @@ class MainFrame(
         )
         self._create_document_tab(document, select=True)
         self._record_recent(source_path)
-        self._set_status(f"Imported {source_path.name}")
+        self._set_status_quiet(f"Imported {source_path.name}")
         self._announce(f"Imported {source_path.name} as Markdown.")
 
     def import_document_other(self) -> None:
@@ -13188,7 +13191,6 @@ class MainFrame(
         if description:
             summary += f". {description}"
         self._set_status(summary)
-        self._announce(summary)
 
     def _apply_recommended_keymap_updates(self) -> None:
         """Force-once important default changes (e.g. Find -> Ctrl+F) at startup.
@@ -15335,7 +15337,7 @@ class MainFrame(
             self._last_language_suggestion = None  # allow auto-detection to re-suggest
             self._apply_statusbar_layout()
             self._request_menu_refresh()
-            self._set_status("Language: auto-detect from file")
+            self._set_status_quiet("Language: auto-detect from file")
             self._announce("Language set to auto-detect from file")
             return
 
@@ -15354,7 +15356,6 @@ class MainFrame(
         hint = self._save_as_hint_for_language(profile)
         message = f"Language set to {profile.name}." + (f" {hint}" if hint else "")
         self._set_status(message)
-        self._announce(message)
 
     def _save_as_hint_for_language(self, profile: object) -> str:
         """Save As tip when the pinned language's extension doesn't match the file.
@@ -15458,7 +15459,6 @@ class MainFrame(
             "Display language set to {name}. Restart QUILL to update all menus and dialogs."
         ).format(name=name)
         self._set_status(message)
-        self._announce(message)
 
     def format_auto_indent_newline(self) -> None:
         """Insert a newline with language-aware indentation."""
@@ -19254,7 +19254,7 @@ class MainFrame(
             pass
 
         if not silent_no_update:
-            self._set_status("Checking for updates...")
+            self._set_status_quiet("Checking for updates...")
             self._announce("Checking for updates")
 
         beta = bool(getattr(self.settings, "beta_updates", False))
@@ -19347,7 +19347,6 @@ class MainFrame(
                 f"# Update check failed\n\nCould not check for updates:\n\n`{fetch_error}`",
             )
             self._set_status("Update check failed")
-            self._announce("Update check failed")
             self._record_notification("Update check failed", "update")
             return
 
@@ -19411,7 +19410,7 @@ class MainFrame(
         if silent_no_update:
             self._record_notification("Update check found no newer version", "update")
             return
-        self._set_status("No update available")
+        self._set_status_quiet("No update available")
         self._announce("Quill is up to date")
         self._record_notification("Update check found no newer version", "update")
         if beta:
@@ -19432,7 +19431,7 @@ class MainFrame(
             return
         self.settings.beta_updates = True
         save_settings(self.settings)
-        self._set_status("Switched to the beta update channel")
+        self._set_status_quiet("Switched to the beta update channel")
         self._announce("Beta updates enabled")
         action = self._show_update_available_dialog(current_version, release)
         if action == "download":
@@ -19536,7 +19535,7 @@ class MainFrame(
                 f"{wheel_list}\n\n"
                 "**Restart QUILL** to load the new accessibility engine.",
             )
-            self._set_status(f"GLOW engine updated to {manifest.version}; restart to apply")
+            self._set_status_quiet(f"GLOW engine updated to {manifest.version}; restart to apply")
             self._announce(f"GLOW engine updated to {manifest.version}. Restart to apply.")
             self._record_notification(
                 f"GLOW engine updated to {manifest.version}; restart to apply", "update"
@@ -19547,7 +19546,7 @@ class MainFrame(
                 "GLOW update failed",
                 f"# GLOW update failed\n\n`{result.message}`{rollback}",
             )
-            self._set_status("GLOW update failed")
+            self._set_status_quiet("GLOW update failed")
             self._announce("GLOW update failed." + rollback)
             self._record_notification(f"GLOW update failed: {result.message}", "update")
 
@@ -19712,7 +19711,7 @@ class MainFrame(
         if result == wx.ID_YES and self._confirm_beta_channel():
             self.settings.beta_updates = True
             save_settings(self.settings)
-            self._set_status("Switched to the beta update channel")
+            self._set_status_quiet("Switched to the beta update channel")
             self._announce("Beta updates enabled")
             # Surface the latest prerelease right away so the user can install it,
             # even if its version matches the current build (they opted into beta).
@@ -19788,7 +19787,7 @@ class MainFrame(
         target_dir = app_data_dir() / "updates"
         target_dir.mkdir(parents=True, exist_ok=True)
         target = target_dir / (url.rsplit("/", 1)[-1] or f"quill-{release.version}")
-        self._set_status(f"Downloading update {release.version}...")
+        self._set_status_quiet(f"Downloading update {release.version}...")
         self._announce(f"Downloading update {release.version}")
 
         # Announce progress at coarse milestones so screen readers aren't flooded.
@@ -21071,7 +21070,6 @@ class MainFrame(
         entries = collect() if callable(collect) else []
         if not entries:
             self._set_status("No gallery snippets are available.")
-            self._announce("No gallery snippets are available.")
             return
 
         from quill.ui.dialog_contract import apply_modal_ids
@@ -25264,7 +25262,7 @@ class MainFrame(
             save_settings(self.settings)
             feature_manager.save()
             self._apply_accelerators()
-            self._set_status("Personalise QUILL completed")
+            self._set_status_quiet("Personalise QUILL completed")
             self._announce(
                 f"Profile set to {get_intent_profile(intent_id).name}. "
                 "QUILL is ready. You can personalise further any time from Help."

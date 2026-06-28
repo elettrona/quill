@@ -456,7 +456,7 @@ class BrailleCommandsMixin:
         )
 
     def _announce_not_braille(self) -> None:
-        self._set_status("Not a braille document")
+        self._set_status_quiet("Not a braille document")
         self._announce("This is not a braille document.")
 
     def _say(self, message: str) -> None:
