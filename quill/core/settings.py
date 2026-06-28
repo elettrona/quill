@@ -143,6 +143,10 @@ class Settings:
     # Speak the formatting delta as the caret moves (hidden-codes interrogation);
     # off by default so navigation stays quiet (Describe Formatting is on-demand).
     announce_formatting_on_move: bool = False
+    # Speak "Entered <name> dialog" / "Exited <name> dialog" as dialogs open and
+    # close. On by default; a user who finds the transition cues noisy can turn
+    # them off (the screen reader still announces the dialog title on focus).
+    announce_dialog_transitions: bool = True
     # Pronunciation dictionaries (batch-document-to-speech-plan §4.7). The
     # dictionaries themselves live in JSON files (global under app_data_dir, project
     # under <project>/.quill/pronunciation); settings holds only the selection state.
@@ -601,6 +605,7 @@ class Settings:
         dictation_intelligent_spacing = bool(data.get("dictation_intelligent_spacing", True))
         dictation_onboarding_shown = bool(data.get("dictation_onboarding_shown", False))
         announce_formatting_on_move = bool(data.get("announce_formatting_on_move", False))
+        announce_dialog_transitions = bool(data.get("announce_dialog_transitions", True))
         pronunciation_enabled = bool(data.get("pronunciation_enabled", True))
         pronunciation_ids_raw = data.get("pronunciation_enabled_dictionary_ids")
         pronunciation_enabled_dictionary_ids = (
@@ -1037,6 +1042,7 @@ class Settings:
             dictation_stop_on_focus_loss=dictation_stop_on_focus_loss,
             dictation_intelligent_spacing=dictation_intelligent_spacing,
             announce_formatting_on_move=announce_formatting_on_move,
+            announce_dialog_transitions=announce_dialog_transitions,
             dictation_onboarding_shown=dictation_onboarding_shown,
             pronunciation_enabled=pronunciation_enabled,
             pronunciation_enabled_dictionary_ids=pronunciation_enabled_dictionary_ids,

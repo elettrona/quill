@@ -7175,10 +7175,15 @@ class MainFrame(
         dialog_cls = getattr(wx, "Dialog", None)
         if dialog_cls is not None and type(dialog) is dialog_cls:
             focus_primary_control(dialog)
+        # The "Entered/Exited <name> dialog" cues are opt-out via the
+        # announce_dialog_transitions setting; region tracking is unaffected.
+        announce_transitions = (
+            announce if getattr(self.settings, "announce_dialog_transitions", True) else None
+        )
         result = show_modal_dialog(
             dialog,
             label,
-            announce=announce,
+            announce=announce_transitions,
             enter_region=self._region_tracker.enter,
             exit_region=self._region_tracker.exit,
         )
@@ -7205,14 +7210,17 @@ class MainFrame(
         return result
 
     def _show_message_box(self, message: str, caption: str, style: int) -> int:
+        speak_transitions = getattr(self.settings, "announce_dialog_transitions", True)
         self._region_tracker.enter(caption)
-        announce(f"Entered {caption} dialog")
+        if speak_transitions:
+            announce(f"Entered {caption} dialog")
         try:
             result = self._wx.MessageBox(  # MSGBOX-OK: _show_message_box implementation
                 message, caption, style
             )
         finally:
-            announce(f"Exited {caption} dialog")
+            if speak_transitions:
+                announce(f"Exited {caption} dialog")
             self._region_tracker.exit(caption)
         return result
 
@@ -7224,8 +7232,9 @@ class MainFrame(
         message.  Screen readers announce the hint area label automatically.
         """
         wx = self._wx
+        # The "Entered/Exited" cues (and their settings gate) come from the inner
+        # _show_modal_dialog call below; don't announce the transition twice.
         self._region_tracker.enter(caption)
-        announce(f"Entered {caption} dialog")
         try:
             dlg = wx.Dialog(
                 self.frame,
@@ -7280,7 +7289,6 @@ class MainFrame(
             self._show_modal_dialog(dlg, caption)
             dlg.Destroy()
         finally:
-            announce(f"Exited {caption} dialog")
             self._region_tracker.exit(caption)
 
     def _prompt_untrusted_location(self, folder: Path) -> bool | None:

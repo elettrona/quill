@@ -797,6 +797,16 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("announcement", "screen reader", "speech"),
     ),
     SettingSpec(
+        "announce_dialog_transitions",
+        "Announce entering and leaving dialogs",
+        "accessibility",
+        "bool",
+        'Speak "Entered"/"Exited" when a dialog box opens and closes. '
+        "Turn off if your screen reader already announces dialogs.",
+        feature_id="core.accessibility",
+        keywords=("dialog", "announcement", "entered", "exited", "leaving"),
+    ),
+    SettingSpec(
         "announcement_trace_enabled",
         "Record announcement trace",
         "accessibility",
