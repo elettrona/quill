@@ -383,20 +383,26 @@ Each phase ships independently and leaves the menu coherent.
   are no longer menu entries. Retiring their dialog classes into thin shims and
   deleting them is Phase 5 (post-deprecation), so no risky redirects were made.
 
-- **Phase 4 (Hub as sole config) — MOSTLY DONE.** Audit confirmed the Hub's
-  Engines tab (`ai_hub_engines_panel.py`) already does engine switching
-  (`set_active` via `quick_switch`) and GitHub Copilot setup
-  (`CopilotOnboardingDialog` on Set Up), and both are also reachable from the
-  status-bar engine cell and the cycle hotkey. So the scattered "Engine &
-  Sessions" submenu collapsed: "Switch AI Engine" and "Set Up GitHub Copilot"
-  dropped from the menu with no access lost. **Remaining:** Session Branches (a
-  browser, not config) is still a direct "AI Session Branches..." menu item;
-  folding it into the Hub needs Hub size-budget headroom (the Hub is at 927/927)
-  to reach the final menu shape of just Hub + Library + Use AI.
+- **Phase 4 (Hub as sole config) — DONE.** Engine switching and GitHub Copilot
+  setup live in the Hub's Engines tab (`ai_hub_engines_panel.py`); Session Branches
+  folded into a new Hub **Sessions** tab (`ai_hub_sessions_panel.py`, mirroring the
+  Engines panel). The "Engine & Sessions" submenu is gone entirely — the AI menu's
+  config region is now just **AI Hub...** plus the Use AI switch. All three are
+  still reachable from the status-bar engine cell / cycle hotkey / command palette.
 
-- **Phase 5 (cleanup) — deferred.** Delete the deprecated shims (Writing Assistant,
-  Ask AI, Agent Center) and the legacy stores after the deprecation window; add a
-  user-agents catalog dir so promoted agents become first-class.
+- **Phase 5 — functionally DONE; deletions deferred by design.**
+  - **Promote continuum + first-class agents — DONE.** Prompt -> Skill -> Agent all
+    work; Skill -> Agent now saves into a real user-agents catalog
+    (`agent_catalog.user_agents_dir` / `save_user_agent` / `load_full_catalog`), so
+    a promoted agent appears in the Agents tab and runs through the gateway
+    immediately.
+  - **Status-bar engine control — already present** (`open_ai_engine_switcher` is
+    the status-bar engine cell's Enter action; `ai_engine_status_text` drives the
+    label; `cycle_ai_engine` is the hotkey).
+  - **Deferred:** deleting the superseded Writing Assistant / Ask AI / Agent Center /
+    Prompt Studio shims and the legacy `assistant_prompts` / `assistant_agents`
+    stores. These are kept for one release on purpose (the deprecation window); they
+    are out of every menu but stay reachable as commands. Delete after the window.
 
 ## 12. Decision needed: the skills store
 
