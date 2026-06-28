@@ -1,7 +1,7 @@
 {
-  "version": "0.7.0 Beta 1",
-  "download_url": "https://github.com/Community-Access/quill/releases/download/v0.7.0-beta.1/Quill-for-All-Setup-0.7.0.Beta.1.exe",
-  "published_at": "2026-06-20T16:46:34Z",
-  "notes": "",
-  "signature": "a3035e5e6e0cfd17d9f0702deb1b95a9d6015ac88cf35b39285c499799d18a79"
+  "version": "0.8.0 Beta 1",
+  "download_url": "https://github.com/Community-Access/quill/releases/download/v0.8.0-beta.1/Quill-for-All-Setup-0.8.0.Beta.1.exe",
+  "published_at": "2026-06-28T00:37:10Z",
+  "notes": "0.8.0 Beta 1: first run no longer shows a second setup wizard; release notes now appear when you check for updates; new Help > What's New; faster update prompt. Includes the 0.8.0 rollup (Python 3.13 runtime, bundled Kokoro voices, Mastodon posting, voice previews, consolidated batch speech/audiobook, upgrade hardening).",
+  "signature": "f6d6decf6a732d5aab4ea9e0730547fa0319473d55446544c17ad5ac1cf70051"
 }
