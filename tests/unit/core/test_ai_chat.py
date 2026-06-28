@@ -97,6 +97,18 @@ class TestSendPrompt:
             result = send_prompt("ollama_local", "gemma3:4b", "hi")
         assert result == "Ollama says hi"
 
+    def test_reasoning_model_empty_content_falls_back_to_reasoning(self) -> None:
+        from quill.core.ai_chat import send_prompt
+
+        # gpt-oss-style: empty content, answer on the reasoning channel.
+        payload = json.dumps(
+            {"choices": [{"message": {"content": "", "reasoning_content": "the answer"}}]}
+        ).encode()
+        mock_resp = _make_mock_response(payload)
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            result = send_prompt("openrouter", "some/model", "hi", api_key="key")
+        assert result == "the answer"
+
     def test_openai_returns_content(self) -> None:
         from quill.core.ai_chat import send_prompt
 

@@ -81,7 +81,11 @@ def default_model_for_provider(provider: str) -> str:
     if normalized == "gemini":
         return "gemini-2.5-flash"
     if normalized == "ollama_cloud":
-        return "qwen3"
+        # A real, listed cloud model id (bare "qwen3" 404s on ollama.com). gemma3
+        # is a non-reasoning instruction follower, so its OpenAI-compatible
+        # `content` is always populated — reasoning models (e.g. gpt-oss) return
+        # empty content on long tool prompts. See providers/regression learnings.
+        return "gemma3:12b"
     if normalized == "custom":
         return "gpt-4o-mini"
     if normalized == "off":
@@ -175,7 +179,11 @@ def recommended_models_for_provider(provider: str) -> list[str]:
     if normalized == "gemini":
         return ["gemini-2.5-flash", "gemini-2.5-pro"]
     if normalized == "ollama_cloud":
-        return ["qwen3", "gpt-oss:20b", "gemma3"]
+        # Real, listed cloud model ids (bare "qwen3"/"gemma3" 404). gemma3:12b
+        # leads as a reliable non-reasoning default; the gpt-oss reasoning models
+        # follow for users who want them (their reasoning channel is handled in
+        # parse_chat_response).
+        return ["gemma3:12b", "gpt-oss:120b", "gpt-oss:20b"]
     if normalized == "ollama":
         if total_ram_gb() < 8.0:
             return [

@@ -993,7 +993,17 @@ def parse_chat_response(provider: str, payload: object) -> str | None:
             message = first.get("message")
             if isinstance(message, dict):
                 text = str(message.get("content", "")).strip()
-                return text or None
+                if text:
+                    return text
+                # Reasoning models (e.g. gpt-oss on Ollama Cloud, some OpenRouter
+                # routes) put their output on a reasoning channel and leave
+                # `content` empty. Fall back to it so the answer is not lost and
+                # the request does not fail as an "invalid response".
+                for key in ("reasoning_content", "reasoning"):
+                    reasoning = message.get(key)
+                    if isinstance(reasoning, str) and reasoning.strip():
+                        return reasoning.strip()
+                return None
             text_value = first.get("text")
             if isinstance(text_value, str):
                 return text_value.strip() or None

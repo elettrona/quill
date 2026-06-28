@@ -199,4 +199,15 @@ def send_prompt(
         choices = data.get("choices", [])
         if not choices:
             raise AIChatProviderError("No choices in response")
-        return choices[0].get("message", {}).get("content", "")  # type: ignore[no-any-return]
+        message = choices[0].get("message", {})
+        content = str(message.get("content", "") or "")
+        if content.strip():
+            return content
+        # Reasoning models (e.g. gpt-oss on Ollama Cloud) leave `content` empty
+        # and put the answer on a reasoning channel; surface it rather than
+        # returning an empty string the caller cannot use.
+        for key in ("reasoning_content", "reasoning"):
+            reasoning = message.get(key)
+            if isinstance(reasoning, str) and reasoning.strip():
+                return reasoning
+        return content

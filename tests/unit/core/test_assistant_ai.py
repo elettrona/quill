@@ -289,6 +289,31 @@ def test_recommended_models_for_provider_cloud_and_local(
     assert "gpt-4o-mini" in cloud
 
 
+def test_ollama_cloud_default_and_recommended_models_are_real_ids() -> None:
+    # Bare "qwen3"/"gemma3" 404 on ollama.com; every default/recommended cloud
+    # model id must carry a size tag (or be a tagless flagship that exists).
+    default = providers.default_model_for_provider("ollama_cloud")
+    recommended = providers.recommended_models_for_provider("ollama_cloud")
+    assert default == "gemma3:12b"
+    assert "qwen3" not in recommended and "gemma3" not in recommended
+    # The non-reasoning default leads so it works on chat and the agent path.
+    assert recommended[0] == "gemma3:12b"
+
+
+def test_parse_chat_response_falls_back_to_reasoning_when_content_empty() -> None:
+    # Reasoning models (gpt-oss, some OpenRouter routes) leave `content` empty and
+    # put the answer on a reasoning channel; we must surface it, not fail.
+    payload = {
+        "choices": [{"message": {"content": "", "reasoning_content": "the answer"}}]
+    }
+    assert assistant_ai.parse_chat_response("ollama_cloud", payload) == "the answer"
+    payload2 = {"choices": [{"message": {"content": "", "reasoning": "alt channel"}}]}
+    assert assistant_ai.parse_chat_response("openrouter", payload2) == "alt channel"
+    # Normal content still wins over any reasoning field.
+    payload3 = {"choices": [{"message": {"content": "real", "reasoning": "ignored"}}]}
+    assert assistant_ai.parse_chat_response("openai", payload3) == "real"
+
+
 def test_recommended_model_guidance_returns_framing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
