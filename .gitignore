@@ -108,3 +108,6 @@ docs/planning/source/**/*.log
 /Code Samples to Innovate With/
 /examples/audio/
 /docs/prototypes/
+
+# Local AI provider report (not committed)
+/learned.md

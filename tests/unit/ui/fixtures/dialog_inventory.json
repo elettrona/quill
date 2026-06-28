@@ -51,6 +51,7 @@
   "quill/ui/batch_speech_export_dialog.py::BatchSpeechExportDialog._on_browse_source::wx.DirDialog": "native",
   "quill/ui/batch_speech_export_dialog.py::BatchSpeechExportDialog._on_browse_temp::wx.DirDialog": "native",
   "quill/ui/compare_dialog.py::CompareDialog.__init__::wx.Dialog": "hardened_custom",
+  "quill/ui/concierge_menu.py::open_concierge::wx.SingleChoiceDialog": "native",
   "quill/ui/context_preview_dialog.py::confirm_context_share::wx.Dialog": "hardened_custom",
   "quill/ui/convert_file_dialog.py::ConvertFileDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/convert_file_dialog.py::ConvertFileDialog._browse_output::wx.DirDialog": "native",
