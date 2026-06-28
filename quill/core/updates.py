@@ -31,7 +31,7 @@ _API_URL_ENV = "QUILL_UPDATE_API_URL"
 _MANIFEST_URL_ENV = "QUILL_UPDATE_MANIFEST_URL"
 # Pre-release ordering: a final (non-pre-release) build outranks every
 # pre-release of the same major.minor.patch. See _version_tuple / _prerelease_rank.
-_STABLE_PRERELEASE_RANK = (9, 0)
+_STABLE_PRERELEASE_RANK = (9, 0, 0)
 
 
 def _env_url_override(name: str) -> str:
@@ -324,7 +324,7 @@ def is_newer_version(current: str, available: str) -> bool:
     return _version_tuple(available) > _version_tuple(current)
 
 
-def _version_tuple(value: str) -> tuple[int, int, int, tuple[int, int]]:
+def _version_tuple(value: str) -> tuple[int, int, int, tuple[int, int, int]]:
     """Sortable version key with intentional pre-release ordering.
 
     The fourth element ranks the pre-release stage so that, for the same
@@ -332,6 +332,13 @@ def _version_tuple(value: str) -> tuple[int, int, int, tuple[int, int]]:
     pre-releases (``1.2.0`` > ``1.2.0-rc2`` > ``1.2.0-rc1`` > ``1.2.0-beta1`` >
     ``1.2.0-alpha1``). Unrecognized suffixes are treated as the earliest stage so
     an unknown pre-release never outranks a stable build.
+
+    Its third sub-element is an *interim patch* so a hand-off test build can sit
+    strictly between two pre-releases: ``Beta 1`` < ``Beta 1A`` < ``Beta 2``
+    (display letter) and the equivalent PEP 440 ``0.8.0b1`` < ``0.8.0b1.post1`` <
+    ``0.8.0b2``. This lets a tester run an interim build and still be offered the
+    real next pre-release through Check for Updates, without being nagged to
+    "update" back down to the published one.
 
     Accepts both PEP 440 hyphen form (``1.2.0-rc1``) and the human-readable
     display form produced by :func:`quill.build_info.get_short_version`
@@ -351,16 +358,16 @@ def _version_tuple(value: str) -> tuple[int, int, int, tuple[int, int]]:
     space_match = re.match(
         r"^(\d+\.\d+(?:\.\d+)?)\s+"
         r"(alpha|beta|release\s+candidate|rc|dev)"
-        r"\.?\s*(\d*)\b",
+        r"\.?\s*(\d*)([a-z]?)\b",
         cleaned,
         re.I,
     )
     if space_match:
-        base, label, number = space_match.groups()
+        base, label, number, patch = space_match.groups()
         label_key = label.strip().lower()
         if label_key == "release candidate":
             label_key = "rc"
-        cleaned = f"{base}-{label_key}{number}"
+        cleaned = f"{base}-{label_key}{number}{patch}"
     # Separate the core x.y.z from any pre-release suffix (-rc1, -beta.2, ...) so
     # the suffix digits cannot leak into the patch number.
     core, separator, suffix = cleaned.partition("-")
@@ -376,7 +383,7 @@ def _version_tuple(value: str) -> tuple[int, int, int, tuple[int, int]]:
     return integers[0], integers[1], integers[2], prerelease
 
 
-def _prerelease_rank(suffix: str) -> tuple[int, int]:
+def _prerelease_rank(suffix: str) -> tuple[int, int, int]:
     lowered = suffix.strip().lower()
     if lowered.startswith("rc"):
         tier = 2
@@ -385,8 +392,19 @@ def _prerelease_rank(suffix: str) -> tuple[int, int]:
     else:
         # alpha/a and anything unrecognized fall to the earliest stage.
         tier = 0
-    number = "".join(char for char in lowered if char.isdigit())
-    return tier, int(number or "0")
+    # The pre-release number is the first run of digits (so "beta1.post1" is
+    # number 1, not 11). The interim patch is either a trailing letter right
+    # after that number ("beta1a" -> 1, i.e. "A") or a PEP 440 ".postN" suffix.
+    number_match = re.search(r"(\d+)", lowered)
+    number = int(number_match.group(1)) if number_match else 0
+    post = 0
+    letter_match = re.search(r"\d([a-z])", lowered)
+    post_match = re.search(r"post(\d+)", lowered)
+    if letter_match:
+        post = ord(letter_match.group(1)) - ord("a") + 1
+    elif post_match:
+        post = int(post_match.group(1))
+    return tier, number, post
 
 
 def download_release_asset(

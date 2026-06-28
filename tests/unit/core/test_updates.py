@@ -96,6 +96,21 @@ def test_display_form_beta_is_recognized_as_newer_than_release() -> None:
     assert is_newer_version("0.7.0 Beta 2", "0.7.0 Beta 2") is False
 
 
+def test_interim_patch_build_sorts_between_prereleases() -> None:
+    """An interim hand-off build ("Beta 1A") sits strictly between Beta 1 and
+    Beta 2, so a tester on it is offered the real Beta 2 but is never nagged to
+    "update" back down to the published Beta 1.
+    """
+    # Strict ordering: Beta 1 < Beta 1A < Beta 2.
+    assert is_newer_version("0.8.0 Beta 1", "0.8.0 Beta 1A") is True
+    assert is_newer_version("0.8.0 Beta 1A", "0.8.0 Beta 2") is True
+    # On Beta 1A: the live Beta 1 feed is NOT an update; Beta 2 IS.
+    assert is_newer_version("0.8.0 Beta 1A", "0.8.0 Beta 1") is False
+    assert is_newer_version("0.8.0 Beta 1A", "0.8.0 Beta 2") is True
+    # The interim build does not outrank the final stable release either.
+    assert is_newer_version("0.8.0 Beta 1A", "0.8.0") is True
+
+
 def test_display_form_release_candidate_is_recognized() -> None:
     assert is_newer_version("0.7.0 Beta 1", "0.7.0 Release Candidate 1") is True
     assert is_newer_version("0.7.0 Release Candidate 1", "0.7.0") is True
