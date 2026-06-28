@@ -807,6 +807,16 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("dialog", "announcement", "entered", "exited", "leaving"),
     ),
     SettingSpec(
+        "announce_indent_depth",
+        "Announce indentation depth on Tab",
+        "accessibility",
+        "bool",
+        'Speak the new indent depth ("4 spaces" or "1 tab") when Tab or Shift+Tab '
+        'indents, instead of just "Indented lines".',
+        feature_id="core.accessibility",
+        keywords=("indent", "tab", "spaces", "announcement", "depth"),
+    ),
+    SettingSpec(
         "announcement_trace_enabled",
         "Record announcement trace",
         "accessibility",

@@ -147,6 +147,10 @@ class Settings:
     # close. On by default; a user who finds the transition cues noisy can turn
     # them off (the screen reader still announces the dialog title on focus).
     announce_dialog_transitions: bool = True
+    # Speak the new indentation depth ("4 spaces" / "1 tab") when Tab / Shift+Tab
+    # indents, instead of the terse "Indented lines". Aware of indent_with_tabs
+    # and indent_size; on by default, off restores the terse message.
+    announce_indent_depth: bool = True
     # Pronunciation dictionaries (batch-document-to-speech-plan §4.7). The
     # dictionaries themselves live in JSON files (global under app_data_dir, project
     # under <project>/.quill/pronunciation); settings holds only the selection state.
@@ -606,6 +610,7 @@ class Settings:
         dictation_onboarding_shown = bool(data.get("dictation_onboarding_shown", False))
         announce_formatting_on_move = bool(data.get("announce_formatting_on_move", False))
         announce_dialog_transitions = bool(data.get("announce_dialog_transitions", True))
+        announce_indent_depth = bool(data.get("announce_indent_depth", True))
         pronunciation_enabled = bool(data.get("pronunciation_enabled", True))
         pronunciation_ids_raw = data.get("pronunciation_enabled_dictionary_ids")
         pronunciation_enabled_dictionary_ids = (
@@ -1043,6 +1048,7 @@ class Settings:
             dictation_intelligent_spacing=dictation_intelligent_spacing,
             announce_formatting_on_move=announce_formatting_on_move,
             announce_dialog_transitions=announce_dialog_transitions,
+            announce_indent_depth=announce_indent_depth,
             dictation_onboarding_shown=dictation_onboarding_shown,
             pronunciation_enabled=pronunciation_enabled,
             pronunciation_enabled_dictionary_ids=pronunciation_enabled_dictionary_ids,

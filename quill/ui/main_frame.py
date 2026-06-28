@@ -163,6 +163,7 @@ from quill.core.file_search import (
 )
 from quill.core.format_ops import (
     continue_markdown_list,
+    describe_indent_depth,
     indent_lines,
     outdent_lines,
     toggle_block_comment,
@@ -4630,10 +4631,16 @@ class MainFrame(
                 else:
                     self.format_indent(status="Nested list item", force_announce=True)
                 return
+            # Speak the new indent depth ("4 spaces" / "1 tab") rather than the
+            # terse "Indented lines" when announce_indent_depth is on (default).
+            # _set_status both shows and speaks, so it stays a single announcement.
+            announce_depth = bool(getattr(self.settings, "announce_indent_depth", True))
             if event.ShiftDown():
-                self.format_outdent(force_announce=True)
+                self.format_outdent(force_announce=not announce_depth)
             else:
-                self.format_indent(force_announce=True)
+                self.format_indent(force_announce=not announce_depth)
+            if announce_depth:
+                self._set_status(self._current_line_indent_phrase())
             return
         if (
             hasattr(self, "_dictation")
@@ -22588,6 +22595,10 @@ class MainFrame(
         if bool(getattr(self.settings, "indent_with_tabs", False)):
             return "\t"
         return " " * self._indent_width()
+
+    def _current_line_indent_phrase(self) -> str:
+        """The caret line's indentation depth spoken after Tab / Shift+Tab."""
+        return describe_indent_depth(self.editor.GetValue(), self.editor.GetInsertionPoint())
 
     def format_indent(
         self, *, status: str = "Indented lines", force_announce: bool = False

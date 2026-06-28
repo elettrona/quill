@@ -13,11 +13,13 @@ Second public 0.8.0 beta. Rolls up everything in Beta 1 (below) plus the feature
 
 ### Fixes
 
-- _None yet._
+- **"No misspellings found" is no longer spoken twice.** The interactive spell check announced the all-clear message through two paths; it now speaks once. (#728)
+- **Report a Bug is keyboard-navigable again, and submitting no longer seems to lose your text.** You can now Tab through the form (it was built on a window that did not pass Tab between fields), and on submit QUILL reliably announces that the report was copied to your clipboard — previously that confirmation was spoken as the window closed and got lost, so it looked like nothing happened. (#729)
 
 ### Enhancements
 
-- _None yet._
+- **Hear how deep your indentation is.** Press **Tab** or **Shift+Tab** and QUILL can now speak the new indentation depth — "4 spaces", "8 spaces", "1 tab" — instead of just "Indented lines", so you always know where the line sits. It honours your tabs-vs-spaces and width choices (**Insert tab characters instead of spaces** and **Number of spaces per indent level** in Settings). Prefer the terse message? Turn off **Announce indentation depth on Tab** (Settings, Accessibility).
+- **Quieter dialogs, your choice.** A new **Announce entering and leaving dialogs** setting (Settings, Accessibility) turns off the spoken "Entered / Exited *name* dialog" cues for people whose screen reader already announces dialogs. On by default.
 
 ## 0.8.0 Beta 1 (in development)
 

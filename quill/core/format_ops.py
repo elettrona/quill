@@ -95,6 +95,33 @@ def outdent_lines(
     return merged, line_start, line_start + len(updated)
 
 
+def describe_indent_depth(text: str, caret: int) -> str:
+    """Describe the leading indentation of the line containing *caret*.
+
+    Returns e.g. ``"4 spaces"``, ``"8 spaces"``, ``"1 tab"``, ``"2 tabs"``,
+    ``"1 tab, 3 spaces"`` (mixed), or ``"No indentation"``. Tabs/spaces aware so a
+    screen reader can speak the new depth after Tab / Shift+Tab instead of a terse
+    "Indented lines".
+    """
+    caret = max(0, min(caret, len(text)))
+    line_start = text.rfind("\n", 0, caret) + 1
+    line_end = text.find("\n", line_start)
+    if line_end == -1:
+        line_end = len(text)
+    line = text[line_start:line_end]
+    leading = line[: len(line) - len(line.lstrip(" \t"))]
+    if not leading:
+        return "No indentation"
+    tabs = leading.count("\t")
+    spaces = leading.count(" ")
+    parts: list[str] = []
+    if tabs:
+        parts.append(f"{tabs} tab" if tabs == 1 else f"{tabs} tabs")
+    if spaces:
+        parts.append(f"{spaces} space" if spaces == 1 else f"{spaces} spaces")
+    return ", ".join(parts)
+
+
 def sort_lines(
     text: str,
     descending: bool = False,

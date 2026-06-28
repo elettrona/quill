@@ -296,6 +296,8 @@ By default the **Tab** key runs Quill's smart line indent: it adds one indentati
 
 If you would rather have Tab type a literal tab character at the cursor — the way a plain text editor behaves — toggle **Tab Mode** with the **QUILL Key + U** chord (this is Quill's equivalent of the VS Code "Tab key" toggle; Ctrl+M itself is reserved for the mark ring, and Ctrl+Alt+ chords are avoided as screen-reader-hostile). The current mode is shown in the **Tab Mode** status-bar cell (**Indent** or **Tab char**), mirrored by the checkable **Format → Tab Key Inserts Tab Character** menu item, and the new mode is announced when you switch. While Tab Mode is set to insert a tab character, Shift+Tab still outdents so a stray indent can be removed without leaving the mode. The setting applies to the current session.
 
+**How the indent is spoken, and how wide it is.** When you indent with Tab (or outdent with Shift+Tab), Quill speaks the line's *new* indentation depth — for example "4 spaces", "8 spaces", or "1 tab" — so you always know how deep the line sits, not just that it moved. Two settings control the indentation itself: **Number of spaces per indent level** (Settings; 1–8, default 4) sets the width, and **Insert tab characters instead of spaces** (Settings) switches between space and tab indentation — the spoken depth follows whichever you choose. If you prefer the shorter "Indented lines" message, turn off **Announce indentation depth on Tab** (Settings → Accessibility).
+
 ## The Menu Bar Reference
 
 This section walks the entire menu bar in the order you will encounter it.
@@ -2158,6 +2160,13 @@ Manager.
   (per 5 seconds)** caps how many announcements are spoken in a burst (0 means no
   cap). Both affect only what is *spoken*; the status bar always shows every update,
   so nothing is ever hidden.
+- **Trim specific cues.** Two announcement toggles under **Preferences >
+  Accessibility** tailor what QUILL says. **Announce entering and leaving
+  dialogs** (on by default) speaks "Entered" / "Exited *name* dialog" as dialog
+  boxes open and close — turn it off if your screen reader already announces
+  dialogs. **Announce indentation depth on Tab** (on by default) makes Tab and
+  Shift+Tab speak the new depth ("4 spaces", "1 tab") instead of "Indented
+  lines". Both affect only speech; the status bar still updates.
 - **Per-action templates.** Advanced users can edit exactly what each action
   says, using tokens like `{line}` and filters like `${ordinal:line}`, with live
   validation and preview. Templates can be saved to a library, shared as
