@@ -1443,6 +1443,7 @@ class MenuBuilderMixin:
         self._id_ai_accessibility_agent = wx.NewIdRef()
         self._id_ask_quill_chat = wx.NewIdRef()
         self._id_ask_quill_voice = wx.NewIdRef()
+        self._id_ai_library = wx.NewIdRef()
         self._id_prompt_library = wx.NewIdRef()
         self._id_skill_library = wx.NewIdRef()
         self._id_check_grammar_ai = wx.NewIdRef()
@@ -1975,35 +1976,15 @@ class MenuBuilderMixin:
         ai_menu.AppendSubMenu(more_menu, _("&More"))
         ai_menu.AppendSeparator()
 
-        # -- AI Library (Prompts / Skills / Agents — transitional grouping) ---
-        # These collapse into one unified, tabbed manager next; for now they are
-        # grouped under a single heading so the management surfaces stop scattering.
-        library_menu = wx.Menu()
-        library_menu.Append(
-            self._id_prompt_library,
-            self._menu_label(_("&Prompts..."), "tools.prompt_library"),
+        # -- AI Library (Prompts / Skills / Agents — one unified manager) -----
+        # Prompts, Skills, and Agents now live in one tabbed manager with a single
+        # verb set and the Promote continuum. Prompt Studio, Writing Assistant,
+        # Agent Center, and Validate Agents remain reachable as commands during the
+        # deprecation window, but no longer scatter the menu.
+        ai_menu.Append(
+            self._id_ai_library,
+            self._menu_label(_("AI &Library..."), "tools.ai_library"),
         )
-        library_menu.Append(
-            self._id_skill_library,
-            self._menu_label(_("S&kills..."), "tools.skill_library"),
-        )
-        library_menu.Append(
-            self._id_ai_agent_center,
-            self._menu_label(_("&Agents..."), "tools.ai_agent_center"),
-        )
-        library_menu.Append(
-            self._id_ai_prompt_studio,
-            self._menu_label(_("Prompt &Studio..."), "tools.ai_prompt_studio"),
-        )
-        library_menu.Append(
-            self._id_ai_assistant,
-            self._menu_label(_("&Writing Assistant..."), "tools.ai_assistant"),
-        )
-        library_menu.Append(
-            self._id_ai_validate_agents,
-            self._menu_label(_("&Validate Agents..."), "tools.validate_agents"),
-        )
-        ai_menu.AppendSubMenu(library_menu, _("AI &Library"))
 
         # -- Configuration ----------------------------------------------------
         # The AI Hub is the single config front door (provider, key, model, test).

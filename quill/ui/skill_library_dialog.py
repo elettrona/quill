@@ -33,6 +33,23 @@ if TYPE_CHECKING:
     from quill.core.settings import Settings
 
 
+def open_skill_library(controller: object) -> None:
+    """Open the Skill Library for the host MainFrame (keeps main_frame thin)."""
+    dlg = SkillLibraryDialog(
+        controller.frame,  # type: ignore[attr-defined]
+        controller._get_skill_files(),  # type: ignore[attr-defined]
+        controller.settings,  # type: ignore[attr-defined]
+        selection=str(controller.editor.GetStringSelection()),  # type: ignore[attr-defined]
+        document=str(controller.editor.GetValue()),  # type: ignore[attr-defined]
+        title_text=controller._current_document_title(),  # type: ignore[attr-defined]
+        on_insert=controller._ai_insert_text,  # type: ignore[attr-defined]
+        announce_cb=controller._announce,  # type: ignore[attr-defined]
+    )
+    dlg.dialog.CenterOnParent()
+    controller._show_modal_dialog(dlg.dialog, "Skill Library")  # type: ignore[attr-defined]
+    dlg.close()
+
+
 class _SkillCancelled(Exception):
     pass
 

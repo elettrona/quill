@@ -1930,6 +1930,12 @@ class MainFrame(
             None,
         )
         self.commands.register(
+            "tools.ai_library",
+            "AI Library",
+            self.open_ai_library,
+            None,
+        )
+        self.commands.register(
             "tools.prompt_library",
             "Prompt Library",
             self.open_prompt_library,
@@ -3642,6 +3648,7 @@ class MainFrame(
             "tools.ai_prompt_studio": self._id_ai_prompt_studio,
             "tools.ai_agent_center": self._id_ai_agent_center,
             "tools.ai_accessibility_agent": self._id_ai_accessibility_agent,
+            "tools.ai_library": self._id_ai_library,
             "tools.prompt_library": self._id_prompt_library,
             "tools.skill_library": self._id_skill_library,
             "tools.check_grammar_ai": self._id_check_grammar_ai,
@@ -21667,22 +21674,15 @@ class MainFrame(
         self._show_modal_dialog(dlg.dialog, "Prompt Library")
         dlg.close()
 
-    def open_skill_library(self) -> None:
-        from quill.ui.skill_library_dialog import SkillLibraryDialog
+    def open_ai_library(self) -> None:
+        from quill.ui.ai_library_dialog import open_ai_library
 
-        dlg = SkillLibraryDialog(
-            self.frame,
-            self._get_skill_files(),
-            self.settings,
-            selection=str(self.editor.GetStringSelection()),
-            document=str(self.editor.GetValue()),
-            title_text=self._current_document_title(),
-            on_insert=self._ai_insert_text,
-            announce_cb=self._announce,
-        )
-        dlg.dialog.CenterOnParent()
-        self._show_modal_dialog(dlg.dialog, "Skill Library")
-        dlg.close()
+        open_ai_library(self)
+
+    def open_skill_library(self) -> None:
+        from quill.ui.skill_library_dialog import open_skill_library
+
+        open_skill_library(self)
 
     def _get_skill_files(self) -> list:
 
