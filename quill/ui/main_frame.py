@@ -21496,10 +21496,13 @@ class MainFrame(
         from quill.core.ai.model_manager import load_ai_enabled
 
         if not load_ai_enabled():
-            from quill.core.ai.availability import AI_DISABLED_MESSAGE
+            from quill.ui.ai_setup_wizard import maybe_offer_ai_setup
 
-            self._set_status(AI_DISABLED_MESSAGE)
-            return
+            if not maybe_offer_ai_setup(self, reason="Ask Quill needs AI to chat with you."):
+                from quill.core.ai.availability import AI_DISABLED_MESSAGE
+
+                self._set_status(AI_DISABLED_MESSAGE)
+                return
 
         self._apply_style_to_assistant()
         tool_catalog = allowed_tools(self.commands, getattr(self, "features", None))

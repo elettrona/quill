@@ -219,6 +219,47 @@ BUILTIN_TRANSCRIPT_ACTIONS: tuple[TranscriptAction, ...] = (
             "transcript."
         ),
     ),
+    TranscriptAction(
+        id="follow-up-email",
+        name="Follow-Up Email",
+        description="A ready-to-send email recapping the discussion and next steps.",
+        instruction=(
+            "You are an assistant drafting a follow-up email after this conversation. "
+            "Write a warm, concise, ready-to-send email that includes:\n"
+            "- A one-line thank-you / opener\n"
+            "- A short recap of what was discussed and decided\n"
+            "- A clear list of next steps with owners (if mentioned)\n"
+            "- A friendly closing line\n\n"
+            "Keep it professional and brief. Use only what is in the transcript; mark "
+            "anything you are unsure of as a placeholder in [brackets]."
+        ),
+    ),
+    TranscriptAction(
+        id="key-quotes",
+        name="Key Quotes",
+        description="The most notable verbatim quotes, with who said them.",
+        instruction=(
+            "You are a careful editor pulling the most notable, quotable lines from this "
+            "transcript. List 5-10 verbatim quotes that best capture the key points, "
+            "decisions, or memorable moments. For each, give the exact words in quotation "
+            "marks and the speaker's name if identifiable. Do not paraphrase or invent "
+            "quotes — use the transcript's exact wording."
+        ),
+    ),
+    TranscriptAction(
+        id="decisions-log",
+        name="Decisions Log",
+        description="Just the decisions made, each with its rationale and owner.",
+        instruction=(
+            "You are a decision tracker. From this transcript, list every decision that "
+            "was actually made (not just discussed). For each decision include:\n"
+            "- The decision, stated clearly\n"
+            "- The reason or rationale given (if any)\n"
+            "- Who made or owns it (if identifiable)\n\n"
+            "Present them as a numbered list. If no firm decisions were made, say so "
+            "plainly."
+        ),
+    ),
 )
 
 
@@ -263,11 +304,11 @@ def recommend_actions(
     question_dense = questions >= 3 and (questions / words) > 0.01
 
     if has_speakers and question_dense:
-        lead = ["interview-notes", "qa-extraction", "meeting-minutes", "action-items"]
+        lead = ["interview-notes", "key-quotes", "qa-extraction", "meeting-minutes"]
     elif has_speakers:
-        lead = ["meeting-minutes", "action-items", "executive-summary"]
+        lead = ["meeting-minutes", "action-items", "decisions-log", "follow-up-email"]
     elif question_dense:
-        lead = ["qa-extraction", "study-notes", "clean-draft"]
+        lead = ["qa-extraction", "study-notes", "key-quotes", "clean-draft"]
     else:
         lead = ["clean-draft", "study-notes", "executive-summary"]
 

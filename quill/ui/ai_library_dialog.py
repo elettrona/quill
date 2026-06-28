@@ -16,11 +16,11 @@ a Skill graduates into an Agent scaffold the user can save. The pure source
 transforms live in :mod:`quill.core.ai.library`; this dialog persists or displays
 the result.
 
-Prompt and skill running are self-contained here (mirroring the former Prompt
-Library / Skill Library dialogs) over the tested core primitives
-(``ai_chat.send_prompt``, ``skill_pack.run_skill``). Agent running is delegated to
-the host via ``on_run_agent`` because it needs the full controller and the Safe
-Editor Tool Gateway.
+Prompt and skill running go through the same provider the rest of QUILL's AI uses —
+the AI Hub connection via :class:`ProviderChatBackend` — so setting up AI once (the
+AI Setup Wizard or the Hub) makes the Library work too. When AI isn't ready, the run
+offers the setup on-ramp (``on_setup_ai``). Agent running is delegated to the host via
+``on_run_agent`` because it needs the full controller and the Safe Editor Tool Gateway.
 """
 
 from __future__ import annotations
@@ -78,11 +78,20 @@ def open_ai_library(controller: Any) -> None:
         title=controller._current_document_title(),
         on_run_agent=lambda agent_id: run_agent(controller, agent_id),
         on_validate_agents=controller.open_agent_validator,
+        on_setup_ai=lambda: _offer_ai_setup(controller),
         on_insert=controller._ai_insert_text,
         announce_cb=controller._announce,
     )
     controller._show_modal_dialog(dlg.dialog, "AI Library")
     dlg.close()
+
+
+def _offer_ai_setup(controller: Any) -> bool:
+    from quill.ui.ai_setup_wizard import maybe_offer_ai_setup
+
+    return maybe_offer_ai_setup(
+        controller, reason="To run this on your document, QUILL needs AI."
+    )
 
 
 class AILibraryDialog:
@@ -101,6 +110,7 @@ class AILibraryDialog:
         title: str = "",
         on_run_agent: Callable[[str], None] | None = None,
         on_validate_agents: Callable[[], None] | None = None,
+        on_setup_ai: Callable[[], bool] | None = None,
         on_insert: Callable[[str], None] | None = None,
         announce_cb: Callable[[str], None] | None = None,
     ) -> None:
@@ -111,6 +121,7 @@ class AILibraryDialog:
         self._context = {"selection": selection, "document": document, "title": title}
         self._on_run_agent = on_run_agent
         self._on_validate_agents = on_validate_agents
+        self._on_setup_ai = on_setup_ai
         self._on_insert = on_insert
         self._announce = announce_cb or (lambda _: None)
         self._running = False
@@ -173,15 +184,35 @@ class AILibraryDialog:
             self._announce(msg)
 
     def _check_ai_configured(self) -> None:
-        if not self._model_id():
-            self._set_status("No AI model configured. Open the AI Hub to set a provider and model.")
+        ok, _reason = self._ai_ready()
+        if not ok:
+            self._set_status(
+                "No AI set up yet. Use 'Set Up AI' in the AI menu, or the AI Hub."
+            )
 
-    def _model_id(self) -> str:
-        return (
-            getattr(self._settings, "ai_prompt_default_model", "")
-            or getattr(self._settings, "ai_chat_default_model", "")
-            or ""
-        )
+    def _backend(self) -> Any:
+        from quill.core.ai.provider_backend import ProviderChatBackend
+
+        return ProviderChatBackend()
+
+    def _ai_ready(self) -> tuple[bool, str]:
+        try:
+            ok, reason = self._backend().is_available()
+            return ok, (reason or "")
+        except Exception as exc:  # noqa: BLE001
+            return False, str(exc)
+
+    def _ensure_ai(self) -> bool:
+        """True when AI is usable. Offers the setup on-ramp once if it isn't."""
+        ok, _reason = self._ai_ready()
+        if ok:
+            return True
+        if self._on_setup_ai is not None and self._on_setup_ai():
+            ok, _reason = self._ai_ready()
+            if ok:
+                return True
+        self._check_ai_configured()
+        return False
 
     def reload(self) -> None:
         """Rebuild every tab from its store (after a change or a promotion)."""
@@ -229,28 +260,23 @@ class AILibraryDialog:
                 announce=self._announce,
             )
             return
-        model_id = self._model_id()
-        if not model_id:
-            self._check_ai_configured()
+        if not self._ensure_ai():
             return
-        provider_id = self._settings.ai_chat_default_provider
         prompt_text = (
-            item.detail
-            .replace("{selection}", input_text)
+            item.detail.replace("{selection}", input_text)
             .replace("{document}", self._context.get("document") or input_text)
             .replace("{title}", self._context.get("title", ""))
         )
+        backend = self._backend()
         self._running = True
-        self._set_status(f"Sending to {model_id}...")
+        self._set_status(f"Sending to {backend.settings.model}...")
+
+        model, provider = backend.settings.model, backend.settings.provider
 
         def run() -> None:
             try:
-                from quill.core.ai_chat import send_prompt
-                from quill.platform.windows.credential_store import load_secret
-
-                api_key = load_secret(f"quill-{provider_id}-api-key")
-                result = send_prompt(provider_id, model_id, prompt_text, api_key=api_key)
-                wx.CallAfter(self._on_prompt_result, result, model_id, provider_id)
+                result = backend.respond(prompt_text)
+                wx.CallAfter(self._on_prompt_result, result, model, provider)
             except Exception as exc:  # noqa: BLE001
                 wx.CallAfter(self._on_run_error, str(exc))
 
@@ -288,9 +314,7 @@ class AILibraryDialog:
         except Exception as exc:  # noqa: BLE001
             self._on_run_error(str(exc))
             return
-        model_id = self._model_id()
-        if not model_id:
-            self._check_ai_configured()
+        if not self._ensure_ai():
             return
         ctx = dict(self._context)
         ctx.setdefault("clipboard", "")
@@ -304,15 +328,9 @@ class AILibraryDialog:
         self._start_skill_run(pack, ctx)
 
     def _start_skill_run(self, pack: Any, ctx: dict[str, str]) -> None:
-        from quill.core.ai_chat import send_prompt
         from quill.core.skill_pack import run_skill
-        from quill.platform.windows.credential_store import load_secret
 
-        provider_id = self._settings.ai_chat_default_provider or "openrouter"
-        model_id = self._model_id()
-        api_key = load_secret(f"quill-{provider_id}-api-key")
-        ollama_url = getattr(self._settings, "ollama_base_url", "") or "http://localhost:11434"
-        base_url = ollama_url if provider_id.startswith("ollama") else ""
+        backend = self._backend()
         total = len(pack.steps)
         self._cancel.clear()
         self._running = True
@@ -331,9 +349,7 @@ class AILibraryDialog:
                 wx.CallAfter(self._set_status, status + "...")
                 if self._cancel.is_set():
                     raise _SkillCancelled()
-                return send_prompt(
-                    provider_id, model_id, prompt, api_key=api_key, base_url=base_url
-                )
+                return backend.respond(prompt)
 
             try:
                 results = run_skill(pack, ctx, send_fn)

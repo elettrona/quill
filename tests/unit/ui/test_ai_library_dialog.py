@@ -102,6 +102,24 @@ def test_promote_prompt_to_skill_installs_a_skill(wx_app, tmp_path):
         frame.Destroy()
 
 
+def test_run_prompt_offers_setup_when_ai_not_ready(wx_app, tmp_path, monkeypatch):
+    frame, dlg, lib, _store = _make(wx_app, tmp_path)
+    try:
+        # AI is not ready, and the user declines the on-ramp -> a friendly status,
+        # no crash, and the on-ramp was offered exactly once.
+        offered = []
+        dlg._on_setup_ai = lambda: (offered.append(1), False)[1]
+        monkeypatch.setattr(dlg, "_ai_ready", lambda: (False, "off"))
+        page = dlg._prompt_page
+        page.select_by_id(next(it.id for it in page._items if it.name == "Greeting"))
+        dlg._run_prompt(page.current())
+        assert offered == [1]
+        assert dlg._status.GetLabel()  # a gentle hint was shown
+    finally:
+        dlg.close()
+        frame.Destroy()
+
+
 def test_agent_validate_reports_valid(wx_app, tmp_path):
     frame, dlg, _lib, _store = _make(wx_app, tmp_path)
     try:

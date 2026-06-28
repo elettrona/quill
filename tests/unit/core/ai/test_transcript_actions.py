@@ -22,6 +22,15 @@ def test_builtins_have_unique_ids_and_nonempty_instructions() -> None:
     assert {"meeting-minutes", "action-items", "study-notes", "clean-draft"} <= set(ids)
 
 
+def test_new_bundled_actions_are_present_and_lead_in_context() -> None:
+    ids = {a.id for a in BUILTIN_TRANSCRIPT_ACTIONS}
+    assert {"follow-up-email", "key-quotes", "decisions-log"} <= ids
+    # A multi-speaker meeting now surfaces decisions and a follow-up email up front.
+    meeting = recommend_actions("Speaker 0: we decided X.\nSpeaker 1: I'll send the recap.")
+    lead_ids = [a.id for a in meeting[:4]]
+    assert "decisions-log" in lead_ids and "follow-up-email" in lead_ids
+
+
 def test_find_action_is_case_insensitive_and_misses_cleanly() -> None:
     assert find_action("Meeting-Minutes").id == "meeting-minutes"  # type: ignore[union-attr]
     assert find_action("nope") is None
