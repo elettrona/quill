@@ -368,13 +368,6 @@ def test_first_run_defers_tab_creation_until_wizard_returns() -> None:
     frame._location_ring = type("LR", (), {"record": lambda self, n: None})()
     frame._region_tracker = type("RT", (), {"enter": lambda self, name: None})()
     frame._focus_editor = lambda: None
-    # Pre-clear the legacy first-run flags the wizard branch writes
-    # to, so we exercise the production path that suppresses them.
-    frame._first_run_profile_prompt = True
-    frame._first_run_assistant_prompt = True
-    frame._first_run_glow_prompt = True
-    frame._first_run_speech_prompt = True
-    frame._first_run_watch_folder_prompt = True
 
     frame._maybe_run_first_run_onboarding()
 
@@ -386,14 +379,43 @@ def test_first_run_defers_tab_creation_until_wizard_returns() -> None:
     assert frame._first_run_wizard_pending is False, (
         "the pending flag must be cleared once the tab is created"
     )
-    # The wizard branch suppresses the legacy per-feature prompts.
-    assert frame._first_run_profile_prompt is False
-    assert frame._first_run_assistant_prompt is False
-    assert frame._first_run_glow_prompt is False
-    assert frame._first_run_speech_prompt is False
-    assert frame._first_run_watch_folder_prompt is False
     # No startup-task failures were reported by this happy path.
     assert failures == []
+
+
+def test_completed_wizard_shows_no_legacy_onboarding_path(monkeypatch) -> None:
+    """Once the unified wizard has run, no second onboarding surface appears.
+
+    Regression (#700): a finished first-run wizard set ``setup_wizard_completed``
+    but the legacy per-feature path still fired on the next launch, re-showing
+    the "Startup Wizard overview" plus a "Start guided setup now?" prompt every
+    time. That whole path is now removed: with setup_wizard_completed True,
+    _maybe_run_first_run_onboarding only focuses the editor and never re-runs the
+    wizard or shows any modal.
+    """
+    frame = _build_frame()
+    frame.settings = type(
+        "Settings", (), {"setup_wizard_completed": True, "auto_check_updates": False}
+    )()
+    frame._report_startup_task_failure = lambda label: None
+    frame._surface_data_migration_notice = lambda: None
+    frame.editor = None
+
+    wizard_runs: list[bool] = []
+    frame.run_startup_wizard = lambda **kwargs: wizard_runs.append(True)
+    modals: list[object] = []
+    frame._show_modal_dialog = lambda dlg, title: modals.append(dlg)
+    frame._show_message_box = lambda *a, **k: modals.append(a)
+
+    # The legacy methods that drove the second wizard no longer exist.
+    assert not hasattr(MainFrame, "show_startup_wizard_page")
+    assert not hasattr(MainFrame, "_show_startup_wizard_first_run_prompt")
+    assert not hasattr(MainFrame, "_show_profile_onboarding")
+
+    frame._maybe_run_first_run_onboarding()
+
+    assert wizard_runs == [], "the wizard must not re-run after it has completed"
+    assert modals == [], "no onboarding modal may appear on a later launch"
 
 
 # ---------------------------------------------------------------------------

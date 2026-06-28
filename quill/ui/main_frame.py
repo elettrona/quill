@@ -118,7 +118,6 @@ from quill.core.custom_profiles import (
     load_custom_profiles,
     save_custom_profiles,
 )
-from quill.core.dectalk_runtime import download_dectalk_runtime
 from quill.core.diagnostics import (
     build_bug_report_payload,
     build_diagnostics_review_text,
@@ -259,21 +258,9 @@ from quill.core.navigation import (
 )
 from quill.core.notifications import add_notification, clear_notifications, load_notifications
 from quill.core.onboarding import (
-    load_assistant_onboarding_complete,
-    load_glow_onboarding_complete,
-    load_onboarding_complete,
-    load_speech_onboarding_complete,
-    load_startup_wizard_prompt_suppressed,
     load_trust_consent_complete,
     load_trust_consent_status,
-    load_watch_folder_onboarding_complete,
-    mark_assistant_onboarding_complete,
-    mark_glow_onboarding_complete,
-    mark_onboarding_complete,
-    mark_speech_onboarding_complete,
-    mark_startup_wizard_prompt_suppressed,
     mark_trust_consent_complete,
-    mark_watch_folder_onboarding_complete,
     trust_consent_change_log,
 )
 from quill.core.outline import OutlineEntry, extract_outline_entries
@@ -308,8 +295,6 @@ from quill.core.read_aloud import (
     discover_dectalk_executable,
     discover_espeak_executable,
     discover_piper_executable,
-    list_espeak_english_voices,
-    list_kokoro_voices,
     synthesize_to_file_with_dectalk,
     synthesize_to_file_with_sapi5,
     synthesize_with_espeak,
@@ -1041,7 +1026,6 @@ class MainFrame(
             self._silent_layout_cls = None
         self.document = Document()
         ensure_app_directories()
-        self._first_run_profile_prompt = not safe_mode and not load_onboarding_complete()
         self._first_run_trust_consent_prompt = not safe_mode and not load_trust_consent_complete()
         # Cache the on-disk consent status so the re-consent dialog can branch
         # between first-install and "your prior consent is out of date" (#305).
@@ -1049,15 +1033,11 @@ class MainFrame(
         self.features = FeatureManager.load(persistent=not safe_mode)
         self.macros = MacroManager.load(persistent=not safe_mode)
         self.settings = load_settings()
-        # Startup no longer barrages the user with secondary onboarding (AI hub,
-        # watch folder, GLOW); only the setup wizard and trust-consent gate run.
-        # The rest stay available from their menus/buttons. (#700)
-        self._first_run_assistant_prompt = False
-        # Legacy DECtalk/eSpeak/Piper speech onboarding is retired (speech is set
-        # up via Tools > Speech and Dictation); never auto-prompt it on startup.
-        self._first_run_speech_prompt = False
-        self._first_run_glow_prompt = False
-        self._first_run_watch_folder_prompt = False
+        # The first run shows exactly one onboarding surface: the unified setup
+        # wizard (run_startup_wizard), plus the trust-consent gate. The legacy
+        # per-feature startup prompts (profile, AI, assistant, GLOW, speech,
+        # watch folder) and the "Startup Wizard overview" are retired; every one
+        # of those is reachable from its own menu/button. (#700)
         # #606: when the setup wizard will run on this launch, defer the
         # default "Untitled" document tab until the wizard returns. macOS
         # VoiceOver announces the focused window's tab name as soon as the
@@ -18594,23 +18574,6 @@ class MainFrame(
             return folder / "example-file.txt"
         return Path("example-file.txt")
 
-    def _show_watch_folder_onboarding(self, force: bool) -> None:
-        wx = self._wx
-        response = self._show_message_box(
-            "Set up watch folder automation now?\n\n"
-            "When enabled, Quill monitors one folder and opens new supported files "
-            "automatically as they appear.",
-            "Watch Folder Setup",
-            wx.ICON_QUESTION | wx.YES_NO,
-        )
-        if response != wx.YES:
-            if not force:
-                mark_watch_folder_onboarding_complete()
-            self._set_status("Watch folder setup skipped")
-            return
-        self.open_watch_folder_settings()
-        mark_watch_folder_onboarding_complete()
-
     def _on_watch_file_opened(self, path: Path) -> None:
         try:
             self.open_file(path, record_recent=True, refresh_existing=False)
@@ -25263,22 +25226,18 @@ class MainFrame(
                 return
 
         # New unified first-run wizard: run when setup_wizard_completed is False
-        # (i.e., a fresh install that has not seen the wizard yet).  After the
-        # wizard finishes or is cancelled, skip the legacy per-feature prompts so
-        # they do not double-up on top of the new flow.
+        # (i.e., a fresh install that has not seen the wizard yet). This is the
+        # only onboarding surface shown on first run; once it completes,
+        # run_setup_wizard() sets setup_wizard_completed=True and we never
+        # re-prompt. The legacy "Startup Wizard overview" and per-feature
+        # prompts that used to fire on later launches were removed (#700) -- the
+        # unified wizard subsumes them, and each feature remains set up from its
+        # own menu/button.
         if not getattr(self.settings, "setup_wizard_completed", True):
             try:
                 self.run_startup_wizard(first_run=True)
             except Exception:
                 self._report_startup_task_failure("first-run setup wizard")
-            for _flag in (
-                "_first_run_profile_prompt",
-                "_first_run_assistant_prompt",
-                "_first_run_glow_prompt",
-                "_first_run_speech_prompt",
-                "_first_run_watch_folder_prompt",
-            ):
-                setattr(self, _flag, False)
             # #606: if the default "Untitled" tab was deferred at __init__
             # time, create it now that the wizard has closed. The
             # wizard's modal grabbed focus while the notebook was
@@ -25310,41 +25269,6 @@ class MainFrame(
             self._request_menu_refresh()
             return
 
-        if any((
-            getattr(self, "_first_run_trust_consent_prompt", False),
-            getattr(self, "_first_run_profile_prompt", False),
-            getattr(self, "_first_run_assistant_prompt", False),
-            getattr(self, "_first_run_glow_prompt", False),
-            getattr(self, "_first_run_speech_prompt", False),
-            getattr(self, "_first_run_watch_folder_prompt", False),
-        )):
-            if load_startup_wizard_prompt_suppressed():
-                self._set_status("Startup Wizard prompt suppressed")
-                _focus_editor()
-                return
-            self.show_startup_wizard_page()
-            if hasattr(self.frame, "SetFocus"):
-                self.frame.SetFocus()
-            if not self._show_startup_wizard_first_run_prompt():
-                self._set_status("Startup Wizard overview opened")
-                _focus_editor()
-                return
-        if getattr(self, "_first_run_profile_prompt", False):
-            self._show_profile_onboarding(force=False)
-            self._first_run_profile_prompt = False
-            self._offer_ai_onboarding()
-        if getattr(self, "_first_run_assistant_prompt", False):
-            self._show_assistant_onboarding(force=False)
-            self._first_run_assistant_prompt = False
-        if getattr(self, "_first_run_glow_prompt", False):
-            self._show_glow_onboarding(force=False)
-            self._first_run_glow_prompt = False
-        if getattr(self, "_first_run_speech_prompt", False):
-            self._show_speech_onboarding(force=False)
-            self._first_run_speech_prompt = False
-        if getattr(self, "_first_run_watch_folder_prompt", False):
-            self._show_watch_folder_onboarding(force=False)
-            self._first_run_watch_folder_prompt = False
         _focus_editor()
 
     def enable_braille_mode(self) -> None:
@@ -25465,79 +25389,6 @@ class MainFrame(
         except Exception:  # noqa: BLE001
             return None
 
-    def _show_startup_wizard_first_run_prompt(self) -> bool:
-        wx = self._wx
-        dialog = wx.RichMessageDialog(
-            self.frame,
-            "Start guided setup now?\n\n"
-            "Choose Yes to continue through profile, AI, assistant, speech, "
-            "and watch folder setup.",
-            "Startup Wizard",
-            wx.YES_NO | wx.ICON_QUESTION,
-        )
-        if hasattr(dialog, "SetYesNoLabels"):
-            dialog.SetYesNoLabels("Yes", "No")
-        if hasattr(dialog, "ShowCheckBox"):
-            dialog.ShowCheckBox("Do not show this again")
-
-        apply_modal_ids(dialog, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO)
-        try:
-            result = self._show_modal_dialog(dialog, "Startup Wizard")
-            is_checked = getattr(dialog, "IsCheckBoxChecked", None)
-            if callable(is_checked) and is_checked():
-                mark_startup_wizard_prompt_suppressed()
-        finally:
-            dialog.Destroy()
-        return result == wx.ID_YES
-
-    def show_startup_wizard_page(self) -> None:
-        from quill.ui.info_pages import show_startup_wizard_page_native
-
-        done = "Done"
-        todo = "Not set up yet"
-        steps = [
-            (
-                "A quick word on privacy",
-                done if load_trust_consent_complete() else todo,
-                "How Quill looks after your writing and uses AI, in plain terms.",
-            ),
-            (
-                "How Quill starts",
-                done if load_onboarding_complete() else todo,
-                "Pick a starting setup that matches how you like to work.",
-            ),
-            (
-                "Writing help",
-                done if load_assistant_onboarding_complete() else todo,
-                "Turn on optional AI writing help and choose its style.",
-            ),
-            (
-                "Accessibility engine (GLOW)",
-                done if load_glow_onboarding_complete() else todo,
-                "GLOW is on by default; optional network features stay off until you turn them on.",
-            ),
-            (
-                "Speech and voices",
-                done if load_speech_onboarding_complete() else todo,
-                "Choose voices and download optional speech only if you want it.",
-            ),
-            (
-                "Speech model preferences",
-                done
-                if bool(getattr(self.settings, "bw_provider_id", ""))
-                and bool(getattr(self.settings, "bw_speech_model_id", ""))
-                else todo,
-                "Pick your preferred speech provider and voice model.",
-            ),
-            (
-                "Open a folder automatically",
-                done if load_watch_folder_onboarding_complete() else todo,
-                "Let Quill open files you drop into one folder for you.",
-            ),
-        ]
-        show_startup_wizard_page_native(self.frame, self._wx, steps, self._show_modal_dialog)
-        self._set_status("Opened Startup Wizard overview")
-
     def _show_trust_consent_onboarding(self, force: bool) -> bool:
         wx = self._wx
         status = getattr(self, "_trust_consent_status", None)
@@ -25621,280 +25472,12 @@ class MainFrame(
             save_settings(self.settings)
         self._set_status("BITS Whisperer rollout defaults configured")
 
-    def _offer_ai_onboarding(self) -> None:
-        """First run: ask whether to use AI; if yes, set up the model."""
-        from quill.core.ai.llama_cpp_backend import LlamaCppBackend
-        from quill.core.ai.model_manager import existing_model, save_ai_enabled
-
-        wx = self._wx
-        use_ai = self._show_message_box(
-            "Do you want to use Quill's built-in artificial intelligence (Ask Quill)?\n\n"
-            "It runs entirely on your computer. You can turn it on or off later from "
-            "Tools > AI Assistant.",
-            "Use Artificial Intelligence?",
-            wx.ICON_QUESTION | wx.YES_NO,
-        )
-        enabled = use_ai == wx.YES
-        save_ai_enabled(enabled)
-        self._sync_ai_enabled_menu(enabled)
-        if not enabled:
-            self._set_status("AI is off. You can enable it later from Tools > AI Assistant.")
-            return
-        # Foundation Models (macOS) needs no download; only llama.cpp does.
-        assistant = self._get_assistant()
-        if (
-            isinstance(assistant.backend, LlamaCppBackend)
-            and assistant.is_available()[0]
-            and not existing_model()
-        ):
-            AIModelDialog(self.frame, announce=self._set_status).show()
-        else:
-            self._set_status("AI is ready.")
-
     def _sync_ai_enabled_menu(self, enabled: bool) -> None:
         menu_bar = self.frame.GetMenuBar()
         if menu_bar is not None and hasattr(self, "_id_ai_enabled"):
             item = menu_bar.FindItemById(self._id_ai_enabled)
             if item is not None:
                 item.Check(enabled)
-
-    def _show_profile_onboarding(self, force: bool) -> None:
-        wx = self._wx
-        profiles = list(PROFILE_DEFINITIONS.values())
-        with wx.SingleChoiceDialog(
-            self.frame,
-            "Choose how Quill should start:",
-            "Profile Onboarding",
-            choices=self._profile_choice_labels(profiles),
-        ) as dialog:
-            if self._show_modal_dialog(dialog, "Profile Onboarding") != wx.ID_OK:
-                if not force:
-                    mark_onboarding_complete()
-                if force:
-                    self._set_status("Profile onboarding skipped")
-                return
-            selection = dialog.GetSelection()
-        if selection == wx.NOT_FOUND:
-            if not force:
-                mark_onboarding_complete()
-            return
-        profile = profiles[selection]
-        self.features.switch_profile(profile.id)
-        mark_onboarding_complete()
-        self._set_status(f"Quill starts in the {profile.name} profile")
-        self._refresh_title()
-
-    def _show_assistant_onboarding(self, force: bool) -> None:
-        from quill.ui.web_form import show_web_form
-
-        styles = [
-            ("balanced", "Balanced"),
-            ("concise", "Concise"),
-            ("gentle", "Gentle"),
-            ("technical", "Technical"),
-        ]
-        values = show_web_form(
-            self.frame,
-            self._wx,
-            title="Writing Assistant Onboarding",
-            intro=(
-                "Quill can seed the writing assistant with a few focused prompt styles. "
-                "You can change this later in General Preferences."
-            ),
-            fields=[
-                {
-                    "name": "enabled",
-                    "label": "Enable the writing assistant by default",
-                    "type": "checkbox",
-                    "value": getattr(self.settings, "assistant_enabled", False),
-                },
-                {
-                    "name": "style",
-                    "label": "Prompt style",
-                    "type": "select",
-                    "value": getattr(self.settings, "assistant_prompt_style", "balanced"),
-                    "options": styles,
-                },
-            ],
-        )
-        if values is None:
-            if not force:
-                mark_assistant_onboarding_complete()
-            return
-        self.settings.assistant_enabled = bool(values.get("enabled"))
-        style = str(values.get("style", "balanced"))
-        if style not in {key for key, _ in styles}:
-            style = "balanced"
-        self.settings.assistant_prompt_style = style
-        save_settings(self.settings)
-        mark_assistant_onboarding_complete()
-        self._set_status("Configured writing assistant onboarding")
-
-    def _show_glow_onboarding(self, force: bool) -> None:
-        from quill.ui.web_form import show_web_form
-
-        values = show_web_form(
-            self.frame,
-            self._wx,
-            title="GLOW Accessibility Onboarding",
-            intro=(
-                "GLOW is Quill's built-in accessibility engine. It is turned on by "
-                "default and runs entirely on your computer. A few optional GLOW "
-                "features can use a network connection; these stay off until you turn "
-                "them on here, and Quill never sends your document anywhere without "
-                "asking first. You can change any of this later in Preferences."
-            ),
-            fields=[
-                {
-                    "name": "enabled",
-                    "label": "Keep the GLOW accessibility engine enabled",
-                    "type": "checkbox",
-                    "value": getattr(self.settings, "glow_enabled", True),
-                },
-                {
-                    "name": "ai_alt_text",
-                    "label": "Allow optional AI alt-text generation (uses the network)",
-                    "type": "checkbox",
-                    "value": getattr(self.settings, "glow_ai_alt_text_consent", False),
-                },
-                {
-                    "name": "pii_redaction",
-                    "label": "Allow optional PII redaction (uses the network)",
-                    "type": "checkbox",
-                    "value": getattr(self.settings, "glow_pii_redaction_consent", False),
-                },
-                {
-                    "name": "language_processing",
-                    "label": "Allow optional WCAG language processing (uses the network)",
-                    "type": "checkbox",
-                    "value": getattr(self.settings, "glow_language_processing_consent", False),
-                },
-            ],
-        )
-        if values is None:
-            if not force:
-                mark_glow_onboarding_complete()
-            return
-        self.settings.glow_enabled = bool(values.get("enabled", True))
-        self.settings.glow_ai_alt_text_consent = bool(values.get("ai_alt_text"))
-        self.settings.glow_pii_redaction_consent = bool(values.get("pii_redaction"))
-        self.settings.glow_language_processing_consent = bool(values.get("language_processing"))
-        save_settings(self.settings)
-        mark_glow_onboarding_complete()
-        self._set_status("Configured GLOW accessibility onboarding")
-
-    def _show_speech_onboarding(self, force: bool) -> None:  # noqa: PLR0912
-        wx = self._wx
-        start_setup = self._show_message_box(
-            "Set up speech engines now?\n\n"
-            "You can download/configure DECtalk, eSpeak-NG, Piper, and Kokoro.\n"
-            "You can always change these later in AI > Speech > Settings.",
-            "Speech Setup",
-            wx.ICON_QUESTION | wx.YES_NO,
-        )
-        if start_setup != wx.YES:
-            if not force:
-                mark_speech_onboarding_complete()
-            self._set_status("Speech setup skipped")
-            return
-
-        choices = [
-            "Download and configure DECtalk runtime (recommended)",
-            "Configure eSpeak-NG path and English variant",
-            "Browse and download Piper voices",
-            "Configure Kokoro English voice defaults",
-            "Open speech setup docs",
-        ]
-        with wx.MultiChoiceDialog(
-            self.frame,
-            "Select the speech setup steps you want to run now:",
-            "Speech Setup",
-            choices=choices,
-        ) as dialog:
-            if self._show_modal_dialog(dialog, "Speech Setup") != wx.ID_OK:
-                if not force:
-                    mark_speech_onboarding_complete()
-                self._set_status("Speech setup cancelled")
-                return
-            selected = set(dialog.GetSelections())
-
-        def _ask_text(prompt: str, value: str) -> str | None:
-            with wx.TextEntryDialog(self.frame, prompt, "Speech Setup", value=value) as td:
-                if self._show_modal_dialog(td, "Speech Setup") != wx.ID_OK:
-                    return None
-                return td.GetValue().strip()
-
-        if 0 in selected:
-            speech_root = app_data_dir() / "speech" / "dectalk"
-
-            def work(progress: Callable[[str, int, int], None]) -> object:
-                progress("Downloading DECtalk runtime", 0, 1)
-                exe = download_dectalk_runtime(speech_root)
-                progress("Finalizing DECtalk runtime", 1, 1)
-                return str(exe)
-
-            def on_success(result: object) -> None:
-                self.settings.read_aloud_dectalk_executable = str(result)
-                save_settings(self.settings)
-                self._set_status("DECtalk runtime downloaded and configured")
-
-            self._run_background_task(
-                "Downloading DECtalk speech runtime",
-                work,
-                on_success,
-                notify_on_success=True,
-                notify_on_error=True,
-                notification_category="speech",
-            )
-
-        if 1 in selected:
-            path = _ask_text(
-                "Path to espeak-ng.exe (leave blank to use PATH):",
-                self.settings.read_aloud_espeak_executable,
-            )
-            if path is not None:
-                self.settings.read_aloud_espeak_executable = path
-            voices = list_espeak_english_voices()
-            if voices:
-                voice_names = [voice.name for voice in voices]
-                with wx.SingleChoiceDialog(
-                    self.frame,
-                    "Choose default eSpeak English voice:",
-                    "Speech Setup",
-                    choices=voice_names,
-                ) as voice_dialog:
-                    if self._show_modal_dialog(voice_dialog, "Speech Setup") == wx.ID_OK:
-                        idx = voice_dialog.GetSelection()
-                        if 0 <= idx < len(voices):
-                            self.settings.read_aloud_espeak_voice = voices[idx].id
-
-        if 2 in selected:
-            self.choose_read_aloud_configuration()
-
-        if 3 in selected:
-            voices = list_kokoro_voices()
-            if voices:
-                with wx.SingleChoiceDialog(
-                    self.frame,
-                    "Choose default Kokoro English voice:",
-                    "Speech Setup",
-                    choices=[voice.name for voice in voices],
-                ) as voice_dialog:
-                    if self._show_modal_dialog(voice_dialog, "Speech Setup") == wx.ID_OK:
-                        idx = voice_dialog.GetSelection()
-                        if 0 <= idx < len(voices):
-                            self.settings.read_aloud_kokoro_voice = voices[idx].id
-
-        if 4 in selected:
-            docs_path = app_data_dir().parent / "Quill" / "docs" / "userguide.md"
-            webbrowser.open(str(docs_path))
-
-        save_settings(self.settings)
-        mark_speech_onboarding_complete()
-        self._set_status("Speech setup complete")
-
-    def _profile_choice_labels(self, profiles: list[object]) -> list[str]:
-        return [self._profile_choice_label(profile) for profile in profiles]
 
     def _profile_choice_label(self, profile: object) -> str:
         name = str(getattr(profile, "name", "Profile")).strip()

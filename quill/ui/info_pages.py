@@ -266,67 +266,6 @@ def _bind_link_buttons(
         lst.Bind(wx.EVT_LIST_ITEM_ACTIVATED, _on_visit)
 
 
-def show_startup_wizard_page_native(
-    parent: Any,
-    wx: Any,
-    steps: list[tuple[str, str, str]],
-    show_modal_dialog: Callable[[Any, str], int],
-) -> None:
-    """Modal Startup Wizard overview dialog with a native ListCtrl for steps."""
-    from quill.ui.dialog_contract import apply_modal_ids
-
-    dialog = wx.Dialog(
-        parent,
-        title="Startup Wizard",
-        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
-    )
-    dialog.SetSize((660, 520))
-    sizer = wx.BoxSizer(wx.VERTICAL)
-
-    intro = wx.TextCtrl(
-        dialog,
-        value=(
-            "Welcome to Quill - a fast, friendly writing app built to work beautifully "
-            "with your screen reader.\n\n"
-            "Each step below is optional and takes a moment. "
-            "You can stop any time and come back later. "
-            "Nothing is downloaded until you say yes."
-        ),
-        style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2,
-        name="wizard_page_intro",
-    )
-    intro.SetMinSize((-1, 80))
-    sizer.Add(intro, 0, wx.EXPAND | wx.ALL, 12)
-
-    steps_list = wx.ListCtrl(
-        dialog,
-        style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.LC_VRULES,
-        name="wizard_page_steps",
-    )
-    steps_list.AppendColumn("Step", width=200)
-    steps_list.AppendColumn("Status", width=100)
-    steps_list.AppendColumn("Description", width=300)
-    for i, (step, status, detail) in enumerate(steps):
-        steps_list.InsertItem(i, step)
-        steps_list.SetItem(i, 1, status)
-        steps_list.SetItem(i, 2, detail)
-    sizer.Add(steps_list, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 12)
-
-    btn_sizer = wx.StdDialogButtonSizer()
-    close_btn = wx.Button(dialog, wx.ID_OK, label="Close")
-    close_btn.SetDefault()
-    btn_sizer.AddButton(close_btn)
-    btn_sizer.Realize()
-    sizer.Add(btn_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-    dialog.SetSizer(sizer)
-    apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_OK)
-    wx.CallAfter(steps_list.SetFocus)
-    try:
-        show_modal_dialog(dialog, "Startup Wizard")
-    finally:
-        dialog.Destroy()
-
-
 def show_whisperer_about_native(
     parent: Any,
     wx: Any,

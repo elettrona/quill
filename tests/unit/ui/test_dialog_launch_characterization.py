@@ -92,28 +92,3 @@ def test_open_user_guide_falls_back_to_welcome_when_file_missing(monkeypatch) ->
     assert len(frame._tabs) == 1
     assert frame._tabs[0].text.startswith("# Welcome to Quill")
     assert frame._status[-1] == "User guide file not found; opened welcome guide instead."
-
-
-def test_show_startup_wizard_page_opens_native_dialog_and_announces(monkeypatch) -> None:
-    frame = _build_frame()
-    frame.settings = type("Settings", (), {"bw_provider_id": "", "bw_speech_model_id": ""})()
-    frame._wx = None  # not used when show_startup_wizard_page_native is monkeypatched
-    frame._show_modal_dialog = lambda *_a, **_kw: None  # type: ignore[method-assign]
-
-    calls: list[tuple] = []
-
-    import quill.ui.info_pages as info_pages_module
-
-    monkeypatch.setattr(
-        info_pages_module,
-        "show_startup_wizard_page_native",
-        lambda parent, wx, steps, show_modal_dialog: calls.append((parent, steps)),
-    )
-
-    frame.show_startup_wizard_page()
-
-    # Native dialog called once; no document tab opened; status announced.
-    assert len(calls) == 1
-    assert calls[0][0] is frame.frame
-    assert frame._tabs == []
-    assert frame._status[-1] == "Opened Startup Wizard overview"

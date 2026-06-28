@@ -678,35 +678,6 @@ def test_confirm_discard_changes_accepts_reload_only() -> None:
     assert frame._confirm_discard_changes() is True
 
 
-def test_show_startup_wizard_page_uses_native_dialog(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    frame = MainFrame.__new__(MainFrame)
-    frame.frame = _Frame()
-    frame.settings = type("Settings", (), {"bw_provider_id": "", "bw_speech_model_id": ""})()
-    frame._wx = None  # not used when show_startup_wizard_page_native is monkeypatched
-    frame._show_modal_dialog = lambda *_a, **_kw: None  # type: ignore[method-assign]
-    statuses: list[str] = []
-    frame._set_status = statuses.append  # type: ignore[method-assign]
-
-    calls: list[tuple] = []
-    import quill.ui.info_pages as info_pages_module
-
-    monkeypatch.setattr(
-        info_pages_module,
-        "show_startup_wizard_page_native",
-        lambda parent, wx, steps, show_modal_dialog: calls.append((parent, steps)),
-    )
-
-    frame.show_startup_wizard_page()
-
-    assert len(calls) == 1
-    assert calls[0][0] is frame.frame
-    # Steps list should contain 7 entries (one per wizard section).
-    assert len(calls[0][1]) == 7
-    assert statuses == ["Opened Startup Wizard overview"]
-
-
 def test_compare_group_builder_classifies_case_only_changes() -> None:
     frame = _build_frame("Alpha")
     groups = frame._build_compare_groups([("left.txt", "Alpha\n"), ("right.txt", "alpha\n")])
