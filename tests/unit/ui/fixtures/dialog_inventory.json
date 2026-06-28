@@ -10,7 +10,6 @@
   "quill/ui/agent_validator_dialog.py::AgentValidatorDialog._on_choose_folder::wx.DirDialog": "native",
   "quill/ui/ai_agent_result_dialog.py::AIAgentResultDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/ai_chat_dialog.py::AIResponseDialog.__init__::wx.Dialog": "hardened_custom",
-  "quill/ui/ai_chat_dialog.py::AskAIDialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/ai_document_qa_dialog.py::AIDocumentQADialog.__init__::wx.Dialog": "hardened_custom",
   "quill/ui/ai_document_qa_dialog.py::AIDocumentQADialog._on_browse::wx.FileDialog": "native",
   "quill/ui/ai_grammar_check_dialog.py::AIGrammarCheckDialog.__init__::wx.Dialog": "hardened_custom",

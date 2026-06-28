@@ -284,7 +284,7 @@
     "quill/stability/crash_submit.py": 287,
     "quill/tools/check_banned_patterns.py": 831,
     "quill/ui/abbreviation_manager_dialog.py": 401,
-    "quill/ui/ai_chat_dialog.py": 493,
+    "quill/ui/ai_chat_dialog.py": 89,
     "quill/ui/agent_editor_host.py": 810,
     "quill/ui/ai_hub_dialog.py": 936,
     "quill/ui/assistant_panel.py": 947,

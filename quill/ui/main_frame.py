@@ -1924,12 +1924,6 @@ class MainFrame(
             None,
         )
         self.commands.register(
-            "tools.ask_ai",
-            "Ask AI...",
-            self.open_ask_ai,
-            None,
-        )
-        self.commands.register(
             "tools.ai_library",
             "AI Library",
             self.open_ai_library,
@@ -21650,13 +21644,6 @@ class MainFrame(
             return result.answer, result.edited, result.error
 
         return conversation
-
-    def open_ask_ai(self) -> None:
-        from quill.ui.ai_chat_dialog import AskAIDialog
-
-        dlg = AskAIDialog(self.frame, self.settings, announce_cb=self._announce)
-        dlg.show()
-        dlg.close()
 
     def open_prompt_library(self) -> None:
         from quill.ui.prompt_library_dialog import PromptLibraryDialog

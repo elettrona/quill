@@ -162,15 +162,8 @@ class TestSendPrompt:
 
 
 class TestDialogContract:
-    def test_ask_ai_dialog_in_inventory(self) -> None:
-        import json
-        from pathlib import Path
-
-        inv_path = Path(__file__).parent.parent / "ui" / "fixtures" / "dialog_inventory.json"
-        inv = json.loads(inv_path.read_text(encoding="utf-8"))
-        key = "quill/ui/ai_chat_dialog.py::AskAIDialog.__init__::wx.Dialog"
-        assert key in inv, f"AskAIDialog not in dialog inventory: {key}"
-
+    # The former Ask AI chat dialog was retired into the unified Ask Quill
+    # companion; ai_chat_dialog.py now holds only the read-only AIResponseDialog.
     def test_ai_response_dialog_in_inventory(self) -> None:
         import json
         from pathlib import Path
@@ -186,13 +179,13 @@ class TestDialogContract:
         src = (
             Path(__file__).parent.parent.parent.parent / "quill" / "ui" / "ai_chat_dialog.py"
         ).read_text(encoding="utf-8")
-        assert src.count("apply_modal_ids") >= 2, "Both dialogs must call apply_modal_ids"
+        assert "apply_modal_ids" in src, "AIResponseDialog must call apply_modal_ids"
 
-    def test_show_and_close_exposed_on_both_dialogs(self) -> None:
+    def test_show_and_close_exposed(self) -> None:
         from pathlib import Path
 
         src = (
             Path(__file__).parent.parent.parent.parent / "quill" / "ui" / "ai_chat_dialog.py"
         ).read_text(encoding="utf-8")
-        assert src.count("def show(self)") >= 2
-        assert src.count("def close(self)") >= 2
+        assert "def show(self)" in src
+        assert "def close(self)" in src
