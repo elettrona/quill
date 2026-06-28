@@ -2951,6 +2951,10 @@ Abbreviation Expansion replaces short trigger words with longer text automatical
 
 ### 5.79 Ask AI — lightweight in-editor AI chat
 
+> **Retired in 2.0 (see §5.84a).** Ask AI has been folded into the single
+> context-aware **Ask Quill** conversation; the standalone dialog and its command
+> were removed so there is one chat door. This section is retained for history.
+
 Ask AI is a modal dialog that lets users send a prompt to a configured AI provider and read the response without leaving QUILL. No document text is changed; the dialog is purely informational.
 
 **Motivation.** Screen-reader users frequently need to ask a quick question while writing — define a term, check a fact, explore a phrasing option — and switching to a browser or a separate AI client breaks flow, especially when using NVDA or JAWS where switching applications involves extra navigation. Ask AI keeps the interaction entirely within the QUILL keyboard model.
@@ -3185,6 +3189,84 @@ accept_into: selection
 | `quill/tools/sqp_validator.py` | CLI validator |
 | `quill/quillins_bundled/ai-writing-skills/` | Four bundled `.sqp` skill files |
 | `tests/unit/core/test_skill_pack.py` | 23 tests: parsing, validation, runner, branching, bundled files |
+
+---
+
+### 5.84a Unified AI Library and the four-pillar AI menu (2.0)
+
+**Goal.** Replace the scattered AI submenu and its overlapping dialogs with one
+confident, top-level `&AI` menu built on four pillars, so the user feels QUILL has
+*one* AI that knows where they are.
+
+**The four pillars.**
+
+1. **Ask Quill** — the single, context-aware conversation. The legacy "Ask AI" and
+   "Writing Assistant" chat dialogs are retired into it (`AskAIDialog` deleted;
+   `open_ask_ai` / `tools.ask_ai` removed), so there is exactly one chat door.
+2. **Do** — context-first actions: the Concierge's "What can I do here?"
+   (`quill/ui/concierge_menu.py`), the Selection Action Ring ("Rewrite & Improve"),
+   and Run Agent.
+3. **AI Library** (`quill/ui/ai_library_dialog.py`) — Prompts, Skills, and Agents in
+   one `wx.Notebook` with one verb set (Run, New, Edit, Enable/Disable, Import,
+   Export) and a real **Promote** continuum. `prompt_to_skill_source` grows a Prompt
+   into a Skill; `skill_to_agent_markdown` + `save_user_agent` grow a Skill into a
+   first-class user Agent saved in `agent_catalog.user_agents_dir`, loaded alongside
+   the bundled catalog by `load_full_catalog`. Prompt Studio and Agent Center are
+   retired into this surface; the full agent linter is the Agents-tab **Validate**.
+4. **AI Hub** — the single configuration front door: provider, key, model, engine
+   switching (Engines tab), GitHub Copilot setup, and **Session Branches** (Sessions
+   tab). The old "Engine & Sessions" submenu is removed.
+
+**Invariants.** Every list item and dynamic menu entry has a meaningful accessible
+name; all dialogs go through `_show_modal_dialog` + `apply_modal_ids`; running any
+action announces start and result; nothing is more than one level deep; the Library
+and continuum are wx-free at the core (`quill/core/ai/library.py`,
+`quill/core/skill_store.py`).
+
+---
+
+### 5.84b The Listening Companion — Transcript Actions and the Action Builder (2.0)
+
+**Goal.** Make transcription the *beginning* of an agentic writing experience, not
+the end: turn audio into the document the user actually needs, with a gentle, guided,
+adjustable path. Folds the agentic transcription magic of BITS Whisperer into QUILL's
+unified AI framework.
+
+**Transcript Actions** (`quill/core/ai/transcript_actions.py`, wx-free). Seven
+built-in actions — Meeting Minutes, Action Items, Executive Summary, Interview Notes,
+Study Notes, Q&A Extraction, Clean Up & Draft — each a named, plain-language,
+*adjustable* instruction with a prompt builder. `recommend_actions` orders them for
+the transcript in front of the user (multi-speaker leads with Minutes/Action Items;
+question-dense with Q&A/Interview; single voice with Clean Up & Draft) while keeping
+every action available. Reachable two ways: the post-transcription "What would you
+like me to make of this?" chooser (`quill/ui/transcript_actions_ui.py`, hooked into
+`_show_transcription_result`) and an `AI > Transcribe Audio > Transcript Actions...`
+item that runs them on the current selection/document. Results open in a new buffer;
+the original transcript is never overwritten. Generation uses the unified
+`ProviderChatBackend`; the flow degrades gently when AI is off.
+
+**Guided Action Builder** (`quill/ui/action_builder_dialog.py`). A no-syntax,
+form-based builder (name, start-from preset, plain-language instructions, optional
+**reference attachment**, Save) reached from the AI Library Skills tab. It writes a
+real Skill via `action_to_skill_source` + `SkillStore`, so a user-defined action
+immediately gains Run / Edit / Enable / Export / Promote. A reference document (txt /
+md directly, docx and friends via markitdown) is woven into the saved action so its
+output matches the user's template, terminology, and house style.
+
+**Automation.** A watch-folder transcribe profile can chain "transcribe → run a
+Transcript Action → save the document" next to the audio
+(`watch_transcribe._maybe_make_action_document`), Do-Not-Disturb-aware. AI off / no
+provider / a failed action skips the document step with a clear note and always keeps
+the transcript.
+
+**Principles (non-negotiable for this audience).** Easy (one choice, one keystroke),
+delightful, guided, principled (consent + preview + undo + private by default),
+powerful (the full agentic stack underneath), adjustable by instruction and prompt,
+and gentle for learners. North-star design: `docs/planning/transcription-companion-vision.md`.
+
+**Roadmap.** Shipped: Transcript Actions (+ anytime), the Action Builder, reference
+attachments, watch-folder automation. Planned: live + diarized streaming actions, and
+a Basic/Guided experience mode and per-action onboarding.
 
 ---
 

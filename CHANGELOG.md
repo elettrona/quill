@@ -10,6 +10,51 @@ overview and `docs/planning/roadmap-2.0.md` for the build tracker. Foundational 
 is built and tested on the `2.0-dev` branch; the AI Hub command-center UI and a few
 advanced pieces are still landing.
 
+### Unified AI menu (four pillars)
+
+- **One top-level `&AI` menu** replacing the scattered Tools > AI Assistant cluster,
+  organized as Ask Quill (the one conversation) · Do (context actions) · AI Library ·
+  AI Hub.
+- **Chat unified into Ask Quill.** Retired the redundant "Ask AI" and "Writing
+  Assistant" chat dialogs; Ask Quill is the single, context-aware chat door.
+- **Unified AI Library** (`quill/ui/ai_library_dialog.py`) — Prompts, Skills, and
+  Agents in one tabbed manager with one verb set and a real **Promote** continuum
+  (Prompt → Skill → Agent). Skill → Agent saves a first-class user agent into a new
+  user-agents catalog (`agent_catalog.user_agents_dir` / `save_user_agent`).
+  Retired Prompt Studio and Agent Center into it.
+- **Context-first "What can I do here?"** (`quill/ui/concierge_menu.py`) — surfaces
+  the Concierge's ordered, keyboard-reachable suggestions for the live context.
+- **AI Hub consolidation** — engine switching, GitHub Copilot setup, and AI Session
+  Branches now live inside the Hub (Engines and Sessions tabs); the "Engine &
+  Sessions" submenu is gone.
+
+### The Listening Companion (transcription → finished documents)
+
+- **Transcript Actions** (`quill/core/ai/transcript_actions.py`, wx-free) — seven
+  built-in actions (Meeting Minutes, Action Items, Executive Summary, Interview
+  Notes, Study Notes, Q&A Extraction, Clean Up & Draft) with context-aware ordering.
+- **"What would you like me to make of this?"** after transcription
+  (`quill/ui/transcript_actions_ui.py`), and a `Transcript Actions...` menu item to
+  run them on the current document anytime. Results open in a new buffer; degrades
+  gently when AI is off.
+- **Guided Action Builder** (`quill/ui/action_builder_dialog.py`) — a no-syntax form
+  (name, start-from preset, plain-language instructions, optional reference document,
+  Save) that writes a real Skill, reached from the AI Library Skills tab.
+- **Reference attachments** — bake an agenda / house style / example into a saved
+  action so its output matches your template.
+- **Watch-folder automation** — a transcribe profile can chain "transcribe → run a
+  Transcript Action → save the document" next to the audio, Do-Not-Disturb-aware.
+
+### Provider robustness
+
+- Fixed the Ollama Cloud default model (`qwen3` → `gemma3:12b`; the old default
+  404'd) and recommended-model list.
+- Reasoning models that return their answer on a reasoning channel (e.g. gpt-oss)
+  now work: both response parsers fall back to `reasoning_content` / `reasoning` when
+  `content` is empty.
+- Added a live multi-provider regression harness
+  (`tests/integration/test_providers_live.py`), CI-safe and cost-conservative.
+
 ### Agentic core (built and tested; wx-free unless noted)
 
 - **Safe Editor Tool Gateway** (`quill/core/ai/tool_gateway.py`) — the single,

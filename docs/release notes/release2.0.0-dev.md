@@ -44,12 +44,32 @@ choose a cloud provider and send it.
 - **Enterprise-ready.** Organization policy can constrain which providers are
   allowed and whether users may bring their own keys.
 
-## One front door, many engines
+## One AI, one menu
 
-Today QUILL's AI lives behind several different dialogs backed by two different
-provider systems. 2.0 unifies them so that choosing your provider and key in one
-place changes it everywhere — Ask Quill, the Writing Assistant, inline tools, and
-every agent.
+QUILL's AI used to be scattered across a long Tools submenu and several overlapping
+dialogs. 2.0 collapses all of it into one confident, top-level **`&AI` menu** built
+on four pillars:
+
+- **Ask Quill** — the one conversation. There is now a single, context-aware chat
+  door; the old "Ask AI" and "Writing Assistant" chat dialogs have been retired into
+  it, so there is no more guessing which one to open.
+- **Do** — context-first actions. **"What can I do here?"** reads your document and
+  offers the most useful next steps, and a **Rewrite & Improve** ring gives one-key
+  transforms for the current selection. **Run Agent** lists the full catalog.
+- **AI Library** — one place to manage **Prompts, Skills, and Agents** with the same
+  verbs (Run, New, Edit, Import, Export) and a **Promote** path that grows a Prompt
+  into a Skill and a Skill into an Agent. A guided **Build Action** lets anyone create
+  their own AI action in plain language, with no syntax.
+- **AI Hub** — one place to configure everything: provider, key, model, engine
+  switching, GitHub Copilot setup, and your saved sessions, all in one tabbed window.
+
+Choosing your provider and key in one place changes it everywhere — Ask Quill, the
+inline tools, every agent, and the new Transcript Actions.
+
+## One provider core, many engines
+
+Today QUILL's AI lives behind two different provider systems. 2.0 unifies them so
+that choosing your provider and key in the AI Hub changes it everywhere.
 
 On top of that single core sits an optional **harness** layer. A harness is the
 engine that drives an agent. QUILL ships a built-in **Native** harness that always
@@ -91,6 +111,39 @@ selection agents transform the selection, document agents transform the whole bu
 through a preview, and read-only agents open their output in a new document instead
 of overwriting your work. Agents are plain, validated files, so the set can grow —
 including, in time, agents contributed by Quillin extensions.
+
+## The Listening Companion — from sound to a finished document
+
+QUILL 2.0 doesn't stop at turning audio into words. When a transcript is ready it
+asks **"What would you like me to make of this?"** and offers a short, context-aware
+list of **Transcript Actions** — and one keystroke turns the transcript into the
+document you actually needed:
+
+- **Meeting Minutes**, **Action Items**, **Executive Summary**, **Interview Notes**,
+  **Study Notes**, **Q&A Extraction**, and **Clean Up & Draft**.
+
+QUILL orders the list for the recording in front of you (a multi-speaker meeting
+leads with Minutes; a single voice with Clean Up & Draft) and always opens the result
+in a new window, so your transcript is never overwritten. The same actions are
+reachable anytime from `AI > Transcribe Audio > Transcript Actions...` on whatever
+text you are looking at.
+
+Three things make this *yours*, not a fixed menu:
+
+- **Build your own, in plain language.** The guided **Build Action** wizard
+  (AI Library > Skills > Build Action) lets you name an action, start from an
+  example, describe what you want in your own words, and save it as a real Skill —
+  no syntax, ever. It is immediately runnable, adjustable, promotable to an Agent,
+  and shareable.
+- **Ground it in your template.** Attach a reference — an agenda, your house style,
+  a past good example — and QUILL matches its format and terminology. "Make minutes
+  that look like last month's."
+- **Automate it.** A watch-folder transcribe profile can chain an action onto every
+  arriving recording: drop a file in *Meetings*, get the transcript **and** the
+  minutes written next to it, automatically, Do-Not-Disturb-aware, in the background.
+
+Like everything else, it is optional, uses your configured provider, and degrades
+gently — if AI is off you simply keep the transcript.
 
 ## Safe by construction
 
