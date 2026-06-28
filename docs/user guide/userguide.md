@@ -791,6 +791,9 @@ The built-in actions are:
 - **Study Notes** — a lecture or talk turned into organized notes.
 - **Q&A Extraction** — every question and its answer in clean Q&A format.
 - **Clean Up & Draft** — spoken rambling turned into a clean, readable draft.
+- **Follow-Up Email** — a warm, ready-to-send recap with next steps.
+- **Key Quotes** — the most notable verbatim quotes, with who said them.
+- **Decisions Log** — just the decisions made, each with its rationale and owner.
 
 QUILL orders the list for the recording in front of you — a multi-speaker meeting
 leads with Minutes and Action Items, a single voice with Clean Up & Draft — but

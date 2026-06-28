@@ -22,6 +22,12 @@ advanced pieces are still landing.
   (the agentic "What can I do here?", "Rewrite & Improve", and "Run Agent" entries
   hidden); "Show advanced AI features" toggles it. Defaults to advanced so existing
   users lose nothing.
+- **On-ramp everywhere** — Ask Quill and the AI Library now offer the setup wizard
+  when AI isn't ready, instead of a dead end. The AI Library's Run was unified onto
+  the AI Hub provider, so configuring AI once makes Ask Quill, Transcript Actions,
+  agents, and the Library all work together.
+- **More Transcript Actions** — Follow-Up Email, Key Quotes, and Decisions Log join
+  the built-in set, woven into the context-aware ordering.
 
 ### Unified AI menu (four pillars)
 
