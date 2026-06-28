@@ -221,6 +221,22 @@ Pandoc fallback if the optional <code>python-docx</code> extra is
 absent), and <strong>RTF</strong> and <strong>HTML</strong> export carry
 the same. When a target format genuinely cannot hold something, QUILL
 tells you before you commit rather than dropping it silently.</p>
+<p><strong>Keep your formatting in a plain-text file —
+Illuminations.</strong> A plain <code>.txt</code> has nowhere to store
+fonts, colours, or alignment, so saving formatted text as plain text
+normally loses them. Beta 2 introduces the <strong>Illumination</strong>
+— named for the decorative layer a scribe paints over a manuscript: the
+clean text is the manuscript, and a small companion file,
+<code>yourfile.txt.illumination</code>, holds the formatting beside it.
+The <code>.txt</code> stays genuinely plain everywhere else, and
+reopening it <em>in QUILL</em> restores every font, colour, and
+alignment exactly. A new <strong>Settings → Editing → Saving formatted
+text as plain text</strong> option lets you choose to be asked each
+time, to always write an Illumination, or to save plain and drop the
+formatting. If the <code>.txt</code> is edited elsewhere, QUILL notices
+the mismatch and opens it plain rather than mis-applying old formatting;
+for one self-contained file that keeps everything, save as Markdown,
+Word, or RTF.</p>
 <h3 id="fixes">Fixes</h3>
 <ul>
 <li><strong>The portable build launches again, and opens

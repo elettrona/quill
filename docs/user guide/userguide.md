@@ -316,7 +316,19 @@ The **File** menu is the full document lifecycle.
 - **Save** writes the current document.
 - **Save As...** writes to a new path, converting the document to the file type you choose in the dialog. Quill keeps your text as portable Markdown-style markup, so picking **Rich Text Format (\*.rtf)** writes real RTF, **HTML (\*.html)** writes a standalone web page, and **Text (\*.txt)** writes clean prose with the markup removed. Choosing **Markdown (\*.md)** keeps the markup verbatim. The file's extension always decides the format; if you type a name without an extension, the selected type supplies one. When Save As changes the format, Quill can reload the file so the editing surface matches it — for example, opening a freshly saved `.rtf` in the Rich text editor. By default it asks first with a Yes/No prompt (reloading replaces the editor contents with the saved file); set **Settings → Editing → Reload after Save As to match the format** to *Reload automatically* or *Keep current surface* to skip the prompt.
 - **Save All** writes every modified open document.
-- **Save As Plain Text...** exports a clean plain-text version. Because plain text has no links, **Settings → Editing → Links in plain-text export** controls how Markdown links are written: keep the link text and its URL (the default, so you never lose where a link pointed), the link text only, the URL only, or the original Markdown link. This setting also applies whenever Save As writes a `.txt` file.
+- **Save As Plain Text...** exports a clean plain-text version. Because plain text has no links, **Settings → Editing → Links in plain-text export** controls how Markdown links are written: keep the link text and its URL (the default, so you never lose where a link pointed), the link text only, the URL only, or the original Markdown link. This setting also applies whenever Save As writes a `.txt` file. If the document carries hidden formatting (fonts, colours, alignment), Quill offers to keep it with an **Illumination** — see below.
+
+##### Keeping formatting in a plain-text file: Illuminations
+
+A plain `.txt` file has nowhere to store fonts, colours, or alignment, so saving formatted text as plain text normally drops the formatting. Quill gives you a choice, named after the decorative layer a scribe paints over a manuscript: an **Illumination** is a small companion file, `yourfile.txt.illumination`, that holds the formatting beside the clean text. Your `.txt` stays genuinely plain — readable in Notepad, e-mail, or anywhere — and when you reopen it *in Quill*, the matching Illumination restores every font, colour, and alignment exactly.
+
+What happens when you save formatted text as plain text is set by **Settings → Editing → Saving formatted text as plain text**:
+
+- **Ask each time** (the default) — Quill asks whether to keep your formatting (by saving as Markdown, Word, or RTF instead), to save the plain `.txt` **plus** an Illumination, or to save plain text only and drop the formatting.
+- **Always save an Illumination sidecar** — Quill writes the clean `.txt` and the `.illumination` companion every time, no prompt.
+- **Save plain text and drop the formatting** — the classic lossy save; the `.txt` is clean and any old Illumination beside it is removed.
+
+A few things worth knowing: the Illumination travels as a *separate file*, so if you copy or e-mail only the `.txt`, the formatting won't come along — keep the pair together (or use Markdown/Word/RTF, which carry formatting inside one file). And if you edit the `.txt` in another program, Quill notices the text no longer matches the Illumination and opens it as plain text rather than re-applying formatting to the wrong words. If you'd rather a single self-contained file that preserves everything, save as **Markdown** (which keeps the formatting inline) or **Word/RTF** (which turn it into native formatting).
 - **Reload from Disk** throws away in-memory edits and reloads the file from storage after confirmation.
 - **Restore Backup...** lets you restore a saved backup version.
 - **Page Setup...** and **Print...** support paper and print workflows.

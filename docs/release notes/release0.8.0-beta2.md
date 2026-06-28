@@ -39,6 +39,19 @@ absent), and **RTF** and **HTML** export carry the same. When a target format
 genuinely cannot hold something, QUILL tells you before you commit rather than
 dropping it silently.
 
+**Keep your formatting in a plain-text file — Illuminations.** A plain `.txt` has
+nowhere to store fonts, colours, or alignment, so saving formatted text as plain
+text normally loses them. Beta 2 introduces the **Illumination** — named for the
+decorative layer a scribe paints over a manuscript: the clean text is the
+manuscript, and a small companion file, `yourfile.txt.illumination`, holds the
+formatting beside it. The `.txt` stays genuinely plain everywhere else, and
+reopening it *in QUILL* restores every font, colour, and alignment exactly. A new
+**Settings → Editing → Saving formatted text as plain text** option lets you
+choose to be asked each time, to always write an Illumination, or to save plain
+and drop the formatting. If the `.txt` is edited elsewhere, QUILL notices the
+mismatch and opens it plain rather than mis-applying old formatting; for one
+self-contained file that keeps everything, save as Markdown, Word, or RTF.
+
 ### Fixes
 
 - **The portable build launches again, and opens documents.** Double-clicking

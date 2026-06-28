@@ -8606,6 +8606,49 @@ plain-text, screen-reader-first writing as first class. That is the magic: not
 catching up to word processors, but giving blind and low-vision writers a rich
 surface that finally speaks formatting out loud.
 
+### Illumination: formatting beside a plain-text file (shipped 0.8.0 Beta 2)
+
+A plain `.txt` file has nowhere to store fonts, colour, or alignment, so the
+hidden-codes model's plain-text writer strips formatting on save (honest
+fidelity). For writers who want a *clean* text file that still round-trips their
+formatting in QUILL, Beta 2 adds the **Illumination** — named for the decorative
+layer a scribe paints over a manuscript: the clean text is the manuscript, the
+formatting is its illumination, stored as a companion file.
+
+**Model** (`quill/io/illumination.py`, wx-free). An Illumination is a small JSON
+sidecar written next to the document as `<name>.illumination`:
+
+* `version` — schema version.
+* `text_sha256` — a hash of the clean (formatting-stripped) text the Illumination
+  was built from.
+* `document` — the serialized `RichDocument` (clean text plus the full run and
+  paragraph attribute structure), captured with `markdown_to_rich` and restored
+  with `rich_to_markdown`, so it carries the whole hidden-codes vocabulary
+  (font/size/colour/highlight/underline/strike/super-subscript and paragraph
+  alignment/spacing/indent/named-style) losslessly.
+
+**Drift safety.** On open, QUILL re-applies the Illumination only when the `.txt`
+on disk still hashes to the recorded `text_sha256`. If the file was edited in
+another program, the overlay would land on the wrong words, so QUILL declines and
+opens the file as plain text instead. This makes the sidecar safe to keep beside
+files that travel.
+
+**Policy (configurable).** The `plain_text_with_formatting` setting (Editing
+group) governs what happens when a formatted document is saved as plain text:
+
+* `ask` (default) — offer to keep formatting (redirect to Markdown/Word/RTF),
+  save plain `.txt` **plus** an Illumination, or save plain and drop formatting.
+* `illuminate` — always write the sidecar alongside the clean `.txt`.
+* `plain` — save clean and remove any stale sidecar (the classic lossy save).
+
+**Honest limits.** The Illumination is a *separate* file: copy or e-mail only the
+`.txt` and the formatting does not travel — the UI and docs say so, and steer
+writers who want one self-contained file to Markdown (inline codes) or Word/RTF
+(native formatting). The fully out-of-band, clean-on-disk-everywhere variant (no
+visible codes even in a saved `.md`) remains the deferred "Option B" end-state in
+[`docs/planning/rtf.md`](../planning/rtf.md); Illumination delivers the clean-text
+round-trip now without that larger overlay rebuild.
+
 ---
 
 ## Part Two: Competitive Study, Ulysses

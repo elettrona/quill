@@ -803,21 +803,56 @@ Links in plain-text export</strong> controls how Markdown links are
 written: keep the link text and its URL (the default, so you never lose
 where a link pointed), the link text only, the URL only, or the original
 Markdown link. This setting also applies whenever Save As writes a
-<code>.txt</code> file.</li>
-<li><strong>Reload from Disk</strong> throws away in-memory edits and
-reloads the file from storage after confirmation.</li>
-<li><strong>Restore Backup…</strong> lets you restore a saved backup
-version.</li>
-<li><strong>Page Setup…</strong> and <strong>Print…</strong> support
-paper and print workflows.</li>
-<li><strong>Run Current File</strong> executes the saved file with its
-associated tool, and <strong>Open Target at Cursor</strong> opens the
-path or link under the caret.</li>
-<li><strong>Rename Current File…</strong> and <strong>Delete Current
-File…</strong> manage the file on disk from inside the editor.</li>
-<li><strong>Close Document</strong> closes the current tab.</li>
-<li><strong>Exit</strong> closes the application.</li>
+<code>.txt</code> file. If the document carries hidden formatting
+(fonts, colours, alignment), Quill offers to keep it with an
+<strong>Illumination</strong> — see below.</li>
 </ul>
+<h5 id="keeping-formatting-in-a-plain-text-file-illuminations">Keeping
+formatting in a plain-text file: Illuminations</h5>
+<p>A plain <code>.txt</code> file has nowhere to store fonts, colours,
+or alignment, so saving formatted text as plain text normally drops the
+formatting. Quill gives you a choice, named after the decorative layer a
+scribe paints over a manuscript: an <strong>Illumination</strong> is a
+small companion file, <code>yourfile.txt.illumination</code>, that holds
+the formatting beside the clean text. Your <code>.txt</code> stays
+genuinely plain — readable in Notepad, e-mail, or anywhere — and when
+you reopen it <em>in Quill</em>, the matching Illumination restores
+every font, colour, and alignment exactly.</p>
+<p>What happens when you save formatted text as plain text is set by
+<strong>Settings → Editing → Saving formatted text as plain
+text</strong>:</p>
+<ul>
+<li><strong>Ask each time</strong> (the default) — Quill asks whether to
+keep your formatting (by saving as Markdown, Word, or RTF instead), to
+save the plain <code>.txt</code> <strong>plus</strong> an Illumination,
+or to save plain text only and drop the formatting.</li>
+<li><strong>Always save an Illumination sidecar</strong> — Quill writes
+the clean <code>.txt</code> and the <code>.illumination</code> companion
+every time, no prompt.</li>
+<li><strong>Save plain text and drop the formatting</strong> — the
+classic lossy save; the <code>.txt</code> is clean and any old
+Illumination beside it is removed.</li>
+</ul>
+<p>A few things worth knowing: the Illumination travels as a
+<em>separate file</em>, so if you copy or e-mail only the
+<code>.txt</code>, the formatting won’t come along — keep the pair
+together (or use Markdown/Word/RTF, which carry formatting inside one
+file). And if you edit the <code>.txt</code> in another program, Quill
+notices the text no longer matches the Illumination and opens it as
+plain text rather than re-applying formatting to the wrong words. If
+you’d rather a single self-contained file that preserves everything,
+save as <strong>Markdown</strong> (which keeps the formatting inline) or
+<strong>Word/RTF</strong> (which turn it into native formatting). -
+<strong>Reload from Disk</strong> throws away in-memory edits and
+reloads the file from storage after confirmation. - <strong>Restore
+Backup…</strong> lets you restore a saved backup version. - <strong>Page
+Setup…</strong> and <strong>Print…</strong> support paper and print
+workflows. - <strong>Run Current File</strong> executes the saved file
+with its associated tool, and <strong>Open Target at Cursor</strong>
+opens the path or link under the caret. - <strong>Rename Current
+File…</strong> and <strong>Delete Current File…</strong> manage the file
+on disk from inside the editor. - <strong>Close Document</strong> closes
+the current tab. - <strong>Exit</strong> closes the application.</p>
 <p>The File menu is also where Quill quietly proves that it respects
 risk. Reload is explicit. Backup restore is explicit. URL opening is
 explicit. Nothing important is hidden behind a side effect.</p>
