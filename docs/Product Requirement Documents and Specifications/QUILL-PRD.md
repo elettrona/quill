@@ -3217,11 +3217,28 @@ confident, top-level `&AI` menu built on four pillars, so the user feels QUILL h
    switching (Engines tab), GitHub Copilot setup, and **Session Branches** (Sessions
    tab). The old "Engine & Sessions" submenu is removed.
 
+**The menu shape.** The top-level `&AI` menu reads, in order: Set Up AI (the on-ramp,
+§5.84c) · Ask Quill (+ by Voice) · Accessibility Tune-Up · the context "Do" entries
+(hidden in Basic mode) · Proofread / Translate / Read Aloud / Transcribe / More
+submenus · AI Library · AI Hub · Use Artificial Intelligence (and Show advanced AI
+features). Item count dropped from ~36 scattered entries to a short, scannable list,
+each a single high-value action or a clearly-labeled one-level-deep submenu.
+
+**Confirmed product decisions.** (1) AI is a real top-level `&AI` menu unconditionally
+— the former `future.ai_menu_top_level` flag is retired as a placement switch. (2)
+"AI Library" is the name for the unified Prompt/Skill/Agent manager. (3) The
+Prompt → Skill → Agent **Promote** continuum is in scope and shipped. (4) Accessibility
+Tune-Up stays a first-class, top-of-menu item given the screen-reader audience.
+
 **Invariants.** Every list item and dynamic menu entry has a meaningful accessible
 name; all dialogs go through `_show_modal_dialog` + `apply_modal_ids`; running any
 action announces start and result; nothing is more than one level deep; the Library
 and continuum are wx-free at the core (`quill/core/ai/library.py`,
-`quill/core/skill_store.py`).
+`quill/core/skill_store.py`). One custom-prompt store: `prompt_migration` consolidates
+the legacy `assistant_prompts` into the canonical `PromptLibrary` at startup
+(reversible, idempotent). Deprecated dialogs retired; the live `assistant_agents`
+plan/profile helpers stay (they back a live agent-run path), and `assistant_prompts`
+stays until the prompt migration is sunset.
 
 ---
 

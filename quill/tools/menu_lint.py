@@ -93,9 +93,8 @@ _REQUIRED_CLUSTER_LABELS: tuple[tuple[str, str], ...] = (
     ("Reading & Dictation", "R&eading && Dictation"),
     ("Comparison", "C&omparison"),
     ("Watch Folder", "&Watch Folder"),
-    # AI was promoted from a Tools cluster to a top-level "&AI" menu (2026-06-27,
-    # docs/planning/ai-menu-redesign-plan.md), so it is no longer a required
-    # Tools-menu cluster.
+    # AI was promoted from a Tools cluster to a top-level "&AI" menu (2026-06-27;
+    # see PRD section 5.84a), so it is no longer a required Tools-menu cluster.
     ("Advanced", "&Advanced"),
     ("Quillins", "&Quillins"),
     ("Customize & Support", "&Customize && Support"),

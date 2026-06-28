@@ -1835,7 +1835,7 @@ class MenuBuilderMixin:
         # AI menu — promoted to a top-level "&AI" menu (was Tools > AI Assistant).
         # Structured into four pillars: the conversation (Ask Quill), context
         # actions + agents, task submenus, and the Library/Hub management surfaces.
-        # See docs/planning/ai-menu-redesign-plan.md.
+        # See PRD sections 5.84a (the four-pillar menu) and 5.84c (AI onboarding).
         ai_menu = wx.Menu()
         from quill.core.ai.model_manager import load_ai_enabled
         from quill.core.ai.onboarding import ai_needs_setup
