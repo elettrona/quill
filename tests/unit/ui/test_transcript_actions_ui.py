@@ -91,8 +91,10 @@ def test_offer_falls_back_when_empty_or_no_ai(monkeypatch) -> None:
     ctrl = _Controller()
     # Empty transcript: opt out, never touches AI.
     assert offer_transcript_actions(ctrl, "   ", "x.mp3") is False
-    # AI off / no provider: the backend is None, so it falls back to the plain result.
+    # AI off / no provider: the backend is None. The on-ramp is offered; when the
+    # user declines (or AI stays off), it falls back to the plain result.
     monkeypatch.setattr(ta_ui, "_action_backend", lambda: None)
+    monkeypatch.setattr("quill.ui.ai_setup_wizard.maybe_offer_ai_setup", lambda *a, **k: False)
     assert offer_transcript_actions(ctrl, "real transcript text", "x.mp3") is False
 
 
@@ -108,6 +110,7 @@ def test_run_on_document_hints_to_enable_ai(monkeypatch) -> None:
     ctrl.editor = _Editor(value="Speaker 0: hello\nSpeaker 1: hi")
     monkeypatch.setattr(ta_ui, "_action_backend", lambda: None)  # AI off / unreachable
     monkeypatch.setattr("quill.core.ai.model_manager.load_ai_enabled", lambda: False)
+    monkeypatch.setattr("quill.ui.ai_setup_wizard.maybe_offer_ai_setup", lambda *a, **k: False)
     run_transcript_actions_on_document(ctrl)
     assert any("Turn on AI" in s for s in ctrl.statuses)
 

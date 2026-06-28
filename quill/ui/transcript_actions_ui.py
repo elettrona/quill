@@ -65,7 +65,20 @@ def offer_transcript_actions(controller: Any, transcript: str, file_name: str) -
         return False
     backend = _action_backend()
     if backend is None:
-        return False
+        # A high-intent moment: offer the gentle AI setup on-ramp instead of a dead
+        # end. If the user sets AI up, continue straight into the actions.
+        from quill.ui.ai_setup_wizard import maybe_offer_ai_setup
+
+        ready = maybe_offer_ai_setup(
+            controller,
+            reason="To turn this transcript into minutes, action items, or notes, "
+            "QUILL needs AI.",
+        )
+        if not ready:
+            return False
+        backend = _action_backend()
+        if backend is None:
+            return False
 
     import wx
 

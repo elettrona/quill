@@ -328,6 +328,39 @@ def _probe_provider(provider: str, api_key: str) -> tuple[bool, str]:
         return (False, str(exc))
 
 
+def maybe_offer_ai_setup(controller: Any, *, reason: str = "") -> bool:
+    """If AI isn't ready, gently offer the setup wizard at a high-intent moment.
+
+    Returns True when AI is usable afterward (already on, or set up just now), so the
+    caller can continue; False when AI stays off (already configured-but-off, the user
+    declined, or they finished the wizard without enabling). Turns a "you need AI" dead
+    end into a one-click on-ramp, without ever nagging a user who has been here before.
+    """
+    from quill.core.ai.model_manager import load_ai_enabled
+    from quill.core.ai.onboarding import ai_needs_setup
+
+    if load_ai_enabled():
+        return True
+    if not ai_needs_setup():
+        return False
+    prompt = (f"{reason}\n\n" if reason else "") + (
+        "Would you like to set up AI now? It only takes a few seconds, and you can "
+        "choose a private on-device option or connect an account."
+    )
+    dlg = wx.MessageDialog(
+        controller.frame, prompt, "Set Up AI", wx.YES_NO | wx.ICON_QUESTION
+    )
+    apply_modal_ids(dlg, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO)
+    try:
+        yes = dlg.ShowModal() == wx.ID_YES
+    finally:
+        dlg.Destroy()
+    if not yes:
+        return False
+    run_ai_setup_wizard(controller)
+    return load_ai_enabled()
+
+
 def run_ai_setup_wizard(controller: Any) -> None:
     """Open the AI Setup Wizard for the host MainFrame (keeps main_frame thin)."""
     wizard = AISetupWizard(controller.frame, announce_cb=getattr(controller, "_announce", None))
