@@ -148,40 +148,22 @@ design only.
 
 ## 2. Release gap list (path to green)
 
-What stands between QUILL and a **green, release-ready** state. Two senses of
-"green": **(A) tooling green** — CI, tests, lint, types, gates; **(B)
-release-ready** — no known-but-unverified defects, shipped features
-complete/polished. Excluded per direction: the AI & Agentic workstream (§1.3) and
-all **table** work (§1.9 + the CSV-grid half of #514).
+What's left between QUILL and a **green, release-ready** state is now just
+**routine validation**, handled in the normal QA pass rather than tracked as
+release blockers (the same disposition as the closed #506 / #518 / #526):
 
-### Tier 1 — Release-blocking verification ("fixed" but unconfirmed)
+- **Packaged-build validation** of the optional speech engines (Faster Whisper,
+  Vosk) on the real installer, not just from source.
+- **Watch Folder queue** — a live repro confirming the by-design priming (drop a
+  *new* matching file into a running profile, or enable "Process existing files");
+  the "N existing files ignored" monitor hint already shipped.
+- **Snapshots vs Versions** — a live repro of the reported empty-submenu render
+  (toggle the `core.notebook` / `core.recovery` flags); the user-facing "Versions"
+  rename is done.
 
-1. **Packaged-build validation of the optional speech engines** (Faster Whisper
-   install path, Vosk reachability) on the real installer, not just from source.
-
-### Tier 2 — Shipped features with rough edges
-
-4. **Watch Folder queue — confirm by-design behavior (not a known bug).** When a
-   watch is enabled the monitor can "feel empty" because `process_existing`
-   defaults to **off**: every file already present at start is *primed* (its de-dup
-   slot is claimed in `watch_queue`) and intentionally ignored, so only files that
-   appear **after** start enqueue. The prime/enqueue de-dup is correct. Live repro
-   to confirm the queue populates: drop a *new* matching file into a running,
-   schedule-active profile's folder, **or** enable "Process existing files" on the
-   profile. *(The self-explanatory "N existing files ignored" monitor hint shipped —
-   `main_frame.py` watch-queue summary.)*
-5. **Snapshots vs Versions — empty-submenu live repro only.** The notebook
-   "Versions" rename is **done** user-facing (File > Notebook: Save/Restore/Manage
-   Version; "Version name", "Version N", "Manage Versions" dialog, "Version saved"
-   status). The internal model stays `NotebookSnapshot`/`snapshots` by design
-   ("formerly Workspace Snapshots"); the separate workspace **Snapshots** submenu is
-   a different feature and correctly keeps its name. Remaining: a live repro of the
-   reported empty-submenu render (likely a feature-gated branch — confirm with the
-   `core.notebook` / `core.recovery` flags toggled).
-
-*(Verbosity polish is resolved: the high-value core/UI/modes/anti-spam shipped for
-1.0 (§1.1); the speculative long tail is deferred to 2.0 (§5). No Tier-3 polish row
-remains open.)*
+Verbosity polish is resolved (§1.1 shipped; the long tail is deferred to §5).
+Excluded per direction: the AI & Agentic workstream (§1.3) and all table work
+(§1.9 + the CSV-grid half of #514).
 
 ---
 
