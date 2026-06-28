@@ -3232,18 +3232,20 @@ the end: turn audio into the document the user actually needs, with a gentle, gu
 adjustable path. Folds the agentic transcription magic of BITS Whisperer into QUILL's
 unified AI framework.
 
-**Transcript Actions** (`quill/core/ai/transcript_actions.py`, wx-free). Seven
+**Transcript Actions** (`quill/core/ai/transcript_actions.py`, wx-free). Ten
 built-in actions — Meeting Minutes, Action Items, Executive Summary, Interview Notes,
-Study Notes, Q&A Extraction, Clean Up & Draft — each a named, plain-language,
-*adjustable* instruction with a prompt builder. `recommend_actions` orders them for
-the transcript in front of the user (multi-speaker leads with Minutes/Action Items;
-question-dense with Q&A/Interview; single voice with Clean Up & Draft) while keeping
-every action available. Reachable two ways: the post-transcription "What would you
-like me to make of this?" chooser (`quill/ui/transcript_actions_ui.py`, hooked into
-`_show_transcription_result`) and an `AI > Transcribe Audio > Transcript Actions...`
-item that runs them on the current selection/document. Results open in a new buffer;
-the original transcript is never overwritten. Generation uses the unified
-`ProviderChatBackend`; the flow degrades gently when AI is off.
+Study Notes, Q&A Extraction, Clean Up & Draft, Follow-Up Email, Key Quotes, and
+Decisions Log — each a named, plain-language, *adjustable* instruction with a prompt
+builder. `recommend_actions` orders them for the transcript in front of the user
+(multi-speaker leads with Minutes / Action Items / Decisions / a follow-up email;
+question-dense with Q&A / Interview / Key Quotes; single voice with Clean Up & Draft)
+while keeping every action available. Reachable two ways: the post-transcription "What
+would you like me to make of this?" chooser (`quill/ui/transcript_actions_ui.py`,
+hooked into `_show_transcription_result`) and an `AI > Transcribe Audio > Transcript
+Actions...` item that runs them on the current selection/document. Results open in a
+new buffer; the original transcript is never overwritten. Generation uses the unified
+`ProviderChatBackend`; the flow degrades gently when AI is off, and offers the AI
+Setup Wizard (§5.84c) at that high-intent moment instead of a dead end.
 
 **Guided Action Builder** (`quill/ui/action_builder_dialog.py`). A no-syntax,
 form-based builder (name, start-from preset, plain-language instructions, optional
@@ -3262,11 +3264,50 @@ the transcript.
 **Principles (non-negotiable for this audience).** Easy (one choice, one keystroke),
 delightful, guided, principled (consent + preview + undo + private by default),
 powerful (the full agentic stack underneath), adjustable by instruction and prompt,
-and gentle for learners. North-star design: `docs/planning/transcription-companion-vision.md`.
+and gentle for learners.
 
-**Roadmap.** Shipped: Transcript Actions (+ anytime), the Action Builder, reference
-attachments, watch-folder automation. Planned: live + diarized streaming actions, and
-a Basic/Guided experience mode and per-action onboarding.
+**Status: complete.** Shipped: Transcript Actions (post-transcription and anytime),
+the guided Action Builder, reference attachments, watch-folder automation, and the AI
+onboarding wizard with Basic mode and on-ramps (§5.84c). **Live + diarized streaming
+actions were deliberately not built:** most of that value is already delivered by file
+transcription plus watch-folder automation, and its one genuinely unique kernel — live
+captioning — is a separate accessibility feature that would need real-time audio
+capture infrastructure; if it is ever wanted it should be scoped on its own merits, not
+bolted onto this companion.
+
+---
+
+### 5.84c AI onboarding — the Setup Wizard, on-ramps, and experience modes (2.0)
+
+**Goal.** Make getting started with AI a gentle, magical, screen-reader-first
+experience across the whole AI landscape — no jargon, no dead ends, finished in
+seconds — and let newcomers grow into the full surface on their own timeline.
+
+**AI Setup Wizard** (`quill/ui/ai_setup_wizard.py` over wx-free
+`quill/core/ai/onboarding.py`). A one-step-at-a-time wizard (each step a single
+announced focus context): a welcome, the one real choice — **on your device with
+Ollama** (private, free), **use an AI account** (Claude / OpenAI / Gemini / OpenRouter
+/ Ollama Cloud, with a key pasted once and stored in the OS secure store, plus a
+**Test connection** button), or **not right now** — a frictionless connect step, and a
+tailored celebration. The wx-free model owns the copy, the paths, the cloud-provider
+options, the apply helpers (`apply_cloud_setup` / `apply_on_device_setup`), and the
+persisted state, so it is fully unit-testable. Reachable as the first AI menu item
+(**"Set Up AI... (start here)"** until done).
+
+**On-ramps, not dead ends.** `maybe_offer_ai_setup` offers the wizard at the moment a
+user first reaches for AI before it is configured — Ask Quill, the AI Library, and
+Transcript Actions all route through it — and never nags someone who has already been
+through setup. Because the AI Library's Run, Ask Quill, Transcript Actions, and agents
+all share the one `ProviderChatBackend` (AI Hub) connection the wizard configures,
+setting AI up once makes everything work.
+
+**Experience modes.** `is_basic_mode()` / `save_experience_mode()` persist a Basic vs
+Advanced choice (default **advanced**, so existing users never lose anything; the
+wizard's "keep it simple" checkbox puts a newcomer into Basic). In Basic mode the AI
+menu hides the power-user agentic entries ("What can I do here?", "Rewrite & Improve",
+"Run Agent") so the surface stays calm; a **"Show advanced AI features"** toggle flips
+it instantly. Everyday features (Ask Quill, Transcribe, Proofread, Translate, Read
+Aloud, the AI Library) always stay.
 
 ---
 
