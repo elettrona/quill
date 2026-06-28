@@ -193,33 +193,45 @@ def test_download_release_asset_reports_streaming_progress(tmp_path, monkeypatch
     assert len(seen) > 2  # streamed in multiple chunks, not one read
 
 
-def test_salt_only_signature_rejected(monkeypatch) -> None:
-    # M-6: verify_manifest_signature must return False when no deployment key
-    # is configured (QUILL_UPDATE_MANIFEST_KEY absent). Salt-only HMAC is a
-    # placeholder and must never be treated as trusted.
-    import hashlib
-
+def test_signer_and_verifier_agree_without_key(monkeypatch) -> None:
+    # The publisher and the client share quill.core.updates.manifest_signature,
+    # so the feed the publisher writes always verifies. With no deployment key
+    # configured (the deployed baseline) that is the salt-only signature; a
+    # tampered signature is still rejected.
     monkeypatch.delenv("QUILL_UPDATE_MANIFEST_KEY", raising=False)
 
-    from quill.core.updates import _SIGNATURE_SALT, UpdateManifest, verify_manifest_signature
+    from quill.core.updates import UpdateManifest, manifest_signature, verify_manifest_signature
 
-    manifest_data = {
-        "download_url": "https://example.com/quill.exe",
-        "notes": "patch",
-        "published_at": "2026-06-09",
+    fields = {
         "version": "1.0.1",
+        "download_url": "https://example.com/quill.exe",
+        "published_at": "2026-06-09",
+        "notes": "patch",
     }
-    canonical = json.dumps(manifest_data, separators=(",", ":"), sort_keys=True)
-    salt_sig = hmac.new(_SIGNATURE_SALT.encode(), canonical.encode(), hashlib.sha256).hexdigest()
+    good = UpdateManifest(signature=manifest_signature(**fields), **fields)
+    assert verify_manifest_signature(good), "publisher's salt-only signature must verify"
 
-    m = UpdateManifest(
-        version="1.0.1",
-        download_url="https://example.com/quill.exe",
-        notes="patch",
-        published_at="2026-06-09",
-        signature=salt_sig,
-    )
-    assert not verify_manifest_signature(m), "salt-only signature must be rejected"
+    tampered = UpdateManifest(signature="0" * 64, **fields)
+    assert not verify_manifest_signature(tampered), "a forged signature must be rejected"
+
+
+def test_keyed_mode_requires_hmac_not_salt(monkeypatch) -> None:
+    # When a deployment key IS configured on the client, only the keyed HMAC
+    # signature is accepted; the salt-only baseline is no longer sufficient.
+    from quill.core.updates import UpdateManifest, manifest_signature, verify_manifest_signature
+
+    fields = {
+        "version": "1.0.1",
+        "download_url": "https://example.com/quill.exe",
+        "published_at": "2026-06-09",
+        "notes": "patch",
+    }
+    salt_only = manifest_signature(**fields)  # no key
+    keyed = manifest_signature(**fields, key="deploy-secret")
+
+    monkeypatch.setenv("QUILL_UPDATE_MANIFEST_KEY", "deploy-secret")
+    assert verify_manifest_signature(UpdateManifest(signature=keyed, **fields))
+    assert not verify_manifest_signature(UpdateManifest(signature=salt_only, **fields))
 
 
 def test_resolve_endpoints_default_to_production(monkeypatch) -> None:

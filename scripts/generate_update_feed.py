@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -13,8 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from quill.branding import APP_DISPLAY_NAME
-
-_SIGNATURE_SALT = "quill-manifest-signature-v1"
+from quill.core.updates import manifest_signature
 
 
 def _resolve_version(source_root: Path) -> str:
@@ -190,17 +189,21 @@ def main() -> int:
 
 
 def _signature_for(payload: dict[str, str]) -> str:
-    canonical = json.dumps(
-        {
-            "download_url": payload["download_url"],
-            "notes": payload["notes"],
-            "published_at": payload["published_at"],
-            "version": payload["version"],
-        },
-        separators=(",", ":"),
-        sort_keys=True,
+    """Sign the manifest via quill.core.updates so the client can verify it.
+
+    Delegates to the shared :func:`quill.core.updates.manifest_signature` (the
+    single source of truth) using the deployment key from
+    ``QUILL_UPDATE_MANIFEST_KEY`` when set (HMAC), otherwise the salt-only
+    baseline. Because the client verifier reads the same env var and uses the
+    same function, the feed this writes always verifies.
+    """
+    return manifest_signature(
+        version=payload["version"],
+        download_url=payload["download_url"],
+        published_at=payload["published_at"],
+        notes=payload["notes"],
+        key=os.getenv("QUILL_UPDATE_MANIFEST_KEY", "").strip() or None,
     )
-    return hashlib.sha256(f"{canonical}|{_SIGNATURE_SALT}".encode()).hexdigest()
 
 
 if __name__ == "__main__":

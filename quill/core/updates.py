@@ -237,24 +237,78 @@ def parse_update_manifest(payload: str) -> UpdateManifest:
     return manifest
 
 
-def verify_manifest_signature(manifest: UpdateManifest) -> bool:
-    env_key = os.getenv(_MANIFEST_KEY_ENV, "").strip()
-    if not env_key:
-        # No deployment key configured — salt-only signatures are not trusted.
-        # Operators must set QUILL_UPDATE_MANIFEST_KEY at install time.
-        return False
-    canonical = json.dumps(
+def _canonical_manifest(
+    *, version: str, download_url: str, published_at: str, notes: str
+) -> str:
+    """Stable JSON encoding of the signed manifest fields.
+
+    Keys are sorted and separators are tight so the publisher and the client
+    hash byte-for-byte identical input.
+    """
+    return json.dumps(
         {
-            "download_url": manifest.download_url,
-            "notes": manifest.notes,
-            "published_at": manifest.published_at,
-            "version": manifest.version,
+            "download_url": download_url,
+            "notes": notes,
+            "published_at": published_at,
+            "version": version,
         },
         separators=(",", ":"),
         sort_keys=True,
     )
-    key = env_key.encode("utf-8")
-    expected = hmac.new(key, canonical.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def manifest_signature(
+    *,
+    version: str,
+    download_url: str,
+    published_at: str,
+    notes: str,
+    key: str | None = None,
+) -> str:
+    """Compute the update-manifest signature.
+
+    This is the single source of truth shared by the publisher
+    (``scripts/generate_update_feed.py``) and this client verifier, so the two
+    can never drift apart (the historical bug: the publisher wrote a salt-only
+    hash while the verifier demanded an HMAC and rejected every feed).
+
+    Two modes, selected by whether a deployment key is supplied:
+
+    * **Keyed (HMAC-SHA256)** — used when ``key`` is set (the
+      ``QUILL_UPDATE_MANIFEST_KEY`` environment variable). The same secret must
+      be present when signing *and* verifying, so this only helps when the key
+      is provisioned to both the publisher and the installed clients.
+    * **Salt-only (SHA-256 over canonical + public salt)** — the deployed
+      baseline when no key is configured. The salt is public, so this protects
+      against accidental corruption, not a determined attacker; authenticity
+      rests on HTTPS to the feed host and to GitHub Releases. Asymmetric
+      (Ed25519) signing is the future hardening (see RELEASE.md).
+    """
+    canonical = _canonical_manifest(
+        version=version, download_url=download_url, published_at=published_at, notes=notes
+    )
+    if key:
+        return hmac.new(
+            key.encode("utf-8"), canonical.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+    return hashlib.sha256(f"{canonical}|{_SIGNATURE_SALT}".encode()).hexdigest()
+
+
+def verify_manifest_signature(manifest: UpdateManifest) -> bool:
+    """True when ``manifest.signature`` matches a signature we would compute.
+
+    Uses :func:`manifest_signature` with the deployment key from the
+    environment (``QUILL_UPDATE_MANIFEST_KEY``) when present, otherwise the
+    salt-only baseline — exactly mirroring how the feed was signed.
+    """
+    env_key = os.getenv(_MANIFEST_KEY_ENV, "").strip() or None
+    expected = manifest_signature(
+        version=manifest.version,
+        download_url=manifest.download_url,
+        published_at=manifest.published_at,
+        notes=manifest.notes,
+        key=env_key,
+    )
     return hmac.compare_digest(manifest.signature, expected)
 
 
@@ -398,5 +452,6 @@ __all__ = [
     "parse_update_manifest",
     "resolve_manifest_url",
     "resolve_releases_api_url",
+    "manifest_signature",
     "verify_manifest_signature",
 ]
