@@ -130,14 +130,14 @@ Direct publishing (#140) and the remaining ChapterForge surfaces are tracked und
 
 One **Documentation & Tutorials** track: user-guide coverage, getting-started
 tutorials, the podcast/walkthrough series, and content-quality follow-ups
-(#535–#564, #505, #522). In-flight QA: **#526** live NVDA/JAWS/Narrator sign-off.
-Long-horizon ecosystem (#590) and collaboration (#592) ideas park here.
+(#535–#564, #505, #522). Long-horizon ecosystem (#590) and collaboration (#592)
+ideas park here.
 
-### 1.8 Structured List Studio — manual SR pass
+### 1.8 Structured List Studio
 
-The feature is shipped; the **only** remaining item is a formal live
-**screen-reader pass** (JAWS / NVDA / Narrator) — manual, not closable in code;
-only stub-level wiring tests exist. Part of the §2 Tier-1 SR sign-off (#526).
+The feature is shipped. Its live screen-reader pass is handled in the normal QA
+validation (the #526 sign-off was closed as a matter-of-course test), so no
+roadmap-tracked work remains here.
 
 ### 1.9 Native accessible Table Studio (not started)
 
@@ -157,12 +157,7 @@ all **table** work (§1.9 + the CSV-grid half of #514).
 
 ### Tier 1 — Release-blocking verification ("fixed" but unconfirmed)
 
-1. **Live screen-reader sign-off — #526.** Walk the accessibility fixes marked
-   *"Fixed; needs live NVDA/JAWS/Narrator confirmation"* (notebook tab-group names,
-   snake_case names, label association, initial focus, the Tab keyboard-trap class,
-   focus-to-bad-field) — plus the List Studio pass (§1.8) — with JAWS, NVDA, and
-   Narrator. **Highest single item.**
-2. **Packaged-build validation of the optional speech engines** (Faster Whisper
+1. **Packaged-build validation of the optional speech engines** (Faster Whisper
    install path, Vosk reachability) on the real installer, not just from source.
 
 ### Tier 2 — Shipped features with rough edges
@@ -223,8 +218,7 @@ dependable, well-documented product on its supported platforms.*
 | Agentic AI (§1.3) | #507–#512, #523/#524, #579–#581; Accessibility Agents #593–#598. |
 | GLOW family (§1.4) | Deferred to 2.0 (§5). GLOW contributions stay `locked_off` for 1.0. |
 | Platform & distribution (§1.6) | #516, #517, #519; #525 deferred to 2.0 (#680). |
-| Docs & content (§1.7) | #526 SR sign-off; #535–#564, #505, #522, #590, #592. |
-| List Studio (§1.8) | Manual SR pass (#526). |
+| Docs & content (§1.7) | #535–#564, #505, #522, #590, #592. |
 | Table Studio (§1.9) | Whole feature (`quill-native-accessible-table-studio-plan.md`). |
 | ElevenLabs beyond export (§4.2–4.4) | Live streaming Read Aloud, voice management / cloning, and Tier-3 surfaces — all deferred to 2.0 (§5). |
 
