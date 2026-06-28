@@ -483,9 +483,7 @@ from quill.ui.ai_model_panel import AIModelDialog
 from quill.ui.assistant_panel import AskQuillChatDialog
 from quill.ui.assistant_tools import (
     AccessibilityAgentDialog,
-    AgentCenterDialog,
     AssistantConnectionDialog,
-    PromptStudioDialog,
     RunPythonDialog,
     WritingAssistantDialog,
 )
@@ -22524,24 +22522,15 @@ class MainFrame(
         dialog.show_modal()
 
     def open_prompt_studio(self) -> None:
-        dialog = PromptStudioDialog(
-            self.frame,
-            selection_text=self._selected_text(),
-            document_text=self.editor.GetValue(),
-            on_use_prompt=self.open_writing_assistant,
-            announce=self._set_status,
-        )
-        dialog.show_modal()
+        # Retired into the unified AI Library (Prompts tab). Kept as a redirect so
+        # any keybinding/palette entry lands in the new manager instead of a dead
+        # end.
+        self.open_ai_library()
 
     def open_agent_center(self) -> None:
-        dialog = AgentCenterDialog(
-            self.frame,
-            selection_text=self._selected_text(),
-            document_text=self.editor.GetValue(),
-            on_use_prompt=self.open_writing_assistant,
-            announce=self._set_status,
-        )
-        dialog.show_modal()
+        # Retired into the unified AI Library (Agents tab); redirect like
+        # open_prompt_studio so old entry points upgrade rather than break.
+        self.open_ai_library()
 
     def run_python_tool(self) -> None:
         outline = [

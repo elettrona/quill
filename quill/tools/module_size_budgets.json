@@ -288,7 +288,7 @@
     "quill/ui/agent_editor_host.py": 810,
     "quill/ui/ai_hub_dialog.py": 936,
     "quill/ui/assistant_panel.py": 947,
-    "quill/ui/assistant_tools.py": 2020,
+    "quill/ui/assistant_tools.py": 1577,
     "quill/core/speech/project_profile.py": 631,
     "quill/ui/batch_speech_runner.py": 987,
     "quill/ui/batch_speech_export_dialog.py": 794,

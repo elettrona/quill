@@ -5,9 +5,7 @@ from types import SimpleNamespace
 from quill.core.accessibility_agent import build_plan
 from quill.ui.assistant_tools import (
     AccessibilityAgentDialog,
-    AgentCenterDialog,
     DiffReviewDialog,
-    PromptStudioDialog,
 )
 
 
@@ -35,44 +33,9 @@ class _Dialog:
         self.ended_with = result
 
 
-def test_prompt_studio_use_prompt_routes_to_callback() -> None:
-    used: list[str] = []
-    announcements: list[str] = []
-
-    dialog = PromptStudioDialog.__new__(PromptStudioDialog)
-    dialog._wx = SimpleNamespace(ID_OK=1)
-    dialog.template_text = _TextCtrl("Rewrite: {selection}")
-    dialog.status = _Status()
-    dialog._render_prompt = lambda template: template.replace("{selection}", "alpha")
-    dialog._use_prompt_callback = lambda value: used.append(value)
-    dialog._announce = lambda message: announcements.append(message)
-    dialog.dialog = _Dialog()
-
-    dialog._on_use_prompt_clicked(object())
-
-    assert used == ["Rewrite: alpha"]
-    assert announcements == ["Loaded prompt into Writing Assistant"]
-    assert dialog.dialog.ended_with == 1
-
-
-def test_agent_center_use_prompt_generates_then_routes_to_callback() -> None:
-    used: list[str] = []
-    announcements: list[str] = []
-
-    dialog = AgentCenterDialog.__new__(AgentCenterDialog)
-    dialog._wx = SimpleNamespace(ID_OK=1)
-    dialog._current_prompt = ""
-    dialog.status = _Status()
-    dialog.dialog = _Dialog()
-    dialog._announce = lambda message: announcements.append(message)
-    dialog._use_prompt_callback = lambda value: used.append(value)
-    dialog._on_generate_prompt = lambda _event: setattr(dialog, "_current_prompt", "Generated")
-
-    dialog._on_use_prompt_clicked(object())
-
-    assert used == ["Generated"]
-    assert announcements == ["Loaded agent prompt into Writing Assistant"]
-    assert dialog.dialog.ended_with == 1
+# Prompt Studio and Agent Center were retired into the unified AI Library; their
+# callback tests are removed with the dialogs. Accessibility Tune-Up and the diff
+# reviewer remain and are covered below.
 
 
 class _CheckListBox:
@@ -128,17 +91,8 @@ def test_accessibility_agent_apply_with_nothing_checked_makes_no_change() -> Non
     assert announcements and "no automatic changes" in announcements[0].lower()
 
 
-def test_new_custom_prompt_moves_focus_and_announces() -> None:
-    # Issue #125: creating a new custom prompt must move focus to the title
-    # field and announce the new state so the user knows what to do next.
-    from pathlib import Path
-
-    source = (
-        Path(__file__).resolve().parents[3] / "quill" / "ui" / "assistant_tools.py"
-    ).read_text(encoding="utf-8")
-    body = source.split("def _on_new_prompt(", 1)[1].split("def _on_delete_prompt(", 1)[0]
-    assert "self.title_text.SetFocus()" in body
-    assert "self._announce(" in body
+# test_new_custom_prompt_moves_focus_and_announces was removed with the Prompt
+# Studio dialog (custom-prompt management is now the AI Library Prompts tab).
 
 
 def test_make_document_accessible_parents_dialog_to_frame() -> None:
