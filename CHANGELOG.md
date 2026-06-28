@@ -10,6 +10,19 @@ overview and `docs/planning/roadmap-2.0.md` for the build tracker. Foundational 
 is built and tested on the `2.0-dev` branch; the AI Hub command-center UI and a few
 advanced pieces are still landing.
 
+### AI onboarding (the gentle on-ramp)
+
+- **AI Setup Wizard** (`quill/ui/ai_setup_wizard.py` over wx-free
+  `quill/core/ai/onboarding.py`) — a short, screen-reader-first wizard: welcome, one
+  choice (on-device with Ollama / an AI account / not now), a frictionless connect
+  step with Test connection, and a tailored celebration. Reachable as the first AI
+  menu item ("Set Up AI... (start here)") and offered at first AI use
+  (`maybe_offer_ai_setup` turns dead-ends into on-ramps, e.g. in Transcript Actions).
+- **Basic experience mode** — newcomers who keep it simple get a smaller AI menu
+  (the agentic "What can I do here?", "Rewrite & Improve", and "Run Agent" entries
+  hidden); "Show advanced AI features" toggles it. Defaults to advanced so existing
+  users lose nothing.
+
 ### Unified AI menu (four pillars)
 
 - **One top-level `&AI` menu** replacing the scattered Tools > AI Assistant cluster,

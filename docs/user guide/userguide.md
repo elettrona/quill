@@ -798,6 +798,37 @@ every action is always available. The finished document opens in a new window so
 your original transcript is never overwritten. Transcript Actions use whichever AI
 provider you have configured in the AI Hub.
 
+### Setting up AI — the gentle wizard
+
+The first item in the `&AI` menu is **Set Up AI...** (labeled "start here" until
+you've done it). It opens a short, friendly wizard that gets you from nothing to a
+working AI in seconds, with no jargon:
+
+1. **Welcome** — a plain-language note on what QUILL's AI does and that it is
+   optional, previewed, and private by default.
+2. **How would you like AI to run?** — one choice:
+   - **On your device with Ollama** — private and free; runs on your computer with
+     no account or key. QUILL connects to a local Ollama install.
+   - **Use an AI account** — the most capable models; connect Claude, OpenAI,
+     Gemini, OpenRouter, or Ollama Cloud with a key you paste once and QUILL stores
+     securely on this device.
+   - **Not right now** — keep AI off; set it up any time later.
+3. **Connect** — for an account, pick a provider, paste your key, and **Test
+   connection** before continuing. For on-device, QUILL points itself at Ollama.
+4. **You're all set** — a short summary of what you can now do, and a **Keep it
+   simple** checkbox that turns on **Basic mode**.
+
+QUILL also offers this wizard at the moment you reach for AI before it's set up — for
+example, choosing to make minutes from a transcript — so you are never stuck at a
+dead end. You can re-run **Set Up AI** any time to change providers or switch modes.
+
+**Basic mode** keeps the AI menu small for newcomers: the everyday features (Ask
+Quill, Transcribe, Proofread, Translate, Read Aloud, the AI Library) stay, while the
+power-user, agentic entries ("What can I do here?", "Rewrite & Improve", and "Run
+Agent") are hidden until you're ready. Turn them on any time with **Show advanced AI
+features** near the bottom of the AI menu. Existing users keep the full menu — Basic
+mode applies only if you choose it.
+
 ### The AI Library — Prompts, Skills, and Agents in one place
 
 `AI > AI Library...` is the single home for everything QUILL can do with AI on

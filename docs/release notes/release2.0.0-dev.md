@@ -44,6 +44,22 @@ choose a cloud provider and send it.
 - **Enterprise-ready.** Organization policy can constrain which providers are
   allowed and whether users may bring their own keys.
 
+## Setting up AI should feel wonderful
+
+The first thing in the `&AI` menu is **Set Up AI** — a short, gentle, screen-reader-first
+wizard that takes you from "I don't know where to start" to "my AI is ready" in
+seconds, with no jargon and no dead ends. One welcome, one real choice (private
+on-device with Ollama, an AI account, or not right now), one frictionless connect
+step with a **Test connection** button, and a friendly "here's what you can do now."
+QUILL even offers the wizard at the moment you first reach for AI — so you are never
+stuck.
+
+Finish it and you land in **Basic mode** by default: the AI menu stays small and
+welcoming (Ask Quill, Transcribe, the everyday tools, the AI Library), with the
+power-user agentic entries tucked away until you ask for them via **Show advanced AI
+features**. Existing users keep the full menu — Basic mode only ever applies if you
+choose it.
+
 ## One AI, one menu
 
 QUILL's AI used to be scattered across a long Tools submenu and several overlapping
