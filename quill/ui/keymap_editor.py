@@ -276,8 +276,10 @@ class KeymapEditorMixin:
             )
             return False
         if command_id.startswith("quill.quick_nav."):
-            if parsed.is_chord or parsed.segments[0].modifiers or (
-                len(parsed.segments[0].key) != 1 and parsed.segments[0].key != "Tab"
+            if (
+                parsed.is_chord
+                or parsed.segments[0].modifiers
+                or (len(parsed.segments[0].key) != 1 and parsed.segments[0].key != "Tab")
             ):
                 self._show_message_box(
                     "QUILL Quick Nav bindings must be a single key or Tab.",
@@ -295,7 +297,7 @@ class KeymapEditorMixin:
             display = format_binding_for_display(canonical, prefix=prefix)
             answer = self._show_message_box(
                 f"{display} is already assigned to {owners}.\n\n"
-                f"Reassign it to \"{mine}\"? The other command"
+                f'Reassign it to "{mine}"? The other command'
                 f"{'s' if len(conflicts) > 1 else ''} will become unassigned.",
                 "Keymap Editor",
                 wx.ICON_WARNING | wx.YES_NO | wx.NO_DEFAULT,
@@ -450,8 +452,7 @@ class KeymapEditorMixin:
 
         if report.ok:
             self._show_message_box(
-                "No keyboard problems found. Every shortcut is unique, readable, and "
-                "wired up.",
+                "No keyboard problems found. Every shortcut is unique, readable, and wired up.",
                 "Keymap Diagnostics",
                 wx.ICON_INFORMATION | wx.OK,
             )
@@ -459,9 +460,7 @@ class KeymapEditorMixin:
             return
 
         repairable = bool(report.invalid or report.unknown_commands)
-        summary = (
-            f"Found {report.issue_count} kind(s) of issue.\n\n" + "\n".join(lines).rstrip()
-        )
+        summary = f"Found {report.issue_count} kind(s) of issue.\n\n" + "\n".join(lines).rstrip()
         if repairable:
             summary += (
                 "\n\nHeal now? This removes unreadable and orphaned bindings and "

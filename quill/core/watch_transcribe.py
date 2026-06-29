@@ -43,6 +43,45 @@ _TRANSCRIBE_OUTPUT_FORMATS: dict[str, str] = {
 }
 
 
+def _maybe_make_action_document(
+    source_path: Path, transcript: str, options: Mapping[str, object]
+) -> str:
+    """Optionally run an AI Transcript Action and save a sibling document.
+
+    When ``options["transcript_action"]`` names a Transcript Action (Meeting
+    Minutes, Action Items, ...), generate it over the just-made transcript through
+    the configured provider and write ``<stem>-<action>.md`` next to the source.
+    Returns a short status fragment to append to the outcome message ('' when no
+    action is requested). Never raises and never fails the transcript job — the
+    transcript already succeeded, so a missing key or provider just skips the
+    action with a clear note.
+    """
+    action_id = str(options.get("transcript_action", "")).strip()
+    if not action_id:
+        return ""
+    try:
+        from quill.core.ai.model_manager import load_ai_enabled
+        from quill.core.ai.provider_backend import ProviderChatBackend
+        from quill.core.ai.transcript_actions import run_action_by_id
+
+        if not load_ai_enabled():
+            return " (AI is off — kept just the transcript)"
+        backend = ProviderChatBackend()
+        ok, _reason = backend.is_available()
+        if not ok:
+            return " (no AI provider configured — kept just the transcript)"
+        text, error = run_action_by_id(transcript, action_id, backend)
+        if error or not (text and text.strip()):
+            return f" (could not create the {action_id} document)"
+        target = source_path.with_name(f"{source_path.stem}-{action_id}.md")
+        body = text if text.endswith("\n") else text + "\n"
+        target.write_text(body, encoding="utf-8")
+    except Exception:  # noqa: BLE001 - never fail the transcript over the action
+        logger.exception("Transcript action %r failed for %s", action_id, source_path)
+        return " (the AI action failed — kept the transcript)"
+    return f"; created {target.name}"
+
+
 def _render_transcript(result: TranscriptionResult, output_format: str) -> tuple[str, str]:
     """Return ``(body, extension)`` for ``output_format``.
 
@@ -173,8 +212,9 @@ class WhispererTranscribeAction(_BaseAction):
             target.write_text(body, encoding="utf-8")
         except OSError as error:
             return WatchActionOutcome.failed(f"Could not write transcript: {error}")
+        extra = _maybe_make_action_document(path, to_plain_text(result), options)
         return WatchActionOutcome.done(
-            f"Transcribed {path.name} to {target.name}", result_path=target
+            f"Transcribed {path.name} to {target.name}{extra}", result_path=target
         )
 
 
@@ -276,8 +316,9 @@ class CloudTranscribeAction(_BaseAction):
         except OSError as exc:
             return WatchActionOutcome.failed(f"Could not write transcript: {exc}")
 
+        extra = _maybe_make_action_document(path, transcript, options)
         return WatchActionOutcome.done(
-            f"Transcribed {path.name} to {target.name}", result_path=target
+            f"Transcribed {path.name} to {target.name}{extra}", result_path=target
         )
 
 

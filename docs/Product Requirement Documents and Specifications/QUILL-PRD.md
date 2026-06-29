@@ -2951,6 +2951,10 @@ Abbreviation Expansion replaces short trigger words with longer text automatical
 
 ### 5.79 Ask AI — lightweight in-editor AI chat
 
+> **Retired in 2.0 (see §5.84a).** Ask AI has been folded into the single
+> context-aware **Ask Quill** conversation; the standalone dialog and its command
+> were removed so there is one chat door. This section is retained for history.
+
 Ask AI is a modal dialog that lets users send a prompt to a configured AI provider and read the response without leaving QUILL. No document text is changed; the dialog is purely informational.
 
 **Motivation.** Screen-reader users frequently need to ask a quick question while writing — define a term, check a fact, explore a phrasing option — and switching to a browser or a separate AI client breaks flow, especially when using NVDA or JAWS where switching applications involves extra navigation. Ask AI keeps the interaction entirely within the QUILL keyboard model.
@@ -3185,6 +3189,146 @@ accept_into: selection
 | `quill/tools/sqp_validator.py` | CLI validator |
 | `quill/quillins_bundled/ai-writing-skills/` | Four bundled `.sqp` skill files |
 | `tests/unit/core/test_skill_pack.py` | 23 tests: parsing, validation, runner, branching, bundled files |
+
+---
+
+### 5.84a Unified AI Library and the four-pillar AI menu (2.0)
+
+**Goal.** Replace the scattered AI submenu and its overlapping dialogs with one
+confident, top-level `&AI` menu built on four pillars, so the user feels QUILL has
+*one* AI that knows where they are.
+
+**The four pillars.**
+
+1. **Ask Quill** — the single, context-aware conversation. The legacy "Ask AI" and
+   "Writing Assistant" chat dialogs are retired into it (`AskAIDialog` deleted;
+   `open_ask_ai` / `tools.ask_ai` removed), so there is exactly one chat door.
+2. **Do** — context-first actions: the Concierge's "What can I do here?"
+   (`quill/ui/concierge_menu.py`), the Selection Action Ring ("Rewrite & Improve"),
+   and Run Agent.
+3. **AI Library** (`quill/ui/ai_library_dialog.py`) — Prompts, Skills, and Agents in
+   one `wx.Notebook` with one verb set (Run, New, Edit, Enable/Disable, Import,
+   Export) and a real **Promote** continuum. `prompt_to_skill_source` grows a Prompt
+   into a Skill; `skill_to_agent_markdown` + `save_user_agent` grow a Skill into a
+   first-class user Agent saved in `agent_catalog.user_agents_dir`, loaded alongside
+   the bundled catalog by `load_full_catalog`. Prompt Studio and Agent Center are
+   retired into this surface; the full agent linter is the Agents-tab **Validate**.
+4. **AI Hub** — the single configuration front door: provider, key, model, engine
+   switching (Engines tab), GitHub Copilot setup, and **Session Branches** (Sessions
+   tab). The old "Engine & Sessions" submenu is removed.
+
+**The menu shape.** The top-level `&AI` menu reads, in order: Set Up AI (the on-ramp,
+§5.84c) · Ask Quill (+ by Voice) · Accessibility Tune-Up · the context "Do" entries
+(hidden in Basic mode) · Proofread / Translate / Read Aloud / Transcribe / More
+submenus · AI Library · AI Hub · Use Artificial Intelligence (and Show advanced AI
+features). Item count dropped from ~36 scattered entries to a short, scannable list,
+each a single high-value action or a clearly-labeled one-level-deep submenu.
+
+**Confirmed product decisions.** (1) AI is a real top-level `&AI` menu unconditionally
+— the former `future.ai_menu_top_level` flag is retired as a placement switch. (2)
+"AI Library" is the name for the unified Prompt/Skill/Agent manager. (3) The
+Prompt → Skill → Agent **Promote** continuum is in scope and shipped. (4) Accessibility
+Tune-Up stays a first-class, top-of-menu item given the screen-reader audience.
+
+**Invariants.** Every list item and dynamic menu entry has a meaningful accessible
+name; all dialogs go through `_show_modal_dialog` + `apply_modal_ids`; running any
+action announces start and result; nothing is more than one level deep; the Library
+and continuum are wx-free at the core (`quill/core/ai/library.py`,
+`quill/core/skill_store.py`). One custom-prompt store: `prompt_migration` consolidates
+the legacy `assistant_prompts` into the canonical `PromptLibrary` at startup
+(reversible, idempotent). Deprecated dialogs retired; the live `assistant_agents`
+plan/profile helpers stay (they back a live agent-run path), and `assistant_prompts`
+stays until the prompt migration is sunset.
+
+---
+
+### 5.84b The Listening Companion — Transcript Actions and the Action Builder (2.0)
+
+**Goal.** Make transcription the *beginning* of an agentic writing experience, not
+the end: turn audio into the document the user actually needs, with a gentle, guided,
+adjustable path. Folds the agentic transcription magic of BITS Whisperer into QUILL's
+unified AI framework.
+
+**Transcript Actions** (`quill/core/ai/transcript_actions.py`, wx-free). Ten
+built-in actions — Meeting Minutes, Action Items, Executive Summary, Interview Notes,
+Study Notes, Q&A Extraction, Clean Up & Draft, Follow-Up Email, Key Quotes, and
+Decisions Log — each a named, plain-language, *adjustable* instruction with a prompt
+builder. `recommend_actions` orders them for the transcript in front of the user
+(multi-speaker leads with Minutes / Action Items / Decisions / a follow-up email;
+question-dense with Q&A / Interview / Key Quotes; single voice with Clean Up & Draft)
+while keeping every action available. Reachable two ways: the post-transcription "What
+would you like me to make of this?" chooser (`quill/ui/transcript_actions_ui.py`,
+hooked into `_show_transcription_result`) and an `AI > Transcribe Audio > Transcript
+Actions...` item that runs them on the current selection/document. Results open in a
+new buffer; the original transcript is never overwritten. Generation uses the unified
+`ProviderChatBackend`; the flow degrades gently when AI is off, and offers the AI
+Setup Wizard (§5.84c) at that high-intent moment instead of a dead end.
+
+**Guided Action Builder** (`quill/ui/action_builder_dialog.py`). A no-syntax,
+form-based builder (name, start-from preset, plain-language instructions, optional
+**reference attachment**, Save) reached from the AI Library Skills tab. It writes a
+real Skill via `action_to_skill_source` + `SkillStore`, so a user-defined action
+immediately gains Run / Edit / Enable / Export / Promote. A reference document (txt /
+md directly, docx and friends via markitdown) is woven into the saved action so its
+output matches the user's template, terminology, and house style.
+
+**Automation.** A watch-folder transcribe profile can chain "transcribe → run a
+Transcript Action → save the document" next to the audio
+(`watch_transcribe._maybe_make_action_document`), Do-Not-Disturb-aware. AI off / no
+provider / a failed action skips the document step with a clear note and always keeps
+the transcript.
+
+**Principles (non-negotiable for this audience).** Easy (one choice, one keystroke),
+delightful, guided, principled (consent + preview + undo + private by default),
+powerful (the full agentic stack underneath), adjustable by instruction and prompt,
+and gentle for learners.
+
+**Status: complete.** Shipped: Transcript Actions (post-transcription and anytime),
+the guided Action Builder, reference attachments, watch-folder automation, and the AI
+onboarding wizard with Basic mode and on-ramps (§5.84c). **Live + diarized streaming
+actions were deliberately not built:** most of that value is already delivered by file
+transcription plus watch-folder automation, and its one genuinely unique kernel — live
+captioning — is a separate accessibility feature that would need real-time audio
+capture infrastructure; if it is ever wanted it should be scoped on its own merits, not
+bolted onto this companion.
+
+---
+
+### 5.84c AI onboarding — the Setup Wizard, on-ramps, and experience modes (2.0)
+
+**Goal.** Make getting started with AI a gentle, magical, screen-reader-first
+experience across the whole AI landscape — no jargon, no dead ends, finished in
+seconds — and let newcomers grow into the full surface on their own timeline.
+
+**AI Setup Wizard** (`quill/ui/ai_setup_wizard.py` over wx-free
+`quill/core/ai/onboarding.py`). A one-step-at-a-time wizard (each step a single
+announced focus context): a welcome, the one real choice — **on your device with
+Ollama** (private, free), **use an AI account** (Claude / OpenAI / Gemini / OpenRouter
+/ Ollama Cloud, with a key pasted once and stored in the OS secure store, plus a
+**Test connection** button), or **not right now** — a frictionless connect step, and a
+tailored celebration. Neither path lets the user finish into a broken state: cloud
+offers Test connection, and the on-device path **verifies a reachable local Ollama with
+an installed model (`ollama_status`) before it commits** — if Ollama isn't running or
+has no models, the step stays put with plain-language guidance (install from
+ollama.com / `ollama pull ...`) rather than configuring something that won't work. The wx-free model owns the copy, the paths, the cloud-provider
+options, the apply helpers (`apply_cloud_setup` / `apply_on_device_setup`), and the
+persisted state, so it is fully unit-testable. Reachable as the first AI menu item
+(**"Set Up AI... (start here)"** until done).
+
+**On-ramps, not dead ends.** `maybe_offer_ai_setup` offers the wizard at the moment a
+user first reaches for AI before it is configured — Ask Quill, the AI Library, and
+Transcript Actions all route through it — and never nags someone who has already been
+through setup. Because the AI Library's Run, Ask Quill, Transcript Actions, and agents
+all share the one `ProviderChatBackend` (AI Hub) connection the wizard configures,
+setting AI up once makes everything work.
+
+**Experience modes.** `is_basic_mode()` / `save_experience_mode()` persist a Basic vs
+Advanced choice (default **advanced**, so existing users never lose anything; the
+wizard's "keep it simple" checkbox puts a newcomer into Basic). In Basic mode the AI
+menu hides the power-user agentic entries ("What can I do here?", "Rewrite & Improve",
+"Run Agent") so the surface stays calm; a **"Show advanced AI features"** toggle flips
+it instantly. Everyday features (Ask Quill, Transcribe, Proofread, Translate, Read
+Aloud, the AI Library) always stay.
 
 ---
 

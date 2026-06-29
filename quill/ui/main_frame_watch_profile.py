@@ -220,6 +220,32 @@ class WatchProfileDialogMixin:
             transcribe_row.Add(transcribe_choice, 1, wx.EXPAND)
             root.Add(transcribe_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
+            # The Listening Companion: optionally run an AI Action on the new
+            # transcript and save the result document next to it. Applies to both
+            # transcribe actions; "None" keeps just the transcript.
+            from quill.core.ai.transcript_actions import BUILTIN_TRANSCRIPT_ACTIONS
+
+            ta_ids = ["", *[a.id for a in BUILTIN_TRANSCRIPT_ACTIONS]]
+            ta_labels = [
+                "None (just the transcript)",
+                *[a.name for a in BUILTIN_TRANSCRIPT_ACTIONS],
+            ]
+            ta_row = wx.BoxSizer(wx.HORIZONTAL)
+            ta_row.Add(
+                wx.StaticText(dialog, label="Then make"),
+                0,
+                wx.ALIGN_CENTER_VERTICAL | wx.RIGHT,
+                8,
+            )
+            transcript_action_choice = wx.Choice(dialog, choices=ta_labels)
+            transcript_action_choice.SetName("AI action to run on the transcript")
+            current_ta = str(base.action_options.get("transcript_action", "")).strip().lower()
+            transcript_action_choice.SetSelection(
+                ta_ids.index(current_ta) if current_ta in ta_ids else 0
+            )
+            ta_row.Add(transcript_action_choice, 1, wx.EXPAND)
+            root.Add(ta_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
             macro_names = sorted(getattr(getattr(self, "macros", None), "macros", {}) or {})
             macro_row = wx.BoxSizer(wx.HORIZONTAL)
             macro_row.Add(
@@ -361,6 +387,13 @@ class WatchProfileDialogMixin:
                 elif action_id == "bw_transcribe":
                     t_index = transcribe_choice.GetSelection()
                     options["output_format"] = transcribe_formats[t_index if t_index >= 0 else 0]
+                    ta_index = transcript_action_choice.GetSelection()
+                    if ta_index > 0:
+                        options["transcript_action"] = ta_ids[ta_index]
+                elif action_id == "cloud_transcribe":
+                    ta_index = transcript_action_choice.GetSelection()
+                    if ta_index > 0:
+                        options["transcript_action"] = ta_ids[ta_index]
                 elif action_id == "run_macro":
                     macro_name = macro_input.GetValue().strip()
                     if macro_name:

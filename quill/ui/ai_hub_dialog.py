@@ -34,21 +34,25 @@ _DEEPGRAM_MAX_SPEAKERS_KEY = "deepgram_default_max_speakers"
 
 def _load_deepgram_key() -> str:
     try:
-        from quill.platform.windows.credential_manager import credential_load
+        from quill.platform.windows.credential_manager import load_generic_credential
 
-        return credential_load(_DEEPGRAM_KEY_CRED_TARGET) or ""
+        stored = load_generic_credential(_DEEPGRAM_KEY_CRED_TARGET)
+        return (stored.secret if stored else "") or ""
     except Exception:  # noqa: BLE001
         return ""
 
 
 def _save_deepgram_key(key: str) -> None:
     try:
-        from quill.platform.windows.credential_manager import credential_delete, credential_save
+        from quill.platform.windows.credential_manager import (
+            delete_generic_credential,
+            save_generic_credential,
+        )
 
         if key.strip():
-            credential_save(_DEEPGRAM_KEY_CRED_TARGET, key.strip())
+            save_generic_credential(_DEEPGRAM_KEY_CRED_TARGET, key.strip())
         else:
-            credential_delete(_DEEPGRAM_KEY_CRED_TARGET)
+            delete_generic_credential(_DEEPGRAM_KEY_CRED_TARGET)
     except Exception:  # noqa: BLE001
         pass
 
@@ -171,9 +175,11 @@ class AIHubDialog:
         # proxy never reaches wx. Choice/ListBox/ComboBox labels are
         # already coerced in their own builders.
         self._notebook.AddPage(self._build_provider_tab(), str(_("Provider")))
+        self._notebook.AddPage(self._build_harnesses_tab(), str(_("Engines")))
         self._notebook.AddPage(self._build_on_device_tab(), str(_("On-Device")))
         self._notebook.AddPage(self._build_audio_tab(), str(_("Audio Services")))
         self._notebook.AddPage(self._build_instructions_tab(), str(_("Instructions")))
+        self._notebook.AddPage(self._build_sessions_tab(), str(_("Sessions")))
         self._notebook.AddPage(self._build_advanced_tab(), str(_("Advanced")))
 
         btn_sizer = wx.StdDialogButtonSizer()
@@ -263,6 +269,23 @@ class AIHubDialog:
         self._reveal_btn.Bind(wx.EVT_TOGGLEBUTTON, self._on_reveal_key)
         self._test_btn.Bind(wx.EVT_BUTTON, self._on_test_connection)
         return panel
+
+    # ------------------------------------------------------------------
+    # Tab: Engines (harnesses) — pick the agentic engine; install / sign in.
+    # All logic lives in the wx-free-of-this-module EnginesPanel so the Hub
+    # stays within its GATE-11 size budget.
+    # ------------------------------------------------------------------
+
+    def _build_harnesses_tab(self) -> object:
+        from quill.ui.ai_hub_engines_panel import EnginesPanel
+
+        self._engines_panel = EnginesPanel(
+            self._notebook,
+            parent_dialog=self.dialog,
+            announce=self._announce,
+            show_modal=self._show_modal,
+        )
+        return self._engines_panel.panel
 
     # ------------------------------------------------------------------
     # Tab 2: On-Device
@@ -697,6 +720,14 @@ class AIHubDialog:
     # ------------------------------------------------------------------
     # Tab 5: Advanced  (P7-1)
     # ------------------------------------------------------------------
+
+    def _build_sessions_tab(self) -> object:
+        from quill.ui.ai_hub_sessions_panel import SessionsPanel
+
+        self._sessions_panel = SessionsPanel(
+            self._notebook, parent_dialog=self.dialog, announce=self._announce
+        )
+        return self._sessions_panel.panel
 
     def _build_advanced_tab(self) -> object:
         wx = self._wx

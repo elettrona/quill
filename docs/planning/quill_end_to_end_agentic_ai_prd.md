@@ -19,6 +19,40 @@ The source of truth is the code in `quill/`, verified June 21, 2026 against bran
 
 ---
 
+## 0a. Implementation status (2026-06-26, branch `2.0-dev`)
+
+The **non-UI innerworkings of Phases 1–5 are built and tested**; the remaining work is
+the AI Hub UI (Phase 6 here / §5) plus a few live-SDK and product items. Built modules:
+
+- **Foundation** — `ai/events.py`, `ai/permissions.py` (broker, 4 profiles, risk floor,
+  `SAFE_TOOL_IDS` floor), `ai/activity_log.py`, `ai/tool_gateway.py`,
+  `ai/context_builder.py`, `ai/event_bridge.py`.
+- **Harness layer + packs** — `ai/harness/` (protocol/registry/capabilities, Native),
+  and three optional SDK packs in `ai_packs/` (OpenAI Agents, Claude Agent, GitHub
+  Copilot — Microsoft/LangGraph/OpenHands intentionally dropped). OpenAI + Claude
+  validated live; Copilot cross-checked vs the GA SDK.
+- **Agents + loop** — `ai/agent_catalog.py` + `schemas/agent.json` + a **15-agent**
+  `ai/agents/` set; `ai/tool_loop.py`; `ai/tool_planner.py` (provider-neutral JSON
+  tool-calling); `ai/agent_tools.py` (shared tool surface for the loop, planner, and
+  SDK packs).
+- **Provider truth (§7)** — `ai_chat` reads the canonical per-provider key targets;
+  `assistant_ai.consolidate_provider_keys` reversible migration at startup;
+  `providers.allowed_providers(policy)` (admin policy, §15).
+- **Chat + document (§2.2, §11)** — `ai/chat_session.py` (unified, auto-compacting chat
+  engine) and `ai/doc_context.py` (chunk / section / structured summary for whole-doc).
+- **Editor wiring** — `ui/agent_editor_host.py` routes agents through the gateway,
+  validated live (opt-in behind `QUILL_AI_AGENT_GATEWAY`).
+- **Cross-SDK proof** — `tests/unit/core/ai/test_agent_matrix.py`: 15 agents × 4
+  engines = 60 cases through the gateway.
+
+Remaining: the AI Hub command center + surfacing (Phase 6, UI); routing the existing
+chat dialogs onto `ChatSession` + the gateway (UI); per-SDK native-tool registration
+(`on_permission_request` → broker) needing the live SDKs; and the secret-masking
+policy for whole-document transforms (a product decision). The live tracker is
+[`todo.md`](todo.md); the plan of record is [`roadmap-2.0.md`](roadmap-2.0.md).
+
+---
+
 ## 1. Executive Summary
 
 QUILL should not add "one chatbot," and it should not rebuild what it already has. QUILL should **unify** its existing AI features behind one coherent, agentic, provider-neutral platform whose home is the **AI Hub**.

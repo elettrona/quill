@@ -289,6 +289,29 @@ def test_recommended_models_for_provider_cloud_and_local(
     assert "gpt-4o-mini" in cloud
 
 
+def test_ollama_cloud_default_and_recommended_models_are_real_ids() -> None:
+    # Bare "qwen3"/"gemma3" 404 on ollama.com; every default/recommended cloud
+    # model id must carry a size tag (or be a tagless flagship that exists).
+    default = providers.default_model_for_provider("ollama_cloud")
+    recommended = providers.recommended_models_for_provider("ollama_cloud")
+    assert default == "gemma3:12b"
+    assert "qwen3" not in recommended and "gemma3" not in recommended
+    # The non-reasoning default leads so it works on chat and the agent path.
+    assert recommended[0] == "gemma3:12b"
+
+
+def test_parse_chat_response_falls_back_to_reasoning_when_content_empty() -> None:
+    # Reasoning models (gpt-oss, some OpenRouter routes) leave `content` empty and
+    # put the answer on a reasoning channel; we must surface it, not fail.
+    payload = {"choices": [{"message": {"content": "", "reasoning_content": "the answer"}}]}
+    assert assistant_ai.parse_chat_response("ollama_cloud", payload) == "the answer"
+    payload2 = {"choices": [{"message": {"content": "", "reasoning": "alt channel"}}]}
+    assert assistant_ai.parse_chat_response("openrouter", payload2) == "alt channel"
+    # Normal content still wins over any reasoning field.
+    payload3 = {"choices": [{"message": {"content": "real", "reasoning": "ignored"}}]}
+    assert assistant_ai.parse_chat_response("openai", payload3) == "real"
+
+
 def test_recommended_model_guidance_returns_framing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -653,6 +676,48 @@ def test_per_provider_keys_are_isolated(monkeypatch: pytest.MonkeyPatch) -> None
     openai_target = assistant_ai.provider_credential_target("openai")
     claude_target = assistant_ai.provider_credential_target("claude")
     assert openai_target != claude_target
+
+
+def test_keyed_provider_key_prefers_per_provider_store(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Even when the active provider is something else, the per-provider OpenAI key
+    # is used for a direct OpenAI call (Whisper / OpenAI TTS).
+    _fake_credential_store(monkeypatch)
+    assistant_ai.save_provider_api_key("openai", "openai-key")
+    monkeypatch.setattr(
+        assistant_ai,
+        "load_assistant_connection_settings",
+        lambda: assistant_ai.AssistantConnectionSettings(provider="claude"),
+    )
+    monkeypatch.setattr(assistant_ai, "load_assistant_api_key", lambda: "claude-active-key")
+    assert assistant_ai.load_keyed_provider_api_key("openai") == "openai-key"
+
+
+def test_keyed_provider_key_falls_back_to_active_only_when_provider_matches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _fake_credential_store(monkeypatch)  # no per-provider openai key stored
+    monkeypatch.setattr(
+        assistant_ai,
+        "load_assistant_connection_settings",
+        lambda: assistant_ai.AssistantConnectionSettings(provider="openai"),
+    )
+    monkeypatch.setattr(assistant_ai, "load_assistant_api_key", lambda: "openai-active-key")
+    assert assistant_ai.load_keyed_provider_api_key("openai") == "openai-active-key"
+
+
+def test_keyed_provider_key_never_returns_another_providers_active_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The 401 bug: with no OpenAI key but an active Anthropic key, asking for the
+    # OpenAI key must return "" rather than the Anthropic key (which OpenAI rejects).
+    _fake_credential_store(monkeypatch)
+    monkeypatch.setattr(
+        assistant_ai,
+        "load_assistant_connection_settings",
+        lambda: assistant_ai.AssistantConnectionSettings(provider="claude"),
+    )
+    monkeypatch.setattr(assistant_ai, "load_assistant_api_key", lambda: "claude-active-key")
+    assert assistant_ai.load_keyed_provider_api_key("openai") == ""
 
 
 def test_clear_provider_api_key_only_affects_that_provider(monkeypatch: pytest.MonkeyPatch) -> None:

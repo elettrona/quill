@@ -9,12 +9,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from quill import __version__
+from quill.core.ai.key_migration import consolidate_provider_keys_quietly
 from quill.core.data_location import (
     apply_pending_data_location_migration,
     apply_pending_legacy_import,
 )
 from quill.core.features import reset_feature_profile_store
 from quill.core.paths import app_data_dir, ensure_app_directories
+from quill.core.prompt_migration import consolidate_prompts_quietly
 from quill.core.settings import load_settings as _load_settings
 from quill.core.startup_maintenance import run_pending_startup_maintenance
 from quill.stability.diagnostics import dump_all_thread_stacks, setup_fault_handler
@@ -376,6 +378,8 @@ def main() -> int:
     apply_pending_legacy_import()
     _propagate_portable_environment()
     ensure_app_directories()
+    consolidate_provider_keys_quietly()  # one provider truth (PRD 7): migrate keys
+    consolidate_prompts_quietly()  # one prompt store (AI Library): merge legacy prompts
     # One-time, epoch-gated cleanup of stale diagnostic clutter (old logs/crash
     # reports) so upgraders start fresh. Runs before configure_logging opens the
     # active log file, and only touches regenerable diagnostics -- never user work.
@@ -387,6 +391,14 @@ def main() -> int:
 
         activate_engine_packs()
     except Exception:  # noqa: BLE001 - an optional engine must never break startup
+        pass
+    # Add any on-demand-installed AI SDK packs (Copilot/Claude/OpenAI Agents) to
+    # sys.path so the harness registry can find them this session (Phase 6/10).
+    try:
+        from quill.core.ai.sdk_install import activate_ai_packs
+
+        activate_ai_packs()
+    except Exception:  # noqa: BLE001 - an optional pack must never break startup
         pass
     log_listener = configure_logging(app_data_dir() / "logs")
     setup_fault_handler()

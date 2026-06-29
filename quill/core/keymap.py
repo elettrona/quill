@@ -149,6 +149,7 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "tools.ai_grammar_style": "Ctrl+Alt+Shift+G",  # §edsharp-ok — AI reserved chord class
     "tools.ai_translate_selection": "Ctrl+Alt+Shift+T",  # §edsharp-ok — AI reserved chord class
     "tools.ai_thesaurus": "Ctrl+Alt+Shift+H",  # §edsharp-ok — AI reserved chord class
+    "tools.ai_switch_engine": "Ctrl+Alt+Shift+E",  # §edsharp-ok — AI reserved chord class
     # #357 keymap consolidation: compare commands move from inline
     # F8/Shift+F8/Ctrl+F8 accelerators (colliding with the selection
     # bindings) to the same Ctrl+Alt+Shift+ chord class as the AI

@@ -64,6 +64,7 @@ def test_pick_asset_portable_falls_back_to_installer_without_portable_zip(monkey
     url = _pick_asset(assets, prefer_portable=True)
     assert url == "https://example.test/Quill-for-All-Setup-0.8.0.exe"
 
+
 _TEST_DEPLOY_KEY = "quill-test-deploy-key-for-unit-tests"
 
 

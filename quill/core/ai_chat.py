@@ -14,6 +14,8 @@ import urllib.request
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from quill.core.assistant_ai import provider_credential_target
+
 if TYPE_CHECKING:
     pass
 
@@ -88,19 +90,24 @@ def _get_json(url: str, headers: dict, timeout: int) -> dict:  # type: ignore[ty
 # Provider definitions
 # ---------------------------------------------------------------------------
 
+# One provider truth (§7): the ``credential_name`` for each keyed provider is the
+# *canonical* per-provider credential target used by ``assistant_ai`` and the AI
+# Hub, so this lightweight client and the main AI stack read/write the SAME key.
+# A reversible startup migration (assistant_ai.consolidate_provider_keys) copies
+# any key from the old ``quill-<provider>-api-key`` slot into the canonical one.
 PROVIDERS: dict[str, dict] = {
     "openrouter": {
         "label": "OpenRouter",
         "base_url": "https://openrouter.ai/api/v1",
         "needs_key": True,
-        "credential_name": "quill-openrouter-api-key",
+        "credential_name": provider_credential_target("openrouter"),
         "mode": "openai_compat",
     },
     "openai": {
         "label": "OpenAI",
         "base_url": "https://api.openai.com/v1",
         "needs_key": True,
-        "credential_name": "quill-openai-api-key",
+        "credential_name": provider_credential_target("openai"),
         "mode": "openai_compat",
     },
     "ollama_local": {
@@ -114,7 +121,7 @@ PROVIDERS: dict[str, dict] = {
         "label": "Ollama Cloud",
         "base_url": "https://api.ollama.com",
         "needs_key": True,
-        "credential_name": "quill-ollama-api-key",
+        "credential_name": provider_credential_target("ollama_cloud"),
         "mode": "openai_compat",
     },
 }
@@ -192,4 +199,15 @@ def send_prompt(
         choices = data.get("choices", [])
         if not choices:
             raise AIChatProviderError("No choices in response")
-        return choices[0].get("message", {}).get("content", "")  # type: ignore[no-any-return]
+        message = choices[0].get("message", {})
+        content = str(message.get("content", "") or "")
+        if content.strip():
+            return content
+        # Reasoning models (e.g. gpt-oss on Ollama Cloud) leave `content` empty
+        # and put the answer on a reasoning channel; surface it rather than
+        # returning an empty string the caller cannot use.
+        for key in ("reasoning_content", "reasoning"):
+            reasoning = message.get(key)
+            if isinstance(reasoning, str) and reasoning.strip():
+                return reasoning
+        return content

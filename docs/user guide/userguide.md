@@ -791,11 +791,130 @@ Options:
 - **Translate to English**: transcribes audio in any language and returns an
   English translation in one step (Whisper translation mode).
 
-The result appears in a viewer dialog where you can copy, insert at cursor, or
-open as a new document.
+When the transcript is ready, QUILL asks **"What would you like me to make of
+this?"** and offers a short, context-aware list of **Transcript Actions** (see
+the next section). Choose one and QUILL turns the transcript into a finished
+document — meeting minutes, action items, study notes, a clean draft — and opens
+it for you to review and edit. Or choose **"Just keep the transcript"** to land
+in the viewer dialog, where you can copy, insert at the cursor, or open the
+transcript as a new document. If AI is turned off, you go straight to the viewer.
 
 `AI > Translate Audio File to English...` goes directly to the Whisper
 translation flow, bypassing the language selection step.
+
+#### Transcript Actions — turning sound into a finished document
+
+A transcript is rarely the thing you actually need; the *minutes*, the *action
+items*, or the *clean draft* are. **Transcript Actions** make that last step one
+keystroke. They are reachable in two places:
+
+- **Right after transcription**, in the "What would you like me to make of this?"
+  chooser described above.
+- **Anytime**, on the text you are already looking at, via
+  `AI > Transcribe Audio > Transcript Actions...`. Paste any transcript or notes
+  (or select part of your document) and pick an action.
+
+The built-in actions are:
+
+- **Meeting Minutes** — attendees, decisions, action items with owners, follow-ups.
+- **Action Items** — every task and commitment as a numbered, actionable list.
+- **Executive Summary** — a concise briefing for leadership.
+- **Interview Notes** — questions, responses, strengths, concerns, an assessment.
+- **Study Notes** — a lecture or talk turned into organized notes.
+- **Q&A Extraction** — every question and its answer in clean Q&A format.
+- **Clean Up & Draft** — spoken rambling turned into a clean, readable draft.
+- **Follow-Up Email** — a warm, ready-to-send recap with next steps.
+- **Key Quotes** — the most notable verbatim quotes, with who said them.
+- **Decisions Log** — just the decisions made, each with its rationale and owner.
+
+QUILL orders the list for the recording in front of you — a multi-speaker meeting
+leads with Minutes and Action Items, a single voice with Clean Up & Draft — but
+every action is always available. The finished document opens in a new window so
+your original transcript is never overwritten. Transcript Actions use whichever AI
+provider you have configured in the AI Hub.
+
+### Setting up AI — the gentle wizard
+
+The first item in the `&AI` menu is **Set Up AI...** (labeled "start here" until
+you've done it). It opens a short, friendly wizard that gets you from nothing to a
+working AI in seconds, with no jargon:
+
+1. **Welcome** — a plain-language note on what QUILL's AI does and that it is
+   optional, previewed, and private by default.
+2. **How would you like AI to run?** — one choice:
+   - **On your device with Ollama** — private and free; runs on your computer with
+     no account or key. QUILL connects to a local Ollama install.
+   - **Use an AI account** — the most capable models; connect Claude, OpenAI,
+     Gemini, OpenRouter, or Ollama Cloud with a key you paste once and QUILL stores
+     securely on this device.
+   - **Not right now** — keep AI off; set it up any time later.
+3. **Connect** — for an account, pick a provider, paste your key, and **Test
+   connection** before continuing. For on-device, QUILL points itself at Ollama.
+4. **You're all set** — a short summary of what you can now do, and a **Keep it
+   simple** checkbox that turns on **Basic mode**.
+
+QUILL also offers this wizard at the moment you reach for AI before it's set up — for
+example, choosing to make minutes from a transcript — so you are never stuck at a
+dead end. You can re-run **Set Up AI** any time to change providers or switch modes.
+
+**Basic mode** keeps the AI menu small for newcomers: the everyday features (Ask
+Quill, Transcribe, Proofread, Translate, Read Aloud, the AI Library) stay, while the
+power-user, agentic entries ("What can I do here?", "Rewrite & Improve", and "Run
+Agent") are hidden until you're ready. Turn them on any time with **Show advanced AI
+features** near the bottom of the AI menu. Existing users keep the full menu — Basic
+mode applies only if you choose it.
+
+### The AI Library — Prompts, Skills, and Agents in one place
+
+`AI > AI Library...` is the single home for everything QUILL can do with AI on
+your writing. It has three tabs, all sharing the same buttons (Run, Edit,
+Enable/Disable, Import, Export):
+
+- **Prompts** — single instructions you run on the current selection or document
+  ("Rewrite warmly", "Summarize"). New, Edit, Delete, and Promote a prompt into a
+  Skill.
+- **Skills** — multi-step workflows saved as shareable `.sqp` packs. Run them,
+  Import/Export them, Remove them, and Promote a Skill into an Agent.
+- **Agents** — the catalog of tool-using agents (Writing Companion, Reviewer,
+  Code Doctor, and more) plus any you have saved yourself. Run them through the
+  reviewed gateway, or Validate one against the agent standard.
+
+The three are points on one continuum of saved AI intent. **Promote** lets a
+Prompt grow into a Skill and a Skill grow into an Agent, so you can start simple
+and add power only when you need it. Anything you build is yours to Export and
+share, and a teammate can Import it.
+
+#### Build an AI Action (no syntax required)
+
+On the Skills tab, **Build Action...** opens a friendly, form-based builder — the
+easiest way to teach QUILL something new:
+
+1. **Name** your action ("My Monday standup notes").
+2. **Start from** a built-in example (Meeting Minutes, Action Items, and the rest)
+   or a blank page. Choosing an example fills in the instructions for you to adjust.
+3. **Describe what you want in plain language.** That is the whole "programming" —
+   no Markdown, no metadata, no syntax.
+4. **Attach a reference** (optional) — an agenda, your house style, or a past good
+   example — and QUILL will match its format and terminology. "Make minutes that
+   look like last month's."
+5. **Save.** Your action becomes a real Skill in the Library, ready to Run on any
+   document, adjust later, Promote to an Agent, or share.
+
+### Automate transcription with watch folders
+
+A watch folder turns "drop a file here and it just gets handled" into a rule you
+set once. In `Tools > Watch Folders`, a transcribe profile can now **chain an AI
+Action onto each recording**:
+
+- Point a profile at a folder (for example, *Meetings*).
+- Choose a transcribe action (offline or OpenAI Whisper).
+- Under **Then make**, pick a Transcript Action — say, *Meeting Minutes*.
+
+From then on, every recording that lands in that folder is transcribed *and* the
+minutes document is written next to it automatically, named like
+`standup-meeting-minutes.md`. If AI is off or no provider is configured, you still
+get the transcript — the action step is simply skipped with a note, never an error.
+Watch folders respect Do Not Disturb and run quietly in the background.
 
 ### Offline transcription (Tools > Speech)
 

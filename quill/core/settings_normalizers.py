@@ -54,6 +54,10 @@ STATUS_BAR_ITEMS: tuple[str, ...] = (
     # Hidden by default; users who work heavily with heading-level
     # navigation can opt in via Preferences -> Status Bar.
     "section_heading",
+    # Active AI engine (Native / Copilot / Claude / OpenAI Agents). Hidden by
+    # default; auto-surfaces once the user picks a non-Native agentic engine,
+    # and is the click target for the quick engine switcher.
+    "ai_engine",
 )
 
 
@@ -85,6 +89,7 @@ def _default_status_bar_hidden() -> list[str]:
         "language_profile",
         "braille",
         "section_heading",
+        "ai_engine",
     ]
 
 

@@ -272,7 +272,10 @@ skip.
 
 ## 5. Deferred to QUILL 2.0
 
-Confirmed out of the 1.0 scope. Recorded here so the intent is not lost.
+Confirmed out of the 1.0 scope. Recorded here so the intent is not lost. The 2.0
+plan of record that promotes and organizes this scope is
+[`roadmap-2.0.md`](roadmap-2.0.md); items graduate from there back into this file
+when scheduled for a shipping release.
 
 - **Dictation later phases** — an optional **global Windows key hook** (system-wide
   dictation hotkey), **idle-silence detection** (auto-stop on a pause), and

@@ -29,6 +29,9 @@ mypy quill\core quill\io
 
 # Quillin self-lint
 python -m quill.tools.quillin_lint <dir> --strict
+
+# Agent standards lint (default: bundled agents dir; pass a path to lint one)
+python -m quill.tools.agent_lint quill/core/ai/agents --strict
 ```
 
 The `tests/conftest.py` fixture sets `quill.core.paths._DEV_BUILD = True` for the whole test session. Any test that sets `QUILL_DATA_DIR` for isolation depends on this; do not remove it.

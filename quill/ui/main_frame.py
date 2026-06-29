@@ -470,9 +470,7 @@ from quill.ui.ai_model_panel import AIModelDialog
 from quill.ui.assistant_panel import AskQuillChatDialog
 from quill.ui.assistant_tools import (
     AccessibilityAgentDialog,
-    AgentCenterDialog,
     AssistantConnectionDialog,
-    PromptStudioDialog,
     RunPythonDialog,
     WritingAssistantDialog,
 )
@@ -903,6 +901,7 @@ class MainFrame(
         "notebook_goal": "Notebook Goal",
         "braille": "Braille",
         "section_heading": "Section",
+        "ai_engine": "AI Engine",
     }
     _STATUS_BAR_WIDTHS: dict[str, int] = {
         "message": -1,
@@ -934,6 +933,7 @@ class MainFrame(
         "notebook_goal": 200,
         "braille": 320,
         "section_heading": 220,
+        "ai_engine": 200,
     }
     _STATUS_BAR_FEATURES: dict[str, str] = {
         "message": "core.app",
@@ -1915,9 +1915,9 @@ class MainFrame(
             None,
         )
         self.commands.register(
-            "tools.ask_ai",
-            "Ask AI...",
-            self.open_ask_ai,
+            "tools.ai_library",
+            "AI Library",
+            self.open_ai_library,
             None,
         )
         self.commands.register(
@@ -1943,6 +1943,12 @@ class MainFrame(
             "Ask Quill Chat",
             self.open_ask_quill_chat,
             self._binding_for("tools.ask_quill_chat"),
+        )
+        self.commands.register(
+            "tools.ask_quill_conversation",
+            "Ask Quill: Voice Conversation",
+            self.open_ask_quill_conversation,
+            self._binding_for("tools.ask_quill_conversation"),
         )
         self.commands.register(
             "tools.ai_model",
@@ -2052,12 +2058,10 @@ class MainFrame(
             self.open_ai_toc,
             None,
         )
-        self.commands.register(
-            "tools.ai_thesaurus",
-            "AI Thesaurus",
-            self.open_ai_thesaurus,
-            None,
-        )
+        self.commands.register("tools.ai_thesaurus", "AI Thesaurus", self.open_ai_thesaurus, None)
+        from quill.ui.agent_editor_host import register_agent_commands
+
+        register_agent_commands(self)  # Run Agent palette entries (one per catalog agent)
         self.commands.register(
             "tools.ai_continue_writing",
             "Continue Writing",
@@ -3645,11 +3649,16 @@ class MainFrame(
             "tools.ai_prompt_studio": self._id_ai_prompt_studio,
             "tools.ai_agent_center": self._id_ai_agent_center,
             "tools.ai_accessibility_agent": self._id_ai_accessibility_agent,
+            "tools.ai_library": self._id_ai_library,
             "tools.prompt_library": self._id_prompt_library,
             "tools.skill_library": self._id_skill_library,
             "tools.check_grammar_ai": self._id_check_grammar_ai,
             "tools.ask_quill_chat": self._id_ask_quill_chat,
+            "tools.ask_quill_conversation": self._id_ask_quill_voice,
             "tools.ai_model": self._id_ai_model,
+            "tools.ai_switch_engine": self._id_ai_switch_engine,
+            "tools.copilot_onboarding": self._id_ai_copilot_setup,
+            "tools.validate_agents": self._id_ai_validate_agents,
             "tools.ai_session_browser": self._id_ai_session_browser,
             "tools.ai_connection": self._id_ai_connection,
             "tools.ai_rewrite_selection": self._id_ai_rewrite_selection,
@@ -10212,14 +10221,12 @@ class MainFrame(
     #: these is harmless, so hijacking the second press to open the Spoken Echo
     #: loses nothing. The dedicated Echo key works for every announcement; this
     #: set only governs the optional double-press shortcut.
-    _ECHO_DOUBLE_PRESS_COMMANDS = frozenset(
-        {
-            "format.describe_formatting",
-            "document.summary",
-            "help.context_help",
-            "view.announce_contrast",
-        }
-    )
+    _ECHO_DOUBLE_PRESS_COMMANDS = frozenset({
+        "format.describe_formatting",
+        "document.summary",
+        "help.context_help",
+        "view.announce_contrast",
+    })
 
     #: Maximum gap (seconds) between two presses to count as a double-press.
     _ECHO_DOUBLE_PRESS_WINDOW = 0.5
@@ -11251,7 +11258,6 @@ class MainFrame(
         ai_value: bool | None = None
         ext_master_value: bool | None = None
         ext_engine_spec: tuple[str, str, bool] | None = None
-        ai_menu_top_level_value: bool | None = None
         data_location_choice: tuple[str, str] | None = None
 
         with wx.Dialog(self.frame, title="Settings") as dialog:
@@ -11845,15 +11851,8 @@ class MainFrame(
                         _ps.Add(_ef, 0, wx.ALL, 6)
                         _ai_refs["ext_engine_enabled_cb"] = _ef
                         _ps.Add(wx.StaticLine(_p), 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 6)
-                        _tl_cb = wx.CheckBox(_p, label="Show AI as a top-level menu")
-                        _tl_cb.SetValue(self._feature_enabled("future.ai_menu_top_level"))
-                        _tl_cb.SetName(
-                            "Show AI as a top-level menu. "
-                            "Promotes AI Assistant from the Tools submenu to its own "
-                            "entry in the menu bar. Takes effect immediately."
-                        )
-                        _ps.Add(_tl_cb, 0, wx.ALL, 6)
-                        _ai_refs["ai_menu_top_level_cb"] = _tl_cb
+                        # AI is always a top-level "&AI" menu now (the former
+                        # opt-in toggle was retired, 2026-06-27).
                         _ps.Add(
                             wx.StaticText(
                                 _p,
@@ -12088,11 +12087,6 @@ class MainFrame(
                             )
                         except ValueError as _ve:
                             self._set_status(str(_ve))
-                _tl_cb2 = _ai_refs.get("ai_menu_top_level_cb")
-                if _tl_cb2 is not None:
-                    self.features.set_feature_enabled(
-                        "future.ai_menu_top_level", bool(_tl_cb2.GetValue())
-                    )
                 self._settings_dialog_apply_refresh("Settings applied")
                 _dirty[0] = False
                 _apply_btn.Enable(False)
@@ -12137,9 +12131,6 @@ class MainFrame(
                         str(_cf.GetValue()),
                         bool(_ef.GetValue()) if _ef is not None else False,
                     )
-                _tl_cb = _ai_refs.get("ai_menu_top_level_cb")
-                if _tl_cb is not None:
-                    ai_menu_top_level_value = bool(_tl_cb.GetValue())
                 _read_data_location = _data_location_refs.get("read")
                 if _read_data_location is not None:
                     data_location_choice = _read_data_location()
@@ -12182,8 +12173,6 @@ class MainFrame(
                     )
                 except ValueError as error:
                     self._set_status(str(error))
-        if ai_menu_top_level_value is not None:
-            self.features.set_feature_enabled("future.ai_menu_top_level", ai_menu_top_level_value)
         if data_location_choice is not None:
             chosen_mode, chosen_custom = data_location_choice
             resolve_target_fn = _data_location_refs.get("resolve_target")
@@ -21679,7 +21668,10 @@ class MainFrame(
         ai_item_ids = (
             self._id_ai_hub,
             self._id_ask_quill_chat,
+            self._id_ask_quill_voice,
             self._id_ai_model,
+            self._id_ai_switch_engine,
+            self._id_ai_copilot_setup,
             self._id_ai_session_browser,
             self._id_ai_assistant,
             self._id_ai_prompt_studio,
@@ -21713,16 +21705,54 @@ class MainFrame(
             return False
 
     def open_ask_quill_chat(self) -> None:
+        self._open_ask_quill(voice_mode=False)
+
+    def open_ask_quill_conversation(self) -> None:
+        """Open Ask Quill in voice conversation mode (Alt+Shift+Q).
+
+        Same chat, but spoken answers play with transport controls when text-to-
+        speech is available, and Ctrl+F9 captures a spoken question. Falls back to
+        text + screen-reader announcements when voice I/O is unavailable.
+        """
+        self._open_ask_quill(voice_mode=True)
+
+    def _open_ask_quill(self, *, voice_mode: bool) -> None:
         from quill.core.ai.model_manager import load_ai_enabled
+        from quill.core.ai.onboarding import active_connection_consented, ai_connection_ready
 
-        if not load_ai_enabled():
-            from quill.core.ai.availability import AI_DISABLED_MESSAGE
+        # Offer setup not only when AI is off, but also when it's on yet the connection
+        # isn't usable (no provider/key) or the active provider has no standing share
+        # consent. Without consent QUILL must not send anything, so route to setup (where
+        # the allow checkbox lives) instead of failing or hanging at request time.
+        if not load_ai_enabled() or not ai_connection_ready() or not active_connection_consented():
+            from quill.ui.ai_setup_wizard import maybe_offer_ai_setup
 
-            self._set_status(AI_DISABLED_MESSAGE)
-            return
+            if not maybe_offer_ai_setup(self, reason="Ask Quill needs AI to chat with you."):
+                from quill.core.ai.availability import AI_DISABLED_MESSAGE
+
+                self._set_status(AI_DISABLED_MESSAGE)
+                return
 
         self._apply_style_to_assistant()
         tool_catalog = allowed_tools(self.commands, getattr(self, "features", None))
+        voice = self._build_voice_services()
+        open_player = None
+        if voice is not None and voice.output_available():
+            from quill.ui.speech_player_dialog import show_speech_player
+
+            def open_player(text: str) -> None:
+                show_speech_player(self, voice, text)
+
+        # Modeless chat: if one is already open, just bring it forward.
+        existing = getattr(self, "_ask_quill_dialog", None)
+        if existing is not None:
+            try:
+                existing.dialog.Raise()
+                existing.dialog.SetFocus()
+                return
+            except Exception:  # noqa: BLE001 - stale handle; fall through and reopen
+                self._ask_quill_dialog = None
+
         dialog = AskQuillChatDialog(
             self.frame,
             self._get_assistant(),
@@ -21736,15 +21766,150 @@ class MainFrame(
             tool_catalog=tool_catalog,
             announce=self._set_status,
             review_changes=self.open_ai_diff_review,
+            conversation=self._build_companion_conversation(),
+            voice_mode=voice_mode,
+            voice=voice,
+            signal_sound=self._signal_ai_sound,
+            open_speech_player=open_player,
+            rebuild_conversation=self._build_companion_conversation,
         )
-        dialog.show()
+        # Open modeless so the user can keep working with the chat alongside the document.
+        # The frame keeps its normal menu bar (a wx.Dialog can't host one, and swapping the
+        # frame's bar left the menu unreachable from the focused dialog). Every chat action
+        # is a button in the dialog, so no menu bar is needed here.
+        self._ask_quill_dialog = dialog
+        dialog.show_modeless(on_close=self._on_ask_quill_closed)
 
-    def open_ask_ai(self) -> None:
-        from quill.ui.ai_chat_dialog import AskAIDialog
+    def _on_ask_quill_closed(self) -> None:
+        """Drop the chat handle and refresh the menu (reflects any AI state change)."""
+        self._ask_quill_dialog = None
+        try:
+            self._build_menu()  # reflect provider/AI-state changes made while chat was open
+        except Exception:  # noqa: BLE001 - never let a menu refresh crash on close
+            pass
 
-        dlg = AskAIDialog(self.frame, self.settings, announce_cb=self._announce)
-        dlg.show()
-        dlg.close()
+    def _signal_ai_sound(self, name: str) -> None:
+        """Play an AI earcon for the chat ('thinking' / 'response' / 'error')."""
+        from quill.core.sound_events import SoundEvent
+        from quill.ui.sound_manager import post_sound
+
+        event = {
+            "thinking": SoundEvent.AI_THINKING_STARTED,
+            "response": SoundEvent.AI_RESPONSE_RECEIVED,
+            "error": SoundEvent.AI_ERROR,
+        }.get(name)
+        if event is not None:
+            try:
+                post_sound(event)
+            except Exception:  # noqa: BLE001 - a missing earcon must never break chat
+                pass
+
+    def _build_voice_services(self):
+        """Build VoiceServices for the chat, or None when voice I/O is unavailable.
+
+        Resolves an installed speech-to-text model (for Ctrl+F9 voice questions) and
+        an OpenAI key (for spoken answers + Save as media). Each piece degrades
+        independently: no mic/model => text input only; no TTS key => screen-reader
+        announcements instead of an audio player.
+        """
+        if getattr(self, "_safe_mode", False):
+            return None
+        try:
+            from quill.ui.voice_services import VoiceServices
+        except Exception:  # noqa: BLE001
+            return None
+
+        provider = None
+        model_id = ""
+        get_provider = getattr(self, "_speech_provider", None)
+        if callable(get_provider):
+            try:
+                candidate = get_provider()
+                if candidate is not None and candidate.is_available():
+                    provider = candidate
+                    installed = candidate.list_installed_models()
+                    if installed:
+                        first = installed[0]
+                        model_id = getattr(first, "model_id", "") or getattr(first, "id", "")
+            except Exception:  # noqa: BLE001
+                provider, model_id = None, ""
+
+        device_index = -1
+        try:
+            from quill.core.speech.service import load_input_device
+
+            device_index = load_input_device()
+        except Exception:  # noqa: BLE001
+            device_index = -1
+
+        tts_key = ""
+        try:
+            from quill.core.assistant_ai import (
+                load_assistant_api_key,
+                load_assistant_connection_settings,
+            )
+
+            conn = load_assistant_connection_settings()
+            if (conn.provider or "").strip().lower() == "openai":
+                tts_key = load_assistant_api_key() or ""
+        except Exception:  # noqa: BLE001
+            tts_key = ""
+
+        return VoiceServices(
+            stt_provider=provider,
+            stt_model_id=model_id,
+            device_index=device_index,
+            tts_api_key=tts_key,
+        )
+
+    def _build_companion_conversation(self):
+        """Build the Phase 1 conversational companion callable, or None to fall back.
+
+        Returns a ``(message, document, selection) -> (answer, edited, error)``
+        callable backed by a :class:`ConversationSession` (multi-step tool loop
+        through the Safe Editor Tool Gateway), or None when Safe Mode is on or no
+        AI provider is available — in which case the dialog uses the legacy path.
+        """
+        if getattr(self, "_safe_mode", False):
+            return None
+        try:
+            from quill.ui.agent_editor_host import build_companion_session
+
+            session, _engine = build_companion_session(self)
+        except Exception:  # noqa: BLE001 - never block the chat from opening
+            return None
+        if session is None:
+            return None
+
+        # Consent is a one-time, per-provider decision made at setup (the wizard's allow
+        # checkbox), not a per-chat-session prompt. A provider with standing consent sends
+        # with no preview; a provider without it is blocked here (covers a mid-chat provider
+        # switch, or a provider configured outside the wizard). Redaction always applies.
+        def conversation(message: str, document: str, selection: str):
+            from quill.core.ai.onboarding import active_connection_consented
+            from quill.core.ai.providers import provider_display_name
+            from quill.core.assistant_ai import load_assistant_connection_settings
+            from quill.ui.agent_editor_host import prepare_companion_context
+
+            if not active_connection_consented():
+                try:
+                    pid = load_assistant_connection_settings().provider.strip().lower()
+                    name = provider_display_name(pid) if pid else "this provider"
+                except Exception:  # noqa: BLE001
+                    name = "this provider"
+                return (
+                    f"{name} isn't allowed to use your writing yet. Open the AI menu, run "
+                    "AI Setup, and check the allow box for it — then try again.",
+                    False,
+                    "",
+                )
+            context_text, _ok = prepare_companion_context(
+                self, document, selection, need_consent=False
+            )
+            result = session.ask(message, context_text=context_text)
+            return result.answer, result.edited, result.error
+
+        return conversation
 
     def open_prompt_library(self) -> None:
         from quill.ui.prompt_library_dialog import PromptLibraryDialog
@@ -21762,22 +21927,15 @@ class MainFrame(
         self._show_modal_dialog(dlg.dialog, "Prompt Library")
         dlg.close()
 
-    def open_skill_library(self) -> None:
-        from quill.ui.skill_library_dialog import SkillLibraryDialog
+    def open_ai_library(self) -> None:
+        from quill.ui.ai_library_dialog import open_ai_library
 
-        dlg = SkillLibraryDialog(
-            self.frame,
-            self._get_skill_files(),
-            self.settings,
-            selection=str(self.editor.GetStringSelection()),
-            document=str(self.editor.GetValue()),
-            title_text=self._current_document_title(),
-            on_insert=self._ai_insert_text,
-            announce_cb=self._announce,
-        )
-        dlg.dialog.CenterOnParent()
-        self._show_modal_dialog(dlg.dialog, "Skill Library")
-        dlg.close()
+        open_ai_library(self)
+
+    def open_skill_library(self) -> None:
+        from quill.ui.skill_library_dialog import open_skill_library
+
+        open_skill_library(self)
 
     def _get_skill_files(self) -> list:
 
@@ -21799,11 +21957,16 @@ class MainFrame(
         if not selection.strip():
             self._announce("No text to check grammar for.")
             return
-        provider_id = self.settings.ai_chat_default_provider
-        model_id = self.settings.ai_prompt_default_model or self.settings.ai_chat_default_model
-        if not model_id:
-            self._set_status("No AI model configured. Set one in Preferences > AI.")
+        # Route through the unified AI Hub connection (ProviderChatBackend), the same
+        # path Ask Quill and the AI Library use. The old code read the key from a
+        # separate "quill-<provider>-api-key" credential and ai_chat_* settings the
+        # setup wizard never writes, so it failed to find a configured key.
+        if self._ai_require_connection() is None:
             return
+        from quill.core.ai.provider_backend import ProviderChatBackend
+
+        backend = ProviderChatBackend()
+        model_id, provider_id = backend.settings.model, backend.settings.provider
         prompt_text = grammar.text.replace("{selection}", selection)
         self._announce(f"Checking grammar with {model_id}...")
 
@@ -21811,11 +21974,7 @@ class MainFrame(
             import wx as _wx
 
             try:
-                from quill.core.ai_chat import send_prompt
-                from quill.platform.windows.credential_manager import get_credential
-
-                api_key = get_credential(f"quill-{provider_id}-api-key") or ""
-                result = send_prompt(provider_id, model_id, prompt_text, api_key=api_key)
+                result = backend.respond(prompt_text)
                 _wx.CallAfter(self._show_grammar_result, result, model_id, provider_id)
             except Exception as exc:  # noqa: BLE001
                 _wx.CallAfter(self._announce, f"Grammar check failed: {exc}")
@@ -21872,16 +22031,25 @@ class MainFrame(
     # ------------------------------------------------------------------
 
     def _ai_require_connection(self) -> tuple[object, str] | None:
-        """Return (connection, api_key) or announce an error and return None."""
+        """Return (connection, api_key), or offer AI setup and return None.
+
+        The single choke point for keyed AI text features (spell/grammar check,
+        translate, Document Q&A, thesaurus, agent tasks). When AI is off or not
+        yet configured, it offers the setup wizard — an actionable dialog — rather
+        than dead-ending into a status line a screen-reader user can miss. This
+        mirrors what Ask Quill, Transcript Actions, and the AI Library already do,
+        so every keyed feature behaves the same when AI isn't ready.
+        """
         from quill.core.assistant_ai import (
             load_assistant_api_key,
             load_assistant_connection_settings,
         )
+        from quill.ui.ai_setup_wizard import maybe_offer_ai_setup
 
-        conn = load_assistant_connection_settings()
-        if conn.provider == "off" or not conn.provider:
-            self._set_status("AI is not configured. Open AI Hub (AI menu) to set up a provider.")
+        if not maybe_offer_ai_setup(self, reason="To use this AI feature, QUILL needs AI."):
+            self._set_status("AI isn't set up. Use AI > Set Up AI, or turn on AI in the AI menu.")
             return None
+        conn = load_assistant_connection_settings()
         api_key = load_assistant_api_key() or ""
         return conn, api_key
 
@@ -22065,14 +22233,36 @@ class MainFrame(
 
         openai_key = self._get_openai_api_key()
         if not openai_key:
-            self._set_status("OpenAI API key not configured. Open AI Hub to add your key.")
+            self._show_message_box(
+                "Cloud audio transcription uses OpenAI Whisper, which needs an "
+                "OpenAI API key. Open the AI Hub to add an OpenAI key, or use "
+                "Tools > Speech > Transcribe Audio or Video (Offline) to "
+                "transcribe on this device with no key and no internet.",
+                "OpenAI Key Needed for Transcription",
+                self._wx.OK | self._wx.ICON_INFORMATION,
+            )
             return
 
-        def _on_transcribe(path, lang_code, diarize, max_speakers):
+        def _on_transcribe(path, lang_code, translate, diarize, max_speakers):
+            if diarize:
+                deepgram_key = self._get_deepgram_api_key()
+                if not deepgram_key:
+                    self._show_message_box(
+                        "Speaker identification uses Deepgram, which needs its own "
+                        "Deepgram API key. Add one in AI Hub > Audio, or clear the "
+                        "'Identify different speakers' checkbox to transcribe with "
+                        "OpenAI Whisper instead.",
+                        "Deepgram Key Needed for Speaker Identification",
+                        self._wx.OK | self._wx.ICON_INFORMATION,
+                    )
+                    return
+            else:
+                deepgram_key = ""
+            label = "Translating Audio" if translate else "Transcribing Audio"
             progress = AIProgressDialog(
                 self.frame,
-                "Transcribing Audio",
-                f"Transcribing {path.name}...",
+                label,
+                f"{'Translating' if translate else 'Transcribing'} {path.name}...",
             )
             progress.show()
 
@@ -22083,9 +22273,9 @@ class MainFrame(
                     if diarize:
                         from quill.core.ai.diarization import diarize_file, format_diarization
 
-                        dr = diarize_file(path, "deepgram", openai_key, max_speakers)
+                        dr = diarize_file(path, "deepgram", deepgram_key, max_speakers)
                         transcript = format_diarization(dr)
-                    elif translate_to_english:
+                    elif translate:
                         from quill.core.ai.transcription import translate_file
 
                         transcript = translate_file(path, openai_key)
@@ -22095,7 +22285,16 @@ class MainFrame(
                         transcript = transcribe_file(path, openai_key, language=lang_code)
                 except Exception as exc:  # noqa: BLE001
                     _wx.CallAfter(progress.close)
-                    _wx.CallAfter(self._set_status, f"Transcription failed: {exc}")
+                    detail = str(exc)
+                    lowered = detail.lower()
+                    if "401" in detail or "unauthor" in lowered or "invalid_api_key" in lowered:
+                        message = (
+                            "Transcription failed: OpenAI rejected the API key (401). "
+                            "Check your OpenAI key in the AI Hub."
+                        )
+                    else:
+                        message = f"Transcription failed: {detail}"
+                    _wx.CallAfter(self._set_status, message)
                     return
                 _wx.CallAfter(progress.close)
                 _wx.CallAfter(self._show_transcription_result, transcript, path.name)
@@ -22108,6 +22307,14 @@ class MainFrame(
         dlg.show()
 
     def _show_transcription_result(self, transcript: str, file_name: str) -> None:
+        # The Listening Companion: first ask "what would you like me to make of this?"
+        # and run the chosen Transcript Action. If AI is off/unreachable or the user
+        # opts out, fall back to the plain transcript result below.
+        from quill.ui.transcript_actions_ui import offer_transcript_actions
+
+        if offer_transcript_actions(self, transcript, file_name):
+            return
+
         from quill.ui.ai_transcribe_dialog import AITranscriptionResultDialog
 
         def _on_insert(text: str) -> None:
@@ -22129,11 +22336,17 @@ class MainFrame(
         dlg.show()
 
     def _get_openai_api_key(self) -> str:
-        """Return the first OpenAI-compatible API key from the credential store."""
-        try:
-            from quill.core.assistant_ai import load_assistant_api_key
+        """Return the OpenAI API key, or '' if none.
 
-            return load_assistant_api_key() or ""
+        Whisper transcription/translation and OpenAI TTS always call OpenAI, so
+        they need the OpenAI key specifically — not whatever provider the
+        assistant happens to be set to. Using the active assistant key here sent
+        (say) an Anthropic key to OpenAI and produced a confusing 401.
+        """
+        try:
+            from quill.core.assistant_ai import load_keyed_provider_api_key
+
+            return load_keyed_provider_api_key("openai")
         except Exception:  # noqa: BLE001
             return ""
 
@@ -22143,6 +22356,20 @@ class MainFrame(
             from quill.core.assistant_ai import load_provider_api_key
 
             return load_provider_api_key("gemini") or ""
+        except Exception:  # noqa: BLE001
+            return ""
+
+    def _get_deepgram_api_key(self) -> str:
+        """Return the stored Deepgram API key (AI Hub > Audio), or '' if none.
+
+        Speaker diarization calls Deepgram, which needs its own key — not the
+        OpenAI key the rest of the transcribe flow uses.
+        """
+        try:
+            from quill.platform.windows.credential_manager import load_generic_credential
+
+            stored = load_generic_credential("QUILL_DEEPGRAM_API_KEY")
+            return (stored.secret if stored else "") or ""
         except Exception:  # noqa: BLE001
             return ""
 
@@ -22632,24 +22859,15 @@ class MainFrame(
         dialog.show_modal()
 
     def open_prompt_studio(self) -> None:
-        dialog = PromptStudioDialog(
-            self.frame,
-            selection_text=self._selected_text(),
-            document_text=self.editor.GetValue(),
-            on_use_prompt=self.open_writing_assistant,
-            announce=self._set_status,
-        )
-        dialog.show_modal()
+        # Retired into the unified AI Library (Prompts tab). Kept as a redirect so
+        # any keybinding/palette entry lands in the new manager instead of a dead
+        # end.
+        self.open_ai_library()
 
     def open_agent_center(self) -> None:
-        dialog = AgentCenterDialog(
-            self.frame,
-            selection_text=self._selected_text(),
-            document_text=self.editor.GetValue(),
-            on_use_prompt=self.open_writing_assistant,
-            announce=self._set_status,
-        )
-        dialog.show_modal()
+        # Retired into the unified AI Library (Agents tab); redirect like
+        # open_prompt_studio so old entry points upgrade rather than break.
+        self.open_ai_library()
 
     def run_python_tool(self) -> None:
         outline = [

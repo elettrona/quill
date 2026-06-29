@@ -47,8 +47,30 @@ _SANCTIONED_ROOT_MARKDOWN = frozenset({
 })
 
 
+def _gitignored_root_files(names: set[str]) -> set[str]:
+    """Root file names that ``.gitignore`` excludes from the committed tree.
+
+    The layout gate governs the *committed* repository root, so a file the repo
+    intentionally ignores (e.g. a local, untracked working note) is not a layout
+    regression. Dependency-free: matches a present root file against the exact,
+    non-glob ignore patterns in the top-level ``.gitignore`` (with or without a
+    leading slash), which is all the root-file ignores this gate needs.
+    """
+    gitignore = _REPO_ROOT / ".gitignore"
+    if not gitignore.exists():
+        return set()
+    patterns: set[str] = set()
+    for raw in gitignore.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or any(ch in line for ch in "*?[]"):
+            continue
+        patterns.add(line.lstrip("/"))
+    return {name for name in names if name in patterns}
+
+
 def test_repository_root_has_no_loose_python_modules() -> None:
-    stray = sorted(path.name for path in _REPO_ROOT.glob("*.py"))
+    present = {path.name for path in _REPO_ROOT.glob("*.py")}
+    stray = sorted(present - _gitignored_root_files(present))
     assert stray == [], (
         "The repository root must stay free of loose Python modules: importable "
         "source belongs under quill/, build tooling under scripts/, and tests "
@@ -58,7 +80,7 @@ def test_repository_root_has_no_loose_python_modules() -> None:
 
 def test_repository_root_markdown_is_limited_to_sanctioned_files() -> None:
     present = {path.name for path in _REPO_ROOT.glob("*.md")}
-    stray = sorted(present - _SANCTIONED_ROOT_MARKDOWN)
+    stray = sorted(present - _SANCTIONED_ROOT_MARKDOWN - _gitignored_root_files(present))
     assert stray == [], (
         "Only conventional root Markdown files are allowed at the repository "
         "root; design, research, and planning notes belong under docs/ "

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import sys
 from types import ModuleType
+from typing import cast
 
 from quill import __version__
 
@@ -30,7 +31,7 @@ def _load() -> ModuleType | None:
     try:
         from quill import _build_info  # type: ignore[attr-defined]
 
-        return _build_info
+        return cast(ModuleType, _build_info)
     except Exception:
         return None
 
@@ -46,14 +47,14 @@ def get_display_version() -> str:
     """
     if _BUILD_INFO is None:
         return f"QUILL for All {__version__} (development build)"
-    return _BUILD_INFO.FULL_DISPLAY_VERSION
+    return str(_BUILD_INFO.FULL_DISPLAY_VERSION)
 
 
 def get_short_version() -> str:
     """Channel-annotated version only, e.g. ``"0.7.0 Beta 1"``."""
     if _BUILD_INFO is None:
         return __version__
-    return _BUILD_INFO.DISPLAY_VERSION
+    return str(_BUILD_INFO.DISPLAY_VERSION)
 
 
 def get_support_info() -> str:
