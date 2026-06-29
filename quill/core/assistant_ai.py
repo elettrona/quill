@@ -709,6 +709,28 @@ def load_provider_api_key(provider: str) -> str:
     return _cs_load(provider_credential_target(provider)) or ""
 
 
+def load_keyed_provider_api_key(provider: str) -> str:
+    """Return *provider*'s key for a direct call to that provider's API.
+
+    Prefers the per-provider stored key; falls back to the active assistant key
+    only when *provider* is the active provider. A feature that always calls one
+    specific provider (e.g. OpenAI Whisper transcription or OpenAI TTS) must use
+    this rather than :func:`load_assistant_api_key`, so it never sends another
+    provider's active key to OpenAI and gets a confusing 401.
+    """
+    target = provider.strip().lower()
+    key = load_provider_api_key(target)
+    if key:
+        return key
+    try:
+        conn = load_assistant_connection_settings()
+    except Exception:  # noqa: BLE001 - unreadable connection means "no active key"
+        return ""
+    if (conn.provider or "").strip().lower() == target:
+        return load_assistant_api_key() or ""
+    return ""
+
+
 def save_provider_api_key(provider: str, api_key: str) -> bool:
     """Store (or clear, when empty) the key for *provider*. Returns True on save."""
     secret = api_key.strip()

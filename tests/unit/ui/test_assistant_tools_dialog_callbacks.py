@@ -45,6 +45,12 @@ class _CheckListBox:
     def IsChecked(self, index: int) -> bool:
         return index in self._checked
 
+    def Check(self, index: int, value: bool = True) -> None:
+        if value:
+            self._checked.add(index)
+        else:
+            self._checked.discard(index)
+
 
 def _make_accessibility_dialog(
     text: str, checked: set[int]
@@ -116,7 +122,7 @@ def _make_diff_dialog(
     from quill.core.ai.diff_review import build_diff_review
 
     dialog = DiffReviewDialog.__new__(DiffReviewDialog)
-    dialog._wx = SimpleNamespace(ID_OK=1)
+    dialog._wx = SimpleNamespace(ID_OK=1, ID_CANCEL=0)
     dialog.review = build_diff_review(original, revised)
     dialog.applied = False
     dialog.status = _Status()
@@ -160,3 +166,36 @@ def test_diff_review_reject_all_makes_no_change() -> None:
     assert applied == []
     assert dialog.dialog.ended_with is None
     assert announcements and "No changes" in announcements[0]
+
+
+def test_diff_review_accept_all_applies_every_hunk_and_closes() -> None:
+    # Accept All must apply (not merely tick the boxes) and end the dialog.
+    dialog, applied, announcements = _make_diff_dialog("a\nb\nc", "a\nB\nc\nd", checked=set())
+
+    dialog._on_accept_all_clicked(object())
+
+    assert dialog.applied is True
+    assert applied == ["a\nB\nc\nd"]
+    assert dialog.dialog.ended_with == 1
+
+
+def test_diff_review_accept_single_hunk_applies_and_closes() -> None:
+    # The single-change Accept path also routes through _on_accept_all_clicked.
+    dialog, applied, _ = _make_diff_dialog("a\nb\nc", "a\nB\nc", checked=set())
+
+    dialog._on_accept_all_clicked(object())
+
+    assert dialog.applied is True
+    assert applied == ["a\nB\nc"]
+    assert dialog.dialog.ended_with == 1
+
+
+def test_diff_review_reject_dismisses_without_applying() -> None:
+    dialog, applied, announcements = _make_diff_dialog("a\nb\nc", "a\nB\nc", checked={0})
+
+    dialog._on_reject_clicked(object())
+
+    assert dialog.applied is False
+    assert applied == []
+    assert dialog.dialog.ended_with == 0  # ID_CANCEL
+    assert announcements and "unchanged" in announcements[0].lower()

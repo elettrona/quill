@@ -21494,8 +21494,13 @@ class MainFrame(
 
     def _open_ask_quill(self, *, voice_mode: bool) -> None:
         from quill.core.ai.model_manager import load_ai_enabled
+        from quill.core.ai.onboarding import active_connection_consented, ai_connection_ready
 
-        if not load_ai_enabled():
+        # Offer setup not only when AI is off, but also when it's on yet the connection
+        # isn't usable (no provider/key) or the active provider has no standing share
+        # consent. Without consent QUILL must not send anything, so route to setup (where
+        # the allow checkbox lives) instead of failing or hanging at request time.
+        if not load_ai_enabled() or not ai_connection_ready() or not active_connection_consented():
             from quill.ui.ai_setup_wizard import maybe_offer_ai_setup
 
             if not maybe_offer_ai_setup(self, reason="Ask Quill needs AI to chat with you."):
@@ -21513,6 +21518,16 @@ class MainFrame(
 
             def open_player(text: str) -> None:
                 show_speech_player(self, voice, text)
+
+        # Modeless chat: if one is already open, just bring it forward.
+        existing = getattr(self, "_ask_quill_dialog", None)
+        if existing is not None:
+            try:
+                existing.dialog.Raise()
+                existing.dialog.SetFocus()
+                return
+            except Exception:  # noqa: BLE001 - stale handle; fall through and reopen
+                self._ask_quill_dialog = None
 
         dialog = AskQuillChatDialog(
             self.frame,
@@ -21532,8 +21547,22 @@ class MainFrame(
             voice=voice,
             signal_sound=self._signal_ai_sound,
             open_speech_player=open_player,
+            rebuild_conversation=self._build_companion_conversation,
         )
-        dialog.show()
+        # Open modeless so the user can keep working with the chat alongside the document.
+        # The frame keeps its normal menu bar (a wx.Dialog can't host one, and swapping the
+        # frame's bar left the menu unreachable from the focused dialog). Every chat action
+        # is a button in the dialog, so no menu bar is needed here.
+        self._ask_quill_dialog = dialog
+        dialog.show_modeless(on_close=self._on_ask_quill_closed)
+
+    def _on_ask_quill_closed(self) -> None:
+        """Drop the chat handle and refresh the menu (reflects any AI state change)."""
+        self._ask_quill_dialog = None
+        try:
+            self._build_menu()  # reflect provider/AI-state changes made while chat was open
+        except Exception:  # noqa: BLE001 - never let a menu refresh crash on close
+            pass
 
     def _signal_ai_sound(self, name: str) -> None:
         """Play an AI earcon for the chat ('thinking' / 'response' / 'error')."""
@@ -21628,19 +21657,31 @@ class MainFrame(
         if session is None:
             return None
 
-        # Show the "what will be sent" preview once per chat session (PRD §11);
-        # later turns reuse that consent. Redaction always applies underneath.
-        consented = [False]
-
+        # Consent is a one-time, per-provider decision made at setup (the wizard's allow
+        # checkbox), not a per-chat-session prompt. A provider with standing consent sends
+        # with no preview; a provider without it is blocked here (covers a mid-chat provider
+        # switch, or a provider configured outside the wizard). Redaction always applies.
         def conversation(message: str, document: str, selection: str):
+            from quill.core.ai.onboarding import active_connection_consented
+            from quill.core.ai.providers import provider_display_name
+            from quill.core.assistant_ai import load_assistant_connection_settings
             from quill.ui.agent_editor_host import prepare_companion_context
 
-            context_text, ok = prepare_companion_context(
-                self, document, selection, need_consent=not consented[0]
+            if not active_connection_consented():
+                try:
+                    pid = load_assistant_connection_settings().provider.strip().lower()
+                    name = provider_display_name(pid) if pid else "this provider"
+                except Exception:  # noqa: BLE001
+                    name = "this provider"
+                return (
+                    f"{name} isn't allowed to use your writing yet. Open the AI menu, run "
+                    "AI Setup, and check the allow box for it — then try again.",
+                    False,
+                    "",
+                )
+            context_text, _ok = prepare_companion_context(
+                self, document, selection, need_consent=False
             )
-            if not ok:
-                return "Sharing cancelled. Nothing was sent.", False, ""
-            consented[0] = True
             result = session.ask(message, context_text=context_text)
             return result.answer, result.edited, result.error
 
@@ -21692,11 +21733,16 @@ class MainFrame(
         if not selection.strip():
             self._announce("No text to check grammar for.")
             return
-        provider_id = self.settings.ai_chat_default_provider
-        model_id = self.settings.ai_prompt_default_model or self.settings.ai_chat_default_model
-        if not model_id:
-            self._set_status("No AI model configured. Set one in Preferences > AI.")
+        # Route through the unified AI Hub connection (ProviderChatBackend), the same
+        # path Ask Quill and the AI Library use. The old code read the key from a
+        # separate "quill-<provider>-api-key" credential and ai_chat_* settings the
+        # setup wizard never writes, so it failed to find a configured key.
+        if self._ai_require_connection() is None:
             return
+        from quill.core.ai.provider_backend import ProviderChatBackend
+
+        backend = ProviderChatBackend()
+        model_id, provider_id = backend.settings.model, backend.settings.provider
         prompt_text = grammar.text.replace("{selection}", selection)
         self._announce(f"Checking grammar with {model_id}...")
 
@@ -21704,11 +21750,7 @@ class MainFrame(
             import wx as _wx
 
             try:
-                from quill.core.ai_chat import send_prompt
-                from quill.platform.windows.credential_manager import get_credential
-
-                api_key = get_credential(f"quill-{provider_id}-api-key") or ""
-                result = send_prompt(provider_id, model_id, prompt_text, api_key=api_key)
+                result = backend.respond(prompt_text)
                 _wx.CallAfter(self._show_grammar_result, result, model_id, provider_id)
             except Exception as exc:  # noqa: BLE001
                 _wx.CallAfter(self._announce, f"Grammar check failed: {exc}")
@@ -21765,16 +21807,25 @@ class MainFrame(
     # ------------------------------------------------------------------
 
     def _ai_require_connection(self) -> tuple[object, str] | None:
-        """Return (connection, api_key) or announce an error and return None."""
+        """Return (connection, api_key), or offer AI setup and return None.
+
+        The single choke point for keyed AI text features (spell/grammar check,
+        translate, Document Q&A, thesaurus, agent tasks). When AI is off or not
+        yet configured, it offers the setup wizard — an actionable dialog — rather
+        than dead-ending into a status line a screen-reader user can miss. This
+        mirrors what Ask Quill, Transcript Actions, and the AI Library already do,
+        so every keyed feature behaves the same when AI isn't ready.
+        """
         from quill.core.assistant_ai import (
             load_assistant_api_key,
             load_assistant_connection_settings,
         )
+        from quill.ui.ai_setup_wizard import maybe_offer_ai_setup
 
-        conn = load_assistant_connection_settings()
-        if conn.provider == "off" or not conn.provider:
-            self._set_status("AI is not configured. Open AI Hub (AI menu) to set up a provider.")
+        if not maybe_offer_ai_setup(self, reason="To use this AI feature, QUILL needs AI."):
+            self._set_status("AI isn't set up. Use AI > Set Up AI, or turn on AI in the AI menu.")
             return None
+        conn = load_assistant_connection_settings()
         api_key = load_assistant_api_key() or ""
         return conn, api_key
 
@@ -21958,14 +22009,36 @@ class MainFrame(
 
         openai_key = self._get_openai_api_key()
         if not openai_key:
-            self._set_status("OpenAI API key not configured. Open AI Hub to add your key.")
+            self._show_message_box(
+                "Cloud audio transcription uses OpenAI Whisper, which needs an "
+                "OpenAI API key. Open the AI Hub to add an OpenAI key, or use "
+                "Tools > Speech > Transcribe Audio or Video (Offline) to "
+                "transcribe on this device with no key and no internet.",
+                "OpenAI Key Needed for Transcription",
+                self._wx.OK | self._wx.ICON_INFORMATION,
+            )
             return
 
-        def _on_transcribe(path, lang_code, diarize, max_speakers):
+        def _on_transcribe(path, lang_code, translate, diarize, max_speakers):
+            if diarize:
+                deepgram_key = self._get_deepgram_api_key()
+                if not deepgram_key:
+                    self._show_message_box(
+                        "Speaker identification uses Deepgram, which needs its own "
+                        "Deepgram API key. Add one in AI Hub > Audio, or clear the "
+                        "'Identify different speakers' checkbox to transcribe with "
+                        "OpenAI Whisper instead.",
+                        "Deepgram Key Needed for Speaker Identification",
+                        self._wx.OK | self._wx.ICON_INFORMATION,
+                    )
+                    return
+            else:
+                deepgram_key = ""
+            label = "Translating Audio" if translate else "Transcribing Audio"
             progress = AIProgressDialog(
                 self.frame,
-                "Transcribing Audio",
-                f"Transcribing {path.name}...",
+                label,
+                f"{'Translating' if translate else 'Transcribing'} {path.name}...",
             )
             progress.show()
 
@@ -21976,9 +22049,9 @@ class MainFrame(
                     if diarize:
                         from quill.core.ai.diarization import diarize_file, format_diarization
 
-                        dr = diarize_file(path, "deepgram", openai_key, max_speakers)
+                        dr = diarize_file(path, "deepgram", deepgram_key, max_speakers)
                         transcript = format_diarization(dr)
-                    elif translate_to_english:
+                    elif translate:
                         from quill.core.ai.transcription import translate_file
 
                         transcript = translate_file(path, openai_key)
@@ -21988,7 +22061,16 @@ class MainFrame(
                         transcript = transcribe_file(path, openai_key, language=lang_code)
                 except Exception as exc:  # noqa: BLE001
                     _wx.CallAfter(progress.close)
-                    _wx.CallAfter(self._set_status, f"Transcription failed: {exc}")
+                    detail = str(exc)
+                    lowered = detail.lower()
+                    if "401" in detail or "unauthor" in lowered or "invalid_api_key" in lowered:
+                        message = (
+                            "Transcription failed: OpenAI rejected the API key (401). "
+                            "Check your OpenAI key in the AI Hub."
+                        )
+                    else:
+                        message = f"Transcription failed: {detail}"
+                    _wx.CallAfter(self._set_status, message)
                     return
                 _wx.CallAfter(progress.close)
                 _wx.CallAfter(self._show_transcription_result, transcript, path.name)
@@ -22030,11 +22112,17 @@ class MainFrame(
         dlg.show()
 
     def _get_openai_api_key(self) -> str:
-        """Return the first OpenAI-compatible API key from the credential store."""
-        try:
-            from quill.core.assistant_ai import load_assistant_api_key
+        """Return the OpenAI API key, or '' if none.
 
-            return load_assistant_api_key() or ""
+        Whisper transcription/translation and OpenAI TTS always call OpenAI, so
+        they need the OpenAI key specifically — not whatever provider the
+        assistant happens to be set to. Using the active assistant key here sent
+        (say) an Anthropic key to OpenAI and produced a confusing 401.
+        """
+        try:
+            from quill.core.assistant_ai import load_keyed_provider_api_key
+
+            return load_keyed_provider_api_key("openai")
         except Exception:  # noqa: BLE001
             return ""
 
@@ -22044,6 +22132,20 @@ class MainFrame(
             from quill.core.assistant_ai import load_provider_api_key
 
             return load_provider_api_key("gemini") or ""
+        except Exception:  # noqa: BLE001
+            return ""
+
+    def _get_deepgram_api_key(self) -> str:
+        """Return the stored Deepgram API key (AI Hub > Audio), or '' if none.
+
+        Speaker diarization calls Deepgram, which needs its own key — not the
+        OpenAI key the rest of the transcribe flow uses.
+        """
+        try:
+            from quill.platform.windows.credential_manager import load_generic_credential
+
+            stored = load_generic_credential("QUILL_DEEPGRAM_API_KEY")
+            return (stored.secret if stored else "") or ""
         except Exception:  # noqa: BLE001
             return ""
 

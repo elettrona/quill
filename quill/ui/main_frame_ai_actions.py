@@ -18,37 +18,12 @@ from quill.core.selection import paragraph_span
 class AiActionsMixin:
     """Selection-scoped AI writing actions, mixed into MainFrame."""
 
-    def open_ai_rewrite_selection(self) -> None:
-        if not self._require_ai_enabled():
-            return
-        target, scope = self._ai_target_text(fallback="paragraph")
-        if not target.strip():
-            self._set_status("Nothing to rewrite. Type or select some text first.")
-            return
-        self._announce_ai_scope("Rewriting", scope, target)
-        self.open_writing_assistant(
-            render_assistant_prompt(
-                "rewrite",
-                selection_text=target,
-                document_text=self.editor.GetValue(),
-            )
-        )
-
-    def open_ai_summarize_selection(self) -> None:
-        if not self._require_ai_enabled():
-            return
-        target, scope = self._ai_target_text(fallback="document")
-        if not target.strip():
-            self._set_status("Nothing to summarize. Open or type a document first.")
-            return
-        self._announce_ai_scope("Summarizing", scope, target)
-        self.open_writing_assistant(
-            render_assistant_prompt(
-                "summarize",
-                selection_text=target,
-                document_text=self.editor.GetValue(),
-            )
-        )
+    # NOTE: open_ai_rewrite_selection and open_ai_summarize_selection used to live
+    # here too, but MainFrame's own class body defines newer agent-task versions
+    # (``_run_agent_task``) that override these via MRO — the copies here never ran.
+    # They were removed to avoid two conflicting definitions of the same verb.
+    # Continue Writing and Fix Grammar have no class-body override, so they remain
+    # the live implementations and stay below.
 
     def open_ai_continue_writing(self) -> None:
         if not self._require_ai_enabled():

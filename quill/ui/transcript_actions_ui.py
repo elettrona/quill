@@ -71,8 +71,7 @@ def offer_transcript_actions(controller: Any, transcript: str, file_name: str) -
 
         ready = maybe_offer_ai_setup(
             controller,
-            reason="To turn this transcript into minutes, action items, or notes, "
-            "QUILL needs AI.",
+            reason="To turn this transcript into minutes, action items, or notes, QUILL needs AI.",
         )
         if not ready:
             return False
@@ -128,8 +127,16 @@ def run_transcript_actions_on_document(controller: Any) -> None:
         return
     from quill.core.ai.model_manager import load_ai_enabled
 
+    # offer_transcript_actions returned False: either the user opted out, or AI is
+    # off / not reachable. Always say why, so the action never just silently
+    # returns to the document (especially for a screen-reader user).
     if not load_ai_enabled():
         controller._set_status("Turn on AI (in the AI menu) to use Transcript Actions.")
+    else:
+        controller._set_status(
+            "Transcript Actions need a working AI connection. Open the AI Hub to "
+            "check your provider, or run AI > Set Up AI."
+        )
 
 
 def _run_action(

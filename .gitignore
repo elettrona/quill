@@ -111,3 +111,6 @@ docs/planning/source/**/*.log
 
 # Local AI provider report (not committed)
 /learned.md
+
+# Local pre-merge test plan (not committed)
+/test.md

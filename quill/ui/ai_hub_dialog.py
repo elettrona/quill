@@ -34,21 +34,25 @@ _DEEPGRAM_MAX_SPEAKERS_KEY = "deepgram_default_max_speakers"
 
 def _load_deepgram_key() -> str:
     try:
-        from quill.platform.windows.credential_manager import credential_load
+        from quill.platform.windows.credential_manager import load_generic_credential
 
-        return credential_load(_DEEPGRAM_KEY_CRED_TARGET) or ""
+        stored = load_generic_credential(_DEEPGRAM_KEY_CRED_TARGET)
+        return (stored.secret if stored else "") or ""
     except Exception:  # noqa: BLE001
         return ""
 
 
 def _save_deepgram_key(key: str) -> None:
     try:
-        from quill.platform.windows.credential_manager import credential_delete, credential_save
+        from quill.platform.windows.credential_manager import (
+            delete_generic_credential,
+            save_generic_credential,
+        )
 
         if key.strip():
-            credential_save(_DEEPGRAM_KEY_CRED_TARGET, key.strip())
+            save_generic_credential(_DEEPGRAM_KEY_CRED_TARGET, key.strip())
         else:
-            credential_delete(_DEEPGRAM_KEY_CRED_TARGET)
+            delete_generic_credential(_DEEPGRAM_KEY_CRED_TARGET)
     except Exception:  # noqa: BLE001
         pass
 

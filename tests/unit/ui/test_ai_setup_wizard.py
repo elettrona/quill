@@ -7,7 +7,13 @@ import pytest  # type: ignore[import-not-found]
 wx = pytest.importorskip("wx")
 
 import quill.core.ai.onboarding as ob  # noqa: E402
-from quill.ui.ai_setup_wizard import AISetupWizard  # noqa: E402
+from quill.ui.ai_setup_wizard import (  # noqa: E402
+    _STEP_CONFIG,
+    _STEP_DONE,
+    _STEP_MODEL,
+    _STEP_PATH,
+    AISetupWizard,
+)
 
 
 @pytest.fixture(scope="module")
@@ -29,7 +35,7 @@ def test_prose_is_readonly_edit_and_no_stray_panel(wx_app):
     # a stray keyboard tab stop). Controls parent directly on the dialog.
     frame, dlg = _wizard(wx_app)
     try:
-        for step in range(4):
+        for step in range(5):
             dlg._step = step
             dlg._render()
             kids = dlg.dialog.GetChildren()
@@ -45,29 +51,137 @@ def test_prose_is_readonly_edit_and_no_stray_panel(wx_app):
         frame.Destroy()
 
 
-def test_welcome_then_path_then_config_cloud(wx_app, monkeypatch):
+def test_cloud_flow_add_provider_then_pick_model(wx_app, monkeypatch):
     frame, dlg = _wizard(wx_app)
     applied = {}
-    monkeypatch.setattr(ob, "apply_cloud_setup", lambda p, k, **kw: applied.update(p=p, k=k))
+    monkeypatch.setattr(ob, "apply_cloud_setup", lambda p, k, **kw: applied.update(p=p, k=k, **kw))
+    monkeypatch.setattr(ob, "remember_provider_key", lambda *a, **k: None)
+    monkeypatch.setattr(ob, "stored_provider_key", lambda p: "sk-test")
     try:
+        dlg._added = []  # deterministic regardless of machine config
         # Welcome -> Path
         dlg._go_next()
-        assert dlg._step == 1
-        # Choose cloud (index 1) -> Config
-        dlg._path_choice.SetSelection(1)
+        assert dlg._step == _STEP_PATH
+        # Choose cloud (find by id; order is cloud-first) -> Config
+        cloud_idx = next(i for i, p in enumerate(ob.ONBOARDING_PATHS) if p.id == "cloud")
+        dlg._path_choice.SetSelection(cloud_idx)
         dlg._on_path_changed(None)
         assert dlg._path == "cloud"
         dlg._go_next()
-        assert dlg._step == 2
-        # No key yet -> stays on config with a hint
+        assert dlg._step == _STEP_CONFIG
+        # Next with nothing added stays on config and asks for a provider.
         dlg._go_next()
-        assert dlg._step == 2
-        assert "key" in dlg._status.GetLabel().lower()
-        # Enter a key -> applies and advances to Done
+        assert dlg._step == _STEP_CONFIG
+        assert "provider" in dlg._status.GetLabel().lower()
+        # Simulate a successful verify+add (skip the async probe), then advance.
+        opt = ob.CLOUD_PROVIDER_OPTIONS[0]
+        dlg._on_verify_result(opt.id, opt.name, "sk-test", True, "")
+        assert (opt.id, opt.name) in dlg._added
+        dlg._go_next()
+        assert dlg._step == _STEP_MODEL
+        # Finishing verifies the chosen model first; simulate a passing check -> applies.
+        dlg._model = dlg._selected_model()
+        dlg._on_model_verified(True, "")
+        assert dlg._step == _STEP_DONE
+        assert applied["p"] == opt.id and applied["k"] == "sk-test"
+        assert applied["model"]  # a model was chosen
+    finally:
+        dlg.close()
+        frame.Destroy()
+
+
+def test_consent_checkbox_gates_add(wx_app, monkeypatch):
+    frame, dlg = _wizard(wx_app)
+    granted = []
+    monkeypatch.setattr(ob, "remember_provider_key", lambda *a, **k: None)
+    monkeypatch.setattr(ob, "grant_provider_consent", lambda pid: granted.append(pid))
+    try:
+        dlg._added = []
+        dlg._path = "cloud"
+        dlg._step = _STEP_CONFIG
+        dlg._render()
+        # Pick a keyed (cloud) provider so a key + consent are both required.
+        avail = dlg._available_providers()
+        keyed_idx = next(i for i, o in enumerate(avail) if not o.local)
+        dlg._provider_choice.SetSelection(keyed_idx)
+        dlg._on_provider_changed(None)
         dlg._key_ctrl.SetValue("sk-test")
-        dlg._go_next()
-        assert dlg._step == 3
-        assert applied == {"p": dlg._provider, "k": "sk-test"}
+        # Allow box unchecked -> add is refused, nothing consented or added.
+        dlg._consent_cb.SetValue(False)
+        dlg._verify_and_add()
+        assert "allow" in dlg._status.GetLabel().lower()
+        assert granted == [] and dlg._added == []
+        # A successful add grants standing consent for that provider.
+        dlg._on_verify_result(avail[keyed_idx].id, avail[keyed_idx].name, "sk-test", True, "")
+        assert avail[keyed_idx].id in granted
+        assert (avail[keyed_idx].id, avail[keyed_idx].name) in dlg._added
+    finally:
+        dlg.close()
+        frame.Destroy()
+
+
+def test_model_verification_failure_keeps_user_on_step(wx_app, monkeypatch):
+    frame, dlg = _wizard(wx_app)
+    applied = {}
+    monkeypatch.setattr(ob, "apply_cloud_setup", lambda *a, **k: applied.update(done=True))
+    try:
+        dlg._added = [("claude", "Claude (Anthropic)")]
+        dlg._provider, dlg._provider_name = "claude", "Claude (Anthropic)"
+        dlg._path = "cloud"
+        dlg._step = _STEP_MODEL
+        dlg._render()
+        dlg._model = dlg._selected_model()
+        # A model that doesn't respond must not be saved; the user stays on the step.
+        dlg._on_model_verified(False, "model not found")
+        assert dlg._step == _STEP_MODEL
+        assert "model not found" in dlg._status.GetLabel().lower()
+        assert applied == {}
+    finally:
+        dlg.close()
+        frame.Destroy()
+
+
+def test_cloud_add_then_remove_provider(wx_app, monkeypatch):
+    frame, dlg = _wizard(wx_app)
+    monkeypatch.setattr(ob, "remember_provider_key", lambda *a, **k: None)
+    monkeypatch.setattr(ob, "forget_provider_key", lambda *a, **k: None)
+    try:
+        dlg._added = []
+        dlg._path = "cloud"
+        dlg._step = _STEP_CONFIG
+        dlg._render()
+        opt = ob.CLOUD_PROVIDER_OPTIONS[0]
+        # Add removes it from the available combo and lists it.
+        dlg._on_verify_result(opt.id, opt.name, "sk-test", True, "")
+        assert (opt.id, opt.name) in dlg._added
+        assert opt.name not in dlg._provider_choice.GetStrings()
+        assert opt.name in dlg._added_list.GetStrings()
+        # Remove puts it back in the combo and clears it from the list.
+        dlg._added_list.SetSelection(0)
+        dlg._remove_selected()
+        assert dlg._added == []
+        assert opt.name in dlg._provider_choice.GetStrings()
+    finally:
+        dlg.close()
+        frame.Destroy()
+
+
+def test_model_step_list_all_models_repopulates_combo(wx_app):
+    frame, dlg = _wizard(wx_app)
+    try:
+        dlg._added = [("ollama_cloud", "Ollama Cloud")]
+        dlg._provider, dlg._provider_name = "ollama_cloud", "Ollama Cloud"
+        dlg._path = "cloud"
+        dlg._step = _STEP_MODEL
+        dlg._render()
+        before = dlg._model_combo.GetCount()
+        # Simulate the async result of "List all available models" (no network).
+        dlg._on_models_listed(["gemma3:12b", "llama3.1:70b", "qwen2.5:32b", "phi4"], "")
+        assert dlg._model_combo.GetCount() == 4 > before
+        assert dlg._model_combo.GetValue() == "gemma3:12b"  # kept the in-list current value
+        # An error with no models is surfaced and leaves the combo usable.
+        dlg._on_models_listed([], "connection refused")
+        assert "refused" in dlg._status.GetLabel().lower()
     finally:
         dlg.close()
         frame.Destroy()
@@ -85,32 +199,42 @@ def test_skip_path_jumps_to_done_without_configuring(wx_app, monkeypatch):
         dlg._path_choice.SetSelection(skip_idx)
         dlg._on_path_changed(None)
         dlg._go_next()  # skip -> done directly
-        assert dlg._step == 3
+        assert dlg._step == _STEP_DONE
         assert calls == []  # nothing configured
     finally:
         dlg.close()
         frame.Destroy()
 
 
-def test_on_device_blocks_when_ollama_missing_then_proceeds(wx_app, monkeypatch):
+def test_local_ollama_add_then_finish_uses_on_device_setup(wx_app, monkeypatch):
     frame, dlg = _wizard(wx_app)
-    applied = []
-    monkeypatch.setattr(ob, "apply_on_device_setup", lambda **k: applied.append(k.get("model")))
+    applied = {}
+
+    def _on_device(**k):
+        applied.update(model=k.get("model", ""))
+
+    monkeypatch.setattr(ob, "apply_on_device_setup", _on_device)
+    monkeypatch.setattr(ob, "apply_cloud_setup", lambda *a, **k: applied.update(cloud=True))
     try:
-        dlg._go_next()  # path
-        dev_idx = next(i for i, p in enumerate(ob.ONBOARDING_PATHS) if p.id == "on_device")
-        dlg._path_choice.SetSelection(dev_idx)
-        dlg._on_path_changed(None)
-        dlg._go_next()  # -> on-device config
-        # Ollama not present: Next does not advance, shows guidance, configures nothing.
-        monkeypatch.setattr(ob, "ollama_status", lambda *a, **k: (False, "install ollama", ""))
-        dlg._go_next()
-        assert dlg._step == 2 and applied == []
+        dlg._added = []
+        dlg._path = "cloud"
+        dlg._step = _STEP_CONFIG
+        dlg._render()
+        name = ob.ONDEVICE_PROVIDER_OPTION.name
+        # Ollama not running -> not added; friendly guidance surfaced, no key needed.
+        dlg._on_verify_result("ollama", name, "", False, "Ollama isn't running on this computer.")
+        assert dlg._added == []
         assert "ollama" in dlg._status.GetLabel().lower()
-        # Ollama present with a model: now it applies (using that model) and advances.
-        monkeypatch.setattr(ob, "ollama_status", lambda *a, **k: (True, "", "llama3.2:1b"))
+        # Ollama present -> added with no key.
+        dlg._on_verify_result("ollama", name, "", True, "")
+        assert ("ollama", name) in dlg._added
+        # Default-provider/model step, then finish -> applies on-device (not cloud) setup.
         dlg._go_next()
-        assert dlg._step == 3 and applied == ["llama3.2:1b"]
+        assert dlg._step == _STEP_MODEL
+        dlg._model = dlg._selected_model()
+        dlg._on_model_verified(True, "")
+        assert dlg._step == _STEP_DONE
+        assert applied.get("model") and "cloud" not in applied
     finally:
         dlg.close()
         frame.Destroy()
@@ -119,16 +243,16 @@ def test_on_device_blocks_when_ollama_missing_then_proceeds(wx_app, monkeypatch)
 def test_finish_persists_experience_mode_and_completion(wx_app, tmp_path, monkeypatch):
     monkeypatch.setattr(ob, "onboarding_state_path", lambda: tmp_path / "ai" / "onboarding.json")
     monkeypatch.setattr(ob, "apply_on_device_setup", lambda *a, **k: None)
-    monkeypatch.setattr(ob, "ollama_status", lambda *a, **k: (True, "", "llama3.2:1b"))
     frame, dlg = _wizard(wx_app)
     try:
-        dlg._go_next()  # path
-        dev_idx = next(i for i, p in enumerate(ob.ONBOARDING_PATHS) if p.id == "on_device")
-        dlg._path_choice.SetSelection(dev_idx)
-        dlg._on_path_changed(None)
-        dlg._go_next()  # config (on-device)
-        dlg._go_next()  # apply + done
-        assert dlg._step == 3
+        dlg._added = [("ollama", ob.ONDEVICE_PROVIDER_OPTION.name)]
+        dlg._provider, dlg._provider_name = "ollama", ob.ONDEVICE_PROVIDER_OPTION.name
+        dlg._path = "cloud"
+        dlg._step = _STEP_MODEL
+        dlg._render()
+        dlg._model = dlg._selected_model()
+        dlg._on_model_verified(True, "")  # applies + advances to done
+        assert dlg._step == _STEP_DONE
         # Uncheck "keep it simple" -> advanced mode persisted on finish.
         dlg._basic_cb.SetValue(False)
         dlg._finish()

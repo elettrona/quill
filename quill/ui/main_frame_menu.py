@@ -1494,7 +1494,6 @@ class MenuBuilderMixin:
         self._id_ai_translate_selection = wx.NewIdRef()
         self._id_ai_translate_document = wx.NewIdRef()
         self._id_ai_transcribe_audio = wx.NewIdRef()
-        self._id_ai_translate_audio = wx.NewIdRef()
         self._id_ai_tts_read_selection = wx.NewIdRef()
         self._id_ai_tts_read_document = wx.NewIdRef()
         self._id_ai_tts_stop = wx.NewIdRef()
@@ -1967,13 +1966,11 @@ class MenuBuilderMixin:
 
         # -- Transcribe audio -------------------------------------------------
         transcribe_menu = wx.Menu()
+        # One entry: the dialog's "Translate audio to English" checkbox covers
+        # translation, so a separate Translate menu item would open the same dialog.
         transcribe_menu.Append(
             self._id_ai_transcribe_audio,
             self._menu_label(_("Transcri&be Audio File..."), "tools.ai_transcribe_audio"),
-        )
-        transcribe_menu.Append(
-            self._id_ai_translate_audio,
-            self._menu_label(_("&Translate Audio to English..."), "tools.ai_translate_audio"),
         )
         # The Listening Companion: run a Transcript Action (Meeting Minutes, Action
         # Items, Clean Up & Draft, ...) on the current selection or document — the same
@@ -2053,10 +2050,16 @@ class MenuBuilderMixin:
         adv_item.Check(not is_basic_mode())
 
         def _toggle_experience(_event: object) -> None:
-            save_experience_mode(EXPERIENCE_BASIC if is_basic_mode() else EXPERIENCE_ADVANCED)
-            refresh = getattr(self, "_request_menu_refresh", None)
-            if callable(refresh):
-                refresh()
+            # Flip the saved mode: advanced <-> basic. Reading is_basic_mode() to pick the
+            # *same* value (the original code) was a no-op — the mode never changed, so the
+            # menu never toggled.
+            save_experience_mode(EXPERIENCE_ADVANCED if is_basic_mode() else EXPERIENCE_BASIC)
+            # The agentic entries are appended once while building the menu, gated on
+            # is_basic_mode(); a contextual refresh only enables/disables existing items
+            # and would never add or remove them. Rebuild the whole menubar so the
+            # entries appear or hide immediately. Deferred so the rebuild happens after
+            # this menu-selection event has finished dispatching.
+            self._wx.CallAfter(self._build_menu)
 
         self.frame.Bind(wx.EVT_MENU, _toggle_experience, id=_adv_id)
         # "Forget API Key" moved into the AI Hub as a per-provider action
@@ -2675,6 +2678,11 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU,
+            lambda _e: self.open_ai_library(),
+            id=self._id_ai_library,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
             lambda _e: self.open_ai_hub(),
             id=self._id_ai_hub,
         )
@@ -2760,11 +2768,6 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU,
-            lambda _e: self.ai_translate_audio_file(),
-            id=self._id_ai_translate_audio,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
             lambda _e: self.ai_tts_read_selection(),
             id=self._id_ai_tts_read_selection,
         )
@@ -2792,6 +2795,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.open_ask_quill_chat(),
             id=self._id_ask_quill_chat,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_ask_quill_conversation(),
+            id=self._id_ask_quill_voice,
         )
         self.frame.Bind(
             wx.EVT_MENU,

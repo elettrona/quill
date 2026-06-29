@@ -11,17 +11,30 @@ def _isolate(tmp_path, monkeypatch):
 
 def test_paths_and_providers_are_well_formed() -> None:
     ids = {p.id for p in ob.ONBOARDING_PATHS}
-    assert ids == {"on_device", "cloud", "skip"}
+    assert ids == {"cloud", "skip"}  # on-device folded into the provider list
     assert all(p.title and p.summary and p.detail for p in ob.ONBOARDING_PATHS)
     assert ob.onboarding_path("cloud").id == "cloud"
     assert ob.onboarding_path("nope") is None
-    # Every cloud option maps to a real assistant_ai provider id.
     from quill.core.ai.providers import provider_requires_api_key
 
+    # Cloud options are all keyed; the on-device option is local and needs no key.
     for opt in ob.CLOUD_PROVIDER_OPTIONS:
         assert opt.name and opt.blurb and opt.key_hint and opt.signup_url
         assert provider_requires_api_key(opt.id)
+        assert not opt.local
+    assert ob.ONDEVICE_PROVIDER_OPTION.local is True
+    assert not provider_requires_api_key(ob.ONDEVICE_PROVIDER_OPTION.id)
+    # Combined wizard list leads with on-device Ollama, then the requested cloud order.
+    assert [p.id for p in ob.SETUP_PROVIDERS] == [
+        "ollama",
+        "ollama_cloud",
+        "openai",
+        "gemini",
+        "claude",
+        "openrouter",
+    ]
     assert ob.cloud_provider_option("Claude").name.startswith("Claude")  # case-insensitive
+    assert ob.cloud_provider_option("ollama").local is True  # local option is findable too
     assert ob.cloud_provider_option("nope") is None
 
 
@@ -77,21 +90,83 @@ def test_ollama_status_classifies_reachability(monkeypatch) -> None:
     assert ok is False and "pull" in msg.lower()
 
 
+def test_ai_connection_ready_probes_local_ollama(monkeypatch) -> None:
+    import quill.core.assistant_ai as aa
+
+    def _conn(provider, host="http://localhost:11434"):
+        return aa.AssistantConnectionSettings(provider=provider, host=host, model="m")
+
+    # Default local Ollama that is NOT running -> not ready, so callers offer setup
+    # instead of letting the chat hang on "Thinking".
+    monkeypatch.setattr(aa, "load_assistant_connection_settings", lambda: _conn("ollama"))
+    monkeypatch.setattr(ob, "ollama_status", lambda host="": (False, "down", ""))
+    assert ob.ai_connection_ready() is False
+
+    # Local Ollama that answers -> ready.
+    monkeypatch.setattr(ob, "ollama_status", lambda host="": (True, "", "llama3.2"))
+    assert ob.ai_connection_ready() is True
+
+    # Cloud provider with a stored key -> ready; without any key -> not ready.
+    monkeypatch.setattr(aa, "load_assistant_connection_settings", lambda: _conn("claude"))
+    monkeypatch.setattr(aa, "load_assistant_api_key", lambda: "")
+    monkeypatch.setattr(ob, "stored_provider_key", lambda pid: "sk-123")
+    assert ob.ai_connection_ready() is True
+    monkeypatch.setattr(ob, "stored_provider_key", lambda pid: "")
+    assert ob.ai_connection_ready() is False
+
+    # Provider off -> not ready.
+    monkeypatch.setattr(aa, "load_assistant_connection_settings", lambda: _conn("off"))
+    assert ob.ai_connection_ready() is False
+
+
+def test_provider_consent_grant_revoke_and_active(tmp_path, monkeypatch) -> None:
+    _isolate(tmp_path, monkeypatch)
+    import quill.core.assistant_ai as aa
+
+    assert ob.provider_consent_granted("claude") is False
+    ob.grant_provider_consent("Claude")  # stored case-insensitively
+    assert ob.provider_consent_granted("claude") is True
+    ob.grant_provider_consent("claude")  # idempotent
+    assert ob.provider_consent_granted("claude") is True
+
+    # active_connection_consented follows the active provider.
+    def _conn(provider):
+        return aa.AssistantConnectionSettings(provider=provider, host="h", model="m")
+
+    monkeypatch.setattr(aa, "load_assistant_connection_settings", lambda: _conn("claude"))
+    assert ob.active_connection_consented() is True
+    monkeypatch.setattr(aa, "load_assistant_connection_settings", lambda: _conn("openai"))
+    assert ob.active_connection_consented() is False
+
+    ob.revoke_provider_consent("claude")
+    assert ob.provider_consent_granted("claude") is False
+
+
+def test_forget_provider_key_also_revokes_consent(tmp_path, monkeypatch) -> None:
+    _isolate(tmp_path, monkeypatch)
+    import quill.core.assistant_ai as aa
+
+    monkeypatch.setattr(aa, "clear_provider_api_key", lambda pid: None)
+    ob.grant_provider_consent("openai")
+    assert ob.provider_consent_granted("openai") is True
+    ob.forget_provider_key("openai")  # removing a provider withdraws consent too
+    assert ob.provider_consent_granted("openai") is False
+
+
 def test_apply_cloud_setup_configures_provider_key_and_enables(monkeypatch) -> None:
     import quill.core.ai.model_manager as mm
     import quill.core.assistant_ai as aa
 
     saved: dict[str, object] = {}
-    monkeypatch.setattr(
-        aa, "save_assistant_connection_settings", lambda s: saved.update(settings=s)
-    )
-    monkeypatch.setattr(aa, "save_provider_api_key", lambda p, k: saved.update(key=(p, k)))
-    monkeypatch.setattr(aa, "save_provider_model", lambda p, m: saved.update(model=(p, m)))
+    # set_active_provider is the primitive that persists the connection AND mirrors the
+    # key into the active-key store the generation path reads — saving only the
+    # per-provider key left Ask Quill reporting "active provider: none" after setup.
+    monkeypatch.setattr(aa, "set_active_provider", lambda s, k: saved.update(settings=s, key=k))
     monkeypatch.setattr(mm, "save_ai_enabled", lambda v: saved.update(enabled=v))
 
     ob.apply_cloud_setup("claude", "sk-test")
     assert saved["settings"].provider == "claude"
-    assert saved["key"] == ("claude", "sk-test")
+    assert saved["key"] == "sk-test"  # active key is set, not just the per-provider key
     assert saved["enabled"] is True
     assert saved["settings"].model  # a default model was filled in
 
@@ -101,15 +176,28 @@ def test_apply_on_device_setup_points_at_ollama_and_enables(monkeypatch) -> None
     import quill.core.assistant_ai as aa
 
     saved: dict[str, object] = {}
-    monkeypatch.setattr(
-        aa, "save_assistant_connection_settings", lambda s: saved.update(settings=s)
-    )
+    monkeypatch.setattr(aa, "set_active_provider", lambda s, k: saved.update(settings=s, key=k))
     monkeypatch.setattr(mm, "save_ai_enabled", lambda v: saved.update(enabled=v))
 
     ob.apply_on_device_setup()
     assert saved["settings"].provider == "ollama"
     assert "localhost" in saved["settings"].host
+    assert saved["key"] == ""  # local Ollama clears the active key (needs none)
     assert saved["enabled"] is True
+
+
+def test_list_provider_models_returns_models_or_error(monkeypatch) -> None:
+    import quill.core.assistant_ai as aa
+
+    monkeypatch.setattr(ob, "stored_provider_key", lambda p: "")
+    monkeypatch.setattr(aa, "list_assistant_models", lambda *a, **k: (["m1", "m2", "m3"], None))
+    models, error = ob.list_provider_models("ollama_cloud")
+    assert models == ["m1", "m2", "m3"] and error == ""
+
+    # An error from discovery is surfaced, never raised.
+    monkeypatch.setattr(aa, "list_assistant_models", lambda *a, **k: ([], "connection refused"))
+    models, error = ob.list_provider_models("ollama_cloud")
+    assert models == [] and "refused" in error
 
 
 def test_needs_setup_only_when_incomplete_and_ai_off(tmp_path, monkeypatch) -> None:

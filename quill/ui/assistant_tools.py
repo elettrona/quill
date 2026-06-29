@@ -409,16 +409,22 @@ class DiffReviewDialog:
         panel = wx.Panel(self.dialog)
         root = wx.BoxSizer(wx.VERTICAL)
 
+        single = len(self.review.hunks) == 1
+        intro = (
+            "Review the proposed AI change below. Read it line by line in the "
+            "details pane, then choose Accept to apply it or Reject to leave the "
+            "document unchanged."
+            if single
+            else (
+                "Review the proposed AI changes below. Checked hunks will be "
+                "applied; uncheck any you want to keep as-is. Read each hunk "
+                "line by line in the details pane. Use Apply Checked for a "
+                "partial apply, Accept All to take every change, or Reject All "
+                "to leave the document unchanged."
+            )
+        )
         root.Add(
-            wx.StaticText(
-                panel,
-                label=(
-                    "Review the proposed AI changes below. Checked hunks will be "
-                    "applied; uncheck any you want to keep as-is. Read each hunk "
-                    "line by line in the details pane. Nothing changes until you "
-                    "choose Apply."
-                ),
-            ),
+            wx.StaticText(panel, label=intro),
             0,
             wx.EXPAND | wx.ALL,
             8,
@@ -448,15 +454,30 @@ class DiffReviewDialog:
         root.Add(self.status, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
         buttons = wx.BoxSizer(wx.HORIZONTAL)
-        self.apply_button = wx.Button(panel, label="Apply Checked")
-        accept_all_button = wx.Button(panel, label="Accept All")
-        reject_all_button = wx.Button(panel, label="Reject All")
-        buttons.Add(self.apply_button, 0, wx.RIGHT, 8)
-        buttons.Add(accept_all_button, 0, wx.RIGHT, 8)
-        buttons.Add(reject_all_button, 0, wx.RIGHT, 8)
-        buttons.AddStretchSpacer(1)
-        close_button = wx.Button(panel, id=wx.ID_CANCEL, label="Close")
-        buttons.Add(close_button, 0)
+        action_buttons: list = []
+        if single:
+            # A single change needs no bulk controls or partial apply: Accept
+            # applies it and closes; Reject closes and leaves the document as-is.
+            self.apply_button = wx.Button(panel, id=wx.ID_OK, label="Accept")
+            reject_button = wx.Button(panel, id=wx.ID_CANCEL, label="Reject")
+            buttons.Add(self.apply_button, 0, wx.RIGHT, 8)
+            buttons.AddStretchSpacer(1)
+            buttons.Add(reject_button, 0)
+            self.apply_button.Bind(wx.EVT_BUTTON, self._on_accept_all_clicked)
+            reject_button.Bind(wx.EVT_BUTTON, self._on_reject_clicked)
+            action_buttons.append(self.apply_button)
+        else:
+            self.apply_button = wx.Button(panel, label="Apply Checked")
+            accept_all_button = wx.Button(panel, label="Accept All")
+            reject_all_button = wx.Button(panel, id=wx.ID_CANCEL, label="Reject All")
+            buttons.Add(self.apply_button, 0, wx.RIGHT, 8)
+            buttons.Add(accept_all_button, 0, wx.RIGHT, 8)
+            buttons.AddStretchSpacer(1)
+            buttons.Add(reject_all_button, 0)
+            self.apply_button.Bind(wx.EVT_BUTTON, self._on_apply_clicked)
+            accept_all_button.Bind(wx.EVT_BUTTON, self._on_accept_all_clicked)
+            reject_all_button.Bind(wx.EVT_BUTTON, self._on_reject_clicked)
+            action_buttons.extend([self.apply_button, accept_all_button, reject_all_button])
         root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
 
         panel.SetSizer(root)
@@ -465,19 +486,14 @@ class DiffReviewDialog:
         self.dialog.SetSizer(outer)
 
         self.hunk_list.Bind(wx.EVT_LISTBOX, self._on_hunk_selected)
-        self.apply_button.Bind(wx.EVT_BUTTON, self._on_apply_clicked)
-        accept_all_button.Bind(wx.EVT_BUTTON, lambda _e: self._check_all(True))
-        reject_all_button.Bind(wx.EVT_BUTTON, lambda _e: self._check_all(False))
-        close_button.Bind(wx.EVT_BUTTON, lambda _e: self.dialog.EndModal(wx.ID_CANCEL))
         apply_modal_ids(self.dialog, escape_id=wx.ID_CANCEL)
 
         if self.review.hunks:
             self.hunk_list.SetSelection(0)
             self._show_hunk_details(0)
         else:
-            self.apply_button.Enable(False)
-            accept_all_button.Enable(False)
-            reject_all_button.Enable(False)
+            for button in action_buttons:
+                button.Enable(False)
             self.details.SetValue(
                 "The proposed revision is identical to the current document. "
                 "There is nothing to apply."
@@ -499,12 +515,19 @@ class DiffReviewDialog:
         hunk = self.review.hunks[index]
         self.details.SetValue("\n".join(hunk.detail_lines()))
 
-    def _check_all(self, checked: bool) -> None:
+    def _on_accept_all_clicked(self, event: object) -> None:
+        """Accept every hunk and apply in one step (also serves single Accept)."""
         for index in range(len(self.review.hunks)):
-            self.hunk_list.Check(index, checked)
-        label = "Accepted all changes" if checked else "Rejected all changes"
-        self.status.SetLabel(f"{label}. Choose Apply to update the document.")
-        self._announce(label)
+            self.hunk_list.Check(index, True)
+        self._on_apply_clicked(event)
+
+    def _on_reject_clicked(self, _event: object) -> None:
+        """Reject everything and dismiss the dialog without touching the document."""
+        self.applied = False
+        count = len(self.review.hunks)
+        label = "Rejected the change" if count == 1 else "Rejected all changes"
+        self._announce(f"{label}; the document is unchanged")
+        self.dialog.EndModal(self._wx.ID_CANCEL)
 
     def _on_apply_clicked(self, _event: object) -> None:
         accepted = {
