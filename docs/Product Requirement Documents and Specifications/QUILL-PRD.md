@@ -8477,7 +8477,7 @@ safer path is offered.
 
 ## Part One: Native RTF Editing as an Optional Surface
 
-> **What shipped (0.8.0 Beta 2) — hidden-codes first.** The plan of record for this
+> **What shipped (0.8.1 Beta 1) — hidden-codes first.** The plan of record for this
 > work became **hidden-codes formatting** rather than a WYSIWYG editing surface;
 > the full design and phasing are in
 > [`docs/planning/rtf.md`](../planning/rtf.md). What is delivered: real document
@@ -8751,7 +8751,7 @@ plain-text, screen-reader-first writing as first class. That is the magic: not
 catching up to word processors, but giving blind and low-vision writers a rich
 surface that finally speaks formatting out loud.
 
-### Illumination: formatting beside a plain-text file (shipped 0.8.0 Beta 2)
+### Illumination: formatting beside a plain-text file (shipped 0.8.1 Beta 1)
 
 A plain `.txt` file has nowhere to store fonts, colour, or alignment, so the
 hidden-codes model's plain-text writer strips formatting on save (honest
@@ -8794,7 +8794,7 @@ visible codes even in a saved `.md`) remains the deferred "Option B" end-state i
 [`docs/planning/rtf.md`](../planning/rtf.md); Illumination delivers the clean-text
 round-trip now without that larger overlay rebuild.
 
-### Spoken Echo: re-read the last announcement (shipped 0.8.0 Beta 2)
+### Spoken Echo: re-read the last announcement (shipped 0.8.1 Beta 1)
 
 **Problem.** QUILL speaks a great deal of transient information — indent depth,
 formatting at the caret, save and search results, "no matches" — and speech is
@@ -8830,7 +8830,7 @@ currently covers the command-palette and QUILL-key paths; the dedicated key
 covers everything. Extending double-press to specific accelerator keys is a
 possible later enhancement.
 
-### Keyboard Manager: search, record, conflicts, diagnostics (shipped 0.8.0 Beta 2)
+### Keyboard Manager: search, record, conflicts, diagnostics (shipped 0.8.1 Beta 1)
 
 **Problem.** The original Keymap Editor was a flat list with a plain text box: you
 typed an exact binding string and hoped. There was no way to ask "what is this key
@@ -8866,7 +8866,7 @@ command by title and offers a one-step reassign (move here, free there); and a
 entries and re-applies the keymap via ``_reload_shortcuts_from_keymap`` (duplicates
 and inert keys are reported for manual resolution rather than guessed at).
 
-### Go to Document by position (shipped 0.8.0 Beta 2)
+### Go to Document by position (shipped 0.8.1 Beta 1)
 
 With several documents open, cycling Next/Previous (Ctrl+Tab) is slow. **Alt+1**
 through **Alt+9**, plus **Alt+0** for the tenth, jump straight to a document by
@@ -8879,7 +8879,7 @@ accelerator-only menu ids. The Window menu's dynamic open-document list shows ea
 shortcut inline (``&1: Notes (Alt+1)``) for discoverability; ``Alt+digit`` is free
 default key-space and, unlike ``Ctrl+Alt+`` chords, is not screen-reader-hostile.
 
-### Braille editor control type (shipped 0.8.0 Beta 2)
+### Braille editor control type (shipped 0.8.1 Beta 1)
 
 Some braille displays render the first character of every line in cell two for a
 rich-text control — the long-standing Microsoft Word quirk. Because QUILL's editor
@@ -8892,7 +8892,7 @@ documents/restart). Field note: this is exposed for users to A/B against their o
 display; where the offset reproduces in Notepad itself, the cause is the braille
 display / screen-reader configuration (e.g. left status cells), not the control.
 
-### Self-voice fallback is logged, not announced (shipped 0.8.0 Beta 2)
+### Self-voice fallback is logged, not announced (shipped 0.8.1 Beta 1)
 
 QUILL's SAPI 5 self-voice (``sapi5.py``/``prism_bridge``) is a *fallback* used only
 when no screen reader is present; announcements otherwise route to the reader via

@@ -15249,7 +15249,7 @@ the collision is named and a safer path is offered.</p>
 <h2 id="part-one-native-rtf-editing-as-an-optional-surface">Part One:
 Native RTF Editing as an Optional Surface</h2>
 <blockquote>
-<p><strong>What shipped (0.8.0 Beta 2) — hidden-codes first.</strong>
+<p><strong>What shipped (0.8.1 Beta 1) — hidden-codes first.</strong>
 The plan of record for this work became <strong>hidden-codes
 formatting</strong> rather than a WYSIWYG editing surface; the full
 design and phasing are in <a
@@ -15752,8 +15752,8 @@ screen-reader-first writing as first class. That is the magic: not
 catching up to word processors, but giving blind and low-vision writers
 a rich surface that finally speaks formatting out loud.</p>
 <h3
-id="illumination-formatting-beside-a-plain-text-file-shipped-080-beta-2">Illumination:
-formatting beside a plain-text file (shipped 0.8.0 Beta 2)</h3>
+id="illumination-formatting-beside-a-plain-text-file-shipped-081-beta-1">Illumination:
+formatting beside a plain-text file (shipped 0.8.1 Beta 1)</h3>
 <p>A plain <code>.txt</code> file has nowhere to store fonts, colour, or
 alignment, so the hidden-codes model's plain-text writer strips
 formatting on save (honest fidelity). For writers who want a
@@ -15805,8 +15805,8 @@ href="../planning/rtf.md"><code>docs/planning/rtf.md</code></a>;
 Illumination delivers the clean-text round-trip now without that larger
 overlay rebuild.</p>
 <h3
-id="spoken-echo-re-read-the-last-announcement-shipped-080-beta-2">Spoken
-Echo: re-read the last announcement (shipped 0.8.0 Beta 2)</h3>
+id="spoken-echo-re-read-the-last-announcement-shipped-081-beta-1">Spoken
+Echo: re-read the last announcement (shipped 0.8.1 Beta 1)</h3>
 <p><strong>Problem.</strong> QUILL speaks a great deal of transient
 information — indent depth, formatting at the caret, save and search
 results, "no matches" — and speech is gone the instant it is spoken. A
@@ -15848,9 +15848,9 @@ currently covers the command-palette and QUILL-key paths; the dedicated
 key covers everything. Extending double-press to specific accelerator
 keys is a possible later enhancement.</p>
 <h3
-id="keyboard-manager-search-record-conflicts-diagnostics-shipped-080-beta-2">Keyboard
-Manager: search, record, conflicts, diagnostics (shipped 0.8.0 Beta
-2)</h3>
+id="keyboard-manager-search-record-conflicts-diagnostics-shipped-081-beta-1">Keyboard
+Manager: search, record, conflicts, diagnostics (shipped 0.8.1 Beta
+1)</h3>
 <p><strong>Problem.</strong> The original Keymap Editor was a flat list
 with a plain text box: you typed an exact binding string and hoped.
 There was no way to ask "what is this key bound to?", conflict detection
@@ -15894,8 +15894,8 @@ there); and a <strong>Diagnostics</strong> report with a conservative
 re-applies the keymap via <code>_reload_shortcuts_from_keymap</code>
 (duplicates and inert keys are reported for manual resolution rather
 than guessed at).</p>
-<h3 id="go-to-document-by-position-shipped-080-beta-2">Go to Document by
-position (shipped 0.8.0 Beta 2)</h3>
+<h3 id="go-to-document-by-position-shipped-081-beta-1">Go to Document by
+position (shipped 0.8.1 Beta 1)</h3>
 <p>With several documents open, cycling Next/Previous (Ctrl+Tab) is
 slow. <strong>Alt+1</strong> through <strong>Alt+9</strong>, plus
 <strong>Alt+0</strong> for the tenth, jump straight to a document by its
@@ -15909,8 +15909,8 @@ menu ids. The Window menu's dynamic open-document list shows each
 shortcut inline (<code>&amp;1: Notes (Alt+1)</code>) for
 discoverability; <code>Alt+digit</code> is free default key-space and,
 unlike <code>Ctrl+Alt+</code> chords, is not screen-reader-hostile.</p>
-<h3 id="braille-editor-control-type-shipped-080-beta-2">Braille editor
-control type (shipped 0.8.0 Beta 2)</h3>
+<h3 id="braille-editor-control-type-shipped-081-beta-1">Braille editor
+control type (shipped 0.8.1 Beta 1)</h3>
 <p>Some braille displays render the first character of every line in
 cell two for a rich-text control — the long-standing Microsoft Word
 quirk. Because QUILL's editor must be a RichEdit for correct
@@ -15925,8 +15925,8 @@ users to A/B against their own display; where the offset reproduces in
 Notepad itself, the cause is the braille display / screen-reader
 configuration (e.g. left status cells), not the control.</p>
 <h3
-id="self-voice-fallback-is-logged-not-announced-shipped-080-beta-2">Self-voice
-fallback is logged, not announced (shipped 0.8.0 Beta 2)</h3>
+id="self-voice-fallback-is-logged-not-announced-shipped-081-beta-1">Self-voice
+fallback is logged, not announced (shipped 0.8.1 Beta 1)</h3>
 <p>QUILL's SAPI 5 self-voice
 (<code>sapi5.py</code>/<code>prism_bridge</code>) is a <em>fallback</em>
 used only when no screen reader is present; announcements otherwise

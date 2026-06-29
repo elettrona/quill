@@ -23,7 +23,7 @@ production unchanged).
 Put the installers you want to test in `installers\` (gitignored). Expected names:
 
 - `installers\Quill-for-All-Setup-0.8.0 Beta 1.exe`
-- `installers\Quill-for-All-Setup-0.8.0 Beta 2.exe`
+- `installers\Quill-for-All-Setup-0.8.1 Beta 1.exe`
 
 Build them with `scripts/build_windows_distribution.py --bundle-python --compile-installer`
 (bump `build/version.toml` `prerelease_number` between the two), then copy from
@@ -33,8 +33,8 @@ Build them with `scripts/build_windows_distribution.py --bundle-python --compile
 
 1. `install-beta1.cmd` - silently installs 0.8.0 Beta 1 (per-user, no elevation).
 2. `launch-quill.cmd` - launches QUILL with the rehearsal endpoint active for that
-   run. In QUILL: **Help > Check for Updates**. Expect 0.8.0 Beta 2 -> **Install now**.
-3. After the upgrade, confirm **Help > About** shows 0.8.0 Beta 2 and your
+   run. In QUILL: **Help > Check for Updates**. Expect 0.8.1 Beta 1 -> **Install now**.
+3. After the upgrade, confirm **Help > About** shows 0.8.1 Beta 1 and your
    settings/sessions survived.
 4. `reset-to-production.cmd` - removes the override so this machine returns to the
    production update endpoint. Run this when you are done.
@@ -43,14 +43,14 @@ Build them with `scripts/build_windows_distribution.py --bundle-python --compile
 
 - `set-test-endpoint.cmd` - persist the rehearsal endpoint for your user (survives
   restarts; useful if you want repeated checks). `reset-to-production.cmd` undoes it.
-- `install-beta2.cmd` - silently install Beta 2 directly (to reset state or test the
-  installer alone).
+- `install-beta2.cmd` - silently install the new release (0.8.1 Beta 1) directly (to
+  reset state or test the installer alone).
 - `status.cmd` - show the current/persisted override and whether QUILL is installed.
 
 ## What this validates vs. not
 
 Validates the real production path: GitHub Releases discovery, version ordering
-(Beta 2 > Beta 1), platform `.exe` asset selection, download from
+(0.8.1 Beta 1 > 0.8.0 Beta 1), platform `.exe` asset selection, download from
 `objects.githubusercontent.com`, and the Inno in-place upgrade (data in
 `%APPDATA%\Quill` preserved, first-run wizard re-runs). It does **not** exercise
 the signed-manifest feed (needs `QUILL_UPDATE_MANIFEST_KEY`) or the app_updater
