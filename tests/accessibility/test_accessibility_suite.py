@@ -24,8 +24,7 @@ def test_accessibility_announcements_are_captured_for_harnesses() -> None:
 
 
 def test_accessibility_screen_reader_detection_snapshot() -> None:
-    snapshot = '"narrator.exe","321","Console","1","10,000 K"\n'
-    result = detect_screen_reader(snapshot)
+    result = detect_screen_reader(["explorer.exe", "narrator.exe"])
     assert result.detected is True
     assert result.name == "Narrator"
 
