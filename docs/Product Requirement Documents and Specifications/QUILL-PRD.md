@@ -7267,7 +7267,7 @@ the Part 1 live pass to call done. One sub-item is intentionally deferred.**
 | Verb invokes shared `--action` entry point over single-instance IPC | **Done** (SHELL-1) |
 | Installer registration + clean uninstall | **Done in code** (SHELL-3); **needs live verify** (Part 1) |
 | Reachable via Shift+F10; clear labels; focus + announcement after invoke | **Done in code**; confirmed by the Part 1 manual pass |
-| **Modern Win11 menu via `IExplorerCommand` (packaged COM)** | **Deferred to QUILL 2.0** — the OS gates the primary menu behind compiled COM + package identity (sparse/MSIX). Out of scope for 1.0. |
+| **Modern Win11 menu via `IExplorerCommand` (packaged COM)** | **Deferred to a future major release** — the OS gates the primary menu behind compiled COM + package identity (sparse/MSIX). Out of scope for 1.0. |
 
 **To finish #114 for 1.0:** run Part 1, then post a status comment noting the
 modern-menu `IExplorerCommand` piece is tracked as a 2.0 follow-up, and close.
@@ -8492,7 +8492,7 @@ safer path is offered.
 > outline, metrics, read-aloud, and AI keep working unchanged. The **read-only
 > rich-text lens** below remains an opt-in preview gated behind
 > `core.rich_text_lens` (pending the live JAWS/NVDA/Narrator pass), and the fully
-> **editable WYSIWYG surface** described in this Part is **deferred to QUILL 2.0**.
+> **editable WYSIWYG surface** described in this Part is **deferred to a future major release**.
 > The vision narrative is retained below for the record.
 
 ### The idea in one sentence

@@ -15,13 +15,72 @@ changes in Beta 2 on top of Beta 1.
 Beta 2 carries forward everything in Beta 1 (private on-device speech,
 document-to-audiobook production, braille proofreading, talking-book export,
 guided proofing, multilingual narration, Mastodon posting, and the upgrade
-hardening that makes betas safe to update). The list below is what is new,
-fixed, or improved since Beta 1.
+hardening that makes betas safe to update). Its headline is a complete,
+screen-reader-first **AI suite** — optional, private by default, and built around
+the provider you choose — that brings a context-aware assistant, audio
+transcription that becomes finished documents, and reviewable AI writing help
+into QUILL. The list below is what is new, fixed, or improved since Beta 1.
 
 ### Features
 
+**Your writing companion, now built in — optional, and private by default.**
+Beta 2's headline addition is a complete, screen-reader-first AI suite under one
+new top-level **AI** menu. It is **off until you turn it on**, it works with the
+provider *you* choose — a private **on-device** model (Ollama) or an account with
+**OpenAI, Anthropic (Claude), Google Gemini, or OpenRouter** — and nothing leaves
+your machine without your consent. Set it up once and every AI feature below
+shares that one connection.
+
+**Set up AI in seconds, the gentle way.** A short **AI Setup Wizard** (the first
+item in the AI menu, "Set Up AI… — start here") walks you through a single choice
+— on-device, an AI account, or not now — with a one-step connect and a Test
+Connection check. Click any AI action before you have set things up and QUILL
+offers the wizard right there instead of failing. Newcomers can stay in a simpler
+**Basic** mode with a smaller AI menu; "Show advanced AI features" reveals the
+full set whenever you want it.
+
+**Ask Quill — one conversation that knows your document.** A single, context-aware
+chat (**Ask Quill**) replaces the old scattered AI dialogs. Ask about your text,
+have it draft or rewrite, and apply suggestions through a reviewable change
+preview. **Ask Quill by Voice** adds spoken questions and spoken answers with
+transport controls for a hands-light, eyes-free conversation, and falls back to
+text and screen-reader announcements when voice is unavailable.
+
+**Turn recordings into finished documents — the Listening Companion.** Transcribe
+an audio or video file (optionally **translating it to English** or **identifying
+the speakers**), then let QUILL turn the transcript into something useful:
+**Meeting Minutes, Action Items, an Executive Summary, Interview Notes, Study
+Notes, Q&A, a Follow-Up Email, Key Quotes, a Decisions Log, or a clean draft** —
+picked from one context-aware list. You can run those same **Transcript Actions**
+on any open document, build your own with a no-syntax **Action Builder** (a name,
+plain-language instructions, and an optional reference document), and even have a
+watch-folder transcribe new recordings and produce the document automatically.
+
+**One home for Prompts, Skills, and Agents — the AI Library.** Your reusable AI
+know-how lives in a single tabbed manager. Save a **Prompt**, promote it into a
+multi-step **Skill**, and promote that into a first-class **Agent** — a real
+continuum, all reviewable and editable, all running through the connection you set
+up once.
+
+**Everyday writing help, always reviewable.** Rewrite, summarise, expand,
+continue, fix grammar, or generate a table of contents from **Transform
+Selection**; proofread with **AI spell check** and a **grammar-and-style check**;
+**translate** a selection or the whole document; find richer synonyms with the
+**AI Thesaurus**; and put questions to your document with **Document Q&A**. Every
+change QUILL proposes is shown as an accessible accept/reject preview and applied
+as a single, one-step **undo** — nothing is ever silently rewritten.
+
+**Read aloud and export audio in natural AI voices.** Read the selection or the
+whole document aloud, stop on a key, or **export the document as an audio file**
+in your chosen cloud voice — alongside the on-device speech QUILL already shipped.
+
+**In your control, by design.** AI is optional and off by default,
+provider-neutral, and consent-gated: QUILL shows you what would be sent before it
+sends it, keeps a reviewable record of AI changes you can undo, and never widens
+its own permissions. Organisations can restrict which providers are allowed.
+
 **Rich formatting that stays out of your way — hidden codes, spoken on demand.**
-Beta 2's headline feature lets you apply real document formatting — **bold,
+Beta 2 also lets you apply real document formatting — **bold,
 italic, underline, strikethrough, superscript/subscript, font family and point
 size, text colour and highlight**, plus paragraph **alignment, line spacing,
 indent, and named styles** — without ever seeing markup clutter in your editor.
