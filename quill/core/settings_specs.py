@@ -294,6 +294,24 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("wrap", "word wrap", "lines"),
     ),
     SettingSpec(
+        "plain_text_with_formatting",
+        "Saving formatted text as plain text",
+        "editing",
+        "choice",
+        (
+            "What QUILL does when a document that carries hidden formatting (fonts, "
+            "colours, alignment) is saved as plain text. An Illumination is a small "
+            "<name>.illumination sidecar that keeps the formatting so the clean .txt "
+            "round-trips it in QUILL, while staying plain for every other tool."
+        ),
+        choices=(
+            ("ask", "Ask each time (keep formatting, illuminate, or save plain)"),
+            ("illuminate", "Always save an Illumination sidecar"),
+            ("plain", "Save plain text and drop the formatting"),
+        ),
+        keywords=("plain text", "illumination", "formatting", "sidecar", "preserve"),
+    ),
+    SettingSpec(
         "language_detection_mode",
         "Auto-detect document language",
         "editing",
@@ -797,6 +815,57 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("announcement", "screen reader", "speech"),
     ),
     SettingSpec(
+        "announce_dialog_transitions",
+        "Announce entering and leaving dialogs",
+        "accessibility",
+        "bool",
+        'Speak "Entered"/"Exited" when a dialog box opens and closes. '
+        "Turn off if your screen reader already announces dialogs.",
+        feature_id="core.accessibility",
+        keywords=("dialog", "announcement", "entered", "exited", "leaving"),
+    ),
+    SettingSpec(
+        "announce_indent_depth",
+        "Announce indentation depth on Tab",
+        "accessibility",
+        "bool",
+        'Speak the new indent depth ("4 spaces" or "1 tab") when Tab or Shift+Tab '
+        'indents, instead of just "Indented lines".',
+        feature_id="core.accessibility",
+        keywords=("indent", "tab", "spaces", "announcement", "depth"),
+    ),
+    SettingSpec(
+        "spoken_echo_on_double_press",
+        "Double-press to show the Spoken Echo",
+        "accessibility",
+        "bool",
+        "Double-press an informational command (Describe Formatting, Document "
+        "Summary, Context Help, Announce Contrast) to open the Spoken Echo review "
+        "dialog instead of re-speaking. The dedicated Echo key always works.",
+        feature_id="core.accessibility",
+        keywords=("echo", "double-press", "review", "announcement", "virtualize"),
+    ),
+    SettingSpec(
+        "editor_control_kind",
+        "Editor control type (braille)",
+        "accessibility",
+        "choice",
+        (
+            "Which native control backs the editor. RichEdit is the default; some "
+            "braille displays show the first character of every line in cell two "
+            "with a rich control (the long-standing Microsoft Word quirk). "
+            "'Plain edit, like Notepad' uses a simple control that avoids the "
+            "offset and still reads correctly. Takes effect for documents opened "
+            "after the change (restart to apply everywhere). Windows only."
+        ),
+        choices=(
+            ("rich2", "RichEdit 3.0 (default)"),
+            ("rich", "RichEdit 2.0 (older engine)"),
+            ("plain", "Plain edit, like Notepad (best for braille)"),
+        ),
+        keywords=("braille", "richedit", "notepad", "plain", "jaws", "cell", "display"),
+    ),
+    SettingSpec(
         "announcement_trace_enabled",
         "Record announcement trace",
         "accessibility",
@@ -1094,6 +1163,18 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         maximum=2000,
         feature_id="core.read_aloud",
         keywords=("read aloud", "pause", "pacing", "timing"),
+    ),
+    SettingSpec(
+        "read_aloud_follow_cursor",
+        "Move cursor to follow Read Aloud",
+        "read_aloud",
+        "bool",
+        "Select each sentence in the editor as it is spoken so you can follow "
+        "along. Off by default, because with a screen reader running this makes "
+        "it announce the selection over the Read Aloud voice. Turn it on if you "
+        "want the cursor to track what is being read.",
+        feature_id="core.read_aloud",
+        keywords=("read aloud", "follow", "cursor", "highlight", "selection", "screen reader"),
     ),
     # --- AI and assistant --------------------------------------------------
     SettingSpec(

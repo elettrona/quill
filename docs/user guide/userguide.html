@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>userguide</title>
+  <title>QUILL User Guide</title>
   <style>
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -242,7 +242,7 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">userguide</h1>
+<h1 class="title">QUILL User Guide</h1>
 </header>
 <h1 id="quill-user-guide">Quill User Guide</h1>
 <p><strong>QUILL</strong> stands for <strong>Quality, Usable, Inclusive,
@@ -484,6 +484,41 @@ you want). The Keymap Editor stores chords in this
 <code>Ctrl+Shift+Grave, X</code> grammar; menus and the cheat sheet
 display them as <code>QUILL Key + X</code>. Conflict detection prevents
 accidental double-bindings.</p>
+<h3 id="the-keyboard-manager-search-record-and-diagnose">The Keyboard
+Manager: search, record, and diagnose</h3>
+<p>The Keymap Editor is built for fast, confident customisation, however
+you think about shortcuts:</p>
+<ul>
+<li><strong>Search two ways from one box.</strong> Type part of a
+command’s name to filter the list. Or type a <em>shortcut</em> —
+<code>ctrl+alt+m</code>, <code>Control + Shift + K</code>, even a QUILL
+chord like <code>quill, s</code> — and the editor flips to reverse
+lookup, telling you exactly which command that key is assigned to, or
+that it is “unassigned and available.” You do not have to remember
+whether a key is free; ask it.</li>
+<li><strong>Forgiving spelling.</strong> Modifiers can be written
+however you like: <code>control</code>, <code>ctrl</code>, or
+<code>ctl</code>; in any order (<code>shift+ctrl+k</code> equals
+<code>ctrl+shift+k</code>); in any case. QUILL normalises what you type
+and stores the tidy form, so <code>mac</code>-style <code>Cmd</code>
+stays distinct from <code>Ctrl</code> and is never confused with
+it.</li>
+<li><strong>Record Keys.</strong> Prefer to <em>press</em> the
+combination rather than spell it? Choose <strong>Record Keys</strong>,
+press the chord, and QUILL fills it in for you.</li>
+<li><strong>Honest conflicts with one-step reassignment.</strong> If you
+assign a key that is already taken, QUILL names the command that owns it
+— by its friendly title, not an internal id — and offers to move the key
+here, freeing it on the other command. No silent clobbering, no
+guessing.</li>
+<li><strong>Diagnostics and self-heal.</strong> <strong>Run
+Diagnostics</strong> audits your whole keymap and reports duplicate
+shortcuts, bindings for commands that no longer exist, unreadable
+bindings, and any key that is “assigned but inert” (one the editor
+cannot actually fire). For the repairable problems it offers a one-click
+<strong>Heal</strong> that removes the bad entries and re-applies your
+keymap so menus and shortcuts line up again.</li>
+</ul>
 <p>Default QUILL-key chords:</p>
 <ul>
 <li><code>QUILL Key + N</code> — enter Quick Nav (browse) mode for the
@@ -740,6 +775,17 @@ Inserts Tab Character</strong> menu item, and the new mode is announced
 when you switch. While Tab Mode is set to insert a tab character,
 Shift+Tab still outdents so a stray indent can be removed without
 leaving the mode. The setting applies to the current session.</p>
+<p><strong>How the indent is spoken, and how wide it is.</strong> When
+you indent with Tab (or outdent with Shift+Tab), Quill speaks the line’s
+<em>new</em> indentation depth — for example “4 spaces”, “8 spaces”, or
+“1 tab” — so you always know how deep the line sits, not just that it
+moved. Two settings control the indentation itself: <strong>Number of
+spaces per indent level</strong> (Settings; 1–8, default 4) sets the
+width, and <strong>Insert tab characters instead of spaces</strong>
+(Settings) switches between space and tab indentation — the spoken depth
+follows whichever you choose. If you prefer the shorter “Indented lines”
+message, turn off <strong>Announce indentation depth on Tab</strong>
+(Settings → Accessibility).</p>
 <h2 id="the-menu-bar-reference">The Menu Bar Reference</h2>
 <p>This section walks the entire menu bar in the order you will
 encounter it.</p>
@@ -792,21 +838,56 @@ Links in plain-text export</strong> controls how Markdown links are
 written: keep the link text and its URL (the default, so you never lose
 where a link pointed), the link text only, the URL only, or the original
 Markdown link. This setting also applies whenever Save As writes a
-<code>.txt</code> file.</li>
-<li><strong>Reload from Disk</strong> throws away in-memory edits and
-reloads the file from storage after confirmation.</li>
-<li><strong>Restore Backup…</strong> lets you restore a saved backup
-version.</li>
-<li><strong>Page Setup…</strong> and <strong>Print…</strong> support
-paper and print workflows.</li>
-<li><strong>Run Current File</strong> executes the saved file with its
-associated tool, and <strong>Open Target at Cursor</strong> opens the
-path or link under the caret.</li>
-<li><strong>Rename Current File…</strong> and <strong>Delete Current
-File…</strong> manage the file on disk from inside the editor.</li>
-<li><strong>Close Document</strong> closes the current tab.</li>
-<li><strong>Exit</strong> closes the application.</li>
+<code>.txt</code> file. If the document carries hidden formatting
+(fonts, colours, alignment), Quill offers to keep it with an
+<strong>Illumination</strong> — see below.</li>
 </ul>
+<h5 id="keeping-formatting-in-a-plain-text-file-illuminations">Keeping
+formatting in a plain-text file: Illuminations</h5>
+<p>A plain <code>.txt</code> file has nowhere to store fonts, colours,
+or alignment, so saving formatted text as plain text normally drops the
+formatting. Quill gives you a choice, named after the decorative layer a
+scribe paints over a manuscript: an <strong>Illumination</strong> is a
+small companion file, <code>yourfile.txt.illumination</code>, that holds
+the formatting beside the clean text. Your <code>.txt</code> stays
+genuinely plain — readable in Notepad, e-mail, or anywhere — and when
+you reopen it <em>in Quill</em>, the matching Illumination restores
+every font, colour, and alignment exactly.</p>
+<p>What happens when you save formatted text as plain text is set by
+<strong>Settings → Editing → Saving formatted text as plain
+text</strong>:</p>
+<ul>
+<li><strong>Ask each time</strong> (the default) — Quill asks whether to
+keep your formatting (by saving as Markdown, Word, or RTF instead), to
+save the plain <code>.txt</code> <strong>plus</strong> an Illumination,
+or to save plain text only and drop the formatting.</li>
+<li><strong>Always save an Illumination sidecar</strong> — Quill writes
+the clean <code>.txt</code> and the <code>.illumination</code> companion
+every time, no prompt.</li>
+<li><strong>Save plain text and drop the formatting</strong> — the
+classic lossy save; the <code>.txt</code> is clean and any old
+Illumination beside it is removed.</li>
+</ul>
+<p>A few things worth knowing: the Illumination travels as a
+<em>separate file</em>, so if you copy or e-mail only the
+<code>.txt</code>, the formatting won’t come along — keep the pair
+together (or use Markdown/Word/RTF, which carry formatting inside one
+file). And if you edit the <code>.txt</code> in another program, Quill
+notices the text no longer matches the Illumination and opens it as
+plain text rather than re-applying formatting to the wrong words. If
+you’d rather a single self-contained file that preserves everything,
+save as <strong>Markdown</strong> (which keeps the formatting inline) or
+<strong>Word/RTF</strong> (which turn it into native formatting). -
+<strong>Reload from Disk</strong> throws away in-memory edits and
+reloads the file from storage after confirmation. - <strong>Restore
+Backup…</strong> lets you restore a saved backup version. - <strong>Page
+Setup…</strong> and <strong>Print…</strong> support paper and print
+workflows. - <strong>Run Current File</strong> executes the saved file
+with its associated tool, and <strong>Open Target at Cursor</strong>
+opens the path or link under the caret. - <strong>Rename Current
+File…</strong> and <strong>Delete Current File…</strong> manage the file
+on disk from inside the editor. - <strong>Close Document</strong> closes
+the current tab. - <strong>Exit</strong> closes the application.</p>
 <p>The File menu is also where Quill quietly proves that it respects
 risk. Reload is explicit. Backup restore is explicit. URL opening is
 explicit. Nothing important is hidden behind a side effect.</p>
@@ -995,6 +1076,45 @@ markup-aware editing of existing text.</p>
 <li>Bold</li>
 <li>Italic</li>
 </ul>
+<p><strong>Rich formatting with hidden codes (new in 0.8.0 Beta
+2).</strong> Beyond Bold and Italic, the Format menu now applies real
+document formatting that stays invisible in your editor:
+<strong>Underline</strong>, <strong>Strikethrough</strong>,
+<strong>Superscript</strong>, <strong>Subscript</strong>,
+<strong>Font</strong> (family), <strong>Size</strong> (point size),
+<strong>Text Colour</strong>, <strong>Highlight</strong>, and paragraph
+<strong>Alignment</strong> (Left / Centre / Right / Justify), line
+spacing, indent, and named styles. The idea is <em>hidden codes</em>:
+your editing buffer stays clean, fast, plain text — the formatting is
+stored as invisible markup, never as on-screen clutter — and is
+materialised into real formatting only when you export. So you read and
+edit clean prose, and the document still becomes a properly formatted
+Word, RTF, or HTML file on save.</p>
+<ul>
+<li><strong>Apply it</strong> from the Format menu’s Font / Size / Align
+/ Colour / Highlight items, or from the accessible
+<strong>Font…</strong> dialog, which gathers font family, point size,
+colour, and highlight in one place. With text selected, the formatting
+applies to the selection; with no selection it applies as you type.</li>
+<li><strong>Hear what’s there.</strong> Because the codes are hidden,
+<strong>Describe Formatting at Cursor</strong> speaks exactly what is in
+effect at the caret — for example “Arial, 14 point, centred, bold”. Turn
+on <strong>Announce formatting on caret move</strong> (Settings →
+Accessibility) to hear formatting changes as you arrow through a
+document.</li>
+<li><strong>It exports faithfully.</strong> On <strong>Save As</strong>
+(or Export) to <strong>Word (.docx)</strong>, <strong>Rich Text
+(.rtf)</strong>, or <strong>HTML</strong>, the hidden codes become real
+formatting — font, size, colour, highlight, alignment, and the rest.
+Word export uses a native writer when the optional
+<code>python-docx</code> component is present and falls back to Pandoc
+otherwise. If a target format genuinely cannot carry something, Quill
+tells you before you commit rather than dropping it silently; saving to
+plain text drops the formatting with the same honest warning.</li>
+</ul>
+<p>Everything that makes Quill fast still works on the same clean text:
+undo, search, the outline, word counts, read-aloud, and the AI tools all
+operate on your prose, not on markup.</p>
 <p>The <strong>Transform Lines</strong> submenu gathers every line and
 text transform in one place: <strong>Number Lines…</strong>,
 <strong>Number Lines (Advanced)…</strong>, <strong>Hard-Wrap
@@ -2226,6 +2346,12 @@ them.</p>
 next open document.</li>
 <li><strong>Previous Document</strong> (<code>Ctrl+Shift+Tab</code>) —
 move to the previous open document.</li>
+<li><strong>Go to Document 1–10</strong> (<code>Alt+1</code> …
+<code>Alt+9</code>, and <code>Alt+0</code> for the tenth) — jump
+straight to a document by its position instead of cycling. If no
+document is open at that position, QUILL says so and stays where you
+are. Like every shortcut, these are remappable in the Keymap
+Editor.</li>
 <li><strong>Send to System Tray</strong> — hide QUILL to the
 notification area without closing it.</li>
 <li><strong>1: filename.txt (active)</strong>, <strong>2:
@@ -4236,6 +4362,48 @@ An optional <strong>Announcement budget (per 5 seconds)</strong> caps
 how many announcements are spoken in a burst (0 means no cap). Both
 affect only what is <em>spoken</em>; the status bar always shows every
 update, so nothing is ever hidden.</li>
+<li><strong>Trim specific cues.</strong> Two announcement toggles under
+<strong>Preferences &gt; Accessibility</strong> tailor what QUILL says.
+<strong>Announce entering and leaving dialogs</strong> (on by default)
+speaks “Entered” / “Exited <em>name</em> dialog” as dialog boxes open
+and close — turn it off if your screen reader already announces dialogs.
+<strong>Announce indentation depth on Tab</strong> (on by default) makes
+Tab and Shift+Tab speak the new depth (“4 spaces”, “1 tab”) instead of
+“Indented lines”. Both affect only speech; the status bar still
+updates.</li>
+<li><strong>Re-read what QUILL just said — the Spoken Echo.</strong>
+Speech is fleeting: an indent depth, a formatting description, a save
+result, or a “no matches” scrolls past the instant it is spoken. The
+<strong>Spoken Echo</strong> remembers the last twenty things QUILL
+announced and shows them, newest first, in a read-only dialog you can
+arrow through line by line, review by character, select, and copy. Open
+it any time with <strong>Alt+Shift+E</strong>, or from <strong>Help &gt;
+Show Spoken Echo</strong> — it works after <em>any</em> announcement,
+including ones triggered by ordinary editing keys such as Tab, so you
+can hear “8 spaces”, then open the Echo to read and copy it. If you are
+used to the screen-reader convention of pressing a reporting command
+twice, <strong>double-pressing</strong> an informational command —
+Describe Formatting, Document Summary, Context Help, or Announce
+Contrast — opens the Echo instead of re-speaking the same line. The
+dedicated Alt+Shift+E key is the universal path and always works; the
+double-press shortcut can be turned off under <strong>Preferences &gt;
+Accessibility &gt; Double-press to show the Spoken Echo</strong> (on by
+default). The Echo only records lines QUILL actually speaks, never your
+typing.</li>
+<li><strong>Braille display showing the first character in cell
+two?</strong> QUILL’s editor defaults to a rich-text control (so screen
+readers report its contents correctly), and some braille displays shift
+each line of a rich control one cell to the right — the same
+long-standing quirk you may remember from Microsoft Word.
+<strong>Preferences &gt; Accessibility &gt; Editor control type
+(braille)</strong> lets you change the native control: if your display
+shows the offset, set it to <strong>Plain edit, like Notepad</strong>, a
+simple control that the rich control was only ever needed in place of
+for <em>read-only</em> views (an editable plain control still reads
+correctly). RichEdit 2.0 is offered as a middle option. Changing the
+control type takes effect for documents opened afterward, so reopen your
+document or restart to compare. This affects only how the control is
+presented; your text is never changed.</li>
 <li><strong>Per-action templates.</strong> Advanced users can edit
 exactly what each action says, using tokens like <code>{line}</code> and
 filters like <code>${ordinal:line}</code>, with live validation and
@@ -4253,6 +4421,13 @@ customizations.</li>
 <p>These controls are screen-reader-first: QUILL speaks alongside your
 screen reader, it does not replace it, so it never duplicates the typing
 echo or punctuation settings your screen reader already provides.</p>
+<p><strong>About QUILL’s own voice.</strong> When you run a screen
+reader, QUILL speaks through it. QUILL also has its own built-in voice
+(Windows SAPI 5) used only as a fallback for people who do not run a
+screen reader. If that built-in voice ever fails to start, QUILL does
+not interrupt you about it while your screen reader is doing the talking
+— it simply notes it quietly. If you do want QUILL’s own voice and it
+did not start, run <strong>Tools &gt; Retry TTS Engine</strong>.</p>
 <h2 id="accessibility-and-low-vision-features">Accessibility and
 Low-Vision Features</h2>
 <p>Quill is designed so accessibility is visible, not hidden.</p>

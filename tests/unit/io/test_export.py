@@ -147,6 +147,47 @@ def test_html_escapes_title() -> None:
     assert "<title>A &amp; B</title>" in markdown_to_html("x", "A & B")
 
 
+def test_html_renders_run_span_as_styled_span() -> None:
+    out = markdown_to_html('[Hi]{font-family="Arial" font-size="14" color="#C00000"}', "Doc")
+    assert "font-family: Arial" in out
+    assert "font-size: 14pt" in out
+    assert "color: #C00000" in out
+    assert "<span style=" in out
+
+
+def test_html_renders_alignment_div() -> None:
+    out = markdown_to_html('::: {align="center"}\nCentered.\n:::', "Doc")
+    assert '<div style="text-align: center">' in out
+    assert "Centered." in out
+
+
+def test_plain_strips_run_span_and_alignment() -> None:
+    md = '[Hi]{font-family="Arial"} there\n::: {align="center"}\nCentered.\n:::'
+    assert markdown_to_plain_text(md) == "Hi there\nCentered."
+
+
+def test_html_renders_strike_super_sub() -> None:
+    out = markdown_to_html("[a]{strike} [b]{superscript} [c]{subscript}", "Doc")
+    assert "line-through" in out
+    assert "vertical-align: super" in out
+    assert "vertical-align: sub" in out
+
+
+def test_html_renders_line_spacing_and_named_style() -> None:
+    out = markdown_to_html('::: {line-spacing="2" pstyle="quote"}\nx\n:::', "Doc")
+    assert "line-height: 2" in out
+    assert "font-style: italic" in out  # quote named style
+
+
+def test_html_renders_page_break() -> None:
+    out = markdown_to_html("a\n::: pagebreak\nb", "Doc")
+    assert "page-break-after: always" in out
+
+
+def test_plain_strips_page_break() -> None:
+    assert markdown_to_plain_text("a\n::: pagebreak\nb") == "a\nb"
+
+
 # --------------------------------------------------------------------------- #
 # writers + dispatcher
 # --------------------------------------------------------------------------- #

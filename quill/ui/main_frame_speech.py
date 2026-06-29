@@ -1108,7 +1108,7 @@ class SpeechCommandsMixin:
             return
         self._mic_recorder = recorder
         self._play_speech_sound("transcription_started")
-        self._set_status("Dictation listening")
+        self._set_status_quiet("Dictation listening")
         self._announce("Listening. Run Dictate (Offline) again to stop and insert.")
 
     def _stop_and_insert_dictation(self, recorder: object) -> None:
@@ -1142,7 +1142,7 @@ class SpeechCommandsMixin:
                 except OSError:
                     pass
 
-        self._set_status("Transcribing dictation")
+        self._set_status_quiet("Transcribing dictation")
         self._announce("Transcribing dictation...")
         self._run_background_task("Transcribing dictation", _work, self._insert_dictation_result)
 
@@ -1150,13 +1150,13 @@ class SpeechCommandsMixin:
         text = (getattr(result, "full_text", "") or "").strip()
         editor = getattr(self, "editor", None)
         if not text or editor is None:
-            self._set_status("Dictation: no speech detected")
+            self._set_status_quiet("Dictation: no speech detected")
             self._announce("No speech detected.")
             return
         editor.WriteText(text + " ")
         self._play_speech_sound("transcription_word_inserted")
         words = len(text.split())
-        self._set_status(f"Dictation inserted {words} words")
+        self._set_status_quiet(f"Dictation inserted {words} words")
         self._announce(f"Inserted {words} words. Press Control+Z to undo.")
 
     @staticmethod
@@ -1213,7 +1213,7 @@ class SpeechCommandsMixin:
             return
         self._voice_recorder = recorder
         self._play_speech_sound("transcription_started")
-        self._set_status("Listening for a command")
+        self._set_status_quiet("Listening for a command")
         self._announce("Listening for a command. Run the command again to stop and act.")
 
     def _stop_and_dispatch_voice_command(self, recorder: object) -> None:
@@ -1265,7 +1265,6 @@ class SpeechCommandsMixin:
         else:
             # cancel / no_match / a command that fell outside the safe allowlist.
             self._set_status(outcome.message)
-            self._announce(outcome.message)
 
     # -- microphone selection --------------------------------------------- #
 

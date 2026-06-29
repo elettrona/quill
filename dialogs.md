@@ -215,6 +215,8 @@ state and lists any installed Quillins read-only.
 - [ ] Agent Center: via Tools menu
 - [ ] Accessibility Tune-Up: via Tools > AI Assistant (Tools > AI Assistant > Accessibility Tune-Up...)
 - [ ] AI Hub: via Tools menu
+- [ ] Set Up GitHub Copilot: via AI menu (AI > Set Up GitHub Copilot...), or by choosing GitHub Copilot in the AI engine switcher when its SDK is not installed
+- [ ] Validate Agents: via AI menu (AI > Validate Agents...). Lints built-in agents by default; Choose Folder/File to validate your own
 
 ## R. Tools: BITS Whisperer (speech)
 

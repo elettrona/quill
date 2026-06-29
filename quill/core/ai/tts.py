@@ -178,20 +178,29 @@ def speak_text(
     speed: float = 1.0,
     on_chunk_complete: Callable[[int, int], None] | None = None,
     stop_event: threading.Event | None = None,
+    pause_event: threading.Event | None = None,
 ) -> None:
     """Chunk *text*, fetch each chunk, play sequentially via sounddevice/soundfile.
 
     Checks *stop_event* between chunks. Calls *on_chunk_complete(done, total)*
-    after each successful chunk.
+    after each successful chunk. When *pause_event* is set, playback holds at the
+    next chunk boundary until it is cleared (or *stop_event* fires) — a coarse but
+    real pause for the speech player's Pause/Resume.
 
     Falls back to writing chunks to a temp file and invoking winsound if
     sounddevice is not installed.
     """
+    import time
+
     chunks = chunk_text(text)
     if not chunks:
         return
     total = len(chunks)
     for i, chunk in enumerate(chunks):
+        while pause_event is not None and pause_event.is_set():
+            if stop_event and stop_event.is_set():
+                raise TTSCancelledError("Playback stopped by user.")
+            time.sleep(0.1)
         if stop_event and stop_event.is_set():
             raise TTSCancelledError("Playback stopped by user.")
         mp3_bytes = request_speech(chunk, api_key, model=model, voice=voice, speed=speed)

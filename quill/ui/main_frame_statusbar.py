@@ -92,6 +92,11 @@ class StatusBarMixin:
             visible.append("suggestion")
         if "braille" not in visible and self._statusbar_braille_text():
             visible.append("braille")
+        # Auto-surface the AI engine cell once the user has chosen a non-Native
+        # agentic engine, so the active engine is always visible while in use
+        # without permanently occupying the bar for everyone else.
+        if "ai_engine" not in visible and self._ai_engine_should_autoshow():
+            visible.append("ai_engine")
         if not visible:
             return ["message"]
         if "message" not in visible:
@@ -272,12 +277,14 @@ class StatusBarMixin:
             if getattr(tab, "_language_profile_pinned", False):
                 return f"{name} (set)"
             return name
+        if item == "ai_engine":
+            return self.ai_engine_status_text()
         if item == "braille":
             return self._statusbar_braille_text()
         if item == "sr_name":
             # A11Y live indicator (§8.3): show the detected screen reader name.
-            # Cache the result on the instance to avoid re-running tasklist on
-            # every status-bar refresh.
+            # Cache the result on the instance to avoid re-running the process
+            # snapshot on every status-bar refresh.
             if not hasattr(self, "_sr_name_cache"):
                 try:
                     from quill.platform.windows.sr_detect import detect_screen_reader
@@ -482,6 +489,7 @@ class StatusBarMixin:
             "sr_name": "Detected screen reader. Press Enter to re-detect.",
             "suggestion": "Frequently used command. Press Enter to run it.",
             "braille": "Braille position. Press Enter for Read Braille Status.",
+            "ai_engine": "Active AI engine. Press Enter to switch engines.",
         }
         return labels.get(item, self._STATUS_BAR_LABELS.get(item, item))
 
@@ -673,6 +681,9 @@ class StatusBarMixin:
             "search_term": self.find_text,
             "file_path": self.open_containing_folder,
         }
+        if item == "ai_engine":
+            self.open_ai_engine_switcher()
+            return
         if item == "language_profile":
             self.set_document_language()
             return
@@ -750,6 +761,7 @@ class StatusBarMixin:
 
     def _set_status(self, message: str) -> None:
         self._status_message = message
+        self._record_spoken(message)
         self._refresh_statusbar()
         throttle_ms = int(getattr(self.settings, "announcement_throttle_ms", 0) or 0)
         if throttle_ms > 0:

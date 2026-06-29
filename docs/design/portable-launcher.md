@@ -34,25 +34,38 @@ written in `bundle_embedded_python()` right after the `._pth` is patched to
 enable `import site`).
 
 Python auto-imports `sitecustomize` at interpreter startup whenever `site` is
-enabled. The hook checks two things and, only when both hold, starts QUILL and
-exits:
+enabled. The hook only acts when the running executable is **`quill.exe`**
+(`os.path.basename(sys.executable)`), and then handles two cases:
 
-- the running executable is **`quill.exe`** (`os.path.basename(sys.executable)`),
-  and
-- **no script/module/args** were given — the argv a bare double-click produces
-  (`len(sys.argv) <= 1 and (not sys.argv or sys.argv[0] == "")`).
+- **Bare launch** — the argv a double-click produces
+  (`len(sys.argv) <= 1 and (not sys.argv or sys.argv[0] == "")`): start QUILL
+  with no file.
+- **File association** — when QUILL is set as the default app for a document
+  type, the OS runs `quill.exe "<path>"`. Because `quill.exe` is a renamed
+  `pythonw.exe`, that path arrives as `sys.argv[0]` and Python would otherwise
+  try to *run the document as a script*. The hook detects an existing,
+  non-`__main__.py` `sys.argv[0]` and forwards it to QUILL as a file to open
+  (`sys.argv = ["quill", doc]` then `main()`), so the document opens instead of
+  silently doing nothing.
 
 So:
 
 | Invocation | `sitecustomize` branch | Result |
 | --- | --- | --- |
-| Double-click `quill.exe` | self-run | QUILL launches (no console, no `-m`) |
-| `quill.exe -m quill` | no-op | normal `-m quill` runs (shortcuts use this) |
+| Double-click `quill.exe` | bare launch | QUILL launches (no console, no `-m`) |
+| Open a `.docx` with QUILL as default app (`quill.exe "doc.docx"`) | file association | QUILL opens the document |
+| `quill.exe -m quill [args]` | no-op (argv[0] is quill's `__main__.py`) | normal `-m quill` runs (shortcuts, file-assoc/verbs the installer registers) |
 | `python.exe ...`, `pip ...` (incl. during the build) | no-op | normal Python |
 
 The result is a launcher that needs **no `-m`, no console window, and no `.cmd`
 shim** (an earlier `run-quill.cmd` approach was rejected because the console
-window flashed on launch).
+window flashed on launch). The installer additionally registers its
+file-association *open* command and right-click "Send to QUILL" verbs as
+`quill.exe -m quill ["%1" | --action <verb> "%1"]` — the `-m quill` is required
+because `pythonw` rejects a bare `--action` option and would otherwise run the
+file as a script; the `sitecustomize` file-association branch above is the safety
+net for associations a user sets manually (whose command is just
+`quill.exe "%1"`).
 
 ## 3. The layout: flat, not nested
 
@@ -144,6 +157,11 @@ In `tests/unit/scripts/test_build_windows_distribution.py`:
 - `test_self_run_sitecustomize_launches_quill_for_a_bare_exe` — the generated
   `sitecustomize.py` guards on `quill.exe` + bare argv and calls
   `quill.__main__:main`.
+- `test_self_run_sitecustomize_opens_file_associations` — the hook forwards an
+  OS-passed document (`quill.exe "doc"`) to QUILL via `argv` instead of running
+  it as a script.
+- `test_shell_verb_command_launches_quill_exe_with_action` — the installer's
+  open/verb commands pass `-m quill` so `pythonw` runs QUILL, not the file.
 - `test_portable_bundle_flattens_runtime_to_root` — a built portable bundle has
   `quill.exe`, `sitecustomize.py`, `python313.dll`, and `Lib/...` at the root,
   **no `python\` subdir**, and a `data/` folder.

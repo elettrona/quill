@@ -17,6 +17,13 @@ from quill.core.keymap_packs import (
     keyboard_pack_names,
     keyboard_pack_preview,
 )
+from quill.core.keymap_query import (
+    canonical_binding,
+    commands_for_keystroke,
+    diagnose_keymap,
+    duplicate_bindings,
+    find_keymap_conflicts,
+)
 from quill.core.paths import app_data_dir
 from quill.core.storage import read_json, write_json_atomic
 
@@ -28,9 +35,14 @@ __all__ = [
     "KeyboardPack",
     "KQP_EXTENSION",
     "build_keymap_for_pack",
+    "canonical_binding",
+    "commands_for_keystroke",
+    "diagnose_keymap",
+    "duplicate_bindings",
     "export_keyboard_pack",
     "export_keymap",
     "find_keymap_conflict",
+    "find_keymap_conflicts",
     "format_binding_for_display",
     "format_quill_key_chord",
     "import_keyboard_pack",
@@ -61,6 +73,18 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "file.print": "Ctrl+P",
     "window.next_document": "Ctrl+Tab",
     "window.previous_document": "Ctrl+Shift+Tab",
+    # Jump straight to the Nth open document. Alt+digit is otherwise unused and,
+    # unlike Ctrl+Alt+ chords, is not screen-reader-hostile (§10.8). Alt+0 = 10th.
+    "window.go_to_document_1": "Alt+1",
+    "window.go_to_document_2": "Alt+2",
+    "window.go_to_document_3": "Alt+3",
+    "window.go_to_document_4": "Alt+4",
+    "window.go_to_document_5": "Alt+5",
+    "window.go_to_document_6": "Alt+6",
+    "window.go_to_document_7": "Alt+7",
+    "window.go_to_document_8": "Alt+8",
+    "window.go_to_document_9": "Alt+9",
+    "window.go_to_document_10": "Alt+0",
     "window.close_other_documents": "Ctrl+Shift+F4",
     "navigate.speak_window_title": "Ctrl+Shift+Grave, F",
     "navigate.speak_full_path": "Ctrl+Shift+Grave, P",
@@ -125,6 +149,7 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "tools.ai_grammar_style": "Ctrl+Alt+Shift+G",  # §edsharp-ok — AI reserved chord class
     "tools.ai_translate_selection": "Ctrl+Alt+Shift+T",  # §edsharp-ok — AI reserved chord class
     "tools.ai_thesaurus": "Ctrl+Alt+Shift+H",  # §edsharp-ok — AI reserved chord class
+    "tools.ai_switch_engine": "Ctrl+Alt+Shift+E",  # §edsharp-ok — AI reserved chord class
     # #357 keymap consolidation: compare commands move from inline
     # F8/Shift+F8/Ctrl+F8 accelerators (colliding with the selection
     # bindings) to the same Ctrl+Alt+Shift+ chord class as the AI
@@ -229,6 +254,7 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "format.list_manager": "Ctrl+Shift+Grave, L",
     "format.bold": "Ctrl+B",
     "format.italic": "Ctrl+I",
+    "format.describe_formatting": "Ctrl+Shift+D",
     "format.heading_1": "Ctrl+Alt+1",  # §edsharp-ok — overrides NVDA switch-to-synth-1
     "format.heading_2": "Ctrl+Alt+2",  # §edsharp-ok — overrides NVDA switch-to-synth-2
     "format.heading_3": "Ctrl+Alt+3",  # §edsharp-ok — overrides NVDA switch-to-synth-3
@@ -283,6 +309,10 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "help.key_cheatsheet": "Alt+Shift+/",
     # §8.1 — live contrast check announcement.
     "view.announce_contrast": "Ctrl+Shift+Grave, Shift+C",
+    # Spoken Echo — virtualise the last several announcements into a read-only
+    # review dialog (E for Echo). Alt+Shift+E is free (Alt+Shift+letter chords
+    # are used elsewhere, e.g. Z/N/K) and not screen-reader-hostile.
+    "view.spoken_echo": "Alt+Shift+E",
     # §8.2 — explain why the focused item is unavailable ("Why don't I see…?").
     "help.why_unavailable": "Alt+F1",
     # §10.8 — magic paste moves to QUILL key, V (handled in QuillKeyMixin prefix
@@ -669,13 +699,17 @@ def find_keymap_conflict(
     keymap: dict[str, str],
     command_id: str,
     binding: str,
+    *,
+    quill_key_prefix: str | None = None,
 ) -> str | None:
-    candidate = binding.strip().upper()
-    if not candidate:
-        return None
-    for existing_command, existing_binding in keymap.items():
-        if existing_command == command_id:
-            continue
-        if existing_binding.strip().upper() == candidate:
-            return existing_command
-    return None
+    """Return the first other command bound to ``binding``, or None.
+
+    Delegates to :func:`quill.core.keymap_query.find_keymap_conflicts`, so the
+    comparison is canonical: a re-ordered or alias spelling ("Shift+Ctrl+K",
+    "control+shift+k") conflicts with a stored "Ctrl+Shift+K". Kept as a
+    first-match convenience wrapper for the editor's existing call site.
+    """
+    conflicts = find_keymap_conflicts(
+        keymap, command_id, binding, quill_key_prefix=quill_key_prefix
+    )
+    return conflicts[0] if conflicts else None

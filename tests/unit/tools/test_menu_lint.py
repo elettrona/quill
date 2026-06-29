@@ -114,12 +114,12 @@ def _fake_menu_source(*labels: str) -> str:
 
 
 def test_required_clusters_present() -> None:
-    # All nine required cluster labels, each passed to a real AppendSubMenu call.
+    # All required cluster labels, each passed to a real AppendSubMenu call.
+    # (AI is now a top-level menu, not a Tools cluster.)
     fake = _fake_menu_source(
         "R&eading && Dictation",
         "C&omparison",
         "&Watch Folder",
-        "AI &Assistant",
         "&Advanced",
         "&Quillins",
         "A&ccessibility",
@@ -140,7 +140,6 @@ def test_required_clusters_missing_writing_language() -> None:
         "R&eading && Dictation",
         "C&omparison",
         "&Watch Folder",
-        "AI &Assistant",
         "&Advanced",
         "&Quillins",
         "A&ccessibility",
@@ -153,9 +152,9 @@ def test_required_clusters_missing_writing_language() -> None:
 def test_required_clusters_comment_mention_does_not_satisfy_gate() -> None:
     """Regression for #286: the old substring check would pass if a cluster's
     label text merely appeared in a comment. The AST check must not."""
-    fake = '# TODO: rename the "AI &Assistant" cluster someday\nimport wx\n'
+    fake = '# TODO: rename the "&Watch Folder" cluster someday\nimport wx\n'
     errors = _check_required_clusters(fake)
-    assert any("AI Assistant" in e for e in errors)
+    assert any("Watch Folder" in e for e in errors)
 
 
 # ---------------------------------------------------------------------------

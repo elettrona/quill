@@ -75,6 +75,7 @@ _REVIEWED_PERSISTENCE: dict[str, str] = {
     "core/share_package.py::write_package_file": "export",
     "core/speech/batch_manifest.py::write_manifest": "export",
     "core/brf_sidecar.py::write_sidecar": "export",
+    "io/illumination.py::write_illumination": "export",
     # --- secret (credential store) ---
     "core/assistant_ai.py::save_assistant_api_key": "secret",
     "platform/windows/credential_store.py::_write_store": "secret",
@@ -91,6 +92,7 @@ _REVIEWED_PERSISTENCE: dict[str, str] = {
     "core/sessions.py::add_recent_session": "cache",
     "core/sessions.py::clear_recent_sessions": "cache",
     "core/watch_queue.py::_save_locked": "cache",
+    "core/ai/activity_log.py::append": "cache",
     # --- marker / small state flags ---
     "core/onboarding.py::mark_assistant_onboarding_complete": "marker",
     "core/onboarding.py::mark_glow_onboarding_complete": "marker",
@@ -104,6 +106,8 @@ _REVIEWED_PERSISTENCE: dict[str, str] = {
     "core/ai/model_manager.py::save_ai_enabled": "marker",
     "core/ai/external_engine.py::set_external_engines_enabled": "marker",
     "core/speech/service.py::save_input_device": "marker",
+    "core/ai/quick_switch.py::save_preferred_harness_id": "marker",
+    "core/ai/onboarding.py::_save_state": "marker",
     # --- content (user-created data; additive) ---
     "core/abbreviations.py::save_abbreviation_library": "content",
     "core/assistant_prompts.py::save_custom_prompts": "content",
@@ -115,6 +119,7 @@ _REVIEWED_PERSISTENCE: dict[str, str] = {
     "core/macros.py::save": "content",
     "core/notebook_store.py::save_notebook": "content",
     "core/prompt_library.py::_save": "content",
+    "core/skill_store.py::_save_state": "content",
     "core/sessions.py::save_session": "content",
     "core/snippets.py::save_snippet_library": "content",
     "core/speech/pronunciation.py::save_dictionary": "content",

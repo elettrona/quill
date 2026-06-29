@@ -261,11 +261,9 @@ class DevToolsMixin:
 
         if os.environ.get("QUILL_SAFE_MODE") == "1":
             self._set_status("Developer Console is disabled in Safe Mode.")
-            self._announce("Developer Console is disabled in Safe Mode.")
             return
         if not getattr(self.settings, "console_enabled", True):
             self._set_status("Developer Console is disabled in settings.")
-            self._announce("Developer Console is disabled in settings.")
             return
         if not self._dt_consent_check():
             return
@@ -295,11 +293,9 @@ class DevToolsMixin:
 
         if os.environ.get("QUILL_SAFE_MODE") == "1":
             self._set_status("Developer Console is disabled in Safe Mode.")
-            self._announce("Developer Console is disabled in Safe Mode.")
             return
         if not getattr(self.settings, "console_enabled", True):
             self._set_status("Developer Console is disabled in settings.")
-            self._announce("Developer Console is disabled in settings.")
             return
         if not self._dt_consent_check():
             return
@@ -332,7 +328,6 @@ class DevToolsMixin:
     def restart_typescript_worker(self) -> None:
         if not hasattr(self, "_dev_console_window"):
             self._set_status("Open the TypeScript console first, then restart the worker.")
-            self._announce("Open the TypeScript console first, then restart the worker.")
             return
         self._dt_ts_console()  # ensure created before thread starts
         threading.Thread(  # GATE-40-OK: TS worker restart.

@@ -176,10 +176,7 @@
   </style>
 </head>
 <body>
-<header id="title-block-header">
-<h1 class="title">portable-launcher</h1>
-</header>
-<h1 id="portable-installed-launcher-contract">Portable &amp; Installed
+<h1 id="portable--installed-launcher-contract">Portable &amp; Installed
 Launcher Contract</h1>
 <blockquote>
 <p><strong>Why this file exists.</strong> Twice now the Windows launcher
@@ -190,16 +187,16 @@ cannot return unnoticed. The rules below are enforced by tests in
 <code>tests/unit/scripts/test_build_windows_distribution.py</code>; if
 you change the packaging, change this doc and those guards together.</p>
 </blockquote>
-<h2 id="the-one-invariant">1. The one invariant</h2>
+<h2 id="1-the-one-invariant">1. The one invariant</h2>
 <p><strong>The <code>quill.exe</code> a user clicks must sit in the same
 directory as the embedded Python runtime it needs
 (<code>python313.dll</code>, <code>python313.zip</code>,
 <code>python313._pth</code>, the <code>*.pyd</code> modules), and it
 must start QUILL with no command-line arguments.</strong></p>
 <p><code>quill.exe</code> is a byte-for-byte copy of the embeddable
-distribution’s <code>pythonw.exe</code>, re-stamped with QUILL’s
-VERSIONINFO via <code>rcedit</code> (so a screen reader’s “what app is
-this” reads <em>QUILL for All</em>, not <em>Python</em>). It is
+distribution's <code>pythonw.exe</code>, re-stamped with QUILL's
+VERSIONINFO via <code>rcedit</code> (so a screen reader's "what app is
+this" reads <em>QUILL for All</em>, not <em>Python</em>). It is
 <strong>still just <code>pythonw.exe</code></strong> — it has no idea it
 should run QUILL, and a bare <code>pythonw.exe</code> double-click does
 nothing useful. Two things make it work:</p>
@@ -213,7 +210,7 @@ with a system Python it binds to the wrong interpreter and crashes. This
 is the bug.</li>
 <li><strong>A self-run hook.</strong> See §2.</li>
 </ol>
-<h2 id="how-quill.exe-self-runs-sitecustomize.py">2. How
+<h2 id="2-how-quillexe-self-runs-sitecustomizepy">2. How
 <code>quill.exe</code> self-runs: <code>sitecustomize.py</code></h2>
 <p>The build writes a generated <code>sitecustomize.py</code> next to
 the runtime (<code>scripts/build_windows_distribution.py</code> →
@@ -221,22 +218,27 @@ the runtime (<code>scripts/build_windows_distribution.py</code> →
 <code>bundle_embedded_python()</code> right after the <code>._pth</code>
 is patched to enable <code>import site</code>).</p>
 <p>Python auto-imports <code>sitecustomize</code> at interpreter startup
-whenever <code>site</code> is enabled. The hook checks two things and,
-only when both hold, starts QUILL and exits:</p>
+whenever <code>site</code> is enabled. The hook only acts when the
+running executable is <strong><code>quill.exe</code></strong>
+(<code>os.path.basename(sys.executable)</code>), and then handles two
+cases:</p>
 <ul>
-<li>the running executable is <strong><code>quill.exe</code></strong>
-(<code>os.path.basename(sys.executable)</code>), and</li>
-<li><strong>no script/module/args</strong> were given — the argv a bare
-double-click produces
-(<code>len(sys.argv) &lt;= 1 and (not sys.argv or sys.argv[0] == "")</code>).</li>
+<li><strong>Bare launch</strong> — the argv a double-click produces
+(<code>len(sys.argv) &lt;= 1 and (not sys.argv or sys.argv[0] == "")</code>):
+start QUILL with no file.</li>
+<li><strong>File association</strong> — when QUILL is set as the default
+app for a document type, the OS runs
+<code>quill.exe "&lt;path&gt;"</code>. Because <code>quill.exe</code> is
+a renamed <code>pythonw.exe</code>, that path arrives as
+<code>sys.argv[0]</code> and Python would otherwise try to <em>run the
+document as a script</em>. The hook detects an existing,
+non-<code>__main__.py</code> <code>sys.argv[0]</code> and forwards it to
+QUILL as a file to open (<code>sys.argv = ["quill", doc]</code> then
+<code>main()</code>), so the document opens instead of silently doing
+nothing.</li>
 </ul>
 <p>So:</p>
 <table>
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 33%" />
-<col style="width: 33%" />
-</colgroup>
 <thead>
 <tr>
 <th>Invocation</th>
@@ -247,16 +249,23 @@ double-click produces
 <tbody>
 <tr>
 <td>Double-click <code>quill.exe</code></td>
-<td>self-run</td>
+<td>bare launch</td>
 <td>QUILL launches (no console, no <code>-m</code>)</td>
 </tr>
 <tr>
-<td><code>quill.exe -m quill</code></td>
-<td>no-op</td>
-<td>normal <code>-m quill</code> runs (shortcuts use this)</td>
+<td>Open a <code>.docx</code> with QUILL as default app
+(<code>quill.exe "doc.docx"</code>)</td>
+<td>file association</td>
+<td>QUILL opens the document</td>
 </tr>
 <tr>
-<td><code>python.exe ...</code>, <code>pip ...</code> (incl. during the
+<td><code>quill.exe -m quill [args]</code></td>
+<td>no-op (argv[0] is quill's <code>__main__.py</code>)</td>
+<td>normal <code>-m quill</code> runs (shortcuts, file-assoc/verbs the
+installer registers)</td>
+</tr>
+<tr>
+<td><code>python.exe ...</code>, <code>pip ...</code> (incl. during the
 build)</td>
 <td>no-op</td>
 <td>normal Python</td>
@@ -266,8 +275,17 @@ build)</td>
 <p>The result is a launcher that needs <strong>no <code>-m</code>, no
 console window, and no <code>.cmd</code> shim</strong> (an earlier
 <code>run-quill.cmd</code> approach was rejected because the console
-window flashed on launch).</p>
-<h2 id="the-layout-flat-not-nested">3. The layout: flat, not nested</h2>
+window flashed on launch). The installer additionally registers its
+file-association <em>open</em> command and right-click "Send to QUILL"
+verbs as
+<code>quill.exe -m quill ["%1" | --action &lt;verb&gt; "%1"]</code> —
+the <code>-m quill</code> is required because <code>pythonw</code>
+rejects a bare <code>--action</code> option and would otherwise run the
+file as a script; the <code>sitecustomize</code> file-association branch
+above is the safety net for associations a user sets manually (whose
+command is just <code>quill.exe "%1"</code>).</p>
+<h2 id="3-the-layout-flat-not-nested">3. The layout: flat, not
+nested</h2>
 <p>The portable bundle and the installed app both use a
 <strong>flat</strong> layout — the embedded runtime is unpacked at the
 bundle/install root, beside <code>quill.exe</code>:</p>
@@ -283,7 +301,7 @@ bundle/install root, beside <code>quill.exe</code>:</p>
 subfolder and then <strong>flattens it to the root</strong>
 (<code>build_windows_distribution()</code>, the
 <code>for entry in sorted(staged_runtime.iterdir())</code> move). The
-runtime ships none of the bundle’s own entries (<code>data/</code>,
+runtime ships none of the bundle's own entries (<code>data/</code>,
 <code>docs/</code>, <code>tools/</code>, <code>vendor/</code>,
 <code>kokoro-models/</code>, <code>manifest.json</code>,
 <code>README.txt</code>), so the move cannot clobber them — and a future
@@ -300,8 +318,8 @@ resolves <code>{app}\quill.exe</code>, then
 <li><strong>#615</strong> introduced the VERSIONINFO-stamped
 <code>quill.exe</code> and nested the runtime under
 <code>python\</code>, hoisting an orphaned copy of
-<code>quill.exe</code> to the bundle root as a “portable-evidence
-marker.” That root copy could not load the interpreter.</li>
+<code>quill.exe</code> to the bundle root as a "portable-evidence
+marker." That root copy could not load the interpreter.</li>
 <li><strong>#722</strong> fixed the <em>installer shortcuts</em> to
 launch <code>python\quill.exe -m quill</code>, so installed users were
 fine — but the <em>portable</em> double-click still landed on the
@@ -346,10 +364,10 @@ extract-over-old would leave the stale <code>python\</code> subfolder
 beside the new flat runtime. It is harmless (the flat
 <code>quill.exe</code> ignores it), but it is clutter and confusing. The
 README advises a clean extract.</p>
-<h2 id="portable-mode-detection-depends-on-this">4. Portable-mode
+<h2 id="4-portable-mode-detection-depends-on-this">4. Portable-mode
 detection depends on this</h2>
 <p><code>quill.core.storage_mode._has_portable_evidence</code> marks a
-bundle “portable” when the anchor has <strong><code>quill.exe</code> + a
+bundle "portable" when the anchor has <strong><code>quill.exe</code> + a
 sibling <code>data/</code></strong> folder. Therefore:</p>
 <ul>
 <li><code>data/</code> <strong>must ship in the bundle</strong> and must
@@ -362,7 +380,7 @@ portable.</li>
 <code>quill.exe</code> runs from the root (flat) — the supported layout
 — or, defensively, one level down.</li>
 </ul>
-<h2 id="regression-guards-do-not-remove">5. Regression guards (do not
+<h2 id="5-regression-guards-do-not-remove">5. Regression guards (do not
 remove)</h2>
 <p>In
 <code>tests/unit/scripts/test_build_windows_distribution.py</code>:</p>
@@ -378,6 +396,12 @@ string.</li>
 — the generated <code>sitecustomize.py</code> guards on
 <code>quill.exe</code> + bare argv and calls
 <code>quill.__main__:main</code>.</li>
+<li><code>test_self_run_sitecustomize_opens_file_associations</code> —
+the hook forwards an OS-passed document (<code>quill.exe "doc"</code>)
+to QUILL via <code>argv</code> instead of running it as a script.</li>
+<li><code>test_shell_verb_command_launches_quill_exe_with_action</code>
+— the installer's open/verb commands pass <code>-m quill</code> so
+<code>pythonw</code> runs QUILL, not the file.</li>
 <li><code>test_portable_bundle_flattens_runtime_to_root</code> — a built
 portable bundle has <code>quill.exe</code>,
 <code>sitecustomize.py</code>, <code>python313.dll</code>, and
@@ -390,7 +414,7 @@ subdir</strong>, and a <code>data/</code> folder.</li>
 — <code>installer/quill.iss</code> is the exact generator output;
 regenerate it when the generator changes.</li>
 </ul>
-<h2 id="manual-verification-before-a-release">6. Manual verification
+<h2 id="6-manual-verification-before-a-release">6. Manual verification
 before a release</h2>
 <p>After building (or before re-uploading a portable zip):</p>
 <ol type="1">
@@ -407,8 +431,8 @@ non-GUI smoke check that the flat runtime loads.)</li>
 <strong>and</strong> by double-clicking <code>{app}\quill.exe</code>
 directly — both must work.</li>
 </ol>
-<h2 id="things-that-will-re-break-this-dont">7. Things that will
-re-break this — don’t</h2>
+<h2 id="7-things-that-will-re-break-this--dont">7. Things that will
+re-break this — don't</h2>
 <ul>
 <li>Re-nesting the runtime under <code>python\</code> while leaving
 <code>quill.exe</code> at the root.</li>

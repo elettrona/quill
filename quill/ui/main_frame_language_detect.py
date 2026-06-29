@@ -114,7 +114,6 @@ class LanguageDetectMixin:
                 "as a braille document."
             )
             self._set_status(message)
-            self._announce(message)
 
     def _act_on_language_detection(self, mode: str, language: str, confidence: float) -> None:
         percent = int(round(confidence * 100))
@@ -129,7 +128,6 @@ class LanguageDetectMixin:
                 f"to set the document language."
             )
             self._set_status(message)
-            self._announce(message)
         else:  # "hint" — visible only, no speech
             self._set_status(
                 f"Looks like {language} ({percent}%) — press Ctrl+Shift+L to set the language."

@@ -136,6 +136,16 @@ The QUILL key is its own tiny language: every chord is data-driven from the keym
 
 **Reassigning chord commands.** Open **Preferences → Keyboard → Keymap Editor**, find the command you want to move, and type a new chord binding in the form `Ctrl+Shift+Grave, X` (replacing `X` with the key you want). The Keymap Editor stores chords in this `Ctrl+Shift+Grave, X` grammar; menus and the cheat sheet display them as `QUILL Key + X`. Conflict detection prevents accidental double-bindings.
 
+### The Keyboard Manager: search, record, and diagnose
+
+The Keymap Editor is built for fast, confident customisation, however you think about shortcuts:
+
+- **Search two ways from one box.** Type part of a command's name to filter the list. Or type a *shortcut* — `ctrl+alt+m`, `Control + Shift + K`, even a QUILL chord like `quill, s` — and the editor flips to reverse lookup, telling you exactly which command that key is assigned to, or that it is "unassigned and available." You do not have to remember whether a key is free; ask it.
+- **Forgiving spelling.** Modifiers can be written however you like: `control`, `ctrl`, or `ctl`; in any order (`shift+ctrl+k` equals `ctrl+shift+k`); in any case. QUILL normalises what you type and stores the tidy form, so `mac`-style `Cmd` stays distinct from `Ctrl` and is never confused with it.
+- **Record Keys.** Prefer to *press* the combination rather than spell it? Choose **Record Keys**, press the chord, and QUILL fills it in for you.
+- **Honest conflicts with one-step reassignment.** If you assign a key that is already taken, QUILL names the command that owns it — by its friendly title, not an internal id — and offers to move the key here, freeing it on the other command. No silent clobbering, no guessing.
+- **Diagnostics and self-heal.** **Run Diagnostics** audits your whole keymap and reports duplicate shortcuts, bindings for commands that no longer exist, unreadable bindings, and any key that is "assigned but inert" (one the editor cannot actually fire). For the repairable problems it offers a one-click **Heal** that removes the bad entries and re-applies your keymap so menus and shortcuts line up again.
+
 Default QUILL-key chords:
 
 - `QUILL Key + N` — enter Quick Nav (browse) mode for the next action. If the `browse_mode_sticky` setting is on, the mode stays locked until `Esc`; otherwise it expires on the QUILL-key timeout. Press the QUILL key again (without a chord) to lock it on regardless of the setting.
@@ -296,6 +306,8 @@ By default the **Tab** key runs Quill's smart line indent: it adds one indentati
 
 If you would rather have Tab type a literal tab character at the cursor — the way a plain text editor behaves — toggle **Tab Mode** with the **QUILL Key + U** chord (this is Quill's equivalent of the VS Code "Tab key" toggle; Ctrl+M itself is reserved for the mark ring, and Ctrl+Alt+ chords are avoided as screen-reader-hostile). The current mode is shown in the **Tab Mode** status-bar cell (**Indent** or **Tab char**), mirrored by the checkable **Format → Tab Key Inserts Tab Character** menu item, and the new mode is announced when you switch. While Tab Mode is set to insert a tab character, Shift+Tab still outdents so a stray indent can be removed without leaving the mode. The setting applies to the current session.
 
+**How the indent is spoken, and how wide it is.** When you indent with Tab (or outdent with Shift+Tab), Quill speaks the line's *new* indentation depth — for example "4 spaces", "8 spaces", or "1 tab" — so you always know how deep the line sits, not just that it moved. Two settings control the indentation itself: **Number of spaces per indent level** (Settings; 1–8, default 4) sets the width, and **Insert tab characters instead of spaces** (Settings) switches between space and tab indentation — the spoken depth follows whichever you choose. If you prefer the shorter "Indented lines" message, turn off **Announce indentation depth on Tab** (Settings → Accessibility).
+
 ## The Menu Bar Reference
 
 This section walks the entire menu bar in the order you will encounter it.
@@ -314,7 +326,19 @@ The **File** menu is the full document lifecycle.
 - **Save** writes the current document.
 - **Save As...** writes to a new path, converting the document to the file type you choose in the dialog. Quill keeps your text as portable Markdown-style markup, so picking **Rich Text Format (\*.rtf)** writes real RTF, **HTML (\*.html)** writes a standalone web page, and **Text (\*.txt)** writes clean prose with the markup removed. Choosing **Markdown (\*.md)** keeps the markup verbatim. The file's extension always decides the format; if you type a name without an extension, the selected type supplies one. When Save As changes the format, Quill can reload the file so the editing surface matches it — for example, opening a freshly saved `.rtf` in the Rich text editor. By default it asks first with a Yes/No prompt (reloading replaces the editor contents with the saved file); set **Settings → Editing → Reload after Save As to match the format** to *Reload automatically* or *Keep current surface* to skip the prompt.
 - **Save All** writes every modified open document.
-- **Save As Plain Text...** exports a clean plain-text version. Because plain text has no links, **Settings → Editing → Links in plain-text export** controls how Markdown links are written: keep the link text and its URL (the default, so you never lose where a link pointed), the link text only, the URL only, or the original Markdown link. This setting also applies whenever Save As writes a `.txt` file.
+- **Save As Plain Text...** exports a clean plain-text version. Because plain text has no links, **Settings → Editing → Links in plain-text export** controls how Markdown links are written: keep the link text and its URL (the default, so you never lose where a link pointed), the link text only, the URL only, or the original Markdown link. This setting also applies whenever Save As writes a `.txt` file. If the document carries hidden formatting (fonts, colours, alignment), Quill offers to keep it with an **Illumination** — see below.
+
+##### Keeping formatting in a plain-text file: Illuminations
+
+A plain `.txt` file has nowhere to store fonts, colours, or alignment, so saving formatted text as plain text normally drops the formatting. Quill gives you a choice, named after the decorative layer a scribe paints over a manuscript: an **Illumination** is a small companion file, `yourfile.txt.illumination`, that holds the formatting beside the clean text. Your `.txt` stays genuinely plain — readable in Notepad, e-mail, or anywhere — and when you reopen it *in Quill*, the matching Illumination restores every font, colour, and alignment exactly.
+
+What happens when you save formatted text as plain text is set by **Settings → Editing → Saving formatted text as plain text**:
+
+- **Ask each time** (the default) — Quill asks whether to keep your formatting (by saving as Markdown, Word, or RTF instead), to save the plain `.txt` **plus** an Illumination, or to save plain text only and drop the formatting.
+- **Always save an Illumination sidecar** — Quill writes the clean `.txt` and the `.illumination` companion every time, no prompt.
+- **Save plain text and drop the formatting** — the classic lossy save; the `.txt` is clean and any old Illumination beside it is removed.
+
+A few things worth knowing: the Illumination travels as a *separate file*, so if you copy or e-mail only the `.txt`, the formatting won't come along — keep the pair together (or use Markdown/Word/RTF, which carry formatting inside one file). And if you edit the `.txt` in another program, Quill notices the text no longer matches the Illumination and opens it as plain text rather than re-applying formatting to the wrong words. If you'd rather a single self-contained file that preserves everything, save as **Markdown** (which keeps the formatting inline) or **Word/RTF** (which turn it into native formatting).
 - **Reload from Disk** throws away in-memory edits and reloads the file from storage after confirmation.
 - **Restore Backup...** lets you restore a saved backup version.
 - **Page Setup...** and **Print...** support paper and print workflows.
@@ -439,6 +463,14 @@ Inline emphasis:
 
 - Bold
 - Italic
+
+**Rich formatting with hidden codes (new in 0.8.0 Beta 2).** Beyond Bold and Italic, the Format menu now applies real document formatting that stays invisible in your editor: **Underline**, **Strikethrough**, **Superscript**, **Subscript**, **Font** (family), **Size** (point size), **Text Colour**, **Highlight**, and paragraph **Alignment** (Left / Centre / Right / Justify), line spacing, indent, and named styles. The idea is *hidden codes*: your editing buffer stays clean, fast, plain text — the formatting is stored as invisible markup, never as on-screen clutter — and is materialised into real formatting only when you export. So you read and edit clean prose, and the document still becomes a properly formatted Word, RTF, or HTML file on save.
+
+- **Apply it** from the Format menu's Font / Size / Align / Colour / Highlight items, or from the accessible **Font...** dialog, which gathers font family, point size, colour, and highlight in one place. With text selected, the formatting applies to the selection; with no selection it applies as you type.
+- **Hear what's there.** Because the codes are hidden, **Describe Formatting at Cursor** speaks exactly what is in effect at the caret — for example "Arial, 14 point, centred, bold". Turn on **Announce formatting on caret move** (Settings → Accessibility) to hear formatting changes as you arrow through a document.
+- **It exports faithfully.** On **Save As** (or Export) to **Word (.docx)**, **Rich Text (.rtf)**, or **HTML**, the hidden codes become real formatting — font, size, colour, highlight, alignment, and the rest. Word export uses a native writer when the optional `python-docx` component is present and falls back to Pandoc otherwise. If a target format genuinely cannot carry something, Quill tells you before you commit rather than dropping it silently; saving to plain text drops the formatting with the same honest warning.
+
+Everything that makes Quill fast still works on the same clean text: undo, search, the outline, word counts, read-aloud, and the AI tools all operate on your prose, not on markup.
 
 The **Transform Lines** submenu gathers every line and text transform in one place: **Number Lines...**, **Number Lines (Advanced)...**, **Hard-Wrap Lines...**, **Sort Lines Ascending**, **Sort Lines Descending**, **Reverse Lines**, **Remove Duplicate Lines**, **Trim Trailing Whitespace**, **Normalize Whitespace**, **Convert Indentation to Spaces**, and **Convert Indentation to Tabs**. **Number Lines (Advanced)...** adds a starting number, increment, digit or Roman-numeral style, zero-padding width, a custom suffix, and left or right alignment, for cases the simple version doesn't cover.
 
@@ -759,11 +791,130 @@ Options:
 - **Translate to English**: transcribes audio in any language and returns an
   English translation in one step (Whisper translation mode).
 
-The result appears in a viewer dialog where you can copy, insert at cursor, or
-open as a new document.
+When the transcript is ready, QUILL asks **"What would you like me to make of
+this?"** and offers a short, context-aware list of **Transcript Actions** (see
+the next section). Choose one and QUILL turns the transcript into a finished
+document — meeting minutes, action items, study notes, a clean draft — and opens
+it for you to review and edit. Or choose **"Just keep the transcript"** to land
+in the viewer dialog, where you can copy, insert at the cursor, or open the
+transcript as a new document. If AI is turned off, you go straight to the viewer.
 
 `AI > Translate Audio File to English...` goes directly to the Whisper
 translation flow, bypassing the language selection step.
+
+#### Transcript Actions — turning sound into a finished document
+
+A transcript is rarely the thing you actually need; the *minutes*, the *action
+items*, or the *clean draft* are. **Transcript Actions** make that last step one
+keystroke. They are reachable in two places:
+
+- **Right after transcription**, in the "What would you like me to make of this?"
+  chooser described above.
+- **Anytime**, on the text you are already looking at, via
+  `AI > Transcribe Audio > Transcript Actions...`. Paste any transcript or notes
+  (or select part of your document) and pick an action.
+
+The built-in actions are:
+
+- **Meeting Minutes** — attendees, decisions, action items with owners, follow-ups.
+- **Action Items** — every task and commitment as a numbered, actionable list.
+- **Executive Summary** — a concise briefing for leadership.
+- **Interview Notes** — questions, responses, strengths, concerns, an assessment.
+- **Study Notes** — a lecture or talk turned into organized notes.
+- **Q&A Extraction** — every question and its answer in clean Q&A format.
+- **Clean Up & Draft** — spoken rambling turned into a clean, readable draft.
+- **Follow-Up Email** — a warm, ready-to-send recap with next steps.
+- **Key Quotes** — the most notable verbatim quotes, with who said them.
+- **Decisions Log** — just the decisions made, each with its rationale and owner.
+
+QUILL orders the list for the recording in front of you — a multi-speaker meeting
+leads with Minutes and Action Items, a single voice with Clean Up & Draft — but
+every action is always available. The finished document opens in a new window so
+your original transcript is never overwritten. Transcript Actions use whichever AI
+provider you have configured in the AI Hub.
+
+### Setting up AI — the gentle wizard
+
+The first item in the `&AI` menu is **Set Up AI...** (labeled "start here" until
+you've done it). It opens a short, friendly wizard that gets you from nothing to a
+working AI in seconds, with no jargon:
+
+1. **Welcome** — a plain-language note on what QUILL's AI does and that it is
+   optional, previewed, and private by default.
+2. **How would you like AI to run?** — one choice:
+   - **On your device with Ollama** — private and free; runs on your computer with
+     no account or key. QUILL connects to a local Ollama install.
+   - **Use an AI account** — the most capable models; connect Claude, OpenAI,
+     Gemini, OpenRouter, or Ollama Cloud with a key you paste once and QUILL stores
+     securely on this device.
+   - **Not right now** — keep AI off; set it up any time later.
+3. **Connect** — for an account, pick a provider, paste your key, and **Test
+   connection** before continuing. For on-device, QUILL points itself at Ollama.
+4. **You're all set** — a short summary of what you can now do, and a **Keep it
+   simple** checkbox that turns on **Basic mode**.
+
+QUILL also offers this wizard at the moment you reach for AI before it's set up — for
+example, choosing to make minutes from a transcript — so you are never stuck at a
+dead end. You can re-run **Set Up AI** any time to change providers or switch modes.
+
+**Basic mode** keeps the AI menu small for newcomers: the everyday features (Ask
+Quill, Transcribe, Proofread, Translate, Read Aloud, the AI Library) stay, while the
+power-user, agentic entries ("What can I do here?", "Rewrite & Improve", and "Run
+Agent") are hidden until you're ready. Turn them on any time with **Show advanced AI
+features** near the bottom of the AI menu. Existing users keep the full menu — Basic
+mode applies only if you choose it.
+
+### The AI Library — Prompts, Skills, and Agents in one place
+
+`AI > AI Library...` is the single home for everything QUILL can do with AI on
+your writing. It has three tabs, all sharing the same buttons (Run, Edit,
+Enable/Disable, Import, Export):
+
+- **Prompts** — single instructions you run on the current selection or document
+  ("Rewrite warmly", "Summarize"). New, Edit, Delete, and Promote a prompt into a
+  Skill.
+- **Skills** — multi-step workflows saved as shareable `.sqp` packs. Run them,
+  Import/Export them, Remove them, and Promote a Skill into an Agent.
+- **Agents** — the catalog of tool-using agents (Writing Companion, Reviewer,
+  Code Doctor, and more) plus any you have saved yourself. Run them through the
+  reviewed gateway, or Validate one against the agent standard.
+
+The three are points on one continuum of saved AI intent. **Promote** lets a
+Prompt grow into a Skill and a Skill grow into an Agent, so you can start simple
+and add power only when you need it. Anything you build is yours to Export and
+share, and a teammate can Import it.
+
+#### Build an AI Action (no syntax required)
+
+On the Skills tab, **Build Action...** opens a friendly, form-based builder — the
+easiest way to teach QUILL something new:
+
+1. **Name** your action ("My Monday standup notes").
+2. **Start from** a built-in example (Meeting Minutes, Action Items, and the rest)
+   or a blank page. Choosing an example fills in the instructions for you to adjust.
+3. **Describe what you want in plain language.** That is the whole "programming" —
+   no Markdown, no metadata, no syntax.
+4. **Attach a reference** (optional) — an agenda, your house style, or a past good
+   example — and QUILL will match its format and terminology. "Make minutes that
+   look like last month's."
+5. **Save.** Your action becomes a real Skill in the Library, ready to Run on any
+   document, adjust later, Promote to an Agent, or share.
+
+### Automate transcription with watch folders
+
+A watch folder turns "drop a file here and it just gets handled" into a rule you
+set once. In `Tools > Watch Folders`, a transcribe profile can now **chain an AI
+Action onto each recording**:
+
+- Point a profile at a folder (for example, *Meetings*).
+- Choose a transcribe action (offline or OpenAI Whisper).
+- Under **Then make**, pick a Transcript Action — say, *Meeting Minutes*.
+
+From then on, every recording that lands in that folder is transcribed *and* the
+minutes document is written next to it automatically, named like
+`standup-meeting-minutes.md`. If AI is off or no provider is configured, you still
+get the transcript — the action step is simply skipped with a note, never an error.
+Watch folders respect Do Not Disturb and run quietly in the background.
 
 ### Offline transcription (Tools > Speech)
 
@@ -1146,6 +1297,7 @@ If you prefer to keep your text on your machine entirely:
 - **Stop Reading** stops current read-aloud immediately
 - **Say Selected** reads the current selection aloud
 - **Read All** reads from the cursor to the end of the document
+- **Move cursor to follow Read Aloud** (Settings → Read Aloud) makes the cursor select each sentence as it is read, so the caret tracks what you hear and stops where the reading stopped. It is **off by default**: with a screen reader running, moving the selection makes the screen reader announce "selected" over the Read Aloud voice. Sighted and low-vision users who want the cursor to follow the reading can turn it on.
 - **Dictation** submenu for Windows dictation, plus an opt-in **Hey QUILL Commands** toggle that lets dictation phrases trigger Quill commands instead of inserting text.
 - **OCR Image...** converts an image to text via optical character recognition.
 
@@ -1272,6 +1424,10 @@ The **Window** menu is small but useful.
 
 - **Next Document** (`Ctrl+Tab`) — move to the next open document.
 - **Previous Document** (`Ctrl+Shift+Tab`) — move to the previous open document.
+- **Go to Document 1–10** (`Alt+1` … `Alt+9`, and `Alt+0` for the tenth) — jump
+  straight to a document by its position instead of cycling. If no document is
+  open at that position, QUILL says so and stays where you are. Like every
+  shortcut, these are remappable in the Keymap Editor.
 - **Send to System Tray** — hide QUILL to the notification area without closing it.
 - **1: filename.txt (active)**, **2: other.md**, … — every open document appears directly on the menu, numbered. Press `Alt+W` to open the Window menu and then the number key to jump straight to that document. The active document is marked. The list updates automatically when you open or close a file, and updates the name immediately when you save an untitled document.
 
@@ -1290,7 +1446,7 @@ The **Help** menu is where Quill becomes a guide.
 - **Feature Profiles** commands let you switch profile, run health checks, undo the last profile change, reset to Essential, and run onboarding.
 - **Personalise QUILL...** (the first-run setup wizard) can be rerun at any time to adjust your keyboard pack, feature profile, remote access, AI, reading and accessibility, writing tools, data location, and startup behaviour.
 - **Report a Bug...** opens an in-app review screen, copies the environment summary to the clipboard, and then opens the Community Access support-hub issue form.
-- **Check for Updates...** verifies the signed update manifest, opens the installer download page, and can close Quill so setup can run immediately.
+- **Check for Updates...** verifies the signed update manifest, offers the download, and can close Quill so setup can run immediately. If you are running the **portable** build, QUILL recognises this and offers the portable `.zip` for the new version instead of pushing the installer at you — it downloads to your updates folder with an **Open folder** button so you can swap it into place. Installed copies keep receiving the installer.
 - **About Quill** shows version, publisher details, and linked third-party dependency attribution with license and version metadata.
 - **Open Third-Party Notices** opens a full notices document with dependency tables and bundled license texts.
 
@@ -2158,6 +2314,41 @@ Manager.
   (per 5 seconds)** caps how many announcements are spoken in a burst (0 means no
   cap). Both affect only what is *spoken*; the status bar always shows every update,
   so nothing is ever hidden.
+- **Trim specific cues.** Two announcement toggles under **Preferences >
+  Accessibility** tailor what QUILL says. **Announce entering and leaving
+  dialogs** (on by default) speaks "Entered" / "Exited *name* dialog" as dialog
+  boxes open and close — turn it off if your screen reader already announces
+  dialogs. **Announce indentation depth on Tab** (on by default) makes Tab and
+  Shift+Tab speak the new depth ("4 spaces", "1 tab") instead of "Indented
+  lines". Both affect only speech; the status bar still updates.
+- **Re-read what QUILL just said — the Spoken Echo.** Speech is fleeting: an
+  indent depth, a formatting description, a save result, or a "no matches"
+  scrolls past the instant it is spoken. The **Spoken Echo** remembers the last
+  twenty things QUILL announced and shows them, newest first, in a read-only
+  dialog you can arrow through line by line, review by character, select, and
+  copy. Open it any time with **Alt+Shift+E**, or from **Help > Show Spoken
+  Echo** — it works after *any* announcement, including ones triggered by
+  ordinary editing keys such as Tab, so you can hear "8 spaces", then open the
+  Echo to read and copy it. If you are used to the screen-reader convention of
+  pressing a reporting command twice, **double-pressing** an informational
+  command — Describe Formatting, Document Summary, Context Help, or Announce
+  Contrast — opens the Echo instead of re-speaking the same line. The dedicated
+  Alt+Shift+E key is the universal path and always works; the double-press
+  shortcut can be turned off under **Preferences > Accessibility > Double-press
+  to show the Spoken Echo** (on by default). The Echo only records lines QUILL
+  actually speaks, never your typing.
+- **Braille display showing the first character in cell two?** QUILL's editor
+  defaults to a rich-text control (so screen readers report its contents
+  correctly), and some braille displays shift each line of a rich control one
+  cell to the right — the same long-standing quirk you may remember from
+  Microsoft Word. **Preferences > Accessibility > Editor control type (braille)**
+  lets you change the native control: if your display shows the offset, set it to
+  **Plain edit, like Notepad**, a simple control that the rich control was only
+  ever needed in place of for *read-only* views (an editable plain control still
+  reads correctly). RichEdit 2.0 is offered as a middle option. Changing the
+  control type takes effect for documents opened afterward, so reopen your
+  document or restart to compare. This affects only how the control is presented;
+  your text is never changed.
 - **Per-action templates.** Advanced users can edit exactly what each action
   says, using tokens like `{line}` and filters like `${ordinal:line}`, with live
   validation and preview. Templates can be saved to a library, shared as
@@ -2172,6 +2363,13 @@ Manager.
 These controls are screen-reader-first: QUILL speaks alongside your screen
 reader, it does not replace it, so it never duplicates the typing echo or
 punctuation settings your screen reader already provides.
+
+**About QUILL's own voice.** When you run a screen reader, QUILL speaks through
+it. QUILL also has its own built-in voice (Windows SAPI 5) used only as a
+fallback for people who do not run a screen reader. If that built-in voice ever
+fails to start, QUILL does not interrupt you about it while your screen reader is
+doing the talking — it simply notes it quietly. If you do want QUILL's own voice
+and it did not start, run **Tools > Retry TTS Engine**.
 
 ## Accessibility and Low-Vision Features
 

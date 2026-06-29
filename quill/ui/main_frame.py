@@ -163,6 +163,7 @@ from quill.core.file_search import (
 )
 from quill.core.format_ops import (
     continue_markdown_list,
+    describe_indent_depth,
     indent_lines,
     outdent_lines,
     toggle_block_comment,
@@ -200,7 +201,6 @@ from quill.core.keymap import (
     build_keymap_for_pack,
     export_keyboard_pack,
     export_keymap,
-    find_keymap_conflict,
     format_binding_for_display,
     import_keyboard_pack,
     import_keymap,
@@ -368,6 +368,7 @@ from quill.core.spellcheck import (
 from quill.core.spellcheck import (
     previous_misspelling as find_previous_misspelling,
 )
+from quill.core.spoken_echo import format_spoken_echo, new_history, record_spoken
 from quill.core.sticky_notes import save_sticky_note
 from quill.core.structure_nav import (
     find_matching_bracket,
@@ -402,6 +403,7 @@ from quill.core.updates import (
     fetch_update_manifest,
     find_release,
     is_newer_version,
+    running_portable,
     select_latest,
 )
 from quill.core.url_ops import format_content_length
@@ -468,9 +470,7 @@ from quill.ui.ai_model_panel import AIModelDialog
 from quill.ui.assistant_panel import AskQuillChatDialog
 from quill.ui.assistant_tools import (
     AccessibilityAgentDialog,
-    AgentCenterDialog,
     AssistantConnectionDialog,
-    PromptStudioDialog,
     RunPythonDialog,
     WritingAssistantDialog,
 )
@@ -479,6 +479,7 @@ from quill.ui.csv_grid import CsvGridSurface
 from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control, show_modal_dialog
 from quill.ui.editor_surface import PLAIN, RICH, surface_kind
 from quill.ui.html_paste_cleaner import analyze_paste
+from quill.ui.keymap_editor import KeymapEditorMixin
 from quill.ui.main_frame_abbreviations import AbbreviationsMixin
 from quill.ui.main_frame_ai_actions import AiActionsMixin
 from quill.ui.main_frame_braille import BrailleCommandsMixin
@@ -488,6 +489,7 @@ from quill.ui.main_frame_browse import BrowseModeMixin
 from quill.ui.main_frame_copy_tray import CopyTrayMixin
 from quill.ui.main_frame_devtools import DevToolsMixin
 from quill.ui.main_frame_dictation_hotkeys import DictationHotkeysMixin
+from quill.ui.main_frame_format_codes import FormatCodesMixin
 from quill.ui.main_frame_github import GitHubRemoteMixin
 from quill.ui.main_frame_hygiene import HygieneMixin
 from quill.ui.main_frame_image import ImageCaptureMixin
@@ -830,6 +832,7 @@ _APP_TITLE_VERSION = f"QUILL for All {build_info.get_short_version()}"
 class MainFrame(
     AbbreviationsMixin,
     AiActionsMixin,
+    FormatCodesMixin,
     SpeechCommandsMixin,
     VerbosityCommandsMixin,
     LanguageDetectMixin,
@@ -861,6 +864,7 @@ class MainFrame(
     QuillinsMenuMixin,
     ContextHelpMixin,
     WatchProfileDialogMixin,
+    KeymapEditorMixin,
 ):
     _ANNOUNCEMENT_BACKEND_LABELS: dict[str, str] = {
         "auto": "Automatic (use Prism when available)",
@@ -897,6 +901,7 @@ class MainFrame(
         "notebook_goal": "Notebook Goal",
         "braille": "Braille",
         "section_heading": "Section",
+        "ai_engine": "AI Engine",
     }
     _STATUS_BAR_WIDTHS: dict[str, int] = {
         "message": -1,
@@ -928,6 +933,7 @@ class MainFrame(
         "notebook_goal": 200,
         "braille": 320,
         "section_heading": 220,
+        "ai_engine": 200,
     }
     _STATUS_BAR_FEATURES: dict[str, str] = {
         "message": "core.app",
@@ -1369,10 +1375,9 @@ class MainFrame(
             self._start_ipc_poll()
         except Exception:
             self._report_startup_task_failure("IPC poll")
-        # detect_screen_reader() shells out to `tasklist`, which can take
-        # 400-600 ms on the UI thread.  Run it on a daemon thread and update
-        # the status bar via wx.CallAfter so the window is fully responsive
-        # while the subprocess runs.
+        # detect_screen_reader() enumerates processes via the Windows API (no
+        # subprocess). It is fast, but kept on a daemon thread so even a slow
+        # snapshot can never block the UI; the result posts via wx.CallAfter.
         _t = time.perf_counter()
         _safe_mode_snap = self._safe_mode
 
@@ -1399,7 +1404,7 @@ class MainFrame(
 
         import threading
 
-        threading.Thread(  # GATE-40-OK: one-shot tasklist probe; posts result via CallAfter.
+        threading.Thread(  # GATE-40-OK: one-shot screen-reader probe; posts result via CallAfter.
             target=_sr_detect_worker, daemon=True, name="sr-detect"
         ).start()
         if _profile:
@@ -1718,6 +1723,15 @@ class MainFrame(
             self.previous_document,
             self._binding_for("window.previous_document"),
         )
+        # Jump straight to the Nth open document (Alt+1..Alt+9, Alt+0 = 10th).
+        for _position in range(1, 11):
+            command_id = f"window.go_to_document_{_position}"
+            self.commands.register(
+                command_id,
+                f"Go to Document {_position}",
+                (lambda position=_position: self.go_to_document(position)),
+                self._binding_for(command_id),
+            )
         self.commands.register(
             "window.close_other_documents",
             "Close Other Documents",
@@ -1900,9 +1914,9 @@ class MainFrame(
             None,
         )
         self.commands.register(
-            "tools.ask_ai",
-            "Ask AI...",
-            self.open_ask_ai,
+            "tools.ai_library",
+            "AI Library",
+            self.open_ai_library,
             None,
         )
         self.commands.register(
@@ -1928,6 +1942,12 @@ class MainFrame(
             "Ask Quill Chat",
             self.open_ask_quill_chat,
             self._binding_for("tools.ask_quill_chat"),
+        )
+        self.commands.register(
+            "tools.ask_quill_conversation",
+            "Ask Quill: Voice Conversation",
+            self.open_ask_quill_conversation,
+            self._binding_for("tools.ask_quill_conversation"),
         )
         self.commands.register(
             "tools.ai_model",
@@ -2037,12 +2057,10 @@ class MainFrame(
             self.open_ai_toc,
             None,
         )
-        self.commands.register(
-            "tools.ai_thesaurus",
-            "AI Thesaurus",
-            self.open_ai_thesaurus,
-            None,
-        )
+        self.commands.register("tools.ai_thesaurus", "AI Thesaurus", self.open_ai_thesaurus, None)
+        from quill.ui.agent_editor_host import register_agent_commands
+
+        register_agent_commands(self)  # Run Agent palette entries (one per catalog agent)
         self.commands.register(
             "tools.ai_continue_writing",
             "Continue Writing",
@@ -3209,6 +3227,7 @@ class MainFrame(
             self.format_underline,
             self._binding_for("format.underline"),
         )
+        self.register_format_codes_commands()
         self.commands.register(
             "format.heading_1",
             "Insert Heading 1",
@@ -3497,6 +3516,12 @@ class MainFrame(
             None,
         )
         self.commands.register(
+            "view.spoken_echo",
+            "Show Spoken Echo",
+            self.show_spoken_echo,
+            self._binding_for("view.spoken_echo"),
+        )
+        self.commands.register(
             "help.why_unavailable",
             "Why Is This Unavailable?",
             self.explain_unavailable_feature,
@@ -3599,6 +3624,16 @@ class MainFrame(
             "file.print": self._id_print,
             "window.next_document": self._id_next_document,
             "window.previous_document": self._id_previous_document,
+            "window.go_to_document_1": self._id_go_to_document[0],
+            "window.go_to_document_2": self._id_go_to_document[1],
+            "window.go_to_document_3": self._id_go_to_document[2],
+            "window.go_to_document_4": self._id_go_to_document[3],
+            "window.go_to_document_5": self._id_go_to_document[4],
+            "window.go_to_document_6": self._id_go_to_document[5],
+            "window.go_to_document_7": self._id_go_to_document[6],
+            "window.go_to_document_8": self._id_go_to_document[7],
+            "window.go_to_document_9": self._id_go_to_document[8],
+            "window.go_to_document_10": self._id_go_to_document[9],
             "window.close_other_documents": self._id_close_other_documents,
             "view.send_to_tray": self._id_send_to_tray,
             "view.toggle_soft_wrap": self._id_toggle_soft_wrap,
@@ -3613,11 +3648,16 @@ class MainFrame(
             "tools.ai_prompt_studio": self._id_ai_prompt_studio,
             "tools.ai_agent_center": self._id_ai_agent_center,
             "tools.ai_accessibility_agent": self._id_ai_accessibility_agent,
+            "tools.ai_library": self._id_ai_library,
             "tools.prompt_library": self._id_prompt_library,
             "tools.skill_library": self._id_skill_library,
             "tools.check_grammar_ai": self._id_check_grammar_ai,
             "tools.ask_quill_chat": self._id_ask_quill_chat,
+            "tools.ask_quill_conversation": self._id_ask_quill_voice,
             "tools.ai_model": self._id_ai_model,
+            "tools.ai_switch_engine": self._id_ai_switch_engine,
+            "tools.copilot_onboarding": self._id_ai_copilot_setup,
+            "tools.validate_agents": self._id_ai_validate_agents,
             "tools.ai_session_browser": self._id_ai_session_browser,
             "tools.ai_connection": self._id_ai_connection,
             "tools.ai_rewrite_selection": self._id_ai_rewrite_selection,
@@ -3725,6 +3765,7 @@ class MainFrame(
             "help.status_page": self._id_help_status_page,
             "help.startup_wizard": self._id_profile_onboarding,
             "help.context_help": self._id_announce_context_shortcuts,
+            "view.spoken_echo": self._id_show_spoken_echo,
             "whisperer.model_manager": self._id_bw_model_manager,
             "whisperer.model_status": self._id_bw_model_status,
             "whisperer.model_recommend": self._id_bw_model_recommend,
@@ -4136,10 +4177,20 @@ class MainFrame(
         if sys.platform == "darwin":
             editor = wx.TextCtrl(splitter, style=wx.TE_MULTILINE)
         else:
-            editor = wx.TextCtrl(
-                splitter,
-                style=wx.TE_MULTILINE | wx.TE_RICH2 | wx.TE_NOHIDESEL,
-            )
+            # Braille cell-two offset: the control kind is configurable. "plain"
+            # is a Notepad-style EDIT control -- editable, so it reports its value
+            # to JAWS/NVDA correctly (the #616 RichEdit requirement was for
+            # *read-only* controls) and avoids the RichEdit leading-cell quirk.
+            # "rich"/"rich2" keep a RichEdit (2.0 / 3.0); TE_NOHIDESEL stays there.
+            kind = str(getattr(self.settings, "editor_control_kind", "rich2")).strip().lower()
+            if kind == "plain":
+                editor = wx.TextCtrl(splitter, style=wx.TE_MULTILINE)
+            else:
+                rich_flag = wx.TE_RICH if kind == "rich" else wx.TE_RICH2
+                editor = wx.TextCtrl(
+                    splitter,
+                    style=wx.TE_MULTILINE | rich_flag | wx.TE_NOHIDESEL,
+                )
         editor.SetName("Document")
         if sys.platform == "darwin":
             self._pin_macos_editor_accessibility_role(editor)
@@ -4511,6 +4562,7 @@ class MainFrame(
         try:
             self._maybe_announce_indent()
             self._maybe_play_indent_tone()
+            self._maybe_announce_format_transition()
         except RuntimeError:  # #603/#269: editor can be a dead TextCtrl mid-event.
             pass
         event.Skip()
@@ -4626,10 +4678,16 @@ class MainFrame(
                 else:
                     self.format_indent(status="Nested list item", force_announce=True)
                 return
+            # Speak the new indent depth ("4 spaces" / "1 tab") rather than the
+            # terse "Indented lines" when announce_indent_depth is on (default).
+            # _set_status both shows and speaks, so it stays a single announcement.
+            announce_depth = bool(getattr(self.settings, "announce_indent_depth", True))
             if event.ShiftDown():
-                self.format_outdent(force_announce=True)
+                self.format_outdent(force_announce=not announce_depth)
             else:
-                self.format_indent(force_announce=True)
+                self.format_indent(force_announce=not announce_depth)
+            if announce_depth:
+                self._set_status(self._current_line_indent_phrase())
             return
         if (
             hasattr(self, "_dictation")
@@ -6753,24 +6811,60 @@ class MainFrame(
                 self.editor.WriteText("![image]()")
 
     def _check_tts_fallback_on_startup(self) -> None:
-        """§8.2 TTS-FALLBACK-ANNOUNCE: show a status-bar prompt when SAPI 5 fails to init."""
+        """When SAPI 5 self-voicing fails to initialise, record it -- and only
+        *speak* it when no screen reader is handling speech.
+
+        SAPI 5 is QUILL's own fallback voice, used only when no screen reader is
+        present. When a reader is doing the talking, a SAPI failure is benign, so
+        announcing "TTS failed" is alarming noise. We always log a diagnostic
+        note; we speak a (corrected) prompt only when the user would otherwise
+        have no voice at all.
+        """
         try:
             from quill.platform.windows.prism_bridge import tts_init_failed
-
-            if not tts_init_failed():
-                return
-            self._set_status(
-                "Screen reader fallback active. TTS engine failed to start. "
-                "Press F8 to toggle overwrite mode / check menus for Retry TTS."
-            )
-            self._record_notification(
-                "Text-to-speech (SAPI 5) failed to start. "
-                "Screen reader fallback is active. "
-                "To retry, run Tools > Retry TTS Engine.",
-                "accessibility",
-            )
         except ImportError:
-            pass
+            return
+        if not tts_init_failed():
+            return
+        self._record_notification(
+            "Text-to-speech (the SAPI 5 self-voice) did not start. If you use a "
+            "screen reader, QUILL speaks through it and no action is needed. To "
+            "use QUILL's own voice instead, run Tools > Retry TTS Engine.",
+            "accessibility",
+        )
+        if self._screen_reader_handling_speech():
+            # The screen reader is doing the talking; the self-voice is not
+            # needed. Show a quiet, unspoken note rather than announcing a failure.
+            self._set_status_quiet("Speaking through your screen reader.")
+            return
+        # No screen reader: the self-voice was the only voice, so this is a real
+        # problem the user must hear. (F8 toggles overwrite mode -- the retry is
+        # Tools > Retry TTS Engine.)
+        self._set_status(
+            "Text-to-speech failed to start, so QUILL has no voice. "
+            "Run Tools > Retry TTS Engine to try again."
+        )
+
+    def _screen_reader_handling_speech(self) -> bool:
+        """True when a screen reader is voicing QUILL's announcements.
+
+        Either the announcement engine acquired a screen-reader backend
+        (Prism / accessible_output2), or a known reader is running and will read
+        the status bar and focus changes itself.
+        """
+        engine = getattr(self, "_announcement_engine", None)
+        if engine is not None:
+            try:
+                if engine.state().active_backend in {"prism", "accessible_output2"}:
+                    return True
+            except Exception:  # noqa: BLE001 - never let a status check raise
+                pass
+        try:
+            from quill.platform.windows.sr_detect import detect_screen_reader
+
+            return bool(detect_screen_reader().detected)
+        except Exception:  # noqa: BLE001
+            return False
 
     def _binding_for(self, command_id: str) -> str | None:
         # Tolerate a not-yet-assigned keymap: key events (e.g. the dictation
@@ -7124,10 +7218,10 @@ class MainFrame(
     def _announce_brf_save_warning(self, message: str) -> None:
         """Surface the soft BRF save warning (#235): status + announcement."""
         self._set_status(message)
-        self._announce(message)
 
     def _announce(self, message: str, *, force: bool = False) -> None:
         self._status_message = message
+        self._record_spoken(message)
         self._refresh_statusbar()
         # Verbosity routing (sub-PR 1.5): once the user has engaged verbosity, the
         # controller exists and decides whether Quiet/Meeting suppress speech. The
@@ -7145,6 +7239,78 @@ class MainFrame(
         if backend_error and backend_error != self._announcement_error_reported:
             self._announcement_error_reported = backend_error
             self._record_notification(backend_error, "accessibility")
+
+    def _record_spoken(self, message: object) -> None:
+        """Add a spoken line to the Spoken Echo history (newest kept last).
+
+        Called from the announcement choke points (``_announce`` and
+        ``_set_status``). The history is created lazily so stub frames in tests
+        that never run ``__init__`` stay safe, and empty/consecutive-duplicate
+        lines are dropped by ``record_spoken``.
+        """
+        history = getattr(self, "_spoken_echo_history", None)
+        if history is None:
+            history = new_history()
+            self._spoken_echo_history = history
+        record_spoken(history, message)
+
+    def show_spoken_echo(self) -> None:
+        """Virtualise the recent spoken announcements into a read-only dialog.
+
+        This is the universal "Echo" review surface: after QUILL speaks
+        anything (an indent depth, a formatting description, a save result),
+        opening the Echo shows the last several announcements newest-first in a
+        navigable, selectable, copyable control so the text can be re-read at
+        leisure instead of chasing it in speech.
+        """
+        wx = self._wx
+        history = getattr(self, "_spoken_echo_history", None)
+        text = format_spoken_echo(list(history) if history else [])
+        title = "Spoken Echo"
+        dialog = wx.Dialog(
+            self.frame,
+            title=title,
+            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+            size=(560, 420),
+        )
+        try:
+            inner = wx.BoxSizer(wx.VERTICAL)
+            inner.Add(
+                wx.StaticText(
+                    dialog,
+                    label=(
+                        "The most recent things QUILL announced, newest first. "
+                        "Arrow through to re-read, select to copy."
+                    ),
+                ),
+                0,
+                wx.ALL | wx.EXPAND,
+                8,
+            )
+            review = wx.TextCtrl(
+                dialog,
+                value=text,
+                style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_DONTWRAP,
+            )
+            review.SetName("Spoken Echo — read-only history of recent announcements")
+            inner.Add(review, 1, wx.ALL | wx.EXPAND, 8)
+            close_button = wx.Button(dialog, id=wx.ID_OK, label="Close")
+            buttons = wx.StdDialogButtonSizer()
+            buttons.AddButton(close_button)
+            buttons.Realize()
+            inner.Add(buttons, 0, wx.ALL | wx.EXPAND, 8)
+            dialog.SetSizer(inner)
+            close_button.SetDefault()
+            apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_OK)
+            call_after = getattr(wx, "CallAfter", None)
+            if callable(call_after):
+                call_after(review.SetFocus)
+            else:
+                review.SetFocus()
+            self._show_modal_dialog(dialog, title)
+        finally:
+            dialog.Destroy()
+            self.editor.SetFocus()
 
     def _fire_quillin_event(self, event_name: str, context: dict) -> None:
         """Dispatch a Quillin document-lifecycle event if the mixin is loaded.
@@ -7171,10 +7337,17 @@ class MainFrame(
         dialog_cls = getattr(wx, "Dialog", None)
         if dialog_cls is not None and type(dialog) is dialog_cls:
             focus_primary_control(dialog)
+        # The "Entered/Exited <name> dialog" cues are opt-out via the
+        # announce_dialog_transitions setting; region tracking is unaffected.
+        announce_transitions = (
+            announce
+            if getattr(getattr(self, "settings", None), "announce_dialog_transitions", True)
+            else None
+        )
         result = show_modal_dialog(
             dialog,
             label,
-            announce=announce,
+            announce=announce_transitions,
             enter_region=self._region_tracker.enter,
             exit_region=self._region_tracker.exit,
         )
@@ -7201,14 +7374,19 @@ class MainFrame(
         return result
 
     def _show_message_box(self, message: str, caption: str, style: int) -> int:
+        speak_transitions = getattr(
+            getattr(self, "settings", None), "announce_dialog_transitions", True
+        )
         self._region_tracker.enter(caption)
-        announce(f"Entered {caption} dialog")
+        if speak_transitions:
+            announce(f"Entered {caption} dialog")
         try:
             result = self._wx.MessageBox(  # MSGBOX-OK: _show_message_box implementation
                 message, caption, style
             )
         finally:
-            announce(f"Exited {caption} dialog")
+            if speak_transitions:
+                announce(f"Exited {caption} dialog")
             self._region_tracker.exit(caption)
         return result
 
@@ -7220,8 +7398,9 @@ class MainFrame(
         message.  Screen readers announce the hint area label automatically.
         """
         wx = self._wx
+        # The "Entered/Exited" cues (and their settings gate) come from the inner
+        # _show_modal_dialog call below; don't announce the transition twice.
         self._region_tracker.enter(caption)
-        announce(f"Entered {caption} dialog")
         try:
             dlg = wx.Dialog(
                 self.frame,
@@ -7276,7 +7455,6 @@ class MainFrame(
             self._show_modal_dialog(dlg, caption)
             dlg.Destroy()
         finally:
-            announce(f"Exited {caption} dialog")
             self._region_tracker.exit(caption)
 
     def _prompt_untrusted_location(self, folder: Path) -> bool | None:
@@ -7539,7 +7717,7 @@ class MainFrame(
         )
         self._create_document_tab(document, select=True)
         self._record_recent(source_path)
-        self._set_status(f"Imported {source_path.name}")
+        self._set_status_quiet(f"Imported {source_path.name}")
         self._announce(f"Imported {source_path.name} as Markdown.")
 
     def import_document_other(self) -> None:
@@ -8130,6 +8308,29 @@ class MainFrame(
             csv_mode = self._resolve_csv_open_mode(selected_path)
         finish(read_open_document(selected_path, suffix, csv_mode=csv_mode))
 
+    def _maybe_apply_illumination(self, loaded: object, selected_path: Path, suffix: str) -> bool:
+        """Restore hidden formatting from a ``<name>.illumination`` sidecar when
+        opening a plain-text file, so a .txt saved with an Illumination reopens
+        fully formatted. No-op (returns False) when there is no sidecar, the
+        version is unknown, or the text drifted (edited outside QUILL) — the file
+        then opens as plain text. Returns True when formatting was restored."""
+        if suffix != ".txt":
+            return False
+        text = getattr(loaded, "text", None)
+        if not isinstance(text, str):
+            return False
+        from quill.io.illumination import read_illumination, restore_markup
+
+        illumination = read_illumination(selected_path)
+        if illumination is None:
+            return False
+        restored = restore_markup(illumination, text)
+        if restored is None:
+            return False
+        loaded.text = restored
+        loaded.modified = False
+        return True
+
     def _finish_open_document(
         self,
         result: object,
@@ -8149,6 +8350,7 @@ class MainFrame(
         """
         assert isinstance(result, tuple)
         loaded, epub_book = result
+        illuminated = self._maybe_apply_illumination(loaded, selected_path, suffix)
         self._epub_book = epub_book if suffix == ".epub" else None
         linkage_entry = get_publishing_linkage(selected_path)
         if linkage_entry is not None:
@@ -8179,7 +8381,12 @@ class MainFrame(
             self._record_recent(selected_path)
         self._refresh_title()
         self._last_intake_report = build_intake_report(loaded)
-        self._set_status(build_intake_summary(loaded))
+        if illuminated:
+            self._set_status(
+                f"Opened {selected_path.name}; formatting restored from its Illumination"
+            )
+        else:
+            self._set_status(build_intake_summary(loaded))
         # Switch to the profile mapped to this file's extension, if one is set (#138).
         self.maybe_switch_profile_for_open(selected_path)
         # FEAT-19: (re)start the external change watcher for the freshly loaded document.
@@ -8423,6 +8630,20 @@ class MainFrame(
 
     def previous_document(self) -> None:
         self._switch_document(reverse=True)
+
+    def go_to_document(self, position: int) -> None:
+        """Switch to the document in tab ``position`` (1-based; 10 == Alt+0).
+
+        Out-of-range positions (no such tab open) just announce that nothing is
+        there rather than switching. A single status update carries the spoken
+        feedback — ``_activate_tab`` does not speak, so there is no double-talk.
+        """
+        index = position - 1
+        if 0 <= index < len(self._document_tabs):
+            self._select_tab(index)
+            self._set_status(f"Switched to {self.document.name}")
+        else:
+            self._set_status(f"No document {position} open")
 
     def close_other_documents(self) -> None:
         self._close_other_tabs(self._active_tab_index)
@@ -9484,17 +9705,93 @@ class MainFrame(
                 return
             target = Path(dialog.GetPath())
 
-        plain_doc = Document(
-            text=self.editor.GetValue(),
-            path=target,
-            modified=True,
-            encoding="utf-8",
-            line_ending="\n",
+        if self._save_plain_text_honoring_formatting(target, self.editor.GetValue()):
+            self._record_recent(target)
+
+    def _save_plain_text_honoring_formatting(self, target: Path, text: str) -> bool:
+        """Save *text* as plain text at *target*, honouring the
+        ``plain_text_with_formatting`` policy when the document carries hidden
+        formatting. Writes/refreshes or removes the ``<name>.illumination`` sidecar
+        as appropriate. Returns ``False`` only if the user cancelled."""
+        from quill.io.illumination import (
+            build_illumination,
+            illumination_path_for,
+            markup_has_formatting,
+            write_illumination,
         )
+
         link_style = str(getattr(self.settings, "plain_text_link_style", "text_url"))
-        write_plain_text_document(plain_doc, target, link_style=link_style)
-        self._record_recent(target)
-        self._set_status(f"Saved plain text to {target.name}")
+
+        def _write_plain() -> None:
+            plain_doc = Document(
+                text=text, path=target, modified=True, encoding="utf-8", line_ending="\n"
+            )
+            write_plain_text_document(plain_doc, target, link_style=link_style)
+
+        def _illuminate() -> None:
+            _write_plain()
+            sidecar = write_illumination(target, build_illumination(text))
+            self._set_status(
+                f"Saved plain text to {target.name} with an Illumination ({sidecar.name})"
+            )
+
+        def _drop_and_clear_sidecar() -> None:
+            _write_plain()
+            stale = illumination_path_for(target)
+            try:
+                if stale.is_file():
+                    stale.unlink()
+            except OSError:
+                pass
+            self._set_status(f"Saved plain text to {target.name} (formatting not kept)")
+
+        if not markup_has_formatting(text):
+            _write_plain()
+            self._set_status(f"Saved plain text to {target.name}")
+            return True
+
+        policy = str(getattr(self.settings, "plain_text_with_formatting", "ask"))
+        if policy == "illuminate":
+            _illuminate()
+            return True
+        if policy == "plain":
+            _drop_and_clear_sidecar()
+            return True
+
+        choice = self._ask_plain_text_formatting_choice()
+        if choice is None:
+            return False
+        if choice == "keep":
+            # Let the user pick a format that carries formatting (.md / .rtf / .docx).
+            self.save_file_as()
+            return True
+        if choice == "illuminate":
+            _illuminate()
+            return True
+        _drop_and_clear_sidecar()
+        return True
+
+    def _ask_plain_text_formatting_choice(self) -> str | None:
+        """Offer keep / illuminate / plain; returns 'keep' | 'illuminate' | 'plain'
+        or ``None`` if the user cancelled."""
+        wx = self._wx
+        choices = [
+            "Keep my formatting — save as Markdown, Word, or RTF instead",
+            "Save plain text plus an Illumination sidecar (keeps formatting in QUILL)",
+            "Save plain text only — remove the formatting",
+        ]
+        with wx.SingleChoiceDialog(
+            self.frame,
+            (
+                "This document has formatting (fonts, colours, alignment) that a plain "
+                "text file cannot hold. What would you like to do?"
+            ),
+            "Save as plain text",
+            choices,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Save as plain text") != wx.ID_OK:
+                return None
+            return ("keep", "illuminate", "plain")[dialog.GetSelection()]
 
     def clear_recent_files(self) -> None:
         clear_recent_files()
@@ -9918,11 +10215,55 @@ class MainFrame(
         except Exception:  # noqa: BLE001
             self._announce("Could not repeat last palette command")
 
+    #: Informational, side-effect-free commands where a rapid second press means
+    #: "show me what you just said" rather than "do it again". Re-running any of
+    #: these is harmless, so hijacking the second press to open the Spoken Echo
+    #: loses nothing. The dedicated Echo key works for every announcement; this
+    #: set only governs the optional double-press shortcut.
+    _ECHO_DOUBLE_PRESS_COMMANDS = frozenset({
+        "format.describe_formatting",
+        "document.summary",
+        "help.context_help",
+        "view.announce_contrast",
+    })
+
+    #: Maximum gap (seconds) between two presses to count as a double-press.
+    _ECHO_DOUBLE_PRESS_WINDOW = 0.5
+
     def _run_command(self, command_id: str) -> None:
+        if self._maybe_echo_on_double_press(command_id):
+            return
         try:
             self.commands.run(command_id)
         except Exception:  # noqa: BLE001
             self._set_status(f"Command failed: {command_id}")
+
+    def _maybe_echo_on_double_press(self, command_id: str) -> bool:
+        """Return True (and open the Echo) on a rapid second press of an
+        informational command, when the double-press shortcut is enabled.
+
+        Always records the press for the next comparison. Returns False — letting
+        the command run normally — for non-informational commands, when the
+        setting is off, or on a first/slow press.
+        """
+        now = time.monotonic()
+        previous = getattr(self, "_last_echo_command", None)
+        previous_at = getattr(self, "_last_echo_command_at", 0.0)
+        self._last_echo_command = command_id
+        self._last_echo_command_at = now
+        if command_id not in self._ECHO_DOUBLE_PRESS_COMMANDS:
+            return False
+        enabled = bool(
+            getattr(getattr(self, "settings", None), "spoken_echo_on_double_press", True)
+        )
+        if not enabled:
+            return False
+        if previous == command_id and (now - previous_at) <= self._ECHO_DOUBLE_PRESS_WINDOW:
+            # Reset so a third press re-runs the command rather than re-opening.
+            self._last_echo_command = None
+            self.show_spoken_echo()
+            return True
+        return False
 
     def create_sticky_note(self) -> None:
         if self._safe_mode:
@@ -10916,7 +11257,6 @@ class MainFrame(
         ai_value: bool | None = None
         ext_master_value: bool | None = None
         ext_engine_spec: tuple[str, str, bool] | None = None
-        ai_menu_top_level_value: bool | None = None
         data_location_choice: tuple[str, str] | None = None
 
         with wx.Dialog(self.frame, title="Settings") as dialog:
@@ -11510,15 +11850,8 @@ class MainFrame(
                         _ps.Add(_ef, 0, wx.ALL, 6)
                         _ai_refs["ext_engine_enabled_cb"] = _ef
                         _ps.Add(wx.StaticLine(_p), 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 6)
-                        _tl_cb = wx.CheckBox(_p, label="Show AI as a top-level menu")
-                        _tl_cb.SetValue(self._feature_enabled("future.ai_menu_top_level"))
-                        _tl_cb.SetName(
-                            "Show AI as a top-level menu. "
-                            "Promotes AI Assistant from the Tools submenu to its own "
-                            "entry in the menu bar. Takes effect immediately."
-                        )
-                        _ps.Add(_tl_cb, 0, wx.ALL, 6)
-                        _ai_refs["ai_menu_top_level_cb"] = _tl_cb
+                        # AI is always a top-level "&AI" menu now (the former
+                        # opt-in toggle was retired, 2026-06-27).
                         _ps.Add(
                             wx.StaticText(
                                 _p,
@@ -11753,11 +12086,6 @@ class MainFrame(
                             )
                         except ValueError as _ve:
                             self._set_status(str(_ve))
-                _tl_cb2 = _ai_refs.get("ai_menu_top_level_cb")
-                if _tl_cb2 is not None:
-                    self.features.set_feature_enabled(
-                        "future.ai_menu_top_level", bool(_tl_cb2.GetValue())
-                    )
                 self._settings_dialog_apply_refresh("Settings applied")
                 _dirty[0] = False
                 _apply_btn.Enable(False)
@@ -11802,9 +12130,6 @@ class MainFrame(
                         str(_cf.GetValue()),
                         bool(_ef.GetValue()) if _ef is not None else False,
                     )
-                _tl_cb = _ai_refs.get("ai_menu_top_level_cb")
-                if _tl_cb is not None:
-                    ai_menu_top_level_value = bool(_tl_cb.GetValue())
                 _read_data_location = _data_location_refs.get("read")
                 if _read_data_location is not None:
                     data_location_choice = _read_data_location()
@@ -11847,8 +12172,6 @@ class MainFrame(
                     )
                 except ValueError as error:
                     self._set_status(str(error))
-        if ai_menu_top_level_value is not None:
-            self.features.set_feature_enabled("future.ai_menu_top_level", ai_menu_top_level_value)
         if data_location_choice is not None:
             chosen_mode, chosen_custom = data_location_choice
             resolve_target_fn = _data_location_refs.get("resolve_target")
@@ -12585,169 +12908,6 @@ class MainFrame(
         export_keymap(target, self.keymap)
         self._set_status(f"Exported keymap to {target.name}")
 
-    def open_keymap_editor(self) -> None:
-        wx = self._wx
-        quick_nav_actions: list[tuple[str, str]] = [
-            ("QUILL Quick Nav: Heading", "quill.quick_nav.heading"),
-            ("QUILL Quick Nav: Link", "quill.quick_nav.link"),
-            ("QUILL Quick Nav: List", "quill.quick_nav.list"),
-            ("QUILL Quick Nav: List Item", "quill.quick_nav.list_item"),
-            ("QUILL Quick Nav: Table", "quill.quick_nav.table"),
-            ("QUILL Quick Nav: Block Quote", "quill.quick_nav.block_quote"),
-            ("QUILL Quick Nav: Bookmark", "quill.quick_nav.bookmark"),
-            ("QUILL Quick Nav: Code Block", "quill.quick_nav.code_block"),
-            ("QUILL Quick Nav: Table of Contents", "quill.quick_nav.table_of_contents"),
-            ("QUILL Quick Nav: Paragraph", "quill.quick_nav.paragraph"),
-            ("QUILL Quick Nav: Sentence", "quill.quick_nav.sentence"),
-            ("QUILL Quick Nav: Block", "quill.quick_nav.block"),
-            ("QUILL Quick Nav: Skip Forward Past Container", "quill.quick_nav.skip_forward"),
-            ("QUILL Quick Nav: Skip Backward Past Container", "quill.quick_nav.skip_backward"),
-        ]
-        entries: list[tuple[str, str]] = [
-            (command.title, command.id)
-            for command in self.commands.list()
-            if not command.id.startswith("tools.keymap_editor")
-        ]
-        entries.extend(quick_nav_actions)
-        if not entries:
-            self._set_status("No commands available for keymap editing")
-            return
-
-        dialog = wx.Dialog(self.frame, title="Keymap Editor", size=(640, 480))
-        # Parent every control directly to the dialog and lay them out in a
-        # single sizer (issue #119). The previous build parented controls to an
-        # inner wx.Panel but added dialog.CreateButtonSizer()'s buttons (children
-        # of the dialog) to the panel's sizer. That parent/sizer mismatch
-        # mislaid the OK button (it could not dismiss the dialog) and collapsed
-        # the command list. This matches the working _choose_searchable_option.
-        root = wx.BoxSizer(wx.VERTICAL)
-        root.Add(
-            wx.StaticText(
-                dialog,
-                label=(
-                    "Select a command and choose Edit to change its keybinding. "
-                    "The current key (or 'Unassigned') is shown for each command. "
-                    "Choose OK to return to the editor."
-                ),
-            ),
-            0,
-            wx.ALL | wx.EXPAND,
-            8,
-        )
-        listbox = wx.ListBox(dialog, style=wx.LB_SINGLE)
-        root.Add(listbox, 1, wx.ALL | wx.EXPAND, 8)
-        controls = wx.BoxSizer(wx.HORIZONTAL)
-        edit_button = wx.Button(dialog, label="&Edit Keybinding...")
-        controls.Add(edit_button, 0, wx.RIGHT, 8)
-        root.Add(controls, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        buttons = dialog.CreateButtonSizer(wx.OK)
-        if buttons is not None:
-            ok_button = dialog.FindWindowById(wx.ID_OK)
-            if ok_button is not None:
-                ok_button.SetDefault()
-            root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
-        # This editor has only an OK button, so Escape closes via OK rather than
-        # a non-existent Cancel button; SetEscapeId needs an id that a real
-        # button carries or Escape is inert (a keyboard trap, #124).
-        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_OK)
-        dialog.SetSizer(root)
-
-        def refresh_list(keep: int | None = None) -> None:
-            labels = [
-                f"{title} — {self._binding_for(command_id) or 'Unassigned'}"
-                for title, command_id in entries
-            ]
-            listbox.Set(labels)
-            if keep is not None and 0 <= keep < len(entries):
-                listbox.SetSelection(keep)
-
-        def edit_selected(_event: object = None) -> None:
-            selected = listbox.GetSelection()
-            if selected == wx.NOT_FOUND:
-                self._set_status("Select a command to edit")
-                return
-            title, command_id = entries[selected]
-            current_binding = self._binding_for(command_id) or ""
-            with wx.TextEntryDialog(
-                dialog,
-                f"Enter new keybinding for {title} (example: Ctrl+Shift+K):",
-                "Edit Keybinding",
-                value=current_binding,
-            ) as binding_dialog:
-                if self._show_modal_dialog(binding_dialog, "Edit Keybinding") != wx.ID_OK:
-                    return
-                new_binding = binding_dialog.GetValue().strip()
-            if self._apply_keymap_binding(command_id, new_binding):
-                refresh_list(keep=selected)
-
-        edit_button.Bind(wx.EVT_BUTTON, edit_selected)
-        listbox.Bind(wx.EVT_LISTBOX_DCLICK, edit_selected)
-        refresh_list(keep=0)
-
-        self._show_modal_dialog(dialog, "Keymap Editor")
-        dialog.Destroy()
-
-    def _apply_keymap_binding(self, command_id: str, new_binding: str) -> bool:
-        """Validate and persist a new keybinding. Returns True when applied.
-
-        Shared by the Keymap Editor dialog so a single edit returns to the
-        command list (issue #117) rather than dismissing the editor entirely.
-        """
-        wx = self._wx
-        if not new_binding:
-            self._show_message_box(
-                "Keybinding cannot be blank.",
-                "Keymap Editor",
-                wx.ICON_ERROR | wx.OK,
-            )
-            return False
-        is_chord = ", " in new_binding
-        if is_chord:
-            prefix_part, _, second_part = new_binding.partition(", ")
-            second_valid = (
-                second_part.strip()
-                and self._parse_chord_second_key(second_part.strip()) is not None
-            )
-            if self._parse_keybinding(prefix_part) is None or not second_valid:
-                self._show_message_box(
-                    "Keybinding format is invalid. Chord format: Ctrl+Shift+Grave, Key",
-                    "Keymap Editor",
-                    wx.ICON_ERROR | wx.OK,
-                )
-                return False
-        elif self._parse_keybinding(new_binding) is None:
-            self._show_message_box(
-                "Keybinding format is invalid.",
-                "Keymap Editor",
-                wx.ICON_ERROR | wx.OK,
-            )
-            return False
-        if command_id.startswith("quill.quick_nav."):
-            normalized = new_binding.strip().upper()
-            quick_nav_valid = (len(normalized) == 1) or (normalized == "TAB")
-            if not quick_nav_valid:
-                self._show_message_box(
-                    "QUILL Quick Nav bindings must be a single key or TAB.",
-                    "Keymap Editor",
-                    wx.ICON_ERROR | wx.OK,
-                )
-                return False
-        conflict = find_keymap_conflict(self.keymap, command_id, new_binding)
-        if conflict:
-            self._show_message_box(
-                f'Binding conflicts with "{conflict}". Choose a different keybinding.',
-                "Keymap Editor",
-                wx.ICON_WARNING | wx.OK,
-            )
-            self._set_status("Keymap edit cancelled")
-            return False
-        self.keymap[command_id] = new_binding
-        save_keymap(self.keymap)
-        self._mark_keyboard_pack_custom()
-        self._reload_shortcuts_from_keymap()
-        self._set_status(f"Updated keybinding for {command_id}")
-        return True
-
     def open_share_export_dialog(self) -> None:
         """SHARE-1: Export and back up settings, features, and customizations.
 
@@ -13064,7 +13224,6 @@ class MainFrame(
         if description:
             summary += f". {description}"
         self._set_status(summary)
-        self._announce(summary)
 
     def _apply_recommended_keymap_updates(self) -> None:
         """Force-once important default changes (e.g. Find -> Ctrl+F) at startup.
@@ -13993,20 +14152,30 @@ class MainFrame(
                 pass
             return None
         frame = wx.Frame(self.frame, title="Report a Bug", size=(860, 720))
+        # #729: host the form in a wx.Panel. A bare wx.Frame gives no Tab
+        # traversal between its child controls (only wx.Dialog / wx.Panel do),
+        # so without this the user could not Tab through the fields and had to
+        # fall back to screen-reader object navigation.
+        panel = wx.Panel(frame)
 
         def submit(payload: dict[str, str], issue_url: str, diagnostics_path: Path | None) -> None:
             self._last_bug_report_diagnostics_path = (
                 diagnostics_path if isinstance(diagnostics_path, Path) else None
             )
+            self._save_bug_reporter_identity(self._bug_report_form_body)
             try:
-                self._complete_bug_report_submission(payload, issue_url, diagnostics_path)
+                frame.Destroy()
             finally:
-                self._save_bug_reporter_identity(self._bug_report_form_body)
-                try:
-                    frame.Destroy()
-                finally:
-                    self._bug_report_frame = None
-                    self._bug_report_form_body = None
+                self._bug_report_frame = None
+                self._bug_report_form_body = None
+            # #729: run completion AFTER the window closes so its "Copied bug
+            # report to clipboard" status announcement lands on the main window
+            # and is not buried by the focus-change chatter. Previously the user
+            # heard nothing on submit and thought the report (which is on the
+            # clipboard) had been lost.
+            self._wx.CallAfter(
+                self._complete_bug_report_submission, payload, issue_url, diagnostics_path
+            )
 
         def cancel() -> None:
             try:
@@ -14015,7 +14184,10 @@ class MainFrame(
                 self._bug_report_frame = None
                 self._bug_report_form_body = None
 
-        body = self._build_report_bug_form_body(frame, on_submit=submit, on_cancel=cancel)
+        body = self._build_report_bug_form_body(panel, on_submit=submit, on_cancel=cancel)
+        frame_sizer = wx.BoxSizer(wx.VERTICAL)
+        frame_sizer.Add(panel, 1, wx.EXPAND)
+        frame.SetSizer(frame_sizer)
         self._bug_report_frame = frame
         self._bug_report_form_body = body
         frame.Bind(wx.EVT_CLOSE, lambda _e: cancel())
@@ -15198,7 +15370,7 @@ class MainFrame(
             self._last_language_suggestion = None  # allow auto-detection to re-suggest
             self._apply_statusbar_layout()
             self._request_menu_refresh()
-            self._set_status("Language: auto-detect from file")
+            self._set_status_quiet("Language: auto-detect from file")
             self._announce("Language set to auto-detect from file")
             return
 
@@ -15217,7 +15389,6 @@ class MainFrame(
         hint = self._save_as_hint_for_language(profile)
         message = f"Language set to {profile.name}." + (f" {hint}" if hint else "")
         self._set_status(message)
-        self._announce(message)
 
     def _save_as_hint_for_language(self, profile: object) -> str:
         """Save As tip when the pinned language's extension doesn't match the file.
@@ -15321,7 +15492,6 @@ class MainFrame(
             "Display language set to {name}. Restart QUILL to update all menus and dialogs."
         ).format(name=name)
         self._set_status(message)
-        self._announce(message)
 
     def format_auto_indent_newline(self) -> None:
         """Insert a newline with language-aware indentation."""
@@ -16120,8 +16290,10 @@ class MainFrame(
         )
 
         if session.is_complete():
+            # _set_status already speaks the message (statusbar.announce); a
+            # second explicit _announce spoke it twice (#728). Match the sibling
+            # "No misspellings found" path and announce once via _set_status.
             self._set_status("No misspellings found.")
-            self._announce("No misspellings found.")
             return
 
         def _apply(start: int, old_end: int, replacement: str) -> None:
@@ -17066,18 +17238,24 @@ class MainFrame(
 
         # --- Handle Read Aloud result ---
         if ra_result is not None:
+            # Downloads open a non-modal progress dialog. The hub modal is still
+            # tearing down here, so creating it inline lets focus snap back to the
+            # editor and the screen reader never announces the progress window
+            # (the user is "thrown back to the document with no notification").
+            # Deferring with CallAfter runs the download after the modal fully
+            # closes, so the progress dialog presents and is announced.
             if ra_result.action == "download":
                 if ra_result.engine == "piper":
-                    self._download_piper_voice(ra_result.voice_id)
+                    wx.CallAfter(self._download_piper_voice, ra_result.voice_id)
                 elif ra_result.engine == "kokoro":
-                    self._download_kokoro_models()
+                    wx.CallAfter(self._download_kokoro_models)
             elif ra_result.action == "download_engine":
                 if ra_result.engine == "dectalk":
-                    self.download_dectalk_exe()
+                    wx.CallAfter(self.download_dectalk_exe)
                 elif ra_result.engine == "piper":
-                    self.download_piper_exe()
+                    wx.CallAfter(self.download_piper_exe)
                 elif ra_result.engine == "espeak":
-                    self.download_espeak_exe()
+                    wx.CallAfter(self.download_espeak_exe)
             else:  # 'select' or 'export'
                 eng = ra_result.engine
                 piper_dir = default_piper_model_dir()
@@ -17525,8 +17703,12 @@ class MainFrame(
         )
 
     def _on_read_aloud_progress(self, start: int, end: int) -> None:
-        self.editor.SetSelection(start, end)
-        self.editor.SetFocus()
+        # Following along selects each sentence as it is spoken. With a screen
+        # reader running this makes it announce the selection over QUILL's voice,
+        # so it is gated behind a setting screen-reader users can turn off.
+        if self.settings.read_aloud_follow_cursor:
+            self.editor.SetSelection(start, end)
+            self.editor.SetFocus()
         self._set_status("Read aloud speaking")
 
     def _on_read_aloud_state_change(self, state: str) -> None:
@@ -19115,24 +19297,31 @@ class MainFrame(
             pass
 
         if not silent_no_update:
-            self._set_status("Checking for updates...")
+            self._set_status_quiet("Checking for updates...")
             self._announce("Checking for updates")
 
         beta = bool(getattr(self.settings, "beta_updates", False))
         self._update_check_in_progress = True
+        # Portable installs update by replacing the bundle, not by running the
+        # installer. The signed manifest feed only carries the installer URL, so
+        # for a portable build we skip it and use the GitHub releases path, which
+        # exposes every asset and (via _pick_asset) selects the portable .zip.
+        portable = running_portable()
 
         def _run_fetch():
             manifest: UpdateManifest | None = None
             releases: list[GitHubRelease] | None = None
             fetch_error: str | None = None
             try:
-                try:
-                    # URL resolves the QUILL_UPDATE_MANIFEST_URL override (default:
-                    # the production signed-manifest feed) so a release can be
-                    # rehearsed against a throwaway feed without code changes.
-                    manifest = fetch_update_manifest()
-                except (URLError, ValueError, OSError):
-                    pass
+                if not portable:
+                    try:
+                        # URL resolves the QUILL_UPDATE_MANIFEST_URL override
+                        # (default: the production signed-manifest feed) so a
+                        # release can be rehearsed against a throwaway feed
+                        # without code changes.
+                        manifest = fetch_update_manifest()
+                    except (URLError, ValueError, OSError):
+                        pass
                 if manifest is None or not is_newer_version(current_version, manifest.version):
                     releases = fetch_releases()
             except (URLError, ValueError, OSError) as exc:
@@ -19208,7 +19397,6 @@ class MainFrame(
                 f"# Update check failed\n\nCould not check for updates:\n\n`{fetch_error}`",
             )
             self._set_status("Update check failed")
-            self._announce("Update check failed")
             self._record_notification("Update check failed", "update")
             return
 
@@ -19272,7 +19460,7 @@ class MainFrame(
         if silent_no_update:
             self._record_notification("Update check found no newer version", "update")
             return
-        self._set_status("No update available")
+        self._set_status_quiet("No update available")
         self._announce("Quill is up to date")
         self._record_notification("Update check found no newer version", "update")
         if beta:
@@ -19293,7 +19481,7 @@ class MainFrame(
             return
         self.settings.beta_updates = True
         save_settings(self.settings)
-        self._set_status("Switched to the beta update channel")
+        self._set_status_quiet("Switched to the beta update channel")
         self._announce("Beta updates enabled")
         action = self._show_update_available_dialog(current_version, release)
         if action == "download":
@@ -19397,7 +19585,7 @@ class MainFrame(
                 f"{wheel_list}\n\n"
                 "**Restart QUILL** to load the new accessibility engine.",
             )
-            self._set_status(f"GLOW engine updated to {manifest.version}; restart to apply")
+            self._set_status_quiet(f"GLOW engine updated to {manifest.version}; restart to apply")
             self._announce(f"GLOW engine updated to {manifest.version}. Restart to apply.")
             self._record_notification(
                 f"GLOW engine updated to {manifest.version}; restart to apply", "update"
@@ -19408,7 +19596,7 @@ class MainFrame(
                 "GLOW update failed",
                 f"# GLOW update failed\n\n`{result.message}`{rollback}",
             )
-            self._set_status("GLOW update failed")
+            self._set_status_quiet("GLOW update failed")
             self._announce("GLOW update failed." + rollback)
             self._record_notification(f"GLOW update failed: {result.message}", "update")
 
@@ -19573,7 +19761,7 @@ class MainFrame(
         if result == wx.ID_YES and self._confirm_beta_channel():
             self.settings.beta_updates = True
             save_settings(self.settings)
-            self._set_status("Switched to the beta update channel")
+            self._set_status_quiet("Switched to the beta update channel")
             self._announce("Beta updates enabled")
             # Surface the latest prerelease right away so the user can install it,
             # even if its version matches the current build (they opted into beta).
@@ -19649,7 +19837,7 @@ class MainFrame(
         target_dir = app_data_dir() / "updates"
         target_dir.mkdir(parents=True, exist_ok=True)
         target = target_dir / (url.rsplit("/", 1)[-1] or f"quill-{release.version}")
-        self._set_status(f"Downloading update {release.version}...")
+        self._set_status_quiet(f"Downloading update {release.version}...")
         self._announce(f"Downloading update {release.version}")
 
         # Announce progress at coarse milestones so screen readers aren't flooded.
@@ -20932,7 +21120,6 @@ class MainFrame(
         entries = collect() if callable(collect) else []
         if not entries:
             self._set_status("No gallery snippets are available.")
-            self._announce("No gallery snippets are available.")
             return
 
         from quill.ui.dialog_contract import apply_modal_ids
@@ -21480,7 +21667,10 @@ class MainFrame(
         ai_item_ids = (
             self._id_ai_hub,
             self._id_ask_quill_chat,
+            self._id_ask_quill_voice,
             self._id_ai_model,
+            self._id_ai_switch_engine,
+            self._id_ai_copilot_setup,
             self._id_ai_session_browser,
             self._id_ai_assistant,
             self._id_ai_prompt_studio,
@@ -21514,16 +21704,54 @@ class MainFrame(
             return False
 
     def open_ask_quill_chat(self) -> None:
+        self._open_ask_quill(voice_mode=False)
+
+    def open_ask_quill_conversation(self) -> None:
+        """Open Ask Quill in voice conversation mode (Alt+Shift+Q).
+
+        Same chat, but spoken answers play with transport controls when text-to-
+        speech is available, and Ctrl+F9 captures a spoken question. Falls back to
+        text + screen-reader announcements when voice I/O is unavailable.
+        """
+        self._open_ask_quill(voice_mode=True)
+
+    def _open_ask_quill(self, *, voice_mode: bool) -> None:
         from quill.core.ai.model_manager import load_ai_enabled
+        from quill.core.ai.onboarding import active_connection_consented, ai_connection_ready
 
-        if not load_ai_enabled():
-            from quill.core.ai.availability import AI_DISABLED_MESSAGE
+        # Offer setup not only when AI is off, but also when it's on yet the connection
+        # isn't usable (no provider/key) or the active provider has no standing share
+        # consent. Without consent QUILL must not send anything, so route to setup (where
+        # the allow checkbox lives) instead of failing or hanging at request time.
+        if not load_ai_enabled() or not ai_connection_ready() or not active_connection_consented():
+            from quill.ui.ai_setup_wizard import maybe_offer_ai_setup
 
-            self._set_status(AI_DISABLED_MESSAGE)
-            return
+            if not maybe_offer_ai_setup(self, reason="Ask Quill needs AI to chat with you."):
+                from quill.core.ai.availability import AI_DISABLED_MESSAGE
+
+                self._set_status(AI_DISABLED_MESSAGE)
+                return
 
         self._apply_style_to_assistant()
         tool_catalog = allowed_tools(self.commands, getattr(self, "features", None))
+        voice = self._build_voice_services()
+        open_player = None
+        if voice is not None and voice.output_available():
+            from quill.ui.speech_player_dialog import show_speech_player
+
+            def open_player(text: str) -> None:
+                show_speech_player(self, voice, text)
+
+        # Modeless chat: if one is already open, just bring it forward.
+        existing = getattr(self, "_ask_quill_dialog", None)
+        if existing is not None:
+            try:
+                existing.dialog.Raise()
+                existing.dialog.SetFocus()
+                return
+            except Exception:  # noqa: BLE001 - stale handle; fall through and reopen
+                self._ask_quill_dialog = None
+
         dialog = AskQuillChatDialog(
             self.frame,
             self._get_assistant(),
@@ -21537,15 +21765,150 @@ class MainFrame(
             tool_catalog=tool_catalog,
             announce=self._set_status,
             review_changes=self.open_ai_diff_review,
+            conversation=self._build_companion_conversation(),
+            voice_mode=voice_mode,
+            voice=voice,
+            signal_sound=self._signal_ai_sound,
+            open_speech_player=open_player,
+            rebuild_conversation=self._build_companion_conversation,
         )
-        dialog.show()
+        # Open modeless so the user can keep working with the chat alongside the document.
+        # The frame keeps its normal menu bar (a wx.Dialog can't host one, and swapping the
+        # frame's bar left the menu unreachable from the focused dialog). Every chat action
+        # is a button in the dialog, so no menu bar is needed here.
+        self._ask_quill_dialog = dialog
+        dialog.show_modeless(on_close=self._on_ask_quill_closed)
 
-    def open_ask_ai(self) -> None:
-        from quill.ui.ai_chat_dialog import AskAIDialog
+    def _on_ask_quill_closed(self) -> None:
+        """Drop the chat handle and refresh the menu (reflects any AI state change)."""
+        self._ask_quill_dialog = None
+        try:
+            self._build_menu()  # reflect provider/AI-state changes made while chat was open
+        except Exception:  # noqa: BLE001 - never let a menu refresh crash on close
+            pass
 
-        dlg = AskAIDialog(self.frame, self.settings, announce_cb=self._announce)
-        dlg.show()
-        dlg.close()
+    def _signal_ai_sound(self, name: str) -> None:
+        """Play an AI earcon for the chat ('thinking' / 'response' / 'error')."""
+        from quill.core.sound_events import SoundEvent
+        from quill.ui.sound_manager import post_sound
+
+        event = {
+            "thinking": SoundEvent.AI_THINKING_STARTED,
+            "response": SoundEvent.AI_RESPONSE_RECEIVED,
+            "error": SoundEvent.AI_ERROR,
+        }.get(name)
+        if event is not None:
+            try:
+                post_sound(event)
+            except Exception:  # noqa: BLE001 - a missing earcon must never break chat
+                pass
+
+    def _build_voice_services(self):
+        """Build VoiceServices for the chat, or None when voice I/O is unavailable.
+
+        Resolves an installed speech-to-text model (for Ctrl+F9 voice questions) and
+        an OpenAI key (for spoken answers + Save as media). Each piece degrades
+        independently: no mic/model => text input only; no TTS key => screen-reader
+        announcements instead of an audio player.
+        """
+        if getattr(self, "_safe_mode", False):
+            return None
+        try:
+            from quill.ui.voice_services import VoiceServices
+        except Exception:  # noqa: BLE001
+            return None
+
+        provider = None
+        model_id = ""
+        get_provider = getattr(self, "_speech_provider", None)
+        if callable(get_provider):
+            try:
+                candidate = get_provider()
+                if candidate is not None and candidate.is_available():
+                    provider = candidate
+                    installed = candidate.list_installed_models()
+                    if installed:
+                        first = installed[0]
+                        model_id = getattr(first, "model_id", "") or getattr(first, "id", "")
+            except Exception:  # noqa: BLE001
+                provider, model_id = None, ""
+
+        device_index = -1
+        try:
+            from quill.core.speech.service import load_input_device
+
+            device_index = load_input_device()
+        except Exception:  # noqa: BLE001
+            device_index = -1
+
+        tts_key = ""
+        try:
+            from quill.core.assistant_ai import (
+                load_assistant_api_key,
+                load_assistant_connection_settings,
+            )
+
+            conn = load_assistant_connection_settings()
+            if (conn.provider or "").strip().lower() == "openai":
+                tts_key = load_assistant_api_key() or ""
+        except Exception:  # noqa: BLE001
+            tts_key = ""
+
+        return VoiceServices(
+            stt_provider=provider,
+            stt_model_id=model_id,
+            device_index=device_index,
+            tts_api_key=tts_key,
+        )
+
+    def _build_companion_conversation(self):
+        """Build the Phase 1 conversational companion callable, or None to fall back.
+
+        Returns a ``(message, document, selection) -> (answer, edited, error)``
+        callable backed by a :class:`ConversationSession` (multi-step tool loop
+        through the Safe Editor Tool Gateway), or None when Safe Mode is on or no
+        AI provider is available — in which case the dialog uses the legacy path.
+        """
+        if getattr(self, "_safe_mode", False):
+            return None
+        try:
+            from quill.ui.agent_editor_host import build_companion_session
+
+            session, _engine = build_companion_session(self)
+        except Exception:  # noqa: BLE001 - never block the chat from opening
+            return None
+        if session is None:
+            return None
+
+        # Consent is a one-time, per-provider decision made at setup (the wizard's allow
+        # checkbox), not a per-chat-session prompt. A provider with standing consent sends
+        # with no preview; a provider without it is blocked here (covers a mid-chat provider
+        # switch, or a provider configured outside the wizard). Redaction always applies.
+        def conversation(message: str, document: str, selection: str):
+            from quill.core.ai.onboarding import active_connection_consented
+            from quill.core.ai.providers import provider_display_name
+            from quill.core.assistant_ai import load_assistant_connection_settings
+            from quill.ui.agent_editor_host import prepare_companion_context
+
+            if not active_connection_consented():
+                try:
+                    pid = load_assistant_connection_settings().provider.strip().lower()
+                    name = provider_display_name(pid) if pid else "this provider"
+                except Exception:  # noqa: BLE001
+                    name = "this provider"
+                return (
+                    f"{name} isn't allowed to use your writing yet. Open the AI menu, run "
+                    "AI Setup, and check the allow box for it — then try again.",
+                    False,
+                    "",
+                )
+            context_text, _ok = prepare_companion_context(
+                self, document, selection, need_consent=False
+            )
+            result = session.ask(message, context_text=context_text)
+            return result.answer, result.edited, result.error
+
+        return conversation
 
     def open_prompt_library(self) -> None:
         from quill.ui.prompt_library_dialog import PromptLibraryDialog
@@ -21563,22 +21926,15 @@ class MainFrame(
         self._show_modal_dialog(dlg.dialog, "Prompt Library")
         dlg.close()
 
-    def open_skill_library(self) -> None:
-        from quill.ui.skill_library_dialog import SkillLibraryDialog
+    def open_ai_library(self) -> None:
+        from quill.ui.ai_library_dialog import open_ai_library
 
-        dlg = SkillLibraryDialog(
-            self.frame,
-            self._get_skill_files(),
-            self.settings,
-            selection=str(self.editor.GetStringSelection()),
-            document=str(self.editor.GetValue()),
-            title_text=self._current_document_title(),
-            on_insert=self._ai_insert_text,
-            announce_cb=self._announce,
-        )
-        dlg.dialog.CenterOnParent()
-        self._show_modal_dialog(dlg.dialog, "Skill Library")
-        dlg.close()
+        open_ai_library(self)
+
+    def open_skill_library(self) -> None:
+        from quill.ui.skill_library_dialog import open_skill_library
+
+        open_skill_library(self)
 
     def _get_skill_files(self) -> list:
 
@@ -21600,11 +21956,16 @@ class MainFrame(
         if not selection.strip():
             self._announce("No text to check grammar for.")
             return
-        provider_id = self.settings.ai_chat_default_provider
-        model_id = self.settings.ai_prompt_default_model or self.settings.ai_chat_default_model
-        if not model_id:
-            self._set_status("No AI model configured. Set one in Preferences > AI.")
+        # Route through the unified AI Hub connection (ProviderChatBackend), the same
+        # path Ask Quill and the AI Library use. The old code read the key from a
+        # separate "quill-<provider>-api-key" credential and ai_chat_* settings the
+        # setup wizard never writes, so it failed to find a configured key.
+        if self._ai_require_connection() is None:
             return
+        from quill.core.ai.provider_backend import ProviderChatBackend
+
+        backend = ProviderChatBackend()
+        model_id, provider_id = backend.settings.model, backend.settings.provider
         prompt_text = grammar.text.replace("{selection}", selection)
         self._announce(f"Checking grammar with {model_id}...")
 
@@ -21612,11 +21973,7 @@ class MainFrame(
             import wx as _wx
 
             try:
-                from quill.core.ai_chat import send_prompt
-                from quill.platform.windows.credential_manager import get_credential
-
-                api_key = get_credential(f"quill-{provider_id}-api-key") or ""
-                result = send_prompt(provider_id, model_id, prompt_text, api_key=api_key)
+                result = backend.respond(prompt_text)
                 _wx.CallAfter(self._show_grammar_result, result, model_id, provider_id)
             except Exception as exc:  # noqa: BLE001
                 _wx.CallAfter(self._announce, f"Grammar check failed: {exc}")
@@ -21673,16 +22030,25 @@ class MainFrame(
     # ------------------------------------------------------------------
 
     def _ai_require_connection(self) -> tuple[object, str] | None:
-        """Return (connection, api_key) or announce an error and return None."""
+        """Return (connection, api_key), or offer AI setup and return None.
+
+        The single choke point for keyed AI text features (spell/grammar check,
+        translate, Document Q&A, thesaurus, agent tasks). When AI is off or not
+        yet configured, it offers the setup wizard — an actionable dialog — rather
+        than dead-ending into a status line a screen-reader user can miss. This
+        mirrors what Ask Quill, Transcript Actions, and the AI Library already do,
+        so every keyed feature behaves the same when AI isn't ready.
+        """
         from quill.core.assistant_ai import (
             load_assistant_api_key,
             load_assistant_connection_settings,
         )
+        from quill.ui.ai_setup_wizard import maybe_offer_ai_setup
 
-        conn = load_assistant_connection_settings()
-        if conn.provider == "off" or not conn.provider:
-            self._set_status("AI is not configured. Open AI Hub (AI menu) to set up a provider.")
+        if not maybe_offer_ai_setup(self, reason="To use this AI feature, QUILL needs AI."):
+            self._set_status("AI isn't set up. Use AI > Set Up AI, or turn on AI in the AI menu.")
             return None
+        conn = load_assistant_connection_settings()
         api_key = load_assistant_api_key() or ""
         return conn, api_key
 
@@ -21866,14 +22232,36 @@ class MainFrame(
 
         openai_key = self._get_openai_api_key()
         if not openai_key:
-            self._set_status("OpenAI API key not configured. Open AI Hub to add your key.")
+            self._show_message_box(
+                "Cloud audio transcription uses OpenAI Whisper, which needs an "
+                "OpenAI API key. Open the AI Hub to add an OpenAI key, or use "
+                "Tools > Speech > Transcribe Audio or Video (Offline) to "
+                "transcribe on this device with no key and no internet.",
+                "OpenAI Key Needed for Transcription",
+                self._wx.OK | self._wx.ICON_INFORMATION,
+            )
             return
 
-        def _on_transcribe(path, lang_code, diarize, max_speakers):
+        def _on_transcribe(path, lang_code, translate, diarize, max_speakers):
+            if diarize:
+                deepgram_key = self._get_deepgram_api_key()
+                if not deepgram_key:
+                    self._show_message_box(
+                        "Speaker identification uses Deepgram, which needs its own "
+                        "Deepgram API key. Add one in AI Hub > Audio, or clear the "
+                        "'Identify different speakers' checkbox to transcribe with "
+                        "OpenAI Whisper instead.",
+                        "Deepgram Key Needed for Speaker Identification",
+                        self._wx.OK | self._wx.ICON_INFORMATION,
+                    )
+                    return
+            else:
+                deepgram_key = ""
+            label = "Translating Audio" if translate else "Transcribing Audio"
             progress = AIProgressDialog(
                 self.frame,
-                "Transcribing Audio",
-                f"Transcribing {path.name}...",
+                label,
+                f"{'Translating' if translate else 'Transcribing'} {path.name}...",
             )
             progress.show()
 
@@ -21884,9 +22272,9 @@ class MainFrame(
                     if diarize:
                         from quill.core.ai.diarization import diarize_file, format_diarization
 
-                        dr = diarize_file(path, "deepgram", openai_key, max_speakers)
+                        dr = diarize_file(path, "deepgram", deepgram_key, max_speakers)
                         transcript = format_diarization(dr)
-                    elif translate_to_english:
+                    elif translate:
                         from quill.core.ai.transcription import translate_file
 
                         transcript = translate_file(path, openai_key)
@@ -21896,7 +22284,16 @@ class MainFrame(
                         transcript = transcribe_file(path, openai_key, language=lang_code)
                 except Exception as exc:  # noqa: BLE001
                     _wx.CallAfter(progress.close)
-                    _wx.CallAfter(self._set_status, f"Transcription failed: {exc}")
+                    detail = str(exc)
+                    lowered = detail.lower()
+                    if "401" in detail or "unauthor" in lowered or "invalid_api_key" in lowered:
+                        message = (
+                            "Transcription failed: OpenAI rejected the API key (401). "
+                            "Check your OpenAI key in the AI Hub."
+                        )
+                    else:
+                        message = f"Transcription failed: {detail}"
+                    _wx.CallAfter(self._set_status, message)
                     return
                 _wx.CallAfter(progress.close)
                 _wx.CallAfter(self._show_transcription_result, transcript, path.name)
@@ -21909,6 +22306,14 @@ class MainFrame(
         dlg.show()
 
     def _show_transcription_result(self, transcript: str, file_name: str) -> None:
+        # The Listening Companion: first ask "what would you like me to make of this?"
+        # and run the chosen Transcript Action. If AI is off/unreachable or the user
+        # opts out, fall back to the plain transcript result below.
+        from quill.ui.transcript_actions_ui import offer_transcript_actions
+
+        if offer_transcript_actions(self, transcript, file_name):
+            return
+
         from quill.ui.ai_transcribe_dialog import AITranscriptionResultDialog
 
         def _on_insert(text: str) -> None:
@@ -21930,11 +22335,17 @@ class MainFrame(
         dlg.show()
 
     def _get_openai_api_key(self) -> str:
-        """Return the first OpenAI-compatible API key from the credential store."""
-        try:
-            from quill.core.assistant_ai import load_assistant_api_key
+        """Return the OpenAI API key, or '' if none.
 
-            return load_assistant_api_key() or ""
+        Whisper transcription/translation and OpenAI TTS always call OpenAI, so
+        they need the OpenAI key specifically — not whatever provider the
+        assistant happens to be set to. Using the active assistant key here sent
+        (say) an Anthropic key to OpenAI and produced a confusing 401.
+        """
+        try:
+            from quill.core.assistant_ai import load_keyed_provider_api_key
+
+            return load_keyed_provider_api_key("openai")
         except Exception:  # noqa: BLE001
             return ""
 
@@ -21944,6 +22355,20 @@ class MainFrame(
             from quill.core.assistant_ai import load_provider_api_key
 
             return load_provider_api_key("gemini") or ""
+        except Exception:  # noqa: BLE001
+            return ""
+
+    def _get_deepgram_api_key(self) -> str:
+        """Return the stored Deepgram API key (AI Hub > Audio), or '' if none.
+
+        Speaker diarization calls Deepgram, which needs its own key — not the
+        OpenAI key the rest of the transcribe flow uses.
+        """
+        try:
+            from quill.platform.windows.credential_manager import load_generic_credential
+
+            stored = load_generic_credential("QUILL_DEEPGRAM_API_KEY")
+            return (stored.secret if stored else "") or ""
         except Exception:  # noqa: BLE001
             return ""
 
@@ -22433,24 +22858,15 @@ class MainFrame(
         dialog.show_modal()
 
     def open_prompt_studio(self) -> None:
-        dialog = PromptStudioDialog(
-            self.frame,
-            selection_text=self._selected_text(),
-            document_text=self.editor.GetValue(),
-            on_use_prompt=self.open_writing_assistant,
-            announce=self._set_status,
-        )
-        dialog.show_modal()
+        # Retired into the unified AI Library (Prompts tab). Kept as a redirect so
+        # any keybinding/palette entry lands in the new manager instead of a dead
+        # end.
+        self.open_ai_library()
 
     def open_agent_center(self) -> None:
-        dialog = AgentCenterDialog(
-            self.frame,
-            selection_text=self._selected_text(),
-            document_text=self.editor.GetValue(),
-            on_use_prompt=self.open_writing_assistant,
-            announce=self._set_status,
-        )
-        dialog.show_modal()
+        # Retired into the unified AI Library (Agents tab); redirect like
+        # open_prompt_studio so old entry points upgrade rather than break.
+        self.open_ai_library()
 
     def run_python_tool(self) -> None:
         outline = [
@@ -22561,6 +22977,10 @@ class MainFrame(
         if bool(getattr(self.settings, "indent_with_tabs", False)):
             return "\t"
         return " " * self._indent_width()
+
+    def _current_line_indent_phrase(self) -> str:
+        """The caret line's indentation depth spoken after Tab / Shift+Tab."""
+        return describe_indent_depth(self.editor.GetValue(), self.editor.GetInsertionPoint())
 
     def format_indent(
         self, *, status: str = "Indented lines", force_announce: bool = False
@@ -25121,7 +25541,7 @@ class MainFrame(
             save_settings(self.settings)
             feature_manager.save()
             self._apply_accelerators()
-            self._set_status("Personalise QUILL completed")
+            self._set_status_quiet("Personalise QUILL completed")
             self._announce(
                 f"Profile set to {get_intent_profile(intent_id).name}. "
                 "QUILL is ready. You can personalise further any time from Help."

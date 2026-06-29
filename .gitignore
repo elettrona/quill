@@ -108,3 +108,11 @@ docs/planning/source/**/*.log
 /Code Samples to Innovate With/
 /examples/audio/
 /docs/prototypes/
+# Local Windows build output (portable bundle, zip, installer) -- multi-GB, regenerated.
+/build-out/
+
+# Local AI provider report (not committed)
+/learned.md
+
+# Local pre-merge test plan (not committed)
+/test.md

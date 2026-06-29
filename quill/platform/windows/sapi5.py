@@ -31,6 +31,35 @@ try:  # comtypes is Windows-only and is a direct dependency on Windows.
 except Exception:  # noqa: BLE001 - any import failure means SAPI is unavailable
     _cc = None
 
+
+def _redirect_comtypes_gen_dir() -> None:
+    """Point comtypes' generated-wrapper cache at a writable per-user folder.
+
+    On first ``CreateObject("SAPI.SpVoice")`` comtypes generates Python wrappers
+    for the SAPI type library and writes them to disk. Its default location is
+    inside the comtypes package, which is read-only under a per-machine install
+    (e.g. Program Files) -- the write fails and SAPI init raises, so QUILL falls
+    back to the screen reader for no good reason. Redirect the cache to QUILL's
+    writable data dir; if even that is unavailable, fall back to in-memory
+    codegen (``gen_dir = None``) so SAPI still works without any disk write.
+    """
+    if _cc is None:
+        return
+    try:
+        from quill.core.paths import app_data_dir
+
+        gen_dir = app_data_dir() / "comtypes_gen"
+        gen_dir.mkdir(parents=True, exist_ok=True)
+        _cc.gen_dir = str(gen_dir)
+    except Exception:  # noqa: BLE001 - never let cache setup break import
+        try:
+            _cc.gen_dir = None  # in-memory codegen; no disk write required
+        except Exception:  # noqa: BLE001
+            pass
+
+
+_redirect_comtypes_gen_dir()
+
 # SpFileStream.Open mode and SpeechVoiceSpeakFlags / SpeechStreamFileMode.
 _SSFM_CREATE_FOR_WRITE = 3
 _SVSF_IS_XML = 8  # speak the argument as SSML

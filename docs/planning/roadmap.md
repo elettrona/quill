@@ -7,7 +7,6 @@
 > its own:
 >
 > - [`quill-native-accessible-table-studio-plan.md`](quill-native-accessible-table-studio-plan.md) — Table Studio (not started).
-> - [`quill_end_to_end_agentic_ai_prd.md`](quill_end_to_end_agentic_ai_prd.md) — Agentic AI platform (planned).
 > - [`eleven-labs.md`](eleven-labs.md) — ElevenLabs / ElevenDesk integration ideas (not started).
 >
 > **Operating principle:** everything here is in scope to **ship** for 1.0 (except
@@ -16,7 +15,7 @@
 > are optional and off by default. Platform scope is Windows (primary) and macOS
 > (supported).
 
-**Last consolidated:** 2026-06-25.
+**Last consolidated:** 2026-06-27.
 
 ---
 
@@ -83,9 +82,10 @@ The **ElevenLabs / ElevenDesk** premium-cloud-TTS integration is its own workstr
 tracked in [`eleven-labs.md`](eleven-labs.md) — **not started** (the SDK-in-gateway
 approach is decided). Dictation's larger later-phase capabilities are **2.0** (§5).
 
-### 1.3 Agentic AI platform (planned)
+### 1.3 Agentic AI platform (shipped in 0.8.0 Beta 2)
 
-**Spec:** [`quill_end_to_end_agentic_ai_prd.md`](quill_end_to_end_agentic_ai_prd.md).
+The detailed planning spec was retired once the platform shipped; the AI suite is
+now documented in the PRD, the user guide, and the 0.8.0 Beta 2 release notes.
 
 Unify QUILL's AI stack behind one provider-neutral, optional, screen-reader-first
 platform whose front door is the **AI Hub**: one provider truth, a Safe Editor Tool
@@ -121,26 +121,22 @@ Direct publishing (#140) and the remaining ChapterForge surfaces are tracked und
 
 ### 1.6 Platform & distribution
 
-- Live installer smoke on Windows 10/11 (#506); macOS to shipping quality (#518);
-  native RTF editing (#516); the Quillin Hub (#517); plugin capability + signing +
-  marketplace (#519).
+- The Quillin Hub (#517); plugin capability + signing + marketplace (#519).
 - **Deferred to 2.0** (tracker #680): the Windows 11 modern primary-menu
-  `IExplorerCommand` pass (SHELL-3, #525) and the packaging/freeze evaluation
-  (PKG-1 — PyInstaller packaging hardening, #599). *(Nuitka is explicitly out of
-  scope — too much risk / not reliable enough.)*
+  `IExplorerCommand` pass (SHELL-3, #525).
 
 ### 1.7 Docs, tutorials & content
 
 One **Documentation & Tutorials** track: user-guide coverage, getting-started
 tutorials, the podcast/walkthrough series, and content-quality follow-ups
-(#535–#564, #505, #522). In-flight QA: **#526** live NVDA/JAWS/Narrator sign-off.
-Long-horizon ecosystem (#590) and collaboration (#592) ideas park here.
+(#535–#564, #505, #522). Long-horizon ecosystem (#590) and collaboration (#592)
+ideas park here.
 
-### 1.8 Structured List Studio — manual SR pass
+### 1.8 Structured List Studio
 
-The feature is shipped; the **only** remaining item is a formal live
-**screen-reader pass** (JAWS / NVDA / Narrator) — manual, not closable in code;
-only stub-level wiring tests exist. Part of the §2 Tier-1 SR sign-off (#526).
+The feature is shipped. Its live screen-reader pass is handled in the normal QA
+validation (the #526 sign-off was closed as a matter-of-course test), so no
+roadmap-tracked work remains here.
 
 ### 1.9 Native accessible Table Studio (not started)
 
@@ -152,48 +148,22 @@ design only.
 
 ## 2. Release gap list (path to green)
 
-What stands between QUILL and a **green, release-ready** state. Two senses of
-"green": **(A) tooling green** — CI, tests, lint, types, gates; **(B)
-release-ready** — no known-but-unverified defects, shipped features
-complete/polished. Excluded per direction: the AI & Agentic workstream (§1.3) and
-all **table** work (§1.9 + the CSV-grid half of #514).
+What's left between QUILL and a **green, release-ready** state is now just
+**routine validation**, handled in the normal QA pass rather than tracked as
+release blockers (the same disposition as the closed #506 / #518 / #526):
 
-### Tier 1 — Release-blocking verification ("fixed" but unconfirmed)
+- **Packaged-build validation** of the optional speech engines (Faster Whisper,
+  Vosk) on the real installer, not just from source.
+- **Watch Folder queue** — a live repro confirming the by-design priming (drop a
+  *new* matching file into a running profile, or enable "Process existing files");
+  the "N existing files ignored" monitor hint already shipped.
+- **Snapshots vs Versions** — a live repro of the reported empty-submenu render
+  (toggle the `core.notebook` / `core.recovery` flags); the user-facing "Versions"
+  rename is done.
 
-1. **Live screen-reader sign-off — #526.** Walk the accessibility fixes marked
-   *"Fixed; needs live NVDA/JAWS/Narrator confirmation"* (notebook tab-group names,
-   snake_case names, label association, initial focus, the Tab keyboard-trap class,
-   focus-to-bad-field) — plus the List Studio pass (§1.8) — with JAWS, NVDA, and
-   Narrator. **Highest single item.**
-2. **Live installer smoke on Windows 10/11 — #506.** A packaged build installs,
-   launches, and the first-run wizard runs on clean Win10 and Win11.
-3. **Packaged-build validation of the optional speech engines** (Faster Whisper
-   install path, Vosk reachability) on the real installer, not just from source.
-
-### Tier 2 — Shipped features with rough edges
-
-4. **Watch Folder queue — confirm by-design behavior (not a known bug).** When a
-   watch is enabled the monitor can "feel empty" because `process_existing`
-   defaults to **off**: every file already present at start is *primed* (its de-dup
-   slot is claimed in `watch_queue`) and intentionally ignored, so only files that
-   appear **after** start enqueue. The prime/enqueue de-dup is correct. Live repro
-   to confirm the queue populates: drop a *new* matching file into a running,
-   schedule-active profile's folder, **or** enable "Process existing files" on the
-   profile. Optional polish (not a blocker): show "N existing files ignored" in the
-   monitor so the empty queue is self-explanatory.
-5. **Snapshots vs Versions — empty-submenu live repro only.** The notebook
-   "Versions" rename is **done** user-facing (File > Notebook: Save/Restore/Manage
-   Version; "Version name", "Version N", "Manage Versions" dialog, "Version saved"
-   status). The internal model stays `NotebookSnapshot`/`snapshots` by design
-   ("formerly Workspace Snapshots"); the separate workspace **Snapshots** submenu is
-   a different feature and correctly keeps its name. Remaining: a live repro of the
-   reported empty-submenu render (likely a feature-gated branch — confirm with the
-   `core.notebook` / `core.recovery` flags toggled).
-
-### Tier 3 — Polish
-
-7. **Verbosity polish backlog** (§1.1) — land the high-value knobs, fold-or-defer
-   the rest so the range can close.
+Verbosity polish is resolved (§1.1 shipped; the long tail is deferred to §5).
+Excluded per direction: the AI & Agentic workstream (§1.3) and all table work
+(§1.9 + the CSV-grid half of #514).
 
 ---
 
@@ -215,29 +185,12 @@ e.g. direct publishing to external platforms (#140); GLOW family improvements
 
 ### Phase 5 — Solid on Windows and macOS
 
-Verified installer behavior on Windows 10/11, shipping-quality **macOS**, native
-RTF editing, the Quillin hub (§1.6); better docs/tutorials (§1.7). *A dependable,
+The Quillin hub (§1.6); better docs/tutorials (§1.7). *A dependable,
 well-documented product on its supported platforms.*
 
 ---
 
 ## 4. Feature ledger (by workstream)
-
-Where every workstream stands: **what shipped for 1.0** first, then **what is still
-open**. Items with a live decision attached are detailed in §4.1+ so the choice can
-be made deliberately.
-
-### Shipped in 1.0
-
-| Workstream | Delivered |
-| --- | --- |
-| Verbosity (§1.1) | The engine, the eleven `verbosity_*` UI surfaces, runtime modes (Quiet / Meeting / Quiet-Undo), status queries, mastery step-down, QVP packs / library / preview, and **announcement anti-spam** (#408/#409). Shipped design: PRD §5.91. |
-| Speech & Dictation (§1.2) | Offline Whisper transcription, Read Aloud across local **and** cloud engines, Hold-to-Dictate / Locked Dictation, pronunciation dictionaries, the SSML Builder + native SSML playback, and the batch document-to-speech pipeline. |
-| Batch document-to-speech | Chaptered **MP3 / M4B**, separate-file mode, the **page-turn cue**, configurable pauses, dry-run preview, **article-combining** and **round-robin voices** (the ACB patterns), audiobook metadata, and configure-once **per-project profiles**. |
-| **Translated audio export** | A document narrated in additional languages — **local *and* premium cloud voices** (OpenAI / Gemini / ElevenLabs via `cloud_tts` + ffmpeg), **batch *and* single-document** surfaces, **all configured AI providers** plus LibreTranslate, language-aware pronunciation, a **combined cost estimate** before any metered cloud run, and **per-project memory** of the language targets. Language-granular translation with retry/backoff/halt/cache. |
-| Audio robustness (ACB learnings) | **Two-pass ACX `loudnorm`** (Normalize-loudness batch option), the **voice-failure blacklist** (failed voices skipped on later runs), and **text-normalization polish** (`Vol.`→"Volume", `No.`→"Number", `2025-02`→"2025 dash 2"). The ACB reference folder is fully absorbed and retired. |
-| Publishing & audiobook (§1.5) | Build Audiobook from Folder — MP3 / M4B masters, chapter editing (rename / reorder / merge), and one-click ACX loudness. |
-| ElevenLabs export TTS (§4.1) | Registered as a third provider in the cloud-TTS layer for audiobook-grade export (optional `quill[elevenlabs]` extra). |
 
 ### Still open
 
@@ -245,9 +198,8 @@ be made deliberately.
 | --- | --- |
 | Agentic AI (§1.3) | #507–#512, #523/#524, #579–#581; Accessibility Agents #593–#598. |
 | GLOW family (§1.4) | Deferred to 2.0 (§5). GLOW contributions stay `locked_off` for 1.0. |
-| Platform & distribution (§1.6) | #506, #516, #517, #518, #519; #525/#599 deferred to 2.0 (#680). |
-| Docs & content (§1.7) | #526 SR sign-off; #535–#564, #505, #522, #590, #592. |
-| List Studio (§1.8) | Manual SR pass (#526). |
+| Platform & distribution (§1.6) | #517, #519; #525 deferred to 2.0 (#680). |
+| Docs & content (§1.7) | #535–#564, #505, #522, #590, #592. |
 | Table Studio (§1.9) | Whole feature (`quill-native-accessible-table-studio-plan.md`). |
 | ElevenLabs beyond export (§4.2–4.4) | Live streaming Read Aloud, voice management / cloning, and Tier-3 surfaces — all deferred to 2.0 (§5). |
 
@@ -320,19 +272,24 @@ skip.
 
 ## 5. Deferred to QUILL 2.0
 
-Confirmed out of the 1.0 scope. Recorded here so the intent is not lost.
+Confirmed out of the 1.0 scope. Recorded here so the intent is not lost; items
+graduate into the shipping sections above when scheduled for a release.
 
 - **Dictation later phases** — an optional **global Windows key hook** (system-wide
   dictation hotkey), **idle-silence detection** (auto-stop on a pause), and
   **dictation intelligence** (spoken punctuation/commands). Each is a sizable
   capability beyond the keyboard-only Hold/Locked dictation that already ships.
-- **BW consolidation backlog (#515, #566–#577)** — the broader provider-matrix
-  tiers and guided onboarding (BW-1..10 / WATCH-8). A large workstream, already
-  tagged 2.0-deferred in the program history.
-- **Platform / packaging singletons** (tracker #680) — the Windows 11 modern
-  primary-menu `IExplorerCommand` pass (SHELL-3, #525) and the PyInstaller
-  packaging-hardening evaluation (PKG-1, #599). *(Nuitka is explicitly out of scope
-  — too much risk / not reliable enough.)*
+- **BITS Whisperer remainder** (tracker #680) — the consolidation shipped for 1.0
+  (four on-device engines, the cloud-as-Quillins framework with OpenAI/Groq/
+  ElevenLabs, offline watch transcription, export breadth, dictation). The
+  leftovers — a Windows SAPI/WinRT zero-download engine, a consented cloud watch
+  action, guided provider onboarding, diarization/live-mic, additional cloud kinds
+  (add on demand), and the Whisperer brand decision — moved to #680 when #669
+  closed.
+- **Platform singleton** (tracker #680) — the Windows 11 modern primary-menu
+  `IExplorerCommand` pass (SHELL-3, #525). *(Freeze/compile packaging — PyInstaller
+  and Nuitka — is out of scope: the embedded-Python + Inno Setup model is the
+  shipping approach.)*
 - **Direct publishing (#140)** — publish a finished document/audiobook to WordPress
   and other platforms. A long-term, likely-**Quillin** integration (external-API +
   auth surface), not core editor work; early design lives in

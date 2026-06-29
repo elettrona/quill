@@ -2,11 +2,27 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 import quill.ui.main_frame as main_frame_module
 from quill.core.document import Document
 from quill.core.notifications import Notification
 from quill.core.updates import GitHubRelease, UpdateManifest
 from quill.ui.main_frame import MainFrame
+
+
+@pytest.fixture(autouse=True)
+def _force_non_portable(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin check_for_updates onto the installer (non-portable) path.
+
+    ``check_for_updates`` branches on ``running_portable()``, which sniffs the
+    filesystem/env for a portable bundle. In a full-suite run that ambient state
+    can be left set by an earlier test, flipping these tests onto the GitHub
+    releases path they do not stub (manifest -> None -> live fetch_releases).
+    These unit tests exercise the installer flow, so they must control that
+    branch explicitly rather than depend on detection.
+    """
+    monkeypatch.setattr(main_frame_module, "running_portable", lambda: False)
 
 
 class _Frame:

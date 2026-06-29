@@ -164,6 +164,14 @@ def missing_required_api_key(provider: str, host: str, api_key: str) -> bool:
     return not _is_local_host(hostname)
 
 
+def _api_key_required_message(provider: str) -> str:
+    """Shared 'no key set' sentence so verify and the chat paths can't drift."""
+    return (
+        f"An API key is required for {provider_display_name(provider)}. "
+        "Enter your key and try again."
+    )
+
+
 def verify_assistant_connection(
     settings: AssistantConnectionSettings,
     api_key: str,
@@ -193,11 +201,7 @@ def verify_assistant_connection(
     # authentication, so without this guard verify would falsely report success
     # for a blank required key (#123).
     if missing_required_api_key(provider, settings.host, api_key):
-        return (
-            False,
-            f"An API key is required for {provider_display_name(provider)}. "
-            "Enter your key and try again.",
-        )
+        return False, _api_key_required_message(provider)
 
     models, error = list_assistant_models(settings, api_key, timeout_seconds=timeout_seconds)
     if error is None:
@@ -709,6 +713,28 @@ def load_provider_api_key(provider: str) -> str:
     return _cs_load(provider_credential_target(provider)) or ""
 
 
+def load_keyed_provider_api_key(provider: str) -> str:
+    """Return *provider*'s key for a direct call to that provider's API.
+
+    Prefers the per-provider stored key; falls back to the active assistant key
+    only when *provider* is the active provider. A feature that always calls one
+    specific provider (e.g. OpenAI Whisper transcription or OpenAI TTS) must use
+    this rather than :func:`load_assistant_api_key`, so it never sends another
+    provider's active key to OpenAI and gets a confusing 401.
+    """
+    target = provider.strip().lower()
+    key = load_provider_api_key(target)
+    if key:
+        return key
+    try:
+        conn = load_assistant_connection_settings()
+    except Exception:  # noqa: BLE001 - unreadable connection means "no active key"
+        return ""
+    if (conn.provider or "").strip().lower() == target:
+        return load_assistant_api_key() or ""
+    return ""
+
+
 def save_provider_api_key(provider: str, api_key: str) -> bool:
     """Store (or clear, when empty) the key for *provider*. Returns True on save."""
     secret = api_key.strip()
@@ -993,7 +1019,17 @@ def parse_chat_response(provider: str, payload: object) -> str | None:
             message = first.get("message")
             if isinstance(message, dict):
                 text = str(message.get("content", "")).strip()
-                return text or None
+                if text:
+                    return text
+                # Reasoning models (e.g. gpt-oss on Ollama Cloud, some OpenRouter
+                # routes) put their output on a reasoning channel and leave
+                # `content` empty. Fall back to it so the answer is not lost and
+                # the request does not fail as an "invalid response".
+                for key in ("reasoning_content", "reasoning"):
+                    reasoning = message.get(key)
+                    if isinstance(reasoning, str) and reasoning.strip():
+                        return reasoning.strip()
+                return None
             text_value = first.get("text")
             if isinstance(text_value, str):
                 return text_value.strip() or None
@@ -1071,7 +1107,13 @@ def generate_assistant_response(
         return None, "The AI provider is set to Off."
     if _safe_mode_active():
         return None, _safe_mode_blocked_message("AI generation")
+    # Mirror verify's pre-flight guards so a keyless chat call fails with an
+    # actionable message instead of a confusing provider 401 (L-5, #123).
+    if assistant_secret_unlock_failed() and api_key == "":
+        return None, ASSISTANT_KEY_UNLOCK_FAILED_MESSAGE
     host = (settings.host or "").strip().rstrip("/") or default_host_for_provider(provider)
+    if missing_required_api_key(provider, host, api_key):
+        return None, _api_key_required_message(provider)
     policy_error = _validate_endpoint_security(provider, host)
     if policy_error:
         return None, policy_error
@@ -1338,7 +1380,13 @@ def generate_assistant_response_stream(
         return None, "The AI provider is set to Off."
     if _safe_mode_active():
         return None, _safe_mode_blocked_message("AI streaming")
+    # Same pre-flight guards as the blocking path so a keyless stream fails
+    # with an actionable message instead of a confusing provider 401 (L-5, #123).
+    if assistant_secret_unlock_failed() and api_key == "":
+        return None, ASSISTANT_KEY_UNLOCK_FAILED_MESSAGE
     host = (settings.host or "").strip().rstrip("/") or default_host_for_provider(provider)
+    if missing_required_api_key(provider, host, api_key):
+        return None, _api_key_required_message(provider)
     policy_error = _validate_endpoint_security(provider, host)
     if policy_error:
         return None, policy_error

@@ -31,19 +31,31 @@ _API_URL_ENV = "QUILL_UPDATE_API_URL"
 _MANIFEST_URL_ENV = "QUILL_UPDATE_MANIFEST_URL"
 # Pre-release ordering: a final (non-pre-release) build outranks every
 # pre-release of the same major.minor.patch. See _version_tuple / _prerelease_rank.
-_STABLE_PRERELEASE_RANK = (9, 0)
+_STABLE_PRERELEASE_RANK = (9, 0, 0)
+
+
+def _env_url_override(name: str) -> str:
+    """Read a URL override env var, tolerating accidental surrounding quotes.
+
+    A value set with ``setx VAR "https://..."`` (or copied with quotes) can arrive
+    wrapped in literal quote characters. urllib then rejects it with
+    'unknown url type: "https', breaking the update check. Strip whitespace and a
+    single matching pair of surrounding single/double quotes so the override works.
+    """
+    raw = os.getenv(name, "").strip()
+    if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in ("'", '"'):
+        raw = raw[1:-1].strip()
+    return raw
 
 
 def resolve_releases_api_url(default: str = GITHUB_RELEASES_API) -> str:
     """The GitHub Releases API URL, honouring the QUILL_UPDATE_API_URL override."""
-    override = os.getenv(_API_URL_ENV, "").strip()
-    return override or default
+    return _env_url_override(_API_URL_ENV) or default
 
 
 def resolve_manifest_url(default: str = DEFAULT_UPDATE_MANIFEST_URL) -> str:
     """The signed-manifest feed URL, honouring the QUILL_UPDATE_MANIFEST_URL override."""
-    override = os.getenv(_MANIFEST_URL_ENV, "").strip()
-    return override or default
+    return _env_url_override(_MANIFEST_URL_ENV) or default
 
 
 def _ssl_context() -> ssl.SSLContext:
@@ -145,8 +157,33 @@ def _platform_asset_suffixes() -> tuple[str, ...]:
     return (".appimage", ".tar.gz", ".zip")
 
 
-def _pick_asset(assets: list) -> str:
-    """Choose the real installer for this platform; skip provenance/checksums/etc."""
+def running_portable() -> bool:
+    """True when this QUILL is a verified portable bundle (not an installed copy).
+
+    A portable user updates by replacing the bundle, so they should be handed the
+    portable .zip rather than the installer. Best-effort: any failure (or a
+    non-portable install) reports False so asset selection falls back to the
+    installer as before.
+    """
+    try:
+        from quill.core.storage_mode import portable_root_dir
+
+        return portable_root_dir() is not None
+    except Exception:  # noqa: BLE001 - detection must never break update checks
+        return False
+
+
+def _pick_asset(assets: list, *, prefer_portable: bool | None = None) -> str:
+    """Choose the real installer for this platform; skip provenance/checksums/etc.
+
+    On a portable install we prefer the portable bundle .zip (e.g.
+    ``Quill-Portable-<version>.zip``) and skip the installer .exe, so Check for
+    Updates does not push the installer onto a portable user. The portable bundle
+    is matched by name ("portable") so the unrelated delta ``*-update-windows.zip``
+    artifact is never mistaken for it.
+    """
+    if prefer_portable is None:
+        prefer_portable = running_portable()
     usable: list[tuple[str, str]] = []
     for asset in assets:
         if not isinstance(asset, dict):
@@ -160,6 +197,12 @@ def _pick_asset(assets: list) -> str:
         if any(keyword in name for keyword in _SKIP_ASSET_KEYWORDS):
             continue
         usable.append((name, str(url)))
+    # Portable installs: prefer the portable bundle .zip over the installer.
+    if prefer_portable:
+        for name, url in usable:
+            if name.endswith(".zip") and "portable" in name:
+                return url
+        # No portable asset published — fall through to the normal order.
     # Prefer the current platform's installer extension.
     for suffix in _platform_asset_suffixes():
         for name, url in usable:
@@ -312,7 +355,7 @@ def is_newer_version(current: str, available: str) -> bool:
     return _version_tuple(available) > _version_tuple(current)
 
 
-def _version_tuple(value: str) -> tuple[int, int, int, tuple[int, int]]:
+def _version_tuple(value: str) -> tuple[int, int, int, tuple[int, int, int]]:
     """Sortable version key with intentional pre-release ordering.
 
     The fourth element ranks the pre-release stage so that, for the same
@@ -320,6 +363,13 @@ def _version_tuple(value: str) -> tuple[int, int, int, tuple[int, int]]:
     pre-releases (``1.2.0`` > ``1.2.0-rc2`` > ``1.2.0-rc1`` > ``1.2.0-beta1`` >
     ``1.2.0-alpha1``). Unrecognized suffixes are treated as the earliest stage so
     an unknown pre-release never outranks a stable build.
+
+    Its third sub-element is an *interim patch* so a hand-off test build can sit
+    strictly between two pre-releases: ``Beta 1`` < ``Beta 1A`` < ``Beta 2``
+    (display letter) and the equivalent PEP 440 ``0.8.0b1`` < ``0.8.0b1.post1`` <
+    ``0.8.0b2``. This lets a tester run an interim build and still be offered the
+    real next pre-release through Check for Updates, without being nagged to
+    "update" back down to the published one.
 
     Accepts both PEP 440 hyphen form (``1.2.0-rc1``) and the human-readable
     display form produced by :func:`quill.build_info.get_short_version`
@@ -339,16 +389,16 @@ def _version_tuple(value: str) -> tuple[int, int, int, tuple[int, int]]:
     space_match = re.match(
         r"^(\d+\.\d+(?:\.\d+)?)\s+"
         r"(alpha|beta|release\s+candidate|rc|dev)"
-        r"\.?\s*(\d*)\b",
+        r"\.?\s*(\d*)([a-z]?)\b",
         cleaned,
         re.I,
     )
     if space_match:
-        base, label, number = space_match.groups()
+        base, label, number, patch = space_match.groups()
         label_key = label.strip().lower()
         if label_key == "release candidate":
             label_key = "rc"
-        cleaned = f"{base}-{label_key}{number}"
+        cleaned = f"{base}-{label_key}{number}{patch}"
     # Separate the core x.y.z from any pre-release suffix (-rc1, -beta.2, ...) so
     # the suffix digits cannot leak into the patch number.
     core, separator, suffix = cleaned.partition("-")
@@ -364,7 +414,7 @@ def _version_tuple(value: str) -> tuple[int, int, int, tuple[int, int]]:
     return integers[0], integers[1], integers[2], prerelease
 
 
-def _prerelease_rank(suffix: str) -> tuple[int, int]:
+def _prerelease_rank(suffix: str) -> tuple[int, int, int]:
     lowered = suffix.strip().lower()
     if lowered.startswith("rc"):
         tier = 2
@@ -373,8 +423,19 @@ def _prerelease_rank(suffix: str) -> tuple[int, int]:
     else:
         # alpha/a and anything unrecognized fall to the earliest stage.
         tier = 0
-    number = "".join(char for char in lowered if char.isdigit())
-    return tier, int(number or "0")
+    # The pre-release number is the first run of digits (so "beta1.post1" is
+    # number 1, not 11). The interim patch is either a trailing letter right
+    # after that number ("beta1a" -> 1, i.e. "A") or a PEP 440 ".postN" suffix.
+    number_match = re.search(r"(\d+)", lowered)
+    number = int(number_match.group(1)) if number_match else 0
+    post = 0
+    letter_match = re.search(r"\d([a-z])", lowered)
+    post_match = re.search(r"post(\d+)", lowered)
+    if letter_match:
+        post = ord(letter_match.group(1)) - ord("a") + 1
+    elif post_match:
+        post = int(post_match.group(1))
+    return tier, number, post
 
 
 def download_release_asset(
@@ -448,6 +509,7 @@ __all__ = [
     "parse_update_manifest",
     "resolve_manifest_url",
     "resolve_releases_api_url",
+    "running_portable",
     "manifest_signature",
     "verify_manifest_signature",
 ]

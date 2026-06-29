@@ -7,10 +7,63 @@ from quill.core.updates import (
     _MANIFEST_KEY_ENV,
     DEFAULT_UPDATE_MANIFEST_URL,
     GitHubRelease,
+    _pick_asset,
     is_newer_version,
     parse_update_manifest,
     select_latest,
 )
+
+
+def _release_assets() -> list[dict]:
+    """Assets mirroring a real windows-release: installer, portable zip, and the
+    unrelated delta update zip plus a metadata json."""
+    return [
+        {
+            "name": "Quill-for-All-Setup-0.8.0.exe",
+            "browser_download_url": "https://example.test/Quill-for-All-Setup-0.8.0.exe",
+        },
+        {
+            "name": "Quill-Portable-v0.8.0.zip",
+            "browser_download_url": "https://example.test/Quill-Portable-v0.8.0.zip",
+        },
+        {
+            "name": "quill-v0.8.0-update-windows.zip",
+            "browser_download_url": "https://example.test/quill-v0.8.0-update-windows.zip",
+        },
+        {
+            "name": "sbom.json",
+            "browser_download_url": "https://example.test/sbom.json",
+        },
+    ]
+
+
+def _force_windows_suffixes(monkeypatch) -> None:
+    # Asset selection past the portable branch is platform-specific; pin it to the
+    # Windows installer order so these tests are deterministic on Linux CI too.
+    monkeypatch.setattr(
+        "quill.core.updates._platform_asset_suffixes",
+        lambda: (".exe", ".msi", ".zip"),
+    )
+
+
+def test_pick_asset_portable_prefers_portable_zip() -> None:
+    # The portable branch runs before any platform-specific ordering.
+    url = _pick_asset(_release_assets(), prefer_portable=True)
+    assert url == "https://example.test/Quill-Portable-v0.8.0.zip"
+
+
+def test_pick_asset_installed_prefers_installer_exe(monkeypatch) -> None:
+    _force_windows_suffixes(monkeypatch)
+    url = _pick_asset(_release_assets(), prefer_portable=False)
+    assert url == "https://example.test/Quill-for-All-Setup-0.8.0.exe"
+
+
+def test_pick_asset_portable_falls_back_to_installer_without_portable_zip(monkeypatch) -> None:
+    _force_windows_suffixes(monkeypatch)
+    assets = [a for a in _release_assets() if "portable" not in a["name"].lower()]
+    url = _pick_asset(assets, prefer_portable=True)
+    assert url == "https://example.test/Quill-for-All-Setup-0.8.0.exe"
+
 
 _TEST_DEPLOY_KEY = "quill-test-deploy-key-for-unit-tests"
 
@@ -94,6 +147,21 @@ def test_display_form_beta_is_recognized_as_newer_than_release() -> None:
     # Beta 2 is newer than beta 1; running beta 1 should see beta 2.
     assert is_newer_version("0.7.0 Beta 1", "0.7.0 Beta 2") is True
     assert is_newer_version("0.7.0 Beta 2", "0.7.0 Beta 2") is False
+
+
+def test_interim_patch_build_sorts_between_prereleases() -> None:
+    """An interim hand-off build ("Beta 1A") sits strictly between Beta 1 and
+    Beta 2, so a tester on it is offered the real Beta 2 but is never nagged to
+    "update" back down to the published Beta 1.
+    """
+    # Strict ordering: Beta 1 < Beta 1A < Beta 2.
+    assert is_newer_version("0.8.0 Beta 1", "0.8.0 Beta 1A") is True
+    assert is_newer_version("0.8.0 Beta 1A", "0.8.0 Beta 2") is True
+    # On Beta 1A: the live Beta 1 feed is NOT an update; Beta 2 IS.
+    assert is_newer_version("0.8.0 Beta 1A", "0.8.0 Beta 1") is False
+    assert is_newer_version("0.8.0 Beta 1A", "0.8.0 Beta 2") is True
+    # The interim build does not outrank the final stable release either.
+    assert is_newer_version("0.8.0 Beta 1A", "0.8.0") is True
 
 
 def test_display_form_release_candidate_is_recognized() -> None:
@@ -257,6 +325,20 @@ def test_resolve_endpoints_honour_overrides(monkeypatch) -> None:
     feed = "https://community-access.github.io/quill-update-selftest/feed.json"
     monkeypatch.setenv("QUILL_UPDATE_API_URL", api)
     monkeypatch.setenv("QUILL_UPDATE_MANIFEST_URL", feed)
+    assert resolve_releases_api_url() == api
+    assert resolve_manifest_url() == feed
+
+
+def test_resolve_endpoints_strip_accidental_surrounding_quotes(monkeypatch) -> None:
+    # A value set via `setx VAR "https://..."` (or copied with quotes) arrives
+    # wrapped in literal quotes; urllib then fails with 'unknown url type: "https'.
+    # The resolver must strip a single surrounding quote pair so the override works.
+    from quill.core.updates import resolve_manifest_url, resolve_releases_api_url
+
+    api = "https://api.github.com/repos/Community-Access/quill-update-selftest/releases"
+    feed = "https://community-access.github.io/quill-update-selftest/feed.json"
+    monkeypatch.setenv("QUILL_UPDATE_API_URL", f'"{api}"')
+    monkeypatch.setenv("QUILL_UPDATE_MANIFEST_URL", f"'{feed}'")
     assert resolve_releases_api_url() == api
     assert resolve_manifest_url() == feed
 

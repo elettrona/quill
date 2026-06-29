@@ -1897,7 +1897,7 @@ Quill ships a read-aloud feature that uses a **secondary** voice the user picks 
 - Backend: SAPI 5 voices and Windows OneCore voices via `pywin32`/`comtypes`. Detected at startup; the list is presented in `Settings → Read Aloud` and in the Read Aloud voice chooser.
 - `Ctrl+Alt+P` starts/pauses read-aloud from the current cursor; `Ctrl+Alt+S` stops; `Ctrl+Alt+.` skips to the next sentence; `Ctrl+Alt+,` previous.
 - Granularity: sentence by default; settings allow paragraph or word.
-- Highlight follows: the editor cursor moves to the start of the currently spoken sentence so when read-aloud stops, the user is exactly where they last heard. The status bar's Read Aloud cell shows progress.
+- Follow cursor (optional, off by default): the **Move cursor to follow Read Aloud** setting (`Settings → Read Aloud`; `read_aloud_follow_cursor`) selects each sentence in the editor as it is spoken so the cursor tracks the reading and stops where the user last heard. It is **off by default** because, with a screen reader running, moving the selection makes the screen reader announce the selection ("...selected") over the Read Aloud voice; sighted and low-vision users can opt in. The status bar's Read Aloud cell shows progress regardless of the setting.
 - Selection-only mode: when invoked with a selection, read-aloud reads only the selection and stops at the end.
 - Voice, speed, pitch, volume all configurable. Three named profiles (Reading, Proofreading, Skim) save preferred values.
 - The read-aloud voice never overrides the screen reader's announcements; if a screen reader speaks something while read-aloud is active, read-aloud continues but is briefly ducked.
@@ -2951,6 +2951,10 @@ Abbreviation Expansion replaces short trigger words with longer text automatical
 
 ### 5.79 Ask AI — lightweight in-editor AI chat
 
+> **Retired in 2.0 (see §5.84a).** Ask AI has been folded into the single
+> context-aware **Ask Quill** conversation; the standalone dialog and its command
+> were removed so there is one chat door. This section is retained for history.
+
 Ask AI is a modal dialog that lets users send a prompt to a configured AI provider and read the response without leaving QUILL. No document text is changed; the dialog is purely informational.
 
 **Motivation.** Screen-reader users frequently need to ask a quick question while writing — define a term, check a fact, explore a phrasing option — and switching to a browser or a separate AI client breaks flow, especially when using NVDA or JAWS where switching applications involves extra navigation. Ask AI keeps the interaction entirely within the QUILL keyboard model.
@@ -3185,6 +3189,146 @@ accept_into: selection
 | `quill/tools/sqp_validator.py` | CLI validator |
 | `quill/quillins_bundled/ai-writing-skills/` | Four bundled `.sqp` skill files |
 | `tests/unit/core/test_skill_pack.py` | 23 tests: parsing, validation, runner, branching, bundled files |
+
+---
+
+### 5.84a Unified AI Library and the four-pillar AI menu (2.0)
+
+**Goal.** Replace the scattered AI submenu and its overlapping dialogs with one
+confident, top-level `&AI` menu built on four pillars, so the user feels QUILL has
+*one* AI that knows where they are.
+
+**The four pillars.**
+
+1. **Ask Quill** — the single, context-aware conversation. The legacy "Ask AI" and
+   "Writing Assistant" chat dialogs are retired into it (`AskAIDialog` deleted;
+   `open_ask_ai` / `tools.ask_ai` removed), so there is exactly one chat door.
+2. **Do** — context-first actions: the Concierge's "What can I do here?"
+   (`quill/ui/concierge_menu.py`), the Selection Action Ring ("Rewrite & Improve"),
+   and Run Agent.
+3. **AI Library** (`quill/ui/ai_library_dialog.py`) — Prompts, Skills, and Agents in
+   one `wx.Notebook` with one verb set (Run, New, Edit, Enable/Disable, Import,
+   Export) and a real **Promote** continuum. `prompt_to_skill_source` grows a Prompt
+   into a Skill; `skill_to_agent_markdown` + `save_user_agent` grow a Skill into a
+   first-class user Agent saved in `agent_catalog.user_agents_dir`, loaded alongside
+   the bundled catalog by `load_full_catalog`. Prompt Studio and Agent Center are
+   retired into this surface; the full agent linter is the Agents-tab **Validate**.
+4. **AI Hub** — the single configuration front door: provider, key, model, engine
+   switching (Engines tab), GitHub Copilot setup, and **Session Branches** (Sessions
+   tab). The old "Engine & Sessions" submenu is removed.
+
+**The menu shape.** The top-level `&AI` menu reads, in order: Set Up AI (the on-ramp,
+§5.84c) · Ask Quill (+ by Voice) · Accessibility Tune-Up · the context "Do" entries
+(hidden in Basic mode) · Proofread / Translate / Read Aloud / Transcribe / More
+submenus · AI Library · AI Hub · Use Artificial Intelligence (and Show advanced AI
+features). Item count dropped from ~36 scattered entries to a short, scannable list,
+each a single high-value action or a clearly-labeled one-level-deep submenu.
+
+**Confirmed product decisions.** (1) AI is a real top-level `&AI` menu unconditionally
+— the former `future.ai_menu_top_level` flag is retired as a placement switch. (2)
+"AI Library" is the name for the unified Prompt/Skill/Agent manager. (3) The
+Prompt → Skill → Agent **Promote** continuum is in scope and shipped. (4) Accessibility
+Tune-Up stays a first-class, top-of-menu item given the screen-reader audience.
+
+**Invariants.** Every list item and dynamic menu entry has a meaningful accessible
+name; all dialogs go through `_show_modal_dialog` + `apply_modal_ids`; running any
+action announces start and result; nothing is more than one level deep; the Library
+and continuum are wx-free at the core (`quill/core/ai/library.py`,
+`quill/core/skill_store.py`). One custom-prompt store: `prompt_migration` consolidates
+the legacy `assistant_prompts` into the canonical `PromptLibrary` at startup
+(reversible, idempotent). Deprecated dialogs retired; the live `assistant_agents`
+plan/profile helpers stay (they back a live agent-run path), and `assistant_prompts`
+stays until the prompt migration is sunset.
+
+---
+
+### 5.84b The Listening Companion — Transcript Actions and the Action Builder (2.0)
+
+**Goal.** Make transcription the *beginning* of an agentic writing experience, not
+the end: turn audio into the document the user actually needs, with a gentle, guided,
+adjustable path. Folds the agentic transcription magic of BITS Whisperer into QUILL's
+unified AI framework.
+
+**Transcript Actions** (`quill/core/ai/transcript_actions.py`, wx-free). Ten
+built-in actions — Meeting Minutes, Action Items, Executive Summary, Interview Notes,
+Study Notes, Q&A Extraction, Clean Up & Draft, Follow-Up Email, Key Quotes, and
+Decisions Log — each a named, plain-language, *adjustable* instruction with a prompt
+builder. `recommend_actions` orders them for the transcript in front of the user
+(multi-speaker leads with Minutes / Action Items / Decisions / a follow-up email;
+question-dense with Q&A / Interview / Key Quotes; single voice with Clean Up & Draft)
+while keeping every action available. Reachable two ways: the post-transcription "What
+would you like me to make of this?" chooser (`quill/ui/transcript_actions_ui.py`,
+hooked into `_show_transcription_result`) and an `AI > Transcribe Audio > Transcript
+Actions...` item that runs them on the current selection/document. Results open in a
+new buffer; the original transcript is never overwritten. Generation uses the unified
+`ProviderChatBackend`; the flow degrades gently when AI is off, and offers the AI
+Setup Wizard (§5.84c) at that high-intent moment instead of a dead end.
+
+**Guided Action Builder** (`quill/ui/action_builder_dialog.py`). A no-syntax,
+form-based builder (name, start-from preset, plain-language instructions, optional
+**reference attachment**, Save) reached from the AI Library Skills tab. It writes a
+real Skill via `action_to_skill_source` + `SkillStore`, so a user-defined action
+immediately gains Run / Edit / Enable / Export / Promote. A reference document (txt /
+md directly, docx and friends via markitdown) is woven into the saved action so its
+output matches the user's template, terminology, and house style.
+
+**Automation.** A watch-folder transcribe profile can chain "transcribe → run a
+Transcript Action → save the document" next to the audio
+(`watch_transcribe._maybe_make_action_document`), Do-Not-Disturb-aware. AI off / no
+provider / a failed action skips the document step with a clear note and always keeps
+the transcript.
+
+**Principles (non-negotiable for this audience).** Easy (one choice, one keystroke),
+delightful, guided, principled (consent + preview + undo + private by default),
+powerful (the full agentic stack underneath), adjustable by instruction and prompt,
+and gentle for learners.
+
+**Status: complete.** Shipped: Transcript Actions (post-transcription and anytime),
+the guided Action Builder, reference attachments, watch-folder automation, and the AI
+onboarding wizard with Basic mode and on-ramps (§5.84c). **Live + diarized streaming
+actions were deliberately not built:** most of that value is already delivered by file
+transcription plus watch-folder automation, and its one genuinely unique kernel — live
+captioning — is a separate accessibility feature that would need real-time audio
+capture infrastructure; if it is ever wanted it should be scoped on its own merits, not
+bolted onto this companion.
+
+---
+
+### 5.84c AI onboarding — the Setup Wizard, on-ramps, and experience modes (2.0)
+
+**Goal.** Make getting started with AI a gentle, magical, screen-reader-first
+experience across the whole AI landscape — no jargon, no dead ends, finished in
+seconds — and let newcomers grow into the full surface on their own timeline.
+
+**AI Setup Wizard** (`quill/ui/ai_setup_wizard.py` over wx-free
+`quill/core/ai/onboarding.py`). A one-step-at-a-time wizard (each step a single
+announced focus context): a welcome, the one real choice — **on your device with
+Ollama** (private, free), **use an AI account** (Claude / OpenAI / Gemini / OpenRouter
+/ Ollama Cloud, with a key pasted once and stored in the OS secure store, plus a
+**Test connection** button), or **not right now** — a frictionless connect step, and a
+tailored celebration. Neither path lets the user finish into a broken state: cloud
+offers Test connection, and the on-device path **verifies a reachable local Ollama with
+an installed model (`ollama_status`) before it commits** — if Ollama isn't running or
+has no models, the step stays put with plain-language guidance (install from
+ollama.com / `ollama pull ...`) rather than configuring something that won't work. The wx-free model owns the copy, the paths, the cloud-provider
+options, the apply helpers (`apply_cloud_setup` / `apply_on_device_setup`), and the
+persisted state, so it is fully unit-testable. Reachable as the first AI menu item
+(**"Set Up AI... (start here)"** until done).
+
+**On-ramps, not dead ends.** `maybe_offer_ai_setup` offers the wizard at the moment a
+user first reaches for AI before it is configured — Ask Quill, the AI Library, and
+Transcript Actions all route through it — and never nags someone who has already been
+through setup. Because the AI Library's Run, Ask Quill, Transcript Actions, and agents
+all share the one `ProviderChatBackend` (AI Hub) connection the wizard configures,
+setting AI up once makes everything work.
+
+**Experience modes.** `is_basic_mode()` / `save_experience_mode()` persist a Basic vs
+Advanced choice (default **advanced**, so existing users never lose anything; the
+wizard's "keep it simple" checkbox puts a newcomer into Basic). In Basic mode the AI
+menu hides the power-user agentic entries ("What can I do here?", "Rewrite & Improve",
+"Run Agent") so the surface stays calm; a **"Show advanced AI features"** toggle flips
+it instantly. Everyday features (Ask Quill, Transcribe, Proofread, Translate, Read
+Aloud, the AI Library) always stay.
 
 ---
 
@@ -4732,6 +4876,7 @@ All JSON files validate against schemas in `quill/core/schemas/`. All writes are
 - The download is verified (SHA-256) and Sigstore-attested; the installer is signed; the user runs it.
 - The asset download streams in fixed-size chunks and reports progress through an accessible callback, so screen-reader users hear coarse, non-spammy progress announcements (for example 25/50/75 percent) instead of a silent wait.
 - After a successful download Quill presents an **Update downloaded** dialog offering, as available, **Install now…** (Windows `.exe`/`.msi`), **Open the containing folder**, or **Close**. Install-now runs the in-app pre-update health check first.
+- **Portable installs update to the portable build, not the installer.** When QUILL is running as a verified portable bundle (`quill.core.updates.running_portable()`), Check for Updates skips the signed-manifest path (that feed carries only the installer URL) and uses the GitHub releases path, where `_pick_asset` selects the portable `.zip` asset — matched by name so the unrelated delta `*-update-windows.zip` is never chosen. The downloaded `.zip` is non-runnable, so the Update downloaded dialog offers **Open the containing folder** rather than Install now. Installed copies continue to receive the installer exactly as before.
 - The update-available dialog includes a **Skip this version** action; a skipped version is remembered and suppressed on silent launch checks until a newer version appears or the user checks manually.
 - Silent launch checks are throttled to at most once per 24 hours (recorded via the last-check timestamp); a manual `Check for Updates` always runs regardless of the throttle.
 - A small in-app pre-update health check ensures the user's editor has no unsaved documents before launching the installer.
@@ -4919,7 +5064,7 @@ Right-to-left UI; additional languages; optional split view (still standard cont
 
 ## 17. Backlog and deferred items
 
-> **Plan of record.** The authoritative, continuously-updated view of all open work — workstreams (shipped/open), phase outcomes, the release gap list, and the open-issue ledger — lives in [`docs/planning/roadmap.md`](../../planning/roadmap.md). The large in-flight feature specs keep their own files: [`quill-native-accessible-table-studio-plan.md`](../../planning/quill-native-accessible-table-studio-plan.md), [`quill_end_to_end_agentic_ai_prd.md`](../../planning/quill_end_to_end_agentic_ai_prd.md), and [`eleven-labs.md`](../../planning/eleven-labs.md). (Shipped workstreams' specs — offline speech-to-text #617, the braille suite, batch document-to-speech, Structured List Studio, and the verbosity system — were retired to git history once delivered; their status lives in the roadmap and user guide, and the verbosity 2.0 backlog is consolidated in roadmap §6.) The current direction is that these items **ship** (the older 2.0-deferral framing is dropped); the tables below are retained as the format-support reference.
+> **Plan of record.** The authoritative, continuously-updated view of all open work — workstreams (shipped/open), phase outcomes, the release gap list, and the open-issue ledger — lives in [`docs/planning/roadmap.md`](../../planning/roadmap.md). The large in-flight feature specs keep their own files: [`quill-native-accessible-table-studio-plan.md`](../../planning/quill-native-accessible-table-studio-plan.md) and [`eleven-labs.md`](../../planning/eleven-labs.md). (Shipped workstreams' specs — offline speech-to-text #617, the braille suite, batch document-to-speech, Structured List Studio, and the verbosity system — were retired to git history once delivered; their status lives in the roadmap and user guide, and the verbosity 2.0 backlog is consolidated in roadmap §6.) The current direction is that these items **ship** (the older 2.0-deferral framing is dropped); the tables below are retained as the format-support reference.
 
 Everything below is intentionally out of v1.0. Each item is either yellow (achievable but requires more engineering than the v1.0 quality bar permits in time) or red (depends on unstable third-party formats, large native dependencies, or research-flavoured uplift we will not promise without measurement).
 
@@ -7122,7 +7267,7 @@ the Part 1 live pass to call done. One sub-item is intentionally deferred.**
 | Verb invokes shared `--action` entry point over single-instance IPC | **Done** (SHELL-1) |
 | Installer registration + clean uninstall | **Done in code** (SHELL-3); **needs live verify** (Part 1) |
 | Reachable via Shift+F10; clear labels; focus + announcement after invoke | **Done in code**; confirmed by the Part 1 manual pass |
-| **Modern Win11 menu via `IExplorerCommand` (packaged COM)** | **Deferred to QUILL 2.0** — the OS gates the primary menu behind compiled COM + package identity (sparse/MSIX). Out of scope for 1.0. |
+| **Modern Win11 menu via `IExplorerCommand` (packaged COM)** | **Deferred to a future major release** — the OS gates the primary menu behind compiled COM + package identity (sparse/MSIX). Out of scope for 1.0. |
 
 **To finish #114 for 1.0:** run Part 1, then post a status comment noting the
 modern-menu `IExplorerCommand` piece is tracked as a 2.0 follow-up, and close.
@@ -8332,6 +8477,24 @@ safer path is offered.
 
 ## Part One: Native RTF Editing as an Optional Surface
 
+> **What shipped (0.8.0 Beta 2) — hidden-codes first.** The plan of record for this
+> work became **hidden-codes formatting** rather than a WYSIWYG editing surface;
+> the full design and phasing are in
+> [`docs/planning/rtf.md`](../planning/rtf.md). What is delivered: real document
+> formatting (font family/size, colour, highlight, underline, strikethrough,
+> super/subscript; paragraph alignment, line spacing, indent, named styles, page
+> breaks) applied from the **Format** menu and the accessible **Font…** dialog,
+> stored as *invisible* codes over the clean plain-text buffer, interrogated on
+> demand with **Describe Formatting at Cursor** (and an optional announce-on-move),
+> and **materialised at export** to Word (`.docx`, native writer + Pandoc
+> fallback), RTF, and HTML — with honest-fidelity warnings before any lossy save.
+> The plain-text buffer stays the single editing surface, so undo, search, the
+> outline, metrics, read-aloud, and AI keep working unchanged. The **read-only
+> rich-text lens** below remains an opt-in preview gated behind
+> `core.rich_text_lens` (pending the live JAWS/NVDA/Narrator pass), and the fully
+> **editable WYSIWYG surface** described in this Part is **deferred to a future major release**.
+> The vision narrative is retained below for the record.
+
 ### The idea in one sentence
 
 Let a writer open Preferences and choose their editing surface: keep the current
@@ -8587,6 +8750,162 @@ way, QUILL becomes the rare app that offers live rich editing and still treats
 plain-text, screen-reader-first writing as first class. That is the magic: not
 catching up to word processors, but giving blind and low-vision writers a rich
 surface that finally speaks formatting out loud.
+
+### Illumination: formatting beside a plain-text file (shipped 0.8.0 Beta 2)
+
+A plain `.txt` file has nowhere to store fonts, colour, or alignment, so the
+hidden-codes model's plain-text writer strips formatting on save (honest
+fidelity). For writers who want a *clean* text file that still round-trips their
+formatting in QUILL, Beta 2 adds the **Illumination** — named for the decorative
+layer a scribe paints over a manuscript: the clean text is the manuscript, the
+formatting is its illumination, stored as a companion file.
+
+**Model** (`quill/io/illumination.py`, wx-free). An Illumination is a small JSON
+sidecar written next to the document as `<name>.illumination`:
+
+* `version` — schema version.
+* `text_sha256` — a hash of the clean (formatting-stripped) text the Illumination
+  was built from.
+* `document` — the serialized `RichDocument` (clean text plus the full run and
+  paragraph attribute structure), captured with `markdown_to_rich` and restored
+  with `rich_to_markdown`, so it carries the whole hidden-codes vocabulary
+  (font/size/colour/highlight/underline/strike/super-subscript and paragraph
+  alignment/spacing/indent/named-style) losslessly.
+
+**Drift safety.** On open, QUILL re-applies the Illumination only when the `.txt`
+on disk still hashes to the recorded `text_sha256`. If the file was edited in
+another program, the overlay would land on the wrong words, so QUILL declines and
+opens the file as plain text instead. This makes the sidecar safe to keep beside
+files that travel.
+
+**Policy (configurable).** The `plain_text_with_formatting` setting (Editing
+group) governs what happens when a formatted document is saved as plain text:
+
+* `ask` (default) — offer to keep formatting (redirect to Markdown/Word/RTF),
+  save plain `.txt` **plus** an Illumination, or save plain and drop formatting.
+* `illuminate` — always write the sidecar alongside the clean `.txt`.
+* `plain` — save clean and remove any stale sidecar (the classic lossy save).
+
+**Honest limits.** The Illumination is a *separate* file: copy or e-mail only the
+`.txt` and the formatting does not travel — the UI and docs say so, and steer
+writers who want one self-contained file to Markdown (inline codes) or Word/RTF
+(native formatting). The fully out-of-band, clean-on-disk-everywhere variant (no
+visible codes even in a saved `.md`) remains the deferred "Option B" end-state in
+[`docs/planning/rtf.md`](../planning/rtf.md); Illumination delivers the clean-text
+round-trip now without that larger overlay rebuild.
+
+### Spoken Echo: re-read the last announcement (shipped 0.8.0 Beta 2)
+
+**Problem.** QUILL speaks a great deal of transient information — indent depth,
+formatting at the caret, save and search results, "no matches" — and speech is
+gone the instant it is spoken. A screen-reader user who missed or wants to copy a
+spoken line had no way to recover it. Screen readers solve this with a "speak,
+double-tap to virtualise" convention; QUILL needed an equivalent that fits its
+architecture.
+
+**Model** (`quill/core/spoken_echo.py`, wx-free). Every spoken line already flows
+through a single choke point in the shell — `_announce` and `_set_status` both
+update the status bar and speak. Those two methods now also call `_record_spoken`,
+which appends to a bounded history (`SPOKEN_ECHO_LIMIT = 20`) via `record_spoken`,
+dropping empty and consecutive-duplicate lines. `format_spoken_echo` renders the
+history newest-first for display. Keeping the history and formatting in core makes
+them unit-testable without a UI; the `deque` lives on the frame.
+
+**Surfaces.** `view.spoken_echo` ("Show Spoken Echo") opens a read-only,
+selectable, copyable dialog (modelled on the QUILL-key help dialog, registered in
+the dialog inventory). It is bound to **Alt+Shift+E** in `DEFAULT_KEYMAP` and both
+shipped profiles, and appears in the Help menu. This dedicated key is the
+**universal** trigger: it works after any announcement, including those produced
+by text-editing keys (Tab's indent depth), with no risk to typing.
+
+**Double-press layer.** For the familiar gesture, `_run_command` detects a second
+press of the same command within `_ECHO_DOUBLE_PRESS_WINDOW` (0.5 s) and opens the
+Echo instead of re-running — but only for a curated set of *informational,
+side-effect-free* commands (`_ECHO_DOUBLE_PRESS_COMMANDS`: describe formatting,
+document summary, context help, announce contrast), where re-running is harmless.
+It is deliberately **not** wired to text-editing keys, and is gated by the
+`spoken_echo_on_double_press` setting (default on). Because accelerator-bound
+commands dispatch through wx menu events rather than `_run_command`, double-press
+currently covers the command-palette and QUILL-key paths; the dedicated key
+covers everything. Extending double-press to specific accelerator keys is a
+possible later enhancement.
+
+### Keyboard Manager: search, record, conflicts, diagnostics (shipped 0.8.0 Beta 2)
+
+**Problem.** The original Keymap Editor was a flat list with a plain text box: you
+typed an exact binding string and hoped. There was no way to ask "what is this key
+bound to?", conflict detection was a brittle ``.upper()`` string compare that
+missed re-ordered spellings (``Shift+Ctrl+K`` vs ``Ctrl+Shift+K``), conflicts were
+reported by raw command id, and there was nothing to catch duplicates or
+assigned-but-inert keys. The goal was a VSCode-class, screen-reader-first
+experience.
+
+**Core grammar** (``quill/core/keymap_query.py``, wx-free). One module owns the
+tolerant parse and canonicalisation: ``parse_binding`` accepts alias modifiers
+(``control``/``ctrl``/``ctl``, ``option``/``opt``), any modifier order, any case,
+named keys, function keys, the QUILL-key chord grammar, and the ``quill`` prefix
+alias; it rejects genuine garbage. ``canonical_binding`` collapses an accepted
+binding to one deterministic string (modifier order Ctrl, Alt, Shift to match
+``DEFAULT_KEYMAP``; macOS ``Cmd`` is a *distinct* token, never folded into Ctrl).
+On top sit ``find_keymap_conflicts`` (all owners of a key, canonical-compared),
+``commands_for_keystroke`` (reverse lookup for search), ``duplicate_bindings``,
+and ``diagnose_keymap`` (duplicates, invalid strings, unknown commands, and
+"missing dispatch" — bound but not firable). ``keymap.find_keymap_conflict`` now
+delegates here, so ``merge_keymaps`` correctly drops a saved override that
+collides with a default under a different spelling.
+
+**Editor** (``quill/ui/keymap_editor.py``, ``KeymapEditorMixin``, extracted from
+``main_frame``). A persistent dialog with: a single smart search box (command-name
+substring, or — when the text parses as a binding — a reverse lookup with live
+"assigned to X / unassigned and available" feedback); a **Record Keys** capture
+dialog that turns a pressed chord into a binding string; alias/any-order tolerant
+assignment that stores the *canonical* form and refuses keys the dispatch layer
+cannot fire (no inert bindings); friendly conflict resolution that names the owning
+command by title and offers a one-step reassign (move here, free there); and a
+**Diagnostics** report with a conservative **Heal** that removes invalid/orphaned
+entries and re-applies the keymap via ``_reload_shortcuts_from_keymap`` (duplicates
+and inert keys are reported for manual resolution rather than guessed at).
+
+### Go to Document by position (shipped 0.8.0 Beta 2)
+
+With several documents open, cycling Next/Previous (Ctrl+Tab) is slow. **Alt+1**
+through **Alt+9**, plus **Alt+0** for the tenth, jump straight to a document by
+its position. Ten ``window.go_to_document_N`` commands back a single
+``go_to_document(position)`` method (built on the existing ``_select_tab``);
+out-of-range positions announce rather than switch. The bindings live in
+``DEFAULT_KEYMAP`` (so they flow to every profile and are remappable in the
+Keyboard Manager) and are applied through the frame accelerator table via
+accelerator-only menu ids. The Window menu's dynamic open-document list shows each
+shortcut inline (``&1: Notes (Alt+1)``) for discoverability; ``Alt+digit`` is free
+default key-space and, unlike ``Ctrl+Alt+`` chords, is not screen-reader-hostile.
+
+### Braille editor control type (shipped 0.8.0 Beta 2)
+
+Some braille displays render the first character of every line in cell two for a
+rich-text control — the long-standing Microsoft Word quirk. Because QUILL's editor
+must be a RichEdit for correct accessible-value reporting (#616, a *read-only*
+constraint), **Settings → Accessibility → Editor control type (braille)** lets a
+braille user pick the native control: ``rich2`` (RichEdit 3.0, default), ``rich``
+(RichEdit 2.0), or ``plain`` (a Notepad-style EDIT control — editable, so it still
+reports its value to JAWS/NVDA). It applies at editor construction (new
+documents/restart). Field note: this is exposed for users to A/B against their own
+display; where the offset reproduces in Notepad itself, the cause is the braille
+display / screen-reader configuration (e.g. left status cells), not the control.
+
+### Self-voice fallback is logged, not announced (shipped 0.8.0 Beta 2)
+
+QUILL's SAPI 5 self-voice (``sapi5.py``/``prism_bridge``) is a *fallback* used only
+when no screen reader is present; announcements otherwise route to the reader via
+Prism / accessible_output2. A SAPI init failure was being *spoken* on startup with
+an alarming, mis-worded prompt even while a reader was handling speech.
+``_check_tts_fallback_on_startup`` now always records a quiet diagnostic note and
+only *speaks* — with the correct **Tools → Retry TTS Engine** path — when
+``_screen_reader_handling_speech()`` is false (no SR backend and none detected),
+i.e. when the user genuinely has no voice. Separately, comtypes' generated-wrapper
+cache is redirected to a writable per-user dir so SAPI initialises under a
+read-only install, and screen-reader detection enumerates processes through the
+Windows Toolhelp API (ctypes) rather than spawning ``tasklist``, so it never
+creates a console window a screen reader or braille display would announce.
 
 ---
 

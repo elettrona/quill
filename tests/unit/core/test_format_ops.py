@@ -10,6 +10,7 @@ from quill.core.format_ops import (
     decode_html_entities,
     delete_lines_containing,
     delete_lines_not_containing,
+    describe_indent_depth,
     encode_html_entities,
     hex_dump,
     indent_lines,
@@ -365,3 +366,37 @@ def test_compute_line_statistics_reports_values() -> None:
 def test_compute_line_statistics_single_value_skips_stdev() -> None:
     report = compute_line_statistics("42")
     assert "Standard deviation: not enough data" in report
+
+
+def test_describe_indent_depth_spaces() -> None:
+    # Caret on the second line, which has four leading spaces.
+    text = "top\n    body"
+    assert describe_indent_depth(text, len(text)) == "4 spaces"
+
+
+def test_describe_indent_depth_single_space_is_singular() -> None:
+    assert describe_indent_depth(" x", 2) == "1 space"
+
+
+def test_describe_indent_depth_tabs() -> None:
+    assert describe_indent_depth("\t\tx", 3) == "2 tabs"
+    assert describe_indent_depth("\tx", 2) == "1 tab"
+
+
+def test_describe_indent_depth_none() -> None:
+    assert describe_indent_depth("flush", 5) == "No indentation"
+
+
+def test_describe_indent_depth_mixed_tabs_and_spaces() -> None:
+    assert describe_indent_depth("\t  x", 4) == "1 tab, 2 spaces"
+
+
+def test_describe_indent_depth_is_line_local() -> None:
+    # The depth describes the caret's line only, not earlier lines.
+    text = "        deep\nb"
+    assert describe_indent_depth(text, len(text)) == "No indentation"
+
+
+def test_describe_indent_depth_clamps_out_of_range_caret() -> None:
+    assert describe_indent_depth("    x", 999) == "4 spaces"
+    assert describe_indent_depth("    x", -5) == "4 spaces"

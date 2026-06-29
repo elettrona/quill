@@ -26,7 +26,7 @@ class AITranscribeDialog:
         self,
         parent: object,
         show_modal_dialog: Callable,
-        on_transcribe: Callable[[Path, str | None, bool, int], None],
+        on_transcribe: Callable[[Path, str | None, bool, bool, int], None],
     ) -> None:
         import wx
 
@@ -181,9 +181,10 @@ class AITranscribeDialog:
         lang_name = self._lang_choice.GetString(lang_idx)
         lang_code = SUPPORTED_LANGUAGES.get(lang_name, "")
         diarize = self._diarize_cb.GetValue()
+        translate = self._translate_cb.GetValue()
         max_speakers = int(self._max_speakers.GetValue()) if diarize else 0
         self.dialog.EndModal(wx.ID_OK)
-        self._on_transcribe(path, lang_code or None, diarize, max_speakers)
+        self._on_transcribe(path, lang_code or None, translate, diarize, max_speakers)
 
     def show(self) -> bool:
         """Show modal. Returns True if user clicked Transcribe."""

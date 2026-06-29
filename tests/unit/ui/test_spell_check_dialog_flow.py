@@ -43,6 +43,15 @@ def test_f7_reports_no_issues_when_clean() -> None:
     assert "No misspellings found" in body
 
 
+def test_no_misspellings_announced_once() -> None:
+    # #728: "No misspellings found" was spoken twice -- _set_status already
+    # announces the message, and a redundant explicit _announce spoke it again.
+    # The clean path must announce exactly once, via _set_status only.
+    body = _spell_dialog_body()
+    assert 'self._set_status("No misspellings found.")' in body
+    assert 'self._announce("No misspellings found.")' not in body
+
+
 def test_f7_invalidates_dictionary_cache_on_close() -> None:
     body = _spell_dialog_body()
     assert "_invalidate_spell_dictionary_cache" in body
