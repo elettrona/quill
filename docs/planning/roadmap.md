@@ -7,7 +7,6 @@
 > its own:
 >
 > - [`quill-native-accessible-table-studio-plan.md`](quill-native-accessible-table-studio-plan.md) — Table Studio (not started).
-> - [`quill_end_to_end_agentic_ai_prd.md`](quill_end_to_end_agentic_ai_prd.md) — Agentic AI platform (planned).
 > - [`eleven-labs.md`](eleven-labs.md) — ElevenLabs / ElevenDesk integration ideas (not started).
 >
 > **Operating principle:** everything here is in scope to **ship** for 1.0 (except
@@ -83,9 +82,10 @@ The **ElevenLabs / ElevenDesk** premium-cloud-TTS integration is its own workstr
 tracked in [`eleven-labs.md`](eleven-labs.md) — **not started** (the SDK-in-gateway
 approach is decided). Dictation's larger later-phase capabilities are **2.0** (§5).
 
-### 1.3 Agentic AI platform (planned)
+### 1.3 Agentic AI platform (shipped in 0.8.0 Beta 2)
 
-**Spec:** [`quill_end_to_end_agentic_ai_prd.md`](quill_end_to_end_agentic_ai_prd.md).
+The detailed planning spec was retired once the platform shipped; the AI suite is
+now documented in the PRD, the user guide, and the 0.8.0 Beta 2 release notes.
 
 Unify QUILL's AI stack behind one provider-neutral, optional, screen-reader-first
 platform whose front door is the **AI Hub**: one provider truth, a Safe Editor Tool
@@ -272,10 +272,8 @@ skip.
 
 ## 5. Deferred to QUILL 2.0
 
-Confirmed out of the 1.0 scope. Recorded here so the intent is not lost. The 2.0
-plan of record that promotes and organizes this scope is
-[`roadmap-2.0.md`](roadmap-2.0.md); items graduate from there back into this file
-when scheduled for a shipping release.
+Confirmed out of the 1.0 scope. Recorded here so the intent is not lost; items
+graduate into the shipping sections above when scheduled for a release.
 
 - **Dictation later phases** — an optional **global Windows key hook** (system-wide
   dictation hotkey), **idle-silence detection** (auto-stop on a pause), and
