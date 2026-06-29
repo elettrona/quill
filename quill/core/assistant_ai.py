@@ -164,6 +164,14 @@ def missing_required_api_key(provider: str, host: str, api_key: str) -> bool:
     return not _is_local_host(hostname)
 
 
+def _api_key_required_message(provider: str) -> str:
+    """Shared 'no key set' sentence so verify and the chat paths can't drift."""
+    return (
+        f"An API key is required for {provider_display_name(provider)}. "
+        "Enter your key and try again."
+    )
+
+
 def verify_assistant_connection(
     settings: AssistantConnectionSettings,
     api_key: str,
@@ -193,11 +201,7 @@ def verify_assistant_connection(
     # authentication, so without this guard verify would falsely report success
     # for a blank required key (#123).
     if missing_required_api_key(provider, settings.host, api_key):
-        return (
-            False,
-            f"An API key is required for {provider_display_name(provider)}. "
-            "Enter your key and try again.",
-        )
+        return False, _api_key_required_message(provider)
 
     models, error = list_assistant_models(settings, api_key, timeout_seconds=timeout_seconds)
     if error is None:
@@ -1071,7 +1075,13 @@ def generate_assistant_response(
         return None, "The AI provider is set to Off."
     if _safe_mode_active():
         return None, _safe_mode_blocked_message("AI generation")
+    # Mirror verify's pre-flight guards so a keyless chat call fails with an
+    # actionable message instead of a confusing provider 401 (L-5, #123).
+    if assistant_secret_unlock_failed() and api_key == "":
+        return None, ASSISTANT_KEY_UNLOCK_FAILED_MESSAGE
     host = (settings.host or "").strip().rstrip("/") or default_host_for_provider(provider)
+    if missing_required_api_key(provider, host, api_key):
+        return None, _api_key_required_message(provider)
     policy_error = _validate_endpoint_security(provider, host)
     if policy_error:
         return None, policy_error
@@ -1338,7 +1348,13 @@ def generate_assistant_response_stream(
         return None, "The AI provider is set to Off."
     if _safe_mode_active():
         return None, _safe_mode_blocked_message("AI streaming")
+    # Same pre-flight guards as the blocking path so a keyless stream fails
+    # with an actionable message instead of a confusing provider 401 (L-5, #123).
+    if assistant_secret_unlock_failed() and api_key == "":
+        return None, ASSISTANT_KEY_UNLOCK_FAILED_MESSAGE
     host = (settings.host or "").strip().rstrip("/") or default_host_for_provider(provider)
+    if missing_required_api_key(provider, host, api_key):
+        return None, _api_key_required_message(provider)
     policy_error = _validate_endpoint_security(provider, host)
     if policy_error:
         return None, policy_error
