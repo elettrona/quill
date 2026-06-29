@@ -8903,9 +8903,9 @@ only *speaks* — with the correct **Tools → Retry TTS Engine** path — when
 ``_screen_reader_handling_speech()`` is false (no SR backend and none detected),
 i.e. when the user genuinely has no voice. Separately, comtypes' generated-wrapper
 cache is redirected to a writable per-user dir so SAPI initialises under a
-read-only install, and the screen-reader detection's ``tasklist`` probe runs with
-``CREATE_NO_WINDOW`` so it no longer flashes a console window a braille display
-would announce.
+read-only install, and screen-reader detection enumerates processes through the
+Windows Toolhelp API (ctypes) rather than spawning ``tasklist``, so it never
+creates a console window a screen reader or braille display would announce.
 
 ---
 

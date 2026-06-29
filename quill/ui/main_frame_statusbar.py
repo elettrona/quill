@@ -283,8 +283,8 @@ class StatusBarMixin:
             return self._statusbar_braille_text()
         if item == "sr_name":
             # A11Y live indicator (§8.3): show the detected screen reader name.
-            # Cache the result on the instance to avoid re-running tasklist on
-            # every status-bar refresh.
+            # Cache the result on the instance to avoid re-running the process
+            # snapshot on every status-bar refresh.
             if not hasattr(self, "_sr_name_cache"):
                 try:
                     from quill.platform.windows.sr_detect import detect_screen_reader

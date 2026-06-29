@@ -1375,10 +1375,9 @@ class MainFrame(
             self._start_ipc_poll()
         except Exception:
             self._report_startup_task_failure("IPC poll")
-        # detect_screen_reader() shells out to `tasklist`, which can take
-        # 400-600 ms on the UI thread.  Run it on a daemon thread and update
-        # the status bar via wx.CallAfter so the window is fully responsive
-        # while the subprocess runs.
+        # detect_screen_reader() enumerates processes via the Windows API (no
+        # subprocess). It is fast, but kept on a daemon thread so even a slow
+        # snapshot can never block the UI; the result posts via wx.CallAfter.
         _t = time.perf_counter()
         _safe_mode_snap = self._safe_mode
 
@@ -1405,7 +1404,7 @@ class MainFrame(
 
         import threading
 
-        threading.Thread(  # GATE-40-OK: one-shot tasklist probe; posts result via CallAfter.
+        threading.Thread(  # GATE-40-OK: one-shot screen-reader probe; posts result via CallAfter.
             target=_sr_detect_worker, daemon=True, name="sr-detect"
         ).start()
         if _profile:

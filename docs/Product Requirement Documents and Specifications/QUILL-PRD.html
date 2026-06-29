@@ -15940,9 +15940,10 @@ diagnostic note and only <em>speaks</em> — with the correct
 and none detected), i.e. when the user genuinely has no voice.
 Separately, comtypes' generated-wrapper cache is redirected to a
 writable per-user dir so SAPI initialises under a read-only install, and
-the screen-reader detection's <code>tasklist</code> probe runs with
-<code>CREATE_NO_WINDOW</code> so it no longer flashes a console window a
-braille display would announce.</p>
+screen-reader detection enumerates processes through the Windows
+Toolhelp API (ctypes) rather than spawning <code>tasklist</code>, so it
+never creates a console window a screen reader or braille display would
+announce.</p>
 <hr />
 <h2 id="part-two-competitive-study-ulysses">Part Two: Competitive Study,
 Ulysses</h2>
