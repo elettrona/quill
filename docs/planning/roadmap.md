@@ -82,10 +82,10 @@ The **ElevenLabs / ElevenDesk** premium-cloud-TTS integration is its own workstr
 tracked in [`eleven-labs.md`](eleven-labs.md) — **not started** (the SDK-in-gateway
 approach is decided). Dictation's larger later-phase capabilities are **2.0** (§5).
 
-### 1.3 Agentic AI platform (shipped in 0.8.0 Beta 2)
+### 1.3 Agentic AI platform (shipped in 0.8.1 Beta 1)
 
 The detailed planning spec was retired once the platform shipped; the AI suite is
-now documented in the PRD, the user guide, and the 0.8.0 Beta 2 release notes.
+now documented in the PRD, the user guide, and the 0.8.1 Beta 1 release notes.
 
 Unify QUILL's AI stack behind one provider-neutral, optional, screen-reader-first
 platform whose front door is the **AI Hub**: one provider truth, a Safe Editor Tool

@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.8.0 Beta 2 (in development)
+## 0.8.1 Beta 1 (in development)
 
-Second public 0.8.0 beta. Rolls up everything in Beta 1 (below) plus the features, fixes, and enhancements landed on `feature/0.8.0-beta2`. This section doubles as the in-app release notes: the same text appears when you **Check for Updates** and any time from **Help > What's New**.
+First 0.8.1 beta. Rolls up everything through 0.8.0 (below) plus the features, fixes, and enhancements in this release — headlined by the new AI suite. This section doubles as the in-app release notes: the same text appears when you **Check for Updates** and any time from **Help > What's New**.
 
 > Logging note: add a one-line bullet here as each change merges, grouped under the headings below. Keep entries user-facing and screen-reader-friendly. Remove this note before the beta is tagged.
 

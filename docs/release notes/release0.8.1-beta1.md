@@ -1,18 +1,18 @@
 # QUILL — Meet You Where You Are
 
-### The screen-reader-first writing studio, built by the people who depend on it. This is the public beta, build 0.8.0 Beta 2.
+### The screen-reader-first writing studio, built by the people who depend on it. This is the public beta, build 0.8.1 Beta 1.
 
 *From Community Access. Free. Optional by design. Private by default. Yours to make quiet.*
 
-This release document is the narrative companion to the **"0.8.0 Beta 2"**
+This release document is the narrative companion to the **"0.8.1 Beta 1"**
 section of `CHANGELOG.md` (the canonical, append-as-you-go log). It tracks what
-changes in Beta 2 on top of Beta 1.
+changes in 0.8.1 Beta 1 on top of the 0.8.0 line.
 
 ---
 
-## What Beta 2 adds over Beta 1
+## What 0.8.1 Beta 1 adds over 0.8.0
 
-Beta 2 carries forward everything in Beta 1 (private on-device speech,
+This release carries forward everything through 0.8.0 (private on-device speech,
 document-to-audiobook production, braille proofreading, talking-book export,
 guided proofing, multilingual narration, Mastodon posting, and the upgrade
 hardening that makes betas safe to update). Its headline is a complete,
@@ -24,7 +24,7 @@ into QUILL. The list below is what is new, fixed, or improved since Beta 1.
 ### Features
 
 **Your writing companion, now built in — optional, and private by default.**
-Beta 2's headline addition is a complete, screen-reader-first AI suite under one
+This release's headline addition is a complete, screen-reader-first AI suite under one
 new top-level **AI** menu. It is **off until you turn it on**, it works with the
 provider *you* choose — a private **on-device** model (Ollama) or an account with
 **OpenAI, Anthropic (Claude), Google Gemini, or OpenRouter** — and nothing leaves
@@ -80,7 +80,7 @@ sends it, keeps a reviewable record of AI changes you can undo, and never widens
 its own permissions. Organisations can restrict which providers are allowed.
 
 **Rich formatting that stays out of your way — hidden codes, spoken on demand.**
-Beta 2 also lets you apply real document formatting — **bold,
+This release also lets you apply real document formatting — **bold,
 italic, underline, strikethrough, superscript/subscript, font family and point
 size, text colour and highlight**, plus paragraph **alignment, line spacing,
 indent, and named styles** — without ever seeing markup clutter in your editor.
@@ -100,7 +100,7 @@ dropping it silently.
 
 **Keep your formatting in a plain-text file — Illuminations.** A plain `.txt` has
 nowhere to store fonts, colours, or alignment, so saving formatted text as plain
-text normally loses them. Beta 2 introduces the **Illumination** — named for the
+text normally loses them. This release introduces the **Illumination** — named for the
 decorative layer a scribe paints over a manuscript: the clean text is the
 manuscript, and a small companion file, `yourfile.txt.illumination`, holds the
 formatting beside it. The `.txt` stays genuinely plain everywhere else, and

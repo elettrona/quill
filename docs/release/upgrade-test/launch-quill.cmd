@@ -15,5 +15,5 @@ echo   %QUILL_UPDATE_API_URL%
 start "" "%APP%" -m quill
 echo.
 echo Next, in QUILL:  Help  ^>  Check for Updates
-echo Expect "0.8.0 Beta 2 is available" -^> choose Install now.
+echo Expect "0.8.1 Beta 1 is available" -^> choose Install now.
 endlocal
