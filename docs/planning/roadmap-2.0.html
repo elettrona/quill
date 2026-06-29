@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>roadmap-2.0</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<h1 id="quill-20--plan-of-record-scope-anchor">QUILL 2.0 — Plan of
+Record (scope anchor)</h1>
+<blockquote>
+<p><strong>What 2.0 is.</strong> QUILL 2.0 is the <strong>agentic AI
+platform</strong>: unify QUILL's existing AI stack behind one
+provider-neutral, multi-harness core whose single front door is the AI
+Hub, with a Safe Editor Tool Gateway, a Permission Broker, a declarative
+Agent Catalog, and an optional layer of interchangeable
+<strong>harnesses</strong> (Native plus SDK packs). The authoritative
+specification is <a
+href="quill_end_to_end_agentic_ai_prd.md"><code>quill_end_to_end_agentic_ai_prd.md</code></a>;
+this file is the live build tracker against it.</p>
+<p><strong>What 2.0 is not.</strong> The other items historically
+deferred "to 2.0" in <a href="roadmap.md"><code>roadmap.md</code></a> §5
+are <strong>not</strong> part of the 2.0 theme. Many are candidates to
+slot into a <strong>1.xx</strong> release instead. They are parked in §3
+below so the intent survives, but they do not gate 2.0 and should not be
+built under the 2.0 banner unless explicitly re-scoped.</p>
+<p><strong>Branch.</strong> 2.0 work lives on the <code>2.0-dev</code>
+branch (worktree at <code>S:\QUILL-2.0</code>). Pull shipping fixes
+forward with <code>git merge main</code>; do not merge
+<code>2.0-dev</code> back into <code>main</code> until 2.0 is ready to
+ship. Commit history on this branch is the working record from which the
+user guide, release notes, and PRD updates are written at the end.</p>
+</blockquote>
+<p><strong>Created:</strong> 2026-06-25. <strong>Last updated:</strong>
+2026-06-25 (Phase 1 Tier A foundation complete; harness layer + three
+SDK packs (OpenAI/Claude/Copilot); Agent Catalog + launch set; Streaming
+Event Bridge; native-backend Responder; opt-in editor wiring validated
+vs live Claude; Concierge + Selection Action Ring model; native
+tool-calling loop; admin policy. Remaining: provider consolidation (§7,
+Tier B), the AI Hub UI (Tier C), and provider function-calling planner /
+live SDK-pack validation).</p>
+<hr />
+<h2 id="0-principles-carried-forward">0. Principles carried forward</h2>
+<p>The 2.0 bar is the 1.0 bar (PRD §4). Every change must:</p>
+<ul>
+<li>Be <strong>screen-reader-first</strong> and keyboard-clear; balanced
+announcements, no token spam.</li>
+<li>Be <strong>optional and off by default</strong>. Base QUILL runs
+with <code>provider = "off"</code>; it launches, edits, and saves with
+AI fully off, and in Safe Mode every harness is disabled.</li>
+<li>Keep <strong>QUILL owning the editor</strong>: agents never touch wx
+controls; they act only through the Safe Editor Tool Gateway, which uses
+the existing replace/undo path.</li>
+<li>Land on QUILL's invariants: atomic storage, the dialog contract, the
+announcement grammar, Safe Mode, the network-egress audit, and the
+GATE-11 size budget.</li>
+<li>Route every medium+ edit through <code>diff_review</code> with
+one-step undo.</li>
+<li>Honour platform scope: Windows (primary), macOS (supported);
+Linux/Unix is not a target.</li>
+</ul>
+<p>Consolidation precedes invention (PRD §23.1): one provider truth, one
+gateway, one permission model, one diff/undo path, one activity log —
+<em>then</em> harnesses.</p>
+<hr />
+<h2 id="0a-landing-strategy-what-can-ship-in-10--1xx-invisibly">0a.
+Landing strategy: what can ship in 1.0 / 1.xx invisibly</h2>
+<p>Much of the 2.0 foundation is <strong>wx-free, additive, and off
+until something calls it.</strong> That work can land on
+<code>main</code> (1.0 / 1.xx) <em>before</em> 2.0 ships, with
+<strong>no user-visible change</strong>, to de-risk 2.0 and bring
+structural stability early. The classification below is an explicit
+implementation decision, not just planning.</p>
+<p>Three tiers:</p>
+<ul>
+<li><p><strong>Tier A — Invisible, landable in 1.0 now.</strong> Dormant
+infrastructure: new modules with no menu item, no dialog, no behavior
+path until wired. Pure additive code + unit tests. Zero user-facing
+change; benefit is latent (structure, test coverage, a stable surface
+for 2.0 to build on) and the risk is essentially nil because nothing in
+the shipping app imports it yet. <strong>Candidate to cherry-pick to
+<code>main</code>.</strong></p>
+<ul>
+<li><code>ai/events.py</code> (event vocabulary) — Done.</li>
+<li><code>ai/permissions.py</code> (Permission Broker) — Done.</li>
+<li><code>ai/activity_log.py</code> (Activity Log) — Done.</li>
+<li><code>ai/tool_gateway.py</code> (Safe Editor Tool Gateway) —
+Done.</li>
+<li><code>ai/context_builder.py</code> (Context Builder) — Done.</li>
+<li><code>ai/harness/</code> protocol + registry + capabilities (types
+only; no pack imported) — Done.</li>
+<li><code>ai/harness/native.py</code> Native harness +
+<code>responder_from_backend</code> adapter — Done.</li>
+<li><code>ai/agent_catalog.py</code> +
+<code>core/schemas/agent.json</code> + <code>ai/agents/*.json</code>
+launch set — Done.</li>
+<li><code>ai/event_bridge.py</code> (Streaming Event Bridge announcement
+mapping) — Done.</li>
+<li><code>ai_packs/</code> three SDK harness packs —
+OpenAI/Claude/Copilot (lazy; report unavailable until installed) —
+Done.</li>
+</ul></li>
+<li><p><strong>Tier B — Invisible-if-careful, fits 1.xx behind
+tests.</strong> Active consolidation that changes an internal path users
+should not notice if the migration is correct, and that genuinely
+improves stability <em>now</em> by removing seams. Medium risk; gate
+behind the existing AI tests + reversible migration. Best shipped in a
+<strong>1.xx</strong> point release, not silently in 1.0 GA.</p>
+<ul>
+<li>One provider truth (PRD §7): converge <code>ai_chat.PROVIDERS</code>
+into <code>assistant_ai</code>; reversible one-time key migration.
+Removes the dual-catalog bug surface.</li>
+<li>Route the existing Ask Quill / Writing Assistant edits through the
+gateway + <code>diff_review</code> + the activity log. Same diff/undo
+behavior the user already sees, now uniform and audited. Stability win;
+must prove no regression.</li>
+<li>Native harness wrapping today's <code>run_agent</code> loop behind
+the gateway (no new UI).</li>
+</ul></li>
+<li><p><strong>Tier C — Visible; 2.0 only.</strong> Anything the user
+can see or that adds surface area. These define 2.0 and must not be
+slipped into 1.0.</p>
+<ul>
+<li>AI Hub command center
+(Home/Agents/Sessions/Activity/Harnesses/Permissions tabs).</li>
+<li>The optional SDK harness packs (OpenAI/Claude/Copilot) and their
+extras.</li>
+<li>Declarative Agent Catalog as a listed, runnable set; Selection
+Action Ring; Concierge; Streaming announcements wired to the UI.</li>
+</ul></li>
+</ul>
+<p><strong>Implementation consequence.</strong> Build Tier A on
+<code>2.0-dev</code> (as now), and once a Tier A module is proven, it is
+eligible to cherry-pick onto <code>main</code> for a 1.0/1.xx release —
+it carries no behavior and only adds tested, dormant infrastructure.
+Tier B is the natural content of one or more <strong>1.xx</strong>
+releases that quietly harden the shipping AI stack. Tier C stays on
+<code>2.0-dev</code> until the 2.0 release. The Phase tables in §1 below
+tag each row with its tier.</p>
+<hr />
+<h2 id="1-the-20-build-agentic-ai-platform">1. The 2.0 build: agentic AI
+platform</h2>
+<p>Phases below mirror PRD §18 (priority order, not calendar). The
+status column is the live tracker; update it as commits land on
+<code>2.0-dev</code>.</p>
+<h3 id="phase-1--consolidate-and-formalize-foundation">Phase 1 —
+Consolidate and formalize (foundation)</h3>
+<p>Tier (see §0a): A = invisible/landable in 1.0 now; B =
+invisible-if-careful, 1.xx.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>PRD</th>
+<th>Tier</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Event vocabulary (<code>ai/events.py</code>)</td>
+<td>§14</td>
+<td>A</td>
+<td>Done</td>
+</tr>
+<tr>
+<td>Permission Broker (<code>ai/permissions.py</code>)</td>
+<td>§10</td>
+<td>A</td>
+<td>Done</td>
+</tr>
+<tr>
+<td>Activity Log (<code>ai/activity_log.py</code>)</td>
+<td>§9, §14</td>
+<td>A</td>
+<td>Done</td>
+</tr>
+<tr>
+<td>Safe Editor Tool Gateway (<code>ai/tool_gateway.py</code>)</td>
+<td>§9</td>
+<td>A</td>
+<td>Done</td>
+</tr>
+<tr>
+<td>Context Builder (<code>ai/context_builder.py</code>)</td>
+<td>§11</td>
+<td>A</td>
+<td>Done</td>
+</tr>
+<tr>
+<td>One provider truth (converge <code>ai_chat.PROVIDERS</code> into
+<code>assistant_ai</code>)</td>
+<td>§7</td>
+<td>B</td>
+<td>Done (data layer): <code>ai_chat</code> reads canonical per-provider
+key targets; reversible <code>consolidate_provider_keys</code> migration
+at startup; <code>providers.allowed_providers(policy)</code>. Tests in
+<code>test_provider_truth.py</code>.</td>
+</tr>
+<tr>
+<td>Route existing AI edits through gateway +
+<code>diff_review</code></td>
+<td>§12</td>
+<td>B</td>
+<td>Opt-in path done: <code>ui/agent_editor_host.py</code> (EditorHost
+over MainFrame) + <code>tools.ai_agent_gateway</code> command behind
+<code>QUILL_AI_AGENT_GATEWAY</code>; validated end-to-end vs live
+Claude. Making it the default path is the remaining Tier B step.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="phase-2--ai-hub-as-command-center">Phase 2 — AI Hub as command
+center</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>PRD</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Promote <code>AIHubDialog</code> to
+Home/Agents/Chat/Sessions/Activity/Providers/Harnesses/Audio/Permissions/Advanced
+(per-tab modules for GATE-11)</td>
+<td>§5</td>
+<td>Not started (Tier C, visible)</td>
+</tr>
+<tr>
+<td>Unified chat engine (the innerworkings every chat dialog uses)</td>
+<td>§2.2</td>
+<td>Done: <code>ai/chat_session.py</code> (turns, auto-compaction,
+streaming, events, persistence). Wiring the dialogs to it is Tier
+C.</td>
+</tr>
+<tr>
+<td>Large-document context (chunk / section / summary)</td>
+<td>§11</td>
+<td>Done: <code>ai/doc_context.py</code>.</td>
+</tr>
+<tr>
+<td>Streaming Event Bridge -&gt; balanced announcements</td>
+<td>§6, §14</td>
+<td>Core done (<code>ai/event_bridge.py</code>); UI subscription pending
+(Tier C)</td>
+</tr>
+<tr>
+<td>Concierge "What can I do here?" on Home + status bar</td>
+<td>§6</td>
+<td>Catalog agent <code>quill-concierge</code> exists; UI surface
+pending (Tier C)</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="phase-3--declarative-agent-catalog--native-tool-calling-loop">Phase
+3 — Declarative Agent Catalog + native tool-calling loop</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>PRD</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>core/schemas/agent.json</code> + catalog loader
+(<code>ai/agent_catalog.py</code>)</td>
+<td>§13</td>
+<td>Done</td>
+</tr>
+<tr>
+<td>Promote <code>accessibility_agent</code> + the four
+<code>AgentProfile</code>s; add Markdown Publisher, Code Doctor, GitHub
+Maintainer, PRD Architect, Release Notes Builder, Concierge</td>
+<td>§13</td>
+<td>Done (11-agent launch set in <code>ai/agents/</code>)</td>
+</tr>
+<tr>
+<td>Upgrade native harness to a real broker-gated, event-streamed
+tool-calling loop</td>
+<td>§8.1</td>
+<td>Done: <code>ai/tool_loop.py</code> + <code>ai/tool_planner.py</code>
+(provider-neutral JSON tool-calling) + <code>ai/agent_tools.py</code>
+(shared tool surface). Per-SDK native-tool registration needs the live
+SDKs.</td>
+</tr>
+<tr>
+<td>Selection Action Ring + hunk-preview clean-up + accessibility review
+on catalog agents</td>
+<td>§6</td>
+<td>Model done: <code>ai/concierge.py</code> <code>ring_actions</code>
+(+ Concierge <code>suggest</code>); the wx ring/Home UI is the remaining
+Tier C piece.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="phase-4--local--byok-polish">Phase 4 — Local + BYOK polish</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>PRD</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Harden Ollama/local + OpenAI-compatible/LiteLLM base-URL flows on
+the consolidated store; test-connection, model selector, cost/context
+warnings</td>
+<td>§18.4</td>
+<td>Not started</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="phase-5--harness-layer--harness-packs-the-multi-harness-promise">Phase
+5 — Harness layer + harness packs (the multi-harness promise)</h3>
+<p>Three SDK packs ship — <strong>OpenAI Agents, Claude Agent, GitHub
+Copilot</strong>. Each is an optional extra, lazily imported, never
+required; an uninstalled pack reports
+<code>(False, "Install the X pack")</code> and QUILL keeps working.
+Every pack bridges to the <strong>same</strong> gateway + broker +
+diff/undo and emits normalized <code>AgentEvent</code>s; none edits the
+buffer directly.</p>
+<table>
+<thead>
+<tr>
+<th>Harness</th>
+<th>Module / extra</th>
+<th>PRD</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Harness protocol + registry + capabilities</td>
+<td><code>ai/harness/__init__.py</code></td>
+<td>§8.1, §8.2</td>
+<td>Done</td>
+</tr>
+<tr>
+<td>Native (default)</td>
+<td><code>ai/harness/native.py</code></td>
+<td>§8.1</td>
+<td>Done (single generate-and-apply; tool-loop upgrade is Phase 3)</td>
+</tr>
+<tr>
+<td>Copilot SDK</td>
+<td><code>ai_packs/copilot.py</code>
+(<code>quill[ai-copilot]</code>)</td>
+<td>§18.5</td>
+<td>Done (transport scaffolded; validate with SDK installed)</td>
+</tr>
+<tr>
+<td>Claude Agent SDK</td>
+<td><code>ai_packs/claude.py</code> (<code>quill[ai-claude]</code>)</td>
+<td>§18.5</td>
+<td><strong>Done — validated live</strong> against the real SDK
+(<code>claude_agent_sdk.query</code>, AssistantMessage/TextBlock,
+<code>allowed_tools=[]</code> text-only).</td>
+</tr>
+<tr>
+<td>OpenAI Agents SDK</td>
+<td><code>ai_packs/openai_agents.py</code>
+(<code>quill[ai-openai]</code>)</td>
+<td>§18.5</td>
+<td><strong>Done — validated live</strong> against the real SDK
+(<code>agents.Agent</code> + <code>Runner.run_sync</code> -&gt;
+<code>final_output</code>).</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Scope note.</strong> QUILL ships exactly three SDK packs —
+OpenAI Agents, Claude Agent, and GitHub Copilot — which cover the field.
+The Microsoft Agent Framework, LangGraph, and OpenHands packs were
+intentionally removed to keep the surface small and well-tested.</p>
+<p><strong>Harness pack status note.</strong> Every pack's identity,
+capabilities, lazy availability detection, graceful-degradation,
+registration, and gateway bridge are built and unit-tested (the bridge
+via an injectable transport, since the SDKs are not installed in CI).
+Each pack's <code>_make_invoke</code> imports its SDK lazily and targets
+the SDK's documented entrypoint; the live transport must be
+<strong>validated against each SDK once its extra is installed</strong>
+(Phase 5 acceptance) and richer native tool-calling against the gateway
+is a follow-up. The <strong>Copilot pack is cross-checked against the GA
+GitHub Copilot SDK</strong> (PyPI <code>github-copilot-sdk</code>,
+import <code>copilot</code>, async
+<code>CopilotClient().create_session(...).send(...)</code>); its bridge
+denies the SDK's own file/shell tools via
+<code>on_permission_request</code> so QUILL applies edits through its
+gateway — routing that permission hook into the QUILL
+<code>PermissionBroker</code> is the deep follow-up. Per-pack
+network-egress-audit entries are added when a pack's transport is
+activated against its SDK.</p>
+<h3 id="phase-6--enterprise--durable-workflows">Phase 6 — Enterprise +
+durable workflows</h3>
+<p>Admin policy enforcement
+(<code>allowedProviders</code>/<code>blockedProviders</code>/<code>allowUserApiKeys</code>):
+<strong>core done</strong> — <code>ai/admin_policy.py</code>
+(<code>AdminPolicy</code>, <code>is_provider_allowed</code>,
+<code>filter_providers</code>, <code>from_dict</code>); wiring it into
+the provider catalog/Hub is the remaining piece. Durable, resumable
+agent workflows (release prep, accessibility audit, PRD creation)
+persisted via atomic storage: not started. PRD §15.</p>
+<h3 id="phase-7--developer-agents--marketplace">Phase 7 — Developer
+agents + marketplace</h3>
+<p>Agent Builder; Quillin-distributed agent/tool/harness packs with
+signature/trust and lint gates. PRD §16, §18.7.</p>
+<h3 id="cross-cutting-gates-every-phase">Cross-cutting gates (every
+phase)</h3>
+<p><code>ruff</code>; scoped <code>mypy quill/core/ai</code> (core is
+strict-typed); <code>dialog_inventory</code> +
+<code>dialog_button_contract</code> for new dialogs;
+<code>network_egress_audit</code> entries for every new outbound call
+(each harness pack); GATE-11 budget (split modules, never balloon
+<code>assistant_ai.py</code>/<code>main_frame.py</code>);
+<code>quillin_lint</code> for agent/harness packs; Safe Mode must
+disable every harness. PRD §17, §20.</p>
+<hr />
+<h2 id="2-documentation-deferred-to-end-of-20-work">2. Documentation
+(deferred to end of 2.0 work)</h2>
+<p>User guide, release notes, and PRD updates are written
+<strong>after</strong> the platform lands, sourced from the
+<code>2.0-dev</code> commit history (which is kept detailed for this
+purpose). Do not batch-update docs mid-build; the commit messages are
+the interim record.</p>
+<hr />
+<h2 id="3-parked-candidates-for-a-1xx-release-not-20">3. Parked:
+candidates for a 1.xx release (NOT 2.0)</h2>
+<p>These were historically tagged "defer to 2.0" in
+<code>roadmap.md</code> §5, but 2.0 is the agentic AI theme. They are
+candidates to slot into a <strong>1.xx</strong> release and are kept
+here only so the intent is not lost. None gates 2.0.</p>
+<ul>
+<li><strong>Dictation later phases</strong> — global Windows key hook,
+idle-silence detection, dictation intelligence (spoken
+punctuation/commands).</li>
+<li><strong>BITS Whisperer consolidation backlog</strong> (#515,
+#566–#577) — provider-matrix tiers and guided onboarding.</li>
+<li><strong>Accessibility tooling from GLOW</strong> (#528–#534, #566) —
+Document Audit (ACB Large-Print, MS Accessibility Checker, WCAG 2.2 AA)
+as authoring-time checks; source <code>s:\code\glow</code>.</li>
+<li><strong>ElevenLabs beyond export TTS</strong> — live streaming Read
+Aloud, voice management/cloning/design, Tier-3 surfaces. Spec <a
+href="eleven-labs.md"><code>eleven-labs.md</code></a>.</li>
+<li><strong>Native Google Docs support</strong> — Drive API + OAuth +
+accessible doc model. Spec <a
+href="QUILL-Native-Google-Docs-Support-PRD.md"><code>QUILL-Native-Google-Docs-Support-PRD.md</code></a>.</li>
+<li><strong>Direct publishing</strong> (#140) — WordPress and other
+platforms, likely a Quillin integration; early design in
+<code>docs/design/publishing/</code>.</li>
+<li><strong>Remaining ChapterForge surfaces</strong> — Auphonic, RSS
+feeds, SFTP publishing, MusicBrainz/Open Library metadata.</li>
+<li><strong>Platform / packaging singletons</strong> (#680) — Windows 11
+<code>IExplorerCommand</code> pass (#525), PyInstaller hardening (#599).
+Nuitka out of scope.</li>
+<li><strong>Table Studio</strong> — spec <a
+href="quill-native-accessible-table-studio-plan.md"><code>quill-native-accessible-table-studio-plan.md</code></a>.</li>
+<li><strong>Verbosity 2.0 polish backlog</strong> — long tail
+(#405–#504); reference in <code>roadmap.md</code> §5.</li>
+</ul>
+<hr />
+<h2 id="4-working-agreement">4. Working agreement</h2>
+<ul>
+<li><strong>One planning file for 2.0:</strong> this document plus the
+agentic AI PRD. New 2.0 design goes into the PRD or a referenced spec,
+not inlined here.</li>
+<li><strong>Keep the Phase tables current</strong> as commits land; that
+is the build tracker. The granular, end-to-end checklist (incl.
+packaging, distribution, deployment, assets, and the cross-SDK agent
+test matrix) lives in <a href="todo.md"><code>todo.md</code></a> — keep
+both in sync.</li>
+<li><strong>Commit frequently</strong>, with detailed messages — they
+are the source for the end-of-cycle docs.</li>
+<li><strong>Stay current with main:</strong> merge <code>main</code>
+into <code>2.0-dev</code> regularly.</li>
+<li><strong>Graduation:</strong> when a 1.xx candidate from §3 is
+scheduled, move it into <code>roadmap.md</code> for that release and
+delete its row here.</li>
+</ul>
+<hr />
+<h2
+id="5-phase-0--the-dormant-foundation-whats-done-and-what-1xx-gains">5.
+Phase 0 — the dormant foundation: what's done, and what 1.xx gains</h2>
+<p>"Phase 0" is the name we give the <strong>already-built, dormant Tier
+A foundation</strong> for the 2.0 agentic platform (the §1 Phase 1 Tier
+A rows, plus the harness layer and SDK packs). It is finished, tested,
+and sitting on <code>2.0-dev</code>. This section records exactly what
+it is, whether 1.xx gains anything by adopting it, and the evidence that
+doing so is safe — so the decision to port it into a 1.xx release can be
+made from facts, not hope.</p>
+<h3 id="51-what-is-done-the-phase-0-surface">5.1 What is done (the Phase
+0 surface)</h3>
+<p>All wx-free, strict-typed <code>quill/core/ai/*</code> (plus
+<code>quill/ai_packs/*</code>), additive:</p>
+<ul>
+<li><code>events.py</code> — normalized agent-event vocabulary.</li>
+<li><code>permissions.py</code> — Permission Broker (4 profiles,
+monotone risk floor, hard <code>SAFE_TOOL_IDS</code> floor).</li>
+<li><code>activity_log.py</code> — bounded, redacted, atomic audit
+log.</li>
+<li><code>tool_gateway.py</code> — Safe Editor Tool Gateway (typed host
+protocol, permission checks, diff-preview routing, undo checkpoints,
+audit).</li>
+<li><code>context_builder.py</code> — scoped context + secret-masking
+"what will be sent" preview.</li>
+<li><code>harness/</code> + <code>harness/native.py</code> — Harness
+protocol/registry/capabilities, Native harness, and
+<code>responder_from_backend</code> (runs Native on the existing
+provider stack).</li>
+<li><code>ai_packs/</code> — three optional SDK harness packs (OpenAI
+Agents, Claude Agent, GitHub Copilot), lazily imported, graceful when
+uninstalled.</li>
+<li><code>agent_catalog.py</code> + <code>schemas/agent.json</code> +
+<code>ai/agents/*.json</code> — declarative Agent Catalog + the 11-agent
+launch set.</li>
+<li><code>event_bridge.py</code> — verbosity-aware mapping from events
+to balanced announcements.</li>
+</ul>
+<p>Test coverage: ~95 new tests under <code>tests/unit/core/ai/</code>
+(full <code>tests/unit/core/ai</code> = 448 passing).</p>
+<h3 id="52-does-1xx-gain-anything-from-it">5.2 Does 1.xx gain anything
+from it?</h3>
+<p><strong>Be precise: Phase 0 adopted on its own delivers no
+user-facing change and no new runtime behavior.</strong> Every module is
+dormant — nothing in the shipping app calls it (proven in §5.3). So a
+user on a 1.xx build that includes Phase 0 would see and feel exactly
+what they see today.</p>
+<p>What 1.xx <em>does</em> gain is <strong>latent and strategic, not
+functional</strong>:</p>
+<ol type="1">
+<li><strong>A proven substrate, shipped early.</strong> The permission
+model, audit log, gateway, diff/undo routing, and event grammar exist as
+tested code in the release stream, de-risking the later visible 2.0 work
+and any 1.xx hardening built on top.</li>
+<li><strong>The prerequisite for the real stability win.</strong> The
+genuine, user-invisible <em>stability</em> improvement (one provider
+truth; routing today's Ask Quill / Writing Assistant edits through one
+audited gateway + one diff/undo path) is the <strong>Tier B</strong>
+work in §1. Tier B cannot land without Phase 0 underneath it. Porting
+Phase 0 to 1.xx is what makes a subsequent quiet 1.xx hardening release
+<em>possible</em>.</li>
+<li><strong>No new dependencies for default installs.</strong> The SDK
+packs are opt-in extras; a normal install pulls none of them.</li>
+</ol>
+<p>So the honest answer to "does it gain anything?": <strong>by itself,
+nothing the user notices — it is an enabling foundation.</strong> The
+payoff is realized only when a follow-up Tier B change switches part of
+it on; that change is separate, behavior-changing, and must be proven on
+its own.</p>
+<h3 id="53-can-we-prove-it-is-safe-to-bring-into-1xx-yes--evidence">5.3
+Can we prove it is safe to bring into 1.xx? Yes — evidence</h3>
+<p>The safety claim is "adopting Phase 0 cannot change how 1.xx
+behaves." Four independent checks support it:</p>
+<ol type="1">
+<li><strong>Additive only — zero deletions.</strong> The diff from the
+2.0 fork point (<code>f1e2f87</code>) is <strong>30 files changed, 2456
+insertions, 0 deletions</strong>. Every <code>quill/</code> change is a
+brand-new file except <code>pyproject.toml</code>. No existing line of
+shipping code was modified or removed.</li>
+<li><strong>The one touched existing file is additive and inert at
+runtime.</strong> <code>pyproject.toml</code> gains three
+<em>optional-dependency</em> extras (<code>ai-openai</code>,
+<code>ai-claude</code>, <code>ai-copilot</code>) and two wheel
+<code>force-include</code> lines for the new data files (the §0a note
+predates trimming the pack set). Optional extras are not in the default
+<code>[ui]</code>/<code>[dev]</code> install, so default install and
+runtime are unchanged; the force-includes only package the new,
+otherwise-unused JSON.</li>
+<li><strong>Unreachable from the shipping app.</strong> A grep for
+<code>import</code> statements of every new module, across all of
+<code>quill/</code>, excluding the files created on this branch, returns
+<strong>no pre-existing importer</strong>. Nothing the running app loads
+imports the Permission Broker, gateway, activity log, events, context
+builder, event bridge, harness layer, agent catalog, or
+<code>ai_packs</code>. Code that nothing calls cannot change
+behavior.</li>
+<li><strong>Verified green, all gates.</strong> Full suite passes on
+both branches (<code>2.0-dev</code> 5647 passed; <code>main</code> 5580
+passed; 0 failures). <code>ruff check</code>,
+<code>ruff format --check</code>, and scoped
+<code>mypy quill/core/ai</code> are clean; the banned-patterns, GATE-11
+module-size, and network-egress gates pass. No new outbound network call
+site was added — the SDK packs call their SDKs lazily and only inside a
+running session, which cannot occur without an installed extra and an
+explicit user action — so the egress audit is unchanged and Safe Mode's
+guarantees are untouched.</li>
+</ol>
+<p><strong>Conclusion:</strong> porting Phase 0 into a 1.xx release is
+safe because it is provably inert: additive new files, no shipping
+importer, optional dependencies, green CI. It buys 1.xx a tested
+foundation with no behavior risk — and nothing more until a later,
+separately-reviewed change wires it in.</p>
+<h3 id="54-guidance--how-to-land-phase-0-in-1xx">5.4 Guidance — how to
+land Phase 0 in 1.xx</h3>
+<ol type="1">
+<li><strong>Port it as one additive PR.</strong> Cherry-pick or port the
+Phase 0 files onto a 1.xx branch as a single "new files only" change.
+Because it is inert, review is about code quality and tests, not
+behavior regression; CI should be green with no diff in any existing
+behavior test.</li>
+<li><strong>Do not wire anything in.</strong> Add no menu item, command,
+dialog, or call site in the 1.xx PR. Enabling any of it is Tier B/C and
+belongs in its own change. Keeping the PR inert is precisely what makes
+it safe.</li>
+<li><strong>Sequence the real win separately.</strong> Schedule the Tier
+B hardening (one provider truth, then gateway-routed edits) as a
+follow-up 1.xx PR, gated by the existing AI tests + a reversible key
+migration. That PR is where stability is actually delivered and where
+the careful regression review must focus.</li>
+<li><strong>Leave the SDK packs as optional, unadvertised
+extras.</strong> Their transports are not yet validated against live
+SDKs (they require the extras installed); keeping them opt-in and
+unlisted in 1.xx means that open item cannot affect 1.xx users.</li>
+<li><strong>Keep the egress audit honest.</strong> When a future change
+first makes a pack's transport reach the network, add its call site to
+<code>network_egress_audit.py</code> in the <em>same</em> change — not
+before.</li>
+</ol>
+</body>
+</html>

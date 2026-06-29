@@ -245,19 +245,19 @@
 PRD</h1>
 <p><strong>Product:</strong> QUILL for All<br />
 <strong>Feature Area:</strong> Unified, optional, provider-neutral
-agentic AI platform built on QUILL’s existing AI stack<br />
+agentic AI platform built on QUILL's existing AI stack<br />
 <strong>Document Type:</strong> End-to-end Product Requirements Document
 (implementation-grounded)<br />
 <strong>Version:</strong> 2.0 Draft (rebased on shipping code,
 0.7.0-beta2)<br />
 <strong>Date:</strong> June 21, 2026<br />
-<strong>Primary Goal:</strong> Elevate QUILL’s already-substantial AI
+<strong>Primary Goal:</strong> Elevate QUILL's already-substantial AI
 stack into one accessible, provider-neutral, multi-harness agentic
 platform whose single front door is the <strong>AI Hub</strong> —
-without breaking the optional, screen-reader-first, “QUILL owns the
-editor” guarantees that already ship.</p>
+without breaking the optional, screen-reader-first, "QUILL owns the
+editor" guarantees that already ship.</p>
 <hr />
-<h2 id="how-to-read-this-document">0. How to read this document</h2>
+<h2 id="0-how-to-read-this-document">0. How to read this document</h2>
 <p>This is <strong>version 2.0</strong>. Version 1.0 was written as if
 QUILL had no AI. That is not true. QUILL ships a deep AI stack today: a
 provider-neutral backend, eight providers, streaming, branchable
@@ -274,19 +274,66 @@ not invention.</p>
 <p>The source of truth is the code in <code>quill/</code>, verified June
 21, 2026 against branch <code>feature/beta-2</code>.</p>
 <hr />
-<h2 id="executive-summary">1. Executive Summary</h2>
-<p>QUILL should not add “one chatbot,” and it should not rebuild what it
+<h2 id="0a-implementation-status-2026-06-26-branch-20-dev">0a.
+Implementation status (2026-06-26, branch <code>2.0-dev</code>)</h2>
+<p>The <strong>non-UI innerworkings of Phases 1–5 are built and
+tested</strong>; the remaining work is the AI Hub UI (Phase 6 here / §5)
+plus a few live-SDK and product items. Built modules:</p>
+<ul>
+<li><strong>Foundation</strong> — <code>ai/events.py</code>,
+<code>ai/permissions.py</code> (broker, 4 profiles, risk floor,
+<code>SAFE_TOOL_IDS</code> floor), <code>ai/activity_log.py</code>,
+<code>ai/tool_gateway.py</code>, <code>ai/context_builder.py</code>,
+<code>ai/event_bridge.py</code>.</li>
+<li><strong>Harness layer + packs</strong> — <code>ai/harness/</code>
+(protocol/registry/capabilities, Native), and three optional SDK packs
+in <code>ai_packs/</code> (OpenAI Agents, Claude Agent, GitHub Copilot —
+Microsoft/LangGraph/OpenHands intentionally dropped). OpenAI + Claude
+validated live; Copilot cross-checked vs the GA SDK.</li>
+<li><strong>Agents + loop</strong> — <code>ai/agent_catalog.py</code> +
+<code>schemas/agent.json</code> + a <strong>15-agent</strong>
+<code>ai/agents/</code> set; <code>ai/tool_loop.py</code>;
+<code>ai/tool_planner.py</code> (provider-neutral JSON tool-calling);
+<code>ai/agent_tools.py</code> (shared tool surface for the loop,
+planner, and SDK packs).</li>
+<li><strong>Provider truth (§7)</strong> — <code>ai_chat</code> reads
+the canonical per-provider key targets;
+<code>assistant_ai.consolidate_provider_keys</code> reversible migration
+at startup; <code>providers.allowed_providers(policy)</code> (admin
+policy, §15).</li>
+<li><strong>Chat + document (§2.2, §11)</strong> —
+<code>ai/chat_session.py</code> (unified, auto-compacting chat engine)
+and <code>ai/doc_context.py</code> (chunk / section / structured summary
+for whole-doc).</li>
+<li><strong>Editor wiring</strong> —
+<code>ui/agent_editor_host.py</code> routes agents through the gateway,
+validated live (opt-in behind <code>QUILL_AI_AGENT_GATEWAY</code>).</li>
+<li><strong>Cross-SDK proof</strong> —
+<code>tests/unit/core/ai/test_agent_matrix.py</code>: 15 agents × 4
+engines = 60 cases through the gateway.</li>
+</ul>
+<p>Remaining: the AI Hub command center + surfacing (Phase 6, UI);
+routing the existing chat dialogs onto <code>ChatSession</code> + the
+gateway (UI); per-SDK native-tool registration
+(<code>on_permission_request</code> → broker) needing the live SDKs; and
+the secret-masking policy for whole-document transforms (a product
+decision). The live tracker is <a
+href="todo.md"><code>todo.md</code></a>; the plan of record is <a
+href="roadmap-2.0.md"><code>roadmap-2.0.md</code></a>.</p>
+<hr />
+<h2 id="1-executive-summary">1. Executive Summary</h2>
+<p>QUILL should not add "one chatbot," and it should not rebuild what it
 already has. QUILL should <strong>unify</strong> its existing AI
 features behind one coherent, agentic, provider-neutral platform whose
 home is the <strong>AI Hub</strong>.</p>
-<p>Today a user meets QUILL’s AI through at least five different
+<p>Today a user meets QUILL's AI through at least five different
 surfaces (AI Hub, Writing Assistant, Prompt Studio, Agent Center, Ask
 Quill chat) backed by <strong>two different provider-config
-systems</strong> (<code>assistant_ai</code>’s AI-13 connection file and
+systems</strong> (<code>assistant_ai</code>'s AI-13 connection file and
 <code>ai_chat.PROVIDERS</code>). The plumbing is strong; the seams show.
 The opportunity is to make the seams disappear: one provider truth, one
 tool gateway, one permission model, one diff/undo path, one activity
-log, one place that says “what can I do here?” — and then to layer
+log, one place that says "what can I do here?" — and then to layer
 optional, more powerful <strong>harnesses</strong> (Copilot SDK, Claude
 Agent SDK, OpenAI Agents SDK, Microsoft Agent Framework, LangGraph,
 OpenHands) on top of that unified core for users who want them.</p>
@@ -301,7 +348,7 @@ apply a clean-up as accept/reject hunks.</li>
 should be promoted into the catalog).</li>
 <li>Ask a GitHub Maintainer agent to turn notes into an issue,
 changelog, or PR description.</li>
-<li>Ask the QUILL Concierge “what can I do here?” and get context-aware,
+<li>Ask the QUILL Concierge "what can I do here?" and get context-aware,
 keyboard-reachable actions.</li>
 </ul>
 <p>The experience should stay safe and optional, exactly as it is
@@ -319,24 +366,19 @@ and saves with AI fully off.</li>
 <p>The winning architecture, restated for what exists:</p>
 <blockquote>
 <p><strong>Unified AI Core (consolidate what ships) + a formal Safe
-Editor Tool Gateway and Permission Broker (formalize today’s loose
+Editor Tool Gateway and Permission Broker (formalize today's loose
 callbacks) + an optional Harness layer (new) + a declarative Agent
 Catalog (extend) — all surfaced through the AI Hub.</strong></p>
 </blockquote>
 <hr />
-<h2 id="state-of-truth-what-quill-ships-today">2. State of Truth: what
+<h2 id="2-state-of-truth-what-quill-ships-today">2. State of Truth: what
 QUILL ships today</h2>
 <p>This section is the spine of the plan. Everything below is in the
 codebase now.</p>
-<h3 id="ai-core-exists">2.1 AI Core (exists)</h3>
+<h3 id="21-ai-core-exists">2.1 AI Core (exists)</h3>
 <p><code>quill/core/ai/</code> and
 <code>quill/core/assistant_ai.py</code> are a real, wx-free AI core.</p>
 <table>
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 33%" />
-<col style="width: 33%" />
-</colgroup>
 <thead>
 <tr>
 <th>Concern</th>
@@ -379,7 +421,7 @@ streaming.</td>
 <td>Availability</td>
 <td><code>ai/availability.py</code> (<code>AIAvailability</code>,
 <code>blocks_editor=False</code>)</td>
-<td>One speakable sentence for “off / no key / unavailable.” Never
+<td>One speakable sentence for "off / no key / unavailable." Never
 blocks typing.</td>
 </tr>
 <tr>
@@ -471,14 +513,9 @@ ollama_local / ollama_cloud.</td>
 </tr>
 </tbody>
 </table>
-<h3 id="ai-ui-surfaces-exist-fragmented">2.2 AI UI surfaces (exist,
+<h3 id="22-ai-ui-surfaces-exist-fragmented">2.2 AI UI surfaces (exist,
 fragmented)</h3>
 <table>
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 33%" />
-<col style="width: 33%" />
-</colgroup>
 <thead>
 <tr>
 <th>Surface</th>
@@ -492,7 +529,7 @@ fragmented)</h3>
 <td><code>ui/ai_hub_dialog.py</code> (896 lines)</td>
 <td>Tabbed <strong>settings</strong> center: Provider, On-Device, Audio,
 Advanced. Entry: <code>MainFrame.open_ai_hub</code>, menu
-<code>tools.ai_hub</code> (“AI &amp;Hub…”).</td>
+<code>tools.ai_hub</code> ("AI &amp;Hub...").</td>
 </tr>
 <tr>
 <td>Writing Assistant</td>
@@ -527,17 +564,17 @@ Advanced. Entry: <code>MainFrame.open_ai_hub</code>, menu
 <td>Setup wizard</td>
 <td><code>ui/setup_wizard.py</code>,
 <code>setup_wizard_pages.py</code></td>
-<td>Page 2 “Extras (AI/Braille/Automation)”, page 3 “AI Provider”.</td>
+<td>Page 2 "Extras (AI/Braille/Automation)", page 3 "AI Provider".</td>
 </tr>
 </tbody>
 </table>
 <p>The <strong>Ask Quill</strong> dialog is the closest thing to a real
 agent host: it already receives
 <code>get_document, get_selection, insert_text, replace_selection, set_text, open_new_document, run_command, tool_catalog, announce, review_changes</code>.
-That callback bundle is, in effect, today’s Safe Editor Tool Gateway —
+That callback bundle is, in effect, today's Safe Editor Tool Gateway —
 just unformalized.</p>
-<h3 id="infrastructure-invariants-already-enforced">2.3 Infrastructure
-invariants already enforced</h3>
+<h3 id="23-infrastructure-invariants-already-enforced">2.3
+Infrastructure invariants already enforced</h3>
 <ul>
 <li><strong>Dialogs</strong> go through <code>_show_modal_dialog</code>
 + <code>apply_modal_ids</code> (<code>ui/dialog_contract.py</code>);
@@ -574,7 +611,7 @@ scrubs secrets from logs/crash bundles.</li>
 <code>tools/quillin_lint.py</code>) can register commands via
 <code>CommandRegistry.try_register</code>.</li>
 </ul>
-<h3 id="the-gaps-what-is-genuinely-missing">2.4 The gaps (what is
+<h3 id="24-the-gaps-what-is-genuinely-missing">2.4 The gaps (what is
 genuinely missing)</h3>
 <p>These are the only things that do <strong>not</strong> exist and must
 be built:</p>
@@ -591,7 +628,7 @@ Broker</strong> (today: none — the only gate is the static
 single-shot. Multi-step, tool-using sessions with per-tool permission
 prompts do not exist.</li>
 <li><strong>A Context Builder</strong> object with explicit scopes and a
-“show what will be sent” preview (pieces exist: compaction, redaction;
+"show what will be sent" preview (pieces exist: compaction, redaction;
 the assembling component does not).</li>
 <li><strong>A Streaming Event Bridge</strong> with normalized event
 types feeding accessible announcements (today: ad-hoc token streaming in
@@ -609,7 +646,7 @@ agent launcher, activity log, session browser, permission center.</li>
 specified but not yet a first-class, reviewable surface).</li>
 </ol>
 <hr />
-<h2 id="product-vision">3. Product Vision</h2>
+<h2 id="3-product-vision">3. Product Vision</h2>
 <blockquote>
 <p><strong>QUILL is an accessible editor where the AI Hub is the single
 front door: you choose your engine and (optionally) your harness, pick
@@ -621,7 +658,7 @@ off.</strong></p>
 and GitHub help — built on the stack QUILL already has, consolidated and
 made magical, never bolted on.</p>
 <hr />
-<h2 id="product-principles-unchanged-now-mapped-to-code">4. Product
+<h2 id="4-product-principles-unchanged-now-mapped-to-code">4. Product
 Principles (unchanged, now mapped to code)</h2>
 <ol type="1">
 <li><strong>Optional by design.</strong> Base QUILL runs with
@@ -643,21 +680,21 @@ predictable focus, balanced announcements via
 <code>availability.py</code> wording and the Streaming Event Bridge; no
 token spam.</li>
 <li><strong>Least privilege.</strong> Permission Broker categories;
-<code>SAFE_TOOL_IDS</code> stays the floor for “run command.”</li>
+<code>SAFE_TOOL_IDS</code> stays the floor for "run command."</li>
 <li><strong>Reviewable changes.</strong> <code>diff_review.py</code> is
 the canonical review path; every edit creates an undo checkpoint.</li>
 <li><strong>Provider/harness neutrality.</strong> QUILL agents are
 defined once (declarative), adapted to harnesses.</li>
 </ol>
 <hr />
-<h2 id="the-ai-hub-as-command-center-centerpiece">5. The AI Hub as
+<h2 id="5-the-ai-hub-as-command-center-centerpiece">5. The AI Hub as
 Command Center (centerpiece)</h2>
-<p>The user’s explicit ask: integrate everything into the AI Hub. Today
+<p>The user's explicit ask: integrate everything into the AI Hub. Today
 <code>AIHubDialog</code> is a four-tab settings dialog. The plan
 promotes it to the <strong>single hub</strong> for configuration
 <strong>and</strong> action, while keeping each existing dialog
 reachable as a focused view.</p>
-<h3 id="target-ai-hub-structure">5.1 Target AI Hub structure</h3>
+<h3 id="51-target-ai-hub-structure">5.1 Target AI Hub structure</h3>
 <pre><code>AI Hub (Alt+A or AI &gt; AI Hub)
   Home                  &lt;- new: status, current provider/harness/agent, &quot;What can I do here?&quot;
   Agents                &lt;- new: catalog list, run, per-agent permissions, recommended-for-this-file
@@ -671,12 +708,12 @@ reachable as a focused view.</p>
   Advanced              &lt;- existing (consent, network audit notes, safe mode, reset)</code></pre>
 <ul>
 <li><strong>Home</strong> shows <code>AIAvailability</code> in one
-sentence, the active provider+harness+agent, and Concierge “What can I
-do here?” computed from file type, selection state, outline, and git
+sentence, the active provider+harness+agent, and Concierge "What can I
+do here?" computed from file type, selection state, outline, and git
 presence.</li>
 <li><strong>Agents</strong> lists the declarative catalog (Section 13).
 Each row: run, recommended-for-current-file badge, risk level,
-permission summary. “Run” launches into Chat or a plan/preview
+permission summary. "Run" launches into Chat or a plan/preview
 flow.</li>
 <li><strong>Providers</strong> is the existing Provider/On-Device UI,
 but reading/writing the <strong>single</strong> consolidated provider
@@ -690,23 +727,23 @@ never crash if missing) mirroring
 / Balanced / Power User / Locked Down) and per-category defaults
 consumed by the Permission Broker.</li>
 <li><strong>Activity</strong> renders the audit log with secret
-redaction; supports “Review last AI change” and “Undo last AI
-change.”</li>
+redaction; supports "Review last AI change" and "Undo last AI
+change."</li>
 </ul>
-<h3 id="constraints">5.2 Constraints</h3>
+<h3 id="52-constraints">5.2 Constraints</h3>
 <ul>
 <li>The Hub remains one <code>_show_modal_dialog</code> +
 <code>apply_modal_ids</code> surface; new tabs are added to the
 dialog-inventory fixture.</li>
 <li>Growth must respect GATE-11: split the hub into per-tab modules
-(<code>ai_hub_home.py</code>, <code>ai_hub_agents.py</code>, …) rather
+(<code>ai_hub_home.py</code>, <code>ai_hub_agents.py</code>, ...) rather
 than growing <code>ai_hub_dialog.py</code> past budget.</li>
 <li>The Hub never performs network or model work on the UI thread; all
 of it goes through <code>QuillTaskManager</code> with
 <code>wx.CallAfter</code> results.</li>
 </ul>
 <hr />
-<h2 id="magical-editor-integration-points-bold-accessible">6. Magical
+<h2 id="6-magical-editor-integration-points-bold-accessible">6. Magical
 Editor Integration Points (bold, accessible)</h2>
 <p>These are the rich, in-editor experiences. Each names the real
 primitive it builds on. All are keyboard-first and announced through the
@@ -717,8 +754,8 @@ opens a small, list-based menu of recommended actions (Rewrite clearly,
 Shorten, Make warmer, Explain, Check accessibility) computed from file
 type. Built on <code>_selected_text()</code> and the Writing Companion
 agent. Apply-with-undo uses <code>_record_persistent_undo_state</code>;
-announce “Selection rewritten. Ctrl+Z to undo. Alt+Shift+D to
-review.”</li>
+announce "Selection rewritten. Ctrl+Z to undo. Alt+Shift+D to
+review."</li>
 <li><strong>Apply-with-undo inline edits.</strong> Low-risk selection
 edits apply immediately as one undoable replacement (same path as
 <code>_apply_python_result</code>), never silently for document-wide
@@ -726,10 +763,10 @@ edits.</li>
 <li><strong>Accessible diff review everywhere.</strong> Any
 medium/high-risk edit routes through <code>build_diff_review</code>
 -&gt; the review dialog: per-hunk accept/reject, hunk navigation,
-speakable summary, one-undo apply. This is the universal “preview”
+speakable summary, one-undo apply. This is the universal "preview"
 surface.</li>
-<li><strong>Concierge in the status bar / Home.</strong> “What can I do
-here?” reads <code>get_file_type</code>, selection state, document
+<li><strong>Concierge in the status bar / Home.</strong> "What can I do
+here?" reads <code>get_file_type</code>, selection state, document
 outline (<code>_outline_entries</code>), and git presence, then offers
 keyboard-reachable suggestions. Lightweight context only.</li>
 <li><strong>Command palette as agent surface.</strong> Every AI action
@@ -742,8 +779,8 @@ Accessibility Editor consume <code>read_document_outline</code> (from
 <code>_outline_entries</code>) to operate per-section, enabling
 section-scoped previews instead of whole-file rewrites.</li>
 <li><strong>Live, summarized streaming.</strong> The Streaming Event
-Bridge emits balanced announcements (“Three changes proposed”, “Agent
-requests permission to read the document”), never token-by-token,
+Bridge emits balanced announcements ("Three changes proposed", "Agent
+requests permission to read the document"), never token-by-token,
 honoring the verbosity setting.</li>
 <li><strong>Ambient availability badge.</strong> The existing startup
 backend-state announcement and <code>AIAvailability</code> feed a
@@ -754,7 +791,7 @@ respects screen-reader-only braille goals: status-bar text and spoken
 feedback, no heavy visual UI, building on
 <code>core/brf_page_detection.py</code> and braille status modules.</li>
 <li><strong>Sessions you can return to.</strong> Resume or branch a
-prior session from the Hub’s Sessions tab (<code>sessions.py</code>
+prior session from the Hub's Sessions tab (<code>sessions.py</code>
 tree), so a rewrite explored yesterday is still there.</li>
 <li><strong>Quillin-contributed agents/tools</strong> appear inline in
 the same catalog and palette, registered through
@@ -762,7 +799,7 @@ the same catalog and palette, registered through
 lint-gated.</li>
 </ol>
 <hr />
-<h2 id="consolidation-one-provider-truth-priority-1">7. Consolidation:
+<h2 id="7-consolidation-one-provider-truth-priority-1">7. Consolidation:
 one provider truth (Priority 1)</h2>
 <p>The single most valuable change. Two systems exist:</p>
 <ul>
@@ -771,13 +808,13 @@ one provider truth (Priority 1)</h2>
 Credential Manager/DPAPI, eight providers, streaming, security checks.
 <strong>This is the richer, canonical one.</strong></li>
 <li><code>ai_chat.PROVIDERS</code>: a lighter dict used by
-<code>SimpleChatBackend</code> and <code>AskQuillChatDialog</code>’s
+<code>SimpleChatBackend</code> and <code>AskQuillChatDialog</code>'s
 inline setup.</li>
 </ul>
 <p><strong>Plan:</strong></p>
 <ol type="1">
 <li>Make <code>assistant_ai</code> the single source. Map
-<code>ai_chat</code>’s four entries onto provider ids that already exist
+<code>ai_chat</code>'s four entries onto provider ids that already exist
 there (<code>openrouter</code>, <code>openai</code>, <code>ollama</code>
 local, <code>ollama_cloud</code>).</li>
 <li>Reimplement
@@ -798,7 +835,7 @@ changes it for Ask Quill, Writing Assistant, inline
 grammar/spell/thesaurus, and every harness. No surface has its own
 private provider list.</p>
 <hr />
-<h2 id="target-architecture">8. Target Architecture</h2>
+<h2 id="8-target-architecture">8. Target Architecture</h2>
 <pre><code>QUILL UI Layer
   AI Hub (command center)          [extend ai_hub_dialog -&gt; multi-tab hub]
   Ask Quill chat / Writing Assistant / Agent Center / Prompt Studio  [unify behind Hub]
@@ -829,7 +866,7 @@ QUILL Editor Services (consumed by the Gateway)
                           _record_persistent_undo_state, _maybe_autosave]
   Outline   [_outline_entries]   Diff [diff_review]   Commands [CommandRegistry]
   Announce  [_announce/_set_status -&gt; Prism]          Git/Workspace [services]</code></pre>
-<h3 id="the-harness-protocol-new">8.1 The Harness protocol (new)</h3>
+<h3 id="81-the-harness-protocol-new">8.1 The Harness protocol (new)</h3>
 <p>A thin protocol so the native loop and SDK packs are interchangeable.
 It sits <strong>above</strong> <code>AIBackend</code> (which stays the
 per-provider transport).</p>
@@ -845,7 +882,7 @@ class="sourceCode python"><code class="sourceCode python"><span id="cb3-1"><a hr
 <span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>                      emit: Callable[[AgentEvent], <span class="va">None</span>]) <span class="op">-&gt;</span> HarnessSession: ...</span>
 <span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> cancel(<span class="va">self</span>, session_id: <span class="bu">str</span>) <span class="op">-&gt;</span> <span class="va">None</span>: ...</span></code></pre></div>
 <ul>
-<li><strong>Native harness</strong> wraps today’s <code>run_agent</code>
+<li><strong>Native harness</strong> wraps today's <code>run_agent</code>
 / <code>AgentDecision</code> loop, upgraded to real tool-calling that
 asks the broker before each tool and streams
 <code>AgentEvent</code>s.</li>
@@ -857,15 +894,15 @@ buffer directly.</li>
 uninstalled pack returns <code>(False, "Install the X pack")</code>, and
 QUILL keeps working.</li>
 </ul>
-<h3 id="capability-model">8.2 Capability model</h3>
+<h3 id="82-capability-model">8.2 Capability model</h3>
 <p>Reuse the v1 capability JSON (chat, streaming, tool_calling,
 patch_generation, mcp, skills, subagents, local_only, requires_api_key,
 requires_oauth, images, audio, long_context). QUILL must never assume a
 capability another harness has. The Hub hides/disables unsupported
 actions with a one-line reason.</p>
 <hr />
-<h2 id="safe-editor-tool-gateway-formalize-todays-callbacks">9. Safe
-Editor Tool Gateway (formalize today’s callbacks)</h2>
+<h2 id="9-safe-editor-tool-gateway-formalize-todays-callbacks">9. Safe
+Editor Tool Gateway (formalize today's callbacks)</h2>
 <p>Promote the <code>AskQuillChatDialog</code> callback bundle into one
 typed object with permission checks, so every harness uses the
 identical, audited surface.</p>
@@ -900,12 +937,12 @@ default; every call is recorded in the Activity log (scope, not raw
 content, by default).</p>
 <hr />
 <h2
-id="permission-broker-risk-levels-profiles-new-logic-defaults-from-code">10.
+id="10-permission-broker-risk-levels-profiles-new-logic-defaults-from-code">10.
 Permission Broker, Risk Levels, Profiles (new logic, defaults from
 code)</h2>
 <p>The broker resolves
 <code>allow / deny / ask / preview_required</code> per tool category,
-given the active agent’s risk level and the global safety profile.</p>
+given the active agent's risk level and the global safety profile.</p>
 <table>
 <thead>
 <tr>
@@ -973,35 +1010,35 @@ become Permission-tab settings. <strong>Floor:</strong>
 <code>run_quill_command</code> can only target
 <code>SAFE_TOOL_IDS</code>, regardless of profile.</p>
 <hr />
-<h2 id="context-builder-privacy-new-object-existing-parts">11. Context
-Builder + Privacy (new object, existing parts)</h2>
+<h2 id="11-context-builder--privacy-new-object-existing-parts">11.
+Context Builder + Privacy (new object, existing parts)</h2>
 <p>Scopes: selection only, current section, document summary (via
 <code>compaction.py</code>), full document, open documents, workspace
 summary, explicit files, GitHub context, prompt-only.</p>
 <ul>
-<li><strong>Preview before send:</strong> an accessible, plain “Context
-to share” dialog (words, file name/type, included headings, whether full
+<li><strong>Preview before send:</strong> an accessible, plain "Context
+to share" dialog (words, file name/type, included headings, whether full
 document/workspace included; Continue / Show Text / Cancel).</li>
 <li><strong>Redaction:</strong> run <code>stability/redaction.py</code>
-patterns before sending; on a hit, “Possible secret detected. QUILL will
-redact it before sending. Continue?”</li>
+patterns before sending; on a hit, "Possible secret detected. QUILL will
+redact it before sending. Continue?"</li>
 <li><strong>Never by default:</strong> hidden/.env files, keys, tokens,
 private keys, large binaries.</li>
 <li><strong>Egress:</strong> any new outbound path is added to
 <code>network_egress_audit.py</code> and respects Safe Mode.</li>
 </ul>
 <hr />
-<h2 id="diff-patch-undo-exists-make-it-universal">12. Diff, Patch, Undo
-(exists — make it universal)</h2>
+<h2 id="12-diff-patch-undo-exists--make-it-universal">12. Diff, Patch,
+Undo (exists — make it universal)</h2>
 <p><code>diff_review.py</code> is already the right model. The plan:
 make it the <strong>only</strong> way medium+ edits land. Normalize
-every harness’s output (replace-selection, insert, unified diff,
+every harness's output (replace-selection, insert, unified diff,
 structured ops, full-document-with-confirmation) into
 <code>DiffReview</code>. Undo always = one checkpoint via
-<code>_record_persistent_undo_state</code>; “Review last AI change”
+<code>_record_persistent_undo_state</code>; "Review last AI change"
 reopens the last <code>DiffReview</code>.</p>
 <hr />
-<h2 id="agent-catalog-extend-agentprofile-into-declarative-files">13.
+<h2 id="13-agent-catalog-extend-agentprofile-into-declarative-files">13.
 Agent Catalog (extend <code>AgentProfile</code> into declarative
 files)</h2>
 <p>Today: four <code>AgentProfile</code>s plus
@@ -1025,12 +1062,12 @@ Policy/Governance, Test Builder, Migration Assistant, Agent Builder.</p>
 agent/skill, Claude skill/subagent, OpenAI agent+guardrails, LangGraph
 node, or native prompt/tool loop.</p>
 <hr />
-<h2 id="sessions-memory-streaming-events">14. Sessions, Memory,
+<h2 id="14-sessions-memory-streaming-events">14. Sessions, Memory,
 Streaming Events</h2>
 <ul>
 <li><strong>Sessions:</strong> keep <code>sessions.py</code>
 (branch/resume tree) and <code>compaction.py</code>; surface them in the
-Hub’s Sessions tab; auto-compact long agent runs with an
+Hub's Sessions tab; auto-compact long agent runs with an
 announcement.</li>
 <li><strong>Streaming Event Bridge (new):</strong> normalize every
 harness stream into:
@@ -1039,7 +1076,7 @@ The accessibility layer maps these to balanced announcements; token
 deltas are summarized, not spoken individually.</li>
 </ul>
 <hr />
-<h2 id="authentication-keys-settings">15. Authentication, Keys,
+<h2 id="15-authentication-keys-settings">15. Authentication, Keys,
 Settings</h2>
 <ul>
 <li><strong>Auth:</strong> API key (Credential Manager/DPAPI — exists),
@@ -1062,7 +1099,7 @@ consolidated provider store. Examples: <code>ai.enabled</code>,
 by the provider catalog and broker.</li>
 </ul>
 <hr />
-<h2 id="quillin-integration-extensions">16. Quillin Integration
+<h2 id="16-quillin-integration-extensions">16. Quillin Integration
 (extensions)</h2>
 <p>Quillins can contribute <strong>agents</strong> (catalog files),
 <strong>tools</strong> (registered commands via
@@ -1074,7 +1111,7 @@ sandboxed, manifest-validated (<code>core/schemas/extension.json</code>
 <code>quillin_lint --strict</code>. Unsafe permissions require explicit
 approval at import.</p>
 <hr />
-<h2 id="accessibility-requirements-carry-over-enforce-via-gates">17.
+<h2 id="17-accessibility-requirements-carry-over-enforce-via-gates">17.
 Accessibility Requirements (carry over, enforce via gates)</h2>
 <ul>
 <li>Every AI command reachable from menu + command palette; Escape
@@ -1086,19 +1123,19 @@ Balanced. No per-token speech.</li>
 accept/reject/all, copy, save-as-text (all already feasible on
 <code>diff_review.py</code>).</li>
 <li>Chat: standard text entry, list-navigable messages,
-copy/stop/retry/insert/replace, “response complete” announcement.</li>
+copy/stop/retry/insert/replace, "response complete" announcement.</li>
 <li>All new dialogs pass <code>dialog_inventory</code> and
 <code>dialog_button_contract</code>; axe-equivalent keyboard/focus tests
 in CI.</li>
 </ul>
 <hr />
-<h2 id="implementation-roadmap-rebased-priority-order">18.
+<h2 id="18-implementation-roadmap-rebased-priority-order">18.
 Implementation Roadmap (rebased; priority order)</h2>
 <p>Phases reflect the real starting point. Phase numbers are priority
 order, not calendar.</p>
 <h3
-id="phase-1-consolidate-and-formalize-highest-value-lowest-risk">Phase 1
-— Consolidate and formalize (highest value, lowest risk)</h3>
+id="phase-1--consolidate-and-formalize-highest-value-lowest-risk">Phase
+1 — Consolidate and formalize (highest value, lowest risk)</h3>
 <ul>
 <li>One provider truth (Section 7): converge
 <code>ai_chat.PROVIDERS</code> into <code>assistant_ai</code>; migrate
@@ -1111,28 +1148,29 @@ route all existing AI edits through it and through
 with categories + the four profiles; wire <code>SAFE_TOOL_IDS</code> as
 the floor.</li>
 <li>Add <code>ActivityLog</code> (<code>ai/activity_log.py</code>) with
-redaction; add Hub “Activity” + “Review/Undo last AI change.”</li>
+redaction; add Hub "Activity" + "Review/Undo last AI change."</li>
 <li><strong>Acceptance:</strong> every existing surface uses one
 provider, one gateway, one diff/undo path, one log. No behavior
 regressions; QUILL still runs with AI off and in Safe Mode.</li>
 </ul>
-<h3 id="phase-2-ai-hub-as-command-center">Phase 2 — AI Hub as command
+<h3 id="phase-2--ai-hub-as-command-center">Phase 2 — AI Hub as command
 center</h3>
 <ul>
 <li>Promote <code>AIHubDialog</code> to
 Home/Agents/Chat/Sessions/Activity/Providers/Harnesses/Audio/Permissions/Advanced
 (split into per-tab modules for GATE-11).</li>
-<li>Context Builder (<code>ai/context_builder.py</code>) + “show what
-will be sent” preview.</li>
+<li>Context Builder (<code>ai/context_builder.py</code>) + "show what
+will be sent" preview.</li>
 <li>Streaming Event Bridge (<code>ai/events.py</code>) + balanced
 announcements.</li>
-<li>Concierge “What can I do here?” on Home and status bar.</li>
+<li>Concierge "What can I do here?" on Home and status bar.</li>
 <li><strong>Acceptance:</strong> a user configures, picks an agent, runs
 it, reviews, undoes, and inspects activity entirely from the Hub,
 keyboard-only.</li>
 </ul>
-<h3 id="phase-3-declarative-agent-catalog-real-native-agent-loop">Phase
-3 — Declarative Agent Catalog + real native agent loop</h3>
+<h3
+id="phase-3--declarative-agent-catalog--real-native-agent-loop">Phase 3
+— Declarative Agent Catalog + real native agent loop</h3>
 <ul>
 <li><code>core/schemas/agent.json</code>; load catalog files; promote
 <code>accessibility_agent</code> and the four profiles; add Markdown
@@ -1145,8 +1183,8 @@ where richer flows are needed.</li>
 clean-up with hunk preview, and accessibility review all run through
 catalog agents on the native harness.</li>
 </ul>
-<h3 id="phase-4-local-byok-polish-mostly-exists">Phase 4 — Local + BYOK
-polish (mostly exists)</h3>
+<h3 id="phase-4--local--byok-polish-mostly-exists">Phase 4 — Local +
+BYOK polish (mostly exists)</h3>
 <ul>
 <li>Harden Ollama/local and OpenAI-compatible/LiteLLM base-URL flows on
 the consolidated store; test-connection; model selector; cost/context
@@ -1154,7 +1192,7 @@ warnings.</li>
 <li><strong>Acceptance:</strong> local-only and org-endpoint users get
 the full agent catalog with no cloud account.</li>
 </ul>
-<h3 id="phase-5-optional-harness-packs-the-multi-harness-promise">Phase
+<h3 id="phase-5--optional-harness-packs-the-multi-harness-promise">Phase
 5 — Optional harness packs (the multi-harness promise)</h3>
 <ul>
 <li>Introduce <code>ai/harness/</code> registry + protocol; ship Native
@@ -1165,10 +1203,10 @@ SDK</strong>, <strong>OpenAI Agents SDK</strong> as extras
 imported, added to the network audit.</li>
 <li><strong>Acceptance:</strong> with a pack installed and authed, a
 harness reads selection and proposes an edit <strong>only</strong>
-through QUILL’s gateway/diff/undo; uninstalled packs degrade
+through QUILL's gateway/diff/undo; uninstalled packs degrade
 gracefully.</li>
 </ul>
-<h3 id="phase-6-enterprise-durable-workflows">Phase 6 — Enterprise +
+<h3 id="phase-6--enterprise--durable-workflows">Phase 6 — Enterprise +
 durable workflows</h3>
 <ul>
 <li>Microsoft Agent Framework pack + admin policy enforcement; LangGraph
@@ -1176,15 +1214,15 @@ durable, pause/resume, human-in-the-loop workflows (release prep,
 accessibility audit, PRD creation) persisted via existing atomic
 storage.</li>
 </ul>
-<h3 id="phase-7-developer-agents-marketplace">Phase 7 — Developer agents
-+ marketplace</h3>
+<h3 id="phase-7--developer-agents--marketplace">Phase 7 — Developer
+agents + marketplace</h3>
 <ul>
 <li>OpenHands experimental pack (sandboxed, flag-gated, full action
 log); Agent Builder; Quillin-distributed agent/tool/harness packs with
 signature/trust and lint gates.</li>
 </ul>
 <hr />
-<h2 id="concrete-filemodule-plan">19. Concrete file/module plan</h2>
+<h2 id="19-concrete-filemodule-plan">19. Concrete file/module plan</h2>
 <p><strong>New (core):</strong>
 <code>quill/core/ai/tool_gateway.py</code>, <code>permissions.py</code>,
 <code>context_builder.py</code>, <code>events.py</code>,
@@ -1216,7 +1254,7 @@ command; minimal additions), <code>tools/network_egress_audit.py</code>
 (rebaseline with dated comments), dialog-inventory fixtures,
 <code>pyproject</code> extras.</p>
 <hr />
-<h2 id="testing-plan-real-layout">20. Testing Plan (real layout)</h2>
+<h2 id="20-testing-plan-real-layout">20. Testing Plan (real layout)</h2>
 <ul>
 <li><strong>Unit (<code>tests/unit/core/ai/</code>):</strong> provider
 convergence + key migration; gateway permission enforcement; broker
@@ -1250,13 +1288,8 @@ vs several.</li>
 <code>quillin_lint</code> for agent packs.</li>
 </ul>
 <hr />
-<h2 id="risks-and-mitigations">21. Risks and Mitigations</h2>
+<h2 id="21-risks-and-mitigations">21. Risks and Mitigations</h2>
 <table>
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 33%" />
-<col style="width: 33%" />
-</colgroup>
 <thead>
 <tr>
 <th>Risk</th>
@@ -1311,10 +1344,10 @@ audit</td>
 </tbody>
 </table>
 <hr />
-<h2 id="developer-handoff-prompts-grounded-in-real-symbols">22.
+<h2 id="22-developer-handoff-prompts-grounded-in-real-symbols">22.
 Developer Handoff Prompts (grounded in real symbols)</h2>
-<p><strong>Phase 1A — one provider truth.</strong> “Make
-<code>assistant_ai</code>’s
+<p><strong>Phase 1A — one provider truth.</strong> "Make
+<code>assistant_ai</code>'s
 <code>AssistantConnectionSettings</code>/provider catalog the single
 provider source. Reimplement
 <code>ai_chat.send_prompt</code>/<code>list_models</code> as shims over
@@ -1323,8 +1356,8 @@ provider source. Reimplement
 it; migrate <code>quill-*-api-key</code> credentials to
 <code>provider_credential_target</code> with a reversible one-time
 migration. Keep Safe Mode and the network audit intact. Add tests under
-<code>tests/unit/core/ai/</code>.”</p>
-<p><strong>Phase 1B — formal gateway + broker.</strong> “Create
+<code>tests/unit/core/ai/</code>."</p>
+<p><strong>Phase 1B — formal gateway + broker.</strong> "Create
 <code>quill/core/ai/tool_gateway.py</code>
 (<code>SafeEditorToolGateway</code>) capturing the callbacks
 <code>AskQuillChatDialog</code> already receives, plus
@@ -1333,33 +1366,33 @@ migration. Keep Safe Mode and the network audit intact. Add tests under
 AI edit through the gateway and <code>build_diff_review</code>; enforce
 <code>SAFE_TOOL_IDS</code> as the floor for
 <code>run_quill_command</code>. Add <code>ai/activity_log.py</code> with
-<code>redaction</code>. Unit-test enforcement.”</p>
-<p><strong>Phase 2 — Hub command center.</strong> “Promote
+<code>redaction</code>. Unit-test enforcement."</p>
+<p><strong>Phase 2 — Hub command center.</strong> "Promote
 <code>AIHubDialog</code> to tabs
 Home/Agents/Chat/Sessions/Activity/Providers/Harnesses/Audio/Permissions/Advanced,
 split into <code>ai_hub_*</code> modules for GATE-11. Add
-<code>ai/context_builder.py</code> with a ‘show what will be sent’
+<code>ai/context_builder.py</code> with a 'show what will be sent'
 preview and <code>ai/events.py</code> Streaming Event Bridge feeding
 balanced announcements. Keep one
 <code>_show_modal_dialog</code>+<code>apply_modal_ids</code> surface;
-update dialog-inventory fixtures.”</p>
-<p><strong>Phase 5 — first harness pack.</strong> “Add
+update dialog-inventory fixtures."</p>
+<p><strong>Phase 5 — first harness pack.</strong> "Add
 <code>quill/core/ai/harness/</code> (<code>Harness</code> protocol,
 <code>HarnessRegistry</code>, capabilities) with a Native harness
 wrapping the upgraded tool-calling loop. Then add an optional Copilot
 SDK pack as a lazily-imported <code>Harness</code> that bridges to
 <code>SafeEditorToolGateway</code> + <code>PermissionBroker</code> and
 emits <code>AgentEvent</code>s; never edits the buffer directly. Add
-availability detection, network-audit entries, and mocked tests.”</p>
+availability detection, network-audit entries, and mocked tests."</p>
 <hr />
-<h2 id="design-decisions-recommended-now">23. Design decisions
+<h2 id="23-design-decisions-recommended-now">23. Design decisions
 recommended now</h2>
 <ol type="1">
 <li><strong>Consolidate before you expand.</strong> One provider truth
 and one gateway first.</li>
 <li>The <strong>AI Hub</strong> is the front door; other dialogs become
 focused views behind it.</li>
-<li><strong>Reuse, don’t rebuild:</strong> <code>diff_review</code>,
+<li><strong>Reuse, don't rebuild:</strong> <code>diff_review</code>,
 <code>sessions</code>, <code>compaction</code>,
 <code>availability</code>, <code>tools</code>,
 <code>accessibility_agent</code>, <code>device_login</code>, Credential
@@ -1374,14 +1407,14 @@ harnesses adapt them.</li>
 one-undo</strong>.</li>
 </ol>
 <hr />
-<h2 id="final-product-promise">24. Final Product Promise</h2>
+<h2 id="24-final-product-promise">24. Final Product Promise</h2>
 <blockquote>
-<p>“I open the AI Hub. I choose my engine, and if I want, my harness. I
+<p>"I open the AI Hub. I choose my engine, and if I want, my harness. I
 pick an agent. QUILL understands what I am editing. The agent helps me
 write, fix, explain, publish, and improve. I always see what is shared.
 I always control what changes. I can undo anything in one step. It works
 beautifully with my screen reader. And if I want none of it, QUILL is
-still QUILL.”</p>
+still QUILL."</p>
 </blockquote>
 <p>That is the magic — built on what QUILL already is.</p>
 </body>
