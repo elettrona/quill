@@ -7,9 +7,10 @@ visible, announced marker rather than a silent literal. The destination URL is p
 by an injected ``url_for`` callable, so the same code serves the in-app preview (a
 custom scheme the app intercepts) and a static site (relative ``.html`` paths).
 
-Embed (`![[...]]`) expansion is Phase 5 and layers on top of this (see
-:func:`expand_embeds`); for now embeds are left untouched so the plain-text buffer and
-non-embed preview are unaffected.
+Embed (`![[...]]`) expansion (Phase 5) layers on top via :func:`expand_embeds` /
+:func:`resolve_embed_content`: it pulls a block, a heading section, or a whole note into
+preview/compile/export with an announced boundary and cycle detection, while the
+plain-text buffer keeps the literal `![[...]]`.
 """
 
 from __future__ import annotations
@@ -80,6 +81,80 @@ def render_links_html(
         else:
             href = html.escape(url_for(target.path, _anchor(link)), quote=True)
             pieces.append(f'<a class="vault-link" href="{href}">{display}</a>')
+        cursor = link.end
+    pieces.append(text[cursor:])
+    return "".join(pieces)
+
+
+def resolve_embed_content(
+    vault: Vault, target_path: str, heading: str | None, block: str | None
+) -> str:
+    """The text an `![[...]]` embed pulls in: a block, a heading section, or the whole note.
+
+    A *block* embed is the line carrying the `^id` marker (marker stripped). A *heading*
+    embed is that heading down to the next heading of the same-or-higher level. Otherwise
+    the whole note. Returns "" when the target/anchor is missing.
+    """
+    text = vault.texts.get(target_path, "")
+    info = vault.notes.get(target_path)
+    if info is None or not text:
+        return ""
+    if block:
+        offset = info.block_ids.get(block)
+        if offset is None:
+            return ""
+        line_start = text.rfind("\n", 0, offset) + 1
+        line_end = text.find("\n", offset)
+        line = text[line_start : (line_end if line_end != -1 else len(text))]
+        return line.rsplit("^", 1)[0].strip()  # drop the ^id marker
+    if heading:
+        wanted = _slug(heading)
+        headings = list(info.headings)
+        for i, h in enumerate(headings):
+            if _slug(h.title) == wanted:
+                end = len(text)
+                for later in headings[i + 1 :]:
+                    if later.level <= h.level:
+                        end = later.offset
+                        break
+                return text[h.offset : end].strip()
+        return ""
+    return text.strip()
+
+
+def expand_embeds(
+    text: str,
+    vault: Vault,
+    resolver: Resolver,
+    current_path: str,
+    *,
+    _seen: frozenset[str] = frozenset(),
+) -> str:
+    """Replace `![[...]]` embeds with the target's content, recursively (cycle-safe).
+
+    Each embed is wrapped in an announced boundary comment; a cycle emits a note instead
+    of recursing forever. Non-embed `[[...]]` links are left untouched (they are resolved
+    separately by :func:`render_links_html`). Feeds preview, compile/export, and
+    "speak embed at cursor".
+    """
+    pieces: list[str] = []
+    cursor = 0
+    for link in parse_links(text):
+        if not link.embed:
+            continue
+        pieces.append(text[cursor : link.start])
+        target = resolve_link(vault, resolver, link, current_path)
+        if target is None:
+            pieces.append(f"[missing embed: {link.target}]")
+        elif target.path in _seen or target.path == current_path:
+            pieces.append(f"[circular embed: {link.target}]")
+        else:
+            title = vault.notes[target.path].title if target.path in vault.notes else link.target
+            content = resolve_embed_content(vault, target.path, link.heading, link.block)
+            inner = expand_embeds(
+                content, vault, resolver, target.path, _seen=_seen | {current_path, target.path}
+            )
+            pieces.append(f"<!-- embedded from {title} -->\n{inner}\n<!-- end embed -->")
         cursor = link.end
     pieces.append(text[cursor:])
     return "".join(pieces)
