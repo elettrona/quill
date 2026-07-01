@@ -3,10 +3,20 @@
 **Status.** The Accessible Vault's first milestone — **Phases 0–2** (persistent vault +
 indexing, wikilinks with Follow Link / create-on-follow / ambiguity chooser, and spoken
 backlinks) — is **shipped** and documented in `QUILL-PRD.md` §5.89d, the user guide
-(Tools > Vault), the changelog, and the release notes. This file is the **remaining
-work**: the unfinished phases and the Phase 0–2 deferred items, each additive,
-independently shippable on the same `quill/core/vault` backbone, and accessible on its
-own. The roadmap tracks this at [`roadmap.md`](roadmap.md) §1.7.
+(Tools > Vault), the changelog, and the release notes.
+
+**The wx-free core for every remaining phase is now built and unit-tested** (82 tests
+across `quill/core/vault`): search + quick switcher (`search.py`), global tags
+(`tags.py`), embeds/transclusion (`render.py`), templates + daily notes (`templates.py`,
+`dailynotes.py`), the static HTML **site export** (`site_export.py`), **Git sync**
+(`sync.py`), **gated** WordPress publish (`publish.py`, behind `future.publishing`), and
+the Phase 0–2 deferred cores — link→HTML rendering, `neighborhood`, `plan_note_rename`,
+and incremental reparse. **What remains is the accessible wxPython UI surfacing** for each
+(the search/quick-switcher dialogs, tag pane, `#`/`[[` autocomplete popups, template
+picker, daily-note + sync + export commands, and the Vault Explorer window), plus its
+`Tools > Vault` command/menu wiring — the layer that needs a live app run to verify. The
+roadmap tracks this at [`roadmap.md`](roadmap.md) §1.7; the per-phase "Model/impl." notes
+below name the core modules that are done.
 
 The guiding principle is unchanged: a **translation table, not a port** — take a
 linked-notes model (files, links, backlinks, search, tags) usually shown *visually* and

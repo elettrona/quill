@@ -179,12 +179,26 @@ Accessible Vault — remaining phases (Phases 3–7)</h1>
 Follow Link / create-on-follow / ambiguity chooser, and spoken
 backlinks) — is <strong>shipped</strong> and documented in
 <code>QUILL-PRD.md</code> §5.89d, the user guide (Tools &gt; Vault), the
-changelog, and the release notes. This file is the <strong>remaining
-work</strong>: the unfinished phases and the Phase 0–2 deferred items,
-each additive, independently shippable on the same
-<code>quill/core/vault</code> backbone, and accessible on its own. The
-roadmap tracks this at <a href="roadmap.md"><code>roadmap.md</code></a>
-§1.7.</p>
+changelog, and the release notes.</p>
+<p><strong>The wx-free core for every remaining phase is now built and
+unit-tested</strong> (82 tests across <code>quill/core/vault</code>):
+search + quick switcher (<code>search.py</code>), global tags
+(<code>tags.py</code>), embeds/transclusion (<code>render.py</code>),
+templates + daily notes (<code>templates.py</code>,
+<code>dailynotes.py</code>), the static HTML <strong>site
+export</strong> (<code>site_export.py</code>), <strong>Git sync</strong>
+(<code>sync.py</code>), <strong>gated</strong> WordPress publish
+(<code>publish.py</code>, behind <code>future.publishing</code>), and
+the Phase 0–2 deferred cores — link→HTML rendering,
+<code>neighborhood</code>, <code>plan_note_rename</code>, and
+incremental reparse. <strong>What remains is the accessible wxPython UI
+surfacing</strong> for each (the search/quick-switcher dialogs, tag
+pane, <code>#</code>/<code>[[</code> autocomplete popups, template
+picker, daily-note + sync + export commands, and the Vault Explorer
+window), plus its <code>Tools &gt; Vault</code> command/menu wiring —
+the layer that needs a live app run to verify. The roadmap tracks this
+at <a href="roadmap.md"><code>roadmap.md</code></a> §1.7; the per-phase
+"Model/impl." notes below name the core modules that are done.</p>
 <p>The guiding principle is unchanged: a <strong>translation table, not
 a port</strong> — take a linked-notes model (files, links, backlinks,
 search, tags) usually shown <em>visually</em> and present it <strong>by
