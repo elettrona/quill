@@ -80,6 +80,31 @@ class VaultMixin:
         root = str(getattr(self.settings, "vault_root", "") or "").strip()
         return Path(root) if root and Path(root).is_dir() else None
 
+    def _vault_on_document_saved(self, path: Path | None) -> None:
+        """Incrementally re-index one saved note (Phase 0 background/incremental indexing).
+
+        Runs only when a vault is loaded and ``path`` is inside it: re-parses just that
+        note via ``apply_note_change`` (no full folder rescan) and rebuilds the resolver +
+        link index, so backlinks, search, tags, and the neighborhood reflect the save
+        right away. Silent and best-effort — never interferes with the save itself.
+        """
+        if getattr(self, "_vault", None) is None or not isinstance(path, Path):
+            return
+        root = self._vault_root_path()
+        rel = relative_note_path(root, path)
+        if root is None or rel is None:
+            return
+        try:
+            text: str | None = (root / rel).read_text(encoding="utf-8")
+        except OSError:
+            text = None
+        from quill.core.vault import build_index, build_resolver
+        from quill.core.vault.vault import apply_note_change
+
+        self._vault = apply_note_change(self._vault, rel, text)
+        self._vault_resolver = build_resolver(self._vault)
+        self._vault_index = build_index(self._vault, self._vault_resolver)
+
     def follow_wikilink(self) -> None:
         """Open the note the caret's ``[[link]]`` points to (Follow Link)."""
         from quill.core.vault import link_at_offset, resolve_link

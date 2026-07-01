@@ -9534,6 +9534,9 @@ class MainFrame(
                     "title": self.document.name,
                 },
             )
+        # Incremental vault indexing: if this note lives in the open vault, re-parse it
+        # into the cached index so backlinks/search/tags reflect the save immediately.
+        self._vault_on_document_saved(path)
 
     def save_all_files(self) -> None:
         for index in range(len(self._document_tabs)):
