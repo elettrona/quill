@@ -288,6 +288,7 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "format.list_studio_settings": "",  # no default key; assign via keymap editor
     "story.open_studio": "",  # Story Studio binder; no default key, assign via keymap editor
     "vault.open": "",  # Accessible Vault; no default keys, assign via keymap editor
+    "vault.explorer": "",
     "vault.follow_link": "",
     "vault.backlinks": "",
     "vault.neighborhood": "",

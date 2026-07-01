@@ -194,3 +194,52 @@ class VaultFilterDialog:
 
     def _on_listbox_activate(self, _event: Any) -> None:
         self._activate_selected()
+
+
+class VaultExplorerDialog:
+    """A keyboard tree of the vault's notes (Vault Explorer).
+
+    Populates a ``wx.TreeCtrl`` from the wx-free :class:`ExplorerNode` tree
+    (``quill.core.vault.explorer.build_note_tree``); activating a note leaf (Enter / double
+    click) hands its rel path to ``on_activate`` and closes. Folders expand/collapse as
+    usual. Each note's rel path rides on the tree item via ``SetItemData`` so no wx item id
+    is used as a dict key.
+    """
+
+    def __init__(self, wx: Any, *, tree: Any, on_activate: Callable[[str], None]) -> None:
+        self._wx = wx
+        self._tree = tree
+        self._on_activate = on_activate
+        self._ctrl: Any = None
+        self._dialog: Any = None
+
+    def populate(self, dialog: Any) -> Any:
+        wx = self._wx
+        self._dialog = dialog
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(wx.StaticText(dialog, label="Notes"), 0, wx.ALL, 8)
+        ctrl = wx.TreeCtrl(dialog, style=wx.TR_DEFAULT_STYLE | wx.TR_HIDE_ROOT | wx.TR_SINGLE)
+        ctrl.SetName("Vault notes")
+        root_id = ctrl.AddRoot("Vault")
+        self._add_children(ctrl, root_id, self._tree)
+        ctrl.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self._on_activated)
+        self._ctrl = ctrl
+        outer.Add(ctrl, 1, wx.EXPAND | wx.ALL, 8)
+        dialog.SetSizer(outer)
+        return outer
+
+    def _add_children(self, ctrl: Any, parent_id: Any, node: Any) -> None:
+        for child in node.children:
+            item = ctrl.AppendItem(parent_id, child.label)
+            ctrl.SetItemData(item, child.path)  # str for a note, None for a folder
+            if child.path is None:
+                self._add_children(ctrl, item, child)
+
+    def _on_activated(self, event: Any) -> None:
+        path = self._ctrl.GetItemData(event.GetItem()) if self._ctrl is not None else None
+        if path is None:
+            event.Skip()  # a folder: let the tree expand/collapse
+            return
+        self._on_activate(path)
+        if self._dialog is not None:
+            self._dialog.EndModal(self._wx.ID_OK)

@@ -286,6 +286,7 @@
   "quill/ui/main_frame_vault.py::VaultMixin._show_vault_list::wx.Dialog": "hardened_custom",
   "quill/ui/main_frame_vault.py::VaultMixin.export_vault_site::wx.DirDialog": "native",
   "quill/ui/main_frame_vault.py::VaultMixin.open_vault::wx.DirDialog": "native",
+  "quill/ui/main_frame_vault.py::VaultMixin.show_vault_explorer::wx.Dialog": "hardened_custom",
   "quill/ui/main_frame_verbosity.py::VerbosityCommandsMixin.open_verbosity_preferences::wx.Dialog": "hardened_custom",
   "quill/ui/main_frame_watch_profile.py::WatchProfileDialogMixin._edit_watch_profile._pick_folder::wx.DirDialog": "native",
   "quill/ui/main_frame_watch_profile.py::WatchProfileDialogMixin._edit_watch_profile::wx.Dialog": "hardened_custom",

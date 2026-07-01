@@ -1566,6 +1566,7 @@ class MenuBuilderMixin:
         self._id_vault_open = wx.NewIdRef()
         self._id_vault_follow_link = wx.NewIdRef()
         self._id_vault_backlinks = wx.NewIdRef()
+        self._id_vault_explorer = wx.NewIdRef()
         self._id_vault_neighborhood = wx.NewIdRef()
         self._id_vault_unlinked = wx.NewIdRef()
         self._id_vault_insert_link = wx.NewIdRef()
@@ -1593,6 +1594,9 @@ class MenuBuilderMixin:
         )
         vault_menu = wx.Menu()
         vault_menu.Append(self._id_vault_open, self._menu_label(_("&Open Vault..."), "vault.open"))
+        vault_menu.Append(
+            self._id_vault_explorer, self._menu_label(_("Vault E&xplorer..."), "vault.explorer")
+        )
         vault_menu.Append(
             self._id_vault_follow_link,
             self._menu_label(_("&Follow Wikilink"), "vault.follow_link"),
@@ -2703,6 +2707,9 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_palette(), id=self._id_palette)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_vault(), id=self._id_vault_open)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.show_vault_explorer(), id=self._id_vault_explorer
+        )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.follow_wikilink(), id=self._id_vault_follow_link
         )

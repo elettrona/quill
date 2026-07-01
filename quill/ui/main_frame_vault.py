@@ -154,6 +154,38 @@ class VaultMixin:
         self._announce(f"{len(links)} notes link here.")
         self._show_vault_list(f"Backlinks to {self._vault.notes[rel].title}", items)
 
+    def show_vault_explorer(self) -> None:
+        """Open a keyboard tree of every note in the vault (Vault Explorer)."""
+        from quill.core.vault.explorer import build_note_tree
+        from quill.ui.dialog_contract import apply_modal_ids
+        from quill.ui.vault_dialogs import VaultExplorerDialog
+
+        if self._ensure_vault() is None:
+            self._set_status("Open a vault first (Tools > Vault > Open Vault)")
+            return
+        if not self._vault.notes:
+            self._set_status("The vault has no notes yet")
+            return
+        wx = self._wx
+        view = VaultExplorerDialog(
+            wx,
+            tree=build_note_tree(self._vault),
+            on_activate=lambda path: self._open_vault_note(path, 0),
+        )
+        dialog = wx.Dialog(
+            self.frame, title="Vault Explorer", style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER
+        )
+        outer = view.populate(dialog)
+        buttons = dialog.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL)
+        outer.Add(buttons, 0, wx.EXPAND | wx.ALL, 10)
+        apply_modal_ids(
+            dialog, affirmative_id=wx.ID_OK, affirmative_label="&Open", cancel_id=wx.ID_CANCEL
+        )
+        try:
+            self._show_modal_dialog(dialog, "Vault Explorer")
+        finally:
+            dialog.Destroy()
+
     def show_neighborhood(self) -> None:
         """List this note's outgoing links and backlinks together (traverse by ear)."""
         from quill.core.vault import neighborhood
@@ -787,6 +819,12 @@ class VaultMixin:
             "Show Backlinks",
             self.show_backlinks,
             self._binding_for("vault.backlinks"),
+        )
+        self.commands.try_register(
+            "vault.explorer",
+            "Vault Explorer",
+            self.show_vault_explorer,
+            self._binding_for("vault.explorer"),
         )
         self.commands.try_register(
             "vault.neighborhood",
