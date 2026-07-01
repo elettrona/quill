@@ -289,6 +289,7 @@
   "_rebaseline_2026_06_27_prompt_store_consolidation": "quill/__main__.py 638->640 and quill/core/prompt_library.py 364->393 (+29) for the one-prompt-store-truth migration (AI Library Phase 2/3, docs/planning/ai-menu-redesign-plan.md). __main__.py: the two-line guarded startup call (import + consolidate_prompts_quietly()) alongside the existing consolidate_provider_keys_quietly() hook; the migration logic itself lives in the new wx-free quill/core/prompt_migration.py so it adds no growth to either store. prompt_library.py: the new upsert_external() method, which inserts/replaces a user prompt by explicit id (refusing built-ins) so import and the store migration are idempotent and reversible. Same accepted startup-hook / additive-method rebaseline pattern. Budgets re-baselined to current size.",
   "_rebaseline_2026_06_27_main_resync_merge": "Merge of origin/main (0.8.0 line: Python 3.13 runtime, upgrade hardening, legacy-import + startup-maintenance, winrt OCR, bundled Kokoro) into 2.0-dev. Seven modules touched independently on both branches now hold the union of both sides' additions, so the max-of-both budget no longer fits: __main__.py 640->651 (both startup hooks: apply_pending_legacy_import + run_pending_startup_maintenance from main, consolidate_provider_keys/prompts from 2.0-dev), keymap.py 682->683, settings.py 1226->1231, ai_hub_dialog.py 924->927, assistant_panel.py 943->947, main_frame.py 26172->26218, main_frame_statusbar.py 956->967. These are merge combinations of pre-approved per-branch growth, not new feature work; CQ-1 decomposition remains the path down for the large UI modules. Budgets re-baselined to current size.",
   "budgets": {
+    "_rebaseline_2026_07_01_vault_settings_ui": "Accessible Vault §1.7 polish: Vault Settings command (configurable Templates folder + daily-note pattern). settings.py 1351->1357 (+6): two persisted fields (vault_templates_folder, vault_daily_pattern) mirroring vault_root (field + load + construct). main_frame_vault.py 831->864 (+33): configure_vault_settings handler + insert_note_template honoring the folder setting. main_frame_menu.py 4289->4296 (+7): id + menu item + bind. keymap.py 741->742 (+1): vault.settings entry. Reuses the registered TextEntryDialog (no new dialog surface). Same thin-wiring rebaseline pattern.",
     "_rebaseline_2026_07_01_vault_rename_ui": "Accessible Vault §1.7 polish: Rename Note command over the tested refactor.plan_note_rename()/apply_replacements()/retitle_heading() core — prompts for a new name, confirms 'update N links in M notes', rewrites inbound [[links]] across notes, renames the file, retitles a matching H1, reindexes, reopens. main_frame_vault.py 745->831 (+86): the rename handler + a generalized _prompt_text (default/caption). main_frame_menu.py 4282->4289 (+7): id + menu item + bind. keymap.py 740->741 (+1): vault.rename entry. Reuses the registered TextEntryDialog/MessageBox surfaces (no new dialog). Same thin-wiring pattern.",
     "_rebaseline_2026_07_01_vault_neighborhood_mentions_ui": "Accessible Vault §1.7 polish: Note Neighborhood + Unlinked Mentions commands surfacing the tested neighborhood()/unlinked_mentions() cores as accessible list commands (Backlinks pattern, no new dialog surface). main_frame_vault.py 685->745 (+60): two VaultMixin handlers. main_frame_menu.py 4266->4282 (+16): 2 ids, 2 menu items, 2 binds. keymap.py 738->740 (+2): vault.neighborhood / vault.unlinked_mentions default entries. Same thin-wiring rebaseline pattern.",
     "_rebaseline_2026_07_01_vault_phase4_7_ui": "Accessible Vault Phase 4-7 UI (tags, embeds, templates+daily notes, HTML site export, git sync, gated publish). main_frame_vault.py given an explicit 685 entry (was under the 600 default cap): ~11 new VaultMixin command handlers over the tested wx-free core (tags.py, render.expand_embeds, templates/dailynotes, site_export, sync, publish). keymap.py 728->738 (+10) and main_frame_menu.py 4206->4266 (+60): default entries + 9 Tools>Vault menu items (Show Tags, Speak/Resolve Embed, Insert Template, Open Today's/Prev/Next Daily Note, Export Vault as Website, Sync Vault) with ids + binds; Publish Note is feature_id=future.publishing (hidden/gated). Same thin-wiring rebaseline pattern.",
@@ -302,7 +303,7 @@
     "quill/core/features.py": 1029,
     "quill/core/format_ops.py": 644,
     "quill/core/glow.py": 810,
-    "quill/core/keymap.py": 741,
+    "quill/core/keymap.py": 742,
     "quill/core/keymap_packs.py": 296,
     "quill/core/language_profile.py": 799,
     "quill/core/markdown_sections.py": 781,
@@ -312,7 +313,7 @@
     "quill/core/publishing_clients.py": 624,
     "quill/core/quillins/validation.py": 1324,
     "quill/core/read_aloud.py": 1421,
-    "quill/core/settings.py": 1351,
+    "quill/core/settings.py": 1357,
     "quill/core/settings_registry.py": 158,
     "quill/core/spellcheck.py": 615,
     "quill/core/settings_specs.py": 1946,
@@ -342,7 +343,7 @@
     "quill/ui/main_frame_braille.py": 775,
     "quill/ui/main_frame_copy_tray.py": 344,
     "quill/ui/main_frame_image.py": 598,
-    "quill/ui/main_frame_menu.py": 4289,
+    "quill/ui/main_frame_menu.py": 4296,
     "quill/ui/main_frame_power_tools.py": 1299,
     "quill/ui/main_frame_power_tools_menu.py": 792,
     "quill/ui/main_frame_quill_key.py": 753,
@@ -357,7 +358,7 @@
     "quill/ui/simple_open_dialog.py": 500,
     "quill/ui/skill_library_dialog.py": 598,
     "quill/ui/voice_browser_dialog.py": 646,
-    "quill/ui/main_frame_vault.py": 831
+    "quill/ui/main_frame_vault.py": 864
   },
   "_rebaseline_2026_06_28_ai_library_unify_provider_and_onramp": "AI Library Run unified onto the AI Hub provider (ProviderChatBackend) instead of the older ai_chat path, so setting up AI once (the wizard or the Hub) makes the Library work too; when AI isn't ready the run offers the setup on-ramp (on_setup_ai -> maybe_offer_ai_setup). ai_library_dialog.py 883->899 (+16): _backend/_ai_ready/_ensure_ai helpers + the _offer_ai_setup wiring, net of removing the send_prompt/credential plumbing.",
   "_rebaseline_2026_06_28_listening_companion_action_builder": "Listening Companion Phase B: the guided Action Builder. New quill/ui/action_builder_dialog.py (no-syntax: name + Start-from preset + plain-language instructions -> a saved Skill via transcript_actions.action_to_skill_source + skill_store). ai_library_dialog.py 867->883 (+16): a 'Build Action...' verb on the Skills tab and the skill_build() handler that opens the builder and reveals the new skill. The builder writes into the existing skill store, so it inherits Run/Edit/Enable/Export/Promote for free.",

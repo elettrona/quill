@@ -145,6 +145,30 @@ def test_settings_dictation_policy_round_trip(
     assert loaded.dictation_min_hold_seconds == 0.25
 
 
+def test_settings_vault_config_round_trip(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    save_settings(
+        Settings(
+            vault_root=str(tmp_path),
+            vault_templates_folder="_templates",
+            vault_daily_pattern="Diary/{{date:YYYY-MM-DD}}.md",
+        )
+    )
+    loaded = load_settings()
+    assert loaded.vault_templates_folder == "_templates"
+    assert loaded.vault_daily_pattern == "Diary/{{date:YYYY-MM-DD}}.md"
+
+
+def test_settings_vault_config_defaults_empty(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    loaded = load_settings()
+    # Empty means "use the convention" (Templates/ and Journal/{{date}}.md).
+    assert loaded.vault_templates_folder == ""
+    assert loaded.vault_daily_pattern == ""
+
+
 def test_settings_clamp_negative_dictation_durations(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

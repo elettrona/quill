@@ -61,6 +61,7 @@
   "compare_with_file",
   "complete_selection",
   "compute_line_statistics",
+  "configure_vault_settings",
   "console_active_profile",
   "console_all_settings",
   "console_announce",

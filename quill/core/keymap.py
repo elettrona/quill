@@ -305,6 +305,7 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "vault.next_daily": "",
     "vault.export_site": "",
     "vault.sync": "",
+    "vault.settings": "",
     "vault.publish_note": "",
     "power.insert_special_character": "Shift+F2",  # §4.22 parity; F2 -> List Studio
     "power.number_lines": "Alt+Shift+N",  # §4.22 Number Items parity

@@ -1581,6 +1581,7 @@ class MenuBuilderMixin:
         self._id_vault_next_daily = wx.NewIdRef()
         self._id_vault_export_site = wx.NewIdRef()
         self._id_vault_sync = wx.NewIdRef()
+        self._id_vault_settings = wx.NewIdRef()
         tools_menu = wx.Menu()
         tools_menu.Append(
             self._id_palette,
@@ -1650,6 +1651,9 @@ class MenuBuilderMixin:
             self._menu_label(_("&Export Vault as Website..."), "vault.export_site"),
         )
         vault_menu.Append(self._id_vault_sync, self._menu_label(_("S&ync Vault"), "vault.sync"))
+        vault_menu.Append(
+            self._id_vault_settings, self._menu_label(_("Vault Se&ttings..."), "vault.settings")
+        )
         tools_menu.AppendSubMenu(vault_menu, _("&Vault"))
         tools_menu.AppendSeparator()
 
@@ -2740,6 +2744,9 @@ class MenuBuilderMixin:
             wx.EVT_MENU, lambda _e: self.export_vault_site(), id=self._id_vault_export_site
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.sync_vault(), id=self._id_vault_sync)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.configure_vault_settings(), id=self._id_vault_settings
+        )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.open_story_studio(), id=self._id_open_story_studio
         )

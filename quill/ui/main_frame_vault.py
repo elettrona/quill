@@ -456,10 +456,11 @@ class VaultMixin:
         if root is None:
             self._set_status("Open a vault first (Tools > Vault > Open Vault)")
             return
-        tdir = root / "Templates"
+        folder = str(getattr(self.settings, "vault_templates_folder", "") or "Templates")
+        tdir = root / folder
         templates = sorted(tdir.glob("*.md")) if tdir.is_dir() else []
         if not templates:
-            self._set_status("No templates: add .md files to a 'Templates' folder in the vault")
+            self._set_status(f"No templates: add .md files to a '{folder}' folder in the vault")
             return
         self._show_vault_list(
             "Insert Template",
@@ -589,6 +590,32 @@ class VaultMixin:
         from quill.core.vault.dailynotes import DEFAULT_PATTERN
 
         return str(getattr(self.settings, "vault_daily_pattern", "") or DEFAULT_PATTERN)
+
+    def configure_vault_settings(self) -> None:
+        """Set the vault's Templates folder and daily-note pattern (persisted)."""
+        from quill.core.settings import save_settings
+        from quill.core.vault.dailynotes import DEFAULT_PATTERN
+
+        folder = self._prompt_text(
+            "Templates folder (relative to the vault):",
+            default=str(getattr(self.settings, "vault_templates_folder", "") or "Templates"),
+            caption="Vault Settings",
+        )
+        if folder is None:
+            self._set_status("Vault settings unchanged")
+            return
+        pattern = self._prompt_text(
+            "Daily-note path pattern (use {{date:YYYY-MM-DD}}):",
+            default=self._daily_pattern(),
+            caption="Vault Settings",
+        )
+        if pattern is None:
+            self._set_status("Vault settings unchanged")
+            return
+        self.settings.vault_templates_folder = folder.strip()
+        self.settings.vault_daily_pattern = pattern.strip() or DEFAULT_PATTERN
+        save_settings(self.settings)
+        self._announce("Vault settings saved")
 
     def open_todays_note(self) -> None:
         """Open (creating if absent) today's daily note; set the daily cursor to today."""
@@ -819,6 +846,12 @@ class VaultMixin:
         )
         self.commands.try_register(
             "vault.sync", "Sync Vault", self.sync_vault, self._binding_for("vault.sync")
+        )
+        self.commands.try_register(
+            "vault.settings",
+            "Vault Settings",
+            self.configure_vault_settings,
+            self._binding_for("vault.settings"),
         )
         # Publishing (the send path) is gated behind future.publishing (locked_off), so
         # this command stays hidden from the menu and palette until it is unlocked.
