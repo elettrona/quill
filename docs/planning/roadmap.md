@@ -100,11 +100,12 @@ is deliberately descoped (QUILL narrates with the account's existing voices).
 ### 1.7 Accessible Vault — remaining polish
 
 The Accessible Vault is **feature-complete for 0.9.0**. Phases 0–7 shipped with a wx-free,
-unit-tested core under `quill/core/vault` (links, backlinks, `neighborhood`, search +
-quick switcher, tags, embeds, templates + daily notes, HTML site export, Git sync, a
-gated publish payload, and rename-with-link-update) and accessible `Tools → Vault`
-surfaces. The feature is documented in `QUILL-PRD.md` §5.89d, the user guide
-(Tools > Vault), the changelog, and the release notes; the design plan has been retired.
+unit-tested core under `quill/core/vault` (links, backlinks, neighborhood + unlinked
+mentions, search + quick switcher, tags, embeds, templates + daily notes, HTML site
+export, Git sync, a gated publish payload, and rename-with-link-update) and accessible
+`Tools → Vault` surfaces — including **Note Neighborhood** and **Unlinked Mentions**. The
+feature is documented in `QUILL-PRD.md` §5.89d, the user guide (Tools > Vault), the
+changelog, and the release notes; the design plan has been retired.
 
 **Remaining polish (small, additive, none blocking):**
 
@@ -122,7 +123,9 @@ surfaces. The feature is documented in `QUILL-PRD.md` §5.89d, the user guide
   the index in the background (the first version otherwise scans on open).
 - **Settings surface** for the Templates folder and daily-note pattern (conventions
   `Templates/` and `Journal/{{date}}.md` are used until then).
-- **Unlinked-mentions UI** over the shipped `index.unlinked_mentions()` core.
+- **Rename-with-link-update UI** over the shipped `refactor.plan_note_rename()` core (the
+  core computes the offset-precise inbound-link edits; the command applies them across
+  notes + renames the file as one step).
 
 ---
 
