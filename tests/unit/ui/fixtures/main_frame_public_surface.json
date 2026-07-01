@@ -59,6 +59,7 @@
   "compare_start_with_file",
   "compare_toggle_ignore_whitespace",
   "compare_with_file",
+  "complete_at_cursor",
   "complete_selection",
   "compute_line_statistics",
   "configure_vault_settings",

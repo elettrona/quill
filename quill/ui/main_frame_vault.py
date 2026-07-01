@@ -205,6 +205,48 @@ class VaultMixin:
         finally:
             dialog.Destroy()
 
+    def complete_at_cursor(self) -> None:
+        """Complete a `[[note` or `#tag` at the caret from a spoken, filtered list."""
+        from quill.core.vault.autocomplete import (
+            active_trigger,
+            completion_edit,
+            wikilink_candidates,
+        )
+
+        if self._ensure_vault() is None:
+            self._set_status("Open a vault first (Tools > Vault > Open Vault)")
+            return
+        cursor = self.editor.GetInsertionPoint()
+        trigger = active_trigger(self.editor.GetValue(), cursor)
+        if trigger is None:
+            self._set_status("Type [[ for a note or # for a tag, then complete")
+            return
+        if trigger.kind == "wikilink":
+            candidates = wikilink_candidates(self._vault, trigger.prefix)
+            heading, prompt, verb = "Complete Link", "Note:", "notes"
+        else:
+            from quill.core.vault.tags import build_tag_index, tag_suggestions
+
+            candidates = tag_suggestions(build_tag_index(self._vault), trigger.prefix, limit=50)
+            heading, prompt, verb = "Complete Tag", "Tag:", "tags"
+        if not candidates:
+            self._set_status(f"No matching {verb}")
+            return
+
+        def provider(query: str):
+            needle = query.strip().casefold()
+            hits = [c for c in candidates if needle in c.casefold()] if needle else candidates
+            return [(c, c) for c in hits]
+
+        def on_pick(choice: str) -> None:
+            start, end, new_text = completion_edit(trigger, choice, cursor)
+            self.editor.Replace(start, end, new_text)
+            self._announce(f"Inserted {choice}")
+
+        self._show_vault_filter(
+            heading, prompt=prompt, provider=provider, on_activate=on_pick, count_verb=verb
+        )
+
     def show_neighborhood(self) -> None:
         """List this note's outgoing links and backlinks together (traverse by ear)."""
         from quill.core.vault import neighborhood
@@ -862,6 +904,12 @@ class VaultMixin:
             "Insert Link to Note",
             self.insert_wikilink,
             self._binding_for("vault.insert_link"),
+        )
+        self.commands.try_register(
+            "vault.complete",
+            "Complete Link or Tag at Cursor",
+            self.complete_at_cursor,
+            self._binding_for("vault.complete"),
         )
         self.commands.try_register(
             "vault.rename",

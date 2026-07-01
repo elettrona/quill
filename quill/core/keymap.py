@@ -294,6 +294,7 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "vault.neighborhood": "",
     "vault.unlinked_mentions": "",
     "vault.insert_link": "",
+    "vault.complete": "",
     "vault.rename": "",
     "vault.quick_switch": "",
     "vault.search": "",
