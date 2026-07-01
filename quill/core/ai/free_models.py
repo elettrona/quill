@@ -383,9 +383,15 @@ def resolve_model_for_task(
 
 # Writing verbs that need multi-step reasoning or tool use; everything else is
 # "light" and runs fine on a free model.
-_HEAVY_TASK_VERBS: frozenset[str] = frozenset(
-    {"agent", "research", "qa", "accessibility", "outline", "toc", "publish"}
-)
+_HEAVY_TASK_VERBS: frozenset[str] = frozenset({
+    "agent",
+    "research",
+    "qa",
+    "accessibility",
+    "outline",
+    "toc",
+    "publish",
+})
 
 
 def fetch_classified_models(

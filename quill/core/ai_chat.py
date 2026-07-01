@@ -159,9 +159,7 @@ def list_models(provider_id: str, api_key: str = "", base_url: str = "") -> list
         return models
 
 
-def list_models_raw(
-    provider_id: str, api_key: str = "", base_url: str = ""
-) -> list[dict]:  # type: ignore[type-arg]
+def list_models_raw(provider_id: str, api_key: str = "", base_url: str = "") -> list[dict]:  # type: ignore[type-arg]
     """Fetch the raw model dicts for a provider, preserving pricing metadata.
 
     Unlike :func:`list_models` (which projects to :class:`AIModel`), this keeps

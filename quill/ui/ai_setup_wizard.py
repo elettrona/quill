@@ -531,11 +531,7 @@ class AISetupWizard:
             if self._model_guidance
             else default_model_for_provider(self._provider)
         )
-        chosen = (
-            select.strip()
-            or ob.stored_provider_model(self._provider)
-            or recommended_default
-        )
+        chosen = select.strip() or ob.stored_provider_model(self._provider) or recommended_default
         self._model_combo.SetValue(chosen)
         self._update_model_description()
 
