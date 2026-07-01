@@ -93,35 +93,79 @@ Aloud voice** (per-session consent, Safe-Mode gated) all shipped. What remains i
 design, server-side pronunciation, and Tier-3 surfaces — all in §5. Voice **cloning**
 is deliberately descoped (QUILL narrates with the account's existing voices).
 
-### 1.7 Accessible Vault — remaining phases
+### 1.7 Accessible Vault — remaining phases (with execution plans)
 
 The **Accessible Vault** (linked notes + backlinks a blind writer traverses by ear)
 shipped its first milestone — **Phases 0–2** (persistent vault + indexing, wikilinks
-with Follow Link + create-on-follow + ambiguity chooser, and spoken backlinks). It is
-documented in `QUILL-PRD.md` §5.89d, the user guide (Tools > Vault), the changelog, and
-the release notes; the standalone plan doc was retired here once delivered. **Still open
-(additive, each independently shippable on the same backbone):**
+with Follow Link + create-on-follow + ambiguity chooser, and spoken backlinks), over the
+wx-free `quill/core/vault` package. It is documented in `QUILL-PRD.md` §5.89d, the user
+guide (Tools > Vault), the changelog, and the release notes; the standalone plan doc was
+retired here once delivered. Each remaining phase is additive, independently shippable on
+the same backbone, and keyboard-complete + palette-discoverable + spoken (backlinks and
+search read the *sentence* around a hit; no mouse-only paths). **Execution plans:**
 
-- **Phase 3 — Vault-wide search & quick switcher.** A ripgrep-backed accessible results
-  list (note + line + snippet, Enter opens at the match, spoken running count) and a
-  fuzzy note-name switcher.
-- **Phase 4 — Global tags.** A spoken tag index with counts, a tag pane, `#`
-  autocomplete, and vault-wide tag rename.
-- **Phase 5 — Transclusion / embeds / block refs.** `![[embed]]` expansion in
-  preview/compile, speak/resolve-inline, and block ids.
-- **Phase 6 — Templates & daily notes.** A template engine (extending Snippets) and
-  daily-note navigation (open today's note; previous/next by date).
-- **Phase 7 — Sync & publish.** Vault Git sync with accessible conflict resolution, and
-  Publish note / export the vault as a linked site.
-- **Phase 0–2 deferred items:** `[[` autocomplete, preview/export link resolution, an
-  unlinked-mentions UI (the core `unlinked_mentions` exists), neighborhood navigation,
-  rename-with-link-update, a dedicated Vault Explorer window, background/incremental
-  indexing, and the Story-Studio-as-collection refactor.
+**Phase 3 — Vault-wide search & quick switcher.** *What:* instant full-text search across
+every note, plus a name-jump quick switcher. *SR magic:* the **quick switcher** (a
+prominent key, a reimagined Go-To-Note) is a modal that filters titles/aliases as you
+type, **announces the result count** ("7 matches"), arrows announce each, Enter opens —
+fuzzy and forgiving. **Search** returns an **accessible results list** (title, line,
+snippet with the match); Enter opens *at the matching line*; search-as-you-type announces
+the running count; "search within results" refines; recent searches remembered; regex /
+whole-word are labelled checkboxes. *Impl:* new `search.py` — `ripgrep`-backed when
+available (no index to maintain) with a small in-process fallback; results ranked (title
+> body, recency tiebreak). Both are `_show_modal_dialog` dialogs with `apply_modal_ids`.
 
-Non-goals stand: no rendered graph or visual canvas (relationships are delivered as
-accessible lists), no hosted paid sync service, no WYSIWYG/live-preview, no separate
-plugin marketplace. Large-vault performance (10k+ notes) needs incremental cached
-indexing — benchmark before Phase 3.
+**Phase 4 — Global tags.** *What:* inline `#tag` and front-matter `tags:`, including nested
+`#area/subarea`, indexed vault-wide. *SR magic:* **Show Tags** lists every tag with counts
+("#project — 24 notes; #idea — 51"); selecting one lists the notes/blocks carrying it
+(Enter opens at the tag). Typing `#` offers **tag autocomplete** (existing tags first,
+announced). Vault-wide **tag rename** with inbound-count confirmation, like link rename.
+*Impl:* extend `index.py` with a nested-tag-aware tag map (tag → note/block occurrences);
+autocomplete reuses the wikilink popup; ties into Story Studio element tags.
+
+**Phase 5 — Transclusion / embeds / block refs.** *What:* `![[Note]]` / `![[Note#Heading]]`
+/ `![[Note#^blockid]]` embeds; assign a block id with `^blockid`. *SR magic:* embeds stay
+as plain `![[...]]` in the buffer (no silent expansion), but are **expanded in preview and
+on compile/export** with an announced "embedded from <note>" boundary; **"Speak embed at
+cursor"** reads the target aloud without altering the buffer; **"Resolve embed inline"**
+materializes it as one undo step; **"Add block reference"** mints a `^blockid` and copies a
+`[[Note#^blockid]]` link, announced. *Impl:* `resolve.py` embed expansion with cycle
+detection feeds `browser_preview` + `compile_manuscript`; block ids parsed by `note.py`.
+
+**Phase 6 — Templates & daily notes.** *What:* reusable note templates with variables and
+date-stamped daily notes. *SR magic:* **Insert template…** speaks each `{{prompt:Question}}`
+and answers inline; `{{date}}`/`{{time}}`/`{{title}}` + a cursor marker resolve
+automatically and focus lands where the marker was, announced. **New note from template…**;
+**Open today's note** (creating from the daily template if absent at
+`Journal/{{date:YYYY-MM-DD}}.md`); **Previous/Next daily note** walk the calendar by key,
+announcing the date and whether it exists. *Impl:* `templates.py` + `dailynotes.py`
+extending the existing Snippet Gallery substitution (not a second engine); settings hold
+the templates/daily folders, date format, and defaults.
+
+**Phase 7 — Sync & publish.** *What:* keep files the user's; add accessible helpers.
+*SR magic:* an optional **Vault Git Sync** ("Sync vault" = commit/pull/push) with a spoken,
+itemized **conflict resolver** ("these 3 notes changed both places — keep mine / keep
+theirs / merge") instead of a diff view; **Publish note** (push to the existing WordPress
+connection, resolving `[[links]]`/embeds to real HTML); **Export vault as a linked site**
+(static HTML with working links + generated index). Both announce what will be sent and
+ask first. *Impl:* a wx-free `vault/sync.py` over `safe_subprocess` (reusing SSH/remote);
+publish via the existing publishing providers + link/embed resolution; network-egress-audited.
+
+**Phase 0–2 deferred items** (same backbone): `[[` autocomplete + heading/block targets
+after `#` (reuse `main_frame_intellisense.py`), preview/export `[[...]]` link resolution in
+`browser_preview`, an **unlinked-mentions** UI + "Link this mention" (core `unlinked_mentions`
+exists), **neighborhood** navigation (forward + back links together), **rename-with-link-update**
+("Update 12 inbound links?" + one-undo), a dedicated **Vault Explorer** window (reusing the
+Story Studio binder tree), background/incremental indexing, and the Story-Studio-as-collection
+refactor.
+
+**Guardrails.** Non-goals stand: no rendered graph or visual canvas (relationships are
+accessible *lists*), no hosted paid sync service, no WYSIWYG/live-preview, no separate
+plugin marketplace. Resolve links by title/alias with deterministic disambiguation (folder
+proximity → spoken chooser, never a guess); the parser must not mangle `[label](url)`, code
+spans, or math. Large-vault performance (10k+ notes) needs incremental cached indexing and
+`ripgrep` for search — benchmark before Phase 3. Existing Story Studio projects must open
+unchanged as vaults (non-destructive one-time adoption).
 
 ---
 
