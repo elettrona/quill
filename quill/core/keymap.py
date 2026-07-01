@@ -290,6 +290,8 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "vault.open": "",  # Accessible Vault; no default keys, assign via keymap editor
     "vault.follow_link": "",
     "vault.backlinks": "",
+    "vault.neighborhood": "",
+    "vault.unlinked_mentions": "",
     "vault.insert_link": "",
     "vault.quick_switch": "",
     "vault.search": "",

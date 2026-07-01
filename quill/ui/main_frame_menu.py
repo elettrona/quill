@@ -1566,6 +1566,8 @@ class MenuBuilderMixin:
         self._id_vault_open = wx.NewIdRef()
         self._id_vault_follow_link = wx.NewIdRef()
         self._id_vault_backlinks = wx.NewIdRef()
+        self._id_vault_neighborhood = wx.NewIdRef()
+        self._id_vault_unlinked = wx.NewIdRef()
         self._id_vault_insert_link = wx.NewIdRef()
         self._id_vault_quick_switch = wx.NewIdRef()
         self._id_vault_search = wx.NewIdRef()
@@ -1595,6 +1597,14 @@ class MenuBuilderMixin:
         )
         vault_menu.Append(
             self._id_vault_backlinks, self._menu_label(_("Show &Backlinks"), "vault.backlinks")
+        )
+        vault_menu.Append(
+            self._id_vault_neighborhood,
+            self._menu_label(_("Note &Neighborhood"), "vault.neighborhood"),
+        )
+        vault_menu.Append(
+            self._id_vault_unlinked,
+            self._menu_label(_("&Unlinked Mentions"), "vault.unlinked_mentions"),
         )
         vault_menu.Append(
             self._id_vault_insert_link,
@@ -2689,6 +2699,12 @@ class MenuBuilderMixin:
             wx.EVT_MENU, lambda _e: self.follow_wikilink(), id=self._id_vault_follow_link
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.show_backlinks(), id=self._id_vault_backlinks)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.show_neighborhood(), id=self._id_vault_neighborhood
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.show_unlinked_mentions(), id=self._id_vault_unlinked
+        )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.insert_wikilink(), id=self._id_vault_insert_link
         )

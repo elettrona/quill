@@ -16,8 +16,10 @@ from quill.core.vault.index import (
     Backlink,
     LinkIndex,
     Mention,
+    Neighborhood,
     backlinks,
     build_index,
+    neighborhood,
     unlinked_mentions,
 )
 from quill.core.vault.links import WikiLink, link_at_offset, parse_links
@@ -31,6 +33,7 @@ __all__ = [
     "LinkIndex",
     "LinkTarget",
     "Mention",
+    "Neighborhood",
     "NoteInfo",
     "Resolver",
     "Vault",
@@ -39,6 +42,7 @@ __all__ = [
     "build_index",
     "build_resolver",
     "link_at_offset",
+    "neighborhood",
     "parse_links",
     "parse_note",
     "resolve_link",

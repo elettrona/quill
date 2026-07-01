@@ -129,6 +129,54 @@ class VaultMixin:
         self._announce(f"{len(links)} notes link here.")
         self._show_vault_list(f"Backlinks to {self._vault.notes[rel].title}", items)
 
+    def show_neighborhood(self) -> None:
+        """List this note's outgoing links and backlinks together (traverse by ear)."""
+        from quill.core.vault import neighborhood
+
+        if self._ensure_vault() is None:
+            self._set_status("Open a vault first (Tools > Vault > Open Vault)")
+            return
+        rel = relative_note_path(self._vault_root_path(), self._document_path())
+        if rel is None or rel not in self._vault.notes:
+            self._set_status("Save this note inside the vault to see its neighborhood")
+            return
+        hood = neighborhood(self._vault, self._vault_index, rel)
+        items = [(f"→ {title}", (path, 0)) for path, title in hood.outgoing]
+        items += [
+            (
+                f"← {self._vault.notes[bl.source_path].title}: {bl.context}",
+                (bl.source_path, bl.offset),
+            )
+            for bl in hood.incoming
+        ]
+        if not items:
+            self._set_status("This note has no links in or out yet")
+            return
+        self._announce(f"{len(hood.outgoing)} out, {len(hood.incoming)} in")
+        self._show_vault_list(f"Neighborhood of {hood.title}", items)
+
+    def show_unlinked_mentions(self) -> None:
+        """List plain-text mentions of this note not yet linked (link-this-mention)."""
+        from quill.core.vault import unlinked_mentions
+
+        if self._ensure_vault() is None:
+            self._set_status("Open a vault first (Tools > Vault > Open Vault)")
+            return
+        rel = relative_note_path(self._vault_root_path(), self._document_path())
+        if rel is None or rel not in self._vault.notes:
+            self._set_status("Save this note inside the vault to find its mentions")
+            return
+        mentions = unlinked_mentions(self._vault, self._vault_resolver, rel)
+        if not mentions:
+            self._set_status("No unlinked mentions: every mention of this note is already a link")
+            return
+        items = [
+            (f"{self._vault.notes[m.source_path].title}: {m.context}", (m.source_path, m.offset))
+            for m in mentions
+        ]
+        self._announce(f"{len(mentions)} unlinked mention(s)")
+        self._show_vault_list(f"Unlinked mentions of {self._vault.notes[rel].title}", items)
+
     def insert_wikilink(self) -> None:
         """Pick a note and insert a ``[[Title]]`` link at the cursor."""
         if self._ensure_vault() is None:
@@ -607,6 +655,18 @@ class VaultMixin:
             "Show Backlinks",
             self.show_backlinks,
             self._binding_for("vault.backlinks"),
+        )
+        self.commands.try_register(
+            "vault.neighborhood",
+            "Note Neighborhood",
+            self.show_neighborhood,
+            self._binding_for("vault.neighborhood"),
+        )
+        self.commands.try_register(
+            "vault.unlinked_mentions",
+            "Unlinked Mentions",
+            self.show_unlinked_mentions,
+            self._binding_for("vault.unlinked_mentions"),
         )
         self.commands.try_register(
             "vault.insert_link",
