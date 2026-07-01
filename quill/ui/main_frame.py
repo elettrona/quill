@@ -1500,6 +1500,10 @@ class MainFrame(
             ("help topics warm-up", warm_help_topics),
             # §8.2 TTS-FALLBACK-ANNOUNCE: show status prompt when TTS init failed.
             ("TTS fallback check", self._check_tts_fallback_on_startup),
+            # Build the model-lifecycle manager from settings and start the idle
+            # sweep, so the Performance settings (Low-resource mode, Unload idle
+            # models after) actually take effect on the speech/TTS/LLM engines.
+            ("model lifecycle", self._start_model_lifecycle),
         ):
             _t = time.perf_counter() if _profile else 0.0
             try:
@@ -6006,6 +6010,7 @@ class MainFrame(
             self._watch_queue_listbox = None
             self._watch_queue_pause_button = None
         _safely("watch service", self._watch_service.stop)
+        _safely("model lifecycle timer", self._stop_lifecycle_sweep_timer)
         _safely("global hotkeys", self._unregister_global_hotkeys)
         _safely("tray icon", self._remove_tray_icon)
         _safely("ssh connections", self.close_ssh_connections)
@@ -10752,6 +10757,63 @@ class MainFrame(
             combo.Bind(wx.EVT_CHOICE, _refresh)
         _refresh()
 
+    def _start_model_lifecycle(self) -> None:
+        """Build the model-lifecycle manager from settings and start the idle sweep.
+
+        Makes the Performance settings real: the speech, TTS, and LLM model holders
+        register with ``lifecycle_service`` around their load/unload, and a repeating
+        timer unloads models left idle past the threshold. Low-resource mode caps the
+        engines loaded at once. All model work stays off the UI thread.
+        """
+        from quill.core import lifecycle_service
+        from quill.core.model_lifecycle import should_auto_low_resource
+        from quill.core.speech.service import detect_total_ram_gb
+
+        ram = detect_total_ram_gb()
+        low_res = bool(getattr(self.settings, "low_resource_mode", False))
+        minutes = int(getattr(self.settings, "idle_unload_minutes", 10))
+        lifecycle_service.configure(
+            low_resource_mode=low_res, idle_unload_minutes=minutes, total_ram_gb=ram
+        )
+        # Accessible one-time (per-session) notice when low-resource mode auto-enables
+        # on a small machine, so the behaviour is never silent (PRD 5.25f).
+        if not low_res and should_auto_low_resource(ram):
+            self._announce(
+                "Low-resource mode is on because this computer has limited memory. "
+                "AI and speech load one model at a time to save memory."
+            )
+        self._start_lifecycle_sweep_timer()
+
+    def _start_lifecycle_sweep_timer(self) -> None:
+        """Start (or restart) the repeating timer that unloads idle models off-thread."""
+        from quill.core import lifecycle_service
+
+        self._stop_lifecycle_sweep_timer()
+        minutes = int(getattr(self.settings, "idle_unload_minutes", 10))
+        if minutes <= 0:
+            return  # idle-unload disabled; low-resource eviction still works on load
+        wx = self._wx
+        self._lifecycle_timer = wx.Timer(self.frame)
+        self.frame.Bind(
+            wx.EVT_TIMER,
+            lambda _e: self._task_manager.submit(lifecycle_service.sweep),
+            self._lifecycle_timer,
+        )
+        # Poll about twice per idle window (clamped 30 s - 5 min) so an idle model is
+        # freed reasonably promptly without busy-polling.
+        interval_ms = max(30, min(300, minutes * 30)) * 1000
+        self._lifecycle_timer.Start(interval_ms)
+
+    def _stop_lifecycle_sweep_timer(self) -> None:
+        """Stop the idle-sweep timer if running (idempotent; safe at shutdown)."""
+        timer = getattr(self, "_lifecycle_timer", None)
+        if timer is not None:
+            try:
+                timer.Stop()
+            except Exception:  # noqa: BLE001 - a dead C++ timer must not block shutdown
+                pass
+            self._lifecycle_timer = None
+
     def _settings_dialog_apply_refresh(self, status: str) -> None:
         """Persist ``self.settings`` and re-run every UI side effect.
 
@@ -10766,6 +10828,20 @@ class MainFrame(
         )
         self._apply_ai_menu_enabled()
         self._refresh_ai_status()
+        # Re-apply the model-lifecycle policy in case the Performance settings
+        # (Low-resource mode / Unload idle models after) changed.
+        try:
+            from quill.core import lifecycle_service
+            from quill.core.speech.service import detect_total_ram_gb
+
+            lifecycle_service.configure(
+                low_resource_mode=bool(getattr(self.settings, "low_resource_mode", False)),
+                idle_unload_minutes=int(getattr(self.settings, "idle_unload_minutes", 10)),
+                total_ram_gb=detect_total_ram_gb(),
+            )
+            self._start_lifecycle_sweep_timer()
+        except Exception:  # noqa: BLE001 - a settings-apply side effect must never raise
+            pass
         self._apply_soft_wrap(self.settings.soft_wrap)
         self._rebuild_tab_host(self.settings.show_tab_control)
         self._build_menu()

@@ -51,15 +51,31 @@ class SpeechCommandsMixin:
         chosen = str(getattr(self.settings, "speech_provider", "") or "")
         cached = getattr(self, "_dictation_provider_cache", None)
         if cached is not None and getattr(self, "_dictation_provider_key", None) == chosen:
-            return cached
-        provider = self._speech_provider()
-        self._dictation_provider_cache = provider
-        self._dictation_provider_key = chosen
+            provider = cached
+        else:
+            provider = self._speech_provider()
+            self._dictation_provider_cache = provider
+            self._dictation_provider_key = chosen
+        # Track for the idle-unload / low-resource policy. note_loaded registers or
+        # re-touches (so it re-tracks after an idle sweep). unload() frees the model;
+        # the cached provider object persists and reloads on the next dictation.
+        try:
+            from quill.core import lifecycle_service
+
+            lifecycle_service.note_loaded("speech:dictation", provider.unload)  # type: ignore[attr-defined]
+        except Exception:  # noqa: BLE001 - lifecycle tracking must never break dictation
+            pass
         return provider
 
     def invalidate_dictation_provider(self) -> None:
         """Drop the cached dictation provider (after an engine/model change)."""
         self._dictation_provider_cache = None
+        try:
+            from quill.core import lifecycle_service
+
+            lifecycle_service.note_unloaded("speech:dictation")
+        except Exception:  # noqa: BLE001 - lifecycle untracking must never raise
+            pass
 
     def prewarm_dictation_model(self) -> None:
         """Load the dictation model in the background so the first dictation is
@@ -80,6 +96,10 @@ class SpeechCommandsMixin:
                 installed = provider.list_installed_models()  # type: ignore[attr-defined]
                 warm = getattr(provider, "warm", None)
                 if installed and callable(warm):
+                    from quill.core import lifecycle_service
+
+                    # Low-resource mode may evict another engine before we warm this one.
+                    lifecycle_service.reserve("speech:dictation")
                     warm(self._default_model_id(installed))
                     import logging
 
