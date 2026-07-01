@@ -1302,6 +1302,12 @@ notes that mention this note by name but have not linked it yet — the
 that note at the mention so you can turn it into a link.</li>
 <li><strong>Insert Link to Note...</strong> — pick a note by title from
 a list and QUILL inserts <code>[[Title]]</code> at the cursor.</li>
+<li><strong>Rename Note...</strong> — give the current note a new name.
+QUILL first tells you how many links in how many other notes point to it
+and asks you to confirm; then it updates all of those
+<code>[[links]]</code> for you, renames the file, and fixes the note's
+own top heading — so nothing breaks. It never changes anything until you
+say yes, and stops if a note with the new name already exists.</li>
 <li><strong>Go to Note...</strong> — a jump-to-note switcher. Start
 typing part of a title and the list narrows as you go (QUILL speaks the
 running count); press Down to move into the list, or just press Enter to

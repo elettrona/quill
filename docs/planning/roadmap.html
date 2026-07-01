@@ -292,8 +292,9 @@ Phases 0–7 shipped with a wx-free, unit-tested core under
 mentions, search + quick switcher, tags, embeds, templates + daily
 notes, HTML site export, Git sync, a gated publish payload, and
 rename-with-link-update) and accessible <code>Tools → Vault</code>
-surfaces — including <strong>Note Neighborhood</strong> and
-<strong>Unlinked Mentions</strong>. The feature is documented in
+surfaces — including <strong>Note Neighborhood</strong>,
+<strong>Unlinked Mentions</strong>, and <strong>Rename Note</strong>
+(updates inbound links + file + H1). The feature is documented in
 <code>QUILL-PRD.md</code> §5.89d, the user guide (Tools &gt; Vault), the
 changelog, and the release notes; the design plan has been retired.</p>
 <p><strong>Remaining polish (small, additive, none
@@ -321,10 +322,6 @@ in the background (the first version otherwise scans on open).</li>
 <li><strong>Settings surface</strong> for the Templates folder and
 daily-note pattern (conventions <code>Templates/</code> and
 <code>Journal/{{date}}.md</code> are used until then).</li>
-<li><strong>Rename-with-link-update UI</strong> over the shipped
-<code>refactor.plan_note_rename()</code> core (the core computes the
-offset-precise inbound-link edits; the command applies them across notes
-+ renames the file as one step).</li>
 </ul>
 <hr />
 <h2 id="2-locked--hidden-features-register">2. Locked / hidden features
