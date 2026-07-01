@@ -119,6 +119,10 @@ class Settings:
     read_aloud_espeak_executable: str = ""
     read_aloud_espeak_voice: str = "en"
     read_aloud_espeak_rate: int = 175
+    # ElevenLabs premium cloud voice for Read Aloud (opt-in, per-session consent,
+    # billed to the user's ElevenLabs quota). Blank ids use the module defaults.
+    read_aloud_elevenlabs_voice: str = ""
+    read_aloud_elevenlabs_model: str = ""
     # AI Voice (cloud TTS): which provider/model/voice the AI read-aloud and
     # export actions use. Provider is "openai" or "gemini".
     ai_tts_provider: str = "openai"
@@ -578,9 +582,12 @@ class Settings:
             "piper",
             "kokoro",
             "espeak",
+            "elevenlabs",
         }
         if read_aloud_engine not in _valid_engines:
             read_aloud_engine = "sapi5"
+        read_aloud_elevenlabs_voice = str(data.get("read_aloud_elevenlabs_voice", "")).strip()
+        read_aloud_elevenlabs_model = str(data.get("read_aloud_elevenlabs_model", "")).strip()
         read_aloud_voice = str(data.get("read_aloud_voice", ""))
         read_aloud_rate = int(data.get("read_aloud_rate", 200))
         if read_aloud_rate < 80:
@@ -1117,6 +1124,8 @@ class Settings:
             read_aloud_espeak_executable=read_aloud_espeak_executable,
             read_aloud_espeak_voice=read_aloud_espeak_voice,
             read_aloud_espeak_rate=read_aloud_espeak_rate,
+            read_aloud_elevenlabs_voice=read_aloud_elevenlabs_voice,
+            read_aloud_elevenlabs_model=read_aloud_elevenlabs_model,
             ai_tts_provider=ai_tts_provider,
             ai_tts_model=ai_tts_model,
             ai_tts_voice=ai_tts_voice,

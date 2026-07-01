@@ -248,6 +248,74 @@ def test_synthesize_with_piper_raises_for_failure(monkeypatch, tmp_path: Path) -
 
 
 # ---------------------------------------------------------------------------
+# ElevenLabs cloud read-aloud voice
+# ---------------------------------------------------------------------------
+
+
+def test_elevenlabs_read_aloud_blocked_in_safe_mode(monkeypatch) -> None:
+    monkeypatch.setenv("QUILL_SAFE_MODE", "1")
+    controller = ReadAloudController()
+    try:
+        controller.start("Hello.", 0, "v1", engine_name="elevenlabs", elevenlabs_api_key="key")
+    except ReadAloudUnavailableError as exc:
+        assert "Safe Mode" in str(exc)
+    else:
+        raise AssertionError("Expected Safe Mode to block ElevenLabs read-aloud")
+
+
+def test_elevenlabs_read_aloud_requires_a_key(monkeypatch) -> None:
+    monkeypatch.delenv("QUILL_SAFE_MODE", raising=False)
+    controller = ReadAloudController()
+    try:
+        controller.start("Hello.", 0, "v1", engine_name="elevenlabs", elevenlabs_api_key="  ")
+    except ReadAloudUnavailableError as exc:
+        assert "Connect ElevenLabs" in str(exc)
+    else:
+        raise AssertionError("Expected a missing key to be rejected")
+
+
+def test_elevenlabs_read_aloud_requires_the_sdk(monkeypatch) -> None:
+    monkeypatch.delenv("QUILL_SAFE_MODE", raising=False)
+    from quill.core.ai import elevenlabs_tts
+
+    monkeypatch.setattr(elevenlabs_tts, "available", lambda: False)
+    controller = ReadAloudController()
+    try:
+        controller.start("Hello.", 0, "v1", engine_name="elevenlabs", elevenlabs_api_key="key")
+    except ReadAloudUnavailableError as exc:
+        assert "optional SDK" in str(exc) or "pip install" in str(exc)
+    else:
+        raise AssertionError("Expected the missing SDK to be reported")
+
+
+def test_list_elevenlabs_voices_empty_without_key() -> None:
+    assert read_aloud_module.list_elevenlabs_voices("") == []
+    assert read_aloud_module.list_elevenlabs_voices("   ") == []
+
+
+def test_list_elevenlabs_voices_maps_account_voices(monkeypatch) -> None:
+    from quill.core.ai import elevenlabs_tts
+
+    monkeypatch.setattr(elevenlabs_tts, "available", lambda: True)
+    monkeypatch.setattr(
+        elevenlabs_tts, "list_voices", lambda key: [("v1", "Rachel"), ("v2", "Adam")]
+    )
+    voices = read_aloud_module.list_elevenlabs_voices("key")
+    assert [(v.id, v.name) for v in voices] == [("v1", "Rachel"), ("v2", "Adam")]
+
+
+def test_list_elevenlabs_voices_swallows_errors(monkeypatch) -> None:
+    from quill.core.ai import elevenlabs_tts
+
+    def boom(_key: str) -> list:
+        raise RuntimeError("network down")
+
+    monkeypatch.setattr(elevenlabs_tts, "available", lambda: True)
+    monkeypatch.setattr(elevenlabs_tts, "list_voices", boom)
+    assert read_aloud_module.list_elevenlabs_voices("key") == []  # never raises into the UI
+
+
+# ---------------------------------------------------------------------------
 # eSpeak-NG helpers
 # ---------------------------------------------------------------------------
 

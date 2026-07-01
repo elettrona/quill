@@ -886,6 +886,30 @@ def list_voices() -> list[VoiceOption]:
     ]
 
 
+def list_elevenlabs_voices(api_key: str) -> list[VoiceOption]:
+    """The ElevenLabs account's voices as read-aloud options, or ``[]``.
+
+    A read-only network call. Returns ``[]`` when there is no key, the optional SDK is
+    absent, or the call fails, so the caller can offer ElevenLabs voices without ever
+    raising into the UI. The actual synthesis is gated by per-session consent and Safe
+    Mode at the point of use.
+    """
+    key = (api_key or "").strip()
+    if not key:
+        return []
+    from quill.core.ai import elevenlabs_tts
+
+    if not elevenlabs_tts.available():
+        return []
+    try:
+        return [
+            VoiceOption(id=vid, name=name, language="")
+            for vid, name in elevenlabs_tts.list_voices(key)
+        ]
+    except Exception:  # noqa: BLE001 - listing voices must never raise into the UI
+        return []
+
+
 class ReadAloudUnavailableError(RuntimeError):
     pass
 
@@ -937,6 +961,9 @@ class ReadAloudController:
         espeak_executable: str = "",
         espeak_voice: str = "en",
         espeak_rate: int = 175,
+        elevenlabs_api_key: str = "",
+        elevenlabs_voice: str = "",
+        elevenlabs_model: str = "",
         sentence_pause_ms: int = 0,
         punctuation_level: str = "some",
         end: int | None = None,
@@ -954,6 +981,7 @@ class ReadAloudController:
             "piper",
             "kokoro",
             "espeak",
+            "elevenlabs",
         }
         if normalized_engine == "sapi5" and not sapi5_available():
             raise ReadAloudUnavailableError("Windows SAPI 5 speech is not available")
@@ -971,6 +999,18 @@ class ReadAloudController:
                 "eSpeak-NG executable was not found. "
                 "Install eSpeak-NG or configure the path in Read Aloud Settings."
             )
+        if normalized_engine == "elevenlabs":
+            from quill.core.ai import elevenlabs_tts
+
+            if os.environ.get("QUILL_SAFE_MODE") == "1":
+                raise ReadAloudUnavailableError("ElevenLabs Read Aloud is disabled in Safe Mode.")
+            if not elevenlabs_api_key.strip():
+                raise ReadAloudUnavailableError("Connect ElevenLabs to use its Read Aloud voice.")
+            if not elevenlabs_tts.available():
+                raise ReadAloudUnavailableError(
+                    "ElevenLabs support needs the optional SDK. "
+                    "Install it with: pip install quill[elevenlabs]"
+                )
         if normalized_engine not in _valid_engines:
             raise ReadAloudUnavailableError(f"Unsupported read-aloud engine: {normalized_engine}")
         self.stop()
@@ -1039,6 +1079,15 @@ class ReadAloudController:
                         or Path(espeak_executable).expanduser(),
                         voice=espeak_voice,
                         rate=espeak_rate,
+                        on_progress=on_progress,
+                    )
+                elif normalized_engine == "elevenlabs":
+                    self._run_elevenlabs_live(
+                        spans,
+                        text,
+                        api_key=elevenlabs_api_key,
+                        voice=elevenlabs_voice,
+                        model=elevenlabs_model,
                         on_progress=on_progress,
                     )
             except Exception as exc:  # noqa: BLE001
@@ -1258,6 +1307,37 @@ class ReadAloudController:
             synthesize_with_kokoro(sentence, out, voice=voice, speed=speed)
 
         self._cache_seed = ("kokoro", voice, speed)
+        self._run_wav_sentences(spans, text, on_progress=on_progress, generate_sentence_wav=gen)
+
+    def _run_elevenlabs_live(
+        self,
+        spans: list[SentenceSpan],
+        text: str,
+        *,
+        api_key: str,
+        voice: str,
+        model: str,
+        on_progress: Callable[[int, int], None] | None,
+    ) -> None:
+        """ElevenLabs cloud voice: synthesize each sentence to WAV, then play it.
+
+        Reuses the cached WAV runner, so a repeated sentence is not re-synthesized -
+        saving cost and latency, since each fresh sentence is one billable ElevenLabs
+        call. Stop/pause interrupt between sentences exactly as for the local engines.
+        """
+        from quill.core.ai import elevenlabs_tts
+
+        chosen_voice = voice.strip() or elevenlabs_tts.DEFAULT_VOICE
+        chosen_model = model.strip() or elevenlabs_tts.DEFAULT_MODEL
+
+        def gen(sentence: str, out: Path) -> None:
+            out.write_bytes(
+                elevenlabs_tts.synthesize_wav(
+                    sentence, api_key, voice=chosen_voice, model=chosen_model
+                )
+            )
+
+        self._cache_seed = ("elevenlabs", chosen_voice, chosen_model)
         self._run_wav_sentences(spans, text, on_progress=on_progress, generate_sentence_wav=gen)
 
     def _run_espeak_live(

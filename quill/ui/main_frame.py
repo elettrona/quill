@@ -17266,6 +17266,44 @@ class MainFrame(
         except Exception:  # noqa: BLE001 - a broken store must not block read-aloud
             return []
 
+    def _elevenlabs_read_aloud_params(self, engine: str) -> tuple[str, str, str] | None:
+        """Resolve (api_key, voice, model) for an ElevenLabs Read Aloud, with consent.
+
+        Returns ``("", "", "")`` when the engine is not ElevenLabs (a no-op passed to
+        the controller). For ElevenLabs it obtains a **per-session** consent once — the
+        voice sends each sentence to ElevenLabs over the internet and uses the user's
+        paid quota — resolves the stored key, and returns the chosen voice/model.
+        Returns ``None`` when there is no key or the user declines, so the caller aborts
+        the read-aloud cleanly (nothing is sent without consent).
+        """
+        if engine != "elevenlabs":
+            return ("", "", "")
+        wx = self._wx
+        api_key = self._get_elevenlabs_api_key()
+        if not api_key.strip():
+            self._show_message_box(
+                "Connect ElevenLabs first (in AI setup) to use its Read Aloud voice.",
+                "Read Aloud",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return None
+        if not getattr(self, "_elevenlabs_read_aloud_consented", False):
+            answer = self._show_message_box(
+                "Reading aloud with the ElevenLabs voice sends each sentence to "
+                "ElevenLabs over the internet and uses your ElevenLabs quota. Use it "
+                "for this session?",
+                "ElevenLabs Read Aloud",
+                wx.ICON_QUESTION | wx.YES_NO,
+            )
+            if answer != wx.YES:
+                return None
+            self._elevenlabs_read_aloud_consented = True
+        return (
+            api_key,
+            str(getattr(self.settings, "read_aloud_elevenlabs_voice", "") or ""),
+            str(getattr(self.settings, "read_aloud_elevenlabs_model", "") or ""),
+        )
+
     def toggle_read_aloud(self) -> None:
         wx = self._wx
         state = self._read_aloud.state
@@ -17284,6 +17322,10 @@ class MainFrame(
                 end = None
         try:
             read_aloud_engine = self.settings.read_aloud_engine.strip().lower() or "sapi5"
+            el_params = self._elevenlabs_read_aloud_params(read_aloud_engine)
+            if el_params is None:
+                return  # ElevenLabs consent declined or no key
+            el_key, el_voice, el_model = el_params
             self._read_aloud.start(
                 text,
                 start,
@@ -17296,6 +17338,9 @@ class MainFrame(
                 dectalk_voice=self.settings.read_aloud_dectalk_voice,
                 dectalk_rate=self.settings.read_aloud_dectalk_rate,
                 dectalk_dictionary=self.settings.read_aloud_dectalk_dictionary,
+                elevenlabs_api_key=el_key,
+                elevenlabs_voice=el_voice,
+                elevenlabs_model=el_model,
                 end=end,
                 piper_model=self.settings.read_aloud_piper_model,
                 kokoro_voice=self.settings.read_aloud_kokoro_voice,
@@ -17506,6 +17551,16 @@ class MainFrame(
                 self._set_status(f"Preview failed: {exc}")
             return
 
+        # ElevenLabs previews also cost quota, so gate them on the same per-session
+        # consent and resolve the key on the UI thread before the worker runs.
+        el_key = ""
+        el_model = ""
+        if engine == "elevenlabs":
+            el_params = self._elevenlabs_read_aloud_params("elevenlabs")
+            if el_params is None:
+                return
+            el_key, _el_voice, el_model = el_params
+
         def _work(_progress: Callable[[str, int, int], None]) -> object:
             with _tmpfile.NamedTemporaryFile(suffix=".wav", delete=False) as fh:
                 wav = _Path(fh.name)
@@ -17548,6 +17603,14 @@ class MainFrame(
                         executable_path=exe,
                         voice=voice_id,
                         rate=s.read_aloud_espeak_rate,
+                    )
+                elif engine == "elevenlabs":
+                    from quill.core.ai import elevenlabs_tts
+
+                    wav.write_bytes(
+                        elevenlabs_tts.synthesize_wav(
+                            sample, el_key, voice=voice_id, model=el_model
+                        )
                     )
                 else:
                     raise ReadAloudUnavailableError(f"Unknown engine: {engine}")
@@ -17597,6 +17660,11 @@ class MainFrame(
         wx = self._wx
 
         # --- Read Aloud kwargs ---
+        from quill.core.ai import elevenlabs_tts
+
+        elevenlabs_ready = (
+            bool(self._get_elevenlabs_api_key().strip()) and elevenlabs_tts.available()
+        )
         engine_available = {
             "sapi5": True,
             "dectalk": discover_dectalk_executable(self.settings.read_aloud_dectalk_executable)
@@ -17605,6 +17673,7 @@ class MainFrame(
             "kokoro": kokoro_onnx_ready(),
             "espeak": discover_espeak_executable(self.settings.read_aloud_espeak_executable)
             is not None,
+            "elevenlabs": elevenlabs_ready,
         }
         engine_options: list[tuple[str, str]] = [
             ("Windows (SAPI 5)", "sapi5"),
@@ -17612,6 +17681,7 @@ class MainFrame(
             ("Piper (neural, offline)", "piper"),
             ("Kokoro (neural, offline)", "kokoro"),
             ("eSpeak-NG (English variants)", "espeak"),
+            ("ElevenLabs (premium cloud)", "elevenlabs"),
         ]
         current_engine = self.settings.read_aloud_engine.strip().lower() or "sapi5"
         if current_engine not in {val for _, val in engine_options}:
@@ -17623,6 +17693,7 @@ class MainFrame(
             "settings": self.settings,
             "preview_fn": self._preview_voice,
             "engine_available": engine_available,
+            "elevenlabs_api_key": self._get_elevenlabs_api_key() if elevenlabs_ready else "",
             "has_preview_sample": (
                 lambda eng, vid: self._voice_preview_sample_path(eng, vid) is not None
             ),
@@ -17708,6 +17779,8 @@ class MainFrame(
                         self.settings.read_aloud_kokoro_voice = ra_result.voice_id
                     elif eng == "espeak":
                         self.settings.read_aloud_espeak_voice = ra_result.voice_id
+                    elif eng == "elevenlabs":
+                        self.settings.read_aloud_elevenlabs_voice = ra_result.voice_id
                     else:
                         self.settings.read_aloud_voice = ra_result.voice_id
                 if eng == "sapi5":

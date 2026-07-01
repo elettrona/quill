@@ -1,13 +1,14 @@
 """ElevenLabs premium cloud TTS — host-owned SDK gateway (roadmap §4.1).
 
 This is the **only** module that imports the official ``elevenlabs`` SDK. Per the
-decided "SDK inside one gateway" posture (see ``docs/planning/eleven-labs.md``),
-everything else in QUILL talks to the provider-neutral
+decided "SDK inside one gateway" posture, everything else in QUILL talks to the
+provider-neutral
 :mod:`quill.core.ai.cloud_tts` seam, so ElevenLabs types never leak into the editor.
 
-Scope for 1.0 is **audio export only** — synthesize a whole document to one MP3
-through ElevenLabs' natural voices. Live per-sentence Read Aloud (streaming +
-continuous consent) is deferred to 2.0 (roadmap §4.2).
+Two modes: **audio export** (:func:`export_audio` — a whole document to one MP3) and
+**live Read Aloud** (:func:`synthesize_wav` — one sentence to WAV bytes the read-aloud
+player streams sentence-by-sentence, with per-session consent gating owned by the UI).
+Voice cloning / design (ElevenDesk's IVC) is intentionally out of scope.
 
 The gateway: retrieves the key from the caller (QUILL's protected credential store,
 never the environment), constructs and owns the SDK client, translates SDK errors
@@ -50,6 +51,12 @@ DEFAULT_VOICE = VOICES[0][0]
 
 # Standard, broadly-available MP3 output (no premium-tier requirement).
 _OUTPUT_FORMAT = "mp3_44100_128"
+
+# Live Read Aloud plays WAV through the OS (winsound) with no ffmpeg dependency, so
+# there we request raw PCM and wrap it in a WAV container ourselves. 22.05 kHz mono
+# 16-bit is a good speech quality/size balance and is a non-premium output format.
+_PCM_SAMPLE_RATE = 22050
+_PCM_OUTPUT_FORMAT = f"pcm_{_PCM_SAMPLE_RATE}"
 
 # Conservative per-1,000-character price for the cost estimate. ElevenLabs bills by
 # character and the rate is subscription-tier dependent, so this is intentionally a
@@ -148,6 +155,48 @@ def _synthesize_chunk(client: object, text: str, *, voice: str, model: str) -> b
     except Exception as exc:  # noqa: BLE001
         raise _translate_error(exc) from exc
     return _join_chunks(response)
+
+
+def synthesize_wav(
+    text: str,
+    api_key: str,
+    *,
+    voice: str = DEFAULT_VOICE,
+    model: str = DEFAULT_MODEL,
+) -> bytes:
+    """Synthesize one sentence to WAV bytes for live Read Aloud (roadmap §4.2).
+
+    Requests raw PCM (a non-premium output format, no ffmpeg needed) and wraps it in a
+    WAV container with the standard library, so the read-aloud player can play it
+    directly through winsound. **Single attempt** — billable generation is never
+    blind-retried (a re-POST after the service accepted the request could double-charge
+    the user). Raises :class:`~quill.core.ai.tts.TTSError` on failure.
+    """
+    client = _client(api_key)
+    try:
+        response = client.text_to_speech.convert(  # type: ignore[attr-defined]
+            voice_id=voice,
+            text=text,
+            model_id=model,
+            output_format=_PCM_OUTPUT_FORMAT,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise _translate_error(exc) from exc
+    return _pcm_to_wav(_join_chunks(response), sample_rate=_PCM_SAMPLE_RATE)
+
+
+def _pcm_to_wav(pcm: bytes, *, sample_rate: int) -> bytes:
+    """Wrap 16-bit mono PCM in a WAV container (standard library only, no ffmpeg)."""
+    import io
+    import wave
+
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)  # 16-bit samples
+        wav.setframerate(sample_rate)
+        wav.writeframes(pcm)
+    return buffer.getvalue()
 
 
 def export_audio(

@@ -7,7 +7,6 @@
 > its own:
 >
 > - [`quill-native-accessible-table-studio-plan.md`](quill-native-accessible-table-studio-plan.md) — Table Studio (not started).
-> - [`eleven-labs.md`](eleven-labs.md) — ElevenLabs / ElevenDesk integration ideas (not started).
 >
 > **Operating principle:** everything here is in scope to **ship** for 1.0 (except
 > a few rows explicitly marked 2.0). Simplicity for the screen-reader user is king.
@@ -78,9 +77,14 @@ The batch document-to-speech and dictation work is **done for 1.0**:
 **External / courtesy (not QUILL code):** offer ChapterForge the two fixes already
 in QUILL's `chapters.py` (non-contiguous gap chapters; ID3-tag clobbering).
 
-The **ElevenLabs / ElevenDesk** premium-cloud-TTS integration is its own workstream,
-tracked in [`eleven-labs.md`](eleven-labs.md) — **not started** (the SDK-in-gateway
-approach is decided). Dictation's larger later-phase capabilities are **2.0** (§5).
+The **ElevenLabs** premium-cloud-TTS integration is **shipped** for its useful scope:
+speech-to-text (the `elevenlabs-transcription` Quillin), audiobook-grade **Batch Export**
+TTS (`quill/core/ai/cloud_tts.py` + `elevenlabs_tts.py`), and now a selectable **Read
+Aloud voice** (`elevenlabs_tts.synthesize_wav` → the read-aloud engine, per-session
+consent, Safe-Mode gated, billed to the user's own quota). ElevenDesk's voice
+**cloning / design** (IVC) was **deliberately descoped** — QUILL narrates with the
+account's existing voices, it does not clone. The standalone plan doc was retired once
+delivered. Dictation's larger later-phase capabilities are **2.0** (§5).
 
 **AI footprint & optimization** is a measurement-first effort to make QUILL's full AI +
 speech feature set install small, start fast, and run on a cheap CPU-only laptop — never
@@ -258,8 +262,7 @@ well-documented product on its supported platforms.*
 **What.** Add **ElevenLabs** as a third provider in QUILL's existing provider-neutral
 cloud-TTS layer (`quill/core/ai/cloud_tts.py`, today OpenAI + Gemini), so a user can
 export their own documents to natural, audiobook-grade narration. This is the headline
-ElevenLabs value for a writing/reading editor (full reasoning in
-[`eleven-labs.md`](eleven-labs.md)).
+ElevenLabs value for a writing/reading editor. **(Shipped.)**
 
 **Why now / why small.** The seam already exists and already feeds Read Aloud *and*
 export with cost estimation, chunking, and cancellation; ElevenLabs **STT** already
@@ -347,11 +350,10 @@ graduate into the shipping sections above when scheduled for a release.
 - **Remaining ChapterForge surfaces** (out of the 1.0 audiobook vision) — Auphonic
   post-processing, RSS podcast feeds, SFTP publishing, and MusicBrainz / Open
   Library metadata lookup.
-- **ElevenLabs beyond export TTS** — live Read-Aloud streaming + continuous-consent
-  model (§4.2), voice management / cloning / design / server-side pronunciation
-  dictionaries (§4.3), and the Tier-3 SFX / voice-changer / history surfaces (§4.4).
-  The 1.0 ElevenLabs slice is export-only cloud TTS (§4.1); everything else here is
-  2.0. Full reasoning in [`eleven-labs.md`](eleven-labs.md).
+- **ElevenLabs Tier-2/3 extras** — voice management / cloning / design / server-side
+  pronunciation dictionaries, and the SFX / voice-changer / history surfaces. These are
+  **descoped / 2.0**: QUILL narrates with the account's existing voices and does not clone.
+  (Export TTS and the live Read Aloud voice with per-session consent both **shipped**.)
 - **Native Google Docs support** — read/write/round-trip Google Docs from within
   QUILL (Drive API, OAuth, accessible doc model). A full external-service +
   auth + sync workstream; spec in

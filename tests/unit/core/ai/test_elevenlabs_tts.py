@@ -45,6 +45,26 @@ def fake_client(monkeypatch) -> _FakeClient:
     return client
 
 
+def test_synthesize_wav_requests_pcm_and_wraps_a_valid_wav(fake_client) -> None:
+    import io
+    import wave
+
+    # Fake "PCM": b"ID3" + text -> b"ID3Hi." (6 bytes, a clean 3 frames of 16-bit mono).
+    data = elevenlabs_tts.synthesize_wav("Hi.", "key", voice="v9", model=elevenlabs_tts.TURBO_MODEL)
+    assert fake_client.calls == ["v9:eleven_turbo_v2_5:pcm_22050"]  # PCM, not MP3
+    assert data[:4] == b"RIFF"  # wrapped in a WAV container, no ffmpeg
+    with wave.open(io.BytesIO(data), "rb") as wav:
+        assert wav.getnchannels() == 1
+        assert wav.getsampwidth() == 2
+        assert wav.getframerate() == 22050
+        assert wav.readframes(wav.getnframes()) == b"ID3Hi."
+
+
+def test_synthesize_wav_blank_key_raises_auth() -> None:
+    with pytest.raises(TTSAuthError):
+        elevenlabs_tts.synthesize_wav("Hi.", "   ")
+
+
 def test_estimate_cost_is_per_1000_chars() -> None:
     assert elevenlabs_tts.estimate_cost_usd(2000) == pytest.approx(
         2.0 * elevenlabs_tts.PRICE_PER_1000_CHARS_USD

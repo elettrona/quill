@@ -84,6 +84,7 @@ class VoiceBrowserDialog:
         settings: object,
         preview_fn: Callable[..., None],
         engine_available: dict[str, bool] | None = None,
+        elevenlabs_api_key: str = "",
         has_preview_sample: Callable[[str, str], bool] | None = None,
         embed_in: object | None = None,
         on_action: Callable[[VoiceBrowserResult], None] | None = None,
@@ -97,6 +98,7 @@ class VoiceBrowserDialog:
         self._current_engine = current_engine
         self._piper_model_dir = piper_model_dir
         self._settings = settings
+        self._elevenlabs_api_key = elevenlabs_api_key
         self._preview_fn = preview_fn
         self._engine_available: dict[str, bool] = engine_available or {}
         # Whether a bundled pre-recorded preview clip exists for (engine, voice).
@@ -297,6 +299,7 @@ class VoiceBrowserDialog:
 
         from quill.core.read_aloud import (
             list_dectalk_voices,
+            list_elevenlabs_voices,
             list_espeak_english_voices,
             list_kokoro_voices,
             list_piper_catalog_voices,
@@ -311,6 +314,8 @@ class VoiceBrowserDialog:
             return list_kokoro_voices()
         if eng == "espeak":
             return list_espeak_english_voices()
+        if eng == "elevenlabs":
+            return list_elevenlabs_voices(self._elevenlabs_api_key)
         # sapi5 — English-only system voices
         all_v = list_voices()
         return [v for v in all_v if "english" in v.name.lower() or not v.name] or all_v
@@ -329,6 +334,8 @@ class VoiceBrowserDialog:
         if eng == "espeak":
             raw = str(getattr(s, "read_aloud_espeak_voice", "") or "en-gb")
             return raw.split("+")[0]  # strip stored variant for list matching
+        if eng == "elevenlabs":
+            return str(getattr(s, "read_aloud_elevenlabs_voice", "") or "")
         return str(getattr(s, "read_aloud_voice", "") or "")
 
     def _espeak_combined_voice_id(self, accent_id: str) -> str:

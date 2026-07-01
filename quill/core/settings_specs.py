@@ -1120,9 +1120,30 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
             ("piper", "Piper"),
             ("kokoro", "Kokoro"),
             ("espeak", "eSpeak"),
+            ("elevenlabs", "ElevenLabs (premium cloud)"),
         ),
         feature_id="core.read_aloud",
-        keywords=("read aloud", "tts", "voice", "engine"),
+        keywords=("read aloud", "tts", "voice", "engine", "elevenlabs"),
+    ),
+    SettingSpec(
+        "read_aloud_elevenlabs_voice",
+        "ElevenLabs Read Aloud voice",
+        "read_aloud",
+        "text",
+        "The ElevenLabs voice id used when Read Aloud is set to the ElevenLabs engine. "
+        "Pick one in the Voice Browser; blank uses the default voice.",
+        feature_id="core.read_aloud",
+        keywords=("read aloud", "elevenlabs", "voice", "cloud"),
+    ),
+    SettingSpec(
+        "read_aloud_elevenlabs_model",
+        "ElevenLabs Read Aloud model",
+        "read_aloud",
+        "text",
+        "The ElevenLabs model id used for Read Aloud (blank uses the high-quality "
+        "multilingual default; the turbo model is faster and cheaper).",
+        feature_id="core.read_aloud",
+        keywords=("read aloud", "elevenlabs", "model", "cloud"),
     ),
     SettingSpec(
         "ai_tts_provider",
