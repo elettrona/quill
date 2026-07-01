@@ -18,7 +18,16 @@ from dataclasses import dataclass
 from quill.core.vault.resolve import Resolver, resolve_link
 from quill.core.vault.vault import Vault
 
-__all__ = ["Backlink", "Mention", "LinkIndex", "build_index", "backlinks", "unlinked_mentions"]
+__all__ = [
+    "Backlink",
+    "Mention",
+    "LinkIndex",
+    "Neighborhood",
+    "build_index",
+    "backlinks",
+    "unlinked_mentions",
+    "neighborhood",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +83,32 @@ def build_index(vault: Vault, resolver: Resolver) -> LinkIndex:
 
 def backlinks(index: LinkIndex, path: str) -> tuple[Backlink, ...]:
     return index.reverse.get(path, ())
+
+
+@dataclass(frozen=True, slots=True)
+class Neighborhood:
+    """A note's immediate graph: what it links to and what links to it.
+
+    ``outgoing`` is ``(path, title)`` per linked-to note; ``incoming`` is the backlinks
+    (source path + linking sentence). This is the data behind the spoken "neighborhood"
+    command that lets a writer traverse the web of notes purely by keyboard and ear.
+    """
+
+    path: str
+    title: str
+    outgoing: tuple[tuple[str, str], ...]
+    incoming: tuple[Backlink, ...]
+
+
+def neighborhood(vault: Vault, index: LinkIndex, path: str) -> Neighborhood:
+    """Forward links (with their titles) and backlinks for ``path``, together."""
+    info = vault.notes.get(path)
+    title = info.title if info is not None else path
+    outgoing = tuple(
+        (target, vault.notes[target].title if target in vault.notes else target)
+        for target in index.forward.get(path, ())
+    )
+    return Neighborhood(path=path, title=title, outgoing=outgoing, incoming=backlinks(index, path))
 
 
 def unlinked_mentions(vault: Vault, resolver: Resolver, path: str) -> tuple[Mention, ...]:
