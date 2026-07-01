@@ -495,15 +495,95 @@ class VaultMixin:
             self.editor.SetInsertionPoint(insert_at + cursor)
         self._announce("Template inserted")
 
-    def _prompt_text(self, question: str) -> str | None:
+    def _prompt_text(
+        self, question: str, *, default: str = "", caption: str = "Template"
+    ) -> str | None:
         wx = self._wx
-        dialog = wx.TextEntryDialog(self.frame, question, "Template")
+        dialog = wx.TextEntryDialog(self.frame, question, caption, value=default)
         try:
-            if self._show_modal_dialog(dialog, "Template") != wx.ID_OK:
+            if self._show_modal_dialog(dialog, caption) != wx.ID_OK:
                 return None
             return dialog.GetValue()
         finally:
             dialog.Destroy()
+
+    def rename_current_note(self) -> None:
+        """Rename the current note and update every inbound `[[link]]` that named it."""
+        from quill.core.vault.refactor import (
+            apply_replacements,
+            plan_note_rename,
+            rename_link_count,
+            retitle_heading,
+        )
+
+        wx = self._wx
+        if self._ensure_vault() is None:
+            self._set_status("Open a vault first (Tools > Vault > Open Vault)")
+            return
+        root = self._vault_root_path()
+        rel = relative_note_path(root, self._document_path())
+        if root is None or rel is None or rel not in self._vault.notes:
+            self._set_status("Save this note inside the vault to rename it")
+            return
+        old_title = self._vault.notes[rel].title
+        answer = self._prompt_text(
+            "New name for this note:", default=old_title, caption="Rename Note"
+        )
+        if answer is None:
+            self._set_status("Rename cancelled")
+            return
+        new_title = answer.strip()
+        if not new_title or new_title == old_title:
+            self._set_status("Rename cancelled")
+            return
+        safe = "".join(ch for ch in new_title if ch not in '<>:"/\\|?*').strip()
+        if not safe:
+            self._set_status("That name cannot be used for a file")
+            return
+        old_path = root / rel
+        new_path = old_path.with_name(f"{safe}.md")
+        if new_path.exists() and new_path != old_path:
+            self._set_status(f'A note named "{safe}" already exists')
+            return
+        edits = plan_note_rename(self._vault, old_title, new_title)
+        count, notes = rename_link_count(edits)
+        detail = f" and update {count} link(s) in {notes} note(s)" if count else ""
+        if (
+            self._show_message_box(
+                f"Rename “{old_title}” to “{new_title}”{detail}?",
+                "Rename Note",
+                wx.YES_NO | wx.ICON_QUESTION,
+            )
+            != wx.ID_YES
+        ):
+            self._set_status("Rename cancelled")
+            return
+        if self.document.path == old_path and self.document.modified:
+            self.save_file()  # so the on-disk note matches the editor before the move
+        self_edit = next((e for e in edits if e.path == rel), None)
+        try:
+            for edit in edits:
+                if edit.path == rel:
+                    continue
+                src = root / edit.path
+                src.write_text(
+                    apply_replacements(src.read_text(encoding="utf-8"), edit.replacements),
+                    encoding="utf-8",
+                )
+            text = old_path.read_text(encoding="utf-8")
+            if self_edit is not None:
+                text = apply_replacements(text, self_edit.replacements)
+            text = retitle_heading(text, old_title, new_title)
+            new_path.write_text(text, encoding="utf-8")
+            if new_path != old_path:
+                old_path.unlink()
+        except OSError as error:
+            self._set_status(f"Rename failed: {error}")
+            return
+        self._vault = None
+        self._ensure_vault()
+        self.open_file(new_path)
+        self._announce(f"Renamed to {new_title}. Updated {count} link(s) in {notes} note(s).")
 
     def _daily_pattern(self) -> str:
         from quill.core.vault.dailynotes import DEFAULT_PATTERN
@@ -673,6 +753,12 @@ class VaultMixin:
             "Insert Link to Note",
             self.insert_wikilink,
             self._binding_for("vault.insert_link"),
+        )
+        self.commands.try_register(
+            "vault.rename",
+            "Rename Note",
+            self.rename_current_note,
+            self._binding_for("vault.rename"),
         )
         self.commands.try_register(
             "vault.quick_switch",

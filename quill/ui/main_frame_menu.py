@@ -1569,6 +1569,7 @@ class MenuBuilderMixin:
         self._id_vault_neighborhood = wx.NewIdRef()
         self._id_vault_unlinked = wx.NewIdRef()
         self._id_vault_insert_link = wx.NewIdRef()
+        self._id_vault_rename = wx.NewIdRef()
         self._id_vault_quick_switch = wx.NewIdRef()
         self._id_vault_search = wx.NewIdRef()
         self._id_vault_tags = wx.NewIdRef()
@@ -1609,6 +1610,9 @@ class MenuBuilderMixin:
         vault_menu.Append(
             self._id_vault_insert_link,
             self._menu_label(_("&Insert Link to Note..."), "vault.insert_link"),
+        )
+        vault_menu.Append(
+            self._id_vault_rename, self._menu_label(_("&Rename Note..."), "vault.rename")
         )
         vault_menu.Append(
             self._id_vault_quick_switch, self._menu_label(_("&Go to Note..."), "vault.quick_switch")
@@ -2707,6 +2711,9 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.insert_wikilink(), id=self._id_vault_insert_link
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.rename_current_note(), id=self._id_vault_rename
         )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.quick_switch_note(), id=self._id_vault_quick_switch

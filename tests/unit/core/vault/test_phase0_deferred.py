@@ -9,6 +9,7 @@ from quill.core.vault.refactor import (
     apply_replacements,
     plan_note_rename,
     rename_link_count,
+    retitle_heading,
 )
 from quill.core.vault.render import relative_site_url, render_links_html
 from quill.core.vault.resolve import build_resolver
@@ -84,6 +85,19 @@ def test_plan_note_rename_noop_when_titles_equivalent(tmp_path: Path) -> None:
     vault = _vault(tmp_path)
     assert plan_note_rename(vault, "Beta", "  beta ") == []
     assert plan_note_rename(vault, "Beta", "") == []
+
+
+def test_retitle_heading_rewrites_matching_h1_only() -> None:
+    text = "# Beta\n\nBody mentioning Beta.\n\n# Beta\n"
+    out = retitle_heading(text, "Beta", "Gamma")
+    assert out.startswith("# Gamma\n")  # first H1 retitled
+    assert "Body mentioning Beta." in out  # body text untouched
+    assert out.count("# Gamma") == 1 and "# Beta" in out  # only the first H1 changed
+
+
+def test_retitle_heading_no_match_returns_unchanged() -> None:
+    text = "# Alpha\n\nno beta heading here\n"
+    assert retitle_heading(text, "Beta", "Gamma") == text
 
 
 # --- incremental reparse ---------------------------------------------------

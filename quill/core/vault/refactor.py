@@ -10,6 +10,7 @@ are left alone.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from quill.core.vault.links import WikiLink, parse_links
@@ -84,3 +85,13 @@ def rename_link_count(edits: list[NoteEdit]) -> tuple[int, int]:
     """``(total inbound links updated, notes touched)`` for the confirmation prompt."""
     total = sum(len(edit.replacements) for edit in edits)
     return total, len(edits)
+
+
+def retitle_heading(text: str, old_title: str, new_title: str) -> str:
+    """Rewrite a leading ``# Old Title`` H1 to the new title (first exact match only).
+
+    Keeps a note whose title comes from its H1 consistent after a rename. Notes titled by
+    filename (or front matter) have no matching H1 and are returned unchanged.
+    """
+    pattern = re.compile(rf"^#[ \t]+{re.escape(old_title)}[ \t]*$", re.MULTILINE)
+    return pattern.sub(f"# {new_title}", text, count=1)

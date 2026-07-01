@@ -444,6 +444,7 @@
   "remove_email_quote_markers",
   "remove_shell_integration",
   "rename_current_file",
+  "rename_current_note",
   "repeat_command",
   "replace_all_text",
   "replace_in_files",
