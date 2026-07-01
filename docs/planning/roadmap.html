@@ -284,45 +284,40 @@ Export</strong> TTS, and a selectable <strong>Read Aloud voice</strong>
 cloning / design, server-side pronunciation, and Tier-3 surfaces — all
 in §5. Voice <strong>cloning</strong> is deliberately descoped (QUILL
 narrates with the account's existing voices).</p>
-<h3 id="17-accessible-vault--remaining-polish">1.7 Accessible Vault —
-remaining polish</h3>
-<p>The Accessible Vault is <strong>feature-complete for 0.9.0</strong>.
-Phases 0–7 shipped with a wx-free, unit-tested core under
+<h3 id="17-accessible-vault--complete">1.7 Accessible Vault —
+complete</h3>
+<p>The Accessible Vault is <strong>complete for 0.9.0</strong>. Phases
+0–7 shipped with a wx-free, unit-tested core under
 <code>quill/core/vault</code> (links, backlinks, neighborhood + unlinked
 mentions, search + quick switcher, tags, embeds, templates + daily
 notes, HTML site export, Git sync, a gated publish payload, and
 rename-with-link-update) and accessible <code>Tools → Vault</code>
-surfaces — including <strong>Note Neighborhood</strong>,
-<strong>Unlinked Mentions</strong>, <strong>Rename Note</strong>
-(updates inbound links + file + H1), and <strong>Vault Settings</strong>
-(configurable Templates folder + daily-note pattern). The feature is
-documented in <code>QUILL-PRD.md</code> §5.89d, the user guide (Tools
-&gt; Vault), the changelog, and the release notes; the design plan has
-been retired.</p>
-<p><strong>Remaining polish (optional UX/perf enhancements — the feature
-is complete without them; each needs a live-app run to
-verify):</strong></p>
+surfaces. The former "remaining polish" is now all shipped:</p>
 <ul>
-<li><strong>In-editor autocomplete popups</strong> — <code>[[</code> for
-note titles and <code>#</code> for tags, over the existing intellisense
-popup machinery (<code>main_frame_intellisense.py</code>). The core is
-done (<code>resolve.build_resolver</code> titles/aliases;
-<code>tags.tag_suggestions</code>); this is the editor key-trigger +
-popup wiring, needing an app run to verify.</li>
-<li><strong>Live-preview link/embed resolution</strong> — wire
-<code>render.render_links_html</code> /
-<code>render.expand_embeds</code> into the in-app F6 preview so
-<code>[[links]]</code>/<code>![[embeds]]</code> resolve there too. (The
-HTML <strong>export</strong> already resolves both via
-<code>site_export</code>.)</li>
-<li><strong>Vault Explorer window</strong> — a <code>wx.TreeCtrl</code>
-view of notes (by folder / tag / recency), reusing the Story Studio
-binder tree.</li>
-<li><strong>Background / incremental indexing at scale</strong> —
-<code>vault.apply_note_change</code> already re-parses a single changed
-note; the remaining work is watching the folder and patching the index
-in the background (the first version otherwise scans on open).</li>
+<li><strong>Complete Link or Tag at Cursor</strong> — command-triggered
+completion of <code>[[note</code> / <code>#tag</code> from a spoken,
+filtered list (<code>autocomplete.py</code>; the screen-reader-friendly
+alternative to a floating as-you-type popup).</li>
+<li><strong>Live-preview link/embed resolution</strong> — the in-app
+preview resolves <code>[[links]]</code> and inlines
+<code>![[embeds]]</code> for notes in the open vault
+(<code>preview.py</code>; defensive passthrough for everything else).
+The HTML export already resolved both.</li>
+<li><strong>Vault Explorer</strong> — a keyboard
+<code>wx.TreeCtrl</code> of every note by folder
+(<code>explorer.py</code>).</li>
+<li><strong>Incremental indexing on save</strong> — a saved in-vault
+note is re-parsed into the cached index immediately
+(<code>vault.apply_note_change</code>), so backlinks/search/tags stay
+fresh without reopening the vault.</li>
 </ul>
+<p>Plus <strong>Note Neighborhood</strong>, <strong>Unlinked
+Mentions</strong>, <strong>Rename Note</strong> (updates inbound links +
+file + H1), and <strong>Vault Settings</strong> (configurable Templates
+folder + daily-note pattern). The feature is documented in
+<code>QUILL-PRD.md</code> §5.89d, the user guide (Tools &gt; Vault), the
+changelog, and the release notes; the design plan has been retired. No
+open Vault work remains for 0.9.0.</p>
 <hr />
 <h2 id="2-locked--hidden-features-register">2. Locked / hidden features
 (register)</h2>

@@ -590,6 +590,8 @@ A Story project is just a folder of plain-text files plus a small `project.quill
 - **Unlinked Mentions** — finds places in your other notes that mention this note by name but have not linked it yet — the "you could link this" spots — each read with its sentence; Enter opens that note at the mention so you can turn it into a link.
 - **Insert Link to Note...** — pick a note by title from a list and QUILL inserts `[[Title]]` at the cursor.
 - **Rename Note...** — give the current note a new name. QUILL first tells you how many links in how many other notes point to it and asks you to confirm; then it updates all of those `[[links]]` for you, renames the file, and fixes the note's own top heading — so nothing breaks. It never changes anything until you say yes, and stops if a note with the new name already exists.
+- **Vault Explorer...** — a keyboard tree of every note, grouped by folder. Arrow through it and press Enter on a note to open it.
+- **Complete Link or Tag...** — start typing `[[` (for a note) or `#` (for a tag), run this, and pick from a filtered list that narrows as you type; QUILL inserts your choice and, for a link, adds the closing `]]`. A spoken, focused alternative to a pop-up that appears as you type.
 - **Go to Note...** — a jump-to-note switcher. Start typing part of a title and the list narrows as you go (QUILL speaks the running count); press Down to move into the list, or just press Enter to open the closest match.
 - **Search Vault...** — search across every note. Type a word or phrase and hear the number of results; each result reads as its note title, line number, and the matching text. Turn on **Regex** for pattern searches or **Whole word** to skip partial matches. Enter opens a result at its exact line.
 
@@ -607,7 +609,7 @@ A Story project is just a folder of plain-text files plus a small `project.quill
 - **Sync Vault** — if your vault folder is a Git repository with a remote you control, this commits your changes, pulls anyone else's, and pushes — all in the background. If the same note changed in both places, QUILL lists the conflicts and stops rather than overwriting anything. (Disabled in Safe Mode.)
 - **Vault Settings...** — choose which folder your templates live in (default `Templates`) and the pattern for daily-note filenames (default `Journal/{{date:YYYY-MM-DD}}.md`). Leave a box empty to keep the default.
 
-Write links by typing `[[Note Title]]` yourself, or use **Insert Link to Note...**. Links are plain text in your file — nothing is hidden — and resolve when you follow them, export, or open a website build. A vault is just a folder of Markdown files plus a small `.quill` cache; delete the cache and nothing is lost. Every command here is on the command palette and can be given a keyboard shortcut in the Keymap Editor.
+Write links by typing `[[Note Title]]` yourself, or use **Insert Link to Note...**. Links are plain text in your file — nothing is hidden — and resolve when you follow them, export, or open a website build. When you **preview** a note that lives in your vault, QUILL shows it resolved — `[[links]]` read as their titles and `![[embeds]]` filled in — and every time you **save** a note in the vault, its links, backlinks, tags, and search are updated right away, no reopening needed. A vault is just a folder of Markdown files plus a small `.quill` cache; delete the cache and nothing is lost. Every command here is on the command palette and can be given a keyboard shortcut in the Keymap Editor.
 
 #### Writing and language
 

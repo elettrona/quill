@@ -97,32 +97,30 @@ Aloud voice** (per-session consent, Safe-Mode gated) all shipped. What remains i
 design, server-side pronunciation, and Tier-3 surfaces — all in §5. Voice **cloning**
 is deliberately descoped (QUILL narrates with the account's existing voices).
 
-### 1.7 Accessible Vault — remaining polish
+### 1.7 Accessible Vault — complete
 
-The Accessible Vault is **feature-complete for 0.9.0**. Phases 0–7 shipped with a wx-free,
+The Accessible Vault is **complete for 0.9.0**. Phases 0–7 shipped with a wx-free,
 unit-tested core under `quill/core/vault` (links, backlinks, neighborhood + unlinked
 mentions, search + quick switcher, tags, embeds, templates + daily notes, HTML site
 export, Git sync, a gated publish payload, and rename-with-link-update) and accessible
-`Tools → Vault` surfaces — including **Note Neighborhood**, **Unlinked Mentions**, **Rename
-Note** (updates inbound links + file + H1), and **Vault Settings** (configurable Templates
-folder + daily-note pattern). The feature is documented in `QUILL-PRD.md` §5.89d, the user
-guide (Tools > Vault), the changelog, and the release notes; the design plan has been retired.
+`Tools → Vault` surfaces. The former "remaining polish" is now all shipped:
 
-**Remaining polish (optional UX/perf enhancements — the feature is complete without them;
-each needs a live-app run to verify):**
+- **Complete Link or Tag at Cursor** — command-triggered completion of `[[note` / `#tag`
+  from a spoken, filtered list (`autocomplete.py`; the screen-reader-friendly alternative
+  to a floating as-you-type popup).
+- **Live-preview link/embed resolution** — the in-app preview resolves `[[links]]` and
+  inlines `![[embeds]]` for notes in the open vault (`preview.py`; defensive passthrough
+  for everything else). The HTML export already resolved both.
+- **Vault Explorer** — a keyboard `wx.TreeCtrl` of every note by folder (`explorer.py`).
+- **Incremental indexing on save** — a saved in-vault note is re-parsed into the cached
+  index immediately (`vault.apply_note_change`), so backlinks/search/tags stay fresh
+  without reopening the vault.
 
-- **In-editor autocomplete popups** — `[[` for note titles and `#` for tags, over the
-  existing intellisense popup machinery (`main_frame_intellisense.py`). The core is done
-  (`resolve.build_resolver` titles/aliases; `tags.tag_suggestions`); this is the editor
-  key-trigger + popup wiring, needing an app run to verify.
-- **Live-preview link/embed resolution** — wire `render.render_links_html` /
-  `render.expand_embeds` into the in-app F6 preview so `[[links]]`/`![[embeds]]` resolve
-  there too. (The HTML **export** already resolves both via `site_export`.)
-- **Vault Explorer window** — a `wx.TreeCtrl` view of notes (by folder / tag / recency),
-  reusing the Story Studio binder tree.
-- **Background / incremental indexing at scale** — `vault.apply_note_change` already
-  re-parses a single changed note; the remaining work is watching the folder and patching
-  the index in the background (the first version otherwise scans on open).
+Plus **Note Neighborhood**, **Unlinked Mentions**, **Rename Note** (updates inbound links +
+file + H1), and **Vault Settings** (configurable Templates folder + daily-note pattern). The
+feature is documented in `QUILL-PRD.md` §5.89d, the user guide (Tools > Vault), the
+changelog, and the release notes; the design plan has been retired. No open Vault work
+remains for 0.9.0.
 
 ---
 

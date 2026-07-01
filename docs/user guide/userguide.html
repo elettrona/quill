@@ -1308,6 +1308,14 @@ and asks you to confirm; then it updates all of those
 <code>[[links]]</code> for you, renames the file, and fixes the note's
 own top heading — so nothing breaks. It never changes anything until you
 say yes, and stops if a note with the new name already exists.</li>
+<li><strong>Vault Explorer...</strong> — a keyboard tree of every note,
+grouped by folder. Arrow through it and press Enter on a note to open
+it.</li>
+<li><strong>Complete Link or Tag...</strong> — start typing
+<code>[[</code> (for a note) or <code>#</code> (for a tag), run this,
+and pick from a filtered list that narrows as you type; QUILL inserts
+your choice and, for a link, adds the closing <code>]]</code>. A spoken,
+focused alternative to a pop-up that appears as you type.</li>
 <li><strong>Go to Note...</strong> — a jump-to-note switcher. Start
 typing part of a title and the list narrows as you go (QUILL speaks the
 running count); press Down to move into the list, or just press Enter to
@@ -1365,9 +1373,14 @@ the default.</li>
 <p>Write links by typing <code>[[Note Title]]</code> yourself, or use
 <strong>Insert Link to Note...</strong>. Links are plain text in your
 file — nothing is hidden — and resolve when you follow them, export, or
-open a website build. A vault is just a folder of Markdown files plus a
-small <code>.quill</code> cache; delete the cache and nothing is lost.
-Every command here is on the command palette and can be given a keyboard
+open a website build. When you <strong>preview</strong> a note that
+lives in your vault, QUILL shows it resolved — <code>[[links]]</code>
+read as their titles and <code>![[embeds]]</code> filled in — and every
+time you <strong>save</strong> a note in the vault, its links,
+backlinks, tags, and search are updated right away, no reopening needed.
+A vault is just a folder of Markdown files plus a small
+<code>.quill</code> cache; delete the cache and nothing is lost. Every
+command here is on the command palette and can be given a keyboard
 shortcut in the Keymap Editor.</p>
 <h4 id="writing-and-language">Writing and language</h4>
 <ul>
