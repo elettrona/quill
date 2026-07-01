@@ -752,6 +752,11 @@ def test_wordpress_create_remote_item_with_scheduled_at_sends_future_status_and_
     monkeypatch,
 ) -> None:
     request_details: dict[str, object] = {}
+    # Use a dynamic future time so this never expires: validate_scheduled_publish_time
+    # rejects a `scheduled_at` that is not strictly after "now" (which a hardcoded date
+    # eventually becomes). date_gmt is formatted with the production strftime pattern.
+    future = (datetime.now(UTC) + timedelta(days=7)).replace(microsecond=0)
+    future_gmt = future.strftime("%Y-%m-%dT%H:%M:%S")
 
     def _urlopen(request, **_kwargs):
         request_details["body"] = request.data.decode("utf-8") if request.data else ""
@@ -761,7 +766,7 @@ def test_wordpress_create_remote_item_with_scheduled_at_sends_future_status_and_
             "title": {"rendered": "Future title"},
             "status": "future",
             "modified_gmt": "2026-06-21T18:00:00",
-            "date_gmt": "2026-07-01T15:30:00",
+            "date_gmt": future_gmt,
             "type": "post",
             "content": {"rendered": "<p>Future body</p>"},
         })
@@ -783,19 +788,19 @@ def test_wordpress_create_remote_item_with_scheduled_at_sends_future_status_and_
         title="Future title",
         document_text="<p>Future body</p>",
         authoring_surface="html",
-        scheduled_at=datetime(2026, 7, 1, 15, 30, tzinfo=UTC),
+        scheduled_at=future,
     )
 
     assert ok is True
     assert message == "Created publishing content on example.com."
     assert document is not None
     assert document.status == "future"
-    assert document.scheduled_for == "2026-07-01T15:30:00"
+    assert document.scheduled_for == future_gmt
     assert json.loads(str(request_details["body"])) == {
         "title": "Future title",
         "content": "<p>Future body</p>",
         "status": "future",
-        "date_gmt": "2026-07-01T15:30:00",
+        "date_gmt": future_gmt,
     }
 
 
