@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>deferred-locked-features</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -177,7 +173,7 @@
 </head>
 <body>
 <h1
-id="deferred-locked-features-content-preserved-for-future-consideration">Deferred
+id="deferred--locked-features--content-preserved-for-future-consideration">Deferred
 / Locked Features — content preserved for future consideration</h1>
 <p>This file preserves user-facing documentation content for features
 that are currently <strong>locked off</strong> in
@@ -187,37 +183,53 @@ reference, PRD). When a feature is unlocked, move its content back into
 the relevant doc.</p>
 <p>Authoritative source of the locked state:
 <code>quill/core/feature_catalog.py</code>
-(<code>locked_off=True</code>). As of this writing the locked-off
-features are:</p>
+(<code>locked_off=True</code>). The locked-off features, current as of
+QUILL 0.8.1 Beta 1, are:</p>
 <ul>
-<li><code>core.rich_text_lens</code> — <strong>Rich Text Lens</strong>
-(native wxPython rich-text editing for <code>.rtf</code>). Locked off
-pending fuller screen-reader testing; RTF files open as plain text in
-the meantime. Docs must not claim native RTF editing ships.</li>
-<li><code>core.bw_whisperer</code> — <strong>BITS Whisperer</strong>
-transcription suite (the whole branded menu). Deferred to QUILL 2.0. The
-underlying offline speech features still ship as plain QUILL features
-under <strong>Tools &gt; Speech</strong>, so describe those, not the
-brand. (The watch-folder transcription action was rebranded to
-<code>Transcribe audio (offline)</code> in
-<code>quill/core/watch_transcribe.py</code>, so no “Whisperer” brand
-string ships in a default build.)</li>
 <li><code>core.glow</code> — <strong>GLOW Accessibility</strong>
-(document accessibility audit/fix and engine updates). Hidden for now
-while the feature is finished.</li>
-<li><code>future.publishing</code> — <strong>Publishing</strong>
-(publishing connections and provider-aware remote publishing). Locked
-off while the publishing-providers-framework branch is under review. The
-release notes already frame this as a <em>future</em> item, which is
-acceptable.</li>
+(document accessibility audit/fix and engine updates). Hidden while the
+feature is finished; its user-facing content is preserved below for when
+it unlocks.</li>
+<li><code>core.voice_commands</code> — <strong>Voice Commands</strong>
+("say a command out loud"), QUILL's hands-free <strong>voice
+interaction</strong>. Locked because it was tied to the now-removed
+Windows dictation path; it needs re-homing on the shipped offline
+dictation engine before it can return. No preserved content — it never
+shipped user docs.</li>
+<li><code>core.rich_text_lens</code> — <strong>Rich Text Lens</strong>
+(native wxPython rich-text editing for <code>.rtf</code>). Locked
+pending fuller screen-reader testing; RTF opens as plain text in the
+meantime. Docs must not claim native RTF editing ships.</li>
+<li><code>future.publishing</code> — <strong>Publishing</strong> — the
+<em>send</em> path (publishing connections and provider-aware remote
+publishing). Locked while the publishing-providers framework is
+reviewed; the read-only inbound half ships. Release notes already frame
+this as <em>future</em>.</li>
 <li><code>core.third_party_plugins</code> — <strong>Third-Party
-Plugins</strong> loader (SEC-8). Locked off until the plugin sandbox,
-signing, and review process ship. The release notes already frame
-third-party Quillins and a plugin marketplace as <em>future</em>.</li>
+Plugins</strong> loader (SEC-8). Locked until the plugin sandbox,
+signing, and review process ship. Release notes already frame
+third-party Quillins and a marketplace as <em>future</em>.</li>
+<li><code>core.bw_whisperer</code> — <strong>BITS Whisperer</strong>
+brand menu (plus its <code>core.bw_transcription</code> and
+<code>core.bw_providers</code> sub-flags). <strong>Superseded, not
+merely deferred:</strong> every offline speech capability shipped as
+plain QUILL features under a flat <strong>Tools &gt; Speech</strong>
+menu, so the branded rollout / Provider Center / Status Page it gated
+will not ship as specced. Its preserved content has been removed from
+this file. <strong>Recommended follow-up:</strong> retire the flag and
+its sub-flags from <code>feature_catalog.py</code> (a separate code
+change).</li>
 </ul>
+<p><strong>All voice and speech <em>capabilities</em> are shipped and
+baked in</strong> — offline dictation, offline transcription and
+captions, read-aloud across SAPI 5 / DECtalk / Piper / eSpeak / Kokoro
+and the ElevenLabs cloud voice, batch document-to-speech, and audiobook
+building. The only speech-adjacent item still locked is
+<code>core.voice_commands</code> (hands-free voice interaction), above;
+no speech content remains preserved in this file.</p>
 <hr />
 <h2
-id="glow-control-reference-content-removed-from-docscontrol_reference.md">GLOW
+id="glow--control-reference-content-removed-from-docscontrol_referencemd">GLOW
 — control reference content (removed from
 docs/CONTROL_REFERENCE.md)</h2>
 <h3 id="glow-workflows-inside-quill">GLOW Workflows Inside QUILL</h3>
@@ -265,31 +277,28 @@ original if you want to compare it manually.</p>
 Before panel to understand the change. Press Accept to apply the fix to
 your document, or Reject to discard it.</p>
 <hr />
-<h2 id="bits-whisperer-glow-release-notes-framing-removed">BITS
-Whisperer / GLOW — release-notes framing (removed)</h2>
-<p>The 0.8.0 Beta 1 release notes previously:</p>
+<h2 id="glow--release-notes--docs-framing-removed">GLOW — release-notes
+/ docs framing (removed)</h2>
+<p>Because <code>core.glow</code> is still locked, shipping docs must
+name accessibility-audit capability generically, not by the
+<strong>GLOW</strong> brand:</p>
 <ul>
-<li>Titled the offline-speech section “## 2. Speak and listen, privately
-— BITS Whisperer” and routed it through “Tools &gt; Speech &gt;
-Whisperer” and “Whisperer &gt; Download FFmpeg…”. Corrected to the
-shipping flat <strong>Tools &gt; Speech</strong> menu, with the section
-renamed to “offline speech”.</li>
-<li>In “What came before”, named <strong>BITS Whisperer</strong> and
-<strong>GLOW</strong> as consolidated apps and asserted “the speech
-suite is still BITS Whisperer.” Removed; the history now names only what
-ships (ChapterForge audiobook workflow and the writing utilities) and
-the on-device speech features without the brand.</li>
-<li>In the roadmap, named the <strong>GLOW</strong> document-audit
-family and “accessibility- audit agents from GLOW.” Reworded to generic
-accessibility-audit / document- audit capability (still future).</li>
-<li>In “About QUILL”, named the <strong>BITS Whisperer</strong> speech
-suite. Reworded to “a private, on-device speech suite.”</li>
+<li>The roadmap's "<strong>GLOW</strong> document-audit family" and
+"accessibility-audit agents from GLOW" are reworded to generic
+accessibility-audit / document-audit capability (still future). Restore
+the <strong>GLOW</strong> naming when the feature unlocks.</li>
 </ul>
-<p>When BITS Whisperer / GLOW are unlocked, restore the brand naming and
-the dedicated menu paths described above.</p>
+<p><strong>BITS Whisperer branding is retired (superseded), not
+deferred.</strong> Earlier drafts titled the offline-speech section
+"Speak and listen, privately — BITS Whisperer," routed it through "Tools
+&gt; Speech &gt; Whisperer," and named a "BITS Whisperer speech suite"
+in About QUILL and the history. All of that is now the shipping flat
+<strong>Tools &gt; Speech</strong> menu and a plain "private, on-device
+speech suite" — there is no brand to restore, so those notes are not
+preserved here.</p>
 <hr />
 <h2
-id="glow-user-guide-content-removed-from-docsuser-guideuserguide.md">GLOW
+id="glow--user-guide-content-removed-from-docsuser-guideuserguidemd">GLOW
 — user guide content (removed from docs/user guide/userguide.md)</h2>
 <h3 id="glow-workflows-inside-quill-1">GLOW Workflows Inside Quill</h3>
 <p>Glow in Quill is about guided confidence. It is not trying to turn
@@ -322,7 +331,7 @@ beside it.</p>
 <p>The 1.0 roadmap expands this into findings navigation,
 export-readiness workflows, and richer extraction-aware review for PDF
 and EPUB.</p>
-<h3 id="glow-menu-tools-removed-from-user-guide">GLOW menu (Tools) —
+<h3 id="glow-menu-tools--removed-from-user-guide">GLOW menu (Tools) —
 removed from user guide</h3>
 <ul>
 <li><strong>Audit Current Document</strong></li>
@@ -336,28 +345,14 @@ HTML. It looks for issues such as: missing spaces after Markdown heading
 markers, heading-level jumps, generic link text, missing HTML language
 metadata, missing HTML image alt attributes, tables without HTML header
 cells, and dense paragraphs / plain-language friction.</p>
-<h3 id="glow-glossary-entry-removed-from-user-guide">GLOW glossary entry
-— removed from user guide</h3>
-<p><strong>GLOW (Guided Layout and Output Workflow)</strong> — QUILL’s
+<h3 id="glow-glossary-entry--removed-from-user-guide">GLOW glossary
+entry — removed from user guide</h3>
+<p><strong>GLOW (Guided Layout and Output Workflow)</strong> — QUILL's
 built-in text quality review system. GLOW audits a document for
 structural issues (heading hierarchy, list consistency, spacing,
 encoding artefacts) and offers deterministic fixes. Audit results open
 as readable QUILL tabs; fixing the document opens a named preview and
 starts a compare session. GLOW focuses on plain text, Markdown, and
 HTML.</p>
-<h3
-id="bits-whisperer-rollout-status-page-content-removed-from-user-guide">BITS
-Whisperer rollout / Status Page content — removed from user guide</h3>
-<p>The user guide previously documented a BITS Whisperer phased-rollout
-surface: a two-mode (Recommended / Manual) speech-model selection flow,
-a <strong>Provider Center</strong> and <strong>Provider Status</strong>,
-a live <strong>Help &gt; Status Page</strong> that surfaced BITS
-Whisperer download/provider status, and Preferences &gt; General toggles
-(“Auto-open Status Page when BITS Whisperer model downloads start”,
-“BITS Whisperer safe mode lock”). These belong to the locked
-<code>core.bw_whisperer</code> suite and were removed. The shipping
-offline-speech model management (Recommended-for-your-computer guidance,
-background downloads) is documented in the “Offline transcription (Tools
-&gt; Speech)” section instead.</p>
 </body>
 </html>
