@@ -1077,19 +1077,44 @@ not need to enable Artificial Intelligence to use these features. They live unde
   Engine...**, or from the all-in-one **Help > Download Optional Components** list
   (below). If you are **upgrading** from a version that bundled the engine, your
   existing copy is kept and keeps working — nothing to download.
+- **Download Vosk...** Vosk is a tiny, very-low-resource offline dictation and
+  transcription engine for older or low-memory computers with no graphics card. It
+  is not bundled; **Tools > Speech > Download Vosk** (or the Optional Components list
+  below) installs it on demand — checksum-verified, disabled in Safe Mode — from
+  QUILL's own verified download, falling back to the public package index. whisper.cpp
+  is the default engine; Vosk is the lightweight fallback when you need it.
 
 #### Download Optional Components (Help menu)
 
 To keep the installer small, QUILL fetches several large or optional pieces only
 when you want them. **Help > Download Optional Components...** is the single place
 to see and get them all. It lists each component — the **offline speech engine**
-(whisper.cpp), **Kokoro** neural voices, **eSpeak NG** and **DECtalk** voices, the
-**FFmpeg** audio-export helper, and any non-English **spell-check dictionaries** —
+(whisper.cpp), the very-low-resource **Vosk** speech engine, **Kokoro** neural
+voices, **eSpeak NG** and **DECtalk** voices, the **FFmpeg** audio-export helper, and
+any non-English **spell-check dictionaries** —
 and shows for each whether it is **Installed** or **Available to download**, along
 with its approximate size. Select a component and choose **Download** to fetch it;
 each download is checksum-verified and shows its own progress. Everything here is
 optional — the base app, and Windows' built-in SAPI 5 voices, work without any of
 it — so download only what you need.
+
+#### Running light on modest machines (Performance and Memory)
+
+QUILL is built to run its full AI and speech feature set on a modest, CPU-only
+computer with limited memory — never by turning features off, only by being careful
+with memory. Two settings under **Settings > Performance and Memory** control this:
+
+- **Unload idle models after** (minutes) frees the memory of an AI, read-aloud, or
+  dictation model you have stopped using; the next time you need it, QUILL reloads it
+  automatically. Set it to **0** to keep models loaded until you close QUILL.
+- **Low-resource mode** keeps only **one** model loaded at a time and prefers the
+  smallest model that fits. It never disables AI or speech — it simply loads them one
+  at a time, trading a moment of reloading for a much smaller memory footprint. On a
+  machine with very little memory it turns on **automatically** and tells you once,
+  out loud, so the behaviour is never a surprise.
+
+You do not have to touch these — QUILL picks sensible defaults for your machine — but
+they are there if you want to tune how much memory QUILL uses.
 - **Speaker attribution.** If you download the "Small English with speaker
   detection" model (in Manage Speech Models), QUILL marks **who is speaking when**
   — each turn is labelled "Speaker 1", "Speaker 2", and so on in the transcript

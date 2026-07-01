@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>userguide</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -1959,6 +1955,14 @@ Mode). You can also fetch it any time from <strong>Tools &gt; Speech
 you are <strong>upgrading</strong> from a version that bundled the
 engine, your existing copy is kept and keeps working — nothing to
 download.</li>
+<li><strong>Download Vosk...</strong> Vosk is a tiny, very-low-resource
+offline dictation and transcription engine for older or low-memory
+computers with no graphics card. It is not bundled; <strong>Tools &gt;
+Speech &gt; Download Vosk</strong> (or the Optional Components list
+below) installs it on demand — checksum-verified, disabled in Safe Mode
+— from QUILL's own verified download, falling back to the public package
+index. whisper.cpp is the default engine; Vosk is the lightweight
+fallback when you need it.</li>
 </ul>
 <h4 id="download-optional-components-help-menu">Download Optional
 Components (Help menu)</h4>
@@ -1966,7 +1970,8 @@ Components (Help menu)</h4>
 pieces only when you want them. <strong>Help &gt; Download Optional
 Components...</strong> is the single place to see and get them all. It
 lists each component — the <strong>offline speech engine</strong>
-(whisper.cpp), <strong>Kokoro</strong> neural voices, <strong>eSpeak
+(whisper.cpp), the very-low-resource <strong>Vosk</strong> speech
+engine, <strong>Kokoro</strong> neural voices, <strong>eSpeak
 NG</strong> and <strong>DECtalk</strong> voices, the
 <strong>FFmpeg</strong> audio-export helper, and any non-English
 <strong>spell-check dictionaries</strong> — and shows for each whether
@@ -1976,6 +1981,28 @@ and choose <strong>Download</strong> to fetch it; each download is
 checksum-verified and shows its own progress. Everything here is
 optional — the base app, and Windows' built-in SAPI 5 voices, work
 without any of it — so download only what you need.</p>
+<h4 id="running-light-on-modest-machines-performance-and-memory">Running
+light on modest machines (Performance and Memory)</h4>
+<p>QUILL is built to run its full AI and speech feature set on a modest,
+CPU-only computer with limited memory — never by turning features off,
+only by being careful with memory. Two settings under <strong>Settings
+&gt; Performance and Memory</strong> control this:</p>
+<ul>
+<li><strong>Unload idle models after</strong> (minutes) frees the memory
+of an AI, read-aloud, or dictation model you have stopped using; the
+next time you need it, QUILL reloads it automatically. Set it to
+<strong>0</strong> to keep models loaded until you close QUILL.</li>
+<li><strong>Low-resource mode</strong> keeps only <strong>one</strong>
+model loaded at a time and prefers the smallest model that fits. It
+never disables AI or speech — it simply loads them one at a time,
+trading a moment of reloading for a much smaller memory footprint. On a
+machine with very little memory it turns on
+<strong>automatically</strong> and tells you once, out loud, so the
+behaviour is never a surprise.</li>
+</ul>
+<p>You do not have to touch these — QUILL picks sensible defaults for
+your machine — but they are there if you want to tune how much memory
+QUILL uses.</p>
 <ul>
 <li><strong>Speaker attribution.</strong> If you download the "Small
 English with speaker detection" model (in Manage Speech Models), QUILL

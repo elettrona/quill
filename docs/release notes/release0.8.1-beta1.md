@@ -332,10 +332,17 @@ The base installer is smaller because the heavy, optional pieces now download on
 demand - checksum-verified, with a cancelable progress bar, disabled in Safe Mode:
 - The **offline speech engine** (whisper.cpp), **Kokoro** neural voices, and the
   classic **eSpeak NG** and **DECtalk** voices.
+- The **Vosk** speech engine - a tiny, very-low-resource dictation and transcription
+  engine for older or low-memory machines with no graphics card. Get it from **Tools >
+  Speech > Download Vosk** or the Optional Components dialog below.
 - **Spell-check dictionaries for other languages** - pick **Spanish** or **French**
   under **Tools > Spell Check Language** and QUILL fetches the dictionary the first
   time.
 - And the audio-export helper, **FFmpeg**.
+
+No speech engine is bundled in the installer any more - even the small default
+downloads the first time you dictate - and some build-only data was dropped from the
+runtime, so the base download is lighter than ever.
 
 **One place to get them all: Help > Download Optional Components.** A single dialog
 lists every optional download with **Installed** vs **Available to download** and its
@@ -344,6 +351,30 @@ size, so you never hunt through menus.
 working immediately, and a clear, accessible touch point for everything else.
 **Upgrading?** Any component a previous release bundled is kept and keeps working -
 nothing to re-download.
+
+### Runs light on modest, CPU-only machines
+
+Two new settings under **Settings > Performance and Memory** let QUILL fit its full AI
+and speech features onto machines with limited memory - never by turning anything off,
+only by being careful with memory:
+- **Unload idle models after** a few minutes frees an AI or speech model you have
+  stopped using; the next time you need it, it simply reloads.
+- **Low-resource mode** keeps only one model loaded at a time and prefers the smallest
+  one that fits. On a machine with very little memory it turns on automatically and
+  tells you once, out loud.
+
+**Why it matters:** the whole feature set - dictation, read-aloud, and AI - stays usable
+on an older, CPU-only laptop, because QUILL holds one model in memory at a time instead
+of several. You trade a moment of reloading for a much smaller memory footprint.
+
+### AI that fits your machine, and a way forward when you are offline
+
+- When your computer can comfortably run a more accurate on-device model than the one
+  you have chosen, the **AI model** dialog now says so - a one-step suggestion you can
+  take or ignore. New installs still default to the smallest model that fits.
+- If a cloud AI request cannot reach the internet and you have an on-device model
+  installed, QUILL now tells you that you can switch to it and keep working offline. It
+  never switches for you - your privacy choice stays yours.
 
 ### Export speech audio as MP3 and more
 
