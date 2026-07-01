@@ -21827,6 +21827,7 @@ class MainFrame(
         text = tab.editor.GetValue()
         kind = guess_preview_kind(tab.document.path, text)
         anchor = preview_anchor_for_text(text, tab.editor.GetInsertionPoint(), kind)
+        text = self._vault_preview_text(text, kind, tab.document.path)
         title = f"{tab.document.name or 'Preview'} - Browser Preview"
         preview_dir = app_data_dir() / "browser-preview"
         preview_dir.mkdir(parents=True, exist_ok=True)
@@ -21873,7 +21874,11 @@ class MainFrame(
         kind = guess_preview_kind(tab.document.path, text)
         anchor = preview_anchor_for_text(text, tab.editor.GetInsertionPoint(), kind)
         title = f"{tab.document.name or 'Preview'} - Preview"
-        body = render_preview_body(text, kind, dark=self._preview_is_dark())
+        body = render_preview_body(
+            self._vault_preview_text(text, kind, tab.document.path),
+            kind,
+            dark=self._preview_is_dark(),
+        )
 
         # #179: WebView2's first ``New()`` call blocks the UI thread for tens
         # of seconds.  If the deferred warm-up has not finished, defer the
@@ -21963,6 +21968,7 @@ class MainFrame(
     def _update_side_preview(self, tab) -> None:
         text = tab.editor.GetValue()
         kind = guess_preview_kind(tab.document.path, text)
+        text = self._vault_preview_text(text, kind, tab.document.path)
         try:
             tab.preview.update(render_preview_body(text, kind, dark=self._preview_is_dark()))
         except Exception:

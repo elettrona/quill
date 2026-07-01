@@ -105,6 +105,25 @@ class VaultMixin:
         self._vault_resolver = build_resolver(self._vault)
         self._vault_index = build_index(self._vault, self._vault_resolver)
 
+    def _vault_preview_text(self, text: str, kind: str, doc_path: Path | None) -> str:
+        """Resolve `[[links]]`/`![[embeds]]` for previewing a note that is in the vault.
+
+        Defensive passthrough: only transforms Markdown for a note inside the open vault;
+        any other document — or any failure — returns the text unchanged, so the preview
+        of non-vault files is exactly as before.
+        """
+        if kind != "markdown" or getattr(self, "_vault", None) is None:
+            return text
+        rel = relative_note_path(self._vault_root_path(), doc_path)
+        if rel is None or rel not in self._vault.notes:
+            return text
+        try:
+            from quill.core.vault.preview import resolve_for_preview
+
+            return resolve_for_preview(text, self._vault, self._vault_resolver, rel)
+        except Exception:  # noqa: BLE001 - preview must never break on resolution
+            return text
+
     def follow_wikilink(self) -> None:
         """Open the note the caret's ``[[link]]`` points to (Follow Link)."""
         from quill.core.vault import link_at_offset, resolve_link
