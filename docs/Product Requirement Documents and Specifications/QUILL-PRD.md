@@ -1927,9 +1927,9 @@ partial profile can never start a worker.
 ### 5.25c Offline speech and transcription
 
 Quill's on-device speech engine (whisper.cpp by default) ships under `Tools -> Speech`
-and runs entirely on the user's machine. The detailed rollout/provider-center surface of
-the deferred BITS Whisperer suite (locked off, `core.bw_whisperer`) is captured in
-`docs/planning/deferred-locked-features.md`; this section describes only what ships today.
+and runs entirely on the user's machine. The deferred, locked-off `core.bw_whisperer`
+brand surface (superseded by this flat menu) is tracked in the locked-features register
+in [`roadmap.md`](../../planning/roadmap.md) §2; this section describes only what ships today.
 
 **On-demand engine acquisition (release-asset).** The whisper.cpp engine is **not
 bundled** (see §5.25f, [Recommended host and redistribution rules](#acquisition-host-model)):
