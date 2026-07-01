@@ -1,11 +1,14 @@
-"""Optional in-app install of the Faster Whisper speech engine (#669 follow-up).
+"""Optional in-app install of the Faster Whisper and Vosk speech engines (#669).
 
-QUILL bundles the whisper.cpp and Vosk engines. The higher-throughput Faster
-Whisper engine (CTranslate2-based, GPU-capable) pulls in ~110 MB of binary
-dependencies (CTranslate2, ONNX Runtime, PyAV, tokenizers), so it is not shipped
-in the installer. For users who want it, this installs the engine **on demand**
-into a user-writable folder -- no admin, not in the installer payload -- using the
-runtime's own pip with **binary wheels only** (no arbitrary build steps).
+No offline engine ships in the installer: the tiny default whisper.cpp engine
+downloads on demand (release_assets), and the two heavier optional engines install
+here. Faster Whisper (CTranslate2-based, GPU-capable) pulls in ~110 MB of binary
+dependencies; Vosk (~51 MB, self-contained libvosk) is the very-low-resource
+fallback. Both install **on demand** into a user-writable folder -- no admin, not in
+the installer payload -- using the runtime's own pip with **binary wheels only** (no
+arbitrary build steps). Vosk additionally prefers QUILL's own pinned, SHA-256-verified
+wheel from the assets-v1 release when available (source resilience, PRD 5.25f), falling
+back to PyPI otherwise.
 
 The packages land in ``<app data>/engine-packs/faster-whisper`` and that folder is
 added to ``sys.path`` (see :func:`activate_engine_packs`, called once at startup),
@@ -243,14 +246,29 @@ def install_vosk(
 
     dest = Path(dest_dir) if dest_dir is not None else vosk_pack_dir()
     dest.mkdir(parents=True, exist_ok=True)
-    reqs = tuple(requirements) if requirements is not None else _VOSK_REQUIREMENTS
     python_exe = python_executable or sys.executable
     if not python_exe:
         raise EngineInstallError("Could not locate the Python runtime to install into.")
 
     if progress is not None:
         progress(0.05, "Preparing to install Vosk...")
-    command = _pip_command(dest, reqs, python_exe)
+
+    # An explicit `requirements` override (tests / advanced callers) is used as-is.
+    # Otherwise prefer QUILL's pinned assets-v1 wheel (source resilience), and fall
+    # back to PyPI when it is not uploaded yet or on a non-Windows platform.
+    if requirements is not None:
+        reqs: tuple[str, ...] = tuple(requirements)
+        extra_args: tuple[str, ...] = ()
+    else:
+        local_wheel = _maybe_fetch_vosk_wheel(progress)
+        if local_wheel is not None:
+            reqs = (str(local_wheel),)
+            extra_args = ("--no-index",)  # install our verified wheel, never touch PyPI
+        else:
+            reqs = _VOSK_REQUIREMENTS
+            extra_args = ()
+
+    command = _pip_command(dest, reqs, python_exe, extra_args=extra_args)
     run = runner if runner is not None else _default_runner
     if progress is not None:
         progress(0.15, "Downloading Vosk (this can take a few minutes)...")
@@ -279,7 +297,13 @@ def install_vosk(
     return dest
 
 
-def _pip_command(dest: Path, requirements: Sequence[str], python_executable: str) -> list[str]:
+def _pip_command(
+    dest: Path,
+    requirements: Sequence[str],
+    python_executable: str,
+    *,
+    extra_args: Sequence[str] = (),
+) -> list[str]:
     return [
         python_executable,
         "-m",
@@ -290,10 +314,41 @@ def _pip_command(dest: Path, requirements: Sequence[str], python_executable: str
         "--only-binary=:all:",
         "--no-warn-script-location",
         "--upgrade",
+        *extra_args,
         "--target",
         str(dest),
         *requirements,
     ]
+
+
+def _vosk_download_dir() -> Path:
+    """Where the verified Vosk wheel is staged before ``pip install --no-index``."""
+    return engine_packs_dir() / "_vosk-download"
+
+
+def _maybe_fetch_vosk_wheel(progress: ProgressCallback | None) -> Path | None:
+    """Return a locally-downloaded, SHA-verified Vosk wheel, or ``None`` for PyPI.
+
+    Only the Windows wheel is self-hosted on the assets-v1 release, so non-Windows
+    always returns ``None`` (use PyPI). When the asset is not yet pinned (no uploaded
+    wheel + SHA) or any fetch step fails, this also returns ``None`` so
+    :func:`install_vosk` degrades cleanly to the PyPI path — PyPI is always the backstop.
+    """
+    if sys.platform != "win32":
+        return None
+    try:
+        from quill.core.release_assets import ASSETS, fetch_file, is_pinned
+    except Exception:  # noqa: BLE001 - release_assets should always import; be defensive
+        return None
+    asset = ASSETS.get("vosk")
+    if asset is None or not is_pinned(asset):
+        return None
+    try:
+        return fetch_file(
+            "vosk", _vosk_download_dir(), progress=progress, label="Downloading Vosk..."
+        )
+    except Exception:  # noqa: BLE001 - any download/verify failure -> PyPI fallback
+        return None
 
 
 def install_faster_whisper(

@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>quill-supported-ocr-tool-ai-hub-services-friendly-prd</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -2475,13 +2471,14 @@ Local engines reuse the verified on-demand acquisition path</h3>
 Chandra), QUILL must not bloat the installer. They are fetched on demand
 through the same <strong>pinned, SHA-256-verified release-asset</strong>
 mechanism shipped for the speech engine and Kokoro
-(<code>quill/core/release_assets.py</code>; AI-Optimization PRD
-§10.2.4): a service that needs a local binary/model declares it as a
-release asset, and QUILL downloads + verifies + unpacks it with
-cancelable, accessible progress, blocked in Safe Mode — and offers a
-<strong>re-download/replace</strong> when one is already present, with
-<strong>newer-version awareness</strong> on the roadmap (a
-<code>version</code> field already exists on the asset model).</p>
+(<code>quill/core/release_assets.py</code>; QUILL-PRD.md §5.25f,
+"Recommended host and redistribution rules"): a service that needs a
+local binary/model declares it as a release asset, and QUILL downloads +
+verifies + unpacks it with cancelable, accessible progress, blocked in
+Safe Mode — and offers a <strong>re-download/replace</strong> when one
+is already present, with <strong>newer-version awareness</strong> on the
+roadmap (a <code>version</code> field already exists on the asset
+model).</p>
 <h3 id="z4-net">Z.4 Net</h3>
 <p>OCR ships first and real (Datalab Chandra), but it lands inside a
 <strong>services framework</strong> that the AI menu and AI Hub present

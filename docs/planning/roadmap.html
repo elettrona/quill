@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>roadmap</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -276,22 +272,79 @@ integration is its own workstream, tracked in <a
 href="eleven-labs.md"><code>eleven-labs.md</code></a> — <strong>not
 started</strong> (the SDK-in-gateway approach is decided). Dictation's
 larger later-phase capabilities are <strong>2.0</strong> (§5).</p>
-<p><strong>AI footprint &amp; optimization</strong> is its own
-measurement-first plan, tracked in <a
-href="QUILL-AI-Optimization-PRD.md"><code>QUILL-AI-Optimization-PRD.md</code></a>.
-Its first concrete slice <strong>shipped in 0.8.1 Beta 1</strong>: a
-pinned, SHA-256-verified path for fetching redistributable components
-from QUILL's own GitHub release assets
+<p><strong>AI footprint &amp; optimization</strong> is a
+measurement-first effort to make QUILL's full AI + speech feature set
+install small, start fast, and run on a cheap CPU-only laptop — never
+disabling features on low-end hardware, only right-sizing them. The
+durable design principles, the reliable-acquisition model, the
+redistribution/host rules, and the size/RAM reference now live in <a
+href="../Product%20Requirement%20Documents%20and%20Specifications/QUILL-PRD.md"><code>QUILL-PRD.md</code></a>
+§5.25f (the standalone planning PRD was retired to git history once its
+shipped slices were folded into the PRD and this roadmap). What
+<strong>shipped in 0.8.1 Beta 1 and since:</strong></p>
+<ul>
+<li><strong>Reliable acquisition foundation</strong> — a pinned,
+SHA-256-verified path for fetching redistributable components from
+QUILL's own <code>assets-v1</code> release
 (<code>quill/core/release_assets.py</code>), wired as <strong>Tools &gt;
-Speech &gt; Download Offline Speech Engine...</strong> (recovery for the
-bundled whisper.cpp engine). It establishes the reliable-acquisition
-foundation (PRD §10.2.3–10.2.4) that any future unbundling builds on;
-the engine stays bundled, so capability never depends on a download. The
-<strong>first real unbundle</strong> also shipped: the ~120 MB
-<strong>Kokoro</strong> voices are no longer in the installer
-(downloaded on demand from the same verified release asset), with
-upgraders' existing copies preserved automatically — proving the size
-win can be taken safely.</p>
+Speech &gt; Download Offline Speech Engine...</strong>. The
+<strong>first real unbundles</strong> followed: the ~120 MB
+<strong>Kokoro</strong> voices, <strong>DECtalk</strong>, and
+<strong>eSpeak NG</strong> are no longer in the installer (downloaded on
+demand from the same verified path), with upgraders' existing copies
+preserved automatically — proving the size win can be taken safely.</li>
+<li><strong>Measurement (Phase 0)</strong> —
+<code>scripts/footprint_report.py</code> (unit-tested) produces the
+diffable size/machine baseline under
+<code>docs/planning/footprint/</code> that every later phase is judged
+against. Per-engine peak RSS and cold-start/first-token timings remain
+an in-app follow-up.</li>
+<li><strong>AI routing (Phase 4 core)</strong> — the AI Setup Wizard's
+cloud option runs the full AI suite with zero local model weight, and
+<code>ai/model_manager.recommended_id()</code> right-sizes on-device
+defaults to the machine (llama-3.2-1b below 8 GB RAM, phi-4-mini
+above).</li>
+<li><strong>Runtime-memory policy (Phase 2 core)</strong> —
+<code>quill/core/model_lifecycle.py</code>: idle-unload sweep,
+single-flight loading, and low-resource LRU eviction, with a
+<code>build_manager()</code> factory that auto-enables low-resource mode
+below 4 GB RAM. Two accessible settings (<strong>Low-resource
+mode</strong>, <strong>Unload idle models after…</strong>) are wired
+through the registry. wx-free and unit-tested.</li>
+<li><strong>Model-quant selection (Phase 3 core)</strong> —
+<code>quill/core/model_upgrade.py</code>: a machine-aware, one-step,
+screen-reader-friendly upgrade advisor (never auto-downloads; suppressed
+under low-resource mode). Smallest-viable default already existed in the
+recommenders.</li>
+<li><strong>Fallback chain (Phase 4 core)</strong> —
+<code>quill/core/ai/fallback.py</code>: consent-safe cloud↔︎local
+fallback decisions — cloud→local offered directly (data stays on
+device), local→cloud gated on explicit consent with a spoken privacy
+note, nothing switched silently.</li>
+<li><strong>In-app measurement harness (Phase 0)</strong> —
+<code>quill/core/footprint_sampler.py</code>: peak-RSS and
+first-token/first-audio timing helpers to complete the footprint
+baseline from inside the running app.</li>
+<li><strong>Installer trim (Phase 1)</strong> — Babel is now pruned from
+the bundled runtime as build-only (~29 MB; runtime i18n uses stdlib
+<code>gettext</code>, never <code>babel</code>), guarded by a regression
+test.</li>
+</ul>
+<p><strong>Open (integration + build/hardware sign-off):</strong> wiring
+the Phase 2 lifecycle manager and the Phase 4 fallback into the live app
+(the wx-free cores and settings exist and are tested; they need the
+running app to drive the idle-sweep timer, the per-provider
+touch/reserve calls, and the accessible fallback offer). The remaining
+Phase 1 candidates are correctly ruled out or deferred:
+<code>win32more</code> is a real dependency of Windows OCR
+(<code>windows_ocr.py</code>), <code>vosk</code> is a runtime-selectable
+engine that would need on-demand asset hosting to unbundle, and non-en
+enchant dictionaries already download on demand. Concrete new quant
+catalog entries (q5/q8, int8_float16) need real pinned files + SHA-256
+hashes. Phase 0's committed per-engine RSS/timing numbers, and any
+installer-size win, need a real build/reference-machine run. macOS
+offline-speech parity (a mac <code>whisper-cli</code>, or Faster Whisper
+as the mac default) is the tracked cross-platform gap.</p>
 <h3 id="13-agentic-ai-platform-shipped-in-081-beta-1">1.3 Agentic AI
 platform (shipped in 0.8.1 Beta 1)</h3>
 <p>The detailed planning spec was retired once the platform shipped; the

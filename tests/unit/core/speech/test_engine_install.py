@@ -86,6 +86,90 @@ def test_install_wraps_runner_exception(monkeypatch, tmp_path: Path) -> None:
         ei.install_faster_whisper(dest_dir=tmp_path / "fw", runner=boom)
 
 
+def test_install_vosk_falls_back_to_pypi_when_not_self_hosted(monkeypatch, tmp_path: Path) -> None:
+    """With no uploaded assets-v1 wheel, Vosk installs from PyPI (no --no-index)."""
+    monkeypatch.setattr(ei, "is_vosk_available", lambda: True)
+    monkeypatch.setattr(ei, "_maybe_fetch_vosk_wheel", lambda progress: None)
+    captured: dict = {}
+    ei.install_vosk(
+        dest_dir=tmp_path / "vosk", python_executable="py.exe", runner=_make_runner(captured)
+    )
+    cmd = captured["command"]
+    assert "vosk>=0.3.45" in cmd
+    assert "--no-index" not in cmd  # PyPI path may reach the index
+
+
+def test_install_vosk_uses_self_hosted_wheel_when_pinned(monkeypatch, tmp_path: Path) -> None:
+    """When a verified assets-v1 wheel is available, install it with --no-index."""
+    monkeypatch.setattr(ei, "is_vosk_available", lambda: True)
+    wheel = tmp_path / "vosk-0.3.45-py3-none-win_amd64.whl"
+    wheel.write_text("fake wheel", encoding="utf-8")
+    monkeypatch.setattr(ei, "_maybe_fetch_vosk_wheel", lambda progress: wheel)
+    captured: dict = {}
+    ei.install_vosk(
+        dest_dir=tmp_path / "vosk", python_executable="py.exe", runner=_make_runner(captured)
+    )
+    cmd = captured["command"]
+    assert str(wheel) in cmd
+    assert "--no-index" in cmd  # never touch PyPI when using our verified wheel
+    assert "vosk>=0.3.45" not in cmd
+
+
+def test_maybe_fetch_vosk_wheel_returns_none_off_windows(monkeypatch) -> None:
+    monkeypatch.setattr(ei.sys, "platform", "darwin")
+    assert ei._maybe_fetch_vosk_wheel(None) is None
+
+
+def test_vosk_asset_is_pinned_so_self_hosting_is_live() -> None:
+    """The Vosk wheel is uploaded to assets-v1, so the asset is pinned and self-hosted."""
+    from quill.core import release_assets
+
+    assert release_assets.is_pinned(release_assets.ASSETS["vosk"]) is True
+
+
+def test_maybe_fetch_vosk_wheel_fetches_when_pinned_on_windows(monkeypatch, tmp_path) -> None:
+    """On Windows with a pinned asset, the wheel is fetched from assets-v1."""
+    monkeypatch.setattr(ei.sys, "platform", "win32")
+    from quill.core import release_assets
+
+    wheel = tmp_path / "vosk-0.3.45-py3-none-win_amd64.whl"
+    wheel.write_text("x", encoding="utf-8")
+    calls: dict = {}
+
+    def fake_fetch_file(component, dest_dir, **kwargs):
+        calls["component"] = component
+        return wheel
+
+    monkeypatch.setattr(release_assets, "fetch_file", fake_fetch_file)
+    assert ei._maybe_fetch_vosk_wheel(None) == wheel
+    assert calls["component"] == "vosk"
+
+
+def test_maybe_fetch_vosk_wheel_falls_back_when_unpinned(monkeypatch) -> None:
+    """If the asset were unpinned (e.g. cleared), we fall back to PyPI (None)."""
+    monkeypatch.setattr(ei.sys, "platform", "win32")
+    from quill.core import release_assets
+
+    monkeypatch.setitem(
+        release_assets.ASSETS,
+        "vosk",
+        release_assets.ReleaseAsset("vosk", "assets-v1", "vosk.whl", ""),
+    )
+    assert ei._maybe_fetch_vosk_wheel(None) is None
+
+
+def test_maybe_fetch_vosk_wheel_degrades_to_none_on_fetch_error(monkeypatch) -> None:
+    """A download/verify failure never breaks the install — it falls back to PyPI."""
+    monkeypatch.setattr(ei.sys, "platform", "win32")
+    from quill.core import release_assets
+
+    def boom(component, dest_dir, **kwargs):
+        raise release_assets.ReleaseAssetError("network down")
+
+    monkeypatch.setattr(release_assets, "fetch_file", boom)
+    assert ei._maybe_fetch_vosk_wheel(None) is None
+
+
 def test_activate_engine_packs_adds_nonempty_dir(monkeypatch, tmp_path: Path) -> None:
     pack = tmp_path / "fw"
     pack.mkdir()

@@ -89,6 +89,22 @@ ASSETS: dict[str, ReleaseAsset] = {
         license="Apache-2.0 (kokoro-onnx model-files-v1.0); already redistributed by QUILL",
         version="model-files-v1.0",
     ),
+    # Vosk (Apache-2.0): the optional very-low-resource offline STT engine, hosted
+    # as a pip wheel (it bundles libvosk). Unlike the other assets it is a wheel, so
+    # it is fetched via fetch_file() (no unpack) and handed to `pip install --no-index`
+    # (see engine_install.install_vosk). The Windows wheel is the self-hosted primary;
+    # non-Windows falls back to PyPI. This is a byte-identical re-publish of the upstream
+    # PyPI wheel (same SHA-256), so `pip install --no-index` of our copy equals a PyPI
+    # install. To bump the version, upload the new wheel to assets-v1 and update
+    # filename/sha256/version here.
+    "vosk": ReleaseAsset(
+        component="vosk",
+        tag="assets-v1",
+        filename="vosk-0.3.45-py3-none-win_amd64.whl",
+        sha256="6994ddc68556c7e5730c3b6f6bad13320e3519b13ce3ed2aa25a86724e7c10ac",
+        license="Apache-2.0 (alphacep/vosk-api); byte-identical re-publish of the PyPI wheel",
+        version="0.3.45",
+    ),
     # Optional Hunspell spell-check dictionaries (PRD 10.2.4). English (en_US) is
     # always bundled inside pyenchant; these add other languages on demand. Each
     # zip holds <lang>.dic/.aff plus the upstream license/readme, byte-pinned to a
@@ -250,5 +266,55 @@ def fetch_component(
         if progress is not None:
             progress(1.0, "Done.")
         return target
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def fetch_file(
+    component: str,
+    dest_dir: Path,
+    *,
+    progress: ProgressCallback | None = None,
+    should_cancel: Callable[[], bool] | None = None,
+    label: str = "Downloading...",
+) -> Path:
+    """Download + SHA-256 verify a single-file ``component`` **without** unpacking.
+
+    For assets installed by another tool rather than extracted — a Python wheel
+    handed to ``pip install --no-index``, say. Returns the verified file's path
+    inside ``dest_dir``. Same pinning, Safe-Mode, checksum, atomic-temp, and
+    resumable-download guarantees as :func:`fetch_component`.
+    """
+    if os.environ.get("QUILL_SAFE_MODE") == "1":
+        raise ReleaseAssetError("Downloading components is disabled in Safe Mode.")
+    asset = ASSETS.get(component)
+    if asset is None:
+        raise ReleaseAssetError(f"Unknown component: {component!r}")
+    if not is_pinned(asset):
+        raise ReleaseAssetError(
+            f"Refusing to fetch an unpinned/placeholder asset for {component!r}."
+        )
+
+    dest = Path(dest_dir)
+    tmp = Path(tempfile.mkdtemp(prefix="quill-asset-"))
+    try:
+        archive = tmp / asset.filename
+        if progress is not None:
+            progress(0.0, label)
+        _download_resumable(asset.url, archive, progress, should_cancel=should_cancel, label=label)
+
+        actual = _sha256_file(archive)
+        if actual.lower() != asset.sha256.lower():
+            raise ReleaseAssetError(
+                f"Checksum mismatch for {asset.filename} "
+                f"(expected {asset.sha256[:12]}..., got {actual[:12]}...)."
+            )
+
+        dest.mkdir(parents=True, exist_ok=True)
+        final = dest / asset.filename
+        shutil.copy2(archive, final)
+        if progress is not None:
+            progress(1.0, "Done.")
+        return final
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

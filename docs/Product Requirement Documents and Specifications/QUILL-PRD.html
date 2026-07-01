@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>QUILL-PRD</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -3832,12 +3828,13 @@ Whisperer suite (locked off, <code>core.bw_whisperer</code>) is captured
 in <code>docs/planning/deferred-locked-features.md</code>; this section
 describes only what ships today.</p>
 <p><strong>On-demand engine acquisition (release-asset).</strong> The
-whisper.cpp engine is <strong>not bundled</strong> (PRD footprint plan
-§10.2.4): it downloads on demand from QUILL's verified release asset to
-<code>%APPDATA%\Quill\speech-engine</code>, which the runtime searches.
-The <strong>first time offline dictation/transcription is used without
-it, QUILL offers the download in-flow</strong> (the dictation pre-flight
-prompts), and it is also at
+whisper.cpp engine is <strong>not bundled</strong> (see §5.25f, <a
+href="#acquisition-host-model">Recommended host and redistribution
+rules</a>): it downloads on demand from QUILL's verified release asset
+to <code>%APPDATA%\Quill\speech-engine</code>, which the runtime
+searches. The <strong>first time offline dictation/transcription is used
+without it, QUILL offers the download in-flow</strong> (the dictation
+pre-flight prompts), and it is also at
 <code>Tools -&gt; Speech -&gt; Download Offline Speech Engine...</code>.
 Acquisition is <code>quill/core/release_assets.py</code> (wx-free): a
 <strong>pinned</strong>, <strong>SHA-256-verified</strong> download from
@@ -3965,6 +3962,217 @@ doubles as the startup-recovery prompt). Locked Dictation has distinct
 earcons and a one-time onboarding hint. File synthesis runs with no
 console-window flash and a timeout.</p>
 </blockquote>
+<h3 id="525f-ai-footprint-on-demand-acquisition-and-optimization">5.25f
+AI footprint, on-demand acquisition, and optimization</h3>
+<p>QUILL's guiding aim is to be <strong>as capable as possible on
+whatever hardware the user has</strong>, while keeping its on-disk and
+in-memory footprint small — <em>fitting more capability onto modest,
+CPU-only machines</em>, never trimming features off the low end. This
+section is the durable reference for that stance and for the acquisition
+model every on-demand component obeys. It absorbs the former standalone
+footprint/optimization plan. The wx-free cores for the runtime-memory
+policy (<code>quill/core/model_lifecycle.py</code>), the machine-aware
+upgrade advisor (<code>quill/core/model_upgrade.py</code>), the
+consent-safe cloud↔︎local fallback
+(<code>quill/core/ai/fallback.py</code>), and the in-app measurement
+sampler (<code>quill/core/footprint_sampler.py</code>) have landed with
+unit tests, along with two accessible settings (<strong>Low-resource
+mode</strong> and <strong>Unload idle models after…</strong>) and a
+build-only Babel prune. Their live wiring into the running app, and the
+build/hardware-gated measurements and installer-size wins, are tracked
+in <a href="../../planning/roadmap.md"><code>roadmap.md</code></a>
+§1.2.</p>
+<p><strong>Design principles (firm constraints).</strong></p>
+<ul>
+<li><strong>Capable on any hardware.</strong> The full feature set runs
+on a modest, CPU-only Windows machine with limited RAM. Optimization
+exists to <em>extend</em> capability downward to low-end hardware, never
+to disable features on it.</li>
+<li><strong>AI and speech available wherever feasible.</strong> Prefer
+enabling AI and speech — on-device when it fits, cloud when the user
+opts in — over gating them behind hardware. A weaker machine gets a
+smaller/slower model, not "no feature."</li>
+<li><strong>No GPU requirement, ever.</strong> The default,
+fully-supported path is <strong>CPU-only</strong>. Nothing may require a
+discrete GPU or degrade when one is absent.</li>
+<li><strong>GPU is a welcome bonus when present.</strong> If a usable
+GPU is detected, engines may auto-accelerate (e.g. Faster Whisper's CUDA
+float16 path) — automatically and optionally, never as a precondition
+and never something the user must configure.</li>
+</ul>
+<p><strong>Already optimized on the model side.</strong> QUILL ships
+quantized models throughout (Faster Whisper CTranslate2 <strong>int8 on
+CPU</strong> / float16 on CUDA; Kokoro <strong>int8 ONNX</strong>;
+whisper.cpp GGML-quantized; local LLMs as GGUF Q4/Q5 via Ollama /
+<code>llama_cpp_backend</code>), with <strong>lazy, optional
+loading</strong> (heavy ML imports deferred via
+<code>importlib.util.find_spec</code>, imported only on use),
+<strong>warm/unload lifecycle</strong> primitives on the speech and
+Kokoro providers, optional install components with on-demand downloads,
+and <strong>machine-aware recommendations</strong> that size suggestions
+to the user's RAM / GPU / disk. So the remaining wins are in packaging,
+runtime memory, and routing — not in re-quantizing models.</p>
+<p><a id="reliable-acquisition-model"></a><strong>Reliable acquisition
+model.</strong> Anything QUILL does not bundle becomes something it must
+fetch dependably, possibly years later when an upstream URL may have
+moved. Every on-demand asset obeys all of the following (the
+<code>quill/core/release_assets.py</code>,
+<code>ai/model_manager._download</code>, and
+<code>scripts/fetch_bootstrappers.py</code> paths encode this):</p>
+<ol type="1">
+<li><strong>Pinned, versioned source + SHA-256.</strong> Every asset has
+a pinned URL (or pinned release tag/commit) and a recorded SHA-256;
+bytes are verified before use, and a moving ref
+(<code>HEAD</code>/<code>latest</code>/<code>main</code>) is refused for
+the pinned path.</li>
+<li><strong>GATE-9 / no-silent-network.</strong> Each download call site
+has a reviewed entry in <code>network_egress_audit.py</code> and a
+visible, consented surface (progress dialog / explicit action). No
+silent fetches; Safe Mode disables all of it.</li>
+<li><strong>Atomic + verified install.</strong> Download to a temp path,
+verify the SHA, then atomically place it (temp + replace) so a
+partial/failed download never leaves a half-installed asset that looks
+present.</li>
+<li><strong>Retry + resumability.</strong> Bounded retry with backoff
+and resumable (HTTP Range) download so a dropped connection on a large
+asset does not force a full restart.</li>
+<li><strong>Source resilience.</strong> Pin to a stable host and record
+a mirror/fallback URL where licensing allows, so a single upstream
+outage cannot strand a feature. The verified SHA makes any mirror safe
+to trust.</li>
+<li><strong>Graceful offline / failure UX.</strong> On no-network,
+timeout, 404, checksum mismatch, rate-limit, or low disk
+(<code>enough_disk_for</code>), surface a clear, screen-reader-friendly
+message and leave the app fully usable for everything else. Never crash,
+never silently degrade.</li>
+<li><strong>Integrity over time.</strong> A periodic/CI acquisition
+healthcheck resolves every pinned URL and re-checks reachability +
+checksum, so a dead upstream is caught by us, not by a user offline at
+the worst moment.</li>
+<li><strong>Already-present is smart, not silent.</strong> An installed
+component is not re-downloaded; QUILL offers to <strong>replace</strong>
+it, and declining keeps the existing copy.</li>
+<li><strong>Newer-version awareness.</strong> Each asset records its
+upstream <code>version</code>; a lightweight check compares installed
+vs. pinned manifest and <strong>offers</strong> a newer verified version
+— never auto-replacing a working component.</li>
+</ol>
+<p><a id="acquisition-host-model"></a><strong>Recommended host and
+redistribution rules.</strong> The strongest way to satisfy source
+resilience is to host redistributable assets <strong>ourselves</strong>
+as GitHub Release assets on a Community-Access repo (the pinned
+<code>assets-v1</code> tag). This re-points the runtime on-demand path
+at a release we control, with stable
+<code>…/releases/download/&lt;tag&gt;/&lt;asset&gt;</code>
+direct-download URLs (not the rate-limited releases API), each
+SHA-256-pinned and honouring HTTP Range for resumability. Hard
+constraints:</p>
+<ul>
+<li><strong>License/redistribution gate (per asset).</strong> Re-host
+only what we are licensed to redistribute. whisper.cpp (MIT), Kokoro
+(Apache-2.0), and Piper are fine; <strong>eSpeak NG is GPLv3</strong>
+(allowed with the source-offer obligation already in the compliance
+notices); <strong>DECtalk is BSD</strong>. All four are re-hosted on
+<code>assets-v1</code> as byte-identical re-publishes of the upstream
+binaries. <strong>ffmpeg is explicitly excluded</strong> — QUILL never
+bundles or re-hosts it (see <code>quill/core/speech/ffmpeg.py</code>);
+it stays user-installed. Every re-hosted asset needs a
+third-party-notices entry.</li>
+<li><strong>2 GB per-asset limit.</strong> GitHub caps a single release
+asset at 2 GB, so multi-GB assets — speech <code>large-v3</code> (~3.1
+GB) and the GGUF LLMs (<code>phi-4-mini</code> ~2.5 GB) — stay on their
+canonical Hugging Face hosts, which the code already uses.</li>
+<li><strong>Verify regardless of host.</strong> The SHA-256 check stays
+even for assets we control; it defends against a replaced/corrupted
+asset and lets any mirror be trusted.</li>
+</ul>
+<p><strong>The download experience is accessible by contract.</strong>
+Each on-demand download runs behind an accessible,
+<strong>cancelable</strong> progress dialog
+(<code>AIProgressDialog</code>) with spoken milestones; focus is owned
+and returns to the feature that needed the component. Downloads are
+reachable where the user already is (the feature surface, a Help-menu
+"Download optional components…" entry, and an optional first-run
+Setup-Wizard offer), never block the UI thread, are disabled by Safe
+Mode, and present one consistent surface across OCR, Scribe, speech, and
+voices (the AI Hub Services framework).</p>
+<p><strong>Size / RAM reference (current observations, to be
+re-baselined by the footprint report).</strong>
+<code>scripts/footprint_report.py</code> emits the diffable size/machine
+baseline under <code>docs/planning/footprint/</code>. Offline speech
+models (download size; Faster Whisper's on-disk int8 is smaller), with
+the RAM tier <code>service.required_ram_gb</code> maps each to:</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Download</th>
+<th>Accuracy</th>
+<th>Speed</th>
+<th>Est. RAM tier</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>tiny</td>
+<td>75 MB</td>
+<td>low</td>
+<td>fast</td>
+<td>~2 GB</td>
+</tr>
+<tr>
+<td>base</td>
+<td>145 MB</td>
+<td>low</td>
+<td>fast</td>
+<td>~2 GB</td>
+</tr>
+<tr>
+<td>small</td>
+<td>465 MB</td>
+<td>medium</td>
+<td>medium/fast</td>
+<td>~4 GB</td>
+</tr>
+<tr>
+<td>medium</td>
+<td>1500 MB</td>
+<td>high</td>
+<td>slow</td>
+<td>~6 GB</td>
+</tr>
+<tr>
+<td>large-v3</td>
+<td>3100 MB</td>
+<td>highest</td>
+<td>slow</td>
+<td>~8 GB</td>
+</tr>
+</tbody>
+</table>
+<p>Speech recommender (<code>service.recommend_model_id</code>) by total
+RAM: &lt;3 GB → tiny; &lt;6 → base; &lt;12 → small; &lt;16 → medium; ≥16
+→ medium (or large-v3 with a GPU). On-device LLM (GGUF Q4_K_M,
+<code>ai/model_manager.py</code>; auto-downloaded + SHA-256-verified):
+<strong>Llama 3.2 1B Instruct</strong> ~0.8 GB (default under 8 GB RAM),
+<strong>Phi-4-mini Instruct</strong> ~2.5 GB (8 GB+). The Windows
+installer (0.8.1 local build) is ≈ 245 MB, dominated by the embedded
+CPython 3.13 runtime + wheels; the embeddable stdlib is already lean
+(<code>python313.zip</code> 3.6 MB; <code>tkinter</code>,
+<code>test</code>, <code>idlelib</code>, <code>ensurepip</code>,
+<code>lib2to3</code>, <code>distutils</code> all absent), so the
+footprint lever is large <em>data inside wheels</em> (spell-check
+dictionaries, CLDR locale data — Babel is now pruned as build-only) and
+optional engines that qualify for on-demand, not stdlib modules. The
+largest optional engine, <strong>Vosk</strong> (~51 MB
+<code>libvosk</code> wheel), is no longer bundled: it installs on demand
+via <code>quill/core/speech/engine_install.install_vosk</code>
+(<strong>Tools → Speech → Download Vosk</strong>), preferring QUILL's
+own pinned, SHA-256-verified wheel on the <code>assets-v1</code> release
+and falling back to PyPI. No offline speech engine ships in the
+installer now — the tiny default whisper.cpp (~8 MB) is itself fetched
+on demand — so the base download stays small while capability is a
+one-time verified fetch away.</p>
 <h3
 id="525d-batch-document-to-speech-pronunciation-and-ssml-shipped">5.25d
 Batch Document-to-Speech, pronunciation, and SSML (shipped)</h3>

@@ -126,14 +126,17 @@ KOKORO_VOICES_SHA256 = "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c2
 # "speech" bundles sounddevice (PortAudio) so offline dictation works out of the
 # box (#617) without a separate pip install. The whisper.cpp engine itself is a
 # separate InnoSetup component (tools/speech/whispercpp), not a pip wheel.
-# "vosk" bundles the very-low-resource CPU-only offline engine (#669): its wheel
-# is self-contained (it ships libvosk), so unlike whisper.cpp it needs no separate
-# component or native staging -- installing the wheel makes the engine available,
-# and its ~40 MB model still downloads on demand via Manage Speech Models. It is
-# the accessibility-reach fallback for old/constrained machines, so it ships in
-# the base bundle. The heavier opt-in engine (Faster Whisper) stays pip-only and
-# is not bundled.
-DEFAULT_BUNDLED_DEPENDENCY_GROUPS = ("ui", "spellcheck", "ocr", "kokoro", "speech", "vosk")
+# Vosk (the very-low-resource CPU-only offline engine, #669) is NOT bundled: at
+# ~51 MB of self-contained wheel (it ships libvosk) it is the single largest optional
+# engine, and it is not the default (whisper.cpp is). Like Faster Whisper it downloads
+# on demand into a user-writable engine pack (quill/core/speech/engine_install.install_vosk,
+# activated on sys.path) via Tools > Speech > Download Vosk, so the base installer no
+# longer carries it. Its ~40 MB model still downloads on demand via Manage Speech Models.
+# The default whisper.cpp engine is itself already on-demand (~8 MB, excluded from the
+# installer in quill.iss and fetched via release_assets / the dictation pre-flight), so no
+# offline engine is bundled -- the installer stays small and the first offline use fetches
+# the tiny default in-flow.
+DEFAULT_BUNDLED_DEPENDENCY_GROUPS = ("ui", "spellcheck", "ocr", "kokoro", "speech")
 
 # Pinned rcedit release (electron/rcedit). Build-tool only -- never copied into
 # the portable bundle or the installer payload. Used to stamp the bundled
@@ -1413,6 +1416,13 @@ def _prune_embedded_runtime(site_packages: Path) -> None:
     (``kqp_validator`` backs the runtime "Import Keyboard Pack" command) are
     imported by ``quill/ui`` and ``quill/core`` at runtime, so they must ship
     even though most of ``quill/tools`` is otherwise CI-only.
+
+    Babel is pruned as build-only (AI footprint plan, Phase 1). It is used solely
+    to *compile* translations (``pybabel`` / ``quill/tools/compile_translations.py``)
+    at build time; the shipped app loads the resulting ``.mo`` files through the
+    standard-library ``gettext`` (``quill/core/i18n.py``) and never imports ``babel``
+    at runtime. Translation compilation runs as its own step against ``.po`` sources
+    before bundling, not from the embedded runtime, so removing Babel here is safe.
     """
     removable = [
         # Build tools - used during pip install, not at runtime. pip stays (it
@@ -1427,6 +1437,12 @@ def _prune_embedded_runtime(site_packages: Path) -> None:
         "PyWin32.chm",
         "adodbapi",
         "isapi",
+        # Babel: build-only (compiles translations); runtime i18n uses stdlib
+        # gettext and never imports babel. ~29 MB of package + CLDR locale data.
+        "babel",
+        "Babel",
+        "babel-*",
+        "Babel-*",
     ]
     total_removed = 0
     for pattern in removable:

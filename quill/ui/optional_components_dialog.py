@@ -4,7 +4,7 @@ A single, accessible touch point that lists every optional, downloadable compone
 (offline speech engine, neural/classic voices, the audio-export helper, and
 non-English spell-check dictionaries) with what is **Installed** versus **Available
 to download**, so a user never has to hunt through scattered menus to find or fetch
-them (footprint plan §10.2.5).
+them (QUILL-PRD.md §5.25f, "The download experience is accessible by contract").
 
 The status model is the wx-free :func:`quill.core.optional_components.gather_optional_components`.
 Each component's actual download keeps its own tested, progress-reporting flow; to

@@ -273,6 +273,7 @@ class SpeechCommandsMixin:
             return
         actions = {
             "whispercpp": self.download_offline_speech_engine,
+            "vosk": self.download_vosk,
             "kokoro": self._download_kokoro_models,
             "espeak": self.download_espeak_exe,
             "dectalk": self.download_dectalk_exe,

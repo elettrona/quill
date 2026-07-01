@@ -74,6 +74,11 @@ SETTING_GROUPS: tuple[SettingGroup, ...] = (
     SettingGroup("read_aloud", "Read Aloud", "Spoken playback engine and voice tuning."),
     SettingGroup("ai", "AI and Assistant", "Writing assistant tone and behavior."),
     SettingGroup(
+        "performance",
+        "Performance and Memory",
+        "How QUILL manages model memory on modest machines.",
+    ),
+    SettingGroup(
         "transcription",
         "Transcription",
         "Offline speech-model and provider behavior.",
@@ -841,6 +846,31 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "default (your screen reader already announces dialogs); turn it on for the cue.",
         feature_id="core.accessibility",
         keywords=("dialog", "announcement", "entered", "exited", "leaving"),
+    ),
+    SettingSpec(
+        "low_resource_mode",
+        "Low-resource mode (one model at a time)",
+        "performance",
+        "bool",
+        "Keep only one AI or speech engine loaded at a time and prefer the smallest "
+        "model that fits. Trades speed when you switch features for a much smaller "
+        "memory footprint. Never turns AI or speech off — it just loads them one at a "
+        "time. Helpful on machines with limited RAM.",
+        feature_id="core.performance",
+        keywords=("memory", "ram", "low", "resource", "footprint", "unload", "model"),
+    ),
+    SettingSpec(
+        "idle_unload_minutes",
+        "Unload idle models after (minutes)",
+        "performance",
+        "int",
+        "Free the memory of an AI or speech model that has not been used for this "
+        "many minutes; the next use reloads it automatically. Set to 0 to keep models "
+        "loaded until you close QUILL.",
+        minimum=0,
+        maximum=240,
+        feature_id="core.performance",
+        keywords=("memory", "ram", "idle", "unload", "timeout", "model"),
     ),
     SettingSpec(
         "announce_indent_depth",

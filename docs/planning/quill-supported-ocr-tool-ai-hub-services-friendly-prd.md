@@ -1764,7 +1764,8 @@ consent/audit/Safe-Mode rules, and the same accessible card UX. Planned tenants:
 For **local** OCR engines (Tesseract / Marker / local Chandra), QUILL must not bloat
 the installer. They are fetched on demand through the same **pinned, SHA-256-verified
 release-asset** mechanism shipped for the speech engine and Kokoro
-(`quill/core/release_assets.py`; AI-Optimization PRD §10.2.4): a service that needs a
+(`quill/core/release_assets.py`; QUILL-PRD.md §5.25f, "Recommended host and redistribution
+rules"): a service that needs a
 local binary/model declares it as a release asset, and QUILL downloads + verifies +
 unpacks it with cancelable, accessible progress, blocked in Safe Mode — and offers a
 **re-download/replace** when one is already present, with **newer-version awareness**

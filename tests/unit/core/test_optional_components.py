@@ -6,7 +6,7 @@ from quill.core.optional_components import gather_optional_components
 
 def test_gather_includes_the_core_optional_components() -> None:
     ids = {c.component_id for c in gather_optional_components()}
-    assert {"whispercpp", "kokoro", "espeak", "dectalk", "ffmpeg"}.issubset(ids)
+    assert {"whispercpp", "vosk", "kokoro", "espeak", "dectalk", "ffmpeg"}.issubset(ids)
 
 
 def test_status_reflects_detectors(monkeypatch) -> None:

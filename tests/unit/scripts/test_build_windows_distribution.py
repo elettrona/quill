@@ -8,6 +8,7 @@ import pytest
 
 from quill.core.shell_verbs import default_shell_verbs
 from scripts.build_windows_distribution import (
+    _prune_embedded_runtime,
     build_inno_setup_script,
     build_shell_verb_registry_lines,
     build_windows_distribution,
@@ -652,6 +653,50 @@ def test_compile_inno_setup_installer_accepts_inno_output_folder(
     )
 
     assert built == installer_exe
+
+
+def test_prune_removes_build_only_babel_but_keeps_runtime_packages(tmp_path: Path) -> None:
+    """Phase 1 trim: Babel (build-only) is pruned; runtime packages are kept.
+
+    Babel is used only to *compile* translations at build time; the shipped app
+    loads ``.mo`` files through stdlib ``gettext`` and never imports ``babel``. This
+    guards that the prune targets Babel (and its dist-info) without touching a
+    real runtime dependency like ``wx``.
+    """
+    site_packages = tmp_path / "site-packages"
+    site_packages.mkdir()
+    (site_packages / "babel").mkdir()
+    (site_packages / "babel" / "core.py").write_text("x = 1", encoding="utf-8")
+    (site_packages / "Babel-2.18.0.dist-info").mkdir()
+    (site_packages / "Babel-2.18.0.dist-info" / "RECORD").write_text("", encoding="utf-8")
+    (site_packages / "wx").mkdir()
+    (site_packages / "wx" / "__init__.py").write_text("core = 1", encoding="utf-8")
+
+    _prune_embedded_runtime(site_packages)
+
+    assert not (site_packages / "babel").exists()
+    assert not (site_packages / "Babel-2.18.0.dist-info").exists()
+    assert (site_packages / "wx").exists()  # runtime package untouched
+
+
+def test_runtime_packages_never_import_babel() -> None:
+    """Invariant behind the Babel prune: no shipped runtime module imports babel.
+
+    If this ever fails, the Phase 1 Babel prune above would ship a broken runtime,
+    so the import must be removed or Babel must stop being pruned.
+    """
+    repo_root = Path(__file__).resolve().parents[3]
+    runtime_dirs = ["core", "ui", "io", "platform", "stability", "plugins"]
+    offenders: list[str] = []
+    for sub in runtime_dirs:
+        base = repo_root / "quill" / sub
+        if not base.exists():
+            continue
+        for path in base.rglob("*.py"):
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            if re.search(r"^\s*(import babel|from babel\b)", text, re.MULTILINE):
+                offenders.append(str(path.relative_to(repo_root)))
+    assert offenders == [], f"runtime modules import babel: {offenders}"
 
 
 def test_bundled_runtime_dependencies_uses_runtime_groups(tmp_path: Path) -> None:

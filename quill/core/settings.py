@@ -158,6 +158,13 @@ class Settings:
     # every supported screen reader already announces the dialog and its title,
     # so the cue is redundant; turn it back on to hear the explicit transition.
     announce_dialog_transitions: bool = False
+    # Runtime-memory policy (AI footprint & optimization, QUILL-PRD.md §5.25f).
+    # low_resource_mode caps concurrently-loaded engines to one and biases model
+    # selection to the smallest that fits — trading concurrency for fit, never
+    # disabling AI or speech. idle_unload_minutes unloads a model untouched for
+    # that many minutes (0 = never unload); a later use simply reloads.
+    low_resource_mode: bool = False
+    idle_unload_minutes: int = 10
     # Speak the new indentation depth ("4 spaces" / "1 tab") when Tab / Shift+Tab
     # indents, instead of the terse "Indented lines". Aware of indent_with_tabs
     # and indent_size; on by default, off restores the terse message.
@@ -666,6 +673,8 @@ class Settings:
         dictation_onboarding_shown = bool(data.get("dictation_onboarding_shown", False))
         announce_formatting_on_move = bool(data.get("announce_formatting_on_move", False))
         announce_dialog_transitions = bool(data.get("announce_dialog_transitions", False))
+        low_resource_mode = bool(data.get("low_resource_mode", False))
+        idle_unload_minutes = _clamp_int(data.get("idle_unload_minutes", 10), 10, 0, 240)
         announce_indent_depth = bool(data.get("announce_indent_depth", True))
         spoken_echo_on_double_press = bool(data.get("spoken_echo_on_double_press", True))
         editor_control_kind = str(data.get("editor_control_kind", "")).strip().lower()
@@ -1128,6 +1137,8 @@ class Settings:
             dictation_intelligent_spacing=dictation_intelligent_spacing,
             announce_formatting_on_move=announce_formatting_on_move,
             announce_dialog_transitions=announce_dialog_transitions,
+            low_resource_mode=low_resource_mode,
+            idle_unload_minutes=idle_unload_minutes,
             announce_indent_depth=announce_indent_depth,
             spoken_echo_on_double_press=spoken_echo_on_double_press,
             editor_control_kind=editor_control_kind,

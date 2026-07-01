@@ -57,6 +57,12 @@ def _whisper_installed() -> bool:
     return resolve_whisper_executable() is not None
 
 
+def _vosk_installed() -> bool:
+    from quill.core.speech.engine_install import is_vosk_available
+
+    return is_vosk_available()
+
+
 def _kokoro_installed() -> bool:
     from quill.core.read_aloud import kokoro_onnx_ready
     from quill.core.speech.engine_install import is_kokoro_onnx_available
@@ -97,6 +103,16 @@ def gather_optional_components() -> list[OptionalComponent]:
             SPEECH_ENGINE,
             _safe(_whisper_installed),
             "~8 MB",
+        ),
+        OptionalComponent(
+            "vosk",
+            "Vosk speech engine (very low resource)",
+            "A tiny offline dictation/transcription engine for old or low-memory "
+            "machines with no GPU. whisper.cpp is the default; this is the lightweight "
+            "fallback.",
+            SPEECH_ENGINE,
+            _safe(_vosk_installed),
+            "~51 MB",
         ),
         OptionalComponent(
             "kokoro",

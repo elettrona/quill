@@ -67,6 +67,53 @@ def test_kokoro_asset_is_pinned() -> None:
     assert ra.ASSETS["kokoro"].expect_member == "kokoro-v1.0.int8.onnx"
 
 
+def test_vosk_asset_is_pinned_wheel_on_assets_v1() -> None:
+    """Vosk is self-hosted: a pinned .whl on assets-v1, byte-identical to the PyPI wheel."""
+    asset = ra.ASSETS["vosk"]
+    assert asset.tag == "assets-v1"
+    assert asset.filename.endswith("win_amd64.whl")
+    assert ra.is_pinned(asset) is True
+    assert asset.url.endswith("/assets-v1/vosk-0.3.45-py3-none-win_amd64.whl")
+
+
+def test_fetch_file_verifies_and_returns_raw_file_without_unpacking(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    monkeypatch.delenv("QUILL_SAFE_MODE", raising=False)
+    payload = b"PK-fake-wheel-bytes"
+    import hashlib
+
+    sha = hashlib.sha256(payload).hexdigest()
+    monkeypatch.setitem(
+        ra.ASSETS, "wheelish", ra.ReleaseAsset("wheelish", "assets-v1", "x.whl", sha)
+    )
+    monkeypatch.setattr(
+        ra, "_download_resumable", lambda url, dest, progress, **k: dest.write_bytes(payload)
+    )
+    out = ra.fetch_file("wheelish", tmp_path / "dl")
+    assert out == tmp_path / "dl" / "x.whl"
+    assert out.read_bytes() == payload  # returned as-is, not extracted
+
+
+def test_fetch_file_rejects_checksum_mismatch(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    monkeypatch.delenv("QUILL_SAFE_MODE", raising=False)
+    monkeypatch.setitem(ra.ASSETS, "w", ra.ReleaseAsset("w", "assets-v1", "w.whl", "0" * 64))
+    monkeypatch.setattr(
+        ra, "_download_resumable", lambda url, dest, progress, **k: dest.write_bytes(b"nope")
+    )
+    with pytest.raises(ra.ReleaseAssetError, match="[Cc]hecksum mismatch"):
+        ra.fetch_file("w", tmp_path / "dl")
+
+
+def test_fetch_file_refuses_unpinned(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    monkeypatch.delenv("QUILL_SAFE_MODE", raising=False)
+    monkeypatch.setitem(
+        ra.ASSETS, "ph", ra.ReleaseAsset("ph", "assets-v1", "p.whl", "<PLACEHOLDER>")
+    )
+    with pytest.raises(ra.ReleaseAssetError, match="unpinned|placeholder"):
+        ra.fetch_file("ph", tmp_path / "dl")
+
+
 def test_fetch_verifies_then_unpacks_expected_member(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:

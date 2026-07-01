@@ -82,17 +82,55 @@ The **ElevenLabs / ElevenDesk** premium-cloud-TTS integration is its own workstr
 tracked in [`eleven-labs.md`](eleven-labs.md) — **not started** (the SDK-in-gateway
 approach is decided). Dictation's larger later-phase capabilities are **2.0** (§5).
 
-**AI footprint & optimization** is its own measurement-first plan, tracked in
-[`QUILL-AI-Optimization-PRD.md`](QUILL-AI-Optimization-PRD.md). Its first concrete
-slice **shipped in 0.8.1 Beta 1**: a pinned, SHA-256-verified path for fetching
-redistributable components from QUILL's own GitHub release assets
-(`quill/core/release_assets.py`), wired as **Tools > Speech > Download Offline Speech
-Engine...** (recovery for the bundled whisper.cpp engine). It establishes the
-reliable-acquisition foundation (PRD §10.2.3–10.2.4) that any future unbundling builds
-on; the engine stays bundled, so capability never depends on a download. The **first
-real unbundle** also shipped: the ~120 MB **Kokoro** voices are no longer in the
-installer (downloaded on demand from the same verified release asset), with upgraders'
-existing copies preserved automatically — proving the size win can be taken safely.
+**AI footprint & optimization** is a measurement-first effort to make QUILL's full AI +
+speech feature set install small, start fast, and run on a cheap CPU-only laptop — never
+disabling features on low-end hardware, only right-sizing them. The durable design
+principles, the reliable-acquisition model, the redistribution/host rules, and the
+size/RAM reference now live in [`QUILL-PRD.md`](../Product%20Requirement%20Documents%20and%20Specifications/QUILL-PRD.md)
+§5.25f (the standalone planning PRD was retired to git history once its shipped slices were
+folded into the PRD and this roadmap). What **shipped in 0.8.1 Beta 1 and since:**
+
+- **Reliable acquisition foundation** — a pinned, SHA-256-verified path for fetching
+  redistributable components from QUILL's own `assets-v1` release
+  (`quill/core/release_assets.py`), wired as **Tools > Speech > Download Offline Speech
+  Engine...**. The **first real unbundles** followed: the ~120 MB **Kokoro** voices,
+  **DECtalk**, and **eSpeak NG** are no longer in the installer (downloaded on demand from
+  the same verified path), with upgraders' existing copies preserved automatically — proving
+  the size win can be taken safely.
+- **Measurement (Phase 0)** — `scripts/footprint_report.py` (unit-tested) produces the
+  diffable size/machine baseline under `docs/planning/footprint/` that every later phase is
+  judged against. Per-engine peak RSS and cold-start/first-token timings remain an in-app
+  follow-up.
+- **AI routing (Phase 4 core)** — the AI Setup Wizard's cloud option runs the full AI suite
+  with zero local model weight, and `ai/model_manager.recommended_id()` right-sizes on-device
+  defaults to the machine (llama-3.2-1b below 8 GB RAM, phi-4-mini above).
+- **Runtime-memory policy (Phase 2 core)** — `quill/core/model_lifecycle.py`: idle-unload
+  sweep, single-flight loading, and low-resource LRU eviction, with a `build_manager()`
+  factory that auto-enables low-resource mode below 4 GB RAM. Two accessible settings
+  (**Low-resource mode**, **Unload idle models after…**) are wired through the registry.
+  wx-free and unit-tested.
+- **Model-quant selection (Phase 3 core)** — `quill/core/model_upgrade.py`: a machine-aware,
+  one-step, screen-reader-friendly upgrade advisor (never auto-downloads; suppressed under
+  low-resource mode). Smallest-viable default already existed in the recommenders.
+- **Fallback chain (Phase 4 core)** — `quill/core/ai/fallback.py`: consent-safe cloud↔local
+  fallback decisions — cloud→local offered directly (data stays on device), local→cloud
+  gated on explicit consent with a spoken privacy note, nothing switched silently.
+- **In-app measurement harness (Phase 0)** — `quill/core/footprint_sampler.py`: peak-RSS and
+  first-token/first-audio timing helpers to complete the footprint baseline from inside the
+  running app.
+- **Installer trim (Phase 1)** — Babel is now pruned from the bundled runtime as build-only
+  (~29 MB; runtime i18n uses stdlib `gettext`, never `babel`), guarded by a regression test.
+
+**Open (integration + build/hardware sign-off):** wiring the Phase 2 lifecycle manager and the
+Phase 4 fallback into the live app (the wx-free cores and settings exist and are tested; they
+need the running app to drive the idle-sweep timer, the per-provider touch/reserve calls, and
+the accessible fallback offer). The remaining Phase 1 candidates are correctly ruled out or
+deferred: `win32more` is a real dependency of Windows OCR (`windows_ocr.py`), `vosk` is a
+runtime-selectable engine that would need on-demand asset hosting to unbundle, and non-en
+enchant dictionaries already download on demand. Concrete new quant catalog entries (q5/q8,
+int8_float16) need real pinned files + SHA-256 hashes. Phase 0's committed per-engine RSS/timing
+numbers, and any installer-size win, need a real build/reference-machine run. macOS offline-speech
+parity (a mac `whisper-cli`, or Faster Whisper as the mac default) is the tracked cross-platform gap.
 
 ### 1.3 Agentic AI platform (shipped in 0.8.1 Beta 1)
 
