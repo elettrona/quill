@@ -4,10 +4,11 @@
 > register of **locked / hidden** features (consolidated here from the retired
 > `deferred-locked-features.md`). Shipped work is not listed here; once something
 > lands it leaves this file and its behavior lives in the user guide and
-> `QUILL-PRD.md`. The only other planning file is the one large in-flight spec with
-> open work of its own:
+> `QUILL-PRD.md`. The other planning files are the large in-flight feature specs, each
+> with open work of its own:
 >
 > - [`quill-native-accessible-table-studio-plan.md`](quill-native-accessible-table-studio-plan.md) — Table Studio (not started).
+> - [`quill-accessible-vault-plan.md`](quill-accessible-vault-plan.md) — Accessible Vault, remaining Phases 3–7 (Phases 0–2 shipped; see §1.7).
 >
 > **Operating principle:** everything here is in scope to **ship** for 1.0 (except
 > rows explicitly marked 2.0). Simplicity for the screen-reader user is king. QUILL
@@ -93,79 +94,20 @@ Aloud voice** (per-session consent, Safe-Mode gated) all shipped. What remains i
 design, server-side pronunciation, and Tier-3 surfaces — all in §5. Voice **cloning**
 is deliberately descoped (QUILL narrates with the account's existing voices).
 
-### 1.7 Accessible Vault — remaining phases (with execution plans)
+### 1.7 Accessible Vault — remaining phases
 
-The **Accessible Vault** (linked notes + backlinks a blind writer traverses by ear)
-shipped its first milestone — **Phases 0–2** (persistent vault + indexing, wikilinks
-with Follow Link + create-on-follow + ambiguity chooser, and spoken backlinks), over the
-wx-free `quill/core/vault` package. It is documented in `QUILL-PRD.md` §5.89d, the user
-guide (Tools > Vault), the changelog, and the release notes; the standalone plan doc was
-retired here once delivered. Each remaining phase is additive, independently shippable on
-the same backbone, and keyboard-complete + palette-discoverable + spoken (backlinks and
-search read the *sentence* around a hit; no mouse-only paths). **Execution plans:**
-
-**Phase 3 — Vault-wide search & quick switcher.** *What:* instant full-text search across
-every note, plus a name-jump quick switcher. *SR magic:* the **quick switcher** (a
-prominent key, a reimagined Go-To-Note) is a modal that filters titles/aliases as you
-type, **announces the result count** ("7 matches"), arrows announce each, Enter opens —
-fuzzy and forgiving. **Search** returns an **accessible results list** (title, line,
-snippet with the match); Enter opens *at the matching line*; search-as-you-type announces
-the running count; "search within results" refines; recent searches remembered; regex /
-whole-word are labelled checkboxes. *Impl:* new `search.py` — `ripgrep`-backed when
-available (no index to maintain) with a small in-process fallback; results ranked (title
-> body, recency tiebreak). Both are `_show_modal_dialog` dialogs with `apply_modal_ids`.
-
-**Phase 4 — Global tags.** *What:* inline `#tag` and front-matter `tags:`, including nested
-`#area/subarea`, indexed vault-wide. *SR magic:* **Show Tags** lists every tag with counts
-("#project — 24 notes; #idea — 51"); selecting one lists the notes/blocks carrying it
-(Enter opens at the tag). Typing `#` offers **tag autocomplete** (existing tags first,
-announced). Vault-wide **tag rename** with inbound-count confirmation, like link rename.
-*Impl:* extend `index.py` with a nested-tag-aware tag map (tag → note/block occurrences);
-autocomplete reuses the wikilink popup; ties into Story Studio element tags.
-
-**Phase 5 — Transclusion / embeds / block refs.** *What:* `![[Note]]` / `![[Note#Heading]]`
-/ `![[Note#^blockid]]` embeds; assign a block id with `^blockid`. *SR magic:* embeds stay
-as plain `![[...]]` in the buffer (no silent expansion), but are **expanded in preview and
-on compile/export** with an announced "embedded from <note>" boundary; **"Speak embed at
-cursor"** reads the target aloud without altering the buffer; **"Resolve embed inline"**
-materializes it as one undo step; **"Add block reference"** mints a `^blockid` and copies a
-`[[Note#^blockid]]` link, announced. *Impl:* `resolve.py` embed expansion with cycle
-detection feeds `browser_preview` + `compile_manuscript`; block ids parsed by `note.py`.
-
-**Phase 6 — Templates & daily notes.** *What:* reusable note templates with variables and
-date-stamped daily notes. *SR magic:* **Insert template…** speaks each `{{prompt:Question}}`
-and answers inline; `{{date}}`/`{{time}}`/`{{title}}` + a cursor marker resolve
-automatically and focus lands where the marker was, announced. **New note from template…**;
-**Open today's note** (creating from the daily template if absent at
-`Journal/{{date:YYYY-MM-DD}}.md`); **Previous/Next daily note** walk the calendar by key,
-announcing the date and whether it exists. *Impl:* `templates.py` + `dailynotes.py`
-extending the existing Snippet Gallery substitution (not a second engine); settings hold
-the templates/daily folders, date format, and defaults.
-
-**Phase 7 — Sync & publish.** *What:* keep files the user's; add accessible helpers.
-*SR magic:* an optional **Vault Git Sync** ("Sync vault" = commit/pull/push) with a spoken,
-itemized **conflict resolver** ("these 3 notes changed both places — keep mine / keep
-theirs / merge") instead of a diff view; **Publish note** (push to the existing WordPress
-connection, resolving `[[links]]`/embeds to real HTML); **Export vault as a linked site**
-(static HTML with working links + generated index). Both announce what will be sent and
-ask first. *Impl:* a wx-free `vault/sync.py` over `safe_subprocess` (reusing SSH/remote);
-publish via the existing publishing providers + link/embed resolution; network-egress-audited.
-
-**Phase 0–2 deferred items** (same backbone): `[[` autocomplete + heading/block targets
-after `#` (reuse `main_frame_intellisense.py`), preview/export `[[...]]` link resolution in
-`browser_preview`, an **unlinked-mentions** UI + "Link this mention" (core `unlinked_mentions`
-exists), **neighborhood** navigation (forward + back links together), **rename-with-link-update**
-("Update 12 inbound links?" + one-undo), a dedicated **Vault Explorer** window (reusing the
-Story Studio binder tree), background/incremental indexing, and the Story-Studio-as-collection
-refactor.
-
-**Guardrails.** Non-goals stand: no rendered graph or visual canvas (relationships are
-accessible *lists*), no hosted paid sync service, no WYSIWYG/live-preview, no separate
-plugin marketplace. Resolve links by title/alias with deterministic disambiguation (folder
-proximity → spoken chooser, never a guess); the parser must not mangle `[label](url)`, code
-spans, or math. Large-vault performance (10k+ notes) needs incremental cached indexing and
-`ripgrep` for search — benchmark before Phase 3. Existing Story Studio projects must open
-unchanged as vaults (non-destructive one-time adoption).
+**Spec:** [`quill-accessible-vault-plan.md`](quill-accessible-vault-plan.md) (trimmed to the
+unfinished work). The Accessible Vault shipped its first milestone — **Phases 0–2**
+(persistent vault + indexing, wikilinks with Follow Link / create-on-follow / ambiguity
+chooser, and spoken backlinks), documented in `QUILL-PRD.md` §5.89d, the user guide
+(Tools > Vault), the changelog, and the release notes. **Remaining — each additive and
+independently shippable on the `quill/core/vault` backbone:** Phase 3 (vault-wide search &
+quick switcher), Phase 4 (global tags), Phase 5 (transclusion / embeds / block refs),
+Phase 6 (templates & daily notes), Phase 7 (sync & publish), plus the Phase 0–2 deferred
+items (`[[` autocomplete, preview/export link resolution, an unlinked-mentions UI,
+neighborhood navigation, rename-with-link-update, a Vault Explorer window, and
+background/incremental indexing). Full per-phase designs, the accessibility acceptance
+criteria, risks, and non-goals live in the plan file.
 
 ---
 
@@ -195,13 +137,15 @@ move its preserved content back into the relevant doc.
   plugin sandbox, signing, and review process ship. Release notes frame third-party
   Quillins / a marketplace as *future*.
 - `core.bw_whisperer` — **BITS Whisperer** brand menu (plus `core.bw_transcription`,
-  `core.bw_providers`, `core.bw_insights` sub-flags and the `quill/core/bw_providers.py`
-  backend, the hidden Whisperer menu, and its commands/settings). **Superseded, not
-  deferred:** every offline speech capability shipped under the flat **Tools > Speech**
-  menu, so the branded rollout / Provider Center / Status Page will not ship as specced.
-  **Recommended cleanup:** retire the flags + `bw_providers` subsystem from the codebase
-  (a dedicated refactor — ~8 files, its own tests; not a flag-flip). `bw_speech.py` is
-  shared with the shipped speech service and must **not** be removed.
+  `core.bw_providers`, `core.bw_insights` sub-flags, the `quill/core/bw_providers.py`
+  backend, the hidden Whisperer menu, and its commands/settings). This gates only the
+  **superseded branded presentation** — the phased-rollout / Provider Center / Status Page
+  surface that the shipped flat **Tools > Speech** menu replaced. It does **not** gate the
+  speech or agentic-AI *capabilities*, which ship as plain, always-on features.
+  **Decision: keep it as-is (locked, inert).** It builds nothing at runtime and ships
+  nothing, so there is no benefit to removing it and real risk in the ~1000-line untangle
+  (its handlers are coupled to the *shared* `bw_speech.py` and speech settings that the
+  live speech service uses). Leave it locked until there is a concrete reason to touch it.
 
 **All voice and speech *capabilities* are shipped and baked in** — offline dictation,
 transcription and captions, read-aloud across SAPI 5 / DECtalk / Piper / eSpeak / Kokoro
@@ -389,4 +333,4 @@ profiles (#426)**.
 | Table Studio (§1.5) | Whole feature (`quill-native-accessible-table-studio-plan.md`). |
 | ElevenLabs 2.0 extras (§1.6) | Live streaming Read Aloud, voice management, Tier-3 — all §5. |
 | Accessible Vault (§1.7) | Phases 0–2 shipped; Phases 3–7 (search, tags, embeds, templates, daily notes, sync/publish) + Phase 0–2 deferred items. |
-| Locked features (§2) | GLOW, Voice Commands, Rich Text Lens, Publishing (send), Third-Party Plugins; `bw_whisperer` subsystem cleanup. |
+| Locked features (§2) | GLOW, Voice Commands, Rich Text Lens, Publishing (send), Third-Party Plugins (`bw_whisperer` kept locked/inert — not removed). |
