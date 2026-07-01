@@ -281,6 +281,7 @@
   "quill/ui/main_frame_story_studio.py::StoryStudioMixin.open_story_studio::wx.Dialog": "hardened_custom",
   "quill/ui/main_frame_story_studio.py::StoryStudioMixin.open_story_studio::wx.DirDialog": "native",
   "quill/ui/main_frame_vault.py::VaultMixin._choose_ambiguous::wx.SingleChoiceDialog": "native",
+  "quill/ui/main_frame_vault.py::VaultMixin._show_vault_filter::wx.Dialog": "hardened_custom",
   "quill/ui/main_frame_vault.py::VaultMixin._show_vault_list::wx.Dialog": "hardened_custom",
   "quill/ui/main_frame_vault.py::VaultMixin.open_vault::wx.DirDialog": "native",
   "quill/ui/main_frame_verbosity.py::VerbosityCommandsMixin.open_verbosity_preferences::wx.Dialog": "hardened_custom",

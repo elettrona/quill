@@ -32,3 +32,61 @@ def test_activate_out_of_range_is_false_and_silent() -> None:
     assert dialog.activate_index(5) is False
     assert dialog.activate_index(-1) is False
     assert got == []
+
+
+# --- VaultFilterDialog (quick switcher / search) seam ----------------------
+
+from quill.ui.vault_dialogs import VaultFilterDialog  # noqa: E402
+
+
+def test_filter_dialog_initial_items_from_empty_query() -> None:
+    view = VaultFilterDialog(
+        wx=object(),
+        heading="Go to Note",
+        prompt="Type a title:",
+        provider=lambda q: [("Alpha", "a.md"), ("Beta", "b.md")] if q == "" else [("Beta", "b.md")],
+    )
+    assert view.labels == ["Alpha", "Beta"]  # empty query = full list
+
+
+def test_filter_dialog_update_refilters_and_counts() -> None:
+    view = VaultFilterDialog(
+        wx=object(),
+        heading="Go to Note",
+        prompt="Type a title:",
+        provider=lambda q: (
+            [("Beta", "b.md")] if q == "be" else [("Alpha", "a.md"), ("Beta", "b.md")]
+        ),
+    )
+    assert view.update("be") == 1
+    assert view.labels == ["Beta"]
+
+
+def test_filter_dialog_activate_hands_payload() -> None:
+    got: list[object] = []
+    view = VaultFilterDialog(
+        wx=object(),
+        heading="Go to Note",
+        prompt="p",
+        provider=lambda q: [("Alpha", "a.md")],
+        on_activate=got.append,
+    )
+    assert view.activate_index(0) is True and got == ["a.md"]
+
+
+def test_filter_dialog_passes_options_to_provider() -> None:
+    seen: dict = {}
+
+    def provider(query, options):
+        seen.update(options)
+        return [("hit", ("x.md", 3))] if query else []
+
+    view = VaultFilterDialog(
+        wx=object(),
+        heading="Search Vault",
+        prompt="Search:",
+        provider=provider,
+        option_labels=("Regex", "Whole word"),
+    )
+    assert view.update("fox", {"Regex": True, "Whole word": False}) == 1
+    assert seen == {"Regex": True, "Whole word": False}

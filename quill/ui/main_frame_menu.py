@@ -1567,6 +1567,8 @@ class MenuBuilderMixin:
         self._id_vault_follow_link = wx.NewIdRef()
         self._id_vault_backlinks = wx.NewIdRef()
         self._id_vault_insert_link = wx.NewIdRef()
+        self._id_vault_quick_switch = wx.NewIdRef()
+        self._id_vault_search = wx.NewIdRef()
         tools_menu = wx.Menu()
         tools_menu.Append(
             self._id_palette,
@@ -1588,6 +1590,12 @@ class MenuBuilderMixin:
         vault_menu.Append(
             self._id_vault_insert_link,
             self._menu_label(_("&Insert Link to Note..."), "vault.insert_link"),
+        )
+        vault_menu.Append(
+            self._id_vault_quick_switch, self._menu_label(_("&Go to Note..."), "vault.quick_switch")
+        )
+        vault_menu.Append(
+            self._id_vault_search, self._menu_label(_("&Search Vault..."), "vault.search")
         )
         tools_menu.AppendSubMenu(vault_menu, _("&Vault"))
         tools_menu.AppendSeparator()
@@ -2645,6 +2653,10 @@ class MenuBuilderMixin:
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.insert_wikilink(), id=self._id_vault_insert_link
         )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.quick_switch_note(), id=self._id_vault_quick_switch
+        )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.search_vault_notes(), id=self._id_vault_search)
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.open_story_studio(), id=self._id_open_story_studio
         )

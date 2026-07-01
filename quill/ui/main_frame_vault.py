@@ -235,6 +235,92 @@ class VaultMixin:
         finally:
             dialog.Destroy()
 
+    def quick_switch_note(self) -> None:
+        """Jump to a note by name — a filter-as-you-type switcher (Go to Note)."""
+        from quill.core.vault.search import quick_switch_matches
+
+        if self._ensure_vault() is None:
+            self._set_status("Open a vault first (Tools > Vault > Open Vault)")
+            return
+        if not self._vault.notes:
+            self._set_status("The vault has no notes yet")
+            return
+
+        def provider(query: str):
+            return [(m.title, m.path) for m in quick_switch_matches(self._vault, query)]
+
+        self._show_vault_filter(
+            "Go to Note",
+            prompt="Type part of a note title:",
+            provider=provider,
+            on_activate=lambda path: self._open_vault_note(path, 0),
+            count_verb="matches",
+        )
+
+    def search_vault_notes(self) -> None:
+        """Search every note; open a result at its matching line (vault-wide search)."""
+        from quill.core.vault.search import search_vault
+
+        if self._ensure_vault() is None:
+            self._set_status("Open a vault first (Tools > Vault > Open Vault)")
+            return
+
+        def provider(query: str, options: dict[str, bool]):
+            if not query.strip():
+                return []
+            hits = search_vault(
+                self._vault,
+                query,
+                regex=options.get("Regex", False),
+                whole_word=options.get("Whole word", False),
+            )
+            return [(hit.announce(), (hit.path, hit.line_number)) for hit in hits]
+
+        self._show_vault_filter(
+            "Search Vault",
+            prompt="Search all notes:",
+            provider=provider,
+            on_activate=lambda payload: self._open_vault_note_at_line(payload[0], payload[1]),
+            count_verb="results",
+            option_labels=("Regex", "Whole word"),
+        )
+
+    def _open_vault_note_at_line(self, rel_path: str, line_number: int) -> None:
+        root = self._vault_root_path()
+        if root is not None:
+            self.open_file(root / rel_path, line=max(0, line_number - 1))
+
+    def _show_vault_filter(
+        self, heading, *, prompt, provider, on_activate, count_verb, option_labels=()
+    ) -> None:
+        from quill.ui.dialog_contract import apply_modal_ids
+        from quill.ui.vault_dialogs import VaultFilterDialog
+
+        wx = self._wx
+        view = VaultFilterDialog(
+            wx,
+            heading=heading,
+            prompt=prompt,
+            provider=provider,
+            on_activate=on_activate,
+            announce=self._announce,
+            count_verb=count_verb,
+            option_labels=option_labels,
+        )
+        dialog = wx.Dialog(
+            self.frame, title=heading, style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER
+        )
+        outer = view.populate(dialog)
+        buttons = dialog.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL)
+        outer.Add(buttons, 0, wx.EXPAND | wx.ALL, 10)
+        apply_modal_ids(
+            dialog, affirmative_id=wx.ID_OK, affirmative_label="&Open", cancel_id=wx.ID_CANCEL
+        )
+        try:
+            self._show_modal_dialog(dialog, heading)
+        finally:
+            dialog.Destroy()
+
     def _register_vault_commands(self) -> None:
         self.commands.try_register(
             "vault.open", "Open Vault", self.open_vault, self._binding_for("vault.open")
@@ -256,4 +342,16 @@ class VaultMixin:
             "Insert Link to Note",
             self.insert_wikilink,
             self._binding_for("vault.insert_link"),
+        )
+        self.commands.try_register(
+            "vault.quick_switch",
+            "Go to Note",
+            self.quick_switch_note,
+            self._binding_for("vault.quick_switch"),
+        )
+        self.commands.try_register(
+            "vault.search",
+            "Search Vault",
+            self.search_vault_notes,
+            self._binding_for("vault.search"),
         )

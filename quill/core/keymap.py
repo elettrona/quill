@@ -291,6 +291,8 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "vault.follow_link": "",
     "vault.backlinks": "",
     "vault.insert_link": "",
+    "vault.quick_switch": "",
+    "vault.search": "",
     "power.insert_special_character": "Shift+F2",  # §4.22 parity; F2 -> List Studio
     "power.number_lines": "Alt+Shift+N",  # §4.22 Number Items parity
     "power.trim_blank_lines": "Ctrl+Shift+Enter",  # §4.22 Trim Blanks parity
