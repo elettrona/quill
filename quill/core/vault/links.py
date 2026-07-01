@@ -1,6 +1,6 @@
 """Wikilink codec (wx-free).
 
-Parses Obsidian-style links out of note text:
+Parses wiki-style links out of note text:
 
 * ``[[Note]]``               — a link to another note
 * ``[[Note|alias]]``         — with the display text shown in place of the target

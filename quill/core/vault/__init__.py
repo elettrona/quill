@@ -7,7 +7,7 @@ model, the wikilink codec, the link/backlink index, name/anchor resolution, and
 and indexes are unit-tested without disk.
 
 Canonical specification: the plan at
-``docs/planning/quill-accessible-vault-obsidian-parity-plan.md``.
+``docs/planning/quill-accessible-vault-plan.md``.
 """
 
 from __future__ import annotations
