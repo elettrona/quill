@@ -29,6 +29,7 @@ __all__ = [
     "SETUP_PROVIDERS",
     "WELCOME_TITLE",
     "WELCOME_BODY",
+    "FREE_PATH_GUIDANCE",
     "cloud_provider_option",
     "onboarding_path",
     "load_experience_mode",
@@ -174,8 +175,8 @@ CLOUD_PROVIDER_OPTIONS: tuple[CloudProviderOption, ...] = (
     CloudProviderOption(
         id="openrouter",
         name="OpenRouter",
-        blurb="One key, many models — handy if you like to switch.",
-        key_hint="Get a key from openrouter.ai under Keys.",
+        blurb="One key, many models — including strong free ones. The best free cloud path.",
+        key_hint="Get a free key from openrouter.ai under Keys (tap Get API key).",
         signup_url="https://openrouter.ai/keys",
     ),
 )
@@ -186,6 +187,12 @@ CLOUD_PROVIDER_OPTIONS: tuple[CloudProviderOption, ...] = (
 SETUP_PROVIDERS: tuple[CloudProviderOption, ...] = (
     ONDEVICE_PROVIDER_OPTION,
 ) + CLOUD_PROVIDER_OPTIONS
+
+
+# Strong free-path guidance shown on the connect step (built in the free catalog,
+# re-exported here so the wizard can read ob.FREE_PATH_GUIDANCE alongside the other
+# onboarding copy).
+from quill.core.ai.free_models import FREE_PATH_GUIDANCE  # noqa: E402
 
 
 def onboarding_path(path_id: str) -> OnboardingPath | None:

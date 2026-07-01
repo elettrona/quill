@@ -57,6 +57,10 @@
       "type": "string",
       "description": "Preferred harness id, or 'auto' to let the registry choose."
     },
+    "needs_tool_use": {
+      "type": "boolean",
+      "description": "True for agents that depend on the multi-step tool loop; the UI notes that small/free models handle these less reliably, but still offers them (graceful degradation)."
+    },
     "tools": {
       "type": "array",
       "items": { "type": "string" },

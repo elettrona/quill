@@ -1493,7 +1493,11 @@ configuration:</p>
 <code>Custom OpenAI-compatible</code> endpoint.</li>
 <li>The host, default model, and that provider's saved key fill in
 automatically. Cloud hosts are prefilled, so setup is usually just a key
-and a model.</li>
+and a model. The <strong>Model</strong> field is an editable dropdown:
+pick a recommended model (the free option leads for OpenRouter) or type
+any id, and use <strong>List models</strong> to load everything the
+account or device offers. Changing the provider refreshes the
+suggestions.</li>
 <li>Enter the API key (only cloud providers need one). It is stored
 securely on this device and kept per provider.</li>
 <li><strong>Verify Connection</strong> checks the endpoint and
@@ -1796,6 +1800,47 @@ Aloud, the AI Library) stay, while the power-user, agentic entries
 hidden until you're ready. Turn them on any time with <strong>Show
 advanced AI features</strong> near the bottom of the AI menu. Existing
 users keep the full menu — Basic mode applies only if you choose it.</p>
+<h3 id="using-ai-for-free">Using AI for free</h3>
+<p>You never have to pay to use QUILL's AI. The Connect step of the
+wizard shows two strongly recommended free paths and picks good defaults
+for you:</p>
+<ul>
+<li><strong>Most private, free</strong> — pick <strong>Ollama (on your
+device)</strong>. It runs a model on your own computer: no account, no
+key, works offline, and nothing you write ever leaves your machine.
+Quality is more modest than the big cloud models. (You'll need Ollama
+installed from ollama.com with a model pulled; the wizard checks this
+for you.)</li>
+<li><strong>Best quality, free</strong> — pick
+<strong>OpenRouter</strong>. Choose <strong>Get API key</strong> to open
+OpenRouter's key page in your browser, create a free key, paste it back,
+and QUILL preselects a strong free writing model for you (currently a
+Llama 3.3 70B free model). The model description says
+<strong>Free</strong> so you always know a choice costs nothing.</li>
+</ul>
+<p>Every provider that needs a key has a <strong>Get API key</strong>
+button next to the key box that opens the right signup page — no hunting
+for where to sign up.</p>
+<p>A few honest notes so there are no surprises:</p>
+<ul>
+<li>Free cloud models can be <strong>slower</strong> and are
+<strong>rate-limited</strong>. Because you use <strong>your own</strong>
+free key, that limit is yours alone — there's no shared cap and no cost
+to anyone else.</li>
+<li>Free hosted models may keep or train on what you send, under their
+own terms. If your writing is confidential, use the private
+<strong>on-device</strong> option instead.</li>
+<li><strong>What works on free models:</strong> everyday help — Rewrite,
+Summarize, Expand, Continue, Fix Grammar, Table of Contents, translate,
+proofread — all work well. <strong>Ask Quill</strong> works too; on a
+small model it automatically keeps its steps simple so it answers rather
+than stalling. The most involved multi-step agent tasks are where a
+stronger (paid) model still shows its advantage — QUILL will tell you
+when a task would benefit from one, but never blocks you from trying on
+a free model.</li>
+</ul>
+<p>You can change your provider or model any time from <strong>Set Up
+AI</strong> or the <strong>AI Hub</strong>.</p>
 <h3 id="the-ai-library--prompts-skills-and-agents-in-one-place">The AI
 Library — Prompts, Skills, and Agents in one place</h3>
 <p><code>AI &gt; AI Library...</code> is the single home for everything

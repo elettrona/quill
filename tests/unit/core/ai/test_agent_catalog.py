@@ -170,3 +170,13 @@ def test_schema_enums_match_code() -> None:
     assert set(props["permissions"]["additionalProperties"]["enum"]) == {m.value for m in Decision}
     perm_cats = set(props["permissions"]["propertyNames"]["enum"])
     assert perm_cats == {m.value for m in PermissionCategory}
+
+
+def test_needs_tool_use_field() -> None:
+    # Schema advertises it, validator type-checks it, and it round-trips to AgentSpec.
+    schema = json.loads((bundled_agents_dir().parent.parent / "schemas" / "agent.json").read_text())
+    assert schema["properties"]["needs_tool_use"]["type"] == "boolean"
+    bad = validate_agent(dict(_GOOD, needs_tool_use="yes"))
+    assert bad == ["needs_tool_use must be a boolean."]
+    assert parse_agent(dict(_GOOD, needs_tool_use=True)).needs_tool_use is True
+    assert parse_agent(_GOOD).needs_tool_use is False  # defaults off

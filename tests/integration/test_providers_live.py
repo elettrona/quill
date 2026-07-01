@@ -185,3 +185,38 @@ def test_provider_edits_selection_through_gateway(provider: str) -> None:
     assert result.status == "completed", f"{provider}: status was {result.status}"
     assert host.edited(), f"{provider}: the buffer was never edited"
     assert result.edited is True, f"{provider}: result.edited was False"
+
+
+@pytest.mark.skipif(
+    "openrouter" not in _KEYS,
+    reason="No OpenRouter key in the live keys file.",
+)
+def test_openrouter_free_model_writes() -> None:
+    """The free path end to end: a zero-priced OpenRouter model rewrites text.
+
+    Proves that (1) the free catalog can discover a genuinely free model from live
+    pricing, and (2) that model produces usable writing output — the whole promise
+    of the free-AI-for-everyone path. Costs nothing (free model, tiny prompt).
+    """
+    from quill.core.ai import free_models
+    from quill.core.ai.provider_backend import ProviderChatBackend
+    from quill.core.ai.providers import default_host_for_provider
+    from quill.core.assistant_ai import AssistantConnectionSettings
+
+    key = _KEYS["openrouter"]
+    classified = free_models.fetch_classified_models("openrouter", api_key=key)
+    free = free_models.free_models(classified)
+    assert free, "OpenRouter returned no free models to classify"
+    model = free[0].id
+    assert free_models.is_free_model(model), f"picked model {model} is not free"
+
+    settings = AssistantConnectionSettings(
+        provider="openrouter",
+        host=default_host_for_provider("openrouter"),
+        model=model,
+    )
+    backend = ProviderChatBackend(settings=settings, api_key=key)
+    ok, reason = backend.is_available()
+    assert ok, f"free model {model} not available: {reason}"
+    reply = backend.respond("Rewrite more clearly, return only the text: 'me want go store'")
+    assert reply and reply.strip(), f"free model {model} returned an empty response"

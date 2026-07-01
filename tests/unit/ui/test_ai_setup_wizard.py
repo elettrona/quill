@@ -240,6 +240,55 @@ def test_local_ollama_add_then_finish_uses_on_device_setup(wx_app, monkeypatch):
         frame.Destroy()
 
 
+def test_get_api_key_opens_provider_signup(wx_app, monkeypatch):
+    import webbrowser
+
+    frame, dlg = _wizard(wx_app)
+    opened = []
+    monkeypatch.setattr(webbrowser, "open", lambda url, *a, **k: opened.append(url) or True)
+    try:
+        dlg._added = []
+        dlg._path = "cloud"
+        dlg._step = _STEP_CONFIG
+        dlg._render()
+        # Select a keyed provider; Get API key opens exactly its signup_url.
+        avail = dlg._available_providers()
+        keyed_idx = next(i for i, o in enumerate(avail) if not o.local)
+        dlg._provider_choice.SetSelection(keyed_idx)
+        dlg._on_provider_changed(None)
+        assert dlg._get_key_btn.IsEnabled()
+        dlg._open_get_api_key()
+        assert opened == [avail[keyed_idx].signup_url]
+        # On-device Ollama needs no key, so the button is disabled.
+        local_idx = next(i for i, o in enumerate(avail) if o.local)
+        dlg._provider_choice.SetSelection(local_idx)
+        dlg._on_provider_changed(None)
+        assert not dlg._get_key_btn.IsEnabled()
+    finally:
+        dlg.close()
+        frame.Destroy()
+
+
+def test_openrouter_preselects_free_model(wx_app, monkeypatch):
+    from quill.core.ai.free_models import best_free_writing_model
+
+    frame, dlg = _wizard(wx_app)
+    monkeypatch.setattr(ob, "stored_provider_model", lambda p: "")  # no saved override
+    try:
+        dlg._added = [("openrouter", "OpenRouter")]
+        dlg._provider, dlg._provider_name = "openrouter", "OpenRouter"
+        dlg._model = ""  # no explicit selection, so the recommended default leads
+        dlg._path = "cloud"
+        dlg._step = _STEP_MODEL
+        dlg._render()
+        expected = best_free_writing_model("openrouter")
+        assert dlg._model_combo.GetValue() == expected
+        assert expected.endswith(":free")
+    finally:
+        dlg.close()
+        frame.Destroy()
+
+
 def test_finish_persists_experience_mode_and_completion(wx_app, tmp_path, monkeypatch):
     monkeypatch.setattr(ob, "onboarding_state_path", lambda: tmp_path / "ai" / "onboarding.json")
     monkeypatch.setattr(ob, "apply_on_device_setup", lambda *a, **k: None)

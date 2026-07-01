@@ -85,6 +85,12 @@ class AgentSpec:
     default_harness: str = "auto"
     tools: tuple[str, ...] = ()
     permission_overrides: tuple[tuple[PermissionCategory, Decision], ...] = ()
+    # True for agents that depend on the multi-step tool loop (reading/editing via
+    # tools across turns). Small/free models are unreliable at that loop, so the
+    # UI can note "works best with a stronger model" while still offering the agent
+    # (graceful degradation, never a hard block). Single-shot transform agents
+    # leave this False. See quill.core.ai.free_models.supports_tool_use.
+    needs_tool_use: bool = False
 
     def overrides_map(self) -> dict[PermissionCategory, Decision]:
         """Return the per-category permission overrides as a dict for the broker."""

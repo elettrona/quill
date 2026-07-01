@@ -6696,6 +6696,73 @@ Aloud, the AI Library) always stay.
 
 ---
 
+### 5.84d Free / low-cost AI for everyone (writing-first)
+
+**Goal.** Give every user a meaningful AI writing experience without a paid
+flagship account, and without the project carrying unbounded per-user cost.
+Flagship models are better, but the point is options for people who cannot afford
+one and a sane default that meets people where they are. Agents work on the free
+path too.
+
+**Cost posture — bring-your-own free key + local, $0 to the project.** There is
+no shared or hosted key. Each user either runs a local model (no key) or brings
+their **own free key** (their own free daily quota), so there is no shared limit
+and no cost or liability to the project. A subsidized/hosted proxy is explicitly
+out of scope; the data layer is designed so a *capped* proxy could later be added
+as an opt-in provider without reworking this.
+
+**Two strongly-advised free paths, with good defaults** (`recommended_free_paths`
+in `quill/core/ai/free_models.py`, surfaced on the wizard&#39;s connect step via
+`FREE_PATH_GUIDANCE`):
+
+1. **Best quality, free** — OpenRouter with the user&#39;s own free key. QUILL
+   preselects a strong free writing model (`best_free_writing_model`, currently a
+   Llama 3.3 70B free model). The model step&#39;s recommendation now leads with this
+   free model rather than `openrouter/auto` (which can route to paid).
+2. **Most private, free** — a fully on-device model (Ollama / bundled llama.cpp):
+   no account, offline, nothing leaves the device; more modest quality.
+
+The copy is honest: free hosted models can be slower and are rate-limited to the
+user&#39;s own quota, and may log/train on prompts under their terms, so QUILL advises
+keeping confidential writing on the on-device path.
+
+**Get API key.** Every keyed provider in the wizard has a **Get API key** button
+that opens that provider&#39;s signup page (`CloudProviderOption.signup_url`) in the
+browser — no hunting for where to get a key. Disabled for on-device Ollama.
+
+**Model dropdown (wizard + AI Hub).** The model is chosen from an editable
+dropdown seeded with the provider&#39;s recommended ids (free-first for OpenRouter),
+with a **List models** action to load everything the account/device exposes
+(`onboarding.list_provider_models`); the AI Hub Provider tab uses the same pattern
+(`_populate_hub_models` / `_on_hub_list_models`), replacing its old free-text
+field, and refreshes suggestions when the provider changes.
+
+**The free-model catalog** (`quill/core/ai/free_models.py`, pure/wx-free). Free
+is **derived, not hardcoded**: a model is free when the provider reports zero
+prompt+completion pricing, or (OpenRouter) its id ends in the documented `:free`
+suffix — so classification survives OpenRouter rotating its free line-up. Models
+carry a `cost_tier` (`free`/`low`/`flagship`), a coarse `writing_quality` rank,
+and a `tool_use` capability flag. `fetch_classified_models` reuses the already
+network-audited `ai_chat.list_models_raw` (no new egress site) to classify live
+`/models` data by price. `resolve_model_for_task` advises the cheapest capable
+model for a task verb (light verbs → free; heavy/agentic verbs → tool-capable).
+The wizard&#39;s model description speaks a **Free** / **Local, free** cue
+(`_cost_note`) so cost is audible where models are chosen.
+
+**Agents degrade gracefully on small/free models.** Single-shot transform agents
+(Rewrite, Summarize, Expand, Table of Contents — via `_run_agent_task` +
+`build_agent_plan`) already run on any chat model. The multi-step Ask Quill
+companion (`ConversationSession` tool loop) is capped to a near-single-shot step
+budget on a model the catalog flags as unreliable at tool use
+(`agent_editor_host._companion_loop_budget`), so a weak model **answers instead
+of looping** on malformed tool calls — the turn&#39;s document context is already in
+the prompt, so answering needs no tools. It is never a hard block, and the engine
+label reads &quot;simplified for a small model.&quot; Agent specs may declare
+`needs_tool_use: true` (schema + `AgentSpec`) so the UI can note &quot;works best with
+a stronger model&quot; (`free_models.stronger_model_hint`) while still offering them.
+
+---
+
 ### 5.85 Portable API key store
 
 By default QUILL stores AI provider keys in the Windows Credential Manager, which ties them to the current Windows user account. Portable mode offers an alternative: a DPAPI-encrypted file (`keys.enc`) in the QUILL data directory, activated by the presence of a `data/` folder next to `quill.exe` in the portable bundle.

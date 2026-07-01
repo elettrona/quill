@@ -245,11 +245,20 @@ class AIHubDialog:
         self._host_ctrl.SetName("Host URL")
         sizer.Add(self._host_ctrl, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
-        # Model
+        # Model — an editable dropdown: pick a recommended model (free-first) or
+        # type any id. "List models" fills it with everything the account/device
+        # offers; changing the provider refreshes the suggestions.
         sizer.Add(wx.StaticText(panel, label=_("Model:")), 0, wx.LEFT | wx.TOP, 6)
-        self._model_ctrl = wx.TextCtrl(panel, value=self._settings.model or "")
-        self._model_ctrl.SetName("Model")
-        sizer.Add(self._model_ctrl, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+        model_row = wx.BoxSizer(wx.HORIZONTAL)
+        self._model_ctrl = wx.ComboBox(panel, style=wx.CB_DROPDOWN)
+        self._model_ctrl.SetName("Model — choose a suggestion or type a model id")
+        self._list_models_btn = wx.Button(panel, label=_("&List models"))
+        model_row.Add(self._model_ctrl, 1, wx.RIGHT, 4)
+        model_row.Add(self._list_models_btn, 0)
+        sizer.Add(model_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+        self._populate_hub_models(
+            self._settings.provider or "ollama", select=self._settings.model or ""
+        )
 
         # Test connection button + result
         test_row = wx.BoxSizer(wx.HORIZONTAL)
@@ -268,7 +277,57 @@ class AIHubDialog:
         panel.SetSizer(sizer)
         self._reveal_btn.Bind(wx.EVT_TOGGLEBUTTON, self._on_reveal_key)
         self._test_btn.Bind(wx.EVT_BUTTON, self._on_test_connection)
+        self._provider_choice.Bind(wx.EVT_CHOICE, self._on_hub_provider_changed)
+        self._list_models_btn.Bind(wx.EVT_BUTTON, self._on_hub_list_models)
         return panel
+
+    def _hub_provider(self) -> str:
+        idx = self._provider_choice.GetSelection()
+        return _PROVIDER_CHOICES[idx][0] if idx >= 0 else "ollama"
+
+    def _populate_hub_models(self, provider: str, *, select: str = "") -> None:
+        """Fill the model dropdown with recommended (free-first) ids for a provider."""
+        from quill.core.ai.providers import (
+            default_model_for_provider,
+            recommended_models_for_provider,
+        )
+
+        suggestions = recommended_models_for_provider(provider)
+        self._model_ctrl.Set(suggestions)
+        fallback = suggestions[0] if suggestions else default_model_for_provider(provider)
+        self._model_ctrl.SetValue(select.strip() or fallback)
+
+    def _on_hub_provider_changed(self, _event: object) -> None:
+        # A model id is provider-specific, so show the new provider's recommended
+        # default (free-first for OpenRouter) rather than carrying the old id over.
+        self._populate_hub_models(self._hub_provider())
+
+    def _on_hub_list_models(self, _event: object) -> None:
+        import threading
+
+        provider = self._hub_provider()
+        self._test_label.SetLabel(_("Listing models..."))
+        self._list_models_btn.Enable(False)
+
+        def _run() -> None:
+            import wx as _wx
+
+            from quill.core.ai.onboarding import list_provider_models
+
+            models, error = list_provider_models(provider)
+            _wx.CallAfter(self._on_hub_models_listed, models, error)
+
+        threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: model discovery
+
+    def _on_hub_models_listed(self, models: list, error: str) -> None:
+        self._list_models_btn.Enable(True)
+        if not models:
+            self._test_label.SetLabel(error or _("No models were returned."))
+            return
+        current = self._model_ctrl.GetValue().strip()
+        self._model_ctrl.Set(models)
+        self._model_ctrl.SetValue(current if current in models else models[0])
+        self._test_label.SetLabel(_("Loaded {n} models.").format(n=len(models)))
 
     # ------------------------------------------------------------------
     # Tab: Engines (harnesses) — pick the agentic engine; install / sign in.

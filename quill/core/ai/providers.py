@@ -175,7 +175,17 @@ def recommended_models_for_provider(provider: str) -> list[str]:
     if normalized == "claude":
         return ["claude-haiku-4-5-20251001", "claude-sonnet-4-6"]
     if normalized == "openrouter":
-        return ["openrouter/auto", "anthropic/claude-sonnet-4-6", "openai/gpt-4o-mini"]
+        from quill.core.ai.free_models import best_free_writing_model
+
+        free_default = (
+            best_free_writing_model("openrouter") or "meta-llama/llama-3.3-70b-instruct:free"
+        )
+        return [
+            free_default,
+            "openai/gpt-4o-mini",
+            "openrouter/auto",
+            "anthropic/claude-sonnet-4-6",
+        ]
     if normalized == "gemini":
         return ["gemini-2.5-flash", "gemini-2.5-pro"]
     if normalized == "ollama_cloud":
@@ -269,21 +279,36 @@ def recommended_model_guidance(provider: str) -> list[ModelRecommendation]:
             ),
         ]
     if normalized == "openrouter":
+        from quill.core.ai.free_models import best_free_writing_model
+
+        free_default = (
+            best_free_writing_model("openrouter") or "meta-llama/llama-3.3-70b-instruct:free"
+        )
         return [
             ModelRecommendation(
-                model="openrouter/auto",
-                framing="Automatic routing",
+                model=free_default,
+                framing="Free and strong (recommended)",
                 reason=(
-                    "Lets OpenRouter pick a capable model for each request, so you don't "
-                    "have to choose — a convenient default when you're exploring."
+                    "A capable free writing model that costs nothing — the best starting "
+                    "point if you don't want to pay. It uses your own free daily quota, so "
+                    "there's no shared limit. Free hosted models may log or train on what "
+                    "you send, so keep confidential text on the on-device option."
                 ),
             ),
             ModelRecommendation(
                 model="openai/gpt-4o-mini",
                 framing="Predictable speed and cost",
                 reason=(
-                    "Pins a specific fast, low-cost model for stable, repeatable behavior — "
-                    "use it when you want consistency over automatic routing."
+                    "A specific fast, low-cost paid model for stable, repeatable behavior — "
+                    "pennies per use when you want more consistency than the free tier."
+                ),
+            ),
+            ModelRecommendation(
+                model="openrouter/auto",
+                framing="Automatic routing",
+                reason=(
+                    "Lets OpenRouter pick a capable model for each request. Convenient, but "
+                    "it can route to paid models, so it is not a guaranteed-free choice."
                 ),
             ),
         ]

@@ -46,6 +46,11 @@ __all__ = [
     "build_companion_session",
 ]
 
+# Near-single-shot tool-loop budget for small/free models that are unreliable at
+# multi-step tool use (see _companion_loop_budget). Two steps lets a weak model
+# make at most one tool call plus a synthesis turn, instead of looping.
+_WEAK_MODEL_MAX_STEPS = 2
+
 
 def experimental_gateway_enabled() -> bool:
     """True when the (now legacy) ``QUILL_AI_AGENT_GATEWAY`` override is set.
@@ -734,6 +739,28 @@ def _companion_agent() -> Any:
     )
 
 
+def _companion_loop_budget() -> tuple[int, str]:
+    """Pick the tool-loop step budget for the active model, degrading small ones.
+
+    Returns ``(max_steps, engine_label)``. A model our free catalog flags as
+    unreliable for tool use gets a near-single-shot budget so a weak/free model
+    still answers rather than looping on malformed tool calls; capable models use
+    the full loop. Best-effort — any lookup failure keeps the full budget.
+    """
+    from quill.core.ai.tool_loop import MAX_STEPS
+
+    try:
+        from quill.core.ai.free_models import supports_tool_use
+        from quill.core.assistant_ai import load_assistant_connection_settings
+
+        model = load_assistant_connection_settings().model.strip()
+        if model and not supports_tool_use(model):
+            return _WEAK_MODEL_MAX_STEPS, "Native (QUILL, simplified for a small model)"
+    except Exception:  # noqa: BLE001 - degradation is a convenience, never block the chat
+        pass
+    return MAX_STEPS, "Native (QUILL)"
+
+
 def build_companion_session(controller: Any) -> tuple[Any, str]:
     """Build a conversational companion session for the Ask Quill dialog.
 
@@ -768,8 +795,13 @@ def build_companion_session(controller: Any) -> tuple[Any, str]:
         emit=emit,
     )
     planner = PromptToolPlanner(model_responder_from_backend(backend))
-    session = ConversationSession(agent, gateway, planner, emit=emit)
-    return session, "Native (QUILL)"
+    # Graceful degradation for small/free models: they are unreliable at the
+    # multi-step tool loop and can burn steps on malformed tool calls. Cap the
+    # loop low so the companion still answers (the document is already in the
+    # turn's context, so a direct answer needs no tools) instead of spinning.
+    max_steps, engine = _companion_loop_budget()
+    session = ConversationSession(agent, gateway, planner, emit=emit, max_steps=max_steps)
+    return session, engine
 
 
 def prepare_companion_context(

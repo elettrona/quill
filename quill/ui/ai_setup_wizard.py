@@ -248,6 +248,10 @@ class AISetupWizard:
             "many as you like — you only need one. You'll pick the default next.",
             name="How to connect your providers",
         )
+        self._add_text(
+            ob.FREE_PATH_GUIDANCE,
+            name="Best free options",
+        )
 
         available = self._available_providers()
         self._body_sizer.Add(wx.StaticText(self._body, label="&Provider:"), 0, wx.BOTTOM, 2)
@@ -264,6 +268,12 @@ class AISetupWizard:
         self._key_ctrl = wx.TextCtrl(self._body, style=wx.TE_PASSWORD)
         self._key_ctrl.SetName("API key (not needed for on-device Ollama)")
         self._body_sizer.Add(self._key_ctrl, 0, wx.EXPAND | wx.BOTTOM, 8)
+        # One click to the right signup page for the selected provider — no hunting for
+        # where to get a key. Disabled for on-device Ollama (no key needed).
+        self._get_key_btn = wx.Button(self._body, label="&Get API key (opens browser)")
+        self._get_key_btn.SetName("Get an API key for the selected provider")
+        self._body_sizer.Add(self._get_key_btn, 0, wx.BOTTOM, 8)
+        self._get_key_btn.Bind(wx.EVT_BUTTON, lambda _e: self._open_get_api_key())
         # Per-provider share consent. Required to add the provider: without it QUILL will
         # not use that provider (no per-chat nagging later — this is the one-time ask).
         self._consent_cb = wx.CheckBox(
@@ -278,8 +288,10 @@ class AISetupWizard:
             self._key_ctrl.Enable(False)
             self._consent_cb.Enable(False)
             self._add_btn.Enable(False)
+            self._get_key_btn.Enable(False)
         elif available[0].local:
             self._key_ctrl.Enable(False)  # on-device needs no key
+            self._get_key_btn.Enable(False)  # on-device needs no key
 
         self._body_sizer.Add(wx.StaticText(self._body, label="A&dded providers:"), 0, wx.BOTTOM, 2)
         self._added_list = wx.ListBox(self._body, choices=[name for _id, name in self._added])
@@ -324,12 +336,38 @@ class AISetupWizard:
             self._provider_hint.SetValue(self._cloud_hint(opt))
             # On-device Ollama needs no key; cloud providers do.
             self._key_ctrl.Enable(not opt.local)
+            self._get_key_btn.Enable(not opt.local)
             if opt.local:
                 self._key_ctrl.SetValue("")
             # Consent is per provider: re-label and clear when the choice changes.
             self._consent_cb.SetLabel(self._consent_label(opt))
             self._consent_cb.SetValue(False)
             self._body.Layout()
+
+    def _open_get_api_key(self) -> None:
+        """Open the signup/keys page for the currently selected provider."""
+        import webbrowser
+
+        available = self._available_providers()
+        idx = self._provider_choice.GetSelection()
+        if not (0 <= idx < len(available)):
+            return
+        opt = available[idx]
+        url = (opt.signup_url or "").strip()
+        if not url:
+            self._set_status(f"No signup page is known for {opt.name}.")
+            return
+        opened = False
+        try:
+            opened = bool(webbrowser.open(url))
+        except Exception:  # noqa: BLE001 - a failed browser open must never crash the wizard
+            opened = False
+        if opened:
+            self._set_status(
+                f"Opened {opt.name}'s API key page in your browser. Paste the key here."
+            )
+        else:
+            self._set_status(f"Couldn't open a browser. Get your {opt.name} key at: {url}")
 
     def _verify_and_add(self) -> None:
         if self._busy:
@@ -485,10 +523,18 @@ class AISetupWizard:
         self._model_guidance = list(recommended_model_guidance(self._provider))
         suggestions = recommended_models_for_provider(self._provider)
         self._model_combo.Set(suggestions)
+        # The recommended default is the first guidance entry — which now leads with a
+        # strong *free* model for OpenRouter, so the free path is preselected. Fall back to
+        # the provider's default only if guidance is empty.
+        recommended_default = (
+            self._model_guidance[0].model
+            if self._model_guidance
+            else default_model_for_provider(self._provider)
+        )
         chosen = (
             select.strip()
             or ob.stored_provider_model(self._provider)
-            or default_model_for_provider(self._provider)
+            or recommended_default
         )
         self._model_combo.SetValue(chosen)
         self._update_model_description()
@@ -496,20 +542,35 @@ class AISetupWizard:
     def _model_description(self, model: str) -> str:
         default_model = self._default_model_for_current_provider()
         location = "Runs locally on your device" if self._provider == "ollama" else "Cloud-hosted"
+        cost = self._cost_note(model)
         for g in self._model_guidance:
             if g.model == model:
                 rec = " Recommended default." if g.model == default_model else ""
                 return (
                     f"{g.model} — {g.framing}. {g.reason} {location} via "
-                    f"{self._provider_name}.{rec}"
+                    f"{self._provider_name}.{cost}{rec}"
                 )
         if model:
             return (
-                f"{model} — {location} via {self._provider_name}. QUILL will use this exact "
-                "model id; make sure your account or device actually has it (for local "
+                f"{model} — {location} via {self._provider_name}.{cost} QUILL will use this "
+                "exact model id; make sure your account or device actually has it (for local "
                 f"Ollama, run 'ollama pull {model}' first)."
             )
         return "Choose a suggested model, list all available models, or type a model id."
+
+    def _cost_note(self, model: str) -> str:
+        """A spoken 'Free' / 'Local, free' cue for the selected model, else ''.
+
+        Local models are always free; cloud models are flagged free when the free
+        catalog classifies them so (OpenRouter ``:free`` or zero-priced).
+        """
+        if not model:
+            return ""
+        if self._provider == "ollama":
+            return " Free (on-device)."
+        from quill.core.ai.free_models import is_free_model
+
+        return " Free." if is_free_model(model, provider=self._provider) else ""
 
     def _default_model_for_current_provider(self) -> str:
         from quill.core.ai.providers import default_model_for_provider

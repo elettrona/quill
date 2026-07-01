@@ -74,6 +74,7 @@ _ALLOWED_KEYS = {
     "default_harness",
     "tools",
     "permissions",
+    "needs_tool_use",
 }
 
 
@@ -120,6 +121,9 @@ def validate_agent(data: object) -> list[str]:
     for str_key in ("display_name", "system_prompt", "description", "default_harness"):
         if str_key in data and not isinstance(data[str_key], str):
             problems.append(f"{str_key} must be a string.")
+
+    if "needs_tool_use" in data and not isinstance(data["needs_tool_use"], bool):
+        problems.append("needs_tool_use must be a boolean.")
 
     risk = data.get("risk")
     if risk is not None and risk not in _enum_values(RiskLevel):
@@ -175,6 +179,7 @@ def parse_agent(data: object) -> AgentSpec:
         default_harness=str(data.get("default_harness", "auto")),
         tools=tuple(data.get("tools", []) or ()),
         permission_overrides=overrides,
+        needs_tool_use=bool(data.get("needs_tool_use", False)),
     )
 
 

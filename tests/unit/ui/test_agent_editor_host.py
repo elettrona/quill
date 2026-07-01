@@ -9,9 +9,11 @@ from quill.core.ai.diff_review import build_diff_review
 from quill.core.ai.harness import AgentSpec
 from quill.core.ai.permissions import Decision, PermissionCategory
 from quill.ui.agent_editor_host import (
+    _WEAK_MODEL_MAX_STEPS,
     MainFrameEditorHost,
     _apply_result,
     _classify,
+    _companion_loop_budget,
     _effective_scope,
 )
 
@@ -26,6 +28,41 @@ class FakeEditor:
 
     def GetStringSelection(self) -> str:
         return self.selection
+
+
+def test_companion_loop_budget_degrades_small_model(monkeypatch):
+    import quill.core.assistant_ai as aai
+    from quill.core.ai.tool_loop import MAX_STEPS
+
+    class _Conn:
+        def __init__(self, model):
+            self.model = model
+
+    # A tiny model gets the near-single-shot budget and a simplified engine label.
+    monkeypatch.setattr(aai, "load_assistant_connection_settings", lambda: _Conn("llama3.2:1b"))
+    steps, engine = _companion_loop_budget()
+    assert steps == _WEAK_MODEL_MAX_STEPS
+    assert "small model" in engine.lower()
+
+    # A capable model keeps the full loop budget.
+    monkeypatch.setattr(
+        aai, "load_assistant_connection_settings", lambda: _Conn("claude-haiku-4-5")
+    )
+    steps, engine = _companion_loop_budget()
+    assert steps == MAX_STEPS
+    assert engine == "Native (QUILL)"
+
+
+def test_companion_loop_budget_never_raises(monkeypatch):
+    import quill.core.assistant_ai as aai
+    from quill.core.ai.tool_loop import MAX_STEPS
+
+    def _boom():
+        raise RuntimeError("no config")
+
+    monkeypatch.setattr(aai, "load_assistant_connection_settings", _boom)
+    steps, engine = _companion_loop_budget()
+    assert steps == MAX_STEPS and engine == "Native (QUILL)"
 
 
 @dataclass

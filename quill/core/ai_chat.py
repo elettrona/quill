@@ -159,6 +159,37 @@ def list_models(provider_id: str, api_key: str = "", base_url: str = "") -> list
         return models
 
 
+def list_models_raw(
+    provider_id: str, api_key: str = "", base_url: str = ""
+) -> list[dict]:  # type: ignore[type-arg]
+    """Fetch the raw model dicts for a provider, preserving pricing metadata.
+
+    Unlike :func:`list_models` (which projects to :class:`AIModel`), this keeps
+    the full provider payload so callers can read fields like OpenRouter's
+    ``pricing``. Reuses the audited ``_get_json`` egress site — no new network
+    call site is introduced. OpenAI-compatible providers only; Ollama's
+    ``/api/tags`` has no pricing and returns bare name entries.
+    """
+    pdef = PROVIDERS.get(provider_id)
+    if pdef is None:
+        raise AIChatProviderError(f"Unknown provider: {provider_id}")
+    url = base_url or pdef["base_url"]
+    if pdef["mode"] == "ollama":
+        data = _get_json(f"{url}/api/tags", {}, TIMEOUT_MODELS_S)
+        return [dict(m) for m in data.get("models", []) if isinstance(m, dict)]
+    if not api_key and pdef["needs_key"]:
+        raise AIChatCredentialError(f"No API key configured for {pdef['label']}")
+    headers: dict[str, str] = {}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    data = _get_json(f"{url}/models", headers, TIMEOUT_MODELS_S)
+    return [
+        dict(m)
+        for m in data.get("data", [])
+        if isinstance(m, dict) and m.get("id") and not str(m.get("id", "")).startswith("~")
+    ]
+
+
 def send_prompt(
     provider_id: str,
     model_id: str,

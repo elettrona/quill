@@ -19,6 +19,7 @@ risk: medium                              # low | medium | high | critical
 default_scope: full_document              # see scopes below
 recommended_file_types: [md, html, txt]   # optional; no leading dot
 default_harness: auto                     # auto, or a specific engine id
+needs_tool_use: false                     # optional; true = depends on the multi-step tool loop
 tools: [tool.id.one, tool.id.two]         # optional; floored to SAFE_TOOL_IDS
 permissions:                              # optional per-category overrides
   read_document: ask
@@ -36,6 +37,12 @@ richly formatted as you like).
   `github`.
 - **Permission decisions:** `allow`, `ask`, `preview_required`, `deny`. The
   Permission Broker's floor still wins, and `risk` floors decisions too.
+- **`needs_tool_use`** (optional, default `false`): set `true` for agents that
+  depend on the multi-step tool loop (reading/editing via tools across turns).
+  Small/free models are unreliable at that loop, so QUILL notes "works best with a
+  stronger model" — but still offers the agent (graceful degradation, never a hard
+  block). Leave it `false` for single-shot transform agents. See
+  `quill/core/ai/free_models.py` (`supports_tool_use`, `stronger_model_hint`).
 - Legacy `<id>.json` files (with a `system_prompt` string) still load, but
   Markdown is the authoring standard.
 
