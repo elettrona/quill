@@ -321,6 +321,277 @@ class VaultMixin:
         finally:
             dialog.Destroy()
 
+    # --- Phase 4: tags ----------------------------------------------------
+
+    def show_tags(self) -> None:
+        """Open the spoken tag pane: filter tags, then list a tag's notes."""
+        from quill.core.vault.tags import build_tag_index, notes_for_tag, tag_counts
+
+        if self._ensure_vault() is None:
+            self._set_status("Open a vault first (Tools > Vault > Open Vault)")
+            return
+        index = build_tag_index(self._vault)
+        counts = tag_counts(index)
+        if not counts:
+            self._set_status("This vault has no tags yet")
+            return
+
+        def provider(query: str):
+            needle = query.lstrip("#").casefold()
+            return [
+                (f"#{tag} — {count} note(s)", tag)
+                for tag, count in counts
+                if needle in tag.casefold()
+            ]
+
+        def open_tag(tag: str) -> None:
+            notes = notes_for_tag(index, tag)
+            self._announce(f"#{tag}: {len(notes)} note(s)")
+            self._show_vault_list(f"Notes tagged #{tag}", [(n.title, (n.path, 0)) for n in notes])
+
+        self._show_vault_filter(
+            "Vault Tags",
+            prompt="Filter tags:",
+            provider=provider,
+            on_activate=open_tag,
+            count_verb="tags",
+        )
+
+    # --- Phase 5: embeds --------------------------------------------------
+
+    def _embed_at_cursor(self):
+        from quill.core.vault import link_at_offset, resolve_link
+        from quill.core.vault.render import resolve_embed_content
+
+        if self._ensure_vault() is None:
+            self._set_status("Open a vault first (Tools > Vault > Open Vault)")
+            return None
+        link = link_at_offset(self.editor.GetValue(), self.editor.GetInsertionPoint())
+        if link is None or not link.embed:
+            self._set_status("No embed (![[...]]) at the cursor")
+            return None
+        source = relative_note_path(self._vault_root_path(), self._document_path()) or ""
+        target = resolve_link(self._vault, self._vault_resolver, link, source)
+        if target is None:
+            self._set_status(f'No note named "{link.target}"')
+            return None
+        content = resolve_embed_content(self._vault, target.path, link.heading, link.block)
+        title = (
+            self._vault.notes[target.path].title
+            if target.path in self._vault.notes
+            else link.target
+        )
+        return link, title, content
+
+    def speak_embed_at_cursor(self) -> None:
+        """Read the content the caret's ``![[embed]]`` points to, without changing text."""
+        found = self._embed_at_cursor()
+        if found is None:
+            return
+        _link, title, content = found
+        self._announce(f"Embedded from {title}: {content}" if content else f"{title} is empty")
+
+    def resolve_embed_inline(self) -> None:
+        """Replace the caret's ``![[embed]]`` with its content as one undoable edit."""
+        found = self._embed_at_cursor()
+        if found is None:
+            return
+        link, _title, content = found
+        self.editor.Replace(link.start, link.end, content)
+        self._announce("Resolved embed inline")
+
+    # --- Phase 6: templates & daily notes ---------------------------------
+
+    def insert_note_template(self) -> None:
+        """Pick a template from the vault's Templates folder and insert it at the cursor."""
+        root = self._vault_root_path()
+        if root is None:
+            self._set_status("Open a vault first (Tools > Vault > Open Vault)")
+            return
+        tdir = root / "Templates"
+        templates = sorted(tdir.glob("*.md")) if tdir.is_dir() else []
+        if not templates:
+            self._set_status("No templates: add .md files to a 'Templates' folder in the vault")
+            return
+        self._show_vault_list(
+            "Insert Template",
+            [(path.stem, path) for path in templates],
+            on_activate=self._apply_template,
+        )
+
+    def _apply_template(self, path) -> None:
+        import datetime as _dt
+
+        from quill.core.vault.templates import render_template, template_prompts
+
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            self._set_status("Could not read the template")
+            return
+        answers: dict[str, str] = {}
+        for question in template_prompts(text):
+            answer = self._prompt_text(question)
+            if answer is None:
+                self._set_status("Template cancelled")
+                return
+            answers[question] = answer
+        doc_path = self._document_path()
+        title = doc_path.stem if doc_path is not None else ""
+        rendered, cursor = render_template(
+            text, now=_dt.datetime.now(), title=title, answers=answers
+        )
+        insert_at = self.editor.GetInsertionPoint()
+        self.editor.WriteText(rendered)
+        if cursor >= 0:
+            self.editor.SetInsertionPoint(insert_at + cursor)
+        self._announce("Template inserted")
+
+    def _prompt_text(self, question: str) -> str | None:
+        wx = self._wx
+        dialog = wx.TextEntryDialog(self.frame, question, "Template")
+        try:
+            if self._show_modal_dialog(dialog, "Template") != wx.ID_OK:
+                return None
+            return dialog.GetValue()
+        finally:
+            dialog.Destroy()
+
+    def _daily_pattern(self) -> str:
+        from quill.core.vault.dailynotes import DEFAULT_PATTERN
+
+        return str(getattr(self.settings, "vault_daily_pattern", "") or DEFAULT_PATTERN)
+
+    def open_todays_note(self) -> None:
+        """Open (creating if absent) today's daily note; set the daily cursor to today."""
+        import datetime as _dt
+
+        self._open_daily(_dt.date.today())
+
+    def previous_daily_note(self) -> None:
+        self._walk_daily(-1)
+
+    def next_daily_note(self) -> None:
+        self._walk_daily(1)
+
+    def _walk_daily(self, delta: int) -> None:
+        import datetime as _dt
+
+        cursor = getattr(self, "_vault_daily_cursor", None) or _dt.date.today()
+        self._open_daily(cursor + _dt.timedelta(days=delta))
+
+    def _open_daily(self, day) -> None:
+        from quill.core.vault.dailynotes import daily_note_relpath
+
+        root = self._vault_root_path()
+        if root is None:
+            self._set_status("Open a vault first (Tools > Vault > Open Vault)")
+            return
+        self._vault_daily_cursor = day
+        path = root / daily_note_relpath(self._daily_pattern(), day)
+        existed = path.exists()
+        if not existed:
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(f"# {day.isoformat()}\n\n", encoding="utf-8")
+            except OSError as error:
+                self._set_status(f"Could not create the daily note: {error}")
+                return
+            self._vault = None
+            self._ensure_vault()
+        self.open_file(path)
+        self._announce(f"{day.isoformat()}: {'opened' if existed else 'created'}")
+
+    # --- Phase 7: export site, sync, gated publish ------------------------
+
+    def export_vault_site(self) -> None:
+        """Export the whole vault as a static, linked HTML site (background)."""
+        from quill.core.vault.site_export import build_site, write_site
+        from quill.io.export import render_preview_body
+
+        if self._ensure_vault() is None:
+            self._set_status("Open a vault first (Tools > Vault > Open Vault)")
+            return
+        wx = self._wx
+        picker = wx.DirDialog(self.frame, "Choose an output folder for the website")
+        try:
+            if self._show_modal_dialog(picker, "Export Vault as Website") != wx.ID_OK:
+                self._set_status("Export cancelled")
+                return
+            out_dir = picker.GetPath()
+        finally:
+            picker.Destroy()
+
+        vault = self._vault
+        resolver = self._vault_resolver
+
+        def work(_progress) -> object:
+            pages = build_site(
+                vault, resolver, markdown_to_html=lambda t: render_preview_body(t, "markdown")
+            )
+            return write_site(pages, out_dir)
+
+        self._run_background_task(
+            "Exporting vault as a website",
+            work,
+            lambda written: self._announce(
+                f"Exported {len(written)} pages to {out_dir}"  # type: ignore[arg-type]
+            ),
+        )
+
+    def sync_vault(self) -> None:
+        """Commit, pull, and push the vault over the user's own git remote (background)."""
+        import os as _os
+
+        from quill.core.vault.sync import run_vault_sync
+        from quill.stability.safe_subprocess import run_subprocess_safely
+
+        if _os.environ.get("QUILL_SAFE_MODE") == "1":
+            self._set_status("Vault sync is disabled in Safe Mode")
+            return
+        root = self._vault_root_path()
+        if root is None:
+            self._set_status("Open a vault first (Tools > Vault > Open Vault)")
+            return
+
+        def work(_progress) -> object:
+            return run_vault_sync(str(root), runner=run_subprocess_safely)
+
+        self._run_background_task("Syncing vault", work, self._on_sync_done)
+
+    def _on_sync_done(self, result) -> None:
+        if getattr(result, "conflicts", ()):  # list them for keep-mine/theirs/merge
+            self._show_vault_list(
+                "Sync conflicts — resolve, then sync again",
+                [(path, None) for path in result.conflicts],
+                on_activate=lambda payload: None,
+            )
+        self._announce(result.message)
+
+    def publish_current_note(self) -> None:
+        """Publish the current note (GATED behind future.publishing; hidden while locked)."""
+        from quill.core.vault.publish import prepare_note_publish
+        from quill.io.export import render_preview_body
+
+        if self._ensure_vault() is None:
+            self._set_status("Open a vault first (Tools > Vault > Open Vault)")
+            return
+        rel = relative_note_path(self._vault_root_path(), self._document_path())
+        if rel is None or rel not in self._vault.notes:
+            self._set_status("Save this note inside the vault first")
+            return
+        payload = prepare_note_publish(
+            self._vault,
+            self._vault_resolver,
+            rel,
+            markdown_to_html=lambda t: render_preview_body(t, "markdown"),
+            feature_enabled=bool(self.features.is_enabled("future.publishing")),
+        )
+        if payload is None:
+            self._set_status("Publishing notes is not enabled yet")
+            return
+        self._announce(f"Prepared '{payload.title}' to publish.")
+
     def _register_vault_commands(self) -> None:
         self.commands.try_register(
             "vault.open", "Open Vault", self.open_vault, self._binding_for("vault.open")
@@ -354,4 +625,61 @@ class VaultMixin:
             "Search Vault",
             self.search_vault_notes,
             self._binding_for("vault.search"),
+        )
+        self.commands.try_register(
+            "vault.tags", "Show Tags", self.show_tags, self._binding_for("vault.tags")
+        )
+        self.commands.try_register(
+            "vault.speak_embed",
+            "Speak Embed at Cursor",
+            self.speak_embed_at_cursor,
+            self._binding_for("vault.speak_embed"),
+        )
+        self.commands.try_register(
+            "vault.resolve_embed",
+            "Resolve Embed Inline",
+            self.resolve_embed_inline,
+            self._binding_for("vault.resolve_embed"),
+        )
+        self.commands.try_register(
+            "vault.insert_template",
+            "Insert Template",
+            self.insert_note_template,
+            self._binding_for("vault.insert_template"),
+        )
+        self.commands.try_register(
+            "vault.today",
+            "Open Today's Note",
+            self.open_todays_note,
+            self._binding_for("vault.today"),
+        )
+        self.commands.try_register(
+            "vault.prev_daily",
+            "Previous Daily Note",
+            self.previous_daily_note,
+            self._binding_for("vault.prev_daily"),
+        )
+        self.commands.try_register(
+            "vault.next_daily",
+            "Next Daily Note",
+            self.next_daily_note,
+            self._binding_for("vault.next_daily"),
+        )
+        self.commands.try_register(
+            "vault.export_site",
+            "Export Vault as Website",
+            self.export_vault_site,
+            self._binding_for("vault.export_site"),
+        )
+        self.commands.try_register(
+            "vault.sync", "Sync Vault", self.sync_vault, self._binding_for("vault.sync")
+        )
+        # Publishing (the send path) is gated behind future.publishing (locked_off), so
+        # this command stays hidden from the menu and palette until it is unlocked.
+        self.commands.try_register(
+            "vault.publish_note",
+            "Publish Note",
+            self.publish_current_note,
+            self._binding_for("vault.publish_note"),
+            feature_id="future.publishing",
         )

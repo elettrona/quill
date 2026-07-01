@@ -1569,6 +1569,15 @@ class MenuBuilderMixin:
         self._id_vault_insert_link = wx.NewIdRef()
         self._id_vault_quick_switch = wx.NewIdRef()
         self._id_vault_search = wx.NewIdRef()
+        self._id_vault_tags = wx.NewIdRef()
+        self._id_vault_speak_embed = wx.NewIdRef()
+        self._id_vault_resolve_embed = wx.NewIdRef()
+        self._id_vault_insert_template = wx.NewIdRef()
+        self._id_vault_today = wx.NewIdRef()
+        self._id_vault_prev_daily = wx.NewIdRef()
+        self._id_vault_next_daily = wx.NewIdRef()
+        self._id_vault_export_site = wx.NewIdRef()
+        self._id_vault_sync = wx.NewIdRef()
         tools_menu = wx.Menu()
         tools_menu.Append(
             self._id_palette,
@@ -1597,6 +1606,36 @@ class MenuBuilderMixin:
         vault_menu.Append(
             self._id_vault_search, self._menu_label(_("&Search Vault..."), "vault.search")
         )
+        vault_menu.Append(self._id_vault_tags, self._menu_label(_("Show &Tags..."), "vault.tags"))
+        vault_menu.AppendSeparator()
+        vault_menu.Append(
+            self._id_vault_speak_embed,
+            self._menu_label(_("Spea&k Embed at Cursor"), "vault.speak_embed"),
+        )
+        vault_menu.Append(
+            self._id_vault_resolve_embed,
+            self._menu_label(_("&Resolve Embed Inline"), "vault.resolve_embed"),
+        )
+        vault_menu.Append(
+            self._id_vault_insert_template,
+            self._menu_label(_("Insert &Template..."), "vault.insert_template"),
+        )
+        vault_menu.Append(
+            self._id_vault_today, self._menu_label(_("Open Toda&y's Note"), "vault.today")
+        )
+        vault_menu.Append(
+            self._id_vault_prev_daily,
+            self._menu_label(_("&Previous Daily Note"), "vault.prev_daily"),
+        )
+        vault_menu.Append(
+            self._id_vault_next_daily, self._menu_label(_("&Next Daily Note"), "vault.next_daily")
+        )
+        vault_menu.AppendSeparator()
+        vault_menu.Append(
+            self._id_vault_export_site,
+            self._menu_label(_("&Export Vault as Website..."), "vault.export_site"),
+        )
+        vault_menu.Append(self._id_vault_sync, self._menu_label(_("S&ync Vault"), "vault.sync"))
         tools_menu.AppendSubMenu(vault_menu, _("&Vault"))
         tools_menu.AppendSeparator()
 
@@ -2657,6 +2696,27 @@ class MenuBuilderMixin:
             wx.EVT_MENU, lambda _e: self.quick_switch_note(), id=self._id_vault_quick_switch
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.search_vault_notes(), id=self._id_vault_search)
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.show_tags(), id=self._id_vault_tags)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.speak_embed_at_cursor(), id=self._id_vault_speak_embed
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.resolve_embed_inline(), id=self._id_vault_resolve_embed
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.insert_note_template(), id=self._id_vault_insert_template
+        )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_todays_note(), id=self._id_vault_today)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.previous_daily_note(), id=self._id_vault_prev_daily
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.next_daily_note(), id=self._id_vault_next_daily
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.export_vault_site(), id=self._id_vault_export_site
+        )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.sync_vault(), id=self._id_vault_sync)
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.open_story_studio(), id=self._id_open_story_studio
         )
