@@ -93,6 +93,36 @@ Aloud voice** (per-session consent, Safe-Mode gated) all shipped. What remains i
 design, server-side pronunciation, and Tier-3 surfaces — all in §5. Voice **cloning**
 is deliberately descoped (QUILL narrates with the account's existing voices).
 
+### 1.7 Accessible Vault — remaining phases
+
+The **Accessible Vault** (linked notes + backlinks a blind writer traverses by ear)
+shipped its first milestone — **Phases 0–2** (persistent vault + indexing, wikilinks
+with Follow Link + create-on-follow + ambiguity chooser, and spoken backlinks). It is
+documented in `QUILL-PRD.md` §5.89d, the user guide (Tools > Vault), the changelog, and
+the release notes; the standalone plan doc was retired here once delivered. **Still open
+(additive, each independently shippable on the same backbone):**
+
+- **Phase 3 — Vault-wide search & quick switcher.** A ripgrep-backed accessible results
+  list (note + line + snippet, Enter opens at the match, spoken running count) and a
+  fuzzy note-name switcher.
+- **Phase 4 — Global tags.** A spoken tag index with counts, a tag pane, `#`
+  autocomplete, and vault-wide tag rename.
+- **Phase 5 — Transclusion / embeds / block refs.** `![[embed]]` expansion in
+  preview/compile, speak/resolve-inline, and block ids.
+- **Phase 6 — Templates & daily notes.** A template engine (extending Snippets) and
+  daily-note navigation (open today's note; previous/next by date).
+- **Phase 7 — Sync & publish.** Vault Git sync with accessible conflict resolution, and
+  Publish note / export the vault as a linked site.
+- **Phase 0–2 deferred items:** `[[` autocomplete, preview/export link resolution, an
+  unlinked-mentions UI (the core `unlinked_mentions` exists), neighborhood navigation,
+  rename-with-link-update, a dedicated Vault Explorer window, background/incremental
+  indexing, and the Story-Studio-as-collection refactor.
+
+Non-goals stand: no rendered graph or visual canvas (relationships are delivered as
+accessible lists), no hosted paid sync service, no WYSIWYG/live-preview, no separate
+plugin marketplace. Large-vault performance (10k+ notes) needs incremental cached
+indexing — benchmark before Phase 3.
+
 ---
 
 ## 2. Locked / hidden features (register)
@@ -314,4 +344,5 @@ profiles (#426)**.
 | Docs & content (§1.4) | #535–#564, #505, #522, #590, #592. |
 | Table Studio (§1.5) | Whole feature (`quill-native-accessible-table-studio-plan.md`). |
 | ElevenLabs 2.0 extras (§1.6) | Live streaming Read Aloud, voice management, Tier-3 — all §5. |
+| Accessible Vault (§1.7) | Phases 0–2 shipped; Phases 3–7 (search, tags, embeds, templates, daily notes, sync/publish) + Phase 0–2 deferred items. |
 | Locked features (§2) | GLOW, Voice Commands, Rich Text Lens, Publishing (send), Third-Party Plugins; `bw_whisperer` subsystem cleanup. |

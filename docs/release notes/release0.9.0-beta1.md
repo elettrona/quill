@@ -1,13 +1,15 @@
-# QUILL 0.8.1 Beta 1 - Meet You Where You Are
+# QUILL 0.9.0 Beta 1 - Meet You Where You Are
 
 ### The screen-reader-first writing studio, built by the people who depend on it.
 
 *From Community Access. Free. Optional by design. Private by default. Yours to make quiet.*
 
-This is the narrative companion to the **"0.8.1 Beta 1"** section of `CHANGELOG.md`
+This is the narrative companion to the **"0.9.0 Beta 1"** section of `CHANGELOG.md`
 (the canonical, append-as-you-go log). It tells the story of what changes in
-0.8.1 Beta 1 on top of the 0.8.0 line - what each feature is, and, just as
-important, **why it matters** for the way you actually work.
+0.9.0 Beta 1 on top of the 0.8.0 line - what each feature is, and, just as
+important, **why it matters** for the way you actually work. This is the
+feature-complete cut for 0.9.0; the last 1.0 feature is the GLOW accessibility suite,
+and focus from here is polish.
 
 ---
 

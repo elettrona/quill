@@ -1,10 +1,8 @@
 # Changelog
 
-## 0.8.1 Beta 1 (in development)
+## 0.9.0 Beta 1
 
-First 0.8.1 beta. Rolls up everything through 0.8.0 (below) plus the features, fixes, and enhancements in this release — headlined by the new AI suite. This section doubles as the in-app release notes: the same text appears when you **Check for Updates** and any time from **Help > What's New**.
-
-> Logging note: add a one-line bullet here as each change merges, grouped under the headings below. Keep entries user-facing and screen-reader-friendly. Remove this note before the beta is tagged.
+The 0.9.0 beta. Rolls up everything through 0.8.0 (below) plus the features, fixes, and enhancements in this release — headlined by the new AI suite, the **Accessible Vault** (linked notes you can traverse by ear), the **ElevenLabs Read Aloud voice**, and a lighter, smaller install. This is the feature-complete cut for 0.9.0; the only remaining 1.0 feature is the GLOW accessibility suite, and focus from here is polish. This section doubles as the in-app release notes: the same text appears when you **Check for Updates** and any time from **Help > What's New**.
 
 ### What's New in this beta
 

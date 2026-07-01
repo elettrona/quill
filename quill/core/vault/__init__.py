@@ -6,8 +6,8 @@ model, the wikilink codec, the link/backlink index, name/anchor resolution, and
 ``wx`` and is strict-typed; all file IO is injected as callables so the model
 and indexes are unit-tested without disk.
 
-Canonical specification: the plan at
-``docs/planning/quill-accessible-vault-plan.md``.
+Canonical specification: ``QUILL-PRD.md`` §5.89d; remaining phases in
+``docs/planning/roadmap.md`` §1.7.
 """
 
 from __future__ import annotations
