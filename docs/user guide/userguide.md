@@ -579,7 +579,7 @@ A Story project is just a folder of plain-text files plus a small `project.quill
 
 #### Vault — linked notes and backlinks
 
-**Tools → Vault** brings Obsidian-style linked notes to QUILL, built for the keyboard and the ear rather than a visual graph.
+**Tools → Vault** brings linked notes and backlinks to QUILL, built for the keyboard and the ear rather than a visual graph.
 
 - **Open Vault...** — choose a folder of notes; QUILL scans and indexes it, remembers it, and announces "Vault *name*: N notes, M links." Do this once per notes folder.
 - **Follow Wikilink** — put the cursor on a `[[Note]]` link and run this to open that note (a `[[Note#Heading]]` opens at the heading, `[[Note#^block]]` at the block). If the note does not exist yet, QUILL offers to **create** it; if several notes share the name, QUILL asks which one — it never guesses.
