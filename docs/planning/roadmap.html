@@ -187,11 +187,11 @@ own:</p>
 <li><a
 href="quill-native-accessible-table-studio-plan.md"><code>quill-native-accessible-table-studio-plan.md</code></a>
 — Table Studio (not started).</li>
-<li><a
-href="quill-accessible-vault-plan.md"><code>quill-accessible-vault-plan.md</code></a>
-— Accessible Vault, remaining Phases 3–7 (Phases 0–2 shipped; see
-§1.7).</li>
 </ul>
+<p>The Accessible Vault plan has been <strong>retired</strong>: Phases
+0–7 shipped (feature-complete for 0.9.0) and the feature now lives in
+<code>QUILL-PRD.md</code> §5.89d and the user guide; the small remaining
+polish is §1.7 below.</p>
 <p><strong>Operating principle:</strong> everything here is in scope to
 <strong>ship</strong> for 1.0 (except rows explicitly marked 2.0).
 Simplicity for the screen-reader user is king. QUILL owns the editor,
@@ -284,25 +284,45 @@ Export</strong> TTS, and a selectable <strong>Read Aloud voice</strong>
 cloning / design, server-side pronunciation, and Tier-3 surfaces — all
 in §5. Voice <strong>cloning</strong> is deliberately descoped (QUILL
 narrates with the account's existing voices).</p>
-<h3 id="17-accessible-vault--remaining-phases">1.7 Accessible Vault —
-remaining phases</h3>
-<p><strong>Spec:</strong> <a
-href="quill-accessible-vault-plan.md"><code>quill-accessible-vault-plan.md</code></a>
-(trimmed to the unfinished work). The Accessible Vault shipped its first
-milestone — <strong>Phases 0–2</strong> (persistent vault + indexing,
-wikilinks with Follow Link / create-on-follow / ambiguity chooser, and
-spoken backlinks), documented in <code>QUILL-PRD.md</code> §5.89d, the
-user guide (Tools &gt; Vault), the changelog, and the release notes.
-<strong>Remaining — each additive and independently shippable on the
-<code>quill/core/vault</code> backbone:</strong> Phase 3 (vault-wide
-search &amp; quick switcher), Phase 4 (global tags), Phase 5
-(transclusion / embeds / block refs), Phase 6 (templates &amp; daily
-notes), Phase 7 (sync &amp; publish), plus the Phase 0–2 deferred items
-(<code>[[</code> autocomplete, preview/export link resolution, an
-unlinked-mentions UI, neighborhood navigation, rename-with-link-update,
-a Vault Explorer window, and background/incremental indexing). Full
-per-phase designs, the accessibility acceptance criteria, risks, and
-non-goals live in the plan file.</p>
+<h3 id="17-accessible-vault--remaining-polish">1.7 Accessible Vault —
+remaining polish</h3>
+<p>The Accessible Vault is <strong>feature-complete for 0.9.0</strong>.
+Phases 0–7 shipped with a wx-free, unit-tested core under
+<code>quill/core/vault</code> (links, backlinks,
+<code>neighborhood</code>, search + quick switcher, tags, embeds,
+templates + daily notes, HTML site export, Git sync, a gated publish
+payload, and rename-with-link-update) and accessible
+<code>Tools → Vault</code> surfaces. The feature is documented in
+<code>QUILL-PRD.md</code> §5.89d, the user guide (Tools &gt; Vault), the
+changelog, and the release notes; the design plan has been retired.</p>
+<p><strong>Remaining polish (small, additive, none
+blocking):</strong></p>
+<ul>
+<li><strong>In-editor autocomplete popups</strong> — <code>[[</code> for
+note titles and <code>#</code> for tags, over the existing intellisense
+popup machinery (<code>main_frame_intellisense.py</code>). The core is
+done (<code>resolve.build_resolver</code> titles/aliases;
+<code>tags.tag_suggestions</code>); this is the editor key-trigger +
+popup wiring, needing an app run to verify.</li>
+<li><strong>Live-preview link/embed resolution</strong> — wire
+<code>render.render_links_html</code> /
+<code>render.expand_embeds</code> into the in-app F6 preview so
+<code>[[links]]</code>/<code>![[embeds]]</code> resolve there too. (The
+HTML <strong>export</strong> already resolves both via
+<code>site_export</code>.)</li>
+<li><strong>Vault Explorer window</strong> — a <code>wx.TreeCtrl</code>
+view of notes (by folder / tag / recency), reusing the Story Studio
+binder tree.</li>
+<li><strong>Background / incremental indexing at scale</strong> —
+<code>vault.apply_note_change</code> already re-parses a single changed
+note; the remaining work is watching the folder and patching the index
+in the background (the first version otherwise scans on open).</li>
+<li><strong>Settings surface</strong> for the Templates folder and
+daily-note pattern (conventions <code>Templates/</code> and
+<code>Journal/{{date}}.md</code> are used until then).</li>
+<li><strong>Unlinked-mentions UI</strong> over the shipped
+<code>index.unlinked_mentions()</code> core.</li>
+</ul>
 <hr />
 <h2 id="2-locked--hidden-features-register">2. Locked / hidden features
 (register)</h2>

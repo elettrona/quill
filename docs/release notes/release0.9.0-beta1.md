@@ -302,14 +302,62 @@ screen-reader user it is far more useful than a picture ever was.
 **Why it matters:** you traverse the web of your notes forwards (follow a link)
 and backwards (open a backlink) entirely by keyboard and ear.
 
+### Find any note, find any word
+
+**Go to Note** is a jump box: start typing part of a title and the list narrows
+as you go, QUILL speaking the count ("7 matches"); press Enter to open the closest
+one. **Search Vault** goes wider - type a word or phrase and hear how many results
+turned up, each read as its note, line number, and the sentence it appears in;
+flip on **Regex** for patterns or **Whole word** to skip partial hits, and Enter
+opens a result at its exact line.
+**Why it matters:** in a folder of hundreds of notes, the thing you want is one
+short phrase and one keypress away - no scrolling, no squinting.
+
+### Tags that gather your notes
+
+**Show Tags** is a spoken tag pane. Filter your `#tags` - each with a count of how
+many notes wear it - open one, and hear the notes that carry it. Nested tags roll
+up, so `#area` gathers everything under `#area/sub` too.
+**Why it matters:** the same "show me everything about X" that sighted users get
+from clicking a tag, delivered as a list you can hear and act on.
+
+### Embeds: pull one note into another
+
+Write `![[Other Note]]` (or `![[Note#Heading]]`, or `![[Note#^block]]`) and QUILL
+can pull that content in. **Speak Embed at Cursor** reads what the embed points to
+without touching your text; **Resolve Embed Inline** drops the real content in
+place as a single change you can undo.
+**Why it matters:** reuse a definition, a boilerplate, or a shared section across
+notes - and hear exactly what it resolves to before you commit.
+
+### Templates and a daily journal
+
+**Insert Template** picks from a `Templates` folder in your vault, fills in
+`{{date}}`, `{{time}}`, and `{{title}}`, asks you any `{{prompt:Question}}` it
+finds - spoken, one at a time - and leaves your cursor exactly where you marked
+`{{cursor}}`. **Open Today's Note** opens (or creates) today's dated note, and
+**Previous / Next Daily Note** step through the days.
+**Why it matters:** the friction of "start a new note the same way every time"
+disappears, and a daily journal is one command away.
+
+### Turn your vault into a website
+
+**Export Vault as Website** writes a small, self-contained site: one accessible
+page per note, your `[[links]]` turned into real links between the pages, your
+`![[embeds]]` filled in, and an index page listing everything. It runs in the
+background and tells you how many pages it wrote. If your vault folder is a Git
+repository, **Sync Vault** commits, pulls, and pushes over your own remote - and
+if the same note changed in two places, it lists the conflicts and stops rather
+than overwriting a word.
+**Why it matters:** your notes can leave the app as a shareable, navigable site,
+and stay backed up and in sync across your machines - on infrastructure you own.
+
 ### Plain text, yours forever
 
 A vault is an ordinary folder of Markdown files plus one small `.quill` cache you
 can delete without losing a word. Links live as plain `[[text]]` in your files -
 nothing hidden - so every note opens in any editor. It is entirely optional: never
-open a vault and QUILL is the editor it always was. (This is the first
-instalment; vault-wide search, a tag pane, embeds, templates, and daily notes are
-on the way.)
+open a vault and QUILL is the editor it always was.
 
 ---
 

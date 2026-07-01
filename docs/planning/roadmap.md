@@ -8,7 +8,10 @@
 > with open work of its own:
 >
 > - [`quill-native-accessible-table-studio-plan.md`](quill-native-accessible-table-studio-plan.md) — Table Studio (not started).
-> - [`quill-accessible-vault-plan.md`](quill-accessible-vault-plan.md) — Accessible Vault, remaining Phases 3–7 (Phases 0–2 shipped; see §1.7).
+>
+> The Accessible Vault plan has been **retired**: Phases 0–7 shipped (feature-complete
+> for 0.9.0) and the feature now lives in `QUILL-PRD.md` §5.89d and the user guide; the
+> small remaining polish is §1.7 below.
 >
 > **Operating principle:** everything here is in scope to **ship** for 1.0 (except
 > rows explicitly marked 2.0). Simplicity for the screen-reader user is king. QUILL
@@ -94,20 +97,32 @@ Aloud voice** (per-session consent, Safe-Mode gated) all shipped. What remains i
 design, server-side pronunciation, and Tier-3 surfaces — all in §5. Voice **cloning**
 is deliberately descoped (QUILL narrates with the account's existing voices).
 
-### 1.7 Accessible Vault — remaining phases
+### 1.7 Accessible Vault — remaining polish
 
-**Spec:** [`quill-accessible-vault-plan.md`](quill-accessible-vault-plan.md) (trimmed to the
-unfinished work). The Accessible Vault shipped its first milestone — **Phases 0–2**
-(persistent vault + indexing, wikilinks with Follow Link / create-on-follow / ambiguity
-chooser, and spoken backlinks), documented in `QUILL-PRD.md` §5.89d, the user guide
-(Tools > Vault), the changelog, and the release notes. **Remaining — each additive and
-independently shippable on the `quill/core/vault` backbone:** Phase 3 (vault-wide search &
-quick switcher), Phase 4 (global tags), Phase 5 (transclusion / embeds / block refs),
-Phase 6 (templates & daily notes), Phase 7 (sync & publish), plus the Phase 0–2 deferred
-items (`[[` autocomplete, preview/export link resolution, an unlinked-mentions UI,
-neighborhood navigation, rename-with-link-update, a Vault Explorer window, and
-background/incremental indexing). Full per-phase designs, the accessibility acceptance
-criteria, risks, and non-goals live in the plan file.
+The Accessible Vault is **feature-complete for 0.9.0**. Phases 0–7 shipped with a wx-free,
+unit-tested core under `quill/core/vault` (links, backlinks, `neighborhood`, search +
+quick switcher, tags, embeds, templates + daily notes, HTML site export, Git sync, a
+gated publish payload, and rename-with-link-update) and accessible `Tools → Vault`
+surfaces. The feature is documented in `QUILL-PRD.md` §5.89d, the user guide
+(Tools > Vault), the changelog, and the release notes; the design plan has been retired.
+
+**Remaining polish (small, additive, none blocking):**
+
+- **In-editor autocomplete popups** — `[[` for note titles and `#` for tags, over the
+  existing intellisense popup machinery (`main_frame_intellisense.py`). The core is done
+  (`resolve.build_resolver` titles/aliases; `tags.tag_suggestions`); this is the editor
+  key-trigger + popup wiring, needing an app run to verify.
+- **Live-preview link/embed resolution** — wire `render.render_links_html` /
+  `render.expand_embeds` into the in-app F6 preview so `[[links]]`/`![[embeds]]` resolve
+  there too. (The HTML **export** already resolves both via `site_export`.)
+- **Vault Explorer window** — a `wx.TreeCtrl` view of notes (by folder / tag / recency),
+  reusing the Story Studio binder tree.
+- **Background / incremental indexing at scale** — `vault.apply_note_change` already
+  re-parses a single changed note; the remaining work is watching the folder and patching
+  the index in the background (the first version otherwise scans on open).
+- **Settings surface** for the Templates folder and daily-note pattern (conventions
+  `Templates/` and `Journal/{{date}}.md` are used until then).
+- **Unlinked-mentions UI** over the shipped `index.unlinked_mentions()` core.
 
 ---
 

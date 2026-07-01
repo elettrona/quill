@@ -503,14 +503,66 @@ link sits in, Enter to open the source right at that mention. That list
 useful than a picture ever was. <strong>Why it matters:</strong> you
 traverse the web of your notes forwards (follow a link) and backwards
 (open a backlink) entirely by keyboard and ear.</p>
+<h3 id="find-any-note-find-any-word">Find any note, find any word</h3>
+<p><strong>Go to Note</strong> is a jump box: start typing part of a
+title and the list narrows as you go, QUILL speaking the count ("7
+matches"); press Enter to open the closest one. <strong>Search
+Vault</strong> goes wider - type a word or phrase and hear how many
+results turned up, each read as its note, line number, and the sentence
+it appears in; flip on <strong>Regex</strong> for patterns or
+<strong>Whole word</strong> to skip partial hits, and Enter opens a
+result at its exact line. <strong>Why it matters:</strong> in a folder
+of hundreds of notes, the thing you want is one short phrase and one
+keypress away - no scrolling, no squinting.</p>
+<h3 id="tags-that-gather-your-notes">Tags that gather your notes</h3>
+<p><strong>Show Tags</strong> is a spoken tag pane. Filter your
+<code>#tags</code> - each with a count of how many notes wear it - open
+one, and hear the notes that carry it. Nested tags roll up, so
+<code>#area</code> gathers everything under <code>#area/sub</code> too.
+<strong>Why it matters:</strong> the same "show me everything about X"
+that sighted users get from clicking a tag, delivered as a list you can
+hear and act on.</p>
+<h3 id="embeds-pull-one-note-into-another">Embeds: pull one note into
+another</h3>
+<p>Write <code>![[Other Note]]</code> (or
+<code>![[Note#Heading]]</code>, or <code>![[Note#^block]]</code>) and
+QUILL can pull that content in. <strong>Speak Embed at Cursor</strong>
+reads what the embed points to without touching your text;
+<strong>Resolve Embed Inline</strong> drops the real content in place as
+a single change you can undo. <strong>Why it matters:</strong> reuse a
+definition, a boilerplate, or a shared section across notes - and hear
+exactly what it resolves to before you commit.</p>
+<h3 id="templates-and-a-daily-journal">Templates and a daily
+journal</h3>
+<p><strong>Insert Template</strong> picks from a <code>Templates</code>
+folder in your vault, fills in <code>{{date}}</code>,
+<code>{{time}}</code>, and <code>{{title}}</code>, asks you any
+<code>{{prompt:Question}}</code> it finds - spoken, one at a time - and
+leaves your cursor exactly where you marked <code>{{cursor}}</code>.
+<strong>Open Today's Note</strong> opens (or creates) today's dated
+note, and <strong>Previous / Next Daily Note</strong> step through the
+days. <strong>Why it matters:</strong> the friction of "start a new note
+the same way every time" disappears, and a daily journal is one command
+away.</p>
+<h3 id="turn-your-vault-into-a-website">Turn your vault into a
+website</h3>
+<p><strong>Export Vault as Website</strong> writes a small,
+self-contained site: one accessible page per note, your
+<code>[[links]]</code> turned into real links between the pages, your
+<code>![[embeds]]</code> filled in, and an index page listing
+everything. It runs in the background and tells you how many pages it
+wrote. If your vault folder is a Git repository, <strong>Sync
+Vault</strong> commits, pulls, and pushes over your own remote - and if
+the same note changed in two places, it lists the conflicts and stops
+rather than overwriting a word. <strong>Why it matters:</strong> your
+notes can leave the app as a shareable, navigable site, and stay backed
+up and in sync across your machines - on infrastructure you own.</p>
 <h3 id="plain-text-yours-forever">Plain text, yours forever</h3>
 <p>A vault is an ordinary folder of Markdown files plus one small
 <code>.quill</code> cache you can delete without losing a word. Links
 live as plain <code>[[text]]</code> in your files - nothing hidden - so
 every note opens in any editor. It is entirely optional: never open a
-vault and QUILL is the editor it always was. (This is the first
-instalment; vault-wide search, a tag pane, embeds, templates, and daily
-notes are on the way.)</p>
+vault and QUILL is the editor it always was.</p>
 <hr />
 <h2 id="braille---proofreading-for-pages-that-must-emboss">Braille -
 proofreading for pages that must emboss</h2>

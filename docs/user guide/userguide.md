@@ -577,16 +577,33 @@ Two buttons act on the binder:
 
 A Story project is just a folder of plain-text files plus a small `project.quillstory.json` companion that records the binder order and element groups. The companion is advisory, so deleting it never loses any writing. Story Studio is optional and additive — it changes nothing about ordinary editing.
 
-#### Vault — linked notes and backlinks
+#### Vault — linked notes, search, tags, and more
 
-**Tools → Vault** brings linked notes and backlinks to QUILL, built for the keyboard and the ear rather than a visual graph.
+**Tools → Vault** brings a full linked-notes workspace to QUILL — links and backlinks, search, tags, embeds, templates, daily notes, and a website export — all built for the keyboard and the ear rather than a visual graph. It is optional and additive: until you open a vault, nothing about ordinary editing changes.
+
+**Getting around your notes**
 
 - **Open Vault...** — choose a folder of notes; QUILL scans and indexes it, remembers it, and announces "Vault *name*: N notes, M links." Do this once per notes folder.
 - **Follow Wikilink** — put the cursor on a `[[Note]]` link and run this to open that note (a `[[Note#Heading]]` opens at the heading, `[[Note#^block]]` at the block). If the note does not exist yet, QUILL offers to **create** it; if several notes share the name, QUILL asks which one — it never guesses.
 - **Show Backlinks** — lists every note that links to the note you are in, each read aloud with the sentence the link sits in; press Enter on one to open it at that mention. QUILL announces how many notes link here.
 - **Insert Link to Note...** — pick a note by title from a list and QUILL inserts `[[Title]]` at the cursor.
+- **Go to Note...** — a jump-to-note switcher. Start typing part of a title and the list narrows as you go (QUILL speaks the running count); press Down to move into the list, or just press Enter to open the closest match.
+- **Search Vault...** — search across every note. Type a word or phrase and hear the number of results; each result reads as its note title, line number, and the matching text. Turn on **Regex** for pattern searches or **Whole word** to skip partial matches. Enter opens a result at its exact line.
 
-Write links by typing `[[Note Title]]` yourself, or use **Insert Link to Note...**. Links are plain text in your file — nothing is hidden — and resolve when you follow them or preview/export. A vault is just a folder of Markdown files plus a small `.quill` cache; delete the cache and nothing is lost. These commands are on the command palette and can be given keyboard shortcuts in the Keymap Editor. (This is the first instalment; vault-wide search, a tag pane, embeds, templates, and daily notes are planned.)
+**Tags, embeds, and templates**
+
+- **Show Tags...** — the tag pane. Filter your `#tags` (each with a note count), open a tag, and get the list of notes that carry it. Nested tags roll up, so `#area` also finds notes tagged `#area/sub`.
+- **Speak Embed at Cursor** — with the cursor on an `![[Other Note]]` embed, hear the note (or the specific heading/block) it pulls in, without changing your text.
+- **Resolve Embed Inline** — replace that `![[embed]]` with the actual content, as a single change you can undo with Ctrl+Z.
+- **Insert Template...** — pick a template from a `Templates` folder inside your vault. QUILL fills in `{{date}}`, `{{time}}`, and `{{title}}`, asks you any `{{prompt:Question}}` it finds (spoken), inserts the result, and puts the cursor where you marked `{{cursor}}`.
+- **Open Today's Note**, **Previous Daily Note**, **Next Daily Note** — open (creating if needed) the dated note for today, and step back and forward through the days. Daily notes live at `Journal/YYYY-MM-DD.md` by default.
+
+**Sharing your vault**
+
+- **Export Vault as Website...** — choose an output folder and QUILL writes a small, self-contained website: one accessible page per note, with your `[[links]]` turned into real links between the pages, your `![[embeds]]` filled in, and an index page listing everything. It runs in the background and tells you how many pages it wrote.
+- **Sync Vault** — if your vault folder is a Git repository with a remote you control, this commits your changes, pulls anyone else's, and pushes — all in the background. If the same note changed in both places, QUILL lists the conflicts and stops rather than overwriting anything. (Disabled in Safe Mode.)
+
+Write links by typing `[[Note Title]]` yourself, or use **Insert Link to Note...**. Links are plain text in your file — nothing is hidden — and resolve when you follow them, export, or open a website build. A vault is just a folder of Markdown files plus a small `.quill` cache; delete the cache and nothing is lost. Every command here is on the command palette and can be given a keyboard shortcut in the Keymap Editor.
 
 #### Writing and language
 
