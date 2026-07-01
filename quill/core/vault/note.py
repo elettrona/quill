@@ -73,7 +73,13 @@ def _string_tuple(value: Any) -> tuple[str, ...]:
     if isinstance(value, (list, tuple)):
         return tuple(str(item).strip() for item in value if str(item).strip())
     if isinstance(value, str) and value.strip():
-        return (value.strip(),)
+        text = value.strip()
+        # A YAML flow list the lightweight front-matter reader kept as a raw string,
+        # e.g. "[project, area/sub]" -> ("project", "area/sub").
+        if text.startswith("[") and text.endswith("]"):
+            items = [item.strip().strip("'\"") for item in text[1:-1].split(",")]
+            return tuple(item for item in items if item)
+        return (text,)
     return ()
 
 
