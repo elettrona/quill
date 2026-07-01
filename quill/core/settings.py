@@ -154,10 +154,10 @@ class Settings:
     # Speak the formatting delta as the caret moves (hidden-codes interrogation);
     # off by default so navigation stays quiet (Describe Formatting is on-demand).
     announce_formatting_on_move: bool = False
-    # Speak "Entered <name> dialog" / "Exited <name> dialog" as dialogs open and
-    # close. On by default; a user who finds the transition cues noisy can turn
-    # them off (the screen reader still announces the dialog title on focus).
-    announce_dialog_transitions: bool = True
+    # Speak "Entered/Exited <name> dialog" as dialogs open/close. Off by default:
+    # every supported screen reader already announces the dialog and its title,
+    # so the cue is redundant; turn it back on to hear the explicit transition.
+    announce_dialog_transitions: bool = False
     # Speak the new indentation depth ("4 spaces" / "1 tab") when Tab / Shift+Tab
     # indents, instead of the terse "Indented lines". Aware of indent_with_tabs
     # and indent_size; on by default, off restores the terse message.
@@ -665,7 +665,7 @@ class Settings:
         dictation_intelligent_spacing = bool(data.get("dictation_intelligent_spacing", True))
         dictation_onboarding_shown = bool(data.get("dictation_onboarding_shown", False))
         announce_formatting_on_move = bool(data.get("announce_formatting_on_move", False))
-        announce_dialog_transitions = bool(data.get("announce_dialog_transitions", True))
+        announce_dialog_transitions = bool(data.get("announce_dialog_transitions", False))
         announce_indent_depth = bool(data.get("announce_indent_depth", True))
         spoken_echo_on_double_press = bool(data.get("spoken_echo_on_double_press", True))
         editor_control_kind = str(data.get("editor_control_kind", "")).strip().lower()
