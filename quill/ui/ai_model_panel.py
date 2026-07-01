@@ -100,6 +100,19 @@ class AIModelDialog:
                 wx.ALL,
                 12,
             )
+            # Machine-aware upgrade hint (Phase 3): when the saved choice is a smaller
+            # model than this machine can comfortably run, surface a one-step, spoken
+            # suggestion. Never auto-downloads — the user still picks below.
+            from quill.core.model_upgrade import suggest_llm_upgrade
+
+            saved_choice = load_model_choice()
+            if saved_choice != "auto":
+                suggestion = suggest_llm_upgrade(saved_choice, total_ram_gb())
+                if suggestion is not None:
+                    hint = wx.StaticText(self.dialog, label=suggestion.message())
+                    hint.SetName("Model upgrade suggestion")
+                    root.Add(hint, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 12)
+                    self._announce(suggestion.message())
             root.Add(wx.StaticText(self.dialog, label="On-device model"), 0, wx.LEFT | wx.RIGHT, 12)
             self._ids = ["auto", *MODELS.keys()]
             labels = [f"Recommended ({MODELS[rec].name})"]

@@ -636,6 +636,7 @@ class AskQuillChatDialog:
                     result = ("conversation", answer or "", "edited" if edited else "", error or "")
                 except Exception as exc:  # noqa: BLE001
                     result = ("error", "", "", str(exc))
+                    self._pending_fallback_hint = self._fallback_hint(exc)
                 self._wx.CallAfter(self._apply, *result)
                 return
             try:
@@ -662,6 +663,7 @@ class AskQuillChatDialog:
                     result = ("answer", text, "", "")
             except Exception as exc:  # noqa: BLE001
                 result = ("error", "", "", str(exc))
+                self._pending_fallback_hint = self._fallback_hint(exc)
             self._wx.CallAfter(self._apply, *result)
 
         threading.Thread(  # GATE-40-OK: streaming response worker; posts deltas via CallAfter.
@@ -713,7 +715,45 @@ class AskQuillChatDialog:
         self.discard_button.Enable(show)
         self.dialog.Layout()
 
+    def _fallback_hint(self, exc: Exception) -> str:
+        """A consent-safe, accessible fallback suggestion for a failed AI call, or "".
+
+        Uses the tested :mod:`quill.core.ai.fallback` decision: only on a connectivity
+        failure (offline/timeout/rate-limit/5xx), and only for the offline direction
+        (a cloud call failed and an on-device model exists). Never switches providers
+        automatically — the privacy posture is the user's choice — it only announces
+        the option, so a screen-reader user hears a way forward instead of a dead end.
+        """
+        try:
+            from quill.core.ai import fallback
+            from quill.core.ai.model_manager import existing_model
+            from quill.core.settings import load_settings
+
+            kind = fallback.classify_exception(exc)
+            provider = str(getattr(load_settings(), "ai_chat_default_provider", "") or "")
+            plan = fallback.plan_fallback(
+                primary_provider=provider or "cloud",
+                failure_kind=kind,
+                local_available=existing_model() is not None,
+                cloud_available=False,  # only the offline (cloud->local) direction here
+                cloud_provider=provider,
+            )
+            if plan.offer and plan.to_provider == "local":
+                return (
+                    "The AI service could not be reached. You have an on-device model "
+                    "available — open AI settings to switch to it and keep working offline."
+                )
+        except Exception:  # noqa: BLE001 - a fallback hint must never mask the real error
+            pass
+        return ""
+
     def _apply(self, action: str, text: str, tool: str, error: str) -> None:
+        # Phase 4: after a connectivity failure, announce the consent-safe fallback
+        # option (posted so it follows the error announcement below). Cleared once used.
+        fallback_hint = getattr(self, "_pending_fallback_hint", "")
+        self._pending_fallback_hint = ""
+        if error and fallback_hint:
+            self._wx.CallAfter(self._announce, fallback_hint)
         if action == "conversation":
             # The gateway already performed (and the user already reviewed) any
             # edit; here we just surface the assistant's answer. ``tool`` carries
