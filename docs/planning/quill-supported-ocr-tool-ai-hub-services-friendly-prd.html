@@ -264,9 +264,25 @@ might choose it, what files it supports, what privacy tradeoffs exist,
 how billing works, and provide direct buttons to the provider’s website,
 documentation, pricing, API key page, and privacy/security
 information.</p>
-<p>The first provider should be <strong>Datalab Document Conversion /
-Chandra OCR</strong>, exposed in configuration as <strong>Datalab
-Chandra OCR Service</strong>.</p>
+<p>The <strong>starting provider</strong> should be
+<strong>MarkItDown</strong>, a free, local, pure-Python converter for
+<em>born-digital</em> documents (DOCX, PPTX, XLSX, HTML, EPUB, and PDFs
+that already carry a text layer). It ships first because it stands up
+the entire pipeline — Services tab, provider interface, import wizard,
+open-result-in-QUILL — on the lowest-risk backend: no API key, no
+billing, no cloud upload, no consent prompt, no network-egress entry. It
+gives users real value on day one and costs nothing.</p>
+<p>MarkItDown is <strong>not an OCR engine</strong>, so it does not by
+itself solve this PRD's headline case — scanned / image-based PDFs.
+Those are answered <strong>for free, on-device</strong> by the next
+backend, <strong>local Tesseract OCR</strong> (CPU-only, no GPU, no
+upload), delivered as verified downloadable components. Only when free
+local OCR falls short on hard documents does QUILL escalate to the
+<strong>first paid cloud OCR provider, Datalab Document Conversion /
+Chandra OCR</strong> (exposed as <strong>Datalab Chandra OCR
+Service</strong>), consent-gated. This is the free-first, three-tier
+flow (§11.4): MarkItDown → local Tesseract OCR → Datalab cloud OCR,
+spending money and uploading only as a last resort.</p>
 <p>The user-facing feature should be named something like <strong>QUILL
 OCR and Document Conversion</strong> or <strong>Import with OCR /
 Convert Document</strong>. It should let a user open a scanned PDF,
@@ -470,8 +486,9 @@ on-prem overview</a></li>
 Positioning: OCR Is a Supported QUILL Tool</h2>
 <p>This PRD must treat OCR as a <strong>supported QUILL tool</strong>,
 not just a service connector.</p>
-<p>The Datalab Chandra integration is the first provider implementation,
-but the product feature is:</p>
+<p>MarkItDown (free, local, born-digital) is the starting provider
+implementation and Datalab Chandra is the first OCR provider added right
+after, but the product feature is:</p>
 <blockquote>
 <p><strong>QUILL OCR and Document Conversion</strong></p>
 </blockquote>
@@ -531,8 +548,9 @@ QUILL crashes.</li>
 </ol>
 <h3 id="44-supported-feature-boundary">4.4 Supported feature
 boundary</h3>
-<p>QUILL supports the OCR workflow and user experience. Datalab provides
-the first OCR backend.</p>
+<p>QUILL supports the OCR workflow and user experience. MarkItDown
+(born-digital) and local Tesseract (scanned) provide the free local
+backends; Datalab provides the first paid cloud OCR backend.</p>
 <p>QUILL should support:</p>
 <ul>
 <li>Opening the import tool.</li>
@@ -625,11 +643,26 @@ href="https://docs.cloud.google.com/document-ai/docs/processors-list">Google
 Document AI processor list</a></td>
 </tr>
 <tr>
-<td>Local Tesseract</td>
-<td>Free/offline fallback for plain OCR; supports 100+ languages but
-weaker on complex layout and modern document understanding.</td>
+<td>Local Tesseract (Tier 2 — promoted)</td>
+<td><strong>Free, offline, CPU-only (no GPU) OCR</strong> for scanned
+PDFs and images, via <code>ocrmypdf</code> + Tesseract. Supports 100+
+languages; weaker on complex layout than cloud document-intelligence but
+private and free. Fetched as a verified downloadable component (native
+binary + <code>.traineddata</code>). QUILL's free answer for scanned
+documents.</td>
 <td><a href="https://github.com/tesseract-ocr/tesseract">Tesseract
-GitHub repository</a></td>
+GitHub repository</a> · <a
+href="https://github.com/ocrmypdf/OCRmyPDF">OCRmyPDF</a></td>
+</tr>
+<tr>
+<td>MarkItDown (local)</td>
+<td><strong>Not an OCR engine.</strong> Free, cross-platform,
+pure-Python conversion of <em>born-digital</em> files (DOCX, PPTX, XLSX,
+HTML, EPUB, and PDFs that already have a text layer) to Markdown. Ideal
+free first-pass so paid OCR is only spent on genuinely scanned/image
+documents. Returns little or nothing for image-based PDFs.</td>
+<td><a href="https://github.com/microsoft/markitdown">MarkItDown GitHub
+repository</a></td>
 </tr>
 </tbody>
 </table>
@@ -686,7 +719,10 @@ institutions.</li>
 <ol type="1">
 <li>Establish a reusable <strong>Services</strong> architecture inside
 AI Hub.</li>
-<li>Implement Datalab / Chandra as the first document service.</li>
+<li>Ship free-first: MarkItDown (born-digital) and local Tesseract OCR
+(scanned) as free local services before any paid cloud provider; Datalab
+/ Chandra as the first paid cloud OCR service.</li>
+<li>Route every import free-first across the three tiers (§11.4).</li>
 <li>Avoid vendor lock-in through a provider adapter abstraction.</li>
 <li>Make the import pipeline asynchronous, cancellable, recoverable, and
 screen-reader friendly.</li>
@@ -713,9 +749,12 @@ default.</li>
 <h2 id="7-non-goals-for-initial-release">7. Non-Goals for Initial
 Release</h2>
 <ol type="1">
-<li>Do not bundle local Chandra OCR 2 in the QUILL installer.</li>
-<li>Do not require a GPU for the user-facing supported OCR tool when
-cloud/service-backed OCR is configured.</li>
+<li>Do not bundle any local engine (MarkItDown, Tesseract, Marker,
+Chandra) in the QUILL installer — all are verified downloadable
+components (§Z.3).</li>
+<li>Do not require a GPU for any supported tier. Local Tesseract OCR
+(Tier 2) is CPU-only by design; GPU-hungry local ML engines (Marker /
+local Chandra) are deferred to Phase 7.</li>
 <li>Do not build a full PDF editor.</li>
 <li>Do not promise perfect reconstruction of every document.</li>
 <li>Do not silently upload files to any cloud service.</li>
@@ -763,12 +802,13 @@ QUILL can call.</p>
 <p>Use an accessible list or tree with detail pane.</p>
 <pre class="text"><code>Services
   Document Conversion and OCR
-    Datalab Chandra OCR Service
+    MarkItDown (local, free — Tier 1)
+    Local Tesseract OCR (local, free, CPU-only — Tier 2)
+    Datalab Chandra OCR Service (cloud, paid — Tier 3)
     Azure Document Intelligence
     Mistral OCR
     AWS Textract
     Google Document AI
-    Local Tesseract
     Local Marker
   Speech and Transcription
     Whisper / Faster Whisper
@@ -946,10 +986,17 @@ and others marked future/planned.</p>
 <td>Supported</td>
 </tr>
 <tr>
+<td>MarkItDown</td>
+<td>Free, fast conversion of born-digital DOCX/PPTX/XLSX/HTML/EPUB and
+text-layer PDFs (not scanned images)</td>
+<td>Local (Tier 1)</td>
+<td>Supported (MVP)</td>
+</tr>
+<tr>
 <td>Local Tesseract</td>
-<td>Basic offline OCR</td>
-<td>Local</td>
-<td>Planned</td>
+<td>Free, offline, CPU-only OCR for scanned PDFs and images</td>
+<td>Local (Tier 2)</td>
+<td>Supported</td>
 </tr>
 <tr>
 <td>Azure Document Intelligence</td>
@@ -1333,6 +1380,123 @@ class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb17-1"><a href=
 <span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="fu">extras</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;table_cell_bboxes,list_item_bboxes,extract_links,chart_understanding,new_block_types&quot;</span></span></code></pre></div>
 <p>Because this costs more, QUILL must warn the user before enabling
 expensive add-ons.</p>
+<h3
+id="114-free-first-three-tier-conversion-local-text--local-ocr--cloud-ocr">11.4
+Free-first, three-tier conversion (local text → local OCR → cloud
+OCR)</h3>
+<p>Not every document needs paid, cloud OCR — and even scanned documents
+usually don't. QUILL routes every import through <strong>three
+tiers</strong>, spending money (and uploading a file) only as a last
+resort:</p>
+<ul>
+<li><strong>Tier 1 — MarkItDown (free, local, no upload).</strong>
+Extracts the existing text layer from <em>born-digital</em> files (DOCX,
+PPTX, XLSX, HTML, EPUB, and PDFs that already carry text). Not an OCR
+engine — it does not recognize scanned images.</li>
+<li><strong>Tier 2 — Local Tesseract OCR (free, local, no
+upload).</strong> Real OCR for scanned / image-based PDFs and photos of
+documents, run entirely on the user's machine via <code>ocrmypdf</code>
++ Tesseract. <strong>CPU-only — no GPU required.</strong> Lower accuracy
+than cloud document-intelligence on complex layouts, but free, offline,
+and private.</li>
+<li><strong>Tier 3 — Datalab Chandra cloud OCR (paid, cloud,
+consent-gated).</strong> The accuracy escalation for hard documents:
+complex tables, forms, handwriting, math, dense or multi-column layouts,
+and poor scans. Only reached when the free local tiers fall short or the
+user explicitly chooses it.</li>
+</ul>
+<p>This means the PRD's headline case — rescuing a scanned PDF — has a
+<strong>free, local, private</strong> answer (Tier 2). Cloud AI is an
+<em>upgrade</em>, never a toll gate.</p>
+<h4 id="routing-model">Routing model</h4>
+<pre class="text"><code>1. Choose file.
+2. Born-digital type? -&gt; Tier 1: MarkItDown locally (free, no upload).
+     - Enough usable text -&gt; open it. Done. No OCR, no cloud, no cost.
+     - Little/no text (looks scanned) -&gt; fall through to Tier 2.
+3. Scanned / image-based, or Tier 1 came back empty? -&gt; Tier 2: local Tesseract OCR
+   (free, offline, no upload).
+     - Good enough -&gt; open it. Done. Still free, still on-device.
+     - Poor result, or complex layout (tables/forms/handwriting/math/multi-column),
+       or user asks for higher accuracy -&gt; offer Tier 3.
+4. Tier 3: Datalab cloud OCR — paid, consent-gated. Reached only when free local
+   tiers fall short, or the user explicitly selects it.</code></pre>
+<p>The user always keeps control: a <strong>"Prefer free local
+conversion when possible"</strong> setting (default on) governs Tiers
+1–2, and an <strong>"Always ask which provider"</strong> option lets
+power users choose the tier per import.</p>
+<h4
+id="empty--low-quality-result-detection-and-the-escalation-prompts">"Empty
+/ low-quality result" detection and the escalation prompts</h4>
+<p>The real design work is deciding when a tier <em>failed to recover
+the content</em>, rather than silently handing the user a blank or
+garbled document. Two decision points, each tuned in Phase 0:</p>
+<ul>
+<li><strong>Tier 1 → 2 (empty text layer):</strong> extracted characters
+below a threshold relative to page count (e.g. a multi-page PDF yielding
+&lt; ~50 characters per page), or output that is only images/whitespace
+with no headings, paragraphs, or table text.</li>
+<li><strong>Tier 2 → 3 (weak OCR):</strong> very low mean OCR
+confidence, sparse recognized text, or a user judgment that the result
+is unusable. (Tesseract exposes per-word/character confidence, so QUILL
+can surface a mean-confidence signal.)</li>
+</ul>
+<p>QUILL must never silently open an empty or clearly-broken result. At
+each fall-through point, show an accessible prompt. Tier 1 → 2 (stays
+free and local):</p>
+<blockquote>
+<p>QUILL could not find readable text in this document. It looks scanned
+or image-based. Run free on-device OCR (local Tesseract)? This stays on
+your computer and does not upload anything.</p>
+<p>Buttons: <strong>Run local OCR</strong> · <strong>Open empty result
+anyway</strong> · <strong>Cancel</strong></p>
+</blockquote>
+<p>Tier 2 → 3 (introduces cost + upload, so it is the only prompt that
+mentions either):</p>
+<blockquote>
+<p>On-device OCR finished, but the result looks low-quality or the
+layout is complex. For higher accuracy you can convert it with Datalab
+cloud OCR. This uploads the file to a cloud service and may cost
+money.</p>
+<p>Buttons: <strong>Keep local result</strong> · <strong>Convert with
+cloud OCR</strong> · <strong>Cancel</strong></p>
+</blockquote>
+<p>Announce each outcome and move focus to the message, per §16.</p>
+<h4 id="cost-and-privacy-story">Cost and privacy story</h4>
+<p>This is materially better than "everything scanned goes to paid cloud
+OCR": born- digital files cost nothing (Tier 1), scanned documents still
+cost nothing and never leave the machine (Tier 2), and per-page cloud
+spend + upload is reserved only for documents that genuinely need the
+accuracy (Tier 3). The Services tab should state each tier's tradeoff
+plainly on its card (free/local/no-upload vs. paid/cloud/upload).</p>
+<h4
+id="footprint-and-acquisition-all-tiers-are-downloadable-components">Footprint
+and acquisition (all tiers are downloadable components)</h4>
+<p>None of these tiers ship inside the installer. Each is fetched on
+demand through the pinned, SHA-256-verified acquisition path (§Z.3),
+with cancelable accessible progress, blocked in Safe Mode, and
+re-downloadable/replaceable:</p>
+<ul>
+<li><strong>MarkItDown</strong> — pure-Python, cross-platform
+(Win/macOS/Linux, Python 3.10+), no GPU, no native binary, no ML model.
+Install only scoped extras
+(<code>markitdown[pdf,docx,pptx,xlsx]</code>); the <code>xlsx</code>
+extra pulls in <code>pandas</code>, the one non-trivial dependency,
+droppable if spreadsheets are deferred.</li>
+<li><strong>Tesseract OCR</strong> — <code>ocrmypdf</code> (Python) plus
+the <strong>Tesseract native binary and per-language
+<code>.traineddata</code> files</strong>. <strong>CPU-only, no
+GPU.</strong> The binary is platform-specific and language packs add
+weight, so QUILL fetches the right binary per OS and only the language
+data the user needs (default: English; others downloadable on demand) as
+<strong>verified downloadable components in all install
+locations</strong>. This is the one tier with a native, per-platform
+payload — still free, offline, and private.</li>
+</ul>
+<p>Because Tiers 1 and 2 are local and perform no upload, they need
+<strong>no API key, no consent prompt, and no network-egress audit
+entry</strong> — genuinely simpler cards than the cloud provider. Only
+Tier 3 (Datalab) carries a key, a mandatory consent prompt, and a GATE-9
+egress-audit entry.</p>
 <hr />
 <h2 id="12-ocr-review-mode">12. OCR Review Mode</h2>
 <p>OCR Review Mode is the differentiator. This is where QUILL can be
@@ -1458,25 +1622,25 @@ Review recommended.</p>
 </ul>
 <h3 id="125-review-report">12.5 Review report</h3>
 <p>QUILL should optionally generate a Markdown review report:</p>
-<div class="sourceCode" id="cb18"><pre
-class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu"># OCR Review Report</span></span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>Source file: example.pdf</span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>Provider: Datalab Chandra OCR Service</span>
-<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>Mode: accurate</span>
-<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>Pages processed: 12</span>
-<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>Output: Markdown</span>
-<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a><span class="fu">## Warnings</span></span>
-<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Page 4: 12 low-confidence words.</span>
-<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Page 6: Complex table detected.</span>
-<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Page 9: Image caption generated and not manually verified.</span>
-<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a><span class="fu">## User actions</span></span>
-<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Page 4: Corrected 3 words.</span>
-<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Page 6: Converted table to Markdown.</span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre
+class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu"># OCR Review Report</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>Source file: example.pdf</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>Provider: Datalab Chandra OCR Service</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>Mode: accurate</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>Pages processed: 12</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>Output: Markdown</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a><span class="fu">## Warnings</span></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Page 4: 12 low-confidence words.</span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Page 6: Complex table detected.</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Page 9: Image caption generated and not manually verified.</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a><span class="fu">## User actions</span></span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Page 4: Corrected 3 words.</span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Page 6: Converted table to Markdown.</span></code></pre></div>
 <hr />
 <h2 id="13-architecture">13. Architecture</h2>
 <h3 id="131-core-components">13.1 Core components</h3>
@@ -1489,8 +1653,9 @@ class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb18-1">
   services/
     base.py
     document_conversion.py
-    datalab_provider.py
-    local_tesseract_provider.py        # future
+    datalab_provider.py                # Tier 3: paid cloud OCR (accuracy escalation)
+    markitdown_provider.py             # Tier 1: local, free born-digital conversion
+    local_tesseract_provider.py        # Tier 2: local, free OCR (ocrmypdf+Tesseract, CPU-only)
     azure_document_intel_provider.py   # future
     mistral_ocr_provider.py            # future
   document_import/
@@ -1511,119 +1676,119 @@ class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb18-1">
       form_checkbox.pdf
       handwritten_note.png</code></pre>
 <h3 id="132-provider-interfaces">13.2 Provider interfaces</h3>
-<div class="sourceCode" id="cb20"><pre
-class="sourceCode python"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> dataclasses <span class="im">import</span> dataclass</span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> enum <span class="im">import</span> Enum</span>
-<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
-<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> typing <span class="im">import</span> Protocol, Optional, Mapping, Any</span>
-<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> OutputFormat(<span class="bu">str</span>, Enum):</span>
-<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>    MARKDOWN <span class="op">=</span> <span class="st">&quot;markdown&quot;</span></span>
-<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>    HTML <span class="op">=</span> <span class="st">&quot;html&quot;</span></span>
-<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>    JSON <span class="op">=</span> <span class="st">&quot;json&quot;</span></span>
-<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>    CHUNKS <span class="op">=</span> <span class="st">&quot;chunks&quot;</span></span>
-<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>    TEXT <span class="op">=</span> <span class="st">&quot;text&quot;</span></span>
-<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ProcessingMode(<span class="bu">str</span>, Enum):</span>
-<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>    FAST <span class="op">=</span> <span class="st">&quot;fast&quot;</span></span>
-<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>    BALANCED <span class="op">=</span> <span class="st">&quot;balanced&quot;</span></span>
-<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>    ACCURATE <span class="op">=</span> <span class="st">&quot;accurate&quot;</span></span>
-<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span>(frozen<span class="op">=</span><span class="va">True</span>)</span>
-<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ServiceCapability:</span>
-<span id="cb20-23"><a href="#cb20-23" aria-hidden="true" tabindex="-1"></a>    provider_id: <span class="bu">str</span></span>
-<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a>    display_name: <span class="bu">str</span></span>
-<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a>    supports_cloud: <span class="bu">bool</span></span>
-<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a>    supports_on_prem: <span class="bu">bool</span></span>
-<span id="cb20-27"><a href="#cb20-27" aria-hidden="true" tabindex="-1"></a>    supported_extensions: <span class="bu">tuple</span>[<span class="bu">str</span>, ...]</span>
-<span id="cb20-28"><a href="#cb20-28" aria-hidden="true" tabindex="-1"></a>    output_formats: <span class="bu">tuple</span>[OutputFormat, ...]</span>
-<span id="cb20-29"><a href="#cb20-29" aria-hidden="true" tabindex="-1"></a>    processing_modes: <span class="bu">tuple</span>[ProcessingMode, ...]</span>
-<span id="cb20-30"><a href="#cb20-30" aria-hidden="true" tabindex="-1"></a>    max_file_size_mb: Optional[<span class="bu">int</span>] <span class="op">=</span> <span class="va">None</span></span>
-<span id="cb20-31"><a href="#cb20-31" aria-hidden="true" tabindex="-1"></a>    max_pages_per_request: Optional[<span class="bu">int</span>] <span class="op">=</span> <span class="va">None</span></span>
-<span id="cb20-32"><a href="#cb20-32" aria-hidden="true" tabindex="-1"></a>    supports_page_range: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>
-<span id="cb20-33"><a href="#cb20-33" aria-hidden="true" tabindex="-1"></a>    supports_confidence: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>
-<span id="cb20-34"><a href="#cb20-34" aria-hidden="true" tabindex="-1"></a>    supports_bounding_boxes: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>
-<span id="cb20-35"><a href="#cb20-35" aria-hidden="true" tabindex="-1"></a>    supports_tables: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>
-<span id="cb20-36"><a href="#cb20-36" aria-hidden="true" tabindex="-1"></a>    supports_image_captions: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>
-<span id="cb20-37"><a href="#cb20-37" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-38"><a href="#cb20-38" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-39"><a href="#cb20-39" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
-<span id="cb20-40"><a href="#cb20-40" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ConversionOptions:</span>
-<span id="cb20-41"><a href="#cb20-41" aria-hidden="true" tabindex="-1"></a>    output_format: OutputFormat <span class="op">=</span> OutputFormat.MARKDOWN</span>
-<span id="cb20-42"><a href="#cb20-42" aria-hidden="true" tabindex="-1"></a>    mode: ProcessingMode <span class="op">=</span> ProcessingMode.BALANCED</span>
-<span id="cb20-43"><a href="#cb20-43" aria-hidden="true" tabindex="-1"></a>    paginate: <span class="bu">bool</span> <span class="op">=</span> <span class="va">True</span></span>
-<span id="cb20-44"><a href="#cb20-44" aria-hidden="true" tabindex="-1"></a>    page_range: Optional[<span class="bu">str</span>] <span class="op">=</span> <span class="va">None</span></span>
-<span id="cb20-45"><a href="#cb20-45" aria-hidden="true" tabindex="-1"></a>    max_pages: Optional[<span class="bu">int</span>] <span class="op">=</span> <span class="va">None</span></span>
-<span id="cb20-46"><a href="#cb20-46" aria-hidden="true" tabindex="-1"></a>    extract_images: <span class="bu">bool</span> <span class="op">=</span> <span class="va">True</span></span>
-<span id="cb20-47"><a href="#cb20-47" aria-hidden="true" tabindex="-1"></a>    generate_image_captions: <span class="bu">bool</span> <span class="op">=</span> <span class="va">True</span></span>
-<span id="cb20-48"><a href="#cb20-48" aria-hidden="true" tabindex="-1"></a>    include_confidence: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>
-<span id="cb20-49"><a href="#cb20-49" aria-hidden="true" tabindex="-1"></a>    include_block_ids: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>
-<span id="cb20-50"><a href="#cb20-50" aria-hidden="true" tabindex="-1"></a>    extras: <span class="bu">tuple</span>[<span class="bu">str</span>, ...] <span class="op">=</span> ()</span>
-<span id="cb20-51"><a href="#cb20-51" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-52"><a href="#cb20-52" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-53"><a href="#cb20-53" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
-<span id="cb20-54"><a href="#cb20-54" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ConversionProgress:</span>
-<span id="cb20-55"><a href="#cb20-55" aria-hidden="true" tabindex="-1"></a>    status: <span class="bu">str</span></span>
-<span id="cb20-56"><a href="#cb20-56" aria-hidden="true" tabindex="-1"></a>    percent: Optional[<span class="bu">int</span>] <span class="op">=</span> <span class="va">None</span></span>
-<span id="cb20-57"><a href="#cb20-57" aria-hidden="true" tabindex="-1"></a>    current_page: Optional[<span class="bu">int</span>] <span class="op">=</span> <span class="va">None</span></span>
-<span id="cb20-58"><a href="#cb20-58" aria-hidden="true" tabindex="-1"></a>    total_pages: Optional[<span class="bu">int</span>] <span class="op">=</span> <span class="va">None</span></span>
-<span id="cb20-59"><a href="#cb20-59" aria-hidden="true" tabindex="-1"></a>    message: <span class="bu">str</span> <span class="op">=</span> <span class="st">&quot;&quot;</span></span>
-<span id="cb20-60"><a href="#cb20-60" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-61"><a href="#cb20-61" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-62"><a href="#cb20-62" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
-<span id="cb20-63"><a href="#cb20-63" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ConversionResult:</span>
-<span id="cb20-64"><a href="#cb20-64" aria-hidden="true" tabindex="-1"></a>    provider_id: <span class="bu">str</span></span>
-<span id="cb20-65"><a href="#cb20-65" aria-hidden="true" tabindex="-1"></a>    source_path: Path</span>
-<span id="cb20-66"><a href="#cb20-66" aria-hidden="true" tabindex="-1"></a>    output_format: OutputFormat</span>
-<span id="cb20-67"><a href="#cb20-67" aria-hidden="true" tabindex="-1"></a>    markdown: Optional[<span class="bu">str</span>] <span class="op">=</span> <span class="va">None</span></span>
-<span id="cb20-68"><a href="#cb20-68" aria-hidden="true" tabindex="-1"></a>    html: Optional[<span class="bu">str</span>] <span class="op">=</span> <span class="va">None</span></span>
-<span id="cb20-69"><a href="#cb20-69" aria-hidden="true" tabindex="-1"></a>    json_data: Optional[Mapping[<span class="bu">str</span>, Any]] <span class="op">=</span> <span class="va">None</span></span>
-<span id="cb20-70"><a href="#cb20-70" aria-hidden="true" tabindex="-1"></a>    chunks: Optional[Mapping[<span class="bu">str</span>, Any]] <span class="op">=</span> <span class="va">None</span></span>
-<span id="cb20-71"><a href="#cb20-71" aria-hidden="true" tabindex="-1"></a>    images: Optional[Mapping[<span class="bu">str</span>, <span class="bu">bytes</span>]] <span class="op">=</span> <span class="va">None</span></span>
-<span id="cb20-72"><a href="#cb20-72" aria-hidden="true" tabindex="-1"></a>    metadata: Optional[Mapping[<span class="bu">str</span>, Any]] <span class="op">=</span> <span class="va">None</span></span>
-<span id="cb20-73"><a href="#cb20-73" aria-hidden="true" tabindex="-1"></a>    warnings: <span class="bu">tuple</span>[<span class="bu">str</span>, ...] <span class="op">=</span> ()</span>
-<span id="cb20-74"><a href="#cb20-74" aria-hidden="true" tabindex="-1"></a>    parse_quality_score: Optional[<span class="bu">float</span>] <span class="op">=</span> <span class="va">None</span></span>
-<span id="cb20-75"><a href="#cb20-75" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-76"><a href="#cb20-76" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-77"><a href="#cb20-77" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> DocumentConversionProvider(Protocol):</span>
-<span id="cb20-78"><a href="#cb20-78" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> capabilities(<span class="va">self</span>) <span class="op">-&gt;</span> ServiceCapability:</span>
-<span id="cb20-79"><a href="#cb20-79" aria-hidden="true" tabindex="-1"></a>        ...</span>
-<span id="cb20-80"><a href="#cb20-80" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-81"><a href="#cb20-81" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> validate_configuration(<span class="va">self</span>) <span class="op">-&gt;</span> <span class="bu">tuple</span>[<span class="bu">bool</span>, <span class="bu">str</span>]:</span>
-<span id="cb20-82"><a href="#cb20-82" aria-hidden="true" tabindex="-1"></a>        ...</span>
-<span id="cb20-83"><a href="#cb20-83" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-84"><a href="#cb20-84" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> convert(</span>
-<span id="cb20-85"><a href="#cb20-85" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>,</span>
-<span id="cb20-86"><a href="#cb20-86" aria-hidden="true" tabindex="-1"></a>        source_path: Path,</span>
-<span id="cb20-87"><a href="#cb20-87" aria-hidden="true" tabindex="-1"></a>        options: ConversionOptions,</span>
-<span id="cb20-88"><a href="#cb20-88" aria-hidden="true" tabindex="-1"></a>        progress_callback,</span>
-<span id="cb20-89"><a href="#cb20-89" aria-hidden="true" tabindex="-1"></a>        cancel_token,</span>
-<span id="cb20-90"><a href="#cb20-90" aria-hidden="true" tabindex="-1"></a>    ) <span class="op">-&gt;</span> ConversionResult:</span>
-<span id="cb20-91"><a href="#cb20-91" aria-hidden="true" tabindex="-1"></a>        ...</span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> dataclasses <span class="im">import</span> dataclass</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> enum <span class="im">import</span> Enum</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> typing <span class="im">import</span> Protocol, Optional, Mapping, Any</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> OutputFormat(<span class="bu">str</span>, Enum):</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>    MARKDOWN <span class="op">=</span> <span class="st">&quot;markdown&quot;</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>    HTML <span class="op">=</span> <span class="st">&quot;html&quot;</span></span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>    JSON <span class="op">=</span> <span class="st">&quot;json&quot;</span></span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>    CHUNKS <span class="op">=</span> <span class="st">&quot;chunks&quot;</span></span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>    TEXT <span class="op">=</span> <span class="st">&quot;text&quot;</span></span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ProcessingMode(<span class="bu">str</span>, Enum):</span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a>    FAST <span class="op">=</span> <span class="st">&quot;fast&quot;</span></span>
+<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a>    BALANCED <span class="op">=</span> <span class="st">&quot;balanced&quot;</span></span>
+<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a>    ACCURATE <span class="op">=</span> <span class="st">&quot;accurate&quot;</span></span>
+<span id="cb21-19"><a href="#cb21-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-20"><a href="#cb21-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-21"><a href="#cb21-21" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span>(frozen<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb21-22"><a href="#cb21-22" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ServiceCapability:</span>
+<span id="cb21-23"><a href="#cb21-23" aria-hidden="true" tabindex="-1"></a>    provider_id: <span class="bu">str</span></span>
+<span id="cb21-24"><a href="#cb21-24" aria-hidden="true" tabindex="-1"></a>    display_name: <span class="bu">str</span></span>
+<span id="cb21-25"><a href="#cb21-25" aria-hidden="true" tabindex="-1"></a>    supports_cloud: <span class="bu">bool</span></span>
+<span id="cb21-26"><a href="#cb21-26" aria-hidden="true" tabindex="-1"></a>    supports_on_prem: <span class="bu">bool</span></span>
+<span id="cb21-27"><a href="#cb21-27" aria-hidden="true" tabindex="-1"></a>    supported_extensions: <span class="bu">tuple</span>[<span class="bu">str</span>, ...]</span>
+<span id="cb21-28"><a href="#cb21-28" aria-hidden="true" tabindex="-1"></a>    output_formats: <span class="bu">tuple</span>[OutputFormat, ...]</span>
+<span id="cb21-29"><a href="#cb21-29" aria-hidden="true" tabindex="-1"></a>    processing_modes: <span class="bu">tuple</span>[ProcessingMode, ...]</span>
+<span id="cb21-30"><a href="#cb21-30" aria-hidden="true" tabindex="-1"></a>    max_file_size_mb: Optional[<span class="bu">int</span>] <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb21-31"><a href="#cb21-31" aria-hidden="true" tabindex="-1"></a>    max_pages_per_request: Optional[<span class="bu">int</span>] <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb21-32"><a href="#cb21-32" aria-hidden="true" tabindex="-1"></a>    supports_page_range: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>
+<span id="cb21-33"><a href="#cb21-33" aria-hidden="true" tabindex="-1"></a>    supports_confidence: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>
+<span id="cb21-34"><a href="#cb21-34" aria-hidden="true" tabindex="-1"></a>    supports_bounding_boxes: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>
+<span id="cb21-35"><a href="#cb21-35" aria-hidden="true" tabindex="-1"></a>    supports_tables: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>
+<span id="cb21-36"><a href="#cb21-36" aria-hidden="true" tabindex="-1"></a>    supports_image_captions: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>
+<span id="cb21-37"><a href="#cb21-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-38"><a href="#cb21-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-39"><a href="#cb21-39" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
+<span id="cb21-40"><a href="#cb21-40" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ConversionOptions:</span>
+<span id="cb21-41"><a href="#cb21-41" aria-hidden="true" tabindex="-1"></a>    output_format: OutputFormat <span class="op">=</span> OutputFormat.MARKDOWN</span>
+<span id="cb21-42"><a href="#cb21-42" aria-hidden="true" tabindex="-1"></a>    mode: ProcessingMode <span class="op">=</span> ProcessingMode.BALANCED</span>
+<span id="cb21-43"><a href="#cb21-43" aria-hidden="true" tabindex="-1"></a>    paginate: <span class="bu">bool</span> <span class="op">=</span> <span class="va">True</span></span>
+<span id="cb21-44"><a href="#cb21-44" aria-hidden="true" tabindex="-1"></a>    page_range: Optional[<span class="bu">str</span>] <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb21-45"><a href="#cb21-45" aria-hidden="true" tabindex="-1"></a>    max_pages: Optional[<span class="bu">int</span>] <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb21-46"><a href="#cb21-46" aria-hidden="true" tabindex="-1"></a>    extract_images: <span class="bu">bool</span> <span class="op">=</span> <span class="va">True</span></span>
+<span id="cb21-47"><a href="#cb21-47" aria-hidden="true" tabindex="-1"></a>    generate_image_captions: <span class="bu">bool</span> <span class="op">=</span> <span class="va">True</span></span>
+<span id="cb21-48"><a href="#cb21-48" aria-hidden="true" tabindex="-1"></a>    include_confidence: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>
+<span id="cb21-49"><a href="#cb21-49" aria-hidden="true" tabindex="-1"></a>    include_block_ids: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>
+<span id="cb21-50"><a href="#cb21-50" aria-hidden="true" tabindex="-1"></a>    extras: <span class="bu">tuple</span>[<span class="bu">str</span>, ...] <span class="op">=</span> ()</span>
+<span id="cb21-51"><a href="#cb21-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-52"><a href="#cb21-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-53"><a href="#cb21-53" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
+<span id="cb21-54"><a href="#cb21-54" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ConversionProgress:</span>
+<span id="cb21-55"><a href="#cb21-55" aria-hidden="true" tabindex="-1"></a>    status: <span class="bu">str</span></span>
+<span id="cb21-56"><a href="#cb21-56" aria-hidden="true" tabindex="-1"></a>    percent: Optional[<span class="bu">int</span>] <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb21-57"><a href="#cb21-57" aria-hidden="true" tabindex="-1"></a>    current_page: Optional[<span class="bu">int</span>] <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb21-58"><a href="#cb21-58" aria-hidden="true" tabindex="-1"></a>    total_pages: Optional[<span class="bu">int</span>] <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb21-59"><a href="#cb21-59" aria-hidden="true" tabindex="-1"></a>    message: <span class="bu">str</span> <span class="op">=</span> <span class="st">&quot;&quot;</span></span>
+<span id="cb21-60"><a href="#cb21-60" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-61"><a href="#cb21-61" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-62"><a href="#cb21-62" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
+<span id="cb21-63"><a href="#cb21-63" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ConversionResult:</span>
+<span id="cb21-64"><a href="#cb21-64" aria-hidden="true" tabindex="-1"></a>    provider_id: <span class="bu">str</span></span>
+<span id="cb21-65"><a href="#cb21-65" aria-hidden="true" tabindex="-1"></a>    source_path: Path</span>
+<span id="cb21-66"><a href="#cb21-66" aria-hidden="true" tabindex="-1"></a>    output_format: OutputFormat</span>
+<span id="cb21-67"><a href="#cb21-67" aria-hidden="true" tabindex="-1"></a>    markdown: Optional[<span class="bu">str</span>] <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb21-68"><a href="#cb21-68" aria-hidden="true" tabindex="-1"></a>    html: Optional[<span class="bu">str</span>] <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb21-69"><a href="#cb21-69" aria-hidden="true" tabindex="-1"></a>    json_data: Optional[Mapping[<span class="bu">str</span>, Any]] <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb21-70"><a href="#cb21-70" aria-hidden="true" tabindex="-1"></a>    chunks: Optional[Mapping[<span class="bu">str</span>, Any]] <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb21-71"><a href="#cb21-71" aria-hidden="true" tabindex="-1"></a>    images: Optional[Mapping[<span class="bu">str</span>, <span class="bu">bytes</span>]] <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb21-72"><a href="#cb21-72" aria-hidden="true" tabindex="-1"></a>    metadata: Optional[Mapping[<span class="bu">str</span>, Any]] <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb21-73"><a href="#cb21-73" aria-hidden="true" tabindex="-1"></a>    warnings: <span class="bu">tuple</span>[<span class="bu">str</span>, ...] <span class="op">=</span> ()</span>
+<span id="cb21-74"><a href="#cb21-74" aria-hidden="true" tabindex="-1"></a>    parse_quality_score: Optional[<span class="bu">float</span>] <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb21-75"><a href="#cb21-75" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-76"><a href="#cb21-76" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-77"><a href="#cb21-77" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> DocumentConversionProvider(Protocol):</span>
+<span id="cb21-78"><a href="#cb21-78" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> capabilities(<span class="va">self</span>) <span class="op">-&gt;</span> ServiceCapability:</span>
+<span id="cb21-79"><a href="#cb21-79" aria-hidden="true" tabindex="-1"></a>        ...</span>
+<span id="cb21-80"><a href="#cb21-80" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-81"><a href="#cb21-81" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> validate_configuration(<span class="va">self</span>) <span class="op">-&gt;</span> <span class="bu">tuple</span>[<span class="bu">bool</span>, <span class="bu">str</span>]:</span>
+<span id="cb21-82"><a href="#cb21-82" aria-hidden="true" tabindex="-1"></a>        ...</span>
+<span id="cb21-83"><a href="#cb21-83" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-84"><a href="#cb21-84" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> convert(</span>
+<span id="cb21-85"><a href="#cb21-85" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>,</span>
+<span id="cb21-86"><a href="#cb21-86" aria-hidden="true" tabindex="-1"></a>        source_path: Path,</span>
+<span id="cb21-87"><a href="#cb21-87" aria-hidden="true" tabindex="-1"></a>        options: ConversionOptions,</span>
+<span id="cb21-88"><a href="#cb21-88" aria-hidden="true" tabindex="-1"></a>        progress_callback,</span>
+<span id="cb21-89"><a href="#cb21-89" aria-hidden="true" tabindex="-1"></a>        cancel_token,</span>
+<span id="cb21-90"><a href="#cb21-90" aria-hidden="true" tabindex="-1"></a>    ) <span class="op">-&gt;</span> ConversionResult:</span>
+<span id="cb21-91"><a href="#cb21-91" aria-hidden="true" tabindex="-1"></a>        ...</span></code></pre></div>
 <h3 id="133-datalab-provider-behavior">13.3 Datalab provider
 behavior</h3>
 <p>Use the SDK by default when available:</p>
-<div class="sourceCode" id="cb21"><pre
-class="sourceCode python"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> datalab_sdk <span class="im">import</span> DatalabClient, ConvertOptions <span class="im">as</span> DatalabConvertOptions</span></code></pre></div>
+<div class="sourceCode" id="cb22"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> datalab_sdk <span class="im">import</span> DatalabClient, ConvertOptions <span class="im">as</span> DatalabConvertOptions</span></code></pre></div>
 <p>Fallback to REST if the SDK is not installed or if packaging makes
 direct REST more reliable.</p>
 <p>Datalab options mapping:</p>
-<div class="sourceCode" id="cb22"><pre
-class="sourceCode python"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>DatalabConvertOptions(</span>
-<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>    output_format<span class="op">=</span>options.output_format.value,</span>
-<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>    mode<span class="op">=</span>options.mode.value,</span>
-<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>    paginate<span class="op">=</span>options.paginate,</span>
-<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>    max_pages<span class="op">=</span>options.max_pages,</span>
-<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>    page_range<span class="op">=</span>options.page_range,</span>
-<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>    disable_image_extraction<span class="op">=</span><span class="kw">not</span> options.extract_images,</span>
-<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>    disable_image_captions<span class="op">=</span><span class="kw">not</span> options.generate_image_captions,</span>
-<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>    word_bboxes<span class="op">=</span>options.include_confidence,</span>
-<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>    add_block_ids<span class="op">=</span>options.include_block_ids,</span>
-<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>    extras<span class="op">=</span><span class="st">&quot;,&quot;</span>.join(options.extras) <span class="cf">if</span> options.extras <span class="cf">else</span> <span class="va">None</span>,</span>
-<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb23"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>DatalabConvertOptions(</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>    output_format<span class="op">=</span>options.output_format.value,</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    mode<span class="op">=</span>options.mode.value,</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>    paginate<span class="op">=</span>options.paginate,</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>    max_pages<span class="op">=</span>options.max_pages,</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>    page_range<span class="op">=</span>options.page_range,</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>    disable_image_extraction<span class="op">=</span><span class="kw">not</span> options.extract_images,</span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>    disable_image_captions<span class="op">=</span><span class="kw">not</span> options.generate_image_captions,</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>    word_bboxes<span class="op">=</span>options.include_confidence,</span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>    add_block_ids<span class="op">=</span>options.include_block_ids,</span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>    extras<span class="op">=</span><span class="st">&quot;,&quot;</span>.join(options.extras) <span class="cf">if</span> options.extras <span class="cf">else</span> <span class="va">None</span>,</span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
 <h3 id="134-asynchronous-job-orchestration">13.4 Asynchronous job
 orchestration</h3>
 <p>QUILL is a wxPython app. Network calls and polling must never block
@@ -1682,19 +1847,19 @@ helper.</li>
 <pre class="text"><code>QUILL/services/datalab/api_key
 QUILL/services/datalab/endpoint</code></pre>
 <p>Config file may store non-secret settings:</p>
-<div class="sourceCode" id="cb27"><pre
-class="sourceCode json"><code class="sourceCode json"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;services&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;datalab&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;enabled&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
-<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;endpoint&quot;</span><span class="fu">:</span> <span class="st">&quot;https://www.datalab.to&quot;</span><span class="fu">,</span></span>
-<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;default_mode&quot;</span><span class="fu">:</span> <span class="st">&quot;balanced&quot;</span><span class="fu">,</span></span>
-<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;default_output_format&quot;</span><span class="fu">:</span> <span class="st">&quot;markdown&quot;</span><span class="fu">,</span></span>
-<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;paginate&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
-<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;confirm_before_upload&quot;</span><span class="fu">:</span> <span class="kw">true</span></span>
-<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
-<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb28"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;services&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;datalab&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;enabled&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;endpoint&quot;</span><span class="fu">:</span> <span class="st">&quot;https://www.datalab.to&quot;</span><span class="fu">,</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;default_mode&quot;</span><span class="fu">:</span> <span class="st">&quot;balanced&quot;</span><span class="fu">,</span></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;default_output_format&quot;</span><span class="fu">:</span> <span class="st">&quot;markdown&quot;</span><span class="fu">,</span></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;paginate&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;confirm_before_upload&quot;</span><span class="fu">:</span> <span class="kw">true</span></span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <hr />
 <h2 id="14-markdown-post-processing">14. Markdown Post-Processing</h2>
 <p>Datalab will return Markdown, but QUILL should still apply a careful
@@ -1712,22 +1877,22 @@ generated.</li>
 <li>Add source metadata at the top only if the user opts in.</li>
 </ol>
 <p>Recommended optional metadata block:</p>
-<div class="sourceCode" id="cb28"><pre
-class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co">&lt;!--</span></span>
-<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="co">Converted by QUILL</span></span>
-<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a><span class="co">Provider: Datalab Chandra OCR Service</span></span>
-<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a><span class="co">Mode: balanced</span></span>
-<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a><span class="co">Source: filename.pdf</span></span>
-<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a><span class="co">Pages: 12</span></span>
-<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a><span class="co">Review recommended: yes</span></span>
-<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a><span class="co">--&gt;</span></span></code></pre></div>
+<div class="sourceCode" id="cb29"><pre
+class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co">&lt;!--</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="co">Converted by QUILL</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a><span class="co">Provider: Datalab Chandra OCR Service</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="co">Mode: balanced</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a><span class="co">Source: filename.pdf</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a><span class="co">Pages: 12</span></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a><span class="co">Review recommended: yes</span></span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a><span class="co">--&gt;</span></span></code></pre></div>
 <h3 id="142-page-delimiters">14.2 Page delimiters</h3>
 <p>Use a consistent, screen-reader-friendly delimiter:</p>
-<div class="sourceCode" id="cb29"><pre
-class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co">&lt;!-- Page 1 --&gt;</span></span></code></pre></div>
-<p>or:</p>
 <div class="sourceCode" id="cb30"><pre
-class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co">[</span><span class="ot">Page 1</span><span class="co">]</span></span></code></pre></div>
+class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co">&lt;!-- Page 1 --&gt;</span></span></code></pre></div>
+<p>or:</p>
+<div class="sourceCode" id="cb31"><pre
+class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co">[</span><span class="ot">Page 1</span><span class="co">]</span></span></code></pre></div>
 <p>Default recommendation: <code>&lt;!-- Page 1 --&gt;</code> for
 Markdown cleanliness, with a QUILL command to jump page-to-page.</p>
 <h3 id="143-tables">14.3 Tables</h3>
@@ -1982,108 +2147,207 @@ conversion in the job summary.</p>
 <hr />
 <h2 id="19-feature-flags">19. Feature Flags</h2>
 <p>Add feature flags:</p>
-<div class="sourceCode" id="cb33"><pre
-class="sourceCode json"><code class="sourceCode json"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;features&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;ai_hub_services_tab&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
-<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;datalab_document_conversion&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
-<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;ocr_review_mode&quot;</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span></span>
-<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;service_usage_history&quot;</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span></span>
-<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;local_tesseract_fallback&quot;</span><span class="fu">:</span> <span class="kw">false</span></span>
-<span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
-<span id="cb33-9"><a href="#cb33-9" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb34"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;features&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;ai_hub_services_tab&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;markitdown_local_conversion&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;local_tesseract_ocr&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;datalab_document_conversion&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;prefer_free_local_conversion&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;ocr_review_mode&quot;</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span></span>
+<span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;service_usage_history&quot;</span><span class="fu">:</span> <span class="kw">false</span></span>
+<span id="cb34-10"><a href="#cb34-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb34-11"><a href="#cb34-11" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <hr />
 <h2 id="20-implementation-plan">20. Implementation Plan</h2>
+<p>The plan is sequenced <strong>free-first</strong>, in the three tiers
+of §11.4. The full pipeline — Services tab, provider interface, import
+wizard, open-result-in-QUILL — is proven on the lowest-risk backend
+first: <strong>MarkItDown</strong> (free, local, born-digital, Phases
+0–3). Then <strong>local Tesseract OCR</strong> (free, offline, no
+upload) lands next (Phase 4), so scanned / image-based PDFs get a
+<strong>free, private</strong> answer before any paid path exists. Only
+then does the <strong>first cloud OCR provider, Datalab Chandra</strong>
+(paid, consent-gated), arrive as the accuracy escalation (Phase 5). OCR
+Review Mode and further providers follow. Every engine is a verified
+<strong>downloadable component</strong> (§Z.3), never bundled in the
+installer.</p>
 <h3 id="phase-0-spike-and-verification">Phase 0: Spike and
 verification</h3>
 <p>Deliverables:</p>
 <ol type="1">
-<li>Verify Datalab SDK packaging in QUILL’s Python environment.</li>
-<li>Build a throwaway script that converts:
+<li>Verify MarkItDown packaging and scoped extras
+(<code>markitdown[pdf,docx,pptx,xlsx]</code>) in QUILL's Python
+environment; confirm cross-platform install and footprint (note the
+<code>pandas</code> weight from the <code>xlsx</code> extra).</li>
+<li>Build a throwaway script that converts with MarkItDown:
 <ul>
-<li>simple scanned PDF</li>
-<li>complex table PDF</li>
-<li>image with text</li>
-<li>checkbox form</li>
-<li>DOCX</li>
+<li>born-digital DOCX</li>
+<li>PPTX and XLSX</li>
+<li>HTML and EPUB</li>
+<li>a text-layer PDF</li>
+<li>a <em>scanned</em> image-only PDF (to confirm it returns little/no
+text)</li>
 </ul></li>
-<li>Compare Markdown, HTML, and JSON outputs.</li>
-<li>Confirm how to retrieve images.</li>
-<li>Confirm whether <code>output_format="markdown,html"</code> is
-supported in current SDK/API or whether QUILL must run separate
-conversions.</li>
-<li>Confirm billing/cost response fields.</li>
-<li>Confirm error response shapes.</li>
-<li>Confirm on-prem endpoint compatibility assumptions.</li>
+<li>Calibrate the "empty result" detection heuristic (§11.4) against the
+scanned sample versus the born-digital samples.</li>
+<li>Verify the Datalab SDK also packages cleanly (so Phase 5 is
+unblocked), and run a throwaway Datalab conversion of the scanned PDF,
+complex table PDF, image with text, and checkbox form. Confirm image
+retrieval, billing/cost response fields, error response shapes, whether
+<code>output_format="markdown,html"</code> is supported in one request,
+and on-prem endpoint assumptions.</li>
 <li>Document sample results in
+<code>docs/research/markitdown_spike.md</code> and
 <code>docs/research/datalab_chandra_spike.md</code>.</li>
 </ol>
 <p>Exit criteria:</p>
 <ul>
-<li>One successful conversion via SDK.</li>
-<li>One successful conversion via REST fallback.</li>
-<li>One handled failure for invalid API key.</li>
-<li>One handled 429/rate-limit simulation or mock.</li>
+<li>MarkItDown converts each born-digital sample to Markdown
+locally.</li>
+<li>The scanned-PDF sample is reliably classified as "empty / needs
+OCR."</li>
+<li>One successful Datalab conversion via SDK and one via REST
+fallback.</li>
+<li>One handled failure for invalid Datalab API key and one handled
+429/rate-limit case.</li>
 </ul>
 <h3 id="phase-1-services-tab-foundation">Phase 1: Services tab
 foundation</h3>
 <p>Deliverables:</p>
 <ol type="1">
 <li><code>ServiceRegistry</code></li>
-<li><code>CredentialStore</code></li>
+<li><code>CredentialStore</code> (built now; the MarkItDown card uses
+none of it — proves the registry works for a keyless, no-upload
+provider)</li>
 <li><code>ServiceDescriptor</code></li>
 <li><code>AIHubServicesPanel</code></li>
-<li>Datalab service settings UI</li>
-<li>Test connection action</li>
+<li>MarkItDown service card (local, free, no API key, no consent prompt,
+no egress-audit entry)</li>
 <li>Settings persistence</li>
-<li>Unit tests for settings without leaking secrets</li>
+<li>Unit tests for settings and registry</li>
 </ol>
 <p>Exit criteria:</p>
 <ul>
-<li>User can enable Datalab, enter API key, save settings, close and
-reopen AI Hub, and test configuration.</li>
-<li>API key is not present in config files or logs.</li>
+<li>User can see and enable the MarkItDown service, save settings, and
+reopen AI Hub with state intact.</li>
+<li>A keyless/no-upload provider renders correctly with no API-key or
+consent UI.</li>
 </ul>
-<h3 id="phase-2-datalab-provider-adapter">Phase 2: Datalab provider
-adapter</h3>
+<h3 id="phase-2-markitdown-provider-adapter-starting-provider">Phase 2:
+MarkItDown provider adapter (starting provider)</h3>
 <p>Deliverables:</p>
 <ol type="1">
-<li><code>DatalabDocumentConversionProvider</code></li>
-<li>SDK implementation</li>
-<li>REST fallback</li>
-<li>Progress callback support</li>
-<li>Cancel support</li>
-<li>Retry/backoff support</li>
+<li><code>MarkItDownDocumentConversionProvider</code></li>
+<li>Scoped-extra dependency handling via the §Z.3 on-demand acquisition
+path</li>
+<li>Capability descriptor (born-digital extensions only; no OCR, no
+cloud)</li>
+<li>Progress callback + cancel support</li>
 <li>Result normalization to <code>ConversionResult</code></li>
-<li>Unit tests with mocked API responses</li>
-<li>Integration test guarded by <code>DATALAB_API_KEY</code></li>
+<li>"Empty result" detection (§11.4)</li>
+<li>Markdown post-processing reuse</li>
+<li>Unit tests (fully local; no network, no key)</li>
 </ol>
 <p>Exit criteria:</p>
 <ul>
-<li>Provider converts a PDF to Markdown.</li>
-<li>Provider returns warnings and metadata.</li>
-<li>Provider handles cancellation and common errors.</li>
+<li>Provider converts each born-digital sample to Markdown, entirely
+offline.</li>
+<li>Empty/near-empty output is flagged rather than silently
+returned.</li>
+<li>Provider handles cancellation and missing-dependency errors.</li>
 </ul>
-<h3 id="phase-3-import-wizard">Phase 3: Import wizard</h3>
+<h3 id="phase-3-import-wizard-free-first-local-path--mvp">Phase 3:
+Import wizard (free-first local path — MVP)</h3>
 <p>Deliverables:</p>
 <ol type="1">
 <li><code>ImportWithOcrDialog</code></li>
-<li>Simple mode</li>
-<li>Advanced mode</li>
-<li>Consent prompt</li>
+<li>Simple mode and advanced mode</li>
 <li>Progress dialog</li>
 <li>Save/open result in QUILL</li>
 <li>Page delimiter support</li>
 <li>Recent import settings</li>
+<li>Free-first behavior wired to MarkItDown (Tier 1 only for now — local
+OCR lands in Phase 4, cloud OCR in Phase 5)</li>
 </ol>
 <p>Exit criteria:</p>
 <ul>
-<li>User can choose a file and open converted Markdown in QUILL.</li>
-<li>UI remains responsive.</li>
-<li>Screen reader announces status.</li>
-<li>Cancel works.</li>
+<li>User can choose a born-digital file and open converted Markdown in
+QUILL, for free, with no upload and no consent prompt.</li>
+<li>UI remains responsive; screen reader announces status; cancel
+works.</li>
+<li>This is the shippable MVP: the whole pipeline works end-to-end on
+MarkItDown.</li>
 </ul>
-<h3 id="phase-4-ocr-review-mode-v1">Phase 4: OCR Review Mode v1</h3>
+<h3 id="phase-4-local-tesseract-ocr-free-offline--tier-2">Phase 4: Local
+Tesseract OCR (free, offline — Tier 2)</h3>
+<p>This is where scanned / image-based PDFs — the PRD's headline case —
+become supported <strong>for free, on-device, with no upload.</strong>
+Cloud OCR is not required to reach this milestone.</p>
+<p>Deliverables:</p>
+<ol type="1">
+<li>Local Tesseract service card (no API key, no consent prompt, no
+egress-audit entry)</li>
+<li><code>TesseractDocumentConversionProvider</code> wrapping
+<code>ocrmypdf</code> + Tesseract (CPU-only)</li>
+<li><strong>Downloadable-component acquisition (§Z.3):</strong> fetch
+the platform-correct Tesseract binary and per-language
+<code>.traineddata</code> on demand, verified by SHA-256, with
+accessible cancelable progress, Safe-Mode blocked, re-downloadable.
+English by default; additional language packs downloadable in all
+install locations.</li>
+<li>Language selection UI (which OCR languages to download/use)</li>
+<li>Capability descriptor (scanned PDFs + images; CPU-only; free; no
+cloud)</li>
+<li>Progress, cancel, and mean-confidence signal from Tesseract</li>
+<li>Tier 1 → Tier 2 routing (§11.4): on an empty text layer, offer free
+local OCR</li>
+<li>Unit tests with a bundled tiny fixture image; no network, no
+key</li>
+</ol>
+<p>Exit criteria:</p>
+<ul>
+<li>User can convert a scanned PDF or image to editable Markdown
+<strong>entirely offline, for free</strong>, after the language data is
+downloaded once.</li>
+<li>The Tesseract binary and language packs install as verified
+downloadable components and are re-downloadable/replaceable.</li>
+<li>No GPU is required; the flow works on a CPU-only machine.</li>
+</ul>
+<h3
+id="phase-5-datalab-chandra-cloud-ocr-paid-accuracy-escalation--tier-3">Phase
+5: Datalab Chandra cloud OCR (paid accuracy escalation — Tier 3)</h3>
+<p>The accuracy upgrade for hard documents (complex tables, forms,
+handwriting, math, dense/multi-column layouts, poor scans). Free local
+tiers already cover the common case; this is opt-in, paid, and
+consent-gated.</p>
+<p>Deliverables:</p>
+<ol type="1">
+<li>Datalab service card + settings UI (API key, endpoint, mode, output,
+etc.)</li>
+<li>Test connection action; API key stored securely and never
+logged</li>
+<li><code>DatalabDocumentConversionProvider</code> (SDK implementation +
+REST fallback)</li>
+<li>Progress, cancel, retry/backoff, result normalization</li>
+<li>Cloud-upload consent prompt (mandatory, per §15) and network-egress
+audit entry</li>
+<li>Tier 2 → Tier 3 routing (§11.4): on weak local OCR or complex
+layout, offer the consent-gated Datalab conversion</li>
+<li>Unit tests with mocked API responses; integration test guarded by
+<code>DATALAB_API_KEY</code></li>
+</ol>
+<p>Exit criteria:</p>
+<ul>
+<li>User can enable Datalab, configure a key securely, and convert a
+hard document to Markdown after an explicit consent prompt.</li>
+<li>Free tiers still run by default; the paid path is only offered when
+local OCR is weak or the user explicitly chooses higher accuracy.</li>
+<li>Cancellation and common errors are handled; no key or document
+content is logged.</li>
+</ul>
+<h3 id="phase-6-ocr-review-mode-v1">Phase 6: OCR Review Mode v1</h3>
 <p>Deliverables:</p>
 <ol type="1">
 <li>OCR review document outline</li>
@@ -2099,15 +2363,16 @@ adapter</h3>
 <li>User can generate a review report.</li>
 <li>JAWS/NVDA/Narrator testing passes basic flows.</li>
 </ul>
-<h3 id="phase-5-provider-expansion">Phase 5: Provider expansion</h3>
+<h3 id="phase-7-provider-expansion">Phase 7: Provider expansion</h3>
 <p>Add provider adapters based on demand:</p>
 <ol type="1">
 <li>Mistral OCR</li>
 <li>Azure Document Intelligence</li>
-<li>Local Tesseract</li>
 <li>Google Document AI</li>
 <li>AWS Textract</li>
 <li>Datalab on-prem profile templates</li>
+<li>Local Marker / local Chandra (heavier local ML engines; may want a
+GPU)</li>
 </ol>
 <p>Exit criteria:</p>
 <ul>
@@ -2129,9 +2394,9 @@ adapter</h3>
 </ul>
 <h3 id="212-integration-tests">21.2 Integration tests</h3>
 <p>Use opt-in environment variable:</p>
-<div class="sourceCode" id="cb34"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="bu">set</span> QUILL_RUN_DATALAB_TESTS=1</span>
-<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a><span class="bu">set</span> DATALAB_API_KEY=...</span></code></pre></div>
+<div class="sourceCode" id="cb35"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="bu">set</span> QUILL_RUN_DATALAB_TESTS=1</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="bu">set</span> DATALAB_API_KEY=...</span></code></pre></div>
 <p>Tests:</p>
 <ul>
 <li>Convert sample PDF to Markdown.</li>
@@ -2162,26 +2427,70 @@ class="sourceCode bash"><code class="sourceCode bash"><span id="cb34-1"><a href=
 </ul>
 <hr />
 <h2 id="22-acceptance-criteria">22. Acceptance Criteria</h2>
-<h3 id="221-mvp-acceptance-criteria">22.1 MVP acceptance criteria</h3>
+<h3
+id="221-mvp-acceptance-criteria-markitdown--free-local-no-upload">22.1
+MVP acceptance criteria (MarkItDown — free, local, no upload)</h3>
 <ol type="1">
 <li>AI Hub contains a Services tab.</li>
-<li>Datalab Chandra OCR Service can be enabled and configured.</li>
-<li>API key is stored securely.</li>
-<li>User can import a supported file via File → Import with OCR /
-Convert Document.</li>
+<li>MarkItDown is the default document-conversion provider and requires
+no API key.</li>
+<li>User can import a born-digital file (DOCX, PPTX, XLSX, HTML, EPUB,
+text-layer PDF) via File → Import with OCR / Convert Document.</li>
 <li>User can also discover the feature from Tools → OCR and Document
 Conversion.</li>
-<li>QUILL explicitly asks for consent before cloud upload.</li>
+<li>Conversion runs locally, for free, with no upload and no consent
+prompt.</li>
 <li>Conversion runs without freezing the UI.</li>
 <li>Progress is accessible.</li>
 <li>Result opens as an editable Markdown document.</li>
-<li>Tables, headings, lists, forms, image captions, and page delimiters
-are preserved when returned by the provider.</li>
+<li>Headings, lists, tables, and page delimiters are preserved when
+MarkItDown returns them.</li>
+<li>When MarkItDown recovers little or no text (a scanned/image
+document), QUILL says so and does not silently open an empty
+document.</li>
 <li>Errors are understandable and actionable.</li>
 <li>Basic NVDA, JAWS, and Narrator tests pass.</li>
-<li>No document content or secrets are written to logs.</li>
+<li>No document content is written to logs.</li>
 </ol>
-<h3 id="222-magical-acceptance-criteria">22.2 “Magical” acceptance
+<h3
+id="222-local-ocr-milestone-acceptance-criteria-tesseract--free-offline">22.2
+Local-OCR milestone acceptance criteria (Tesseract — free, offline)</h3>
+<ol type="1">
+<li>Local Tesseract OCR can be enabled with no API key and no consent
+prompt.</li>
+<li>The Tesseract binary and at least English language data install as
+verified downloadable components, and are re-downloadable/replaceable,
+in all install locations.</li>
+<li>A scanned / image-based PDF or an image converts to editable
+Markdown <strong>entirely offline, for free</strong>, with nothing
+leaving the machine.</li>
+<li>The flow works on a <strong>CPU-only machine — no GPU
+required.</strong></li>
+<li>Additional OCR languages can be downloaded on demand.</li>
+<li>When a born-digital file's text layer is empty, QUILL offers this
+free local OCR (Tier 1 → Tier 2) before ever mentioning cloud or
+cost.</li>
+</ol>
+<h3
+id="223-cloud-ocr-milestone-acceptance-criteria-datalab-chandra--paid-cloud">22.3
+Cloud-OCR milestone acceptance criteria (Datalab Chandra — paid
+cloud)</h3>
+<ol type="1">
+<li>Datalab Chandra OCR Service can be enabled and configured.</li>
+<li>API key is stored securely and never appears in config or logs.</li>
+<li>QUILL explicitly asks for consent before every cloud upload.</li>
+<li>A hard document (complex tables, forms, handwriting, poor scan)
+converts to editable Markdown via Datalab.</li>
+<li>Free-first routing holds: born-digital → MarkItDown and scanned →
+local Tesseract run for free by default; the paid cloud path is offered
+only when local OCR is weak or the user explicitly chooses higher
+accuracy.</li>
+<li>Tables, forms, image captions, and confidence data are preserved
+when returned.</li>
+<li>Rate-limit, billing, offline, and cancellation errors are handled
+gracefully.</li>
+</ol>
+<h3 id="224-magical-acceptance-criteria">22.4 “Magical” acceptance
 criteria</h3>
 <ol type="1">
 <li>A blind user can convert a scanned PDF without needing sighted
@@ -2309,7 +2618,14 @@ Security requirements:
 - Temporary files must be cleaned up.
 - Consent is mandatory for v1.
 
-Start with the foundation and do not overbuild provider-specific UI into the core architecture. The goal is Datalab first, but Azure, Mistral, AWS, Google, and local providers should be possible later through adapters.</code></pre>
+Start with the foundation and do not overbuild provider-specific UI into the core
+architecture. Sequence the providers **free-first** in three tiers: (1) MarkItDown —
+free local born-digital conversion (the MVP); (2) local Tesseract OCR — free, offline,
+CPU-only OCR for scanned PDFs/images, delivered as verified downloadable components
+(native binary + language data) in all install locations; (3) Datalab Chandra — paid
+cloud OCR as the accuracy escalation, consent-gated. Route every import free-first
+(§11.4). Azure, Mistral, AWS, Google, and heavier local ML engines should be possible
+later through the same adapter interface.</code></pre>
 <hr />
 <h2 id="26-suggested-fileissue-breakdown">26. Suggested File/Issue
 Breakdown</h2>
@@ -2322,8 +2638,31 @@ Foundation</h3>
 <li>Issue: Add service settings persistence.</li>
 <li>Issue: Add service diagnostics panel.</li>
 </ul>
-<h3 id="epic-datalab-chandra-ocr-service">Epic: Datalab Chandra OCR
-Service</h3>
+<h3 id="epic-markitdown-local-conversion-tier-1--mvp">Epic: MarkItDown
+local conversion (Tier 1 — MVP)</h3>
+<ul>
+<li>Issue: Add MarkItDown provider adapter.</li>
+<li>Issue: Add scoped-extra dependency acquisition (§Z.3).</li>
+<li>Issue: Add "empty result" detection.</li>
+<li>Issue: Add Tier 1 → Tier 2 escalation prompt.</li>
+<li>Issue: Add local (no-network) unit tests.</li>
+</ul>
+<h3 id="epic-local-tesseract-ocr-tier-2--free-offline">Epic: Local
+Tesseract OCR (Tier 2 — free, offline)</h3>
+<ul>
+<li>Issue: Add Tesseract provider adapter (ocrmypdf + Tesseract,
+CPU-only).</li>
+<li>Issue: Add downloadable-component acquisition for the Tesseract
+binary (per-OS).</li>
+<li>Issue: Add downloadable language-pack (.traineddata) management, all
+locations.</li>
+<li>Issue: Add OCR language selection UI.</li>
+<li>Issue: Add mean-confidence signal and Tier 2 → Tier 3 escalation
+prompt.</li>
+<li>Issue: Add local unit tests with a bundled fixture image.</li>
+</ul>
+<h3 id="epic-datalab-chandra-ocr-service-tier-3--paid-cloud">Epic:
+Datalab Chandra OCR Service (Tier 3 — paid cloud)</h3>
 <ul>
 <li>Issue: Add Datalab provider adapter.</li>
 <li>Issue: Add SDK implementation.</li>
@@ -2394,23 +2733,48 @@ are allowed to send them to the selected service.</p>
 <p>Implement this as a <strong>supported OCR tool powered by a
 Services-first architecture</strong>, not as a hidden connector or
 one-off experimental command.</p>
-<p>The first release should make QUILL’s supported OCR tool feel simple
-and safe, with Datalab Chandra OCR Service as the first backend:</p>
+<p>The <strong>MVP starting backend is MarkItDown</strong> — free,
+local, born-digital, no key, no upload — which stands up the whole tool
+safely and cheaply:</p>
 <ul>
-<li>Configure once in <strong>AI Hub → Services</strong>.</li>
+<li>Configure once in <strong>AI Hub → Services</strong> (MarkItDown
+needs no key).</li>
 <li>Import from <strong>File → Import with OCR / Convert
 Document</strong>.</li>
-<li>Default to <strong>Balanced + Markdown + page
+<li>Default to <strong>free local conversion + Markdown + page
 delimiters</strong>.</li>
-<li>Require explicit upload consent.</li>
-<li>Open the result directly in QUILL.</li>
+<li>Open the result directly in QUILL, with nothing leaving the
+machine.</li>
 <li>Build the provider interface so alternatives can be added
 cleanly.</li>
 </ul>
-<p>This will give QUILL a powerful, practical path for turning
-inaccessible documents into editable, navigable, screen-reader-friendly
-content while preserving user choice, privacy, and future
-flexibility.</p>
+<p>The <strong>free OCR backend, local Tesseract (Tier 2)</strong>,
+lands next so scanned / image-based PDFs get a <strong>free, offline,
+private</strong> answer — no GPU, no cloud, no cost:</p>
+<ul>
+<li>Enable it in <strong>AI Hub → Services</strong> (no key, no consent
+prompt).</li>
+<li>Fetch the Tesseract binary and language data as <strong>verified
+downloadable components in all install locations</strong> (§Z.3).</li>
+<li>OCR scanned PDFs and images entirely on-device.</li>
+</ul>
+<p>The <strong>paid cloud OCR backend, Datalab Chandra OCR Service (Tier
+3)</strong>, follows as the accuracy escalation for hard documents:</p>
+<ul>
+<li>Enable and configure it in <strong>AI Hub → Services</strong>
+(secure API key).</li>
+<li>Default to <strong>Balanced + Markdown + page
+delimiters</strong>.</li>
+<li>Require explicit upload consent on every conversion.</li>
+<li>Reach it through <strong>free-first routing</strong> (§11.4): QUILL
+tries MarkItDown, then free local OCR, and offers paid Datalab OCR only
+when the local tiers fall short.</li>
+</ul>
+<p>This gives QUILL a powerful, practical path for turning inaccessible
+documents into editable, navigable, screen-reader-friendly content —
+free and local by default, spending on cloud OCR only when a document
+genuinely needs the accuracy — while preserving user choice, privacy,
+and future flexibility.</p>
 <hr />
 <h2
 id="appendix-z-ai-menu-discoverability--the-extensible-ai-hub-services-framework">Appendix
@@ -2449,9 +2813,10 @@ interface (§13.2), the same credential storage, the same
 consent/audit/Safe-Mode rules, and the same accessible card UX. Planned
 tenants:</p>
 <ul>
-<li><strong>OCR / document conversion:</strong> Datalab Chandra (v1),
-then Mistral OCR, Azure Document Intelligence, AWS Textract, Google
-Document AI, and local engines.</li>
+<li><strong>Document conversion / OCR:</strong> MarkItDown (free, local,
+born-digital — the MVP starting provider), then Datalab Chandra (first
+paid OCR provider), then Mistral OCR, Azure Document Intelligence, AWS
+Textract, Google Document AI, and local engines.</li>
 <li><strong>Scribe for Documents (Pneuma Solutions):</strong> the
 partner document-conversion service specced in <a
 href="scribe.md"><code>scribe.md</code></a> is a natural
@@ -2465,27 +2830,49 @@ category, capabilities, config schema, optional credential, optional
 appear in the Services tab + AI menu with no bespoke UI.</li>
 </ul>
 <h3
-id="z3-local-engines-reuse-the-verified-on-demand-acquisition-path">Z.3
-Local engines reuse the verified on-demand acquisition path</h3>
-<p>For <strong>local</strong> OCR engines (Tesseract / Marker / local
-Chandra), QUILL must not bloat the installer. They are fetched on demand
-through the same <strong>pinned, SHA-256-verified release-asset</strong>
-mechanism shipped for the speech engine and Kokoro
-(<code>quill/core/release_assets.py</code>; QUILL-PRD.md §5.25f,
+id="z3-local-engines-are-verified-downloadable-components--everywhere">Z.3
+Local engines are verified downloadable components — everywhere</h3>
+<p>For <strong>local</strong> engines (MarkItDown, Tesseract, and later
+Marker / local Chandra), QUILL must not bloat the installer. Every one
+is fetched on demand through the same <strong>pinned, SHA-256-verified
+release-asset</strong> mechanism shipped for the speech engine and
+Kokoro (<code>quill/core/release_assets.py</code>; QUILL-PRD.md §5.25f,
 "Recommended host and redistribution rules"): a service that needs a
-local binary/model declares it as a release asset, and QUILL downloads +
-verifies + unpacks it with cancelable, accessible progress, blocked in
-Safe Mode — and offers a <strong>re-download/replace</strong> when one
-is already present, with <strong>newer-version awareness</strong> on the
-roadmap (a <code>version</code> field already exists on the asset
-model).</p>
+local dependency, binary, or model declares it as a release asset, and
+QUILL downloads + verifies + unpacks it with cancelable, accessible
+progress, blocked in Safe Mode — and offers a
+<strong>re-download/replace</strong> when one is already present, with
+<strong>newer-version awareness</strong> on the roadmap (a
+<code>version</code> field already exists on the asset model). This
+applies in <strong>all install locations</strong> (per-user, all-users,
+and portable) — no engine is ever assumed pre-present.</p>
+<p><strong>Tesseract specifics (Tier 2, the free OCR engine):</strong>
+unlike the pure-Python MarkItDown, Tesseract is a <strong>native, per-OS
+binary plus per-language <code>.traineddata</code> files</strong>, and
+it is <strong>CPU-only (no GPU dependency)</strong>. QUILL therefore
+declares:</p>
+<ul>
+<li>one Tesseract binary asset <strong>per platform</strong>
+(Windows/macOS/Linux), resolved to the running OS; and</li>
+<li><strong>language-pack assets</strong> downloaded individually —
+English by default, other languages fetched on demand from the OCR
+language-selection UI —</li>
+</ul>
+<p>so users install only the OS binary and the languages they actually
+use. Heavier local ML engines (Marker / local Chandra) follow the same
+path but may additionally want a GPU; Tesseract deliberately does
+not.</p>
 <h3 id="z4-net">Z.4 Net</h3>
-<p>OCR ships first and real (Datalab Chandra), but it lands inside a
+<p>OCR ships <strong>free-first and real</strong> — MarkItDown then
+local Tesseract before any paid cloud provider — inside a
 <strong>services framework</strong> that the AI menu and AI Hub present
-uniformly, that local engines and partner services (Scribe) join without
-new plumbing, and that inherits QUILL's privacy, consent, accessibility,
-and verified-acquisition guarantees. That is the magical, future-proof
-shape: one accessible home for document intelligence, many services over
-time.</p>
+uniformly, whose engines are all verified downloadable components (no
+installer bloat, CPU-only where possible), that partner services
+(Scribe) and cloud providers (Datalab) join without new plumbing, and
+that inherits QUILL's privacy, consent, accessibility, and
+verified-acquisition guarantees. That is the magical, future-proof
+shape: one accessible home for document intelligence — free and local by
+default, paid cloud only when a document truly needs it, many services
+over time.</p>
 </body>
 </html>

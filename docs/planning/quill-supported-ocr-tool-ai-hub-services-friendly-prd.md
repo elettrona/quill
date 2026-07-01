@@ -15,7 +15,21 @@ QUILL should ship a **first-class, supported OCR and document conversion tool**.
 
 The AI Hub should add a **Services** tab that configures the providers behind this supported OCR tool. This tab must be customer-facing, friendly, and informative — not a sparse technical settings page. It should explain what each service does, why a user might choose it, what files it supports, what privacy tradeoffs exist, how billing works, and provide direct buttons to the provider’s website, documentation, pricing, API key page, and privacy/security information.
 
-The first provider should be **Datalab Document Conversion / Chandra OCR**, exposed in configuration as **Datalab Chandra OCR Service**.
+The **starting provider** should be **MarkItDown**, a free, local, pure-Python
+converter for *born-digital* documents (DOCX, PPTX, XLSX, HTML, EPUB, and PDFs that
+already carry a text layer). It ships first because it stands up the entire pipeline
+— Services tab, provider interface, import wizard, open-result-in-QUILL — on the
+lowest-risk backend: no API key, no billing, no cloud upload, no consent prompt, no
+network-egress entry. It gives users real value on day one and costs nothing.
+
+MarkItDown is **not an OCR engine**, so it does not by itself solve this PRD's
+headline case — scanned / image-based PDFs. Those are answered **for free, on-device**
+by the next backend, **local Tesseract OCR** (CPU-only, no GPU, no upload), delivered
+as verified downloadable components. Only when free local OCR falls short on hard
+documents does QUILL escalate to the **first paid cloud OCR provider, Datalab
+Document Conversion / Chandra OCR** (exposed as **Datalab Chandra OCR Service**),
+consent-gated. This is the free-first, three-tier flow (§11.4): MarkItDown → local
+Tesseract OCR → Datalab cloud OCR, spending money and uploading only as a last resort.
 
 The user-facing feature should be named something like **QUILL OCR and Document Conversion** or **Import with OCR / Convert Document**. It should let a user open a scanned PDF, image, Office document, spreadsheet, presentation, HTML file, or EPUB; send it to Datalab with explicit consent; receive structured Markdown, HTML, JSON, or chunks; and open the result directly in QUILL as an editable, screen-reader-friendly document.
 
@@ -165,7 +179,8 @@ Source:
 
 This PRD must treat OCR as a **supported QUILL tool**, not just a service connector.
 
-The Datalab Chandra integration is the first provider implementation, but the product feature is:
+MarkItDown (free, local, born-digital) is the starting provider implementation and
+Datalab Chandra is the first OCR provider added right after, but the product feature is:
 
 > **QUILL OCR and Document Conversion**
 
@@ -229,7 +244,9 @@ For this PRD, **supported** means:
 
 ### 4.4 Supported feature boundary
 
-QUILL supports the OCR workflow and user experience. Datalab provides the first OCR backend.
+QUILL supports the OCR workflow and user experience. MarkItDown (born-digital) and
+local Tesseract (scanned) provide the free local backends; Datalab provides the first
+paid cloud OCR backend.
 
 QUILL should support:
 
@@ -273,7 +290,8 @@ QUILL should not be locked into one OCR provider. The Services tab should suppor
 | Mistral OCR | Returns Markdown, document structure metadata, images, tables, hyperlinks, confidence scores, optional block extraction; supports PDFs and images. | [Mistral OCR docs](https://docs.mistral.ai/studio-api/document-processing/basic_ocr) |
 | AWS Textract | Strong forms/tables/query/signature extraction and AWS enterprise availability. More JSON-structure oriented than Markdown-first. | [Amazon Textract analyzing documents](https://docs.aws.amazon.com/textract/latest/dg/how-it-works-analyzing.html) |
 | Google Document AI | Enterprise Document OCR supports printed and handwritten text in 200+ languages; Form Parser handles key-value pairs, checkboxes, and tables. | [Google Document AI processor list](https://docs.cloud.google.com/document-ai/docs/processors-list) |
-| Local Tesseract | Free/offline fallback for plain OCR; supports 100+ languages but weaker on complex layout and modern document understanding. | [Tesseract GitHub repository](https://github.com/tesseract-ocr/tesseract) |
+| Local Tesseract (Tier 2 — promoted) | **Free, offline, CPU-only (no GPU) OCR** for scanned PDFs and images, via `ocrmypdf` + Tesseract. Supports 100+ languages; weaker on complex layout than cloud document-intelligence but private and free. Fetched as a verified downloadable component (native binary + `.traineddata`). QUILL's free answer for scanned documents. | [Tesseract GitHub repository](https://github.com/tesseract-ocr/tesseract) · [OCRmyPDF](https://github.com/ocrmypdf/OCRmyPDF) |
+| MarkItDown (local) | **Not an OCR engine.** Free, cross-platform, pure-Python conversion of *born-digital* files (DOCX, PPTX, XLSX, HTML, EPUB, and PDFs that already have a text layer) to Markdown. Ideal free first-pass so paid OCR is only spent on genuinely scanned/image documents. Returns little or nothing for image-based PDFs. | [MarkItDown GitHub repository](https://github.com/microsoft/markitdown) |
 
 ---
 
@@ -321,7 +339,10 @@ The result should feel like this:
 ### 6.2 Product goals
 
 1. Establish a reusable **Services** architecture inside AI Hub.
-3. Implement Datalab / Chandra as the first document service.
+2. Ship free-first: MarkItDown (born-digital) and local Tesseract OCR (scanned) as
+   free local services before any paid cloud provider; Datalab / Chandra as the first
+   paid cloud OCR service.
+3. Route every import free-first across the three tiers (§11.4).
 4. Avoid vendor lock-in through a provider adapter abstraction.
 5. Make the import pipeline asynchronous, cancellable, recoverable, and screen-reader friendly.
 6. Build the foundation for future services: Mistral OCR, Azure Document Intelligence, AWS Textract, Google Document AI, local Tesseract, local Marker, local Chandra, or QUILL-hosted endpoints.
@@ -340,8 +361,11 @@ The result should feel like this:
 
 ## 7. Non-Goals for Initial Release
 
-1. Do not bundle local Chandra OCR 2 in the QUILL installer.
-2. Do not require a GPU for the user-facing supported OCR tool when cloud/service-backed OCR is configured.
+1. Do not bundle any local engine (MarkItDown, Tesseract, Marker, Chandra) in the
+   QUILL installer — all are verified downloadable components (§Z.3).
+2. Do not require a GPU for any supported tier. Local Tesseract OCR (Tier 2) is
+   CPU-only by design; GPU-hungry local ML engines (Marker / local Chandra) are
+   deferred to Phase 7.
 3. Do not build a full PDF editor.
 4. Do not promise perfect reconstruction of every document.
 5. Do not silently upload files to any cloud service.
@@ -397,12 +421,13 @@ Use an accessible list or tree with detail pane.
 ```text
 Services
   Document Conversion and OCR
-    Datalab Chandra OCR Service
+    MarkItDown (local, free — Tier 1)
+    Local Tesseract OCR (local, free, CPU-only — Tier 2)
+    Datalab Chandra OCR Service (cloud, paid — Tier 3)
     Azure Document Intelligence
     Mistral OCR
     AWS Textract
     Google Document AI
-    Local Tesseract
     Local Marker
   Speech and Transcription
     Whisper / Faster Whisper
@@ -544,7 +569,8 @@ Example:
 | Service | Best for | Local or cloud | Status |
 |---|---|---|---|
 | Datalab Chandra OCR Service | Scanned PDFs, complex layouts, Markdown/HTML conversion | Cloud or enterprise on-prem | Supported |
-| Local Tesseract | Basic offline OCR | Local | Planned |
+| MarkItDown | Free, fast conversion of born-digital DOCX/PPTX/XLSX/HTML/EPUB and text-layer PDFs (not scanned images) | Local (Tier 1) | Supported (MVP) |
+| Local Tesseract | Free, offline, CPU-only OCR for scanned PDFs and images | Local (Tier 2) | Supported |
 | Azure Document Intelligence | Enterprise Azure environments | Cloud | Planned |
 | Mistral OCR | Markdown-first OCR workflows | Cloud | Planned |
 | Google Document AI | Google Cloud document processing | Cloud | Planned |
@@ -757,6 +783,110 @@ extras: "table_cell_bboxes,list_item_bboxes,extract_links,chart_understanding,ne
 
 Because this costs more, QUILL must warn the user before enabling expensive add-ons.
 
+### 11.4 Free-first, three-tier conversion (local text → local OCR → cloud OCR)
+
+Not every document needs paid, cloud OCR — and even scanned documents usually don't.
+QUILL routes every import through **three tiers**, spending money (and uploading a
+file) only as a last resort:
+
+- **Tier 1 — MarkItDown (free, local, no upload).** Extracts the existing text layer
+  from *born-digital* files (DOCX, PPTX, XLSX, HTML, EPUB, and PDFs that already
+  carry text). Not an OCR engine — it does not recognize scanned images.
+- **Tier 2 — Local Tesseract OCR (free, local, no upload).** Real OCR for scanned /
+  image-based PDFs and photos of documents, run entirely on the user's machine via
+  `ocrmypdf` + Tesseract. **CPU-only — no GPU required.** Lower accuracy than cloud
+  document-intelligence on complex layouts, but free, offline, and private.
+- **Tier 3 — Datalab Chandra cloud OCR (paid, cloud, consent-gated).** The accuracy
+  escalation for hard documents: complex tables, forms, handwriting, math, dense or
+  multi-column layouts, and poor scans. Only reached when the free local tiers fall
+  short or the user explicitly chooses it.
+
+This means the PRD's headline case — rescuing a scanned PDF — has a **free, local,
+private** answer (Tier 2). Cloud AI is an *upgrade*, never a toll gate.
+
+#### Routing model
+
+```text
+1. Choose file.
+2. Born-digital type? -> Tier 1: MarkItDown locally (free, no upload).
+     - Enough usable text -> open it. Done. No OCR, no cloud, no cost.
+     - Little/no text (looks scanned) -> fall through to Tier 2.
+3. Scanned / image-based, or Tier 1 came back empty? -> Tier 2: local Tesseract OCR
+   (free, offline, no upload).
+     - Good enough -> open it. Done. Still free, still on-device.
+     - Poor result, or complex layout (tables/forms/handwriting/math/multi-column),
+       or user asks for higher accuracy -> offer Tier 3.
+4. Tier 3: Datalab cloud OCR — paid, consent-gated. Reached only when free local
+   tiers fall short, or the user explicitly selects it.
+```
+
+The user always keeps control: a **"Prefer free local conversion when possible"**
+setting (default on) governs Tiers 1–2, and an **"Always ask which provider"** option
+lets power users choose the tier per import.
+
+#### "Empty / low-quality result" detection and the escalation prompts
+
+The real design work is deciding when a tier *failed to recover the content*, rather
+than silently handing the user a blank or garbled document. Two decision points,
+each tuned in Phase 0:
+
+- **Tier 1 → 2 (empty text layer):** extracted characters below a threshold relative
+  to page count (e.g. a multi-page PDF yielding < ~50 characters per page), or output
+  that is only images/whitespace with no headings, paragraphs, or table text.
+- **Tier 2 → 3 (weak OCR):** very low mean OCR confidence, sparse recognized text, or
+  a user judgment that the result is unusable. (Tesseract exposes per-word/character
+  confidence, so QUILL can surface a mean-confidence signal.)
+
+QUILL must never silently open an empty or clearly-broken result. At each fall-through
+point, show an accessible prompt. Tier 1 → 2 (stays free and local):
+
+> QUILL could not find readable text in this document. It looks scanned or
+> image-based. Run free on-device OCR (local Tesseract)? This stays on your computer
+> and does not upload anything.
+>
+> Buttons: **Run local OCR** · **Open empty result anyway** · **Cancel**
+
+Tier 2 → 3 (introduces cost + upload, so it is the only prompt that mentions either):
+
+> On-device OCR finished, but the result looks low-quality or the layout is complex.
+> For higher accuracy you can convert it with Datalab cloud OCR. This uploads the
+> file to a cloud service and may cost money.
+>
+> Buttons: **Keep local result** · **Convert with cloud OCR** · **Cancel**
+
+Announce each outcome and move focus to the message, per §16.
+
+#### Cost and privacy story
+
+This is materially better than "everything scanned goes to paid cloud OCR": born-
+digital files cost nothing (Tier 1), scanned documents still cost nothing and never
+leave the machine (Tier 2), and per-page cloud spend + upload is reserved only for
+documents that genuinely need the accuracy (Tier 3). The Services tab should state
+each tier's tradeoff plainly on its card (free/local/no-upload vs. paid/cloud/upload).
+
+#### Footprint and acquisition (all tiers are downloadable components)
+
+None of these tiers ship inside the installer. Each is fetched on demand through the
+pinned, SHA-256-verified acquisition path (§Z.3), with cancelable accessible
+progress, blocked in Safe Mode, and re-downloadable/replaceable:
+
+- **MarkItDown** — pure-Python, cross-platform (Win/macOS/Linux, Python 3.10+), no
+  GPU, no native binary, no ML model. Install only scoped extras
+  (`markitdown[pdf,docx,pptx,xlsx]`); the `xlsx` extra pulls in `pandas`, the one
+  non-trivial dependency, droppable if spreadsheets are deferred.
+- **Tesseract OCR** — `ocrmypdf` (Python) plus the **Tesseract native binary and
+  per-language `.traineddata` files**. **CPU-only, no GPU.** The binary is
+  platform-specific and language packs add weight, so QUILL fetches the right binary
+  per OS and only the language data the user needs (default: English; others
+  downloadable on demand) as **verified downloadable components in all install
+  locations**. This is the one tier with a native, per-platform payload — still free,
+  offline, and private.
+
+Because Tiers 1 and 2 are local and perform no upload, they need **no API key, no
+consent prompt, and no network-egress audit entry** — genuinely simpler cards than
+the cloud provider. Only Tier 3 (Datalab) carries a key, a mandatory consent prompt,
+and a GATE-9 egress-audit entry.
+
 ---
 
 ## 12. OCR Review Mode
@@ -876,8 +1006,9 @@ quill/
   services/
     base.py
     document_conversion.py
-    datalab_provider.py
-    local_tesseract_provider.py        # future
+    datalab_provider.py                # Tier 3: paid cloud OCR (accuracy escalation)
+    markitdown_provider.py             # Tier 1: local, free born-digital conversion
+    local_tesseract_provider.py        # Tier 2: local, free OCR (ocrmypdf+Tesseract, CPU-only)
     azure_document_intel_provider.py   # future
     mistral_ocr_provider.py            # future
   document_import/
@@ -1348,10 +1479,12 @@ Add feature flags:
 {
   "features": {
     "ai_hub_services_tab": true,
+    "markitdown_local_conversion": true,
+    "local_tesseract_ocr": true,
     "datalab_document_conversion": true,
+    "prefer_free_local_conversion": true,
     "ocr_review_mode": false,
-    "service_usage_history": false,
-    "local_tesseract_fallback": false
+    "service_usage_history": false
   }
 }
 ```
@@ -1360,91 +1493,159 @@ Add feature flags:
 
 ## 20. Implementation Plan
 
+The plan is sequenced **free-first**, in the three tiers of §11.4. The full pipeline
+— Services tab, provider interface, import wizard, open-result-in-QUILL — is proven
+on the lowest-risk backend first: **MarkItDown** (free, local, born-digital, Phases
+0–3). Then **local Tesseract OCR** (free, offline, no upload) lands next (Phase 4),
+so scanned / image-based PDFs get a **free, private** answer before any paid path
+exists. Only then does the **first cloud OCR provider, Datalab Chandra** (paid,
+consent-gated), arrive as the accuracy escalation (Phase 5). OCR Review Mode and
+further providers follow. Every engine is a verified **downloadable component**
+(§Z.3), never bundled in the installer.
+
 ### Phase 0: Spike and verification
 
 Deliverables:
 
-1. Verify Datalab SDK packaging in QUILL’s Python environment.
-2. Build a throwaway script that converts:
-   - simple scanned PDF
-   - complex table PDF
-   - image with text
-   - checkbox form
-   - DOCX
-3. Compare Markdown, HTML, and JSON outputs.
-4. Confirm how to retrieve images.
-5. Confirm whether `output_format="markdown,html"` is supported in current SDK/API or whether QUILL must run separate conversions.
-6. Confirm billing/cost response fields.
-7. Confirm error response shapes.
-8. Confirm on-prem endpoint compatibility assumptions.
-9. Document sample results in `docs/research/datalab_chandra_spike.md`.
+1. Verify MarkItDown packaging and scoped extras (`markitdown[pdf,docx,pptx,xlsx]`)
+   in QUILL's Python environment; confirm cross-platform install and footprint
+   (note the `pandas` weight from the `xlsx` extra).
+2. Build a throwaway script that converts with MarkItDown:
+   - born-digital DOCX
+   - PPTX and XLSX
+   - HTML and EPUB
+   - a text-layer PDF
+   - a *scanned* image-only PDF (to confirm it returns little/no text)
+3. Calibrate the "empty result" detection heuristic (§11.4) against the scanned
+   sample versus the born-digital samples.
+4. Verify the Datalab SDK also packages cleanly (so Phase 5 is unblocked), and run
+   a throwaway Datalab conversion of the scanned PDF, complex table PDF, image with
+   text, and checkbox form. Confirm image retrieval, billing/cost response fields,
+   error response shapes, whether `output_format="markdown,html"` is supported in
+   one request, and on-prem endpoint assumptions.
+5. Document sample results in `docs/research/markitdown_spike.md` and
+   `docs/research/datalab_chandra_spike.md`.
 
 Exit criteria:
 
-- One successful conversion via SDK.
-- One successful conversion via REST fallback.
-- One handled failure for invalid API key.
-- One handled 429/rate-limit simulation or mock.
+- MarkItDown converts each born-digital sample to Markdown locally.
+- The scanned-PDF sample is reliably classified as "empty / needs OCR."
+- One successful Datalab conversion via SDK and one via REST fallback.
+- One handled failure for invalid Datalab API key and one handled 429/rate-limit case.
 
 ### Phase 1: Services tab foundation
 
 Deliverables:
 
 1. `ServiceRegistry`
-2. `CredentialStore`
+2. `CredentialStore` (built now; the MarkItDown card uses none of it — proves the
+   registry works for a keyless, no-upload provider)
 3. `ServiceDescriptor`
 4. `AIHubServicesPanel`
-5. Datalab service settings UI
-6. Test connection action
-7. Settings persistence
-8. Unit tests for settings without leaking secrets
+5. MarkItDown service card (local, free, no API key, no consent prompt, no
+   egress-audit entry)
+6. Settings persistence
+7. Unit tests for settings and registry
 
 Exit criteria:
 
-- User can enable Datalab, enter API key, save settings, close and reopen AI Hub, and test configuration.
-- API key is not present in config files or logs.
+- User can see and enable the MarkItDown service, save settings, and reopen AI Hub
+  with state intact.
+- A keyless/no-upload provider renders correctly with no API-key or consent UI.
 
-### Phase 2: Datalab provider adapter
+### Phase 2: MarkItDown provider adapter (starting provider)
 
 Deliverables:
 
-1. `DatalabDocumentConversionProvider`
-2. SDK implementation
-3. REST fallback
-4. Progress callback support
-5. Cancel support
-6. Retry/backoff support
-7. Result normalization to `ConversionResult`
-8. Unit tests with mocked API responses
-9. Integration test guarded by `DATALAB_API_KEY`
+1. `MarkItDownDocumentConversionProvider`
+2. Scoped-extra dependency handling via the §Z.3 on-demand acquisition path
+3. Capability descriptor (born-digital extensions only; no OCR, no cloud)
+4. Progress callback + cancel support
+5. Result normalization to `ConversionResult`
+6. "Empty result" detection (§11.4)
+7. Markdown post-processing reuse
+8. Unit tests (fully local; no network, no key)
 
 Exit criteria:
 
-- Provider converts a PDF to Markdown.
-- Provider returns warnings and metadata.
-- Provider handles cancellation and common errors.
+- Provider converts each born-digital sample to Markdown, entirely offline.
+- Empty/near-empty output is flagged rather than silently returned.
+- Provider handles cancellation and missing-dependency errors.
 
-### Phase 3: Import wizard
+### Phase 3: Import wizard (free-first local path — MVP)
 
 Deliverables:
 
 1. `ImportWithOcrDialog`
-2. Simple mode
-3. Advanced mode
-4. Consent prompt
-5. Progress dialog
-6. Save/open result in QUILL
-7. Page delimiter support
-8. Recent import settings
+2. Simple mode and advanced mode
+3. Progress dialog
+4. Save/open result in QUILL
+5. Page delimiter support
+6. Recent import settings
+7. Free-first behavior wired to MarkItDown (Tier 1 only for now — local OCR lands in
+   Phase 4, cloud OCR in Phase 5)
 
 Exit criteria:
 
-- User can choose a file and open converted Markdown in QUILL.
-- UI remains responsive.
-- Screen reader announces status.
-- Cancel works.
+- User can choose a born-digital file and open converted Markdown in QUILL, for
+  free, with no upload and no consent prompt.
+- UI remains responsive; screen reader announces status; cancel works.
+- This is the shippable MVP: the whole pipeline works end-to-end on MarkItDown.
 
-### Phase 4: OCR Review Mode v1
+### Phase 4: Local Tesseract OCR (free, offline — Tier 2)
+
+This is where scanned / image-based PDFs — the PRD's headline case — become supported
+**for free, on-device, with no upload.** Cloud OCR is not required to reach this
+milestone.
+
+Deliverables:
+
+1. Local Tesseract service card (no API key, no consent prompt, no egress-audit entry)
+2. `TesseractDocumentConversionProvider` wrapping `ocrmypdf` + Tesseract (CPU-only)
+3. **Downloadable-component acquisition (§Z.3):** fetch the platform-correct
+   Tesseract binary and per-language `.traineddata` on demand, verified by SHA-256,
+   with accessible cancelable progress, Safe-Mode blocked, re-downloadable. English
+   by default; additional language packs downloadable in all install locations.
+4. Language selection UI (which OCR languages to download/use)
+5. Capability descriptor (scanned PDFs + images; CPU-only; free; no cloud)
+6. Progress, cancel, and mean-confidence signal from Tesseract
+7. Tier 1 → Tier 2 routing (§11.4): on an empty text layer, offer free local OCR
+8. Unit tests with a bundled tiny fixture image; no network, no key
+
+Exit criteria:
+
+- User can convert a scanned PDF or image to editable Markdown **entirely offline,
+  for free**, after the language data is downloaded once.
+- The Tesseract binary and language packs install as verified downloadable components
+  and are re-downloadable/replaceable.
+- No GPU is required; the flow works on a CPU-only machine.
+
+### Phase 5: Datalab Chandra cloud OCR (paid accuracy escalation — Tier 3)
+
+The accuracy upgrade for hard documents (complex tables, forms, handwriting, math,
+dense/multi-column layouts, poor scans). Free local tiers already cover the common
+case; this is opt-in, paid, and consent-gated.
+
+Deliverables:
+
+1. Datalab service card + settings UI (API key, endpoint, mode, output, etc.)
+2. Test connection action; API key stored securely and never logged
+3. `DatalabDocumentConversionProvider` (SDK implementation + REST fallback)
+4. Progress, cancel, retry/backoff, result normalization
+5. Cloud-upload consent prompt (mandatory, per §15) and network-egress audit entry
+6. Tier 2 → Tier 3 routing (§11.4): on weak local OCR or complex layout, offer the
+   consent-gated Datalab conversion
+7. Unit tests with mocked API responses; integration test guarded by `DATALAB_API_KEY`
+
+Exit criteria:
+
+- User can enable Datalab, configure a key securely, and convert a hard document to
+  Markdown after an explicit consent prompt.
+- Free tiers still run by default; the paid path is only offered when local OCR is
+  weak or the user explicitly chooses higher accuracy.
+- Cancellation and common errors are handled; no key or document content is logged.
+
+### Phase 6: OCR Review Mode v1
 
 Deliverables:
 
@@ -1461,16 +1662,16 @@ Exit criteria:
 - User can generate a review report.
 - JAWS/NVDA/Narrator testing passes basic flows.
 
-### Phase 5: Provider expansion
+### Phase 7: Provider expansion
 
 Add provider adapters based on demand:
 
 1. Mistral OCR
 2. Azure Document Intelligence
-3. Local Tesseract
-4. Google Document AI
-5. AWS Textract
-6. Datalab on-prem profile templates
+3. Google Document AI
+4. AWS Textract
+5. Datalab on-prem profile templates
+6. Local Marker / local Chandra (heavier local ML engines; may want a GPU)
 
 Exit criteria:
 
@@ -1534,23 +1735,51 @@ Manual scripts:
 
 ## 22. Acceptance Criteria
 
-### 22.1 MVP acceptance criteria
+### 22.1 MVP acceptance criteria (MarkItDown — free, local, no upload)
 
 1. AI Hub contains a Services tab.
-3. Datalab Chandra OCR Service can be enabled and configured.
-4. API key is stored securely.
-5. User can import a supported file via File → Import with OCR / Convert Document.
-6. User can also discover the feature from Tools → OCR and Document Conversion.
-7. QUILL explicitly asks for consent before cloud upload.
-8. Conversion runs without freezing the UI.
-9. Progress is accessible.
-10. Result opens as an editable Markdown document.
-11. Tables, headings, lists, forms, image captions, and page delimiters are preserved when returned by the provider.
-12. Errors are understandable and actionable.
-13. Basic NVDA, JAWS, and Narrator tests pass.
-14. No document content or secrets are written to logs.
+2. MarkItDown is the default document-conversion provider and requires no API key.
+3. User can import a born-digital file (DOCX, PPTX, XLSX, HTML, EPUB, text-layer PDF)
+   via File → Import with OCR / Convert Document.
+4. User can also discover the feature from Tools → OCR and Document Conversion.
+5. Conversion runs locally, for free, with no upload and no consent prompt.
+6. Conversion runs without freezing the UI.
+7. Progress is accessible.
+8. Result opens as an editable Markdown document.
+9. Headings, lists, tables, and page delimiters are preserved when MarkItDown returns them.
+10. When MarkItDown recovers little or no text (a scanned/image document), QUILL says
+    so and does not silently open an empty document.
+11. Errors are understandable and actionable.
+12. Basic NVDA, JAWS, and Narrator tests pass.
+13. No document content is written to logs.
 
-### 22.2 “Magical” acceptance criteria
+### 22.2 Local-OCR milestone acceptance criteria (Tesseract — free, offline)
+
+1. Local Tesseract OCR can be enabled with no API key and no consent prompt.
+2. The Tesseract binary and at least English language data install as verified
+   downloadable components, and are re-downloadable/replaceable, in all install
+   locations.
+3. A scanned / image-based PDF or an image converts to editable Markdown **entirely
+   offline, for free**, with nothing leaving the machine.
+4. The flow works on a **CPU-only machine — no GPU required.**
+5. Additional OCR languages can be downloaded on demand.
+6. When a born-digital file's text layer is empty, QUILL offers this free local OCR
+   (Tier 1 → Tier 2) before ever mentioning cloud or cost.
+
+### 22.3 Cloud-OCR milestone acceptance criteria (Datalab Chandra — paid cloud)
+
+1. Datalab Chandra OCR Service can be enabled and configured.
+2. API key is stored securely and never appears in config or logs.
+3. QUILL explicitly asks for consent before every cloud upload.
+4. A hard document (complex tables, forms, handwriting, poor scan) converts to
+   editable Markdown via Datalab.
+5. Free-first routing holds: born-digital → MarkItDown and scanned → local Tesseract
+   run for free by default; the paid cloud path is offered only when local OCR is
+   weak or the user explicitly chooses higher accuracy.
+6. Tables, forms, image captions, and confidence data are preserved when returned.
+7. Rate-limit, billing, offline, and cancellation errors are handled gracefully.
+
+### 22.4 “Magical” acceptance criteria
 
 1. A blind user can convert a scanned PDF without needing sighted help.
 2. The default output is immediately readable and editable.
@@ -1625,7 +1854,14 @@ Security requirements:
 - Temporary files must be cleaned up.
 - Consent is mandatory for v1.
 
-Start with the foundation and do not overbuild provider-specific UI into the core architecture. The goal is Datalab first, but Azure, Mistral, AWS, Google, and local providers should be possible later through adapters.
+Start with the foundation and do not overbuild provider-specific UI into the core
+architecture. Sequence the providers **free-first** in three tiers: (1) MarkItDown —
+free local born-digital conversion (the MVP); (2) local Tesseract OCR — free, offline,
+CPU-only OCR for scanned PDFs/images, delivered as verified downloadable components
+(native binary + language data) in all install locations; (3) Datalab Chandra — paid
+cloud OCR as the accuracy escalation, consent-gated. Route every import free-first
+(§11.4). Azure, Mistral, AWS, Google, and heavier local ML engines should be possible
+later through the same adapter interface.
 ```
 
 ---
@@ -1640,7 +1876,24 @@ Start with the foundation and do not overbuild provider-specific UI into the cor
 - Issue: Add service settings persistence.
 - Issue: Add service diagnostics panel.
 
-### Epic: Datalab Chandra OCR Service
+### Epic: MarkItDown local conversion (Tier 1 — MVP)
+
+- Issue: Add MarkItDown provider adapter.
+- Issue: Add scoped-extra dependency acquisition (§Z.3).
+- Issue: Add "empty result" detection.
+- Issue: Add Tier 1 → Tier 2 escalation prompt.
+- Issue: Add local (no-network) unit tests.
+
+### Epic: Local Tesseract OCR (Tier 2 — free, offline)
+
+- Issue: Add Tesseract provider adapter (ocrmypdf + Tesseract, CPU-only).
+- Issue: Add downloadable-component acquisition for the Tesseract binary (per-OS).
+- Issue: Add downloadable language-pack (.traineddata) management, all locations.
+- Issue: Add OCR language selection UI.
+- Issue: Add mean-confidence signal and Tier 2 → Tier 3 escalation prompt.
+- Issue: Add local unit tests with a bundled fixture image.
+
+### Epic: Datalab Chandra OCR Service (Tier 3 — paid cloud)
 
 - Issue: Add Datalab provider adapter.
 - Issue: Add SDK implementation.
@@ -1707,16 +1960,36 @@ QUILL will not send a document to a cloud service unless you choose to continue 
 
 Implement this as a **supported OCR tool powered by a Services-first architecture**, not as a hidden connector or one-off experimental command.
 
-The first release should make QUILL’s supported OCR tool feel simple and safe, with Datalab Chandra OCR Service as the first backend:
+The **MVP starting backend is MarkItDown** — free, local, born-digital, no key, no
+upload — which stands up the whole tool safely and cheaply:
 
-- Configure once in **AI Hub → Services**.
+- Configure once in **AI Hub → Services** (MarkItDown needs no key).
 - Import from **File → Import with OCR / Convert Document**.
-- Default to **Balanced + Markdown + page delimiters**.
-- Require explicit upload consent.
-- Open the result directly in QUILL.
+- Default to **free local conversion + Markdown + page delimiters**.
+- Open the result directly in QUILL, with nothing leaving the machine.
 - Build the provider interface so alternatives can be added cleanly.
 
-This will give QUILL a powerful, practical path for turning inaccessible documents into editable, navigable, screen-reader-friendly content while preserving user choice, privacy, and future flexibility.
+The **free OCR backend, local Tesseract (Tier 2)**, lands next so scanned /
+image-based PDFs get a **free, offline, private** answer — no GPU, no cloud, no cost:
+
+- Enable it in **AI Hub → Services** (no key, no consent prompt).
+- Fetch the Tesseract binary and language data as **verified downloadable components
+  in all install locations** (§Z.3).
+- OCR scanned PDFs and images entirely on-device.
+
+The **paid cloud OCR backend, Datalab Chandra OCR Service (Tier 3)**, follows as the
+accuracy escalation for hard documents:
+
+- Enable and configure it in **AI Hub → Services** (secure API key).
+- Default to **Balanced + Markdown + page delimiters**.
+- Require explicit upload consent on every conversion.
+- Reach it through **free-first routing** (§11.4): QUILL tries MarkItDown, then free
+  local OCR, and offers paid Datalab OCR only when the local tiers fall short.
+
+This gives QUILL a powerful, practical path for turning inaccessible documents into
+editable, navigable, screen-reader-friendly content — free and local by default,
+spending on cloud OCR only when a document genuinely needs the accuracy — while
+preserving user choice, privacy, and future flexibility.
 
 ---
 
@@ -1747,8 +2020,9 @@ an OCR-only feature. Every future document-intelligence service plugs into the s
 tab, the same provider interface (§13.2), the same credential storage, the same
 consent/audit/Safe-Mode rules, and the same accessible card UX. Planned tenants:
 
-- **OCR / document conversion:** Datalab Chandra (v1), then Mistral OCR, Azure
-  Document Intelligence, AWS Textract, Google Document AI, and local engines.
+- **Document conversion / OCR:** MarkItDown (free, local, born-digital — the MVP
+  starting provider), then Datalab Chandra (first paid OCR provider), then Mistral
+  OCR, Azure Document Intelligence, AWS Textract, Google Document AI, and local engines.
 - **Scribe for Documents (Pneuma Solutions):** the partner document-conversion
   service specced in [`scribe.md`](scribe.md) is a natural **Services-tab tenant** —
   same "configure once, convert, open result in QUILL" shape, just with an OAuth
@@ -1759,23 +2033,40 @@ consent/audit/Safe-Mode rules, and the same accessible card UX. Planned tenants:
   placement) lets a new service appear in the Services tab + AI menu with no
   bespoke UI.
 
-### Z.3 Local engines reuse the verified on-demand acquisition path
+### Z.3 Local engines are verified downloadable components — everywhere
 
-For **local** OCR engines (Tesseract / Marker / local Chandra), QUILL must not bloat
-the installer. They are fetched on demand through the same **pinned, SHA-256-verified
-release-asset** mechanism shipped for the speech engine and Kokoro
-(`quill/core/release_assets.py`; QUILL-PRD.md §5.25f, "Recommended host and redistribution
-rules"): a service that needs a
-local binary/model declares it as a release asset, and QUILL downloads + verifies +
-unpacks it with cancelable, accessible progress, blocked in Safe Mode — and offers a
+For **local** engines (MarkItDown, Tesseract, and later Marker / local Chandra),
+QUILL must not bloat the installer. Every one is fetched on demand through the same
+**pinned, SHA-256-verified release-asset** mechanism shipped for the speech engine
+and Kokoro (`quill/core/release_assets.py`; QUILL-PRD.md §5.25f, "Recommended host and
+redistribution rules"): a service that needs a local dependency, binary, or model
+declares it as a release asset, and QUILL downloads + verifies + unpacks it with
+cancelable, accessible progress, blocked in Safe Mode — and offers a
 **re-download/replace** when one is already present, with **newer-version awareness**
-on the roadmap (a `version` field already exists on the asset model).
+on the roadmap (a `version` field already exists on the asset model). This applies in
+**all install locations** (per-user, all-users, and portable) — no engine is ever
+assumed pre-present.
+
+**Tesseract specifics (Tier 2, the free OCR engine):** unlike the pure-Python
+MarkItDown, Tesseract is a **native, per-OS binary plus per-language `.traineddata`
+files**, and it is **CPU-only (no GPU dependency)**. QUILL therefore declares:
+
+- one Tesseract binary asset **per platform** (Windows/macOS/Linux), resolved to the
+  running OS; and
+- **language-pack assets** downloaded individually — English by default, other
+  languages fetched on demand from the OCR language-selection UI —
+
+so users install only the OS binary and the languages they actually use. Heavier
+local ML engines (Marker / local Chandra) follow the same path but may additionally
+want a GPU; Tesseract deliberately does not.
 
 ### Z.4 Net
 
-OCR ships first and real (Datalab Chandra), but it lands inside a **services
-framework** that the AI menu and AI Hub present uniformly, that local engines and
-partner services (Scribe) join without new plumbing, and that inherits QUILL's
-privacy, consent, accessibility, and verified-acquisition guarantees. That is the
-magical, future-proof shape: one accessible home for document intelligence, many
-services over time.
+OCR ships **free-first and real** — MarkItDown then local Tesseract before any paid
+cloud provider — inside a **services framework** that the AI menu and AI Hub present
+uniformly, whose engines are all verified downloadable components (no installer
+bloat, CPU-only where possible), that partner services (Scribe) and cloud providers
+(Datalab) join without new plumbing, and that inherits QUILL's privacy, consent,
+accessibility, and verified-acquisition guarantees. That is the magical, future-proof
+shape: one accessible home for document intelligence — free and local by default,
+paid cloud only when a document truly needs it, many services over time.
