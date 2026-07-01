@@ -103,12 +103,13 @@ The Accessible Vault is **feature-complete for 0.9.0**. Phases 0–7 shipped wit
 unit-tested core under `quill/core/vault` (links, backlinks, neighborhood + unlinked
 mentions, search + quick switcher, tags, embeds, templates + daily notes, HTML site
 export, Git sync, a gated publish payload, and rename-with-link-update) and accessible
-`Tools → Vault` surfaces — including **Note Neighborhood**, **Unlinked Mentions**, and
-**Rename Note** (updates inbound links + file + H1). The
-feature is documented in `QUILL-PRD.md` §5.89d, the user guide (Tools > Vault), the
-changelog, and the release notes; the design plan has been retired.
+`Tools → Vault` surfaces — including **Note Neighborhood**, **Unlinked Mentions**, **Rename
+Note** (updates inbound links + file + H1), and **Vault Settings** (configurable Templates
+folder + daily-note pattern). The feature is documented in `QUILL-PRD.md` §5.89d, the user
+guide (Tools > Vault), the changelog, and the release notes; the design plan has been retired.
 
-**Remaining polish (small, additive, none blocking):**
+**Remaining polish (optional UX/perf enhancements — the feature is complete without them;
+each needs a live-app run to verify):**
 
 - **In-editor autocomplete popups** — `[[` for note titles and `#` for tags, over the
   existing intellisense popup machinery (`main_frame_intellisense.py`). The core is done
@@ -122,8 +123,6 @@ changelog, and the release notes; the design plan has been retired.
 - **Background / incremental indexing at scale** — `vault.apply_note_change` already
   re-parses a single changed note; the remaining work is watching the folder and patching
   the index in the background (the first version otherwise scans on open).
-- **Settings surface** for the Templates folder and daily-note pattern (conventions
-  `Templates/` and `Journal/{{date}}.md` are used until then).
 
 ---
 

@@ -293,12 +293,15 @@ mentions, search + quick switcher, tags, embeds, templates + daily
 notes, HTML site export, Git sync, a gated publish payload, and
 rename-with-link-update) and accessible <code>Tools → Vault</code>
 surfaces — including <strong>Note Neighborhood</strong>,
-<strong>Unlinked Mentions</strong>, and <strong>Rename Note</strong>
-(updates inbound links + file + H1). The feature is documented in
-<code>QUILL-PRD.md</code> §5.89d, the user guide (Tools &gt; Vault), the
-changelog, and the release notes; the design plan has been retired.</p>
-<p><strong>Remaining polish (small, additive, none
-blocking):</strong></p>
+<strong>Unlinked Mentions</strong>, <strong>Rename Note</strong>
+(updates inbound links + file + H1), and <strong>Vault Settings</strong>
+(configurable Templates folder + daily-note pattern). The feature is
+documented in <code>QUILL-PRD.md</code> §5.89d, the user guide (Tools
+&gt; Vault), the changelog, and the release notes; the design plan has
+been retired.</p>
+<p><strong>Remaining polish (optional UX/perf enhancements — the feature
+is complete without them; each needs a live-app run to
+verify):</strong></p>
 <ul>
 <li><strong>In-editor autocomplete popups</strong> — <code>[[</code> for
 note titles and <code>#</code> for tags, over the existing intellisense
@@ -319,9 +322,6 @@ binder tree.</li>
 <code>vault.apply_note_change</code> already re-parses a single changed
 note; the remaining work is watching the folder and patching the index
 in the background (the first version otherwise scans on open).</li>
-<li><strong>Settings surface</strong> for the Templates folder and
-daily-note pattern (conventions <code>Templates/</code> and
-<code>Journal/{{date}}.md</code> are used until then).</li>
 </ul>
 <hr />
 <h2 id="2-locked--hidden-features-register">2. Locked / hidden features

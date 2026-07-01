@@ -605,6 +605,7 @@ A Story project is just a folder of plain-text files plus a small `project.quill
 
 - **Export Vault as Website...** — choose an output folder and QUILL writes a small, self-contained website: one accessible page per note, with your `[[links]]` turned into real links between the pages, your `![[embeds]]` filled in, and an index page listing everything. It runs in the background and tells you how many pages it wrote.
 - **Sync Vault** — if your vault folder is a Git repository with a remote you control, this commits your changes, pulls anyone else's, and pushes — all in the background. If the same note changed in both places, QUILL lists the conflicts and stops rather than overwriting anything. (Disabled in Safe Mode.)
+- **Vault Settings...** — choose which folder your templates live in (default `Templates`) and the pattern for daily-note filenames (default `Journal/{{date:YYYY-MM-DD}}.md`). Leave a box empty to keep the default.
 
 Write links by typing `[[Note Title]]` yourself, or use **Insert Link to Note...**. Links are plain text in your file — nothing is hidden — and resolve when you follow them, export, or open a website build. A vault is just a folder of Markdown files plus a small `.quill` cache; delete the cache and nothing is lost. Every command here is on the command palette and can be given a keyboard shortcut in the Keymap Editor.
 
