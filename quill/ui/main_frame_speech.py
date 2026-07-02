@@ -1411,6 +1411,196 @@ class SpeechCommandsMixin:
             # cancel / no_match / a command that fell outside the safe allowlist.
             self._set_status(outcome.message)
 
+    # -- conversation mode (#663, Hey QUILL Phase 2) --------------------- #
+
+    def voice_conversation_toggle(self) -> None:
+        """Start or stop the hands-free conversation loop (Phase 2).
+
+        Conversation mode wraps the same on-device capture/transcribe/dispatch
+        as push-to-talk in the :class:`ConversationController` state machine:
+        warm audio cues for every state, a brief cancel window before a command
+        runs, and a follow-up window so commands chain without re-arming.
+        """
+        from quill.core.speech.conversation import Timing
+        from quill.core.speech.voice_commands import voice_commands_available
+
+        controller = getattr(self, "_conversation", None)
+        if controller is not None and controller.state.value != "off":
+            self._conv_run(controller.stop())
+            return
+        if not voice_commands_available(
+            self.settings, safe_mode_active=bool(getattr(self, "_safe_mode", False))
+        ):
+            self._announce(
+                "Voice commands are off. Turn them on in Settings (they are disabled in Safe Mode)."
+            )
+            return
+        from quill.core.speech.capture import capture_available
+
+        if not capture_available():
+            self._announce(
+                "Conversation mode needs microphone-capture support (the optional "
+                "'sounddevice' package)."
+            )
+            return
+        if self._installed_or_prompt(self._speech_provider(), "Conversation Mode") is None:
+            return
+        from quill.core.speech.conversation import ConversationController
+
+        controller = ConversationController(
+            timing=Timing.from_settings(self.settings),
+            user_name=str(getattr(self.settings, "voice_conversation_user_name", "") or ""),
+        )
+        self._conversation = controller
+        self._conv_timers: dict[str, object] = {}
+        self._conv_run(controller.start())
+
+    def _conv_run(self, effects: list) -> None:
+        """Execute a list of conversation :class:`Effect` objects in order."""
+        wx = self._wx
+        for effect in effects:
+            kind = effect.kind
+            if kind == "sound":
+                self._play_speech_sound(effect.value)
+            elif kind == "announce":
+                self._set_status_quiet(effect.value)
+                self._announce(effect.value)
+            elif kind == "start_capture":
+                self._conv_start_capture()
+            elif kind == "stop_capture":
+                self._conv_stop_capture(discard=True)
+            elif kind == "dispatch":
+                self._conv_dispatch(effect.value)
+            elif kind == "start_timer":
+                self._conv_cancel_timer(effect.value)
+                self._conv_timers[effect.value] = wx.CallLater(
+                    max(1, effect.delay_ms), self._conv_on_timer, effect.value
+                )
+            elif kind == "cancel_timer":
+                self._conv_cancel_timer(effect.value)
+
+    def _conv_cancel_timer(self, channel: str) -> None:
+        timer = getattr(self, "_conv_timers", {}).pop(channel, None)
+        if timer is not None:
+            try:
+                timer.Stop()
+            except Exception:  # noqa: BLE001 - already fired/stopped
+                pass
+
+    def _conv_on_timer(self, channel: str) -> None:
+        self._conv_timers.pop(channel, None)
+        controller = getattr(self, "_conversation", None)
+        if controller is None:
+            return
+        from quill.core.speech.conversation import (
+            TIMER_FOLLOWUP,
+            TIMER_REVIEW,
+            TIMER_THINKING,
+        )
+
+        if channel == TIMER_REVIEW:
+            self._conv_run(controller.on_review_timer())
+        elif channel == TIMER_THINKING:
+            self._conv_run(controller.on_thinking_timer())
+        elif channel == TIMER_FOLLOWUP:
+            self._conv_run(controller.on_followup_timer())
+
+    def _conv_start_capture(self) -> None:
+        """Open the mic for one conversation turn, auto-stopping after the pause
+        window (a timed turn; true silence detection lands in a later refinement)."""
+        from quill.core.speech.capture import MicRecorder
+        from quill.core.speech.service import load_input_device
+
+        recorder = MicRecorder()
+        try:
+            recorder.start(load_input_device())
+        except Exception as exc:  # noqa: BLE001
+            self._set_status(f"Conversation mode could not open the microphone: {exc}")
+            self._conv_run(self._conversation.stop())
+            return
+        self._conv_recorder = recorder
+        window_ms = max(1500, int(getattr(self.settings, "voice_conversation_silence_ms", 2000)))
+        self._conv_capture_timer = self._wx.CallLater(window_ms + 1500, self._conv_finish_capture)
+
+    def _conv_stop_capture(self, *, discard: bool) -> object | None:
+        timer = getattr(self, "_conv_capture_timer", None)
+        if timer is not None:
+            try:
+                timer.Stop()
+            except Exception:  # noqa: BLE001
+                pass
+            self._conv_capture_timer = None
+        recorder = getattr(self, "_conv_recorder", None)
+        self._conv_recorder = None
+        if recorder is None:
+            return None
+        try:
+            wav_path = recorder.stop()
+        except Exception:  # noqa: BLE001
+            return None
+        if discard:
+            try:
+                wav_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+            return None
+        return wav_path
+
+    def _conv_finish_capture(self) -> None:
+        """The turn window elapsed: transcribe and feed the controller."""
+        self._conv_capture_timer = None
+        wav_path = self._conv_stop_capture(discard=False)
+        controller = getattr(self, "_conversation", None)
+        if wav_path is None or controller is None:
+            return
+        provider = self._speech_provider()
+        installed = provider.list_installed_models()  # type: ignore[attr-defined]
+        if not installed:
+            self._conv_run(controller.stop())
+            return
+        model_id = self._default_model_id(installed)
+        from quill.core.speech.provider import TranscriptionRequest
+
+        request = TranscriptionRequest(source_path=wav_path, model_id=model_id)
+
+        def _work(progress):
+            try:
+                return provider.transcribe_file(  # type: ignore[attr-defined]
+                    request, lambda f, m: progress(m, int(f * 100), 100)
+                )
+            finally:
+                try:
+                    wav_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+        self._run_background_task("Recognizing command", _work, self._conv_on_transcript)
+
+    def _conv_on_transcript(self, result: object) -> None:
+        from quill.core.ai.agent import SAFE_TOOL_IDS
+        from quill.core.speech.voice_commands import resolve_transcript
+
+        controller = getattr(self, "_conversation", None)
+        if controller is None:
+            return
+        transcript = (getattr(result, "full_text", "") or "").strip()
+        outcome = resolve_transcript(transcript, self.commands)
+        if outcome.kind == "cancel":
+            self._conv_run(controller.on_cancel())
+        elif outcome.kind == "run" and outcome.command_id in SAFE_TOOL_IDS:
+            self._conv_run(controller.on_transcript(outcome.command_id, outcome.message))
+        else:
+            self._conv_run(controller.on_transcript(None, outcome.message))
+
+    def _conv_dispatch(self, command_id: str) -> None:
+        controller = getattr(self, "_conversation", None)
+        try:
+            self.commands.run(command_id)
+        except KeyError:
+            self._set_status("That command is not available right now.")
+        if controller is not None:
+            self._conv_run(controller.on_action_done())
+
     # -- microphone selection --------------------------------------------- #
 
     def choose_dictation_microphone(self) -> None:

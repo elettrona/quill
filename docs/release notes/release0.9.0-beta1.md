@@ -512,6 +512,35 @@ This is the foundation. The plan of record adds the conversation loop with
 warm audio cues, the adjustable timing windows, and - eventually - the true
 always-listening "Hey QUILL" wake word, each phase as deliberate as this one.
 
+## Voice Conversation Mode - hands-free, with warm cues
+
+Phase 2 of the Hey QUILL plan turns a single command into a conversation.
+**Tools > Speech > Voice Conversation Mode** keeps listening after each
+command through a short follow-up window, so you can say "next heading",
+then "read aloud", then "word count" without arming again between them. And
+because a hands-free loop should never leave you guessing, every state has a
+warm, musical cue drawn from a proven accessible design:
+
+- a rising three-note chime when conversation mode turns on;
+- a soft two-note when the microphone opens for your command;
+- a gentle rise when your command is recognized - with a brief beat during
+  which "cancel" calls it off;
+- a sparkle when the action finishes;
+- a quiet tick while QUILL is working, so a wait is never silent;
+- a calm falling tone if nothing matched, and a settling tone when it
+  relaxes back to rest.
+
+The nine cues are real **Sound Events** - retune or replace them in any
+sound pack, exactly like every other QUILL earcon - and four timing settings
+let you pace the pause, the cancel window, the follow-up window, and the
+"still working" tick to your own rhythm. The safety model is unchanged from
+Phase 1: recognition stays on your device, only the safe, non-destructive
+command allowlist can be invoked, and the whole feature is off by default
+and off in Safe Mode.
+
+The always-listening "Hey QUILL" wake word is the next phase; this release
+makes the conversation itself real.
+
 ## The Experimental tab - consent in layers
 
 Before the two big production features, meet the front door they share.

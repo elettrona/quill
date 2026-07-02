@@ -481,6 +481,37 @@ def generate_all() -> None:
         vol=0.55,
     )
 
+    # -- Voice conversation cues (Hey QUILL Phase 2) ------------------------
+    # Warm bell sequences on consonant intervals, ported from the ADP Assistant
+    # palette (plan §3.3). Each note is a soft inharmonic bell; a sequence is
+    # concatenated with tiny gaps so it rings rather than beeps.
+    def _bell_seq(freqs: list[float], note_ms: float, gap_ms: float = 24) -> list[float]:
+        parts: list[list[float]] = []
+        for index, freq in enumerate(freqs):
+            if index:
+                parts.append(_silence(gap_ms))
+            parts.append(_bell(freq, note_ms))
+        return _concat(*parts)
+
+    # on: C-E-G rising — a warm "hello".
+    write_wav("conversation_on.wav", _bell_seq([523, 659, 784], 150), vol=0.55)
+    # off: falling — settle "goodbye".
+    write_wav("conversation_off.wav", _bell_seq([659, 523, 392], 150), vol=0.55)
+    # wake: bright two-note lift — "I'm here" (used from Phase 3).
+    write_wav("conversation_wake.wav", _bell_seq([587, 880], 130), vol=0.55)
+    # listen: soft two-note — "go ahead" (quieter; it fires often).
+    write_wav("conversation_listen.wav", _bell_seq([523, 659], 120), vol=0.38)
+    # review: gentle rise — "got it".
+    write_wav("conversation_review.wav", _bell_seq([659, 784], 130), vol=0.50)
+    # ready: sparkle — "answer's here / done".
+    write_wav("conversation_ready.wav", _bell_seq([659, 988], 150), vol=0.55)
+    # idle: single soft tone — "resting".
+    write_wav("conversation_idle.wav", _bell(440, 220), vol=0.34)
+    # thinking tick: quiet blip — "still working".
+    write_wav("conversation_thinking_tick.wav", _bell(330, 150), vol=0.28)
+    # error: low fall — "something's off" (calm, not alarming).
+    write_wav("conversation_error.wav", _bell_seq([392, 294], 150), vol=0.5)
+
     print("Done.")
 
 

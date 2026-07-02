@@ -1479,6 +1479,59 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         feature_id="core.voice_commands",
         keywords=("voice commands", "hey quill", "push to talk", "speech"),
     ),
+    SettingSpec(
+        "voice_conversation_enabled",
+        "Voice conversation mode",
+        "transcription",
+        "bool",
+        "Turn one Voice Command into a hands-free conversation: after each "
+        "command QUILL keeps listening for a short follow-up window, with warm "
+        "audio cues for every state. Requires voice commands; off in Safe Mode.",
+        feature_id="core.voice_commands",
+        keywords=("voice conversation", "hey quill", "hands-free", "follow-up"),
+    ),
+    SettingSpec(
+        "voice_conversation_silence_ms",
+        "Conversation: pause before a command ends (ms)",
+        "transcription",
+        "int",
+        "How long a pause ends what you are saying, in milliseconds. Longer "
+        "gives you more time to think; shorter feels snappier. 0 uses the "
+        "engine default.",
+        feature_id="core.voice_commands",
+        keywords=("voice conversation", "silence", "timing"),
+    ),
+    SettingSpec(
+        "voice_conversation_review_ms",
+        "Conversation: cancel window before acting (ms)",
+        "transcription",
+        "int",
+        "A brief beat after QUILL recognizes a command during which you can "
+        "say 'cancel' before it runs, in milliseconds. 0 acts immediately.",
+        feature_id="core.voice_commands",
+        keywords=("voice conversation", "cancel", "review", "timing"),
+    ),
+    SettingSpec(
+        "voice_conversation_followup_ms",
+        "Conversation: keep listening after a command (ms)",
+        "transcription",
+        "int",
+        "How long QUILL stays listening for a follow-up command after acting, "
+        "in milliseconds, so you can chain commands without re-arming. "
+        "0 turns off the follow-up window.",
+        feature_id="core.voice_commands",
+        keywords=("voice conversation", "follow-up", "timing"),
+    ),
+    SettingSpec(
+        "voice_conversation_thinking_ms",
+        "Conversation: 'still working' tick interval (ms)",
+        "transcription",
+        "int",
+        "How often a soft tick plays while QUILL is working, in milliseconds, "
+        "so a wait is never silent. 0 turns off the tick.",
+        feature_id="core.voice_commands",
+        keywords=("voice conversation", "thinking", "tick", "timing"),
+    ),
     # --- Watch Folders -----------------------------------------------------
     SettingSpec(
         "watch_folder_enabled",

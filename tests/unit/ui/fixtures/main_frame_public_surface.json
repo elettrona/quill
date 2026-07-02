@@ -632,5 +632,6 @@
   "verbosity_undo",
   "verbosity_what_changed",
   "verbosity_where_am_i",
-  "voice_command_toggle"
+  "voice_command_toggle",
+  "voice_conversation_toggle"
 ]
