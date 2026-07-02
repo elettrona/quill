@@ -442,15 +442,18 @@ the <em>err</em> sounder, never a silent failure; two consecutive
 no-matches suggest the command palette.</p>
 <hr />
 <h2 id="6-phases">6. Phases</h2>
-<h3 id="phase-1--surface-s5-small-mostly-a-decision">Phase 1 — Surface
-S5 (small; mostly a decision)</h3>
-<p>Un-comment the menu item, unlock <code>core.voice_commands</code>
-(rename its catalog description away from "Windows dictation"), rewrite
-the stale "Hey QUILL Commands" settings label/F1 topic to describe
-push-to-talk reality, retire <code>core/voice_commands.py</code> (keep
-<code>extract_transcript_body</code> in the speech package), and ship
-docs. Exit criteria: press the hotkey, say "word count", hear the
-result; 0 regressions in dictation suites.</p>
+<h3 id="phase-1--surface-s5-shipped-2026-07-02">Phase 1 — Surface S5
+(SHIPPED 2026-07-02)</h3>
+<p>Done: the Voice Command (Offline) menu item is live in Tools &gt;
+Speech; <code>core.voice_commands</code> is unlocked with an honest
+catalog description; the settings label/F1 topic describe push-to-talk
+reality; the legacy Windows-dictation-era module and its scanner
+machinery are retired, with <code>extract_transcript_body</code> +
+<code>WAKE_PHRASES</code> preserved in
+<code>quill/core/speech/voice_commands.py</code> for Phase 3; docs
+shipped (user guide, CHANGELOG, release notes). The keymap entry stays
+unbound by default (user-assignable); Phase 2 may propose a default
+chord alongside the conversation loop.</p>
 <h3 id="phase-2--the-conversation-loop--sounders-the-adp-import">Phase 2
 — The conversation loop + sounders (the ADP import)</h3>
 <p><code>conversation.py</code> state controller (wx-free, unit-tested

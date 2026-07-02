@@ -137,12 +137,14 @@ FEATURE_DEFINITIONS: dict[str, FeatureDefinition] = {
     "core.voice_commands": FeatureDefinition(
         "core.voice_commands",
         "Voice Commands",
-        description="Interprets Windows dictation phrases as Quill commands.",
+        description=(
+            "Push-to-talk voice commands over the offline speech stack: press "
+            "Voice Command (Offline), speak one command (like 'save file'), and "
+            "QUILL runs it. Bounded by the agent safe-tool allowlist; off by "
+            "default and always off in Safe Mode. Hey QUILL Phase 1."
+        ),
         category="accessibility",
-        dependencies=("core.dictation",),
-        # Hey QUILL is gated behind an internal flag for now; remove locked_off
-        # to re-enable. Tied to the now-removed Windows dictation path.
-        locked_off=True,
+        dependencies=("core.editor",),
     ),
     "core.rich_text_lens": FeatureDefinition(
         "core.rich_text_lens",

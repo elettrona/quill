@@ -412,11 +412,6 @@ from quill.core.updates import (
     select_latest,
 )
 from quill.core.url_ops import format_content_length
-from quill.core.voice_commands import (
-    build_voice_command_aliases,
-    resolve_voice_command,
-    split_text_delta,
-)
 from quill.core.watch_actions import WatchActionOutcome
 from quill.core.watch_profiles import (
     WatchProfile,
@@ -1229,10 +1224,6 @@ class MainFrame(
         )
         self._watch_queue_monitor: object | None = None
         self._watch_queue_listbox: object | None = None
-        self._voice_command_scan_timer: threading.Timer | None = None
-        self._voice_command_baseline_text = ""
-        self._voice_command_aliases: dict[str, str] = {}
-        self._voice_command_guard = False
         self._overwrite_mode = False
         # When True, the Tab key inserts a literal tab character at the caret
         # (VS Code-style) instead of running the smart line-indent command.
@@ -1343,7 +1334,6 @@ class MainFrame(
         self._apply_theme(self.settings.theme)
 
         self._build_commands()
-        self._refresh_voice_command_aliases()
         self._build_menu()
         self._apply_watch_folder_menu_state()
         self._refresh_sessions_menu()
@@ -2491,15 +2481,9 @@ class MainFrame(
             "Voice Command (Offline)",
             self.voice_command_toggle,
             self._binding_for("tools.voice_command"),
-            # Locked off for now via the core.voice_commands feature (locked_off=True),
-            # which keeps it hidden from the menu and command palette.
-            feature_id="core.voice_commands",
-        )
-        self.commands.register(
-            "tools.dictation_voice_commands_toggle",
-            "Hey QUILL Commands",
-            self.toggle_dictation_voice_commands,
-            None,
+            # Hey QUILL Phase 1: push-to-talk over the offline speech stack,
+            # bounded by the agent safe-tool allowlist. See
+            # docs/planning/quill-hey-quill-voice-interaction-plan.md.
             feature_id="core.voice_commands",
         )
         self.commands.register(
@@ -4650,8 +4634,6 @@ class MainFrame(
         self.open_file(path, line=candidate.line, column=candidate.column)
 
     def _on_text_changed(self, _event: object) -> None:
-        if self._voice_command_guard:
-            return
         if (
             not self._abbreviation_expansion_guard
             and getattr(self.settings, "abbreviation_expansion", True)
@@ -4674,8 +4656,6 @@ class MainFrame(
             self._record_persistent_undo_state(self.document.text)
         if self.settings.spellcheck_as_you_type:
             self._announce_spellcheck_hint()
-        if self._dictation.state == "listening" and self.settings.voice_commands_enabled:
-            self._schedule_voice_command_scan()
         self._refresh_intellisense_popup()
         self._refresh_side_preview()
         self._refresh_browser_preview()
@@ -13997,7 +13977,6 @@ class MainFrame(
     def _reload_shortcuts_from_keymap(self) -> None:
         self.commands = CommandRegistry()
         self._build_commands()
-        self._refresh_voice_command_aliases()
         self._build_menu()
         self._apply_accelerators()
         self._reload_global_hotkeys()
@@ -18561,14 +18540,11 @@ class MainFrame(
         wx = self._wx
         state = self._dictation.state
         if state == "listening":
-            self._cancel_voice_command_scan()
-            self._voice_command_baseline_text = ""
             self._dictation.stop()
             self._set_status("Windows dictation stopped")
             return
 
         self.editor.SetFocus()
-        self._voice_command_baseline_text = self.editor.GetValue()
         try:
             self._dictation.start(DictationSettings())
         except DictationUnavailableError:
@@ -18577,34 +18553,8 @@ class MainFrame(
                 "Dictation",
                 wx.ICON_INFORMATION | wx.OK,
             )
-            self._voice_command_baseline_text = ""
             return
-        if self.settings.voice_commands_enabled:
-            self._set_status(
-                'Windows dictation started. Say "Hey QUILL" plus a command to trigger Quill.'
-            )
-        else:
-            self._set_status("Windows dictation started. Speak into the editor.")
-
-    def toggle_dictation_voice_commands(self) -> None:
-        """Flip the Hey QUILL voice-commands setting and reflect it in the menu (#7).
-
-        Previously this jumped to Settings > Transcription and the menu read
-        "...(in Settings)" — a dead link, not a control. It is now a checkable
-        on/off toggle: flip ``settings.voice_commands_enabled``, persist, sync
-        the menu check, and speak the new state."""
-        enabled = not bool(getattr(self.settings, "voice_commands_enabled", False))
-        self.settings.voice_commands_enabled = enabled
-        save_settings(self.settings)
-        self._sync_dictation_voice_commands_menu_check()
-        self._announce_result("Hey QUILL voice commands " + ("on" if enabled else "off"))
-
-    def _sync_dictation_voice_commands_menu_check(self) -> None:
-        """Mirror settings.voice_commands_enabled onto the Hey QUILL Commands
-        check item wherever it was built (#7)."""
-        enabled = bool(getattr(self.settings, "voice_commands_enabled", False))
-        for menu in getattr(self, "_voice_commands_check_menus", ()) or ():
-            menu.Check(self._id_dictation_voice_commands, enabled)
+        self._set_status("Windows dictation started. Speak into the editor.")
 
     def show_bw_model_status(self) -> None:
         models = bw_list_models()
@@ -19740,102 +19690,13 @@ class MainFrame(
             return WatchActionOutcome.failed(f"Could not write AI result: {error}")
         return WatchActionOutcome.done(f"AI {mode} written to {target.name}", result_path=target)
 
-    def _refresh_voice_command_aliases(self) -> None:
-        self._voice_command_aliases = build_voice_command_aliases(
-            self.commands.list(),
-            {
-                "new document": "file.new",
-                "open document": "file.open",
-                "open file": "file.open",
-                "save document": "file.save",
-                "save as": "file.save_as",
-                "close document": "file.close_document",
-                "close file": "file.close_document",
-                "command palette": "app.command_palette",
-                "read aloud": "tools.read_aloud",
-                "stop read aloud": "tools.read_aloud_stop",
-                "dictation": "tools.dictation_toggle",
-                "toggle dictation": "tools.dictation_toggle",
-                "hey quill commands": "tools.dictation_voice_commands_toggle",
-                "voice commands": "tools.dictation_voice_commands_toggle",
-            },
-        )
-
-    def _cancel_voice_command_scan(self) -> None:
-        timer = self._voice_command_scan_timer
-        if timer is not None:
-            timer.cancel()
-        self._voice_command_scan_timer = None
-
-    def _schedule_voice_command_scan(self) -> None:
-        if not self.settings.voice_commands_enabled or self._dictation.state != "listening":
-            return
-        self._cancel_voice_command_scan()
-
-        def run() -> None:
-            self._wx.CallAfter(self._process_voice_command_transcript)
-
-        timer = threading.Timer(1.2, run)
-        timer.daemon = True
-        self._voice_command_scan_timer = timer
-        timer.start()
-
-    def _process_voice_command_transcript(self) -> None:
-        self._voice_command_scan_timer = None
-        if self._voice_command_guard:
-            return
-        if not self.settings.voice_commands_enabled or self._dictation.state != "listening":
-            return
-        baseline = self._voice_command_baseline_text
-        current_text = self.editor.GetValue()
-        if not baseline or current_text == baseline:
-            return
-        _prefix, inserted, _suffix = split_text_delta(baseline, current_text)
-        if not inserted.strip():
-            return
-        match = resolve_voice_command(inserted, self._voice_command_aliases)
-        if match is None:
-            self._voice_command_baseline_text = current_text
-            return
-        command = self.commands.get(match.command_id)
-        if command is None or not self._feature_enabled(command.feature_id):
-            self._voice_command_baseline_text = current_text
-            self._set_status("Hey QUILL command is unavailable in this profile")
-            return
-        self._voice_command_guard = True
-        try:
-            self._replace_document_text(baseline)
-            self.document.set_text(baseline)
-            if not self._suspend_persistent_undo:
-                self._record_persistent_undo_state(baseline)
-            self.editor.SetInsertionPoint(len(baseline))
-            self.editor.SetSelection(len(baseline), len(baseline))
-            self._refresh_browser_preview()
-            self._maybe_autosave()
-        finally:
-            self._voice_command_guard = False
-        self._refresh_title()
-        self._refresh_contextual_menu_items()
-        self._set_status(f"Hey QUILL: {command.title}")
-        command.handler()
-        self._voice_command_baseline_text = self.editor.GetValue()
-
     def _on_dictation_state_change(self, state: str) -> None:
         if state == "listening":
-            if self.settings.voice_commands_enabled:
-                self._set_status(
-                    'Windows dictation started. Say "Hey QUILL" plus a command to trigger Quill.'
-                )
-            else:
-                self._set_status("Windows dictation started. Speak into the editor.")
+            self._set_status("Windows dictation started. Speak into the editor.")
         else:
-            self._cancel_voice_command_scan()
-            self._voice_command_baseline_text = ""
             self._set_status("Windows dictation stopped")
 
     def _on_dictation_error(self, error_msg: str) -> None:
-        self._cancel_voice_command_scan()
-        self._voice_command_baseline_text = ""
         self._set_status("Windows dictation error")
 
     def install_shell_integration(self) -> None:

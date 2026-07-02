@@ -25,21 +25,33 @@ def test_handler_present_and_gated() -> None:
     assert "SAFE_TOOL_IDS" in src  # double-gate before dispatch
 
 
-def test_menu_item_locked_off() -> None:
-    # The offline Voice Command UI is locked off for now: the menu Append is
-    # commented out, but the id and command id stay for easy re-enable.
+def test_menu_item_is_surfaced() -> None:
+    # Hey QUILL Phase 1: the Voice Command (Offline) menu item is live in the
+    # Speech menu (a real Append, not the old commented-out block).
     src = _src("quill/ui/main_frame_menu.py")
-    assert "_id_speech_voice_command" in src
-    assert "tools.voice_command" in src
-    assert "locked off for now" in src
+    idx = src.index('_("&Voice Command (Offline)")')
+    line_start = src.rfind("\n", 0, idx) + 1
+    assert not src[line_start:idx].lstrip().startswith("#")
+    assert "self._id_speech_voice_command," in src
 
 
-def test_command_uses_locked_feature() -> None:
-    # tools.voice_command is gated by the already-locked core.voice_commands
-    # feature, hiding it from the menu and command palette.
+def test_legacy_dictation_scanner_is_retired() -> None:
+    # The Windows-dictation-era Hey QUILL scanner is gone: no transcript
+    # polling, no dictation-toggle command, no legacy module import.
+    for rel in ("quill/ui/main_frame.py", "quill/ui/main_frame_menu.py"):
+        src = _src(rel)
+        assert "dictation_voice_commands" not in src
+        assert "_voice_command_scan" not in src
+        assert "from quill.core.voice_commands" not in src
+    assert not (_ROOT / "quill" / "core" / "voice_commands.py").exists()
+
+
+def test_command_uses_voice_feature() -> None:
+    # tools.voice_command stays behind core.voice_commands so profiles and
+    # Safe Mode can hide it; the runtime gate is voice_commands_available.
     src = _src("quill/ui/main_frame.py")
     idx = src.index('"tools.voice_command"')
-    block = src[idx : idx + 400]
+    block = src[idx : idx + 600]
     assert 'feature_id="core.voice_commands"' in block
 
 

@@ -1481,7 +1481,7 @@ If you prefer to keep your text on your machine entirely:
 - **Say Selected** reads the current selection aloud
 - **Read All** reads from the cursor to the end of the document
 - **Move cursor to follow Read Aloud** (Settings → Read Aloud) makes the cursor select each sentence as it is read, so the caret tracks what you hear and stops where the reading stopped. It is **off by default**: with a screen reader running, moving the selection makes the screen reader announce "selected" over the Read Aloud voice. Sighted and low-vision users who want the cursor to follow the reading can turn it on.
-- **Dictation** submenu for Windows dictation, plus an opt-in **Hey QUILL Commands** toggle that lets dictation phrases trigger Quill commands instead of inserting text.
+- **Voice Command (Offline)** (Tools → Speech) is push-to-talk for Quill itself: run it, speak one command — "save file", "word count", "next heading" — and run it again to stop and act. Recognition happens entirely on your device with the offline speech engine, and only a safe, non-destructive allowlist of commands can ever be invoked, so a misheard phrase cannot do damage. Say "cancel" or "never mind" to abort. Turn it on with the **Voice commands (push-to-talk)** setting (it is off by default and always off in Safe Mode).
 - **OCR Image...** converts an image to text via optical character recognition.
 
 #### Watch Folder
@@ -1505,7 +1505,6 @@ speech model is installed yet, the profile tells you to download one from
 when you have enabled AI and configured a key.)
 
 Read Aloud is particularly useful for proofreading by ear. OCR Image handles image-to-text work with an explicit consent and progress flow.
-Dictation uses Windows' own speech input. **Hey QUILL Commands** is a checkable menu item (Reading → Dictation): activate it to turn the feature on or off directly — Quill remembers the setting and announces "Hey QUILL voice commands on" or "off". When it is enabled, Quill stays silent and only listens while dictation is active, then runs the matching action after the wake phrase.
 Watch Folder automation is best for "drop and open" workflows: copy supported files into one
 folder and let Quill open them in the background.
 

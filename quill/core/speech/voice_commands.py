@@ -25,8 +25,10 @@ __all__ = [
     "VoiceMatch",
     "VoiceOutcome",
     "CANCEL_PHRASES",
+    "WAKE_PHRASES",
     "normalize",
     "build_voice_commands",
+    "extract_transcript_body",
     "match_command",
     "resolve_transcript",
     "voice_commands_available",
@@ -196,3 +198,28 @@ def voice_commands_available(settings: object, *, safe_mode_active: bool) -> boo
     if safe_mode_active:
         return False
     return bool(getattr(settings, "voice_commands_enabled", False))
+
+
+# --- wake phrase (Hey QUILL Phase 3 groundwork) ------------------------------
+#
+# Kept from the retired Windows-dictation-era module: the one piece the
+# always-listening wake word will need. Not used by the push-to-talk flow.
+
+WAKE_PHRASES: tuple[str, ...] = ("hey quill", "quill")
+
+
+def extract_transcript_body(transcript: str) -> str | None:
+    """Strip a wake phrase from ``transcript``; ``None`` if no wake phrase led.
+
+    Returns ``""`` for a wake-only utterance ("hey quill" alone — arm and
+    wait), the remaining command text when a wake phrase prefixes it, and
+    ``None`` when the transcript did not address QUILL at all.
+    """
+    spoken = normalize(transcript)
+    for wake_phrase in WAKE_PHRASES:
+        if spoken == wake_phrase:
+            return ""
+        prefix = f"{wake_phrase} "
+        if spoken.startswith(prefix):
+            return spoken[len(prefix) :].strip()
+    return None

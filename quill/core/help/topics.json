@@ -2588,9 +2588,9 @@
     "user_guide_section": "tools"
   },
   {
-    "id": "tools.dictation_voice_commands_toggle",
-    "title": "Hey QUILL Commands",
-    "body": "Turn hands-free 'Hey QUILL' voice commands on or off while dictating.",
+    "id": "tools.voice_command",
+    "title": "Voice Command (Offline)",
+    "body": "Push-to-talk voice commands: run this command to start listening, speak one command (like 'save file', 'word count', or 'next heading'), then run it again to stop and act. Recognition happens entirely on your device, and only a safe, non-destructive allowlist of commands can be invoked. Say 'cancel' or 'never mind' to abort. Enable it with the 'Voice commands (push-to-talk)' setting; it is always off in Safe Mode.",
     "user_guide_section": "tools"
   },
   {
