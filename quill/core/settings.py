@@ -255,6 +255,15 @@ class Settings:
     # explicit tesseract executable override ("" = auto-discover).
     ocr_language: str = ""
     tesseract_path: str = ""
+    # Tier 3 — Datalab Chandra cloud OCR (consent-gated, BYOK; PRD §5.93).
+    # The API key is NEVER stored here — it lives in the credential vault
+    # (see quill/core/datalab_ocr.py). These are the non-secret knobs from the
+    # AI Hub Services tab. Every upload still requires a per-action consent.
+    datalab_enabled: bool = False
+    datalab_endpoint: str = "https://www.datalab.to"
+    datalab_mode: str = "balanced"  # fast | balanced | accurate
+    datalab_output: str = "markdown"  # markdown | html | json
+    datalab_paginate: bool = True
     # #620: Simple File Open dialog. When true, File > Open... shows a
     # keyboard-friendly picker with a small filter, recent locations, and
     # a hidden-files toggle. The standard Windows file dialog is still
@@ -783,6 +792,17 @@ class Settings:
         vault_daily_pattern = str(data.get("vault_daily_pattern", "")).strip()
         ocr_language = str(data.get("ocr_language", "")).strip()
         tesseract_path = str(data.get("tesseract_path", "")).strip()
+        datalab_enabled = bool(data.get("datalab_enabled", False))
+        datalab_endpoint = str(data.get("datalab_endpoint", "https://www.datalab.to")).strip()
+        if not datalab_endpoint.lower().startswith("https://"):
+            datalab_endpoint = "https://www.datalab.to"
+        datalab_mode = str(data.get("datalab_mode", "balanced")).strip().lower()
+        if datalab_mode not in {"fast", "balanced", "accurate"}:
+            datalab_mode = "balanced"
+        datalab_output = str(data.get("datalab_output", "markdown")).strip().lower()
+        if datalab_output not in {"markdown", "html", "json"}:
+            datalab_output = "markdown"
+        datalab_paginate = bool(data.get("datalab_paginate", True))
         # #620: Simple File Open dialog opt-in.
         use_simple_file_dialog = bool(data.get("use_simple_file_dialog", False))
         watch_folder_include_subfolders = bool(data.get("watch_folder_include_subfolders", False))
@@ -1220,6 +1240,11 @@ class Settings:
             vault_daily_pattern=vault_daily_pattern,
             ocr_language=ocr_language,
             tesseract_path=tesseract_path,
+            datalab_enabled=datalab_enabled,
+            datalab_endpoint=datalab_endpoint,
+            datalab_mode=datalab_mode,
+            datalab_output=datalab_output,
+            datalab_paginate=datalab_paginate,
             use_simple_file_dialog=use_simple_file_dialog,
             watch_folder_include_subfolders=watch_folder_include_subfolders,
             watch_folder_process_existing=watch_folder_process_existing,

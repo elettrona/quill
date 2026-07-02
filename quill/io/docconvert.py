@@ -30,6 +30,7 @@ import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from quill.io.ocr import OcrResult
 from quill.io.tesseract_ocr import (
@@ -96,6 +97,7 @@ WEAK_OCR_CONFIDENCE = 60.0
 #: Conversion tiers, as recorded on the outcome.
 TIER_MARKITDOWN = "markitdown"
 TIER_LOCAL_OCR = "local-ocr"
+TIER_CLOUD_OCR = "cloud-ocr"
 
 
 def supported_import_extensions() -> frozenset[str]:
@@ -115,6 +117,11 @@ class ConversionOutcome:
     warnings: tuple[str, ...] = ()
     #: Tier 1 result that looks scanned/empty — offer free local OCR next.
     offer_local_ocr: bool = False
+    #: Which service produced the result ("" for the local tiers).
+    provider: str = ""
+    #: Low-confidence lines flagged for OCR Review Mode, pre-formatted as
+    #: "Page N: [NN%] text" so the review surface is a spoken checklist.
+    low_confidence: tuple[str, ...] = ()
 
     @property
     def looks_weak(self) -> bool:
@@ -285,6 +292,7 @@ def convert_with_local_ocr(
             page_count=1,
             mean_confidence=mean,
             warnings=_weak_warning(mean),
+            low_confidence=_flag_low_confidence([result]),
         )
     if suffix != PDF_EXTENSION:
         raise DocConvertError(
@@ -319,6 +327,51 @@ def convert_with_local_ocr(
         page_count=len(results),
         mean_confidence=mean,
         warnings=_weak_warning(mean),
+        low_confidence=_flag_low_confidence(results),
+    )
+
+
+CloudConvertFn = Callable[..., Any]
+
+
+def convert_with_cloud_ocr(
+    path: Path,
+    *,
+    cloud_convert: CloudConvertFn | None = None,
+    endpoint: str = "",
+    mode: str = "balanced",
+    output_format: str = "markdown",
+    paginate: bool = True,
+    on_progress: ProgressCallback | None = None,
+    cancel_requested: CancelFn | None = None,
+) -> ConversionOutcome:
+    """Tier 3: convert via the consent-gated Datalab Chandra cloud service.
+
+    The caller has already collected the per-upload consent (PRD §15.1) —
+    this function only performs the conversion and adapts the result into the
+    shared outcome shape. ``cloud_convert`` is injectable for offline tests;
+    the default is :func:`quill.core.datalab_ocr.convert_with_datalab`.
+    """
+    convert = cloud_convert
+    if convert is None:
+        from quill.core.datalab_ocr import convert_with_datalab
+
+        convert = convert_with_datalab
+    result = convert(
+        path,
+        endpoint=endpoint or "https://www.datalab.to",
+        mode=mode,
+        output_format=output_format,
+        paginate=paginate,
+        on_progress=(lambda message: on_progress(0.5, message)) if on_progress else None,
+        cancel_requested=cancel_requested,
+    )
+    return ConversionOutcome(
+        text=str(getattr(result, "content", "") or ""),
+        tier=TIER_CLOUD_OCR,
+        source=path,
+        page_count=int(getattr(result, "page_count", 0) or 0),
+        provider="datalab",
     )
 
 
@@ -367,6 +420,16 @@ def _mean_confidence(results: list[OcrResult]) -> float:
     return sum(values) / len(values)
 
 
+def _flag_low_confidence(results: list[OcrResult]) -> tuple[str, ...]:
+    """Pre-format the flagged lines for OCR Review Mode: "Page N: [NN%] text"."""
+    flagged: list[str] = []
+    for page_number, result in enumerate(results, start=1):
+        for line in result.lines:
+            if line.is_low_confidence:
+                flagged.append(f"Page {page_number}: [{line.confidence:.0f}%] {line.text}")
+    return tuple(flagged)
+
+
 def _weak_warning(mean: float) -> tuple[str, ...]:
     if 0.0 <= mean < WEAK_OCR_CONFIDENCE:
         return (
@@ -381,6 +444,7 @@ __all__ = [
     "IMAGE_EXTENSIONS",
     "MIN_CHARS_PER_PAGE",
     "PDF_EXTENSION",
+    "TIER_CLOUD_OCR",
     "TIER_LOCAL_OCR",
     "TIER_MARKITDOWN",
     "WEAK_OCR_CONFIDENCE",
@@ -389,6 +453,7 @@ __all__ = [
     "DocConvertError",
     "convert_born_digital",
     "convert_document",
+    "convert_with_cloud_ocr",
     "convert_with_local_ocr",
     "supported_import_extensions",
     "text_layer_looks_empty",

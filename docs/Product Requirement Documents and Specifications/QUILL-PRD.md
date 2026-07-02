@@ -4121,42 +4121,113 @@ speakable); every finding carries rule id, severity, location when known, and a
 plain-language suggestion; fix flows announce counts and destinations; file fixes
 are non-destructive by construction; background parses never block the UI thread.
 
-### 5.93 Import / Convert Document — free-first conversion and OCR (shipped)
+### 5.93 Import / Convert Document — free-first conversion and OCR (shipped, all three tiers)
 
-The supported document-rescue tool from the OCR PRD
-(`docs/planning/quill-supported-ocr-tool-ai-hub-services-friendly-prd.md`),
-shipped with its two free tiers. The routing principle: **free first, local
-first, and nothing is ever uploaded** — the paid cloud tier (Datalab Chandra)
-is deliberately not implemented yet and, when it arrives, plugs in behind the
-same outcome model, consent-gated.
+The supported document-rescue tool, now the **canonical spec** (the standalone
+OCR planning PRD has been retired into this section; remaining depth items are
+tracked in roadmap §5). The routing principle: **free first, local first, and
+nothing is ever uploaded without explicit consent** — the paid cloud tier is
+reached only when the free local tiers fall short, and only after a per-upload
+consent dialog.
 
-#### 5.93.1 The two shipped tiers
+#### 5.93.1 The three tiers
 
 | Tier | Engine | Handles | Cost / privacy |
 |---|---|---|---|
 | 1 | MarkItDown (`quill/io/markitdown_bridge.py`, ships with the `pages` extra) | Born-digital DOCX/DOC, PPTX/PPT, XLSX/XLS, HTML, EPUB, CSV, ODT/ODP/ODS, and PDFs with a text layer | Free, local, no upload |
 | 2 | Local Tesseract OCR (`quill/io/tesseract_ocr.py`) | Images (PNG/JPG/TIFF/BMP/GIF/WebP) and image-based PDFs; CPU-only, no GPU | Free, local, no upload |
+| 3 | Datalab Chandra cloud OCR (`quill/core/datalab_ocr.py`) | The accuracy escalation: complex tables, forms, handwriting, math, dense layouts, poor scans; returns Markdown/HTML/JSON | Paid (BYOK, per page on the user's Datalab account), cloud, **consent-gated per upload** |
 
-The router (`quill/io/docconvert.py`, wx-free, strict-typed) implements PRD
-§11.4: born-digital types go to Tier 1; images go straight to Tier 2; PDFs try
-Tier 1 and are measured by the **chars-per-page heuristic**
+The router (`quill/io/docconvert.py`, wx-free, strict-typed) implements the
+free-first flow: born-digital types go to Tier 1; images go straight to
+Tier 2; PDFs try Tier 1 and are measured by the **chars-per-page heuristic**
 (`text_layer_looks_empty`, threshold 50 chars/page) — a PDF that comes back
 looking scanned is flagged `offer_local_ocr`, never silently opened empty.
 Tier 2 rasterizes PDF pages via `pypdfium2` (~150 dpi) and recognizes them one
 at a time with cancel checks between pages, joining pages with the
 screen-reader-searchable `<!-- Page N -->` delimiter. Tesseract's TSV output
 supplies per-word confidence; a mean below 60 flags the outcome `looks_weak`
-with an honest review warning (and is the future cloud tier's escalation
-point).
+— the Tier 2 -> 3 escalation point. Tier 3 (`convert_with_cloud_ocr`) adapts
+the Datalab result into the same `ConversionOutcome`, so every downstream
+surface (open-as-tab, review, announcements) is tier-agnostic.
 
-#### 5.93.2 Escalation prompts (never silent)
+#### 5.93.2 Escalation prompts (never silent, cost/upload named exactly once)
 
 Tier 1 -> 2 (stays free and local): *"QUILL could not find readable text in
 <file>. It looks scanned or image-based. Run free on-device OCR (local
 Tesseract)? This stays on your computer and does not upload anything."* —
 Yes runs OCR, No opens the empty result anyway, Cancel imports nothing.
-Every conversion runs on the background task pool with spoken/status progress
-("Recognizing page 3 of 12...").
+
+Tier 2 -> 3 (the only prompt that mentions money or upload; shown only when
+the service is configured): *"On-device OCR finished, but the result looks
+low-quality or the layout is complex. For higher accuracy you can convert it
+with Datalab cloud OCR. This uploads the file to a cloud service and may cost
+money."* — accepting leads to the §5.93.2a consent dialog; declining keeps
+the local result. When Tier 2 is unavailable (engine not installed) and the
+user declines the free install, the same offer applies — free-first order is
+structural.
+
+##### 5.93.2a Upload consent (every time, no exceptions)
+
+Before **every** cloud upload, a consent dialog states: the document will be
+sent to Datalab; continue only if allowed to upload it; consider
+private/medical/legal/educational/financial/employment/confidential content;
+Datalab deletes results ~1 hour after processing and QUILL retrieves promptly,
+keeping the result only in the opened document. A **filename heuristic**
+(`looks_sensitive`: tax/medical/patient/ssn/legal/IEP/... fragments — names
+only, content is never inspected) prepends an extra CAUTION line. There is no
+"don't ask again": consent is per-action by design.
+
+#### 5.93.2b Cloud client contract (`quill/core/datalab_ocr.py`)
+
+REST against the Datalab Convert API (`POST /api/v1/convert`, multipart, key
+in `X-API-Key`; poll `request_check_url` with cancel checks until complete).
+BYOK: the key lives in the credential vault
+(`QUILL/services/datalab/api_key`) with a `DATALAB_API_KEY` env fallback —
+never in settings files. HTTPS enforced; Safe-Mode blocked; injectable opener
+keeps tests offline; GATE-9 entry `core/datalab_ocr.py::_request`. Errors map
+to the PRD's friendly table (rejected key / billing issue / too large / rate
+limited / unreachable / incomplete / empty / timeout), and logging carries
+state transitions and page counts only — never content, output, keys, or
+bodies. Non-secret knobs persist as settings: `datalab_enabled` (default
+off), `datalab_endpoint` (HTTPS-validated), `datalab_mode`
+(fast/balanced/accurate), `datalab_output` (markdown/html/json),
+`datalab_paginate`.
+
+#### 5.93.2c AI Hub Services tab
+
+**AI Hub > Services** is the customer-facing service manager (opened directly
+by **OCR Service Settings...**): a plain-language intro naming the free tiers
+first, then the Datalab card with a live status line (Ready / Needs API key /
+Not configured), enable checkbox, key field (saved to the vault), endpoint,
+default mode/output, page delimiters, an always-on "confirm before upload"
+statement, **Test Connection** (key-presence + endpoint sanity only — states
+explicitly that no document is uploaded), **Copy Service Summary**
+(secret-free, `API key value: Not included`), and six provider link buttons
+(website, API keys, pricing, privacy/security, API docs, supported file
+types), each announcing that it opens in the browser. `open_ai_hub` folds the
+saved Datalab fields back into the live settings object so the next
+conversion sees them without a restart.
+
+#### 5.93.2d OCR Review Mode (v1: the spoken checklist)
+
+**Review Last OCR Result...** opens a named tab over the most recent
+conversion: source, producing tier/service, page count, mean confidence,
+warnings, and every low-confidence line pre-formatted as
+`Page N: [NN%] text` (populated by Tier 2 from per-word TSV confidence).
+The reviewer walks exactly the flagged lines and jumps into the converted
+document by searching the page marker — review by ear, not re-proofreading.
+Cloud/Tier-1 results state honestly that no per-line confidence exists.
+(The full §12 review workspace — outline tree, per-block accept/re-run,
+table review — is tracked as future depth in roadmap §5.)
+
+#### 5.93.2e Temporary files
+
+**Delete OCR Temporary Files** clears leftovers under the app-data
+`ocr_jobs` folder (crash residue) and reports what was removed; the local
+tiers use per-run auto-cleaned temp directories, so normally there is
+nothing to delete. Results live only in the opened (unsaved) document until
+the user saves.
 
 #### 5.93.3 Engine acquisition (verified downloadable component)
 

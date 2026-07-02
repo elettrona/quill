@@ -135,6 +135,18 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "Triggered only by an explicit 'Download eSpeak-NG' action from the Voice "
         "Browser dialog."
     ),
+    "core/datalab_ocr.py::_default_opener": (
+        "Consent-gated Tier-3 cloud OCR (Datalab Chandra Convert API; PRD §5.93). "
+        "Reached ONLY from the Import/Convert escalation flow after an explicit "
+        "per-upload consent dialog that names the service and warns about "
+        "sensitive documents (filename heuristic adds a second warning). BYOK: "
+        "the API key lives in the credential vault / DATALAB_API_KEY, never "
+        "settings.json, and travels only in the X-API-Key header. HTTPS "
+        "enforced (refuses non-https endpoints), verified TLS context, blocked "
+        "in Safe Mode, cancellable while polling. Logs job state transitions "
+        "and page counts only — never file contents, OCR output, keys, or "
+        "response bodies."
+    ),
     "core/tesseract_install.py::_download": (
         "User-initiated optional local Tesseract OCR engine download (free-first "
         "document conversion, Tier 2) from QUILL's own pinned assets-v1 release "

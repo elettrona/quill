@@ -433,19 +433,57 @@ QUILL fetches the official installer from its own pinned release, verifies it
 byte-for-byte, and opens it for you to complete - never a silent install. If
 Tesseract is already on your machine, QUILL just finds it.
 
+### The cloud escalation - for the documents nothing local can rescue
+
+Some documents defeat even good on-device OCR: dense tables, filled forms,
+handwriting, brutal photocopies. For those, QUILL now supports an optional
+**Datalab Chandra cloud OCR service** - and the way it is wired says
+everything about the product's values. It is strictly **free-first**: the
+cloud is offered only after on-device OCR comes back weak, never as the first
+stop. It is **consent-gated on every single upload**: a dialog names the
+service, reminds you to think about private, medical, legal, and financial
+content, and notes that the provider deletes results from its servers about
+an hour after processing. A filename that suggests sensitive content (tax,
+medical, legal, and similar) earns an extra CAUTION line - judged from the
+name alone; QUILL never peeks at content to decide. And it is
+**bring-your-own-key**: your Datalab key lives in the Windows credential
+vault, never in a settings file, and billing is between you and the provider.
+There is deliberately no "don't ask again."
+
+### The Services tab - service management for humans
+
+**AI Hub > Services** (or **OCR Service Settings...** straight from the OCR
+submenu) manages it all in plain language: a live status line, the enable
+switch, your key, default mode and output, a **Test Connection** that checks
+your key and endpoint while explicitly uploading no document, a **Copy
+Service Summary** that produces a secret-free description for support
+requests, and one-press links to the provider's website, key page, pricing,
+privacy documentation, and supported file types - each announcing that it
+opens in your browser.
+
+### Review exactly what needs reviewing
+
+**Review Last OCR Result...** turns proofreading OCR output from a chore into
+a checklist: the most recent conversion's source, service, page count, and
+confidence, followed by every low-confidence line as "Page N: [confidence]
+text". Arrow through the flagged lines, search the converted document for the
+page marker, fix, done. And **Delete OCR Temporary Files** clears any
+crash leftovers, announcing exactly what was removed. The whole workflow now
+lives in one place: **Tools > Reading & Dictation > OCR and Document
+Conversion**.
+
 ### Plain-language services page
 
-**OCR and Conversion Services...** describes each service the way a person
-would: what it does, what it is best at, whether it is local or cloud (both
-shipped services are local), what it costs (nothing), and the engine's current
-install status. A consent-gated cloud tier for the hardest documents is
-planned - and when it comes, the free local services will still always run
-first.
+**OCR and Conversion Services...** describes every service the way a person
+would: the free local converter, the free local OCR engine, and the optional
+cloud escalation - what each does, what it is best at, whether it is local or
+cloud, what it costs, and each one's current status.
 
 **Why it matters:** the documents most likely to be inaccessible - scans,
 photocopies, image PDFs - are exactly the ones other tools quietly give up on.
-QUILL turns them into text you can read, search, and edit, without sending
-your mail, your medical letter, or your homework to anyone's cloud.
+QUILL turns them into text you can read, search, and edit - on your machine by
+default, in the cloud only when a hard document genuinely needs it and you
+have said yes, out loud, that one time.
 
 ---
 

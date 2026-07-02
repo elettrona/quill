@@ -2659,7 +2659,25 @@
   {
     "id": "tools.ocr_services",
     "title": "OCR and Conversion Services",
-    "body": "A plain-language overview of the document conversion services: what the free local converter and the local OCR engine each do, what they cost (nothing), what stays on your machine (everything), and the current install status of the OCR engine.",
+    "body": "A plain-language overview of every document conversion service: the free local converter, the local OCR engine, and the optional Datalab cloud service - what each does, what it costs, what stays on your machine, and the current status of each.",
+    "user_guide_section": "working-with-different-document-types"
+  },
+  {
+    "id": "tools.review_last_ocr",
+    "title": "Review Last OCR Result",
+    "body": "Open an accessible review checklist for the most recent conversion: where it came from, which service produced it, its recognition confidence, and every low-confidence line flagged as 'Page N: [confidence] text' so you can walk exactly the trouble spots instead of re-proofreading everything.",
+    "user_guide_section": "working-with-different-document-types"
+  },
+  {
+    "id": "tools.ocr_service_settings",
+    "title": "OCR Service Settings",
+    "body": "Open the AI Hub Services tab: enable the optional Datalab Chandra cloud OCR service, store your API key securely in the credential vault, choose default mode and output, test the connection (no document is uploaded by the test), and copy a secret-free service summary for support.",
+    "user_guide_section": "working-with-different-document-types"
+  },
+  {
+    "id": "tools.delete_ocr_temp",
+    "title": "Delete OCR Temporary Files",
+    "body": "Remove any leftover OCR job files from QUILL's data folder (for example after a crash mid-conversion) and hear exactly what was deleted. The local conversion tiers normally clean up after themselves automatically.",
     "user_guide_section": "working-with-different-document-types"
   },
   {

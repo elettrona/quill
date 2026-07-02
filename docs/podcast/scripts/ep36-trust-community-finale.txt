@@ -22,7 +22,7 @@ And when something does go wrong, the honesty holds: crash reports are bundled w
 The community. QUILL comes from Community Access and Blind Information Technology Solutions, BITS, and it carries years of sibling projects folded into one home, a speech product, an accessibility toolkit, an audiobook builder, their best ideas rehomed on these invariants. It's built in the open on GitHub, the issue tracker is public, and the roadmap is a document in the repository, not a secret.
 
 [JESSICA]
-The receipts of listening are all over this course: the braille cell-two workaround, born from user reports. The recent-files behavior that respects unplugged drives. The double-press Spoken Echo gesture. Small features with one user's frustration visible inside them, that's what development by the community it serves actually looks like.
+The receipts of listening are all over this course: the recent-files behavior that respects unplugged drives, born from one user's report. The double-press Spoken Echo gesture. The braille repair loop shaped by transcribers who emboss for a living. Small features with one user's frustration visible inside them, that's what development by the community it serves actually looks like.
 
 [LIAM]
 Free, one more time, with feeling: every feature, for everyone, forever. A donations page called Golden Quills thanks supporters by name, and that's the entire monetization story. Translation is community-driven, and the docs teach you how to contribute a localization. Bug reports steer releases. Word of mouth is the entire marketing department, and it's staffed by you.

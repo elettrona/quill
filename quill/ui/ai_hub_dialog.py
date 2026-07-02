@@ -117,10 +117,12 @@ class AIHubDialog:
         show_modal_dialog: Callable,
         announce: Callable[[str], None] | None = None,
         open_advanced_connection: Callable[[], None] | None = None,
+        initial_page: str | None = None,
     ) -> None:
         import wx
 
         self._wx = wx
+        self._initial_page = initial_page
         self._show_modal = show_modal_dialog
         # Route announcements through the verbosity engine's legacy passthrough
         # (a no-op for the user today) so engine.speak() is reachable from this
@@ -186,9 +188,15 @@ class AIHubDialog:
         self._notebook.AddPage(self._build_harnesses_tab(), str(_("Engines")))
         self._notebook.AddPage(self._build_on_device_tab(), str(_("On-Device")))
         self._notebook.AddPage(self._build_audio_tab(), str(_("Audio Services")))
+        self._notebook.AddPage(self._build_services_tab(), str(_("Services")))
         self._notebook.AddPage(self._build_instructions_tab(), str(_("Instructions")))
         self._notebook.AddPage(self._build_sessions_tab(), str(_("Sessions")))
         self._notebook.AddPage(self._build_advanced_tab(), str(_("Advanced")))
+        if self._initial_page:
+            for index in range(self._notebook.GetPageCount()):
+                if self._notebook.GetPageText(index) == self._initial_page:
+                    self._notebook.SetSelection(index)
+                    break
 
         btn_sizer = wx.StdDialogButtonSizer()
         ok_btn = wx.Button(self.dialog, wx.ID_OK, label=_("&OK"))
@@ -399,6 +407,271 @@ class AIHubDialog:
 
         panel.SetSizer(sizer)
         return panel
+
+    # ------------------------------------------------------------------
+    # Services tab: document conversion and OCR (PRD §5.93 / OCR PRD §8-§10)
+    # ------------------------------------------------------------------
+
+    def _build_services_tab(self) -> object:
+        """The customer-facing services page: the two free local conversion
+        tiers at a glance, and the full configuration surface for the paid,
+        consent-gated Datalab Chandra OCR Service (BYOK; the key goes to the
+        credential vault, never a settings file)."""
+        wx = self._wx
+        from quill.core.datalab_ocr import load_datalab_api_key
+        from quill.core.settings import load_settings
+
+        stored = load_settings()
+        panel = wx.ScrolledWindow(self._notebook, style=wx.VSCROLL)
+        panel.SetScrollRate(0, 12)
+        panel.SetName("Document conversion and OCR services")
+        sizer = wx.BoxSizer(wx.VERTICAL)
+
+        intro = wx.StaticText(
+            panel,
+            label=str(
+                _(
+                    "QUILL's Import / Convert Document tool always runs the free, "
+                    "on-device services first: the built-in MarkItDown converter for "
+                    "born-digital files and the local Tesseract OCR engine for scans "
+                    "(install it from Tools > Reading & Dictation). Neither uploads "
+                    "anything, needs an account, or costs money.\n\n"
+                    "The optional cloud service below is the accuracy escalation for "
+                    "the hardest documents. It is paid, bring-your-own-key, and QUILL "
+                    "asks for your explicit consent before every single upload."
+                )
+            ),
+        )
+        intro.Wrap(640)
+        sizer.Add(intro, 0, wx.ALL, 8)
+
+        box = wx.StaticBoxSizer(
+            wx.StaticBox(panel, label=str(_("Datalab Chandra OCR Service (cloud, paid)"))),
+            wx.VERTICAL,
+        )
+        self._services_status = wx.StaticText(panel, label="")
+        self._services_status.SetName("Datalab service status")
+        box.Add(self._services_status, 0, wx.ALL, 6)
+
+        self._datalab_enabled_cb = wx.CheckBox(
+            panel, label=str(_("&Enable the Datalab Chandra OCR Service"))
+        )
+        self._datalab_enabled_cb.SetValue(bool(getattr(stored, "datalab_enabled", False)))
+        box.Add(self._datalab_enabled_cb, 0, wx.ALL, 6)
+
+        grid = wx.FlexGridSizer(0, 2, 6, 8)
+        grid.AddGrowableCol(1, 1)
+
+        grid.Add(wx.StaticText(panel, label=str(_("API key:"))), 0, wx.ALIGN_CENTER_VERTICAL)
+        self._datalab_key_ctrl = wx.TextCtrl(panel, style=wx.TE_PASSWORD)
+        self._datalab_key_ctrl.SetName(
+            "Datalab API key. Stored securely in the credential vault, never in settings files."
+        )
+        self._datalab_key_ctrl.SetValue(load_datalab_api_key())
+        grid.Add(self._datalab_key_ctrl, 0, wx.EXPAND)
+
+        grid.Add(wx.StaticText(panel, label=str(_("Endpoint:"))), 0, wx.ALIGN_CENTER_VERTICAL)
+        self._datalab_endpoint_ctrl = wx.TextCtrl(
+            panel, value=str(getattr(stored, "datalab_endpoint", "https://www.datalab.to"))
+        )
+        self._datalab_endpoint_ctrl.SetName(
+            "Datalab endpoint. HTTPS only; change it only for an enterprise or on-premises server."
+        )
+        grid.Add(self._datalab_endpoint_ctrl, 0, wx.EXPAND)
+
+        grid.Add(wx.StaticText(panel, label=str(_("Default mode:"))), 0, wx.ALIGN_CENTER_VERTICAL)
+        self._datalab_mode_ctrl = wx.Choice(
+            panel, choices=["Fast", "Balanced (recommended)", "Accurate"]
+        )
+        mode_values = {"fast": 0, "balanced": 1, "accurate": 2}
+        self._datalab_mode_ctrl.SetSelection(
+            mode_values.get(str(getattr(stored, "datalab_mode", "balanced")), 1)
+        )
+        grid.Add(self._datalab_mode_ctrl, 0, wx.EXPAND)
+
+        grid.Add(wx.StaticText(panel, label=str(_("Default output:"))), 0, wx.ALIGN_CENTER_VERTICAL)
+        self._datalab_output_ctrl = wx.Choice(
+            panel, choices=["Markdown (recommended)", "HTML", "JSON"]
+        )
+        output_values = {"markdown": 0, "html": 1, "json": 2}
+        self._datalab_output_ctrl.SetSelection(
+            output_values.get(str(getattr(stored, "datalab_output", "markdown")), 0)
+        )
+        grid.Add(self._datalab_output_ctrl, 0, wx.EXPAND)
+        box.Add(grid, 0, wx.EXPAND | wx.ALL, 6)
+
+        self._datalab_paginate_cb = wx.CheckBox(
+            panel, label=str(_("Add &page delimiters (recommended for navigation)"))
+        )
+        self._datalab_paginate_cb.SetValue(bool(getattr(stored, "datalab_paginate", True)))
+        box.Add(self._datalab_paginate_cb, 0, wx.ALL, 6)
+
+        consent_note = wx.StaticText(
+            panel,
+            label=str(
+                _(
+                    "Confirm before upload: always on. QUILL never sends a document "
+                    "to this service without asking you first, every time."
+                )
+            ),
+        )
+        consent_note.Wrap(640)
+        box.Add(consent_note, 0, wx.ALL, 6)
+
+        actions = wx.BoxSizer(wx.HORIZONTAL)
+        save_btn = wx.Button(panel, label=str(_("&Save Service Settings")))
+        test_btn = wx.Button(panel, label=str(_("&Test Connection")))
+        summary_btn = wx.Button(panel, label=str(_("&Copy Service Summary")))
+        for button in (save_btn, test_btn, summary_btn):
+            actions.Add(button, 0, wx.RIGHT, 6)
+        box.Add(actions, 0, wx.ALL, 6)
+
+        links = wx.WrapSizer(wx.HORIZONTAL)
+        from quill.core.datalab_ocr import DATALAB_LINKS
+
+        for label, url_key in (
+            (_("Visit Datalab &Website"), "website"),
+            (_("&Get or Manage API Key"), "api_keys"),
+            (_("View &Pricing"), "pricing"),
+            (_("P&rivacy and Security"), "privacy"),
+            (_("API &Documentation"), "docs"),
+            (_("Supported &File Types"), "file_types"),
+        ):
+            button = wx.Button(panel, label=str(label))
+            button.SetName(f"{label} (opens in your browser)")
+            url = DATALAB_LINKS[url_key]
+            button.Bind(wx.EVT_BUTTON, lambda _e, target=url: self._open_service_link(target))
+            links.Add(button, 0, wx.RIGHT | wx.BOTTOM, 6)
+        box.Add(links, 0, wx.ALL, 6)
+        sizer.Add(box, 0, wx.EXPAND | wx.ALL, 8)
+
+        footer = wx.StaticText(
+            panel,
+            label=str(
+                _(
+                    "The full plain-language overview of every conversion service is in "
+                    "Tools > Reading & Dictation > OCR and Conversion Services."
+                )
+            ),
+        )
+        footer.Wrap(640)
+        sizer.Add(footer, 0, wx.ALL, 8)
+
+        save_btn.Bind(wx.EVT_BUTTON, self._on_save_services)
+        test_btn.Bind(wx.EVT_BUTTON, self._on_test_datalab)
+        summary_btn.Bind(wx.EVT_BUTTON, self._on_copy_service_summary)
+
+        panel.SetSizer(sizer)
+        self._refresh_services_status()
+        return panel
+
+    def _open_service_link(self, url: str) -> None:
+        import webbrowser
+
+        webbrowser.open(url)
+        self._announce(str(_("Opened in your browser.")))
+
+    def _services_values(self) -> dict[str, object]:
+        modes = ("fast", "balanced", "accurate")
+        outputs = ("markdown", "html", "json")
+        return {
+            "enabled": bool(self._datalab_enabled_cb.GetValue()),
+            "key": str(self._datalab_key_ctrl.GetValue()).strip(),
+            "endpoint": str(self._datalab_endpoint_ctrl.GetValue()).strip(),
+            "mode": modes[max(0, self._datalab_mode_ctrl.GetSelection())],
+            "output": outputs[max(0, self._datalab_output_ctrl.GetSelection())],
+            "paginate": bool(self._datalab_paginate_cb.GetValue()),
+        }
+
+    def _refresh_services_status(self) -> None:
+        from quill.core.datalab_ocr import load_datalab_api_key
+
+        values = self._services_values()
+        has_key = bool(values["key"] or load_datalab_api_key())
+        if values["enabled"] and has_key:
+            status = _("Status: Ready. Cloud upload requires your consent each time.")
+        elif values["enabled"]:
+            status = _("Status: Needs API key.")
+        else:
+            status = _("Status: Not configured (optional).")
+        self._services_status.SetLabel(str(status))
+
+    def _on_save_services(self, _event: object) -> None:
+        from quill.core.datalab_ocr import save_datalab_api_key
+        from quill.core.settings import load_settings, save_settings
+
+        values = self._services_values()
+        endpoint = str(values["endpoint"])
+        if endpoint and not endpoint.lower().startswith("https://"):
+            self._announce(str(_("The endpoint must start with https:// - not saved.")))
+            return
+        stored = load_settings()
+        stored.datalab_enabled = bool(values["enabled"])
+        stored.datalab_endpoint = endpoint or "https://www.datalab.to"
+        stored.datalab_mode = str(values["mode"])
+        stored.datalab_output = str(values["output"])
+        stored.datalab_paginate = bool(values["paginate"])
+        save_settings(stored)
+        if not save_datalab_api_key(str(values["key"])):
+            self._announce(
+                str(
+                    _(
+                        "Settings saved. The API key could not be stored in the "
+                        "credential vault on this system; set the DATALAB_API_KEY "
+                        "environment variable instead."
+                    )
+                )
+            )
+        else:
+            self._announce(str(_("Datalab service settings saved.")))
+        self._refresh_services_status()
+
+    def _on_test_datalab(self, _event: object) -> None:
+        """PRD §10.2: never uploads a document — key-presence check plus a
+        safe endpoint sanity check only."""
+        values = self._services_values()
+        if not values["key"]:
+            self._announce(
+                str(_("No API key entered. Add one, or get a key from the Datalab website."))
+            )
+            return
+        endpoint = str(values["endpoint"])
+        if not endpoint.lower().startswith("https://"):
+            self._announce(str(_("The endpoint must start with https://.")))
+            return
+        self._announce(
+            str(
+                _(
+                    "API key present and the endpoint looks valid. Full validation "
+                    "happens on your first conversion - no document is uploaded by "
+                    "this test."
+                )
+            )
+        )
+        self._refresh_services_status()
+
+    def _on_copy_service_summary(self, _event: object) -> None:
+        """A safe, secret-free summary for support requests (PRD §8.11)."""
+        wx = self._wx
+        values = self._services_values()
+        summary = "\n".join([
+            "QUILL OCR service summary",
+            "Provider: Datalab Chandra OCR Service",
+            f"Enabled: {'Yes' if values['enabled'] else 'No'}",
+            f"Endpoint: {values['endpoint'] or 'https://www.datalab.to'}",
+            f"Default mode: {values['mode']}",
+            f"Default output: {values['output']}",
+            f"Page delimiters: {'Yes' if values['paginate'] else 'No'}",
+            f"API key present: {'Yes' if values['key'] else 'No'}",
+            "API key value: Not included",
+            "Cloud upload required: Yes (consent asked every time)",
+        ])
+        if wx.TheClipboard.Open():
+            wx.TheClipboard.SetData(wx.TextDataObject(summary))
+            wx.TheClipboard.Close()
+            self._announce(str(_("Service summary copied - no secrets included.")))
+        else:
+            self._announce(str(_("Could not open the clipboard.")))
 
     # ------------------------------------------------------------------
     # Tab 3: Audio Services  (P4-4)

@@ -5763,16 +5763,55 @@ official installer from its own verified release, checks it
 byte-for-byte, and opens it for you to complete — never a silent
 install. If Tesseract is already on this computer (or installed with
 Homebrew on a Mac), QUILL simply finds and uses it.</p>
-<p><strong>The services overview.</strong> <strong>Tools &gt; Reading
-&amp; Dictation &gt; OCR and Conversion Services...</strong> explains
-each service in plain language — what it does, what it is best at, what
-it costs (nothing), and what stays on your machine (everything) — plus
-the engine's current install status. A consent-gated cloud tier for the
-very hardest documents (complex tables, handwriting) is planned; the
-free local services will always run first.</p>
+<p><strong>The optional cloud tier — Datalab Chandra OCR.</strong> For
+the documents even local OCR cannot rescue well — complex tables, forms,
+handwriting, dense multi-column layouts, very poor scans — QUILL
+supports an optional, paid, bring-your-own-key cloud service. The
+free-first order is structural: QUILL offers the cloud only
+<em>after</em> on-device OCR comes back weak (or when you decline the
+free engine install), and <strong>every single upload requires your
+explicit consent</strong> in a dialog that names the service, reminds
+you to consider private/medical/legal/financial content, and notes that
+Datalab deletes results from its servers about an hour after processing.
+Filenames that suggest sensitive content (tax, medical, legal, and
+similar) get an extra CAUTION line — from the name only; QUILL never
+inspects the content to decide. There is deliberately no "don't ask
+again."</p>
+<p><strong>Setting up the cloud service.</strong> <strong>Tools &gt;
+Reading &amp; Dictation &gt; OCR and Document Conversion &gt; OCR
+Service Settings...</strong> opens the <strong>AI Hub Services
+tab</strong>: enable the service, paste your Datalab API key (stored in
+the Windows credential vault, never in a settings file), choose the
+default mode (Fast / Balanced / Accurate) and output (Markdown
+recommended), and press <strong>Test Connection</strong> — which checks
+your key and endpoint and explicitly uploads no document. Buttons link
+to the provider's website, key page, pricing, privacy documentation, API
+docs, and supported file types (each opens in your browser), and
+<strong>Copy Service Summary</strong> copies a secret-free description
+for support requests.</p>
+<p><strong>Reviewing what OCR produced.</strong> <strong>Review Last OCR
+Result...</strong> opens an accessible checklist for the most recent
+conversion: which service produced it, page count, recognition
+confidence, and — for on-device OCR — every low-confidence line listed
+as <code>Page N: [confidence] text</code>. Walk the flagged lines by
+arrow key, then search the converted document for the page marker (for
+example <code>&lt;!-- Page 3 --&gt;</code>) to jump to the trouble spot.
+Review by ear, exactly where it is needed, instead of re-proofreading
+everything.</p>
+<p><strong>Housekeeping.</strong> <strong>Delete OCR Temporary
+Files</strong> clears any leftover job files from QUILL's data folder
+(the local tiers normally clean up after themselves automatically) and
+announces what was removed. Converted results live only in the opened,
+unsaved document until you choose to save.</p>
+<p><strong>The services overview.</strong> <strong>OCR and Conversion
+Services...</strong> explains every service in plain language — the free
+local converter, the local OCR engine, and the optional Datalab cloud
+service: what each does, what it is best at, whether it is local or
+cloud, what it costs, and each one's current status.</p>
 <p>Settings: the OCR recognition language (<code>ocr_language</code>,
 default English) and an explicit engine path override
-(<code>tesseract_path</code>) for unusual installs.</p>
+(<code>tesseract_path</code>) for unusual installs; the cloud service's
+non-secret options live on the Services tab.</p>
 <h3 id="remote-files-ftp-sftp-https-webdav-s3">Remote files (FTP, SFTP,
 HTTPS, WebDAV, S3)</h3>
 <p>Quill can open, save, and copy to remote hosts the same way it works

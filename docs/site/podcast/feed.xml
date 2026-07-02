@@ -5,7 +5,7 @@
     <link>https://community-access.github.io/quill/podcast/</link>
     <description>A 36-episode, two-host audio course on QUILL, the free, screen-reader-first writing studio from Community Access. Liam and Jessica lead you from your very first launch to mastery of every feature family: the editor and keyboard, documents and formats, document rescue and OCR, the private speech suite, optional AI, the Accessible Vault, Story Studio, GLOW accessibility review, braille production, extensions, and the trust architecture underneath it all. Episode voices are generated with QUILL&#x27;s own on-device Kokoro neural speech engine.</description>
     <language>en-us</language>
-    <lastBuildDate>Thu, 02 Jul 2026 17:17:57 +0000</lastBuildDate>
+    <lastBuildDate>Thu, 02 Jul 2026 18:30:21 +0000</lastBuildDate>
     <atom:link href="https://community-access.github.io/quill/podcast/feed.xml" rel="self" type="application/rss+xml"/>
     <itunes:author>Community Access / BITS</itunes:author>
     <itunes:subtitle>A complete audio course on the screen-reader-first writing studio</itunes:subtitle>
@@ -369,8 +369,8 @@
       <link>https://community-access.github.io/quill/podcast/transcripts/ep36-trust-community-finale.html</link>
       <guid isPermaLink="false">quill-cast-ep36-trust-community-finale</guid>
       <pubDate>Thu, 02 Jul 2026 08:35:00 +0000</pubDate>
-      <enclosure url="https://github.com/Community-Access/quill/releases/download/podcast-v1/ep36-trust-community-finale.mp3" length="2082165" type="audio/mpeg"/>
-      <itunes:duration>00:03:38</itunes:duration>
+      <enclosure url="https://github.com/Community-Access/quill/releases/download/podcast-v1/ep36-trust-community-finale.mp3" length="2115933" type="audio/mpeg"/>
+      <itunes:duration>00:03:42</itunes:duration>
       <itunes:explicit>false</itunes:explicit>
     </item>
   </channel>

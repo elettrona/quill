@@ -236,12 +236,16 @@ open sections above when scheduled.
   (#528–#534) and the WATCH-8 GLOW watch action (#566), re-homed on QUILL's invariants.
   GLOW's server/Keycloak/Office-add-in/MCP surfaces stay in the GLOW product
   (`s:\code\glow`); QUILL takes the authoring-time checks.
-- **Cloud OCR tier + OCR Review Mode + AI Hub Services tab** — the free local tiers of
-  the supported OCR/conversion tool **shipped for 0.9.0** (MarkItDown Tier 1, local
-  Tesseract Tier 2; PRD §5.93). Remaining scope from
-  [`quill-supported-ocr-tool-ai-hub-services-friendly-prd.md`](quill-supported-ocr-tool-ai-hub-services-friendly-prd.md):
-  the consent-gated paid Datalab Chandra cloud tier, the guided OCR Review Mode, and
-  the full AI Hub Services tab (which arrives with the first cloud provider).
+- **OCR / document-conversion depth extras** — the supported tool **shipped complete
+  for 0.9.0** (all three tiers, the AI Hub Services tab, Review Mode v1, temp-file
+  management; canonical spec now **PRD §5.93** — the standalone OCR planning PRD is
+  retired). Remaining depth, on demand: the full §12-style review *workspace*
+  (outline tree, per-block accept/edit, table review/CSV export, re-run pages in
+  accurate mode, OCR dictionary), Datalab advanced options (page ranges, max pages,
+  word/table bounding boxes, block IDs, extras, processing region, usage warnings),
+  additional providers (Azure Document Intelligence, Mistral OCR, AWS Textract,
+  Google Document AI, local Marker/Chandra), a provider comparison view, on-prem
+  endpoint guidance, and an optional Ctrl+Shift+O shortcut.
 - **Verbosity polish-backlog long tail** — the speculative slice of the ~100 addenda
   (#405–#504) beyond the shipped core/UI/modes/anti-spam; the shipped design lives in
   **PRD §5.91**. Full backlog below.

@@ -107,10 +107,15 @@ class MenuBuilderMixin:
         self._id_import_csv = wx.NewIdRef()
         self._id_import_latex = wx.NewIdRef()
         self._id_import_other = wx.NewIdRef()  # "Other Pandoc Format..."
-        # Free-first Import / Convert Document tool (MarkItDown -> local OCR).
+        # Free-first Import / Convert Document tool (MarkItDown -> local OCR
+        # -> consent-gated cloud OCR) and its OCR and Document Conversion
+        # submenu (review, service settings, temp cleanup).
         self._id_import_convert = wx.NewIdRef()
         self._id_install_local_ocr = wx.NewIdRef()
         self._id_ocr_services = wx.NewIdRef()
+        self._id_review_last_ocr = wx.NewIdRef()
+        self._id_ocr_service_settings = wx.NewIdRef()
+        self._id_delete_ocr_temp = wx.NewIdRef()
         self._id_export_markdown = wx.NewIdRef()
         self._id_export_html = wx.NewIdRef()
         self._id_export_docx = wx.NewIdRef()
@@ -1856,20 +1861,39 @@ class MenuBuilderMixin:
             self._menu_label(_("&Describe Image..."), "tools.describe_image"),
         )
         reading_menu.AppendSeparator()
-        reading_menu.Append(
+        # The supported OCR / document-conversion tool (OCR PRD §4.2): one
+        # submenu holding the whole workflow, from import to review to service
+        # management, so it reads as a first-class QUILL tool.
+        conversion_menu = wx.Menu()
+        conversion_menu.Append(
             self._id_import_convert,
-            self._menu_label(_("Import / Convert Document (&OCR)..."), "file.import_convert"),
+            self._menu_label(_("&Import / Convert Document..."), "file.import_convert"),
         )
-        reading_menu.Append(
+        conversion_menu.Append(
+            self._id_review_last_ocr,
+            self._menu_label(_("&Review Last OCR Result..."), "tools.review_last_ocr"),
+        )
+        conversion_menu.AppendSeparator()
+        conversion_menu.Append(
             self._id_install_local_ocr,
             self._menu_label(
                 _("I&nstall Local OCR Engine (Tesseract)..."), "tools.install_local_ocr"
             ),
         )
-        reading_menu.Append(
+        conversion_menu.Append(
+            self._id_ocr_service_settings,
+            self._menu_label(_("OCR Service &Settings..."), "tools.ocr_service_settings"),
+        )
+        conversion_menu.Append(
             self._id_ocr_services,
             self._menu_label(_("OCR and Conversion Ser&vices..."), "tools.ocr_services"),
         )
+        conversion_menu.AppendSeparator()
+        conversion_menu.Append(
+            self._id_delete_ocr_temp,
+            self._menu_label(_("&Delete OCR Temporary Files"), "tools.delete_ocr_temp"),
+        )
+        reading_menu.AppendSubMenu(conversion_menu, _("&OCR and Document Conversion"))
         tools_menu.AppendSubMenu(reading_menu, _("R&eading && Dictation"))
         # Tools > Speech: flat menu consolidating offline speech, Windows dictation,
         # and model management (#669). Previously split across Reading & Dictation >
@@ -2708,6 +2732,21 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.install_local_ocr_engine(),
             id=self._id_install_local_ocr,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.review_last_ocr_result(),
+            id=self._id_review_last_ocr,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_ocr_service_settings(),
+            id=self._id_ocr_service_settings,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.delete_ocr_temp_files(),
+            id=self._id_delete_ocr_temp,
         )
         self.frame.Bind(
             wx.EVT_MENU,

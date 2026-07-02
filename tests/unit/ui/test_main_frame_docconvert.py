@@ -29,6 +29,7 @@ class _FakeWx(SimpleNamespace):
     CANCEL = 5101
     ICON_ERROR = 512
     ICON_INFORMATION = 2048
+    ICON_WARNING = 256
     OK = 4
     YES_NO = 10
     YES_NO_CANCEL = 14
@@ -80,6 +81,9 @@ class _Host(DocConvertMixin):
     def _create_document_tab(self, document, select=True):
         self.docs.append(document.text)
         return len(self.docs) - 1
+
+    def _create_named_scratch_tab(self, title, text):
+        self.tabs.append((title, text))
 
     def _set_tab_page_text(self, index, title):
         self.tabs.append((index, title))
@@ -215,6 +219,92 @@ def test_cancelled_conversion_is_quiet_not_an_error() -> None:
     host._docconvert_failed(Path("scan.pdf"), DocConvertCancelled("cancelled"))
     assert host.message_boxes == []
     assert any("cancelled" in status.lower() for status in host.statuses)
+
+
+def test_weak_local_result_offers_consented_cloud_escalation(monkeypatch, tmp_path) -> None:
+    # Weak Tier-2 outcome + configured cloud -> the §11.4 Tier 2->3 prompt,
+    # then the §15.1 upload consent; declining consent uploads nothing.
+    host = _Host(answers=[_FakeWx.YES, _FakeWx.NO])  # yes to escalate, no at consent
+    import quill.core.datalab_ocr as datalab_ocr
+
+    monkeypatch.setattr(datalab_ocr, "datalab_configured", lambda settings: True)
+    weak = _outcome(
+        text="noisy\n",
+        tier=TIER_LOCAL_OCR,
+        source=tmp_path / "scan.pdf",
+        mean_confidence=30.0,
+    )
+    host._docconvert_open(weak.source, weak)
+    boxes = " || ".join(host.message_boxes)
+    assert "may cost money" in boxes  # the escalation names cost + upload
+    assert "send this document to Datalab" in boxes  # the §15.1 consent ran
+    assert host._task_manager.submitted == []  # declined consent -> no upload
+    assert any("nothing was uploaded" in status for status in host.statuses)
+
+
+def test_cloud_consent_accepted_runs_the_cloud_task(monkeypatch, tmp_path) -> None:
+    host = _Host(answers=[_FakeWx.YES])  # consent yes
+    import quill.core.datalab_ocr as datalab_ocr
+    import quill.io.docconvert as docconvert
+
+    monkeypatch.setattr(datalab_ocr, "datalab_configured", lambda settings: True)
+    monkeypatch.setattr(
+        docconvert,
+        "convert_with_cloud_ocr",
+        lambda path, **kw: _outcome(text="# Cloud\n", tier="cloud-ocr", source=path, page_count=4),
+    )
+    host._docconvert_run_cloud(tmp_path / "scan.pdf")
+    assert host._task_manager.submitted == ["docconvert-cloud-ocr"]
+    assert any("Datalab cloud OCR" in item for item in host.announcements)
+
+
+def test_sensitive_filename_adds_the_extra_warning(monkeypatch, tmp_path) -> None:
+    host = _Host(answers=[_FakeWx.NO])
+    host._docconvert_run_cloud(tmp_path / "tax-return-2025.pdf")
+    assert any("CAUTION" in box for box in host.message_boxes)
+
+
+def test_review_last_ocr_without_a_conversion_is_quiet() -> None:
+    host = _Host()
+    host.review_last_ocr_result()
+    assert host.tabs == []
+    assert any("No conversion to review" in status for status in host.statuses)
+
+
+def test_review_last_ocr_lists_flagged_lines(tmp_path) -> None:
+    host = _Host()
+    host._docconvert_last_outcome = _outcome(
+        text="text",
+        tier=TIER_LOCAL_OCR,
+        source=tmp_path / "scan.pdf",
+        page_count=2,
+        mean_confidence=55.0,
+        low_confidence=("Page 2: [40%] blurry words",),
+    )
+    host.review_last_ocr_result()
+    title, body = host.tabs[0]
+    assert "OCR Review" in title
+    assert "Page 2: [40%] blurry words" in body
+    assert "on-device OCR" in body
+    assert any("1 lines flagged" in item for item in host.announcements)
+
+
+def test_delete_ocr_temp_files_reports_when_nothing_to_do(monkeypatch, tmp_path) -> None:
+    host = _Host()
+    monkeypatch.setattr("quill.core.paths.app_data_dir", lambda: tmp_path)
+    host.delete_ocr_temp_files()
+    assert any("No OCR temporary files" in status for status in host.statuses)
+
+
+def test_delete_ocr_temp_files_removes_job_leftovers(monkeypatch, tmp_path) -> None:
+    host = _Host()
+    monkeypatch.setattr("quill.core.paths.app_data_dir", lambda: tmp_path)
+    job = tmp_path / "ocr_jobs" / "job-1"
+    job.mkdir(parents=True)
+    (job / "page.png").write_bytes(b"x")
+    host.delete_ocr_temp_files()
+    assert not job.exists()
+    assert any("Deleted 1" in item for item in host.announcements)
 
 
 def test_services_overview_names_engine_status(monkeypatch) -> None:

@@ -170,3 +170,48 @@ def test_outcome_defaults_are_safe() -> None:
     outcome = ConversionOutcome(text="", tier=TIER_MARKITDOWN, source=Path("x.docx"))
     assert not outcome.looks_weak
     assert outcome.warnings == ()
+    assert outcome.low_confidence == ()
+    assert outcome.provider == ""
+
+
+def test_local_ocr_flags_low_confidence_lines_for_review() -> None:
+    def _mixed(path: Path, lang: str) -> OcrResult:
+        return OcrResult(
+            text="Clear line\nblurry line\n",
+            engine="tesseract",
+            lines=[
+                OcrLine(text="Clear line", confidence=95.0),
+                OcrLine(text="blurry line", confidence=31.0),
+            ],
+        )
+
+    deps = _Deps(ocr_image=_mixed, tesseract_ready=lambda: True)
+    outcome = convert_with_local_ocr(Path("photo.png"), deps=deps)
+    assert outcome.low_confidence == ("Page 1: [31%] blurry line",)
+
+
+def test_cloud_wrapper_adapts_the_datalab_result() -> None:
+    class _Result:
+        content = "# Cloud rescued\n"
+        page_count = 7
+
+    captured: dict[str, object] = {}
+
+    def _fake_cloud(path, **kwargs):
+        captured.update(kwargs, path=path)
+        return _Result()
+
+    from quill.io.docconvert import TIER_CLOUD_OCR, convert_with_cloud_ocr
+
+    outcome = convert_with_cloud_ocr(
+        Path("scan.pdf"),
+        cloud_convert=_fake_cloud,
+        endpoint="https://www.datalab.to",
+        mode="accurate",
+        output_format="markdown",
+    )
+    assert outcome.tier == TIER_CLOUD_OCR
+    assert outcome.provider == "datalab"
+    assert outcome.text == "# Cloud rescued\n"
+    assert outcome.page_count == 7
+    assert captured["mode"] == "accurate"

@@ -2377,6 +2377,24 @@ class MainFrame(
             None,
         )
         self.commands.register(
+            "tools.review_last_ocr",
+            "Review Last OCR Result",
+            self.review_last_ocr_result,
+            None,
+        )
+        self.commands.register(
+            "tools.ocr_service_settings",
+            "OCR Service Settings",
+            self.open_ocr_service_settings,
+            None,
+        )
+        self.commands.register(
+            "tools.delete_ocr_temp",
+            "Delete OCR Temporary Files",
+            self.delete_ocr_temp_files,
+            None,
+        )
+        self.commands.register(
             "tools.ocr_clipboard",
             "OCR Clipboard Image",
             self.ocr_clipboard_image,
@@ -23682,7 +23700,7 @@ class MainFrame(
             announce=self._set_status,
         ).show()
 
-    def open_ai_hub(self) -> None:
+    def open_ai_hub(self, initial_page: str | None = None) -> None:
         from quill.ui.ai_hub_dialog import AIHubDialog
 
         dlg = AIHubDialog(
@@ -23690,9 +23708,28 @@ class MainFrame(
             show_modal_dialog=self._show_modal_dialog,
             announce=self._set_status,
             open_advanced_connection=self.open_ai_preferences,
+            initial_page=initial_page,
         )
         dlg.show()
+        # The Services tab persists the Datalab config straight to disk; fold
+        # those fields back into the live settings object so the very next
+        # Import / Convert run sees them without a restart.
+        from quill.core.settings import load_settings as _reload_settings
+
+        fresh = _reload_settings()
+        for field_name in (
+            "datalab_enabled",
+            "datalab_endpoint",
+            "datalab_mode",
+            "datalab_output",
+            "datalab_paginate",
+        ):
+            setattr(self.settings, field_name, getattr(fresh, field_name))
         self._request_menu_refresh()
+
+    def open_ocr_service_settings(self) -> None:
+        """AI Hub, opened directly on the Services tab (OCR Service Settings)."""
+        self.open_ai_hub(initial_page="Services")
 
     def open_writing_assistant(self, initial_prompt: str = "") -> None:
         # H-SAFE-1: refuse to even open the AI dialog in safe mode. The
