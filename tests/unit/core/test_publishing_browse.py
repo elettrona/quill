@@ -808,6 +808,10 @@ def test_wordpress_update_remote_item_with_scheduled_at_sends_future_status_and_
     monkeypatch,
 ) -> None:
     request_details: dict[str, object] = {}
+    # Dynamic future time so this never expires (the scheduler rejects a
+    # non-future time) — the same pattern as the UTC-offset test below.
+    future = (datetime.now(UTC) + timedelta(days=7)).replace(second=0, microsecond=0)
+    expected_date_gmt = future.strftime("%Y-%m-%dT%H:%M:%S")
 
     def _urlopen(request, **_kwargs):
         request_details["body"] = request.data.decode("utf-8") if request.data else ""
@@ -817,7 +821,7 @@ def test_wordpress_update_remote_item_with_scheduled_at_sends_future_status_and_
             "title": {"rendered": "About page"},
             "status": "future",
             "modified_gmt": "2026-06-21T18:00:00",
-            "date_gmt": "2026-07-02T09:00:00",
+            "date_gmt": expected_date_gmt,
             "type": "page",
             "content": {"rendered": "<p>About body</p>"},
         })
@@ -840,18 +844,18 @@ def test_wordpress_update_remote_item_with_scheduled_at_sends_future_status_and_
         title="About page",
         document_text="<p>About body</p>",
         authoring_surface="html",
-        scheduled_at=datetime(2026, 7, 2, 9, 0, tzinfo=UTC),
+        scheduled_at=future,
     )
 
     assert ok is True
     assert document is not None
     assert document.status == "future"
-    assert document.scheduled_for == "2026-07-02T09:00:00"
+    assert document.scheduled_for == expected_date_gmt
     assert json.loads(str(request_details["body"])) == {
         "title": "About page",
         "content": "<p>About body</p>",
         "status": "future",
-        "date_gmt": "2026-07-02T09:00:00",
+        "date_gmt": expected_date_gmt,
     }
 
 

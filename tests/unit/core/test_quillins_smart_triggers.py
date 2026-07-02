@@ -119,26 +119,22 @@ class TestBuildSmartTriggerIndex:
             {"trigger": "rand", "command": "a.rand", "min_args": 0, "max_args": 2},
         ]
         triggers_b = [{"trigger": "note", "command": "b.note"}]
-        index = build_smart_trigger_index(
-            [("com.a", triggers_a), ("com.b", triggers_b)]
-        )
+        index = build_smart_trigger_index([("com.a", triggers_a), ("com.b", triggers_b)])
         assert set(index) == {"bug", "rand", "note"}
         assert index["rand"].command_id == "a.rand"
         assert index["note"].quillin_id == "com.b"
 
     def test_first_definition_wins_on_collision(self) -> None:
-        index = build_smart_trigger_index(
-            [
-                ("com.a", [{"trigger": "dup", "command": "a.dup"}]),
-                ("com.b", [{"trigger": "dup", "command": "b.dup"}]),
-            ]
-        )
+        index = build_smart_trigger_index([
+            ("com.a", [{"trigger": "dup", "command": "a.dup"}]),
+            ("com.b", [{"trigger": "dup", "command": "b.dup"}]),
+        ])
         assert index["dup"].command_id == "a.dup"
 
     def test_skips_malformed_entries(self) -> None:
-        index = build_smart_trigger_index(
-            [("com.a", [{"trigger": "ok", "command": "a.ok"}, {"bad": True}, "junk"])]
-        )
+        index = build_smart_trigger_index([
+            ("com.a", [{"trigger": "ok", "command": "a.ok"}, {"bad": True}, "junk"])
+        ])
         assert set(index) == {"ok"}
 
 
@@ -150,9 +146,7 @@ class TestResolveSmartTrigger:
         match = parse_smart_trigger_line("=rand(2, 3)")
         assert match is not None
         result = resolve_smart_trigger(match, self._index(), is_enabled=lambda d: True)
-        assert result == SmartTriggerResolution(
-            self._index()["rand"], ["2", "3"]
-        )
+        assert result == SmartTriggerResolution(self._index()["rand"], ["2", "3"])
 
     def test_unknown_name_returns_none(self) -> None:
         match = parse_smart_trigger_line("=nope()")

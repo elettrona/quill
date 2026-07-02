@@ -1803,9 +1803,7 @@ class MenuBuilderMixin:
             read_aloud_menu.AppendSeparator()
             read_aloud_menu.Append(
                 self._id_read_aloud_edge,
-                self._menu_label(
-                    _("Read in &Browser (Experimental)"), "tools.read_aloud_edge"
-                ),
+                self._menu_label(_("Read in &Browser (Experimental)"), "tools.read_aloud_edge"),
             )
         read_aloud_menu.Append(
             self._id_announcement_backend,
@@ -1858,9 +1856,7 @@ class MenuBuilderMixin:
         reading_menu.AppendSeparator()
         reading_menu.Append(
             self._id_import_convert,
-            self._menu_label(
-                _("Import / Convert Document (&OCR)..."), "file.import_convert"
-            ),
+            self._menu_label(_("Import / Convert Document (&OCR)..."), "file.import_convert"),
         )
         reading_menu.Append(
             self._id_install_local_ocr,

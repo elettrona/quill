@@ -65,9 +65,7 @@ def remove_reader_pages(reader_dir: Path) -> None:
                 candidate.unlink()
 
 
-def build_reader_html(
-    title: str, text: str, *, lang: str = "en", chunk_chars: int = 240
-) -> str:
+def build_reader_html(title: str, text: str, *, lang: str = "en", chunk_chars: int = 240) -> str:
     """Return a self-contained accessible read-aloud page for ``text``.
 
     The page enumerates the browser's voices (labelling online vs on-device),

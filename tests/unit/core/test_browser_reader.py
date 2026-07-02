@@ -36,7 +36,7 @@ def test_text_embedded_as_json_string_for_speech() -> None:
 
 def test_empty_text_is_safe() -> None:
     page = build_reader_html("Empty", "")
-    assert "var TEXT = \"\"" in page
+    assert 'var TEXT = ""' in page
     assert "<article" in page
 
 

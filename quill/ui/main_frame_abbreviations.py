@@ -19,9 +19,7 @@ class AbbreviationsMixin:
         # (post_expansion_text, caret_after, token_start, original_abbr) or None
         self._pending_undo: tuple[str, int, int, str] | None = None
 
-    def _try_expand_contributed(
-        self, text: str, caret: int, clipboard_text: str = ""
-    ):
+    def _try_expand_contributed(self, text: str, caret: int, clipboard_text: str = ""):
         """Try to expand against the Quillin-contributed abbreviation library.
 
         This library (built at Quillin load, never persisted) is checked only

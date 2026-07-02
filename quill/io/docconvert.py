@@ -156,7 +156,7 @@ def _default_markitdown(path: Path) -> str:
 
 def _default_pdf_page_count(path: Path) -> int:
     try:
-        import pypdfium2 as pdfium  # type: ignore[import-untyped]
+        import pypdfium2 as pdfium  # type: ignore[import-untyped,import-not-found]
     except ImportError:
         return 0
     document = pdfium.PdfDocument(str(path))
@@ -169,7 +169,7 @@ def _default_pdf_page_count(path: Path) -> int:
 def _default_pdf_page_images(path: Path, work_dir: Path) -> list[Path]:
     """Rasterize each PDF page to a PNG for OCR (about 150 dpi)."""
     try:
-        import pypdfium2 as pdfium  # type: ignore[import-untyped]
+        import pypdfium2 as pdfium  # type: ignore[import-untyped,import-not-found]
     except ImportError as exc:
         raise DocConvertError(
             "Reading PDF pages requires the pypdfium2 package, which is not installed."

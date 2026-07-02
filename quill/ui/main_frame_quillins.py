@@ -274,17 +274,13 @@ class QuillinsMenuMixin:
         # commands are registered above); first definition wins on collision.
         installed_manifests = [m for m in manifests if installed.get(m.id) is not None]
         self._quillin_smart_trigger_index = build_smart_trigger_index(
-            (manifest.id, manifest.contributes.smart_triggers)
-            for manifest in installed_manifests
+            (manifest.id, manifest.contributes.smart_triggers) for manifest in installed_manifests
         )
         # Merge contributed (static) abbreviations into a separate in-memory
         # library, honouring each Quillin's enable_abbrev_<trigger> setting. Kept
         # apart from the user's saved library so it is never persisted.
         self._quillin_abbreviation_library = build_contributed_library(
-            (
-                (manifest.id, manifest.contributes.abbreviations)
-                for manifest in installed_manifests
-            ),
+            ((manifest.id, manifest.contributes.abbreviations) for manifest in installed_manifests),
             is_enabled=self._contributed_abbreviation_enabled,
         )
 
@@ -316,9 +312,7 @@ class QuillinsMenuMixin:
                 continue
 
     # -- execution -----------------------------------------------------------
-    def run_quillin_command(
-        self, command_id: str, context: dict[str, Any] | None = None
-    ) -> None:
+    def run_quillin_command(self, command_id: str, context: dict[str, Any] | None = None) -> None:
         """Run a contributed command: snippet inline, handler out-of-process.
 
         Bundled (Tier C) commands run whenever they are registered; third-party
@@ -361,9 +355,7 @@ class QuillinsMenuMixin:
         match = parse_smart_trigger_line(line)
         if match is None:
             return False
-        resolution = resolve_smart_trigger(
-            match, index, is_enabled=self._smart_trigger_enabled
-        )
+        resolution = resolve_smart_trigger(match, index, is_enabled=self._smart_trigger_enabled)
         if resolution is None:
             return False
         definition = resolution.definition
@@ -386,10 +378,7 @@ class QuillinsMenuMixin:
         """
         if definition.command_id not in self._quillin_index:
             return False
-        if (
-            definition.command_id not in self._bundled_command_ids
-            and not self._quillins_enabled()
-        ):
+        if definition.command_id not in self._bundled_command_ids and not self._quillins_enabled():
             return False
         from quill.core import quillin_settings
 
@@ -409,9 +398,7 @@ class QuillinsMenuMixin:
         third-party manifests are never in the loaded set."""
         from quill.core import quillin_settings
 
-        return bool(
-            quillin_settings.get_setting(quillin_id, f"enable_abbrev_{trigger}", default)
-        )
+        return bool(quillin_settings.get_setting(quillin_id, f"enable_abbrev_{trigger}", default))
 
     def _run_quillin_snippet(self, body: str) -> None:
         editor = self._frame_editor()

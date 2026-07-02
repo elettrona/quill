@@ -444,6 +444,4 @@ def _validate_code_policy(code: str) -> None:
                 )
         elif isinstance(node, ast.Name):
             if node.id.startswith("__") and node.id.endswith("__"):
-                raise ValueError(
-                    f"Access to dunder name '{node.id}' is not allowed in the sandbox"
-                )
+                raise ValueError(f"Access to dunder name '{node.id}' is not allowed in the sandbox")

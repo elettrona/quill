@@ -32,9 +32,7 @@ def test_python_sandbox_blocks_disallowed_imports() -> None:
 def test_python_sandbox_blocks_dunder_subclasses_escape() -> None:
     # The classic sandbox escape reaches subprocess/os through the object graph.
     # The AST policy must reject dunder attribute access before it can run.
-    result = run_python_sandbox(
-        "result = ().__class__.__base__.__subclasses__()"
-    )
+    result = run_python_sandbox("result = ().__class__.__base__.__subclasses__()")
 
     assert result.succeeded is False
     assert "dunder" in result.error.lower()

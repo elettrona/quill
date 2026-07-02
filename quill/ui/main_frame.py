@@ -17511,9 +17511,7 @@ class MainFrame(
         tabs = getattr(self, "_document_tabs", None)
         if tabs:
             tab_index = (
-                self._active_tab_index
-                if self._active_tab_index >= 0
-                else self._current_tab_index()
+                self._active_tab_index if self._active_tab_index >= 0 else self._current_tab_index()
             )
             if 0 <= tab_index < len(tabs):
                 title = tabs[tab_index].document.name or "Document"

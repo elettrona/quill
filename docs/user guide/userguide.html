@@ -285,6 +285,8 @@ Deep Navigation</a></li>
 Work</a></li>
 <li><a href="#tools-for-reading-review-and-inspection">Tools for
 Reading, Review, and Inspection</a></li>
+<li><a href="#glow-workflows-inside-quill">GLOW Workflows Inside
+QUILL</a></li>
 <li><a href="#accessibility-and-low-vision-features">Accessibility and
 Low-Vision Features</a></li>
 <li><a href="#quill-on-macos">Quill on macOS</a></li>
@@ -308,6 +310,9 @@ Different Document Types</a>
 spreadsheets (.xlsx and .xls)</a></li>
 <li><a href="#pdf-and-ocr-derived-text">PDF and OCR-derived
 text</a></li>
+<li><a
+href="#import--convert-document--free-first-conversion-and-ocr">Import /
+Convert Document — free-first conversion and OCR</a></li>
 <li><a href="#remote-files-ftp-sftp-https-webdav-s3">Remote files (FTP,
 SFTP, HTTPS, WebDAV, S3)</a></li>
 <li><a href="#github-remote-files">GitHub Remote Files</a></li>
@@ -2124,40 +2129,38 @@ count).</li>
 <li><strong>Dictation Microphone...</strong> chooses which microphone
 dictation uses, or the system default.</li>
 </ul>
-<h5 id="hold-to-dictate-and-locked-dictation-f9--ctrlf9">Hold-to-Dictate
-and Locked Dictation (F9 / Ctrl+F9)</h5>
-<p>Two keyboard-only ways to dictate without opening a dialog or leaving
-the editor. Both use the same on-device Whisper engine and microphone as
-<strong>Dictate (Offline)</strong>, so nothing is uploaded.</p>
+<h5 id="locked-dictation-ctrlf9">Locked Dictation (Ctrl+F9)</h5>
+<p>One keyboard-only way to dictate without opening a dialog or leaving
+the editor. It uses the same on-device Whisper engine and microphone as
+<strong>Dictate (Offline)</strong>, so nothing is uploaded. (An earlier
+press-and-hold F9 mode was removed: a held key repeats and announces
+itself endlessly under a screen reader, so the single locked gesture is
+the reliable one.)</p>
 <ul>
-<li><strong>Hold-to-Dictate — hold F9.</strong> Press and hold
-<strong>F9</strong>, speak, and release. QUILL transcribes and inserts
-the text at the cursor as one undoable edit. A short tone marks the
-start and (after the microphone closes) the stop. Best for a phrase or a
-sentence.</li>
 <li><strong>Locked Dictation — Ctrl+F9.</strong> Press
-<strong>Ctrl+F9</strong> to start a continuous session without holding a
-key; QUILL announces "Locked dictation on." Press
-<strong>Ctrl+F9</strong> again to finish and insert.</li>
+<strong>Ctrl+F9</strong> to start a hands-free session; QUILL announces
+"Locked dictation on." Speak as long as you like — across sentences and
+paragraphs — then press <strong>Ctrl+F9</strong> again to finish. QUILL
+transcribes and inserts the text at the cursor as one undoable
+edit.</li>
 <li><strong>Stopping safely.</strong> While recording,
 <strong>Escape</strong> stops and keeps your speech for transcription;
-<strong>Shift+Escape</strong> cancels and discards it. A locked session
-also stops automatically after five minutes, and stops and preserves
-your audio if QUILL loses focus.</li>
+<strong>Shift+Escape</strong> cancels and discards it. A session also
+stops automatically after five minutes, and stops and preserves your
+audio if QUILL loses focus.</li>
 <li><strong>Pause and status.</strong> <strong>Ctrl+Shift+F9</strong>
-pauses or resumes a locked session; <strong>Alt+F9</strong> speaks the
+pauses or resumes the session; <strong>Alt+F9</strong> speaks the
 current state without changing it.</li>
 <li><strong>Nothing is lost.</strong> Audio is saved to a recovery
 folder before transcription starts, and a transcript that cannot be
 safely inserted is kept for review.</li>
 <li><strong>Dictation Settings.</strong> <strong>Tools &gt; Speech &gt;
-Hold &amp; Locked Dictation &gt; Dictation Settings…</strong> exposes
-the knobs the dictation engine reads: the Locked-Dictation time limit,
-the minimum hold needed to start (so an accidental F9 tap is ignored),
-stop-and-keep-speech when QUILL loses focus, intelligent insertion
-spacing, and a reset that shows the one-time first-use hint again.</li>
+Locked Dictation &gt; Dictation Settings…</strong> exposes the knobs the
+dictation engine reads: the session time limit, stop-and-keep-speech
+when QUILL loses focus, intelligent insertion spacing, and a reset that
+shows the one-time first-use hint again.</li>
 <li><strong>Dictation History &amp; Review.</strong> <strong>Tools &gt;
-Speech &gt; Hold &amp; Locked Dictation &gt; Dictation History &amp;
+Speech &gt; Locked Dictation &gt; Dictation History &amp;
 Review…</strong> lists every recording whose transcript was never
 inserted — crash orphans and transcripts that couldn't be placed safely
 — so you can <strong>insert</strong> one at the cursor,
@@ -2166,10 +2169,9 @@ the selected row). If anything is awaiting review at startup, QUILL
 announces it and points you here, so dictated speech is never silently
 lost.</li>
 <li><strong>Distinct sound, one-time hint.</strong> Locked Dictation
-plays its own earcons so a hands-free session sounds different from a
-press-and-hold one, and the very first time you dictate QUILL speaks a
-brief one-time hint about the keys.</li>
-<li><strong>Remappable.</strong> F9, Ctrl+F9, and the rest are defaults;
+plays its own earcons, and the very first time you dictate QUILL speaks
+a brief one-time hint about the keys.</li>
+<li><strong>Remappable.</strong> Ctrl+F9 and the rest are defaults;
 change them in the Keymap Editor (<strong>Settings &gt;
 Keyboard</strong>). You need an offline speech model installed
 (<strong>Tools &gt; Speech &gt; Manage Speech Models</strong>) and the
@@ -4949,6 +4951,63 @@ accessibility-minded reading work. Rather than assuming every import is
 trustworthy, Quill gives you tools to ask whether the extraction is good
 enough, what may have been lost, and whether you should quote from the
 result directly.</p>
+<h2 id="glow-workflows-inside-quill">GLOW Workflows Inside QUILL</h2>
+<p>GLOW (Guided Layout and Output Workflow) is QUILL's built-in
+accessibility review system. It is about guided confidence, not a
+compliance dashboard: accessibility-aware review and safe deterministic
+fixes that feel ordinary. Everything lives under <strong>Tools &gt;
+GLOW</strong>.</p>
+<h3 id="audit-flows">Audit flows</h3>
+<ul>
+<li><strong>GLOW Audit Current Document</strong> reviews the whole file
+in front of you.</li>
+<li><strong>GLOW Audit Selection / Paragraph</strong> reviews just the
+block at the caret.</li>
+<li><strong>GLOW Audit File...</strong> picks a structured document on
+disk — DOCX, PPTX, XLSX, PDF, EPUB, or Markdown — and runs the shared
+GLOW engine over it in the background. You get a score, a grade, and
+every finding with its suggestion.</li>
+</ul>
+<p>Results open as normal QUILL tabs you can read, search, compare, or
+keep open beside the source. Each finding names the rule, the severity,
+the location when known, and a plain-language suggestion.</p>
+<h3 id="fix-flows">Fix flows</h3>
+<ul>
+<li><strong>GLOW Fix Selection / Paragraph</strong> applies quick
+in-place cleanup where you are.</li>
+<li><strong>GLOW Fix Current Document</strong> generates a preview and
+immediately compares original versus fixed — another working context
+beside your document, not away from it. Accept or reject with full
+knowledge of what changed.</li>
+<li><strong>GLOW Fix File...</strong> writes a repaired copy of a
+structured document <em>next to</em> the original (for example
+<code>report-accessible.docx</code>). The original is never modified,
+QUILL confirms the output name first, and the post-fix audit opens so
+you can verify the result.</li>
+</ul>
+<h3 id="what-glow-checks">What GLOW checks</h3>
+<p>In-editor audits cover plain text, Markdown, and HTML: missing spaces
+after Markdown heading markers, heading-level jumps, generic link text
+("click here"), missing HTML language metadata, missing image alt
+attributes, tables without header cells, tab-indent hazards, and dense
+paragraphs / plain-language friction. The optional shared engine extends
+this to structured files (DOCX, PPTX, XLSX, PDF, EPUB) with a scored,
+graded report.</p>
+<h3 id="the-glow-engine-and-updates">The GLOW engine and updates</h3>
+<p>The in-editor checks are always available. Structured-file audit and
+fix use the optional GLOW engine (installed with QUILL's
+<code>glow</code> extra); when it is absent, QUILL says so honestly
+instead of failing. <strong>Help &gt; Check for GLOW Updates...</strong>
+checks for a newer engine on demand — the check is opt-in, the download
+is confirmed separately, every wheel is signature- and
+checksum-verified, and a failed install rolls back to the bundled
+engine.</p>
+<h3 id="glow-settings">GLOW settings</h3>
+<p><strong>Preferences &gt; GLOW Accessibility</strong> holds the engine
+toggle and the optional networked features (AI alt-text generation, PII
+redaction, WCAG language processing). All networked features are
+<strong>off by default</strong> and each use asks for explicit consent —
+the default GLOW workflow runs entirely on your machine.</p>
 <h2 id="verbosity-and-announcements">Verbosity and Announcements</h2>
 <p>QUILL lets you control what it announces and when, so the editor is
 as quiet or as talkative as you want. Open <strong>Verbosity
@@ -5617,6 +5676,50 @@ quality improves for legacy and mixed-format files.</p>
 <h3 id="pdf-and-ocr-derived-text">PDF and OCR-derived text</h3>
 <p>PDF and OCR work are where Quill's extraction review commands matter
 most. Treat those commands as quality checks, not optional extras.</p>
+<h3 id="import--convert-document--free-first-conversion-and-ocr">Import
+/ Convert Document — free-first conversion and OCR</h3>
+<p><strong>File &gt; Import &gt; Import / Convert Document
+(OCR)...</strong> (also under <strong>Tools &gt; Reading &amp;
+Dictation</strong>) is QUILL's document-rescue tool for files that are
+hard to read: locked-down Office documents, EPUBs, scanned PDFs, and
+photos of pages. Its one rule: <strong>free first, local first, and
+nothing is ever uploaded.</strong></p>
+<p>How a conversion flows:</p>
+<ol type="1">
+<li><strong>The free local converter runs first.</strong> Word,
+PowerPoint, Excel, HTML, EPUB, and PDFs that already carry text convert
+instantly on your machine and open as clean, editable text. No account,
+no key, no upload, no cost.</li>
+<li><strong>A scanned document is detected, not dumped.</strong> If a
+PDF comes back nearly empty, QUILL says so — "It looks scanned or
+image-based" — and <em>asks</em> whether to run free on-device OCR. Yes
+runs it; No opens the empty result anyway; Cancel imports nothing. QUILL
+never silently opens a blank result and never runs OCR without
+asking.</li>
+<li><strong>On-device OCR rescues the scan.</strong> The local Tesseract
+engine recognizes each page on your computer (CPU-only, works offline),
+keeps page boundaries as searchable <code>&lt;!-- Page N --&gt;</code>
+markers, and announces progress ("Recognizing page 3 of 12..."). When
+recognition confidence is low, QUILL tells you plainly so you know to
+review the result — honesty over false confidence.</li>
+</ol>
+<p><strong>Installing the OCR engine.</strong> The engine is a free,
+one-time ~48 MB download: <strong>Tools &gt; Reading &amp; Dictation
+&gt; Install Local OCR Engine (Tesseract)...</strong>. QUILL fetches the
+official installer from its own verified release, checks it
+byte-for-byte, and opens it for you to complete — never a silent
+install. If Tesseract is already on this computer (or installed with
+Homebrew on a Mac), QUILL simply finds and uses it.</p>
+<p><strong>The services overview.</strong> <strong>Tools &gt; Reading
+&amp; Dictation &gt; OCR and Conversion Services...</strong> explains
+each service in plain language — what it does, what it is best at, what
+it costs (nothing), and what stays on your machine (everything) — plus
+the engine's current install status. A consent-gated cloud tier for the
+very hardest documents (complex tables, handwriting) is planned; the
+free local services will always run first.</p>
+<p>Settings: the OCR recognition language (<code>ocr_language</code>,
+default English) and an explicit engine path override
+(<code>tesseract_path</code>) for unusual installs.</p>
 <h3 id="remote-files-ftp-sftp-https-webdav-s3">Remote files (FTP, SFTP,
 HTTPS, WebDAV, S3)</h3>
 <p>Quill can open, save, and copy to remote hosts the same way it works
@@ -9600,6 +9703,17 @@ artifact inside the QUILL editor area. QUILL is a tabbed editor; each
 file, compare summary, or AI output opens as its own document tab. Tabs
 are announced by name when you switch between them
 (<code>Ctrl+Tab</code>).</p>
+<p><strong>GLOW (Guided Layout and Output Workflow)</strong> QUILL's
+built-in text quality and accessibility review system. GLOW audits a
+document for structural issues (heading hierarchy, generic link text,
+missing alt text, missing language metadata, tables without header
+cells, spacing, dense paragraphs) and offers deterministic fixes. Audit
+results open as readable QUILL tabs; fixing the document opens a named
+preview and starts a compare session; fixing a file on disk writes a
+repaired copy without touching the original. In-editor checks cover
+plain text, Markdown, and HTML; the optional GLOW engine extends audit
+and fix to DOCX, PPTX, XLSX, PDF, and EPUB with a scored, graded report.
+Everything lives under <strong>Tools → GLOW</strong>.</p>
 <p><strong>Keymap / Keyboard Pack (.kqp)</strong> The mapping of
 keyboard shortcuts to QUILL commands. The keymap is fully editable in
 <strong>Preferences → Keyboard</strong>. You can export your keymap as a
@@ -9679,10 +9793,14 @@ are loaded from a named directory and can be swapped in Preferences. The
 default pack uses synthesised bell tones; custom packs can use any WAV
 files following the naming convention.</p>
 <p><strong>Template</strong> A pre-written document structure that you
-can use as a starting point for new files. Templates are plain text or
-Markdown files stored in a designated folder. Opening a template creates
-a new untitled document pre-filled with the template content. Manage
-templates in <strong>File → New from Template</strong>.</p>
+can use as a starting point for new text. In QUILL, templating comes in
+two forms: <strong>snippets</strong> (<code>Ctrl+Shift+Grave, S</code>)
+insert reusable blocks with interactive placeholders anywhere, and the
+<strong>Accessible Vault's Insert Template</strong> command fills note
+templates from your vault's Templates folder, expanding
+<code>{{date}}</code>/<code>{{title}}</code>, asking any
+<code>{{prompt}}</code> questions, and placing the cursor at
+<code>{{cursor}}</code>.</p>
 <p><strong>Watch Folder</strong> A directory that QUILL monitors in the
 background. Any supported file dropped into the watch folder is
 automatically opened as a new document tab (or processed according to
