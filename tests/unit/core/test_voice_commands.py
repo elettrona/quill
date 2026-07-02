@@ -123,3 +123,21 @@ def test_availability_default_off() -> None:
         pass
 
     assert vc.voice_commands_available(_Bare(), safe_mode_active=False) is False
+
+
+# --- wake phrase (Phase 3 groundwork, kept from the retired legacy module) ---
+
+
+def test_wake_only_utterance_returns_empty_body() -> None:
+    assert vc.extract_transcript_body("Hey QUILL") == ""
+    assert vc.extract_transcript_body("quill") == ""
+
+
+def test_wake_phrase_prefix_yields_the_command_body() -> None:
+    assert vc.extract_transcript_body("Hey QUILL, save file!") == "save file"
+    assert vc.extract_transcript_body("QUILL word count") == "word count"
+
+
+def test_unaddressed_speech_returns_none() -> None:
+    assert vc.extract_transcript_body("please save the file") is None
+    assert vc.extract_transcript_body("") is None

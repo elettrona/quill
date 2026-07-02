@@ -696,6 +696,33 @@ search, and edit - on your machine by default, in the cloud only when a
 hard document genuinely needs it and you have said yes, out loud, that
 one time.</p>
 <hr />
+<h2 id="voice-command-offline---speak-a-command-quill-acts">Voice
+Command (Offline) - speak a command, QUILL acts</h2>
+<p>The first phase of the <strong>Hey QUILL</strong> voice-interaction
+plan ships in this release. <strong>Tools &gt; Speech &gt; Voice Command
+(Offline)</strong> is push-to-talk for QUILL itself: run the command and
+QUILL starts listening; say one command - "save file", "word count",
+"next heading", "read aloud" - then run it again, and QUILL recognizes
+the phrase on your device and acts.</p>
+<p>The design is deliberately conservative, because voice should never
+be a way to get hurt:</p>
+<ul>
+<li><strong>Everything stays local.</strong> Recognition uses the same
+offline speech engine as Locked Dictation. Nothing is uploaded,
+ever.</li>
+<li><strong>A misheard phrase cannot do damage.</strong> Only a curated
+allowlist of safe, non-destructive commands can be invoked - the same
+allowlist the AI agent is held to. Closing without saving, sending,
+publishing, and deleting are simply not in voice's vocabulary.</li>
+<li><strong>You are always in control.</strong> Say "cancel" or "never
+mind" to abort. The tool is off by default (enable <strong>Voice
+commands (push-to-talk)</strong> in Settings), and it is always off in
+Safe Mode.</li>
+</ul>
+<p>This is the foundation. The plan of record adds the conversation loop
+with warm audio cues, the adjustable timing windows, and - eventually -
+the true always-listening "Hey QUILL" wake word, each phase as
+deliberate as this one.</p>
 <h2 id="the-experimental-tab---consent-in-layers">The Experimental tab -
 consent in layers</h2>
 <p>Before the two big production features, meet the front door they

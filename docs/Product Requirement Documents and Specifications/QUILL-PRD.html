@@ -11091,10 +11091,16 @@ chosen cloud-drive folder.</li>
 is post-v2 at earliest. The <code>core/</code> layer has no
 <code>wx</code> so it remains <em>possible</em>, not
 <em>committed</em>.</li>
-<li><strong>Voice input / dictation.</strong> Use Windows dictation;
-Quill does not reinvent the mic/STT stack. An opt-in Hey QUILL command
-layer may sit on top of dictation and dispatch existing Quill commands,
-but it stays silent and only listens while dictation is active.</li>
+<li><strong>Voice input / dictation.</strong> Dictation is the offline,
+on-device Whisper stack (Locked Dictation; the Windows/SAPI path was
+removed). Voice control of QUILL itself ships in phases per
+docs/planning/quill-hey-quill-voice-interaction-plan.md: Phase 1
+(shipped 0.9.0) is <strong>Voice Command (Offline)</strong> —
+push-to-talk, on-device recognition, commands bounded by the agent
+safe-tool allowlist, off by default and off in Safe Mode. The
+conversation loop, sounders, and always-listening wake word are later
+phases; always-on listening without the explicit opt-ins in that plan
+stays out of scope.</li>
 <li><strong>AI authoring assistant.</strong> The current build exposes a
 local Writing Assistant shell, prompt presets, Prompt Studio reusable
 prompt templates, Agent Center guided profiles, AI Hub launch surface,

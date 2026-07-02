@@ -1470,12 +1470,14 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
     ),
     SettingSpec(
         "voice_commands_enabled",
-        "Hey QUILL voice commands",
+        "Voice commands (push-to-talk)",
         "transcription",
         "bool",
-        "Enable Hey QUILL voice commands during dictation (e.g., 'Hey QUILL save file').",
+        "Enable the offline Voice Command tool: run it, speak one command "
+        "(like 'save file' or 'word count'), and QUILL acts. Commands are "
+        "limited to a safe, non-destructive allowlist. Disabled in Safe Mode.",
         feature_id="core.voice_commands",
-        keywords=("voice commands", "hey quill", "dictation", "speech"),
+        keywords=("voice commands", "hey quill", "push to talk", "speech"),
     ),
     # --- Watch Folders -----------------------------------------------------
     SettingSpec(

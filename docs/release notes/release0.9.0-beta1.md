@@ -487,6 +487,31 @@ have said yes, out loud, that one time.
 
 ---
 
+## Voice Command (Offline) - speak a command, QUILL acts
+
+The first phase of the **Hey QUILL** voice-interaction plan ships in this
+release. **Tools > Speech > Voice Command (Offline)** is push-to-talk for
+QUILL itself: run the command and QUILL starts listening; say one command -
+"save file", "word count", "next heading", "read aloud" - then run it again,
+and QUILL recognizes the phrase on your device and acts.
+
+The design is deliberately conservative, because voice should never be a way
+to get hurt:
+
+- **Everything stays local.** Recognition uses the same offline speech
+  engine as Locked Dictation. Nothing is uploaded, ever.
+- **A misheard phrase cannot do damage.** Only a curated allowlist of
+  safe, non-destructive commands can be invoked - the same allowlist the AI
+  agent is held to. Closing without saving, sending, publishing, and
+  deleting are simply not in voice's vocabulary.
+- **You are always in control.** Say "cancel" or "never mind" to abort. The
+  tool is off by default (enable **Voice commands (push-to-talk)** in
+  Settings), and it is always off in Safe Mode.
+
+This is the foundation. The plan of record adds the conversation loop with
+warm audio cues, the adjustable timing windows, and - eventually - the true
+always-listening "Hey QUILL" wake word, each phase as deliberate as this one.
+
 ## The Experimental tab - consent in layers
 
 Before the two big production features, meet the front door they share.

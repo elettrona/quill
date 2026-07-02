@@ -19,17 +19,6 @@ from quill.ui.translated_speech_runner import run_translated_speech_export
 
 
 class MenuBuilderMixin:
-    def _register_voice_commands_check_menu(self, menu: object) -> None:
-        """Track the menu holding the Hey QUILL Commands check item (#7).
-
-        The checkable item can flip from the menu, the keymap/command palette, or
-        the Settings dialog, so the handler needs a handle to re-sync the visual
-        check wherever it lives (basic and full profiles build different menus)."""
-        menus = getattr(self, "_voice_commands_check_menus", None)
-        if menus is None:
-            menus = self._voice_commands_check_menus = []
-        menus.append(menu)
-
     def _prune_menu_separators(self, menu: object) -> None:
         """Remove dangling separators from a built menu (#15).
 
@@ -1432,7 +1421,6 @@ class MenuBuilderMixin:
         self._id_toggle_sound = wx.NewIdRef()
         self._id_sound_events = wx.NewIdRef()
         self._id_dictation = wx.NewIdRef()
-        self._id_dictation_voice_commands = wx.NewIdRef()
         self._id_bw_model_manager = wx.NewIdRef()
         self._id_bw_model_status = wx.NewIdRef()
         self._id_bw_model_recommend = wx.NewIdRef()
@@ -1910,13 +1898,14 @@ class MenuBuilderMixin:
             self._id_speech_dictate,
             self._menu_label(_("&Dictate (Offline)"), "tools.speech_dictate"),
         )
-        # Voice Command (Offline) is locked off for now (feature core.voice_commands,
-        # locked_off=True). The id, command, handler, and keymap entry all stay
-        # registered for easy re-enable -- restore this Append to surface it again.
-        # speech_menu.Append(
-        #     self._id_speech_voice_command,
-        #     self._menu_label(_("&Voice Command (Offline)"), "tools.voice_command"),
-        # )
+        # Hey QUILL Phase 1: push-to-talk voice command over the offline speech
+        # stack, bounded by the agent safe-tool allowlist. Off by default
+        # (settings.voice_commands_enabled); always off in Safe Mode. Plan:
+        # docs/planning/quill-hey-quill-voice-interaction-plan.md.
+        speech_menu.Append(
+            self._id_speech_voice_command,
+            self._menu_label(_("&Voice Command (Offline)"), "tools.voice_command"),
+        )
         # Windows (SAPI) dictation is no longer supported -- offline Whisper
         # Locked Dictation (Ctrl+F9) replaces it -- so it is not exposed in the
         # menu. The command machinery stays for back-compat.
@@ -3993,11 +3982,6 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.toggle_dictation(),
             id=self._id_dictation,
-        )
-        self.frame.Bind(
-            wx.EVT_MENU,
-            lambda _e: self.toggle_dictation_voice_commands(),
-            id=self._id_dictation_voice_commands,
         )
         self.frame.Bind(
             wx.EVT_MENU,

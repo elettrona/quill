@@ -179,14 +179,17 @@ silent failure; two consecutive no-matches suggest the command palette.
 
 ## 6. Phases
 
-### Phase 1 — Surface S5 (small; mostly a decision)
+### Phase 1 — Surface S5 (SHIPPED 2026-07-02)
 
-Un-comment the menu item, unlock `core.voice_commands` (rename its catalog
-description away from "Windows dictation"), rewrite the stale "Hey QUILL
-Commands" settings label/F1 topic to describe push-to-talk reality, retire
-`core/voice_commands.py` (keep `extract_transcript_body` in the speech
-package), and ship docs. Exit criteria: press the hotkey, say "word count",
-hear the result; 0 regressions in dictation suites.
+Done: the Voice Command (Offline) menu item is live in Tools > Speech;
+`core.voice_commands` is unlocked with an honest catalog description; the
+settings label/F1 topic describe push-to-talk reality; the legacy
+Windows-dictation-era module and its scanner machinery are retired, with
+`extract_transcript_body` + `WAKE_PHRASES` preserved in
+`quill/core/speech/voice_commands.py` for Phase 3; docs shipped (user guide,
+CHANGELOG, release notes). The keymap entry stays unbound by default
+(user-assignable); Phase 2 may propose a default chord alongside the
+conversation loop.
 
 ### Phase 2 — The conversation loop + sounders (the ADP import)
 

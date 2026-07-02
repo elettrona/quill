@@ -138,7 +138,7 @@ COMMAND_FEATURE_MAP: dict[str, str] = {
     "tools.read_aloud_voice": "core.read_aloud",
     "tools.read_aloud_settings": "core.read_aloud",
     "tools.dictation_toggle": "core.dictation",
-    "tools.dictation_voice_commands_toggle": "core.voice_commands",
+    "tools.voice_command": "core.voice_commands",
     "whisperer.model_manager": "core.bw_transcription",
     "whisperer.model_status": "core.bw_transcription",
     "whisperer.model_recommend": "core.bw_transcription",
