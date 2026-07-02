@@ -225,20 +225,42 @@ def _try_offer_crash_submit(
             merged = merge_user_context_into_body(payload.body, result)
             if result.act == "copy":
                 _copy_to_clipboard(merged)
+                _notify_crash_action(
+                    "The crash report was copied to your clipboard. "
+                    "Paste it into a new issue to send it."
+                )
                 return
             # act == "send"
             token = effective_github_token()
             if not token:
-                # No token: copy to clipboard and surface a status.
+                # No token to submit with: fall back to the clipboard and TELL the
+                # user, so pressing Send never looks like it silently did nothing.
                 _copy_to_clipboard(merged)
+                _notify_crash_action(
+                    "No GitHub sign-in is configured, so the report was copied to "
+                    "your clipboard instead. Paste it into a new issue to send it."
+                )
                 return
-            submit_crash_issue(
-                summary=payload.summary,
-                message=merged,
-                app_version=__version__,
-                github_token=token,
-                metadata=payload.metadata,
-            )
+            # The submit is the only step whose success/failure the user needs to
+            # hear: they explicitly chose Send. A silent swallow here is
+            # indistinguishable from success for a screen-reader user.
+            try:
+                submit_crash_issue(
+                    summary=payload.summary,
+                    message=merged,
+                    app_version=__version__,
+                    github_token=token,
+                    metadata=payload.metadata,
+                )
+            except Exception:  # noqa: BLE001 - report the failure, then fall back
+                _copy_to_clipboard(merged)
+                _notify_crash_action(
+                    "Sending the crash report failed (for example, no network). "
+                    "It was copied to your clipboard instead — paste it into a new "
+                    "issue to send it."
+                )
+                return
+            _notify_crash_action("Your crash report was sent. Thank you.")
         except Exception:  # noqa: BLE001
             pass
 
@@ -336,6 +358,28 @@ def _find_main_frame_window() -> object | None:
         return None
     real_frame = getattr(top, "frame", None)
     return real_frame if real_frame is not None else top
+
+
+def _notify_crash_action(message: str) -> None:
+    """Tell the user the outcome of their crash-report choice (best-effort).
+
+    Runs in the excepthook path where wx may be unstable, so it uses the native
+    ``MessageBoxW`` (same floor as :func:`_show_native_fallback`) rather than a wx
+    dialog. Non-fatal: any failure is swallowed. Its purpose is that pressing
+    Send / Copy is never silent for a screen-reader user.
+    """
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            ctypes.windll.user32.MessageBoxW(0, message, "QUILL — Crash Report", 0x40)
+            return
+        except Exception:  # noqa: BLE001
+            pass
+    try:
+        print(message, file=sys.stderr)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _copy_to_clipboard(text: str) -> None:

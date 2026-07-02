@@ -116,3 +116,6 @@ docs/planning/source/**/*.log
 
 # Local pre-merge test plan (not committed)
 /test.md
+
+# Podcast audio is distributed via the podcast-v1 GitHub release, not git.
+docs/podcast/audio/

@@ -657,3 +657,36 @@ def test_watchdog_re_dumps_after_recovery_window() -> None:
     # Use a clear margin past the 0.05s window (not the exact boundary) so the
     # assertion does not depend on floating-point representability.
     assert watchdog._should_dump(age=0.12, now=base + 0.06, last_dump_time=base) is True
+
+
+def test_watchdog_warn_level_dump_is_one_shot_per_episode() -> None:
+    # A short-but-real stall (e.g. the ~7 s startup block in review.md) never
+    # reaches dump_after_seconds (15 s), so without a warn-level dump no thread
+    # stacks are captured. The warn dump must fire once when the stall crosses
+    # warn_dump_after_seconds and not again until the UI recovers.
+    from quill.stability.wx_heartbeat import HeartbeatState, WxHeartbeatWatchdog
+
+    watchdog = WxHeartbeatWatchdog(
+        HeartbeatState(),
+        dump_callback=lambda _m: None,
+        warn_after_seconds=5.0,
+        warn_dump_after_seconds=5.0,
+    )
+    # Below the threshold: no warn dump.
+    assert watchdog._should_warn_dump(age=3.0) is False
+    # Crosses the threshold, not yet dumped this episode: fire.
+    assert watchdog._should_warn_dump(age=6.9) is True
+    watchdog._warn_dumped_this_episode = True
+    # Already dumped this episode: suppressed even while still stalled.
+    assert watchdog._should_warn_dump(age=9.0) is False
+
+
+def test_watchdog_warn_level_dump_can_be_disabled() -> None:
+    from quill.stability.wx_heartbeat import HeartbeatState, WxHeartbeatWatchdog
+
+    watchdog = WxHeartbeatWatchdog(
+        HeartbeatState(),
+        dump_callback=lambda _m: None,
+        warn_dump_after_seconds=None,
+    )
+    assert watchdog._should_warn_dump(age=100.0) is False

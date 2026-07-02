@@ -32,6 +32,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from quill.core.abbreviations import AbbreviationLibrary, build_contributed_library
 from quill.core.quillins import (
     ExtensionManifest,
     SnippetContext,
@@ -52,6 +53,12 @@ from quill.core.quillins.loader import (
     set_event_enabled,
 )
 from quill.core.quillins.registry import ContributionRegistry
+from quill.core.quillins.smart_triggers import (
+    SmartTriggerDef,
+    build_smart_trigger_index,
+    parse_smart_trigger_line,
+    resolve_smart_trigger,
+)
 from quill.core.speech.quillin_providers import register_quillin_transcription_providers
 from quill.plugins import THIRD_PARTY_PLUGINS_FEATURE
 from quill.ui.main_frame_quillins_host import _EditorHostServices
@@ -216,6 +223,8 @@ class QuillinsMenuMixin:
         self._quillin_event_index = {}
         self._quillin_file_type_index = {}
         self._quillin_timers = {}
+        self._quillin_smart_trigger_index: dict[str, SmartTriggerDef] = {}
+        self._quillin_abbreviation_library: AbbreviationLibrary | None = None
 
         installed = {item.id: item for item in self._installed_quillins()}
         bundled_manifests = load_enabled_bundled_manifests(self.features)
@@ -260,6 +269,21 @@ class QuillinsMenuMixin:
                 if manifest.contributes.schedule and not self._safe_mode:
                     self._start_quillin_timers(manifest, entry.directory)
 
+        # Index =name() smart triggers across loaded manifests for on-Enter
+        # dispatch. Only manifests with an install entry are included (their
+        # commands are registered above); first definition wins on collision.
+        installed_manifests = [m for m in manifests if installed.get(m.id) is not None]
+        self._quillin_smart_trigger_index = build_smart_trigger_index(
+            (manifest.id, manifest.contributes.smart_triggers) for manifest in installed_manifests
+        )
+        # Merge contributed (static) abbreviations into a separate in-memory
+        # library, honouring each Quillin's enable_abbrev_<trigger> setting. Kept
+        # apart from the user's saved library so it is never persisted.
+        self._quillin_abbreviation_library = build_contributed_library(
+            ((manifest.id, manifest.contributes.abbreviations) for manifest in installed_manifests),
+            is_enabled=self._contributed_abbreviation_enabled,
+        )
+
         # Fire quillin.enabled for any Quillin that subscribes to it, so live
         # lifecycle events match the contract (Journal Stamp / Status Scribe).
         for quillin_id, (manifest, directory) in self._quillin_event_index.items():
@@ -288,11 +312,13 @@ class QuillinsMenuMixin:
                 continue
 
     # -- execution -----------------------------------------------------------
-    def run_quillin_command(self, command_id: str) -> None:
+    def run_quillin_command(self, command_id: str, context: dict[str, Any] | None = None) -> None:
         """Run a contributed command: snippet inline, handler out-of-process.
 
         Bundled (Tier C) commands run whenever they are registered; third-party
-        commands additionally require the SEC-8 flag to still be on.
+        commands additionally require the SEC-8 flag to still be on. ``context``
+        is passed to handler commands (e.g. smart-trigger ``args``); snippet
+        commands ignore it.
         """
 
         entry = self._quillin_index.get(command_id)
@@ -309,7 +335,70 @@ class QuillinsMenuMixin:
         if command.is_snippet and command.snippet is not None:
             self._run_quillin_snippet(command.snippet)
             return
-        self._run_quillin_handler(manifest, directory, command_id)
+        self._run_quillin_handler(manifest, directory, command_id, context)
+
+    # -- smart triggers (=name(args)) ---------------------------------------
+    def dispatch_smart_trigger_line(self, line: str, line_start: int, line_end: int) -> bool:
+        """Dispatch a ``=name(args)`` line if it resolves to an enabled trigger.
+
+        On a match, the trigger text spanning ``[line_start, line_end)`` is
+        removed and the resolved command runs at that position (inserting its
+        generated text where the trigger was). Returns True when a trigger fired,
+        so the editor can consume the Enter keystroke instead of adding a
+        newline. Pure parsing/resolution lives in
+        ``core.quillins.smart_triggers``; this only wires the feature gate,
+        per-Quillin enable settings, the editor edit, and dispatch.
+        """
+        index = getattr(self, "_quillin_smart_trigger_index", {})
+        if not index:
+            return False
+        match = parse_smart_trigger_line(line)
+        if match is None:
+            return False
+        resolution = resolve_smart_trigger(match, index, is_enabled=self._smart_trigger_enabled)
+        if resolution is None:
+            return False
+        definition = resolution.definition
+        editor = self._frame_editor()
+        editor.Replace(int(line_start), int(line_end), "")
+        editor.SetInsertionPoint(int(line_start))
+        self.run_quillin_command(
+            definition.command_id, {"trigger": definition.name, "args": resolution.args}
+        )
+        self.fire_quillin_event(
+            "smart_trigger.entered",
+            {"trigger": definition.name, "args": list(resolution.args)},
+        )
+        return True
+
+    def _smart_trigger_enabled(self, definition: SmartTriggerDef) -> bool:
+        """Return True when *definition* may fire: gated on the command being
+        loaded, the third-party flag (for non-bundled commands), and the
+        Quillin's own ``enable_<name>`` setting (default: the manifest default).
+        """
+        if definition.command_id not in self._quillin_index:
+            return False
+        if definition.command_id not in self._bundled_command_ids and not self._quillins_enabled():
+            return False
+        from quill.core import quillin_settings
+
+        enabled = quillin_settings.get_setting(
+            definition.quillin_id,
+            f"enable_{definition.name}",
+            definition.enabled_by_default,
+        )
+        return bool(enabled)
+
+    def _contributed_abbreviation_enabled(
+        self, quillin_id: str, trigger: str, default: bool
+    ) -> bool:
+        """Return True when a contributed abbreviation may expand, honouring the
+        Quillin's own ``enable_abbrev_<trigger>`` setting (default: the manifest
+        default). Third-party gating is already applied upstream: disabled
+        third-party manifests are never in the loaded set."""
+        from quill.core import quillin_settings
+
+        return bool(quillin_settings.get_setting(quillin_id, f"enable_abbrev_{trigger}", default))
 
     def _run_quillin_snippet(self, body: str) -> None:
         editor = self._frame_editor()
@@ -332,7 +421,11 @@ class QuillinsMenuMixin:
         self._announce("Quillin snippet inserted.")
 
     def _run_quillin_handler(
-        self, manifest: ExtensionManifest, directory: Path, command_id: str
+        self,
+        manifest: ExtensionManifest,
+        directory: Path,
+        command_id: str,
+        context: dict[str, Any] | None = None,
     ) -> None:
         if not hasattr(self, "_quillin_storage_data"):
             self._quillin_storage_data: dict[str, dict[str, str]] = {}
@@ -344,7 +437,7 @@ class QuillinsMenuMixin:
         try:
             host.start()
             host.load()
-            host.invoke(command_id, {})
+            host.invoke(command_id, context or {})
         except Exception as error:  # surface, never crash the editor
             self._announce(f"Quillin error: {error}")
         finally:

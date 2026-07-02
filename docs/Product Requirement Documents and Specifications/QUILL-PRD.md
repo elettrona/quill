@@ -1902,6 +1902,8 @@ Quill ships a read-aloud feature that uses a **secondary** voice the user picks 
 - Voice, speed, pitch, volume all configurable. Three named profiles (Reading, Proofreading, Skim) save preferred values.
 - The read-aloud voice never overrides the screen reader's announcements; if a screen reader speaks something while read-aloud is active, read-aloud continues but is briefly ducked.
 
+**Read Document in Browser (experimental, opt-in — `edge_read_aloud_enabled`).** The embedded WebView2 only exposes the local SAPI voices; a *real* browser exposes its full Web Speech voice set, including Edge's "Online (Natural)" voices. So, gated behind **Settings → Experimental** (and the experimental acknowledgement), QUILL can build a self-contained, accessible reader page (`quill/core/browser_reader.py`: labelled voice picker, Speed, Play/Pause/Stop, an `aria-live` status, keyboard focus on Play, the document text carrying its own `lang`) and open it in the user's chosen browser via the existing preview-open path. The page builder is wx-free and unit-tested. **Privacy contract:** QUILL itself makes no network call for this; on-device voices synthesize locally, but the browser's "Online (Natural)" voices synthesize in the vendor's cloud, so choosing one sends the selected text to that service. This is disclosed in the setting description and in the network-egress audit's documented (out-of-package) egress notes; the generated page carries the full document text as plaintext in app-data and is therefore **deleted on exit** (`browser_reader.remove_reader_pages`) so no copy lingers. Playback speaks chunk-by-chunk and treats Stop's `interrupted`/`canceled` events as normal teardown (never surfaced as errors).
+
 ### 5.25b Watch Folder automation
 
 Quill provides an optional watch-folder workflow under `Tools -> Watch Folder` for low-friction
@@ -2016,21 +2018,24 @@ providers".
 > dictation. whisper.cpp remains the default and needs nothing extra; Faster Whisper does
 > not attribute speakers.
 >
-> **Hold-to-Dictate & Locked Dictation (shipped, 1.0-complete).** Two keyboard-only
-> dictation modes on the offline engine: **Hold F9** to record-and-insert as one
-> undoable edit, and **Ctrl+F9** for a hands-free Locked session (Ctrl+Shift+F9
-> pause/resume, Alt+F9 speak-state, Escape keep / Shift+Escape discard). Built as a
-> protected transaction in the wx-free `quill/core/speech/dictation/` package: an
-> explicit `DictationController` state machine (single-recorder invariant; no bare
-> boolean), audio saved to `recovery/dictation/` **before** transcription, a key-up
-> watchdog so a missed release can't leave the mic open, a five-minute / focus-loss
-> auto-stop, and a transcript that can't be safely inserted is kept for review rather
-> than lost. Two accessible surfaces under **Tools > Speech > Hold & Locked
-> Dictation**: a **Dictation Settings** panel (locked time limit, minimum hold, stop
-> on focus loss, intelligent spacing, reset of the one-time hint) and a **Dictation
-> History & Review** window (insert/copy/discard recovered recordings; doubles as the
-> startup-recovery prompt). Locked Dictation has distinct earcons and a one-time
-> onboarding hint. File synthesis runs with no console-window flash and a timeout.
+> **Locked Dictation (shipped, 1.0-complete).** One keyboard-only dictation mode on
+> the offline engine: **Ctrl+F9** toggles a hands-free Locked session
+> (Ctrl+Shift+F9 pause/resume, Alt+F9 speak-state, Escape keep / Shift+Escape
+> discard). *Hold-to-Dictate (hold F9) shipped in 0.7.0 and was removed*: a held
+> key repeats and announces itself endlessly under a screen reader, so the single
+> locked gesture is the reliable one (the controller's hold states remain in the
+> wx-free core for compatibility, but no UI binds them). Built as a protected
+> transaction in `quill/core/speech/dictation/`: an explicit `DictationController`
+> state machine (single-recorder invariant; no bare boolean), audio saved to
+> `recovery/dictation/` **before** transcription, a five-minute / focus-loss
+> auto-stop, and a transcript that can't be safely inserted is kept for review
+> rather than lost. Two accessible surfaces under **Tools > Speech > Locked
+> Dictation**: a **Dictation Settings** panel (session time limit, stop on focus
+> loss, intelligent spacing, reset of the one-time hint) and a **Dictation
+> History & Review** window (insert/copy/discard recovered recordings; doubles as
+> the startup-recovery prompt). Locked Dictation has distinct earcons and a
+> one-time onboarding hint. File synthesis runs with no console-window flash and a
+> timeout.
 
 ### 5.25f AI footprint, on-demand acquisition, and optimization
 
@@ -3123,6 +3128,16 @@ Abbreviation Expansion replaces short trigger words with longer text automatical
 
 ---
 
+### 5.78a Quillin-contributed insert automation — abbreviations and smart triggers
+
+Quillins declare two Insert Automation contribution types in their manifests (`contributes.abbreviations`, `contributes.smart_triggers`); QUILL dispatches both.
+
+**Contributed abbreviations.** At Quillin load, `abbreviations.build_contributed_library` merges every installed manifest's *static* abbreviation entries (those with an `expansion`) into a separate in-memory `AbbreviationLibrary` — deterministic namespaced ids (`quillin:<id>:<trigger>`), rebuilt on every reload, **never persisted** into the user's `abbreviations.json`. Handler-based entries (e.g. Smart Insert's `qbrf`) are skipped: the bare-word expander cannot run a handler mid-type, so dynamic content is reached via a smart trigger or menu command instead. Expansion order: the user's own library is tried first, the contributed library only on a miss, so a user abbreviation always beats a contributed one with the same trigger; across Quillins, first-loaded wins. Each entry honours the Quillin's own `enable_abbrev_<trigger>` setting (default: the manifest's `enabled_by_default`), and the global Abbreviation Expansion master toggle gates everything. Core: `quill/core/abbreviations.py`; host wiring: `main_frame_quillins.py` (build) + `main_frame_abbreviations.py` (`_try_expand_contributed`). Unit-tested in `tests/unit/core/test_abbreviations_contributed.py`.
+
+**Smart triggers (`=name(args)`).** A smart trigger is a line that is exactly `=name(arg, arg)` (whitespace-tolerant) activated with Enter. The parser (`quill/core/quillins/smart_triggers.py`, pure/wx-free, unit-tested) requires the trigger to occupy the whole line and a name-then-parens shape, so prose containing `=foo()`, a bare `=5`, or spreadsheet-style `=a+b` never fires. Arguments are comma-separated, stripped, empties dropped. Resolution checks: name known (index across installed manifests, first definition wins on collision), trigger enabled (per-Quillin `enable_<name>` setting; non-bundled commands also require the SEC-8 third-party flag), and declared `min_args`/`max_args` bounds. On dispatch the editor removes the trigger line, runs the linked command at that position with a context of `{"trigger", "args"}` (handlers receive the args — e.g. `=todo(10)` builds a ten-item list, `=rand(3,4)` three paragraphs of four lines, both clamped to sane maxima), and fires the `smart_trigger.entered` Quillin event with the same payload. A disabled or unknown trigger leaves the line untouched and Enter behaves normally. Host wiring: `MainFrame._handle_smart_trigger_return` (Enter interception, before Markdown list continuation) → `QuillinsMenuMixin.dispatch_smart_trigger_line`.
+
+---
+
 ### 5.79 Ask AI — lightweight in-editor AI chat
 
 > **Retired in 2.0 (see §5.84a).** Ask AI has been folded into the single
@@ -4036,6 +4051,218 @@ The 3-tab About dialog already ships (About Quill, §"About"). Tested by `tests/
 Sub-PR 1.5 makes the system live. `quill/core/verbosity/controller.py` (`VerbosityController`, wx-free) owns the engine, Quiet/Meeting controllers, the undo stack, announcement history, mastery, and Safe Mode. `MainFrame` gains `VerbosityCommandsMixin` (`quill/ui/main_frame_verbosity.py`) and registers eight `verbosity.*` commands (palette- and Keyboard-Manager-reachable). The announce choke-point (`MainFrame._announce`) routes through `VerbosityController.process` **only once the controller exists** (created on first verbosity use), so the default path is unchanged until then; once live, Quiet/Meeting suppress speech while the status-bar visual floor remains. Default chords avoid all conflicts (`edit.quote_lines` keeps `Ctrl+Shift+Q`): Quiet = QUILL key + Q, Meeting = QUILL key + Shift+Q, Verbosity Undo = `Ctrl+Shift+Z`; the rest are palette/Keyboard-Manager reachable. Eight scalar `verbosity_*` settings persist (mastery enabled/threshold, validation mode, history enabled/limit/clear-on-exit, task-profile suggestions, Safe Mode); collection-typed state stays in `verbosity_custom.json`. Live in-app behavior warrants a manual smoke run before release.
 
 Sub-PR 1.6 (the original "100-item addendum") was **consolidated** into the deduplicated *Polish backlog*, now the authoritative status list in **roadmap §6** (the standalone `verbosity-system.md` archive was retired once verbosity shipped). Rather than 100 separate features: the duplicates and already-built items are folded into the foundation/engine/UI shipped in 1.1–1.5; the themed survivors (per-category verbosity via the verb registry, status-query commands, announcement flow control, safety announcements, friendly names, status-bar surfacing, scope profiles, sound learnability, coaching/discovery, braille polish) are tracked there; and the screen-reader-redundant items — **typing echo, command echo, speech rate/pause, punctuation/symbol profiles** — are recorded as **recommend do not build**, because QUILL speaks alongside the screen reader and must not duplicate or fight the settings (echo, rate, punctuation level) the screen reader already owns.
+
+### 5.92 GLOW — Guided Layout and Output Workflow (shipped, experimental opt-in)
+
+GLOW is QUILL's accessibility review and repair system: **guided confidence, not a
+compliance dashboard**. It reviews what is in front of the user, explains each
+finding in plain language, and applies only deterministic, reviewable fixes. The
+`core.glow` feature flag shipped `locked_off` through 0.8.1 while the engine
+deployment was finished; for 0.9.0 it ships as an **experimental opt-in**: the
+catalog flag is unlocked, but every GLOW surface is additionally gated by the
+Experimental tab (`experimental_acknowledged` + `glow_experimental_enabled`,
+both default off) through `MainFrame._feature_enabled`, so GLOW is off by
+default and user-flippable with no restart. The flag remains a normal
+profile-controllable feature.
+
+#### 5.92.1 Surfaces
+
+All commands live under **Tools > GLOW** and in the command palette:
+
+| Command | Behavior |
+|---|---|
+| GLOW Audit Current Document | In-editor deterministic audit of the whole buffer (plain text, Markdown, HTML); report opens as a named scratch tab. |
+| GLOW Audit Selection / Paragraph | The same audit scoped to the selection, or the paragraph/line at the caret. |
+| GLOW Fix Current Document | Deterministic fixes into a *named preview tab* plus an immediate compare session against the original — accept with full knowledge, never a silent rewrite. |
+| GLOW Fix Selection / Paragraph | Quick in-place fix of the scoped block; the replacement is selected afterward so it can be reviewed or undone in one step. |
+| GLOW Audit File... | **(new with the unlock)** Structured-document audit — DOCX, PPTX, XLSX, PDF, EPUB, Markdown — through the shared engine on the background task pool; report tab carries score, grade, and findings. |
+| GLOW Fix File... | **(new with the unlock)** Structured-document fix that writes a repaired copy beside the source (`name-accessible.ext`, numbered on collision). The original is **never** modified; consent names the output path before anything runs. |
+| Check for GLOW Updates... (Help) | Opt-in engine update: signed manifest, per-wheel SHA-256, offline `--no-index` install, rollback to the vendored wheels on failure, restart to apply (GLOW-8). |
+
+Handlers for the file-level commands live in the `GlowFileMixin`
+(`quill/ui/main_frame_glow.py`); in-editor handlers remain in `main_frame.py`.
+
+#### 5.92.2 Rules (in-editor, always available)
+
+Markdown: heading-marker spacing (auto-fix), heading-level jumps, image alt text,
+generic link text. HTML: missing `lang` (auto-fix), heading jumps, `img` alt
+(auto-fix), generic link text, tables without header cells. Plain text: tab-indent
+hazards. All formats: plain-language phrasing and dense-paragraph warnings, and
+trailing-whitespace trim on fix. Implemented wx-free in `quill/core/glow.py`.
+
+#### 5.92.3 The shared engine (structured documents)
+
+Structured audit/fix flows through the `quill_glow_core` contract package
+(`audit_by_extension` / `fix_by_extension` / `convert_to_markdown`), which bridges
+to the `acb-large-print` backend when installed. Deployment contract (hardened
+2026-07-02 after the MCP-era split broke it): QUILL's `glow` extra pins
+**`quill-glow-core[glow]>=0.1.1` plus `acb-large-print>=8.0.0`** — 8.0.0 is the
+first release that ships the split `acb_large_print_core` dispatch backend the
+contract wheel bridges to; older backends satisfy the contract wheel's own loose
+floor (>=3.0.0) and leave the engine silently unavailable. Vendored wheels live in
+`vendor/wheels` for fully offline install. The seam (`quill/core/glow.py`)
+degrades honestly: engine absent means an "engine not installed" report, never a
+crash (GLOW-1), and severities map onto QUILL's error/warning/info levels.
+
+#### 5.92.4 Privacy and consent
+
+The default GLOW path is entirely on-device. The engine's optional networked
+features — AI alt-text, Presidio PII redaction, WCAG language processing — are
+structurally off: the seam forwards no feature-enabling kwargs unless the caller
+passes a `GlowNetworkConsent` with a feature explicitly set after per-action
+consent (GLOW-7). The engine update check is the only other network touchpoint,
+runs only on explicit invocation, and is registered in the network-egress audit
+(GATE-9).
+
+#### 5.92.5 Accessibility contract
+
+Reports are plain, heading-structured text in ordinary tabs (searchable, brailled,
+speakable); every finding carries rule id, severity, location when known, and a
+plain-language suggestion; fix flows announce counts and destinations; file fixes
+are non-destructive by construction; background parses never block the UI thread.
+
+### 5.93 Import / Convert Document — free-first conversion and OCR (shipped, all three tiers)
+
+The supported document-rescue tool, now the **canonical spec** (the standalone
+OCR planning PRD has been retired into this section; remaining depth items are
+tracked in roadmap §5). The routing principle: **free first, local first, and
+nothing is ever uploaded without explicit consent** — the paid cloud tier is
+reached only when the free local tiers fall short, and only after a per-upload
+consent dialog.
+
+#### 5.93.1 The three tiers
+
+| Tier | Engine | Handles | Cost / privacy |
+|---|---|---|---|
+| 1 | MarkItDown (`quill/io/markitdown_bridge.py`, ships with the `pages` extra) | Born-digital DOCX/DOC, PPTX/PPT, XLSX/XLS, HTML, EPUB, CSV, ODT/ODP/ODS, and PDFs with a text layer | Free, local, no upload |
+| 2 | Local Tesseract OCR (`quill/io/tesseract_ocr.py`) | Images (PNG/JPG/TIFF/BMP/GIF/WebP) and image-based PDFs; CPU-only, no GPU | Free, local, no upload |
+| 3 | Datalab Chandra cloud OCR (`quill/core/datalab_ocr.py`) | The accuracy escalation: complex tables, forms, handwriting, math, dense layouts, poor scans; returns Markdown/HTML/JSON | Paid (BYOK, per page on the user's Datalab account), cloud, **consent-gated per upload** |
+
+The router (`quill/io/docconvert.py`, wx-free, strict-typed) implements the
+free-first flow: born-digital types go to Tier 1; images go straight to
+Tier 2; PDFs try Tier 1 and are measured by the **chars-per-page heuristic**
+(`text_layer_looks_empty`, threshold 50 chars/page) — a PDF that comes back
+looking scanned is flagged `offer_local_ocr`, never silently opened empty.
+Tier 2 rasterizes PDF pages via `pypdfium2` (~150 dpi) and recognizes them one
+at a time with cancel checks between pages, joining pages with the
+screen-reader-searchable `<!-- Page N -->` delimiter. Tesseract's TSV output
+supplies per-word confidence; a mean below 60 flags the outcome `looks_weak`
+— the Tier 2 -> 3 escalation point. Tier 3 (`convert_with_cloud_ocr`) adapts
+the Datalab result into the same `ConversionOutcome`, so every downstream
+surface (open-as-tab, review, announcements) is tier-agnostic.
+
+#### 5.93.2 Escalation prompts (never silent, cost/upload named exactly once)
+
+Tier 1 -> 2 (stays free and local): *"QUILL could not find readable text in
+<file>. It looks scanned or image-based. Run free on-device OCR (local
+Tesseract)? This stays on your computer and does not upload anything."* —
+Yes runs OCR, No opens the empty result anyway, Cancel imports nothing.
+
+Tier 2 -> 3 (the only prompt that mentions money or upload; shown only when
+the service is configured): *"On-device OCR finished, but the result looks
+low-quality or the layout is complex. For higher accuracy you can convert it
+with Datalab cloud OCR. This uploads the file to a cloud service and may cost
+money."* — accepting leads to the §5.93.2a consent dialog; declining keeps
+the local result. When Tier 2 is unavailable (engine not installed) and the
+user declines the free install, the same offer applies — free-first order is
+structural.
+
+##### 5.93.2a Upload consent (every time, no exceptions)
+
+Before **every** cloud upload, a consent dialog states: the document will be
+sent to Datalab; continue only if allowed to upload it; consider
+private/medical/legal/educational/financial/employment/confidential content;
+Datalab deletes results ~1 hour after processing and QUILL retrieves promptly,
+keeping the result only in the opened document. A **filename heuristic**
+(`looks_sensitive`: tax/medical/patient/ssn/legal/IEP/... fragments — names
+only, content is never inspected) prepends an extra CAUTION line. There is no
+"don't ask again": consent is per-action by design.
+
+#### 5.93.2b Cloud client contract (`quill/core/datalab_ocr.py`)
+
+REST against the Datalab Convert API (`POST /api/v1/convert`, multipart, key
+in `X-API-Key`; poll `request_check_url` with cancel checks until complete).
+BYOK: the key lives in the credential vault
+(`QUILL/services/datalab/api_key`) with a `DATALAB_API_KEY` env fallback —
+never in settings files. HTTPS enforced; Safe-Mode blocked; injectable opener
+keeps tests offline; GATE-9 entry `core/datalab_ocr.py::_request`. Errors map
+to the PRD's friendly table (rejected key / billing issue / too large / rate
+limited / unreachable / incomplete / empty / timeout), and logging carries
+state transitions and page counts only — never content, output, keys, or
+bodies. Non-secret knobs persist as settings: `datalab_enabled` (default
+off), `datalab_endpoint` (HTTPS-validated), `datalab_mode`
+(fast/balanced/accurate), `datalab_output` (markdown/html/json),
+`datalab_paginate`.
+
+#### 5.93.2c AI Hub Services tab
+
+**AI Hub > Services** is the customer-facing service manager (opened directly
+by **OCR Service Settings...**): a plain-language intro naming the free tiers
+first, then the Datalab card with a live status line (Ready / Needs API key /
+Not configured), enable checkbox, key field (saved to the vault), endpoint,
+default mode/output, page delimiters, an always-on "confirm before upload"
+statement, **Test Connection** (key-presence + endpoint sanity only — states
+explicitly that no document is uploaded), **Copy Service Summary**
+(secret-free, `API key value: Not included`), and six provider link buttons
+(website, API keys, pricing, privacy/security, API docs, supported file
+types), each announcing that it opens in the browser. `open_ai_hub` folds the
+saved Datalab fields back into the live settings object so the next
+conversion sees them without a restart.
+
+#### 5.93.2d OCR Review Mode (v1: the spoken checklist)
+
+**Review Last OCR Result...** opens a named tab over the most recent
+conversion: source, producing tier/service, page count, mean confidence,
+warnings, and every low-confidence line pre-formatted as
+`Page N: [NN%] text` (populated by Tier 2 from per-word TSV confidence).
+The reviewer walks exactly the flagged lines and jumps into the converted
+document by searching the page marker — review by ear, not re-proofreading.
+Cloud/Tier-1 results state honestly that no per-line confidence exists.
+(The full §12 review workspace — outline tree, per-block accept/re-run,
+table review — is tracked as future depth in roadmap §5.)
+
+#### 5.93.2e Temporary files
+
+**Delete OCR Temporary Files** clears leftovers under the app-data
+`ocr_jobs` folder (crash residue) and reports what was removed; the local
+tiers use per-run auto-cleaned temp directories, so normally there is
+nothing to delete. Results live only in the opened (unsaved) document until
+the user saves.
+
+#### 5.93.3 Engine acquisition (verified downloadable component)
+
+Tesseract is never bundled. `quill/core/tesseract_install.py` downloads the
+**byte-identical official UB-Mannheim 5.4.0 installer** (Apache-2.0) from
+QUILL's pinned `assets-v1` release, SHA-256-verified (SEC-6), HTTPS-enforced,
+Safe-Mode-blocked, then **launches the installer visibly** for the user to
+complete — NSIS has no admin-free extraction analogous to `msiexec /a`, and
+QUILL never silently elevates. Discovery
+(`quill.io.tesseract_ocr.discover_tesseract_executable`) then finds the engine
+with no restart: settings override (`tesseract_path`) -> QUILL-managed folder
+-> `PATH` -> the conventional `C:\Program Files\Tesseract-OCR` location. The
+download call site is registered in the network-egress audit (GATE-9). On
+macOS the managed download is not offered; a Homebrew-installed `tesseract`
+on PATH is picked up automatically.
+
+#### 5.93.4 Surfaces
+
+- **File > Import > Import / Convert Document (OCR)...** (leads the submenu)
+  and the same command in **Tools > Reading & Dictation**; palette id
+  `file.import_convert`.
+- **Tools > Reading & Dictation > Install Local OCR Engine (Tesseract)...**
+  (`tools.install_local_ocr`) — consent names the size and exactly what will
+  happen before any download.
+- **Tools > Reading & Dictation > OCR and Conversion Services...**
+  (`tools.ocr_services`) — the customer-facing services overview: a friendly
+  card per tier (what it does, best for, local-or-cloud, cost, limits, setup)
+  plus the live engine install status, in plain language per the OCR PRD's
+  Services-tab content requirements. A full AI Hub Services tab ships with the
+  first cloud provider.
+
+Handlers live in `quill/ui/main_frame_docconvert.py` (`DocConvertMixin`).
+Settings: `ocr_language` (Tesseract three-letter code, default `eng`) and
+`tesseract_path` (explicit override). Commands map to `core.ocr` (the install
+and services surfaces) so OCR-less profiles stay clean.
 
 ---
 
@@ -9241,18 +9468,22 @@ accelerator-only menu ids. The Window menu's dynamic open-document list shows ea
 shortcut inline (``&1: Notes (Alt+1)``) for discoverability; ``Alt+digit`` is free
 default key-space and, unlike ``Ctrl+Alt+`` chords, is not screen-reader-hostile.
 
-### Braille editor control type (shipped 0.8.1 Beta 1)
+### Braille editor control type (shipped 0.8.1 Beta 1; cell-two offset unresolved)
 
 Some braille displays render the first character of every line in cell two for a
-rich-text control — the long-standing Microsoft Word quirk. Because QUILL's editor
+rich-text control — the long-standing word-processor quirk. Because QUILL's editor
 must be a RichEdit for correct accessible-value reporting (#616, a *read-only*
 constraint), **Settings → Accessibility → Editor control type (braille)** lets a
 braille user pick the native control: ``rich2`` (RichEdit 3.0, default), ``rich``
 (RichEdit 2.0), or ``plain`` (a Notepad-style EDIT control — editable, so it still
 reports its value to JAWS/NVDA). It applies at editor construction (new
-documents/restart). Field note: this is exposed for users to A/B against their own
-display; where the offset reproduces in Notepad itself, the cause is the braille
-display / screen-reader configuration (e.g. left status cells), not the control.
+documents/restart). **Status (2026-07-02): the control-type switch has not
+resolved the reported offset — the issue persists on affected displays, and an
+outcome is still being considered.** The options are retained deliberately as a
+troubleshooting/experimentation surface (users A/B against their own display;
+where the offset reproduces in Notepad itself, the cause is the braille display /
+screen-reader configuration, e.g. left status cells, not the control), and
+shipping docs must not claim the offset is fixed.
 
 ### Self-voice fallback is logged, not announced (shipped 0.8.1 Beta 1)
 

@@ -194,10 +194,30 @@ class Settings:
     #   editor_hide_border: draw the editor control with no border for a cleaner,
     #   Notepad-like frame. Off keeps the platform default border.
     editor_hide_border: bool = False
-    #   experimental_acknowledged: the user has confirmed they understand that
-    #   features may degrade on a non-default editor surface. The experimental
-    #   overrides above are ignored until this is True (the safety gate).
+    #   experimental_acknowledged: the master Experimental switch — the user has
+    #   opted in to experimental features as a group. Every experimental option
+    #   below is ignored (and its controls disabled) until this is True.
     experimental_acknowledged: bool = False
+    #   experimental_editor_surfaces_enabled: the secondary gate for the two
+    #   editor-surface options above; carries the "features may degrade based on
+    #   the control selected" acknowledgement. Both gates must be on before a
+    #   non-default surface or border override is applied.
+    experimental_editor_surfaces_enabled: bool = False
+    #   glow_experimental_enabled: opt-in for the GLOW accessibility review and
+    #   repair suite (Tools > GLOW). Gated by experimental_acknowledged; off by
+    #   default while GLOW matures; takes effect on settings apply (menu rebuild).
+    glow_experimental_enabled: bool = False
+    #   publishing_experimental_enabled: opt-in for the read-only WordPress
+    #   publishing connections tools (File > Publishing). Gated by
+    #   experimental_acknowledged; the send/publish half stays locked regardless.
+    publishing_experimental_enabled: bool = False
+    #   edge_read_aloud_enabled: opt-in experimental read-aloud that opens an
+    #   accessible reader page in the user's real browser (see
+    #   quill/core/browser_reader.py), where the full/online Web Speech voices
+    #   are available. Gated by experimental_acknowledged; takes effect on
+    #   settings apply — command always registered, menu appears on the settings
+    #   menu rebuild, no restart. Voice is chosen/remembered in the page itself.
+    edge_read_aloud_enabled: bool = False
     # What to do when a document that carries hidden formatting is saved as plain
     # text: "ask" (offer to keep the formatting), "illuminate" (always write a
     # <name>.illumination sidecar so the .txt round-trips formatting in QUILL), or
@@ -230,6 +250,20 @@ class Settings:
     vault_root: str = ""  # active Accessible Vault folder ("" = no vault open)
     vault_templates_folder: str = ""  # vault-relative Templates folder ("" = "Templates")
     vault_daily_pattern: str = ""  # daily-note path pattern ("" = "Journal/{{date:YYYY-MM-DD}}.md")
+    # Free-first document conversion (Import / Convert Document): the local
+    # Tesseract OCR language (three-letter code, "" = "eng") and an optional
+    # explicit tesseract executable override ("" = auto-discover).
+    ocr_language: str = ""
+    tesseract_path: str = ""
+    # Tier 3 — Datalab Chandra cloud OCR (consent-gated, BYOK; PRD §5.93).
+    # The API key is NEVER stored here — it lives in the credential vault
+    # (see quill/core/datalab_ocr.py). These are the non-secret knobs from the
+    # AI Hub Services tab. Every upload still requires a per-action consent.
+    datalab_enabled: bool = False
+    datalab_endpoint: str = "https://www.datalab.to"
+    datalab_mode: str = "balanced"  # fast | balanced | accurate
+    datalab_output: str = "markdown"  # markdown | html | json
+    datalab_paginate: bool = True
     # #620: Simple File Open dialog. When true, File > Open... shows a
     # keyboard-friendly picker with a small filter, recent locations, and
     # a hidden-files toggle. The standard Windows file dialog is still
@@ -699,6 +733,12 @@ class Settings:
             experimental_editor_surface = "default"
         editor_hide_border = bool(data.get("editor_hide_border", False))
         experimental_acknowledged = bool(data.get("experimental_acknowledged", False))
+        experimental_editor_surfaces_enabled = bool(
+            data.get("experimental_editor_surfaces_enabled", False)
+        )
+        glow_experimental_enabled = bool(data.get("glow_experimental_enabled", False))
+        publishing_experimental_enabled = bool(data.get("publishing_experimental_enabled", False))
+        edge_read_aloud_enabled = bool(data.get("edge_read_aloud_enabled", False))
         plain_text_with_formatting = str(data.get("plain_text_with_formatting", "ask"))
         if plain_text_with_formatting not in {"ask", "illuminate", "plain"}:
             plain_text_with_formatting = "ask"
@@ -750,6 +790,19 @@ class Settings:
         vault_root = str(data.get("vault_root", "")).strip()
         vault_templates_folder = str(data.get("vault_templates_folder", "")).strip()
         vault_daily_pattern = str(data.get("vault_daily_pattern", "")).strip()
+        ocr_language = str(data.get("ocr_language", "")).strip()
+        tesseract_path = str(data.get("tesseract_path", "")).strip()
+        datalab_enabled = bool(data.get("datalab_enabled", False))
+        datalab_endpoint = str(data.get("datalab_endpoint", "https://www.datalab.to")).strip()
+        if not datalab_endpoint.lower().startswith("https://"):
+            datalab_endpoint = "https://www.datalab.to"
+        datalab_mode = str(data.get("datalab_mode", "balanced")).strip().lower()
+        if datalab_mode not in {"fast", "balanced", "accurate"}:
+            datalab_mode = "balanced"
+        datalab_output = str(data.get("datalab_output", "markdown")).strip().lower()
+        if datalab_output not in {"markdown", "html", "json"}:
+            datalab_output = "markdown"
+        datalab_paginate = bool(data.get("datalab_paginate", True))
         # #620: Simple File Open dialog opt-in.
         use_simple_file_dialog = bool(data.get("use_simple_file_dialog", False))
         watch_folder_include_subfolders = bool(data.get("watch_folder_include_subfolders", False))
@@ -1158,6 +1211,10 @@ class Settings:
             experimental_editor_surface=experimental_editor_surface,
             editor_hide_border=editor_hide_border,
             experimental_acknowledged=experimental_acknowledged,
+            experimental_editor_surfaces_enabled=experimental_editor_surfaces_enabled,
+            glow_experimental_enabled=glow_experimental_enabled,
+            publishing_experimental_enabled=publishing_experimental_enabled,
+            edge_read_aloud_enabled=edge_read_aloud_enabled,
             plain_text_with_formatting=plain_text_with_formatting,
             dictation_onboarding_shown=dictation_onboarding_shown,
             pronunciation_enabled=pronunciation_enabled,
@@ -1181,6 +1238,13 @@ class Settings:
             vault_root=vault_root,
             vault_templates_folder=vault_templates_folder,
             vault_daily_pattern=vault_daily_pattern,
+            ocr_language=ocr_language,
+            tesseract_path=tesseract_path,
+            datalab_enabled=datalab_enabled,
+            datalab_endpoint=datalab_endpoint,
+            datalab_mode=datalab_mode,
+            datalab_output=datalab_output,
+            datalab_paginate=datalab_paginate,
             use_simple_file_dialog=use_simple_file_dialog,
             watch_folder_include_subfolders=watch_folder_include_subfolders,
             watch_folder_process_existing=watch_folder_process_existing,

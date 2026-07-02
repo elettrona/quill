@@ -496,8 +496,10 @@ from quill.ui.main_frame_classic_editor import ClassicEditorMixin
 from quill.ui.main_frame_copy_tray import CopyTrayMixin
 from quill.ui.main_frame_devtools import DevToolsMixin
 from quill.ui.main_frame_dictation_hotkeys import DictationHotkeysMixin
+from quill.ui.main_frame_docconvert import DocConvertMixin
 from quill.ui.main_frame_format_codes import FormatCodesMixin
 from quill.ui.main_frame_github import GitHubRemoteMixin
+from quill.ui.main_frame_glow import GlowFileMixin
 from quill.ui.main_frame_hygiene import HygieneMixin
 from quill.ui.main_frame_image import ImageCaptureMixin
 from quill.ui.main_frame_inline_notes import InlineNotesMixin
@@ -873,6 +875,8 @@ class MainFrame(
     ListStudioMixin,
     StoryStudioMixin,
     VaultMixin,
+    GlowFileMixin,
+    DocConvertMixin,
     DictationHotkeysMixin,
     SectionMoveMixin,
     CopyTrayMixin,
@@ -1413,7 +1417,9 @@ class MainFrame(
             self._wx.CallAfter(focus_target.SetFocus)
 
     def _run_deferred_startup_tasks(self) -> None:
-        _profile = os.environ.get("QUILL_PROFILE_STARTUP") == "1"
+        # Always capture startup timing so logs/startup_tasks.txt is fresh after
+        # every launch (a field bug report can include it with no env var).
+        _profile = True
         _times: list[tuple[str, float]] = []
 
         try:
@@ -1470,14 +1476,6 @@ class MainFrame(
         except Exception:
             self._report_startup_task_failure("trust-consent onboarding")
         for label, task in (
-            # Pre-warm the WebView2 subprocess before the user opens a preview
-            # or the AI chat pane.  The first WebView.New() call initialises the
-            # Edge WebView2 process and can block the UI thread for several
-            # seconds (sometimes minutes) on slower or first-time Windows
-            # installations.  Paying that cost here — once, in the deferred
-            # startup sequence — means subsequent preview opens (F6, auto-preview,
-            # AI panel) are near-instant.  Fixes #174 and reduces #177.
-            ("WebView2 warm-up", self._prewarm_webview_runtime),
             ("crash recovery", self._offer_crash_recovery),
             ("first-run onboarding", self._maybe_run_first_run_onboarding),
             ("migration notice", self._surface_migration_notice),
@@ -1495,9 +1493,13 @@ class MainFrame(
             ("lexical cache warm-up", start_lexical_preload),
             # §179: F1 / Shift+F1 sync-decodes ``topics.json`` the first time it
             # is pressed. On a cold machine this can take a few hundred ms and
-            # trip the wx heartbeat watchdog while a modal is open. Pre-warm
-            # the renderer here so the first F1 is instant.
-            ("help topics warm-up", warm_help_topics),
+            # trip the wx heartbeat watchdog. warm_help_topics is lock-protected
+            # and thread-safe, so warm it off the UI thread via the task manager
+            # (kwargs absorbed) rather than blocking the deferred-startup sequence.
+            (
+                "help topics warm-up",
+                lambda: self._task_manager.submit("help-warm", lambda **_kw: warm_help_topics()),
+            ),
             # §8.2 TTS-FALLBACK-ANNOUNCE: show status prompt when TTS init failed.
             ("TTS fallback check", self._check_tts_fallback_on_startup),
             # Build the model-lifecycle manager from settings and start the idle
@@ -1512,6 +1514,22 @@ class MainFrame(
                 self._report_startup_task_failure(label)
             if _profile:
                 _times.append((label, time.perf_counter() - _t))
+        # WebView2 warm-up runs LAST, on its own delayed CallLater — not inline.
+        # The first ``wx.html2.WebView.New()`` initialises the Edge WebView2
+        # process and can block the UI thread for several seconds (sometimes
+        # minutes) on slower or first-run Windows installs (#174/#177). Running it
+        # inline at the *front* of this list meant that block landed while the
+        # user was waiting to interact — dead air a screen-reader user reads as a
+        # frozen app (the wx heartbeat watchdog logged ~7 s stalls). Deferring it
+        # to after the editor is focused and "Ready" is announced, on a short
+        # delay, lets the user start working first; F6/preview before it finishes
+        # is already handled by the ``_webview_warm`` deferral in preview_in_app.
+        # Isolated like every other deferred step: a failure scheduling the
+        # warm-up must never take down startup (the DLG-3 Phase 5 contract).
+        try:
+            self._wx.CallLater(1200, self._prewarm_webview_runtime)
+        except Exception:
+            self._report_startup_task_failure("webview warm-up scheduling")
         _t = time.perf_counter() if _profile else 0.0
         if (
             getattr(self.settings, "auto_check_updates", False)
@@ -2341,6 +2359,42 @@ class MainFrame(
             None,
         )
         self.commands.register(
+            "file.import_convert",
+            "Import / Convert Document (OCR)",
+            self.import_convert_document,
+            None,
+        )
+        self.commands.register(
+            "tools.install_local_ocr",
+            "Install Local OCR Engine (Tesseract)",
+            self.install_local_ocr_engine,
+            None,
+        )
+        self.commands.register(
+            "tools.ocr_services",
+            "OCR and Conversion Services",
+            self.show_ocr_services_overview,
+            None,
+        )
+        self.commands.register(
+            "tools.review_last_ocr",
+            "Review Last OCR Result",
+            self.review_last_ocr_result,
+            None,
+        )
+        self.commands.register(
+            "tools.ocr_service_settings",
+            "OCR Service Settings",
+            self.open_ocr_service_settings,
+            None,
+        )
+        self.commands.register(
+            "tools.delete_ocr_temp",
+            "Delete OCR Temporary Files",
+            self.delete_ocr_temp_files,
+            None,
+        )
+        self.commands.register(
             "tools.ocr_clipboard",
             "OCR Clipboard Image",
             self.ocr_clipboard_image,
@@ -2386,6 +2440,19 @@ class MainFrame(
             "tools.read_aloud_generate_audio",
             "Generate Speech Audio...",
             self.generate_speech_audio,
+            None,
+        )
+        # Experimental: read the document aloud in the user's real browser (where
+        # the full/online voices are available). Registered unconditionally so the
+        # command palette has it the moment the setting is toggled — no restart.
+        # The handler self-guards (read_document_in_browser shows a "turn it on
+        # under Experimental" message when disabled), and the *menu* entry stays
+        # gated on the setting (rebuilt live by _build_menu on settings-apply), so
+        # nothing appears in the menu until opted in. See quill/core/browser_reader.py.
+        self.commands.register(
+            "tools.read_aloud_edge",
+            "Read Document in Browser (Experimental)",
+            self.read_document_in_browser,
             None,
         )
         self.commands.register(
@@ -2928,6 +2995,18 @@ class MainFrame(
             "tools.glow_fix_selection",
             "GLOW Fix Selection",
             self.glow_fix_selection,
+            None,
+        )
+        self.commands.register(
+            "tools.glow_audit_file",
+            "GLOW Audit File",
+            self.glow_audit_file,
+            None,
+        )
+        self.commands.register(
+            "tools.glow_fix_file",
+            "GLOW Fix File",
+            self.glow_fix_file,
             None,
         )
         self.commands.register(
@@ -3705,6 +3784,7 @@ class MainFrame(
             "view.focus_preview": self._id_focus_preview,
             "view.browser_preview": self._id_browser_preview,
             "tools.read_aloud_generate_audio": self._id_read_aloud_generate_audio,
+            "tools.read_aloud_edge": self._id_read_aloud_edge,
             "tools.ai_hub": self._id_ai_hub,
             "tools.ai_assistant": self._id_ai_assistant,
             "tools.ai_prompt_studio": self._id_ai_prompt_studio,
@@ -4243,10 +4323,13 @@ class MainFrame(
             # can override the braille Editor control type for testing; "default"
             # follows that setting. An optional borderless style gives a cleaner frame.
             kind = str(getattr(self.settings, "editor_control_kind", "rich2")).strip().lower()
-            # Experimental overrides apply only once the user has ticked the
-            # acknowledgment ("I understand features may degrade") in the
-            # Experimental tab -- the safety gate.
-            acknowledged = bool(getattr(self.settings, "experimental_acknowledged", False))
+            # Experimental overrides apply only once the user has ticked BOTH
+            # gates on the Experimental tab: the master "Enable experimental
+            # features" switch and the editor-surfaces acknowledgment
+            # ("features may degrade based on the control selected").
+            acknowledged = bool(
+                getattr(self.settings, "experimental_acknowledged", False)
+            ) and bool(getattr(self.settings, "experimental_editor_surfaces_enabled", False))
             override = (
                 str(getattr(self.settings, "experimental_editor_surface", "default"))
                 .strip()
@@ -4765,6 +4848,8 @@ class MainFrame(
             and not event.AltDown()
             and not event.ShiftDown()
         ):
+            if self._handle_smart_trigger_return():
+                return
             if self._handle_markdown_list_return():
                 return
         tab_key = getattr(wx, "WXK_TAB", None)
@@ -4843,6 +4928,29 @@ class MainFrame(
             self.editor.SetSelection(caret, caret)
             return
         event.Skip()
+
+    def _handle_smart_trigger_return(self) -> bool:
+        """Fire a Quillin ``=name(args)`` smart trigger on the current line.
+
+        Returns True when a trigger fired so the caller consumes the Enter and
+        skips list continuation. Dispatch/enablement lives in the Quillins mixin;
+        this only supplies the current line span and re-syncs the model.
+        """
+        dispatch = getattr(self, "dispatch_smart_trigger_line", None)
+        if dispatch is None:
+            return False
+        start, end = self.editor.GetSelection()
+        if start != end:
+            return False
+        text = self.editor.GetValue()
+        line_start, line_end = line_span(text, self.editor.GetInsertionPoint())
+        line = text[line_start:line_end]
+        if "=" not in line:  # cheap reject before parsing
+            return False
+        if not dispatch(line, line_start, line_end):
+            return False
+        self.document.set_text(self.editor.GetValue())
+        return True
 
     def _handle_markdown_list_return(self) -> bool:
         if self._effective_markup_kind() not in {"markdown", "plain"}:
@@ -5429,7 +5537,7 @@ class MainFrame(
         menu = wx.Menu()
         features = self.features
         fmt_on = features.is_enabled("core.format")
-        glow_on = features.is_enabled("core.glow")
+        glow_on = self._feature_enabled("core.glow")
         spell_on = features.is_enabled("core.spellcheck")
         dict_on = features.is_enabled("core.dictionary")
 
@@ -5593,6 +5701,13 @@ class MainFrame(
             glow_menu.Bind(
                 wx.EVT_MENU, lambda _e: self.glow_fix_selection(), id=glow_fix_selection_id
             )
+            glow_audit_file_id = wx.NewIdRef()
+            glow_fix_file_id = wx.NewIdRef()
+            glow_menu.AppendSeparator()
+            glow_menu.Append(glow_audit_file_id, "GLOW Audit File...")
+            glow_menu.Append(glow_fix_file_id, "GLOW Fix File...")
+            glow_menu.Bind(wx.EVT_MENU, lambda _e: self.glow_audit_file(), id=glow_audit_file_id)
+            glow_menu.Bind(wx.EVT_MENU, lambda _e: self.glow_fix_file(), id=glow_fix_file_id)
             menu.AppendSubMenu(glow_menu, "GLOW")
 
         menu.AppendSeparator()
@@ -6020,6 +6135,9 @@ class MainFrame(
         prune = getattr(self, "prune_orphaned_github_temp", None)
         if callable(prune):
             _safely("github temp prune", prune)
+        # Privacy: the browser read-aloud page holds the full document text as
+        # plaintext in app-data; remove it on exit (quill/core/browser_reader.py).
+        _safely("browser reader cleanup", self._cleanup_browser_reader_files)
         _safely("sound manager", _shutdown_sound_manager)
         # Destroy any straggler top-level windows (e.g. a modeless Ask Quill
         # chat frame) so they do not keep the wx main loop alive after the main
@@ -7327,9 +7445,23 @@ class MainFrame(
 
     def _feature_enabled(self, feature_id: str) -> bool:
         feature_manager = getattr(self, "features", None)
-        if feature_manager is None:
-            return True
-        return feature_manager.is_enabled(feature_id)
+        enabled = True if feature_manager is None else feature_manager.is_enabled(feature_id)
+        # Experimental gates (Settings > Experimental). These features ship dark
+        # until the user opts in: the master switch plus the per-feature checkbox.
+        # GLOW is catalog-on, so the experimental gate narrows it; the read-only
+        # publishing tools are profile-off, so the gate is the user's way to
+        # light them (the locked send half is unaffected — it stays locked_off).
+        if feature_id == "core.glow":
+            return enabled and self._experimental_gate_on("glow_experimental_enabled")
+        if feature_id == "future.publishing_read":
+            return enabled or self._experimental_gate_on("publishing_experimental_enabled")
+        return enabled
+
+    def _experimental_gate_on(self, setting_name: str) -> bool:
+        """True when the Experimental master switch AND ``setting_name`` are on."""
+        return bool(getattr(self.settings, "experimental_acknowledged", False)) and bool(
+            getattr(self.settings, setting_name, False)
+        )
 
     def _record_notification(self, message: str, category: str = "info") -> None:
         self._notifications = add_notification(message, category)
@@ -10759,6 +10891,63 @@ class MainFrame(
         if combo is not None:
             combo.Bind(wx.EVT_CHOICE, _refresh)
         _refresh()
+        self._wire_experimental_gates(control_index, info)
+
+    def _wire_experimental_gates(self, control_index: object, explainer: object) -> None:
+        """Live enable/disable gating for the Experimental tab.
+
+        The master "Enable experimental features" checkbox governs every other
+        control on the tab; the editor-surfaces checkbox additionally governs
+        the surface choice, the border option, and the surface explainer.
+        Disabled wx controls leave the tab order, so with the master switch off
+        the whole tab is a single checkbox to a screen-reader user — nothing
+        experimental can be reached, focused, or accidentally changed.
+        """
+        wx = self._wx
+
+        def _control(key: str) -> object | None:
+            entry = control_index.get(key)  # type: ignore[union-attr]
+            return entry[1] if entry else None
+
+        master = _control("experimental_acknowledged")
+        surfaces_gate = _control("experimental_editor_surfaces_enabled")
+        surface_children = [
+            control
+            for control in (
+                _control("experimental_editor_surface"),
+                _control("editor_hide_border"),
+                explainer,
+            )
+            if control is not None
+        ]
+        master_children = [
+            control
+            for control in (
+                surfaces_gate,
+                _control("glow_experimental_enabled"),
+                _control("publishing_experimental_enabled"),
+                _control("edge_read_aloud_enabled"),
+            )
+            if control is not None
+        ]
+
+        def _apply(_evt: object = None) -> None:
+            master_on = bool(master.GetValue()) if master is not None else True
+            for control in master_children:
+                control.Enable(master_on)
+            surfaces_on = master_on and (
+                surfaces_gate is not None and bool(surfaces_gate.GetValue())
+            )
+            for control in surface_children:
+                control.Enable(surfaces_on)
+            if _evt is not None:
+                _evt.Skip()
+
+        if master is not None:
+            master.Bind(wx.EVT_CHECKBOX, _apply)
+        if surfaces_gate is not None:
+            surfaces_gate.Bind(wx.EVT_CHECKBOX, _apply)
+        _apply()
 
     def _start_model_lifecycle(self) -> None:
         """Build the model-lifecycle manager from settings and start the idle sweep.
@@ -10799,7 +10988,7 @@ class MainFrame(
         self._lifecycle_timer = wx.Timer(self.frame)
         self.frame.Bind(
             wx.EVT_TIMER,
-            lambda _e: self._task_manager.submit(lifecycle_service.sweep),
+            lambda _e: self._task_manager.submit("lifecycle-idle-sweep", lifecycle_service.sweep),
             self._lifecycle_timer,
         )
         # Poll about twice per idle window (clamped 30 s - 5 min) so an idle model is
@@ -14903,7 +15092,32 @@ class MainFrame(
             return scope, start, end, "current line"
         return scope, start, end, "current paragraph"
 
+    def _ensure_glow_enabled(self) -> bool:
+        """Gate every GLOW command behind the Experimental opt-in.
+
+        GLOW ships as an experimental feature: it runs only when both the
+        Experimental master switch and the GLOW checkbox are on (Preferences >
+        Experimental). Commands stay in the palette so they are discoverable;
+        invoking one while gated explains exactly how to turn GLOW on — the
+        same pattern as Read Document in Browser.
+        """
+        if self._feature_enabled("core.glow"):
+            return True
+        wx = self._wx
+        self._show_message_box(
+            "GLOW is an experimental feature and is currently turned off.\n\n"
+            "To enable it, open Preferences > Experimental, tick 'Enable "
+            "experimental features', then tick 'GLOW accessibility review and "
+            "repair'. It takes effect as soon as you apply Settings - no "
+            "restart needed.",
+            "GLOW (Experimental)",
+            wx.ICON_INFORMATION | wx.OK,
+        )
+        return False
+
     def glow_audit_document(self) -> None:
+        if not self._ensure_glow_enabled():
+            return
         markup = self._current_markup_context()
         text = self.editor.GetValue()
         report = build_audit_report(self.document.name, text, markup, "current document")
@@ -14911,6 +15125,8 @@ class MainFrame(
         self._set_status(f"Opened GLOW audit for {self.document.name}")
 
     def glow_audit_selection(self) -> None:
+        if not self._ensure_glow_enabled():
+            return
         text, _start, _end, scope_label = self._glow_scope()
         markup = self._current_markup_context()
         report = build_audit_report(self.document.name, text, markup, scope_label)
@@ -14918,6 +15134,8 @@ class MainFrame(
         self._set_status(f"Opened GLOW audit for {scope_label}")
 
     def glow_fix_document(self) -> None:
+        if not self._ensure_glow_enabled():
+            return
         original = self.editor.GetValue()
         markup = self._current_markup_context()
         result = fix_text(original, markup)
@@ -14940,6 +15158,8 @@ class MainFrame(
         )
 
     def glow_fix_selection(self) -> None:
+        if not self._ensure_glow_enabled():
+            return
         text, start, end, scope_label = self._glow_scope()
         markup = self._current_markup_context()
         result = fix_text(text, markup)
@@ -17379,6 +17599,65 @@ class MainFrame(
     def stop_read_aloud(self) -> None:
         self._read_aloud.stop()
         self._set_status("Read aloud stopped")
+
+    # ------------------------------------------------------------------
+    # Experimental: read the document aloud in the user's real browser, where
+    # speechSynthesis exposes the full voice set (including Edge's Online
+    # (Natural) voices) — unlike the embedded WebView2, which only sees local
+    # SAPI voices. We write a self-contained accessible reader page (voice
+    # picker + Play/Pause/Stop) and open it in the chosen browser. Opt-in under
+    # Preferences > Experimental. See quill/core/browser_reader.py.
+    # ------------------------------------------------------------------
+    def _edge_read_aloud_enabled(self) -> bool:
+        return bool(
+            getattr(self.settings, "edge_read_aloud_enabled", False)
+            and getattr(self.settings, "experimental_acknowledged", False)
+        )
+
+    def read_document_in_browser(self) -> None:
+        wx = self._wx
+        if not self._edge_read_aloud_enabled():
+            self._show_message_box(
+                "Turn on 'Read the document aloud in your browser' under "
+                "Preferences > Experimental first (it takes effect right away).",
+                "Read in Browser (Experimental)",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        text = self.editor.GetValue()
+        if not text.strip():
+            self._set_status("Nothing to read")
+            return
+        from quill.core.browser_reader import build_reader_html
+
+        title = "Document"
+        tabs = getattr(self, "_document_tabs", None)
+        if tabs:
+            tab_index = (
+                self._active_tab_index if self._active_tab_index >= 0 else self._current_tab_index()
+            )
+            if 0 <= tab_index < len(tabs):
+                title = tabs[tab_index].document.name or "Document"
+        reader_lang = getattr(self, "_active_language", None) or "en"
+        payload = build_reader_html(title, text, lang=reader_lang)
+        reader_dir = app_data_dir() / "browser-reader"
+        reader_dir.mkdir(parents=True, exist_ok=True)
+        reader_path = reader_dir / "read-aloud.html"
+        temp_path = reader_path.with_suffix(".tmp")
+        temp_path.write_text(payload, encoding="utf-8")
+        os.replace(temp_path, reader_path)
+        browser_choice = normalize_browser_choice(self.settings.preview_browser)
+        open_preview_url(reader_path.as_uri(), browser_choice)
+        self._set_status(
+            f"Opened read-aloud in {browser_choice_label_for_value(browser_choice)} — "
+            "choose a voice and press Play"
+        )
+
+    def _cleanup_browser_reader_files(self) -> None:
+        """Delete the browser read-aloud plaintext page(s) on exit (privacy)."""
+        from quill.core.browser_reader import remove_reader_pages
+
+        remove_reader_pages(app_data_dir() / "browser-reader")
 
     def _voice_is_english(self, engine: str, voice: ReadAloudVoiceOption) -> bool:
         engine_name = (engine or "").strip().lower()
@@ -20070,6 +20349,8 @@ class MainFrame(
         restart.
         """
         wx = self._wx
+        if not self._ensure_glow_enabled():
+            return
         self._set_status("Checking for GLOW engine updates...")
         try:
             check: GlowUpdateCheck = check_for_glow_update()
@@ -22014,7 +22295,27 @@ class MainFrame(
             # No explicit page load needed — WebView2 navigates to about:blank on
             # its own.  Explicit raw-HTML page calls are disallowed here by the
             # web-surface governance gate (test_web_surface_governance.py).
+            #
+            # Diagnostics: time this call and log it. WebView2's first New() is
+            # the prime suspect for the ~7 s UI-thread stall (review.md §5); this
+            # New() runs on the UI thread and cannot be moved off it, so if it is
+            # the cause the elapsed here will show it directly in the log. Logged
+            # at WARNING when it blocks noticeably so it is findable without
+            # enabling QUILL_PROFILE_STARTUP.
+            import logging as _logging
+
+            _wv_start = time.perf_counter()
             wv = wx.html2.WebView.New(sentinel)
+            _wv_elapsed = time.perf_counter() - _wv_start
+            _wv_log = _logging.getLogger(__name__)
+            if _wv_elapsed >= 1.0:
+                _wv_log.warning(
+                    "WebView2 first-init (WebView.New) blocked the UI thread for %.1f s",
+                    _wv_elapsed,
+                )
+            else:
+                # INFO (not DEBUG) so the timing is visible at the default level.
+                _wv_log.info("WebView2 first-init took %.3f s", _wv_elapsed)
 
             # _alive guards both the EVT_WEBVIEW_LOADED callback and the
             # 5-second fallback CallLater against calling methods on C++
@@ -22089,6 +22390,21 @@ class MainFrame(
         if session is None:
             return
         if session.tab_index != self._active_tab_index:
+            return
+        # Debounce like the side preview: re-navigating the external browser on
+        # every keystroke flickered the page and re-announced from the top for a
+        # braille/screen-reader reader (the "meta refresh" feel). Coalescing to
+        # shortly after typing pauses cuts the reload churn; the page also
+        # restores scroll on reload (render_preview_html). The fully flicker-free
+        # live option is the in-app side preview (F6): in-place WebView swap.
+        timer = getattr(self, "_browser_preview_timer", None)
+        if timer is not None and timer.IsRunning():
+            timer.Stop()
+        self._browser_preview_timer = self._wx.CallLater(400, self._do_refresh_browser_preview)
+
+    def _do_refresh_browser_preview(self) -> None:
+        session = self._browser_preview_session
+        if session is None or session.tab_index != self._active_tab_index:
             return
         self.preview_in_browser()
 
@@ -23384,7 +23700,7 @@ class MainFrame(
             announce=self._set_status,
         ).show()
 
-    def open_ai_hub(self) -> None:
+    def open_ai_hub(self, initial_page: str | None = None) -> None:
         from quill.ui.ai_hub_dialog import AIHubDialog
 
         dlg = AIHubDialog(
@@ -23392,9 +23708,28 @@ class MainFrame(
             show_modal_dialog=self._show_modal_dialog,
             announce=self._set_status,
             open_advanced_connection=self.open_ai_preferences,
+            initial_page=initial_page,
         )
         dlg.show()
+        # The Services tab persists the Datalab config straight to disk; fold
+        # those fields back into the live settings object so the very next
+        # Import / Convert run sees them without a restart.
+        from quill.core.settings import load_settings as _reload_settings
+
+        fresh = _reload_settings()
+        for field_name in (
+            "datalab_enabled",
+            "datalab_endpoint",
+            "datalab_mode",
+            "datalab_output",
+            "datalab_paginate",
+        ):
+            setattr(self.settings, field_name, getattr(fresh, field_name))
         self._request_menu_refresh()
+
+    def open_ocr_service_settings(self) -> None:
+        """AI Hub, opened directly on the Services tab (OCR Service Settings)."""
+        self.open_ai_hub(initial_page="Services")
 
     def open_writing_assistant(self, initial_prompt: str = "") -> None:
         # H-SAFE-1: refuse to even open the AI dialog in safe mode. The

@@ -3,7 +3,7 @@
 The legacy export path runs Markdown through Pandoc, whose docx writer silently
 drops the per-run font family, point size, color, highlight and per-paragraph
 alignment that QUILL's hidden-codes feature
-(``docs/rich-text-formatting-hidden-codes-design.md``) materializes. This module
+(``docs/planning/rich-text-formatting-hidden-codes-design.md``) materializes. This module
 consumes the shared :class:`~quill.io.rtf_model.RichDocument` and writes those
 attributes onto real Word runs and paragraphs, so a styled QUILL document opens in
 Word with its formatting intact and its structure screen-reader navigable.

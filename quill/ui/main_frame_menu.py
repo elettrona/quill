@@ -107,6 +107,15 @@ class MenuBuilderMixin:
         self._id_import_csv = wx.NewIdRef()
         self._id_import_latex = wx.NewIdRef()
         self._id_import_other = wx.NewIdRef()  # "Other Pandoc Format..."
+        # Free-first Import / Convert Document tool (MarkItDown -> local OCR
+        # -> consent-gated cloud OCR) and its OCR and Document Conversion
+        # submenu (review, service settings, temp cleanup).
+        self._id_import_convert = wx.NewIdRef()
+        self._id_install_local_ocr = wx.NewIdRef()
+        self._id_ocr_services = wx.NewIdRef()
+        self._id_review_last_ocr = wx.NewIdRef()
+        self._id_ocr_service_settings = wx.NewIdRef()
+        self._id_delete_ocr_temp = wx.NewIdRef()
         self._id_export_markdown = wx.NewIdRef()
         self._id_export_html = wx.NewIdRef()
         self._id_export_docx = wx.NewIdRef()
@@ -275,6 +284,14 @@ class MenuBuilderMixin:
         file_menu.AppendSeparator()
         # --- Import / Export (issue #262) -----------------------------------
         import_menu = wx.Menu()
+        # The free-first conversion tool leads the submenu: it routes any
+        # supported document (including scanned PDFs and images) through the
+        # local no-upload tiers, prompting before OCR ever runs.
+        import_menu.Append(
+            self._id_import_convert,
+            self._menu_label(_("Import / Convert &Document (OCR)..."), "file.import_convert"),
+        )
+        import_menu.AppendSeparator()
         import_menu.Append(
             self._id_import_markdown,
             self._menu_label(_("&Markdown..."), "file.import_markdown"),
@@ -1406,6 +1423,7 @@ class MenuBuilderMixin:
         self._id_read_aloud_voice = wx.NewIdRef()
         self._id_read_aloud_settings = wx.NewIdRef()
         self._id_read_aloud_generate_audio = wx.NewIdRef()
+        self._id_read_aloud_edge = wx.NewIdRef()
         self._id_announcement_backend = wx.NewIdRef()
         self._id_announcement_backend_auto = wx.NewIdRef()
         self._id_announcement_backend_prism = wx.NewIdRef()
@@ -1730,8 +1748,10 @@ class MenuBuilderMixin:
             self._id_display_language,
             self._menu_label(_("Change &Display Language..."), "app.display_language"),
         )
-        # GLOW is hidden for now (core.glow is locked off pending completion).
-        # When re-enabled, these audit/fix items reappear automatically.
+        # GLOW is an experimental opt-in: _feature_enabled("core.glow") is true
+        # only when the profile flag AND the Experimental-tab gates (master
+        # switch + GLOW checkbox) are on. The items appear on the settings-apply
+        # menu rebuild — no restart.
         if self._feature_enabled("core.glow"):
             writing_menu.AppendSeparator()
             writing_menu.Append(
@@ -1780,6 +1800,18 @@ class MenuBuilderMixin:
             self._id_read_aloud_generate_audio,
             self._menu_label(_("Generate &Audio..."), "tools.read_aloud_generate_audio"),
         )
+        # Experimental in-browser reading: shown only after the user opts in
+        # under Preferences > Experimental (the command is likewise only
+        # registered then). Opens an accessible reader page in the real browser,
+        # where the full/online voices are available.
+        if getattr(self.settings, "edge_read_aloud_enabled", False) and getattr(
+            self.settings, "experimental_acknowledged", False
+        ):
+            read_aloud_menu.AppendSeparator()
+            read_aloud_menu.Append(
+                self._id_read_aloud_edge,
+                self._menu_label(_("Read in &Browser (Experimental)"), "tools.read_aloud_edge"),
+            )
         read_aloud_menu.Append(
             self._id_announcement_backend,
             self._menu_label(_("Announcement &Backend..."), "tools.announcement_backend"),
@@ -1828,6 +1860,40 @@ class MenuBuilderMixin:
             self._id_describe_image,
             self._menu_label(_("&Describe Image..."), "tools.describe_image"),
         )
+        reading_menu.AppendSeparator()
+        # The supported OCR / document-conversion tool (OCR PRD §4.2): one
+        # submenu holding the whole workflow, from import to review to service
+        # management, so it reads as a first-class QUILL tool.
+        conversion_menu = wx.Menu()
+        conversion_menu.Append(
+            self._id_import_convert,
+            self._menu_label(_("&Import / Convert Document..."), "file.import_convert"),
+        )
+        conversion_menu.Append(
+            self._id_review_last_ocr,
+            self._menu_label(_("&Review Last OCR Result..."), "tools.review_last_ocr"),
+        )
+        conversion_menu.AppendSeparator()
+        conversion_menu.Append(
+            self._id_install_local_ocr,
+            self._menu_label(
+                _("I&nstall Local OCR Engine (Tesseract)..."), "tools.install_local_ocr"
+            ),
+        )
+        conversion_menu.Append(
+            self._id_ocr_service_settings,
+            self._menu_label(_("OCR Service &Settings..."), "tools.ocr_service_settings"),
+        )
+        conversion_menu.Append(
+            self._id_ocr_services,
+            self._menu_label(_("OCR and Conversion Ser&vices..."), "tools.ocr_services"),
+        )
+        conversion_menu.AppendSeparator()
+        conversion_menu.Append(
+            self._id_delete_ocr_temp,
+            self._menu_label(_("&Delete OCR Temporary Files"), "tools.delete_ocr_temp"),
+        )
+        reading_menu.AppendSubMenu(conversion_menu, _("&OCR and Document Conversion"))
         tools_menu.AppendSubMenu(reading_menu, _("R&eading && Dictation"))
         # Tools > Speech: flat menu consolidating offline speech, Windows dictation,
         # and model management (#669). Previously split across Reading & Dictation >
@@ -1890,7 +1956,9 @@ class MenuBuilderMixin:
             self._id_dictation_history,
             self._menu_label(_("Dictation &History && Review..."), "tools.dictation_history"),
         )
-        speech_menu.AppendSubMenu(dictation_menu, _("&Hold && Locked Dictation"))
+        # Hold-to-Dictate was removed (a held key repeats and announces itself
+        # endlessly), so the submenu carries only the Locked Dictation surface.
+        speech_menu.AppendSubMenu(dictation_menu, _("&Locked Dictation"))
         speech_menu.AppendSeparator()
         speech_menu.Append(
             self._id_speech_transcribe,
@@ -2655,6 +2723,36 @@ class MenuBuilderMixin:
             id=self._id_save_plain_text,
         )
         # #262: Pandoc Import / Export menu bindings.
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.import_convert_document(),
+            id=self._id_import_convert,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.install_local_ocr_engine(),
+            id=self._id_install_local_ocr,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.review_last_ocr_result(),
+            id=self._id_review_last_ocr,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_ocr_service_settings(),
+            id=self._id_ocr_service_settings,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.delete_ocr_temp_files(),
+            id=self._id_delete_ocr_temp,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.show_ocr_services_overview(),
+            id=self._id_ocr_services,
+        )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.import_document("markdown"), id=self._id_import_markdown
         )
@@ -3822,6 +3920,14 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.generate_speech_audio(),
             id=self._id_read_aloud_generate_audio,
+        )
+        # Experimental in-browser reading. Bound unconditionally (the menu item
+        # only appears when opted in, and the handler self-guards on the
+        # setting), so an accidental invocation degrades gracefully.
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.read_document_in_browser(),
+            id=self._id_read_aloud_edge,
         )
         self.frame.Bind(
             wx.EVT_MENU,

@@ -8,21 +8,29 @@ This is the narrative companion to the **"0.9.0 Beta 1"** section of `CHANGELOG.
 (the canonical, append-as-you-go log). It tells the story of what changes in
 0.9.0 Beta 1 on top of the 0.8.0 line - what each feature is, and, just as
 important, **why it matters** for the way you actually work. This is the
-feature-complete cut for 0.9.0; the last 1.0 feature is the GLOW accessibility suite,
-and focus from here is polish.
+feature-complete cut for 0.9.0 - the GLOW accessibility suite ships in this beta
+as an experimental opt-in - and focus from here is polish.
 
 ---
 
 ## The story of this release
 
-0.8.0 made QUILL a serious writing and document studio. **0.8.1 makes it yours.**
+0.8.0 made QUILL a serious writing and document studio. **0.9.0 makes it yours -
+and makes it complete.**
 
-Three threads run through this beta. First, a complete, **optional** AI suite that
+Five threads run through this beta. First, a complete, **optional** AI suite that
 stays silent until you invite it in. Second, a wave of **power-user editing tools**
 in the tradition of the editors people still miss - Reveal Codes, classic-editor
-commands, and bookmarks that finally remember where you were. Third, a quieter,
-**lighter, more honest install**: a smaller download, on-demand components you can
-fetch from one place, and clearer, calmer announcements.
+commands, and bookmarks that finally remember where you were. Third, the
+**production features** this project was always pointed at: the GLOW accessibility
+suite (shipping as an experimental opt-in, one switch away), and a document-rescue
+tool that turns scanned PDFs into real text with free, on-device OCR - nothing
+uploaded, ever. Fourth, a teaching library to
+match: six hands-on tutorials and a 36-episode audio course narrated by QUILL's own
+neural voices. And fifth, a quieter, **lighter, more honest install**: a smaller
+download, on-demand components you can fetch from one place, clearer announcements,
+and a day of under-the-hood hardening documented further down, because reliability
+work deserves release notes too.
 
 Everything new is off, optional, or additive. Nothing here changes how your fingers
 already work - it just gives them more to reach for when you want it.
@@ -361,16 +369,227 @@ open a vault and QUILL is the editor it always was.
 
 ---
 
+## Learn QUILL by ear - The QUILL Cast and new tutorials
+
+QUILL's documentation now teaches in three registers. The user guide remains
+the full reference. A new **tutorials** collection (docs/tutorials) walks six
+complete workflows hands-on - your first hour, keyboard mastery, rescuing a
+scanned PDF, building an audiobook, starting a Vault, and shipping an
+accessible document with GLOW.
+
+And then there is **The QUILL Cast**: a full **36-episode, two-host audio
+course** - about two and a quarter hours across seven parts - that leads a
+brand-new user from the installer all the way to every feature family in the
+product. Part one covers first steps (install, files, the command palette,
+what QUILL says); the everyday-editor part makes you fast; then documents
+and formats, files and automation, the speech suite, AI, and finally the
+organization, production, and trust features - the Vault, Story Studio,
+GLOW, braille production, and extensions. Every episode builds on the one
+before it and ends with five minutes of hands-on homework.
+
+The hosts, Liam and Jessica, are QUILL's own on-device **Kokoro** neural
+voices - the product literally narrates its own curriculum, produced with
+the same speech engine you can install from the Voice Picker. Every episode
+ships with a full accessible transcript on the website, and an RSS feed lets
+you subscribe in any podcast app.
+
+**Why it matters:** some people learn by reading, some by doing, some by
+listening on a walk. Now all three of them get a first-class path into QUILL
+- and the audio path is proof-by-existence of what the speech suite can do.
+
+---
+
+## Import / Convert Document - rescue for locked-away documents
+
+Everyone with a screen reader knows the feeling: someone hands you a PDF and
+it turns out to be a photograph of a page. Nothing to read, nothing to search,
+nothing to fix. This beta ships QUILL's answer - a supported document-rescue
+tool with one rule: **free first, local first, and nothing is ever uploaded.**
+
+### How it works
+
+**File > Import > Import / Convert Document (OCR)...** takes almost anything -
+Word, PowerPoint, Excel, HTML, EPUB, PDFs, images - and routes it through free,
+on-device services:
+
+1. **The free local converter runs first.** Born-digital files and PDFs with a
+   real text layer convert instantly into clean, editable text. No account, no
+   key, no cost.
+2. **Scanned documents are detected, not dumped.** When a PDF comes back nearly
+   empty, QUILL says what it found - "it looks scanned or image-based" - and
+   *asks* whether to run free on-device OCR. You choose; QUILL never opens a
+   blank result silently and never runs OCR behind your back.
+3. **On-device OCR rescues the scan.** The local Tesseract engine reads each
+   page on your own computer (CPU-only, works offline), keeps page boundaries
+   as searchable markers, announces progress page by page, and - honestly -
+   tells you when recognition confidence is low so you know to review the
+   result rather than trust it blindly.
+
+### A one-time, verified download
+
+The OCR engine is not bundled; it is a free ~48 MB download from
+**Tools > Reading & Dictation > Install Local OCR Engine (Tesseract)...**.
+QUILL fetches the official installer from its own pinned release, verifies it
+byte-for-byte, and opens it for you to complete - never a silent install. If
+Tesseract is already on your machine, QUILL just finds it.
+
+### The cloud escalation - for the documents nothing local can rescue
+
+Some documents defeat even good on-device OCR: dense tables, filled forms,
+handwriting, brutal photocopies. For those, QUILL now supports an optional
+**Datalab Chandra cloud OCR service** - and the way it is wired says
+everything about the product's values. It is strictly **free-first**: the
+cloud is offered only after on-device OCR comes back weak, never as the first
+stop. It is **consent-gated on every single upload**: a dialog names the
+service, reminds you to think about private, medical, legal, and financial
+content, and notes that the provider deletes results from its servers about
+an hour after processing. A filename that suggests sensitive content (tax,
+medical, legal, and similar) earns an extra CAUTION line - judged from the
+name alone; QUILL never peeks at content to decide. And it is
+**bring-your-own-key**: your Datalab key lives in the Windows credential
+vault, never in a settings file, and billing is between you and the provider.
+There is deliberately no "don't ask again."
+
+### The Services tab - service management for humans
+
+**AI Hub > Services** (or **OCR Service Settings...** straight from the OCR
+submenu) manages it all in plain language: a live status line, the enable
+switch, your key, default mode and output, a **Test Connection** that checks
+your key and endpoint while explicitly uploading no document, a **Copy
+Service Summary** that produces a secret-free description for support
+requests, and one-press links to the provider's website, key page, pricing,
+privacy documentation, and supported file types - each announcing that it
+opens in your browser.
+
+### Review exactly what needs reviewing
+
+**Review Last OCR Result...** turns proofreading OCR output from a chore into
+a checklist: the most recent conversion's source, service, page count, and
+confidence, followed by every low-confidence line as "Page N: [confidence]
+text". Arrow through the flagged lines, search the converted document for the
+page marker, fix, done. And **Delete OCR Temporary Files** clears any
+crash leftovers, announcing exactly what was removed. The whole workflow now
+lives in one place: **Tools > Reading & Dictation > OCR and Document
+Conversion**.
+
+### Plain-language services page
+
+**OCR and Conversion Services...** describes every service the way a person
+would: the free local converter, the free local OCR engine, and the optional
+cloud escalation - what each does, what it is best at, whether it is local or
+cloud, what it costs, and each one's current status.
+
+**Why it matters:** the documents most likely to be inaccessible - scans,
+photocopies, image PDFs - are exactly the ones other tools quietly give up on.
+QUILL turns them into text you can read, search, and edit - on your machine by
+default, in the cloud only when a hard document genuinely needs it and you
+have said yes, out loud, that one time.
+
+---
+
+## The Experimental tab - consent in layers
+
+Before the two big production features, meet the front door they share.
+**Preferences > Experimental** has been rebuilt around a simple idea: nothing
+experimental should ever be reachable by accident.
+
+The first checkbox is now a true master switch, relabeled to say exactly what
+it governs: **Enable experimental features** - all of them. While it is off,
+every other control on the tab is disabled and drops out of the tab order
+entirely, so to a screen reader user an untouched Experimental tab is one
+checkbox and silence. Tick it, and the individual experiments unlock - each
+with its own switch: **GLOW accessibility review and repair**, **WordPress
+publishing connections** (the read-only inbound tools; the send half stays
+locked no matter what), and **Read the document aloud in your browser**.
+
+The editor-surface options go one layer deeper, behind a second
+acknowledgement that carries its own warning in its own label: **Enable
+experimental editor surfaces (features may degrade based on the control
+selected)**. The editor surface is the control your document lives in, so the
+surface choice, the border option, and the live surface explainer stay
+disabled until you have said yes twice.
+
+**Why it matters:** experiments are how QUILL grows, and the community should
+get to try them early - but a screen reader user should never tab into a
+switch that can change the editor underneath them without two deliberate
+consents first. Opt-in, layer by layer, is the whole design.
+
+---
+
+## GLOW - guided accessibility review and repair
+
+GLOW (Guided Layout and Output Workflow) is QUILL's accessibility review
+system, and with this beta it graduates from hidden preview to a **shipping
+experimental feature - one switch away**. Open **Preferences > Experimental**,
+tick the master switch and GLOW's own checkbox, apply, and **Tools > GLOW**
+appears immediately, no restart. (Until then, the GLOW commands stay
+discoverable in the command palette and simply explain how to enable the
+feature.) The idea is guided confidence, not a compliance dashboard: GLOW
+reviews what is in front of you, explains each finding in plain language, and
+offers only safe, deterministic fixes you can inspect before accepting.
+
+### Audit what you can hear
+
+**Tools > GLOW > Audit Current Document** reviews the whole file;
+**Audit Selection / Paragraph** reviews just the block at your caret. Findings
+open as a normal QUILL tab you can arrow through, search, or keep open beside
+your document: heading levels that jump, links that just say "click here",
+images without alt text, HTML missing its language, tables without header
+cells, dense paragraphs that will be hard to listen to. Every finding names its
+rule, its severity, and a plain-language suggestion.
+
+### Fix without fear
+
+**Fix Selection / Paragraph** cleans up the block in place and leaves the
+result selected for review. **Fix Current Document** goes further: it opens the
+repaired text as a *named preview tab* and immediately starts a compare session
+against the original, so you accept the change knowing exactly what moved -
+never a silent rewrite.
+
+### Structured documents too
+
+New alongside the opt-in, **GLOW Audit File...** and **GLOW Fix File...** take on
+the files that are usually hardest to check by ear: Word, PowerPoint, Excel,
+PDF, and EPUB. The shared GLOW engine parses the document in the background
+(the editor never freezes), and the audit comes back as a scored, graded report
+with every finding listed. Fixing a file always writes a repaired copy beside
+the original - `report.docx` becomes `report-accessible.docx` - and QUILL
+confirms the destination before anything runs. Your source file is never
+touched.
+
+### Private by default, updated only on request
+
+The everyday GLOW workflow runs entirely on your machine. The engine's optional
+networked helpers (AI alt-text, PII redaction, language processing) are off
+until you explicitly turn them on, per action. **Help > Check for GLOW
+Updates...** fetches a newer engine only when you ask - the manifest is signed,
+every wheel is checksum-verified, and a failed install rolls back to the
+bundled engine.
+
+**Why it matters:** accessibility review has mostly been visual dashboards and
+sighted checklists. GLOW puts a guided, spoken, keyboard-first repair loop
+inside the editor you already use - so the person most affected by an
+inaccessible document is also the person best equipped to fix it.
+
+---
+
 ## Braille - proofreading for pages that must emboss
 
 A new **Braille > Repair** submenu brings NLS-style proofreading: **Read Layout
 Metrics** (longest line and page against your cells-per-line / lines-per-page limits,
 with width and depth warnings), **Go to Longest Line / Longest Page**, and **Remove
 Trailing Spaces** (this line or the whole file), all honouring your existing braille
-page settings. A new **Editor control type (braille)** choice lets braille displays
-that show the first character of each line in cell two switch to a plain edit control.
+page settings.
+
+An honest status note on the long-standing **cell-two display offset** (some braille
+displays showing the first character of each line in cell two): the **Editor control
+type (braille)** choice we shipped **has not resolved it** - the issue persists, and
+an outcome is still being considered. The control-type options remain available
+under **Preferences > Accessibility** for troubleshooting and experimentation, and
+we will keep reporting plainly on where this stands.
 **Why it matters:** the difference between "it looks fine on screen" and "it actually
-embosses cleanly", found and fixed before you send it.
+embosses cleanly", found and fixed before you send it - and when something is not
+fixed yet, you hear that from us in exactly those words.
 
 ---
 
@@ -455,11 +674,89 @@ these.
 **Why it matters:** a safe sandbox for power users and testers to help shape the
 editor, with a clear gate so nothing changes by accident.
 
+### Read your document in the browser's best voices (experimental)
+
+New in this beta, off by default: turn on **Read the document aloud in your
+browser** under **Settings > Experimental** (it takes effect immediately - no
+restart) and a **Read in Browser** command appears under **Tools > Reading &
+Dictation > Read Aloud** and in the command palette. QUILL writes a
+self-contained, accessible reader page - a labelled voice picker, Speed,
+Play/Pause/Stop, a live status line, Escape to stop - and opens it in your
+chosen browser, where the browser's full voice set is available, including
+Edge's "Online (Natural)" voices that the built-in engines cannot reach. It
+reads section by section so book-length documents stay reliable, **Pause**
+keeps your place and tells you where you are ("Paused at section 12 of 300"),
+and your voice and speed choices are remembered.
+**Why it matters / privacy:** the best-sounding free voices live in real
+browsers. QUILL itself makes no network call and no audio file is produced -
+but the browser's "Online (Natural)" voices synthesize in the vendor's cloud,
+so choosing one sends the text being read to that service; voices labelled
+"on this device" stay fully local, and the setting text says all of this
+plainly. The reader page is deleted when you close QUILL, so no plaintext
+copy of your document lingers.
+
 ### Proofread before you publish
 
 - **Proofread Mastodon posts before sending (per account)** - tick it and pressing
   Post opens the F7 Spelling Review on the post text first.
 - **Spell check a document before saving** - opens F7 automatically on Save / Save As.
+
+---
+
+## Under the hood - quality, reliability, and honest engineering
+
+The features above stand on a day of unglamorous work that deserves its own
+telling, because this is the part most release notes hide.
+
+### The GLOW engine can no longer silently vanish
+
+The most interesting bug of the cycle: GLOW's shared engine could be
+*installed and silently unavailable* at the same time. The engine's recent
+architecture split moved its analysis backend into a new component, but the
+version floor QUILL asked for was loose enough that an older, pre-split
+install could satisfy it - and the engine would simply report "not
+installed" with no error anywhere. QUILL now pins the exact backend floor it
+needs, the vendored offline wheels install cleanly on a bare machine, and
+the failure mode is extinct by construction. If you ever wondered why an
+optional engine "didn't take" - this class of problem is what got fixed.
+
+### Startup can no longer be taken down by a warm-up
+
+QUILL's deferred startup runs each step - screen-reader detection, crash
+recovery, watch folders - inside its own isolation so a failing step is
+logged and skipped, never fatal. One recent addition (the browser-preview
+warm-up scheduler) had slipped outside that pattern; a failure there could
+have killed startup. It is now isolated like everything else, and the
+regression test that guards the whole contract is green again.
+
+### Responsiveness as a policy, not an accident
+
+Everything heavy that shipped this cycle runs on the background task pool:
+GLOW's structured-file audits, document conversion, page-by-page OCR (with
+cancel checks between pages), and the verified engine download. The editor
+never freezes for any of it - progress lands in the status bar, results
+arrive as tabs, and your cursor stays exactly where you left it. On-device
+OCR is CPU-only by design, and the speech and AI engines continue to load
+on demand and unload when idle, so a modest laptop stays a first-class
+citizen.
+
+### Documentation as part of the product
+
+Every feature that shipped this cycle shipped *documented, everywhere, at
+once*: user-guide sections for GLOW and Import / Convert Document, glossary
+entries, F1 help for every new command (the control reference now covers
+469 topics, regenerated from the same source of truth as the app), product
+requirements updated, the roadmap reconciled so it tracks only genuinely
+open work, six new tutorials, and a 36-episode audio course. If you can
+reach a feature, you can read about it - and now, hear about it.
+
+### The little disciplines
+
+The whole repository now passes its style gate completely clean; the module
+size budgets, dialog inventory, network egress audit, and UI-surface
+snapshots were all re-verified; and the full test suite - 6,776 tests -
+passes. New capability this cycle arrived with 44 new tests of its own.
+None of this is visible in a menu. All of it is why the menus keep working.
 
 ---
 
@@ -484,6 +781,43 @@ editor, with a clear gate so nothing changes by accident.
   is authoritative, instead of a permissive word list waving typos through.
 - **The portable build launches and opens documents**, and the **AI Hub opens**
   instead of erroring on a lazy-string.
+- **Live preview no longer flickers or re-announces as you type** - the external
+  browser preview refreshes only after you pause typing (debounced) and keeps
+  your place on reload (returning to the section you are editing, or your previous
+  scroll position), instead of reloading on every keystroke and jumping to the
+  top. The in-app side preview (Ctrl+F6 to focus it) updates silently in place
+  with no reload - the recommended live preview for screen-reader/braille users.
+- **The crash-report dialog tells you what happened** - choosing Send, Copy, or
+  Send without a sign-in used to complete silently, indistinguishable from doing
+  nothing for a screen-reader user; QUILL now confirms out loud that the report
+  was sent, copied to your clipboard (and what to do next), or that sending
+  failed and it was copied instead.
+- **Snappier, less alarming startup** - the one-time WebView2 warm-up runs after
+  the editor is ready, not before it, so a slow first setup no longer looks like a
+  freeze; short UI stalls now also capture a diagnostic stack snapshot, and
+  startup task timings are always written to the logs so a slow launch can be
+  reported with evidence.
+- **Idle AI models are actually released now** - the background idle-unload sweep
+  crashed on every tick, so idle models were never freed; it now runs correctly.
+- **F1 help now covers every command** - all 319 commands that previously had no
+  help topic now have a plain-language description and their shortcut, so pressing
+  F1 on any menu item or command always says something useful.
+- **Smart triggers and Quillin-contributed abbreviations now actually fire** -
+  typing `=bug()`, `=todo(10)`, or `=rand(3,4)` alone on a line and pressing Enter
+  now inserts the generated text, and contributed abbreviations like `qbug` expand
+  as you type (with Abbreviation Expansion on). Both were declared and documented
+  since 0.7.0 but never dispatched. Numeric arguments work, every insertion is
+  announced and undoable, and the per-trigger toggles on the Quillin's preferences
+  page are honoured.
+- **Quiet failures now speak up** - List Studio settings export/import confirms
+  success or explains the failure, the Pronunciation Dictionaries dialog warns
+  when a dictionary could not be saved, and the Quillin wizard's Copy JSON only
+  claims "copied" when the clipboard actually took the text.
+- **The Python snippet sandbox is harder to escape** - snippets are now also
+  statically blocked from dunder attribute access (the classic route from a
+  harmless-looking expression to the OS), on top of the existing
+  separate-process isolation, import allowlist, and time/memory caps; if the
+  OS refuses a resource cap, QUILL logs it instead of staying silent.
 
 ---
 

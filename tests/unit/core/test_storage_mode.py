@@ -8,6 +8,8 @@ from quill.core import storage_mode
 from quill.core.paths import app_data_dir
 from quill.core.storage_mode import custom_path, load_storage_mode, save_storage_mode
 
+pytestmark = pytest.mark.smoke
+
 
 def _make_portable_bundle(tmp_path: Path) -> Path:
     """Create the *new* portable-bundle layout: quill.exe + data/ at the root.
@@ -126,7 +128,12 @@ def test_data_folder_alone_without_quill_exe_is_not_portable(
     assert app_data_dir() == (tmp_path / "appdata" / "Quill").resolve()
 
 
-def test_storage_mode_uses_portable_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_storage_mode_uses_portable_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, isolated_profile: Path
+) -> None:
+    # isolated_profile points APPDATA at a clean temp dir: the appdata fallback is
+    # always in storage_mode_paths(), so without it this test reads the real
+    # %APPDATA%\Quill\storage-mode.json on a developer machine and fails.
     root = _make_portable_bundle(tmp_path)
     monkeypatch.setenv("QUILL_APP_ROOT", str(root))
     assert load_storage_mode() is None

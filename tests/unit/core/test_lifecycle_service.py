@@ -6,6 +6,8 @@ import pytest
 
 from quill.core import lifecycle_service as ls
 
+pytestmark = pytest.mark.smoke
+
 
 @pytest.fixture(autouse=True)
 def _reset_service():
@@ -24,6 +26,17 @@ def test_calls_are_safe_no_ops_when_unconfigured() -> None:
     assert ls.sweep() == []
 
 
+def test_sweep_accepts_task_manager_kwargs() -> None:
+    # QuillTaskManager.submit always calls the task func with cancellation_token,
+    # operation_id, and progress_callback. The idle sweep is submitted that way,
+    # so sweep() must accept those kwargs; previously it raised TypeError on every
+    # timer tick and idle models were never unloaded.
+    assert (
+        ls.sweep(cancellation_token=object(), operation_id="op", progress_callback=lambda _p: None)
+        == []
+    )
+
+
 def test_configure_builds_manager_and_registrations_flow_through() -> None:
     ls.configure(low_resource_mode=False, idle_unload_minutes=10, total_ram_gb=16.0)
     manager = ls.get()
@@ -34,12 +47,13 @@ def test_configure_builds_manager_and_registrations_flow_through() -> None:
     ls.note_loaded("llm", lambda: freed.append("llm"))
     assert manager.loaded_keys() == ["llm"]
 
-    # Force everything idle and sweep -> the registered unload runs.
-    manager.idle_timeout = 0.0  # still swept? no: <=0 disables. Use a tiny timeout.
+    # Force everything idle and sweep -> the registered unload runs. Drive the
+    # manager's injectable clock instead of sleeping: on Windows + Python 3.12,
+    # time.monotonic ticks at ~15.6 ms, so a real sleep shorter than one tick
+    # can measure zero idle time and make this flake (seen on CI).
     manager.idle_timeout = 0.001
-    import time
-
-    time.sleep(0.005)
+    base = manager.clock()
+    manager.clock = lambda: base + 60.0
     assert ls.sweep() == ["llm"]
     assert freed == ["llm"]
 

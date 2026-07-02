@@ -14,6 +14,9 @@ python -m quill
 # Tests (standard)
 pytest -q
 
+# Fast smoke subset (high-signal core checks; seconds, not minutes)
+pytest -m smoke -q
+
 # Single test
 pytest tests/unit/core/test_paths.py -x -q
 
@@ -42,7 +45,7 @@ QUILL is a layered wxPython desktop application with strict import boundaries:
 
 - **`quill/core`** — pure domain logic (documents, command registry, settings, keymap, storage, AI sessions, recovery). No `wx` imports. Strict-typed; always in scope for `mypy`.
 - **`quill/io`** — format readers/writers (`read(path) -> Document`, `write(doc, path)`). No `wx`. Strict-typed.
-- **`quill/ui`** — wxPython shell. `main_frame.py` is the primary entry point (~19k lines); decomposition is tracked in the roadmap. Gradual typing (excluded from `mypy`).
+- **`quill/ui`** — wxPython shell. `main_frame.py` is the primary entry point (~27k lines and still the largest module by far); decomposition into feature mixins (see `main_frame_vault.py`, `main_frame_speech.py`, `main_frame_braille.py`, etc.) is the preferred home for new command handlers — add to a mixin, not to `main_frame.py`. Gradual typing (excluded from `mypy`).
 - **`quill/platform/windows`** — Windows-specific bridges: `prism_bridge.py` (screen-reader announcements via Prism/pyttsx3), `sr_detect.py`, `dpapi.py`, `credential_manager.py`.
 - **`quill/stability`** — cross-cutting runtime safety: `safe_subprocess.py`, `crash_report.py` (diagnostic bundles), `redaction.py` (secret scrubbing), `task_manager.py`, `wx_heartbeat.py`, `safe_mode.py`.
 - **`quill/tools`** — internal CI gates: `check_banned_patterns.py`, `module_size_budget.py`, `network_egress_audit.py`, `dialog_inventory.py`, `dialog_button_contract.py`, `quillin_lint.py`.

@@ -46,3 +46,23 @@ def test_render_preview_html_never_emits_a_refresh_tag() -> None:
     page = render_preview_html("Doc", "hello", "markdown")
     assert "http-equiv" not in page
     assert "refresh" not in page.lower()
+
+
+def test_render_preview_html_preserves_scroll_across_live_reloads() -> None:
+    # When there is no start anchor, the page stashes/restores scroll position in
+    # sessionStorage so a live-edit reload lands the reader where they were,
+    # instead of jumping to the top (part of the "flicker" a braille user feels).
+    page = render_preview_html("Doc", "hello", "markdown")
+    assert "sessionStorage" in page
+    assert "quillPreviewScroll" in page
+    assert "window.scrollTo(0" in page
+    # Still no timer-based reload.
+    assert "http-equiv" not in page
+
+
+def test_render_preview_html_anchor_takes_precedence_over_scroll_restore() -> None:
+    # With a heading anchor the page scrolls to that heading, not the saved
+    # position, so "preview at cursor" still lands on the right heading.
+    page = render_preview_html("Doc", "# Title\n\nbody", "markdown", "title")
+    assert "scrollIntoView" in page
+    assert "quillPreviewScroll" not in page

@@ -135,6 +135,29 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "Triggered only by an explicit 'Download eSpeak-NG' action from the Voice "
         "Browser dialog."
     ),
+    "core/datalab_ocr.py::_default_opener": (
+        "Consent-gated Tier-3 cloud OCR (Datalab Chandra Convert API; PRD §5.93). "
+        "Reached ONLY from the Import/Convert escalation flow after an explicit "
+        "per-upload consent dialog that names the service and warns about "
+        "sensitive documents (filename heuristic adds a second warning). BYOK: "
+        "the API key lives in the credential vault / DATALAB_API_KEY, never "
+        "settings.json, and travels only in the X-API-Key header. HTTPS "
+        "enforced (refuses non-https endpoints), verified TLS context, blocked "
+        "in Safe Mode, cancellable while polling. Logs job state transitions "
+        "and page counts only — never file contents, OCR output, keys, or "
+        "response bodies."
+    ),
+    "core/tesseract_install.py::_download": (
+        "User-initiated optional local Tesseract OCR engine download (free-first "
+        "document conversion, Tier 2) from QUILL's own pinned assets-v1 release "
+        "asset (byte-identical re-publish of the official UB-Mannheim installer, "
+        "Apache-2.0). HTTPS enforced (refuses non-https), verified TLS context, "
+        "SHA-256 pinned (SEC-6), visible progress, blocked in Safe Mode, "
+        "Windows-only. The verified installer is then launched visibly for the "
+        "user to complete — never a silent install or elevation. Triggered only "
+        "by an explicit 'Install Local OCR Engine' action from Tools > OCR and "
+        "Document Conversion."
+    ),
     "core/speech/cloud_transcribers.py::transcribe_rest": (
         "User-initiated cloud transcription via a Quillin-declared, host-vetted "
         "provider kind (#669: Groq, ElevenLabs, ...). HTTPS enforced (refuses "
@@ -202,6 +225,19 @@ _REVIEWED_EGRESS: dict[str, str] = {
     # local crash file is always saved regardless of the user's choice.
     # Every step is wrapped in try/except so the handler can never prevent
     # the standard interpreter traceback from firing.
+    # Browser read-aloud (Experimental, opt-in): QUILL itself makes NO network
+    # call here -- it writes a self-contained local HTML page (quill/core/
+    # browser_reader.py) and opens it in the user's browser. The AST scan finds
+    # no egress in quill/ for this feature, and there is no _REVIEWED_EGRESS
+    # entry because there is no in-package call site. It is documented here for
+    # auditability: when the user chooses one of the browser's "Online (Natural)"
+    # voices, the *browser* (not QUILL) sends the selected text to the voice
+    # service (e.g. Microsoft's Edge cloud voices) to synthesize speech. Path:
+    #   read_document_in_browser() (gated behind edge_read_aloud_enabled AND
+    #   experimental_acknowledged) -> write local page -> open_preview_url().
+    # On-device voices stay fully local. The settings copy and PRIVACY.md both
+    # disclose the cloud-voice behavior, and the page is deleted on app exit
+    # (_cleanup_browser_reader_files) so no plaintext copy lingers.
     "io/http_transport.py::download_url": (
         "Open-from-URL action. Triggered by an explicit user action from the "
         "Remote Sites dialog (Open from URL); fetches the resource the user "

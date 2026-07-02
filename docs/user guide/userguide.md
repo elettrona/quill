@@ -28,6 +28,7 @@ Quill is also in beta. Expect polish, depth, and real daily utility. Also expect
 - [QUILL Quick Nav Mode](#quill-quick-nav-mode)
 - [Formatting and Markup Work](#formatting-and-markup-work)
 - [Tools for Reading, Review, and Inspection](#tools-for-reading-review-and-inspection)
+- [GLOW Workflows Inside QUILL](#glow-workflows-inside-quill)
 - [Accessibility and Low-Vision Features](#accessibility-and-low-vision-features)
 - [Quill on macOS](#quill-on-macos)
 - [Profiles, Keyboard Packs, and Customization](#profiles-keyboard-packs-and-customization)
@@ -43,6 +44,7 @@ Quill is also in beta. Expect polish, depth, and real daily utility. Also expect
   - [PowerPoint (.pptx and .ppt)](#powerpoint-pptx-and-ppt)
   - [Excel-style spreadsheets (.xlsx and .xls)](#excel-style-spreadsheets-xlsx-and-xls)
   - [PDF and OCR-derived text](#pdf-and-ocr-derived-text)
+  - [Import / Convert Document — free-first conversion and OCR](#import--convert-document--free-first-conversion-and-ocr)
   - [Remote files (FTP, SFTP, HTTPS, WebDAV, S3)](#remote-files-ftp-sftp-https-webdav-s3)
   - [GitHub Remote Files](#github-remote-files)
 - [Braille Mode (BRF, BRL, PEF, UEB)](#braille-mode-brf-brl-pef-ueb)
@@ -385,6 +387,8 @@ The **View** menu controls how Quill presents your document on screen without ch
 - **Wrap Find Searches** controls whether Find wraps past the end of the document.
 - **Start With No Document Open** makes Quill open into an empty workspace instead of a starter document.
 - **Preview...**, **Preview Side by Side**, **Focus Preview**, and **Browser Preview...** open rendered views of the current document.
+
+**Live preview while you type.** The side-by-side preview (`Ctrl+F6` to focus it directly — it also joins the `F6` region rotation while open — or turn on Auto Side-by-Side Preview) updates *silently in place* as you edit — the rendered content is swapped without reloading the page, so your braille display and screen reader are not interrupted, nothing is re-announced from the top, and your reading position is kept. This is the recommended live preview for screen-reader and braille users. The external **Browser Preview** (in your web browser) can also follow your edits, but because a real browser reload is a full page navigation, QUILL refreshes it only after you pause typing (not on every keystroke) and keeps your place on each refresh — landing back at the section you are editing, or at your previous scroll position — rather than jumping to the top.
 
 Preference-style toggles that used to live here — theme/dark mode, system-tray mode, title-bar path style, dirty-title style, persistent undo, spell-check-as-you-type, and word-prediction-as-you-type — now live in the registry-driven **Settings** dialog (**Tools -> Customize & Support -> Preferences...**), where they are persisted in one place.
 
@@ -1153,42 +1157,39 @@ they are there if you want to tune how much memory QUILL uses.
 - **Dictation Microphone...** chooses which microphone dictation uses, or the
   system default.
 
-##### Hold-to-Dictate and Locked Dictation (F9 / Ctrl+F9)
+##### Locked Dictation (Ctrl+F9)
 
-Two keyboard-only ways to dictate without opening a dialog or leaving the editor.
-Both use the same on-device Whisper engine and microphone as **Dictate (Offline)**,
-so nothing is uploaded.
+One keyboard-only way to dictate without opening a dialog or leaving the editor.
+It uses the same on-device Whisper engine and microphone as **Dictate (Offline)**,
+so nothing is uploaded. (An earlier press-and-hold F9 mode was removed: a held key
+repeats and announces itself endlessly under a screen reader, so the single locked
+gesture is the reliable one.)
 
-- **Hold-to-Dictate — hold F9.** Press and hold **F9**, speak, and release. QUILL
-  transcribes and inserts the text at the cursor as one undoable edit. A short tone
-  marks the start and (after the microphone closes) the stop. Best for a phrase or
-  a sentence.
-- **Locked Dictation — Ctrl+F9.** Press **Ctrl+F9** to start a continuous session
-  without holding a key; QUILL announces "Locked dictation on." Press **Ctrl+F9**
-  again to finish and insert.
+- **Locked Dictation — Ctrl+F9.** Press **Ctrl+F9** to start a hands-free session;
+  QUILL announces "Locked dictation on." Speak as long as you like — across
+  sentences and paragraphs — then press **Ctrl+F9** again to finish. QUILL
+  transcribes and inserts the text at the cursor as one undoable edit.
 - **Stopping safely.** While recording, **Escape** stops and keeps your speech for
-  transcription; **Shift+Escape** cancels and discards it. A locked session also
-  stops automatically after five minutes, and stops and preserves your audio if
-  QUILL loses focus.
-- **Pause and status.** **Ctrl+Shift+F9** pauses or resumes a locked session;
+  transcription; **Shift+Escape** cancels and discards it. A session also stops
+  automatically after five minutes, and stops and preserves your audio if QUILL
+  loses focus.
+- **Pause and status.** **Ctrl+Shift+F9** pauses or resumes the session;
   **Alt+F9** speaks the current state without changing it.
 - **Nothing is lost.** Audio is saved to a recovery folder before transcription
   starts, and a transcript that cannot be safely inserted is kept for review.
-- **Dictation Settings.** **Tools > Speech > Hold & Locked Dictation > Dictation
-  Settings…** exposes the knobs the dictation engine reads: the Locked-Dictation
-  time limit, the minimum hold needed to start (so an accidental F9 tap is ignored),
-  stop-and-keep-speech when QUILL loses focus, intelligent insertion spacing, and a
-  reset that shows the one-time first-use hint again.
-- **Dictation History & Review.** **Tools > Speech > Hold & Locked Dictation >
+- **Dictation Settings.** **Tools > Speech > Locked Dictation > Dictation
+  Settings…** exposes the knobs the dictation engine reads: the session time
+  limit, stop-and-keep-speech when QUILL loses focus, intelligent insertion
+  spacing, and a reset that shows the one-time first-use hint again.
+- **Dictation History & Review.** **Tools > Speech > Locked Dictation >
   Dictation History & Review…** lists every recording whose transcript was never
   inserted — crash orphans and transcripts that couldn't be placed safely — so you
   can **insert** one at the cursor, **copy** it, or **discard** it (Enter inserts the
   selected row). If anything is awaiting review at startup, QUILL announces it and
   points you here, so dictated speech is never silently lost.
-- **Distinct sound, one-time hint.** Locked Dictation plays its own earcons so a
-  hands-free session sounds different from a press-and-hold one, and the very first
-  time you dictate QUILL speaks a brief one-time hint about the keys.
-- **Remappable.** F9, Ctrl+F9, and the rest are defaults; change them in the Keymap
+- **Distinct sound, one-time hint.** Locked Dictation plays its own earcons, and
+  the very first time you dictate QUILL speaks a brief one-time hint about the keys.
+- **Remappable.** Ctrl+F9 and the rest are defaults; change them in the Keymap
   Editor (**Settings > Keyboard**). You need an offline speech model installed
   (**Tools > Speech > Manage Speech Models**) and the optional
   microphone-capture support; in Safe Mode dictation is disabled.
@@ -1906,9 +1907,9 @@ The manager also has **Import** and **Export** buttons for JSON round-trips. Exp
 
 **Sound feedback.** Optional: enable **Play sound on abbreviation expansion** in `Tools > Customize & Support > Preferences > Editing` and optionally point **Abbreviation expansion sound file** to a `.wav` file. Leave the path blank for the default system beep.
 
-**Quillin-contributed abbreviations.** Installed Quillins can add their own abbreviations to the registry. These are listed in the Insert Automation Reference and can be disabled per-Quillin in the Quillin's own preferences page (open **Preferences**, Ctrl+Comma, then navigate to the Quillin by name). Your own abbreviations always take priority over Quillin-contributed ones; if two Quillins claim the same trigger, the conflict is visible in the Conflict Manager.
+**Quillin-contributed abbreviations.** Installed Quillins can add their own abbreviations to the registry. Each one can be turned on or off individually in the Quillin's own preferences page (open **Preferences**, Ctrl+Comma, then navigate to the Quillin by name — for the bundled Smart Insert Quillin, the toggles are on its **Abbreviations** tab). Contributed abbreviations are kept separate from your saved library and are never written into it. Your own abbreviations always take priority over Quillin-contributed ones; if two Quillins claim the same trigger, the one loaded first wins.
 
-The bundled **Smart Insert** Quillin contributes five abbreviations by default:
+The bundled **Smart Insert** Quillin contributes four expanding abbreviations by default:
 
 | Trigger | Inserts |
 | --- | --- |
@@ -1916,7 +1917,8 @@ The bundled **Smart Insert** Quillin contributes five abbreviations by default:
 | `qmeet` | Meeting notes template with today's date |
 | `qlog` | Date and time timestamp |
 | `qtodo` | Three-item to-do checklist |
-| `qbrf` | Predictable BRF test document |
+
+Only abbreviations with a fixed expansion text expand as you type. Handler-based (dynamic) abbreviations — such as Smart Insert's declared `qbrf` — do not fire from bare-word typing; use the matching smart trigger (`=brftest()`) or the Insert menu command instead.
 
 **Tips.**
 
@@ -2367,7 +2369,7 @@ Markdown means different things to different writers: a poet wants every line br
 
 **Selection pre-fill:** If text is selected when you press `Ctrl+Shift+E`, QUILL checks whether the selection is a LaTeX equation. If it is, it strips the delimiters (`$` for inline, `$$` for block), pre-fills the prompt with the bare formula, and surfaces the detected display mode first in the choice list so you can confirm with one keypress.
 
-**Rendering:** Browser Preview (`QUILL Key + V`) and HTML export inject a MathJax 3 script tag so equations render visually in any browser. The document source always contains the raw LaTeX or MathML, which your screen reader reads directly.
+**Rendering:** Browser Preview (`QUILL Key + V`) and HTML export inject a MathJax 3 script tag so equations render visually in any browser. The document source always contains the raw LaTeX or MathML, which your screen reader reads directly. The MathJax script is loaded from a public CDN by your browser, so the *visual* rendering of equations needs a network connection; the underlying LaTeX/MathML (and everything your screen reader announces) is always present offline. If you are offline, equations show as their raw source rather than typeset math — the content is never lost.
 
 A collection of ten worked examples — quadratic formula, binomial theorem, integration by parts, Euler's identity, and more — is in `docs/math/latex_testing.md`.
 
@@ -2443,6 +2445,16 @@ Read Aloud uses local voices with a deterministic support policy. The Windows sy
 The **Kokoro** voice models (~120 MB), the classic **DECtalk** runtime (~2 MB), and the **eSpeak NG** engine with its voice data (~40 MB) are not bundled in the installer; the first time you choose one of these voices, QUILL downloads it for you from its own verified source (checksum-checked, with a cancelable progress window), and your other voices — including the always-present SAPI 5 system voice — keep working in the meantime. If you are **upgrading** from a version that bundled these, your existing copies are kept and keep working — you do not need to download anything.
 
 To audition a voice in **Manage Voices**, select it and use the **Preview** button. If the voice is already downloaded, Quill synthesises the preview phrase with that voice's real model; if it is not downloaded yet (for example a Kokoro voice), Quill plays a short pre-recorded sample so you can still hear it before deciding to download. The rate, volume, pitch, and speed controls apply to real synthesis, so they stay dimmed until the voice is downloaded.
+
+### Read Document in Browser (experimental)
+
+Your web browser has voices QUILL's built-in engines cannot reach — including Microsoft Edge's "Online (Natural)" voices. This opt-in feature reads the current document with them.
+
+**Turn it on.** Open **Preferences → Experimental**, tick the acknowledgement box, then enable **Read the document aloud in your browser**. It takes effect as soon as you apply Settings — no restart. A **Read in Browser (Experimental)** item appears under **Tools → Reading & Dictation → Read Aloud**, and the command palette gains **Read Document in Browser (Experimental)**.
+
+**How it works.** QUILL writes a self-contained, accessible reader page and opens it in the browser you chose under **Preferences → Preview**. The page has a labelled **Voice** picker — each voice marked "on this device" or "online", filtered to your QUILL display language, with a **Show all languages** checkbox to reveal the rest — a **Speed** slider, and **Play** and **Stop** buttons. Focus lands on Play, status changes are announced through a live region, and **Escape** stops. Reading proceeds section by section, so book-length documents stay reliable: **Pause** keeps your place and tells you where you are ("Paused at section 12 of 300") and resuming continues from that section, while **Stop** resets to the top. Your voice and speed choices are remembered between sessions, and the document text carries your display-language tag so a screen reader reading the page pronounces it correctly.
+
+**Privacy.** QUILL itself makes no network call, and no audio file is produced. Voices labelled "on this device" synthesize locally. The browser's "Online (Natural)" voices synthesize in the voice vendor's cloud, which means choosing one sends the text being read to that service — pick an on-device voice to keep everything local. The reader page (which contains your document text) is written to QUILL's app-data folder and deleted when you close QUILL, so no plaintext copy is left behind.
 
 ### Batch Export to Speech Audio
 
@@ -2523,6 +2535,40 @@ OCR is explicit and local. You choose the image, confirm the action, and receive
 
 These commands are where Quill feels especially mature for accessibility-minded reading work. Rather than assuming every import is trustworthy, Quill gives you tools to ask whether the extraction is good enough, what may have been lost, and whether you should quote from the result directly.
 
+## GLOW Workflows Inside QUILL
+
+GLOW (Guided Layout and Output Workflow) is QUILL's built-in accessibility review system. It is about guided confidence, not a compliance dashboard: accessibility-aware review and safe deterministic fixes that feel ordinary. Everything lives under **Tools > GLOW**.
+
+### Enabling GLOW (experimental)
+
+GLOW ships as an **experimental feature** and is off by default while it matures. To turn it on: **Preferences > Experimental**, tick **Enable experimental features** (the master switch for the whole tab), then tick **GLOW accessibility review and repair (experimental)**. It takes effect as soon as you apply Settings — the **Tools > GLOW** menu appears with no restart. While the gates are off, the GLOW commands stay visible in the command palette so they are discoverable; running one simply explains how to enable the feature. Experimental means still maturing, not unsafe: every GLOW action keeps the review-first, never-touch-the-original contract described below.
+
+### Audit flows
+
+- **GLOW Audit Current Document** reviews the whole file in front of you.
+- **GLOW Audit Selection / Paragraph** reviews just the block at the caret.
+- **GLOW Audit File...** picks a structured document on disk — DOCX, PPTX, XLSX, PDF, EPUB, or Markdown — and runs the shared GLOW engine over it in the background. You get a score, a grade, and every finding with its suggestion.
+
+Results open as normal QUILL tabs you can read, search, compare, or keep open beside the source. Each finding names the rule, the severity, the location when known, and a plain-language suggestion.
+
+### Fix flows
+
+- **GLOW Fix Selection / Paragraph** applies quick in-place cleanup where you are.
+- **GLOW Fix Current Document** generates a preview and immediately compares original versus fixed — another working context beside your document, not away from it. Accept or reject with full knowledge of what changed.
+- **GLOW Fix File...** writes a repaired copy of a structured document *next to* the original (for example `report-accessible.docx`). The original is never modified, QUILL confirms the output name first, and the post-fix audit opens so you can verify the result.
+
+### What GLOW checks
+
+In-editor audits cover plain text, Markdown, and HTML: missing spaces after Markdown heading markers, heading-level jumps, generic link text ("click here"), missing HTML language metadata, missing image alt attributes, tables without header cells, tab-indent hazards, and dense paragraphs / plain-language friction. The optional shared engine extends this to structured files (DOCX, PPTX, XLSX, PDF, EPUB) with a scored, graded report.
+
+### The GLOW engine and updates
+
+The in-editor checks are always available. Structured-file audit and fix use the optional GLOW engine (installed with QUILL's `glow` extra); when it is absent, QUILL says so honestly instead of failing. **Help > Check for GLOW Updates...** checks for a newer engine on demand — the check is opt-in, the download is confirmed separately, every wheel is signature- and checksum-verified, and a failed install rolls back to the bundled engine.
+
+### GLOW settings
+
+**Preferences > GLOW Accessibility** holds the engine toggle and the optional networked features (AI alt-text generation, PII redaction, WCAG language processing). All networked features are **off by default** and each use asks for explicit consent — the default GLOW workflow runs entirely on your machine.
+
 ## Verbosity and Announcements
 
 QUILL lets you control what it announces and when, so the editor is as quiet or
@@ -2577,16 +2623,18 @@ Manager.
   actually speaks, never your typing.
 - **Braille display showing the first character in cell two?** QUILL's editor
   defaults to a rich-text control (so screen readers report its contents
-  correctly), and some braille displays shift each line of a rich control one
-  cell to the right — the same long-standing quirk you may remember from
-  Microsoft Word. **Preferences > Accessibility > Editor control type (braille)**
-  lets you change the native control: if your display shows the offset, set it to
-  **Plain edit, like Notepad**, a simple control that the rich control was only
-  ever needed in place of for *read-only* views (an editable plain control still
-  reads correctly). RichEdit 2.0 is offered as a middle option. Changing the
-  control type takes effect for documents opened afterward, so reopen your
-  document or restart to compare. This affects only how the control is presented;
-  your text is never changed.
+  correctly), and some braille displays shift each line one cell to the right —
+  the same long-standing quirk you may remember from word processors. Honest
+  status: **this issue is not yet resolved** — testing shows that changing the
+  editor control type does not eliminate the offset for affected displays, and
+  an outcome is still being considered. **Preferences > Accessibility > Editor
+  control type (braille)** remains available for troubleshooting and
+  experimentation: you can switch between RichEdit 3.0, RichEdit 2.0, and
+  **Plain edit, like Notepad** to compare how your display and screen reader
+  behave on each (the change applies to documents opened afterward, so reopen
+  or restart to compare). This affects only how the control is presented; your
+  text is never changed, and your reports about what you observe on your
+  hardware genuinely help.
 - **Per-action templates.** Advanced users can edit exactly what each action
   says, using tokens like `{line}` and filters like `${ordinal:line}`, with live
   validation and preview. Templates can be saved to a library, shared as
@@ -2803,6 +2851,18 @@ Some of these live in the View menu for quick toggling; the preference-style tog
 
 Quill is serious about recovery and user control.
 
+### The Experimental tab
+
+**Preferences > Experimental** is where features that are functional but still maturing live until they graduate. It is built as a set of nested consent gates, and disabled controls leave the tab order entirely — so to a screen reader user, an untouched Experimental tab is a single checkbox and nothing else.
+
+- **Enable experimental features** — the master switch, and the first control on the tab. Its label says exactly what it governs: *everything* below it. Until it is ticked, every experimental option is ignored by QUILL and its control is disabled (unreachable by Tab), so an accidental change can never affect the editor.
+- **GLOW accessibility review and repair (experimental)** — lights the **Tools > GLOW** menu (see "GLOW Workflows Inside QUILL"). Takes effect on Apply, no restart.
+- **WordPress publishing connections (experimental)** — lights the read-only publishing tools in the **File** menu: save a WordPress connection, verify it, browse your site's posts and pages, and open a remote item in the editor. Strictly inbound: the send/publish half remains locked while the providers framework is reviewed, so nothing can be published from QUILL regardless of this switch.
+- **Read the document aloud in your browser (experimental)** — the browser reader page described under Read Aloud.
+- **Enable experimental editor surfaces** — a *second* safety gate whose label carries its own warning: *features may degrade based on the control selected*. The editor surface is the control your document lives in, so this gate separately governs the **Editor surface** choice and the **Hide editor border** option beneath it, plus the live explainer that describes each surface. Both this gate and the master switch must be on before any surface override is applied, and while it is off those controls are disabled and skipped in the tab order.
+
+The pattern to remember: one master switch for the tab, one switch per experiment, and the editor-surface experiments behind a third acknowledgement of their own — consent in layers, never by accident.
+
 ### Notebooks
 
 A **Notebook** is a named collection of documents that belong together — a novel's chapters, a research project's notes, a software project's specs. Notebooks live in a single `.quillnotebook` file and keep track of which files are entries, where you left each caret, any goals you have set, and saved snapshots of which entries were open.
@@ -2940,6 +3000,30 @@ Spreadsheet intake is text-first and structure-aware. Quill extracts sheets into
 ### PDF and OCR-derived text
 
 PDF and OCR work are where Quill's extraction review commands matter most. Treat those commands as quality checks, not optional extras.
+
+### Import / Convert Document — free-first conversion and OCR
+
+**File > Import > Import / Convert Document (OCR)...** (also under **Tools > Reading & Dictation**) is QUILL's document-rescue tool for files that are hard to read: locked-down Office documents, EPUBs, scanned PDFs, and photos of pages. Its one rule: **free first, local first, and nothing is ever uploaded.**
+
+How a conversion flows:
+
+1. **The free local converter runs first.** Word, PowerPoint, Excel, HTML, EPUB, and PDFs that already carry text convert instantly on your machine and open as clean, editable text. No account, no key, no upload, no cost.
+2. **A scanned document is detected, not dumped.** If a PDF comes back nearly empty, QUILL says so — "It looks scanned or image-based" — and *asks* whether to run free on-device OCR. Yes runs it; No opens the empty result anyway; Cancel imports nothing. QUILL never silently opens a blank result and never runs OCR without asking.
+3. **On-device OCR rescues the scan.** The local Tesseract engine recognizes each page on your computer (CPU-only, works offline), keeps page boundaries as searchable `<!-- Page N -->` markers, and announces progress ("Recognizing page 3 of 12..."). When recognition confidence is low, QUILL tells you plainly so you know to review the result — honesty over false confidence.
+
+**Installing the OCR engine.** The engine is a free, one-time ~48 MB download: **Tools > Reading & Dictation > Install Local OCR Engine (Tesseract)...**. QUILL fetches the official installer from its own verified release, checks it byte-for-byte, and opens it for you to complete — never a silent install. If Tesseract is already on this computer (or installed with Homebrew on a Mac), QUILL simply finds and uses it.
+
+**The optional cloud tier — Datalab Chandra OCR.** For the documents even local OCR cannot rescue well — complex tables, forms, handwriting, dense multi-column layouts, very poor scans — QUILL supports an optional, paid, bring-your-own-key cloud service. The free-first order is structural: QUILL offers the cloud only *after* on-device OCR comes back weak (or when you decline the free engine install), and **every single upload requires your explicit consent** in a dialog that names the service, reminds you to consider private/medical/legal/financial content, and notes that Datalab deletes results from its servers about an hour after processing. Filenames that suggest sensitive content (tax, medical, legal, and similar) get an extra CAUTION line — from the name only; QUILL never inspects the content to decide. There is deliberately no "don't ask again."
+
+**Setting up the cloud service.** **Tools > Reading & Dictation > OCR and Document Conversion > OCR Service Settings...** opens the **AI Hub Services tab**: enable the service, paste your Datalab API key (stored in the Windows credential vault, never in a settings file), choose the default mode (Fast / Balanced / Accurate) and output (Markdown recommended), and press **Test Connection** — which checks your key and endpoint and explicitly uploads no document. Buttons link to the provider's website, key page, pricing, privacy documentation, API docs, and supported file types (each opens in your browser), and **Copy Service Summary** copies a secret-free description for support requests.
+
+**Reviewing what OCR produced.** **Review Last OCR Result...** opens an accessible checklist for the most recent conversion: which service produced it, page count, recognition confidence, and — for on-device OCR — every low-confidence line listed as `Page N: [confidence] text`. Walk the flagged lines by arrow key, then search the converted document for the page marker (for example `<!-- Page 3 -->`) to jump to the trouble spot. Review by ear, exactly where it is needed, instead of re-proofreading everything.
+
+**Housekeeping.** **Delete OCR Temporary Files** clears any leftover job files from QUILL's data folder (the local tiers normally clean up after themselves automatically) and announces what was removed. Converted results live only in the opened, unsaved document until you choose to save.
+
+**The services overview.** **OCR and Conversion Services...** explains every service in plain language — the free local converter, the local OCR engine, and the optional Datalab cloud service: what each does, what it is best at, whether it is local or cloud, what it costs, and each one's current status.
+
+Settings: the OCR recognition language (`ocr_language`, default English) and an explicit engine path override (`tesseract_path`) for unusual installs; the cloud service's non-secret options live on the Services tab.
 
 ### Remote files (FTP, SFTP, HTTPS, WebDAV, S3)
 
@@ -3423,9 +3507,9 @@ Quill supports **Quillins** — extensions that add commands, snippets, menus, a
 
 ### Bundled Quillins
 
-QUILL ships fourteen trusted, first-party Quillins enabled by default:
+QUILL ships seventeen trusted, first-party Quillins enabled by default:
 
-- **Smart Insert** (`com.quill.smartinsert`) — abbreviations and smart text triggers for everyday templates. Contributes `qbug`, `qmeet`, `qlog`, `qtodo`, and `qbrf` abbreviations, as well as `=bug()`, `=meeting()`, `=journal()`, `=todo()`, `=logentry()`, `=brftest()`, and `=rand()` smart triggers. Settings are under **Preferences → Smart Insert**.
+- **Smart Insert** (`com.quill.smartinsert`) — abbreviations and smart text triggers for everyday templates. Contributes the `qbug`, `qmeet`, `qlog`, and `qtodo` expanding abbreviations (its declared dynamic `qbrf` is reached via `=brftest()` instead), as well as `=bug()`, `=meeting()`, `=journal()`, `=todo()`, `=logentry()`, `=brftest()`, and `=rand()` smart triggers. Settings are under **Preferences → Smart Insert**.
 - **BRF Tools** (`com.quill.brftools`) — preferences for braille translation defaults, page handling, status bar display, and diagnostics. Requires the QUILL Braille Pack. Settings under **Preferences → BRF Tools**.
 - **Journal Stamp** (`com.quill.journalstamp`) — inserts a date header when you create a new journal document; announces your word count (and daily goal progress) after every save; announces session restores. Listens to `quillin.enabled` to log activation and `settings.changed` to hot-reload preferences. Settings under **Preferences → Journal Stamp**.
 - **Document Guardian** (`com.quill.docguardian`) — warns before closing short or unfinished documents; optionally stamps an `Updated:` line before each save; optionally speaks the file name and size after each save. Uses `quillin.enabled`, `quillin.disabled`, and `quill.shutdown` lifecycle events. Settings under **Preferences → Document Guardian**, which has Close Guard, Save Stamp, Save Confirmation, and Lifecycle Announcements tabs. The Lifecycle Announcements tab controls whether the activation and deactivation cue is spoken; the setting defaults to off so first-run is quiet for screen-reader users.
@@ -3439,6 +3523,7 @@ QUILL ships fourteen trusted, first-party Quillins enabled by default:
 - **AI Writing Prompts** — additional prompt library entries contributed by the Quillin manifest.
 - **AI Writing Skills** — pre-built `.sqp` skill files for rewriting, meeting-notes extraction, and research drafts.
 - **Math Equations** — inserts LaTeX or MathML equations at the cursor via **Insert → Insert Equation...** (`Ctrl+Shift+E`); see Math Equations earlier in this guide.
+- **ElevenLabs Scribe Transcription**, **Groq Whisper Transcription**, and **OpenAI Whisper Transcription** — add those cloud services as optional transcription providers (with speaker identification, in ElevenLabs' case). Audio is uploaded only when you explicitly transcribe with that provider and have configured its API key — never offline, never without consent.
 
 ### Quillin Preferences
 
@@ -6021,6 +6106,9 @@ A multi-slot clipboard within QUILL that holds up to twelve named text snippets 
 **Document Tab**
 A single open file or generated artifact inside the QUILL editor area. QUILL is a tabbed editor; each file, compare summary, or AI output opens as its own document tab. Tabs are announced by name when you switch between them (`Ctrl+Tab`).
 
+**GLOW (Guided Layout and Output Workflow)**
+QUILL's built-in text quality and accessibility review system. GLOW audits a document for structural issues (heading hierarchy, generic link text, missing alt text, missing language metadata, tables without header cells, spacing, dense paragraphs) and offers deterministic fixes. Audit results open as readable QUILL tabs; fixing the document opens a named preview and starts a compare session; fixing a file on disk writes a repaired copy without touching the original. In-editor checks cover plain text, Markdown, and HTML; the optional GLOW engine extends audit and fix to DOCX, PPTX, XLSX, PDF, and EPUB with a scored, graded report. Everything lives under **Tools → GLOW**.
+
 **Keymap / Keyboard Pack (.kqp)**
 The mapping of keyboard shortcuts to QUILL commands. The keymap is fully editable in **Preferences → Keyboard**. You can export your keymap as a `.kqp` file (Keyboard Pack) to share it with others or import one provided by the community. Resetting the keymap restores factory defaults without affecting other preferences.
 
@@ -6058,13 +6146,13 @@ A reusable block of text with optional interactive placeholders that you insert 
 A collection of audio files that QUILL uses for non-speech feedback: key sounds, navigation tones, alert chimes, and (optionally) indentation-level tones for coding. Sound Packs are loaded from a named directory and can be swapped in Preferences. The default pack uses synthesised bell tones; custom packs can use any WAV files following the naming convention.
 
 **Template**
-A pre-written document structure that you can use as a starting point for new files. Templates are plain text or Markdown files stored in a designated folder. Opening a template creates a new untitled document pre-filled with the template content. Manage templates in **File → New from Template**.
+A pre-written document structure that you can use as a starting point for new text. In QUILL, templating comes in two forms: **snippets** (`Ctrl+Shift+Grave, S`) insert reusable blocks with interactive placeholders anywhere, and the **Accessible Vault's Insert Template** command fills note templates from your vault's Templates folder, expanding `{{date}}`/`{{title}}`, asking any `{{prompt}}` questions, and placing the cursor at `{{cursor}}`.
 
 **Watch Folder**
 A directory that QUILL monitors in the background. Any supported file dropped into the watch folder is automatically opened as a new document tab (or processed according to per-folder rules). Useful for transcription pipelines, dictation outputs, and batch review workflows. Configure in **Tools → Watch Folder**.
 
 **WebView / Side Preview**
-The rendered HTML preview pane that appears alongside the editor when you press `F6` (or enable it via **View → Side Preview**). The preview is powered by Microsoft Edge WebView2 and renders Markdown, HTML, and plain text in real time as you type. The preview is read-only and does not affect the document.
+The rendered HTML preview pane that appears alongside the editor when you open it from the **View** menu (or automatically, with Auto Side-by-Side Preview on). `Ctrl+F6` focuses it, and it joins the `F6` region rotation while open. The preview is powered by Microsoft Edge WebView2 and renders Markdown, HTML, and plain text in real time as you type. The preview is read-only and does not affect the document.
 
 **Welcome Guide**
 A lightweight, profile-aware getting-started document that opens inside QUILL as a document tab. Unlike the full User Guide (which opens in your browser), the Welcome Guide adapts its content to show only the features enabled in your current profile. Open it from **Help → Open Welcome Guide**.

@@ -1,7 +1,7 @@
 """Hidden-codes run/paragraph formatting commands for ``MainFrame``.
 
 Implements the editor commands for the rich-text "hidden codes" feature
-(``docs/rich-text-formatting-hidden-codes-design.md``): font family, point size,
+(``docs/planning/rich-text-formatting-hidden-codes-design.md``): font family, point size,
 text color, highlight, and paragraph alignment, plus the "describe formatting at
 cursor" interrogation hotkey. Each command materializes an *invisible* Pandoc
 attribute span (``[text]{...}``) or alignment fenced div (``::: {align=...}``)
