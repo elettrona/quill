@@ -8,8 +8,8 @@ This is the narrative companion to the **"0.9.0 Beta 1"** section of `CHANGELOG.
 (the canonical, append-as-you-go log). It tells the story of what changes in
 0.9.0 Beta 1 on top of the 0.8.0 line - what each feature is, and, just as
 important, **why it matters** for the way you actually work. This is the
-feature-complete cut for 0.9.0; the last 1.0 feature is the GLOW accessibility suite,
-and focus from here is polish.
+feature-complete cut for 0.9.0 - the GLOW accessibility suite ships unlocked in this
+beta - and focus from here is polish.
 
 ---
 
@@ -358,6 +358,128 @@ A vault is an ordinary folder of Markdown files plus one small `.quill` cache yo
 can delete without losing a word. Links live as plain `[[text]]` in your files -
 nothing hidden - so every note opens in any editor. It is entirely optional: never
 open a vault and QUILL is the editor it always was.
+
+---
+
+## Learn QUILL by ear - The QUILL Cast and new tutorials
+
+QUILL's documentation now teaches in three registers. The user guide remains
+the full reference. A new **tutorials** collection (docs/tutorials) walks six
+complete workflows hands-on - your first hour, keyboard mastery, rescuing a
+scanned PDF, building an audiobook, starting a Vault, and shipping an
+accessible document with GLOW.
+
+And then there is **The QUILL Cast**: a ten-episode, two-host audio course
+covering every major concept in the product - hosted by Liam and Jessica,
+who happen to be QUILL's own on-device Kokoro neural voices. The product
+narrates its own curriculum. Every episode ships with a full accessible
+transcript, and an RSS feed lets you subscribe in any podcast app.
+
+**Why it matters:** some people learn by reading, some by doing, some by
+listening on a walk. Now all three of them get a first-class path into QUILL.
+
+---
+
+## Import / Convert Document - rescue for locked-away documents
+
+Everyone with a screen reader knows the feeling: someone hands you a PDF and
+it turns out to be a photograph of a page. Nothing to read, nothing to search,
+nothing to fix. This beta ships QUILL's answer - a supported document-rescue
+tool with one rule: **free first, local first, and nothing is ever uploaded.**
+
+### How it works
+
+**File > Import > Import / Convert Document (OCR)...** takes almost anything -
+Word, PowerPoint, Excel, HTML, EPUB, PDFs, images - and routes it through free,
+on-device services:
+
+1. **The free local converter runs first.** Born-digital files and PDFs with a
+   real text layer convert instantly into clean, editable text. No account, no
+   key, no cost.
+2. **Scanned documents are detected, not dumped.** When a PDF comes back nearly
+   empty, QUILL says what it found - "it looks scanned or image-based" - and
+   *asks* whether to run free on-device OCR. You choose; QUILL never opens a
+   blank result silently and never runs OCR behind your back.
+3. **On-device OCR rescues the scan.** The local Tesseract engine reads each
+   page on your own computer (CPU-only, works offline), keeps page boundaries
+   as searchable markers, announces progress page by page, and - honestly -
+   tells you when recognition confidence is low so you know to review the
+   result rather than trust it blindly.
+
+### A one-time, verified download
+
+The OCR engine is not bundled; it is a free ~48 MB download from
+**Tools > Reading & Dictation > Install Local OCR Engine (Tesseract)...**.
+QUILL fetches the official installer from its own pinned release, verifies it
+byte-for-byte, and opens it for you to complete - never a silent install. If
+Tesseract is already on your machine, QUILL just finds it.
+
+### Plain-language services page
+
+**OCR and Conversion Services...** describes each service the way a person
+would: what it does, what it is best at, whether it is local or cloud (both
+shipped services are local), what it costs (nothing), and the engine's current
+install status. A consent-gated cloud tier for the hardest documents is
+planned - and when it comes, the free local services will still always run
+first.
+
+**Why it matters:** the documents most likely to be inaccessible - scans,
+photocopies, image PDFs - are exactly the ones other tools quietly give up on.
+QUILL turns them into text you can read, search, and edit, without sending
+your mail, your medical letter, or your homework to anyone's cloud.
+
+---
+
+## GLOW - guided accessibility review and repair
+
+GLOW (Guided Layout and Output Workflow) is QUILL's accessibility review system,
+and with this beta it graduates from hidden preview to a shipping feature. The
+idea is guided confidence, not a compliance dashboard: GLOW reviews what is in
+front of you, explains each finding in plain language, and offers only safe,
+deterministic fixes you can inspect before accepting.
+
+### Audit what you can hear
+
+**Tools > GLOW > Audit Current Document** reviews the whole file;
+**Audit Selection / Paragraph** reviews just the block at your caret. Findings
+open as a normal QUILL tab you can arrow through, search, or keep open beside
+your document: heading levels that jump, links that just say "click here",
+images without alt text, HTML missing its language, tables without header
+cells, dense paragraphs that will be hard to listen to. Every finding names its
+rule, its severity, and a plain-language suggestion.
+
+### Fix without fear
+
+**Fix Selection / Paragraph** cleans up the block in place and leaves the
+result selected for review. **Fix Current Document** goes further: it opens the
+repaired text as a *named preview tab* and immediately starts a compare session
+against the original, so you accept the change knowing exactly what moved -
+never a silent rewrite.
+
+### Structured documents too
+
+New with the unlock, **GLOW Audit File...** and **GLOW Fix File...** take on
+the files that are usually hardest to check by ear: Word, PowerPoint, Excel,
+PDF, and EPUB. The shared GLOW engine parses the document in the background
+(the editor never freezes), and the audit comes back as a scored, graded report
+with every finding listed. Fixing a file always writes a repaired copy beside
+the original - `report.docx` becomes `report-accessible.docx` - and QUILL
+confirms the destination before anything runs. Your source file is never
+touched.
+
+### Private by default, updated only on request
+
+The everyday GLOW workflow runs entirely on your machine. The engine's optional
+networked helpers (AI alt-text, PII redaction, language processing) are off
+until you explicitly turn them on, per action. **Help > Check for GLOW
+Updates...** fetches a newer engine only when you ask - the manifest is signed,
+every wheel is checksum-verified, and a failed install rolls back to the
+bundled engine.
+
+**Why it matters:** accessibility review has mostly been visual dashboards and
+sighted checklists. GLOW puts a guided, spoken, keyboard-first repair loop
+inside the editor you already use - so the person most affected by an
+inaccessible document is also the person best equipped to fix it.
 
 ---
 

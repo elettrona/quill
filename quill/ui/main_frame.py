@@ -496,8 +496,10 @@ from quill.ui.main_frame_classic_editor import ClassicEditorMixin
 from quill.ui.main_frame_copy_tray import CopyTrayMixin
 from quill.ui.main_frame_devtools import DevToolsMixin
 from quill.ui.main_frame_dictation_hotkeys import DictationHotkeysMixin
+from quill.ui.main_frame_docconvert import DocConvertMixin
 from quill.ui.main_frame_format_codes import FormatCodesMixin
 from quill.ui.main_frame_github import GitHubRemoteMixin
+from quill.ui.main_frame_glow import GlowFileMixin
 from quill.ui.main_frame_hygiene import HygieneMixin
 from quill.ui.main_frame_image import ImageCaptureMixin
 from quill.ui.main_frame_inline_notes import InlineNotesMixin
@@ -873,6 +875,8 @@ class MainFrame(
     ListStudioMixin,
     StoryStudioMixin,
     VaultMixin,
+    GlowFileMixin,
+    DocConvertMixin,
     DictationHotkeysMixin,
     SectionMoveMixin,
     CopyTrayMixin,
@@ -1520,7 +1524,12 @@ class MainFrame(
         # to after the editor is focused and "Ready" is announced, on a short
         # delay, lets the user start working first; F6/preview before it finishes
         # is already handled by the ``_webview_warm`` deferral in preview_in_app.
-        self._wx.CallLater(1200, self._prewarm_webview_runtime)
+        # Isolated like every other deferred step: a failure scheduling the
+        # warm-up must never take down startup (the DLG-3 Phase 5 contract).
+        try:
+            self._wx.CallLater(1200, self._prewarm_webview_runtime)
+        except Exception:
+            self._report_startup_task_failure("webview warm-up scheduling")
         _t = time.perf_counter() if _profile else 0.0
         if (
             getattr(self.settings, "auto_check_updates", False)
@@ -2350,6 +2359,24 @@ class MainFrame(
             None,
         )
         self.commands.register(
+            "file.import_convert",
+            "Import / Convert Document (OCR)",
+            self.import_convert_document,
+            None,
+        )
+        self.commands.register(
+            "tools.install_local_ocr",
+            "Install Local OCR Engine (Tesseract)",
+            self.install_local_ocr_engine,
+            None,
+        )
+        self.commands.register(
+            "tools.ocr_services",
+            "OCR and Conversion Services",
+            self.show_ocr_services_overview,
+            None,
+        )
+        self.commands.register(
             "tools.ocr_clipboard",
             "OCR Clipboard Image",
             self.ocr_clipboard_image,
@@ -2950,6 +2977,18 @@ class MainFrame(
             "tools.glow_fix_selection",
             "GLOW Fix Selection",
             self.glow_fix_selection,
+            None,
+        )
+        self.commands.register(
+            "tools.glow_audit_file",
+            "GLOW Audit File",
+            self.glow_audit_file,
+            None,
+        )
+        self.commands.register(
+            "tools.glow_fix_file",
+            "GLOW Fix File",
+            self.glow_fix_file,
             None,
         )
         self.commands.register(
@@ -5641,6 +5680,13 @@ class MainFrame(
             glow_menu.Bind(
                 wx.EVT_MENU, lambda _e: self.glow_fix_selection(), id=glow_fix_selection_id
             )
+            glow_audit_file_id = wx.NewIdRef()
+            glow_fix_file_id = wx.NewIdRef()
+            glow_menu.AppendSeparator()
+            glow_menu.Append(glow_audit_file_id, "GLOW Audit File...")
+            glow_menu.Append(glow_fix_file_id, "GLOW Fix File...")
+            glow_menu.Bind(wx.EVT_MENU, lambda _e: self.glow_audit_file(), id=glow_audit_file_id)
+            glow_menu.Bind(wx.EVT_MENU, lambda _e: self.glow_fix_file(), id=glow_fix_file_id)
             menu.AppendSubMenu(glow_menu, "GLOW")
 
         menu.AppendSeparator()

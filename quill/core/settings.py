@@ -237,6 +237,11 @@ class Settings:
     vault_root: str = ""  # active Accessible Vault folder ("" = no vault open)
     vault_templates_folder: str = ""  # vault-relative Templates folder ("" = "Templates")
     vault_daily_pattern: str = ""  # daily-note path pattern ("" = "Journal/{{date:YYYY-MM-DD}}.md")
+    # Free-first document conversion (Import / Convert Document): the local
+    # Tesseract OCR language (three-letter code, "" = "eng") and an optional
+    # explicit tesseract executable override ("" = auto-discover).
+    ocr_language: str = ""
+    tesseract_path: str = ""
     # #620: Simple File Open dialog. When true, File > Open... shows a
     # keyboard-friendly picker with a small filter, recent locations, and
     # a hidden-files toggle. The standard Windows file dialog is still
@@ -758,6 +763,8 @@ class Settings:
         vault_root = str(data.get("vault_root", "")).strip()
         vault_templates_folder = str(data.get("vault_templates_folder", "")).strip()
         vault_daily_pattern = str(data.get("vault_daily_pattern", "")).strip()
+        ocr_language = str(data.get("ocr_language", "")).strip()
+        tesseract_path = str(data.get("tesseract_path", "")).strip()
         # #620: Simple File Open dialog opt-in.
         use_simple_file_dialog = bool(data.get("use_simple_file_dialog", False))
         watch_folder_include_subfolders = bool(data.get("watch_folder_include_subfolders", False))
@@ -1190,6 +1197,8 @@ class Settings:
             vault_root=vault_root,
             vault_templates_folder=vault_templates_folder,
             vault_daily_pattern=vault_daily_pattern,
+            ocr_language=ocr_language,
+            tesseract_path=tesseract_path,
             use_simple_file_dialog=use_simple_file_dialog,
             watch_folder_include_subfolders=watch_folder_include_subfolders,
             watch_folder_process_existing=watch_folder_process_existing,

@@ -135,6 +135,17 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "Triggered only by an explicit 'Download eSpeak-NG' action from the Voice "
         "Browser dialog."
     ),
+    "core/tesseract_install.py::_download": (
+        "User-initiated optional local Tesseract OCR engine download (free-first "
+        "document conversion, Tier 2) from QUILL's own pinned assets-v1 release "
+        "asset (byte-identical re-publish of the official UB-Mannheim installer, "
+        "Apache-2.0). HTTPS enforced (refuses non-https), verified TLS context, "
+        "SHA-256 pinned (SEC-6), visible progress, blocked in Safe Mode, "
+        "Windows-only. The verified installer is then launched visibly for the "
+        "user to complete — never a silent install or elevation. Triggered only "
+        "by an explicit 'Install Local OCR Engine' action from Tools > OCR and "
+        "Document Conversion."
+    ),
     "core/speech/cloud_transcribers.py::transcribe_rest": (
         "User-initiated cloud transcription via a Quillin-declared, host-vetted "
         "provider kind (#669: Groq, ElevenLabs, ...). HTTPS enforced (refuses "

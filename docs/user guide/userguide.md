@@ -28,6 +28,7 @@ Quill is also in beta. Expect polish, depth, and real daily utility. Also expect
 - [QUILL Quick Nav Mode](#quill-quick-nav-mode)
 - [Formatting and Markup Work](#formatting-and-markup-work)
 - [Tools for Reading, Review, and Inspection](#tools-for-reading-review-and-inspection)
+- [GLOW Workflows Inside QUILL](#glow-workflows-inside-quill)
 - [Accessibility and Low-Vision Features](#accessibility-and-low-vision-features)
 - [Quill on macOS](#quill-on-macos)
 - [Profiles, Keyboard Packs, and Customization](#profiles-keyboard-packs-and-customization)
@@ -43,6 +44,7 @@ Quill is also in beta. Expect polish, depth, and real daily utility. Also expect
   - [PowerPoint (.pptx and .ppt)](#powerpoint-pptx-and-ppt)
   - [Excel-style spreadsheets (.xlsx and .xls)](#excel-style-spreadsheets-xlsx-and-xls)
   - [PDF and OCR-derived text](#pdf-and-ocr-derived-text)
+  - [Import / Convert Document — free-first conversion and OCR](#import--convert-document--free-first-conversion-and-ocr)
   - [Remote files (FTP, SFTP, HTTPS, WebDAV, S3)](#remote-files-ftp-sftp-https-webdav-s3)
   - [GitHub Remote Files](#github-remote-files)
 - [Braille Mode (BRF, BRL, PEF, UEB)](#braille-mode-brf-brl-pef-ueb)
@@ -2536,6 +2538,36 @@ OCR is explicit and local. You choose the image, confirm the action, and receive
 
 These commands are where Quill feels especially mature for accessibility-minded reading work. Rather than assuming every import is trustworthy, Quill gives you tools to ask whether the extraction is good enough, what may have been lost, and whether you should quote from the result directly.
 
+## GLOW Workflows Inside QUILL
+
+GLOW (Guided Layout and Output Workflow) is QUILL's built-in accessibility review system. It is about guided confidence, not a compliance dashboard: accessibility-aware review and safe deterministic fixes that feel ordinary. Everything lives under **Tools > GLOW**.
+
+### Audit flows
+
+- **GLOW Audit Current Document** reviews the whole file in front of you.
+- **GLOW Audit Selection / Paragraph** reviews just the block at the caret.
+- **GLOW Audit File...** picks a structured document on disk — DOCX, PPTX, XLSX, PDF, EPUB, or Markdown — and runs the shared GLOW engine over it in the background. You get a score, a grade, and every finding with its suggestion.
+
+Results open as normal QUILL tabs you can read, search, compare, or keep open beside the source. Each finding names the rule, the severity, the location when known, and a plain-language suggestion.
+
+### Fix flows
+
+- **GLOW Fix Selection / Paragraph** applies quick in-place cleanup where you are.
+- **GLOW Fix Current Document** generates a preview and immediately compares original versus fixed — another working context beside your document, not away from it. Accept or reject with full knowledge of what changed.
+- **GLOW Fix File...** writes a repaired copy of a structured document *next to* the original (for example `report-accessible.docx`). The original is never modified, QUILL confirms the output name first, and the post-fix audit opens so you can verify the result.
+
+### What GLOW checks
+
+In-editor audits cover plain text, Markdown, and HTML: missing spaces after Markdown heading markers, heading-level jumps, generic link text ("click here"), missing HTML language metadata, missing image alt attributes, tables without header cells, tab-indent hazards, and dense paragraphs / plain-language friction. The optional shared engine extends this to structured files (DOCX, PPTX, XLSX, PDF, EPUB) with a scored, graded report.
+
+### The GLOW engine and updates
+
+The in-editor checks are always available. Structured-file audit and fix use the optional GLOW engine (installed with QUILL's `glow` extra); when it is absent, QUILL says so honestly instead of failing. **Help > Check for GLOW Updates...** checks for a newer engine on demand — the check is opt-in, the download is confirmed separately, every wheel is signature- and checksum-verified, and a failed install rolls back to the bundled engine.
+
+### GLOW settings
+
+**Preferences > GLOW Accessibility** holds the engine toggle and the optional networked features (AI alt-text generation, PII redaction, WCAG language processing). All networked features are **off by default** and each use asks for explicit consent — the default GLOW workflow runs entirely on your machine.
+
 ## Verbosity and Announcements
 
 QUILL lets you control what it announces and when, so the editor is as quiet or
@@ -2953,6 +2985,22 @@ Spreadsheet intake is text-first and structure-aware. Quill extracts sheets into
 ### PDF and OCR-derived text
 
 PDF and OCR work are where Quill's extraction review commands matter most. Treat those commands as quality checks, not optional extras.
+
+### Import / Convert Document — free-first conversion and OCR
+
+**File > Import > Import / Convert Document (OCR)...** (also under **Tools > Reading & Dictation**) is QUILL's document-rescue tool for files that are hard to read: locked-down Office documents, EPUBs, scanned PDFs, and photos of pages. Its one rule: **free first, local first, and nothing is ever uploaded.**
+
+How a conversion flows:
+
+1. **The free local converter runs first.** Word, PowerPoint, Excel, HTML, EPUB, and PDFs that already carry text convert instantly on your machine and open as clean, editable text. No account, no key, no upload, no cost.
+2. **A scanned document is detected, not dumped.** If a PDF comes back nearly empty, QUILL says so — "It looks scanned or image-based" — and *asks* whether to run free on-device OCR. Yes runs it; No opens the empty result anyway; Cancel imports nothing. QUILL never silently opens a blank result and never runs OCR without asking.
+3. **On-device OCR rescues the scan.** The local Tesseract engine recognizes each page on your computer (CPU-only, works offline), keeps page boundaries as searchable `<!-- Page N -->` markers, and announces progress ("Recognizing page 3 of 12..."). When recognition confidence is low, QUILL tells you plainly so you know to review the result — honesty over false confidence.
+
+**Installing the OCR engine.** The engine is a free, one-time ~48 MB download: **Tools > Reading & Dictation > Install Local OCR Engine (Tesseract)...**. QUILL fetches the official installer from its own verified release, checks it byte-for-byte, and opens it for you to complete — never a silent install. If Tesseract is already on this computer (or installed with Homebrew on a Mac), QUILL simply finds and uses it.
+
+**The services overview.** **Tools > Reading & Dictation > OCR and Conversion Services...** explains each service in plain language — what it does, what it is best at, what it costs (nothing), and what stays on your machine (everything) — plus the engine's current install status. A consent-gated cloud tier for the very hardest documents (complex tables, handwriting) is planned; the free local services will always run first.
+
+Settings: the OCR recognition language (`ocr_language`, default English) and an explicit engine path override (`tesseract_path`) for unusual installs.
 
 ### Remote files (FTP, SFTP, HTTPS, WebDAV, S3)
 
@@ -6034,6 +6082,9 @@ A multi-slot clipboard within QUILL that holds up to twelve named text snippets 
 
 **Document Tab**
 A single open file or generated artifact inside the QUILL editor area. QUILL is a tabbed editor; each file, compare summary, or AI output opens as its own document tab. Tabs are announced by name when you switch between them (`Ctrl+Tab`).
+
+**GLOW (Guided Layout and Output Workflow)**
+QUILL's built-in text quality and accessibility review system. GLOW audits a document for structural issues (heading hierarchy, generic link text, missing alt text, missing language metadata, tables without header cells, spacing, dense paragraphs) and offers deterministic fixes. Audit results open as readable QUILL tabs; fixing the document opens a named preview and starts a compare session; fixing a file on disk writes a repaired copy without touching the original. In-editor checks cover plain text, Markdown, and HTML; the optional GLOW engine extends audit and fix to DOCX, PPTX, XLSX, PDF, and EPUB with a scored, graded report. Everything lives under **Tools → GLOW**.
 
 **Keymap / Keyboard Pack (.kqp)**
 The mapping of keyboard shortcuts to QUILL commands. The keymap is fully editable in **Preferences → Keyboard**. You can export your keymap as a `.kqp` file (Keyboard Pack) to share it with others or import one provided by the community. Resetting the keymap restores factory defaults without affecting other preferences.

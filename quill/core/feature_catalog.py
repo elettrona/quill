@@ -204,12 +204,13 @@ FEATURE_DEFINITIONS: dict[str, FeatureDefinition] = {
         "GLOW Accessibility",
         category="accessibility",
         dependencies=("core.editor",),
-        locked_off=True,
         description=(
-            "GLOW document accessibility audit, fix, and engine updates. Hidden "
-            "for now while the feature is finished; remove locked_off to re-enable. "
-            "Does not affect Report a Bug or diagnostics, which read the GLOW "
-            "engine version independently."
+            "GLOW (Guided Layout and Output Workflow) document accessibility "
+            "audit, fix, and engine updates: in-editor deterministic review for "
+            "plain text, Markdown, and HTML, plus structured-document audit and "
+            "fix (DOCX, PPTX, XLSX, PDF, EPUB) through the optional shared "
+            "engine. Report a Bug and diagnostics read the GLOW engine version "
+            "independently of this flag."
         ),
     ),
     "core.trust": FeatureDefinition(

@@ -143,7 +143,12 @@ pages = ["keynote-parser>=1.14.4.0", "markitdown[docx,pptx,xlsx,xls,pdf]>=0.1.6"
 # checkout root on any machine. Until these are published to an index, install
 # the vendored, drive-independent pure-Python wheels with a repo-relative path:
 #   pip install --find-links vendor/wheels "quill-glow-core[glow]"
-glow = ["quill-glow-core[glow]>=0.1.1"]
+# acb-large-print is pinned >=8.0.0 explicitly: the MCP-server-era split moved
+# the dispatch backend into acb_large_print_core (new in 8.0.0), and the
+# contract wheel's own extra only demands >=3.0.0 — loose enough for a stale
+# pre-split install to satisfy the resolver and leave the engine silently
+# unavailable inside QUILL.
+glow = ["quill-glow-core[glow]>=0.1.1", "acb-large-print>=8.0.0"]
 # macOS build + runtime. py2app 0.28.x is incompatible with setuptools >= 83
 # (the build aborts with "install_requires is no longer supported"), so pin it.
 # pyobjc powers the macOS platform layer; apple-fm-sdk is the Foundation Models

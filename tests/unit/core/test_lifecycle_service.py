@@ -31,7 +31,10 @@ def test_sweep_accepts_task_manager_kwargs() -> None:
     # operation_id, and progress_callback. The idle sweep is submitted that way,
     # so sweep() must accept those kwargs; previously it raised TypeError on every
     # timer tick and idle models were never unloaded.
-    assert ls.sweep(cancellation_token=object(), operation_id="op", progress_callback=lambda _p: None) == []
+    assert (
+        ls.sweep(cancellation_token=object(), operation_id="op", progress_callback=lambda _p: None)
+        == []
+    )
 
 
 def test_configure_builds_manager_and_registrations_flow_through() -> None:

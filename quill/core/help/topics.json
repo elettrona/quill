@@ -2645,6 +2645,36 @@
     "user_guide_section": "tools"
   },
   {
+    "id": "file.import_convert",
+    "title": "Import / Convert Document (OCR)",
+    "body": "Turn a hard-to-read document into editable text using free, local, no-upload services. Born-digital files (Word, PowerPoint, Excel, HTML, EPUB, and PDFs with a text layer) convert instantly with the built-in local converter; scanned PDFs and images are offered free on-device OCR. QUILL always asks before running OCR and never uploads your document.",
+    "user_guide_section": "working-with-different-document-types"
+  },
+  {
+    "id": "tools.install_local_ocr",
+    "title": "Install Local OCR Engine (Tesseract)",
+    "body": "Download the free local OCR engine (about 48 MB). QUILL fetches the official installer from its own verified release, checks it byte-for-byte, and opens it for you to complete. The engine runs entirely on this computer; documents are never uploaded.",
+    "user_guide_section": "working-with-different-document-types"
+  },
+  {
+    "id": "tools.ocr_services",
+    "title": "OCR and Conversion Services",
+    "body": "A plain-language overview of the document conversion services: what the free local converter and the local OCR engine each do, what they cost (nothing), what stays on your machine (everything), and the current install status of the OCR engine.",
+    "user_guide_section": "working-with-different-document-types"
+  },
+  {
+    "id": "tools.glow_audit_file",
+    "title": "GLOW Audit File",
+    "body": "Pick a structured document on disk (DOCX, PPTX, XLSX, PDF, EPUB, or Markdown) and run the shared GLOW engine over it. The audit runs in the background and opens as a readable report tab with a score, a grade, and every finding with its suggestion.",
+    "user_guide_section": "glow-workflows-inside-quill"
+  },
+  {
+    "id": "tools.glow_fix_file",
+    "title": "GLOW Fix File",
+    "body": "Pick a structured document on disk and let GLOW write a repaired copy next to it. The original file is never modified; QUILL confirms the output name first, reports how many fixes were applied, and opens the post-fix audit so you can verify the result.",
+    "user_guide_section": "glow-workflows-inside-quill"
+  },
+  {
     "id": "tools.import_keymap",
     "title": "Import Keymap...",
     "body": "Load keyboard shortcuts from a file, replacing your current keymap.",

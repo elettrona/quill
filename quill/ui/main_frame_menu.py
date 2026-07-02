@@ -107,6 +107,10 @@ class MenuBuilderMixin:
         self._id_import_csv = wx.NewIdRef()
         self._id_import_latex = wx.NewIdRef()
         self._id_import_other = wx.NewIdRef()  # "Other Pandoc Format..."
+        # Free-first Import / Convert Document tool (MarkItDown -> local OCR).
+        self._id_import_convert = wx.NewIdRef()
+        self._id_install_local_ocr = wx.NewIdRef()
+        self._id_ocr_services = wx.NewIdRef()
         self._id_export_markdown = wx.NewIdRef()
         self._id_export_html = wx.NewIdRef()
         self._id_export_docx = wx.NewIdRef()
@@ -275,6 +279,14 @@ class MenuBuilderMixin:
         file_menu.AppendSeparator()
         # --- Import / Export (issue #262) -----------------------------------
         import_menu = wx.Menu()
+        # The free-first conversion tool leads the submenu: it routes any
+        # supported document (including scanned PDFs and images) through the
+        # local no-upload tiers, prompting before OCR ever runs.
+        import_menu.Append(
+            self._id_import_convert,
+            self._menu_label(_("Import / Convert &Document (OCR)..."), "file.import_convert"),
+        )
+        import_menu.AppendSeparator()
         import_menu.Append(
             self._id_import_markdown,
             self._menu_label(_("&Markdown..."), "file.import_markdown"),
@@ -1843,6 +1855,23 @@ class MenuBuilderMixin:
             self._id_describe_image,
             self._menu_label(_("&Describe Image..."), "tools.describe_image"),
         )
+        reading_menu.AppendSeparator()
+        reading_menu.Append(
+            self._id_import_convert,
+            self._menu_label(
+                _("Import / Convert Document (&OCR)..."), "file.import_convert"
+            ),
+        )
+        reading_menu.Append(
+            self._id_install_local_ocr,
+            self._menu_label(
+                _("I&nstall Local OCR Engine (Tesseract)..."), "tools.install_local_ocr"
+            ),
+        )
+        reading_menu.Append(
+            self._id_ocr_services,
+            self._menu_label(_("OCR and Conversion Ser&vices..."), "tools.ocr_services"),
+        )
         tools_menu.AppendSubMenu(reading_menu, _("R&eading && Dictation"))
         # Tools > Speech: flat menu consolidating offline speech, Windows dictation,
         # and model management (#669). Previously split across Reading & Dictation >
@@ -2670,6 +2699,21 @@ class MenuBuilderMixin:
             id=self._id_save_plain_text,
         )
         # #262: Pandoc Import / Export menu bindings.
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.import_convert_document(),
+            id=self._id_import_convert,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.install_local_ocr_engine(),
+            id=self._id_install_local_ocr,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.show_ocr_services_overview(),
+            id=self._id_ocr_services,
+        )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.import_document("markdown"), id=self._id_import_markdown
         )

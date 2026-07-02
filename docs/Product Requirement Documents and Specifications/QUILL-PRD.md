@@ -4049,6 +4049,143 @@ Sub-PR 1.5 makes the system live. `quill/core/verbosity/controller.py` (`Verbosi
 
 Sub-PR 1.6 (the original "100-item addendum") was **consolidated** into the deduplicated *Polish backlog*, now the authoritative status list in **roadmap §6** (the standalone `verbosity-system.md` archive was retired once verbosity shipped). Rather than 100 separate features: the duplicates and already-built items are folded into the foundation/engine/UI shipped in 1.1–1.5; the themed survivors (per-category verbosity via the verb registry, status-query commands, announcement flow control, safety announcements, friendly names, status-bar surfacing, scope profiles, sound learnability, coaching/discovery, braille polish) are tracked there; and the screen-reader-redundant items — **typing echo, command echo, speech rate/pause, punctuation/symbol profiles** — are recorded as **recommend do not build**, because QUILL speaks alongside the screen reader and must not duplicate or fight the settings (echo, rate, punctuation level) the screen reader already owns.
 
+### 5.92 GLOW — Guided Layout and Output Workflow (shipped, unlocked)
+
+GLOW is QUILL's accessibility review and repair system: **guided confidence, not a
+compliance dashboard**. It reviews what is in front of the user, explains each
+finding in plain language, and applies only deterministic, reviewable fixes. The
+`core.glow` feature flag shipped `locked_off` through 0.8.1 while the engine
+deployment was finished; it is **unlocked for 0.9.0** — the flag remains a normal
+profile-controllable feature.
+
+#### 5.92.1 Surfaces
+
+All commands live under **Tools > GLOW** and in the command palette:
+
+| Command | Behavior |
+|---|---|
+| GLOW Audit Current Document | In-editor deterministic audit of the whole buffer (plain text, Markdown, HTML); report opens as a named scratch tab. |
+| GLOW Audit Selection / Paragraph | The same audit scoped to the selection, or the paragraph/line at the caret. |
+| GLOW Fix Current Document | Deterministic fixes into a *named preview tab* plus an immediate compare session against the original — accept with full knowledge, never a silent rewrite. |
+| GLOW Fix Selection / Paragraph | Quick in-place fix of the scoped block; the replacement is selected afterward so it can be reviewed or undone in one step. |
+| GLOW Audit File... | **(new with the unlock)** Structured-document audit — DOCX, PPTX, XLSX, PDF, EPUB, Markdown — through the shared engine on the background task pool; report tab carries score, grade, and findings. |
+| GLOW Fix File... | **(new with the unlock)** Structured-document fix that writes a repaired copy beside the source (`name-accessible.ext`, numbered on collision). The original is **never** modified; consent names the output path before anything runs. |
+| Check for GLOW Updates... (Help) | Opt-in engine update: signed manifest, per-wheel SHA-256, offline `--no-index` install, rollback to the vendored wheels on failure, restart to apply (GLOW-8). |
+
+Handlers for the file-level commands live in the `GlowFileMixin`
+(`quill/ui/main_frame_glow.py`); in-editor handlers remain in `main_frame.py`.
+
+#### 5.92.2 Rules (in-editor, always available)
+
+Markdown: heading-marker spacing (auto-fix), heading-level jumps, image alt text,
+generic link text. HTML: missing `lang` (auto-fix), heading jumps, `img` alt
+(auto-fix), generic link text, tables without header cells. Plain text: tab-indent
+hazards. All formats: plain-language phrasing and dense-paragraph warnings, and
+trailing-whitespace trim on fix. Implemented wx-free in `quill/core/glow.py`.
+
+#### 5.92.3 The shared engine (structured documents)
+
+Structured audit/fix flows through the `quill_glow_core` contract package
+(`audit_by_extension` / `fix_by_extension` / `convert_to_markdown`), which bridges
+to the `acb-large-print` backend when installed. Deployment contract (hardened
+2026-07-02 after the MCP-era split broke it): QUILL's `glow` extra pins
+**`quill-glow-core[glow]>=0.1.1` plus `acb-large-print>=8.0.0`** — 8.0.0 is the
+first release that ships the split `acb_large_print_core` dispatch backend the
+contract wheel bridges to; older backends satisfy the contract wheel's own loose
+floor (>=3.0.0) and leave the engine silently unavailable. Vendored wheels live in
+`vendor/wheels` for fully offline install. The seam (`quill/core/glow.py`)
+degrades honestly: engine absent means an "engine not installed" report, never a
+crash (GLOW-1), and severities map onto QUILL's error/warning/info levels.
+
+#### 5.92.4 Privacy and consent
+
+The default GLOW path is entirely on-device. The engine's optional networked
+features — AI alt-text, Presidio PII redaction, WCAG language processing — are
+structurally off: the seam forwards no feature-enabling kwargs unless the caller
+passes a `GlowNetworkConsent` with a feature explicitly set after per-action
+consent (GLOW-7). The engine update check is the only other network touchpoint,
+runs only on explicit invocation, and is registered in the network-egress audit
+(GATE-9).
+
+#### 5.92.5 Accessibility contract
+
+Reports are plain, heading-structured text in ordinary tabs (searchable, brailled,
+speakable); every finding carries rule id, severity, location when known, and a
+plain-language suggestion; fix flows announce counts and destinations; file fixes
+are non-destructive by construction; background parses never block the UI thread.
+
+### 5.93 Import / Convert Document — free-first conversion and OCR (shipped)
+
+The supported document-rescue tool from the OCR PRD
+(`docs/planning/quill-supported-ocr-tool-ai-hub-services-friendly-prd.md`),
+shipped with its two free tiers. The routing principle: **free first, local
+first, and nothing is ever uploaded** — the paid cloud tier (Datalab Chandra)
+is deliberately not implemented yet and, when it arrives, plugs in behind the
+same outcome model, consent-gated.
+
+#### 5.93.1 The two shipped tiers
+
+| Tier | Engine | Handles | Cost / privacy |
+|---|---|---|---|
+| 1 | MarkItDown (`quill/io/markitdown_bridge.py`, ships with the `pages` extra) | Born-digital DOCX/DOC, PPTX/PPT, XLSX/XLS, HTML, EPUB, CSV, ODT/ODP/ODS, and PDFs with a text layer | Free, local, no upload |
+| 2 | Local Tesseract OCR (`quill/io/tesseract_ocr.py`) | Images (PNG/JPG/TIFF/BMP/GIF/WebP) and image-based PDFs; CPU-only, no GPU | Free, local, no upload |
+
+The router (`quill/io/docconvert.py`, wx-free, strict-typed) implements PRD
+§11.4: born-digital types go to Tier 1; images go straight to Tier 2; PDFs try
+Tier 1 and are measured by the **chars-per-page heuristic**
+(`text_layer_looks_empty`, threshold 50 chars/page) — a PDF that comes back
+looking scanned is flagged `offer_local_ocr`, never silently opened empty.
+Tier 2 rasterizes PDF pages via `pypdfium2` (~150 dpi) and recognizes them one
+at a time with cancel checks between pages, joining pages with the
+screen-reader-searchable `<!-- Page N -->` delimiter. Tesseract's TSV output
+supplies per-word confidence; a mean below 60 flags the outcome `looks_weak`
+with an honest review warning (and is the future cloud tier's escalation
+point).
+
+#### 5.93.2 Escalation prompts (never silent)
+
+Tier 1 -> 2 (stays free and local): *"QUILL could not find readable text in
+<file>. It looks scanned or image-based. Run free on-device OCR (local
+Tesseract)? This stays on your computer and does not upload anything."* —
+Yes runs OCR, No opens the empty result anyway, Cancel imports nothing.
+Every conversion runs on the background task pool with spoken/status progress
+("Recognizing page 3 of 12...").
+
+#### 5.93.3 Engine acquisition (verified downloadable component)
+
+Tesseract is never bundled. `quill/core/tesseract_install.py` downloads the
+**byte-identical official UB-Mannheim 5.4.0 installer** (Apache-2.0) from
+QUILL's pinned `assets-v1` release, SHA-256-verified (SEC-6), HTTPS-enforced,
+Safe-Mode-blocked, then **launches the installer visibly** for the user to
+complete — NSIS has no admin-free extraction analogous to `msiexec /a`, and
+QUILL never silently elevates. Discovery
+(`quill.io.tesseract_ocr.discover_tesseract_executable`) then finds the engine
+with no restart: settings override (`tesseract_path`) -> QUILL-managed folder
+-> `PATH` -> the conventional `C:\Program Files\Tesseract-OCR` location. The
+download call site is registered in the network-egress audit (GATE-9). On
+macOS the managed download is not offered; a Homebrew-installed `tesseract`
+on PATH is picked up automatically.
+
+#### 5.93.4 Surfaces
+
+- **File > Import > Import / Convert Document (OCR)...** (leads the submenu)
+  and the same command in **Tools > Reading & Dictation**; palette id
+  `file.import_convert`.
+- **Tools > Reading & Dictation > Install Local OCR Engine (Tesseract)...**
+  (`tools.install_local_ocr`) — consent names the size and exactly what will
+  happen before any download.
+- **Tools > Reading & Dictation > OCR and Conversion Services...**
+  (`tools.ocr_services`) — the customer-facing services overview: a friendly
+  card per tier (what it does, best for, local-or-cloud, cost, limits, setup)
+  plus the live engine install status, in plain language per the OCR PRD's
+  Services-tab content requirements. A full AI Hub Services tab ships with the
+  first cloud provider.
+
+Handlers live in `quill/ui/main_frame_docconvert.py` (`DocConvertMixin`).
+Settings: `ocr_language` (Tesseract three-letter code, default `eng`) and
+`tesseract_path` (explicit override). Commands map to `core.ocr` (the install
+and services surfaces) so OCR-less profiles stay clean.
+
 ---
 
 ## 6. Spell checking deep dive
