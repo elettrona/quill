@@ -47,6 +47,21 @@ class SoundEvent(StrEnum):
     DICTATION_LOCKED_ON = "dictation_locked_on"
     DICTATION_LOCKED_OFF = "dictation_locked_off"
 
+    # Voice conversation mode (Hey QUILL Phase 2). Warm, consonant bell cues
+    # that make every state of a hands-free exchange audible: on/off, the mic
+    # opening (listen), an utterance captured (review), an action done (ready),
+    # relaxing back (idle), a "still working" tick, and a calm error fall.
+    # The always-listening wake cue arrives with Phase 3.
+    CONVERSATION_ON = "conversation_on"
+    CONVERSATION_OFF = "conversation_off"
+    CONVERSATION_WAKE = "conversation_wake"
+    CONVERSATION_LISTEN = "conversation_listen"
+    CONVERSATION_REVIEW = "conversation_review"
+    CONVERSATION_READY = "conversation_ready"
+    CONVERSATION_IDLE = "conversation_idle"
+    CONVERSATION_THINKING_TICK = "conversation_thinking_tick"
+    CONVERSATION_ERROR = "conversation_error"
+
     # Connectivity
     SSH_CONNECTED = "ssh_connected"
     SSH_DISCONNECTED = "ssh_disconnected"

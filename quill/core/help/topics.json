@@ -2588,6 +2588,12 @@
     "user_guide_section": "tools"
   },
   {
+    "id": "tools.voice_conversation",
+    "title": "Voice Conversation Mode",
+    "body": "The hands-free version of Voice Command. Run it once and QUILL listens for a command, plays a warm audio cue for every step, gives you a brief moment to say 'cancel' before it acts, and then keeps listening for a short follow-up so you can chain commands without re-arming. Run it again (or say 'stop') to turn conversation mode off. Every command still comes from the same safe, on-device allowlist. Tune the pause, cancel, follow-up, and tick timings under Settings; the audio cues are the 'Conversation' events in the Sound Events dialog. Off in Safe Mode.",
+    "user_guide_section": "tools"
+  },
+  {
     "id": "tools.voice_command",
     "title": "Voice Command (Offline)",
     "body": "Push-to-talk voice commands: run this command to start listening, speak one command (like 'save file', 'word count', or 'next heading'), then run it again to stop and act. Recognition happens entirely on your device, and only a safe, non-destructive allowlist of commands can be invoked. Say 'cancel' or 'never mind' to abort. Enable it with the 'Voice commands (push-to-talk)' setting; it is always off in Safe Mode.",

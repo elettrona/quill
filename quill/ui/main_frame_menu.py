@@ -1484,6 +1484,7 @@ class MenuBuilderMixin:
         self._id_speech_captions = wx.NewIdRef()
         self._id_speech_dictate = wx.NewIdRef()
         self._id_speech_voice_command = wx.NewIdRef()
+        self._id_speech_voice_conversation = wx.NewIdRef()
         self._id_speech_microphone = wx.NewIdRef()
         # Locked Dictation menu items (the commands are the remappable Ctrl+F9 family).
         self._id_dictation_lock = wx.NewIdRef()
@@ -1905,6 +1906,12 @@ class MenuBuilderMixin:
         speech_menu.Append(
             self._id_speech_voice_command,
             self._menu_label(_("&Voice Command (Offline)"), "tools.voice_command"),
+        )
+        # Hey QUILL Phase 2: the hands-free conversation loop (warm cues,
+        # cancel window, follow-up) over the same on-device capture.
+        speech_menu.Append(
+            self._id_speech_voice_conversation,
+            self._menu_label(_("Voice &Conversation Mode"), "tools.voice_conversation"),
         )
         # Windows (SAPI) dictation is no longer supported -- offline Whisper
         # Locked Dictation (Ctrl+F9) replaces it -- so it is not exposed in the
@@ -3178,6 +3185,11 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.voice_command_toggle(), id=self._id_speech_voice_command
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.voice_conversation_toggle(),
+            id=self._id_speech_voice_conversation,
         )
         self.frame.Bind(
             wx.EVT_MENU,

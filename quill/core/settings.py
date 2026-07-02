@@ -244,6 +244,14 @@ class Settings:
     bw_safe_mode_lock: bool = False
     status_page_refresh_announcement_cadence: str = "quiet"
     voice_commands_enabled: bool = False
+    # Voice conversation mode (Hey QUILL Phase 2). Hands-free multi-command
+    # loop timing, in milliseconds; 0 disables the corresponding window. See
+    # quill/core/speech/conversation.py (Timing) and the plan doc §3.2.
+    voice_conversation_enabled: bool = False
+    voice_conversation_silence_ms: int = 2000
+    voice_conversation_review_ms: int = 900
+    voice_conversation_followup_ms: int = 3000
+    voice_conversation_thinking_ms: int = 2000
     watch_folder_enabled: bool = False
     watch_folder_path: str = ""
     startup_folder: str = ""
@@ -834,6 +842,19 @@ class Settings:
         if watch_folder_poll_interval_seconds > 300:
             watch_folder_poll_interval_seconds = 300
         voice_commands_enabled = bool(data.get("voice_commands_enabled", False))
+        voice_conversation_enabled = bool(data.get("voice_conversation_enabled", False))
+
+        def _voice_ms(key: str, default: int) -> int:
+            try:
+                value = int(data.get(key, default))
+            except (TypeError, ValueError):
+                return default
+            return value if value >= 0 else default
+
+        voice_conversation_silence_ms = _voice_ms("voice_conversation_silence_ms", 2000)
+        voice_conversation_review_ms = _voice_ms("voice_conversation_review_ms", 900)
+        voice_conversation_followup_ms = _voice_ms("voice_conversation_followup_ms", 3000)
+        voice_conversation_thinking_ms = _voice_ms("voice_conversation_thinking_ms", 2000)
         # SET-2: timing and pacing
         autosave_interval_seconds = _clamp_int(
             data.get("autosave_interval_seconds", 30), 30, 5, 600
@@ -1232,6 +1253,11 @@ class Settings:
             bw_safe_mode_lock=bw_safe_mode_lock,
             status_page_refresh_announcement_cadence=status_page_refresh_announcement_cadence,
             voice_commands_enabled=voice_commands_enabled,
+            voice_conversation_enabled=voice_conversation_enabled,
+            voice_conversation_silence_ms=voice_conversation_silence_ms,
+            voice_conversation_review_ms=voice_conversation_review_ms,
+            voice_conversation_followup_ms=voice_conversation_followup_ms,
+            voice_conversation_thinking_ms=voice_conversation_thinking_ms,
             watch_folder_enabled=watch_folder_enabled,
             watch_folder_path=watch_folder_path,
             startup_folder=startup_folder,

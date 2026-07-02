@@ -2,7 +2,7 @@
 
 **Product:** QUILL
 **Feature area:** Hands-free voice commands, wake word, conversation mode, sounders
-**Status:** Plan of record (feature `core.voice_commands` stays `locked_off` until Phase 1 ships)
+**Status:** Plan of record. Phase 1 shipped 2026-07-02 (push-to-talk); Phase 2 shipped 2026-07-02 (conversation loop + sounders). Phases 3–4 remain.
 **Owner:** Jeff Bishop / QUILL project
 **Reference implementation:** the ADP Assistant conversation mode (`s:\code\adp`, `src/adp_mcp/webapp/static/app.js`) — the "Hey Magic" loop whose state machine, sounders, and timing model this plan imports
 **Last consolidated:** 2026-07-02
@@ -191,15 +191,30 @@ CHANGELOG, release notes). The keymap entry stays unbound by default
 (user-assignable); Phase 2 may propose a default chord alongside the
 conversation loop.
 
-### Phase 2 — The conversation loop + sounders (the ADP import)
+### Phase 2 — The conversation loop + sounders (SHIPPED 2026-07-02)
 
-`conversation.py` state controller (wx-free, unit-tested against a scripted
-fake recorder/clock); the nine Conversation sound events; silence /
-review-cancel / follow-up / thinking-tick settings in Dictation Settings;
-status-bar state + Speak Status integration; verbosity-engine SR-parity
-routing; pre-warmed cue phrases; optional name. Exit criteria: a full
-arm -> speak -> review -> run -> follow-up -> second command exchange with
-no keyboard after the arming keystroke, verified with NVDA and JAWS.
+Done: `quill/core/speech/conversation.py` — the wx-free six-state controller
+(OFF/IDLE/ARMED/REVIEW/BUSY), pure and effect-emitting, unit-tested (14
+tests) with no audio. It returns ordered `Effect`s (sound / announce /
+start_capture / stop_capture / dispatch / start_timer / cancel_timer) that
+the UI executes. The nine **Conversation** sound events are added to
+`SoundEvent`, synthesized as warm bell sequences in the Ink pack from the
+ADP palette (§3.3), mapped in the manifest, and labeled/ordered in the Sound
+Events dialog so custom packs can override them. Timing lives in four
+settings (silence / review-cancel / follow-up / thinking-tick), each
+`0`-disables its window, surfaced as `Timing.from_settings`. **Voice
+Conversation Mode** is a live Tools > Speech command (and unbound keymap
+entry) that wraps the Phase 1 capture/transcribe/dispatch in the controller:
+warm cues per state, a cancel beat before acting, and a follow-up window so
+commands chain. Dispatch stays bounded by `SAFE_TOOL_IDS`; off by default
+(shares `voice_commands_enabled`) and off in Safe Mode.
+
+Carried to a Phase 2.x refinement (documented honestly, not overpromised):
+capture is currently a **timed turn** (a fixed listen window), not true
+VAD-based silence detection; the status-bar/Speak-Status live-state surface,
+verbosity-engine SR-parity routing, pre-warmed cue phrases, and the optional
+personalization name are follow-ups. The controller already carries a
+`user_name` and `status_text()` for when those land.
 
 ### Phase 3 — The wake word ("Hey QUILL" proper)
 

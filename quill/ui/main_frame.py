@@ -2487,6 +2487,15 @@ class MainFrame(
             feature_id="core.voice_commands",
         )
         self.commands.register(
+            "tools.voice_conversation",
+            "Voice Conversation Mode",
+            self.voice_conversation_toggle,
+            self._binding_for("tools.voice_conversation"),
+            # Hey QUILL Phase 2: the same on-device capture wrapped in the
+            # conversation state machine (warm cues, cancel window, follow-up).
+            feature_id="core.voice_commands",
+        )
+        self.commands.register(
             "whisperer.model_manager",
             "BITS Whisperer Speech Model Manager...",
             self.open_bw_model_manager,
