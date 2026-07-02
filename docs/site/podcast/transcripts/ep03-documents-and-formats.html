@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Episode 3: Documents and Formats - transcript - The QUILL Cast</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<main>
+<h1>Episode 3: Documents and Formats - transcript</h1>
+<p><a href="../index.html">Back to all episodes</a></p>
+<p><strong>Liam:</strong> This is The QUILL Cast, episode three. I&#x27;m Liam, here with Jessica, and today we&#x27;re talking about documents themselves: the formats QUILL reads and writes, and how it keeps formatting honest for people who can&#x27;t see it.</p>
+<p><strong>Jessica:</strong> QUILL&#x27;s home format is plain text and Markdown, and that&#x27;s a philosophical choice. Plain text is the most accessible format ever invented. It works in every tool, survives every decade, and never hides anything from you.</p>
+<p><strong>Liam:</strong> But the world sends you Word documents. So QUILL meets the world where it is. It opens Word files, both the modern docx and the old doc, PowerPoint presentations, Excel spreadsheets, EPUB books, PDFs, HTML, rich text format, CSV tables, and more.</p>
+<p><strong>Jessica:</strong> The import and export menus under File are powered by a conversion engine with more than a dozen formats. File, Import, pick Word Document, and the content lands in your editor as clean structured text. File, Export, Word Document, and your Markdown headings become real Word headings.</p>
+<p><strong>Liam:</strong> That round trip is worth pausing on. When you export to Word, HTML, or rich text, your formatting, bold, italics, fonts, colors, alignment, travels with it. And when a target format can&#x27;t hold something, QUILL tells you before you commit, instead of silently dropping it.</p>
+<hr>
+<p><strong>Jessica:</strong> Let&#x27;s talk about rich formatting, because QUILL does something genuinely different here. Traditional word processors show formatting visually. Bold looks bold. That&#x27;s useless information if you can&#x27;t see it, and markup languages solve it by cluttering the text with symbols.</p>
+<p><strong>Liam:</strong> QUILL&#x27;s answer is hidden formatting codes. You apply real formatting, bold, italic, font size, color, alignment, from the Format menu or the Font dialog, but your editor buffer stays completely clean plain text. The formatting rides along invisibly.</p>
+<p><strong>Jessica:</strong> And then you ask about it. The command Describe Formatting at Cursor speaks exactly what&#x27;s in effect where you&#x27;re standing: Arial, fourteen point, centered, bold. There&#x27;s an optional setting that announces formatting changes as you arrow through the document, and a Reveal Codes view, a loving tribute to WordPerfect, that shows the codes in a synchronized inspector when you want the full X-ray.</p>
+<p><strong>Liam:</strong> Formatting you can hear, on demand, without your text ever becoming a symbol soup. It&#x27;s one of my favorite things in the whole program.</p>
+<p><strong>Jessica:</strong> Now, the puzzle: what happens when you save a formatted document as a plain dot T X T file? Plain text can&#x27;t hold fonts and colors. The old answer everywhere was: you lose them.</p>
+<p><strong>Liam:</strong> QUILL&#x27;s answer is the Illumination. It writes your clean plain text file, exactly as plain as it should be, plus a tiny companion file next to it that stores the formatting. Reopen the text file in QUILL and every font, color, and alignment comes back. Open it anywhere else and it&#x27;s just perfect ordinary text.</p>
+<p><strong>Jessica:</strong> And QUILL is careful about staleness. If another program edits the text file, QUILL notices the mismatch and opens it plain rather than misapplying old formatting. You choose the behavior in settings: ask each time, always write the Illumination, or always save plain.</p>
+<hr>
+<p><strong>Liam:</strong> Let&#x27;s talk PDFs and EPUBs, the reading formats. When you open an EPUB, QUILL gives you a chapter-aware navigator instead of one endless scroll. PDFs open as extracted text, and this is where QUILL&#x27;s honesty shows again: it gives you intake and extraction-quality tools that answer, did this extraction actually capture the document? What might have been lost?</p>
+<p><strong>Jessica:</strong> Because the worst accessibility failure isn&#x27;t a file that won&#x27;t open. It&#x27;s a file that opens looking complete and is silently missing half its content. QUILL treats extraction as something to verify, not assume. And when a PDF turns out to be a scanned image with no text at all, QUILL has a whole rescue path for it, which is next episode&#x27;s topic.</p>
+<p><strong>Liam:</strong> Two more document powers before we close. First, Batch Conversion, under File, Import. Point it at a folder, choose input and output formats, and QUILL converts the lot. Fifty Word files to Markdown while you get coffee.</p>
+<p><strong>Jessica:</strong> Second, remote files. QUILL opens and saves documents over FTP, SFTP, HTTPS, WebDAV, and S3 storage, and it can browse GitHub repositories and edit files there directly, no Git installation required. Every remote action is explicit and announced, with credentials stored in the Windows credential vault, encrypted.</p>
+<p><strong>Liam:</strong> Plus watch folders, if you want automation: QUILL can monitor a folder and automatically open, or process, files that appear in it. Drop a file in from your scanner, QUILL picks it up.</p>
+<hr>
+<p><strong>Jessica:</strong> Homework time. One: take any Word document you have and open it in QUILL. Then export it back out as Markdown and compare how the structure translated.</p>
+<p><strong>Liam:</strong> Two: apply some formatting with the Format menu, then run Describe Formatting at Cursor from the command palette. Three: save that formatted document as plain text and let QUILL offer you an Illumination. Then peek at the folder and see the companion file sitting there.</p>
+<p><strong>Jessica:</strong> Next time: the document rescue show. Scanned PDFs, photographed pages, and QUILL&#x27;s new free, on-device conversion and OCR pipeline that never uploads a single byte.</p>
+<p><strong>Liam:</strong> It&#x27;s the feature I&#x27;d show first to any skeptic. See you then.</p>
+<p><strong>Jessica:</strong> Bye everyone.</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,72 @@
+[JESSICA]
+Welcome to The QUILL Cast, episode seven. I'm Jessica, and I called dibs on opening this one, because today is the Accessible Vault, and it's my favorite thing in QUILL.
+
+[LIAM]
+I'm Liam, happily riding shotgun. Set the scene for us. What problem does the Vault solve?
+
+[JESSICA]
+Linked note-taking. The whole personal knowledge movement, notes that link to each other, where ideas connect into a web you can explore. The famous tools for this are gorgeous, and almost entirely visual. Their signature feature is literally a picture: the graph view, a floating map of dots and lines.
+
+[LIAM]
+Which is decoration if you can't see it.
+
+[JESSICA]
+Right. So the Vault asks: what is a knowledge graph, really? It's relationships. And relationships don't need pixels. What links here is a question with a spoken answer. The Vault is linked knowledge rebuilt for the ear and the keyboard.
+
+[LIAM]
+Foundations first. A vault is just a folder of Markdown files. That's it. Tools, Vault, Open Vault, point at a folder, and QUILL indexes it and announces: vault name, forty notes, one hundred twelve links. There's a small cache file you can delete without losing a word. No database, no lock-in. Plain files you could open in Notepad.
+
+[JESSICA]
+Links are typed as double square brackets around a note's title. Type them anywhere in a note. Put your cursor on one and run Follow Wikilink, and you're in that note. Link to a specific heading with a hash, even to a specific block. If the note doesn't exist yet, QUILL offers to create it. If the name is ambiguous, you get a spoken chooser, never a guess.
+
+[LIAM]
+And there's completion: Complete Link or Tag at Cursor pops a filtered, spoken list as you're typing a link or a tag name, the screen-reader-friendly answer to those floating autocomplete windows that visual apps use.
+
+[PAUSE]
+
+[JESSICA]
+Now the crown jewel: backlinks. Stand in any note and run Show Backlinks. QUILL answers, five notes link here, and lists them, each one read with the actual sentence its link lives in. Press enter on one and you land in that source note, at the mention.
+
+[LIAM]
+That's the graph view, spoken.
+
+[JESSICA]
+It goes further. Note Neighborhood shows everything one hop away in both directions, what this links to, what links to this. And Unlinked Mentions finds places where you wrote a note's name without linking it, so you can stitch your web tighter.
+
+[LIAM]
+Navigation across the whole vault is fast: Go to Note is a type-to-filter switcher. Search Vault searches every note, with regular expressions and whole-word options, and opens a result at its exact line. Show Tags is a tag pane where nested tags roll up, ask for the area tag and you get everything underneath it.
+
+[JESSICA]
+Then the daily writing habits. Templates: insert a template and it fills in the date and title, asks you for any prompts it declares, and drops your cursor exactly where the template says. Daily notes: Open Today's Note creates or opens a dated journal entry, and Previous and Next Daily Note walk your journal like turning pages.
+
+[LIAM]
+Embeds too: a note can embed another note's content with an exclamation-point link, and you can have QUILL speak the embedded content or resolve it inline. The in-app preview resolves links and embeds live, and rename is safe: Rename Note updates every inbound link across the vault.
+
+[PAUSE]
+
+[JESSICA]
+Sharing and safety. Export Vault as Website generates a small accessible site, one page per note, all links and embeds resolved, ready to host anywhere. And Sync Vault does Git synchronization over your own repository: commit, pull, push, and if there's a conflict it lists it and lets you decide, rather than overwriting anything.
+
+[LIAM]
+Your notes, versioned, backed up, on infrastructure you control. And because it's all plain Markdown, every other tool in QUILL applies: read your vault aloud, run GLOW audits on notes, ask the AI to summarize a note, export a note to Word.
+
+[JESSICA]
+That's the deep magic: the Vault isn't a separate app bolted on. It's the same editor you already know, with a memory.
+
+[LIAM]
+Workflow ideas to steal. A research vault: one note per source, links to a note per topic, and backlinks instantly answer which sources discuss this topic. A novel vault: a note per character and place, and standing in a character note, backlinks list every scene note that mentions them.
+
+[JESSICA]
+A work journal: daily notes plus tags, and Friday's status report is a vault search away. Honestly, start smaller than feels sensible. Ten notes. Link them. The first time Show Backlinks surprises you with a connection you'd forgotten, you'll understand.
+
+[LIAM]
+Homework: make a folder, put three Markdown files in it, open it as a vault. Link the three notes into a triangle, then stand in one and run Show Backlinks. That's the whole lesson in thirty seconds.
+
+[JESSICA]
+Next episode: Story Studio. Organizing book-length writing, chapters, characters, plot threads, and compiling a manuscript.
+
+[LIAM]
+I'm Liam.
+
+[JESSICA]
+I'm Jessica. Go link something.

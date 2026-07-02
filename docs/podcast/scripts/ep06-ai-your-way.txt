@@ -1,0 +1,69 @@
+[LIAM]
+Episode six of The QUILL Cast. I'm Liam.
+
+[JESSICA]
+And I'm Jessica. Today: artificial intelligence in QUILL. And I want to start with what makes this implementation different, because AI features are everywhere now and most of them share two problems: they're pushy, and they're opaque.
+
+[LIAM]
+QUILL's AI is neither. Principle one: it is off until you turn it on. Fresh install, there's an AI menu with a single inviting item, Set Up AI, and nothing happens until you walk through it. Principle two: you choose who, if anyone, sees your words. And principle three, the big one: the AI never changes your document silently. Ever.
+
+[JESSICA]
+Every AI edit arrives as a reviewable preview. Here's what I'd change, accept or reject, and if you accept, it's one single undo step. Control Z and it's gone. The AI proposes. You decide.
+
+[LIAM]
+Let's do setup. The wizard, AI menu, Set Up AI, asks essentially one question: how do you want this to work? And the choices are laid out with their trade-offs spoken plainly.
+
+[JESSICA]
+Option one, most private: run a model on your own computer with Ollama. No account, no cost, works offline, and nothing you write ever leaves your machine. QUILL helps you pick a model that fits your hardware.
+
+[LIAM]
+Option two, best quality for free: bring your own free key. The wizard leads with OpenRouter's free tier, there's a Get API Key button that opens the exact signup page, and QUILL preselects a strong free writing model. The wizard is honest about the trade: free hosted models can be slower and are rate-limited to your own quota, and it plainly reminds you to keep confidential writing on the local option.
+
+[JESSICA]
+Option three: paid accounts with OpenAI, Anthropic, Google Gemini, or OpenRouter, if you have them. And option four, my favorite button in any setup wizard: Not Now. It closes and QUILL remains a fully excellent editor.
+
+[LIAM]
+The point of the free paths deserves a beat. You never need to pay to use QUILL's AI. That was a deliberate product decision, the feature's literally called free AI for everyone, and it pairs with QUILL itself being free. Assistive tech gatekept by price is the old world.
+
+[PAUSE]
+
+[JESSICA]
+Once connected, everything shares that one connection. The centerpiece is Ask Quill: one conversation that knows your document. Ask it to tighten a section, question it about your own draft, have it explain something. When its answer implies an edit, you get the preview, always.
+
+[LIAM]
+Around Ask Quill there's a toolkit of everyday actions: rewrite, summarize, expand, continue, fix grammar, translate, generate a table of contents, AI spell and grammar checking, an AI thesaurus, document Q and A. Each one, same contract: preview, accept or reject, one undo step.
+
+[JESSICA]
+Then the power tier, the AI Library, with three levels that build on each other. Prompts: reusable templates with fill-in variables. Skills: multi-step workflows where each step feeds the next. And Agents: goal-driven plans where the AI proposes a sequence of steps, and, this is the part I love, shows you the plan before running it.
+
+[LIAM]
+There's a real promotion path between them: a prompt you use constantly can graduate into a skill, a skill into an agent. Your personal AI toolbox grows with you. And it's all shareable, prompts and skills export as small files the community trades, just like keyboard packs.
+
+[JESSICA]
+The Listening Companion's transcript actions from last episode run through this same machinery, and so do the accessibility helpers, like the Accessibility Tune-Up agent that proposes document fixes as, you guessed it, a reviewable plan.
+
+[PAUSE]
+
+[LIAM]
+Now the privacy architecture, because this is where QUILL earns trust. Every network call in the entire application is registered in an internal egress audit, a literal reviewed list of every place QUILL can touch the network and why. A new feature that wants to make a network call has to justify itself in that audit or the build fails.
+
+[JESSICA]
+Consent is per-action and specific. QUILL tells you what's being sent and to whom, in plain words, not a euphemism like improving your experience. Keys live in encrypted storage, not in config files. And the data disclosure posture is documented, in the product requirements, publicly.
+
+[LIAM]
+And the master switch: Safe Mode. Launch QUILL with the safe mode flag, or the environment variable, and AI, watch folders, and extensions are all disabled. Clean room. If anything ever misbehaves, you have a guaranteed quiet baseline.
+
+[JESSICA]
+One more honesty note. Small free models are not magic. QUILL adapts, Ask Quill simplifies its approach on smaller models so it answers instead of stalling, but a seventy-billion-parameter free model is not a frontier model, and QUILL never pretends otherwise. Set expectations, then be pleasantly surprised.
+
+[LIAM]
+Homework. One: run the setup wizard and pick any path, including Not Now, just to hear how the choices are presented. Two: if you connect something, take a paragraph you wrote and run Rewrite. Reject the result at least once, just to feel that the reject button is real. Three: open the AI Library and read three of the built-in prompts to see how they're shaped.
+
+[JESSICA]
+Next episode is the one I've been waiting for: the Accessible Vault. Linked notes, backlinks, and a knowledge graph you navigate entirely by ear.
+
+[LIAM]
+I'm Liam.
+
+[JESSICA]
+I'm Jessica. Your words, your rules.

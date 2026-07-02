@@ -1,0 +1,76 @@
+{
+  "podcast": {
+    "title": "The QUILL Cast",
+    "subtitle": "The screen-reader-first writing studio, explained by ear",
+    "description": "A two-host audio course on QUILL, the free, screen-reader-first writing studio from Community Access. Liam and Jessica walk through every major concept: navigation, documents and formats, document rescue and OCR, the private speech suite, optional AI, the Accessible Vault, Story Studio, the GLOW accessibility review system, and the trust architecture that holds it all together. Episode voices are generated with QUILL's own on-device Kokoro neural speech engine.",
+    "author": "Community Access / BITS",
+    "email": "jeff@jeffbishop.com",
+    "language": "en-us",
+    "site_url": "https://community-access.github.io/quill/podcast/",
+    "audio_base_url": "https://github.com/Community-Access/quill/releases/download/podcast-v1/",
+    "category": "Technology",
+    "explicit": false
+  },
+  "episodes": [
+    {
+      "slug": "ep01-meet-quill",
+      "title": "Episode 1: Meet QUILL",
+      "description": "What QUILL is and who it is for: the screen-reader-first design promises (QUILL owns focus, undo, and announcements; everything optional is off by default; nothing leaves your computer without asking), feature profiles, the first five minutes, and a tour of what the series will cover.",
+      "pubdate": "2026-07-02T08:00:00Z"
+    },
+    {
+      "slug": "ep02-getting-around",
+      "title": "Episode 2: Getting Around",
+      "description": "Movement and mastery: the command palette (Ctrl+Shift+P), the QUILL prefix key and Browse Mode, Quick Nav, the Keymap Editor with reverse shortcut lookup and one-step conflict reassignment, verbosity controls, and the Spoken Echo.",
+      "pubdate": "2026-07-02T08:05:00Z"
+    },
+    {
+      "slug": "ep03-documents-and-formats",
+      "title": "Episode 3: Documents and Formats",
+      "description": "Word, Markdown, EPUB, PDF, HTML and more; import/export and batch conversion; rich formatting as hidden codes you hear on demand; Illuminations (formatting kept beside a truly plain .txt); extraction-quality honesty; remote files and GitHub editing.",
+      "pubdate": "2026-07-02T08:10:00Z"
+    },
+    {
+      "slug": "ep04-document-rescue",
+      "title": "Episode 4: Document Rescue - Import, Convert, OCR",
+      "description": "The new free-first Import / Convert Document tool: MarkItDown for born-digital files, the scanned-PDF detection prompt, free on-device OCR with the Tesseract engine (CPU-only, offline, never uploads), honest confidence reporting, and the verified one-time engine download.",
+      "pubdate": "2026-07-02T08:15:00Z"
+    },
+    {
+      "slug": "ep05-speech-suite",
+      "title": "Episode 5: The Speech Suite",
+      "description": "Read Aloud across SAPI, eSpeak, DECtalk, Kokoro neural voices, an optional ElevenLabs cloud voice, and the browser reader; fully offline dictation with Whisper; private transcription plus the Listening Companion's transcript actions; audio export, audiobooks, and DAISY talking books.",
+      "pubdate": "2026-07-02T08:20:00Z"
+    },
+    {
+      "slug": "ep06-ai-your-way",
+      "title": "Episode 6: AI, Your Way",
+      "description": "Off by default, reviewable always: the AI Setup Wizard and the free-for-everyone paths (on-device Ollama or a free OpenRouter key), Ask Quill, everyday writing actions, the AI Library's prompt-to-skill-to-agent continuum, the network egress audit, and Safe Mode.",
+      "pubdate": "2026-07-02T08:25:00Z"
+    },
+    {
+      "slug": "ep07-accessible-vault",
+      "title": "Episode 7: The Accessible Vault",
+      "description": "Linked notes and backlinks rebuilt for the ear: wikilinks, the spoken 'what links here', Note Neighborhood, unlinked mentions, vault search, tags, templates and daily notes, embeds, safe rename, website export, and Git sync - all over a plain folder of Markdown.",
+      "pubdate": "2026-07-02T08:30:00Z"
+    },
+    {
+      "slug": "ep08-story-studio",
+      "title": "Episode 8: Story Studio",
+      "description": "Book-length writing with a keyboard-first binder: manuscript structure straight from your headings, character and plot-thread detail forms saved as front matter, compile-to-manuscript, and the compounding writer's toolkit - snippets, the Copy Tray, macros, bookmarks, and recovery.",
+      "pubdate": "2026-07-02T08:35:00Z"
+    },
+    {
+      "slug": "ep09-glow",
+      "title": "Episode 9: GLOW - Accessibility Review and Repair",
+      "description": "The newly unlocked GLOW suite: plain-language audits of the document in front of you, deterministic fixes with a before/after compare, scored and graded audits of Word/PowerPoint/Excel/PDF/EPUB files, non-destructive file repair, and signature-verified engine updates.",
+      "pubdate": "2026-07-02T08:40:00Z"
+    },
+    {
+      "slug": "ep10-trust-safety-community",
+      "title": "Episode 10: Trust, Safety, and Community",
+      "description": "The finale: braille mode and embosser proofreading, crash recovery and snapshots, the five enforced safety rules (no silent network, no silent installs, atomic saves, specific consent, Safe Mode), Quillin extensions, and the community and roadmap behind QUILL.",
+      "pubdate": "2026-07-02T08:45:00Z"
+    }
+  ]
+}

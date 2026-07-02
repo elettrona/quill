@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Episode 9: GLOW - Accessibility Review and Repair - transcript - The QUILL Cast</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<main>
+<h1>Episode 9: GLOW - Accessibility Review and Repair - transcript</h1>
+<p><a href="../index.html">Back to all episodes</a></p>
+<p><strong>Liam:</strong> Welcome to The QUILL Cast, episode nine. I&#x27;m Liam.</p>
+<p><strong>Jessica:</strong> And I&#x27;m Jessica. Today&#x27;s episode is about a role reversal. Most accessibility software helps you consume inaccessible things. Today&#x27;s feature helps you produce accessible things. This is GLOW.</p>
+<p><strong>Liam:</strong> GLOW stands for Guided Layout and Output Workflow, and it&#x27;s QUILL&#x27;s built-in accessibility review and repair system. It just graduated from a hidden preview to a fully unlocked, shipping feature, so this is its coming-out episode.</p>
+<p><strong>Jessica:</strong> The framing matters, and QUILL&#x27;s docs say it beautifully: GLOW is guided confidence, not a compliance dashboard. It&#x27;s not a wall of red X&#x27;s scoring your shame. It reviews what&#x27;s in front of you, explains each finding in plain language, and offers safe fixes you approve one by one.</p>
+<p><strong>Liam:</strong> Why does this matter so much for our community specifically? Because blind professionals are constantly asked to produce documents for sighted consumption, reports, handouts, web content, and ironically we can&#x27;t see the very problems that make documents inaccessible to others. Missing alt text is invisible in a screen reader too.</p>
+<p><strong>Jessica:</strong> GLOW is the second pair of eyes that happens to speak your language.</p>
+<hr>
+<p><strong>Liam:</strong> Let&#x27;s walk the commands. Everything lives under Tools, GLOW. First pair: the audits. GLOW Audit Current Document reviews the whole file in front of you. GLOW Audit Selection reviews just the paragraph or selection at your cursor, perfect for checking one section you just wrote.</p>
+<p><strong>Jessica:</strong> The results open as a normal QUILL tab, plain readable text you can arrow through, search, or keep open beside your document. Each finding names its rule, its severity, its location, and, this is the good part, a plain-language suggestion. Not just heading level jump detected, but use intermediate heading levels for a smoother outline.</p>
+<p><strong>Liam:</strong> What does it actually check? In the editor, for plain text, Markdown, and HTML: heading levels that jump, like an H1 straight to an H4, which scrambles screen reader navigation for your readers. Links that just say click here. Images missing alt text. HTML missing its language attribute, which affects pronunciation in every screen reader. Tables without header cells. Tabs where they&#x27;ll cause chaos, dense paragraphs that are brutal to listen to, and plain-language suggestions for bureaucratic phrasing.</p>
+<p><strong>Jessica:</strong> Every one of those is a real barrier some reader will hit. GLOW catches them while the document is still yours to fix.</p>
+<p><strong>Liam:</strong> Then the fixes. GLOW Fix Selection cleans up the block you&#x27;re in, in place, and leaves the result selected so you can review or undo it. GLOW Fix Current Document is more ceremonial, deliberately: it opens the repaired text as a named preview tab and immediately starts a compare session against your original. You hear exactly what changed before you accept anything.</p>
+<p><strong>Jessica:</strong> Never a silent rewrite. It&#x27;s the same contract as the AI features, and that&#x27;s not a coincidence, it&#x27;s the house philosophy: tools propose, you decide.</p>
+<hr>
+<p><strong>Liam:</strong> Now the new muscle that came with the unlock: structured documents. GLOW Audit File and GLOW Fix File work on files on disk, Word documents, PowerPoint decks, Excel workbooks, PDFs, EPUBs.</p>
+<p><strong>Jessica:</strong> Audit File parses the document in the background, your editor never freezes, and comes back with a scored, graded report. A number out of a hundred, a letter grade, and every finding listed. It&#x27;s a great pre-flight check before you send that report to your boss.</p>
+<p><strong>Liam:</strong> And Fix File has my favorite safety property in the whole feature: it is physically incapable of damaging your original. It always writes a repaired copy next to the source, report dot docx becomes report dash accessible dot docx, it confirms the destination with you first, and then opens the post-fix audit so you can verify the improvement. The original file is never touched.</p>
+<p><strong>Jessica:</strong> Under the hood there&#x27;s a shared engine, the same accessibility engine that powers the GLOW product family beyond QUILL, and it&#x27;s updatable on its own schedule: Help, Check for GLOW Updates. The update check runs only when you ask, the download is confirmed separately, everything is signature-verified, and a failed install rolls back automatically.</p>
+<p><strong>Liam:</strong> Privacy posture, same story as everywhere in QUILL: the entire default GLOW workflow runs on your machine. The engine has some optional networked helpers, AI alt-text generation, personal-data redaction, and they are structurally off, unreachable, until you explicitly consent per use.</p>
+<hr>
+<p><strong>Jessica:</strong> Let&#x27;s make it concrete with a workflow. You&#x27;ve written a report in Markdown. Step one, GLOW Audit Current Document. Listen through the findings, fix the judgment calls yourself, then GLOW Fix Current Document for the mechanical ones and accept from the compare view.</p>
+<p><strong>Liam:</strong> Step two, export to Word, and run GLOW Audit File on the exported docx as your final gate. Grade comes back, findings come back, and if you want, Fix File writes a repaired copy for delivery. You just shipped a document more accessible than what most sighted authors produce.</p>
+<p><strong>Jessica:</strong> And there&#x27;s an AI-powered big sibling worth knowing: the Accessibility Tune-Up agent from the AI menu, which drafts a broader improvement plan for a messy document, reviewable like every agent plan. GLOW is the deterministic floor, the agent is the ambitious ceiling.</p>
+<p><strong>Liam:</strong> Homework. One: audit the messiest document you have and just listen to the report, no fixing, get a feel for the findings. Two: run Fix Current Document on something and actually read the compare, see what it changed and how it tells you. Three: take any Word file and run GLOW Audit File for your first scored grade.</p>
+<p><strong>Jessica:</strong> Next episode is our season finale: trust, safety, braille, recovery, extensions, community, and where QUILL goes from here.</p>
+<p><strong>Liam:</strong> The victory-lap episode with feelings. I&#x27;m Liam.</p>
+<p><strong>Jessica:</strong> I&#x27;m Jessica. Make it accessible, then make it beautiful.</p>
+</main>
+</body>
+</html>

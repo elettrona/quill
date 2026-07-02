@@ -1,0 +1,63 @@
+[LIAM]
+The QUILL Cast, episode five. I'm Liam, Jessica's here, and today QUILL gets loud. The speech suite: reading aloud, dictation, transcription, and turning documents into audio you can publish.
+
+[JESSICA]
+The headline is that speech in QUILL is private by default and layered by choice. The base layer works with no downloads and no network at all, and every layer above it is optional.
+
+[LIAM]
+Start with Read Aloud, under Tools, Reading and Dictation. Select some text or just park your cursor, start reading, and stop on a key. Simple. The interesting part is the voice lineup.
+
+[JESSICA]
+It's genuinely a museum and a showroom at once. You've got Windows SAPI voices, the classic espeak, and, this one made people emotional, DECtalk. The Perfect Paul voice, the voice of Stephen Hawking, the voice half our community learned computers on. It's there.
+
+[LIAM]
+And at the modern end, Kokoro, a neural text-to-speech engine that runs entirely on your own machine. Natural, warm voices, no cloud. Fun fact for this podcast's listeners: the two voices reading you this episode right now are Kokoro voices. This is the engine.
+
+[JESSICA]
+There's also an optional ElevenLabs cloud voice if you have an account there, consent-gated per session like every cloud feature. And a clever experimental option: Read in Browser, which opens an accessible reader page in your web browser so you can use the browser's voice catalog, including those natural online voices QUILL couldn't otherwise reach. QUILL is upfront that choosing an online browser voice sends the text to that vendor. Your call, stated plainly.
+
+[PAUSE]
+
+[LIAM]
+Now flip the direction: you talk, QUILL types. Dictation, control F9, powered by the Whisper speech recognition engine running locally. Completely offline. Your voice never leaves the machine.
+
+[JESSICA]
+Two styles: hold-to-talk, like a walkie-talkie, or locked dictation that keeps listening until you stop it. Recognition quality is genuinely good, even with accents and casual speech, because Whisper was trained on the messy real world.
+
+[LIAM]
+And for lower-powered machines there's a lighter engine option, Vosk, downloadable on demand. QUILL's whole speech stack respects your hardware: models unload when idle, there's a low-resource mode, and nothing demands a graphics card.
+
+[JESSICA]
+Then there's the feature I use most: transcription. Point QUILL at an audio or video file, a lecture recording, a meeting, a voice memo, and it produces a transcript document. On your machine. A two-hour recording of a sensitive meeting never touches a server.
+
+[LIAM]
+And transcription is where the Listening Companion picks up. Because a raw transcript is just the start. The Companion runs Transcript Actions: turn this transcript into meeting minutes. Extract the action items. Write the executive summary. Draft the follow-up email. Pull the key quotes. Build a decisions log.
+
+[JESSICA]
+Those actions use your configured AI, which is next episode's topic, but notice the shape: record, transcribe privately, then transform reviewably. And if you have a recurring need, there's a no-syntax Action Builder to define your own transcript actions, and even watch-folder automation: drop a recording in a folder, get a document out.
+
+[PAUSE]
+
+[LIAM]
+Last direction: documents out to audio. Generate Speech Audio exports a document as an audio file, WAV, or with the ffmpeg helper installed, MP3, M4A, and friends, in whatever voice you choose.
+
+[JESSICA]
+Scale that up and you get batch export and full audiobook building: chaptered audio from a long document, with the audiobook-grade cloud voices available for the final render if you want them. Draft with local voices, publish with premium ones.
+
+[LIAM]
+And my favorite export nobody expects: DAISY. File, Export, DAISY Talking Book produces a DAISY 2.02 text-only talking book, the standard format for accessible book players and library services. QUILL speaks the native language of accessible publishing.
+
+[JESSICA]
+Quick word on where all this lives and how it's managed. Tools, Speech, Speech and Dictation opens the hub where you pick engines, download voices and models, and set defaults. Every download is checksum-verified with visible progress, and Help, Download Optional Components lists everything downloadable in one accessible place: speech engines, Kokoro voices, espeak, DECtalk, ffmpeg, spell-check dictionaries.
+
+[LIAM]
+Homework. One: open the Speech hub and try three different engines on the same paragraph. Hear the personalities. Two: press control F9 and dictate a paragraph of anything. Three: if you have any recording lying around, transcribe it, then run one Transcript Action on the result.
+
+[JESSICA]
+Next episode we cross into the AI suite properly: the setup wizard, the free-for-everyone paths, Ask Quill, and the review-everything philosophy that makes AI safe to let near your writing.
+
+[LIAM]
+I'm Liam.
+
+[JESSICA]
+I'm Jessica. Talk to your computer nicely.
