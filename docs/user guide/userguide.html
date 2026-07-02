@@ -4695,6 +4695,42 @@ plays a short pre-recorded sample so you can still hear it before
 deciding to download. The rate, volume, pitch, and speed controls apply
 to real synthesis, so they stay dimmed until the voice is
 downloaded.</p>
+<h3 id="read-document-in-browser-experimental">Read Document in Browser
+(experimental)</h3>
+<p>Your web browser has voices QUILL's built-in engines cannot reach —
+including Microsoft Edge's "Online (Natural)" voices. This opt-in
+feature reads the current document with them.</p>
+<p><strong>Turn it on.</strong> Open <strong>Preferences →
+Experimental</strong>, tick the acknowledgement box, then enable
+<strong>Read the document aloud in your browser</strong>. It takes
+effect as soon as you apply Settings — no restart. A <strong>Read in
+Browser (Experimental)</strong> item appears under <strong>Tools →
+Reading &amp; Dictation → Read Aloud</strong>, and the command palette
+gains <strong>Read Document in Browser (Experimental)</strong>.</p>
+<p><strong>How it works.</strong> QUILL writes a self-contained,
+accessible reader page and opens it in the browser you chose under
+<strong>Preferences → Preview</strong>. The page has a labelled
+<strong>Voice</strong> picker — each voice marked "on this device" or
+"online", filtered to your QUILL display language, with a <strong>Show
+all languages</strong> checkbox to reveal the rest — a
+<strong>Speed</strong> slider, and <strong>Play</strong> and
+<strong>Stop</strong> buttons. Focus lands on Play, status changes are
+announced through a live region, and <strong>Escape</strong> stops.
+Reading proceeds section by section, so book-length documents stay
+reliable: <strong>Pause</strong> keeps your place and tells you where
+you are ("Paused at section 12 of 300") and resuming continues from that
+section, while <strong>Stop</strong> resets to the top. Your voice and
+speed choices are remembered between sessions, and the document text
+carries your display-language tag so a screen reader reading the page
+pronounces it correctly.</p>
+<p><strong>Privacy.</strong> QUILL itself makes no network call, and no
+audio file is produced. Voices labelled "on this device" synthesize
+locally. The browser's "Online (Natural)" voices synthesize in the voice
+vendor's cloud, which means choosing one sends the text being read to
+that service — pick an on-device voice to keep everything local. The
+reader page (which contains your document text) is written to QUILL's
+app-data folder and deleted when you close QUILL, so no plaintext copy
+is left behind.</p>
 <h3 id="batch-export-to-speech-audio">Batch Export to Speech Audio</h3>
 <p><strong>Tools → Speech → Batch Export to Speech Audio</strong>
 converts a whole folder of documents to speech audio in one pass. The

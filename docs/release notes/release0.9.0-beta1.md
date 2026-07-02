@@ -455,6 +455,27 @@ these.
 **Why it matters:** a safe sandbox for power users and testers to help shape the
 editor, with a clear gate so nothing changes by accident.
 
+### Read your document in the browser's best voices (experimental)
+
+New in this beta, off by default: turn on **Read the document aloud in your
+browser** under **Settings > Experimental** (it takes effect immediately - no
+restart) and a **Read in Browser** command appears under **Tools > Reading &
+Dictation > Read Aloud** and in the command palette. QUILL writes a
+self-contained, accessible reader page - a labelled voice picker, Speed,
+Play/Pause/Stop, a live status line, Escape to stop - and opens it in your
+chosen browser, where the browser's full voice set is available, including
+Edge's "Online (Natural)" voices that the built-in engines cannot reach. It
+reads section by section so book-length documents stay reliable, **Pause**
+keeps your place and tells you where you are ("Paused at section 12 of 300"),
+and your voice and speed choices are remembered.
+**Why it matters / privacy:** the best-sounding free voices live in real
+browsers. QUILL itself makes no network call and no audio file is produced -
+but the browser's "Online (Natural)" voices synthesize in the vendor's cloud,
+so choosing one sends the text being read to that service; voices labelled
+"on this device" stay fully local, and the setting text says all of this
+plainly. The reader page is deleted when you close QUILL, so no plaintext
+copy of your document lingers.
+
 ### Proofread before you publish
 
 - **Proofread Mastodon posts before sending (per account)** - tick it and pressing
@@ -490,17 +511,16 @@ editor, with a clear gate so nothing changes by accident.
   scroll position), instead of reloading on every keystroke and jumping to the
   top. The in-app side preview (Ctrl+F6 to focus it) updates silently in place
   with no reload - the recommended live preview for screen-reader/braille users.
-- **Read Document in Browser (experimental) is steadier** - Stop no longer emits
-  spurious "speech error" messages, a failed passage no longer wedges the player
-  on Pause, the text is pronounced in its own language, and the reader page is
-  deleted on exit. It reads section by section (reliable on long documents) and
-  Pause keeps your place and reports it ("Paused at section 12 of 300"). Enabling
-  it takes effect immediately (no restart). The setting text now states plainly
-  that the browser's "Online (Natural)" voices synthesize the text in the cloud;
-  on-device voices stay local.
+- **The crash-report dialog tells you what happened** - choosing Send, Copy, or
+  Send without a sign-in used to complete silently, indistinguishable from doing
+  nothing for a screen-reader user; QUILL now confirms out loud that the report
+  was sent, copied to your clipboard (and what to do next), or that sending
+  failed and it was copied instead.
 - **Snappier, less alarming startup** - the one-time WebView2 warm-up runs after
   the editor is ready, not before it, so a slow first setup no longer looks like a
-  freeze; short UI stalls now also capture a diagnostic stack snapshot.
+  freeze; short UI stalls now also capture a diagnostic stack snapshot, and
+  startup task timings are always written to the logs so a slow launch can be
+  reported with evidence.
 - **Idle AI models are actually released now** - the background idle-unload sweep
   crashed on every tick, so idle models were never freed; it now runs correctly.
 - **F1 help now covers every command** - all 319 commands that previously had no
@@ -517,6 +537,11 @@ editor, with a clear gate so nothing changes by accident.
   success or explains the failure, the Pronunciation Dictionaries dialog warns
   when a dictionary could not be saved, and the Quillin wizard's Copy JSON only
   claims "copied" when the clipboard actually took the text.
+- **The Python snippet sandbox is harder to escape** - snippets are now also
+  statically blocked from dunder attribute access (the classic route from a
+  harmless-looking expression to the OS), on top of the existing
+  separate-process isolation, import allowlist, and time/memory caps; if the
+  OS refuses a resource cap, QUILL logs it instead of staying silent.
 
 ---
 
