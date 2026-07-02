@@ -27,10 +27,33 @@ import datetime
 
 
 def _get(api: object, key: str, default: object = None) -> object:
-    """Read a setting from the Quillin's own settings store."""
+    """Read a setting from the Quillin's own settings store.
+
+    Falls back to *default* both when the read raises and when the store has no
+    value for *key* (a fresh store returns None), so callers can safely coerce
+    the result with int()/bool()/str().
+    """
     try:
-        return api.get_setting(key)  # type: ignore[union-attr]
+        value = api.get_setting(key)  # type: ignore[union-attr]
     except Exception:
+        return default
+    return default if value is None else value
+
+
+def _int_arg(event: object, index: int, default: int) -> int:
+    """Return smart-trigger argument *index* as an int, or *default*.
+
+    ``event`` is the smart-trigger context ``{"trigger": ..., "args": [...]}``.
+    Non-numeric, missing, or out-of-range arguments fall back to *default*.
+    """
+    if not isinstance(event, dict):
+        return default
+    args = event.get("args")
+    if not isinstance(args, list) or index >= len(args):
+        return default
+    try:
+        return int(str(args[index]).strip())
+    except (TypeError, ValueError):
         return default
 
 
@@ -131,8 +154,10 @@ def insert_journal(api: object) -> None:
     api.announce("Inserted journal entry.")  # type: ignore[union-attr]
 
 
-def insert_todo(api: object) -> None:
-    count = int(_get(api, "default_todo_count", 5))
+def insert_todo(api: object, event: object = None) -> None:
+    default_count = int(_get(api, "default_todo_count", 5))
+    count = _int_arg(event, 0, default_count)
+    count = max(1, min(count, 100))
     text = _todo_template(count)
     api.insert_text(text)  # type: ignore[union-attr]
     api.announce(f"Inserted to-do list with {count} items.")  # type: ignore[union-attr]
@@ -165,9 +190,9 @@ def register(api) -> None:
     api.register_command("insert_rand", insert_rand)
 
 
-def insert_rand(api: object) -> None:
-    paragraphs = 3
-    lines = 3
+def insert_rand(api: object, event: object = None) -> None:
+    paragraphs = max(1, min(_int_arg(event, 0, 3), 500))
+    lines = max(1, min(_int_arg(event, 1, 3), 500))
     threshold = int(_get(api, "large_insert_threshold", 50))
     confirm = bool(_get(api, "confirm_large_insertions", True))
     if confirm and paragraphs > threshold:

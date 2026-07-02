@@ -19,6 +19,22 @@ class AbbreviationsMixin:
         # (post_expansion_text, caret_after, token_start, original_abbr) or None
         self._pending_undo: tuple[str, int, int, str] | None = None
 
+    def _try_expand_contributed(
+        self, text: str, caret: int, clipboard_text: str = ""
+    ):
+        """Try to expand against the Quillin-contributed abbreviation library.
+
+        This library (built at Quillin load, never persisted) is checked only
+        after the user's own library, so a user abbreviation always wins over a
+        Quillin-contributed one with the same trigger.
+        """
+        library = getattr(self, "_quillin_abbreviation_library", None)
+        if library is None or not library.abbreviations:
+            return None
+        from quill.core.abbreviations import try_expand
+
+        return try_expand(text, caret, library, clipboard_text)
+
     # -- automatic expansion hook (called from _on_text_changed) --
 
     def _expand_abbreviation_if_match(self) -> bool:
@@ -37,6 +53,8 @@ class AbbreviationsMixin:
         from quill.core.abbreviations import try_expand
 
         match = try_expand(text, caret, self._abbreviation_library, clipboard_text)
+        if match is None:
+            match = self._try_expand_contributed(text, caret, clipboard_text)
         if match is None:
             return False
         before = text[: match.token_start]
@@ -157,6 +175,8 @@ class AbbreviationsMixin:
         from quill.core.abbreviations import try_expand
 
         match = try_expand(padded, caret + 1, self._abbreviation_library)
+        if match is None:
+            match = self._try_expand_contributed(padded, caret + 1)
         if match is None:
             self._announce("No abbreviation match")
             return
