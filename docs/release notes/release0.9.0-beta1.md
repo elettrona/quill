@@ -15,14 +15,21 @@ beta - and focus from here is polish.
 
 ## The story of this release
 
-0.8.0 made QUILL a serious writing and document studio. **0.8.1 makes it yours.**
+0.8.0 made QUILL a serious writing and document studio. **0.9.0 makes it yours -
+and makes it complete.**
 
-Three threads run through this beta. First, a complete, **optional** AI suite that
+Five threads run through this beta. First, a complete, **optional** AI suite that
 stays silent until you invite it in. Second, a wave of **power-user editing tools**
 in the tradition of the editors people still miss - Reveal Codes, classic-editor
-commands, and bookmarks that finally remember where you were. Third, a quieter,
-**lighter, more honest install**: a smaller download, on-demand components you can
-fetch from one place, and clearer, calmer announcements.
+commands, and bookmarks that finally remember where you were. Third, the
+**production features** this project was always pointed at: the GLOW accessibility
+suite, unlocked, and a document-rescue tool that turns scanned PDFs into real text
+with free, on-device OCR - nothing uploaded, ever. Fourth, a teaching library to
+match: six hands-on tutorials and a 36-episode audio course narrated by QUILL's own
+neural voices. And fifth, a quieter, **lighter, more honest install**: a smaller
+download, on-demand components you can fetch from one place, clearer announcements,
+and a day of under-the-hood hardening documented further down, because reliability
+work deserves release notes too.
 
 Everything new is off, optional, or additive. Nothing here changes how your fingers
 already work - it just gives them more to reach for when you want it.
@@ -369,14 +376,25 @@ complete workflows hands-on - your first hour, keyboard mastery, rescuing a
 scanned PDF, building an audiobook, starting a Vault, and shipping an
 accessible document with GLOW.
 
-And then there is **The QUILL Cast**: a ten-episode, two-host audio course
-covering every major concept in the product - hosted by Liam and Jessica,
-who happen to be QUILL's own on-device Kokoro neural voices. The product
-narrates its own curriculum. Every episode ships with a full accessible
-transcript, and an RSS feed lets you subscribe in any podcast app.
+And then there is **The QUILL Cast**: a full **36-episode, two-host audio
+course** - about two and a quarter hours across seven parts - that leads a
+brand-new user from the installer all the way to every feature family in the
+product. Part one covers first steps (install, files, the command palette,
+what QUILL says); the everyday-editor part makes you fast; then documents
+and formats, files and automation, the speech suite, AI, and finally the
+organization, production, and trust features - the Vault, Story Studio,
+GLOW, braille production, and extensions. Every episode builds on the one
+before it and ends with five minutes of hands-on homework.
+
+The hosts, Liam and Jessica, are QUILL's own on-device **Kokoro** neural
+voices - the product literally narrates its own curriculum, produced with
+the same speech engine you can install from the Voice Picker. Every episode
+ships with a full accessible transcript on the website, and an RSS feed lets
+you subscribe in any podcast app.
 
 **Why it matters:** some people learn by reading, some by doing, some by
-listening on a walk. Now all three of them get a first-class path into QUILL.
+listening on a walk. Now all three of them get a first-class path into QUILL
+- and the audio path is proof-by-existence of what the speech suite can do.
 
 ---
 
@@ -603,6 +621,63 @@ copy of your document lingers.
 - **Proofread Mastodon posts before sending (per account)** - tick it and pressing
   Post opens the F7 Spelling Review on the post text first.
 - **Spell check a document before saving** - opens F7 automatically on Save / Save As.
+
+---
+
+## Under the hood - quality, reliability, and honest engineering
+
+The features above stand on a day of unglamorous work that deserves its own
+telling, because this is the part most release notes hide.
+
+### The GLOW engine can no longer silently vanish
+
+The most interesting bug of the cycle: GLOW's shared engine could be
+*installed and silently unavailable* at the same time. The engine's recent
+architecture split moved its analysis backend into a new component, but the
+version floor QUILL asked for was loose enough that an older, pre-split
+install could satisfy it - and the engine would simply report "not
+installed" with no error anywhere. QUILL now pins the exact backend floor it
+needs, the vendored offline wheels install cleanly on a bare machine, and
+the failure mode is extinct by construction. If you ever wondered why an
+optional engine "didn't take" - this class of problem is what got fixed.
+
+### Startup can no longer be taken down by a warm-up
+
+QUILL's deferred startup runs each step - screen-reader detection, crash
+recovery, watch folders - inside its own isolation so a failing step is
+logged and skipped, never fatal. One recent addition (the browser-preview
+warm-up scheduler) had slipped outside that pattern; a failure there could
+have killed startup. It is now isolated like everything else, and the
+regression test that guards the whole contract is green again.
+
+### Responsiveness as a policy, not an accident
+
+Everything heavy that shipped this cycle runs on the background task pool:
+GLOW's structured-file audits, document conversion, page-by-page OCR (with
+cancel checks between pages), and the verified engine download. The editor
+never freezes for any of it - progress lands in the status bar, results
+arrive as tabs, and your cursor stays exactly where you left it. On-device
+OCR is CPU-only by design, and the speech and AI engines continue to load
+on demand and unload when idle, so a modest laptop stays a first-class
+citizen.
+
+### Documentation as part of the product
+
+Every feature that shipped this cycle shipped *documented, everywhere, at
+once*: user-guide sections for GLOW and Import / Convert Document, glossary
+entries, F1 help for every new command (the control reference now covers
+469 topics, regenerated from the same source of truth as the app), product
+requirements updated, the roadmap reconciled so it tracks only genuinely
+open work, six new tutorials, and a 36-episode audio course. If you can
+reach a feature, you can read about it - and now, hear about it.
+
+### The little disciplines
+
+The whole repository now passes its style gate completely clean; the module
+size budgets, dialog inventory, network egress audit, and UI-surface
+snapshots were all re-verified; and the full test suite - 6,776 tests -
+passes. New capability this cycle arrived with 44 new tests of its own.
+None of this is visible in a menu. All of it is why the menus keep working.
 
 ---
 
