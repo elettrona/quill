@@ -47,12 +47,13 @@ def test_configure_builds_manager_and_registrations_flow_through() -> None:
     ls.note_loaded("llm", lambda: freed.append("llm"))
     assert manager.loaded_keys() == ["llm"]
 
-    # Force everything idle and sweep -> the registered unload runs.
-    manager.idle_timeout = 0.0  # still swept? no: <=0 disables. Use a tiny timeout.
+    # Force everything idle and sweep -> the registered unload runs. Drive the
+    # manager's injectable clock instead of sleeping: on Windows + Python 3.12,
+    # time.monotonic ticks at ~15.6 ms, so a real sleep shorter than one tick
+    # can measure zero idle time and make this flake (seen on CI).
     manager.idle_timeout = 0.001
-    import time
-
-    time.sleep(0.005)
+    base = manager.clock()
+    manager.clock = lambda: base + 60.0
     assert ls.sweep() == ["llm"]
     assert freed == ["llm"]
 
