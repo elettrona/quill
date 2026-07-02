@@ -194,10 +194,23 @@ class Settings:
     #   editor_hide_border: draw the editor control with no border for a cleaner,
     #   Notepad-like frame. Off keeps the platform default border.
     editor_hide_border: bool = False
-    #   experimental_acknowledged: the user has confirmed they understand that
-    #   features may degrade on a non-default editor surface. The experimental
-    #   overrides above are ignored until this is True (the safety gate).
+    #   experimental_acknowledged: the master Experimental switch — the user has
+    #   opted in to experimental features as a group. Every experimental option
+    #   below is ignored (and its controls disabled) until this is True.
     experimental_acknowledged: bool = False
+    #   experimental_editor_surfaces_enabled: the secondary gate for the two
+    #   editor-surface options above; carries the "features may degrade based on
+    #   the control selected" acknowledgement. Both gates must be on before a
+    #   non-default surface or border override is applied.
+    experimental_editor_surfaces_enabled: bool = False
+    #   glow_experimental_enabled: opt-in for the GLOW accessibility review and
+    #   repair suite (Tools > GLOW). Gated by experimental_acknowledged; off by
+    #   default while GLOW matures; takes effect on settings apply (menu rebuild).
+    glow_experimental_enabled: bool = False
+    #   publishing_experimental_enabled: opt-in for the read-only WordPress
+    #   publishing connections tools (File > Publishing). Gated by
+    #   experimental_acknowledged; the send/publish half stays locked regardless.
+    publishing_experimental_enabled: bool = False
     #   edge_read_aloud_enabled: opt-in experimental read-aloud that opens an
     #   accessible reader page in the user's real browser (see
     #   quill/core/browser_reader.py), where the full/online Web Speech voices
@@ -711,6 +724,11 @@ class Settings:
             experimental_editor_surface = "default"
         editor_hide_border = bool(data.get("editor_hide_border", False))
         experimental_acknowledged = bool(data.get("experimental_acknowledged", False))
+        experimental_editor_surfaces_enabled = bool(
+            data.get("experimental_editor_surfaces_enabled", False)
+        )
+        glow_experimental_enabled = bool(data.get("glow_experimental_enabled", False))
+        publishing_experimental_enabled = bool(data.get("publishing_experimental_enabled", False))
         edge_read_aloud_enabled = bool(data.get("edge_read_aloud_enabled", False))
         plain_text_with_formatting = str(data.get("plain_text_with_formatting", "ask"))
         if plain_text_with_formatting not in {"ask", "illuminate", "plain"}:
@@ -1173,6 +1191,9 @@ class Settings:
             experimental_editor_surface=experimental_editor_surface,
             editor_hide_border=editor_hide_border,
             experimental_acknowledged=experimental_acknowledged,
+            experimental_editor_surfaces_enabled=experimental_editor_surfaces_enabled,
+            glow_experimental_enabled=glow_experimental_enabled,
+            publishing_experimental_enabled=publishing_experimental_enabled,
             edge_read_aloud_enabled=edge_read_aloud_enabled,
             plain_text_with_formatting=plain_text_with_formatting,
             dictation_onboarding_shown=dictation_onboarding_shown,

@@ -68,6 +68,8 @@ class GlowFileMixin:
 
     def glow_audit_file(self) -> None:
         """Audit a structured document on disk and open the report as a tab."""
+        if not self._ensure_glow_enabled():
+            return
         source = self._glow_pick_file("GLOW Audit File")
         if source is None:
             return
@@ -104,6 +106,8 @@ class GlowFileMixin:
 
     def glow_fix_file(self) -> None:
         """Fix a structured document into a new copy and report what changed."""
+        if not self._ensure_glow_enabled():
+            return
         source = self._glow_pick_file("GLOW Fix File")
         if source is None:
             return

@@ -1886,19 +1886,114 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         ),
         keywords=("upgrade", "migration", "notice", "announce", "undo", "settings"),
     ),
-    # --- Experimental (for-testing editor surfaces) ------------------------
+    # --- Experimental (opt-in features still maturing) ----------------------
     SettingSpec(
         "experimental_acknowledged",
-        "I understand features may degrade based on the control selected",
+        "Enable experimental features (the master switch for everything on this tab)",
         "experimental",
         "bool",
         (
-            "Required safety gate. The experimental editor-surface and hide-border "
-            "options below are IGNORED until this is ticked, so an accidental change "
-            "can never affect your editor. Tick it only if you accept that a "
-            "non-default surface is for testing and that some features may not work."
+            "The required master gate for ALL experimental features. Experimental "
+            "features work, but they are still maturing and may change or have rough "
+            "edges. While this is OFF, every experimental option below is ignored and "
+            "its controls are disabled (they leave the tab order), so an accidental "
+            "change can never affect QUILL. Tick it to unlock the individual "
+            "experiments below — each one still has its own switch."
         ),
-        keywords=("experimental", "acknowledge", "understand", "risk", "degrade", "testing"),
+        keywords=(
+            "experimental",
+            "enable",
+            "master",
+            "acknowledge",
+            "understand",
+            "risk",
+            "testing",
+        ),
+    ),
+    SettingSpec(
+        "glow_experimental_enabled",
+        "GLOW accessibility review and repair (experimental)",
+        "experimental",
+        "bool",
+        (
+            "Adds the Tools > GLOW menu: plain-language accessibility audits of the "
+            "document or selection in front of you, safe deterministic fixes with a "
+            "before/after compare, and scored, graded audits and non-destructive "
+            "repairs of Word, PowerPoint, Excel, PDF, and EPUB files on disk. "
+            "Everything runs on your machine by default. Off while GLOW matures; "
+            "requires the master switch above. Takes effect as soon as you apply "
+            "Settings — no restart."
+        ),
+        keywords=("experimental", "glow", "accessibility", "audit", "fix", "review"),
+    ),
+    SettingSpec(
+        "publishing_experimental_enabled",
+        "WordPress publishing connections (experimental)",
+        "experimental",
+        "bool",
+        (
+            "Adds the read-only publishing tools to the File menu: save WordPress "
+            "connections, verify them, browse your site's posts and pages, and open "
+            "a remote item in the editor. Strictly inbound for now — the send/publish "
+            "half stays locked while the providers framework is reviewed, so nothing "
+            "can be published from QUILL. Requires the master switch above. Takes "
+            "effect as soon as you apply Settings — no restart."
+        ),
+        keywords=("experimental", "wordpress", "publishing", "connections", "read"),
+    ),
+    SettingSpec(
+        "edge_read_aloud_enabled",
+        "Read the document aloud in your browser (experimental)",
+        "experimental",
+        "bool",
+        (
+            "Adds a Read Document in Browser command (menu and command palette) "
+            "that opens an accessible reader page in your browser with a voice "
+            "picker and Play/Pause/Stop. A real browser exposes its full voice "
+            "set — including Edge's Online (Natural) voices — which the in-app "
+            "engine cannot. Requires the master switch above. QUILL makes no "
+            "network call and no audio file is produced; on-device voices stay "
+            "local. Note: the Online (Natural) voices synthesize in Microsoft's "
+            "cloud, so choosing one sends the text to that service — pick an "
+            "on-device voice to keep everything local. Availability varies with "
+            "your browser and network. Set your browser under Preferences > "
+            "Preview. Takes effect as soon as you apply Settings — no restart."
+        ),
+        keywords=(
+            "experimental",
+            "browser",
+            "edge",
+            "chrome",
+            "voice",
+            "read aloud",
+            "speech",
+            "web speech",
+            "natural",
+        ),
+    ),
+    SettingSpec(
+        "experimental_editor_surfaces_enabled",
+        "Enable experimental editor surfaces (features may degrade based on the control selected)",
+        "experimental",
+        "bool",
+        (
+            "The safety gate for the editor-surface options below. The editor "
+            "surface is the control your document lives in, so changing it affects "
+            "everything you do — some features may degrade or behave differently on "
+            "a non-default surface. Until this is ticked (along with the master "
+            "switch above), the surface and border options are ignored and their "
+            "controls are disabled, so an accidental change can never affect your "
+            "editor."
+        ),
+        keywords=(
+            "experimental",
+            "editor",
+            "surface",
+            "acknowledge",
+            "degrade",
+            "control",
+            "testing",
+        ),
     ),
     SettingSpec(
         "experimental_editor_surface",
@@ -1942,35 +2037,5 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
             "RESTART QUILL after changing this."
         ),
         keywords=("experimental", "border", "margin", "notepad", "frame", "chrome"),
-    ),
-    SettingSpec(
-        "edge_read_aloud_enabled",
-        "Read the document aloud in your browser (experimental)",
-        "experimental",
-        "bool",
-        (
-            "Adds a Read Document in Browser command (menu and command palette) "
-            "that opens an accessible reader page in your browser with a voice "
-            "picker and Play/Pause/Stop. A real browser exposes its full voice "
-            "set — including Edge's Online (Natural) voices — which the in-app "
-            "engine cannot. Requires the acknowledgement above. QUILL makes no "
-            "network call and no audio file is produced; on-device voices stay "
-            "local. Note: the Online (Natural) voices synthesize in Microsoft's "
-            "cloud, so choosing one sends the text to that service — pick an "
-            "on-device voice to keep everything local. Availability varies with "
-            "your browser and network. Set your browser under Preferences > "
-            "Preview. Takes effect as soon as you apply Settings — no restart."
-        ),
-        keywords=(
-            "experimental",
-            "browser",
-            "edge",
-            "chrome",
-            "voice",
-            "read aloud",
-            "speech",
-            "web speech",
-            "natural",
-        ),
     ),
 )

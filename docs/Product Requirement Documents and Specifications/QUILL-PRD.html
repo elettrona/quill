@@ -7516,13 +7516,17 @@ Sub-PR 1.5 makes the system live. `quill/core/verbosity/controller.py` (`Verbosi
 
 Sub-PR 1.6 (the original &quot;100-item addendum&quot;) was **consolidated** into the deduplicated *Polish backlog*, now the authoritative status list in **roadmap §6** (the standalone `verbosity-system.md` archive was retired once verbosity shipped). Rather than 100 separate features: the duplicates and already-built items are folded into the foundation/engine/UI shipped in 1.1–1.5; the themed survivors (per-category verbosity via the verb registry, status-query commands, announcement flow control, safety announcements, friendly names, status-bar surfacing, scope profiles, sound learnability, coaching/discovery, braille polish) are tracked there; and the screen-reader-redundant items — **typing echo, command echo, speech rate/pause, punctuation/symbol profiles** — are recorded as **recommend do not build**, because QUILL speaks alongside the screen reader and must not duplicate or fight the settings (echo, rate, punctuation level) the screen reader already owns.
 
-### 5.92 GLOW — Guided Layout and Output Workflow (shipped, unlocked)
+### 5.92 GLOW — Guided Layout and Output Workflow (shipped, experimental opt-in)
 
 GLOW is QUILL&#39;s accessibility review and repair system: **guided confidence, not a
 compliance dashboard**. It reviews what is in front of the user, explains each
 finding in plain language, and applies only deterministic, reviewable fixes. The
 `core.glow` feature flag shipped `locked_off` through 0.8.1 while the engine
-deployment was finished; it is **unlocked for 0.9.0** — the flag remains a normal
+deployment was finished; for 0.9.0 it ships as an **experimental opt-in**: the
+catalog flag is unlocked, but every GLOW surface is additionally gated by the
+Experimental tab (`experimental_acknowledged` + `glow_experimental_enabled`,
+both default off) through `MainFrame._feature_enabled`, so GLOW is off by
+default and user-flippable with no restart. The flag remains a normal
 profile-controllable feature.
 
 #### 5.92.1 Surfaces
@@ -16602,10 +16606,12 @@ menu ids. The Window menu's dynamic open-document list shows each
 shortcut inline (<code>&amp;1: Notes (Alt+1)</code>) for
 discoverability; <code>Alt+digit</code> is free default key-space and,
 unlike <code>Ctrl+Alt+</code> chords, is not screen-reader-hostile.</p>
-<h3 id="braille-editor-control-type-shipped-081-beta-1">Braille editor
-control type (shipped 0.8.1 Beta 1)</h3>
+<h3
+id="braille-editor-control-type-shipped-081-beta-1-cell-two-offset-unresolved">Braille
+editor control type (shipped 0.8.1 Beta 1; cell-two offset
+unresolved)</h3>
 <p>Some braille displays render the first character of every line in
-cell two for a rich-text control — the long-standing Microsoft Word
+cell two for a rich-text control — the long-standing word-processor
 quirk. Because QUILL's editor must be a RichEdit for correct
 accessible-value reporting (#616, a <em>read-only</em> constraint),
 <strong>Settings → Accessibility → Editor control type
@@ -16613,10 +16619,15 @@ accessible-value reporting (#616, a <em>read-only</em> constraint),
 <code>rich2</code> (RichEdit 3.0, default), <code>rich</code> (RichEdit
 2.0), or <code>plain</code> (a Notepad-style EDIT control — editable, so
 it still reports its value to JAWS/NVDA). It applies at editor
-construction (new documents/restart). Field note: this is exposed for
-users to A/B against their own display; where the offset reproduces in
-Notepad itself, the cause is the braille display / screen-reader
-configuration (e.g. left status cells), not the control.</p>
+construction (new documents/restart). <strong>Status (2026-07-02): the
+control-type switch has not resolved the reported offset — the issue
+persists on affected displays, and an outcome is still being
+considered.</strong> The options are retained deliberately as a
+troubleshooting/experimentation surface (users A/B against their own
+display; where the offset reproduces in Notepad itself, the cause is the
+braille display / screen-reader configuration, e.g. left status cells,
+not the control), and shipping docs must not claim the offset is
+fixed.</p>
 <h3
 id="self-voice-fallback-is-logged-not-announced-shipped-081-beta-1">Self-voice
 fallback is logged, not announced (shipped 0.8.1 Beta 1)</h3>

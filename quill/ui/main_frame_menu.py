@@ -1743,8 +1743,10 @@ class MenuBuilderMixin:
             self._id_display_language,
             self._menu_label(_("Change &Display Language..."), "app.display_language"),
         )
-        # GLOW is hidden for now (core.glow is locked off pending completion).
-        # When re-enabled, these audit/fix items reappear automatically.
+        # GLOW is an experimental opt-in: _feature_enabled("core.glow") is true
+        # only when the profile flag AND the Experimental-tab gates (master
+        # switch + GLOW checkbox) are on. The items appear on the settings-apply
+        # menu rebuild — no restart.
         if self._feature_enabled("core.glow"):
             writing_menu.AppendSeparator()
             writing_menu.Append(

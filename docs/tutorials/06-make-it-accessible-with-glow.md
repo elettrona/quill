@@ -7,6 +7,19 @@ GLOW (Guided Layout and Output Workflow) is guided confidence, not a
 compliance dashboard: it explains each finding in plain language and only
 applies fixes you approve. Everything is under **Tools > GLOW**.
 
+## 0. Switch it on (GLOW is experimental)
+
+GLOW ships as an experimental feature, off by default while it matures:
+
+1. **Preferences > Experimental.**
+2. Tick **Enable experimental features** (the master switch — until it is on,
+   every experimental control is disabled and skipped in the tab order).
+3. Tick **GLOW accessibility review and repair (experimental)**.
+4. Apply. The **Tools > GLOW** menu appears immediately — no restart.
+
+Experimental means still maturing, not unsafe: every GLOW action below keeps
+the review-first, never-touch-the-original contract.
+
 ## 1. Audit what you are writing
 
 1. Open any Markdown or HTML document you have written.
@@ -37,7 +50,7 @@ judgment calls (link text, dense paragraphs) stay yours.
 
 ## 3. Grade the file you are about to send
 
-The unlock headline: GLOW now audits **structured files on disk** — Word,
+The headline capability: GLOW audits **structured files on disk** — Word,
 PowerPoint, Excel, PDF, EPUB.
 
 1. Export your document to Word (**File > Export > Word Document...**), or

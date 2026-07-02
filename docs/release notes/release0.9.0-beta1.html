@@ -190,8 +190,8 @@ append-as-you-go log). It tells the story of what changes in 0.9.0 Beta
 1 on top of the 0.8.0 line - what each feature is, and, just as
 important, <strong>why it matters</strong> for the way you actually
 work. This is the feature-complete cut for 0.9.0 - the GLOW
-accessibility suite ships unlocked in this beta - and focus from here is
-polish.</p>
+accessibility suite ships in this beta as an experimental opt-in - and
+focus from here is polish.</p>
 <hr />
 <h2 id="the-story-of-this-release">The story of this release</h2>
 <p>0.8.0 made QUILL a serious writing and document studio. <strong>0.9.0
@@ -202,15 +202,16 @@ in. Second, a wave of <strong>power-user editing tools</strong> in the
 tradition of the editors people still miss - Reveal Codes,
 classic-editor commands, and bookmarks that finally remember where you
 were. Third, the <strong>production features</strong> this project was
-always pointed at: the GLOW accessibility suite, unlocked, and a
-document-rescue tool that turns scanned PDFs into real text with free,
-on-device OCR - nothing uploaded, ever. Fourth, a teaching library to
-match: six hands-on tutorials and a 36-episode audio course narrated by
-QUILL's own neural voices. And fifth, a quieter, <strong>lighter, more
-honest install</strong>: a smaller download, on-demand components you
-can fetch from one place, clearer announcements, and a day of
-under-the-hood hardening documented further down, because reliability
-work deserves release notes too.</p>
+always pointed at: the GLOW accessibility suite (shipping as an
+experimental opt-in, one switch away), and a document-rescue tool that
+turns scanned PDFs into real text with free, on-device OCR - nothing
+uploaded, ever. Fourth, a teaching library to match: six hands-on
+tutorials and a 36-episode audio course narrated by QUILL's own neural
+voices. And fifth, a quieter, <strong>lighter, more honest
+install</strong>: a smaller download, on-demand components you can fetch
+from one place, clearer announcements, and a day of under-the-hood
+hardening documented further down, because reliability work deserves
+release notes too.</p>
 <p>Everything new is off, optional, or additive. Nothing here changes
 how your fingers already work - it just gives them more to reach for
 when you want it.</p>
@@ -654,14 +655,48 @@ other tools quietly give up on. QUILL turns them into text you can read,
 search, and edit, without sending your mail, your medical letter, or
 your homework to anyone's cloud.</p>
 <hr />
+<h2 id="the-experimental-tab---consent-in-layers">The Experimental tab -
+consent in layers</h2>
+<p>Before the two big production features, meet the front door they
+share. <strong>Preferences &gt; Experimental</strong> has been rebuilt
+around a simple idea: nothing experimental should ever be reachable by
+accident.</p>
+<p>The first checkbox is now a true master switch, relabeled to say
+exactly what it governs: <strong>Enable experimental features</strong> -
+all of them. While it is off, every other control on the tab is disabled
+and drops out of the tab order entirely, so to a screen reader user an
+untouched Experimental tab is one checkbox and silence. Tick it, and the
+individual experiments unlock - each with its own switch: <strong>GLOW
+accessibility review and repair</strong>, <strong>WordPress publishing
+connections</strong> (the read-only inbound tools; the send half stays
+locked no matter what), and <strong>Read the document aloud in your
+browser</strong>.</p>
+<p>The editor-surface options go one layer deeper, behind a second
+acknowledgement that carries its own warning in its own label:
+<strong>Enable experimental editor surfaces (features may degrade based
+on the control selected)</strong>. The editor surface is the control
+your document lives in, so the surface choice, the border option, and
+the live surface explainer stay disabled until you have said yes
+twice.</p>
+<p><strong>Why it matters:</strong> experiments are how QUILL grows, and
+the community should get to try them early - but a screen reader user
+should never tab into a switch that can change the editor underneath
+them without two deliberate consents first. Opt-in, layer by layer, is
+the whole design.</p>
+<hr />
 <h2 id="glow---guided-accessibility-review-and-repair">GLOW - guided
 accessibility review and repair</h2>
 <p>GLOW (Guided Layout and Output Workflow) is QUILL's accessibility
 review system, and with this beta it graduates from hidden preview to a
-shipping feature. The idea is guided confidence, not a compliance
-dashboard: GLOW reviews what is in front of you, explains each finding
-in plain language, and offers only safe, deterministic fixes you can
-inspect before accepting.</p>
+<strong>shipping experimental feature - one switch away</strong>. Open
+<strong>Preferences &gt; Experimental</strong>, tick the master switch
+and GLOW's own checkbox, apply, and <strong>Tools &gt; GLOW</strong>
+appears immediately, no restart. (Until then, the GLOW commands stay
+discoverable in the command palette and simply explain how to enable the
+feature.) The idea is guided confidence, not a compliance dashboard:
+GLOW reviews what is in front of you, explains each finding in plain
+language, and offers only safe, deterministic fixes you can inspect
+before accepting.</p>
 <h3 id="audit-what-you-can-hear">Audit what you can hear</h3>
 <p><strong>Tools &gt; GLOW &gt; Audit Current Document</strong> reviews
 the whole file; <strong>Audit Selection / Paragraph</strong> reviews
@@ -679,7 +714,7 @@ Document</strong> goes further: it opens the repaired text as a
 against the original, so you accept the change knowing exactly what
 moved - never a silent rewrite.</p>
 <h3 id="structured-documents-too">Structured documents too</h3>
-<p>New with the unlock, <strong>GLOW Audit File...</strong> and
+<p>New alongside the opt-in, <strong>GLOW Audit File...</strong> and
 <strong>GLOW Fix File...</strong> take on the files that are usually
 hardest to check by ear: Word, PowerPoint, Excel, PDF, and EPUB. The
 shared GLOW engine parses the document in the background (the editor
@@ -710,12 +745,19 @@ proofreading: <strong>Read Layout Metrics</strong> (longest line and
 page against your cells-per-line / lines-per-page limits, with width and
 depth warnings), <strong>Go to Longest Line / Longest Page</strong>, and
 <strong>Remove Trailing Spaces</strong> (this line or the whole file),
-all honouring your existing braille page settings. A new <strong>Editor
-control type (braille)</strong> choice lets braille displays that show
-the first character of each line in cell two switch to a plain edit
-control. <strong>Why it matters:</strong> the difference between "it
+all honouring your existing braille page settings.</p>
+<p>An honest status note on the long-standing <strong>cell-two display
+offset</strong> (some braille displays showing the first character of
+each line in cell two): the <strong>Editor control type
+(braille)</strong> choice we shipped <strong>has not resolved
+it</strong> - the issue persists, and an outcome is still being
+considered. The control-type options remain available under
+<strong>Preferences &gt; Accessibility</strong> for troubleshooting and
+experimentation, and we will keep reporting plainly on where this
+stands. <strong>Why it matters:</strong> the difference between "it
 looks fine on screen" and "it actually embosses cleanly", found and
-fixed before you send it.</p>
+fixed before you send it - and when something is not fixed yet, you hear
+that from us in exactly those words.</p>
 <hr />
 <h2 id="a-smaller-friendlier-install">A smaller, friendlier install</h2>
 <h3 id="download-only-what-you-need">Download only what you need</h3>

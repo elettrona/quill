@@ -19,10 +19,10 @@ Then the repair loop, and it's genuinely satisfying: Go to Longest Line jumps to
 [PAUSE]
 
 [LIAM]
-A story worth telling because of what it says about the project. Some braille displays, on certain rich text controls, show every line starting in cell two instead of cell one, off by one, everywhere, longtime Word users know this ghost. Users reported it. QUILL shipped a preference: editor control type for braille, switch to a plain Notepad-style control and the offset disappears.
+A word on page geometry, because it's the decision everything else hangs on. Cells per line and lines per page are physical facts about your embosser and paper, not preferences, so get them from the device manual or your agency's spec sheet, set them once, and let every metric check measure against reality. The most common production mistake we see isn't bad formatting, it's good formatting measured against the wrong grid.
 
 [JESSICA]
-And here's the part we respect: the release notes call it what it is, a workaround, while a permanent fix is pursued upstream with Microsoft. No pretending a bandage is a cure. That honesty pattern, you've heard it all course, extraction quality, OCR confidence, model limits, it holds even here.
+And know your output formats. BRF is the universal workhorse, plain, portable, every embosser speaks it. PEF, the portable embosser format, carries its page geometry inside the file, so the document and its dimensions travel together, worth preferring when you're handing files to someone else's workflow. QUILL works with both, so the choice is about your destination, not your editor.
 
 [LIAM]
 A production pass, end to end, for something real, say a meeting agenda for embossing. Author it normally, all your part-two tools apply. Bring it to BRF. Set geometry for the target embosser. Read Layout Metrics. Run the repair loop until clean. Remove Trailing Spaces, whole file. Emboss one proof. The machine checks catch everything measurable, so your human proofread spends itself on language, where humans are irreplaceable.
@@ -31,7 +31,7 @@ A production pass, end to end, for something real, say a meeting agenda for embo
 And braille mode inherits the ecosystem, the running theme of this whole final part: compare two BRF revisions with the compare tools and hear what changed. The Spoken Echo keeps the metrics announcements. Verbosity profiles apply. And remember episode twenty-four: the same source document can leave as a DAISY talking book and a BRF, digital ears and physical fingertips, one master.
 
 [LIAM]
-Homework. One: open or export any BRF, set your limits, and run Read Layout Metrics, if you've never heard your document measured, it's a small revelation. Two: run one full repair loop. Three: if a braille display is on your desk and lines start in cell two, go change that control setting right now and enjoy the click of an old ghost leaving.
+Homework. One: open or export any BRF, set your limits, and run Read Layout Metrics, if you've never heard your document measured, it's a small revelation. Two: run one full repair loop. Three: take two revisions of the same BRF and run them through Compare, hearing exactly which lines changed between drafts is the braille proofreader's secret weapon.
 
 [JESSICA]
 Next episode, the second-to-last: opening the hood, Quillins, QUILL's extension system, and the developer console for building your own.

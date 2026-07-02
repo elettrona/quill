@@ -4957,6 +4957,18 @@ accessibility review system. It is about guided confidence, not a
 compliance dashboard: accessibility-aware review and safe deterministic
 fixes that feel ordinary. Everything lives under <strong>Tools &gt;
 GLOW</strong>.</p>
+<h3 id="enabling-glow-experimental">Enabling GLOW (experimental)</h3>
+<p>GLOW ships as an <strong>experimental feature</strong> and is off by
+default while it matures. To turn it on: <strong>Preferences &gt;
+Experimental</strong>, tick <strong>Enable experimental
+features</strong> (the master switch for the whole tab), then tick
+<strong>GLOW accessibility review and repair (experimental)</strong>. It
+takes effect as soon as you apply Settings — the <strong>Tools &gt;
+GLOW</strong> menu appears with no restart. While the gates are off, the
+GLOW commands stay visible in the command palette so they are
+discoverable; running one simply explains how to enable the feature.
+Experimental means still maturing, not unsafe: every GLOW action keeps
+the review-first, never-touch-the-original contract described below.</p>
 <h3 id="audit-flows">Audit flows</h3>
 <ul>
 <li><strong>GLOW Audit Current Document</strong> reviews the whole file
@@ -5074,17 +5086,19 @@ typing.</li>
 <li><strong>Braille display showing the first character in cell
 two?</strong> QUILL's editor defaults to a rich-text control (so screen
 readers report its contents correctly), and some braille displays shift
-each line of a rich control one cell to the right — the same
-long-standing quirk you may remember from Microsoft Word.
-<strong>Preferences &gt; Accessibility &gt; Editor control type
-(braille)</strong> lets you change the native control: if your display
-shows the offset, set it to <strong>Plain edit, like Notepad</strong>, a
-simple control that the rich control was only ever needed in place of
-for <em>read-only</em> views (an editable plain control still reads
-correctly). RichEdit 2.0 is offered as a middle option. Changing the
-control type takes effect for documents opened afterward, so reopen your
-document or restart to compare. This affects only how the control is
-presented; your text is never changed.</li>
+each line one cell to the right — the same long-standing quirk you may
+remember from word processors. Honest status: <strong>this issue is not
+yet resolved</strong> — testing shows that changing the editor control
+type does not eliminate the offset for affected displays, and an outcome
+is still being considered. <strong>Preferences &gt; Accessibility &gt;
+Editor control type (braille)</strong> remains available for
+troubleshooting and experimentation: you can switch between RichEdit
+3.0, RichEdit 2.0, and <strong>Plain edit, like Notepad</strong> to
+compare how your display and screen reader behave on each (the change
+applies to documents opened afterward, so reopen or restart to compare).
+This affects only how the control is presented; your text is never
+changed, and your reports about what you observe on your hardware
+genuinely help.</li>
 <li><strong>Per-action templates.</strong> Advanced users can edit
 exactly what each action says, using tokens like <code>{line}</code> and
 filters like <code>${ordinal:line}</code>, with live validation and
@@ -5452,6 +5466,45 @@ commands under <strong>Tools -&gt; Customize &amp; Support</strong>.</p>
 <h2 id="trust-recovery-sessions-and-safety">Trust, Recovery, Sessions,
 and Safety</h2>
 <p>Quill is serious about recovery and user control.</p>
+<h3 id="the-experimental-tab">The Experimental tab</h3>
+<p><strong>Preferences &gt; Experimental</strong> is where features that
+are functional but still maturing live until they graduate. It is built
+as a set of nested consent gates, and disabled controls leave the tab
+order entirely — so to a screen reader user, an untouched Experimental
+tab is a single checkbox and nothing else.</p>
+<ul>
+<li><strong>Enable experimental features</strong> — the master switch,
+and the first control on the tab. Its label says exactly what it
+governs: <em>everything</em> below it. Until it is ticked, every
+experimental option is ignored by QUILL and its control is disabled
+(unreachable by Tab), so an accidental change can never affect the
+editor.</li>
+<li><strong>GLOW accessibility review and repair (experimental)</strong>
+— lights the <strong>Tools &gt; GLOW</strong> menu (see "GLOW Workflows
+Inside QUILL"). Takes effect on Apply, no restart.</li>
+<li><strong>WordPress publishing connections (experimental)</strong> —
+lights the read-only publishing tools in the <strong>File</strong> menu:
+save a WordPress connection, verify it, browse your site's posts and
+pages, and open a remote item in the editor. Strictly inbound: the
+send/publish half remains locked while the providers framework is
+reviewed, so nothing can be published from QUILL regardless of this
+switch.</li>
+<li><strong>Read the document aloud in your browser
+(experimental)</strong> — the browser reader page described under Read
+Aloud.</li>
+<li><strong>Enable experimental editor surfaces</strong> — a
+<em>second</em> safety gate whose label carries its own warning:
+<em>features may degrade based on the control selected</em>. The editor
+surface is the control your document lives in, so this gate separately
+governs the <strong>Editor surface</strong> choice and the <strong>Hide
+editor border</strong> option beneath it, plus the live explainer that
+describes each surface. Both this gate and the master switch must be on
+before any surface override is applied, and while it is off those
+controls are disabled and skipped in the tab order.</li>
+</ul>
+<p>The pattern to remember: one master switch for the tab, one switch
+per experiment, and the editor-surface experiments behind a third
+acknowledgement of their own — consent in layers, never by accident.</p>
 <h3 id="notebooks">Notebooks</h3>
 <p>A <strong>Notebook</strong> is a named collection of documents that
 belong together — a novel's chapters, a research project's notes, a

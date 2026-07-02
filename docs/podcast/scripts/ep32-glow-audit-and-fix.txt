@@ -8,7 +8,13 @@ I'm Jessica. The reversal: most accessibility software helps you consume inacces
 Why it matters for this audience specifically: blind professionals constantly produce documents for sighted consumption, and, with bitter irony, we can't perceive the problems that make documents inaccessible to others. Missing alt text is invisible in a screen reader too. GLOW is the second reader who speaks your language.
 
 [JESSICA]
-The commands, all under Tools, GLOW. Audit Current Document reviews the whole buffer; Audit Selection reviews just the block at your caret, perfect for the section you just wrote. Results open as a normal tab, and by episode thirty-two you know what that means: arrow through it, search it, keep it beside your draft.
+One setup note before the tour, because GLOW ships as an experimental feature: it's off until you switch it on. Preferences, Experimental, tick Enable experimental features, then tick GLOW accessibility review and repair. It takes effect the moment you apply settings, no restart, and the Tools menu grows a GLOW submenu.
+
+[LIAM]
+And that Experimental tab is worth a look while you're there: one master switch governs every experiment, each feature has its own checkbox beneath it, and until the master is on, nothing experimental can even be reached by the keyboard. Opt-in, layer by layer. Experimental means still maturing, by the way, not unsafe, every GLOW action keeps the review-first contract you know.
+
+[JESSICA]
+Now the commands, all under Tools, GLOW. Audit Current Document reviews the whole buffer; Audit Selection reviews just the block at your caret, perfect for the section you just wrote. Results open as a normal tab, and by episode thirty-two you know what that means: arrow through it, search it, keep it beside your draft.
 
 [LIAM]
 Each finding carries the rule, the severity, the location, and, the humane part, a plain-language suggestion. Not heading level violation, but use intermediate heading levels for a smoother outline. Findings that GLOW can repair itself are marked auto-fix.

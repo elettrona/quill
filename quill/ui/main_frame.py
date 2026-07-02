@@ -4305,10 +4305,13 @@ class MainFrame(
             # can override the braille Editor control type for testing; "default"
             # follows that setting. An optional borderless style gives a cleaner frame.
             kind = str(getattr(self.settings, "editor_control_kind", "rich2")).strip().lower()
-            # Experimental overrides apply only once the user has ticked the
-            # acknowledgment ("I understand features may degrade") in the
-            # Experimental tab -- the safety gate.
-            acknowledged = bool(getattr(self.settings, "experimental_acknowledged", False))
+            # Experimental overrides apply only once the user has ticked BOTH
+            # gates on the Experimental tab: the master "Enable experimental
+            # features" switch and the editor-surfaces acknowledgment
+            # ("features may degrade based on the control selected").
+            acknowledged = bool(
+                getattr(self.settings, "experimental_acknowledged", False)
+            ) and bool(getattr(self.settings, "experimental_editor_surfaces_enabled", False))
             override = (
                 str(getattr(self.settings, "experimental_editor_surface", "default"))
                 .strip()
@@ -5516,7 +5519,7 @@ class MainFrame(
         menu = wx.Menu()
         features = self.features
         fmt_on = features.is_enabled("core.format")
-        glow_on = features.is_enabled("core.glow")
+        glow_on = self._feature_enabled("core.glow")
         spell_on = features.is_enabled("core.spellcheck")
         dict_on = features.is_enabled("core.dictionary")
 
@@ -7424,9 +7427,23 @@ class MainFrame(
 
     def _feature_enabled(self, feature_id: str) -> bool:
         feature_manager = getattr(self, "features", None)
-        if feature_manager is None:
-            return True
-        return feature_manager.is_enabled(feature_id)
+        enabled = True if feature_manager is None else feature_manager.is_enabled(feature_id)
+        # Experimental gates (Settings > Experimental). These features ship dark
+        # until the user opts in: the master switch plus the per-feature checkbox.
+        # GLOW is catalog-on, so the experimental gate narrows it; the read-only
+        # publishing tools are profile-off, so the gate is the user's way to
+        # light them (the locked send half is unaffected — it stays locked_off).
+        if feature_id == "core.glow":
+            return enabled and self._experimental_gate_on("glow_experimental_enabled")
+        if feature_id == "future.publishing_read":
+            return enabled or self._experimental_gate_on("publishing_experimental_enabled")
+        return enabled
+
+    def _experimental_gate_on(self, setting_name: str) -> bool:
+        """True when the Experimental master switch AND ``setting_name`` are on."""
+        return bool(getattr(self.settings, "experimental_acknowledged", False)) and bool(
+            getattr(self.settings, setting_name, False)
+        )
 
     def _record_notification(self, message: str, category: str = "info") -> None:
         self._notifications = add_notification(message, category)
@@ -10856,6 +10873,63 @@ class MainFrame(
         if combo is not None:
             combo.Bind(wx.EVT_CHOICE, _refresh)
         _refresh()
+        self._wire_experimental_gates(control_index, info)
+
+    def _wire_experimental_gates(self, control_index: object, explainer: object) -> None:
+        """Live enable/disable gating for the Experimental tab.
+
+        The master "Enable experimental features" checkbox governs every other
+        control on the tab; the editor-surfaces checkbox additionally governs
+        the surface choice, the border option, and the surface explainer.
+        Disabled wx controls leave the tab order, so with the master switch off
+        the whole tab is a single checkbox to a screen-reader user — nothing
+        experimental can be reached, focused, or accidentally changed.
+        """
+        wx = self._wx
+
+        def _control(key: str) -> object | None:
+            entry = control_index.get(key)  # type: ignore[union-attr]
+            return entry[1] if entry else None
+
+        master = _control("experimental_acknowledged")
+        surfaces_gate = _control("experimental_editor_surfaces_enabled")
+        surface_children = [
+            control
+            for control in (
+                _control("experimental_editor_surface"),
+                _control("editor_hide_border"),
+                explainer,
+            )
+            if control is not None
+        ]
+        master_children = [
+            control
+            for control in (
+                surfaces_gate,
+                _control("glow_experimental_enabled"),
+                _control("publishing_experimental_enabled"),
+                _control("edge_read_aloud_enabled"),
+            )
+            if control is not None
+        ]
+
+        def _apply(_evt: object = None) -> None:
+            master_on = bool(master.GetValue()) if master is not None else True
+            for control in master_children:
+                control.Enable(master_on)
+            surfaces_on = master_on and (
+                surfaces_gate is not None and bool(surfaces_gate.GetValue())
+            )
+            for control in surface_children:
+                control.Enable(surfaces_on)
+            if _evt is not None:
+                _evt.Skip()
+
+        if master is not None:
+            master.Bind(wx.EVT_CHECKBOX, _apply)
+        if surfaces_gate is not None:
+            surfaces_gate.Bind(wx.EVT_CHECKBOX, _apply)
+        _apply()
 
     def _start_model_lifecycle(self) -> None:
         """Build the model-lifecycle manager from settings and start the idle sweep.
@@ -15000,7 +15074,32 @@ class MainFrame(
             return scope, start, end, "current line"
         return scope, start, end, "current paragraph"
 
+    def _ensure_glow_enabled(self) -> bool:
+        """Gate every GLOW command behind the Experimental opt-in.
+
+        GLOW ships as an experimental feature: it runs only when both the
+        Experimental master switch and the GLOW checkbox are on (Preferences >
+        Experimental). Commands stay in the palette so they are discoverable;
+        invoking one while gated explains exactly how to turn GLOW on — the
+        same pattern as Read Document in Browser.
+        """
+        if self._feature_enabled("core.glow"):
+            return True
+        wx = self._wx
+        self._show_message_box(
+            "GLOW is an experimental feature and is currently turned off.\n\n"
+            "To enable it, open Preferences > Experimental, tick 'Enable "
+            "experimental features', then tick 'GLOW accessibility review and "
+            "repair'. It takes effect as soon as you apply Settings - no "
+            "restart needed.",
+            "GLOW (Experimental)",
+            wx.ICON_INFORMATION | wx.OK,
+        )
+        return False
+
     def glow_audit_document(self) -> None:
+        if not self._ensure_glow_enabled():
+            return
         markup = self._current_markup_context()
         text = self.editor.GetValue()
         report = build_audit_report(self.document.name, text, markup, "current document")
@@ -15008,6 +15107,8 @@ class MainFrame(
         self._set_status(f"Opened GLOW audit for {self.document.name}")
 
     def glow_audit_selection(self) -> None:
+        if not self._ensure_glow_enabled():
+            return
         text, _start, _end, scope_label = self._glow_scope()
         markup = self._current_markup_context()
         report = build_audit_report(self.document.name, text, markup, scope_label)
@@ -15015,6 +15116,8 @@ class MainFrame(
         self._set_status(f"Opened GLOW audit for {scope_label}")
 
     def glow_fix_document(self) -> None:
+        if not self._ensure_glow_enabled():
+            return
         original = self.editor.GetValue()
         markup = self._current_markup_context()
         result = fix_text(original, markup)
@@ -15037,6 +15140,8 @@ class MainFrame(
         )
 
     def glow_fix_selection(self) -> None:
+        if not self._ensure_glow_enabled():
+            return
         text, start, end, scope_label = self._glow_scope()
         markup = self._current_markup_context()
         result = fix_text(text, markup)
@@ -20226,6 +20331,8 @@ class MainFrame(
         restart.
         """
         wx = self._wx
+        if not self._ensure_glow_enabled():
+            return
         self._set_status("Checking for GLOW engine updates...")
         try:
             check: GlowUpdateCheck = check_for_glow_update()

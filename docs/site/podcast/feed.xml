@@ -5,7 +5,7 @@
     <link>https://community-access.github.io/quill/podcast/</link>
     <description>A 36-episode, two-host audio course on QUILL, the free, screen-reader-first writing studio from Community Access. Liam and Jessica lead you from your very first launch to mastery of every feature family: the editor and keyboard, documents and formats, document rescue and OCR, the private speech suite, optional AI, the Accessible Vault, Story Studio, GLOW accessibility review, braille production, extensions, and the trust architecture underneath it all. Episode voices are generated with QUILL&#x27;s own on-device Kokoro neural speech engine.</description>
     <language>en-us</language>
-    <lastBuildDate>Thu, 02 Jul 2026 16:11:51 +0000</lastBuildDate>
+    <lastBuildDate>Thu, 02 Jul 2026 17:13:47 +0000</lastBuildDate>
     <atom:link href="https://community-access.github.io/quill/podcast/feed.xml" rel="self" type="application/rss+xml"/>
     <itunes:author>Community Access / BITS</itunes:author>
     <itunes:subtitle>A complete audio course on the screen-reader-first writing studio</itunes:subtitle>
@@ -329,8 +329,8 @@
       <link>https://community-access.github.io/quill/podcast/transcripts/ep32-glow-audit-and-fix.html</link>
       <guid isPermaLink="false">quill-cast-ep32-glow-audit-and-fix</guid>
       <pubDate>Thu, 02 Jul 2026 08:31:00 +0000</pubDate>
-      <enclosure url="https://github.com/Community-Access/quill/releases/download/podcast-v1/ep32-glow-audit-and-fix.mp3" length="1925733" type="audio/mpeg"/>
-      <itunes:duration>00:03:23</itunes:duration>
+      <enclosure url="https://github.com/Community-Access/quill/releases/download/podcast-v1/ep32-glow-audit-and-fix.mp3" length="2275221" type="audio/mpeg"/>
+      <itunes:duration>00:04:00</itunes:duration>
       <itunes:explicit>false</itunes:explicit>
     </item>
     <item>
@@ -349,8 +349,8 @@
       <link>https://community-access.github.io/quill/podcast/transcripts/ep34-braille-production.html</link>
       <guid isPermaLink="false">quill-cast-ep34-braille-production</guid>
       <pubDate>Thu, 02 Jul 2026 08:33:00 +0000</pubDate>
-      <enclosure url="https://github.com/Community-Access/quill/releases/download/podcast-v1/ep34-braille-production.mp3" length="1869117" type="audio/mpeg"/>
-      <itunes:duration>00:03:18</itunes:duration>
+      <enclosure url="https://github.com/Community-Access/quill/releases/download/podcast-v1/ep34-braille-production.mp3" length="1935525" type="audio/mpeg"/>
+      <itunes:duration>00:03:24</itunes:duration>
       <itunes:explicit>false</itunes:explicit>
     </item>
     <item>

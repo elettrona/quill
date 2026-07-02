@@ -19,7 +19,7 @@
 > optional and off by default. Platform scope is Windows (primary) and macOS
 > (supported).
 
-**Last consolidated:** 2026-07-02 (GLOW shipped/unlocked; OCR free local tiers shipped;
+**Last consolidated:** 2026-07-02 (GLOW shipped as an experimental opt-in; OCR free local tiers shipped;
 locked-register GLOW block retired into the real docs).
 
 ---
@@ -64,9 +64,10 @@ are unit-tested. **Still open:**
 - **macOS offline-speech parity** — a mac `whisper-cli`, or Faster Whisper as the mac
   default — the tracked cross-platform gap.
 
-### 1.2 GLOW — shipped and unlocked (2026-07-02)
+### 1.2 GLOW — shipped as an experimental opt-in (2026-07-02)
 
-The **GLOW accessibility suite shipped for 0.9.0**: `core.glow` is unlocked, the
+The **GLOW accessibility suite shipped for 0.9.0** behind the Experimental tab
+(master switch + GLOW checkbox, both default off, no restart): `core.glow` is unlocked, the
 in-editor audit/fix commands are live, and the new **GLOW Audit File... / GLOW Fix
 File...** commands run the shared engine (DOCX, PPTX, XLSX, PDF, EPUB) on the
 background task pool with non-destructive fixed copies. The engine deployment
@@ -151,7 +152,7 @@ transcription and captions, read-aloud across SAPI 5 / DECtalk / Piper / eSpeak 
 and the ElevenLabs cloud voice, batch document-to-speech, and audiobook building. The
 only speech-adjacent lock left is `core.voice_commands` (hands-free voice interaction).
 
-> **Docs framing.** GLOW is unlocked (2026-07-02) and its preserved user-facing content
+> **Docs framing.** GLOW ships as an experimental opt-in (2026-07-02) and its preserved user-facing content
 > has been restored into the user guide ("GLOW Workflows Inside QUILL"), glossary, help
 > topics, and PRD §5.92 — the §2.1 preservation block this file used to carry is gone
 > because the real docs now own it. The **BITS Whisperer** brand is retired — earlier
@@ -229,7 +230,7 @@ open sections above when scheduled.
 - **Native Google Docs support** — read/write/round-trip Google Docs (Drive API, OAuth,
   accessible doc model); spec in
   [`QUILL-Native-Google-Docs-Support-PRD.md`](QUILL-Native-Google-Docs-Support-PRD.md).
-- **Extended GLOW family (§1.2)** — the core GLOW suite **shipped and unlocked for
+- **Extended GLOW family (§1.2)** — the core GLOW suite **shipped (experimental opt-in) for
   0.9.0** (PRD §5.92); what stays future is the extended family: ACB Large-Print
   Guidelines / Microsoft Accessibility Checker / WCAG 2.2 AA document-audit profiles
   (#528–#534) and the WATCH-8 GLOW watch action (#566), re-homed on QUILL's invariants.
@@ -300,7 +301,7 @@ profiles (#426)**.
 | Workstream | Open work |
 | --- | --- |
 | AI footprint & optimization (§1.1) | Live-app smoke test; Phase 1 installer-size build; Phase 0 committed numbers; macOS speech parity. |
-| GLOW (§1.2) | **Shipped/unlocked 0.9.0.** Extended family (ACB audit profiles #528–#534, WATCH-8 #566) in §5. |
+| GLOW (§1.2) | **Shipped 0.9.0 (experimental opt-in).** Extended family (ACB audit profiles #528–#534, WATCH-8 #566) in §5. |
 | OCR / document conversion (PRD §5.93) | **Free local tiers shipped 0.9.0.** Cloud tier, OCR Review Mode, Services tab in §5. |
 | Platform & distribution (§1.3) | #517, #519; #525 deferred to 2.0 (#680). |
 | Docs & content (§1.4) | #535–#564, #505, #522, #590, #592. |

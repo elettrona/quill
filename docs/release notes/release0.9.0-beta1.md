@@ -8,8 +8,8 @@ This is the narrative companion to the **"0.9.0 Beta 1"** section of `CHANGELOG.
 (the canonical, append-as-you-go log). It tells the story of what changes in
 0.9.0 Beta 1 on top of the 0.8.0 line - what each feature is, and, just as
 important, **why it matters** for the way you actually work. This is the
-feature-complete cut for 0.9.0 - the GLOW accessibility suite ships unlocked in this
-beta - and focus from here is polish.
+feature-complete cut for 0.9.0 - the GLOW accessibility suite ships in this beta
+as an experimental opt-in - and focus from here is polish.
 
 ---
 
@@ -23,8 +23,9 @@ stays silent until you invite it in. Second, a wave of **power-user editing tool
 in the tradition of the editors people still miss - Reveal Codes, classic-editor
 commands, and bookmarks that finally remember where you were. Third, the
 **production features** this project was always pointed at: the GLOW accessibility
-suite, unlocked, and a document-rescue tool that turns scanned PDFs into real text
-with free, on-device OCR - nothing uploaded, ever. Fourth, a teaching library to
+suite (shipping as an experimental opt-in, one switch away), and a document-rescue
+tool that turns scanned PDFs into real text with free, on-device OCR - nothing
+uploaded, ever. Fourth, a teaching library to
 match: six hands-on tutorials and a 36-episode audio course narrated by QUILL's own
 neural voices. And fifth, a quieter, **lighter, more honest install**: a smaller
 download, on-demand components you can fetch from one place, clearer announcements,
@@ -448,13 +449,46 @@ your mail, your medical letter, or your homework to anyone's cloud.
 
 ---
 
+## The Experimental tab - consent in layers
+
+Before the two big production features, meet the front door they share.
+**Preferences > Experimental** has been rebuilt around a simple idea: nothing
+experimental should ever be reachable by accident.
+
+The first checkbox is now a true master switch, relabeled to say exactly what
+it governs: **Enable experimental features** - all of them. While it is off,
+every other control on the tab is disabled and drops out of the tab order
+entirely, so to a screen reader user an untouched Experimental tab is one
+checkbox and silence. Tick it, and the individual experiments unlock - each
+with its own switch: **GLOW accessibility review and repair**, **WordPress
+publishing connections** (the read-only inbound tools; the send half stays
+locked no matter what), and **Read the document aloud in your browser**.
+
+The editor-surface options go one layer deeper, behind a second
+acknowledgement that carries its own warning in its own label: **Enable
+experimental editor surfaces (features may degrade based on the control
+selected)**. The editor surface is the control your document lives in, so the
+surface choice, the border option, and the live surface explainer stay
+disabled until you have said yes twice.
+
+**Why it matters:** experiments are how QUILL grows, and the community should
+get to try them early - but a screen reader user should never tab into a
+switch that can change the editor underneath them without two deliberate
+consents first. Opt-in, layer by layer, is the whole design.
+
+---
+
 ## GLOW - guided accessibility review and repair
 
-GLOW (Guided Layout and Output Workflow) is QUILL's accessibility review system,
-and with this beta it graduates from hidden preview to a shipping feature. The
-idea is guided confidence, not a compliance dashboard: GLOW reviews what is in
-front of you, explains each finding in plain language, and offers only safe,
-deterministic fixes you can inspect before accepting.
+GLOW (Guided Layout and Output Workflow) is QUILL's accessibility review
+system, and with this beta it graduates from hidden preview to a **shipping
+experimental feature - one switch away**. Open **Preferences > Experimental**,
+tick the master switch and GLOW's own checkbox, apply, and **Tools > GLOW**
+appears immediately, no restart. (Until then, the GLOW commands stay
+discoverable in the command palette and simply explain how to enable the
+feature.) The idea is guided confidence, not a compliance dashboard: GLOW
+reviews what is in front of you, explains each finding in plain language, and
+offers only safe, deterministic fixes you can inspect before accepting.
 
 ### Audit what you can hear
 
@@ -476,7 +510,7 @@ never a silent rewrite.
 
 ### Structured documents too
 
-New with the unlock, **GLOW Audit File...** and **GLOW Fix File...** take on
+New alongside the opt-in, **GLOW Audit File...** and **GLOW Fix File...** take on
 the files that are usually hardest to check by ear: Word, PowerPoint, Excel,
 PDF, and EPUB. The shared GLOW engine parses the document in the background
 (the editor never freezes), and the audit comes back as a scored, graded report
@@ -507,10 +541,17 @@ A new **Braille > Repair** submenu brings NLS-style proofreading: **Read Layout
 Metrics** (longest line and page against your cells-per-line / lines-per-page limits,
 with width and depth warnings), **Go to Longest Line / Longest Page**, and **Remove
 Trailing Spaces** (this line or the whole file), all honouring your existing braille
-page settings. A new **Editor control type (braille)** choice lets braille displays
-that show the first character of each line in cell two switch to a plain edit control.
+page settings.
+
+An honest status note on the long-standing **cell-two display offset** (some braille
+displays showing the first character of each line in cell two): the **Editor control
+type (braille)** choice we shipped **has not resolved it** - the issue persists, and
+an outcome is still being considered. The control-type options remain available
+under **Preferences > Accessibility** for troubleshooting and experimentation, and
+we will keep reporting plainly on where this stands.
 **Why it matters:** the difference between "it looks fine on screen" and "it actually
-embosses cleanly", found and fixed before you send it.
+embosses cleanly", found and fixed before you send it - and when something is not
+fixed yet, you hear that from us in exactly those words.
 
 ---
 

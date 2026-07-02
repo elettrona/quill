@@ -73,6 +73,11 @@ class _Host(GlowFileMixin):
         self.notifications: list[tuple[str, str]] = []
 
     # --- MainFrame surface -------------------------------------------------
+    def _ensure_glow_enabled(self) -> bool:
+        # The real MainFrame gates every GLOW command behind the Experimental
+        # opt-in; the fake host defaults to enabled and tests override it.
+        return getattr(self, "glow_enabled_gate", True)
+
     def _show_modal_dialog(self, dialog, _title):
         return self._wx.ID_OK if self._picked is not None else self._wx.ID_CANCEL
 
@@ -187,6 +192,18 @@ def test_fix_file_declined_consent_does_nothing(tmp_path: Path) -> None:
     host.glow_fix_file()
     assert host._task_manager.submitted == []
     assert host.tabs == []
+
+
+def test_gated_glow_commands_do_nothing_when_experimental_flag_off(tmp_path: Path) -> None:
+    source = tmp_path / "report.docx"
+    source.write_bytes(b"x")
+    host = _Host(picked=source)
+    host.glow_enabled_gate = False
+    host.glow_audit_file()
+    host.glow_fix_file()
+    assert host._task_manager.submitted == []
+    assert host.tabs == []
+    assert source.read_bytes() == b"x"
 
 
 def test_audit_failure_shows_error_not_crash(tmp_path: Path, monkeypatch) -> None:
