@@ -484,6 +484,39 @@ editor, with a clear gate so nothing changes by accident.
   is authoritative, instead of a permissive word list waving typos through.
 - **The portable build launches and opens documents**, and the **AI Hub opens**
   instead of erroring on a lazy-string.
+- **Live preview no longer flickers or re-announces as you type** - the external
+  browser preview refreshes only after you pause typing (debounced) and keeps
+  your place on reload (returning to the section you are editing, or your previous
+  scroll position), instead of reloading on every keystroke and jumping to the
+  top. The in-app side preview (Ctrl+F6 to focus it) updates silently in place
+  with no reload - the recommended live preview for screen-reader/braille users.
+- **Read Document in Browser (experimental) is steadier** - Stop no longer emits
+  spurious "speech error" messages, a failed passage no longer wedges the player
+  on Pause, the text is pronounced in its own language, and the reader page is
+  deleted on exit. It reads section by section (reliable on long documents) and
+  Pause keeps your place and reports it ("Paused at section 12 of 300"). Enabling
+  it takes effect immediately (no restart). The setting text now states plainly
+  that the browser's "Online (Natural)" voices synthesize the text in the cloud;
+  on-device voices stay local.
+- **Snappier, less alarming startup** - the one-time WebView2 warm-up runs after
+  the editor is ready, not before it, so a slow first setup no longer looks like a
+  freeze; short UI stalls now also capture a diagnostic stack snapshot.
+- **Idle AI models are actually released now** - the background idle-unload sweep
+  crashed on every tick, so idle models were never freed; it now runs correctly.
+- **F1 help now covers every command** - all 319 commands that previously had no
+  help topic now have a plain-language description and their shortcut, so pressing
+  F1 on any menu item or command always says something useful.
+- **Smart triggers and Quillin-contributed abbreviations now actually fire** -
+  typing `=bug()`, `=todo(10)`, or `=rand(3,4)` alone on a line and pressing Enter
+  now inserts the generated text, and contributed abbreviations like `qbug` expand
+  as you type (with Abbreviation Expansion on). Both were declared and documented
+  since 0.7.0 but never dispatched. Numeric arguments work, every insertion is
+  announced and undoable, and the per-trigger toggles on the Quillin's preferences
+  page are honoured.
+- **Quiet failures now speak up** - List Studio settings export/import confirms
+  success or explains the failure, the Pronunciation Dictionaries dialog warns
+  when a dictionary could not be saved, and the Quillin wizard's Copy JSON only
+  claims "copied" when the clipboard actually took the text.
 
 ---
 

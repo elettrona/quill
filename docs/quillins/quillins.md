@@ -2968,7 +2968,7 @@ Optional fields: `category`, `enabled_by_default`, `case_sensitive`, `file_exten
 
 ### Dynamic abbreviation
 
-A handler-based abbreviation calls a Python function after an exact trigger match. The trigger must still match exactly before the handler is called — handlers never poll the document on every keystroke.
+A handler-based abbreviation declares a Python function instead of a fixed `expansion`. The manifest format accepts these, but **only declarative (`expansion`) abbreviations expand as you type today**: the bare-word expander cannot run a handler mid-keystroke, so handler entries are skipped when the contributed library is built. Reach dynamic content through a smart trigger or a contributed command instead (Smart Insert's `qbrf`, for example, is available as `=brftest()` and as Insert > Insert BRF Test Document).
 
 ```json
 {
@@ -3028,7 +3028,7 @@ Rules:
 - Trigger names do not include `=`. They must be lowercase.
 - The `command` must reference a command contributed by this Quillin or a built-in command id.
 - Triggers activate only when the exact text appears alone on the current line and Enter is pressed.
-- Third-party smart trigger contributions require the Smart Triggers feature to be enabled.
+- Smart triggers from third-party Quillins require third-party Quillins to be enabled (the SEC-8 flag); bundled Quillins' triggers work whenever they are loaded. Each trigger also honours the Quillin's own `enable_<trigger>` setting.
 
 ## Preferences contributions
 

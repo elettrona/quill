@@ -96,7 +96,15 @@ def reserve(key: str) -> list[str]:
     return manager.reserve(key) if manager is not None else []
 
 
-def sweep() -> list[str]:
-    """Unload idle models; return their keys. Safe to call on a timer/worker thread."""
+def sweep(**_kwargs: object) -> list[str]:
+    """Unload idle models; return their keys. Safe to call on a timer/worker thread.
+
+    Accepts and ignores ``**_kwargs`` so it satisfies the QuillTaskManager calling
+    convention: ``submit`` always invokes the task function with
+    ``cancellation_token``, ``operation_id``, and ``progress_callback``. Without
+    this the idle sweep raised ``TypeError: sweep() got an unexpected keyword
+    argument 'cancellation_token'`` on every timer tick, so idle models were never
+    unloaded (the Performance "Unload idle models after" setting was inert).
+    """
     manager = _manager
     return manager.sweep_idle() if manager is not None else []

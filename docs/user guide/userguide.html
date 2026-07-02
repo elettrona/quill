@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc" />
+  <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>userguide</title>
   <style>
@@ -156,8 +156,12 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: min(4vw, 1.5em);}
-    div.column{flex: auto; overflow-x: auto;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -952,6 +956,20 @@ an empty workspace instead of a starter document.</li>
 <strong>Focus Preview</strong>, and <strong>Browser Preview...</strong>
 open rendered views of the current document.</li>
 </ul>
+<p><strong>Live preview while you type.</strong> The side-by-side
+preview (<code>Ctrl+F6</code> to focus it directly — it also joins the
+<code>F6</code> region rotation while open — or turn on Auto
+Side-by-Side Preview) updates <em>silently in place</em> as you edit —
+the rendered content is swapped without reloading the page, so your
+braille display and screen reader are not interrupted, nothing is
+re-announced from the top, and your reading position is kept. This is
+the recommended live preview for screen-reader and braille users. The
+external <strong>Browser Preview</strong> (in your web browser) can also
+follow your edits, but because a real browser reload is a full page
+navigation, QUILL refreshes it only after you pause typing (not on every
+keystroke) and keeps your place on each refresh — landing back at the
+section you are editing, or at your previous scroll position — rather
+than jumping to the top.</p>
 <p>Preference-style toggles that used to live here — theme/dark mode,
 system-tray mode, title-bar path style, dirty-title style, persistent
 undo, spell-check-as-you-type, and word-prediction-as-you-type — now
@@ -3484,15 +3502,17 @@ and optionally point <strong>Abbreviation expansion sound file</strong>
 to a <code>.wav</code> file. Leave the path blank for the default system
 beep.</p>
 <p><strong>Quillin-contributed abbreviations.</strong> Installed
-Quillins can add their own abbreviations to the registry. These are
-listed in the Insert Automation Reference and can be disabled
-per-Quillin in the Quillin's own preferences page (open
-<strong>Preferences</strong>, Ctrl+Comma, then navigate to the Quillin
-by name). Your own abbreviations always take priority over
-Quillin-contributed ones; if two Quillins claim the same trigger, the
-conflict is visible in the Conflict Manager.</p>
-<p>The bundled <strong>Smart Insert</strong> Quillin contributes five
-abbreviations by default:</p>
+Quillins can add their own abbreviations to the registry. Each one can
+be turned on or off individually in the Quillin's own preferences page
+(open <strong>Preferences</strong>, Ctrl+Comma, then navigate to the
+Quillin by name — for the bundled Smart Insert Quillin, the toggles are
+on its <strong>Abbreviations</strong> tab). Contributed abbreviations
+are kept separate from your saved library and are never written into it.
+Your own abbreviations always take priority over Quillin-contributed
+ones; if two Quillins claim the same trigger, the one loaded first
+wins.</p>
+<p>The bundled <strong>Smart Insert</strong> Quillin contributes four
+expanding abbreviations by default:</p>
 <table>
 <thead>
 <tr>
@@ -3518,12 +3538,13 @@ Steps, Expected, Actual, Notes)</td>
 <td><code>qtodo</code></td>
 <td>Three-item to-do checklist</td>
 </tr>
-<tr>
-<td><code>qbrf</code></td>
-<td>Predictable BRF test document</td>
-</tr>
 </tbody>
 </table>
+<p>Only abbreviations with a fixed expansion text expand as you type.
+Handler-based (dynamic) abbreviations — such as Smart Insert's declared
+<code>qbrf</code> — do not fire from bare-word typing; use the matching
+smart trigger (<code>=brftest()</code>) or the Insert menu command
+instead.</p>
 <p><strong>Tips.</strong></p>
 <ul>
 <li>Use <code>${cursor}</code> to drop the cursor inside a template. For
@@ -4451,7 +4472,12 @@ so you can confirm with one keypress.</p>
 (<code>QUILL Key + V</code>) and HTML export inject a MathJax 3 script
 tag so equations render visually in any browser. The document source
 always contains the raw LaTeX or MathML, which your screen reader reads
-directly.</p>
+directly. The MathJax script is loaded from a public CDN by your
+browser, so the <em>visual</em> rendering of equations needs a network
+connection; the underlying LaTeX/MathML (and everything your screen
+reader announces) is always present offline. If you are offline,
+equations show as their raw source rather than typeset math — the
+content is never lost.</p>
 <p>A collection of ten worked examples — quadratic formula, binomial
 theorem, integration by parts, Euler's identity, and more — is in
 <code>docs/math/latex_testing.md</code>.</p>
@@ -6374,16 +6400,18 @@ Author Covenant, not technical enforcement. QUILL renders every control
 using accessible, screen-reader-friendly stock widgets — a Quillin never
 touches wxPython directly.</p>
 <h3 id="bundled-quillins">Bundled Quillins</h3>
-<p>QUILL ships fourteen trusted, first-party Quillins enabled by
+<p>QUILL ships seventeen trusted, first-party Quillins enabled by
 default:</p>
 <ul>
 <li><strong>Smart Insert</strong> (<code>com.quill.smartinsert</code>) —
 abbreviations and smart text triggers for everyday templates.
-Contributes <code>qbug</code>, <code>qmeet</code>, <code>qlog</code>,
-<code>qtodo</code>, and <code>qbrf</code> abbreviations, as well as
-<code>=bug()</code>, <code>=meeting()</code>, <code>=journal()</code>,
-<code>=todo()</code>, <code>=logentry()</code>, <code>=brftest()</code>,
-and <code>=rand()</code> smart triggers. Settings are under
+Contributes the <code>qbug</code>, <code>qmeet</code>,
+<code>qlog</code>, and <code>qtodo</code> expanding abbreviations (its
+declared dynamic <code>qbrf</code> is reached via
+<code>=brftest()</code> instead), as well as <code>=bug()</code>,
+<code>=meeting()</code>, <code>=journal()</code>, <code>=todo()</code>,
+<code>=logentry()</code>, <code>=brftest()</code>, and
+<code>=rand()</code> smart triggers. Settings are under
 <strong>Preferences → Smart Insert</strong>.</li>
 <li><strong>BRF Tools</strong> (<code>com.quill.brftools</code>) —
 preferences for braille translation defaults, page handling, status bar
@@ -6434,6 +6462,13 @@ drafts.</li>
 at the cursor via <strong>Insert → Insert Equation...</strong>
 (<code>Ctrl+Shift+E</code>); see Math Equations earlier in this
 guide.</li>
+<li><strong>ElevenLabs Scribe Transcription</strong>, <strong>Groq
+Whisper Transcription</strong>, and <strong>OpenAI Whisper
+Transcription</strong> — add those cloud services as optional
+transcription providers (with speaker identification, in ElevenLabs'
+case). Audio is uploaded only when you explicitly transcribe with that
+provider and have configured its API key — never offline, never without
+consent.</li>
 </ul>
 <h3 id="quillin-preferences">Quillin Preferences</h3>
 <p>Every enabled Quillin that declares settings appears as its own entry
@@ -9619,11 +9654,13 @@ per-folder rules). Useful for transcription pipelines, dictation
 outputs, and batch review workflows. Configure in <strong>Tools → Watch
 Folder</strong>.</p>
 <p><strong>WebView / Side Preview</strong> The rendered HTML preview
-pane that appears alongside the editor when you press <code>F6</code>
-(or enable it via <strong>View → Side Preview</strong>). The preview is
-powered by Microsoft Edge WebView2 and renders Markdown, HTML, and plain
-text in real time as you type. The preview is read-only and does not
-affect the document.</p>
+pane that appears alongside the editor when you open it from the
+<strong>View</strong> menu (or automatically, with Auto Side-by-Side
+Preview on). <code>Ctrl+F6</code> focuses it, and it joins the
+<code>F6</code> region rotation while open. The preview is powered by
+Microsoft Edge WebView2 and renders Markdown, HTML, and plain text in
+real time as you type. The preview is read-only and does not affect the
+document.</p>
 <p><strong>Welcome Guide</strong> A lightweight, profile-aware
 getting-started document that opens inside QUILL as a document tab.
 Unlike the full User Guide (which opens in your browser), the Welcome

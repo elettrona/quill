@@ -97,7 +97,7 @@ vosk = ["vosk>=0.3.45"]
 mp3 = ["mutagen>=1.48.1"]
 # Native Word (.docx) export with full formatting fidelity (font family, point
 # size, color, highlight, paragraph alignment) for the hidden-codes feature
-# (docs/rich-text-formatting-hidden-codes-design.md). Optional: when absent,
+# (docs/planning/rich-text-formatting-hidden-codes-design.md). Optional: when absent,
 # write_docx_document falls back to the Pandoc path (which drops those run/
 # paragraph attributes), so docx export still works without this extra.
 docx = ["python-docx>=1.1.0"]
@@ -225,6 +225,7 @@ log_cli = true
 log_level = "INFO"
 markers = [
     "perf: wall-clock performance budgets; run with RUN_PERF=1 or exclude with -m 'not perf'",
+    "smoke: fast, high-signal core checks; run the quick subset with -m smoke",
 ]
 
 [tool.ruff]

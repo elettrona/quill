@@ -44,6 +44,12 @@ When you open a file from a GitHub repository using **File > Open from Remote**,
 
 If you work with private repositories, review the `github-temp` directory periodically and delete files you no longer need. The directory is local to your machine and is not shared or uploaded.
 
+### Read Document in Browser (experimental)
+
+The optional **Read Document in Browser** feature (off by default, under **Settings > Experimental**) writes a self-contained reader page containing your document text to a `browser-reader` subdirectory of the app-data folder and opens it in your web browser. QUILL itself makes no network request for this feature, and the page is deleted when you close QUILL so no plaintext copy is left behind.
+
+Be aware that the browser's speech voices are not all local. On-device voices (labelled "on this device" in the page's voice picker) synthesize speech locally. The browser's "Online (Natural)" voices synthesize in the voice vendor's cloud (for example, Microsoft Edge's online voices), which means selecting one sends the text being read to that service. Choose an on-device voice to keep everything local.
+
 ## User responsibility
 
 You are responsible for reviewing AI-generated output before using, sharing, or publishing it. For sensitive content, use local models when possible and verify that cloud use meets your organization's security and compliance requirements.

@@ -154,8 +154,11 @@ def render_preview_html(title: str, text: str, kind: str, start_anchor: str | No
     # force-reloads itself on a timer. Such a poll re-rendered the whole page
     # once a second, which made the open tab flicker and, for a screen-reader
     # or braille user reading the preview, re-announced from the top constantly.
-    # The in-app side preview updates by pushing fresh HTML to the WebView; the
-    # external browser preview reloads only when the user re-runs the command.
+    # The in-app side preview updates by pushing fresh HTML to the WebView (no
+    # navigation at all -- the fully silent live option). The external browser
+    # preview is re-opened by QUILL after edits (debounced, not per keystroke),
+    # and this page restores scroll position on reload so the reader is not
+    # thrown back to the top each time.
     body = render_preview_body(text, kind)
     anchor_script = ""
     if start_anchor:
@@ -166,6 +169,25 @@ def render_preview_html(title: str, text: str, kind: str, start_anchor: str | No
             f"if (node) node.scrollIntoView();"
             "});"
             "</script>"
+        )
+    else:
+        # Silent scroll preservation across the live-edit reloads (SEC-safe,
+        # same-origin sessionStorage). When QUILL re-writes and re-opens this
+        # page after an edit, the browser reloads it; without this the pane
+        # jumps to the top, adding to the flicker a braille/screen-reader user
+        # feels. We stash scrollY continuously and restore it on load, keyed by
+        # the file path, so a live refresh lands the reader back where they were.
+        # No timer, no meta-refresh, no announcement -- purely visual continuity.
+        anchor_script = (
+            "<script>(function(){"
+            "var k='quillPreviewScroll:'+location.pathname;"
+            "try{var y=sessionStorage.getItem(k);"
+            "window.addEventListener('load',function(){"
+            "if(y!==null)window.scrollTo(0,parseFloat(y)||0);});"
+            "window.addEventListener('scroll',function(){"
+            "try{sessionStorage.setItem(k,String(window.scrollY));}catch(e){}}"
+            ",{passive:true});}catch(e){}"
+            "})();</script>"
         )
     return (
         '<!doctype html><html><head><meta charset="utf-8">'
@@ -314,7 +336,7 @@ def _render_table(header: str, rows: list[str]) -> str:
     return "".join(parts)
 
 
-# Hidden-codes vocabulary (docs/rich-text-formatting-hidden-codes-design.md):
+# Hidden-codes vocabulary (docs/planning/rich-text-formatting-hidden-codes-design.md):
 # inline run spans ``[text]{font-family="Arial" ...}`` and paragraph alignment
 # fenced divs ``::: {align="center"}`` ... ``:::``. These render to styled HTML in
 # both the live preview and HTML export (which both flow through this renderer).

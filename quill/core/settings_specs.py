@@ -1943,4 +1943,34 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         ),
         keywords=("experimental", "border", "margin", "notepad", "frame", "chrome"),
     ),
+    SettingSpec(
+        "edge_read_aloud_enabled",
+        "Read the document aloud in your browser (experimental)",
+        "experimental",
+        "bool",
+        (
+            "Adds a Read Document in Browser command (menu and command palette) "
+            "that opens an accessible reader page in your browser with a voice "
+            "picker and Play/Pause/Stop. A real browser exposes its full voice "
+            "set — including Edge's Online (Natural) voices — which the in-app "
+            "engine cannot. Requires the acknowledgement above. QUILL makes no "
+            "network call and no audio file is produced; on-device voices stay "
+            "local. Note: the Online (Natural) voices synthesize in Microsoft's "
+            "cloud, so choosing one sends the text to that service — pick an "
+            "on-device voice to keep everything local. Availability varies with "
+            "your browser and network. Set your browser under Preferences > "
+            "Preview. Takes effect as soon as you apply Settings — no restart."
+        ),
+        keywords=(
+            "experimental",
+            "browser",
+            "edge",
+            "chrome",
+            "voice",
+            "read aloud",
+            "speech",
+            "web speech",
+            "natural",
+        ),
+    ),
 )

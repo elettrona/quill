@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc" />
+  <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>release0.9.0-beta1</title>
   <style>
@@ -156,8 +156,12 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: min(4vw, 1.5em);}
-    div.column{flex: auto; overflow-x: auto;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -705,6 +709,47 @@ permissive word list waving typos through.</li>
 <li><strong>The portable build launches and opens documents</strong>,
 and the <strong>AI Hub opens</strong> instead of erroring on a
 lazy-string.</li>
+<li><strong>Live preview no longer flickers or re-announces as you
+type</strong> - the external browser preview refreshes only after you
+pause typing (debounced) and keeps your place on reload (returning to
+the section you are editing, or your previous scroll position), instead
+of reloading on every keystroke and jumping to the top. The in-app side
+preview (Ctrl+F6 to focus it) updates silently in place with no reload -
+the recommended live preview for screen-reader/braille users.</li>
+<li><strong>Read Document in Browser (experimental) is steadier</strong>
+- Stop no longer emits spurious "speech error" messages, a failed
+passage no longer wedges the player on Pause, the text is pronounced in
+its own language, and the reader page is deleted on exit. It reads
+section by section (reliable on long documents) and Pause keeps your
+place and reports it ("Paused at section 12 of 300"). Enabling it takes
+effect immediately (no restart). The setting text now states plainly
+that the browser's "Online (Natural)" voices synthesize the text in the
+cloud; on-device voices stay local.</li>
+<li><strong>Snappier, less alarming startup</strong> - the one-time
+WebView2 warm-up runs after the editor is ready, not before it, so a
+slow first setup no longer looks like a freeze; short UI stalls now also
+capture a diagnostic stack snapshot.</li>
+<li><strong>Idle AI models are actually released now</strong> - the
+background idle-unload sweep crashed on every tick, so idle models were
+never freed; it now runs correctly.</li>
+<li><strong>F1 help now covers every command</strong> - all 319 commands
+that previously had no help topic now have a plain-language description
+and their shortcut, so pressing F1 on any menu item or command always
+says something useful.</li>
+<li><strong>Smart triggers and Quillin-contributed abbreviations now
+actually fire</strong> - typing <code>=bug()</code>,
+<code>=todo(10)</code>, or <code>=rand(3,4)</code> alone on a line and
+pressing Enter now inserts the generated text, and contributed
+abbreviations like <code>qbug</code> expand as you type (with
+Abbreviation Expansion on). Both were declared and documented since
+0.7.0 but never dispatched. Numeric arguments work, every insertion is
+announced and undoable, and the per-trigger toggles on the Quillin's
+preferences page are honoured.</li>
+<li><strong>Quiet failures now speak up</strong> - List Studio settings
+export/import confirms success or explains the failure, the
+Pronunciation Dictionaries dialog warns when a dictionary could not be
+saved, and the Quillin wizard's Copy JSON only claims "copied" when the
+clipboard actually took the text.</li>
 </ul>
 <hr />
 <h2 id="for-testers">For testers</h2>

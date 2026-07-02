@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc" />
+  <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>QUILL-PRD</title>
   <style>
@@ -156,8 +156,12 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: min(4vw, 1.5em);}
-    div.column{flex: auto; overflow-x: auto;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -3778,6 +3782,28 @@ only the selection and stops at the end.</li>
 announcements; if a screen reader speaks something while read-aloud is
 active, read-aloud continues but is briefly ducked.</li>
 </ul>
+<p><strong>Read Document in Browser (experimental, opt-in —
+<code>edge_read_aloud_enabled</code>).</strong> The embedded WebView2
+only exposes the local SAPI voices; a <em>real</em> browser exposes its
+full Web Speech voice set, including Edge's "Online (Natural)" voices.
+So, gated behind <strong>Settings → Experimental</strong> (and the
+experimental acknowledgement), QUILL can build a self-contained,
+accessible reader page (<code>quill/core/browser_reader.py</code>:
+labelled voice picker, Speed, Play/Pause/Stop, an <code>aria-live</code>
+status, keyboard focus on Play, the document text carrying its own
+<code>lang</code>) and open it in the user's chosen browser via the
+existing preview-open path. The page builder is wx-free and unit-tested.
+<strong>Privacy contract:</strong> QUILL itself makes no network call
+for this; on-device voices synthesize locally, but the browser's "Online
+(Natural)" voices synthesize in the vendor's cloud, so choosing one
+sends the selected text to that service. This is disclosed in the
+setting description and in the network-egress audit's documented
+(out-of-package) egress notes; the generated page carries the full
+document text as plaintext in app-data and is therefore <strong>deleted
+on exit</strong> (<code>browser_reader.remove_reader_pages</code>) so no
+copy lingers. Playback speaks chunk-by-chunk and treats Stop's
+<code>interrupted</code>/<code>canceled</code> events as normal teardown
+(never surfaced as errors).</p>
 <h3 id="525b-watch-folder-automation">5.25b Watch Folder automation</h3>
 <p>Quill provides an optional watch-folder workflow under
 <code>Tools -&gt; Watch Folder</code> for low-friction document intake.
@@ -6356,6 +6382,59 @@ with search + import/export). Menu:
 <code>Insert &gt; Expand Abbreviation</code>,
 <code>Insert &gt; Manage Abbreviations...</code>,
 <code>Insert &gt; Toggle Abbreviation Expansion</code>.</p>
+<hr />
+<h3
+id="578a-quillin-contributed-insert-automation--abbreviations-and-smart-triggers">5.78a
+Quillin-contributed insert automation — abbreviations and smart
+triggers</h3>
+<p>Quillins declare two Insert Automation contribution types in their
+manifests (<code>contributes.abbreviations</code>,
+<code>contributes.smart_triggers</code>); QUILL dispatches both.</p>
+<p><strong>Contributed abbreviations.</strong> At Quillin load,
+<code>abbreviations.build_contributed_library</code> merges every
+installed manifest's <em>static</em> abbreviation entries (those with an
+<code>expansion</code>) into a separate in-memory
+<code>AbbreviationLibrary</code> — deterministic namespaced ids
+(<code>quillin:&lt;id&gt;:&lt;trigger&gt;</code>), rebuilt on every
+reload, <strong>never persisted</strong> into the user's
+<code>abbreviations.json</code>. Handler-based entries (e.g. Smart
+Insert's <code>qbrf</code>) are skipped: the bare-word expander cannot
+run a handler mid-type, so dynamic content is reached via a smart
+trigger or menu command instead. Expansion order: the user's own library
+is tried first, the contributed library only on a miss, so a user
+abbreviation always beats a contributed one with the same trigger;
+across Quillins, first-loaded wins. Each entry honours the Quillin's own
+<code>enable_abbrev_&lt;trigger&gt;</code> setting (default: the
+manifest's <code>enabled_by_default</code>), and the global Abbreviation
+Expansion master toggle gates everything. Core:
+<code>quill/core/abbreviations.py</code>; host wiring:
+<code>main_frame_quillins.py</code> (build) +
+<code>main_frame_abbreviations.py</code>
+(<code>_try_expand_contributed</code>). Unit-tested in
+<code>tests/unit/core/test_abbreviations_contributed.py</code>.</p>
+<p><strong>Smart triggers (<code>=name(args)</code>).</strong> A smart
+trigger is a line that is exactly <code>=name(arg, arg)</code>
+(whitespace-tolerant) activated with Enter. The parser
+(<code>quill/core/quillins/smart_triggers.py</code>, pure/wx-free,
+unit-tested) requires the trigger to occupy the whole line and a
+name-then-parens shape, so prose containing <code>=foo()</code>, a bare
+<code>=5</code>, or spreadsheet-style <code>=a+b</code> never fires.
+Arguments are comma-separated, stripped, empties dropped. Resolution
+checks: name known (index across installed manifests, first definition
+wins on collision), trigger enabled (per-Quillin
+<code>enable_&lt;name&gt;</code> setting; non-bundled commands also
+require the SEC-8 third-party flag), and declared
+<code>min_args</code>/<code>max_args</code> bounds. On dispatch the
+editor removes the trigger line, runs the linked command at that
+position with a context of <code>{"trigger", "args"}</code> (handlers
+receive the args — e.g. <code>=todo(10)</code> builds a ten-item list,
+<code>=rand(3,4)</code> three paragraphs of four lines, both clamped to
+sane maxima), and fires the <code>smart_trigger.entered</code> Quillin
+event with the same payload. A disabled or unknown trigger leaves the
+line untouched and Enter behaves normally. Host wiring:
+<code>MainFrame._handle_smart_trigger_return</code> (Enter interception,
+before Markdown list continuation) →
+<code>QuillinsMenuMixin.dispatch_smart_trigger_line</code>.</p>
 <hr />
 <h3 id="579-ask-ai--lightweight-in-editor-ai-chat">5.79 Ask AI —
 lightweight in-editor AI chat</h3>

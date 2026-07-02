@@ -1413,7 +1413,9 @@ class MainFrame(
             self._wx.CallAfter(focus_target.SetFocus)
 
     def _run_deferred_startup_tasks(self) -> None:
-        _profile = os.environ.get("QUILL_PROFILE_STARTUP") == "1"
+        # Always capture startup timing so logs/startup_tasks.txt is fresh after
+        # every launch (a field bug report can include it with no env var).
+        _profile = True
         _times: list[tuple[str, float]] = []
 
         try:
@@ -1470,14 +1472,6 @@ class MainFrame(
         except Exception:
             self._report_startup_task_failure("trust-consent onboarding")
         for label, task in (
-            # Pre-warm the WebView2 subprocess before the user opens a preview
-            # or the AI chat pane.  The first WebView.New() call initialises the
-            # Edge WebView2 process and can block the UI thread for several
-            # seconds (sometimes minutes) on slower or first-time Windows
-            # installations.  Paying that cost here — once, in the deferred
-            # startup sequence — means subsequent preview opens (F6, auto-preview,
-            # AI panel) are near-instant.  Fixes #174 and reduces #177.
-            ("WebView2 warm-up", self._prewarm_webview_runtime),
             ("crash recovery", self._offer_crash_recovery),
             ("first-run onboarding", self._maybe_run_first_run_onboarding),
             ("migration notice", self._surface_migration_notice),
@@ -1495,9 +1489,13 @@ class MainFrame(
             ("lexical cache warm-up", start_lexical_preload),
             # §179: F1 / Shift+F1 sync-decodes ``topics.json`` the first time it
             # is pressed. On a cold machine this can take a few hundred ms and
-            # trip the wx heartbeat watchdog while a modal is open. Pre-warm
-            # the renderer here so the first F1 is instant.
-            ("help topics warm-up", warm_help_topics),
+            # trip the wx heartbeat watchdog. warm_help_topics is lock-protected
+            # and thread-safe, so warm it off the UI thread via the task manager
+            # (kwargs absorbed) rather than blocking the deferred-startup sequence.
+            (
+                "help topics warm-up",
+                lambda: self._task_manager.submit("help-warm", lambda **_kw: warm_help_topics()),
+            ),
             # §8.2 TTS-FALLBACK-ANNOUNCE: show status prompt when TTS init failed.
             ("TTS fallback check", self._check_tts_fallback_on_startup),
             # Build the model-lifecycle manager from settings and start the idle
@@ -1512,6 +1510,17 @@ class MainFrame(
                 self._report_startup_task_failure(label)
             if _profile:
                 _times.append((label, time.perf_counter() - _t))
+        # WebView2 warm-up runs LAST, on its own delayed CallLater — not inline.
+        # The first ``wx.html2.WebView.New()`` initialises the Edge WebView2
+        # process and can block the UI thread for several seconds (sometimes
+        # minutes) on slower or first-run Windows installs (#174/#177). Running it
+        # inline at the *front* of this list meant that block landed while the
+        # user was waiting to interact — dead air a screen-reader user reads as a
+        # frozen app (the wx heartbeat watchdog logged ~7 s stalls). Deferring it
+        # to after the editor is focused and "Ready" is announced, on a short
+        # delay, lets the user start working first; F6/preview before it finishes
+        # is already handled by the ``_webview_warm`` deferral in preview_in_app.
+        self._wx.CallLater(1200, self._prewarm_webview_runtime)
         _t = time.perf_counter() if _profile else 0.0
         if (
             getattr(self.settings, "auto_check_updates", False)
@@ -2386,6 +2395,19 @@ class MainFrame(
             "tools.read_aloud_generate_audio",
             "Generate Speech Audio...",
             self.generate_speech_audio,
+            None,
+        )
+        # Experimental: read the document aloud in the user's real browser (where
+        # the full/online voices are available). Registered unconditionally so the
+        # command palette has it the moment the setting is toggled — no restart.
+        # The handler self-guards (read_document_in_browser shows a "turn it on
+        # under Experimental" message when disabled), and the *menu* entry stays
+        # gated on the setting (rebuilt live by _build_menu on settings-apply), so
+        # nothing appears in the menu until opted in. See quill/core/browser_reader.py.
+        self.commands.register(
+            "tools.read_aloud_edge",
+            "Read Document in Browser (Experimental)",
+            self.read_document_in_browser,
             None,
         )
         self.commands.register(
@@ -3705,6 +3727,7 @@ class MainFrame(
             "view.focus_preview": self._id_focus_preview,
             "view.browser_preview": self._id_browser_preview,
             "tools.read_aloud_generate_audio": self._id_read_aloud_generate_audio,
+            "tools.read_aloud_edge": self._id_read_aloud_edge,
             "tools.ai_hub": self._id_ai_hub,
             "tools.ai_assistant": self._id_ai_assistant,
             "tools.ai_prompt_studio": self._id_ai_prompt_studio,
@@ -4765,6 +4788,8 @@ class MainFrame(
             and not event.AltDown()
             and not event.ShiftDown()
         ):
+            if self._handle_smart_trigger_return():
+                return
             if self._handle_markdown_list_return():
                 return
         tab_key = getattr(wx, "WXK_TAB", None)
@@ -4843,6 +4868,29 @@ class MainFrame(
             self.editor.SetSelection(caret, caret)
             return
         event.Skip()
+
+    def _handle_smart_trigger_return(self) -> bool:
+        """Fire a Quillin ``=name(args)`` smart trigger on the current line.
+
+        Returns True when a trigger fired so the caller consumes the Enter and
+        skips list continuation. Dispatch/enablement lives in the Quillins mixin;
+        this only supplies the current line span and re-syncs the model.
+        """
+        dispatch = getattr(self, "dispatch_smart_trigger_line", None)
+        if dispatch is None:
+            return False
+        start, end = self.editor.GetSelection()
+        if start != end:
+            return False
+        text = self.editor.GetValue()
+        line_start, line_end = line_span(text, self.editor.GetInsertionPoint())
+        line = text[line_start:line_end]
+        if "=" not in line:  # cheap reject before parsing
+            return False
+        if not dispatch(line, line_start, line_end):
+            return False
+        self.document.set_text(self.editor.GetValue())
+        return True
 
     def _handle_markdown_list_return(self) -> bool:
         if self._effective_markup_kind() not in {"markdown", "plain"}:
@@ -6020,6 +6068,9 @@ class MainFrame(
         prune = getattr(self, "prune_orphaned_github_temp", None)
         if callable(prune):
             _safely("github temp prune", prune)
+        # Privacy: the browser read-aloud page holds the full document text as
+        # plaintext in app-data; remove it on exit (quill/core/browser_reader.py).
+        _safely("browser reader cleanup", self._cleanup_browser_reader_files)
         _safely("sound manager", _shutdown_sound_manager)
         # Destroy any straggler top-level windows (e.g. a modeless Ask Quill
         # chat frame) so they do not keep the wx main loop alive after the main
@@ -10799,7 +10850,7 @@ class MainFrame(
         self._lifecycle_timer = wx.Timer(self.frame)
         self.frame.Bind(
             wx.EVT_TIMER,
-            lambda _e: self._task_manager.submit(lifecycle_service.sweep),
+            lambda _e: self._task_manager.submit("lifecycle-idle-sweep", lifecycle_service.sweep),
             self._lifecycle_timer,
         )
         # Poll about twice per idle window (clamped 30 s - 5 min) so an idle model is
@@ -17380,6 +17431,67 @@ class MainFrame(
         self._read_aloud.stop()
         self._set_status("Read aloud stopped")
 
+    # ------------------------------------------------------------------
+    # Experimental: read the document aloud in the user's real browser, where
+    # speechSynthesis exposes the full voice set (including Edge's Online
+    # (Natural) voices) — unlike the embedded WebView2, which only sees local
+    # SAPI voices. We write a self-contained accessible reader page (voice
+    # picker + Play/Pause/Stop) and open it in the chosen browser. Opt-in under
+    # Preferences > Experimental. See quill/core/browser_reader.py.
+    # ------------------------------------------------------------------
+    def _edge_read_aloud_enabled(self) -> bool:
+        return bool(
+            getattr(self.settings, "edge_read_aloud_enabled", False)
+            and getattr(self.settings, "experimental_acknowledged", False)
+        )
+
+    def read_document_in_browser(self) -> None:
+        wx = self._wx
+        if not self._edge_read_aloud_enabled():
+            self._show_message_box(
+                "Turn on 'Read the document aloud in your browser' under "
+                "Preferences > Experimental first (it takes effect right away).",
+                "Read in Browser (Experimental)",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        text = self.editor.GetValue()
+        if not text.strip():
+            self._set_status("Nothing to read")
+            return
+        from quill.core.browser_reader import build_reader_html
+
+        title = "Document"
+        tabs = getattr(self, "_document_tabs", None)
+        if tabs:
+            tab_index = (
+                self._active_tab_index
+                if self._active_tab_index >= 0
+                else self._current_tab_index()
+            )
+            if 0 <= tab_index < len(tabs):
+                title = tabs[tab_index].document.name or "Document"
+        reader_lang = getattr(self, "_active_language", None) or "en"
+        payload = build_reader_html(title, text, lang=reader_lang)
+        reader_dir = app_data_dir() / "browser-reader"
+        reader_dir.mkdir(parents=True, exist_ok=True)
+        reader_path = reader_dir / "read-aloud.html"
+        temp_path = reader_path.with_suffix(".tmp")
+        temp_path.write_text(payload, encoding="utf-8")
+        os.replace(temp_path, reader_path)
+        browser_choice = normalize_browser_choice(self.settings.preview_browser)
+        open_preview_url(reader_path.as_uri(), browser_choice)
+        self._set_status(
+            f"Opened read-aloud in {browser_choice_label_for_value(browser_choice)} — "
+            "choose a voice and press Play"
+        )
+
+    def _cleanup_browser_reader_files(self) -> None:
+        """Delete the browser read-aloud plaintext page(s) on exit (privacy)."""
+        from quill.core.browser_reader import remove_reader_pages
+
+        remove_reader_pages(app_data_dir() / "browser-reader")
+
     def _voice_is_english(self, engine: str, voice: ReadAloudVoiceOption) -> bool:
         engine_name = (engine or "").strip().lower()
         voice_id = (voice.id or "").strip().lower()
@@ -22014,7 +22126,27 @@ class MainFrame(
             # No explicit page load needed — WebView2 navigates to about:blank on
             # its own.  Explicit raw-HTML page calls are disallowed here by the
             # web-surface governance gate (test_web_surface_governance.py).
+            #
+            # Diagnostics: time this call and log it. WebView2's first New() is
+            # the prime suspect for the ~7 s UI-thread stall (review.md §5); this
+            # New() runs on the UI thread and cannot be moved off it, so if it is
+            # the cause the elapsed here will show it directly in the log. Logged
+            # at WARNING when it blocks noticeably so it is findable without
+            # enabling QUILL_PROFILE_STARTUP.
+            import logging as _logging
+
+            _wv_start = time.perf_counter()
             wv = wx.html2.WebView.New(sentinel)
+            _wv_elapsed = time.perf_counter() - _wv_start
+            _wv_log = _logging.getLogger(__name__)
+            if _wv_elapsed >= 1.0:
+                _wv_log.warning(
+                    "WebView2 first-init (WebView.New) blocked the UI thread for %.1f s",
+                    _wv_elapsed,
+                )
+            else:
+                # INFO (not DEBUG) so the timing is visible at the default level.
+                _wv_log.info("WebView2 first-init took %.3f s", _wv_elapsed)
 
             # _alive guards both the EVT_WEBVIEW_LOADED callback and the
             # 5-second fallback CallLater against calling methods on C++
@@ -22089,6 +22221,21 @@ class MainFrame(
         if session is None:
             return
         if session.tab_index != self._active_tab_index:
+            return
+        # Debounce like the side preview: re-navigating the external browser on
+        # every keystroke flickered the page and re-announced from the top for a
+        # braille/screen-reader reader (the "meta refresh" feel). Coalescing to
+        # shortly after typing pauses cuts the reload churn; the page also
+        # restores scroll on reload (render_preview_html). The fully flicker-free
+        # live option is the in-app side preview (F6): in-place WebView swap.
+        timer = getattr(self, "_browser_preview_timer", None)
+        if timer is not None and timer.IsRunning():
+            timer.Stop()
+        self._browser_preview_timer = self._wx.CallLater(400, self._do_refresh_browser_preview)
+
+    def _do_refresh_browser_preview(self) -> None:
+        session = self._browser_preview_session
+        if session is None or session.tab_index != self._active_tab_index:
             return
         self.preview_in_browser()
 

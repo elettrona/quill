@@ -17,6 +17,7 @@ from quill.core.lists import (
     StructuredListSettings,
     list_studio_presets,
 )
+from quill.ui.dialog_contract import show_message_box
 
 _VERBOSITY = [("Concise", "concise"), ("Standard", "standard"), ("Detailed", "detailed")]
 _PROFILES = [
@@ -193,8 +194,20 @@ class ListStudioSettingsDialog:
                 json.dumps(self._settings_from_controls().to_dict(), indent=2),
                 encoding="utf-8",
             )
-        except OSError:
-            pass
+        except OSError as error:
+            show_message_box(
+                f"Could not export settings to that location:\n{error}",
+                "Export List Studio settings",
+                wx.OK | wx.ICON_ERROR,
+                self.dialog,
+            )
+            return
+        show_message_box(
+            f"Settings exported to:\n{path}",
+            "Export List Studio settings",
+            wx.OK | wx.ICON_INFORMATION,
+            self.dialog,
+        )
 
     def _on_import(self) -> None:
         import json
@@ -213,7 +226,13 @@ class ListStudioSettingsDialog:
 
         try:
             data = json.loads(Path(path).read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+        except (OSError, ValueError) as error:
+            show_message_box(
+                f"Could not import settings from that file:\n{error}",
+                "Import List Studio settings",
+                wx.OK | wx.ICON_ERROR,
+                self.dialog,
+            )
             return
         self._load_settings_into_controls(StructuredListSettings.from_dict(data))
         self._preset_choice.SetSelection(0)  # imported values are "(Custom)"

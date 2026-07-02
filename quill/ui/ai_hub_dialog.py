@@ -53,8 +53,16 @@ def _save_deepgram_key(key: str) -> None:
             save_generic_credential(_DEEPGRAM_KEY_CRED_TARGET, key.strip())
         else:
             delete_generic_credential(_DEEPGRAM_KEY_CRED_TARGET)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception:  # noqa: BLE001 - never crash the dialog on a store failure
+        # A silently-unsaved API key would look saved but leave transcription
+        # broken. Log it so the failure is diagnosable (the dialog surfaces the
+        # working/not-working state via its own Test/refresh path).
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "Could not persist the Deepgram API key to the credential store",
+            exc_info=True,
+        )
 
 
 def _load_deepgram_max_speakers() -> int:

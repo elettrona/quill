@@ -198,6 +198,13 @@ class Settings:
     #   features may degrade on a non-default editor surface. The experimental
     #   overrides above are ignored until this is True (the safety gate).
     experimental_acknowledged: bool = False
+    #   edge_read_aloud_enabled: opt-in experimental read-aloud that opens an
+    #   accessible reader page in the user's real browser (see
+    #   quill/core/browser_reader.py), where the full/online Web Speech voices
+    #   are available. Gated by experimental_acknowledged; takes effect on
+    #   settings apply — command always registered, menu appears on the settings
+    #   menu rebuild, no restart. Voice is chosen/remembered in the page itself.
+    edge_read_aloud_enabled: bool = False
     # What to do when a document that carries hidden formatting is saved as plain
     # text: "ask" (offer to keep the formatting), "illuminate" (always write a
     # <name>.illumination sidecar so the .txt round-trips formatting in QUILL), or
@@ -699,6 +706,7 @@ class Settings:
             experimental_editor_surface = "default"
         editor_hide_border = bool(data.get("editor_hide_border", False))
         experimental_acknowledged = bool(data.get("experimental_acknowledged", False))
+        edge_read_aloud_enabled = bool(data.get("edge_read_aloud_enabled", False))
         plain_text_with_formatting = str(data.get("plain_text_with_formatting", "ask"))
         if plain_text_with_formatting not in {"ask", "illuminate", "plain"}:
             plain_text_with_formatting = "ask"
@@ -1158,6 +1166,7 @@ class Settings:
             experimental_editor_surface=experimental_editor_surface,
             editor_hide_border=editor_hide_border,
             experimental_acknowledged=experimental_acknowledged,
+            edge_read_aloud_enabled=edge_read_aloud_enabled,
             plain_text_with_formatting=plain_text_with_formatting,
             dictation_onboarding_shown=dictation_onboarding_shown,
             pronunciation_enabled=pronunciation_enabled,

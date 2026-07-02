@@ -202,6 +202,19 @@ _REVIEWED_EGRESS: dict[str, str] = {
     # local crash file is always saved regardless of the user's choice.
     # Every step is wrapped in try/except so the handler can never prevent
     # the standard interpreter traceback from firing.
+    # Browser read-aloud (Experimental, opt-in): QUILL itself makes NO network
+    # call here -- it writes a self-contained local HTML page (quill/core/
+    # browser_reader.py) and opens it in the user's browser. The AST scan finds
+    # no egress in quill/ for this feature, and there is no _REVIEWED_EGRESS
+    # entry because there is no in-package call site. It is documented here for
+    # auditability: when the user chooses one of the browser's "Online (Natural)"
+    # voices, the *browser* (not QUILL) sends the selected text to the voice
+    # service (e.g. Microsoft's Edge cloud voices) to synthesize speech. Path:
+    #   read_document_in_browser() (gated behind edge_read_aloud_enabled AND
+    #   experimental_acknowledged) -> write local page -> open_preview_url().
+    # On-device voices stay fully local. The settings copy and PRIVACY.md both
+    # disclose the cloud-voice behavior, and the page is deleted on app exit
+    # (_cleanup_browser_reader_files) so no plaintext copy lingers.
     "io/http_transport.py::download_url": (
         "Open-from-URL action. Triggered by an explicit user action from the "
         "Remote Sites dialog (Open from URL); fetches the resource the user "

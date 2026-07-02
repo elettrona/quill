@@ -408,23 +408,41 @@ class PronunciationDictionaryDialog:
     def enabled_ids(self) -> list[str]:
         return [d.id for d in self._dicts if d.enabled]
 
-    def save_all(self) -> None:
+    def save_all(self) -> list[str]:
+        """Persist all changes; return the names of any that failed to save.
+
+        The user closed with OK expecting their edits saved, so a per-dictionary
+        write failure must be surfaced (see ``show``) rather than silently losing
+        their pronunciation changes.
+        """
+        failures: list[str] = []
         for d in self._deleted:
             try:
                 delete_dictionary(d, self._project_dir)
             except OSError:
-                pass
+                failures.append(getattr(d, "name", getattr(d, "id", "a dictionary")))
         for d in self._dicts:
             try:
                 save_dictionary(d, self._project_dir if d.scope == "project" else None)
             except (OSError, ValueError):
-                pass
+                failures.append(getattr(d, "name", getattr(d, "id", "a dictionary")))
+        return failures
 
     def show(self, show_modal_dialog: Any) -> bool:
         code = show_modal_dialog(self.dialog, "Pronunciation Dictionaries")
         saved = code == self._wx.ID_OK
         if saved:
-            self.save_all()
+            failures = self.save_all()
+            if failures:
+                show_message_box(
+                    "Some pronunciation dictionaries could not be saved:\n"
+                    + "\n".join(f"  - {name}" for name in failures)
+                    + "\n\nYour changes to those may be lost. Check the folder "
+                    "permissions and try again.",
+                    "Pronunciation Dictionaries",
+                    self._wx.OK | self._wx.ICON_WARNING,
+                    self.dialog,
+                )
         ids = self.enabled_ids()
         self.dialog.Destroy()
         self._saved_enabled_ids = ids

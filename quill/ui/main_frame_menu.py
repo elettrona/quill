@@ -1406,6 +1406,7 @@ class MenuBuilderMixin:
         self._id_read_aloud_voice = wx.NewIdRef()
         self._id_read_aloud_settings = wx.NewIdRef()
         self._id_read_aloud_generate_audio = wx.NewIdRef()
+        self._id_read_aloud_edge = wx.NewIdRef()
         self._id_announcement_backend = wx.NewIdRef()
         self._id_announcement_backend_auto = wx.NewIdRef()
         self._id_announcement_backend_prism = wx.NewIdRef()
@@ -1780,6 +1781,20 @@ class MenuBuilderMixin:
             self._id_read_aloud_generate_audio,
             self._menu_label(_("Generate &Audio..."), "tools.read_aloud_generate_audio"),
         )
+        # Experimental in-browser reading: shown only after the user opts in
+        # under Preferences > Experimental (the command is likewise only
+        # registered then). Opens an accessible reader page in the real browser,
+        # where the full/online voices are available.
+        if getattr(self.settings, "edge_read_aloud_enabled", False) and getattr(
+            self.settings, "experimental_acknowledged", False
+        ):
+            read_aloud_menu.AppendSeparator()
+            read_aloud_menu.Append(
+                self._id_read_aloud_edge,
+                self._menu_label(
+                    _("Read in &Browser (Experimental)"), "tools.read_aloud_edge"
+                ),
+            )
         read_aloud_menu.Append(
             self._id_announcement_backend,
             self._menu_label(_("Announcement &Backend..."), "tools.announcement_backend"),
@@ -3822,6 +3837,14 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.generate_speech_audio(),
             id=self._id_read_aloud_generate_audio,
+        )
+        # Experimental in-browser reading. Bound unconditionally (the menu item
+        # only appears when opted in, and the handler self-guards on the
+        # setting), so an accidental invocation degrades gracefully.
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.read_document_in_browser(),
+            id=self._id_read_aloud_edge,
         )
         self.frame.Bind(
             wx.EVT_MENU,

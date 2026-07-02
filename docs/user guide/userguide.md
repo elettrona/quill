@@ -386,6 +386,8 @@ The **View** menu controls how Quill presents your document on screen without ch
 - **Start With No Document Open** makes Quill open into an empty workspace instead of a starter document.
 - **Preview...**, **Preview Side by Side**, **Focus Preview**, and **Browser Preview...** open rendered views of the current document.
 
+**Live preview while you type.** The side-by-side preview (`Ctrl+F6` to focus it directly — it also joins the `F6` region rotation while open — or turn on Auto Side-by-Side Preview) updates *silently in place* as you edit — the rendered content is swapped without reloading the page, so your braille display and screen reader are not interrupted, nothing is re-announced from the top, and your reading position is kept. This is the recommended live preview for screen-reader and braille users. The external **Browser Preview** (in your web browser) can also follow your edits, but because a real browser reload is a full page navigation, QUILL refreshes it only after you pause typing (not on every keystroke) and keeps your place on each refresh — landing back at the section you are editing, or at your previous scroll position — rather than jumping to the top.
+
 Preference-style toggles that used to live here — theme/dark mode, system-tray mode, title-bar path style, dirty-title style, persistent undo, spell-check-as-you-type, and word-prediction-as-you-type — now live in the registry-driven **Settings** dialog (**Tools -> Customize & Support -> Preferences...**), where they are persisted in one place.
 
 ### Insert
@@ -1906,9 +1908,9 @@ The manager also has **Import** and **Export** buttons for JSON round-trips. Exp
 
 **Sound feedback.** Optional: enable **Play sound on abbreviation expansion** in `Tools > Customize & Support > Preferences > Editing` and optionally point **Abbreviation expansion sound file** to a `.wav` file. Leave the path blank for the default system beep.
 
-**Quillin-contributed abbreviations.** Installed Quillins can add their own abbreviations to the registry. These are listed in the Insert Automation Reference and can be disabled per-Quillin in the Quillin's own preferences page (open **Preferences**, Ctrl+Comma, then navigate to the Quillin by name). Your own abbreviations always take priority over Quillin-contributed ones; if two Quillins claim the same trigger, the conflict is visible in the Conflict Manager.
+**Quillin-contributed abbreviations.** Installed Quillins can add their own abbreviations to the registry. Each one can be turned on or off individually in the Quillin's own preferences page (open **Preferences**, Ctrl+Comma, then navigate to the Quillin by name — for the bundled Smart Insert Quillin, the toggles are on its **Abbreviations** tab). Contributed abbreviations are kept separate from your saved library and are never written into it. Your own abbreviations always take priority over Quillin-contributed ones; if two Quillins claim the same trigger, the one loaded first wins.
 
-The bundled **Smart Insert** Quillin contributes five abbreviations by default:
+The bundled **Smart Insert** Quillin contributes four expanding abbreviations by default:
 
 | Trigger | Inserts |
 | --- | --- |
@@ -1916,7 +1918,8 @@ The bundled **Smart Insert** Quillin contributes five abbreviations by default:
 | `qmeet` | Meeting notes template with today's date |
 | `qlog` | Date and time timestamp |
 | `qtodo` | Three-item to-do checklist |
-| `qbrf` | Predictable BRF test document |
+
+Only abbreviations with a fixed expansion text expand as you type. Handler-based (dynamic) abbreviations — such as Smart Insert's declared `qbrf` — do not fire from bare-word typing; use the matching smart trigger (`=brftest()`) or the Insert menu command instead.
 
 **Tips.**
 
@@ -2367,7 +2370,7 @@ Markdown means different things to different writers: a poet wants every line br
 
 **Selection pre-fill:** If text is selected when you press `Ctrl+Shift+E`, QUILL checks whether the selection is a LaTeX equation. If it is, it strips the delimiters (`$` for inline, `$$` for block), pre-fills the prompt with the bare formula, and surfaces the detected display mode first in the choice list so you can confirm with one keypress.
 
-**Rendering:** Browser Preview (`QUILL Key + V`) and HTML export inject a MathJax 3 script tag so equations render visually in any browser. The document source always contains the raw LaTeX or MathML, which your screen reader reads directly.
+**Rendering:** Browser Preview (`QUILL Key + V`) and HTML export inject a MathJax 3 script tag so equations render visually in any browser. The document source always contains the raw LaTeX or MathML, which your screen reader reads directly. The MathJax script is loaded from a public CDN by your browser, so the *visual* rendering of equations needs a network connection; the underlying LaTeX/MathML (and everything your screen reader announces) is always present offline. If you are offline, equations show as their raw source rather than typeset math — the content is never lost.
 
 A collection of ten worked examples — quadratic formula, binomial theorem, integration by parts, Euler's identity, and more — is in `docs/math/latex_testing.md`.
 
@@ -3423,9 +3426,9 @@ Quill supports **Quillins** — extensions that add commands, snippets, menus, a
 
 ### Bundled Quillins
 
-QUILL ships fourteen trusted, first-party Quillins enabled by default:
+QUILL ships seventeen trusted, first-party Quillins enabled by default:
 
-- **Smart Insert** (`com.quill.smartinsert`) — abbreviations and smart text triggers for everyday templates. Contributes `qbug`, `qmeet`, `qlog`, `qtodo`, and `qbrf` abbreviations, as well as `=bug()`, `=meeting()`, `=journal()`, `=todo()`, `=logentry()`, `=brftest()`, and `=rand()` smart triggers. Settings are under **Preferences → Smart Insert**.
+- **Smart Insert** (`com.quill.smartinsert`) — abbreviations and smart text triggers for everyday templates. Contributes the `qbug`, `qmeet`, `qlog`, and `qtodo` expanding abbreviations (its declared dynamic `qbrf` is reached via `=brftest()` instead), as well as `=bug()`, `=meeting()`, `=journal()`, `=todo()`, `=logentry()`, `=brftest()`, and `=rand()` smart triggers. Settings are under **Preferences → Smart Insert**.
 - **BRF Tools** (`com.quill.brftools`) — preferences for braille translation defaults, page handling, status bar display, and diagnostics. Requires the QUILL Braille Pack. Settings under **Preferences → BRF Tools**.
 - **Journal Stamp** (`com.quill.journalstamp`) — inserts a date header when you create a new journal document; announces your word count (and daily goal progress) after every save; announces session restores. Listens to `quillin.enabled` to log activation and `settings.changed` to hot-reload preferences. Settings under **Preferences → Journal Stamp**.
 - **Document Guardian** (`com.quill.docguardian`) — warns before closing short or unfinished documents; optionally stamps an `Updated:` line before each save; optionally speaks the file name and size after each save. Uses `quillin.enabled`, `quillin.disabled`, and `quill.shutdown` lifecycle events. Settings under **Preferences → Document Guardian**, which has Close Guard, Save Stamp, Save Confirmation, and Lifecycle Announcements tabs. The Lifecycle Announcements tab controls whether the activation and deactivation cue is spoken; the setting defaults to off so first-run is quiet for screen-reader users.
@@ -3439,6 +3442,7 @@ QUILL ships fourteen trusted, first-party Quillins enabled by default:
 - **AI Writing Prompts** — additional prompt library entries contributed by the Quillin manifest.
 - **AI Writing Skills** — pre-built `.sqp` skill files for rewriting, meeting-notes extraction, and research drafts.
 - **Math Equations** — inserts LaTeX or MathML equations at the cursor via **Insert → Insert Equation...** (`Ctrl+Shift+E`); see Math Equations earlier in this guide.
+- **ElevenLabs Scribe Transcription**, **Groq Whisper Transcription**, and **OpenAI Whisper Transcription** — add those cloud services as optional transcription providers (with speaker identification, in ElevenLabs' case). Audio is uploaded only when you explicitly transcribe with that provider and have configured its API key — never offline, never without consent.
 
 ### Quillin Preferences
 
@@ -6064,7 +6068,7 @@ A pre-written document structure that you can use as a starting point for new fi
 A directory that QUILL monitors in the background. Any supported file dropped into the watch folder is automatically opened as a new document tab (or processed according to per-folder rules). Useful for transcription pipelines, dictation outputs, and batch review workflows. Configure in **Tools → Watch Folder**.
 
 **WebView / Side Preview**
-The rendered HTML preview pane that appears alongside the editor when you press `F6` (or enable it via **View → Side Preview**). The preview is powered by Microsoft Edge WebView2 and renders Markdown, HTML, and plain text in real time as you type. The preview is read-only and does not affect the document.
+The rendered HTML preview pane that appears alongside the editor when you open it from the **View** menu (or automatically, with Auto Side-by-Side Preview on). `Ctrl+F6` focuses it, and it joins the `F6` region rotation while open. The preview is powered by Microsoft Edge WebView2 and renders Markdown, HTML, and plain text in real time as you type. The preview is read-only and does not affect the document.
 
 **Welcome Guide**
 A lightweight, profile-aware getting-started document that opens inside QUILL as a document tab. Unlike the full User Guide (which opens in your browser), the Welcome Guide adapts its content to show only the features enabled in your current profile. Open it from **Help → Open Welcome Guide**.
