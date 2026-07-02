@@ -318,7 +318,6 @@ class DictationHotkeysMixin:
             return
         s = self.settings
         s.dictation_max_locked_seconds = result.max_locked_seconds
-        s.dictation_min_hold_seconds = result.min_hold_seconds
         s.dictation_stop_on_focus_loss = result.stop_on_focus_loss
         s.dictation_intelligent_spacing = result.intelligent_spacing
         if result.reset_onboarding:

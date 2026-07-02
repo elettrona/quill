@@ -2,9 +2,10 @@
 
 An accessible, keyboard-operable panel over the dictation knobs already stored in
 ``settings`` (the ``DictationConfig`` the controller reads): the Locked-Dictation
-time cap, the minimum hold to ignore accidental F9 taps, stop-on-focus-loss,
-intelligent insertion spacing, and a reset for the one-time first-use hint. The
-caller owns the ``wx.Dialog`` so the hardened modal path and ``apply_modal_ids``
+time cap, stop-on-focus-loss, intelligent insertion spacing, and a reset for the
+one-time first-use hint. (The "minimum hold" knob was removed along with
+Hold-to-Dictate; the core config field remains at its 0.0 default.) The caller
+owns the ``wx.Dialog`` so the hardened modal path and ``apply_modal_ids``
 live in one place; on OK the chosen values are exposed as ``result``.
 """
 
@@ -19,7 +20,6 @@ class DictationSettingsResult:
     """The values chosen in the dialog (applied to ``settings`` by the caller)."""
 
     max_locked_seconds: float
-    min_hold_seconds: float
     stop_on_focus_loss: bool
     intelligent_spacing: bool
     reset_onboarding: bool
@@ -55,10 +55,6 @@ class DictationSettingsDialog:
             "&Locked Dictation time limit (seconds):",
             lambda: wx.SpinCtrl(dlg, min=30, max=3600),
         )
-        self._min_hold = _add(
-            "&Minimum hold to start (seconds; ignores accidental taps):",
-            lambda: wx.SpinCtrlDouble(dlg, min=0.0, max=5.0, inc=0.1),
-        )
         outer.Add(grid, 0, wx.EXPAND | wx.ALL, 12)
 
         self._focus_loss = wx.CheckBox(dlg, label="Stop and &keep speech when QUILL loses focus")
@@ -77,7 +73,6 @@ class DictationSettingsDialog:
         self.dialog.SetSizerAndFit(self._outer_sizer)
         max_locked = float(getattr(s, "dictation_max_locked_seconds", 300.0))
         self._max_locked.SetValue(int(round(max_locked)))
-        self._min_hold.SetValue(float(getattr(s, "dictation_min_hold_seconds", 0.0)))
         self._focus_loss.SetValue(bool(getattr(s, "dictation_stop_on_focus_loss", True)))
         self._spacing.SetValue(bool(getattr(s, "dictation_intelligent_spacing", True)))
         self._reset_hint.SetValue(False)
@@ -85,7 +80,6 @@ class DictationSettingsDialog:
     def _on_ok(self, event: Any) -> None:
         self.result = DictationSettingsResult(
             max_locked_seconds=float(self._max_locked.GetValue()),
-            min_hold_seconds=float(self._min_hold.GetValue()),
             stop_on_focus_loss=self._focus_loss.GetValue(),
             intelligent_spacing=self._spacing.GetValue(),
             reset_onboarding=self._reset_hint.GetValue(),
