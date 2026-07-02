@@ -231,7 +231,11 @@ def main() -> int:
             + "\n</ul>\n</section>"
         )
     # Any episode outside the known ranges still gets listed, never lost.
-    orphans = [row for number, row in index_rows if not any(f <= number <= l for _t, f, l in PARTS)]
+    orphans = [
+        row
+        for number, row in index_rows
+        if not any(first <= number <= last for _title, first, last in PARTS)
+    ]
     if orphans:
         sections.append(
             "<section>\n<h2>More episodes</h2>\n<ul>\n" + "\n".join(orphans) + "\n</ul>\n</section>"
@@ -244,7 +248,8 @@ def main() -> int:
         '<section aria-label="Subscribe">\n'
         f"<h2>Subscribe</h2>\n"
         f'<p><a href="feed.xml">Subscribe with the RSS feed</a> in any podcast '
-        f"app, or copy the feed address: <code>{html.escape(show['site_url'] + 'feed.xml')}</code></p>\n"
+        f"app, or copy the feed address: "
+        f"<code>{html.escape(show['site_url'] + 'feed.xml')}</code></p>\n"
         f"<p>{len(index_rows)} episodes, about {total_minutes} minutes in total. "
         "Every episode has a built-in player below, a download link, and a full "
         "accessible transcript.</p>\n"
