@@ -22,7 +22,7 @@ Sections too: the section move commands lift an entire heading-and-its-content b
 Transforms, for the text you already have. Case commands: uppercase, lowercase, title case, sentence case, applied to the selection. Quote lines, indent and outdent, strip trailing whitespace. And smart typography assists as you type, proper quotes and dashes, if you enable them, off by default like everything opinionated.
 
 [LIAM]
-Then the classic-editor treasures QUILL revived on purpose. Repeat: do the last action again, once you have it, you'll use it hourly. Restore Deleted Text: brings back the last thing you deleted without disturbing the undo chain, for the oh no, that sentence was better moments. And Describe Character: announces exactly what's under the cursor, which unicode character, its code, the mystery symbol identified.
+Then the classic-editor treasures QUILL revived on purpose. Repeat Next Command: a numeric prefix in the WordPerfect tradition, tell QUILL a count, and the next command you press runs that many times, delete five lines, move down twenty, without hammering the key. Restore Deleted Text: brings back a recent deletion without disturbing the undo chain, for the oh no, that sentence was better moments. And Describe Character: announces exactly what's under the cursor, which unicode character, its code, the mystery symbol identified.
 
 [JESSICA]
 Describe Character deserves a story. You paste something from the web and there's an invisible something wrecking your formatting, a non-breaking space, a zero-width joiner, a smart quote pretending to be plain. Sighted users squint. You just ask: what is this? QUILL tells you precisely. It's a tiny feature with the exact QUILL philosophy inside: replace guessing with asking.

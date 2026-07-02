@@ -2018,21 +2018,24 @@ providers".
 > dictation. whisper.cpp remains the default and needs nothing extra; Faster Whisper does
 > not attribute speakers.
 >
-> **Hold-to-Dictate & Locked Dictation (shipped, 1.0-complete).** Two keyboard-only
-> dictation modes on the offline engine: **Hold F9** to record-and-insert as one
-> undoable edit, and **Ctrl+F9** for a hands-free Locked session (Ctrl+Shift+F9
-> pause/resume, Alt+F9 speak-state, Escape keep / Shift+Escape discard). Built as a
-> protected transaction in the wx-free `quill/core/speech/dictation/` package: an
-> explicit `DictationController` state machine (single-recorder invariant; no bare
-> boolean), audio saved to `recovery/dictation/` **before** transcription, a key-up
-> watchdog so a missed release can't leave the mic open, a five-minute / focus-loss
-> auto-stop, and a transcript that can't be safely inserted is kept for review rather
-> than lost. Two accessible surfaces under **Tools > Speech > Hold & Locked
-> Dictation**: a **Dictation Settings** panel (locked time limit, minimum hold, stop
-> on focus loss, intelligent spacing, reset of the one-time hint) and a **Dictation
-> History & Review** window (insert/copy/discard recovered recordings; doubles as the
-> startup-recovery prompt). Locked Dictation has distinct earcons and a one-time
-> onboarding hint. File synthesis runs with no console-window flash and a timeout.
+> **Locked Dictation (shipped, 1.0-complete).** One keyboard-only dictation mode on
+> the offline engine: **Ctrl+F9** toggles a hands-free Locked session
+> (Ctrl+Shift+F9 pause/resume, Alt+F9 speak-state, Escape keep / Shift+Escape
+> discard). *Hold-to-Dictate (hold F9) shipped in 0.7.0 and was removed*: a held
+> key repeats and announces itself endlessly under a screen reader, so the single
+> locked gesture is the reliable one (the controller's hold states remain in the
+> wx-free core for compatibility, but no UI binds them). Built as a protected
+> transaction in `quill/core/speech/dictation/`: an explicit `DictationController`
+> state machine (single-recorder invariant; no bare boolean), audio saved to
+> `recovery/dictation/` **before** transcription, a five-minute / focus-loss
+> auto-stop, and a transcript that can't be safely inserted is kept for review
+> rather than lost. Two accessible surfaces under **Tools > Speech > Locked
+> Dictation**: a **Dictation Settings** panel (session time limit, stop on focus
+> loss, intelligent spacing, reset of the one-time hint) and a **Dictation
+> History & Review** window (insert/copy/discard recovered recordings; doubles as
+> the startup-recovery prompt). Locked Dictation has distinct earcons and a
+> one-time onboarding hint. File synthesis runs with no console-window flash and a
+> timeout.
 
 ### 5.25f AI footprint, on-demand acquisition, and optimization
 

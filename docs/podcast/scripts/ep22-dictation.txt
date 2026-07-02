@@ -8,30 +8,36 @@ I'm Liam, and the privacy point leads because it's the headline: QUILL's dictati
 Why that matters beyond principle: the things people dictate, first drafts, private journals, medical notes, legal thoughts, client work, are exactly the things that shouldn't transit a server. Offline dictation isn't a lesser version of the cloud kind; for this audience it's the correct kind.
 
 [LIAM]
-The mechanics. Control F9 starts dictation. Two styles: hold-to-talk, press and hold, speak, release, like a walkie-talkie, ideal for a sentence at a time. Or locked dictation: toggle on, speak freely across paragraphs, toggle off. Text lands at your cursor like typing, which means every editing tool from part two applies to it instantly.
+The mechanics, and QUILL keeps this deliberately simple: one gesture. Control F9 starts Locked Dictation, a hands-free session. Speak freely, a sentence or three paragraphs, then press control F9 again to finish, and your words land at the cursor as one undoable edit. Like typing, which means every editing tool from part two applies to them instantly.
 
 [JESSICA]
-Setup is a one-time model download from the Speech and Dictation hub, checksum-verified as always. Models come in sizes: bigger is more accurate and slower, smaller is snappier on modest hardware. And for genuinely low-powered machines there's an alternative lightweight engine, Vosk, downloadable on demand. The hub helps you pick sensibly for your machine.
+A design story hides in that single gesture, and it's worth telling because it's so QUILL. An earlier version also had a press-and-hold mode, hold a key, talk, release. It was removed, on purpose: under a screen reader, a held key repeats and announces itself endlessly, which made the gesture unreliable in exactly the hands-free situations it was meant for. One dependable gesture beat two flaky ones. Honest subtraction is a feature.
+
+[LIAM]
+The supporting keys, all remappable. Control shift F9 pauses and resumes the session, for the doorbell moments. Alt F9 speaks the current state without changing anything, am I still recording? Ask. Escape stops and keeps your speech for transcription; shift escape cancels and discards it. And QUILL announces the session edges, locked dictation on, so you always know when the microphone is live.
+
+[JESSICA]
+Safety nets, because dictated words deserve the episode-thirteen treatment too. Your audio is saved to a recovery folder before transcription even begins. A session stops itself after five minutes, and stops and preserves your audio if QUILL loses focus. And if a transcript ever can't be safely inserted, it's kept for review, Tools, Speech, Locked Dictation, Dictation History and Review lists every recording that never made it into a document, ready to insert, copy, or discard. Speech is never silently lost.
 
 [PAUSE]
 
 [LIAM]
-Accuracy talk, honestly. Whisper was trained on the messy real world, and it shows: casual speech, accents, umms, it handles them impressively. It is not perfect, homophones and names will trip it. But here's the workflow insight: dictation plus QUILL's correction stack is a complete system. Dictate a rough paragraph, then control F7 walks the misspellings from episode twelve, then a read-aloud pass from last episode catches the word-swaps. Speak fast, repair fast.
+Setup is a one-time model download from the Speech and Dictation hub, checksum-verified as always. Models come in sizes: bigger is more accurate and slower, smaller is snappier on modest hardware. For genuinely low-powered machines there's a lightweight alternative engine, Vosk, downloadable on demand. The hub helps you choose sensibly.
 
 [JESSICA]
-Craft tips from real use. The microphone is half the accuracy, a modest USB headset beats every laptop's built-in array. Speak in phrases, not single words, the engine uses context. Say punctuation while dictating drafts, period, comma, new paragraph, and if you forget, punctuation cleanup is exactly the kind of mechanical pass episode fifteen's macros love.
+Accuracy talk, honestly. Whisper was trained on the messy real world, and it shows: casual speech, accents, umms, handled impressively. It is not perfect, homophones and names will trip it. But here's the workflow insight: dictation plus QUILL's correction stack is a complete system. Dictate a rough paragraph, control F7 walks the misspellings from episode twelve, a read-aloud pass catches the word swaps. Speak fast, repair fast.
 
 [LIAM]
-Where dictation shines: first drafts, because speaking outruns typing and silences the inner editor. Journaling, spoken thoughts feel different from typed ones, honestly. Accessibility need or injury, hands-free capture. And the capture moment, an idea arrives, control F9, say it, done, faster than any typed note.
+Craft tips from real use. The microphone is half the accuracy, a modest USB headset beats every laptop's built-in array. Speak in phrases, not single words, the engine uses context. Say punctuation while drafting, period, comma, new paragraph, and if you forget, punctuation cleanup is exactly the mechanical pass episode fifteen's macros love.
 
 [JESSICA]
-Where it doesn't: precise editing. Nobody wants to navigate by voice when they have episode seven in their hands. QUILL's design reflects that split: voice for capture, keyboard for control. Dictate the clay, sculpt with keys.
+Where dictation shines: first drafts, because speaking outruns typing and silences the inner editor. Journaling, spoken thoughts genuinely feel different from typed ones. Hands-free capture during injury or fatigue. And the capture moment: an idea arrives, control F9, say it, control F9, done, faster than any typed note.
 
 [LIAM]
-A note on what's deliberately absent: system-wide voice command control, say commands out loud to drive the app, is a locked, future feature still being rebuilt properly. QUILL doesn't ship half-working voice control just to tick a box; the dictation that ships is the dictation that works.
+Where it doesn't: precise editing. Nobody wants to navigate by voice when they have episode seven in their hands. QUILL's design reflects that split, voice for capture, keyboard for control. Dictate the clay, sculpt with keys. And full voice-command control of the app is deliberately absent for now, a locked, future feature being rebuilt properly rather than shipped half-working.
 
 [JESSICA]
-Homework. One: download a dictation model and dictate one honest paragraph, hold-to-talk. Two: dictate a longer passage in locked mode, then run the full repair pass, spell walk, read-aloud listen. Three: for one day, capture every stray idea by dictation instead of typing, and notice what changes.
+Homework. One: download a dictation model and dictate one honest paragraph, control F9 in, control F9 out. Two: mid-session, try alt F9 for status and control shift F9 to pause and resume. Three: dictate something longer, then run the full repair pass, spell walk, read-aloud listen. Four: for one day, capture every stray idea by dictation instead of typing, and notice what changes.
 
 [LIAM]
 Next episode: the big sibling, transcription, whole recordings in, finished documents out, and the Listening Companion that does the finishing.

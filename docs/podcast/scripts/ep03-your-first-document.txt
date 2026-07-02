@@ -31,7 +31,7 @@ And multiple documents means tabs. Each file is a tab; control tab cycles betwee
 One more File menu resident worth meeting early: New from Clipboard, which opens a new document pre-filled with whatever you've copied. Sounds tiny; becomes a habit. Someone sends you text in a chat, control C, New from Clipboard, and now it's a document you can search, edit, and read properly.
 
 [LIAM]
-And templates: File, New from Template starts a document from a pre-written structure, meeting notes, letters, whatever you put in the templates folder. Plain text files in, one keystroke to reuse them forever.
+And if you find yourself starting the same kind of document again and again, meeting notes, letters, QUILL has you covered a little later in the course: reusable snippets with fill-in placeholders arrive in episode fifteen, and full note templates in episode thirty. For now, just notice the itch when you feel it.
 
 [JESSICA]
 Homework. One: make three documents, save them in different places, close QUILL entirely, reopen, and use Open Recent to visit all three. Notice the cursor lands where you left it. Two: copy some text from anywhere and try New from Clipboard. Three: open the biggest, ugliest file you have lying around, any format, just to see what QUILL does with it.

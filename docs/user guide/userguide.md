@@ -1157,42 +1157,39 @@ they are there if you want to tune how much memory QUILL uses.
 - **Dictation Microphone...** chooses which microphone dictation uses, or the
   system default.
 
-##### Hold-to-Dictate and Locked Dictation (F9 / Ctrl+F9)
+##### Locked Dictation (Ctrl+F9)
 
-Two keyboard-only ways to dictate without opening a dialog or leaving the editor.
-Both use the same on-device Whisper engine and microphone as **Dictate (Offline)**,
-so nothing is uploaded.
+One keyboard-only way to dictate without opening a dialog or leaving the editor.
+It uses the same on-device Whisper engine and microphone as **Dictate (Offline)**,
+so nothing is uploaded. (An earlier press-and-hold F9 mode was removed: a held key
+repeats and announces itself endlessly under a screen reader, so the single locked
+gesture is the reliable one.)
 
-- **Hold-to-Dictate — hold F9.** Press and hold **F9**, speak, and release. QUILL
-  transcribes and inserts the text at the cursor as one undoable edit. A short tone
-  marks the start and (after the microphone closes) the stop. Best for a phrase or
-  a sentence.
-- **Locked Dictation — Ctrl+F9.** Press **Ctrl+F9** to start a continuous session
-  without holding a key; QUILL announces "Locked dictation on." Press **Ctrl+F9**
-  again to finish and insert.
+- **Locked Dictation — Ctrl+F9.** Press **Ctrl+F9** to start a hands-free session;
+  QUILL announces "Locked dictation on." Speak as long as you like — across
+  sentences and paragraphs — then press **Ctrl+F9** again to finish. QUILL
+  transcribes and inserts the text at the cursor as one undoable edit.
 - **Stopping safely.** While recording, **Escape** stops and keeps your speech for
-  transcription; **Shift+Escape** cancels and discards it. A locked session also
-  stops automatically after five minutes, and stops and preserves your audio if
-  QUILL loses focus.
-- **Pause and status.** **Ctrl+Shift+F9** pauses or resumes a locked session;
+  transcription; **Shift+Escape** cancels and discards it. A session also stops
+  automatically after five minutes, and stops and preserves your audio if QUILL
+  loses focus.
+- **Pause and status.** **Ctrl+Shift+F9** pauses or resumes the session;
   **Alt+F9** speaks the current state without changing it.
 - **Nothing is lost.** Audio is saved to a recovery folder before transcription
   starts, and a transcript that cannot be safely inserted is kept for review.
-- **Dictation Settings.** **Tools > Speech > Hold & Locked Dictation > Dictation
-  Settings…** exposes the knobs the dictation engine reads: the Locked-Dictation
-  time limit, the minimum hold needed to start (so an accidental F9 tap is ignored),
-  stop-and-keep-speech when QUILL loses focus, intelligent insertion spacing, and a
-  reset that shows the one-time first-use hint again.
-- **Dictation History & Review.** **Tools > Speech > Hold & Locked Dictation >
+- **Dictation Settings.** **Tools > Speech > Locked Dictation > Dictation
+  Settings…** exposes the knobs the dictation engine reads: the session time
+  limit, stop-and-keep-speech when QUILL loses focus, intelligent insertion
+  spacing, and a reset that shows the one-time first-use hint again.
+- **Dictation History & Review.** **Tools > Speech > Locked Dictation >
   Dictation History & Review…** lists every recording whose transcript was never
   inserted — crash orphans and transcripts that couldn't be placed safely — so you
   can **insert** one at the cursor, **copy** it, or **discard** it (Enter inserts the
   selected row). If anything is awaiting review at startup, QUILL announces it and
   points you here, so dictated speech is never silently lost.
-- **Distinct sound, one-time hint.** Locked Dictation plays its own earcons so a
-  hands-free session sounds different from a press-and-hold one, and the very first
-  time you dictate QUILL speaks a brief one-time hint about the keys.
-- **Remappable.** F9, Ctrl+F9, and the rest are defaults; change them in the Keymap
+- **Distinct sound, one-time hint.** Locked Dictation plays its own earcons, and
+  the very first time you dictate QUILL speaks a brief one-time hint about the keys.
+- **Remappable.** Ctrl+F9 and the rest are defaults; change them in the Keymap
   Editor (**Settings > Keyboard**). You need an offline speech model installed
   (**Tools > Speech > Manage Speech Models**) and the optional
   microphone-capture support; in Safe Mode dictation is disabled.
@@ -6123,7 +6120,7 @@ A reusable block of text with optional interactive placeholders that you insert 
 A collection of audio files that QUILL uses for non-speech feedback: key sounds, navigation tones, alert chimes, and (optionally) indentation-level tones for coding. Sound Packs are loaded from a named directory and can be swapped in Preferences. The default pack uses synthesised bell tones; custom packs can use any WAV files following the naming convention.
 
 **Template**
-A pre-written document structure that you can use as a starting point for new files. Templates are plain text or Markdown files stored in a designated folder. Opening a template creates a new untitled document pre-filled with the template content. Manage templates in **File → New from Template**.
+A pre-written document structure that you can use as a starting point for new text. In QUILL, templating comes in two forms: **snippets** (`Ctrl+Shift+Grave, S`) insert reusable blocks with interactive placeholders anywhere, and the **Accessible Vault's Insert Template** command fills note templates from your vault's Templates folder, expanding `{{date}}`/`{{title}}`, asking any `{{prompt}}` questions, and placing the cursor at `{{cursor}}`.
 
 **Watch Folder**
 A directory that QUILL monitors in the background. Any supported file dropped into the watch folder is automatically opened as a new document tab (or processed according to per-folder rules). Useful for transcription pipelines, dictation outputs, and batch review workflows. Configure in **Tools → Watch Folder**.

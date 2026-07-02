@@ -22,7 +22,7 @@ Block quotes: a greater-than sign. Code: backticks around inline code, triple ba
 Now QUILL's Markdown comforts. The editor knows the format: heading navigation works, the outline is live, and formatting-and-markup commands help you apply and adjust structure without hand-counting hashes. The status and describe commands tell you the structure at your cursor.
 
 [LIAM]
-Preview: QUILL renders your Markdown as formatted output in an in-app side preview, F6 reaches it, that updates silently as you type, no reloads, no announcement spam, plus an external browser preview when you want the full page experience. The in-app preview is the screen-reader-recommended one, it updates in place and keeps your position.
+Preview: QUILL renders your Markdown as formatted output in an in-app side preview, control F6 focuses it, that updates silently as you type, no reloads, no announcement spam, plus an external browser preview when you want the full page experience. The in-app preview is the screen-reader-recommended one, it updates in place and keeps your position.
 
 [JESSICA]
 And the exit doors are everywhere: this same Markdown exports to Word with real heading styles, to HTML, to EPUB, to PDF workflows, next episode's whole topic. Write once in the most accessible format ever devised, deliver in whatever the recipient needs. That's the strategic reason Markdown-first is the QUILL way.
@@ -31,7 +31,7 @@ And the exit doors are everywhere: this same Markdown exports to Word with real 
 A style guide in one breath: one first-level heading per document, don't skip levels, two never jumps to four, keep heading text short enough to hear comfortably, and always put the space after your hashes. Structure sins are exactly what the GLOW audits in episode thirty catch, so the habits you build today keep paying.
 
 [JESSICA]
-Homework. One: write a small real document in Markdown, three headings, a list, some bold, a link. Two: navigate it by heading and feel your own structure carry you. Three: open the preview, F6 over, listen to how the rendered version reads, F6 back. Four: deliberately skip a heading level, then fix it, training your ear to notice.
+Homework. One: write a small real document in Markdown, three headings, a list, some bold, a link. Two: navigate it by heading and feel your own structure carry you. Three: open the preview, control F6 over, listen to how the rendered version reads, and back to the editor. Four: deliberately skip a heading level, then fix it, training your ear to notice.
 
 [LIAM]
 Next episode: rich formatting without the clutter, real fonts, colors, and alignment riding invisibly on plain text, the hidden codes system, Reveal Codes, and Illuminations.

@@ -368,7 +368,7 @@ class DictationHotkeysMixin:
         if pending:
             self._announce(
                 f"{len(pending)} dictation recording(s) await review. Open Tools, "
-                "Speech, Hold and Locked Dictation, Dictation History.",
+                "Speech, Locked Dictation, Dictation History.",
                 force=True,
             )
 
