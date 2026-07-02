@@ -541,6 +541,31 @@ and off in Safe Mode.
 The always-listening "Hey QUILL" wake word is the next phase; this release
 makes the conversation itself real.
 
+## "Hey QUILL" - true hands-free, and questions that route to the AI
+
+The Hey QUILL plan finishes in this release. Two more layers join push-to-talk
+and conversation mode:
+
+**The wake word.** **Tools > Speech > Listen for Hey QUILL** turns on
+always-listening. QUILL listens continuously, on your device, for "Hey QUILL" -
+say "Hey QUILL, save file" to run a command outright, or just "Hey QUILL" to
+start one. A live microphone is never a surprise: the status bar shows it is
+on and a gentle reminder plays now and then, and running the command again (or
+saying "stop") ends it at once. It also turns itself off when QUILL closes,
+unless you deliberately choose to keep it listening across restarts.
+
+**Questions route to Ask Quill.** When what you say is a question rather than a
+command - "ask what a heading is", or "how do I save my document" - QUILL hands
+it to Ask Quill with the question pre-filled and ready. You press Enter to send,
+so a person is always in the loop for anything that reaches the AI, and voice
+never contacts a network service on its own.
+
+Both layers keep the promises from the first two: recognition stays on your
+device, only the safe, non-destructive command allowlist can be invoked, and
+everything is off by default and off in Safe Mode. For the complete picture of
+what voice can do - every mode, every spoken command, and the privacy rules -
+see the new **Voice Interaction** page in the user guide.
+
 ## The Experimental tab - consent in layers
 
 Before the two big production features, meet the front door they share.

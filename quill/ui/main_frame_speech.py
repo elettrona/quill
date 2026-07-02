@@ -1589,8 +1589,27 @@ class SpeechCommandsMixin:
             self._conv_run(controller.on_cancel())
         elif outcome.kind == "run" and outcome.command_id in SAFE_TOOL_IDS:
             self._conv_run(controller.on_transcript(outcome.command_id, outcome.message))
+        elif self._voice_route_to_ask_quill(transcript):
+            # A question, not a command: handed to Ask Quill. Turn conversation
+            # mode off so the mic is free for the chat's own voice controls.
+            self._conv_run(controller.stop())
         else:
             self._conv_run(controller.on_transcript(None, outcome.message))
+
+    def _voice_route_to_ask_quill(self, transcript: str) -> bool:
+        """Phase 4: if ``transcript`` sounds like a question, open Ask Quill with
+        it pre-filled and return True. AI consent and sending stay with the
+        user in the chat; voice never fires a request on its own."""
+        from quill.core.speech.voice_routing import QUESTION, classify, question_text
+
+        if classify(transcript) != QUESTION:
+            return False
+        opener = getattr(self, "open_ask_quill_conversation", None)
+        if opener is None:
+            return False
+        self._announce("Opening Ask Quill with your question.")
+        opener(initial_prompt=question_text(transcript))
+        return True
 
     def _conv_dispatch(self, command_id: str) -> None:
         controller = getattr(self, "_conversation", None)
@@ -1600,6 +1619,195 @@ class SpeechCommandsMixin:
             self._set_status("That command is not available right now.")
         if controller is not None:
             self._conv_run(controller.on_action_done())
+
+    # -- wake word "Hey QUILL" (#663, Hey QUILL Phase 3) ----------------- #
+
+    def voice_wakeword_toggle(self) -> None:
+        """Start or stop always-listening for the phrase "Hey QUILL".
+
+        The microphone stays open in short windows; each is transcribed
+        on-device and checked for the wake phrase. On a wake, an inline command
+        ("Hey QUILL, save file") runs straight away, while a bare "Hey QUILL"
+        opens one command turn. Off by default and always off in Safe Mode; the
+        status stays visible and a periodic reminder keeps the live mic
+        perceivable.
+        """
+        from quill.core.speech.voice_commands import voice_commands_available
+
+        wake = getattr(self, "_wake", None)
+        if wake is not None and wake.state != "off":
+            self._wake_run(wake.stop())
+            return
+        if not voice_commands_available(
+            self.settings, safe_mode_active=bool(getattr(self, "_safe_mode", False))
+        ):
+            self._announce(
+                "Voice commands are off. Turn them on in Settings (they are disabled in Safe Mode)."
+            )
+            return
+        from quill.core.speech.capture import capture_available
+
+        if not capture_available():
+            self._announce(
+                "Listening for Hey QUILL needs microphone-capture support (the optional "
+                "'sounddevice' package)."
+            )
+            return
+        if self._installed_or_prompt(self._speech_provider(), "Hey QUILL") is None:
+            return
+        from quill.core.speech.wakeword import WakeController
+
+        self._wake = WakeController()
+        self._wake_run(self._wake.start())
+
+    def _wake_run(self, effects: list) -> None:
+        for effect in effects:
+            kind = effect.kind
+            if kind == "sound":
+                self._play_speech_sound(effect.value)
+            elif kind == "announce":
+                self._set_status_quiet(effect.value)
+                self._announce(effect.value)
+            elif kind == "reminder":
+                from quill.core.speech.conversation import CUE_IDLE
+
+                self._play_speech_sound(CUE_IDLE)
+                self._set_status_quiet('Still listening for "Hey QUILL"')
+            elif kind == "listen_again":
+                self._wake_capture_window()
+            elif kind == "stop_listen":
+                self._wake_stop_capture()
+            elif kind == "arm":
+                self._wake_capture_command()
+            elif kind == "dispatch":
+                self._wake_dispatch_inline(effect.value)
+
+    def _wake_stop_capture(self) -> None:
+        timer = getattr(self, "_wake_timer", None)
+        if timer is not None:
+            try:
+                timer.Stop()
+            except Exception:  # noqa: BLE001
+                pass
+            self._wake_timer = None
+        recorder = getattr(self, "_wake_recorder", None)
+        self._wake_recorder = None
+        if recorder is not None:
+            try:
+                recorder.stop().unlink(missing_ok=True)
+            except Exception:  # noqa: BLE001
+                pass
+
+    def _wake_capture_window(self, *, for_command: bool = False) -> None:
+        """Record one short window, then transcribe and route it."""
+        wake = getattr(self, "_wake", None)
+        if wake is None or wake.state == "off":
+            return
+        from quill.core.speech.capture import MicRecorder
+        from quill.core.speech.service import load_input_device
+
+        recorder = MicRecorder()
+        try:
+            recorder.start(load_input_device())
+        except Exception as exc:  # noqa: BLE001
+            self._set_status(f"Hey QUILL listening stopped: {exc}")
+            self._wake_run(wake.stop())
+            return
+        self._wake_recorder = recorder
+        # A short window keeps latency low; command windows are a bit longer.
+        window_ms = 4000 if for_command else 2500
+        callback = self._wake_finish_command if for_command else self._wake_finish_window
+        self._wake_timer = self._wx.CallLater(window_ms, callback)
+
+    def _wake_capture_command(self) -> None:
+        self._set_status_quiet("Listening for your command")
+        self._wake_capture_window(for_command=True)
+
+    def _wake_transcribe(self, on_text) -> None:
+        """Stop the current window and transcribe it, calling on_text(str)."""
+        timer = getattr(self, "_wake_timer", None)
+        if timer is not None:
+            try:
+                timer.Stop()
+            except Exception:  # noqa: BLE001
+                pass
+            self._wake_timer = None
+        recorder = getattr(self, "_wake_recorder", None)
+        self._wake_recorder = None
+        if recorder is None:
+            return
+        try:
+            wav_path = recorder.stop()
+        except Exception:  # noqa: BLE001
+            on_text("")
+            return
+        provider = self._speech_provider()
+        installed = provider.list_installed_models()  # type: ignore[attr-defined]
+        if not installed:
+            self._wake_run(self._wake.stop())
+            return
+        model_id = self._default_model_id(installed)
+        from quill.core.speech.provider import TranscriptionRequest
+
+        request = TranscriptionRequest(source_path=wav_path, model_id=model_id)
+
+        def _work(progress):
+            try:
+                result = provider.transcribe_file(  # type: ignore[attr-defined]
+                    request, lambda f, m: progress(m, int(f * 100), 100)
+                )
+                return (getattr(result, "full_text", "") or "").strip()
+            finally:
+                try:
+                    wav_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+        self._run_background_task("Listening", _work, on_text)
+
+    def _wake_finish_window(self) -> None:
+        self._wake_transcribe(self._wake_on_window)
+
+    def _wake_on_window(self, transcript: str) -> None:
+        wake = getattr(self, "_wake", None)
+        if wake is not None:
+            self._wake_run(wake.on_window(transcript or ""))
+
+    def _wake_finish_command(self) -> None:
+        self._wake_transcribe(self._wake_on_command)
+
+    def _wake_on_command(self, transcript: str) -> None:
+        self._wake_dispatch_inline(transcript)
+
+    def _wake_dispatch_inline(self, body: str) -> None:
+        """Resolve a spoken command body against the safe allowlist, run it,
+        then resume listening for the wake phrase."""
+        from quill.core.ai.agent import SAFE_TOOL_IDS
+        from quill.core.speech.conversation import CUE_ERROR, CUE_READY
+        from quill.core.speech.voice_commands import resolve_transcript
+
+        wake = getattr(self, "_wake", None)
+        outcome = resolve_transcript(body, self.commands)
+        if outcome.kind == "run" and outcome.command_id in SAFE_TOOL_IDS:
+            self._announce(outcome.message)
+            try:
+                self.commands.run(outcome.command_id)
+                self._play_speech_sound(CUE_READY)
+            except KeyError:
+                self._set_status("That command is not available right now.")
+        elif outcome.kind == "cancel":
+            self._set_status_quiet("Cancelled.")
+        elif self._voice_route_to_ask_quill(body):
+            # A question: handed to Ask Quill. Stop always-listening so the mic
+            # is free for the chat, and do not resume automatically.
+            if wake is not None:
+                self._wake_run(wake.stop())
+            return
+        else:
+            self._play_speech_sound(CUE_ERROR)
+            self._set_status(outcome.message)
+        if wake is not None and wake.state != "off":
+            self._wake_run(wake.resume_listening())
 
     # -- microphone selection --------------------------------------------- #
 

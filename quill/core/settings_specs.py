@@ -1532,6 +1532,29 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         feature_id="core.voice_commands",
         keywords=("voice conversation", "thinking", "tick", "timing"),
     ),
+    SettingSpec(
+        "voice_wakeword_enabled",
+        "Listen for 'Hey QUILL' (wake word)",
+        "transcription",
+        "bool",
+        "Listen continuously, on-device, for the phrase 'Hey QUILL' so you can "
+        "start a command without touching the keyboard. The microphone stays "
+        "on while this is enabled; QUILL keeps its status visible and can play "
+        "a periodic reminder. Off in Safe Mode.",
+        feature_id="core.voice_commands",
+        keywords=("wake word", "hey quill", "always listening", "hands-free"),
+    ),
+    SettingSpec(
+        "voice_wakeword_persist",
+        "Keep listening for 'Hey QUILL' across restarts",
+        "transcription",
+        "bool",
+        "By default, always-listening turns itself off when QUILL closes, so a "
+        "live microphone is never a surprise on the next launch. Turn this on "
+        "to have QUILL resume listening automatically at startup.",
+        feature_id="core.voice_commands",
+        keywords=("wake word", "persist", "startup", "always listening"),
+    ),
     # --- Watch Folders -----------------------------------------------------
     SettingSpec(
         "watch_folder_enabled",

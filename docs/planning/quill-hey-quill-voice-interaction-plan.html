@@ -182,9 +182,10 @@ QUILL — Voice Interaction and Conversation Mode Plan</h1>
 Hands-free voice commands, wake word, conversation mode, sounders
 <strong>Status:</strong> Plan of record. Phase 1 shipped 2026-07-02
 (push-to-talk); Phase 2 shipped 2026-07-02 (conversation loop +
-sounders). Phases 3–4 remain. <strong>Owner:</strong> Jeff Bishop /
-QUILL project <strong>Reference implementation:</strong> the ADP
-Assistant conversation mode (<code>s:\code\adp</code>,
+sounders); Phase 3 shipped 2026-07-02 (wake word). Phase 4 (Ask Quill
+routing) is the last. <strong>Owner:</strong> Jeff Bishop / QUILL
+project <strong>Reference implementation:</strong> the ADP Assistant
+conversation mode (<code>s:\code\adp</code>,
 <code>src/adp_mcp/webapp/static/app.js</code>) — the "Hey Magic" loop
 whose state machine, sounders, and timing model this plan imports
 <strong>Last consolidated:</strong> 2026-07-02</p>
@@ -482,32 +483,60 @@ status-bar/Speak-Status live-state surface, verbosity-engine SR-parity
 routing, pre-warmed cue phrases, and the optional personalization name
 are follow-ups. The controller already carries a <code>user_name</code>
 and <code>status_text()</code> for when those land.</p>
-<h3 id="phase-3--the-wake-word-hey-quill-proper">Phase 3 — The wake word
-("Hey QUILL" proper)</h3>
-<p>On-device keyword spotting, CPU-only, as a <strong>verified
-downloadable component</strong> (assets-v1 pattern, SHA-256 pinned,
-Safe-Mode blocked): evaluate <strong>Vosk keyword mode</strong> (already
-an optional QUILL engine — likely winner) vs
-<strong>openWakeWord</strong> (ONNX; would need a trained "hey quill"
-model). Requirements: mic-live is continuously perceivable (status-bar
-indicator + optional periodic soft idle tone + Speak Status), one
-keystroke and one spoken phrase ("stop listening") both kill it
-instantly, off across restarts unless the user opts into persistence,
-and a false-accept rate measured before ship (spot-check list of
-confusable phrases). Exit criteria: "Hey QUILL, save file" from across
-the room, and a week of dogfooding without a false wake during normal
-dictation or read-aloud.</p>
-<h3 id="phase-4--conversation-route-to-ask-quill">Phase 4 — Conversation
-(route to Ask Quill)</h3>
-<p>When an utterance matches no command and ends with a question shape
-(or the user says "ask …"), route the transcript to Ask Quill; speak the
-answer via the read-aloud stack; follow-up window keeps the thread.
-ADP's <code>brain.py</code> model (LLM over a bounded toolset) maps to
-Ask Quill's existing document context and reviewable-edit contract —
-voice never gains write powers the keyboard flow doesn't have; proposed
-edits still land as the accept/reject preview, announced. AI consent
-posture unchanged: if no AI is configured, the router says so and stays
-a command listener.</p>
+<h3
+id="phase-3--the-wake-word-hey-quill-proper-shipped-2026-07-02">Phase 3
+— The wake word ("Hey QUILL" proper) (SHIPPED 2026-07-02)</h3>
+<p>Done: <code>quill/core/speech/wakeword.py</code> — the pure, wx-free
+<code>WakeController</code> policy (OFF/LISTENING/WOKEN), unit-tested
+with plain strings (12 tests). It decides <em>when</em> to wake from a
+stream of transcribed listening windows: a bare "Hey QUILL" arms one
+command turn; an inline "Hey QUILL, save file" passes the trailing
+command straight through; a post-wake cooldown stops the wake
+utterance's tail re-triggering; and a periodic reminder keeps the live
+mic perceivable. <strong>Listen for Hey QUILL</strong> is a live Tools
+&gt; Speech command (and unbound keymap entry): it opens the mic in
+short windows, transcribes each on-device, feeds
+<code>WakeController.on_window</code>, and on a wake plays the
+<code>conversation_wake</code> cue and either dispatches the inline
+command (allowlist-checked) or listens for one. Mic-live stays visible
+in the status bar with the periodic reminder; running the command again
+(or "stop") kills it instantly. Safety: off by default, off in Safe
+Mode, and — via <code>voice_wakeword_persist</code> — always-listening
+never survives a restart unless the user opts in
+(<code>Settings.from_dict</code> forces the enabled flag off
+otherwise).</p>
+<p>Recognizer honesty: the current window recognizer is the same offline
+speech stack as the other phases, polled in short windows. The plan's
+dedicated keyword spotter for lower idle cost — <strong>Vosk keyword
+mode</strong> (the Vosk provider already exists at
+<code>quill/core/speech/providers/vosk.py</code>) or a trained
+openWakeWord model shipped as a verified downloadable component — is the
+documented Phase 3.x optimization, along with a measured false-accept
+rate across a confusable-phrase list before it is recommended for
+all-day use.</p>
+<h3 id="phase-4--route-questions-to-ask-quill-shipped-2026-07-02">Phase
+4 — Route questions to Ask Quill (SHIPPED 2026-07-02)</h3>
+<p>Done: <code>quill/core/speech/voice_routing.py</code> — a pure
+classifier (<code>classify</code> → CANCEL / QUESTION / COMMAND;
+<code>question_text</code> strips an "ask …" lead-in), unit-tested with
+plain strings (9 tests). In both conversation and wake modes, an
+utterance that isn't a command and isn't a cancel is checked for a
+question shape (an "ask/question" prefix or a leading question word); if
+it is a question, voice hands it to <strong>Ask Quill</strong> in voice
+mode with the text <strong>pre-filled in the composer</strong> and stops
+its own listening so the mic is free for the chat. Ask Quill then
+answers with its existing spoken-reply and reviewable-edit
+machinery.</p>
+<p>Safety by construction: voice never <em>sends</em> the AI request —
+the person presses Enter in Ask Quill, so a human stays in the loop for
+every network call, and voice gains no powers the keyboard flow lacks.
+AI consent is unchanged: Ask Quill's opener already offers setup /
+refuses without consent, so if no AI is configured the routed question
+simply lands in the (offered) setup path rather than failing silently.
+Speaking answers automatically from the voice loop (rather than in the
+Ask Quill transport) and ADP's <code>brain.py</code>-style bounded-tool
+autonomy remain deliberate future options, not shipped here — the
+conservative "pre-fill and confirm" handoff is the safe v1.</p>
 <hr />
 <h2 id="7-testing-and-gates">7. Testing and gates</h2>
 <p>Wx-free controller: scripted state-machine tests (every transition,

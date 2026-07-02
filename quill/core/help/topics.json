@@ -2588,6 +2588,12 @@
     "user_guide_section": "tools"
   },
   {
+    "id": "tools.voice_wakeword",
+    "title": "Listen for Hey QUILL (Wake Word)",
+    "body": "Turn on always-listening: QUILL listens continuously, on your device, for the phrase 'Hey QUILL'. Say 'Hey QUILL' followed by a command (like 'Hey QUILL, save file') to run it hands-free, or just 'Hey QUILL' to start a command. The microphone stays on while this is enabled, so QUILL keeps its listening status visible and plays a periodic reminder. Run this command again, or say 'stop', to turn listening off. By default it turns itself off when QUILL closes; a setting lets you resume it automatically at startup. Off in Safe Mode.",
+    "user_guide_section": "tools"
+  },
+  {
     "id": "tools.voice_conversation",
     "title": "Voice Conversation Mode",
     "body": "The hands-free version of Voice Command. Run it once and QUILL listens for a command, plays a warm audio cue for every step, gives you a brief moment to say 'cancel' before it acts, and then keeps listening for a short follow-up so you can chain commands without re-arming. Run it again (or say 'stop') to turn conversation mode off. Every command still comes from the same safe, on-device allowlist. Tune the pause, cancel, follow-up, and tick timings under Settings; the audio cues are the 'Conversation' events in the Sound Events dialog. Off in Safe Mode.",
