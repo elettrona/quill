@@ -191,6 +191,10 @@ own:</p>
 <li><a
 href="quill-native-accessible-table-studio-plan.md"><code>quill-native-accessible-table-studio-plan.md</code></a>
 — Table Studio (not started).</li>
+<li><a
+href="quill-hey-quill-voice-interaction-plan.md"><code>quill-hey-quill-voice-interaction-plan.md</code></a>
+— Hey QUILL voice interaction and conversation mode (planned; 2.0
+slot).</li>
 </ul>
 <p>The Accessible Vault plan has been <strong>retired</strong>: Phases
 0–7 shipped (feature-complete for 0.9.0) and the feature now lives in
@@ -418,10 +422,14 @@ Windows key hook</strong> (system-wide dictation hotkey),
 <strong>dictation intelligence</strong> (spoken punctuation/commands).
 Each is sizable beyond the keyboard-only Hold/Locked dictation that
 ships.</li>
-<li><strong>Voice interaction</strong>
-(<code>core.voice_commands</code>, §2) — re-home the hands-free "say a
-command" surface onto the shipped offline dictation engine (it was tied
-to the removed Windows dictation path), then unlock.</li>
+<li><strong>Voice interaction / Hey QUILL</strong>
+(<code>core.voice_commands</code>, §2) — now has a full plan of record:
+<a
+href="quill-hey-quill-voice-interaction-plan.md"><code>quill-hey-quill-voice-interaction-plan.md</code></a>
+(four phases: surface the implemented S5 push-to-talk; import the ADP
+conversation state machine + sounder palette; on-device "Hey QUILL" wake
+word as a downloadable keyword-spotting component; route questions to
+Ask Quill). Commands stay bounded by the agent safe-tool allowlist.</li>
 <li><strong>BITS Whisperer remainder</strong> (tracker #680) — the
 consolidation shipped for 1.0; the leftovers (a Windows SAPI/WinRT
 zero-download engine, a consented cloud watch action, guided provider

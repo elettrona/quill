@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>quill-hey-quill-voice-interaction-plan</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<h1 id="hey-quill--voice-interaction-and-conversation-mode-plan">Hey
+QUILL — Voice Interaction and Conversation Mode Plan</h1>
+<p><strong>Product:</strong> QUILL <strong>Feature area:</strong>
+Hands-free voice commands, wake word, conversation mode, sounders
+<strong>Status:</strong> Plan of record (feature
+<code>core.voice_commands</code> stays <code>locked_off</code> until
+Phase 1 ships) <strong>Owner:</strong> Jeff Bishop / QUILL project
+<strong>Reference implementation:</strong> the ADP Assistant
+conversation mode (<code>s:\code\adp</code>,
+<code>src/adp_mcp/webapp/static/app.js</code>) — the "Hey Magic" loop
+whose state machine, sounders, and timing model this plan imports
+<strong>Last consolidated:</strong> 2026-07-02</p>
+<hr />
+<h2 id="1-executive-summary">1. Executive summary</h2>
+<p>QUILL should let a user say <strong>"Hey QUILL, save file"</strong> —
+or arm a listening session with one keystroke and just say <strong>"save
+file"</strong> — and have the right command run, with every state of the
+interaction <em>audible</em>: a warm chime when QUILL starts listening,
+a tick while it thinks, a sparkle when it acts, and a spoken
+confirmation of what happened. Later, the same loop should carry
+conversation: a question routes to Ask Quill, the answer is spoken, and
+a follow-up window keeps listening so multi-turn exchanges work without
+re-waking.</p>
+<p>Two build-outs already exist in the codebase; neither is
+surfaced:</p>
+<ol type="1">
+<li><strong>Legacy Hey QUILL</strong>
+(<code>quill/core/voice_commands.py</code>): wake-phrase parsing ("hey
+quill" / "quill"), number-word normalization, and alias generation from
+<em>every</em> registered command. Orphaned — it rode the removed
+Windows dictation stream. Disposition: <strong>retire after Phase
+1</strong> (its wake-phrase parser is the one piece Phase 3
+reuses).</li>
+<li><strong>Offline Voice Command, "S5"</strong>
+(<code>quill/core/speech/voice_commands.py</code> +
+<code>main_frame_speech.py</code> wiring): push-to-talk single-command
+capture on the shipped Whisper stack — implemented, tested, and wired;
+the Tools &gt; Speech menu item is one commented-out
+<code>Append</code>. It has the right safety model (see §4) and is the
+foundation everything below builds on.</li>
+</ol>
+<p>The plan: <strong>unlock S5 (Phase 1), wrap it in the ADP
+conversation loop and sounders (Phase 2), add the true wake word via a
+downloadable keyword spotter (Phase 3), and route non-command utterances
+into Ask Quill (Phase 4).</strong></p>
+<hr />
+<h2 id="2-current-state-verified-2026-07-02">2. Current state (verified
+2026-07-02)</h2>
+<table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>core.voice_commands</code> feature</td>
+<td><code>locked_off=True</code>; menu item, settings entry ("Hey QUILL
+voice commands"), keymap entry, and F1 topic all exist and stay
+registered</td>
+</tr>
+<tr>
+<td>S5 matcher (<code>core/speech/voice_commands.py</code>)</td>
+<td>Done: allowlist catalog builder, hand-written aliases, cancel
+phrases (<code>cancel</code>, <code>never mind</code>,
+<code>stop</code>, <code>dismiss</code>), fuzzy scoring (exact=1.0,
+subsequence=0.9, token overlap ≥ 0.6), <code>VoiceOutcome</code> kinds
+<code>run/cancel/no_match/disabled</code></td>
+</tr>
+<tr>
+<td>S5 UI (<code>main_frame_speech.py</code>)</td>
+<td>Done: <code>voice_command_toggle</code> start/stop capture,
+transcribe, <code>resolve_transcript</code>, dispatch through the
+command registry</td>
+</tr>
+<tr>
+<td>Legacy wake parser (<code>core/voice_commands.py</code>)</td>
+<td>Orphaned but useful: <code>extract_transcript_body</code> handles
+the "hey quill …" prefix</td>
+</tr>
+<tr>
+<td>Always-on listening / wake word</td>
+<td><strong>Does not exist</strong></td>
+</tr>
+<tr>
+<td>Conversation states, sounders, follow-up</td>
+<td><strong>Do not exist</strong></td>
+</tr>
+<tr>
+<td>Plan</td>
+<td>Was one roadmap sentence; this document replaces it</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-learnings-imported-from-adp-scodeadp">3. Learnings imported
+from ADP (<code>s:\code\adp</code>)</h2>
+<p>The ADP Assistant's hands-free mode is the most polished accessible
+conversation loop we have shipped anywhere. Import these wholesale:</p>
+<h3 id="31-the-state-machine">3.1 The state machine</h3>
+<p>Six states, every transition both <strong>announced</strong> (text)
+and <strong>sounded</strong> (earcon), with screen-reader detection
+choosing which channel leads:</p>
+<pre class="text"><code>OFF -&gt; IDLE (&quot;say Hey QUILL&quot;) -&gt; ARMED (listening) -&gt; REVIEW (about to act,
+cancel window) -&gt; BUSY (thinking) -&gt; SPEAKING (answering) -&gt; back to ARMED
+(follow-up window) or IDLE</code></pre>
+<p>QUILL mapping: the state lives in a wx-free
+<code>quill/core/speech/conversation.py</code> controller (mirroring the
+<code>DictationController</code> pattern: explicit states,
+single-recorder invariant, watchdogs); the UI layer owns capture and
+<code>wx.CallAfter</code> marshaling.</p>
+<h3 id="32-the-timing-model-all-user-tunable-wcag-grounded">3.2 The
+timing model (all user-tunable, WCAG-grounded)</h3>
+<ul>
+<li><strong>Silence window</strong> — how long a pause ends an utterance
+(WCAG 2.2.1 adjustable timing). ADP default ~2 s; expose in Dictation
+Settings.</li>
+<li><strong>Review-and-cancel window</strong> — after an utterance is
+captured, a short beat ("Submitting…") in which <code>Escape</code> or a
+cancel phrase aborts before anything runs. This is what makes "saying
+the wrong thing" recoverable.</li>
+<li><strong>Follow-up window</strong> — after an answer/action, stay
+ARMED for ~7 s (0 = off) so a follow-up needs no re-wake. This single
+feature is what makes it feel like conversation instead of
+commands.</li>
+<li><strong>Thinking tick</strong> — a quiet, periodic tone while work
+is in flight, with its own delay control and "Off" (WCAG 2.2.2
+perceivable waiting).</li>
+</ul>
+<h3 id="33-the-sounder-palette-adopt-as-a-quill-earcon-set">3.3 The
+sounder palette (adopt as a QUILL earcon set)</h3>
+<p>ADP synthesizes warm bell tones (sine fundamental + a soft octave
+shimmer at 16 % amplitude, ~15 ms attack, long exponential decay,
+overlapping onsets) — consonant musical intervals, deliberately not
+beeps. The palette, in Hz:</p>
+<table>
+<thead>
+<tr>
+<th>Cue</th>
+<th>Notes</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>on</td>
+<td>523, 659, 784 (C–E–G rising)</td>
+<td>conversation mode on — "hello"</td>
+</tr>
+<tr>
+<td>off</td>
+<td>659, 523, 392 (falling)</td>
+<td>mode off — "goodbye"</td>
+</tr>
+<tr>
+<td>wake</td>
+<td>587, 880 (bright lift)</td>
+<td>wake word heard — "I'm here"</td>
+</tr>
+<tr>
+<td>listen</td>
+<td>523, 659 (soft, quieter)</td>
+<td>mic open — "go ahead"</td>
+</tr>
+<tr>
+<td>review</td>
+<td>659, 784 (gentle rise)</td>
+<td>utterance captured — "got it"</td>
+</tr>
+<tr>
+<td>ready</td>
+<td>659, 988 (sparkle)</td>
+<td>action done / answer ready</td>
+</tr>
+<tr>
+<td>idle</td>
+<td>440 (single, quiet)</td>
+<td>relaxed back to idle</td>
+</tr>
+<tr>
+<td>tick</td>
+<td>330 (short, very quiet)</td>
+<td>still working</td>
+</tr>
+<tr>
+<td>err</td>
+<td>392, 294 (low fall)</td>
+<td>something's off — calm, not alarming</td>
+</tr>
+</tbody>
+</table>
+<p>QUILL implementation: generate these as a <strong>"Conversation"
+group in the sound-events system</strong> (QUILL's default pack already
+uses synthesized bell tones; add the nine events with the same synthesis
+recipe so custom sound packs can override them like any other event).
+Locked Dictation's existing earcons stay distinct.</p>
+<h3 id="34-the-politeness-details-that-make-it-feel-magical">3.4 The
+politeness details that make it feel magical</h3>
+<ul>
+<li><strong>Screen-reader parity</strong>: when an SR is active, prefer
+the earcon and skip the spoken duplicate (ADP:
+<code>if (sr) earcon("ready") else announce(...)</code>); QUILL's
+verbosity engine is the natural home for this decision.</li>
+<li><strong>Pre-warmed cue phrases</strong>: the welcome and follow-up
+prompts are synthesized ahead of need so responses are instant.</li>
+<li><strong>Personalization</strong>: "Hey Jeff! What can I look up?" —
+one optional name field; rotating prompt variants so it never sounds
+canned.</li>
+<li><strong>Barge-in discipline</strong>: while a short cue phrase is
+playing, don't capture (or the assistant hears itself); ADP suppresses
+starts during SPEAKING and retries capture on transient errors with a
+bounded counter.</li>
+<li><strong>Mic-live perceivability</strong>: the current state is
+always visible in the status bar <em>and</em> queryable ("Speak Status"
+answers "Listening" / "Thinking…"), never inferable only from memory of
+a chime.</li>
+</ul>
+<h3 id="35-what-does-not-port">3.5 What does NOT port</h3>
+<p>ADP's always-on listening rides the <strong>browser's</strong>
+continuous <code>SpeechRecognition</code>. Desktop QUILL has no free
+equivalent; Phase 3 needs a real on-device keyword spotter (§6.3).
+Everything else ports.</p>
+<hr />
+<h2 id="4-command-scope-and-the-safety-model">4. Command scope and the
+safety model</h2>
+<p>The commands voice can invoke are exactly the <strong>agent safe-tool
+allowlist</strong> (<code>quill.core.ai.agent.SAFE_TOOL_IDS</code>, 24
+ids today): save/save all/new, undo/redo/select all, bold/italic/case
+transforms, bullet/numbered lists, word count, spell check, read-aloud
+start/pause/stop, heading navigation, outline, find, soft wrap, and the
+command palette — each with hand-written spoken aliases in
+<code>_ALIASES</code>.</p>
+<p>Policy (unchanged from S5, restated as law):</p>
+<ol type="1">
+<li>Voice reaches <strong>only</strong> the allowlist — never arbitrary
+registry commands.</li>
+<li>Additions to the allowlist require: non-destructive, idempotent-or-
+undoable in one step, and a spoken alias set reviewed for
+confusability.</li>
+<li>Destructive or outward-facing actions (close without save, send,
+publish, delete) are <strong>never</strong> voice-invokable in this
+plan's scope; if ever added, they require a spoken confirmation turn
+("Say yes to close without saving").</li>
+<li>Off by default, per-profile flag, <strong>always off in Safe
+Mode</strong>, and no network egress anywhere in the loop (transcription
+is on-device Whisper; Phase 4's Ask Quill routing inherits the AI
+consent posture unchanged).</li>
+</ol>
+<p>Candidate allowlist expansions for Phase 2 (each needs the §4.2
+review): next/previous misspelling, next/previous bookmark, go to
+top/bottom, open recent (spoken chooser), quiet mode toggle, "where am
+I" / "what changed" status queries — the status queries are ideal voice
+targets (read-only, high value hands-free).</p>
+<hr />
+<h2 id="5-grammar">5. Grammar</h2>
+<p>Phase 1–2 (armed listening): bare phrase — "save file", "next
+heading". Phase 3 (wake word): "Hey QUILL, <phrase>" — reusing
+<code>extract_transcript_body</code> semantics ("hey quill" and bare
+"quill" both wake; wake-only utterances arm and wait with the
+<em>listen</em> sounder). Always: cancel phrases abort; an unmatched
+phrase gets one spoken "I heard <transcript> — no matching command" with
+the <em>err</em> sounder, never a silent failure; two consecutive
+no-matches suggest the command palette.</p>
+<hr />
+<h2 id="6-phases">6. Phases</h2>
+<h3 id="phase-1--surface-s5-small-mostly-a-decision">Phase 1 — Surface
+S5 (small; mostly a decision)</h3>
+<p>Un-comment the menu item, unlock <code>core.voice_commands</code>
+(rename its catalog description away from "Windows dictation"), rewrite
+the stale "Hey QUILL Commands" settings label/F1 topic to describe
+push-to-talk reality, retire <code>core/voice_commands.py</code> (keep
+<code>extract_transcript_body</code> in the speech package), and ship
+docs. Exit criteria: press the hotkey, say "word count", hear the
+result; 0 regressions in dictation suites.</p>
+<h3 id="phase-2--the-conversation-loop--sounders-the-adp-import">Phase 2
+— The conversation loop + sounders (the ADP import)</h3>
+<p><code>conversation.py</code> state controller (wx-free, unit-tested
+against a scripted fake recorder/clock); the nine Conversation sound
+events; silence / review-cancel / follow-up / thinking-tick settings in
+Dictation Settings; status-bar state + Speak Status integration;
+verbosity-engine SR-parity routing; pre-warmed cue phrases; optional
+name. Exit criteria: a full arm -&gt; speak -&gt; review -&gt; run -&gt;
+follow-up -&gt; second command exchange with no keyboard after the
+arming keystroke, verified with NVDA and JAWS.</p>
+<h3 id="phase-3--the-wake-word-hey-quill-proper">Phase 3 — The wake word
+("Hey QUILL" proper)</h3>
+<p>On-device keyword spotting, CPU-only, as a <strong>verified
+downloadable component</strong> (assets-v1 pattern, SHA-256 pinned,
+Safe-Mode blocked): evaluate <strong>Vosk keyword mode</strong> (already
+an optional QUILL engine — likely winner) vs
+<strong>openWakeWord</strong> (ONNX; would need a trained "hey quill"
+model). Requirements: mic-live is continuously perceivable (status-bar
+indicator + optional periodic soft idle tone + Speak Status), one
+keystroke and one spoken phrase ("stop listening") both kill it
+instantly, off across restarts unless the user opts into persistence,
+and a false-accept rate measured before ship (spot-check list of
+confusable phrases). Exit criteria: "Hey QUILL, save file" from across
+the room, and a week of dogfooding without a false wake during normal
+dictation or read-aloud.</p>
+<h3 id="phase-4--conversation-route-to-ask-quill">Phase 4 — Conversation
+(route to Ask Quill)</h3>
+<p>When an utterance matches no command and ends with a question shape
+(or the user says "ask …"), route the transcript to Ask Quill; speak the
+answer via the read-aloud stack; follow-up window keeps the thread.
+ADP's <code>brain.py</code> model (LLM over a bounded toolset) maps to
+Ask Quill's existing document context and reviewable-edit contract —
+voice never gains write powers the keyboard flow doesn't have; proposed
+edits still land as the accept/reject preview, announced. AI consent
+posture unchanged: if no AI is configured, the router says so and stays
+a command listener.</p>
+<hr />
+<h2 id="7-testing-and-gates">7. Testing and gates</h2>
+<p>Wx-free controller: scripted state-machine tests (every transition,
+every timer, cancel/barge-in paths) with injected clock — no real audio
+in unit tests. Matcher: confusability suite (each alias must not
+fuzzy-match another command's alias at ≥ threshold). UI: source-contract
++ fake-host behavior tests per house pattern. Gates: no new egress
+entries (Phases 1–3 are fully local); dialog contract for the settings
+surface; module budgets; the allowlist⊆SAFE_TOOL_IDS assertion stays.
+Manual matrix: NVDA + JAWS + Narrator, with and without earcons, SR
+on/off parity.</p>
+<h2 id="8-open-questions">8. Open questions</h2>
+<ol type="1">
+<li>Wake-word engine choice (Vosk keyword vs openWakeWord) — needs a
+spike with false-accept measurements; decides Phase 3's component
+payload.</li>
+<li>Should the follow-up window apply after <em>commands</em> (ADP
+applies it after answers)? Proposed: yes, but shorter default (3 s vs 7
+s).</li>
+<li>Whether Phase 4 speaks answers with the read-aloud voice or the
+announcement voice — proposed: read-aloud voice, it's the "content"
+channel.</li>
+<li>Microphone arbitration with Locked Dictation: proposal — arming
+either surface suspends the other, states shown in both status
+surfaces.</li>
+</ol>
+</body>
+</html>
