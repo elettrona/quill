@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>34: Braille Production - transcript - The QUILL Cast</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<main>
+<h1>34: Braille Production - transcript</h1>
+<p><a href="../index.html">Back to all episodes</a></p>
+<p><strong>Liam:</strong> The QUILL Cast, episode thirty-four. I&#x27;m Liam. Today: braille, not as a checkbox, but as a production workflow, from file to embossed page.</p>
+<p><strong>Jessica:</strong> I&#x27;m Jessica. Context for listeners who live mostly in speech: braille formats are unforgiving in a way audio never is. A BRF file is a physical grid, so many cells per line, so many lines per page, hard limits set by paper and machine. One line too long, and the embosser wraps it, and your careful formatting becomes soup.</p>
+<p><strong>Liam:</strong> Which is why looks fine on screen is the most dangerous phrase in braille production, and why QUILL&#x27;s braille mode replaces it with three better words: measured, verified, repaired.</p>
+<p><strong>Jessica:</strong> The formats: QUILL works with BRF and BRL, the classic embosser-ready files, and PEF, the portable embosser format, with UEB workflows supported. Braille mode understands you&#x27;re working in cells and lines, not characters and paragraphs, and your page geometry, cells per line, lines per page, is a setting the whole toolchain honors.</p>
+<p><strong>Liam:</strong> The star: the Braille Repair submenu, NLS-style proofreading in the editor. Read Layout Metrics is the pre-flight: one command announces your longest line and longest page measured against your limits, with explicit width and depth warnings. Twenty-nine cell limit, longest line thirty-one? You know in two seconds, before any paper.</p>
+<p><strong>Jessica:</strong> Then the repair loop, and it&#x27;s genuinely satisfying: Go to Longest Line jumps to the worst offender. Fix it. Metrics again. Jump to the new longest. Like sanding down high spots until the surface reads flat. Go to Longest Page does the same for depth, and Remove Trailing Spaces, line or whole file, clears the invisible padding that pushes lines past limits. Trailing spaces are braille&#x27;s silent killer: they don&#x27;t read, but they count.</p>
+<hr>
+<p><strong>Liam:</strong> A story worth telling because of what it says about the project. Some braille displays, on certain rich text controls, show every line starting in cell two instead of cell one, off by one, everywhere, longtime Word users know this ghost. Users reported it. QUILL shipped a preference: editor control type for braille, switch to a plain Notepad-style control and the offset disappears.</p>
+<p><strong>Jessica:</strong> And here&#x27;s the part we respect: the release notes call it what it is, a workaround, while a permanent fix is pursued upstream with Microsoft. No pretending a bandage is a cure. That honesty pattern, you&#x27;ve heard it all course, extraction quality, OCR confidence, model limits, it holds even here.</p>
+<p><strong>Liam:</strong> A production pass, end to end, for something real, say a meeting agenda for embossing. Author it normally, all your part-two tools apply. Bring it to BRF. Set geometry for the target embosser. Read Layout Metrics. Run the repair loop until clean. Remove Trailing Spaces, whole file. Emboss one proof. The machine checks catch everything measurable, so your human proofread spends itself on language, where humans are irreplaceable.</p>
+<p><strong>Jessica:</strong> And braille mode inherits the ecosystem, the running theme of this whole final part: compare two BRF revisions with the compare tools and hear what changed. The Spoken Echo keeps the metrics announcements. Verbosity profiles apply. And remember episode twenty-four: the same source document can leave as a DAISY talking book and a BRF, digital ears and physical fingertips, one master.</p>
+<p><strong>Liam:</strong> Homework. One: open or export any BRF, set your limits, and run Read Layout Metrics, if you&#x27;ve never heard your document measured, it&#x27;s a small revelation. Two: run one full repair loop. Three: if a braille display is on your desk and lines start in cell two, go change that control setting right now and enjoy the click of an old ghost leaving.</p>
+<p><strong>Jessica:</strong> Next episode, the second-to-last: opening the hood, Quillins, QUILL&#x27;s extension system, and the developer console for building your own.</p>
+<p><strong>Liam:</strong> I&#x27;m Liam.</p>
+<p><strong>Jessica:</strong> I&#x27;m Jessica. Mind your cells.</p>
+</main>
+</body>
+</html>
