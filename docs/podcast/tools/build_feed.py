@@ -35,6 +35,56 @@ SITE_DIR = REPO_ROOT / "docs" / "site" / "podcast"
 
 _SPEAKER = re.compile(r"^\[(LIAM|JESSICA|PAUSE)\]$")
 
+#: The seven-part curriculum, by inclusive episode-number range.
+PARTS: tuple[tuple[str, int, int], ...] = (
+    ("Part 1 - First Steps", 1, 6),
+    ("Part 2 - The Everyday Editor", 7, 13),
+    ("Part 3 - Documents and Formats", 14, 18),
+    ("Part 4 - Files and Automation", 19, 20),
+    ("Part 5 - Speech", 21, 24),
+    ("Part 6 - AI", 25, 28),
+    ("Part 7 - Organization, Production, and Trust", 29, 36),
+)
+
+
+def _episode_number(slug: str) -> int:
+    match = re.match(r"ep(\d+)", slug)
+    return int(match.group(1)) if match else 0
+
+
+def _page_shell(title: str, body: str, *, depth: int = 0) -> str:
+    """A site-styled page: QUILL stylesheet, landmark structure, home links."""
+    prefix = "../" * depth
+    return (
+        '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+        f"<title>{html.escape(title)}</title>\n"
+        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+        '<link rel="stylesheet" href="/assets/style.css">\n'
+        '<link rel="alternate" type="application/rss+xml" title="The QUILL Cast" '
+        f'href="{prefix}feed.xml">\n'
+        "</head>\n<body>\n"
+        '<header class="site"><div class="wrap"><nav class="site" aria-label="Primary">'
+        '<ul><li><a href="/index.html">QUILL home</a></li>'
+        f'<li><a href="{prefix}index.html">All episodes</a></li>'
+        '<li><a href="/tutorials/index.html">Tutorials</a></li>'
+        '<li><a href="/docs/userguide.html">User guide</a></li></ul>'
+        "</nav></div></header>\n"
+        '<main><div class="wrap">\n' + body + "\n</div></main>\n</body>\n</html>\n"
+    )
+
+
+def _audio_player(slug: str, title: str, audio_url: str) -> str:
+    """A native, keyboard-accessible player. preload="none" keeps the episode
+    list light — nothing downloads until the listener presses play."""
+    return (
+        f'<audio controls preload="none" aria-label="Play {html.escape(title)}" '
+        f'style="width:100%;max-width:36em">'
+        f'<source src="{html.escape(audio_url)}" type="audio/mpeg">'
+        f"Your browser does not support the audio element; "
+        f'<a href="{html.escape(audio_url)}">download the MP3</a> instead.'
+        "</audio>"
+    )
+
 
 def _rfc2822(iso: str) -> str:
     moment = datetime.fromisoformat(iso.replace("Z", "+00:00"))
@@ -48,7 +98,7 @@ def _duration_hms(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 
-def _transcript_html(slug: str, title: str, site_title: str) -> str:
+def _transcript_html(slug: str, title: str, site_title: str, audio_url: str) -> str:
     lines = (SCRIPTS_DIR / f"{slug}.txt").read_text(encoding="utf-8").splitlines()
     body: list[str] = []
     current: str | None = None
@@ -80,16 +130,14 @@ def _transcript_html(slug: str, title: str, site_title: str) -> str:
         else:
             current = marker
     flush()
-    return (
-        '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
-        f"<title>{html.escape(title)} - transcript - {html.escape(site_title)}</title>\n"
-        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        "</head>\n<body>\n<main>\n"
+    content = (
         f"<h1>{html.escape(title)} - transcript</h1>\n"
-        '<p><a href="../index.html">Back to all episodes</a></p>\n'
+        f"<p>{_audio_player(slug, title, audio_url)}</p>\n"
+        f'<p><a href="{html.escape(audio_url)}">Download the MP3</a></p>\n'
         + "\n".join(body)
-        + "\n</main>\n</body>\n</html>\n"
+        + '\n<p><a href="../index.html">Back to all episodes</a></p>'
     )
+    return _page_shell(f"{title} - transcript - {site_title}", content, depth=1)
 
 
 def main() -> int:
@@ -105,7 +153,7 @@ def main() -> int:
     (SITE_DIR / "transcripts").mkdir(exist_ok=True)
 
     items: list[str] = []
-    index_rows: list[str] = []
+    index_rows: list[tuple[int, str]] = []
     now = email.utils.format_datetime(datetime.now(UTC))
 
     for episode in episodes:
@@ -132,17 +180,19 @@ def main() -> int:
             f"      <itunes:explicit>false</itunes:explicit>\n"
             "    </item>"
         )
-        minutes = f"{duration / 60:.0f} minutes" if duration else "duration pending"
-        index_rows.append(
+        minutes = f"{duration / 60:.0f} min" if duration else "duration pending"
+        index_rows.append((
+            _episode_number(slug),
             "<li>"
-            f"<h2>{html.escape(title)}</h2>"
+            f"<h3>{html.escape(title)}</h3>"
             f"<p>{html.escape(description)}</p>"
-            f'<p><a href="{html.escape(audio_url)}">Listen (MP3, {minutes})</a> | '
+            f"<p>{_audio_player(slug, title, audio_url)}</p>"
+            f'<p><a href="{html.escape(audio_url)}">Download MP3 ({minutes})</a> | '
             f'<a href="transcripts/{slug}.html">Read the transcript</a></p>'
-            "</li>"
-        )
+            "</li>",
+        ))
         (SITE_DIR / "transcripts" / f"{slug}.html").write_text(
-            _transcript_html(slug, title, show["title"]), encoding="utf-8"
+            _transcript_html(slug, title, show["title"], audio_url), encoding="utf-8"
         )
 
     feed = (
@@ -169,20 +219,40 @@ def main() -> int:
     )
     (SITE_DIR / "feed.xml").write_text(feed, encoding="utf-8")
 
-    index = (
-        '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
-        f"<title>{html.escape(show['title'])}</title>\n"
-        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        f'<link rel="alternate" type="application/rss+xml" '
-        f'title="{html.escape(show["title"])}" href="feed.xml">\n'
-        "</head>\n<body>\n<main>\n"
+    total_minutes = round(sum(durations.values()) / 60) if durations else 0
+    sections: list[str] = []
+    for part_title, first, last in PARTS:
+        rows = [row for number, row in index_rows if first <= number <= last]
+        if not rows:
+            continue
+        sections.append(
+            f"<section>\n<h2>{html.escape(part_title)}</h2>\n<ul>\n"
+            + "\n".join(rows)
+            + "\n</ul>\n</section>"
+        )
+    # Any episode outside the known ranges still gets listed, never lost.
+    orphans = [row for number, row in index_rows if not any(f <= number <= l for _t, f, l in PARTS)]
+    if orphans:
+        sections.append(
+            "<section>\n<h2>More episodes</h2>\n<ul>\n" + "\n".join(orphans) + "\n</ul>\n</section>"
+        )
+
+    body = (
         f"<h1>{html.escape(show['title'])}</h1>\n"
+        f"<p>{html.escape(show['subtitle'])}.</p>\n"
         f"<p>{html.escape(show['description'])}</p>\n"
-        '<p><a href="feed.xml">Subscribe with the RSS feed</a> in any podcast app.</p>\n'
-        "<ul>\n" + "\n".join(index_rows) + "\n</ul>\n"
-        "</main>\n</body>\n</html>\n"
+        '<section aria-label="Subscribe">\n'
+        f"<h2>Subscribe</h2>\n"
+        f'<p><a href="feed.xml">Subscribe with the RSS feed</a> in any podcast '
+        f"app, or copy the feed address: <code>{html.escape(show['site_url'] + 'feed.xml')}</code></p>\n"
+        f"<p>{len(index_rows)} episodes, about {total_minutes} minutes in total. "
+        "Every episode has a built-in player below, a download link, and a full "
+        "accessible transcript.</p>\n"
+        "</section>\n" + "\n".join(sections)
     )
-    (SITE_DIR / "index.html").write_text(index, encoding="utf-8")
+    (SITE_DIR / "index.html").write_text(
+        _page_shell(show["title"], body, depth=0), encoding="utf-8"
+    )
 
     print(f"Wrote {SITE_DIR / 'feed.xml'}")
     print(f"Wrote {SITE_DIR / 'index.html'} and {len(episodes)} transcript pages")
