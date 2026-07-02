@@ -1,9 +1,24 @@
 # The QUILL Cast — podcast pipeline
 
-A ten-episode, two-host audio course covering every major QUILL concept. The
-hosts, Liam and Jessica, are QUILL's own on-device **Kokoro** neural voices
-(`am_liam` and `af_jessica`) — the podcast is produced with the same speech
-engine the product ships.
+A **36-episode**, two-host audio course that leads a brand-new user from
+installation to every feature family QUILL has, in seven parts:
+
+1. **First steps** (1–6): welcome, install, files, the window, the palette,
+   what QUILL says.
+2. **The everyday editor** (7–13): navigation, the QUILL key, the keymap,
+   editing power tools, search, spelling, the safety stack.
+3. **Documents and formats** (14–18): Markdown, the text-supply toolkit,
+   hidden-codes formatting, Word/EPUB/PDF, document rescue and OCR.
+4. **Files and automation** (19–20): remote/GitHub/SSH, watch folders.
+5. **Speech** (21–24): voices, dictation, transcription and the Listening
+   Companion, audio export/audiobooks/DAISY.
+6. **AI** (25–28): setup and free paths, Ask Quill, the Library, agents.
+7. **Organization, production, trust** (29–36): Vault, Story Studio, GLOW,
+   braille, Quillins and the console, the finale.
+
+The hosts, Liam and Jessica, are QUILL's own on-device **Kokoro** neural
+voices (`am_liam` and `af_jessica`) — the podcast is produced with the same
+speech engine the product ships. Total series length is roughly 2¼ hours.
 
 ## Layout
 

@@ -1,0 +1,43 @@
+[JESSICA]
+The QUILL Cast, episode twenty-four, closing the speech arc. I'm Jessica. Today, the outbound direction: your documents becoming audio files, audiobooks, and DAISY talking books.
+
+[LIAM]
+I'm Liam. The basic move: Generate Speech Audio, from the palette or the speech tools. Pick a voice from episode twenty-one's catalog, pick a format, and QUILL renders your document to an audio file in the background while you keep working.
+
+[JESSICA]
+Formats: WAV always works, no dependencies. With the ffmpeg helper installed, one trip to Download Optional Components, the menu opens up: MP3, M4A, M4B, OGG, Opus, FLAC. M4B matters, that's the audiobook container with chapter support, remember it for two minutes from now.
+
+[LIAM]
+Who uses one-shot audio export? More people than you'd guess. Send a spoken version of the minutes to members who prefer listening. Record your own study notes to play at the gym. Produce an audio version of the newsletter. Any document plus any voice equals a file you can share with anyone, no QUILL required on their end.
+
+[JESSICA]
+Now scale up: batch export and audiobook building. For a long document, QUILL's batch speech tools split on your structure, those Markdown headings from episode fourteen, yet again, and render chaptered audio. A whole folder of documents can queue as a batch. Output as M4B and you have a genuine audiobook, chapters navigable in any audiobook player.
+
+[LIAM]
+The two-pass workflow the pros use: draft renders with a fast local voice to check pacing and catch text problems, the final render with your best voice, maybe the neural tier, maybe the premium cloud voice if you've connected one. Same document, same pipeline, just swap the voice for the money pass.
+
+[PAUSE]
+
+[JESSICA]
+And then the format with history: DAISY. File, Export, DAISY Talking Book produces a DAISY two point oh two text-only talking book, the standard that accessible libraries and dedicated players have used for decades. Your heading structure becomes the DAISY navigation levels, readers on a Victor Reader or similar device skip by section exactly as you structured it.
+
+[LIAM]
+Why DAISY matters even in the podcast era: institutions. Libraries for the blind, schools, accessible-materials programs, they run on DAISY. QUILL speaking it natively means an individual writer, or a tiny nonprofit, can produce institution-grade accessible books from a Markdown file. That used to require specialist software and training.
+
+[JESSICA]
+Pause on the full circle we've now drawn in part four, because it's kind of beautiful. Episode twenty-two: your voice becomes text. Episode twenty-three: anyone's recording becomes documents. Today: documents become anyone's listening. Speech in, speech out, with a text editor in the middle where all the thinking happens. And every step of it can run offline on your own machine.
+
+[LIAM]
+Production tips before homework. Clean text renders best, run the episode-twelve spell pass first, synthesis pronounces your typos faithfully. Structure first, the chapter quality of your audiobook is exactly the heading quality of your document. And test one chapter before rendering three hundred pages, voices sound different at length than in a sample sentence.
+
+[JESSICA]
+Homework. One: export any document as an audio file and play it somewhere away from your desk. Two: if you have ffmpeg, render a multi-heading document to M4B and skip through its chapters in a player. Three: export the same document as DAISY, just to hold the format in your hand and know you can.
+
+[LIAM]
+That's part four complete. Next episode opens part five: artificial intelligence, starting with the setup wizard, the free-for-everyone paths, and the privacy architecture that makes AI safe to even have in this product.
+
+[JESSICA]
+I'm Jessica.
+
+[LIAM]
+I'm Liam. Ship the sound.
