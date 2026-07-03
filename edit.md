@@ -262,9 +262,20 @@ assertions, run against each surface with real wx) before we lean on it.
   the obstacle (Scintilla is permissively licensed; Notepad++ is GPL-3.0,
   so we learn from it, we do not copy from it) -- the effort and JAWS's
   window-class heuristics are.
+- Braille findings (2026-07-03, Jeff, JAWS + braille display, on the
+  reverted no-caret-mirror build): two clear wins --
+  - Braille starts in CELL 1. The long-standing RichEdit cell-two offset
+    (#616, "the Word quirk") does not occur on this surface.
+  - Selection HIGHLIGHTING WORKS on the braille display. This is exactly
+    what #813 reports broken on rich2 (no dots 7-8 on selection), so a
+    non-RichEdit surface showing correct selection dots is strong evidence
+    that #813 lives in RICHEDIT50W's selection reporting, not in JAWS or
+    the display.
+  Net: braille output on stc is currently the best of any surface; speech
+  caret tracking remains the weak leg (see the experiment note above).
 - Risk: Medium. The API contract is in good shape (probed, shimmed, gated,
   with the wx.TextCtrl fallback), so the risk concentrates entirely in
-  screen-reader and braille behavior.
+  speech caret tracking; braille results are positive.
 - Changes still open if it graduates: verify styling hooks if we ever want
   visual spell-check squiggles (Scintilla indicators are good at this), and
   confirm IME/dead-key behavior.
