@@ -69,6 +69,7 @@ class AskQuillChatDialog:
         signal_sound=None,
         open_speech_player=None,
         rebuild_conversation=None,
+        initial_prompt="",
     ) -> None:
         import wx
 
@@ -148,6 +149,10 @@ class AskQuillChatDialog:
 
         self._full_messages: list[str] = []
         self._transcript: list[tuple[str, str]] = []
+        # Hey QUILL Phase 4: a voice question routed here pre-fills the composer
+        # so the user can confirm and send; voice never fires an AI request on
+        # its own (a person stays in the loop for every network call).
+        self._initial_prompt = str(initial_prompt or "").strip()
         self._webview = None
         self.messages = None
         self.input = None
@@ -598,6 +603,12 @@ class AskQuillChatDialog:
             self._announce("Quill is still thinking")
 
     def _focus_composer(self) -> None:
+        if self._initial_prompt and self.input is not None:
+            # Pre-fill once from a routed voice question, then clear so it does
+            # not reappear on later focus passes. The user presses Enter to send.
+            self.input.SetValue(self._initial_prompt)
+            self.input.SetInsertionPointEnd()
+            self._initial_prompt = ""
         if self._webview is not None:
             self._webview.focus()
         elif self.input is not None:

@@ -2496,6 +2496,14 @@ class MainFrame(
             feature_id="core.voice_commands",
         )
         self.commands.register(
+            "tools.voice_wakeword",
+            "Listen for Hey QUILL (Wake Word)",
+            self.voice_wakeword_toggle,
+            self._binding_for("tools.voice_wakeword"),
+            # Hey QUILL Phase 3: always-listening on-device for the wake phrase.
+            feature_id="core.voice_commands",
+        )
+        self.commands.register(
             "whisperer.model_manager",
             "BITS Whisperer Speech Model Manager...",
             self.open_bw_model_manager,
@@ -22453,16 +22461,19 @@ class MainFrame(
     def open_ask_quill_chat(self) -> None:
         self._open_ask_quill(voice_mode=False)
 
-    def open_ask_quill_conversation(self) -> None:
+    def open_ask_quill_conversation(self, initial_prompt: str = "") -> None:
         """Open Ask Quill in voice conversation mode (Alt+Shift+Q).
 
         Same chat, but spoken answers play with transport controls when text-to-
         speech is available, and Ctrl+F9 captures a spoken question. Falls back to
         text + screen-reader announcements when voice I/O is unavailable.
-        """
-        self._open_ask_quill(voice_mode=True)
 
-    def _open_ask_quill(self, *, voice_mode: bool) -> None:
+        ``initial_prompt`` (Hey QUILL Phase 4) pre-fills the composer from a
+        routed voice question so the user can confirm and send it.
+        """
+        self._open_ask_quill(voice_mode=True, initial_prompt=initial_prompt)
+
+    def _open_ask_quill(self, *, voice_mode: bool, initial_prompt: str = "") -> None:
         from quill.core.ai.model_manager import load_ai_enabled
         from quill.core.ai.onboarding import active_connection_consented, ai_connection_ready
 
@@ -22518,6 +22529,7 @@ class MainFrame(
             signal_sound=self._signal_ai_sound,
             open_speech_player=open_player,
             rebuild_conversation=self._build_companion_conversation,
+            initial_prompt=initial_prompt,
         )
         # Open modeless so the user can keep working with the chat alongside the document.
         # The frame keeps its normal menu bar (a wx.Dialog can't host one, and swapping the

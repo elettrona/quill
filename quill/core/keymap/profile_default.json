@@ -45,6 +45,7 @@
     "tools.dictation_toggle": "Ctrl+Shift+Grave, D",
     "tools.voice_command": "",
     "tools.voice_conversation": "",
+    "tools.voice_wakeword": "",
     "tools.describe_image": "Ctrl+Shift+Grave, I",
     "tools.document_intake_report": "Ctrl+Shift+I",
     "help.switch_feature_profile": "Alt+Shift+P",
