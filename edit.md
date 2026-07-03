@@ -243,6 +243,25 @@ assertions, run against each surface with real wx) before we lean on it.
   NVDA supports Scintilla well (it drives Notepad++ daily). JAWS support is
   partial and braille routing is less proven than EDIT/RichEdit. Needs the
   same JAWS/NVDA/braille pass as the other candidates before any promotion.
+- Caret-tracking experiment (2026-07-03, tried and REVERTED): live JAWS
+  testing showed Enter advanced the buffer but JAWS stayed on the old line.
+  The first fix mirrored an invisible Windows system caret (the ScintillaWin
+  technique) -- and made things worse: with a caret present, JAWS switched
+  from its screen-content fallback into live-edit-control mode, queried the
+  window for its text, got nothing back, and went silent. Reading the real
+  ScintillaWin.cxx (the Scintilla Notepad++ ships) explains why: the caret
+  mirror is only one third of its accessibility story. It also (a) answers
+  WM_GETTEXT, WM_GETTEXTLENGTH, EM_GETSEL, EM_EXGETSEL, and EM_LINEFROMCHAR
+  at its window proc, so screen readers can pull text and selection through
+  the classic channels, and (b) registers the recognizable "Scintilla"
+  window class that JAWS/NVDA key dedicated support off. wx's port provides
+  none of the three: its own window class, no system caret, and a window
+  proc that answers no text queries. Caret alone = silence. To graduate,
+  this surface needs a ctypes window-proc bridge answering those messages
+  PLUS the caret mirror, or a UIA TextPattern provider. Licensing is not
+  the obstacle (Scintilla is permissively licensed; Notepad++ is GPL-3.0,
+  so we learn from it, we do not copy from it) -- the effort and JAWS's
+  window-class heuristics are.
 - Risk: Medium. The API contract is in good shape (probed, shimmed, gated,
   with the wx.TextCtrl fallback), so the risk concentrates entirely in
   screen-reader and braille behavior.
