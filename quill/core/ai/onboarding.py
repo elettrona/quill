@@ -98,6 +98,20 @@ ONBOARDING_PATHS: tuple[OnboardingPath, ...] = (
         ),
     ),
     OnboardingPath(
+        id="agent",
+        title="Use an AI agent you already pay for",
+        summary="Drive QUILL's agent with your GitHub Copilot, ChatGPT, or Claude subscription.",
+        detail=(
+            "Already pay for GitHub Copilot, ChatGPT, or Claude? Use it as QUILL's agent — "
+            "no second API key, no per-word charge on your card, and it runs on your plan's "
+            "models. QUILL adds the connector on demand and signs you in; then every agent "
+            "and Ask Quill runs on your chosen engine. And because QUILL owns every edit, the "
+            "agent proposes and you approve — each change is a reviewable preview and a single "
+            "undo, exactly like the rest of QUILL. You'll finish set-up on the AI Hub's "
+            "Engines tab, which opens right after this."
+        ),
+    ),
+    OnboardingPath(
         id="skip",
         title="Not right now",
         summary="Keep AI off for now. You can set it up any time from the AI menu.",
@@ -209,10 +223,20 @@ def celebration_lines(path_id: str, *, provider_name: str = "") -> list[str]:
     head = {
         "on_device": "Your private, on-device AI (Ollama) is connected.",
         "cloud": f"Connected to {provider_name or 'your AI provider'}. You're all set.",
+        "agent": "Let's connect the AI agent you already pay for.",
         "skip": "No problem — AI is off for now.",
     }.get(path_id, "You're all set.")
     if path_id == "skip":
         return [head, "Turn it on any time from AI > Set Up AI."]
+    if path_id == "agent":
+        return [
+            head,
+            "Finish on the AI Hub's Engines tab, which opens next:",
+            "- Pick GitHub Copilot, OpenAI Agents, or Claude Agent.",
+            "- Select Set Up to install the connector and sign in with your account.",
+            "It runs on the subscription you already have, and every change the agent "
+            "proposes is a reviewable preview you approve — one keystroke to undo.",
+        ]
     return [
         head,
         "Here's what you can do now:",

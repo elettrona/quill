@@ -757,6 +757,42 @@ available here too.
 For release-safe beta validation, Word and CSV open in the normal plain-text
 editor surface; AI connection and chat flows remain available.
 
+### AI engines — bring the agent you already pay for
+
+QUILL's agent (the reviewable, multi-step help behind Ask Quill and the AI
+Library agents) can run on more than one **engine**. The built-in **Native**
+engine always works, using whichever provider you connected above. But if you
+**already pay for GitHub Copilot, ChatGPT (OpenAI), or Claude**, you can use that
+subscription as QUILL's agent instead — no second API key, no per-word charge on
+your card, and it runs on your plan's models.
+
+You choose the engine on the **AI Hub → Engines** tab:
+
+1. Pick **GitHub Copilot**, **OpenAI Agents**, or **Claude Agent** (or leave it
+   on Native).
+2. Select **Set Up / Install...**. QUILL installs the small connector on demand
+   (the first time only) and, for Copilot, signs you in to GitHub — using a
+   short spoken device code in your browser when available, or the Copilot/GitHub
+   CLI sign-in otherwise.
+3. Select **Set as Active Engine**. From then on, Ask Quill and the agents run on
+   your chosen engine, and a status line names it.
+
+The **AI Setup Wizard** offers this too: choose **"Use an AI agent you already
+pay for"** and it takes you straight to the Engines tab when it finishes.
+
+**The safety is identical to everything else in QUILL.** No matter which engine
+you pick, QUILL owns every edit: the engine *proposes*, and each change lands as
+an accessible accept/reject preview and a single undo step. The vendor agents
+run in a text-only mode — their own file-editing and shell tools are switched
+off — so they can think, but only QUILL can touch your document, and only with
+your approval. Everything is optional, off until you turn it on, and disabled in
+Safe Mode.
+
+*(Tip for administrators packaging QUILL: the most seamless Copilot sign-in — a
+spoken in-app device code — activates when the build provides a GitHub OAuth App
+client id via `QUILL_GITHUB_CLIENT_ID`. Without it, Copilot still works through
+the Copilot/GitHub CLI sign-in.)*
+
 ### AI Language Tools
 
 QUILL's AI language tools extend the standard AI Assistant with document-aware

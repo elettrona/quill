@@ -34,8 +34,17 @@ _STEP_DONE = 4
 class AISetupWizard:
     """The AI Setup Wizard dialog."""
 
-    def __init__(self, parent: object, *, announce_cb: Callable[[str], None] | None = None) -> None:
+    def __init__(
+        self,
+        parent: object,
+        *,
+        announce_cb: Callable[[str], None] | None = None,
+        open_engines_cb: Callable[[], None] | None = None,
+    ) -> None:
         self._announce = announce_cb or (lambda _m: None)
+        # Called when the user chose the "use an agent you already pay for" path,
+        # to open the AI Hub's Engines tab where the pack install + sign-in live.
+        self._open_engines_cb = open_engines_cb
         self._step = _STEP_WELCOME
         self._path = "cloud"
         self._provider = ob.CLOUD_PROVIDER_OPTIONS[0].id
@@ -629,7 +638,10 @@ class AISetupWizard:
             self._render()
             return
         if self._step == _STEP_PATH:
-            if self._path == "skip":
+            if self._path in ("skip", "agent"):
+                # The agent path finishes here: setting up an engine you already
+                # pay for happens on the AI Hub Engines tab, which the done step
+                # opens for you (no provider/key/model config in the wizard).
                 self._step = _STEP_DONE
             else:
                 self._step = _STEP_CONFIG
@@ -710,8 +722,16 @@ class AISetupWizard:
                 ob.EXPERIENCE_BASIC if self._basic_cb.GetValue() else ob.EXPERIENCE_ADVANCED
             )
         ob.mark_onboarding_complete()
+        open_engines = self._path == "agent" and self._open_engines_cb is not None
         if self.dialog.IsModal():
             self.dialog.EndModal(wx.ID_OK)
+        # Hand off to the AI Hub Engines tab after the wizard closes, so the user
+        # lands exactly where the pack install + sign-in happen.
+        if open_engines:
+            try:
+                self._open_engines_cb()
+            except Exception:  # noqa: BLE001 - a hand-off failure must not crash setup
+                self._announce("Open AI > AI Hub > Engines to connect your agent.")
 
 
 def _probe_provider(provider: str, api_key: str) -> tuple[bool, str]:
@@ -772,7 +792,14 @@ def maybe_offer_ai_setup(controller: Any, *, reason: str = "") -> bool:
 
 def run_ai_setup_wizard(controller: Any) -> None:
     """Open the AI Setup Wizard for the host MainFrame (keeps main_frame thin)."""
-    wizard = AISetupWizard(controller.frame, announce_cb=getattr(controller, "_announce", None))
+    _open_engines = getattr(controller, "open_ai_hub", None)
+    wizard = AISetupWizard(
+        controller.frame,
+        announce_cb=getattr(controller, "_announce", None),
+        open_engines_cb=(lambda: _open_engines(initial_page="Engines"))
+        if callable(_open_engines)
+        else None,
+    )
     controller._show_modal_dialog(wizard.dialog, "Set Up AI")
     wizard.close()
     # Rebuild the menu so Basic/Advanced visibility and the new AI state take effect.

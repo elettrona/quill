@@ -115,6 +115,23 @@ audio in a natural cloud voice, alongside QUILL's on-device speech.
 **Why it matters:** every proposed change is an accessible accept/reject preview and
 a single undo step - help you can trust, not magic you have to babysit.
 
+### Bring the AI agent you already pay for
+
+Already pay for **GitHub Copilot, ChatGPT, or Claude**? Use it as QUILL's agent -
+no second API key, no per-word charge on your card, running on your plan's models.
+On the **AI Hub > Engines** tab (or by choosing *"Use an AI agent you already pay
+for"* in the Setup Wizard), pick GitHub Copilot, OpenAI Agents, or Claude Agent;
+QUILL installs the small connector on demand, signs you in - a short spoken code
+in your browser for Copilot, or the CLI sign-in - and from then on Ask Quill and
+the agents run on your engine. Prefer QUILL's built-in agent? The **Native** engine
+is always there, on whatever provider you connected.
+
+**Why it matters:** the smartest agent you have access to is often the one you are
+already paying for. And the safety never changes: whichever engine runs, QUILL owns
+every edit - the agent proposes, you approve a preview, one keystroke undoes it, and
+the vendor agents run text-only so they can think but never touch your document on
+their own. Optional, off by default, off in Safe Mode.
+
 ---
 
 ## Rich formatting that stays out of your way

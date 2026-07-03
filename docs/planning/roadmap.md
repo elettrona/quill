@@ -9,7 +9,6 @@
 >
 > - [`quill-native-accessible-table-studio-plan.md`](quill-native-accessible-table-studio-plan.md) — Table Studio (not started).
 > - [`quill-hey-quill-voice-interaction-plan.md`](quill-hey-quill-voice-interaction-plan.md) — Hey QUILL voice interaction: **all four phases + refinements shipped 2026-07-03** (push-to-talk, conversation mode with sounders, wake word, Ask Quill routing, VAD/personalization/engine choice). Only a dedicated Vosk keyword-spotter remains as a future optimization.
-> - [`quill-agent-harness-plan.md`](quill-agent-harness-plan.md) — Agent harnesses (Copilot / OpenAI Agents / Claude Agent) as on-demand components: **framework and all three SDK packs are BUILT**; open work is surfacing the value, lighting the Copilot OAuth client id, and real-account validation.
 >
 > The Accessible Vault plan has been **retired**: Phases 0–7 shipped (feature-complete
 > for 0.9.0) and the feature now lives in `QUILL-PRD.md` §5.89d and the user guide; the
@@ -86,6 +85,13 @@ the WATCH-8 watch action #566) remains future — see §5.
 
 - The Quillin Hub (#517); plugin capability + signing + marketplace (#519) — the
   latter gated on the third-party-plugin sandbox (§2).
+- **Agent harnesses — shipped** (PRD §5.84e; user guide "AI engines"; release
+  notes): the Native harness plus on-demand Copilot / OpenAI Agents / Claude
+  Agent packs, surfaced in the AI Setup Wizard and AI Hub Engines tab. One
+  optional deploy nicety remains: register a GitHub OAuth App and provide its
+  client id via `QUILL_GITHUB_CLIENT_ID` at build time to light the in-app
+  spoken device-code Copilot sign-in. Without it Copilot still works via the
+  Copilot/GitHub CLI sign-in, so this is an enhancement, not a blocker.
 - **Deferred to 2.0** (tracker #680): the Windows 11 modern primary-menu
   `IExplorerCommand` pass (SHELL-3, #525).
 
