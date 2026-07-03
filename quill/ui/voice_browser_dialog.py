@@ -223,7 +223,7 @@ class VoiceBrowserDialog:
         settings_box.Add(kok_row, 0, wx.EXPAND | wx.ALL, 4)
 
         # eSpeak voice character variant (appended as accent+variant).
-        from quill.core.read_aloud import ESPEAK_VARIANTS as _ev
+        from quill.core.voice_catalog import ESPEAK_VARIANTS as _ev
 
         self._espeak_variant_codes = [code for code, _ in _ev]
         self._espeak_variant_labels = [label for _, label in _ev]

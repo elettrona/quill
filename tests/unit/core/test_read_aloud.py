@@ -4,8 +4,6 @@ from pathlib import Path
 
 from quill.core import read_aloud as read_aloud_module
 from quill.core.read_aloud import (
-    KOKORO_VOICE_GRADES,
-    KOKORO_VOICES,
     ReadAloudController,
     ReadAloudUnavailableError,
     discover_espeak_executable,
@@ -20,6 +18,11 @@ from quill.core.read_aloud import (
     synthesize_to_file_with_sapi5,
     synthesize_with_espeak,
     synthesize_with_piper,
+)
+from quill.core.voice_catalog import (
+    KOKORO_VOICE_GRADES,
+    KOKORO_VOICES,
+    piper_voice_download_urls,
 )
 
 
@@ -545,6 +548,35 @@ def test_kokoro_lang_for_voice_maps_languages() -> None:
     assert lang_for("") == "en-us"
 
 
+def test_synthesize_with_kokoro_torch_fallback_uses_voice_lang_code(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """The kokoro+torch fallback must derive KPipeline's lang_code from the
+    voice prefix, so a non-English voice never regresses to English "a"."""
+    import sys
+    import types
+
+    import numpy as np
+
+    # Force the ONNX fast-path off so the torch fallback runs.
+    monkeypatch.setattr(read_aloud_module, "kokoro_onnx_ready", lambda *a, **k: False)
+    captured: list[str] = []
+
+    class FakeKPipeline:
+        def __init__(self, lang_code: str) -> None:
+            captured.append(lang_code)
+
+        def __call__(self, text, voice, speed):
+            yield None, None, np.zeros(240, dtype="float32")
+
+    monkeypatch.setitem(sys.modules, "kokoro", types.SimpleNamespace(KPipeline=FakeKPipeline))
+    read_aloud_module.synthesize_with_kokoro("Ciao a tutti", tmp_path / "it.wav", voice="if_sara")
+    read_aloud_module.synthesize_with_kokoro("Hello there", tmp_path / "en.wav", voice="af_heart")
+    read_aloud_module.synthesize_with_kokoro("Fallback", tmp_path / "xx.wav", voice="xx_odd")
+    assert captured == ["i", "a", "a"]
+    assert (tmp_path / "it.wav").exists()
+
+
 def test_kokoro_voice_grade_af_jessica_is_d() -> None:
     assert KOKORO_VOICE_GRADES["af_jessica"] == "D", (
         "af_jessica has official grade D — grade must be stored as metadata, never used to filter"
@@ -651,7 +683,7 @@ def test_piper_catalog_includes_italian_voices(tmp_path: Path) -> None:
 
 
 def test_piper_voice_download_urls_for_any_language() -> None:
-    urls = read_aloud_module.piper_voice_download_urls("it_IT-paola-medium")
+    urls = piper_voice_download_urls("it_IT-paola-medium")
     assert urls is not None
     onnx_url, json_url = urls
     assert onnx_url == (
@@ -660,14 +692,14 @@ def test_piper_voice_download_urls_for_any_language() -> None:
     )
     assert json_url.endswith("/it_IT-paola-medium.onnx.json")
     # English ids keep the exact URL shape the downloader always used.
-    urls_en = read_aloud_module.piper_voice_download_urls("en_US-amy-low")
+    urls_en = piper_voice_download_urls("en_US-amy-low")
     assert urls_en is not None
     assert urls_en[0] == (
         "https://huggingface.co/rhasspy/piper-voices/resolve/main"
         "/en/en_US/amy/low/en_US-amy-low.onnx"
     )
     # Malformed ids return None so the UI can show a clear error.
-    assert read_aloud_module.piper_voice_download_urls("not-a-voice") is None
+    assert piper_voice_download_urls("not-a-voice") is None
 
 
 # ---------------------------------------------------------------------------

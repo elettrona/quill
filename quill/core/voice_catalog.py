@@ -260,9 +260,6 @@ PIPER_VOICES: list[tuple[str, str]] = [
     ("it_IT-riccardo-x_low", "Riccardo (Italian, x_low)"),
 ]
 
-# Back-compat alias from when the catalog was English-only.
-PIPER_ENGLISH_VOICES = PIPER_VOICES
-
 # Accent labels for the Piper catalog, keyed by voice-id language prefix.
 PIPER_ACCENTS_BY_LANG: dict[str, str] = {
     "en_GB": "British English",

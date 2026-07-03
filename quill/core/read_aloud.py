@@ -16,22 +16,19 @@ from quill.core.punctuation_speech import normalize_punctuation_level, verbalize
 from quill.core.sentence_split import SentenceSpan, sentence_spans
 from quill.core.tts_cache import cached_sentence_generator
 
-# The static voice tables live in voice_catalog (GATE-11 extract); re-imported
-# here so every existing ``from quill.core.read_aloud import ...`` keeps working.
-from quill.core.voice_catalog import (  # noqa: F401 - re-exported for callers
+# The static voice tables live in voice_catalog (GATE-11 extract). Only the
+# names this module itself uses are imported; catalog-only consumers import
+# straight from quill.core.voice_catalog.
+from quill.core.voice_catalog import (
     ESPEAK_ACCENTS,
     ESPEAK_ENGLISH_VOICES,
-    ESPEAK_VARIANTS,
     ESPEAK_WORLD_VOICES,
     KOKORO_ACCENTS,
     KOKORO_LANG_BY_LETTER,
-    KOKORO_VOICE_GRADES,
     KOKORO_VOICES,
     PIPER_ACCENTS_BY_LANG,
-    PIPER_ENGLISH_VOICES,
     PIPER_VOICES,
     kokoro_lang_for_voice,
-    piper_voice_download_urls,
 )
 
 # Windows system speech (SAPI 5) is reached through

@@ -18289,7 +18289,7 @@ class MainFrame(
         """Download a Piper ONNX voice model in the background."""
         import urllib.request as _ureq
 
-        from quill.core.read_aloud import piper_voice_download_urls
+        from quill.core.voice_catalog import piper_voice_download_urls
         from quill.ui.ai_transcribe_dialog import AIProgressDialog
 
         wx = self._wx
