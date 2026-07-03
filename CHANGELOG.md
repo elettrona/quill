@@ -124,6 +124,13 @@ First public 0.8.0 beta. Rolls up the 0.7.0 line plus the changes below. This se
 - **Review chapters before building.** Tick **Review chapters (rename/reorder/merge) before building** to open a chapter editor after synthesis; assembling a folder of pre-recorded audio always opens it. Rename, reorder, and merge chapters, then build. (This is the editor from the old standalone Build Audiobook dialog, brought back into the consolidated flow.)
 - **Accessibility: spinner and list labels.** The "Kokoro speed" control is a composite whose inner edit field is what a screen reader focuses; its accessible name now reaches that inner field. The round-robin voice list and translated-languages list got adjacent labels so they are announced by name on Tab.
 
+### Community fixes
+
+Contributed by **Kelly Ford**:
+
+- **New document tabs land focused, not blank.** Opening a document via **Open from URL**, **Import**, or **Open from Remote** could leave the new tab's editor unfocused and visually blank until you manually tabbed out and back — the closing file dialog was restoring focus to the previous tab. The new tab now reliably receives focus, matching the normal Open flow (#805).
+- **The Pandoc download shows a real, cancelable progress dialog.** The first time a conversion needs Pandoc, its on-demand download now opens the same accessible percentage dialog as the other on-demand downloads (ffmpeg, offline speech engines) — with a Cancel button and screen-reader-announced progress — instead of a status-bar line that was easy to miss (#807).
+
 ### Post to Mastodon, straight from the editor
 
 - **Publish to Mastodon without leaving QUILL.** Press **QUILL Key + Shift+P** (or **Tools > Share > Post to Mastodon...**): QUILL takes your selection — or the whole document if nothing is selected — and opens a compose dialog where you edit the text, pick which account to post from, choose visibility (Public / Unlisted / Followers-only / Direct), and see a live character count. Posts appear **"via QUILL"**. This is a lean poster, not a full client (no timelines or media in this first version).

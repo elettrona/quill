@@ -908,6 +908,21 @@ None of this is visible in a menu. All of it is why the menus keep working.
   separate-process isolation, import allowlist, and time/memory caps; if the
   OS refuses a resource cap, QUILL logs it instead of staying silent.
 
+### Community contributions - thank you, Kelly Ford
+
+Two fixes in this beta come from community contributor **Kelly Ford**:
+
+- **New document tabs open focused, not blank** - opening a document with **Open
+  from URL**, **Import**, or **Open from Remote** could leave the new tab
+  unfocused and visually blank until you tabbed away and back (the closing file
+  dialog was restoring focus to the previous tab). The new tab now reliably takes
+  focus, just like the normal Open flow (#805).
+- **The Pandoc download shows a real, cancelable progress dialog** - the first
+  time a conversion needs Pandoc, its on-demand download now uses the same
+  accessible percentage dialog (with a Cancel button and announced progress) as
+  the other on-demand downloads, instead of a status-bar line that was easy to
+  miss (#807).
+
 ---
 
 ## For testers
