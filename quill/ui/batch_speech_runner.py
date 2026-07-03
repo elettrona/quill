@@ -30,7 +30,7 @@ _ENGINE_OPTIONS = [
     ("DECtalk", "dectalk"),
     ("Piper (neural, offline)", "piper"),
     ("Kokoro (neural, offline)", "kokoro"),
-    ("eSpeak-NG (English variants)", "espeak"),
+    ("eSpeak-NG (many languages)", "espeak"),
 ]
 
 
@@ -44,7 +44,7 @@ def _voices_for(engine: str) -> list[tuple[str, str]]:
         elif engine == "piper":
             voices = ra.list_piper_catalog_voices()
         elif engine == "espeak":
-            voices = ra.list_espeak_english_voices()
+            voices = ra.list_espeak_voices()
         elif engine == "dectalk":
             voices = ra.list_dectalk_voices()
         else:  # sapi5

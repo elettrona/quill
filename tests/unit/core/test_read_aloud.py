@@ -323,14 +323,25 @@ def test_list_elevenlabs_voices_swallows_errors(monkeypatch) -> None:
 def test_list_espeak_english_voices_covers_key_variants() -> None:
     voices = list_espeak_english_voices()
     ids = [v.id for v in voices]
-    # 8 bundled lang definition files (lang/gmw/en*)
+    # 8 English lang definition files (lang/gmw/en*)
     assert "en-gb" in ids
     assert "en-us" in ids
     assert "en-gb-scotland" in ids
     assert "en-029" in ids
     assert len(ids) == 8
-    # eSpeak is English-only in Quill — no non-English variants expected
     assert all(id_.startswith("en") for id_ in ids)
+
+
+def test_list_espeak_voices_adds_world_languages() -> None:
+    voices = read_aloud_module.list_espeak_voices()
+    ids = [v.id for v in voices]
+    # English variants stay first and intact...
+    assert ids[:8] == [v.id for v in list_espeak_english_voices()]
+    # ...and the world languages follow (#813 follow-on: Italian read-aloud).
+    for lang in ("it", "es", "fr-fr", "hi", "pt-br"):
+        assert lang in ids, f"missing eSpeak world language {lang}"
+    italian = next(v for v in voices if v.id == "it")
+    assert italian.accent == "Italian"
 
 
 def test_discover_espeak_executable_explicit_path(tmp_path: Path) -> None:
@@ -466,10 +477,28 @@ _CANONICAL_KOKORO_IDS: set[str] = {
     "bm_fable",
     "bm_george",
     "bm_lewis",
+    # Spanish (3)
+    "ef_dora",
+    "em_alex",
+    "em_santa",
+    # French (1)
+    "ff_siwis",
+    # Hindi (4)
+    "hf_alpha",
+    "hf_beta",
+    "hm_omega",
+    "hm_psi",
+    # Italian (2)
+    "if_sara",
+    "im_nicola",
+    # Brazilian Portuguese (3)
+    "pf_dora",
+    "pm_alex",
+    "pm_santa",
 }
 
 
-def test_kokoro_voices_canonical_28() -> None:
+def test_kokoro_voices_canonical_41() -> None:
     ids = {vid for vid, _ in KOKORO_VOICES}
     assert ids == _CANONICAL_KOKORO_IDS, (
         f"missing={_CANONICAL_KOKORO_IDS - ids}, unexpected={ids - _CANONICAL_KOKORO_IDS}"
@@ -487,11 +516,33 @@ def test_kokoro_voices_am_santa_not_zeus() -> None:
     assert "am_zeus" not in ids, "am_zeus is not a canonical Kokoro voice"
 
 
-def test_kokoro_voice_grades_cover_all_28() -> None:
+def test_kokoro_voice_grades_cover_all_voices() -> None:
     ids = {vid for vid, _ in KOKORO_VOICES}
     assert ids == set(KOKORO_VOICE_GRADES.keys()), (
         "KOKORO_VOICE_GRADES must cover every voice in KOKORO_VOICES"
     )
+
+
+def test_list_kokoro_voices_includes_italian_with_accent() -> None:
+    voices = list_kokoro_voices()
+    by_id = {v.id: v for v in voices}
+    assert "if_sara" in by_id and "im_nicola" in by_id, "Italian Kokoro voices must be listed"
+    assert by_id["if_sara"].accent == "Italian"
+    assert by_id["im_nicola"].accent == "Italian"
+
+
+def test_kokoro_lang_for_voice_maps_languages() -> None:
+    lang_for = read_aloud_module.kokoro_lang_for_voice
+    assert lang_for("af_heart") == "en-us"
+    assert lang_for("bm_fable") == "en-gb"
+    assert lang_for("if_sara") == "it"
+    assert lang_for("ef_dora") == "es"
+    assert lang_for("ff_siwis") == "fr-fr"
+    assert lang_for("hf_alpha") == "hi"
+    assert lang_for("pm_alex") == "pt-br"
+    # Unknown prefixes fall back to en-us rather than raising.
+    assert lang_for("xx_unknown") == "en-us"
+    assert lang_for("") == "en-us"
 
 
 def test_kokoro_voice_grade_af_jessica_is_d() -> None:
@@ -588,6 +639,35 @@ def test_list_piper_voices_finds_onnx_files(tmp_path: Path) -> None:
 def test_list_piper_voices_empty_when_no_dir() -> None:
     assert list_piper_voices("") == []
     assert list_piper_voices("/nonexistent/path") == []
+
+
+def test_piper_catalog_includes_italian_voices(tmp_path: Path) -> None:
+    voices = read_aloud_module.list_piper_catalog_voices(tmp_path)
+    by_id = {v.id: v for v in voices}
+    assert "it_IT-paola-medium" in by_id, "Italian Piper voice missing from catalog"
+    assert "it_IT-riccardo-x_low" in by_id
+    assert by_id["it_IT-paola-medium"].accent == "Italian"
+    assert by_id["it_IT-paola-medium"].installed is False
+
+
+def test_piper_voice_download_urls_for_any_language() -> None:
+    urls = read_aloud_module.piper_voice_download_urls("it_IT-paola-medium")
+    assert urls is not None
+    onnx_url, json_url = urls
+    assert onnx_url == (
+        "https://huggingface.co/rhasspy/piper-voices/resolve/main"
+        "/it/it_IT/paola/medium/it_IT-paola-medium.onnx"
+    )
+    assert json_url.endswith("/it_IT-paola-medium.onnx.json")
+    # English ids keep the exact URL shape the downloader always used.
+    urls_en = read_aloud_module.piper_voice_download_urls("en_US-amy-low")
+    assert urls_en is not None
+    assert urls_en[0] == (
+        "https://huggingface.co/rhasspy/piper-voices/resolve/main"
+        "/en/en_US/amy/low/en_US-amy-low.onnx"
+    )
+    # Malformed ids return None so the UI can show a clear error.
+    assert read_aloud_module.piper_voice_download_urls("not-a-voice") is None
 
 
 # ---------------------------------------------------------------------------

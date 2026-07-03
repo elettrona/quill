@@ -2495,6 +2495,8 @@ The **Kokoro** voice models (~120 MB), the classic **DECtalk** runtime (~2 MB), 
 
 To audition a voice in **Manage Voices**, select it and use the **Preview** button. If the voice is already downloaded, Quill synthesises the preview phrase with that voice's real model; if it is not downloaded yet (for example a Kokoro voice), Quill plays a short pre-recorded sample so you can still hear it before deciding to download. The rate, volume, pitch, and speed controls apply to real synthesis, so they stay dimmed until the voice is downloaded.
 
+**Read Aloud speaks more than English.** The Windows engine lists **every voice installed on your PC, in any language** — add a voice in Windows Settings under **Time & language > Speech > Manage voices** (for example Italian's Elsa, or a Spanish, French, German, or Japanese voice) and it appears in QUILL's voice list ready to use, no download from QUILL needed. The offline neural voices go beyond English too: the **Kokoro** engine includes **Spanish, French, Hindi, Italian, and Brazilian Portuguese** voices — they are part of the same voice pack you already downloaded, so picking one just works — and the **Piper** catalog includes Italian voices (Paola and Riccardo) you can download like any other. **eSpeak NG** also offers those languages from its built-in data. Pick the voice whose language matches your document and Read Aloud, audiobook export, and batch speech all speak it correctly.
+
 ### Read Document in Browser (experimental)
 
 Your web browser has voices QUILL's built-in engines cannot reach — including Microsoft Edge's "Online (Natural)" voices. This opt-in feature reads the current document with them.
