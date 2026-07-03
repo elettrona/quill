@@ -4382,12 +4382,10 @@ class MainFrame(
                     splitter, style=wx.TE_MULTILINE | border
                 )
             elif kind == "rtf":
-                # Experimental: a wx.RichTextCtrl surface. It is TextCtrl-compatible for
-                # the value/caret API QUILL relies on (GetValue/ChangeValue/insertion
-                # point/last position), so the plain-text editing path still works.
-                import wx.richtext as _rt
+                # Experimental RichTextCtrl surface (TextCtrl-compatible selection API).
+                from quill.ui.rtf_edit_surface import create_rtf_editor
 
-                editor = _rt.RichTextCtrl(splitter, style=wx.TE_MULTILINE | border)
+                editor = create_rtf_editor(wx, splitter, wx.TE_MULTILINE | border)
             elif kind == "plain":
                 # A Notepad-style EDIT control -- editable, reports its value to
                 # JAWS/NVDA correctly, and avoids the RichEdit leading-cell quirk (#616).
@@ -11251,8 +11249,10 @@ class MainFrame(
         import subprocess
         import sys
 
+        from quill.core.relaunch import build_relaunch_command
+
         try:
-            subprocess.Popen([sys.executable, *sys.argv])
+            subprocess.Popen(build_relaunch_command(sys.executable, sys.argv))
         except OSError as error:
             self._set_status(f"Could not restart automatically: {error}. Please restart QUILL.")
             return
