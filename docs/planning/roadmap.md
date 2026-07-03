@@ -62,8 +62,13 @@ are unit-tested. **Still open:**
   (`prismatoid`) and Windows OCR — not removable without breaking accessibility; `vosk` and
   non-en enchant dictionaries already download on demand. Concrete new quant catalog entries
   (q5/q8, int8_float16) still need real pinned files + SHA-256 hashes.
-- **Phase 0 committed numbers** — per-engine peak RSS and cold-start/first-token
-  timings need a live run on a reference machine.
+- **Phase 0 committed numbers** — per-engine peak RSS and cold-start/first-output
+  timings. The measurement harness now exists: `python scripts/footprint_live.py
+  --merge-baseline` runs each installed engine in an isolated subprocess and merges
+  real timings + peak RSS into the baseline (degrades to notes, never fabricates).
+  What remains is a **live run on a reference machine** with the engines/models
+  installed, plus the short manual runtime-behavior pass in
+  [`phase0-live-signoff-checklist.md`](footprint/phase0-live-signoff-checklist.md).
 - **macOS offline-speech parity** — a mac `whisper-cli`, or Faster Whisper as the mac
   default — the tracked cross-platform gap.
 

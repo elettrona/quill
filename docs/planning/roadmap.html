@@ -252,8 +252,14 @@ Windows OCR — not removable without breaking accessibility;
 demand. Concrete new quant catalog entries (q5/q8, int8_float16) still
 need real pinned files + SHA-256 hashes.</li>
 <li><strong>Phase 0 committed numbers</strong> — per-engine peak RSS and
-cold-start/first-token timings need a live run on a reference
-machine.</li>
+cold-start/first-output timings. The measurement harness now exists:
+<code>python scripts/footprint_live.py --merge-baseline</code> runs each
+installed engine in an isolated subprocess and merges real timings +
+peak RSS into the baseline (degrades to notes, never fabricates). What
+remains is a <strong>live run on a reference machine</strong> with the
+engines/models installed, plus the short manual runtime-behavior pass in
+<a
+href="footprint/phase0-live-signoff-checklist.md"><code>phase0-live-signoff-checklist.md</code></a>.</li>
 <li><strong>macOS offline-speech parity</strong> — a mac
 <code>whisper-cli</code>, or Faster Whisper as the mac default — the
 tracked cross-platform gap.</li>
