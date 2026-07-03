@@ -759,7 +759,8 @@ class Settings:
         experimental_editor_surface = (
             str(data.get("experimental_editor_surface", "default")).strip().lower()
         )
-        if experimental_editor_surface not in {"default", "rich2", "rich", "plain", "rtf", "win32"}:
+        allowed_surfaces = {"default", "rich2", "rich", "plain", "rtf", "win32", "stc"}
+        if experimental_editor_surface not in allowed_surfaces:
             experimental_editor_surface = "default"
         editor_hide_border = bool(data.get("editor_hide_border", False))
         experimental_acknowledged = bool(data.get("experimental_acknowledged", False))

@@ -4386,6 +4386,12 @@ class MainFrame(
                 from quill.ui.rtf_edit_surface import create_rtf_editor
 
                 editor = create_rtf_editor(wx, splitter, wx.TE_MULTILINE | border)
+            elif kind == "stc":
+                # The Notepad++ experiment: Scintilla via wx.stc, shimmed to the
+                # TextCtrl contract (see edit.md). Falls back to a wx.TextCtrl.
+                from quill.ui.stc_edit_surface import create_stc_editor
+
+                editor = create_stc_editor(wx, splitter, wx.TE_MULTILINE | border)
             elif kind == "plain":
                 # A Notepad-style EDIT control -- editable, reports its value to
                 # JAWS/NVDA correctly, and avoids the RichEdit leading-cell quirk (#616).
@@ -11018,6 +11024,18 @@ class MainFrame(
                 "Technical: wx.richtext.RichTextCtrl. It is value/caret API-compatible "
                 "(GetValue/ChangeValue/insertion point), so basic editing and the "
                 "Reveal Codes sync work, but it is not a drop-in for every TextCtrl call."
+            ),
+            "stc": (
+                "Notepad++ experiment — the Scintilla control (wx.stc).\n\n"
+                "User: the editing engine Notepad++ uses. Fast on very large "
+                "documents and the only experimental surface with full multi-level "
+                "undo AND redo. EXPERIMENTAL: NVDA reads Scintilla well; JAWS "
+                "support is partial and braille routing is less proven than the "
+                "native Notepad/RichEdit controls. Use for testing only.\n\n"
+                "Technical: wx.stc.StyledTextCtrl (Win32 class 'Scintilla') wrapped "
+                "to the TextCtrl contract: EVT_TEXT forwarding, LF-only line "
+                "endings, load-without-dirty, and caret moves that collapse the "
+                "selection. Full risk analysis: edit.md at the repository root."
             ),
             "win32": (
                 "Native Win32 EDIT — the pywin32 spike (Windows only).\n\n"
