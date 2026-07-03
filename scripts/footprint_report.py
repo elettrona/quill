@@ -14,11 +14,12 @@ Design constraints (all honoured here):
 - **Machine-readable + speakable.** Emits JSON (diffable release-over-release) and
   a short Markdown summary (screen-reader friendly, plain ASCII).
 
-Scope note: per-engine peak RSS and cold-start / first-token timings require loading
-engines inside the running app and are captured in-app, not by this static script.
-This script covers installed size by component, on-disk model/asset sizes, and machine
-context, plus a best-effort current-process RSS snapshot. Those are the committed gate
-artifact for the later footprint/optimization phases.
+Scope note: per-engine peak RSS and cold-start / first-output timings require loading
+each engine and are measured by the companion ``scripts/footprint_live.py`` (isolated
+subprocess per engine, real numbers or a note — never fabricated), which can merge them
+into this baseline. This static script covers installed size by component, on-disk
+model/asset sizes, and machine context, plus a best-effort current-process RSS snapshot.
+Together they are the committed artifact for the later footprint/optimization phases.
 
 Usage::
 
