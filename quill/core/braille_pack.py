@@ -20,6 +20,19 @@ from pathlib import Path
 _PACK_EXECUTABLES = ("lou_translate", "louis")
 _PACK_MODULES = ("louis", "lou_translate")
 
+# Footprint unbundle: the pack (~68 MB of translation tables) is no longer
+# shipped in the installer. It is fetched on demand from QUILL's pinned,
+# SHA-256-verified assets-v1 release into this app-data directory. The resolvers
+# below prefer a bundled copy (upgraders keep theirs) but also find the download.
+_RELEASE_COMPONENT = "braille"
+
+
+def managed_braille_dir() -> Path:
+    """The app-data directory the downloaded braille pack is extracted into."""
+    from quill.core.paths import app_data_dir
+
+    return app_data_dir() / "vendor" / "braille-pack"
+
 
 def _find_install_root() -> Path | None:
     """Return the Quill install root when running from a bundled install.
@@ -54,6 +67,10 @@ def is_braille_pack_installed() -> bool:
     if install_root is not None:
         if (install_root / pack_rel).exists():
             return True
+
+    # On-demand download location (footprint unbundle).
+    if (managed_braille_dir() / "lou_translate.exe").exists():
+        return True
 
     if any(shutil.which(name) for name in _PACK_EXECUTABLES):
         return True
@@ -105,6 +122,9 @@ def get_brf_profiles() -> list[dict]:
     if app_root_env:
         candidates.append(Path(app_root_env) / "vendor" / "braille-pack" / "brf_profiles.json")
 
+    # On-demand download location (footprint unbundle).
+    candidates.append(managed_braille_dir() / "brf_profiles.json")
+
     repo_root = Path(__file__).resolve().parents[2]
     candidates += [
         repo_root / "liblouis" / "vendor" / "braille" / "pack" / "brf_profiles.json",
@@ -121,17 +141,26 @@ def get_brf_profiles() -> list[dict]:
     return []
 
 
-def install_braille_pack(progress_cb: Callable[[str], None] | None = None) -> bool:
-    """Phase 5 stub: no auto-download, no silent network calls.
+def install_braille_pack(
+    progress: Callable[[float, str], None] | None = None,
+    *,
+    should_cancel: Callable[[], bool] | None = None,
+) -> Path:
+    """Download and verify the braille pack on demand (footprint unbundle).
 
-    Points the user at the docs and returns False (nothing installed). A real
-    installer in a later PR MUST register its download site in the network-egress
-    audit (``_REVIEWED_EGRESS``) before adding any network call.
+    Fetches QUILL's pinned, SHA-256-verified pack from the assets-v1 release
+    (via :func:`quill.core.release_assets.fetch_component`) and extracts it into
+    :func:`managed_braille_dir`. Returns the install directory. Raises
+    ``ReleaseAssetError`` (Safe Mode, network, checksum) or ``DownloadCancelled``
+    -- the same contract as the other on-demand components -- so the UI can
+    degrade cleanly. GATE-9: the network egress lives in ``release_assets``.
     """
-    message = (
-        "Download the QUILL Braille Pack — see docs/planning/planning.md, "
-        "Feature: Braille Mode (Phase 5, optional)."
+    from quill.core.release_assets import fetch_component
+
+    return fetch_component(
+        _RELEASE_COMPONENT,
+        managed_braille_dir(),
+        progress=progress,
+        should_cancel=should_cancel,
+        label="Downloading the braille pack...",
     )
-    if progress_cb is not None:
-        progress_cb(message)
-    return False

@@ -112,8 +112,22 @@ class BrailleCommandsMixin:
         # Translation submenu: only shown when the braille pack is installed
         # and not in safe mode. The menu is dynamically built from brf_profiles.json
         # so it reflects whatever profiles the installed pack provides.
-        if not getattr(self, "_safe_mode", False) and self._is_braille_pack_available():
-            menu.AppendSubMenu(self._build_translation_menu(), "&Translation")
+        if not getattr(self, "_safe_mode", False):
+            if self._is_braille_pack_available():
+                menu.AppendSubMenu(self._build_translation_menu(), "&Translation")
+            else:
+                # Footprint unbundle: the pack is fetched on demand. Offer it in
+                # context so Translation/BRF export is one click away.
+                self._id_braille_get_pack = wx.NewIdRef()
+                menu.Append(
+                    self._id_braille_get_pack,
+                    "Download Braille &Translation Pack...",
+                )
+                self.frame.Bind(
+                    wx.EVT_MENU,
+                    lambda _e: self.download_braille_pack(),
+                    id=self._id_braille_get_pack,
+                )
 
         return menu
 

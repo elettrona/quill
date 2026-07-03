@@ -88,6 +88,12 @@ def _ffmpeg_installed() -> bool:
     return ffmpeg_available()
 
 
+def _braille_pack_installed() -> bool:
+    from quill.core.braille_pack import is_braille_pack_installed
+
+    return is_braille_pack_installed()
+
+
 def _pandoc_installed() -> bool:
     from quill.core.external_tools import get_external_tool_status
 
@@ -164,6 +170,19 @@ def gather_optional_components() -> list[OptionalComponent]:
             _safe(_pandoc_installed),
             "~45 MB",
             note="Provided by Pandoc (jgm/pandoc); QUILL fetches the official, pinned build.",
+        ),
+        OptionalComponent(
+            "braille",
+            "Braille pack (translation and BRF export)",
+            "liblouis translation tables and BRF profiles that power the Translation "
+            "submenu and BRF/embossing export. Reading with a braille display works "
+            "without it (that is your screen reader); this adds QUILL's own "
+            "translation and embossing.",
+            TOOL,
+            _safe(_braille_pack_installed),
+            "~9 MB",
+            note="QUILL braille pack (liblouis, LGPL-3.0/GPL-3.0); fetched from QUILL's "
+            "pinned release.",
         ),
     ]
     out.extend(_dictionary_components())

@@ -105,6 +105,21 @@ ASSETS: dict[str, ReleaseAsset] = {
         license="Apache-2.0 (alphacep/vosk-api); byte-identical re-publish of the PyPI wheel",
         version="0.3.45",
     ),
+    # Braille pack (footprint unbundle): liblouis runtime (lou_translate.exe +
+    # liblouis.dll), UEB/BRF translation tables, and brf_profiles.json. ~68 MB
+    # uncompressed (highly compressible tables), so it is fetched on demand
+    # instead of bundled. A byte-identical re-publish of QUILL's own liblouis
+    # pack (LGPL-3.0/GPL-3.0; source and licenses ship inside the zip). Extracted
+    # into the app-data braille dir and found by quill.core.braille_pack.
+    "braille": ReleaseAsset(
+        component="braille",
+        tag="assets-v1",
+        filename="braille-pack.zip",
+        sha256="1f7ce36f0b9bd0564e83d88f7585fb843ff221b8c93d66f5bb90431235c378a4",
+        expect_member="lou_translate.exe",
+        license="LGPL-3.0/GPL-3.0 (liblouis); QUILL braille pack",
+        version="quill-braille-pack",
+    ),
     # Optional Hunspell spell-check dictionaries (PRD 10.2.4). English (en_US) is
     # always bundled inside pyenchant; these add other languages on demand. Each
     # zip holds <lang>.dic/.aff plus the upstream license/readme, byte-pinned to a

@@ -323,10 +323,63 @@ class SpeechCommandsMixin:
             "dectalk": self.download_dectalk_exe,
             "ffmpeg": self.download_ffmpeg,
             "pandoc": self.download_pandoc,
+            "braille": self.download_braille_pack,
         }
         action = actions.get(chosen)
         if action is not None:
             action()
+
+    def download_braille_pack(self, *, on_done: Callable[[bool], None] | None = None) -> None:
+        """Fetch the braille pack on demand (footprint unbundle).
+
+        liblouis tables + BRF profiles that power the Translation submenu and
+        BRF/embossing export. Pinned + SHA-256-verified via
+        quill.core.braille_pack.install_braille_pack, on a worker thread with a
+        cancelable percentage, blocked in Safe Mode. Refreshes the menu on
+        success so Translation appears without a restart."""
+        from quill.core.braille_pack import install_braille_pack, is_braille_pack_installed
+
+        wx = self._wx
+        if bool(getattr(self, "_safe_mode", False)):
+            self._announce("Downloading the braille pack is disabled in Safe Mode.")
+            return
+        if is_braille_pack_installed():
+            again = self._show_message_box(
+                "The braille pack is already installed. Download QUILL's verified "
+                "copy again anyway?",
+                "Braille Pack",
+                wx.ICON_QUESTION | wx.YES_NO,
+            )
+            if again != wx.YES:
+                if on_done is not None:
+                    on_done(True)
+                return
+        proceed = self._show_message_box(
+            "QUILL will download the braille translation pack (liblouis tables and "
+            "BRF profiles, about 9 MB) and verify it. It powers the Translation "
+            "submenu and BRF/embossing export. Continue?",
+            "Download Braille Pack",
+            wx.ICON_INFORMATION | wx.YES_NO,
+        )
+        if proceed != wx.YES:
+            return
+
+        def _work(progress):
+            return install_braille_pack(
+                lambda fraction, message: progress(message, int(fraction * 100), 100)
+            )
+
+        def _finished(result: object) -> None:
+            ok = bool(result)
+            if ok:
+                self._announce("Braille pack installed. Translation is ready.")
+                self._request_menu_refresh()
+            else:
+                self._announce("The braille pack could not be installed.")
+            if on_done is not None:
+                on_done(ok)
+
+        self._run_background_task("Downloading braille pack", _work, _finished)
 
     def download_pandoc(self, *, on_done: Callable[[bool], None] | None = None) -> None:
         """Fetch the official, pinned Pandoc build on demand (footprint unbundle).
