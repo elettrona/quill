@@ -1117,13 +1117,21 @@ To keep the installer small, QUILL fetches several large or optional pieces only
 when you want them. **Help > Download Optional Components...** is the single place
 to see and get them all. It lists each component — the **offline speech engine**
 (whisper.cpp), the very-low-resource **Vosk** speech engine, **Kokoro** neural
-voices, **eSpeak NG** and **DECtalk** voices, the **FFmpeg** audio-export helper, and
+voices, **eSpeak NG** and **DECtalk** voices, the **FFmpeg** audio-export helper,
+**Pandoc** (document conversion for Word, ODT, EPUB, and RTF), and
 any non-English **spell-check dictionaries** —
 and shows for each whether it is **Installed** or **Available to download**, along
 with its approximate size. Select a component and choose **Download** to fetch it;
 each download is checksum-verified and shows its own progress. Everything here is
 optional — the base app, and Windows' built-in SAPI 5 voices, work without any of
 it — so download only what you need.
+
+**Pandoc downloads itself when you need it.** You do not have to visit this
+dialog first: the moment you **Import** or **Export** a Word, ODT, EPUB, or RTF
+document (or run **Convert File**) without Pandoc present, QUILL offers to
+download the official, pinned build right there — about 45 MB, verified, with a
+progress bar — and the conversion is ready as soon as it finishes. Plain-text
+and Markdown editing never needs it, which is why it is no longer bundled.
 
 #### Running light on modest machines (Performance and Memory)
 

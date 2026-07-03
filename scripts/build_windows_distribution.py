@@ -302,11 +302,13 @@ def build_windows_distribution(
 
     staged_docs = _stage_distribution_docs(portable_dir, resolved_source_root)
     effective_bundled_tools = dict(bundled_tool_dirs or {})
-    # Auto-download Pandoc and Piper unless the caller provided a local directory.
-    # Each function tries the latest GitHub release first and falls back to a
-    # pinned version; existing staged files are reused.
-    if "pandoc" not in effective_bundled_tools:
-        effective_bundled_tools["pandoc"] = _download_and_stage_pandoc(portable_dir)
+    # Pandoc is NO LONGER bundled by default (footprint unbundle, PRD 10.2.x):
+    # at ~220 MB it was the largest component, yet core plain-text/Markdown
+    # editing never uses it. Fresh installs fetch the official pinned build on
+    # demand (quill/core/pandoc_install.py) the first time a conversion needs it,
+    # preferring the app-data copy. A build may still stage a local copy with
+    # --pandoc-dir (populates effective_bundled_tools above). Piper stays bundled
+    # -- it is the small default on-device Read Aloud voice.
     if "speech/piper" not in effective_bundled_tools:
         effective_bundled_tools["speech/piper"] = _download_and_stage_piper(portable_dir)
     # whisper.cpp, DECtalk, and eSpeak-NG are NO LONGER bundled by default
