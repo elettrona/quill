@@ -54,14 +54,14 @@ are unit-tested. **Still open:**
   idle-sweep timer firing, a real model unloading), the model upgrade hint in the AI
   model dialog, and the offline cloud↔local fallback announcement on a real failure.
 - **Phase 1 installer-size delta** — **Pandoc unbundled 2026-07-03** (the single largest
-  component, ~220 MB unpacked): it now downloads the official pinned build on demand the
-  first time a conversion needs it, roughly halving the installer. Remaining candidates are
-  ruled out: `win32more` is a real dependency of the screen-reader layer (`prismatoid`) and
-  Windows OCR — not removable without breaking accessibility; the braille pack was assessed
-  and **kept bundled** (it compresses to ~8.5 MB, and its liblouis translation binding
-  cannot be safely validated from a downloaded location); `vosk` and non-en enchant
-  dictionaries already download on demand. Concrete new quant catalog entries (q5/q8,
-  int8_float16) still need real pinned files + SHA-256 hashes.
+  component, ~220 MB unpacked) and **the braille pack unbundled the same day** (PR #800):
+  both now download a pinned, SHA-256-verified build on demand the first time they are
+  needed (braille was found safe to unbundle — the pack is a detection marker + BRF-profiles
+  source; the actual `import louis` translation is external and unaffected). Remaining
+  candidates are ruled out: `win32more` is a real dependency of the screen-reader layer
+  (`prismatoid`) and Windows OCR — not removable without breaking accessibility; `vosk` and
+  non-en enchant dictionaries already download on demand. Concrete new quant catalog entries
+  (q5/q8, int8_float16) still need real pinned files + SHA-256 hashes.
 - **Phase 0 committed numbers** — per-engine peak RSS and cold-start/first-token
   timings need a live run on a reference machine.
 - **macOS offline-speech parity** — a mac `whisper-cli`, or Faster Whisper as the mac

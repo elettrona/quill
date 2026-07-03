@@ -240,17 +240,17 @@ unloading), the model upgrade hint in the AI model dialog, and the
 offline cloud↔︎local fallback announcement on a real failure.</li>
 <li><strong>Phase 1 installer-size delta</strong> — <strong>Pandoc
 unbundled 2026-07-03</strong> (the single largest component, ~220 MB
-unpacked): it now downloads the official pinned build on demand the
-first time a conversion needs it, roughly halving the installer.
+unpacked) and <strong>the braille pack unbundled the same day</strong>
+(PR #800): both now download a pinned, SHA-256-verified build on demand
+the first time they are needed (braille was found safe to unbundle — the
+pack is a detection marker + BRF-profiles source; the actual
+<code>import louis</code> translation is external and unaffected).
 Remaining candidates are ruled out: <code>win32more</code> is a real
 dependency of the screen-reader layer (<code>prismatoid</code>) and
-Windows OCR — not removable without breaking accessibility; the braille
-pack was assessed and <strong>kept bundled</strong> (it compresses to
-~8.5 MB, and its liblouis translation binding cannot be safely validated
-from a downloaded location); <code>vosk</code> and non-en enchant
-dictionaries already download on demand. Concrete new quant catalog
-entries (q5/q8, int8_float16) still need real pinned files + SHA-256
-hashes.</li>
+Windows OCR — not removable without breaking accessibility;
+<code>vosk</code> and non-en enchant dictionaries already download on
+demand. Concrete new quant catalog entries (q5/q8, int8_float16) still
+need real pinned files + SHA-256 hashes.</li>
 <li><strong>Phase 0 committed numbers</strong> — per-engine peak RSS and
 cold-start/first-token timings need a live run on a reference
 machine.</li>
