@@ -125,6 +125,7 @@
   "describe_image_with_ai",
   "dictate_offline_toggle",
   "dispatch_smart_trigger_line",
+  "download_braille_pack",
   "download_dectalk_exe",
   "download_espeak_exe",
   "download_faster_whisper",

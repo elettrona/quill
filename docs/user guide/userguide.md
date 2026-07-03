@@ -1118,8 +1118,9 @@ when you want them. **Help > Download Optional Components...** is the single pla
 to see and get them all. It lists each component — the **offline speech engine**
 (whisper.cpp), the very-low-resource **Vosk** speech engine, **Kokoro** neural
 voices, **eSpeak NG** and **DECtalk** voices, the **FFmpeg** audio-export helper,
-**Pandoc** (document conversion for Word, ODT, EPUB, and RTF), and
-any non-English **spell-check dictionaries** —
+**Pandoc** (document conversion for Word, ODT, EPUB, and RTF), the **braille
+translation pack** (liblouis tables and BRF profiles for the Translation submenu
+and BRF/embossing export), and any non-English **spell-check dictionaries** —
 and shows for each whether it is **Installed** or **Available to download**, along
 with its approximate size. Select a component and choose **Download** to fetch it;
 each download is checksum-verified and shows its own progress. Everything here is

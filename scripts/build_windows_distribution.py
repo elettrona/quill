@@ -1557,16 +1557,17 @@ def _stage_braille_pack(
     *,
     source_root: Path | None = None,
 ) -> bool:
-    """Copy the braille pack into portable/vendor/braille-pack/. Returns True if staged."""
+    """Copy the braille pack into portable/vendor/braille-pack/. Returns True if staged.
+
+    Footprint unbundle: the pack (~68 MB of translation tables) is NO LONGER
+    bundled by default. Fresh installs fetch it on demand from QUILL's pinned,
+    SHA-256-verified assets-v1 release (quill/core/braille_pack.py) the first
+    time Translation/BRF export is used. A build may still stage a local copy by
+    passing --braille-pack-dir. Upgraders keep their existing {app} copy.
+    """
+    _ = source_root  # retained for signature stability; default staging removed.
     if braille_pack_dir is None:
-        default = (source_root or Path(".")) / "liblouis" / "vendor" / "braille" / "pack"
-        if not default.is_dir():
-            print(
-                f"Warning: braille pack not found at {default}; skipping. "
-                "Run scripts/build_braille_pack.py first or pass --braille-pack-dir."
-            )
-            return False
-        braille_pack_dir = default
+        return False
     if not braille_pack_dir.is_dir():
         raise RuntimeError(f"Braille pack directory not found: {braille_pack_dir}")
     target = portable_dir / "vendor" / "braille-pack"
