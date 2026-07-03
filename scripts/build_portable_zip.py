@@ -19,6 +19,16 @@ import sys
 import zipfile
 from pathlib import Path
 
+# Build-only scratch that must never ship in the portable ZIP: the staging area
+# where downloaded tool archives are unpacked before being copied into tools/
+# (a duplicate ~376 MB), and Python bytecode caches. Matched against any path
+# component so nested caches are excluded too.
+_EXCLUDED_DIRS = frozenset({"_tool-download", "__pycache__"})
+
+
+def _is_scratch(path: Path, root: Path) -> bool:
+    return any(part in _EXCLUDED_DIRS for part in path.relative_to(root).parts)
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -42,13 +52,19 @@ def main() -> int:
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     file_count = 0
+    skipped = 0
     with zipfile.ZipFile(args.output, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
         for path in sorted(args.source_dir.rglob("*")):
-            if path.is_file():
-                arcname = path.relative_to(args.source_dir.parent)
-                zf.write(path, arcname)
-                file_count += 1
-    print(f"Wrote {args.output} ({file_count} files)")
+            if not path.is_file():
+                continue
+            if _is_scratch(path, args.source_dir):
+                skipped += 1
+                continue
+            arcname = path.relative_to(args.source_dir.parent)
+            zf.write(path, arcname)
+            file_count += 1
+    note = f" (skipped {skipped} build-scratch files)" if skipped else ""
+    print(f"Wrote {args.output} ({file_count} files){note}")
     return 0
 
 
