@@ -770,3 +770,31 @@ def test_build_inno_setup_script_uses_identity_defaults(tmp_path: Path) -> None:
     assert "Blind Information Technology Solutions" not in script
     assert '#define AppName "Quill"' not in script
     assert "OutputBaseFilename=Quill-for-All-Setup-0.7.0 Beta 1" in script
+
+
+def test_file_association_launches_root_quill_exe_next_to_python_dll() -> None:
+    """Regression guard for #740 (python313.dll missing on Explorer 'Open with').
+
+    The runtime is flattened so quill.exe sits at {app} next to its own
+    python313.dll. Launching a file from Explorer must therefore invoke that
+    ROOT launcher (not a nested python\ path and not something CWD-dependent),
+    so the Windows loader finds the DLL on an external launch — the exact case
+    the report failed on before the flatten. If a future change points the
+    association at a nested launcher, the missing-DLL error returns; this locks
+    the invariant in.
+    """
+    script = build_inno_setup_script("9.9.9")
+
+    # The launcher the association points at is the flattened root quill.exe.
+    assert '#define AppExeName "quill.exe"' in script
+
+    # The "Open with" command and every shell-verb open command invoke the ROOT
+    # launcher ({app}\quill.exe), which is co-located with python313.dll.
+    assert "Applications\{#AppExeName}\shell\open\command" in script
+    assert '"{app}\{#AppExeName}"" -m quill' in script
+
+    # No file-launch command may target a NESTED launcher path — that layout
+    # (quill.exe not beside python313.dll) is what broke external launch.
+    assert "{app}\python\{#AppExeName}" not in script
+    assert "{app}\python\quill.exe" not in script
+    assert "{app}\python\pythonw.exe" not in script
