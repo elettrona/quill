@@ -82,6 +82,14 @@ class MicRecorder:
     def is_paused(self) -> bool:
         return self._paused
 
+    def captured_frames(self) -> bytes:
+        """A snapshot of the PCM-16 frames captured so far (for live VAD).
+
+        Non-destructive: the recorder keeps accumulating. Voice conversation
+        mode polls this to watch microphone energy and end a turn on silence.
+        """
+        return b"".join(self._chunks)
+
     def pause(self) -> None:
         """Stop adding microphone samples without closing the stream.
 

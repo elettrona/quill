@@ -161,3 +161,27 @@ def test_status_text_tracks_state() -> None:
     assert "off" in c.status_text().lower()
     c.start()
     assert c.status_text() == "Listening"
+
+
+# -- refinement: varied, personalized prompts (ADP personality) --------------
+
+
+def _announces(effects):
+    return [e.value for e in effects if e.kind == "announce"]
+
+
+def test_varied_prompts_use_a_welcome_first_then_shorter_prompts() -> None:
+    c = ConversationController(varied_prompts=True, user_name="Jeff")
+    first = _announces(c.start())
+    assert any("Jeff" in line for line in first)
+    # After acting, the re-arm prompt is a shorter "listening" line, not a fresh
+    # first-time welcome.
+    c.timing = Timing(review_ms=0, followup_ms=3000)
+    c.on_transcript("file.save", "Running Save.")
+    rearm = _announces(c.on_action_done())
+    assert rearm  # a prompt is spoken on re-arm
+
+
+def test_plain_prompts_are_deterministic_by_default() -> None:
+    c = ConversationController(user_name="Jeff")  # varied_prompts defaults False
+    assert _announces(c.start()) == ["Listening, Jeff."]

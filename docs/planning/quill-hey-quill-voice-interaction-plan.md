@@ -2,7 +2,7 @@
 
 **Product:** QUILL
 **Feature area:** Hands-free voice commands, wake word, conversation mode, sounders
-**Status:** Plan of record. Phase 1 shipped 2026-07-02 (push-to-talk); Phase 2 shipped 2026-07-02 (conversation loop + sounders); Phase 3 shipped 2026-07-02 (wake word). Phase 4 (Ask Quill routing) is the last.
+**Status:** COMPLETE. All four phases shipped 2026-07-02 (push-to-talk; conversation loop + sounders; wake word; Ask Quill routing). The documented refinements shipped 2026-07-03 (VAD silence detection, spoken/varied/personalized cue phrases, screen-reader parity, Speak Voice Status). See §9a.
 **Owner:** Jeff Bishop / QUILL project
 **Reference implementation:** the ADP Assistant conversation mode (`s:\code\adp`, `src/adp_mcp/webapp/static/app.js`) — the "Hey Magic" loop whose state machine, sounders, and timing model this plan imports
 **Last consolidated:** 2026-07-02
@@ -263,6 +263,47 @@ setup path rather than failing silently. Speaking answers automatically from
 the voice loop (rather than in the Ask Quill transport) and ADP's
 `brain.py`-style bounded-tool autonomy remain deliberate future options, not
 shipped here — the conservative "pre-fill and confirm" handoff is the safe v1.
+
+### 9a — Refinements to ADP parity (SHIPPED 2026-07-03)
+
+The carryovers noted across Phases 2–4 are now implemented, closing the gap to
+the ADP Assistant design:
+
+- **True silence detection (VAD).** `quill/core/speech/vad.py` — a pure,
+  stdlib RMS-energy `SilenceDetector` (7 tests). Conversation capture now polls
+  microphone energy and ends a turn when speech is followed by the pause window
+  (ADP's silence window, WCAG 2.2.1), with a hard cap as a backstop, replacing
+  the fixed timed turn. `MicRecorder.captured_frames()` exposes a non-destructive
+  snapshot for the poller.
+- **Varied, personalized, time-aware spoken cues.** `quill/core/speech/
+  voice_cues.py` — pure welcome / listening / acknowledge / follow-up pools,
+  name-personalized and time-of-day aware, with an injectable `pick`/`now` for
+  deterministic tests (6 tests). The controller uses them (`varied_prompts`),
+  keeping its plain default for existing tests. New `voice_conversation_user_name`
+  setting drives "Listening, Jeff."
+- **Screen-reader parity + spoken prompts.** New `voice_conversation_spoken_cues`
+  setting speaks prompts aloud with the read-aloud voice — but only when **no**
+  screen reader is active (`detect_screen_reader().detected`), so QUILL never
+  talks over the reader (ADP's "one content voice"). Cues play on the task pool;
+  capture only begins after the effect list runs (barge-in discipline).
+- **Live status you can query.** `Speak Voice Status` (Tools > Speech; command +
+  unbound keymap) reports whether QUILL is listening for the wake word, in
+  conversation mode, or capturing a command — the ADP mic-live perceivability
+  guarantee, on demand.
+
+- **User-selectable recognition engine (whisper.cpp or Vosk).** A new
+  `voice_recognition_engine` setting ("" follow main / "whispercpp" / "vosk")
+  and a `_voice_provider()` resolver route every voice capture path (Voice
+  Command, Conversation, wake word) through the chosen engine, with a graceful
+  fallback to the main provider when the engine or its model is missing. Vosk
+  (fast, light) is recommended for the always-listening wake word; whisper.cpp
+  for accuracy. Both are first-class and wired end to end.
+
+Genuinely still future (needs the model + hardware, not shippable blind): a
+dedicated **keyword-grammar** mode running Vosk's streaming recognizer so the
+wake word costs even less than the current short-window recognition (choosing
+Vosk today already makes it lighter), plus a measured false-accept rate across
+a confusable-phrase list before it is recommended for all-day use.
 
 ---
 

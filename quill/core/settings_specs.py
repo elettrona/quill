@@ -1533,6 +1533,45 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("voice conversation", "thinking", "tick", "timing"),
     ),
     SettingSpec(
+        "voice_recognition_engine",
+        "Voice recognition engine",
+        "transcription",
+        "choice",
+        "Which on-device engine powers the voice features (Voice Command, "
+        "Conversation Mode, Hey QUILL). 'Follow main engine' uses your usual "
+        "speech engine; 'whisper.cpp' favors accuracy; 'Vosk' is fast and "
+        "light, best for the always-listening wake word. Requires a model for "
+        "the chosen engine; falls back automatically if one is missing.",
+        feature_id="core.voice_commands",
+        choices=(
+            ("", "Follow main engine"),
+            ("whispercpp", "whisper.cpp (accurate)"),
+            ("vosk", "Vosk (fast, light)"),
+        ),
+        keywords=("voice engine", "vosk", "whisper", "recognition"),
+    ),
+    SettingSpec(
+        "voice_conversation_user_name",
+        "Conversation: your name (optional)",
+        "transcription",
+        "str",
+        "An optional name QUILL uses in spoken prompts, like 'Listening, Jeff.' "
+        "Leave blank for neutral prompts.",
+        feature_id="core.voice_commands",
+        keywords=("voice conversation", "name", "personalize"),
+    ),
+    SettingSpec(
+        "voice_conversation_spoken_cues",
+        "Conversation: speak prompts aloud",
+        "transcription",
+        "bool",
+        "Speak the welcome and follow-up prompts aloud with the read-aloud "
+        "voice. Off by default when a screen reader is running so QUILL does "
+        "not talk over it; the audio cues and status still convey each state.",
+        feature_id="core.voice_commands",
+        keywords=("voice conversation", "spoken", "prompts", "text to speech"),
+    ),
+    SettingSpec(
         "voice_wakeword_enabled",
         "Listen for 'Hey QUILL' (wake word)",
         "transcription",

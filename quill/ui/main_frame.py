@@ -2504,6 +2504,14 @@ class MainFrame(
             feature_id="core.voice_commands",
         )
         self.commands.register(
+            "tools.voice_status",
+            "Speak Voice Status",
+            self.speak_voice_status,
+            self._binding_for("tools.voice_status"),
+            # Hey QUILL refinement: say what voice is doing (mic-live check).
+            feature_id="core.voice_commands",
+        )
+        self.commands.register(
             "whisperer.model_manager",
             "BITS Whisperer Speech Model Manager...",
             self.open_bw_model_manager,
