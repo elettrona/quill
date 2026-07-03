@@ -1202,6 +1202,18 @@
     "user_guide_section": "writing-and-editing"
   },
   {
+    "id": "tools.table_studio",
+    "title": "Table Studio (Experimental)",
+    "body": "Build and edit a table in a fully keyboard-accessible grid. Arrow keys move by cell; Left and Right speak the column as you cross a row. F2 or Enter edits a cell; Alt+arrows move a row or column; Ctrl+Insert adds a row; Delete clears a cell. Insert the finished table into your document as Markdown or HTML. Experimental: enable it in Preferences > Experimental.",
+    "user_guide_section": "tools"
+  },
+  {
+    "id": "tools.csv_studio",
+    "title": "CSV Studio (Experimental)",
+    "body": "Open a CSV or TSV file in the same accessible grid as Table Studio, navigate and edit it cell by cell, and insert it as a Markdown or HTML table. The delimiter is auto-detected. Experimental: enable it in Preferences > Experimental.",
+    "user_guide_section": "tools"
+  },
+  {
     "id": "format.insert_table",
     "title": "Insert Table",
     "body": "Insert a table at the cursor. QUILL asks for the number of rows and columns and writes an accessible table in your document's format.",

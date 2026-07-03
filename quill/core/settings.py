@@ -211,6 +211,12 @@ class Settings:
     #   publishing connections tools (File > Publishing). Gated by
     #   experimental_acknowledged; the send/publish half stays locked regardless.
     publishing_experimental_enabled: bool = False
+    #   table_studio_experimental_enabled / csv_studio_experimental_enabled:
+    #   opt-in for the accessible Table Studio and CSV Studio grid surfaces
+    #   (Tools menu). Gated by experimental_acknowledged; off by default while
+    #   they mature; take effect on settings apply (menu rebuild).
+    table_studio_experimental_enabled: bool = False
+    csv_studio_experimental_enabled: bool = False
     #   edge_read_aloud_enabled: opt-in experimental read-aloud that opens an
     #   accessible reader page in the user's real browser (see
     #   quill/core/browser_reader.py), where the full/online Web Speech voices
@@ -763,6 +769,10 @@ class Settings:
         )
         glow_experimental_enabled = bool(data.get("glow_experimental_enabled", False))
         publishing_experimental_enabled = bool(data.get("publishing_experimental_enabled", False))
+        table_studio_experimental_enabled = bool(
+            data.get("table_studio_experimental_enabled", False)
+        )
+        csv_studio_experimental_enabled = bool(data.get("csv_studio_experimental_enabled", False))
         edge_read_aloud_enabled = bool(data.get("edge_read_aloud_enabled", False))
         plain_text_with_formatting = str(data.get("plain_text_with_formatting", "ask"))
         if plain_text_with_formatting not in {"ask", "illuminate", "plain"}:
@@ -1263,6 +1273,8 @@ class Settings:
             experimental_editor_surfaces_enabled=experimental_editor_surfaces_enabled,
             glow_experimental_enabled=glow_experimental_enabled,
             publishing_experimental_enabled=publishing_experimental_enabled,
+            table_studio_experimental_enabled=table_studio_experimental_enabled,
+            csv_studio_experimental_enabled=csv_studio_experimental_enabled,
             edge_read_aloud_enabled=edge_read_aloud_enabled,
             plain_text_with_formatting=plain_text_with_formatting,
             dictation_onboarding_shown=dictation_onboarding_shown,

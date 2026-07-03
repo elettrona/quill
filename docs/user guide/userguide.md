@@ -2908,9 +2908,21 @@ Quill is serious about recovery and user control.
 - **GLOW accessibility review and repair (experimental)** — lights the **Tools > GLOW** menu (see "GLOW Workflows Inside QUILL"). Takes effect on Apply, no restart.
 - **WordPress publishing connections (experimental)** — lights the read-only publishing tools in the **File** menu: save a WordPress connection, verify it, browse your site's posts and pages, and open a remote item in the editor. Strictly inbound: the send/publish half remains locked while the providers framework is reviewed, so nothing can be published from QUILL regardless of this switch.
 - **Read the document aloud in your browser (experimental)** — the browser reader page described under Read Aloud.
+- **Table Studio — accessible table editing (experimental)** and **CSV Studio — open CSV files in a grid (experimental)** — light the two grid surfaces in the **Tools** menu (see "Table Studio and CSV Studio" below). Take effect on Apply, no restart.
 - **Enable experimental editor surfaces** — a *second* safety gate whose label carries its own warning: *features may degrade based on the control selected*. The editor surface is the control your document lives in, so this gate separately governs the **Editor surface** choice and the **Hide editor border** option beneath it, plus the live explainer that describes each surface. Both this gate and the master switch must be on before any surface override is applied, and while it is off those controls are disabled and skipped in the tab order.
 
 The pattern to remember: one master switch for the tab, one switch per experiment, and the editor-surface experiments behind a third acknowledgement of their own — consent in layers, never by accident.
+
+### Table Studio and CSV Studio (experimental)
+
+Once you enable them on the Experimental tab, **Tools > Table Studio...** and **Tools > CSV Studio...** open a table in a fully keyboard-accessible grid — a real spreadsheet-style surface built for screen-reader users, not a wall of pipe characters.
+
+- **Table Studio** starts a new table you build up cell by cell.
+- **CSV Studio** opens a `.csv` or `.tsv` file straight into the same grid (the delimiter is detected for you).
+
+Inside the grid, the **arrow keys move by cell**: Up and Down change rows, and **Left and Right move across columns and speak the column heading** as you go, so you always know where you are. **Home** and **End** jump to the first and last column; **Ctrl+Home** and **Ctrl+End** jump to the corners; **Page Up/Down** move by ten rows. Press **F2** or **Enter** to edit the active cell, **Alt+arrows** to move a whole row or column, **Ctrl+Insert** to add a row, and **Delete** to clear a cell — and the same actions are on buttons for anyone who prefers them. When you are done, **Insert as Markdown** or **Insert as HTML** drops the finished, properly-headed table into your document.
+
+The grid speaks each cell through Windows accessibility so NVDA and JAWS announce the column as you cross a row. On builds that include the optional native provider the cell announcements are richer still; without it, QUILL uses a built-in fallback, so the feature works either way.
 
 ### Notebooks
 

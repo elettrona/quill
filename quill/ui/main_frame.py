@@ -3561,6 +3561,18 @@ class MainFrame(
             None,
         )
         self.commands.register(
+            "tools.table_studio",
+            "Table Studio (Experimental)",
+            self.open_table_studio,
+            self._binding_for("tools.table_studio"),
+        )
+        self.commands.register(
+            "tools.csv_studio",
+            "CSV Studio (Experimental)",
+            self.open_csv_studio,
+            self._binding_for("tools.csv_studio"),
+        )
+        self.commands.register(
             "edit.sort_lines_ascending",
             "Sort Lines Ascending",
             self.sort_lines_ascending,
@@ -10938,6 +10950,8 @@ class MainFrame(
                 _control("glow_experimental_enabled"),
                 _control("publishing_experimental_enabled"),
                 _control("edge_read_aloud_enabled"),
+                _control("table_studio_experimental_enabled"),
+                _control("csv_studio_experimental_enabled"),
             )
             if control is not None
         ]
@@ -24603,6 +24617,61 @@ class MainFrame(
             result = build_html_table(rows, columns, include_header=include_header)
         self._apply_insertion_result(result)
         self._set_status(f"Inserted {rows}x{columns} table ({surface})")
+
+    def open_table_studio(self) -> None:
+        """Experimental: build/edit a table in the accessible grid, then insert it."""
+        if not self._experimental_gate_on("table_studio_experimental_enabled"):
+            self._set_status(
+                "Table Studio is an experimental feature; enable it in Preferences > Experimental."
+            )
+            return
+        from quill.core.table_studio import TableDocumentModel
+
+        model = TableDocumentModel.from_lists(
+            headers=["Column 1", "Column 2", "Column 3"],
+            rows=[["", "", ""] for _ in range(3)],
+            caption="New table",
+        )
+        self._run_table_studio(model, title="Table Studio")
+
+    def open_csv_studio(self) -> None:
+        """Experimental: open a CSV file in the accessible grid (CSV Studio)."""
+        if not self._experimental_gate_on("csv_studio_experimental_enabled"):
+            self._set_status(
+                "CSV Studio is an experimental feature; enable it in Preferences > Experimental."
+            )
+            return
+        wx = self._wx
+        with wx.FileDialog(
+            self.frame,
+            "Open CSV in CSV Studio",
+            wildcard="CSV files (*.csv;*.tsv)|*.csv;*.tsv|All files (*.*)|*.*",
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Open CSV") != wx.ID_OK:
+                return
+            path = dialog.GetPath()
+        try:
+            from quill.core.table_studio.csv_io import load_csv
+
+            model = load_csv(path)
+        except (OSError, ValueError) as error:
+            self._show_message_box(f"Could not open the CSV: {error}", "CSV Studio", wx.ICON_ERROR)
+            return
+        self._run_table_studio(model, title=f"CSV Studio — {model.caption}")
+
+    def _run_table_studio(self, model: object, *, title: str) -> None:
+        wx = self._wx
+        from quill.ui.table_studio import TableStudioDialog
+
+        dialog = TableStudioDialog(self.frame, model, self._announce, title=title)
+        outcome = self._show_modal_dialog(dialog, title)
+        if outcome == wx.ID_OK and dialog.result_markdown:
+            self._apply_insertion_result(dialog.result_markdown)
+            self._set_status("Table inserted as Markdown")
+        elif outcome == wx.ID_APPLY and dialog.result_html:
+            self._apply_insertion_result(dialog.result_html)
+            self._set_status("Table inserted as HTML")
 
     def _insert_structure(self, kind: str, status: str) -> None:
         if not self._feature_enabled("core.format"):

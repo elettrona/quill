@@ -5582,6 +5582,11 @@ switch.</li>
 <li><strong>Read the document aloud in your browser
 (experimental)</strong> — the browser reader page described under Read
 Aloud.</li>
+<li><strong>Table Studio — accessible table editing
+(experimental)</strong> and <strong>CSV Studio — open CSV files in a
+grid (experimental)</strong> — light the two grid surfaces in the
+<strong>Tools</strong> menu (see "Table Studio and CSV Studio" below).
+Take effect on Apply, no restart.</li>
 <li><strong>Enable experimental editor surfaces</strong> — a
 <em>second</em> safety gate whose label carries its own warning:
 <em>features may degrade based on the control selected</em>. The editor
@@ -5595,6 +5600,39 @@ controls are disabled and skipped in the tab order.</li>
 <p>The pattern to remember: one master switch for the tab, one switch
 per experiment, and the editor-surface experiments behind a third
 acknowledgement of their own — consent in layers, never by accident.</p>
+<h3 id="table-studio-and-csv-studio-experimental">Table Studio and CSV
+Studio (experimental)</h3>
+<p>Once you enable them on the Experimental tab, <strong>Tools &gt;
+Table Studio...</strong> and <strong>Tools &gt; CSV Studio...</strong>
+open a table in a fully keyboard-accessible grid — a real
+spreadsheet-style surface built for screen-reader users, not a wall of
+pipe characters.</p>
+<ul>
+<li><strong>Table Studio</strong> starts a new table you build up cell
+by cell.</li>
+<li><strong>CSV Studio</strong> opens a <code>.csv</code> or
+<code>.tsv</code> file straight into the same grid (the delimiter is
+detected for you).</li>
+</ul>
+<p>Inside the grid, the <strong>arrow keys move by cell</strong>: Up and
+Down change rows, and <strong>Left and Right move across columns and
+speak the column heading</strong> as you go, so you always know where
+you are. <strong>Home</strong> and <strong>End</strong> jump to the
+first and last column; <strong>Ctrl+Home</strong> and
+<strong>Ctrl+End</strong> jump to the corners; <strong>Page
+Up/Down</strong> move by ten rows. Press <strong>F2</strong> or
+<strong>Enter</strong> to edit the active cell,
+<strong>Alt+arrows</strong> to move a whole row or column,
+<strong>Ctrl+Insert</strong> to add a row, and <strong>Delete</strong>
+to clear a cell — and the same actions are on buttons for anyone who
+prefers them. When you are done, <strong>Insert as Markdown</strong> or
+<strong>Insert as HTML</strong> drops the finished, properly-headed
+table into your document.</p>
+<p>The grid speaks each cell through Windows accessibility so NVDA and
+JAWS announce the column as you cross a row. On builds that include the
+optional native provider the cell announcements are richer still;
+without it, QUILL uses a built-in fallback, so the feature works either
+way.</p>
 <h3 id="notebooks">Notebooks</h3>
 <p>A <strong>Notebook</strong> is a named collection of documents that
 belong together — a novel's chapters, a research project's notes, a
