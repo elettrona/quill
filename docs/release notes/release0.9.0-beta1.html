@@ -1144,6 +1144,24 @@ of the existing separate-process isolation, import allowlist, and
 time/memory caps; if the OS refuses a resource cap, QUILL logs it
 instead of staying silent.</li>
 </ul>
+<h3 id="community-contributions---thank-you-kelly-ford">Community
+contributions - thank you, Kelly Ford</h3>
+<p>Two fixes in this beta come from community contributor <strong>Kelly
+Ford</strong>:</p>
+<ul>
+<li><strong>New document tabs open focused, not blank</strong> - opening
+a document with <strong>Open from URL</strong>, <strong>Import</strong>,
+or <strong>Open from Remote</strong> could leave the new tab unfocused
+and visually blank until you tabbed away and back (the closing file
+dialog was restoring focus to the previous tab). The new tab now
+reliably takes focus, just like the normal Open flow (#805).</li>
+<li><strong>The Pandoc download shows a real, cancelable progress
+dialog</strong> - the first time a conversion needs Pandoc, its
+on-demand download now uses the same accessible percentage dialog (with
+a Cancel button and announced progress) as the other on-demand
+downloads, instead of a status-bar line that was easy to miss
+(#807).</li>
+</ul>
 <hr />
 <h2 id="for-testers">For testers</h2>
 <ul>
