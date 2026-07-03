@@ -88,6 +88,12 @@ def _ffmpeg_installed() -> bool:
     return ffmpeg_available()
 
 
+def _pandoc_installed() -> bool:
+    from quill.core.external_tools import get_external_tool_status
+
+    return get_external_tool_status("pandoc").installed
+
+
 def gather_optional_components() -> list[OptionalComponent]:
     """Return every optional component with its current installed status.
 
@@ -147,6 +153,17 @@ def gather_optional_components() -> list[OptionalComponent]:
             _safe(_ffmpeg_installed),
             "",
             note="Provided by FFmpeg; QUILL helps you fetch the official build.",
+        ),
+        OptionalComponent(
+            "pandoc",
+            "Pandoc (document conversion)",
+            "Imports and exports Word, ODT, EPUB, RTF, and many other formats. "
+            "Plain-text and Markdown editing work without it; QUILL fetches the "
+            "official build the first time a conversion needs it.",
+            TOOL,
+            _safe(_pandoc_installed),
+            "~45 MB",
+            note="Provided by Pandoc (jgm/pandoc); QUILL fetches the official, pinned build.",
         ),
     ]
     out.extend(_dictionary_components())

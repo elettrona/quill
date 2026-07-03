@@ -2079,7 +2079,8 @@ lists each component — the <strong>offline speech engine</strong>
 (whisper.cpp), the very-low-resource <strong>Vosk</strong> speech
 engine, <strong>Kokoro</strong> neural voices, <strong>eSpeak
 NG</strong> and <strong>DECtalk</strong> voices, the
-<strong>FFmpeg</strong> audio-export helper, and any non-English
+<strong>FFmpeg</strong> audio-export helper, <strong>Pandoc</strong>
+(document conversion for Word, ODT, EPUB, and RTF), and any non-English
 <strong>spell-check dictionaries</strong> — and shows for each whether
 it is <strong>Installed</strong> or <strong>Available to
 download</strong>, along with its approximate size. Select a component
@@ -2087,6 +2088,14 @@ and choose <strong>Download</strong> to fetch it; each download is
 checksum-verified and shows its own progress. Everything here is
 optional — the base app, and Windows' built-in SAPI 5 voices, work
 without any of it — so download only what you need.</p>
+<p><strong>Pandoc downloads itself when you need it.</strong> You do not
+have to visit this dialog first: the moment you <strong>Import</strong>
+or <strong>Export</strong> a Word, ODT, EPUB, or RTF document (or run
+<strong>Convert File</strong>) without Pandoc present, QUILL offers to
+download the official, pinned build right there — about 45 MB, verified,
+with a progress bar — and the conversion is ready as soon as it
+finishes. Plain-text and Markdown editing never needs it, which is why
+it is no longer bundled.</p>
 <h4 id="running-light-on-modest-machines-performance-and-memory">Running
 light on modest machines (Performance and Memory)</h4>
 <p>QUILL is built to run its full AI and speech feature set on a modest,

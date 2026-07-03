@@ -97,8 +97,9 @@ version = "2.4.6"
     assert manifest.get("portableLauncher") is None
     # DECtalk, eSpeak-NG, and whisper.cpp are unbundled (PRD 10.2.4): only Pandoc
     # and Piper auto-stage by default; the rest download on demand.
+    # Pandoc is NO LONGER bundled by default (footprint unbundle): fetched on
+    # demand the first time a conversion needs it. Only Piper stays bundled.
     assert sorted(manifest["bundledTools"]) == [
-        "pandoc",
         "speech/piper",
     ]
     assert manifest["docs"] == [r"docs\userguide.md"]

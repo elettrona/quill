@@ -9,6 +9,7 @@ message box, file dialog) and routes model downloads and transcription through
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 # Transcribe/Captions accept these; ffmpeg transcodes them to 16 kHz mono WAV.
@@ -321,10 +322,76 @@ class SpeechCommandsMixin:
             "espeak": self.download_espeak_exe,
             "dectalk": self.download_dectalk_exe,
             "ffmpeg": self.download_ffmpeg,
+            "pandoc": self.download_pandoc,
         }
         action = actions.get(chosen)
         if action is not None:
             action()
+
+    def download_pandoc(self, *, on_done: Callable[[bool], None] | None = None) -> None:
+        """Fetch the official, pinned Pandoc build on demand (footprint unbundle).
+
+        Pandoc is no longer bundled: this runs from the Download Optional
+        Components dialog and from the first-use prompt when a conversion needs
+        it. Pinned + SHA-256-verified (quill.core.pandoc_install), on a worker
+        thread with a cancelable percentage, blocked in Safe Mode. ``on_done``
+        (if given) is called on the UI thread with True on success."""
+        from quill.core.external_tools import get_external_tool_status
+        from quill.core.pandoc_install import (
+            PANDOC_DOWNLOAD_BYTES,
+            install_pandoc,
+            pandoc_install_supported,
+        )
+
+        wx = self._wx
+        if bool(getattr(self, "_safe_mode", False)):
+            self._announce("Downloading Pandoc is disabled in Safe Mode.")
+            return
+        if not pandoc_install_supported():
+            self._show_message_box(
+                "The managed Pandoc download is Windows-only. On macOS install it "
+                "with Homebrew (brew install pandoc); QUILL will find it automatically.",
+                "Pandoc",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        if get_external_tool_status("pandoc").installed:
+            again = self._show_message_box(
+                "Pandoc is already available. Download QUILL's verified copy again anyway?",
+                "Pandoc",
+                wx.ICON_QUESTION | wx.YES_NO,
+            )
+            if again != wx.YES:
+                if on_done is not None:
+                    on_done(True)
+                return
+        approx_mb = round(PANDOC_DOWNLOAD_BYTES / 1_000_000)
+        proceed = self._show_message_box(
+            f"QUILL will download Pandoc (the official jgm/pandoc build, about "
+            f"{approx_mb} MB) and verify it. It powers Word, ODT, EPUB, and RTF "
+            "conversion. Continue?",
+            "Download Pandoc",
+            wx.ICON_INFORMATION | wx.YES_NO,
+        )
+        if proceed != wx.YES:
+            return
+
+        def _work(progress):
+            return install_pandoc(
+                lambda fraction, message: progress(message, int(fraction * 100), 100)
+            )
+
+        def _finished(result: object) -> None:
+            ok = bool(result)
+            self._announce(
+                "Pandoc installed. Conversions are ready."
+                if ok
+                else "Pandoc could not be installed."
+            )
+            if on_done is not None:
+                on_done(ok)
+
+        self._run_background_task("Downloading Pandoc", _work, _finished)
 
     def download_offline_speech_engine(self) -> None:
         """Fetch the offline whisper.cpp engine from QUILL's verified release asset.

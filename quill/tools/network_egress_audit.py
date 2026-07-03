@@ -158,6 +158,16 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "by an explicit 'Install Local OCR Engine' action from Tools > OCR and "
         "Document Conversion."
     ),
+    "core/pandoc_install.py::_download": (
+        "User-initiated optional Pandoc download (footprint unbundle, PRD "
+        "10.2.x): Pandoc is no longer bundled, so the first document conversion "
+        "that needs it — or an explicit 'Download Optional Components' action — "
+        "fetches the official jgm/pandoc Windows build over verified HTTPS. "
+        "HTTPS enforced (refuses non-https), verified TLS context, SHA-256 "
+        "pinned (SEC-6) to the exact release asset, visible progress, blocked "
+        "in Safe Mode, Windows-only. Extracted to the app-data tools directory; "
+        "core plain-text/Markdown editing never triggers it."
+    ),
     "core/speech/cloud_transcribers.py::transcribe_rest": (
         "User-initiated cloud transcription via a Quillin-declared, host-vetted "
         "provider kind (#669: Groq, ElevenLabs, ...). HTTPS enforced (refuses "

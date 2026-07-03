@@ -7923,6 +7923,9 @@ class MainFrame(
         from quill.core import pandoc_formats
 
         wx = self._wx
+        if not get_external_tool_status("pandoc").installed:
+            self._offer_pandoc_download("Import")
+            return
         exts = pandoc_formats.extensions_for(format_name)
         ext_list = ";".join(f"*{ext}" for ext in sorted(exts)) or "*.*"
         # The wx filter pattern needs the glob form (*.docx), not the bare
@@ -8018,6 +8021,9 @@ class MainFrame(
                 "Export",
                 wx.ICON_INFORMATION | wx.OK,
             )
+            return
+        if not get_external_tool_status("pandoc").installed:
+            self._offer_pandoc_download("Export")
             return
 
         if getattr(self.document, "modified", False):
@@ -14333,24 +14339,55 @@ class MainFrame(
         self.settings.convert_file_last_format = output_token
         save_settings(self.settings)
 
+    def _offer_pandoc_download(self, feature: str) -> bool:
+        """When a feature needs Pandoc and it isn't present, offer the on-demand
+        download (footprint unbundle). Returns True if the user started it.
+
+        On Windows QUILL fetches the official pinned build; elsewhere it points
+        the user at their package manager. Either way the conversion is retried
+        by the user once Pandoc is ready.
+        """
+        wx = self._wx
+        from quill.core.pandoc_install import pandoc_install_supported
+
+        if pandoc_install_supported():
+            result = self._show_message_box(
+                (
+                    f"{feature} needs Pandoc, which is downloaded on demand to keep "
+                    "QUILL's install small. Download the official Pandoc build now "
+                    "(about 45 MB)? It is verified and installed automatically."
+                ),
+                feature,
+                wx.ICON_INFORMATION | wx.YES_NO,
+            )
+            if result == wx.YES:
+                self.download_pandoc()
+                return True
+            return False
+        result = self._show_message_box(
+            (
+                f"{feature} needs Pandoc. Install it with your package manager "
+                "(for example: brew install pandoc), then try again. Copy the "
+                "install command now?"
+            ),
+            feature,
+            wx.ICON_INFORMATION | wx.YES_NO | wx.NO_DEFAULT,
+        )
+        if result == wx.YES and self._copy_to_clipboard(copyable_install_command("pandoc")):
+            self._set_status("Copied Pandoc install command")
+        return False
+
     def convert_file(self) -> None:
         """File > Convert File: convert any document to another format via Pandoc."""
 
         wx = self._wx
         status = get_external_tool_status("pandoc")
         if not status.installed:
-            result = self._show_message_box(
-                (
-                    "Pandoc is not installed yet. Quill can guide you, but Convert File "
-                    "needs Pandoc first. Copy the install command now?"
-                ),
-                "Convert File",
-                wx.ICON_INFORMATION | wx.YES_NO | wx.NO_DEFAULT,
-            )
-            if result == wx.YES and self._copy_to_clipboard(copyable_install_command("pandoc")):
-                self._set_status("Copied Pandoc install command")
-            else:
-                self._set_status("Convert File unavailable until Pandoc is installed")
+            if self._offer_pandoc_download("Convert File"):
+                # Download runs in the background; the user re-runs Convert File
+                # once Pandoc is ready (the status announcement tells them so).
+                return
+            self._set_status("Convert File unavailable until Pandoc is installed")
             return
 
         from quill.core import convert_formats

@@ -131,6 +131,15 @@ def detect_tool(definition: ExternalToolDefinition) -> ExternalToolStatus:
             source="bundled",
             version=_tool_version(bundled),
         )
+    managed = _managed_tool_path(definition)
+    if managed is not None:
+        return ExternalToolStatus(
+            definition=definition,
+            installed=True,
+            path=str(managed),
+            source="downloaded",
+            version=_tool_version(managed),
+        )
     for executable_name in definition.executable_names:
         discovered = shutil.which(executable_name)
         if discovered:
@@ -186,6 +195,24 @@ def _bundled_tool_path(definition: ExternalToolDefinition) -> Path | None:
         if candidate.exists():
             return candidate.resolve()
     return None
+
+
+def _managed_tool_path(definition: ExternalToolDefinition) -> Path | None:
+    """A copy fetched on demand into the app-data tools directory.
+
+    Pandoc is no longer bundled (footprint unbundle): the first conversion that
+    needs it downloads it here. Other tools have no managed download yet and
+    fall through to PATH detection.
+    """
+    if definition.tool_id != "pandoc":
+        return None
+    try:
+        from quill.core.pandoc_install import managed_pandoc_executable
+
+        managed = managed_pandoc_executable()
+    except Exception:  # noqa: BLE001 - resolution must never crash detection
+        return None
+    return managed.resolve() if managed is not None else None
 
 
 def _tool_version(executable: Path) -> str | None:
