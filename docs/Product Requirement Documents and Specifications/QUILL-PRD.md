@@ -92,11 +92,14 @@ narrow and fail-safe.
   (the same consent that governs update checks). `QUILL_IGNORE_FEATURE_LOCKS=1`
   disables all remote locks for that run — for an administrator who must use a
   disabled feature, or to recover if an advisory is ever wrong.
-- **Publishing.** `scripts/generate_update_feed.py --lock-feature <id>
-  --lock-reason "…" [--lock-max-version X]` (repeatable, signed with the same
-  `QUILL_UPDATE_MANIFEST_KEY` used for releases) writes the feed with the
-  advisory; publish it to the updates path. Lift the lock by re-running without
-  that `--lock-feature` (or with a `--lock-max-version` below the fixed build).
+- **Publishing.** The owner manages locks with `scripts/manage_feature_locks.py`
+  — an accessible console (run it with no arguments for a numbered menu, or use
+  `--list` / `--add <id> --reason "…" [--max-version X]` / `--remove <id>` /
+  `--publish`). It edits only the feed's `advisories`, re-signs with the same
+  `QUILL_UPDATE_MANIFEST_KEY` used for releases (verifying the result before it
+  writes), and `--publish` runs git add/commit/push on the feed. Lifting a lock
+  is `--remove` (or a `--max-version` below the fixed build). `generate_update_feed.py`
+  also accepts the same `--lock-feature` flags when regenerating a full feed.
 
 ---
 
