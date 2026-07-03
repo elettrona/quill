@@ -308,6 +308,8 @@ COMMAND_FEATURE_MAP: dict[str, str] = {
     "format.insert_code_block": "core.format",
     "format.insert_footnote": "core.format",
     "format.insert_table": "core.format",
+    "tools.table_studio": "core.format",
+    "tools.csv_studio": "core.format",
     "edit.sort_lines_ascending": "core.format",
     "edit.sort_lines_descending": "core.format",
     "edit.reverse_lines": "core.format",

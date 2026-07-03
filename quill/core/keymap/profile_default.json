@@ -46,6 +46,8 @@
     "tools.voice_command": "",
     "tools.voice_conversation": "",
     "tools.voice_wakeword": "",
+    "tools.table_studio": "",
+    "tools.csv_studio": "",
     "tools.voice_status": "",
     "tools.describe_image": "Ctrl+Shift+Grave, I",
     "tools.document_intake_report": "Ctrl+Shift+I",

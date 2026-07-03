@@ -1317,6 +1317,7 @@ def bundle_embedded_python(
         shutil.copy2(changelog_src, site_packages / "quill" / "CHANGELOG.md")
 
     _install_vendored_glow(python_exe, source_root)
+    _stage_table_uia(site_packages, source_root)
     _prune_embedded_runtime(site_packages)
 
     if identity is not None:
@@ -1399,6 +1400,34 @@ def _download_rcedit(cache_dir: Path) -> Path:
     print(f"Downloading rcedit from {RCEDIT_PINNED_URL}...")
     _download_with_verification(RCEDIT_PINNED_URL, rcedit_exe, expected_sha256=RCEDIT_PINNED_SHA256)
     return rcedit_exe
+
+
+def _stage_table_uia(site_packages: Path, source_root: Path) -> None:
+    """Build (best-effort) and stage the optional Table Studio native UIA
+    provider (`_quill_table_uia.pyd`) into site-packages so it is importable.
+
+    Entirely optional: Table Studio / CSV Studio run with the wx.Accessible
+    MSAA fallback when the module is absent, so a missing MSVC/Windows-SDK
+    toolchain never fails the distribution build. A prebuilt .pyd already in
+    quill/native/table_uia is staged as-is.
+    """
+    native_dir = source_root / "quill" / "native" / "table_uia"
+    if not native_dir.is_dir():
+        return
+    existing = next(native_dir.glob("_quill_table_uia*.pyd"), None)
+    if existing is None:
+        build_script = source_root / "scripts" / "build_table_uia.py"
+        if build_script.is_file():
+            try:
+                subprocess.run([sys.executable, str(build_script)], cwd=source_root, check=False)
+            except Exception as exc:  # noqa: BLE001 - optional; never fail the build
+                print(f"Table Studio native UIA provider build skipped: {exc}")
+        existing = next(native_dir.glob("_quill_table_uia*.pyd"), None)
+    if existing is not None:
+        shutil.copy2(existing, site_packages / existing.name)
+        print(f"Staged native UIA provider {existing.name} into the runtime.")
+    else:
+        print("No native UIA provider built; Table Studio ships with the MSAA fallback.")
 
 
 def _prune_embedded_runtime(site_packages: Path) -> None:

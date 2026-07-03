@@ -1532,6 +1532,53 @@ Comprehensive test corpus including simple CSV, headers, mixed types, large file
 - **Macro recording**: Record/replay keyboard sequences
 - **Data sanitization tools**: Trim spaces, standardize dates, fix typos
 
+#### 5.4.14 Table Studio — the accessible grid (shipped, experimental)
+
+**Goal.** One genuinely usable, screen-reader-first surface for building and
+editing tables by ear — the accessible grid the CSV/tabular story above needs —
+so a blind user can create a table, or open a CSV, and navigate it *cell by
+cell* with the column spoken as they cross a row.
+
+**One surface, two entry points.** `Tools > Table Studio` starts a new table;
+`Tools > Open CSV in Table Studio` (and, when the feature is enabled, opening a
+`.csv`/`.tsv` from `File > Open` in grid view) loads a file into the *same*
+grid. This consolidates what were two grid implementations into one: the legacy
+`CsvGridSurface` remains only as the fallback when Table Studio is disabled.
+
+**Architecture.** A wx-free core (`quill/core/table_studio/`) owns the data — a
+format-neutral `TableDocumentModel` (cells/rows/columns, listeners, Markdown +
+HTML serialization), a `TableController` with a `SpokenCellFormatter` (Concise /
+Standard / Detailed profiles, JAWS-style "changed header" announcing), and CSV
+I/O with delimiter auto-detection. The UI (`quill/ui/table_studio.py`) renders
+it on a virtual `wx.ListCtrl` (SysListView32) with a row-indexed MSAA provider
+so NVDA/JAWS speak the active column; an **optional compiled native UIA
+provider** (`quill/native/table_uia/`, pybind11 → `_quill_table_uia.pyd`,
+staged into Windows builds when the toolchain is present) supplies richer
+cell-level focus/value/structure events, with the MSAA path as a transparent
+fallback.
+
+**Interaction.** Arrow keys move by cell (Left/Right speak the column);
+Home/End, Ctrl+Home/End, Page Up/Down navigate; F2/Enter edit; Alt+arrows move a
+row or column; Ctrl+Insert adds a row; Delete clears a cell. A context menu
+(Shift+F10 / Applications key / right-click) exposes every action: **Sort
+Ascending/Descending** (numeric-aware, blanks last), **Insert/Delete/Move**
+rows, **Insert/Delete** columns, **Rename Column Header**, **Promote First Row
+to Header** (for a CSV whose header row was read as data), and **Use First
+Column as Row Headers**. All the same actions are also on buttons.
+
+**Industry-standard markup.** Column and row headers are stored and exported the
+standard way — `<th scope="col">` / `<th scope="row">` in HTML and a proper
+header row (with alignment markers) in Markdown — so the structure round-trips
+and is legible to assistive technology and downstream tools. Finish by inserting
+the table into the document as Markdown or HTML, or **Save to CSV** to write it
+back to a file (a full round trip for an opened CSV).
+
+**Gating & safety.** Experimental opt-in behind
+`table_studio_experimental_enabled` (Preferences > Experimental), which follows
+the Experimental master switch; the menu items appear only when it is on. No
+network, no external process; the native provider is a pure enhancement that
+never blocks a build or a run.
+
 ### 5.5 PDF handling in v1.0
 
 This section is the canonical, scoped statement of what Quill 1.0 does with PDF files. Anything not listed here is explicitly out of scope for v1.0 and tracked in the backlog ([section 17](#17-backlog-and-deferred-items)).
@@ -5670,7 +5717,7 @@ Right-to-left UI; additional languages; optional split view (still standard cont
 
 ## 17. Backlog and deferred items
 
-> **Plan of record.** The authoritative, continuously-updated view of all open work — workstreams (shipped/open), phase outcomes, the release gap list, and the open-issue ledger — lives in [`docs/planning/roadmap.md`](../../planning/roadmap.md). The large in-flight feature specs keep their own files: [`quill-native-accessible-table-studio-plan.md`](../../planning/quill-native-accessible-table-studio-plan.md). (Shipped workstreams' specs — offline speech-to-text #617, the braille suite, batch document-to-speech, Structured List Studio, the verbosity system, and the ElevenLabs integration — were retired to git history once delivered; their status lives in the roadmap and user guide, and the verbosity 2.0 backlog is consolidated in roadmap §6.) The current direction is that these items **ship** (the older 2.0-deferral framing is dropped); the tables below are retained as the format-support reference.
+> **Plan of record.** The authoritative, continuously-updated view of all open work — workstreams (shipped/open), phase outcomes, the release gap list, and the open-issue ledger — lives in [`docs/planning/roadmap.md`](../../planning/roadmap.md). (Shipped workstreams' specs — offline speech-to-text #617, the braille suite, batch document-to-speech, Structured List Studio, the verbosity system, the ElevenLabs integration, and Table Studio (now PRD §5.4.14) — were retired to git history once delivered; their status lives in the roadmap and user guide, and the verbosity 2.0 backlog is consolidated in roadmap §6.) The current direction is that these items **ship** (the older 2.0-deferral framing is dropped); the tables below are retained as the format-support reference.
 
 Everything below is intentionally out of v1.0. Each item is either yellow (achievable but requires more engineering than the v1.0 quality bar permits in time) or red (depends on unstable third-party formats, large native dependencies, or research-flavoured uplift we will not promise without measurement).
 
@@ -5726,7 +5773,7 @@ Quill is opinionated about what it is _not_. The following are intentionally and
 - **Real-time collaborative editing.** Not in v1.x. The architecture does not preclude it; we are not committing to it.
 - **Cloud-sync of documents.** Sync is for keymap and settings only (8.8). Document storage stays on the user's machine and chosen cloud-drive folder.
 - **Mobile, web, macOS, or Linux ports.** Cross-platform is post-v2 at earliest. The `core/` layer has no `wx` so it remains _possible_, not _committed_.
-- **Voice input / dictation.** Dictation is the offline, on-device Whisper stack (Locked Dictation; the Windows/SAPI path was removed). Voice control of QUILL itself ships in phases per docs/planning/quill-hey-quill-voice-interaction-plan.md: Phase 1 (shipped 0.9.0) is **Voice Command (Offline)** — push-to-talk, on-device recognition, commands bounded by the agent safe-tool allowlist, off by default and off in Safe Mode. The conversation loop, sounders, and always-listening wake word are later phases; always-on listening without the explicit opt-ins in that plan stays out of scope.
+- **Voice input / dictation.** Dictation is the offline, on-device Whisper stack (Locked Dictation; the Windows/SAPI path was removed). Voice control of QUILL itself shipped in 0.9.0 as **Hey QUILL** (Tools > Speech; full reference in the user guide's "Voice Interaction"): **Voice Command (Offline)** push-to-talk, **Voice Conversation Mode** (a follow-up-window loop with nine retunable audio cues and VAD silence detection), and **Listen for "Hey QUILL"** always-listening wake word. Every mode runs recognition entirely on-device, is bounded by the agent safe-tool allowlist so a misheard phrase cannot do damage, is off by default, and is off in Safe Mode; the always-listening mode shows a live-mic indicator with a periodic spoken reminder. Always-on listening without those explicit opt-ins stays out of scope.
 - **AI authoring assistant.** The current build exposes a local Writing Assistant shell, prompt presets, Prompt Studio reusable prompt templates, Agent Center guided profiles, AI Hub launch surface, AI connection preferences (Ollama local/cloud, OpenAI, Claude, OpenRouter, Gemini, custom OpenAI-compatible), provider verification/model discovery, searchable model filtering, status-detail accessibility announcements, and a sandboxed Python tool. The quick writing actions (Rewrite Selection, Summarize Selection, Continue Writing, Fix Grammar) each guard on the AI-enabled setting regardless of entry point (menu, command palette, or keybinding) and fall back to a sensible scope when there is no selection (paragraph at cursor for rewrite/grammar, whole document for summarize), announcing the chosen scope and word count. The AI status line also detects a saved key that cannot be decrypted on the current device (for example after a portable install is moved to another Windows account) and prompts the user to re-enter the key rather than reporting a generic authentication error. Longer-horizon autocomplete policy tuning and richer model-catalog management remain future work.
 - **Project workspaces and Find in Folder.** Deferred to v1.2 (see 17.2).
 - **Embedded media playback inside documents.** Out of scope for the editor.

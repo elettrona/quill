@@ -1402,6 +1402,8 @@ class MenuBuilderMixin:
         self._id_misspelling_list = wx.NewIdRef()
         self._id_dictionary_status = wx.NewIdRef()
         self._id_ocr_image = wx.NewIdRef()
+        self._id_table_studio = wx.NewIdRef()
+        self._id_csv_studio = wx.NewIdRef()
         self._id_ocr_clipboard = wx.NewIdRef()
         self._id_ocr_screen = wx.NewIdRef()
         self._id_describe_image = wx.NewIdRef()
@@ -1761,6 +1763,19 @@ class MenuBuilderMixin:
             writing_menu.Append(
                 self._id_glow_fix_selection,
                 self._menu_label(_("GLOW Fix &Selection"), "tools.glow_fix_selection"),
+            )
+        # Table Studio is an experimental opt-in (Preferences > Experimental):
+        # one accessible grid for a new table or an opened CSV. Appears on
+        # settings-apply.
+        if self._experimental_gate_on("table_studio_experimental_enabled"):
+            writing_menu.AppendSeparator()
+            writing_menu.Append(
+                self._id_table_studio,
+                self._menu_label(_("&Table Studio..."), "tools.table_studio"),
+            )
+            writing_menu.Append(
+                self._id_csv_studio,
+                self._menu_label(_("Open CS&V in Table Studio..."), "tools.csv_studio"),
             )
         writing_menu.AppendSeparator()
         writing_menu.Append(
@@ -3914,6 +3929,8 @@ class MenuBuilderMixin:
             id=self._id_display_language,
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.ocr_image_file(), id=self._id_ocr_image)
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_table_studio(), id=self._id_table_studio)
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_csv_studio(), id=self._id_csv_studio)
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.ocr_clipboard_image(), id=self._id_ocr_clipboard
         )

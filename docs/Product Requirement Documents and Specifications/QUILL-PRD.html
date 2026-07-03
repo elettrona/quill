@@ -2951,6 +2951,62 @@ sequences</li>
 <li><strong>Data sanitization tools</strong>: Trim spaces, standardize
 dates, fix typos</li>
 </ul>
+<h4
+id="5414-table-studio--the-accessible-grid-shipped-experimental">5.4.14
+Table Studio — the accessible grid (shipped, experimental)</h4>
+<p><strong>Goal.</strong> One genuinely usable, screen-reader-first
+surface for building and editing tables by ear — the accessible grid the
+CSV/tabular story above needs — so a blind user can create a table, or
+open a CSV, and navigate it <em>cell by cell</em> with the column spoken
+as they cross a row.</p>
+<p><strong>One surface, two entry points.</strong>
+<code>Tools &gt; Table Studio</code> starts a new table;
+<code>Tools &gt; Open CSV in Table Studio</code> (and, when the feature
+is enabled, opening a <code>.csv</code>/<code>.tsv</code> from
+<code>File &gt; Open</code> in grid view) loads a file into the
+<em>same</em> grid. This consolidates what were two grid implementations
+into one: the legacy <code>CsvGridSurface</code> remains only as the
+fallback when Table Studio is disabled.</p>
+<p><strong>Architecture.</strong> A wx-free core
+(<code>quill/core/table_studio/</code>) owns the data — a format-neutral
+<code>TableDocumentModel</code> (cells/rows/columns, listeners, Markdown
++ HTML serialization), a <code>TableController</code> with a
+<code>SpokenCellFormatter</code> (Concise / Standard / Detailed
+profiles, JAWS-style "changed header" announcing), and CSV I/O with
+delimiter auto-detection. The UI (<code>quill/ui/table_studio.py</code>)
+renders it on a virtual <code>wx.ListCtrl</code> (SysListView32) with a
+row-indexed MSAA provider so NVDA/JAWS speak the active column; an
+<strong>optional compiled native UIA provider</strong>
+(<code>quill/native/table_uia/</code>, pybind11 →
+<code>_quill_table_uia.pyd</code>, staged into Windows builds when the
+toolchain is present) supplies richer cell-level focus/value/structure
+events, with the MSAA path as a transparent fallback.</p>
+<p><strong>Interaction.</strong> Arrow keys move by cell (Left/Right
+speak the column); Home/End, Ctrl+Home/End, Page Up/Down navigate;
+F2/Enter edit; Alt+arrows move a row or column; Ctrl+Insert adds a row;
+Delete clears a cell. A context menu (Shift+F10 / Applications key /
+right-click) exposes every action: <strong>Sort
+Ascending/Descending</strong> (numeric-aware, blanks last),
+<strong>Insert/Delete/Move</strong> rows, <strong>Insert/Delete</strong>
+columns, <strong>Rename Column Header</strong>, <strong>Promote First
+Row to Header</strong> (for a CSV whose header row was read as data),
+and <strong>Use First Column as Row Headers</strong>. All the same
+actions are also on buttons.</p>
+<p><strong>Industry-standard markup.</strong> Column and row headers are
+stored and exported the standard way —
+<code>&lt;th scope="col"&gt;</code> /
+<code>&lt;th scope="row"&gt;</code> in HTML and a proper header row
+(with alignment markers) in Markdown — so the structure round-trips and
+is legible to assistive technology and downstream tools. Finish by
+inserting the table into the document as Markdown or HTML, or
+<strong>Save to CSV</strong> to write it back to a file (a full round
+trip for an opened CSV).</p>
+<p><strong>Gating &amp; safety.</strong> Experimental opt-in behind
+<code>table_studio_experimental_enabled</code> (Preferences &gt;
+Experimental), which follows the Experimental master switch; the menu
+items appear only when it is on. No network, no external process; the
+native provider is a pure enhancement that never blocks a build or a
+run.</p>
 <h3 id="55-pdf-handling-in-v10">5.5 PDF handling in v1.0</h3>
 <p>This section is the canonical, scoped statement of what Quill 1.0
 does with PDF files. Anything not listed here is explicitly out of scope
@@ -10930,16 +10986,14 @@ continuously-updated view of all open work — workstreams (shipped/open),
 phase outcomes, the release gap list, and the open-issue ledger — lives
 in <a
 href="../../planning/roadmap.md"><code>docs/planning/roadmap.md</code></a>.
-The large in-flight feature specs keep their own files: <a
-href="../../planning/quill-native-accessible-table-studio-plan.md"><code>quill-native-accessible-table-studio-plan.md</code></a>.
 (Shipped workstreams' specs — offline speech-to-text #617, the braille
 suite, batch document-to-speech, Structured List Studio, the verbosity
-system, and the ElevenLabs integration — were retired to git history
-once delivered; their status lives in the roadmap and user guide, and
-the verbosity 2.0 backlog is consolidated in roadmap §6.) The current
-direction is that these items <strong>ship</strong> (the older
-2.0-deferral framing is dropped); the tables below are retained as the
-format-support reference.</p>
+system, the ElevenLabs integration, and Table Studio (now PRD §5.4.14) —
+were retired to git history once delivered; their status lives in the
+roadmap and user guide, and the verbosity 2.0 backlog is consolidated in
+roadmap §6.) The current direction is that these items
+<strong>ship</strong> (the older 2.0-deferral framing is dropped); the
+tables below are retained as the format-support reference.</p>
 </blockquote>
 <p>Everything below is intentionally out of v1.0. Each item is either
 yellow (achievable but requires more engineering than the v1.0 quality
@@ -11139,14 +11193,17 @@ is post-v2 at earliest. The <code>core/</code> layer has no
 <em>committed</em>.</li>
 <li><strong>Voice input / dictation.</strong> Dictation is the offline,
 on-device Whisper stack (Locked Dictation; the Windows/SAPI path was
-removed). Voice control of QUILL itself ships in phases per
-docs/planning/quill-hey-quill-voice-interaction-plan.md: Phase 1
-(shipped 0.9.0) is <strong>Voice Command (Offline)</strong> —
-push-to-talk, on-device recognition, commands bounded by the agent
-safe-tool allowlist, off by default and off in Safe Mode. The
-conversation loop, sounders, and always-listening wake word are later
-phases; always-on listening without the explicit opt-ins in that plan
-stays out of scope.</li>
+removed). Voice control of QUILL itself shipped in 0.9.0 as <strong>Hey
+QUILL</strong> (Tools &gt; Speech; full reference in the user guide's
+"Voice Interaction"): <strong>Voice Command (Offline)</strong>
+push-to-talk, <strong>Voice Conversation Mode</strong> (a
+follow-up-window loop with nine retunable audio cues and VAD silence
+detection), and <strong>Listen for "Hey QUILL"</strong> always-listening
+wake word. Every mode runs recognition entirely on-device, is bounded by
+the agent safe-tool allowlist so a misheard phrase cannot do damage, is
+off by default, and is off in Safe Mode; the always-listening mode shows
+a live-mic indicator with a periodic spoken reminder. Always-on
+listening without those explicit opt-ins stays out of scope.</li>
 <li><strong>AI authoring assistant.</strong> The current build exposes a
 local Writing Assistant shell, prompt presets, Prompt Studio reusable
 prompt templates, Agent Center guided profiles, AI Hub launch surface,

@@ -4,11 +4,9 @@
 > register of **locked / hidden** features (consolidated here from the retired
 > `deferred-locked-features.md`). Shipped work is not listed here; once something
 > lands it leaves this file and its behavior lives in the user guide and
-> `QUILL-PRD.md`. The other planning files are the large in-flight feature specs, each
-> with open work of its own:
->
-> - [`quill-native-accessible-table-studio-plan.md`](quill-native-accessible-table-studio-plan.md) — Table Studio (not started).
-> - [`quill-hey-quill-voice-interaction-plan.md`](quill-hey-quill-voice-interaction-plan.md) — Hey QUILL voice interaction: **all four phases + refinements shipped 2026-07-03** (push-to-talk, conversation mode with sounders, wake word, Ask Quill routing, VAD/personalization/engine choice). Only a dedicated Vosk keyword-spotter remains as a future optimization.
+> `QUILL-PRD.md`. The large in-flight feature specs that once kept their own files
+> have all shipped and been retired to git history (Table Studio → PRD §5.4.14; Hey
+> QUILL voice interaction → PRD §5776 + user guide; Accessible Vault → PRD §5.89d).
 >
 > The Accessible Vault plan has been **retired**: Phases 0–7 shipped (feature-complete
 > for 0.9.0) and the feature now lives in `QUILL-PRD.md` §5.89d and the user guide; the
@@ -102,11 +100,19 @@ tutorials, the podcast/walkthrough series, and content-quality follow-ups
 (#535–#564, #505, #522). Long-horizon ecosystem (#590) and collaboration (#592)
 ideas park here.
 
-### 1.5 Native accessible Table Studio (not started)
+### 1.5 Native accessible Table Studio — shipped (experimental)
 
-**Spec:** [`quill-native-accessible-table-studio-plan.md`](quill-native-accessible-table-studio-plan.md).
-The accessible table-authoring surface (and the CSV-grid half of #514) — planned
-design only.
+Table Studio shipped as an experimental opt-in: one screen-reader-first
+accessible grid (virtual `wx.ListCtrl` + MSAA, plus an optional compiled native
+UIA provider) for building a table or opening a CSV, with cell navigation that
+speaks the column, a full context menu (sort asc/desc, insert/delete/move rows,
+insert/delete columns, rename/promote headers, row-header toggle), industry-
+standard `<th scope>` markup, and Markdown/HTML/CSV round-trip. The CSV grid
+path (the CSV-grid half of #514) consolidates onto it when enabled. Canonical
+docs: **PRD §5.4.14**, user guide ("Table Studio"), CHANGELOG, release notes.
+Open follow-up: make the CSV a first-class editable *document tab* (retire the
+legacy `CsvGridSurface`), and a real screen-reader validation pass on a packaged
+build.
 
 ### 1.6 ElevenLabs — remaining 2.0 extras
 
@@ -213,13 +219,11 @@ open sections above when scheduled.
   dictation hotkey), **idle-silence detection** (auto-stop on a pause), and **dictation
   intelligence** (spoken punctuation/commands). Each is sizable beyond the keyboard-only
   Hold/Locked dictation that ships.
-- **Voice interaction / Hey QUILL** (`core.voice_commands`, §2) — now has a full plan
-  of record:
-  [`quill-hey-quill-voice-interaction-plan.md`](quill-hey-quill-voice-interaction-plan.md)
-  (four phases: surface the implemented S5 push-to-talk; import the ADP conversation
-  state machine + sounder palette; on-device "Hey QUILL" wake word as a downloadable
-  keyword-spotting component; route questions to Ask Quill). Commands stay bounded by
-  the agent safe-tool allowlist.
+- **Voice interaction / Hey QUILL** — **shipped 0.9.0** (all four phases + refinements:
+  push-to-talk Voice Command, Voice Conversation Mode with sounders + VAD, always-listening
+  "Hey QUILL" wake word, Ask Quill routing). Canonical docs: PRD §5776 "Voice input",
+  user guide "Voice Interaction". Commands stay bounded by the agent safe-tool allowlist.
+  The one open follow-up is a dedicated low-power keyword spotter for the wake word.
 - **BITS Whisperer remainder** (tracker #680) — the consolidation shipped for 1.0; the
   leftovers (a Windows SAPI/WinRT zero-download engine, a consented cloud watch action,
   guided provider onboarding, diarization/live-mic, additional cloud kinds, and the
@@ -322,7 +326,7 @@ profiles (#426)**.
 | OCR / document conversion (PRD §5.93) | **Free local tiers shipped 0.9.0.** Cloud tier, OCR Review Mode, Services tab in §5. |
 | Platform & distribution (§1.3) | #517, #519; #525 deferred to 2.0 (#680). |
 | Docs & content (§1.4) | #535–#564, #505, #522, #590, #592. |
-| Table Studio (§1.5) | Whole feature (`quill-native-accessible-table-studio-plan.md`). |
+| Table Studio (§1.5) | **Shipped 0.9.0 (experimental opt-in).** Open follow-ups: CSV as an editable document tab; real screen-reader validation pass. |
 | ElevenLabs 2.0 extras (§1.6) | Live streaming Read Aloud, voice management, Tier-3 — all §5. |
 | Accessible Vault (§1.7) | **Complete for 0.9.0** — no open work. |
 | Locked features (§2) | Voice Commands, Rich Text Lens, Publishing (send), Third-Party Plugins (`bw_whisperer` kept locked/inert — not removed). |

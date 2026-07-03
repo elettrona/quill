@@ -2059,6 +2059,20 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("experimental", "wordpress", "publishing", "connections", "read"),
     ),
     SettingSpec(
+        "table_studio_experimental_enabled",
+        "Table Studio — accessible table and CSV editing (experimental)",
+        "experimental",
+        "bool",
+        (
+            "Adds Table Studio (Tools menu): build a new table or open a CSV/TSV "
+            "file in one fully keyboard-accessible grid where the arrow keys move "
+            "by cell and speak the column. Insert the result into your document as "
+            "Markdown or HTML, or save it back out as CSV. Requires the master "
+            "switch above. Takes effect as soon as you apply Settings — no restart."
+        ),
+        keywords=("experimental", "table", "csv", "studio", "grid", "accessible"),
+    ),
+    SettingSpec(
         "edge_read_aloud_enabled",
         "Read the document aloud in your browser (experimental)",
         "experimental",
