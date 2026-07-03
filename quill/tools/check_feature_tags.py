@@ -32,9 +32,7 @@ def run() -> int:
     for feature_id, definition in sorted(FEATURE_DEFINITIONS.items()):
         for dependency in definition.dependencies:
             if dependency not in FEATURE_DEFINITIONS:
-                errors.append(
-                    f"feature {feature_id!r} depends on unknown feature {dependency!r}"
-                )
+                errors.append(f"feature {feature_id!r} depends on unknown feature {dependency!r}")
     cycle = _find_dependency_cycle(FEATURE_DEFINITIONS)
     if cycle is not None:
         errors.append("feature dependency cycle: " + " -> ".join(cycle))
