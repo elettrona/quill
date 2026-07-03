@@ -11033,9 +11033,9 @@ class MainFrame(
                 "support is partial and braille routing is less proven than the "
                 "native Notepad/RichEdit controls. Use for testing only.\n\n"
                 "Technical: wx.stc.StyledTextCtrl (Win32 class 'Scintilla') wrapped "
-                "to the TextCtrl contract: EVT_TEXT forwarding, LF-only line "
-                "endings, load-without-dirty, and caret moves that collapse the "
-                "selection. Full risk analysis: edit.md at the repository root."
+                "to the TextCtrl contract: EVT_TEXT forwarding, LF line endings, "
+                "load-without-dirty, collapsing caret moves, and a mirrored system "
+                "caret so screen readers track the cursor. Analysis: edit.md."
             ),
             "win32": (
                 "Native Win32 EDIT — the pywin32 spike (Windows only).\n\n"

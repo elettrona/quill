@@ -226,8 +226,9 @@ assertions, run against each surface with real wx) before we lean on it.
 - Probe results (2026-07-03, wxPython on this machine): StyledTextCtrl
   implements the whole TextCtrl-compatible API QUILL needs -- tuple
   `GetSelection` with `(caret, caret)` when empty, `GetRange`, `Replace`,
-  `PositionToXY`, modified-state via save point. Four contract gaps were
-  found and are shimmed in `stc_edit_surface.py`:
+  `PositionToXY`, modified-state via save point. Five contract gaps were
+  found (four by API probe, the fifth by Jeff's live JAWS test) and are
+  shimmed in `stc_edit_surface.py`:
   - `wx.EVT_TEXT` never fires natively (only `EVT_STC_CHANGE`), which would
     kill dirty tracking, word count, and Reveal Codes sync. The wrapper
     forwards every change as a `wxEVT_TEXT` event.
@@ -239,6 +240,14 @@ assertions, run against each surface with real wx) before we lean on it.
     (probe-confirmed). The wrapper routes through `GotoPos`.
   - Line endings pass through unconverted (CRLF default). The wrapper pins
     LF, converts on load, and converts pasted text.
+  - wx's Scintilla port never touches the Windows system caret -- the signal
+    JAWS/NVDA use for caret tracking -- so pressing Enter inserted the
+    newline but the screen reader stayed on the old line (found in live JAWS
+    testing). Real Scintilla (Notepad++) mirrors an invisible system caret;
+    the wrapper now replicates that with ctypes: an all-zero monochrome
+    bitmap caret (invisible to the eye) created on focus, moved on every
+    `EVT_STC_UPDATEUI`, destroyed on blur. Verified live: the system caret's
+    reported position steps down lines as the Scintilla caret moves.
 - Accessibility: the open question, and the point of the testing round.
   NVDA supports Scintilla well (it drives Notepad++ daily). JAWS support is
   partial and braille routing is less proven than EDIT/RichEdit. Needs the

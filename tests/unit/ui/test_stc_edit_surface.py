@@ -67,3 +67,23 @@ def test_wrapper_shims_the_probed_contract_gaps() -> None:
     assert "def SetInsertionPoint" in source and "GotoPos" in source
     # LF-only buffer and paste conversion so offsets match GetValue().
     assert "STC_EOL_LF" in source and "SetPasteConvertEndings" in source
+
+
+def test_wrapper_mirrors_a_system_caret_for_screen_readers() -> None:
+    # wx's Scintilla port paints its own caret and never touches the Windows
+    # system caret, so JAWS/NVDA receive no caret-location events: pressing
+    # Enter inserts the newline but the reported caret stays on the old line.
+    # Real Scintilla (Notepad++) mirrors an invisible system caret on every
+    # update; the wrapper must do the same.
+    import quill.ui.stc_edit_surface as mod
+
+    source = inspect.getsource(mod)
+    # Created on focus, moved on every caret/scroll update, torn down on blur.
+    assert "EVT_STC_UPDATEUI" in source
+    assert "EVT_KILL_FOCUS" in source
+    assert "CreateCaret" in source
+    assert "SetCaretPos" in source
+    assert "DestroyCaret" in source
+    # The mirror caret must be the invisible all-zero-bitmap kind so users do
+    # not see a second blinking caret on top of Scintilla's own.
+    assert "CreateBitmap" in source
