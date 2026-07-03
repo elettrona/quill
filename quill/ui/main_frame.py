@@ -1062,6 +1062,11 @@ class MainFrame(
         self.features = FeatureManager.load(persistent=not safe_mode)
         self.macros = MacroManager.load(persistent=not safe_mode)
         self.settings = load_settings()
+        # Remote feature kill switch: load the locally-cached locked set so any
+        # active safety advisory is honored immediately at startup, even offline.
+        from quill.core.safety.feature_lock import load_feature_locks
+
+        self._feature_locks = load_feature_locks()
         # The first run shows exactly one onboarding surface: the unified setup
         # wizard (run_startup_wizard), plus the trust-consent gate. The legacy
         # per-feature startup prompts (profile, AI, assistant, GLOW, speech,
@@ -1335,6 +1340,7 @@ class MainFrame(
 
         self._build_commands()
         self._build_menu()
+        self._note_active_feature_locks()
         self._apply_watch_folder_menu_state()
         self._refresh_sessions_menu()
         self._apply_accelerators()
@@ -7461,6 +7467,13 @@ class MainFrame(
         self._announce(message, force=True)
 
     def _feature_enabled(self, feature_id: str) -> bool:
+        # Remote kill switch (highest precedence): a signed safety advisory can
+        # disable a feature for this version. Honored from the local cache even
+        # offline; overridable with QUILL_IGNORE_FEATURE_LOCKS. Enforced here so
+        # every feature-gated path (menu, palette, keybinding) obeys it uniformly.
+        locks = getattr(self, "_feature_locks", None)
+        if locks is not None and locks.is_locked(feature_id):
+            return False
         feature_manager = getattr(self, "features", None)
         enabled = True if feature_manager is None else feature_manager.is_enabled(feature_id)
         # Experimental gates (Settings > Experimental). These features ship dark
@@ -7479,6 +7492,58 @@ class MainFrame(
         return bool(getattr(self.settings, "experimental_acknowledged", False)) and bool(
             getattr(self.settings, setting_name, False)
         )
+
+    def _note_active_feature_locks(self) -> None:
+        """At startup, record a reviewable notice when cached safety locks apply."""
+        try:
+            active = self._feature_locks.active()
+        except Exception:  # noqa: BLE001
+            return
+        if not active:
+            return
+        count = len(active)
+        first_reason = next(iter(active.values()))
+        self._record_notification(
+            f"{count} feature{'s' if count != 1 else ''} temporarily disabled by a "
+            f"QUILL safety advisory: {first_reason}",
+            "update",
+        )
+
+    def _apply_feature_advisories(self, manifest: object, current_version: str) -> None:
+        """Apply signed remote feature advisories from a fetched update manifest.
+
+        Persists the resolved locked set, rebuilds the menu so newly-locked
+        features dim, and announces any change. A manifest with no advisories
+        clears prior locks (how a fixed build lifts a kill switch).
+        """
+        from quill.core.safety.feature_lock import apply_manifest_locks
+
+        try:
+            previous = dict(getattr(self._feature_locks, "locked", {}))
+            self._feature_locks = apply_manifest_locks(manifest, current_version)
+        except Exception:  # noqa: BLE001 - advisory handling must never break update check
+            return
+        now = self._feature_locks.active()
+        if now == previous:
+            return
+        # Rebuild the menu so locked commands are gated by _feature_enabled.
+        try:
+            self._build_menu()
+        except Exception:  # noqa: BLE001
+            pass
+        newly_locked = [fid for fid in now if fid not in previous]
+        lifted = [fid for fid in previous if fid not in now]
+        if newly_locked:
+            reason = now[newly_locked[0]]
+            count = len(newly_locked)
+            summary = (
+                f"A QUILL safety update has temporarily disabled {count} "
+                f"feature{'s' if count != 1 else ''}: {reason}"
+            )
+            self._announce(summary)
+            self._record_notification(summary, "update")
+        elif lifted:
+            self._announce("A QUILL safety update has re-enabled a previously disabled feature.")
 
     def _record_notification(self, message: str, category: str = "info") -> None:
         self._notifications = add_notification(message, category)
@@ -20146,6 +20211,12 @@ class MainFrame(
         """UI-thread callback once the background update-network fetch finishes."""
         self._update_check_in_progress = False
         wx = self._wx
+
+        # Remote kill switch: apply any signed feature advisories from the manifest
+        # for this version (a manifest with none clears prior locks). Always runs,
+        # regardless of whether a newer build exists.
+        if manifest is not None:
+            self._apply_feature_advisories(manifest, current_version)
 
         # Compatibility path: signed manifest feed.
         if manifest is not None and is_newer_version(current_version, manifest.version):

@@ -71,12 +71,34 @@ def _ssl_context() -> ssl.SSLContext:
 
 
 @dataclass(frozen=True, slots=True)
+class FeatureAdvisory:
+    """A remote instruction to disable one feature (a kill switch).
+
+    Carried inside the signed update manifest, so it inherits the manifest's
+    HTTPS + trusted-host + signature protections. It can only *disable* a known
+    feature id (see ``quill.core.feature_command_map``) for a version range —
+    never enable or execute anything — so the worst a forged advisory could do
+    (if signing were ever broken) is make a feature unavailable, which the user
+    can override locally. ``min_version`` / ``max_version`` bound which running
+    builds it applies to (empty = unbounded); a fixed build lifts the lock by
+    publishing a manifest without the advisory, or with a max_version below it.
+    """
+
+    feature_id: str
+    reason: str = ""
+    min_version: str = ""
+    max_version: str = ""
+    advisory_id: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class UpdateManifest:
     version: str
     download_url: str
     published_at: str
     notes: str
     signature: str
+    advisories: tuple[FeatureAdvisory, ...] = ()
 
 
 def fetch_update_manifest(
@@ -271,6 +293,7 @@ def parse_update_manifest(payload: str) -> UpdateManifest:
         published_at=str(raw.get("published_at", "")).strip(),
         notes=str(raw.get("notes", "")).strip(),
         signature=str(raw.get("signature", "")).strip(),
+        advisories=_parse_advisories(raw.get("advisories")),
     )
     if not manifest.version or not manifest.download_url or not manifest.signature:
         raise ValueError("Manifest is missing required fields")
@@ -280,22 +303,87 @@ def parse_update_manifest(payload: str) -> UpdateManifest:
     return manifest
 
 
-def _canonical_manifest(*, version: str, download_url: str, published_at: str, notes: str) -> str:
+def _parse_advisories(raw: object) -> tuple[FeatureAdvisory, ...]:
+    """Parse the optional ``advisories`` array; tolerant of a missing/odd shape."""
+    if not isinstance(raw, list):
+        return ()
+    out: list[FeatureAdvisory] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        feature_id = str(item.get("feature_id", "")).strip()
+        if not feature_id:
+            continue
+        out.append(
+            FeatureAdvisory(
+                feature_id=feature_id,
+                reason=str(item.get("reason", "")).strip(),
+                min_version=str(item.get("min_version", "")).strip(),
+                max_version=str(item.get("max_version", "")).strip(),
+                advisory_id=str(item.get("advisory_id", "")).strip(),
+            )
+        )
+    return tuple(out)
+
+
+def _advisories_canonical(advisories: tuple[FeatureAdvisory, ...]) -> list[dict[str, str]]:
+    """Deterministic (sorted) serialization of advisories for signing."""
+    rows = [
+        {
+            "advisory_id": a.advisory_id,
+            "feature_id": a.feature_id,
+            "max_version": a.max_version,
+            "min_version": a.min_version,
+            "reason": a.reason,
+        }
+        for a in advisories
+    ]
+    return sorted(rows, key=lambda r: (r["feature_id"], r["advisory_id"]))
+
+
+def active_feature_locks(manifest: UpdateManifest, current_version: str) -> dict[str, str]:
+    """Feature ids this manifest locks for ``current_version`` -> spoken reason (pure).
+
+    An advisory applies when the running version is within
+    ``[min_version, max_version]`` (either bound empty = unbounded on that side).
+    """
+    locks: dict[str, str] = {}
+    current = _version_tuple(current_version)
+    for advisory in manifest.advisories:
+        if advisory.min_version and _version_tuple(advisory.min_version) > current:
+            continue
+        if advisory.max_version and _version_tuple(advisory.max_version) < current:
+            continue
+        locks[advisory.feature_id] = (
+            advisory.reason or "temporarily disabled by a QUILL safety advisory"
+        )
+    return locks
+
+
+def _canonical_manifest(
+    *,
+    version: str,
+    download_url: str,
+    published_at: str,
+    notes: str,
+    advisories: tuple[FeatureAdvisory, ...] = (),
+) -> str:
     """Stable JSON encoding of the signed manifest fields.
 
     Keys are sorted and separators are tight so the publisher and the client
-    hash byte-for-byte identical input.
+    hash byte-for-byte identical input. The ``advisories`` key is included only
+    when there is at least one advisory, so every existing signed feed (which
+    has none) still verifies byte-for-byte against its published signature.
     """
-    return json.dumps(
-        {
-            "download_url": download_url,
-            "notes": notes,
-            "published_at": published_at,
-            "version": version,
-        },
-        separators=(",", ":"),
-        sort_keys=True,
-    )
+    body: dict[str, object] = {
+        "download_url": download_url,
+        "notes": notes,
+        "published_at": published_at,
+        "version": version,
+    }
+    if advisories:
+        body["advisories"] = _advisories_canonical(advisories)
+    return json.dumps(body, separators=(",", ":"), sort_keys=True)
 
 
 def manifest_signature(
@@ -305,6 +393,7 @@ def manifest_signature(
     published_at: str,
     notes: str,
     key: str | None = None,
+    advisories: tuple[FeatureAdvisory, ...] = (),
 ) -> str:
     """Compute the update-manifest signature.
 
@@ -326,7 +415,11 @@ def manifest_signature(
       (Ed25519) signing is the future hardening (see RELEASE.md).
     """
     canonical = _canonical_manifest(
-        version=version, download_url=download_url, published_at=published_at, notes=notes
+        version=version,
+        download_url=download_url,
+        published_at=published_at,
+        notes=notes,
+        advisories=advisories,
     )
     if key:
         return hmac.new(key.encode("utf-8"), canonical.encode("utf-8"), hashlib.sha256).hexdigest()
@@ -347,6 +440,7 @@ def verify_manifest_signature(manifest: UpdateManifest) -> bool:
         published_at=manifest.published_at,
         notes=manifest.notes,
         key=env_key,
+        advisories=manifest.advisories,
     )
     return hmac.compare_digest(manifest.signature, expected)
 
@@ -496,9 +590,11 @@ def _trusted_update_hosts() -> set[str]:
 __all__ = [
     "DEFAULT_UPDATE_MANIFEST_URL",
     "GITHUB_RELEASES_API",
+    "FeatureAdvisory",
     "GitHubRelease",
     "UpdateManifest",
     "URLError",
+    "active_feature_locks",
     "download_release_asset",
     "fetch_latest_release",
     "fetch_releases",

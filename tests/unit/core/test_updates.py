@@ -6,9 +6,13 @@ import json
 from quill.core.updates import (
     _MANIFEST_KEY_ENV,
     DEFAULT_UPDATE_MANIFEST_URL,
+    FeatureAdvisory,
     GitHubRelease,
+    UpdateManifest,
     _pick_asset,
+    active_feature_locks,
     is_newer_version,
+    manifest_signature,
     parse_update_manifest,
     select_latest,
 )
@@ -370,3 +374,63 @@ def test_fetch_releases_uses_api_override(monkeypatch) -> None:
     monkeypatch.setattr(updates, "urlopen", _fake_urlopen)
     assert updates.fetch_releases() == []
     assert seen["url"] == override
+
+
+# --------------------------------------------------------------------------- #
+# Remote feature kill switch (signed advisories in the update manifest)
+# --------------------------------------------------------------------------- #
+def _signed_feed(advisories: tuple[FeatureAdvisory, ...] = ()) -> str:
+    version = "0.9.0"
+    url = "https://github.com/Community-Access/quill/releases/download/latest/x.exe"
+    sig = manifest_signature(
+        version=version, download_url=url, published_at="", notes="", advisories=advisories
+    )
+    body: dict = {"version": version, "download_url": url, "published_at": "", "notes": "",
+                  "signature": sig}
+    if advisories:
+        body["advisories"] = [
+            {"feature_id": a.feature_id, "reason": a.reason, "min_version": a.min_version,
+             "max_version": a.max_version, "advisory_id": a.advisory_id}
+            for a in advisories
+        ]
+    return json.dumps(body)
+
+
+def test_manifest_with_no_advisories_still_verifies() -> None:
+    # Backward compatibility: an existing feed with no advisories keeps its
+    # old signature (advisories key omitted from the signed canonical form).
+    m = parse_update_manifest(_signed_feed())
+    assert m.version == "0.9.0" and m.advisories == ()
+
+
+def test_signed_advisory_round_trips_and_verifies() -> None:
+    adv = FeatureAdvisory(feature_id="core.glow", reason="crash", max_version="0.9.5")
+    m = parse_update_manifest(_signed_feed((adv,)))
+    assert len(m.advisories) == 1 and m.advisories[0].feature_id == "core.glow"
+
+
+def test_tampered_advisory_fails_signature() -> None:
+    import pytest
+
+    adv = FeatureAdvisory(feature_id="core.glow", reason="crash")
+    feed = json.loads(_signed_feed((adv,)))
+    # Attacker swaps the locked feature id but cannot re-sign.
+    feed["advisories"][0]["feature_id"] = "core.everything"
+    with pytest.raises(ValueError, match="signature"):
+        parse_update_manifest(json.dumps(feed))
+
+
+def test_active_feature_locks_respects_version_range() -> None:
+    m = UpdateManifest(
+        version="0.9.0", download_url="x", published_at="", notes="", signature="",
+        advisories=(
+            FeatureAdvisory(feature_id="a", reason="ra", max_version="0.9.5"),
+            FeatureAdvisory(feature_id="b", reason="rb", min_version="1.0.0"),
+            FeatureAdvisory(feature_id="c", reason=""),  # unbounded
+        ),
+    )
+    locks = active_feature_locks(m, "0.9.0")
+    assert set(locks) == {"a", "c"}  # b needs >=1.0.0; c is unbounded
+    assert locks["a"] == "ra"
+    assert "safety advisory" in locks["c"]  # empty reason gets a default
+    assert active_feature_locks(m, "1.0.0") == {"b": "rb", "c": locks["c"]}

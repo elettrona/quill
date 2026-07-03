@@ -88,6 +88,9 @@ _REVIEWED_PERSISTENCE: dict[str, str] = {
     "core/search_history.py::add_search_term": "cache",
     "core/notifications.py::save_notifications": "cache",
     "core/notifications.py::clear_notifications": "cache",
+    # Remote feature kill switch: the locally-cached set of features a signed
+    # safety advisory has disabled, so the lock persists offline/across restarts.
+    "core/safety/feature_lock.py::save_feature_locks": "cache",
     "core/diagnostics.py::record_diagnostic_event": "cache",
     "core/sessions.py::add_recent_session": "cache",
     "core/sessions.py::clear_recent_sessions": "cache",
