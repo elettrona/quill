@@ -2,7 +2,7 @@
 
 ## Repository state
 
-This repository contains the implementation source tree together with the product requirements document under `docs/QUILL-PRD.md` and `docs/QUILL-PRD.html`.
+This repository contains the implementation source tree together with the product requirements document under `docs/Product Requirement Documents and Specifications/QUILL-PRD.md` and `docs/QUILL-PRD.html`.
 
 When generating code or task plans, treat the PRD as the source of truth for intended architecture and conventions.
 
