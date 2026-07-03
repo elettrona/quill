@@ -78,10 +78,24 @@ narrow and fail-safe.
   anything. The worst a forged advisory could do — if signing were ever broken —
   is disable a feature, which the user can override locally. This keeps the
   mechanism from becoming a remote-control attack surface.
-- **Enforcement.** Resolved locks are applied in the single feature-enable
-  chokepoint (`MainFrame._feature_enabled`), so every path — menu, command
-  palette, keybinding — obeys uniformly; the command dims and a plain-language
-  notice states it was disabled by a safety advisory.
+- **Enforcement (at dispatch, not per handler).** Locks are enforced at the
+  command **dispatch** chokepoint — `CommandRegistry.run` consults a gate before
+  invoking any handler, so **keybindings and the command palette** (which both
+  route through it) are blocked uniformly rather than relying on each handler to
+  self-check. Menu items whose feature is locked are **disabled** on every menu
+  build (so their click and accelerator are inert). A blocked command surfaces a
+  plain-language "turned off by a safety update" notice. `_feature_enabled` also
+  consults the locks, so any handler self-check stays correct too.
+- **Dependency cascade.** A lock propagates through the feature dependency graph
+  (`FeatureDefinition.dependencies`): a feature is effectively locked when it, or
+  anything it transitively depends on, is directly locked. Locking a parent
+  (e.g. `core.editor`) therefore disables everything built on it — mirroring how
+  `FeatureManager` disables dependents when a feature is turned off — so an
+  advisory never leaves a half-working subtree. The dependency graph is gated as
+  acyclic with all dependencies defined (`check_feature_tags`).
+- **Portable builds covered.** Portable builds fetch the signed manifest for
+  advisories too (they only skip its installer URL for the update *prompt*), so
+  a kill switch reaches them and, crucially, can be lifted on them.
 - **Persistence & fail-safe.** The locked set is cached locally
   (`quill/core/safety/feature_lock.py`) and honored on the next launch **even
   offline** — a kill switch you can only reach while online would be useless
@@ -95,9 +109,12 @@ narrow and fail-safe.
 - **Publishing.** The owner manages locks with `scripts/manage_feature_locks.py`
   — an accessible console (run it with no arguments for a numbered menu, or use
   `--list` / `--add <id> --reason "…" [--max-version X]` / `--remove <id>` /
-  `--publish`). It edits only the feed's `advisories`, re-signs with the same
-  `QUILL_UPDATE_MANIFEST_KEY` used for releases (verifying the result before it
-  writes), and `--publish` runs git add/commit/push on the feed. Lifting a lock
+  `--publish`). Every `--lock-feature`/`--add` id is **validated against the
+  feature catalog before signing** (a typo hard-fails with suggestions, so an
+  incident lock can't silently no-op). It edits only the feed's `advisories`,
+  re-signs with the same `QUILL_UPDATE_MANIFEST_KEY` used for releases (verifying
+  the result before it writes), and `--publish` runs git add/commit/push on the
+  feed. Lifting a lock
   is `--remove` (or a `--max-version` below the fixed build). `generate_update_feed.py`
   also accepts the same `--lock-feature` flags when regenerating a full feed.
 

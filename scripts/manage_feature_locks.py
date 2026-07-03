@@ -130,21 +130,18 @@ def save_feed(path: Path, feed: dict) -> None:
 
 
 def _known_feature_ids() -> list[str]:
+    """The authoritative feature ids (the catalog the client resolves against)."""
     try:
-        from quill.core.feature_command_map import FEATURE_COMMAND_MAP  # type: ignore
+        from quill.core.features import FEATURE_DEFINITIONS
 
-        return sorted({str(v) for v in FEATURE_COMMAND_MAP.values()})
-    except Exception:  # noqa: BLE001 - the map's name may differ; degrade gracefully
-        try:
-            from quill.core import feature_command_map as fcm
+        return sorted(FEATURE_DEFINITIONS)
+    except Exception:  # noqa: BLE001 - degrade gracefully if the catalog can't import
+        return []
 
-            ids: set[str] = set()
-            for value in vars(fcm).values():
-                if isinstance(value, dict):
-                    ids.update(str(v) for v in value.values())
-            return sorted(ids)
-        except Exception:  # noqa: BLE001
-            return []
+
+def is_known_feature(feature_id: str) -> bool:
+    known = _known_feature_ids()
+    return not known or feature_id in known  # empty catalog => cannot validate, allow
 
 
 def publish(path: Path, message: str) -> int:
@@ -197,6 +194,9 @@ def interactive(path: Path) -> int:
             feature_id = _prompt("Feature id to lock: ")
             if not feature_id:
                 continue
+            if not is_known_feature(feature_id):
+                print(f"Unknown feature id {feature_id!r} — not in the catalog. Not locked.")
+                continue
             reason = _prompt("Reason users will hear: ")
             max_version = _prompt("Last affected version (blank = all): ")
             feed = add_lock(feed, feature_id, reason=reason, max_version=max_version)
@@ -237,6 +237,9 @@ def main(argv: list[str] | None = None) -> int:
         print(render_locks(feed))
         return 0
     if args.add:
+        if not is_known_feature(args.add):
+            print(f"ERROR: unknown feature id {args.add!r} — not in the catalog.", file=sys.stderr)
+            return 2
         feed = add_lock(
             feed,
             args.add,
