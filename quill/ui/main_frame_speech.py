@@ -387,14 +387,19 @@ class SpeechCommandsMixin:
         Pandoc is no longer bundled: this runs from the Download Optional
         Components dialog and from the first-use prompt when a conversion needs
         it. Pinned + SHA-256-verified (quill.core.pandoc_install), on a worker
-        thread with a cancelable percentage, blocked in Safe Mode. ``on_done``
+        thread behind a cancelable percentage (matching download_ffmpeg and the
+        other on-demand downloads, #806), blocked in Safe Mode. ``on_done``
         (if given) is called on the UI thread with True on success."""
+        import threading
+
         from quill.core.external_tools import get_external_tool_status
         from quill.core.pandoc_install import (
             PANDOC_DOWNLOAD_BYTES,
+            PandocInstallError,
             install_pandoc,
             pandoc_install_supported,
         )
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
 
         wx = self._wx
         if bool(getattr(self, "_safe_mode", False)):
@@ -428,23 +433,47 @@ class SpeechCommandsMixin:
         )
         if proceed != wx.YES:
             return
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            self.frame,
+            "Downloading Pandoc",
+            "Preparing to download Pandoc...",
+            on_cancel=cancel.set,
+            status_fn=self._set_status,
+        )
+        progress.show()
+        self._announce("Downloading Pandoc.")
 
-        def _work(progress):
-            return install_pandoc(
-                lambda fraction, message: progress(message, int(fraction * 100), 100)
-            )
+        def _on_progress(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise PandocInstallError("Download cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            progress.set_progress(percent, f"{message} {percent}%")
 
-        def _finished(result: object) -> None:
-            ok = bool(result)
-            self._announce(
-                "Pandoc installed. Conversions are ready."
-                if ok
-                else "Pandoc could not be installed."
-            )
+        def _run() -> None:
+            try:
+                install_pandoc(_on_progress)
+            except Exception as exc:  # noqa: BLE001 - surface a clean message
+                wx.CallAfter(progress.close)
+                if cancel.is_set():
+                    wx.CallAfter(self._set_status, "Pandoc download cancelled.")
+                    wx.CallAfter(self._announce, "Pandoc download cancelled.")
+                else:
+                    wx.CallAfter(self._set_status, f"Could not install Pandoc: {exc}")
+                    wx.CallAfter(self._announce, f"Pandoc could not be installed. {exc}")
+                if on_done is not None:
+                    wx.CallAfter(on_done, False)
+                return
+            wx.CallAfter(progress.close)
+            done = "Pandoc installed. Conversions are ready."
+            wx.CallAfter(self._set_status, done)
+            wx.CallAfter(self._announce, done)
             if on_done is not None:
-                on_done(ok)
+                wx.CallAfter(on_done, True)
 
-        self._run_background_task("Downloading Pandoc", _work, _finished)
+        threading.Thread(  # GATE-40-OK: Pandoc download worker.
+            target=_run, daemon=True
+        ).start()
 
     def download_offline_speech_engine(self) -> None:
         """Fetch the offline whisper.cpp engine from QUILL's verified release asset.
