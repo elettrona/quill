@@ -12,52 +12,93 @@ def _pcm(amplitude: int, ms: int, sample_rate: int = 16000) -> bytes:
     return struct.pack(f"<{n}h", *([amplitude] * n))
 
 
+# Most tests inject speech from the first chunk, so they disable the ambient
+# calibration window (calibrate_ms=0) to exercise the core turn logic directly.
+def _det(**kw) -> SilenceDetector:
+    kw.setdefault("calibrate_ms", 0)
+    return SilenceDetector(**kw)
+
+
 def test_rms_of_silence_is_zero_and_loud_is_high() -> None:
     assert rms(_pcm(0, 100)) == 0.0
     assert rms(_pcm(8000, 100)) > 1000.0
 
 
 def test_turn_ends_after_speech_then_silence() -> None:
-    d = SilenceDetector(sample_rate=16000, silence_ms=1000, min_speech_ms=200)
-    # 400 ms of speech: not enough silence yet.
+    d = _det(sample_rate=16000, silence_ms=1000, min_speech_ms=200)
     assert d.feed(_pcm(6000, 400)) is False
     assert d.heard_speech is True
-    # 600 ms of silence: still short of the 1000 ms window.
     assert d.feed(_pcm(0, 600)) is False
-    # Another 500 ms of silence crosses the window -> turn ends.
     assert d.feed(_pcm(0, 500)) is True
 
 
 def test_silence_before_any_speech_never_ends_the_turn() -> None:
-    d = SilenceDetector(silence_ms=500, min_speech_ms=200)
+    d = _det(silence_ms=500, min_speech_ms=200)
     for _ in range(10):
         assert d.feed(_pcm(0, 300)) is False
     assert d.heard_speech is False
 
 
 def test_brief_blip_below_min_speech_does_not_arm() -> None:
-    d = SilenceDetector(silence_ms=500, min_speech_ms=300)
-    d.feed(_pcm(6000, 100))  # a 100 ms click, under the 300 ms floor
+    d = _det(silence_ms=500, min_speech_ms=300)
+    d.feed(_pcm(6000, 100))
     assert d.heard_speech is False
-    assert d.feed(_pcm(0, 1000)) is False  # trailing silence cannot end an empty turn
+    assert d.feed(_pcm(0, 1000)) is False
 
 
 def test_silence_run_resets_when_speech_resumes() -> None:
-    d = SilenceDetector(silence_ms=1000, min_speech_ms=200)
-    d.feed(_pcm(6000, 300))  # speech
-    d.feed(_pcm(0, 800))  # nearly enough silence
-    d.feed(_pcm(6000, 200))  # spoke again -> silence run resets
-    assert d.feed(_pcm(0, 800)) is False  # 800 < 1000, not yet
+    d = _det(silence_ms=1000, min_speech_ms=200)
+    d.feed(_pcm(6000, 300))
+    d.feed(_pcm(0, 800))
+    d.feed(_pcm(6000, 200))
+    assert d.feed(_pcm(0, 800)) is False
 
 
 def test_zero_silence_window_disables_detection() -> None:
-    d = SilenceDetector(silence_ms=0)
+    d = _det(silence_ms=0)
     for _ in range(20):
         assert d.feed(_pcm(0, 500)) is False
 
 
 def test_reset_clears_state() -> None:
-    d = SilenceDetector(silence_ms=500, min_speech_ms=100)
+    d = _det(silence_ms=500, min_speech_ms=100)
     d.feed(_pcm(6000, 300))
     d.reset()
+    assert d.heard_speech is False
+
+
+# -- adaptive noise-floor calibration (real-hardware finding) ----------------
+
+
+def test_calibration_raises_threshold_above_a_noisy_ambient_floor() -> None:
+    # A noisy mic idling at RMS ~700 (a real USB headset) must not read its own
+    # hiss as speech. Calibrate on 300 ms of that noise, then confirm quiet-ish
+    # noise no longer counts as speech but real speech still does.
+    d = SilenceDetector(silence_ms=800, min_speech_ms=200, calibrate_ms=300, speech_rms=500)
+    d.feed(_pcm(700, 300))  # ambient calibration window
+    assert d.threshold > 700  # threshold rose above the noise floor
+    # Continued ambient noise is not speech, so the turn cannot end on it.
+    for _ in range(10):
+        assert d.feed(_pcm(700, 200)) is False
+    assert d.heard_speech is False
+    # Real speech (several thousand RMS) is clearly above the calibrated floor.
+    d.feed(_pcm(6000, 400))
+    assert d.heard_speech is True
+
+
+def test_calibration_keeps_the_absolute_floor_in_a_quiet_room() -> None:
+    # In a silent room the ambient floor is ~0, so the threshold stays at the
+    # absolute speech_rms floor rather than collapsing to zero.
+    d = SilenceDetector(silence_ms=800, min_speech_ms=200, calibrate_ms=300, speech_rms=500)
+    d.feed(_pcm(0, 300))  # dead-quiet calibration
+    assert d.threshold == 500
+    d.feed(_pcm(6000, 300))
+    assert d.heard_speech is True
+
+
+def test_calibration_window_is_not_counted_as_speech() -> None:
+    # Even loud audio during the calibration window is treated as ambient, so a
+    # turn never ends purely because the leading audio was loud.
+    d = SilenceDetector(silence_ms=400, min_speech_ms=100, calibrate_ms=300)
+    assert d.feed(_pcm(6000, 300)) is False
     assert d.heard_speech is False

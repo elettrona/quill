@@ -43,6 +43,14 @@ def rms(pcm16: bytes) -> float:
 class SilenceDetector:
     """Streaming end-of-turn detector fed successive PCM-16 mono chunks.
 
+    The speech threshold **calibrates to the room**: the first
+    ``calibrate_ms`` of audio are treated as the ambient noise floor, and a
+    chunk counts as speech only when it rises a clear margin above that floor
+    (``speech_over_floor`` times it), never below ``speech_rms``. This keeps a
+    noisy mic — a real-hardware pass found a USB headset idling at RMS ~700,
+    above the old fixed 500 floor — from reading its own hiss as endless
+    speech. Real speech runs several thousand RMS, so the margin is wide.
+
     Parameters
     ----------
     sample_rate:
@@ -51,27 +59,50 @@ class SilenceDetector:
         Trailing quiet needed to end a turn once speech has been heard.
         ``0`` disables detection (:meth:`feed` never reports done).
     speech_rms:
-        RMS above which a chunk is "speech".
+        Absolute floor for the speech threshold (used when the room is quiet).
     min_speech_ms:
         Minimum total speech before trailing silence can end the turn.
+    calibrate_ms:
+        Leading audio measured as the ambient noise floor (0 disables
+        calibration and uses ``speech_rms`` directly).
+    speech_over_floor:
+        A chunk is speech when its RMS exceeds ``ambient_floor`` times this.
     """
 
     sample_rate: int = 16000
     silence_ms: int = 2000
     speech_rms: float = DEFAULT_SPEECH_RMS
     min_speech_ms: int = DEFAULT_MIN_SPEECH_MS
+    calibrate_ms: int = 300
+    speech_over_floor: float = 2.5
     _speech_ms: float = field(default=0.0, repr=False)
     _silence_ms_run: float = field(default=0.0, repr=False)
     _heard_speech: bool = field(default=False, repr=False)
+    _calibrated_ms: float = field(default=0.0, repr=False)
+    _floor_sum: float = field(default=0.0, repr=False)
+    _floor_chunks: int = field(default=0, repr=False)
+    _threshold: float = field(default=0.0, repr=False)
+
+    def __post_init__(self) -> None:
+        self._threshold = self.speech_rms
 
     def reset(self) -> None:
         self._speech_ms = 0.0
         self._silence_ms_run = 0.0
         self._heard_speech = False
+        self._calibrated_ms = 0.0
+        self._floor_sum = 0.0
+        self._floor_chunks = 0
+        self._threshold = self.speech_rms
 
     @property
     def heard_speech(self) -> bool:
         return self._heard_speech
+
+    @property
+    def threshold(self) -> float:
+        """The current effective speech threshold (after any calibration)."""
+        return self._threshold
 
     def _chunk_ms(self, pcm16: bytes) -> float:
         frames = len(pcm16) // 2
@@ -87,7 +118,21 @@ class SilenceDetector:
         if self.silence_ms <= 0:
             return False
         duration = self._chunk_ms(pcm16)
-        if rms(pcm16) >= self.speech_rms:
+        level = rms(pcm16)
+
+        # Calibrate the ambient floor from the leading audio, then set the
+        # speech threshold above it (but never below the absolute floor).
+        if self._calibrated_ms < self.calibrate_ms:
+            self._floor_sum += level
+            self._floor_chunks += 1
+            self._calibrated_ms += duration
+            if self._calibrated_ms >= self.calibrate_ms and self._floor_chunks:
+                ambient = self._floor_sum / self._floor_chunks
+                self._threshold = max(self.speech_rms, ambient * self.speech_over_floor)
+            # Leading audio is assumed ambient; do not count it as speech.
+            return False
+
+        if level >= self._threshold:
             self._speech_ms += duration
             self._silence_ms_run = 0.0
             if self._speech_ms >= self.min_speech_ms:
