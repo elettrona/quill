@@ -94,13 +94,15 @@ def build_payload(
     published_at: str | None = None,
     source_root: Path = Path("."),
     tag: str = "latest",
-) -> dict[str, str]:
+    advisories: list[dict[str, str]] | None = None,
+) -> dict[str, object]:
     """Return the signed manifest dict the publisher writes to disk.
 
     ``version`` and ``download_url`` default to values derived from
     ``build/version.toml`` and the installer's actual filename so the
     feed never drifts from the artifact the running build compares
-    against.
+    against. ``advisories`` (optional) are the remote feature kill switches;
+    they are covered by the signature so a client can trust them.
     """
     resolved_version = (version or _resolve_version(source_root)).strip()
     installer_name = _installer_filename(resolved_version)
@@ -110,12 +112,14 @@ def build_payload(
         if download_url
         else f"https://github.com/Community-Access/quill/releases/download/{tag}/{asset_name}"
     )
-    payload: dict[str, str] = {
+    payload: dict[str, object] = {
         "version": resolved_version,
         "download_url": resolved_url,
         "published_at": (published_at or _default_published_at()).strip(),
         "notes": notes.strip(),
     }
+    if advisories:
+        payload["advisories"] = advisories
     payload["signature"] = _signature_for(payload)
     return payload
 
@@ -164,7 +168,43 @@ def main() -> int:
             "not supplied (default: 'latest', producing a /latest/ URL)."
         ),
     )
+    parser.add_argument(
+        "--lock-feature",
+        action="append",
+        default=[],
+        metavar="FEATURE_ID",
+        help=(
+            "Remotely disable this feature id (a kill switch). Repeatable. See "
+            "quill/core/feature_command_map.py for ids. Signed into the feed."
+        ),
+    )
+    parser.add_argument(
+        "--lock-reason",
+        default="",
+        help="Spoken reason shown to users for the --lock-feature advisories.",
+    )
+    parser.add_argument(
+        "--lock-min-version",
+        default="",
+        help="Only lock builds at or above this version (empty = no lower bound).",
+    )
+    parser.add_argument(
+        "--lock-max-version",
+        default="",
+        help="Only lock builds at or below this version (empty = all; how a fix lifts it).",
+    )
     args = parser.parse_args()
+
+    advisories = [
+        {
+            "feature_id": feature_id,
+            "reason": args.lock_reason,
+            "min_version": args.lock_min_version,
+            "max_version": args.lock_max_version,
+            "advisory_id": f"lock-{feature_id}",
+        }
+        for feature_id in args.lock_feature
+    ]
 
     payload = build_payload(
         version=args.version,
@@ -173,17 +213,24 @@ def main() -> int:
         published_at=args.published_at,
         source_root=args.source_root,
         tag=args.tag,
+        advisories=advisories,
     )
     product_name = _resolve_product_name(args.source_root)
     installer_name = _installer_filename(payload["version"])
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    lock_line = (
+        f"\n  LOCKS:     {', '.join(args.lock_feature)} (reason: {args.lock_reason or 'none'})"
+        if args.lock_feature
+        else ""
+    )
     print(
         f"Wrote signed update feed to {args.output}\n"
         f"  product:   {product_name}\n"
         f"  version:   {payload['version']}\n"
         f"  installer: {installer_name}\n"
         f"  url:       {payload['download_url']}"
+        f"{lock_line}"
     )
     return 0
 
@@ -197,12 +244,25 @@ def _signature_for(payload: dict[str, str]) -> str:
     baseline. Because the client verifier reads the same env var and uses the
     same function, the feed this writes always verifies.
     """
+    from quill.core.updates import FeatureAdvisory
+
+    advisories = tuple(
+        FeatureAdvisory(
+            feature_id=str(a.get("feature_id", "")),
+            reason=str(a.get("reason", "")),
+            min_version=str(a.get("min_version", "")),
+            max_version=str(a.get("max_version", "")),
+            advisory_id=str(a.get("advisory_id", "")),
+        )
+        for a in payload.get("advisories", [])  # type: ignore[union-attr]
+    )
     return manifest_signature(
-        version=payload["version"],
-        download_url=payload["download_url"],
-        published_at=payload["published_at"],
-        notes=payload["notes"],
+        version=str(payload["version"]),
+        download_url=str(payload["download_url"]),
+        published_at=str(payload["published_at"]),
+        notes=str(payload["notes"]),
         key=os.getenv("QUILL_UPDATE_MANIFEST_KEY", "").strip() or None,
+        advisories=advisories,
     )
 
 

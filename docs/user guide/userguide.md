@@ -2989,6 +2989,10 @@ Safe mode opens Quill with optional state turned off. If you are troubleshooting
 
 Quill keeps an internal notification center for update and workflow events. Update checks verify a signed manifest before offering a download.
 
+### Safety advisories (temporarily disabling a feature)
+
+Very rarely, if a serious problem is found in a feature after release, QUILL can **temporarily disable just that feature** without waiting for a new version. This travels inside the same signed update information your Check for Updates already verifies — nothing new is sent from your computer, and it can only ever *disable* a feature, never turn anything on or run anything. When it happens, the affected command is dimmed and a plain notice tells you it was turned off by a safety update and why; the feature comes back automatically once a fix is published. The lock is remembered on your device, so it still applies if you are offline. If you are an administrator who must use a feature that an advisory disabled, you can override all such locks for a session by setting the environment variable `QUILL_IGNORE_FEATURE_LOCKS=1` before launching QUILL.
+
 ### Your settings across updates
 
 Quill remembers only the choices you have actually changed. When you update, your customizations are kept, brand-new options appear already set to a sensible default, and an improved default reaches you automatically unless you had changed that option yourself. The first launch after an update tidies your old settings file once and writes a backup to a `migration-backups` folder first, so the change is always reversible. Your documents, autosaves, and recovery data are never touched by this.

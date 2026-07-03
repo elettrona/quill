@@ -60,6 +60,47 @@ Quill uses `app_updater` (AccessibleApps, MIT license) for cross-platform increm
 
 This enables shipping bug fixes and security patches as micro-updates without re-downloading the entire application, while maintaining security and platform best practices.
 
+#### 2.3.1 Remote feature kill switch (signed feature advisories)
+
+QUILL can **remotely disable a feature** if a serious problem is found after
+release, without shipping a new build. This is a safety valve, deliberately
+narrow and fail-safe.
+
+- **Transport.** Kill switches ride as `advisories` inside the *existing* signed
+  update manifest (`quill/core/updates.py`), so they inherit its protections and
+  add **no new network path or consent surface**: HTTPS only, a trusted-host
+  allowlist, and a signature the client verifies. The advisories are part of the
+  signed canonical form, so they cannot be added or altered in transit; a feed
+  with no advisories keeps its exact prior signature (backward-compatible).
+- **Capability (one direction only).** An advisory can only make a known feature
+  id (`quill/core/feature_command_map.py`) *unavailable*, for a version range
+  (`min_version`/`max_version`). It can never enable, execute, or reconfigure
+  anything. The worst a forged advisory could do — if signing were ever broken —
+  is disable a feature, which the user can override locally. This keeps the
+  mechanism from becoming a remote-control attack surface.
+- **Enforcement.** Resolved locks are applied in the single feature-enable
+  chokepoint (`MainFrame._feature_enabled`), so every path — menu, command
+  palette, keybinding — obeys uniformly; the command dims and a plain-language
+  notice states it was disabled by a safety advisory.
+- **Persistence & fail-safe.** The locked set is cached locally
+  (`quill/core/safety/feature_lock.py`) and honored on the next launch **even
+  offline** — a kill switch you can only reach while online would be useless
+  during an incident. It clears only when a later verified manifest drops the
+  advisory (or the running build moves past its `max_version`), which is how a
+  fix lifts the lock.
+- **Consent & escape hatch.** Locks apply when the user's update check runs
+  (the same consent that governs update checks). `QUILL_IGNORE_FEATURE_LOCKS=1`
+  disables all remote locks for that run — for an administrator who must use a
+  disabled feature, or to recover if an advisory is ever wrong.
+- **Publishing.** The owner manages locks with `scripts/manage_feature_locks.py`
+  — an accessible console (run it with no arguments for a numbered menu, or use
+  `--list` / `--add <id> --reason "…" [--max-version X]` / `--remove <id>` /
+  `--publish`). It edits only the feed's `advisories`, re-signs with the same
+  `QUILL_UPDATE_MANIFEST_KEY` used for releases (verifying the result before it
+  writes), and `--publish` runs git add/commit/push on the feed. Lifting a lock
+  is `--remove` (or a `--max-version` below the fixed build). `generate_update_feed.py`
+  also accepts the same `--lock-feature` flags when regenerating a full feed.
+
 ---
 
 ## 3. Target users and primary scenarios
