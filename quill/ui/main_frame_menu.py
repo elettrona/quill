@@ -2684,6 +2684,8 @@ class MenuBuilderMixin:
         self.frame.SetMenuBar(menu_bar)
         self._refresh_contextual_menu_items()
         self._apply_ai_menu_enabled()
+        # Kill switch: dim menu items whose feature a safety advisory has locked.
+        self._apply_feature_lock_menu_state()
 
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.new_file(), id=self._id_new)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_file(), id=self._id_open)

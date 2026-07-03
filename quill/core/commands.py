@@ -27,6 +27,12 @@ class CommandRegistry:
         self._on_run: Callable[[str], None] | None = None
         self._pending_repeat = 1
         self._non_repeatable: set[str] = set()
+        #: Optional gate consulted before every run. Given the command id, it
+        #: returns True to allow execution or False to block it (having already
+        #: surfaced why). This is the single dispatch chokepoint that makes the
+        #: remote feature kill switch apply uniformly to keybindings and the
+        #: command palette, which both route through :meth:`run`.
+        self._run_gate: Callable[[str], bool] | None = None
 
     def register(
         self,
@@ -110,10 +116,19 @@ class CommandRegistry:
         """Mark *command_id* so an armed repeat count never multiplies it."""
         self._non_repeatable.add(command_id)
 
+    def set_run_gate(self, gate: Callable[[str], bool] | None) -> None:
+        """Install (or clear) the dispatch gate consulted by :meth:`run`."""
+        self._run_gate = gate
+
     def run(self, command_id: str) -> None:
         command = self._commands.get(command_id)
         if command is None:
             raise KeyError(f"Unknown command: {command_id}")
+        # Dispatch gate (kill switch): blocked commands never reach their
+        # handler, no matter the entry point. The gate itself surfaces why.
+        if self._run_gate is not None and not self._run_gate(command_id):
+            self._pending_repeat = 1
+            return
         count = self._pending_repeat
         self._pending_repeat = 1
         if command_id in self._non_repeatable:

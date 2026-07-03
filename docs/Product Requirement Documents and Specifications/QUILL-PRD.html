@@ -368,11 +368,30 @@ It can never enable, execute, or reconfigure anything. The worst a
 forged advisory could do — if signing were ever broken — is disable a
 feature, which the user can override locally. This keeps the mechanism
 from becoming a remote-control attack surface.</li>
-<li><strong>Enforcement.</strong> Resolved locks are applied in the
-single feature-enable chokepoint
-(<code>MainFrame._feature_enabled</code>), so every path — menu, command
-palette, keybinding — obeys uniformly; the command dims and a
-plain-language notice states it was disabled by a safety advisory.</li>
+<li><strong>Enforcement (at dispatch, not per handler).</strong> Locks
+are enforced at the command <strong>dispatch</strong> chokepoint —
+<code>CommandRegistry.run</code> consults a gate before invoking any
+handler, so <strong>keybindings and the command palette</strong> (which
+both route through it) are blocked uniformly rather than relying on each
+handler to self-check. Menu items whose feature is locked are
+<strong>disabled</strong> on every menu build (so their click and
+accelerator are inert). A blocked command surfaces a plain-language
+"turned off by a safety update" notice. <code>_feature_enabled</code>
+also consults the locks, so any handler self-check stays correct
+too.</li>
+<li><strong>Dependency cascade.</strong> A lock propagates through the
+feature dependency graph (<code>FeatureDefinition.dependencies</code>):
+a feature is effectively locked when it, or anything it transitively
+depends on, is directly locked. Locking a parent (e.g.
+<code>core.editor</code>) therefore disables everything built on it —
+mirroring how <code>FeatureManager</code> disables dependents when a
+feature is turned off — so an advisory never leaves a half-working
+subtree. The dependency graph is gated as acyclic with all dependencies
+defined (<code>check_feature_tags</code>).</li>
+<li><strong>Portable builds covered.</strong> Portable builds fetch the
+signed manifest for advisories too (they only skip its installer URL for
+the update <em>prompt</em>), so a kill switch reaches them and,
+crucially, can be lifted on them.</li>
 <li><strong>Persistence &amp; fail-safe.</strong> The locked set is
 cached locally (<code>quill/core/safety/feature_lock.py</code>) and
 honored on the next launch <strong>even offline</strong> — a kill switch
@@ -390,7 +409,10 @@ recover if an advisory is ever wrong.</li>
 (run it with no arguments for a numbered menu, or use
 <code>--list</code> /
 <code>--add &lt;id&gt; --reason "…" [--max-version X]</code> /
-<code>--remove &lt;id&gt;</code> / <code>--publish</code>). It edits
+<code>--remove &lt;id&gt;</code> / <code>--publish</code>). Every
+<code>--lock-feature</code>/<code>--add</code> id is <strong>validated
+against the feature catalog before signing</strong> (a typo hard-fails
+with suggestions, so an incident lock can't silently no-op). It edits
 only the feed's <code>advisories</code>, re-signs with the same
 <code>QUILL_UPDATE_MANIFEST_KEY</code> used for releases (verifying the
 result before it writes), and <code>--publish</code> runs git

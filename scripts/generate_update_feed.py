@@ -195,6 +195,17 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    # Validate every --lock-feature against the real feature catalog before
+    # signing: a typo'd id would sign, publish, and verify fine but silently
+    # lock nothing — the dangerous failure for a valve reached for under
+    # pressure. Hard-fail with the nearest suggestions instead.
+    unknown = _unknown_feature_ids(args.lock_feature)
+    if unknown:
+        for feature_id, suggestions in unknown.items():
+            hint = f" Did you mean: {', '.join(suggestions)}?" if suggestions else ""
+            print(f"ERROR: unknown --lock-feature id {feature_id!r}.{hint}", file=sys.stderr)
+        return 2
+
     advisories = [
         {
             "feature_id": feature_id,
@@ -216,7 +227,7 @@ def main() -> int:
         advisories=advisories,
     )
     product_name = _resolve_product_name(args.source_root)
-    installer_name = _installer_filename(payload["version"])
+    installer_name = _installer_filename(str(payload["version"]))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     lock_line = (
@@ -235,7 +246,26 @@ def main() -> int:
     return 0
 
 
-def _signature_for(payload: dict[str, str]) -> str:
+def _unknown_feature_ids(feature_ids: list[str]) -> dict[str, list[str]]:
+    """Map each unknown --lock-feature id to up to 3 nearest known ids.
+
+    An id is "known" when it exists in the feature catalog (the same set the
+    client resolves locks against). Empty result = all ids are valid.
+    """
+    import difflib
+
+    from quill.core.features import FEATURE_DEFINITIONS
+
+    known = set(FEATURE_DEFINITIONS)
+    known_sorted = sorted(known)  # deterministic suggestion order
+    out: dict[str, list[str]] = {}
+    for feature_id in feature_ids:
+        if feature_id not in known:
+            out[feature_id] = difflib.get_close_matches(feature_id, known_sorted, n=3, cutoff=0.5)
+    return out
+
+
+def _signature_for(payload: dict[str, object]) -> str:
     """Sign the manifest via quill.core.updates so the client can verify it.
 
     Delegates to the shared :func:`quill.core.updates.manifest_signature` (the

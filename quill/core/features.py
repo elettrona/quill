@@ -368,6 +368,27 @@ def feature_for_command(command_id: str) -> str:
     return "core.app"
 
 
+def transitive_dependencies(feature_id: str) -> frozenset[str]:
+    """Every feature ``feature_id`` (transitively) depends on. Cycle-safe.
+
+    Used by the remote kill switch so that locking a feature also locks
+    everything that cannot work without it: a feature is effectively locked
+    when it, or any feature in this set, is locked.
+    """
+    seen: set[str] = set()
+    stack = [feature_id]
+    while stack:
+        current = stack.pop()
+        definition = FEATURE_DEFINITIONS.get(current)
+        if definition is None:
+            continue
+        for dependency in definition.dependencies:
+            if dependency not in seen:
+                seen.add(dependency)
+                stack.append(dependency)
+    return frozenset(seen)
+
+
 def find_feature(feature_name: str) -> FeatureDefinition | None:
     key = feature_name.strip().lower()
     feature_id = FEATURE_ALIASES.get(key)

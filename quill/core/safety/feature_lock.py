@@ -24,6 +24,10 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from quill.core.updates import UpdateManifest
 
 _STATE_FILE = "feature_locks.json"
 _IGNORE_ENV = "QUILL_IGNORE_FEATURE_LOCKS"
@@ -36,20 +40,47 @@ def locks_ignored() -> bool:
 
 @dataclass
 class FeatureLockState:
-    """The set of remotely-locked features and why (feature_id -> spoken reason)."""
+    """The set of remotely-locked features and why (feature_id -> spoken reason).
+
+    ``locked`` holds the features an advisory *directly* named. Enforcement
+    cascades through the feature dependency graph: a feature is effectively
+    locked when it, or anything it depends on, is directly locked — so locking a
+    parent (e.g. ``core.editor``) also disables everything built on it, matching
+    how :class:`quill.core.features.FeatureManager` disables dependents.
+    """
 
     locked: dict[str, str] = field(default_factory=dict)
+
+    def _locked_dependency(self, feature_id: str) -> str | None:
+        """The directly-locked feature blocking ``feature_id`` (or None).
+
+        Returns ``feature_id`` when it is directly locked, else the first of its
+        transitive dependencies that is locked.
+        """
+        if feature_id in self.locked:
+            return feature_id
+        from quill.core.features import transitive_dependencies
+
+        # Sorted so that, when several dependencies are locked, the chosen
+        # blocker (and thus the spoken reason) is deterministic across runs.
+        for dependency in sorted(transitive_dependencies(feature_id)):
+            if dependency in self.locked:
+                return dependency
+        return None
 
     def is_locked(self, feature_id: str) -> bool:
         if locks_ignored():
             return False
-        return feature_id in self.locked
+        return self._locked_dependency(feature_id) is not None
 
     def reason(self, feature_id: str) -> str:
-        return self.locked.get(feature_id, "")
+        if locks_ignored():
+            return ""
+        blocker = self._locked_dependency(feature_id)
+        return self.locked.get(blocker, "") if blocker is not None else ""
 
     def active(self) -> dict[str, str]:
-        """The effective locks (empty when the escape hatch is set)."""
+        """The directly-locked features (empty when the escape hatch is set)."""
         return {} if locks_ignored() else dict(self.locked)
 
 
@@ -88,16 +119,15 @@ def save_feature_locks(locked: dict[str, str]) -> None:
         pass
 
 
-def apply_manifest_locks(manifest: object, current_version: str) -> FeatureLockState:
+def apply_manifest_locks(manifest: UpdateManifest, current_version: str) -> FeatureLockState:
     """Resolve a manifest's advisories for ``current_version``, persist, and return.
 
-    ``manifest`` is an :class:`quill.core.updates.UpdateManifest`. A manifest
-    with no advisories clears any previously-cached locks — that is how a fixed
-    build lifts a kill switch.
+    A manifest with no advisories clears any previously-cached locks — that is
+    how a fixed build lifts a kill switch.
     """
     from quill.core.updates import active_feature_locks
 
-    locked = active_feature_locks(manifest, current_version)  # type: ignore[arg-type]
+    locked = active_feature_locks(manifest, current_version)
     save_feature_locks(locked)
     return FeatureLockState(locked=locked)
 

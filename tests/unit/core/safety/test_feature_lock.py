@@ -90,3 +90,37 @@ def test_apply_lifts_lock_when_version_moves_past_max() -> None:
     )
     # The running build (0.9.9) is past the advisory's max_version, so nothing locks.
     assert apply_manifest_locks(manifest, "0.9.9").locked == {}
+
+
+# -- dependency cascade (a lock disables everything built on it) --------------
+
+
+def test_locking_a_parent_cascades_to_dependents() -> None:
+    # core.format depends on core.editor; locking the editor must lock the
+    # dependent, with the parent's reason.
+    state = FeatureLockState(locked={"core.editor": "editor bug"})
+    assert state.is_locked("core.editor") is True
+    assert state.is_locked("core.format") is True  # depends on core.editor
+    assert state.reason("core.format") == "editor bug"
+    assert state.is_locked("core.window") is False  # unrelated feature
+
+
+def test_cascade_is_transitive() -> None:
+    # core.app <- core.editor <- core.format; locking the root locks the leaf.
+    state = FeatureLockState(locked={"core.app": "root outage"})
+    assert state.is_locked("core.format") is True
+    assert state.reason("core.format") == "root outage"
+
+
+def test_escape_hatch_disables_cascade_too(monkeypatch) -> None:
+    state = FeatureLockState(locked={"core.editor": "bug"})
+    monkeypatch.setenv("QUILL_IGNORE_FEATURE_LOCKS", "1")
+    assert state.is_locked("core.format") is False
+    assert state.reason("core.format") == ""
+
+
+def test_active_reports_only_directly_locked() -> None:
+    # active() is the operator's explicit set (for the count/notice), not the
+    # full cascaded set.
+    state = FeatureLockState(locked={"core.editor": "bug"})
+    assert state.active() == {"core.editor": "bug"}

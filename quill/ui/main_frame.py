@@ -1250,6 +1250,9 @@ class MainFrame(
         self._sticky_note_hotkey_id = wx.NewIdRef()
         self.commands = CommandRegistry()
         self.commands.set_run_listener(self._on_command_run)
+        # Kill switch: block remotely-locked commands at the single dispatch
+        # chokepoint, so keybindings and the palette obey uniformly.
+        self.commands.set_run_gate(self._command_allowed_by_locks)
         # The repeat-count arming command must never multiply itself when a count
         # is already pending (it would otherwise prompt once per pending count).
         self.commands.register_non_repeatable("edit.repeat_command")
@@ -7509,6 +7512,50 @@ class MainFrame(
             "update",
         )
 
+    def _command_allowed_by_locks(self, command_id: str) -> bool:
+        """Dispatch gate for the command registry: block remotely-locked commands.
+
+        Consulted by keybindings and the command palette (both route through
+        ``commands.run``), so a kill switch applies uniformly regardless of the
+        per-handler ``_feature_enabled`` self-checks. Only remote *locks* are
+        enforced here (profile/experimental gating stays with the handlers, so a
+        feature disabled by a profile keeps its own explanatory behavior).
+        """
+        locks = getattr(self, "_feature_locks", None)
+        if locks is None:
+            return True
+        command = self.commands.get(command_id)
+        feature_id = command.feature_id if command is not None else "core.app"
+        if not locks.is_locked(feature_id):
+            return True
+        reason = locks.reason(feature_id) or "a QUILL safety advisory"
+        # _set_status_quiet (not _set_status) so the spoken _announce below is
+        # the single spoken line, not a double-announce (#728).
+        self._set_status_quiet(f"Turned off by a safety update: {reason}")
+        self._announce(f"This feature is turned off by a safety update. {reason}")
+        return False
+
+    def _apply_feature_lock_menu_state(self) -> None:
+        """Grey out menu items whose command's feature is remotely locked.
+
+        Runs after each ``_build_menu`` so the menu path matches the dispatch
+        gate: a locked feature's menu item is disabled (its accelerator and
+        click become inert), not merely left enabled.
+        """
+        locks = getattr(self, "_feature_locks", None)
+        if locks is None or not locks.active():
+            return
+        menu_bar = self.frame.GetMenuBar()
+        if menu_bar is None:
+            return
+        for command_id, menu_id in self._command_to_menu_id_map().items():
+            command = self.commands.get(command_id)
+            feature_id = command.feature_id if command is not None else "core.app"
+            if locks.is_locked(feature_id):
+                item = menu_bar.FindItemById(menu_id)
+                if item is not None:
+                    item.Enable(False)
+
     def _apply_feature_advisories(self, manifest: object, current_version: str) -> None:
         """Apply signed remote feature advisories from a fetched update manifest.
 
@@ -7519,14 +7566,17 @@ class MainFrame(
         from quill.core.safety.feature_lock import apply_manifest_locks
 
         try:
-            previous = dict(getattr(self._feature_locks, "locked", {}))
+            # Compare effective (escape-hatch-aware) state to effective state, so
+            # running with QUILL_IGNORE_FEATURE_LOCKS set does not read as a
+            # spurious "re-enabled" on every check.
+            previous = self._feature_locks.active()
             self._feature_locks = apply_manifest_locks(manifest, current_version)
         except Exception:  # noqa: BLE001 - advisory handling must never break update check
             return
         now = self._feature_locks.active()
         if now == previous:
             return
-        # Rebuild the menu so locked commands are gated by _feature_enabled.
+        # Rebuild the menu, then dim the newly-locked items.
         try:
             self._build_menu()
         except Exception:  # noqa: BLE001
@@ -20186,16 +20236,24 @@ class MainFrame(
             releases: list[GitHubRelease] | None = None
             fetch_error: str | None = None
             try:
-                if not portable:
-                    try:
-                        # URL resolves the QUILL_UPDATE_MANIFEST_URL override
-                        # (default: the production signed-manifest feed) so a
-                        # release can be rehearsed against a throwaway feed
-                        # without code changes.
-                        manifest = fetch_update_manifest()
-                    except (URLError, ValueError, OSError):
-                        pass
-                if manifest is None or not is_newer_version(current_version, manifest.version):
+                # Always fetch the signed manifest — it carries the feature
+                # kill-switch advisories, which must reach (and be lifted on)
+                # portable builds too. URL resolves the QUILL_UPDATE_MANIFEST_URL
+                # override (default: the production feed) for release rehearsals.
+                try:
+                    manifest = fetch_update_manifest()
+                except (URLError, ValueError, OSError):
+                    # Best-effort: a missing/unreachable/invalid feed is not an
+                    # error here — we fall back to the GitHub releases path below.
+                    pass
+                # Portable updates by replacing the bundle, so its download
+                # *prompt* uses the releases path (portable .zip), not the
+                # manifest's installer URL — but advisories above still apply.
+                if (
+                    portable
+                    or manifest is None
+                    or not is_newer_version(current_version, manifest.version)
+                ):
                     releases = fetch_releases()
             except (URLError, ValueError, OSError) as exc:
                 fetch_error = str(exc)
@@ -20246,8 +20304,15 @@ class MainFrame(
         if manifest is not None:
             self._apply_feature_advisories(manifest, current_version)
 
-        # Compatibility path: signed manifest feed.
-        if manifest is not None and is_newer_version(current_version, manifest.version):
+        # Compatibility path: signed manifest feed. Skipped on portable — its
+        # manifest is fetched only for advisories (above); the download prompt
+        # uses the releases path so a portable user is offered the .zip, not the
+        # installer.
+        if (
+            manifest is not None
+            and not running_portable()
+            and is_newer_version(current_version, manifest.version)
+        ):
             if silent_no_update:
                 self._record_notification(
                     f"Update {manifest.version} found via manifest feed", "update"
