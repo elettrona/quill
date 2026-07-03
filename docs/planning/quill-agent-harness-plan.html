@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>quill-agent-harness-plan</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<h1 id="agent-harnesses--bring-your-own-ai-agent-to-quill">Agent
+Harnesses — Bring Your Own AI Agent to QUILL</h1>
+<p><strong>Product:</strong> QUILL <strong>Feature area:</strong>
+Agentic SDK harnesses (GitHub Copilot, Claude Agent, OpenAI Agents, …)
+as on-demand components <strong>Status:</strong> Framework and three
+packs BUILT (PRD §8.1/§8.2/§18.5). This plan turns a strong foundation
+into a surfaced, magical, validated product experience.
+<strong>Owner:</strong> Jeff Bishop / QUILL project <strong>Last
+consolidated:</strong> 2026-07-03</p>
+<hr />
+<h2 id="1-the-magic-in-one-breath">1. The magic, in one breath</h2>
+<p>You already pay for an AI agent — GitHub Copilot, ChatGPT, or Claude.
+QUILL should let you <strong>turn that subscription into your writing
+agent</strong> in three speakable steps: pick the account you have, let
+QUILL fetch the connector on demand, sign in with a short code — and now
+QUILL's agent runs on <em>your</em> plan, with <em>your</em> models, at
+<em>no extra cost</em>. And because QUILL owns every edit, the vendor's
+agent never touches your document directly: it proposes, QUILL reviews,
+you accept — one undo away, always.</p>
+<p>That is the promise. The engine to deliver it is largely built. What
+is missing is the part that makes it <em>feel</em> magical: telling the
+story, lighting the last wire (Copilot sign-in), and proving it on real
+accounts.</p>
+<hr />
+<h2 id="2-what-already-exists-verified-2026-07-03">2. What already
+exists (verified 2026-07-03)</h2>
+<p>QUILL has a real <strong>harness layer</strong> — interchangeable
+agent engines above the AI backend — and it is clean, wx-free, and
+gate-tested.</p>
+<table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Harness protocol + capability model + registry
+(<code>quill/core/ai/harness/</code>)</td>
+<td>Built. Every harness declares capabilities; the Hub hides what a
+harness can't do.</td>
+</tr>
+<tr>
+<td><strong>Native harness</strong> (QUILL's own agent loop)</td>
+<td>Built; the always-available default.</td>
+</tr>
+<tr>
+<td><strong>GitHub Copilot</strong> pack
+(<code>quill/ai_packs/copilot.py</code>, extra
+<code>ai-copilot</code>)</td>
+<td>Built; text-only bridge; OAuth.</td>
+</tr>
+<tr>
+<td><strong>Claude Agent</strong> pack
+(<code>quill/ai_packs/claude.py</code>, extra
+<code>ai-claude</code>)</td>
+<td>Built; text-only bridge (<code>allowed_tools=[]</code>).</td>
+</tr>
+<tr>
+<td><strong>OpenAI Agents</strong> pack
+(<code>quill/ai_packs/openai_agents.py</code>, extra
+<code>ai-openai</code>)</td>
+<td>Built.</td>
+</tr>
+<tr>
+<td>On-demand install planner
+(<code>quill/core/ai/sdk_install.py</code>)</td>
+<td>Built; <code>pip install</code> the extra the first time a user
+picks that engine — never bundled.</td>
+</tr>
+<tr>
+<td>Copilot device-flow sign-in
+(<code>quill/core/ai/copilot_auth.py</code>, AI-19)</td>
+<td>Built; token in the OS secure store. <strong>Needs a deploy-time
+OAuth client id.</strong></td>
+</tr>
+<tr>
+<td>UI hook (<code>tools.copilot_onboarding</code>)</td>
+<td>Wired.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The safety law is already enforced and must never
+change.</strong> Every harness — native or vendor SDK — drives the
+<em>same</em> <code>SafeEditorToolGateway</code> and
+<code>PermissionBroker</code> and emits the <em>same</em> normalized
+<code>AgentEvent</code>s. The SDK packs run the vendor agent
+<strong>text-only</strong> (<code>allowed_tools=[]</code>): the vendor's
+own file-editing and shell tools are <strong>denied</strong>, and QUILL
+applies the produced text through its reviewed gateway — diff preview,
+permission broker, one-step undo. A vendor agent can <em>think</em>, but
+only QUILL can <em>touch the document</em>, and only with your
+consent.</p>
+<hr />
+<h2 id="3-why-this-matters--the-value-per-harness">3. Why this matters —
+the value per harness</h2>
+<p>QUILL already talks to models directly (OpenAI, Claude, Gemini,
+OpenRouter, Ollama) through the Native harness. The SDK harnesses add
+three things the direct connections cannot:</p>
+<ol type="1">
+<li><strong>Use the subscription you already have.</strong> A Copilot
+seat, a ChatGPT/OpenAI plan, a Claude subscription — drive QUILL's agent
+on it, no second API key, no per-token surprise on your card. For the
+millions who already pay for one of these, QUILL's agent becomes
+<em>free to run</em>.</li>
+<li><strong>Vendor-grade orchestration, QUILL-grade safety.</strong> The
+official SDKs bring the vendors' own planning and tool-loop machinery,
+tuned to their models — but constrained to QUILL's gateway, so they gain
+no powers QUILL's own agent lacks. Best of both: their brains, our
+guardrails.</li>
+<li><strong>Interchangeable and on-demand.</strong> Pick the one that
+matches your account; it installs itself; the base download stays lean;
+and SDK versions are never pinned to QUILL's release cadence.</li>
+</ol>
+<p><strong>Who each is for:</strong></p>
+<ul>
+<li><strong>Copilot</strong> — developers and technical writers who live
+in a Copilot seat.</li>
+<li><strong>OpenAI Agents</strong> — ChatGPT/OpenAI plan holders; the
+broadest audience.</li>
+<li><strong>Claude Agent</strong> — Claude subscribers and anyone who
+prefers Anthropic models.</li>
+</ul>
+<hr />
+<h2 id="4-the-magical-experience-target">4. The magical experience
+(target)</h2>
+<p>The flow QUILL should deliver, end to end, screen-reader-first:</p>
+<ol type="1">
+<li><strong>Discover.</strong> In AI setup (and in Help → Download
+Optional Components), a plain sentence: <em>"Already have GitHub
+Copilot, ChatGPT, or Claude? Use it as your QUILL agent — no extra
+cost."</em> Each option says what it needs and what it gives.</li>
+<li><strong>Install on demand.</strong> Pick one. QUILL says <em>"This
+adds the Copilot connector (about N MB). Install it now?"</em>, runs the
+pip install behind a cancelable progress bar (Safe-Mode-blocked), and
+the pack self-registers on the next probe — no restart.</li>
+<li><strong>Sign in, spoken.</strong> For Copilot, the OAuth
+<strong>device flow</strong>: QUILL reads a short code aloud and opens
+the browser page; you type the code; QUILL polls and stores the token in
+the OS secure store. For OpenAI/Claude, the existing key/consent
+surface. Either way, one clear success announcement.</li>
+<li><strong>Run — reviewed.</strong> Ask Quill and the agents now run on
+your chosen harness. Every proposed change lands as an accessible
+accept/reject preview and a single undo step, exactly as today. A status
+line names the active harness ("Agent: GitHub Copilot").</li>
+<li><strong>Switch freely.</strong> A quick-switch (already scaffolded
+in <code>ai/quick_switch.py</code>) lets you change harness per task
+without re-setup.</li>
+</ol>
+<p>The magic is that steps 1–3 happen <em>inside QUILL</em>, in seconds,
+by ear — and step 4 is unchanged from the safety users already
+trust.</p>
+<hr />
+<h2 id="5-what-to-build--gaps-between-engine-and-experience">5. What to
+build — gaps between "engine" and "experience"</h2>
+<p>The foundation is done. This is the finishing that makes it real and
+magical.</p>
+<h3 id="phase-1--light-the-last-wire-copilot-sign-in">Phase 1 — Light
+the last wire (Copilot sign-in)</h3>
+<p>Register a production <strong>GitHub OAuth App</strong>, decide how
+its <strong>client id</strong> is injected at build/deploy
+(<code>QUILL_GITHUB_CLIENT_ID</code>), and wire it so
+<code>copilot_auth.is_configured()</code> is true in shipped builds.
+Until then the clean device-flow path is dormant and users fall back to
+the SDK CLI. Exit criteria: a real Copilot sign-in from a shipped build,
+by ear, end to end.</p>
+<h3 id="phase-2--surface-the-value">Phase 2 — Surface the value</h3>
+<p>Onboarding copy, a <strong>Download Optional Components</strong>
+listing for the three packs (with sizes and "uses your existing
+subscription" notes), a user-guide section, and release-notes framing.
+Nothing here is code-deep; it is the story the built engine has been
+missing. Exit criteria: a new user who owns a Copilot seat can
+<em>discover and reach</em> the feature without being told it
+exists.</p>
+<h3 id="phase-3--prove-it-on-real-accounts">Phase 3 — Prove it on real
+accounts</h3>
+<p>A validation matrix run against live subscriptions: Copilot (OAuth +
+BYOK), OpenAI Agents, Claude Agent — each through Ask Quill and at least
+one Agent Center profile, confirming the text-only/reviewed-edit
+contract holds and every event surfaces accessibly. Document results in
+a quality ledger. This needs a human with the accounts; no automated
+test substitutes.</p>
+<h3 id="phase-4--breadth-on-demand-optional-later">Phase 4 — Breadth on
+demand (optional, later)</h3>
+<p>The registry already anticipates more engines (Microsoft Agent
+Framework, LangGraph, OpenHands). Add them only when there is a real
+audience, each behind its own extra, each text-only through the same
+gateway. No new safety surface.</p>
+<hr />
+<h2 id="6-the-safety-law-non-negotiable-already-true">6. The safety law
+(non-negotiable, already true)</h2>
+<ul>
+<li><strong>QUILL owns every edit.</strong> SDK harnesses run text-only;
+the vendor agent's own mutating tools are denied. QUILL applies text
+through the reviewed Safe Editor Tool Gateway — permission broker, diff
+preview, one-step undo.</li>
+<li><strong>Same events, same review, every harness.</strong> Native or
+vendor, the user sees the identical accessible accept/reject flow.</li>
+<li><strong>Consent and Safe Mode.</strong> On-demand installs and
+network calls are explicit, cancelable, and blocked in Safe Mode. Tokens
+live in the OS secure store.</li>
+<li><strong>No capability assumptions.</strong> The Hub hides what a
+harness cannot do rather than presenting a broken control.</li>
+</ul>
+<hr />
+<h2 id="7-open-questions">7. Open questions</h2>
+<ol type="1">
+<li><strong>GitHub OAuth App ownership</strong> — who registers it, and
+how is the client id provisioned into official builds vs. source builds
+(env at CI/deploy)?</li>
+<li><strong>Optional-components placement</strong> — do the SDK packs
+belong in the unified Download Optional Components dialog, the AI setup
+flow, or both (cross-linked)?</li>
+<li><strong>Discovery without account detection</strong> — QUILL can't
+see a user's Copilot seat; how prominent should the "bring your
+subscription" prompt be without nagging users who have no such
+account?</li>
+<li><strong>Pack sizes</strong> — measure each extra's install footprint
+to set honest size hints in the download prompts.</li>
+<li><strong>Model/plan limits</strong> — surface a harness's rate/plan
+limits gracefully (mirror the free-model honesty already in the provider
+path).</li>
+</ol>
+</body>
+</html>

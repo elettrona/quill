@@ -9,6 +9,7 @@
 >
 > - [`quill-native-accessible-table-studio-plan.md`](quill-native-accessible-table-studio-plan.md) — Table Studio (not started).
 > - [`quill-hey-quill-voice-interaction-plan.md`](quill-hey-quill-voice-interaction-plan.md) — Hey QUILL voice interaction and conversation mode (planned; 2.0 slot).
+> - [`quill-agent-harness-plan.md`](quill-agent-harness-plan.md) — Agent harnesses (Copilot / OpenAI Agents / Claude Agent) as on-demand components; framework + 3 packs BUILT, needs surfacing + Copilot OAuth client id + validation.
 >
 > The Accessible Vault plan has been **retired**: Phases 0–7 shipped (feature-complete
 > for 0.9.0) and the feature now lives in `QUILL-PRD.md` §5.89d and the user guide; the
