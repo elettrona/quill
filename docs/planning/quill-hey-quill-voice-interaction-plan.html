@@ -180,12 +180,13 @@
 QUILL — Voice Interaction and Conversation Mode Plan</h1>
 <p><strong>Product:</strong> QUILL <strong>Feature area:</strong>
 Hands-free voice commands, wake word, conversation mode, sounders
-<strong>Status:</strong> Plan of record. Phase 1 shipped 2026-07-02
-(push-to-talk); Phase 2 shipped 2026-07-02 (conversation loop +
-sounders); Phase 3 shipped 2026-07-02 (wake word). Phase 4 (Ask Quill
-routing) is the last. <strong>Owner:</strong> Jeff Bishop / QUILL
-project <strong>Reference implementation:</strong> the ADP Assistant
-conversation mode (<code>s:\code\adp</code>,
+<strong>Status:</strong> COMPLETE. All four phases shipped 2026-07-02
+(push-to-talk; conversation loop + sounders; wake word; Ask Quill
+routing). The documented refinements shipped 2026-07-03 (VAD silence
+detection, spoken/varied/personalized cue phrases, screen-reader parity,
+Speak Voice Status). See §9a. <strong>Owner:</strong> Jeff Bishop /
+QUILL project <strong>Reference implementation:</strong> the ADP
+Assistant conversation mode (<code>s:\code\adp</code>,
 <code>src/adp_mcp/webapp/static/app.js</code>) — the "Hey Magic" loop
 whose state machine, sounders, and timing model this plan imports
 <strong>Last consolidated:</strong> 2026-07-02</p>
@@ -537,6 +538,55 @@ Speaking answers automatically from the voice loop (rather than in the
 Ask Quill transport) and ADP's <code>brain.py</code>-style bounded-tool
 autonomy remain deliberate future options, not shipped here — the
 conservative "pre-fill and confirm" handoff is the safe v1.</p>
+<h3 id="9a--refinements-to-adp-parity-shipped-2026-07-03">9a —
+Refinements to ADP parity (SHIPPED 2026-07-03)</h3>
+<p>The carryovers noted across Phases 2–4 are now implemented, closing
+the gap to the ADP Assistant design:</p>
+<ul>
+<li><p><strong>True silence detection (VAD).</strong>
+<code>quill/core/speech/vad.py</code> — a pure, stdlib RMS-energy
+<code>SilenceDetector</code> (7 tests). Conversation capture now polls
+microphone energy and ends a turn when speech is followed by the pause
+window (ADP's silence window, WCAG 2.2.1), with a hard cap as a
+backstop, replacing the fixed timed turn.
+<code>MicRecorder.captured_frames()</code> exposes a non-destructive
+snapshot for the poller.</p></li>
+<li><p><strong>Varied, personalized, time-aware spoken cues.</strong>
+<code>quill/core/speech/ voice_cues.py</code> — pure welcome / listening
+/ acknowledge / follow-up pools, name-personalized and time-of-day
+aware, with an injectable <code>pick</code>/<code>now</code> for
+deterministic tests (6 tests). The controller uses them
+(<code>varied_prompts</code>), keeping its plain default for existing
+tests. New <code>voice_conversation_user_name</code> setting drives
+"Listening, Jeff."</p></li>
+<li><p><strong>Screen-reader parity + spoken prompts.</strong> New
+<code>voice_conversation_spoken_cues</code> setting speaks prompts aloud
+with the read-aloud voice — but only when <strong>no</strong> screen
+reader is active (<code>detect_screen_reader().detected</code>), so
+QUILL never talks over the reader (ADP's "one content voice"). Cues play
+on the task pool; capture only begins after the effect list runs
+(barge-in discipline).</p></li>
+<li><p><strong>Live status you can query.</strong>
+<code>Speak Voice Status</code> (Tools &gt; Speech; command + unbound
+keymap) reports whether QUILL is listening for the wake word, in
+conversation mode, or capturing a command — the ADP mic-live
+perceivability guarantee, on demand.</p></li>
+<li><p><strong>User-selectable recognition engine (whisper.cpp or
+Vosk).</strong> A new <code>voice_recognition_engine</code> setting (""
+follow main / "whispercpp" / "vosk") and a
+<code>_voice_provider()</code> resolver route every voice capture path
+(Voice Command, Conversation, wake word) through the chosen engine, with
+a graceful fallback to the main provider when the engine or its model is
+missing. Vosk (fast, light) is recommended for the always-listening wake
+word; whisper.cpp for accuracy. Both are first-class and wired end to
+end.</p></li>
+</ul>
+<p>Genuinely still future (needs the model + hardware, not shippable
+blind): a dedicated <strong>keyword-grammar</strong> mode running Vosk's
+streaming recognizer so the wake word costs even less than the current
+short-window recognition (choosing Vosk today already makes it lighter),
+plus a measured false-accept rate across a confusable-phrase list before
+it is recommended for all-day use.</p>
 <hr />
 <h2 id="7-testing-and-gates">7. Testing and gates</h2>
 <p>Wx-free controller: scripted state-machine tests (every transition,

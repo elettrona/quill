@@ -121,6 +121,10 @@ class ConversationController:
     state: State = State.OFF
     #: Optional name for warm prompts ("Listening, Jeff.").
     user_name: str = ""
+    #: When True, prompts use the varied, time-aware voice-cue phrasing (ADP
+    #: personality); when False, a plain "Listening." — deterministic for tests.
+    varied_prompts: bool = False
+    _armed_once: bool = field(default=False, repr=False)
 
     # -- lifecycle ------------------------------------------------------- #
 
@@ -129,7 +133,18 @@ class ConversationController:
         if self.state is not State.OFF:
             return []
         self.state = State.IDLE
+        self._armed_once = False
         return [_sound(CUE_ON), *self._arm()]
+
+    def _listen_prompt(self) -> str:
+        """The spoken 'go ahead' line — varied when enabled, plain otherwise."""
+        if self.varied_prompts:
+            from quill.core.speech import voice_cues
+
+            if not self._armed_once:
+                return voice_cues.welcome(self.user_name, first=True)
+            return voice_cues.listening(self.user_name)
+        return "Listening" + (f", {self.user_name}." if self.user_name else ".")
 
     def stop(self) -> list[Effect]:
         """Turn conversation mode off from any state."""
@@ -150,7 +165,8 @@ class ConversationController:
     def _arm(self) -> list[Effect]:
         """Enter ARMED and open the microphone for one utterance."""
         self.state = State.ARMED
-        prompt = "Listening" + (f", {self.user_name}." if self.user_name else ".")
+        prompt = self._listen_prompt()
+        self._armed_once = True
         return [
             Effect("cancel_timer", TIMER_FOLLOWUP),
             _sound(CUE_LISTEN),

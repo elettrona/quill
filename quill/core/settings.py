@@ -252,6 +252,18 @@ class Settings:
     voice_conversation_review_ms: int = 900
     voice_conversation_followup_ms: int = 3000
     voice_conversation_thinking_ms: int = 2000
+    # Refinements: an optional name for warm spoken prompts ("Listening, Jeff."),
+    # spoken cue phrases (welcome/follow-up) via TTS, and speaking answers in the
+    # voice loop. When a screen reader is active, spoken cues stay off by default
+    # so QUILL never talks over the reader (SR-parity).
+    voice_conversation_user_name: str = ""
+    voice_conversation_spoken_cues: bool = False
+    # Which on-device speech engine powers the voice-interaction features
+    # (Voice Command, Conversation Mode, Hey QUILL). "" = follow the main speech
+    # engine; "whispercpp" for accuracy, "vosk" for fast, low-overhead streaming
+    # (recommended for the always-listening wake word). Falls back gracefully
+    # when the chosen engine or a model for it is unavailable.
+    voice_recognition_engine: str = ""
     # Wake word (Hey QUILL Phase 3). Always-listening for "Hey QUILL" on-device;
     # off by default and never persisted-on across a restart unless the user
     # opts in. See quill/core/speech/wakeword.py.
@@ -860,6 +872,11 @@ class Settings:
         voice_conversation_review_ms = _voice_ms("voice_conversation_review_ms", 900)
         voice_conversation_followup_ms = _voice_ms("voice_conversation_followup_ms", 3000)
         voice_conversation_thinking_ms = _voice_ms("voice_conversation_thinking_ms", 2000)
+        voice_conversation_user_name = str(data.get("voice_conversation_user_name", "")).strip()
+        voice_conversation_spoken_cues = bool(data.get("voice_conversation_spoken_cues", False))
+        voice_recognition_engine = str(data.get("voice_recognition_engine", "")).strip().lower()
+        if voice_recognition_engine not in {"", "whispercpp", "vosk"}:
+            voice_recognition_engine = ""
         voice_wakeword_persist = bool(data.get("voice_wakeword_persist", False))
         # Always-listening never survives a restart unless the user opted into
         # persistence; otherwise it always loads off, no matter what was saved.
@@ -1269,6 +1286,9 @@ class Settings:
             voice_conversation_review_ms=voice_conversation_review_ms,
             voice_conversation_followup_ms=voice_conversation_followup_ms,
             voice_conversation_thinking_ms=voice_conversation_thinking_ms,
+            voice_conversation_user_name=voice_conversation_user_name,
+            voice_conversation_spoken_cues=voice_conversation_spoken_cues,
+            voice_recognition_engine=voice_recognition_engine,
             voice_wakeword_enabled=voice_wakeword_enabled,
             voice_wakeword_persist=voice_wakeword_persist,
             watch_folder_enabled=watch_folder_enabled,

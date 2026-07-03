@@ -562,6 +562,7 @@
   "speak_full_path",
   "speak_inline_note",
   "speak_status_summary",
+  "speak_voice_status",
   "speak_window_title",
   "start_macro_recording",
   "start_selection",

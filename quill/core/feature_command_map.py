@@ -141,6 +141,7 @@ COMMAND_FEATURE_MAP: dict[str, str] = {
     "tools.voice_command": "core.voice_commands",
     "tools.voice_conversation": "core.voice_commands",
     "tools.voice_wakeword": "core.voice_commands",
+    "tools.voice_status": "core.voice_commands",
     "whisperer.model_manager": "core.bw_transcription",
     "whisperer.model_status": "core.bw_transcription",
     "whisperer.model_recommend": "core.bw_transcription",

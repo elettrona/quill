@@ -28,6 +28,24 @@ recognize as a safe command, it tells you what it heard and does nothing.
 Voice is unavailable in Safe Mode, and needs microphone-capture support (the
 optional `sounddevice` component, included in standard installs).
 
+### Choosing the recognition engine
+
+Voice interaction runs on an on-device speech engine, and you can choose which
+one under **Settings → Voice recognition engine**:
+
+- **Follow main engine** (default) — uses whatever engine you already use for
+  dictation.
+- **whisper.cpp** — favors accuracy. A good choice for Voice Command and
+  Conversation Mode when you want the most reliable recognition.
+- **Vosk** — fast and light, with low idle cost. **Recommended for the
+  always-listening "Hey QUILL" wake word**, where a small, quick engine matters
+  more than transcription polish.
+
+Whichever you pick, you need a model installed for that engine (download one
+from **Tools → Speech → Manage Speech Models**). If the chosen engine or its
+model isn't available, QUILL automatically falls back to your main engine, so
+voice always works.
+
 ## The four ways to use voice
 
 QUILL's voice support was built in four layers. Each one builds on the one
@@ -65,10 +83,18 @@ between them. A warm audio cue marks every state:
 
 Run it again, or say **"stop"**, to turn conversation mode off.
 
+Your turn ends **when you stop speaking** — QUILL listens to the microphone's
+energy and finishes the turn after your pause, rather than cutting you off at a
+fixed time. You can make it more personal, too: set **your name** in Settings
+and QUILL uses it in its prompts ("Listening, Jeff."), with wording that varies
+naturally and follows the time of day. If you'd like the prompts **spoken
+aloud**, turn on *Speak prompts aloud*; QUILL keeps that silent whenever a
+screen reader is running, so it never talks over your reader.
+
 **Timing you can tune** (Settings; set any to 0 to switch that part off):
 
 - **Pause before a command ends** — how long a pause finishes what you are
-  saying.
+  saying (used by the silence detection above).
 - **Cancel window** — the beat after recognition during which "cancel" calls
   it off.
 - **Follow-up window** — how long QUILL keeps listening after acting.
@@ -94,6 +120,13 @@ again, or say **"stop"**, to turn listening off instantly.
 **It stays off unless you say otherwise.** Always-listening turns itself off
 when QUILL closes; a separate setting — **Keep listening for "Hey QUILL" across
 restarts** — lets you have it resume automatically at startup if you want that.
+
+### Checking what voice is doing — Speak Voice Status
+
+**Tools → Speech → Speak Voice Status** tells you, at any moment, exactly what
+voice is up to: listening for "Hey QUILL", in conversation mode, capturing a
+command, or not listening at all. It is a quick way to confirm the microphone
+state — assign it a shortcut for an instant check.
 
 ### 4. Ask a question — routed to Ask Quill
 
@@ -161,9 +194,10 @@ mind"**, **"stop"**, or **"dismiss"** to abort.
 
 ## Roadmap
 
-Voice interaction shipped in four phases (all complete). Documented future
-refinements include true silence detection (voice-activity detection) so a
-conversation turn ends when you stop speaking rather than after a fixed window,
-a dedicated low-power keyword spotter for the wake word, a live status readout
-you can query, and optional spoken answers directly in the voice loop. See
+Voice interaction shipped in four phases, and the polish refinements followed:
+true silence detection (your turn ends when you stop speaking), personalized
+and optionally-spoken prompts with screen-reader parity, and the Speak Voice
+Status check are all in place. The one genuinely future item is a dedicated
+low-power keyword spotter for the wake word (so always-listening costs even
+less than it does today). See
 `docs/planning/quill-hey-quill-voice-interaction-plan.md` for the full plan.

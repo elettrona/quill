@@ -2588,6 +2588,12 @@
     "user_guide_section": "tools"
   },
   {
+    "id": "tools.voice_status",
+    "title": "Speak Voice Status",
+    "body": "Say what voice is doing right now: whether QUILL is listening for the Hey QUILL wake word, is in conversation mode, or is capturing a command. A quick way to confirm the microphone state at any time.",
+    "user_guide_section": "tools"
+  },
+  {
     "id": "tools.voice_wakeword",
     "title": "Listen for Hey QUILL (Wake Word)",
     "body": "Turn on always-listening: QUILL listens continuously, on your device, for the phrase 'Hey QUILL'. Say 'Hey QUILL' followed by a command (like 'Hey QUILL, save file') to run it hands-free, or just 'Hey QUILL' to start a command. The microphone stays on while this is enabled, so QUILL keeps its listening status visible and plays a periodic reminder. Run this command again, or say 'stop', to turn listening off. By default it turns itself off when QUILL closes; a setting lets you resume it automatically at startup. Off in Safe Mode.",

@@ -1486,6 +1486,7 @@ class MenuBuilderMixin:
         self._id_speech_voice_command = wx.NewIdRef()
         self._id_speech_voice_conversation = wx.NewIdRef()
         self._id_speech_wakeword = wx.NewIdRef()
+        self._id_speech_voice_status = wx.NewIdRef()
         self._id_speech_microphone = wx.NewIdRef()
         # Locked Dictation menu items (the commands are the remappable Ctrl+F9 family).
         self._id_dictation_lock = wx.NewIdRef()
@@ -1918,6 +1919,10 @@ class MenuBuilderMixin:
         speech_menu.Append(
             self._id_speech_wakeword,
             self._menu_label(_("Listen for &Hey QUILL"), "tools.voice_wakeword"),
+        )
+        speech_menu.Append(
+            self._id_speech_voice_status,
+            self._menu_label(_("Speak Voice &Status"), "tools.voice_status"),
         )
         # Windows (SAPI) dictation is no longer supported -- offline Whisper
         # Locked Dictation (Ctrl+F9) replaces it -- so it is not exposed in the
@@ -3201,6 +3206,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.voice_wakeword_toggle(),
             id=self._id_speech_wakeword,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.speak_voice_status(),
+            id=self._id_speech_voice_status,
         )
         self.frame.Bind(
             wx.EVT_MENU,

@@ -43,6 +43,29 @@ class SpeechCommandsMixin:
                 pass
         return registry.get(DEFAULT_PROVIDER_ID)  # type: ignore[attr-defined]
 
+    def _voice_provider(self) -> object:
+        """The speech engine that powers the voice-interaction features.
+
+        Honors ``settings.voice_recognition_engine`` — whisper.cpp for accuracy,
+        Vosk for fast, low-overhead streaming (ideal for the always-listening
+        wake word) — and falls back to the main speech provider when the chosen
+        engine is unavailable or has no installed model, so voice always works.
+        """
+        chosen = str(getattr(self.settings, "voice_recognition_engine", "") or "").strip()
+        if chosen:
+            registry = self._speech_registry()
+            provider = registry.get(chosen)  # type: ignore[attr-defined]
+            try:
+                if (
+                    provider is not None
+                    and provider.is_available()
+                    and provider.list_installed_models()
+                ):
+                    return provider
+            except Exception:  # noqa: BLE001 - fall back to the main engine
+                pass
+        return self._speech_provider()
+
     def _dictation_provider(self) -> object:
         """Cached speech provider for dictation so a loaded model persists across
         sessions (and a startup prewarm stays warm). _speech_registry() builds a
@@ -1345,7 +1368,7 @@ class SpeechCommandsMixin:
                 wx.ICON_INFORMATION | wx.OK,
             )
             return
-        provider = self._speech_provider()
+        provider = self._voice_provider()
         if self._installed_or_prompt(provider, "Voice Commands") is None:
             return
         from quill.core.speech.service import load_input_device
@@ -1369,7 +1392,7 @@ class SpeechCommandsMixin:
         except Exception as exc:  # noqa: BLE001
             self._set_status(f"Voice command failed: {exc}")
             return
-        provider = self._speech_provider()
+        provider = self._voice_provider()
         installed = provider.list_installed_models()  # type: ignore[attr-defined]
         if not installed:
             self._set_status("No speech model installed.")
@@ -1443,17 +1466,54 @@ class SpeechCommandsMixin:
                 "'sounddevice' package)."
             )
             return
-        if self._installed_or_prompt(self._speech_provider(), "Conversation Mode") is None:
+        if self._installed_or_prompt(self._voice_provider(), "Conversation Mode") is None:
             return
         from quill.core.speech.conversation import ConversationController
 
         controller = ConversationController(
             timing=Timing.from_settings(self.settings),
             user_name=str(getattr(self.settings, "voice_conversation_user_name", "") or ""),
+            varied_prompts=True,
         )
         self._conversation = controller
         self._conv_timers: dict[str, object] = {}
         self._conv_run(controller.start())
+
+    def _voice_spoken_cues_active(self) -> bool:
+        """SR-parity: speak prompts aloud only when the user turned cues on and
+        no screen reader is running (so QUILL never talks over the reader)."""
+        if not bool(getattr(self.settings, "voice_conversation_spoken_cues", False)):
+            return False
+        try:
+            from quill.platform.windows.sr_detect import detect_screen_reader
+
+            if detect_screen_reader().detected:
+                return False
+        except Exception:  # noqa: BLE001 - detection unavailable => assume none
+            pass
+        return True
+
+    def _voice_speak_cue(self, text: str) -> None:
+        """Speak a short cue aloud via the read-aloud voice (best-effort).
+
+        Runs on the task pool so it never blocks the UI; barge-in discipline is
+        handled by capture only starting after the effect list is executed."""
+        if not text or not self._voice_spoken_cues_active():
+            return
+        try:
+            import threading
+
+            voice = self._build_voice_services()
+            if voice is None or not voice.output_available():
+                return
+
+            def _work(_progress):
+                voice.play(text, stop_event=threading.Event(), pause_event=threading.Event())
+                return None
+
+            self._run_background_task("Speaking prompt", _work, lambda _r: None)
+        except Exception:  # noqa: BLE001 - a cue must never break the loop
+            pass
 
     def _conv_run(self, effects: list) -> None:
         """Execute a list of conversation :class:`Effect` objects in order."""
@@ -1465,6 +1525,7 @@ class SpeechCommandsMixin:
             elif kind == "announce":
                 self._set_status_quiet(effect.value)
                 self._announce(effect.value)
+                self._voice_speak_cue(effect.value)
             elif kind == "start_capture":
                 self._conv_start_capture()
             elif kind == "stop_capture":
@@ -1506,10 +1567,11 @@ class SpeechCommandsMixin:
             self._conv_run(controller.on_followup_timer())
 
     def _conv_start_capture(self) -> None:
-        """Open the mic for one conversation turn, auto-stopping after the pause
-        window (a timed turn; true silence detection lands in a later refinement)."""
-        from quill.core.speech.capture import MicRecorder
+        """Open the mic for one conversation turn, ending it when you stop
+        speaking (voice-activity detection) with a hard cap as a backstop."""
+        from quill.core.speech.capture import CHANNELS, SAMPLE_RATE, MicRecorder
         from quill.core.speech.service import load_input_device
+        from quill.core.speech.vad import SilenceDetector
 
         recorder = MicRecorder()
         try:
@@ -1519,17 +1581,37 @@ class SpeechCommandsMixin:
             self._conv_run(self._conversation.stop())
             return
         self._conv_recorder = recorder
-        window_ms = max(1500, int(getattr(self.settings, "voice_conversation_silence_ms", 2000)))
-        self._conv_capture_timer = self._wx.CallLater(window_ms + 1500, self._conv_finish_capture)
+        silence_ms = int(getattr(self.settings, "voice_conversation_silence_ms", 2000))
+        self._conv_vad = SilenceDetector(sample_rate=SAMPLE_RATE * CHANNELS, silence_ms=silence_ms)
+        self._conv_vad_seen = 0
+        # Poll microphone energy; a turn ends when speech is followed by the
+        # pause window. A hard cap stops a stuck-open mic even if VAD is off.
+        self._conv_vad_timer = self._wx.CallLater(200, self._conv_poll_vad)
+        cap_ms = 15000 if silence_ms > 0 else max(1500, silence_ms) + 1500
+        self._conv_capture_timer = self._wx.CallLater(cap_ms, self._conv_finish_capture)
+
+    def _conv_poll_vad(self) -> None:
+        recorder = getattr(self, "_conv_recorder", None)
+        vad = getattr(self, "_conv_vad", None)
+        if recorder is None or vad is None:
+            return
+        frames = recorder.captured_frames()
+        new = frames[self._conv_vad_seen :]
+        self._conv_vad_seen = len(frames)
+        if new and vad.feed(new):
+            self._conv_finish_capture()
+            return
+        self._conv_vad_timer = self._wx.CallLater(200, self._conv_poll_vad)
 
     def _conv_stop_capture(self, *, discard: bool) -> object | None:
-        timer = getattr(self, "_conv_capture_timer", None)
-        if timer is not None:
-            try:
-                timer.Stop()
-            except Exception:  # noqa: BLE001
-                pass
-            self._conv_capture_timer = None
+        for attr in ("_conv_capture_timer", "_conv_vad_timer"):
+            timer = getattr(self, attr, None)
+            if timer is not None:
+                try:
+                    timer.Stop()
+                except Exception:  # noqa: BLE001
+                    pass
+                setattr(self, attr, None)
         recorder = getattr(self, "_conv_recorder", None)
         self._conv_recorder = None
         if recorder is None:
@@ -1553,7 +1635,7 @@ class SpeechCommandsMixin:
         controller = getattr(self, "_conversation", None)
         if wav_path is None or controller is None:
             return
-        provider = self._speech_provider()
+        provider = self._voice_provider()
         installed = provider.list_installed_models()  # type: ignore[attr-defined]
         if not installed:
             self._conv_run(controller.stop())
@@ -1620,6 +1702,22 @@ class SpeechCommandsMixin:
         if controller is not None:
             self._conv_run(controller.on_action_done())
 
+    def speak_voice_status(self) -> None:
+        """Say what voice is doing right now (ADP mic-live perceivability)."""
+        parts: list[str] = []
+        wake = getattr(self, "_wake", None)
+        if wake is not None and wake.state != "off":
+            parts.append(wake.status_text())
+        conversation = getattr(self, "_conversation", None)
+        if conversation is not None and conversation.state.value != "off":
+            parts.append(conversation.status_text())
+        recorder = getattr(self, "_voice_recorder", None)
+        if recorder is not None and getattr(recorder, "is_recording", False):
+            parts.append("Listening for a command")
+        message = "; ".join(parts) if parts else "Voice is not listening right now."
+        self._announce(message)
+        self._set_status(message)
+
     # -- wake word "Hey QUILL" (#663, Hey QUILL Phase 3) ----------------- #
 
     def voice_wakeword_toggle(self) -> None:
@@ -1653,7 +1751,7 @@ class SpeechCommandsMixin:
                 "'sounddevice' package)."
             )
             return
-        if self._installed_or_prompt(self._speech_provider(), "Hey QUILL") is None:
+        if self._installed_or_prompt(self._voice_provider(), "Hey QUILL") is None:
             return
         from quill.core.speech.wakeword import WakeController
 
@@ -1741,7 +1839,7 @@ class SpeechCommandsMixin:
         except Exception:  # noqa: BLE001
             on_text("")
             return
-        provider = self._speech_provider()
+        provider = self._voice_provider()
         installed = provider.list_installed_models()  # type: ignore[attr-defined]
         if not installed:
             self._wake_run(self._wake.stop())
