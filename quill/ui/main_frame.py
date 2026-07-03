@@ -7990,6 +7990,15 @@ class MainFrame(
         self._record_recent(source_path)
         self._set_status_quiet(f"Imported {source_path.name}")
         self._announce(f"Imported {source_path.name} as Markdown.")
+        # #187: the import file dialog's own close-out queues a CallAfter that
+        # restores focus to the *previous* tab's editor (captured before this
+        # new tab existed). Queue a second, correctly-bound CallAfter so it
+        # runs after that stale one and wins, landing focus on the new editor
+        # -- otherwise it never receives its first SetFocus and its content
+        # stays visually blank until the user manually tabs into it.
+        call_after = getattr(self._wx, "CallAfter", None)
+        if callable(call_after) and hasattr(self, "editor"):
+            call_after(self.editor.SetFocus)
 
     def import_document_other(self) -> None:
         """Prompt the user for an arbitrary Tier-1 format name and import.
@@ -10228,6 +10237,15 @@ class MainFrame(
             f"Opened {getattr(download, 'filename', 'remote document')} "
             f"({size_text}) from {getattr(download, 'final_url', '')}"
         )
+        # #187: the "Open from URL" dialog's own close-out queues a CallAfter
+        # that restores focus to the *previous* tab's editor (captured before
+        # this new tab existed). Queue a second, correctly-bound CallAfter so
+        # it runs after that stale one and wins, landing focus on the new
+        # editor -- otherwise it never receives its first SetFocus and its
+        # content stays visually blank until the user manually tabs into it.
+        call_after = getattr(self._wx, "CallAfter", None)
+        if callable(call_after) and hasattr(self, "editor"):
+            call_after(self.editor.SetFocus)
 
     # --- Remote Sites (issues #154, #155, #156, #157) -----------------------
 
@@ -10350,6 +10368,16 @@ class MainFrame(
         self._select_tab(existing_index)
         self._refresh_title()
         self._set_status(f"Downloaded {remote_path} from {site.name}")
+        # #187: the "Open from Remote" dialog's own close-out queues a
+        # CallAfter that restores focus to the *previous* tab's editor
+        # (captured before this new tab existed). Queue a second,
+        # correctly-bound CallAfter so it runs after that stale one and
+        # wins, landing focus on the new editor -- otherwise it never
+        # receives its first SetFocus and its content stays visually blank
+        # until the user manually tabs into it.
+        call_after = getattr(self._wx, "CallAfter", None)
+        if callable(call_after) and hasattr(self, "editor"):
+            call_after(self.editor.SetFocus)
 
     def _upload_active_document(self, site, remote_path: str) -> None:
         from pathlib import Path
