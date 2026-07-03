@@ -23,12 +23,6 @@ verified by probe. Four contract gaps remain, all shimmed here:
   wrapper uses ``GotoPos``, which collapses the selection like wx.TextCtrl.
 * Line endings pass through unconverted; QUILL's buffer is LF-only. The
   wrapper pins ``STC_EOL_LF``, converts on load, and converts pasted text.
-* wx's Scintilla port paints its own caret and never touches the Windows
-  system caret -- the one signal JAWS and NVDA use for caret tracking -- so
-  pressing Enter moved the buffer but the screen reader stayed on the old
-  line. Real Scintilla (ScintillaWin, what Notepad++ ships) mirrors an
-  invisible system caret on every update; :class:`_SystemCaretMirror`
-  replicates that with ctypes (no pywin32 dependency).
 
 Mirrors the rtf/win32 defensive pattern: on any failure the factory returns
 a stock ``wx.TextCtrl`` so selecting this surface can never brick the editor.
@@ -36,7 +30,6 @@ a stock ``wx.TextCtrl`` so selecting this surface can never brick the editor.
 
 from __future__ import annotations
 
-import sys
 from typing import Any
 
 try:
@@ -46,73 +39,6 @@ try:
     _SCINTILLA = True
 except Exception:  # noqa: BLE001 - wx.stc absent/broken: surface unavailable
     _SCINTILLA = False
-
-
-class _SystemCaretMirror:
-    """Mirror Scintilla's drawn caret to an invisible Windows system caret.
-
-    JAWS and NVDA follow the system caret through win events
-    (EVENT_OBJECT_LOCATIONCHANGE on OBJID_CARET). ScintillaWin creates a
-    caret from an all-zero monochrome bitmap -- XOR with zeros paints
-    nothing, so the user never sees a second blinking caret -- and moves it
-    on every caret update. wx's port skips all of this; without it the
-    screen reader reports the caret frozen on its old line.
-
-    Every call is wrapped: a failure here degrades to the previous behavior
-    (no tracking), never to a crash.
-    """
-
-    def __init__(self, ctrl: Any) -> None:
-        self._ctrl = ctrl
-        self._active = False
-        self._bitmap = None
-
-    def activate(self) -> None:
-        if sys.platform != "win32" or self._active:
-            return
-        try:
-            import ctypes
-
-            user32 = ctypes.windll.user32
-            gdi32 = ctypes.windll.gdi32
-            width = max(1, int(self._ctrl.GetCaretWidth() or 1))
-            height = max(2, int(self._ctrl.TextHeight(self._ctrl.GetCurrentLine())))
-            # Monochrome scanlines are word-aligned; all zeros = invisible.
-            stride = ((width + 15) // 16) * 2
-            bits = ctypes.create_string_buffer(stride * height)
-            self._bitmap = gdi32.CreateBitmap(width, height, 1, 1, bits)
-            hwnd = int(self._ctrl.GetHandle())
-            user32.CreateCaret(hwnd, self._bitmap, width, height)
-            user32.ShowCaret(hwnd)
-            self._active = True
-            self.update()
-        except Exception:  # noqa: BLE001 - tracking is best-effort
-            self._active = False
-
-    def update(self) -> None:
-        if not self._active:
-            return
-        try:
-            import ctypes
-
-            point = self._ctrl.PointFromPosition(self._ctrl.GetCurrentPos())
-            ctypes.windll.user32.SetCaretPos(int(point.x), int(point.y))
-        except Exception:  # noqa: BLE001
-            pass
-
-    def deactivate(self) -> None:
-        if not self._active:
-            return
-        try:
-            import ctypes
-
-            ctypes.windll.user32.DestroyCaret()
-            if self._bitmap:
-                ctypes.windll.gdi32.DeleteObject(self._bitmap)
-        except Exception:  # noqa: BLE001
-            pass
-        self._bitmap = None
-        self._active = False
 
 
 if _SCINTILLA:
@@ -133,27 +59,9 @@ if _SCINTILLA:
             # Match the default wx.TextCtrl word wrap.
             self.SetWrapMode(_stc.STC_WRAP_WORD)
             self.Bind(_stc.EVT_STC_CHANGE, self._forward_text_event)
-            # Screen-reader caret tracking: create the invisible system caret
-            # while focused and move it on every caret/scroll update.
-            self._caret_mirror = _SystemCaretMirror(self)
-            self.Bind(wx.EVT_SET_FOCUS, self._on_focus_gained)
-            self.Bind(wx.EVT_KILL_FOCUS, self._on_focus_lost)
-            self.Bind(_stc.EVT_STC_UPDATEUI, self._on_update_ui)
 
         def surface_kind(self) -> str:
             return "stc"
-
-        def _on_focus_gained(self, event: Any) -> None:
-            event.Skip()
-            self._caret_mirror.activate()
-
-        def _on_focus_lost(self, event: Any) -> None:
-            event.Skip()
-            self._caret_mirror.deactivate()
-
-        def _on_update_ui(self, event: Any) -> None:
-            event.Skip()
-            self._caret_mirror.update()
 
         def _forward_text_event(self, event: Any) -> None:
             event.Skip()
