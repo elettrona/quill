@@ -7720,11 +7720,12 @@ class MainFrame(
         dialog_cls = getattr(wx, "Dialog", None)
         if dialog_cls is not None and type(dialog) is dialog_cls:
             focus_primary_control(dialog)
-        # The "Entered/Exited <name> dialog" cues are opt-out via the
-        # announce_dialog_transitions setting; region tracking is unaffected.
+        # The "Entered/Exited <name> dialog" cues are opt-in via the
+        # announce_dialog_transitions setting (off by default, matching
+        # Settings); region tracking is unaffected.
         announce_transitions = (
             announce
-            if getattr(getattr(self, "settings", None), "announce_dialog_transitions", True)
+            if getattr(getattr(self, "settings", None), "announce_dialog_transitions", False)
             else None
         )
         result = show_modal_dialog(
@@ -7758,7 +7759,7 @@ class MainFrame(
 
     def _show_message_box(self, message: str, caption: str, style: int) -> int:
         speak_transitions = getattr(
-            getattr(self, "settings", None), "announce_dialog_transitions", True
+            getattr(self, "settings", None), "announce_dialog_transitions", False
         )
         self._region_tracker.enter(caption)
         if speak_transitions:
@@ -14528,6 +14529,9 @@ class MainFrame(
             if result == wx.YES:
                 self.download_pandoc()
                 return True
+            # Declining must not look like the command silently did nothing
+            # (#798 review): leave a status explaining why it stopped.
+            self._set_status(f"{feature} needs Pandoc; nothing was done.")
             return False
         result = self._show_message_box(
             (
@@ -14540,6 +14544,8 @@ class MainFrame(
         )
         if result == wx.YES and self._copy_to_clipboard(copyable_install_command("pandoc")):
             self._set_status("Copied Pandoc install command")
+        else:
+            self._set_status(f"{feature} needs Pandoc; nothing was done.")
         return False
 
     def convert_file(self) -> None:
@@ -22203,16 +22209,13 @@ class MainFrame(
         self._set_status(f"Opening {host}...")
         webbrowser.open(target)
 
-    def preview_in_browser(self) -> None:
-        if not self._document_tabs:
-            self._set_status("No document open")
-            return
-        tab_index = (
-            self._active_tab_index if self._active_tab_index >= 0 else self._current_tab_index()
-        )
-        if tab_index < 0 or tab_index >= len(self._document_tabs):
-            self._set_status("No document open")
-            return
+    def _write_browser_preview(self, tab_index: int) -> tuple[Path, str]:
+        """Render the tab's preview HTML to its stable on-disk path.
+
+        Shared by the explicit Preview in Browser command and the silent
+        keep-fresh path; only the explicit command opens the browser.
+        Returns the file path and the page title.
+        """
         tab = self._document_tabs[tab_index]
         text = tab.editor.GetValue()
         kind = guess_preview_kind(tab.document.path, text)
@@ -22229,6 +22232,19 @@ class MainFrame(
         temp_path = preview_path.with_suffix(".tmp")
         temp_path.write_text(payload, encoding="utf-8")
         os.replace(temp_path, preview_path)
+        return preview_path, title
+
+    def preview_in_browser(self) -> None:
+        if not self._document_tabs:
+            self._set_status("No document open")
+            return
+        tab_index = (
+            self._active_tab_index if self._active_tab_index >= 0 else self._current_tab_index()
+        )
+        if tab_index < 0 or tab_index >= len(self._document_tabs):
+            self._set_status("No document open")
+            return
+        preview_path, title = self._write_browser_preview(tab_index)
         browser_choice = normalize_browser_choice(self.settings.preview_browser)
         session = self._browser_preview_session
         is_new = (
@@ -22237,8 +22253,10 @@ class MainFrame(
             or session.preview_path != preview_path
             or session.browser_choice != browser_choice
         )
-        # Re-open on each invocation: an explicit, user-initiated refresh that
-        # replaces the old forced <meta refresh> once-a-second poll.
+        # Opening the browser happens ONLY here, on the explicit user command.
+        # The keep-fresh path (_do_refresh_browser_preview) rewrites the file so
+        # a reload in the browser shows current text, but never opens a tab —
+        # re-opening on every typing pause spammed new tabs (#780 review).
         open_preview_url(preview_path.as_uri(), browser_choice)
         self._browser_preview_session = _BrowserPreviewSession(
             tab_index=tab_index,
@@ -22515,7 +22533,11 @@ class MainFrame(
         session = self._browser_preview_session
         if session is None or session.tab_index != self._active_tab_index:
             return
-        self.preview_in_browser()
+        if session.tab_index < 0 or session.tab_index >= len(self._document_tabs):
+            return
+        # Rewrite the file only; never open the browser from the typing path
+        # (that spawned a new tab on every pause — #780 review finding).
+        self._write_browser_preview(session.tab_index)
 
     def _get_assistant(self) -> Assistant:
         assistant = getattr(self, "_assistant", None)
@@ -24846,13 +24868,16 @@ class MainFrame(
         dialog = TableStudioDialog(
             self.frame, model, self._announce, title=title, save_csv_cb=self._save_table_as_csv
         )
-        outcome = self._show_modal_dialog(dialog, title)
-        if outcome == wx.ID_OK and dialog.result_markdown:
-            self._apply_insertion_result(dialog.result_markdown)
-            self._set_status("Table inserted as Markdown")
-        elif outcome == wx.ID_APPLY and dialog.result_html:
-            self._apply_insertion_result(dialog.result_html)
-            self._set_status("Table inserted as HTML")
+        try:
+            outcome = self._show_modal_dialog(dialog, title)
+            if outcome == wx.ID_OK and dialog.result_markdown:
+                self._apply_insertion_result(dialog.result_markdown)
+                self._set_status("Table inserted as Markdown")
+            elif outcome == wx.ID_APPLY and dialog.result_html:
+                self._apply_insertion_result(dialog.result_html)
+                self._set_status("Table inserted as HTML")
+        finally:
+            dialog.Destroy()
 
     def _save_table_as_csv(self, model: object, default_path: str | None) -> bool:
         """Save a Table Studio model back out to a CSV file. Returns True on save.

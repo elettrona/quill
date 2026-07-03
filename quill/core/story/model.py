@@ -39,6 +39,20 @@ class ElementKind(StrEnum):
             return cls.RESEARCH
 
 
+def _is_relative_posix_path(path: str) -> bool:
+    """True for the only path shape the sidecar may hold: relative POSIX.
+
+    Rejects absolute paths, Windows drive/backslash forms, and traversal
+    segments so a hand-edited or machine-copied sidecar can neither leak
+    machine-specific paths nor escape the project folder.
+    """
+    if not path or "\\" in path:
+        return False
+    if path.startswith("/") or ":" in path.split("/", 1)[0]:
+        return False
+    return all(segment not in ("", "..") for segment in path.split("/"))
+
+
 @dataclass(frozen=True, slots=True)
 class StoryElement:
     """One non-manuscript element backed by a plain-text file."""
@@ -74,7 +88,7 @@ class StoryElement:
             return None
         if not (isinstance(title, str) and title):
             return None
-        if not (isinstance(path, str) and path):
+        if not (isinstance(path, str) and _is_relative_posix_path(path)):
             return None
         raw_tags = data.get("tags", [])
         tags = (
@@ -126,7 +140,11 @@ class StoryProject:
         title = raw_title if isinstance(raw_title, str) and raw_title else "Untitled Project"
         raw_manuscript = data.get("manuscript", [])
         manuscript = (
-            tuple(item for item in raw_manuscript if isinstance(item, str) and item)
+            tuple(
+                item
+                for item in raw_manuscript
+                if isinstance(item, str) and _is_relative_posix_path(item)
+            )
             if isinstance(raw_manuscript, list)
             else ()
         )

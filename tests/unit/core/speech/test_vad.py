@@ -102,3 +102,30 @@ def test_calibration_window_is_not_counted_as_speech() -> None:
     d = SilenceDetector(silence_ms=400, min_speech_ms=100, calibrate_ms=300)
     assert d.feed(_pcm(6000, 300)) is False
     assert d.heard_speech is False
+
+
+def test_speech_right_after_calibration_is_still_detected() -> None:
+    # Regression (#796 review): if the user starts talking the moment the mic
+    # opens, the calibration window is dominated by speech. With a min-based
+    # floor plus a quiet inter-word chunk, the detector must still recognize
+    # speech afterwards instead of setting an unreachable threshold.
+    d = SilenceDetector(silence_ms=800, min_speech_ms=200, calibrate_ms=300, speech_rms=500)
+    # Speaking immediately: one loud chunk and one quieter gap inside the window.
+    d.feed(_pcm(6000, 150))
+    d.feed(_pcm(300, 150))  # brief inter-word dip supplies the true floor
+    assert d.threshold <= 1500, "calibration must not be dominated by leading speech"
+    d.feed(_pcm(6000, 400))
+    assert d.heard_speech is True
+
+
+def test_contaminated_calibration_recovers_on_first_quiet_chunk() -> None:
+    # Worst case: the entire calibration window is loud speech (floor ~6000,
+    # threshold 15000). The first genuinely quiet chunk after calibration must
+    # re-floor the detector so the rest of the turn works.
+    d = SilenceDetector(silence_ms=800, min_speech_ms=200, calibrate_ms=300, speech_rms=500)
+    d.feed(_pcm(6000, 300))  # calibration entirely dominated by speech
+    assert d.threshold > 5000  # contaminated, as the regression described
+    d.feed(_pcm(200, 200))  # first real pause lowers the floor again
+    assert d.threshold == 500
+    d.feed(_pcm(6000, 400))
+    assert d.heard_speech is True

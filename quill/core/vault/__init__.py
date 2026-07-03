@@ -3,8 +3,10 @@
 A *vault* is a folder of Markdown/plain-text notes. This package owns the note
 model, the wikilink codec, the link/backlink index, name/anchor resolution, and
 (later phases) vault-wide search, tags, embeds, and templates. It imports no
-``wx`` and is strict-typed; all file IO is injected as callables so the model
-and indexes are unit-tested without disk.
+``wx`` and is strict-typed. ``scan_vault`` is the one disk touchpoint (walk the
+folder, read the notes); everything downstream — parsing, resolution, the
+indexes — operates on the in-memory :class:`Vault` and is unit-tested without
+touching a real vault on disk.
 
 Canonical specification: ``QUILL-PRD.md`` §5.89d; remaining phases in
 ``docs/planning/roadmap.md`` §1.7.

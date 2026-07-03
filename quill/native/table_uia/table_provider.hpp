@@ -3,7 +3,7 @@
  * table_provider.hpp
  *
  * Implements a true Microsoft UI Automation table/grid provider for the
- * wx.grid.Grid widget inside TableStudioFrame.
+ * virtual wx.ListCtrl grid in quill/ui/table_studio.py (TableListCtrl).
  *
  * Architecture
  * ────────────

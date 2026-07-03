@@ -111,8 +111,10 @@ def get_brf_profiles() -> list[dict]:
     Search order:
     1. ``{QUILL_APP_ROOT}/vendor/braille-pack/`` — set by run-quill.cmd in the
        installer build; covers both portable and installed modes.
-    2. ``<repo-root>/liblouis/vendor/braille/pack/`` — dev source tree.
-    3. ``<repo-root>/vendor/braille-pack/`` — portable staging path.
+    2. the managed app-data pack dir (``managed_braille_dir()``) — where the
+       on-demand download extracts to (footprint unbundle).
+    3. ``<repo-root>/liblouis/vendor/braille/pack/`` — dev source tree.
+    4. ``<repo-root>/vendor/braille-pack/`` — portable staging path.
     """
     import os
 

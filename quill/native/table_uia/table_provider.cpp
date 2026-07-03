@@ -307,7 +307,9 @@ HRESULT STDMETHODCALLTYPE TableGridProvider::GetSelection(SAFEARRAY** pRetVal) {
 HRESULT STDMETHODCALLTYPE TableGridProvider::get_CanSelectMultiple(
         BOOL* pRetVal) {
     if (!pRetVal) return E_POINTER;
-    *pRetVal = VARIANT_TRUE;
+    // The backing widget is a wx.ListCtrl created with LC_SINGLE_SEL, so UIA
+    // clients must not be told multi-select is possible (#802 review).
+    *pRetVal = VARIANT_FALSE;
     return S_OK;
 }
 
@@ -341,15 +343,19 @@ void TableGridProvider::NotifyValueChanged(
         int row, int col, const std::wstring& new_value) {
     auto* cell = get_or_create_cell(row, col);
     if (!cell) return;
-    VARIANT var;
-    VariantInit(&var);
-    var.vt      = VT_BSTR;
-    var.bstrVal = BstrFromWide(new_value);
+    // Old value is VT_EMPTY (we do not track it); passing the same VARIANT
+    // as both old and new made clients treat the event as a no-op (#802).
+    VARIANT old_var;
+    VariantInit(&old_var);  // VT_EMPTY
+    VARIANT new_var;
+    VariantInit(&new_var);
+    new_var.vt      = VT_BSTR;
+    new_var.bstrVal = BstrFromWide(new_value);
     UiaRaiseAutomationPropertyChangedEvent(
         static_cast<IRawElementProviderSimple*>(cell),
         UIA_ValueValuePropertyId,
-        var, var);
-    VariantClear(&var);
+        old_var, new_var);
+    VariantClear(&new_var);
 }
 
 // ── WM_GETOBJECT hook ──────────────────────────────────────────────────────
@@ -376,16 +382,18 @@ int TableGridProvider::cell_key(int row, int col) const {
 }
 
 TableCellProvider* TableGridProvider::get_or_create_cell(int row, int col) {
+    // Returns a borrowed pointer: the cache holds the one owning reference
+    // (released in ~TableGridProvider). Callers that hand the provider to UIA
+    // AddRef at the hand-off. The old extra AddRef here leaked one reference
+    // per lookup and kept cells alive past cache cleanup (#802 review).
     int key = cell_key(row, col);
     std::lock_guard<std::mutex> lk(cell_mutex_);
     auto it = cell_cache_.find(key);
     if (it != cell_cache_.end()) {
-        it->second->AddRef();
         return it->second;
     }
-    auto* cell = new TableCellProvider(this, row, col);
+    auto* cell = new TableCellProvider(this, row, col);  // refcount 1 = cache reference
     cell_cache_[key] = cell;
-    cell->AddRef();  // cache reference
     return cell;
 }
 

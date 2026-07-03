@@ -234,8 +234,10 @@ def celebration_lines(path_id: str, *, provider_name: str = "") -> list[str]:
             "Finish on the AI Hub's Engines tab, which opens next:",
             "- Pick GitHub Copilot, OpenAI Agents, or Claude Agent.",
             "- Select Set Up to install the connector and sign in with your account.",
-            "It runs on the subscription you already have, and every change the agent "
-            "proposes is a reviewable preview you approve — one keystroke to undo.",
+            (
+                "It runs on the subscription you already have, and every change the agent "
+                + "proposes is a reviewable preview you approve — one keystroke to undo."
+            ),
         ]
     return [
         head,

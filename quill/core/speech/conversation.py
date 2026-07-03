@@ -3,7 +3,7 @@
 A pure, wx-free controller for the hands-free conversation loop, modeled on the
 ADP Assistant's proven design (see
 ``docs/planning/quill-hey-quill-voice-interaction-plan.md`` §3). It owns the
-six-state machine and the WCAG-grounded timing model; it does **not** touch the
+five-state machine and the WCAG-grounded timing model; it does **not** touch the
 microphone, the speech engine, wx, or the clock. The UI layer feeds it events
 (the user armed it, a transcript arrived, a timer fired) and executes the
 :class:`Effect` objects it returns (play an earcon, announce text, start a
@@ -26,13 +26,12 @@ an empty transcript, or a no-match all return to a safe resting state.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
 
 class State(Enum):
-    """The six conversation states (ADP §3.1)."""
+    """The five conversation states (ADP §3.1)."""
 
     OFF = "off"
     IDLE = "idle"
@@ -290,6 +289,3 @@ __all__ = [
     "State",
     "Timing",
 ]
-
-# Callable alias kept for the UI's timer wiring type hints.
-TimerStarter = Callable[[str, int], None]
