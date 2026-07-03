@@ -193,8 +193,17 @@ href="quill-native-accessible-table-studio-plan.md"><code>quill-native-accessibl
 — Table Studio (not started).</li>
 <li><a
 href="quill-hey-quill-voice-interaction-plan.md"><code>quill-hey-quill-voice-interaction-plan.md</code></a>
-— Hey QUILL voice interaction and conversation mode (planned; 2.0
-slot).</li>
+— Hey QUILL voice interaction: <strong>all four phases + refinements
+shipped 2026-07-03</strong> (push-to-talk, conversation mode with
+sounders, wake word, Ask Quill routing, VAD/personalization/engine
+choice). Only a dedicated Vosk keyword-spotter remains as a future
+optimization.</li>
+<li><a
+href="quill-agent-harness-plan.md"><code>quill-agent-harness-plan.md</code></a>
+— Agent harnesses (Copilot / OpenAI Agents / Claude Agent) as on-demand
+components: <strong>framework and all three SDK packs are
+BUILT</strong>; open work is surfacing the value, lighting the Copilot
+OAuth client id, and real-account validation.</li>
 </ul>
 <p>The Accessible Vault plan has been <strong>retired</strong>: Phases
 0–7 shipped (feature-complete for 0.9.0) and the feature now lives in
@@ -245,12 +254,18 @@ open:</strong></p>
 runtime-memory policy (the idle-sweep timer firing, a real model
 unloading), the model upgrade hint in the AI model dialog, and the
 offline cloud↔︎local fallback announcement on a real failure.</li>
-<li><strong>Phase 1 installer-size delta</strong> — needs a real Windows
-build to measure/confirm. Remaining candidates are ruled out or
-deferred: <code>win32more</code> is a real dependency of Windows OCR,
-<code>vosk</code> already unbundles on demand, non-en enchant
+<li><strong>Phase 1 installer-size delta</strong> — <strong>Pandoc
+unbundled 2026-07-03</strong> (the single largest component, ~220 MB
+unpacked): it now downloads the official pinned build on demand the
+first time a conversion needs it, roughly halving the installer.
+Remaining candidates are ruled out: <code>win32more</code> is a real
+dependency of the screen-reader layer (<code>prismatoid</code>) and
+Windows OCR — not removable without breaking accessibility; the braille
+pack was assessed and <strong>kept bundled</strong> (it compresses to
+~8.5 MB, and its liblouis translation binding cannot be safely validated
+from a downloaded location); <code>vosk</code> and non-en enchant
 dictionaries already download on demand. Concrete new quant catalog
-entries (q5/q8, int8_float16) need real pinned files + SHA-256
+entries (q5/q8, int8_float16) still need real pinned files + SHA-256
 hashes.</li>
 <li><strong>Phase 0 committed numbers</strong> — per-engine peak RSS and
 cold-start/first-token timings need a live run on a reference
@@ -321,11 +336,6 @@ the human summary (consolidated from the retired
 its preserved content back into the relevant doc.</p>
 <p><strong>Currently locked (as of 0.9.0 Beta 1):</strong></p>
 <ul>
-<li><code>core.voice_commands</code> — <strong>Voice Commands</strong>
-("say a command out loud"), QUILL's hands-free <strong>voice
-interaction</strong>. Locked because it was tied to the now-removed
-Windows dictation path; it needs re-homing on the shipped offline
-dictation engine before it can return.</li>
 <li><code>core.rich_text_lens</code> — <strong>Rich Text Lens</strong>
 (native wxPython rich-text editing for <code>.rtf</code>). Locked
 pending fuller screen-reader testing; RTF opens as plain text meanwhile.
@@ -359,8 +369,10 @@ reason to touch it.</li>
 baked in</strong> — offline dictation, transcription and captions,
 read-aloud across SAPI 5 / DECtalk / Piper / eSpeak / Kokoro and the
 ElevenLabs cloud voice, batch document-to-speech, and audiobook
-building. The only speech-adjacent lock left is
-<code>core.voice_commands</code> (hands-free voice interaction).</p>
+building. Hands-free <strong>voice interaction</strong> also shipped:
+<code>core.voice_commands</code> was unlocked for Hey QUILL
+(push-to-talk, conversation mode, wake word, Ask Quill routing) — no
+speech-adjacent lock remains.</p>
 <blockquote>
 <p><strong>Docs framing.</strong> GLOW ships as an experimental opt-in
 (2026-07-02) and its preserved user-facing content has been restored

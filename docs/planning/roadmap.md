@@ -8,7 +8,8 @@
 > with open work of its own:
 >
 > - [`quill-native-accessible-table-studio-plan.md`](quill-native-accessible-table-studio-plan.md) — Table Studio (not started).
-> - [`quill-hey-quill-voice-interaction-plan.md`](quill-hey-quill-voice-interaction-plan.md) — Hey QUILL voice interaction and conversation mode (planned; 2.0 slot).
+> - [`quill-hey-quill-voice-interaction-plan.md`](quill-hey-quill-voice-interaction-plan.md) — Hey QUILL voice interaction: **all four phases + refinements shipped 2026-07-03** (push-to-talk, conversation mode with sounders, wake word, Ask Quill routing, VAD/personalization/engine choice). Only a dedicated Vosk keyword-spotter remains as a future optimization.
+> - [`quill-agent-harness-plan.md`](quill-agent-harness-plan.md) — Agent harnesses (Copilot / OpenAI Agents / Claude Agent) as on-demand components: **framework and all three SDK packs are BUILT**; open work is surfacing the value, lighting the Copilot OAuth client id, and real-account validation.
 >
 > The Accessible Vault plan has been **retired**: Phases 0–7 shipped (feature-complete
 > for 0.9.0) and the feature now lives in `QUILL-PRD.md` §5.89d and the user guide; the
@@ -55,11 +56,15 @@ are unit-tested. **Still open:**
 - **Live-app sign-off (smoke test)** of the now-wired runtime-memory policy (the
   idle-sweep timer firing, a real model unloading), the model upgrade hint in the AI
   model dialog, and the offline cloud↔local fallback announcement on a real failure.
-- **Phase 1 installer-size delta** — needs a real Windows build to measure/confirm.
-  Remaining candidates are ruled out or deferred: `win32more` is a real dependency of
-  Windows OCR, `vosk` already unbundles on demand, non-en enchant dictionaries already
-  download on demand. Concrete new quant catalog entries (q5/q8, int8_float16) need
-  real pinned files + SHA-256 hashes.
+- **Phase 1 installer-size delta** — **Pandoc unbundled 2026-07-03** (the single largest
+  component, ~220 MB unpacked): it now downloads the official pinned build on demand the
+  first time a conversion needs it, roughly halving the installer. Remaining candidates are
+  ruled out: `win32more` is a real dependency of the screen-reader layer (`prismatoid`) and
+  Windows OCR — not removable without breaking accessibility; the braille pack was assessed
+  and **kept bundled** (it compresses to ~8.5 MB, and its liblouis translation binding
+  cannot be safely validated from a downloaded location); `vosk` and non-en enchant
+  dictionaries already download on demand. Concrete new quant catalog entries (q5/q8,
+  int8_float16) still need real pinned files + SHA-256 hashes.
 - **Phase 0 committed numbers** — per-engine peak RSS and cold-start/first-token
   timings need a live run on a reference machine.
 - **macOS offline-speech parity** — a mac `whisper-cli`, or Faster Whisper as the mac
@@ -124,10 +129,6 @@ move its preserved content back into the relevant doc.
 
 **Currently locked (as of 0.9.0 Beta 1):**
 
-- `core.voice_commands` — **Voice Commands** ("say a command out loud"), QUILL's
-  hands-free **voice interaction**. Locked because it was tied to the now-removed
-  Windows dictation path; it needs re-homing on the shipped offline dictation engine
-  before it can return.
 - `core.rich_text_lens` — **Rich Text Lens** (native wxPython rich-text editing for
   `.rtf`). Locked pending fuller screen-reader testing; RTF opens as plain text
   meanwhile. Docs must not claim native RTF editing ships.
@@ -150,8 +151,9 @@ move its preserved content back into the relevant doc.
 
 **All voice and speech *capabilities* are shipped and baked in** — offline dictation,
 transcription and captions, read-aloud across SAPI 5 / DECtalk / Piper / eSpeak / Kokoro
-and the ElevenLabs cloud voice, batch document-to-speech, and audiobook building. The
-only speech-adjacent lock left is `core.voice_commands` (hands-free voice interaction).
+and the ElevenLabs cloud voice, batch document-to-speech, and audiobook building. Hands-free
+**voice interaction** also shipped: `core.voice_commands` was unlocked for Hey QUILL
+(push-to-talk, conversation mode, wake word, Ask Quill routing) — no speech-adjacent lock remains.
 
 > **Docs framing.** GLOW ships as an experimental opt-in (2026-07-02) and its preserved user-facing content
 > has been restored into the user guide ("GLOW Workflows Inside QUILL"), glossary, help
