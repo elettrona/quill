@@ -1764,18 +1764,18 @@ class MenuBuilderMixin:
                 self._id_glow_fix_selection,
                 self._menu_label(_("GLOW Fix &Selection"), "tools.glow_fix_selection"),
             )
-        # Table Studio / CSV Studio are experimental opt-ins (Preferences >
-        # Experimental): the accessible grid surfaces appear on settings-apply.
+        # Table Studio is an experimental opt-in (Preferences > Experimental):
+        # one accessible grid for a new table or an opened CSV. Appears on
+        # settings-apply.
         if self._experimental_gate_on("table_studio_experimental_enabled"):
             writing_menu.AppendSeparator()
             writing_menu.Append(
                 self._id_table_studio,
                 self._menu_label(_("&Table Studio..."), "tools.table_studio"),
             )
-        if self._experimental_gate_on("csv_studio_experimental_enabled"):
             writing_menu.Append(
                 self._id_csv_studio,
-                self._menu_label(_("CS&V Studio..."), "tools.csv_studio"),
+                self._menu_label(_("Open CS&V in Table Studio..."), "tools.csv_studio"),
             )
         writing_menu.AppendSeparator()
         writing_menu.Append(

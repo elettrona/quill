@@ -96,6 +96,43 @@ def test_row_header_when_first_column_is_header() -> None:
     assert '<th scope="row">Ada</th>' in m.to_html()
 
 
+def test_sort_by_column_ascending_and_descending() -> None:
+    m = TableDocumentModel.from_lists(
+        headers=["Name", "Age"],
+        rows=[["Bob", "30"], ["Ada", "25"], ["Cal", "40"]],
+    )
+    assert m.sort_by_column(0, ascending=True) is True
+    assert [m.value(r, 0) for r in range(3)] == ["Ada", "Bob", "Cal"]
+    m.sort_by_column(1, ascending=False)  # numeric sort, descending
+    assert [m.value(r, 1) for r in range(3)] == ["40", "30", "25"]
+
+
+def test_sort_puts_blanks_last() -> None:
+    m = TableDocumentModel.from_lists(headers=["X"], rows=[["b"], [""], ["a"]])
+    m.sort_by_column(0, ascending=True)
+    assert [m.value(r, 0) for r in range(3)] == ["a", "b", ""]
+
+
+def test_row_header_toggle_emits_scope_markup() -> None:
+    m = TableDocumentModel.from_lists(headers=["Name", "City"], rows=[["Ada", "London"]])
+    assert m.has_row_header() is False
+    m.set_first_column_as_row_header(True)
+    assert m.has_row_header() is True
+    assert '<th scope="row">Ada</th>' in m.to_html()
+
+
+def test_promote_first_row_to_header() -> None:
+    # A CSV whose header row was read as data: promote row 0 to column labels.
+    m = TableDocumentModel.from_lists(
+        headers=["Column 1", "Column 2"],
+        rows=[["Name", "City"], ["Ada", "London"]],
+    )
+    assert m.promote_first_row_to_header() is True
+    assert m.col_header(0) == "Name" and m.col_header(1) == "City"
+    assert m.row_count == 1 and m.value(0, 0) == "Ada"
+    assert '<th scope="col">Name</th>' in m.to_html()
+
+
 # -- spoken-cell formatter (accessibility) -----------------------------------
 
 
@@ -180,14 +217,13 @@ def test_parse_empty_csv_raises() -> None:
 # -- integration wiring (source-contract) ------------------------------------
 
 
-def test_settings_flags_round_trip() -> None:
+def test_settings_flag_round_trips() -> None:
     from quill.core.settings import Settings
 
-    s = Settings.from_dict(
-        {"table_studio_experimental_enabled": True, "csv_studio_experimental_enabled": True}
-    )
+    s = Settings.from_dict({"table_studio_experimental_enabled": True})
     assert s.table_studio_experimental_enabled is True
-    assert s.csv_studio_experimental_enabled is True
+    # CSV folded into Table Studio: there is no separate CSV Studio flag.
+    assert not hasattr(s, "csv_studio_experimental_enabled")
 
 
 def test_commands_registered_and_gated() -> None:
@@ -197,20 +233,45 @@ def test_commands_registered_and_gated() -> None:
     mf = (root / "quill" / "ui" / "main_frame.py").read_text(encoding="utf-8")
     assert '"tools.table_studio"' in mf and '"tools.csv_studio"' in mf
     assert "def open_table_studio" in mf and "def open_csv_studio" in mf
-    # Both are gated behind the experimental master + their own flag.
-    assert '_experimental_gate_on("table_studio_experimental_enabled")' in mf
-    assert '_experimental_gate_on("csv_studio_experimental_enabled")' in mf
-    # Both flags follow the Experimental master switch (disabled when it is off).
-    assert "table_studio_experimental_enabled" in mf and "csv_studio_experimental_enabled" in mf
+    # Both entry points are gated behind the single Table Studio flag; CSV was
+    # rolled into Table Studio (no separate csv_studio flag).
+    assert mf.count('_experimental_gate_on("table_studio_experimental_enabled")') >= 2
+    assert "csv_studio_experimental_enabled" not in mf
+    # Opening a CSV round-trips: Table Studio can save the grid back to CSV.
+    assert "def _save_table_as_csv" in mf and "save_csv_cb" in mf
+    # File > Open CSV (grid mode) consolidates onto Table Studio when enabled.
+    assert "def _open_csv_in_table_studio" in mf
+    assert 'source_metadata.get("csv_open_mode") == "grid"' in mf
 
 
-def test_menu_items_gated() -> None:
+def test_grid_has_full_context_menu_and_ops() -> None:
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[4]
+    ui = (root / "quill" / "ui" / "table_studio.py").read_text(encoding="utf-8")
+    for hook in (
+        "def show_context_menu",
+        "def sort_ascending",
+        "def sort_descending",
+        "def move_row_up",
+        "def move_row_down",
+        "def toggle_row_headers",
+        "def rename_column_header",
+        "def promote_first_row_to_header",
+    ):
+        assert hook in ui, f"missing grid op {hook}"
+    assert "EVT_CONTEXT_MENU" in ui and "WXK_F10" in ui
+
+
+def test_menu_items_gated_under_one_flag() -> None:
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[4]
     menu = (root / "quill" / "ui" / "main_frame_menu.py").read_text(encoding="utf-8")
-    assert '_("&Table Studio...")' in menu and '_("CS&V Studio...")' in menu
-    assert "_experimental_gate_on(\"table_studio_experimental_enabled\")" in menu
+    assert '_("&Table Studio...")' in menu
+    assert '_("Open CS&V in Table Studio...")' in menu
+    assert '_experimental_gate_on("table_studio_experimental_enabled")' in menu
+    assert "csv_studio_experimental_enabled" not in menu
 
 
 def test_native_uia_wrapper_falls_back_cleanly() -> None:

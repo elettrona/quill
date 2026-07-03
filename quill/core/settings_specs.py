@@ -2060,30 +2060,17 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
     ),
     SettingSpec(
         "table_studio_experimental_enabled",
-        "Table Studio — accessible table editing (experimental)",
+        "Table Studio — accessible table and CSV editing (experimental)",
         "experimental",
         "bool",
         (
-            "Adds Table Studio (Tools menu): build and edit a table in a fully "
-            "keyboard-accessible grid where the arrow keys move by cell and speak "
-            "the column, then insert it into your document as Markdown or HTML. "
-            "Requires the master switch above. Takes effect as soon as you apply "
-            "Settings — no restart."
+            "Adds Table Studio (Tools menu): build a new table or open a CSV/TSV "
+            "file in one fully keyboard-accessible grid where the arrow keys move "
+            "by cell and speak the column. Insert the result into your document as "
+            "Markdown or HTML, or save it back out as CSV. Requires the master "
+            "switch above. Takes effect as soon as you apply Settings — no restart."
         ),
-        keywords=("experimental", "table", "studio", "grid", "accessible"),
-    ),
-    SettingSpec(
-        "csv_studio_experimental_enabled",
-        "CSV Studio — open CSV files in a grid (experimental)",
-        "experimental",
-        "bool",
-        (
-            "Adds CSV Studio (Tools menu): open a CSV or TSV file in the same "
-            "accessible grid as Table Studio, navigate and edit it cell by cell, "
-            "and insert it as a Markdown or HTML table. Requires the master switch "
-            "above. Takes effect as soon as you apply Settings — no restart."
-        ),
-        keywords=("experimental", "csv", "studio", "grid", "spreadsheet"),
+        keywords=("experimental", "table", "csv", "studio", "grid", "accessible"),
     ),
     SettingSpec(
         "edge_read_aloud_enabled",

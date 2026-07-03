@@ -561,19 +561,20 @@ For the complete picture - every mode, the full list of spoken commands, the
 audio cues, and the privacy rules - see the new **Voice Interaction** page in
 the user guide.
 
-## Table Studio and CSV Studio - accessible tables, at last (experimental)
+## Table Studio - accessible tables, at last (experimental)
 
-Tables have always been the hardest thing to edit by ear. This release adds two
-experimental surfaces that make them genuinely workable: **Table Studio** (build
-a table from scratch) and **CSV Studio** (open a CSV or TSV straight into the
-same grid). Both put your data in a real, keyboard-accessible grid where the
+Tables have always been the hardest thing to edit by ear. This release adds
+**Table Studio**, one experimental surface that makes them genuinely workable -
+build a new table from scratch, or **open a CSV or TSV** straight into the same
+grid. Either way your data lands in a real, keyboard-accessible grid where the
 arrow keys move by cell and **Left/Right speak the column heading** as you cross
-a row - so you always know exactly where you are. F2 edits a cell; Alt+arrows
-move a whole row or column; Ctrl+Insert adds a row. When you are done, insert the
-result into your document as a properly-headed Markdown or HTML table. The grid
+a row, so you always know exactly where you are. F2 edits a cell; Alt+arrows move
+a whole row or column; Ctrl+Insert adds a row. When you are done, insert the
+result into your document as a properly-headed Markdown or HTML table - or save
+it back out as CSV, so a file you opened makes a full round trip. The grid
 announces cells through Windows accessibility for NVDA and JAWS, with an optional
-native provider for even richer cell events on builds that include it. Enable
-them on the Experimental tab (Tools menu).
+native provider for even richer cell events on builds that include it. Enable it
+on the Experimental tab (Tools menu).
 
 ## The Experimental tab - consent in layers
 

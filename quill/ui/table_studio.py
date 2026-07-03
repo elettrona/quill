@@ -77,8 +77,12 @@ class TableListCtrl(wx.ListCtrl):
         if model.row_count:
             self._select_row(0)
         self.Bind(wx.EVT_KEY_DOWN, self._on_key)
+        self.Bind(wx.EVT_CONTEXT_MENU, self._on_context_menu)
         self.Bind(wx.EVT_WINDOW_DESTROY, self._on_destroy)
         model.add_listener(self._on_model_change)
+
+    def _on_context_menu(self, _evt: wx.ContextMenuEvent) -> None:
+        self.show_context_menu()
 
     def _on_destroy(self, evt: wx.WindowDestroyEvent) -> None:
         native = getattr(self, "_native", None)
@@ -170,6 +174,8 @@ class TableListCtrl(wx.ListCtrl):
             self.insert_row_below()
         elif plain and key == wx.WXK_DELETE:
             self.clear_active_cell()
+        elif key == wx.WXK_WINDOWS_MENU or (shft and key == wx.WXK_F10):
+            self.show_context_menu()
         else:
             evt.Skip()
 
@@ -237,6 +243,84 @@ class TableListCtrl(wx.ListCtrl):
         if self._model.move_col(col, col + delta):
             self._active_col = col + delta
             self._announce("Column moved left." if delta < 0 else "Column moved right.")
+
+    def move_row_up(self) -> None:
+        self._move_row(-1)
+
+    def move_row_down(self) -> None:
+        self._move_row(1)
+
+    def sort_ascending(self) -> None:
+        _row, col = self._row_col()
+        if self._model.sort_by_column(col, ascending=True):
+            self._announce(f"Sorted by {self._model.col_header(col)}, ascending.")
+
+    def sort_descending(self) -> None:
+        _row, col = self._row_col()
+        if self._model.sort_by_column(col, ascending=False):
+            self._announce(f"Sorted by {self._model.col_header(col)}, descending.")
+
+    def toggle_row_headers(self) -> None:
+        enabled = not self._model.has_row_header()
+        self._model.set_first_column_as_row_header(enabled)
+        self._announce(
+            "First column is now a row header."
+            if enabled
+            else "First column is no longer a row header."
+        )
+
+    def rename_column_header(self) -> None:
+        _row, col = self._row_col()
+        current = self._model.col_header(col)
+        with wx.TextEntryDialog(
+            self, f"Header for column {col + 1}:", "Rename Column Header", value=current
+        ) as dlg:
+            if dlg.ShowModal() == wx.ID_OK and dlg.GetValue().strip():
+                self._model.set_col_label_override(col, dlg.GetValue())
+                self._announce(f"Column header set to {dlg.GetValue()}.")
+
+    def promote_first_row_to_header(self) -> None:
+        if self._model.promote_first_row_to_header():
+            self._announce("First row promoted to column headers.")
+        else:
+            self._announce("Nothing to promote.")
+
+    # -- context menu ----------------------------------------------------- #
+
+    def show_context_menu(self) -> None:
+        """The right-click / Apps / Shift+F10 menu — every grid action, spoken."""
+        menu = wx.Menu()
+        has_row_header = self._model.has_row_header()
+        entries = [
+            ("Edit Cell (F2)", self.edit_active_cell),
+            ("Rename Column Header...", self.rename_column_header),
+            (None, None),
+            ("Sort Ascending", self.sort_ascending),
+            ("Sort Descending", self.sort_descending),
+            (None, None),
+            ("Insert Row Above", self.insert_row_above),
+            ("Insert Row Below", self.insert_row_below),
+            ("Delete Row", self.delete_row),
+            ("Move Row Up", self.move_row_up),
+            ("Move Row Down", self.move_row_down),
+            (None, None),
+            ("Insert Column", self.insert_column),
+            ("Delete Column", self.delete_column),
+            (None, None),
+            ("Promote First Row to Header", self.promote_first_row_to_header),
+            (
+                "Use First Column as Row Headers" + ("  (on)" if has_row_header else ""),
+                self.toggle_row_headers,
+            ),
+        ]
+        for label, handler in entries:
+            if label is None:
+                menu.AppendSeparator()
+                continue
+            item = menu.Append(wx.ID_ANY, label)
+            self.Bind(wx.EVT_MENU, lambda _e, h=handler: h(), item)
+        self.PopupMenu(menu)
+        menu.Destroy()
 
     # -- announcements ---------------------------------------------------- #
 
@@ -311,11 +395,13 @@ class TableStudioDialog(wx.Dialog):
         announce: Callable[[str], None],
         *,
         title: str = "Table Studio",
+        save_csv_cb: Callable[[TableDocumentModel, str | None], bool] | None = None,
     ) -> None:
         super().__init__(parent, title=title, style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.SetSize(wx.Size(900, 560))
         self.model = model
         self._announce = announce
+        self._save_csv_cb = save_csv_cb
         self.result_markdown = ""
         self.result_html = ""
 
@@ -328,7 +414,8 @@ class TableStudioDialog(wx.Dialog):
             label=(
                 "Arrow keys move by cell (Left/Right speak the column). F2 or Enter "
                 "edits. Alt+arrows move a row or column. Ctrl+Insert adds a row; "
-                "Delete clears a cell."
+                "Delete clears a cell. Shift+F10 opens a menu to sort, insert, "
+                "remove, move rows, rename headers, and set row headers."
             ),
         )
         intro.Wrap(860)
@@ -348,6 +435,10 @@ class TableStudioDialog(wx.Dialog):
             button = wx.Button(self, label=label)
             button.Bind(wx.EVT_BUTTON, handler)
             tools.Add(button, 0, wx.RIGHT | wx.BOTTOM, 6)
+        if self._save_csv_cb is not None:
+            save_csv_button = wx.Button(self, label="&Save to CSV...")
+            save_csv_button.Bind(wx.EVT_BUTTON, self._on_save_csv)
+            tools.Add(save_csv_button, 0, wx.RIGHT | wx.BOTTOM, 6)
         root.Add(tools, 0, wx.ALL, 6)
 
         btns = wx.StdDialogButtonSizer()
@@ -374,6 +465,13 @@ class TableStudioDialog(wx.Dialog):
     def _on_html(self, _event: object) -> None:
         self.result_html = self.model.to_html()
         self.EndModal(wx.ID_APPLY)
+
+    def _on_save_csv(self, _event: object) -> None:
+        if self._save_csv_cb is None:
+            return
+        default_path = getattr(self.model, "csv_source_path", None)
+        if self._save_csv_cb(self.model, default_path):
+            self._announce("Saved to CSV.")
 
 
 __all__ = ["TableListCtrl", "TableStudioDialog"]

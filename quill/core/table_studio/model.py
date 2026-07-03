@@ -314,6 +314,62 @@ class TableDocumentModel:
         self._emit(Change.COL_MOVED, frm=frm, to=to)
         return True
 
+    # ── Sorting ───────────────────────────────────────────────────────────
+
+    def sort_by_column(self, col_idx: int, *, ascending: bool = True) -> bool:
+        """Sort the rows in place by one column's values.
+
+        Numeric-looking values sort numerically; everything else sorts as a
+        case-insensitive string. Blanks sort last regardless of direction.
+        """
+        if not (0 <= col_idx < len(self.columns)):
+            return False
+        col_id = self.columns[col_idx].col_id
+
+        def key(row: TableRow) -> tuple:
+            cell = row.cells.get(col_id)
+            text = (cell.content if cell else "").strip()
+            if not text:
+                return (2, 0.0, "")  # blanks last
+            try:
+                return (0, float(text.replace(",", "")), "")
+            except ValueError:
+                return (1, 0.0, text.casefold())
+
+        self.rows.sort(key=key, reverse=not ascending)
+        self._emit(Change.STRUCTURE, sorted_col=col_idx, ascending=ascending)
+        return True
+
+    # ── Header configuration ──────────────────────────────────────────────
+
+    def set_first_column_as_row_header(self, enabled: bool) -> None:
+        """Mark the first column as row headers, so exports use <th scope="row">."""
+        self.header_config.first_col_is_header = enabled
+        if self.columns:
+            self.columns[0].is_row_header = enabled
+        self._emit(Change.STRUCTURE, first_col_is_header=enabled)
+
+    def has_row_header(self) -> bool:
+        return self.header_config.first_col_is_header
+
+    def promote_first_row_to_header(self) -> bool:
+        """Use the first data row's values as the column headers, then drop it.
+
+        For a CSV whose header row was read as data — makes row 1 the real
+        header (its text becomes each column's label override).
+        """
+        if not self.rows or not self.columns:
+            return False
+        first = self.rows[0]
+        for ci, col in enumerate(self.columns):
+            cell = first.cells.get(col.col_id)
+            label = (cell.content if cell else "").strip()
+            if label:
+                self.col_label_overrides[col.col_id] = label
+        del self.rows[0]
+        self._emit(Change.STRUCTURE, promoted_header=True)
+        return True
+
     # ── Serialization ─────────────────────────────────────────────────────
 
     def to_markdown(self) -> str:

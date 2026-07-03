@@ -5582,11 +5582,10 @@ switch.</li>
 <li><strong>Read the document aloud in your browser
 (experimental)</strong> — the browser reader page described under Read
 Aloud.</li>
-<li><strong>Table Studio — accessible table editing
-(experimental)</strong> and <strong>CSV Studio — open CSV files in a
-grid (experimental)</strong> — light the two grid surfaces in the
-<strong>Tools</strong> menu (see "Table Studio and CSV Studio" below).
-Take effect on Apply, no restart.</li>
+<li><strong>Table Studio — accessible table and CSV editing
+(experimental)</strong> — lights <strong>Table Studio</strong> and
+<strong>Open CSV in Table Studio</strong> in the <strong>Tools</strong>
+menu (see "Table Studio" below). Takes effect on Apply, no restart.</li>
 <li><strong>Enable experimental editor surfaces</strong> — a
 <em>second</em> safety gate whose label carries its own warning:
 <em>features may degrade based on the control selected</em>. The editor
@@ -5600,18 +5599,16 @@ controls are disabled and skipped in the tab order.</li>
 <p>The pattern to remember: one master switch for the tab, one switch
 per experiment, and the editor-surface experiments behind a third
 acknowledgement of their own — consent in layers, never by accident.</p>
-<h3 id="table-studio-and-csv-studio-experimental">Table Studio and CSV
-Studio (experimental)</h3>
-<p>Once you enable them on the Experimental tab, <strong>Tools &gt;
-Table Studio...</strong> and <strong>Tools &gt; CSV Studio...</strong>
-open a table in a fully keyboard-accessible grid — a real
-spreadsheet-style surface built for screen-reader users, not a wall of
-pipe characters.</p>
+<h3 id="table-studio-experimental">Table Studio (experimental)</h3>
+<p>Once you enable it on the Experimental tab, <strong>Tools &gt; Table
+Studio...</strong> opens a table in a fully keyboard-accessible grid — a
+real spreadsheet-style surface built for screen-reader users, not a wall
+of pipe characters. It is one surface for two jobs:</p>
 <ul>
 <li><strong>Table Studio</strong> starts a new table you build up cell
 by cell.</li>
-<li><strong>CSV Studio</strong> opens a <code>.csv</code> or
-<code>.tsv</code> file straight into the same grid (the delimiter is
+<li><strong>Open CSV in Table Studio</strong> opens a <code>.csv</code>
+or <code>.tsv</code> file straight into the same grid (the delimiter is
 detected for you).</li>
 </ul>
 <p>Inside the grid, the <strong>arrow keys move by cell</strong>: Up and
@@ -5625,9 +5622,26 @@ Up/Down</strong> move by ten rows. Press <strong>F2</strong> or
 <strong>Alt+arrows</strong> to move a whole row or column,
 <strong>Ctrl+Insert</strong> to add a row, and <strong>Delete</strong>
 to clear a cell — and the same actions are on buttons for anyone who
-prefers them. When you are done, <strong>Insert as Markdown</strong> or
+prefers them.</p>
+<p><strong>Shift+F10</strong> (or the Applications key, or right-click)
+opens a context menu with every table action in one place: <strong>Sort
+Ascending / Descending</strong> by the current column, <strong>Insert /
+Delete / Move</strong> rows, <strong>Insert / Delete</strong> columns,
+<strong>Rename Column Header</strong>, <strong>Promote First Row to
+Header</strong> (for a CSV whose header row was read as data), and
+<strong>Use First Column as Row Headers</strong>. Column and row headers
+are stored the industry-standard way — exported as
+<code>&lt;th scope="col"&gt;</code> and
+<code>&lt;th scope="row"&gt;</code> in HTML and as a proper header row
+in Markdown — so assistive technology and other tools understand your
+table's structure.</p>
+<p>When you are done, <strong>Insert as Markdown</strong> or
 <strong>Insert as HTML</strong> drops the finished, properly-headed
-table into your document.</p>
+table into your document — or <strong>Save to CSV</strong> writes the
+grid back out to a file, so a CSV you opened makes a full round trip.
+When Table Studio is enabled, opening a <code>.csv</code> from
+<strong>File &gt; Open</strong> (choosing the grid view) brings it up in
+this same accessible grid.</p>
 <p>The grid speaks each cell through Windows accessibility so NVDA and
 JAWS announce the column as you cross a row. On builds that include the
 optional native provider the cell announcements are richer still;

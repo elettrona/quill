@@ -3568,7 +3568,7 @@ class MainFrame(
         )
         self.commands.register(
             "tools.csv_studio",
-            "CSV Studio (Experimental)",
+            "Open CSV in Table Studio (Experimental)",
             self.open_csv_studio,
             self._binding_for("tools.csv_studio"),
         )
@@ -8637,7 +8637,16 @@ class MainFrame(
             self._select_tab(existing_index)
         else:
             if loaded.source_metadata.get("csv_open_mode") == "grid":
-                self._create_csv_document_tab(loaded, select=True)
+                # Consolidated CSV grid: when Table Studio is enabled it is the one
+                # accessible grid, so open the file there (F2 edit, context-menu
+                # sort/insert/move, row headers) and keep a normal text tab behind
+                # it. Deferred so the open pipeline settles first. Otherwise the
+                # legacy CsvGridSurface tab is used.
+                if self._experimental_gate_on("table_studio_experimental_enabled"):
+                    self._create_document_tab(loaded, select=True)
+                    self._wx.CallAfter(self._open_csv_in_table_studio, selected_path)
+                else:
+                    self._create_csv_document_tab(loaded, select=True)
             elif loaded.source_metadata.get("word_open_mode") == "structured":
                 self._create_word_document_tab(loaded, select=True)
             elif suffix == ".rtf" and self._rich_editor_enabled():
@@ -10951,7 +10960,6 @@ class MainFrame(
                 _control("publishing_experimental_enabled"),
                 _control("edge_read_aloud_enabled"),
                 _control("table_studio_experimental_enabled"),
-                _control("csv_studio_experimental_enabled"),
             )
             if control is not None
         ]
@@ -24619,7 +24627,7 @@ class MainFrame(
         self._set_status(f"Inserted {rows}x{columns} table ({surface})")
 
     def open_table_studio(self) -> None:
-        """Experimental: build/edit a table in the accessible grid, then insert it."""
+        """Experimental: build a table in the accessible grid, then insert it."""
         if not self._experimental_gate_on("table_studio_experimental_enabled"):
             self._set_status(
                 "Table Studio is an experimental feature; enable it in Preferences > Experimental."
@@ -24635,36 +24643,45 @@ class MainFrame(
         self._run_table_studio(model, title="Table Studio")
 
     def open_csv_studio(self) -> None:
-        """Experimental: open a CSV file in the accessible grid (CSV Studio)."""
-        if not self._experimental_gate_on("csv_studio_experimental_enabled"):
+        """Experimental: open a CSV file in Table Studio (same accessible grid)."""
+        if not self._experimental_gate_on("table_studio_experimental_enabled"):
             self._set_status(
-                "CSV Studio is an experimental feature; enable it in Preferences > Experimental."
+                "Table Studio is an experimental feature; enable it in Preferences > Experimental."
             )
             return
         wx = self._wx
         with wx.FileDialog(
             self.frame,
-            "Open CSV in CSV Studio",
+            "Open CSV in Table Studio",
             wildcard="CSV files (*.csv;*.tsv)|*.csv;*.tsv|All files (*.*)|*.*",
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
         ) as dialog:
             if self._show_modal_dialog(dialog, "Open CSV") != wx.ID_OK:
                 return
             path = dialog.GetPath()
+        self._open_csv_in_table_studio(path)
+
+    def _open_csv_in_table_studio(self, path: object) -> None:
+        """Load a CSV file into Table Studio's accessible grid (shared entry point)."""
+        wx = self._wx
         try:
             from quill.core.table_studio.csv_io import load_csv
 
             model = load_csv(path)
         except (OSError, ValueError) as error:
-            self._show_message_box(f"Could not open the CSV: {error}", "CSV Studio", wx.ICON_ERROR)
+            self._show_message_box(
+                f"Could not open the CSV: {error}", "Table Studio", wx.ICON_ERROR
+            )
             return
-        self._run_table_studio(model, title=f"CSV Studio — {model.caption}")
+        self._run_table_studio(model, title=f"Table Studio — {model.caption}")
 
     def _run_table_studio(self, model: object, *, title: str) -> None:
         wx = self._wx
         from quill.ui.table_studio import TableStudioDialog
 
-        dialog = TableStudioDialog(self.frame, model, self._announce, title=title)
+        dialog = TableStudioDialog(
+            self.frame, model, self._announce, title=title, save_csv_cb=self._save_table_as_csv
+        )
         outcome = self._show_modal_dialog(dialog, title)
         if outcome == wx.ID_OK and dialog.result_markdown:
             self._apply_insertion_result(dialog.result_markdown)
@@ -24672,6 +24689,43 @@ class MainFrame(
         elif outcome == wx.ID_APPLY and dialog.result_html:
             self._apply_insertion_result(dialog.result_html)
             self._set_status("Table inserted as HTML")
+
+    def _save_table_as_csv(self, model: object, default_path: str | None) -> bool:
+        """Save a Table Studio model back out to a CSV file. Returns True on save.
+
+        Used by the Table Studio "Save to CSV" button so an opened CSV — or a
+        table you just built — round-trips to disk without leaving the grid.
+        """
+        wx = self._wx
+        default_dir = ""
+        default_name = "table.csv"
+        if default_path:
+            from pathlib import Path as _Path
+
+            p = _Path(default_path)
+            default_dir, default_name = str(p.parent), p.name
+        with wx.FileDialog(
+            self.frame,
+            "Save as CSV",
+            defaultDir=default_dir,
+            defaultFile=default_name,
+            wildcard="CSV files (*.csv)|*.csv|All files (*.*)|*.*",
+            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+        ) as dialog:
+            if self._show_modal_dialog(dialog, "Save CSV") != wx.ID_OK:
+                return False
+            path = dialog.GetPath()
+        try:
+            from quill.core.table_studio.csv_io import save_csv
+
+            save_csv(model, path)
+        except OSError as error:
+            self._show_message_box(
+                f"Could not save the CSV: {error}", "Table Studio", wx.ICON_ERROR
+            )
+            return False
+        self._set_status(f"Saved CSV: {path}")
+        return True
 
     def _insert_structure(self, kind: str, status: str) -> None:
         if not self._feature_enabled("core.format"):
