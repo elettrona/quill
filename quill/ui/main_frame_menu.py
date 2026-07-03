@@ -10,7 +10,7 @@ reaches every menu id, submenu, label helper, and refresh routine through
 
 from __future__ import annotations
 
-import platform
+import sys
 
 from quill.core.i18n import _
 from quill.ui.batch_speech_runner import run_batch_export_to_speech
@@ -2669,7 +2669,7 @@ class MenuBuilderMixin:
         # try/except so a wx build without the API degrades gracefully
         # (and the dialog_inventory / module_size gates do not see an
         # attribute error).
-        if platform.system() == "Darwin":
+        if sys.platform == "darwin":
             try:
                 if hasattr(menu_bar, "SetHelpMenu"):
                     menu_bar.SetHelpMenu(help_menu)
