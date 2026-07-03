@@ -3588,6 +3588,52 @@ a stronger model" (`free_models.stronger_model_hint`) while still offering them.
 
 ---
 
+### 5.84e Agent harnesses — interchangeable agentic engines (shipped)
+
+**Goal.** Let a user drive QUILL's agent with the AI agent they already pay for
+— GitHub Copilot, OpenAI (ChatGPT), or Claude — without a second API key or
+per-token cost, while keeping QUILL's edit-safety contract exactly as it is.
+
+**The harness layer (`quill/core/ai/harness/`).** A *harness* is an
+interchangeable engine that drives an agent session above the AI backend. QUILL
+ships the **Native** harness (its own loop, always available) plus three
+optional **SDK harness packs** in `quill/ai_packs/` — `copilot.py` (extra
+`ai-copilot`, `github-copilot-sdk`), `claude.py` (extra `ai-claude`,
+`claude-agent-sdk`), and `openai_agents.py` (extra `ai-openai`, `openai-agents`).
+Every harness, native or SDK, drives the **same** `SafeEditorToolGateway` and
+`PermissionBroker` and emits the **same** normalized `AgentEvent`s; a
+`HarnessRegistry` tracks availability, and the Hub hides capabilities a harness
+lacks rather than presenting a broken control.
+
+**Safety law (non-negotiable).** The SDK packs run the vendor agent
+**text-only** (`allowed_tools=[]`): the vendor's own file-editing and shell tools
+are denied, and QUILL applies the produced text through its reviewed gateway —
+permission broker, diff preview, one-step undo. The agent proposes; only QUILL
+touches the document, and only with user approval. All of this is off by default
+and disabled in Safe Mode.
+
+**On-demand install (`quill/core/ai/sdk_install.py`).** The packs are never
+bundled (large, fast-moving, and most users want exactly one). The first time a
+user picks an engine, QUILL installs its extra with `pip` into the running
+interpreter behind a consent + progress surface; the pack self-registers on the
+next probe. An uninstalled pack reports `is_available() == (False, reason)` and
+QUILL keeps working.
+
+**Surfaces.** (1) **AI Hub → Engines tab** (`ai_hub_engines_panel.py`): list the
+engines, **Set Up / Install...** (installs the pack, or opens the Copilot
+onboarding dialog), and **Set as Active Engine**. (2) **AI Setup Wizard**: the
+onboarding path *"Use an AI agent you already pay for"* finishes by opening the
+Engines tab. (3) **GitHub Copilot sign-in** (`copilot_auth.py`): OAuth 2.0 device
+flow (a short, speakable code) when a build provides `QUILL_GITHUB_CLIENT_ID`,
+with a graceful fallback to the Copilot/GitHub CLI sign-in when it is not — so
+Copilot works either way; the token lives in the OS secure store.
+
+**Value.** Use the subscription you already hold ($0 extra), vendor-grade
+orchestration inside QUILL's guardrails, and interchangeable engines that install
+on demand so the base app stays lean.
+
+---
+
 ### 5.85 Portable API key store
 
 By default QUILL stores AI provider keys in the Windows Credential Manager, which ties them to the current Windows user account. Portable mode offers an alternative: a DPAPI-encrypted file (`keys.enc`) in the QUILL data directory, activated by the presence of a `data/` folder next to `quill.exe` in the portable bundle.

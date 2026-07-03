@@ -11,8 +11,10 @@ def _isolate(tmp_path, monkeypatch):
 
 def test_paths_and_providers_are_well_formed() -> None:
     ids = {p.id for p in ob.ONBOARDING_PATHS}
-    assert ids == {"cloud", "skip"}  # on-device folded into the provider list
+    # on-device folded into the provider list; "agent" routes to the AI Hub Engines tab.
+    assert ids == {"cloud", "agent", "skip"}
     assert all(p.title and p.summary and p.detail for p in ob.ONBOARDING_PATHS)
+    assert ob.onboarding_path("agent").id == "agent"
     assert ob.onboarding_path("cloud").id == "cloud"
     assert ob.onboarding_path("nope") is None
     from quill.core.ai.providers import provider_requires_api_key
@@ -47,6 +49,9 @@ def test_celebration_lines_are_tailored() -> None:
     skip = ob.celebration_lines("skip")
     assert any("off for now" in line.lower() for line in skip)
     assert not any("Ask Quill" in line for line in skip)
+    agent = ob.celebration_lines("agent")
+    assert any("Engines tab" in line for line in agent)
+    assert any("Copilot" in line for line in agent)
 
 
 def test_experience_mode_defaults_to_advanced_and_persists(tmp_path, monkeypatch) -> None:

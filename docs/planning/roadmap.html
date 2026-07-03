@@ -198,12 +198,6 @@ shipped 2026-07-03</strong> (push-to-talk, conversation mode with
 sounders, wake word, Ask Quill routing, VAD/personalization/engine
 choice). Only a dedicated Vosk keyword-spotter remains as a future
 optimization.</li>
-<li><a
-href="quill-agent-harness-plan.md"><code>quill-agent-harness-plan.md</code></a>
-— Agent harnesses (Copilot / OpenAI Agents / Claude Agent) as on-demand
-components: <strong>framework and all three SDK packs are
-BUILT</strong>; open work is surfacing the value, lighting the Copilot
-OAuth client id, and real-account validation.</li>
 </ul>
 <p>The Accessible Vault plan has been <strong>retired</strong>: Phases
 0–7 shipped (feature-complete for 0.9.0) and the feature now lives in
@@ -292,6 +286,15 @@ Only the <em>extended</em> GLOW family (ACB large-print document audit,
 <ul>
 <li>The Quillin Hub (#517); plugin capability + signing + marketplace
 (#519) — the latter gated on the third-party-plugin sandbox (§2).</li>
+<li><strong>Agent harnesses — shipped</strong> (PRD §5.84e; user guide
+"AI engines"; release notes): the Native harness plus on-demand Copilot
+/ OpenAI Agents / Claude Agent packs, surfaced in the AI Setup Wizard
+and AI Hub Engines tab. One optional deploy nicety remains: register a
+GitHub OAuth App and provide its client id via
+<code>QUILL_GITHUB_CLIENT_ID</code> at build time to light the in-app
+spoken device-code Copilot sign-in. Without it Copilot still works via
+the Copilot/GitHub CLI sign-in, so this is an enhancement, not a
+blocker.</li>
 <li><strong>Deferred to 2.0</strong> (tracker #680): the Windows 11
 modern primary-menu <code>IExplorerCommand</code> pass (SHELL-3,
 #525).</li>

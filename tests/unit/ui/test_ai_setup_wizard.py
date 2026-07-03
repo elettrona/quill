@@ -309,3 +309,19 @@ def test_finish_persists_experience_mode_and_completion(wx_app, tmp_path, monkey
         assert ob.load_experience_mode() == ob.EXPERIENCE_ADVANCED
     finally:
         frame.Destroy()
+
+
+def test_agent_path_wires_to_the_engines_tab() -> None:
+    # Source-contract: the "use an agent you already pay for" path finishes by
+    # opening the AI Hub Engines tab (no provider/key config in the wizard).
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[3]
+    src = (root / "quill" / "ui" / "ai_setup_wizard.py").read_text(encoding="utf-8")
+    assert "open_engines_cb" in src
+    assert 'initial_page="Engines"' in src
+    assert 'self._path in ("skip", "agent")' in src  # agent skips the provider config step
+    # The onboarding model offers the agent path.
+    from quill.core.ai import onboarding as ob
+
+    assert any(p.id == "agent" for p in ob.ONBOARDING_PATHS)
