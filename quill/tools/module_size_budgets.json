@@ -364,7 +364,7 @@
     "_rebaseline_2026_07_03_remote_kill_switch": "Remote feature kill switch: signed FeatureAdvisory + advisories in the update manifest (updates.py 600 -> 611, first tracked entry); the _feature_enabled lock check + _apply_feature_advisories + startup load/notice in main_frame.py (+71, merged with the #805 focus fix to 27204). Enforcement is a membership test; the wx-free lock persistence lives in quill/core/safety/feature_lock.py.",
     "quill/core/updates.py": 611,
     "_rebaseline_2026_07_03_kill_switch_review": "Kill-switch review fixes (#809 review, Kelly Ford): dispatch gate _command_allowed_by_locks + _apply_feature_lock_menu_state + portable manifest-for-advisories fix + escape-hatch compare fix in main_frame.py (27204 -> 27265); the _apply_feature_lock_menu_state call in main_frame_menu.py (4451 -> 4453). Enforcement moved to CommandRegistry.run gate (covers palette+keybindings); locks cascade through the feature dependency graph.",
-    "quill/ui/main_frame.py": 27265,
+    "quill/ui/main_frame.py": 27267,
     "quill/ui/main_frame_abbreviations.py": 225,
     "_rebaseline_2026_07_03_braille_unbundle": "Footprint: braille pack on-demand. download_braille_pack in main_frame_speech.py (2044 -> 2097); the in-context Download Braille Translation Pack menu item in main_frame_braille.py (775 -> 789). braille_pack.py managed-dir resolution + real install_braille_pack via release_assets.fetch_component; new braille entry in release_assets/optional_components. Pack dropped from the build.",
     "quill/ui/main_frame_braille.py": 789,
