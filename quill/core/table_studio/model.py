@@ -361,7 +361,7 @@ class TableDocumentModel:
         if not self.rows or not self.columns:
             return False
         first = self.rows[0]
-        for ci, col in enumerate(self.columns):
+        for col in self.columns:
             cell = first.cells.get(col.col_id)
             label = (cell.content if cell else "").strip()
             if label:
