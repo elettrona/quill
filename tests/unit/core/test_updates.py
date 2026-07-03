@@ -385,12 +385,22 @@ def _signed_feed(advisories: tuple[FeatureAdvisory, ...] = ()) -> str:
     sig = manifest_signature(
         version=version, download_url=url, published_at="", notes="", advisories=advisories
     )
-    body: dict = {"version": version, "download_url": url, "published_at": "", "notes": "",
-                  "signature": sig}
+    body: dict = {
+        "version": version,
+        "download_url": url,
+        "published_at": "",
+        "notes": "",
+        "signature": sig,
+    }
     if advisories:
         body["advisories"] = [
-            {"feature_id": a.feature_id, "reason": a.reason, "min_version": a.min_version,
-             "max_version": a.max_version, "advisory_id": a.advisory_id}
+            {
+                "feature_id": a.feature_id,
+                "reason": a.reason,
+                "min_version": a.min_version,
+                "max_version": a.max_version,
+                "advisory_id": a.advisory_id,
+            }
             for a in advisories
         ]
     return json.dumps(body)
@@ -422,7 +432,11 @@ def test_tampered_advisory_fails_signature() -> None:
 
 def test_active_feature_locks_respects_version_range() -> None:
     m = UpdateManifest(
-        version="0.9.0", download_url="x", published_at="", notes="", signature="",
+        version="0.9.0",
+        download_url="x",
+        published_at="",
+        notes="",
+        signature="",
         advisories=(
             FeatureAdvisory(feature_id="a", reason="ra", max_version="0.9.5"),
             FeatureAdvisory(feature_id="b", reason="rb", min_version="1.0.0"),

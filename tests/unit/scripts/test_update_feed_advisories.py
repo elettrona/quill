@@ -21,8 +21,12 @@ def test_publisher_emits_signed_advisory_that_verifies() -> None:
         version="0.9.0",
         download_url="https://github.com/Community-Access/quill/releases/download/latest/x.exe",
         advisories=[
-            {"feature_id": "core.glow", "reason": "Investigating a crash",
-             "max_version": "0.9.5", "advisory_id": "lock-1"}
+            {
+                "feature_id": "core.glow",
+                "reason": "Investigating a crash",
+                "max_version": "0.9.5",
+                "advisory_id": "lock-1",
+            }
         ],
     )
     assert payload["advisories"][0]["feature_id"] == "core.glow"
