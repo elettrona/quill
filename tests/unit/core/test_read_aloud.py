@@ -556,7 +556,12 @@ def test_synthesize_with_kokoro_torch_fallback_uses_voice_lang_code(
     import sys
     import types
 
-    import numpy as np
+    import pytest
+
+    # The fake pipeline yields numpy audio and the writer uses soundfile; both
+    # are optional deps absent on the lean CI runner.
+    np = pytest.importorskip("numpy")
+    pytest.importorskip("soundfile")
 
     # Force the ONNX fast-path off so the torch fallback runs.
     monkeypatch.setattr(read_aloud_module, "kokoro_onnx_ready", lambda *a, **k: False)
