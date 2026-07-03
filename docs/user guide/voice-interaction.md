@@ -199,5 +199,4 @@ true silence detection (your turn ends when you stop speaking), personalized
 and optionally-spoken prompts with screen-reader parity, and the Speak Voice
 Status check are all in place. The one genuinely future item is a dedicated
 low-power keyword spotter for the wake word (so always-listening costs even
-less than it does today). See
-`docs/planning/quill-hey-quill-voice-interaction-plan.md` for the full plan.
+less than it does today).

@@ -4,10 +4,9 @@
 > register of **locked / hidden** features (consolidated here from the retired
 > `deferred-locked-features.md`). Shipped work is not listed here; once something
 > lands it leaves this file and its behavior lives in the user guide and
-> `QUILL-PRD.md`. The other planning files are the large in-flight feature specs, each
-> with open work of its own:
->
-> - [`quill-hey-quill-voice-interaction-plan.md`](quill-hey-quill-voice-interaction-plan.md) — Hey QUILL voice interaction: **all four phases + refinements shipped 2026-07-03** (push-to-talk, conversation mode with sounders, wake word, Ask Quill routing, VAD/personalization/engine choice). Only a dedicated Vosk keyword-spotter remains as a future optimization.
+> `QUILL-PRD.md`. The large in-flight feature specs that once kept their own files
+> have all shipped and been retired to git history (Table Studio → PRD §5.4.14; Hey
+> QUILL voice interaction → PRD §5776 + user guide; Accessible Vault → PRD §5.89d).
 >
 > The Accessible Vault plan has been **retired**: Phases 0–7 shipped (feature-complete
 > for 0.9.0) and the feature now lives in `QUILL-PRD.md` §5.89d and the user guide; the
@@ -220,13 +219,11 @@ open sections above when scheduled.
   dictation hotkey), **idle-silence detection** (auto-stop on a pause), and **dictation
   intelligence** (spoken punctuation/commands). Each is sizable beyond the keyboard-only
   Hold/Locked dictation that ships.
-- **Voice interaction / Hey QUILL** (`core.voice_commands`, §2) — now has a full plan
-  of record:
-  [`quill-hey-quill-voice-interaction-plan.md`](quill-hey-quill-voice-interaction-plan.md)
-  (four phases: surface the implemented S5 push-to-talk; import the ADP conversation
-  state machine + sounder palette; on-device "Hey QUILL" wake word as a downloadable
-  keyword-spotting component; route questions to Ask Quill). Commands stay bounded by
-  the agent safe-tool allowlist.
+- **Voice interaction / Hey QUILL** — **shipped 0.9.0** (all four phases + refinements:
+  push-to-talk Voice Command, Voice Conversation Mode with sounders + VAD, always-listening
+  "Hey QUILL" wake word, Ask Quill routing). Canonical docs: PRD §5776 "Voice input",
+  user guide "Voice Interaction". Commands stay bounded by the agent safe-tool allowlist.
+  The one open follow-up is a dedicated low-power keyword spotter for the wake word.
 - **BITS Whisperer remainder** (tracker #680) — the consolidation shipped for 1.0; the
   leftovers (a Windows SAPI/WinRT zero-download engine, a consented cloud watch action,
   guided provider onboarding, diarization/live-mic, additional cloud kinds, and the
