@@ -144,6 +144,19 @@ def is_known_feature(feature_id: str) -> bool:
     return not known or feature_id in known  # empty catalog => cannot validate, allow
 
 
+def suggest_feature_ids(feature_id: str) -> list[str]:
+    """Up to 3 nearest known ids for a typo'd ``feature_id`` (deterministic)."""
+    import difflib
+
+    return difflib.get_close_matches(feature_id, _known_feature_ids(), n=3, cutoff=0.5)
+
+
+def _unknown_feature_message(feature_id: str) -> str:
+    suggestions = suggest_feature_ids(feature_id)
+    hint = f" Did you mean: {', '.join(suggestions)}?" if suggestions else ""
+    return f"Unknown feature id {feature_id!r} — not in the catalog.{hint}"
+
+
 def publish(path: Path, message: str) -> int:
     """git add + commit + push the feed file. Returns the process exit code."""
     for args in (
@@ -195,7 +208,7 @@ def interactive(path: Path) -> int:
             if not feature_id:
                 continue
             if not is_known_feature(feature_id):
-                print(f"Unknown feature id {feature_id!r} — not in the catalog. Not locked.")
+                print(_unknown_feature_message(feature_id) + " Not locked.")
                 continue
             reason = _prompt("Reason users will hear: ")
             max_version = _prompt("Last affected version (blank = all): ")
@@ -238,7 +251,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.add:
         if not is_known_feature(args.add):
-            print(f"ERROR: unknown feature id {args.add!r} — not in the catalog.", file=sys.stderr)
+            print("ERROR: " + _unknown_feature_message(args.add), file=sys.stderr)
             return 2
         feed = add_lock(
             feed,

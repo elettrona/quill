@@ -257,10 +257,11 @@ def _unknown_feature_ids(feature_ids: list[str]) -> dict[str, list[str]]:
     from quill.core.features import FEATURE_DEFINITIONS
 
     known = set(FEATURE_DEFINITIONS)
+    known_sorted = sorted(known)  # deterministic suggestion order
     out: dict[str, list[str]] = {}
     for feature_id in feature_ids:
         if feature_id not in known:
-            out[feature_id] = difflib.get_close_matches(feature_id, known, n=3, cutoff=0.5)
+            out[feature_id] = difflib.get_close_matches(feature_id, known_sorted, n=3, cutoff=0.5)
     return out
 
 

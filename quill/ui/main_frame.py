@@ -20243,6 +20243,8 @@ class MainFrame(
                 try:
                     manifest = fetch_update_manifest()
                 except (URLError, ValueError, OSError):
+                    # Best-effort: a missing/unreachable/invalid feed is not an
+                    # error here — we fall back to the GitHub releases path below.
                     pass
                 # Portable updates by replacing the bundle, so its download
                 # *prompt* uses the releases path (portable .zip), not the

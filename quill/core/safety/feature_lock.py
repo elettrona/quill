@@ -61,7 +61,9 @@ class FeatureLockState:
             return feature_id
         from quill.core.features import transitive_dependencies
 
-        for dependency in transitive_dependencies(feature_id):
+        # Sorted so that, when several dependencies are locked, the chosen
+        # blocker (and thus the spoken reason) is deterministic across runs.
+        for dependency in sorted(transitive_dependencies(feature_id)):
             if dependency in self.locked:
                 return dependency
         return None
