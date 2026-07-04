@@ -790,6 +790,13 @@ def test_corrupt_settings_file_is_quarantined_then_defaults(
     assert backups[0].read_text(encoding="utf-8") == "{ this is not valid json"
 
 
+def test_auto_check_updates_defaults_on_for_safety_advisories() -> None:
+    # Signed safety advisories (the remote feature kill switch) ride the
+    # update check, so delivery must be on by default; an explicit stored
+    # False is still honored by the loader.
+    assert Settings().auto_check_updates is True
+
+
 def test_restore_points_settings_default_and_clamp(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

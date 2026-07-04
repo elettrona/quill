@@ -62,7 +62,11 @@ class Settings:
     plain_text_link_style: str = "text_url"
     indent_with_tabs: bool = False
     indent_size: int = 4
-    auto_check_updates: bool = False
+    # On by default so signed safety advisories (the remote feature kill
+    # switch) actually reach installs; the check fetches QUILL's own signed
+    # feed and sends nothing about the user. An explicit stored False is
+    # honored, and Safe Mode skips the check entirely.
+    auto_check_updates: bool = True
     beta_updates: bool = False
     # Recommended (force-once) updates to important defaults, e.g. restoring
     # Find to Ctrl+F for users who had it on a QUILL-key chord. This is the
@@ -601,7 +605,7 @@ class Settings:
             indent_size = int(data.get("indent_size", 4))
         except (TypeError, ValueError):
             indent_size = 4
-        auto_check_updates = bool(data.get("auto_check_updates", False))
+        auto_check_updates = bool(data.get("auto_check_updates", True))
         beta_updates = bool(data.get("beta_updates", False))
         apply_recommended_keymap_updates = bool(data.get("apply_recommended_keymap_updates", True))
         raw_applied = data.get("applied_recommended_updates", [])

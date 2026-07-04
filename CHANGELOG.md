@@ -2,7 +2,11 @@
 
 ## 0.9.0 Beta 1
 
-The 0.9.0 beta. Rolls up everything through 0.8.0 (below) plus the features, fixes, and enhancements in this release — headlined by the new AI suite, the **Accessible Vault** (linked notes you can traverse by ear), the **GLOW accessibility suite** (guided document audit and repair, shipping as an experimental opt-in), the **ElevenLabs Read Aloud voice**, and a lighter, smaller install. This is the feature-complete cut for 0.9.0, and focus from here is polish. This section doubles as the in-app release notes: the same text appears when you **Check for Updates** and any time from **Help > What's New**.
+The 0.9.0 beta. Rolls up everything through 0.8.0 (below) plus the features, fixes, and enhancements in this release — headlined by the new AI suite, the **Accessible Vault** (linked notes you can traverse by ear), the **GLOW accessibility suite** (guided document audit and repair, shipping as an experimental opt-in), the **ElevenLabs Read Aloud voice**, and a lighter, smaller install. **This is the final feature release before QUILL 1.0**: from this beta forward, no new features are added — only bug fixes and polish, driven by your reports, until 1.0 ships. This section doubles as the in-app release notes: the same text appears when you **Check for Updates** and any time from **Help > What's New**.
+
+### Trust on the road to 1.0
+
+- **Safety advisories now reach you by default.** QUILL's remote safety-advisory system — the ability to temporarily disable one specific shipped feature via a signed notice if the community reports it misbehaving — is enabled and delivered by the startup update check, which is now **on by default** (the check fetches QUILL's own signed feed and sends nothing about you or your documents; turning it off in Preferences is still honored, and Safe Mode always skips it). Advisories only ever turn a feature *off*, are announced out loud with their reason, persist offline, are lifted by the same signed feed when the fix ships, and a local escape hatch (`QUILL_IGNORE_FEATURE_LOCKS=1`) always leaves you the last word. Policy: used only in response to real user feedback, when a fix cannot ship fast enough.
 
 ### Saving and converting: every save tells the truth
 
