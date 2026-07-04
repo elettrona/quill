@@ -279,6 +279,25 @@ def test_write_requires_path() -> None:
         write_document_as(_doc("x"), None)
 
 
+def test_write_docx_marks_saved(tmp_path: Path) -> None:
+    doc = _doc("line one\nline two")
+    target = tmp_path / "out.docx"
+    result = write_document_as(doc, target)
+    assert result == target
+    assert doc.path == target
+    assert doc.modified is False
+
+
+def test_write_docx_keeps_line_breaks(tmp_path: Path) -> None:
+    docx = pytest.importorskip("docx")
+
+    doc = _doc("one\ntwo\nthree")
+    target = tmp_path / "breaks.docx"
+    write_document_as(doc, target)
+    paragraphs = [p.text for p in docx.Document(str(target)).paragraphs]
+    assert paragraphs == ["one", "two", "three"]
+
+
 def test_format_label_for_path() -> None:
     assert format_label_for_path(Path("a.rtf")) == "rich text"
     assert format_label_for_path(Path("a.html")) == "HTML"

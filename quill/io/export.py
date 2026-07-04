@@ -236,17 +236,21 @@ def write_docx_document(document: Document, path: Path | None = None) -> Path:
     and paragraphs. When python-docx is not installed, falls back to the Pandoc
     path, which maps headings, lists, emphasis, links, and simple tables to Word
     styles (but drops the font/size/color/alignment attributes). Either way the
-    result is a properly structured, screen-reader-navigable document.
+    result is a properly structured, screen-reader-navigable document, and the
+    document is marked saved at the target like every other writer here — so the
+    window title, the modified flag, and the next plain Save stay truthful.
     """
     target = path or document.path
     if target is None:
         raise ValueError("A path is required to save this document.")
+    target = Path(target)
 
     from quill.io.docx_writer import python_docx_available, write_docx
 
     if python_docx_available():
-        write_docx(document, Path(target))
-        return Path(target)
+        write_docx(document, target)
+        document.mark_saved(target)
+        return target
 
     import tempfile
 
@@ -255,8 +259,15 @@ def write_docx_document(document: Document, path: Path | None = None) -> Path:
     with tempfile.TemporaryDirectory() as tmp:
         source = Path(tmp) / "source.md"
         source.write_text(document.text, encoding="utf-8", newline="\n")
-        convert_file_with_pandoc(source, Path(target), from_format="gfm", to_format="docx")
-    return Path(target)
+        # hard_line_breaks: the editor is line-oriented (one editor line is one
+        # paragraph, exactly what markdown_to_rich produces on the native path),
+        # so a bare "gfm" read — where a single newline is a soft wrap — would
+        # join the user's lines into one long Word paragraph.
+        convert_file_with_pandoc(
+            source, target, from_format="gfm+hard_line_breaks", to_format="docx"
+        )
+    document.mark_saved(target)
+    return target
 
 
 def write_document_as(
