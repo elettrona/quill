@@ -121,7 +121,6 @@ from quill.core.custom_profiles import (
 )
 from quill.core.deletion_ring import DeletionRing, removed_span
 from quill.core.diagnostics import (
-    build_bug_report_payload,
     build_diagnostics_review_text,
     build_support_issue_url,
     collect_environment_info,
@@ -6331,8 +6330,8 @@ class MainFrame(
                 return False
 
         if not effective_github_token():
-            self._set_status("No GitHub token: opening the bug report form")
-            self._report_bug_legacy()
+            self._set_status("No GitHub token: opening the issue form")
+            self.report_bug()
             return False
 
         body = (
@@ -6359,7 +6358,7 @@ class MainFrame(
                 wx.OK | wx.ICON_WARNING,
             ) as failed:
                 self._show_modal_dialog(failed, "Bug Report", restore_editor_focus=False)
-            self._report_bug_legacy()
+            self.report_bug()
             return False
 
         self._copy_to_clipboard(issue_url)
@@ -14692,23 +14691,31 @@ class MainFrame(
         self._set_status(f"Saved diagnostics bundle to {bundle_path.name}")
 
     def report_bug(self) -> None:
-        # feedback_hub is an optional, separately-shipped component (#210
-        # follow-up). When it is importable we prefer it, but any runtime
-        # failure must still leave the user with a working report dialog, so we
-        # fall back to the always-present built-in form rather than crashing
-        # with no window.
-        if self._feedback_hub_available():
-            try:
-                self._report_bug_via_hub()
-                return
-            except Exception:  # noqa: BLE001 - never strand the user without a form
-                import logging
+        # feedback_hub ships with QUILL (the [feedback] extra / bundled
+        # runtime), so the direct-submission dialog is the one and only form
+        # (the old built-in browser form was removed once bundling landed).
+        # A failure must still not strand the user: copy the online support
+        # form's URL to the clipboard and say so plainly.
+        try:
+            self._report_bug_via_hub()
+        except Exception:  # noqa: BLE001 - never strand the user without a path
+            import logging
 
-                logging.getLogger(__name__).warning(
-                    "feedback_hub bug report failed; using the built-in form", exc_info=True
-                )
-                self._set_status("Report a Bug: using the built-in form")
-        self._report_bug_legacy()
+            logging.getLogger(__name__).warning("feedback_hub bug report failed", exc_info=True)
+            issue_url = build_support_issue_url(
+                {"summary": f"Bug report: {self.document.name}", "body": ""},
+                source_app="Quill",
+                version=__version__ or "0.0.0",
+                platform_label=str(collect_environment_info()["platform"]),
+            )
+            self._copy_to_clipboard(issue_url)
+            self._show_message_box(
+                "The issue form could not be opened. A link to the online "
+                "support form was copied to your clipboard instead; paste it "
+                "into your browser to file the report there.",
+                "Report a Bug",
+                self._wx.OK | self._wx.ICON_ERROR,
+            )
 
     def _report_bug_via_hub(self) -> None:
         from feedback_hub import load_schema
@@ -14727,35 +14734,6 @@ class MainFrame(
         dlg.Destroy()
         if result == self._wx.ID_OK:
             self._record_notification("Submitted feedback via feedback hub", "support")
-
-    def _feedback_hub_available(self) -> bool:
-        try:
-            import feedback_hub  # noqa: F401
-            from feedback_hub.wx_dialog import FeedbackDialog  # noqa: F401
-
-            return True
-        except ImportError:
-            return False
-
-    def _report_bug_legacy(self) -> None:
-        # #618: the modal path returns (payload, issue_url) synchronously
-        # and we run the post-submit completion work here; the modeless
-        # path returns None and runs the completion work itself from
-        # inside the Frame's submit handler. Both paths funnel through
-        # _complete_bug_report_submission so the auto-open-browser
-        # gating and status messages stay consistent.
-        review = self._review_bug_report()
-        if review is None:
-            # Either cancelled, or the modeless Frame is open and will
-            # run completion itself. Nothing more to do here.
-            if getattr(self, "_bug_report_frame", None) is None:
-                self._set_status("Bug report cancelled")
-            return
-        payload, issue_url = review
-        diagnostics_path = getattr(self, "_last_bug_report_diagnostics_path", None)
-        if not isinstance(diagnostics_path, Path):
-            diagnostics_path = None
-        self._complete_bug_report_submission(payload, issue_url, diagnostics_path)
 
     def _review_diagnostics_export(self) -> bool | None:
         wx = self._wx
@@ -14831,484 +14809,6 @@ class MainFrame(
         if self._show_modal_dialog(dialog, "Review Diagnostics Export") != wx.ID_OK:
             return None
         return include_paths.GetValue()
-
-    def _review_bug_report(self) -> tuple[dict[str, str], str] | None:
-        """#618: route the Report a Bug form to the modal or modeless path
-        based on the report_bug_separate_window setting.
-
-        The modal path returns (payload, issue_url) synchronously after
-        the user submits; the modeless path returns None synchronously
-        and runs the post-submit work (clipboard copy, optional
-        browser open, status update) from inside the Frame's submit
-        handler.
-        """
-        separate_window = getattr(self.settings, "report_bug_separate_window", True)
-        if separate_window:
-            return self._review_bug_report_modeless()
-        return self._review_bug_report_modal()
-
-    def _review_bug_report_modal(self) -> tuple[dict[str, str], str] | None:
-        """Modal wx.Dialog path. Returns (payload, issue_url) on submit,
-        or None on cancel. Preserves the 0.5.0 behaviour."""
-        wx = self._wx
-        dialog = wx.Dialog(self.frame, title="Report a Bug", size=(860, 720))
-        dialog_result: dict[str, object] = {}
-
-        def submit(payload: dict[str, str], issue_url: str, diagnostics_path: Path | None) -> None:
-            dialog_result["payload"] = payload
-            dialog_result["issue_url"] = issue_url
-            dialog_result["diagnostics_path"] = diagnostics_path
-            dialog.EndModal(wx.ID_OK)
-
-        def cancel() -> None:
-            dialog.EndModal(wx.ID_CANCEL)
-
-        body = self._build_report_bug_form_body(dialog, on_submit=submit, on_cancel=cancel)
-        # #618: the dialog buttons (id=wx.ID_OK and id=wx.ID_CANCEL) are
-        # constructed by _build_report_bug_form_body in a separate scope.
-        # The static dialog-button-contract audit cannot see across the
-        # call boundary, so this call carries the pragma to acknowledge
-        # the cross-scope split. The buttons are real and bound, and
-        # Enter/Escape close the dialog at runtime.
-        apply_modal_ids(  # dialog_button_contract: exempt
-            dialog,
-            affirmative_id=wx.ID_OK,
-            escape_id=wx.ID_CANCEL,
-        )
-        # #188: ensure SR focus lands on the Summary field, not the OK button.
-        self._wx.CallAfter(body["summary_field"].SetFocus)
-        if self._show_modal_dialog(dialog, "Review Bug Report") != wx.ID_OK:
-            return None
-        # Persist name and email so the next report is pre-filled.
-        self._save_bug_reporter_identity(body)
-        payload = dialog_result.get("payload")
-        issue_url = dialog_result.get("issue_url")
-        diagnostics_path = dialog_result.get("diagnostics_path")
-        if isinstance(diagnostics_path, Path):
-            self._last_bug_report_diagnostics_path = diagnostics_path
-        else:
-            self._last_bug_report_diagnostics_path = None
-        if not isinstance(payload, dict) or not isinstance(issue_url, str):
-            return None
-        return payload, issue_url
-
-    def _review_bug_report_modeless(self) -> tuple[dict[str, str], str] | None:
-        """#618: modeless wx.Frame path. Returns None synchronously; the
-        Frame stays open until the user submits or cancels, and the
-        user can alt-tab between the form and the editor to document
-        exact reproduction steps. Post-submit work runs from inside
-        the Frame's submit handler."""
-        wx = self._wx
-        existing = getattr(self, "_bug_report_frame", None)
-        if existing is not None:
-            # A bug-report Frame is already open; raise it instead of
-            # creating a duplicate so the user keeps their work.
-            try:
-                existing.Raise()
-                existing.SetFocus()
-            except Exception:
-                pass
-            return None
-        frame = wx.Frame(self.frame, title="Report a Bug", size=(860, 720))
-        # #729: host the form in a wx.Panel. A bare wx.Frame gives no Tab
-        # traversal between its child controls (only wx.Dialog / wx.Panel do),
-        # so without this the user could not Tab through the fields and had to
-        # fall back to screen-reader object navigation.
-        panel = wx.Panel(frame)
-
-        def submit(payload: dict[str, str], issue_url: str, diagnostics_path: Path | None) -> None:
-            self._last_bug_report_diagnostics_path = (
-                diagnostics_path if isinstance(diagnostics_path, Path) else None
-            )
-            self._save_bug_reporter_identity(self._bug_report_form_body)
-            try:
-                frame.Destroy()
-            finally:
-                self._bug_report_frame = None
-                self._bug_report_form_body = None
-            # #729: run completion AFTER the window closes so its "Copied bug
-            # report to clipboard" status announcement lands on the main window
-            # and is not buried by the focus-change chatter. Previously the user
-            # heard nothing on submit and thought the report (which is on the
-            # clipboard) had been lost.
-            self._wx.CallAfter(
-                self._complete_bug_report_submission, payload, issue_url, diagnostics_path
-            )
-
-        def cancel() -> None:
-            try:
-                frame.Destroy()
-            finally:
-                self._bug_report_frame = None
-                self._bug_report_form_body = None
-
-        body = self._build_report_bug_form_body(panel, on_submit=submit, on_cancel=cancel)
-        frame_sizer = wx.BoxSizer(wx.VERTICAL)
-        frame_sizer.Add(panel, 1, wx.EXPAND)
-        frame.SetSizer(frame_sizer)
-        self._bug_report_frame = frame
-        self._bug_report_form_body = body
-        frame.Bind(wx.EVT_CLOSE, lambda _e: cancel())
-
-        # A wx.Frame gives no Escape-closes behaviour (only wx.Dialog does),
-        # so Escape just dinged. Close on Escape like the modal path.
-        def _on_char_hook(event: object) -> None:
-            if event.GetKeyCode() == wx.WXK_ESCAPE:
-                cancel()
-                return
-            event.Skip()
-
-        frame.Bind(wx.EVT_CHAR_HOOK, _on_char_hook)
-        frame.Show()
-        # #188: ensure SR focus lands on the Summary field, not a button.
-        self._wx.CallAfter(body["summary_field"].SetFocus)
-        return None
-
-    def _build_report_bug_form_body(
-        self,
-        parent: object,
-        *,
-        on_submit: object,
-        on_cancel: object,
-    ) -> dict[str, object]:
-        """#618: shared Report a Bug form body. Builds the same widgets
-        and event wiring under either a wx.Dialog (modal) or wx.Frame
-        (modeless) parent. Returns a dict with the field controls,
-        the preview TextCtrl, the validation label, and a reference
-        to the diagnostics_path field so callers can refresh it after
-        the diagnostics bundle is created."""
-        wx = self._wx
-        root = wx.BoxSizer(wx.VERTICAL)
-        announcement_engine = getattr(self, "_announcement_engine", None)
-        announcement_environment = (
-            announcement_engine.diagnostics_environment() if announcement_engine is not None else {}
-        )
-        root.Add(
-            wx.StaticText(
-                parent,
-                label=(
-                    "Describe the issue, then open the support form. Quill can create a "
-                    "diagnostics bundle in this wizard so you can attach it to the issue."
-                ),
-            ),
-            0,
-            wx.ALL | wx.EXPAND,
-            8,
-        )
-        # Contact identity (pre-filled from settings, saved back after submit).
-        _sr_detection = detect_screen_reader()
-        _SR_CHOICES = [
-            "Not using a screen reader",
-            "JAWS",
-            "NVDA",
-            "Narrator",
-            "VoiceOver",
-            "Other",
-        ]
-        _detected_sr = _sr_detection.name if _sr_detection.detected else "Not using a screen reader"
-
-        name_row = wx.BoxSizer(wx.HORIZONTAL)
-        name_label = wx.StaticText(parent, label="Your name (optional)")
-        name_field = wx.TextCtrl(parent)
-        name_field.SetValue(getattr(self.settings, "bug_reporter_name", ""))
-        # #618: bind the field name for VoiceOver (macOS NSAccessibility
-        # does not associate separate StaticText labels with their fields).
-        name_field.SetName(name_label.GetLabel())
-        email_label = wx.StaticText(parent, label="Contact email (optional)")
-        email_field = wx.TextCtrl(parent)
-        email_field.SetValue(getattr(self.settings, "bug_reporter_email", ""))
-        # #618: bind the field name for VoiceOver.
-        email_field.SetName(email_label.GetLabel())
-        name_row.Add(name_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
-        name_row.Add(name_field, 1, wx.RIGHT, 16)
-        name_row.Add(email_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
-        name_row.Add(email_field, 1)
-        root.Add(name_row, 0, wx.ALL | wx.EXPAND, 8)
-
-        sr_row = wx.BoxSizer(wx.HORIZONTAL)
-        sr_label = wx.StaticText(parent, label="Screen reader")
-        sr_combo = wx.ComboBox(
-            parent,
-            choices=_SR_CHOICES,
-            style=wx.CB_READONLY,
-        )
-        sr_combo.SetStringSelection(_detected_sr)
-        if sr_combo.GetSelection() == wx.NOT_FOUND:
-            sr_combo.SetSelection(0)
-        # #618: bind the field name for VoiceOver.
-        sr_combo.SetName(sr_label.GetLabel())
-        sr_row.Add(sr_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
-        sr_row.Add(sr_combo, 1)
-        root.Add(sr_row, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
-
-        summary_label = wx.StaticText(parent, label="Summary")
-        summary_field = wx.TextCtrl(parent)
-        summary_field.SetValue(f"Bug report: {self.document.name}")
-        # #618: bind the field name for VoiceOver.
-        summary_field.SetName(summary_label.GetLabel())
-        root.Add(summary_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        root.Add(summary_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
-
-        happened_label = wx.StaticText(parent, label="What happened")
-        happened_field = wx.TextCtrl(parent, style=wx.TE_MULTILINE)
-        # #618: bind the field name for VoiceOver.
-        happened_field.SetName(happened_label.GetLabel())
-        root.Add(happened_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        root.Add(happened_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
-
-        expected_label = wx.StaticText(parent, label="What you expected")
-        expected_field = wx.TextCtrl(parent, style=wx.TE_MULTILINE)
-        # #618: bind the field name for VoiceOver.
-        expected_field.SetName(expected_label.GetLabel())
-        root.Add(expected_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        root.Add(expected_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
-
-        steps_label = wx.StaticText(parent, label="Steps to reproduce")
-        steps_field = wx.TextCtrl(parent, style=wx.TE_MULTILINE)
-        # #618: bind the field name for VoiceOver.
-        steps_field.SetName(steps_label.GetLabel())
-        root.Add(steps_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        root.Add(steps_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
-
-        include_diagnostics = wx.CheckBox(
-            parent,
-            label="Create diagnostics bundle in this wizard",
-        )
-        include_diagnostics.SetValue(True)
-        include_paths = wx.CheckBox(parent, label="Include plain file paths in diagnostics")
-        include_paths.SetValue(False)
-        diagnostics_path_field = wx.TextCtrl(parent, style=wx.TE_READONLY)
-        # #618: bind the field name for VoiceOver (no separate label
-        # widget is created for the diagnostics path; use a literal
-        # string matching the StaticText below).
-        diagnostics_path_field.SetName("Diagnostics bundle path")
-        root.Add(include_diagnostics, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        root.Add(include_paths, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        root.Add(wx.StaticText(parent, label="Diagnostics bundle path"), 0, wx.LEFT | wx.RIGHT, 8)
-        root.Add(diagnostics_path_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
-
-        preview_label = wx.StaticText(parent, label="Report preview")
-        review = wx.TextCtrl(parent, style=wx.TE_MULTILINE | wx.TE_READONLY)
-        root.Add(preview_label, 0, wx.LEFT | wx.RIGHT, 8)
-        root.Add(review, 1, wx.ALL | wx.EXPAND, 8)
-        validation_text = wx.StaticText(parent, label="")
-        root.Add(validation_text, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
-
-        copy_button = wx.Button(parent, label="Copy Preview")
-        open_button = wx.Button(parent, id=wx.ID_OK, label="Open Support Form")
-        cancel_button = wx.Button(parent, id=wx.ID_CANCEL, label="Cancel")
-
-        def build_payload(
-            diagnostics_note: str | None = None,
-        ) -> tuple[dict[str, str], str]:
-            chosen_sr = sr_combo.GetStringSelection() or _detected_sr
-            payload = build_bug_report_payload(
-                current_document=self.document,
-                extra_environment={
-                    "screen_reader": chosen_sr,
-                    "wx_version": self._wx.version(),
-                    **announcement_environment,
-                },
-                summary_override=summary_field.GetValue().strip(),
-                happened=happened_field.GetValue().strip(),
-                expected=expected_field.GetValue().strip(),
-                steps=steps_field.GetValue().strip(),
-                diagnostics_note=diagnostics_note,
-                screen_reader_name=chosen_sr,
-                reporter_name=name_field.GetValue().strip() or None,
-                reporter_email=email_field.GetValue().strip() or None,
-            )
-            issue_url = build_support_issue_url(
-                payload,
-                source_app="Quill",
-                version=__version__,
-                platform_label=str(collect_environment_info()["platform"]),
-                diagnostics_note=diagnostics_note,
-            )
-            return payload, issue_url
-
-        def refresh_preview() -> None:
-            diagnostics_note = None
-            path_text = diagnostics_path_field.GetValue().strip()
-            if path_text:
-                diagnostics_note = (
-                    "Diagnostics bundle created by Quill. Please attach this zip in the issue: "
-                    f"{path_text}"
-                )
-            elif include_diagnostics.GetValue():
-                diagnostics_note = (
-                    "Quill will create a diagnostics bundle when you continue. Attach the "
-                    "generated zip file to the issue."
-                )
-            payload, issue_url = build_payload(diagnostics_note=diagnostics_note)
-            review.SetValue(
-                f"Summary: {payload['summary']}\n\n{payload['body']}\n\nDestination:\n{issue_url}"
-            )
-
-        def confirm_preflight() -> bool:
-            include_diag = include_diagnostics.GetValue()
-            include_plain_paths = include_paths.GetValue() if include_diag else False
-            lines = [
-                "You are about to prepare this report with:",
-                "",
-                f"- Diagnostics bundle: {'Yes' if include_diag else 'No'}",
-                (
-                    f"- Plain file paths in diagnostics: {'Yes' if include_plain_paths else 'No'}"
-                    if include_diag
-                    else "- Plain file paths in diagnostics: N/A (diagnostics disabled)"
-                ),
-                "- Report summary and details shown in preview",
-                "",
-                "Continue?",
-            ]
-            with wx.MessageDialog(
-                parent,
-                "\n".join(lines),
-                "Report a Bug preflight",
-                style=wx.OK | wx.CANCEL | wx.ICON_QUESTION,
-            ) as preflight:
-                return self._show_modal_dialog(preflight, "Report a Bug Preflight") == wx.ID_OK
-
-        def submit_report() -> None:
-            if not confirm_preflight():
-                validation_text.SetLabel("Report submission cancelled from preflight summary.")
-                return
-            diagnostics_path: Path | None = None
-            if include_diagnostics.GetValue():
-                try:
-                    diagnostics_path = self._create_diagnostics_bundle_for_report(
-                        include_paths.GetValue()
-                    )
-                except OSError as error:
-                    validation_text.SetLabel(f"Could not write diagnostics bundle: {error}")
-                    return
-                diagnostics_path_field.SetValue(str(diagnostics_path))
-            diagnostics_note = None
-            if diagnostics_path is not None:
-                diagnostics_note = (
-                    "Diagnostics bundle created by Quill. Please attach this zip in the issue: "
-                    f"{diagnostics_path}"
-                )
-            elif include_diagnostics.GetValue():
-                diagnostics_note = (
-                    "Diagnostics bundle requested, but no local bundle path is available."
-                )
-            payload, issue_url = build_payload(diagnostics_note=diagnostics_note)
-            on_submit(payload, issue_url, diagnostics_path)
-
-        copy_button.Bind(wx.EVT_BUTTON, lambda _e: self._copy_to_clipboard(review.GetValue()))
-        open_button.Bind(wx.EVT_BUTTON, lambda _e: submit_report())
-        cancel_button.Bind(wx.EVT_BUTTON, lambda _e: on_cancel())
-
-        def on_toggle_include_diagnostics() -> None:
-            include_paths.Enable(include_diagnostics.GetValue())
-            refresh_preview()
-
-        include_diagnostics.Bind(wx.EVT_CHECKBOX, lambda _e: on_toggle_include_diagnostics())
-        include_paths.Bind(wx.EVT_CHECKBOX, lambda _e: refresh_preview())
-        summary_field.Bind(wx.EVT_TEXT, lambda _e: refresh_preview())
-        happened_field.Bind(wx.EVT_TEXT, lambda _e: refresh_preview())
-        expected_field.Bind(wx.EVT_TEXT, lambda _e: refresh_preview())
-        steps_field.Bind(wx.EVT_TEXT, lambda _e: refresh_preview())
-        name_field.Bind(wx.EVT_TEXT, lambda _e: refresh_preview())
-        email_field.Bind(wx.EVT_TEXT, lambda _e: refresh_preview())
-        sr_combo.Bind(wx.EVT_COMBOBOX, lambda _e: refresh_preview())
-        buttons = wx.BoxSizer(wx.HORIZONTAL)
-        buttons.Add(copy_button, 0, wx.RIGHT, 6)
-        buttons.AddStretchSpacer(1)
-        buttons.Add(open_button, 0, wx.RIGHT, 6)
-        buttons.Add(cancel_button, 0)
-        root.Add(buttons, 0, wx.ALL | wx.EXPAND, 8)
-        if hasattr(parent, "SetSizer"):
-            parent.SetSizer(root)
-        include_paths.Enable(include_diagnostics.GetValue())
-        refresh_preview()
-        refresh_preview()
-        return {
-            "summary_field": summary_field,
-            "name_field": name_field,
-            "email_field": email_field,
-            "validation_text": validation_text,
-            "diagnostics_path_field": diagnostics_path_field,
-        }
-
-    def _save_bug_reporter_identity(self, body: dict[str, object]) -> None:
-        """#618: persist name and email after a successful submit so
-        the next Report a Bug dialog is pre-filled. Used by both the
-        modal and the modeless paths."""
-        name_field = body.get("name_field")
-        email_field = body.get("email_field")
-        if name_field is not None and hasattr(self.settings, "bug_reporter_name"):
-            self.settings.bug_reporter_name = getattr(name_field, "GetValue", lambda: "")().strip()
-        if email_field is not None and hasattr(self.settings, "bug_reporter_email"):
-            self.settings.bug_reporter_email = getattr(
-                email_field, "GetValue", lambda: ""
-            )().strip()
-
-    def _complete_bug_report_submission(
-        self,
-        payload: dict[str, str],
-        issue_url: str,
-        diagnostics_path: Path | None,
-    ) -> None:
-        """#618: post-submit work shared by the modal and modeless paths.
-
-        Copies the report (with diagnostics bundle path) to the clipboard,
-        then optionally opens the support-hub URL in the user's default
-        browser. The auto-open is gated on report_bug_auto_open_browser;
-        the default is False so 0.5.0-upgrade users get the new
-        "Quill copies, you decide whether to open the browser" behaviour.
-        """
-        clipboard_text = payload["body"]
-        if isinstance(diagnostics_path, Path):
-            clipboard_text = f"{clipboard_text}\n\nDiagnostics bundle path:\n{diagnostics_path}"
-        self._copy_to_clipboard(clipboard_text)
-        auto_open = getattr(self.settings, "report_bug_auto_open_browser", False)
-        if auto_open:
-            webbrowser.open(issue_url)
-            self._record_notification("Opened support-hub bug report form", "support")
-            if isinstance(diagnostics_path, Path):
-                self._set_status(
-                    "Opened bug report form, copied report, and prepared diagnostics bundle path"
-                )
-            else:
-                self._set_status(
-                    "Opened bug report form and copied environment summary to clipboard"
-                )
-        else:
-            self._record_notification("Copied support-hub bug report to clipboard", "support")
-            if isinstance(diagnostics_path, Path):
-                self._set_status("Copied bug report and prepared diagnostics bundle path")
-            else:
-                self._set_status("Copied bug report to clipboard")
-
-    def _create_diagnostics_bundle_for_report(self, include_file_paths: bool) -> Path:
-        detection = detect_screen_reader()
-        announcement_engine = getattr(self, "_announcement_engine", None)
-        announcement_environment = (
-            announcement_engine.diagnostics_environment() if announcement_engine is not None else {}
-        )
-        target = (
-            app_data_dir()
-            / "diagnostics"
-            / (f"quill-diagnostics-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.zip")
-        )
-        bundle_path = write_diagnostics_bundle(
-            target,
-            settings=self.settings,
-            keymap=self.keymap,
-            notifications=self._notifications,
-            current_document=self.document,
-            include_file_paths=include_file_paths,
-            extra_environment={
-                "screen_reader": detection.name,
-                "wx_version": self._wx.version(),
-                **announcement_environment,
-                "bw_rollout": self._bw_diagnostics_snapshot(),
-            },
-        )
-        self._record_notification(f"Saved diagnostics to {bundle_path.name}", "diagnostics")
-        return bundle_path
 
     def _create_named_scratch_tab(self, title: str, text: str) -> None:
         index = self._create_document_tab(

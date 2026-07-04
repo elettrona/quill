@@ -402,20 +402,6 @@ class Settings:
     ollama_base_url: str = "http://localhost:11434"
     # AI prompts (Phase 3): separate default model for prompt-library runs.
     ai_prompt_default_model: str = ""
-    # Bug reporter identity: pre-fill the Report a Bug dialog for speed.
-    bug_reporter_name: str = ""
-    bug_reporter_email: str = ""
-    # #618: open the Report a Bug dialog in a separate, non-modal
-    # window by default so users can alt-tab between the form and
-    # the editor to document exact reproduction steps. The 0.5.0
-    # default was a modal dialog that blocked the editor.
-    report_bug_separate_window: bool = True
-    # #618: when the user submits a bug report, copy the report to
-    # the clipboard and stop. The 0.5.0 default also opened a
-    # browser to the GitHub "New Issue" page; that step is now
-    # opt-in via this setting (default False) so the upgrade story
-    # is "Quill copies, you decide whether to open the browser."
-    report_bug_auto_open_browser: bool = False
     # STABILITY: when True, an unhandled exception shows the crash-submit
     # dialog so the user can review a redacted preview and choose whether
     # to send the report to the developers. When False, the local-only
@@ -1005,8 +991,6 @@ class Settings:
             or "http://localhost:11434"
         )
         ai_prompt_default_model = str(data.get("ai_prompt_default_model", ""))
-        bug_reporter_name = str(data.get("bug_reporter_name", "")).strip()
-        bug_reporter_email = str(data.get("bug_reporter_email", "")).strip()
         language = str(data.get("language", "")).strip()
         setup_wizard_completed = bool(data.get("setup_wizard_completed", False))
         setup_wizard_intent = str(data.get("setup_wizard_intent", "")).strip()
@@ -1385,8 +1369,6 @@ class Settings:
             ai_chat_default_model=ai_chat_default_model,
             ollama_base_url=ollama_base_url,
             ai_prompt_default_model=ai_prompt_default_model,
-            bug_reporter_name=bug_reporter_name,
-            bug_reporter_email=bug_reporter_email,
             abbreviation_expansion=abbreviation_expansion,
             abbreviation_expansion_sound=abbreviation_expansion_sound,
             abbreviation_expansion_sound_file=abbreviation_expansion_sound_file,
