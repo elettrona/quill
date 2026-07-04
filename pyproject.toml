@@ -197,6 +197,10 @@ dev = [
   "mypy>=2.1.0",
   # I18N: string extraction, .po update, .mo compile
   "Babel>=2.18.0",
+  # Windows UI-automation regression tests (tests/uia, marker "uia"): drives
+  # the real app through UIA and asserts accessible names, keyboard reach, and
+  # spoken output. Windows-only by nature; harmless to install elsewhere.
+  "pywinauto>=0.6.9; sys_platform == 'win32'",
 ]
 
 [project.scripts]
@@ -256,6 +260,7 @@ log_level = "INFO"
 markers = [
     "perf: wall-clock performance budgets; run with RUN_PERF=1 or exclude with -m 'not perf'",
     "smoke: fast, high-signal core checks; run the quick subset with -m smoke",
+    "uia: Windows UI-automation regression tests (launch the real app via UIA); opt-in with QUILL_UIA_TESTS=1 and -m uia on a Windows desktop session",
 ]
 
 [tool.ruff]

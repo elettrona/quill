@@ -1218,6 +1218,11 @@ What that means in practice:
 - **Safety advisories stand guard.** If something serious surfaces in the
   field, we can disable that one feature - loudly and reversibly - while the
   fix ships (see the safety advisories section above).
+- **A robot tester now uses QUILL the way you do.** A new nightly UI-automation
+  suite launches the real app, presses real keys, and checks what a screen
+  reader would meet: named controls, honest titles, Escape that works, and the
+  words QUILL actually speaks. It reports; it never gates or auto-fixes -
+  people read the report and people decide.
 - **1.0 will be boring, in the best way.** Same features as this beta.
   Fewer surprises. That is the whole plan.
 
