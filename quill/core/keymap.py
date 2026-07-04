@@ -71,6 +71,9 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "file.manage_remote_sites": "Ctrl+Shift+Grave, Shift+M",  # QUILL-key chord
     "file.close_document": "Ctrl+W",
     "file.print": "Ctrl+P",
+    # Restore points: no default key (assignable); the File menu item is the
+    # primary path.
+    "file.restore_previous_version": "",
     "window.next_document": "Ctrl+Tab",
     "window.previous_document": "Ctrl+Shift+Tab",
     # Jump straight to the Nth open document. Alt+digit is otherwise unused and,

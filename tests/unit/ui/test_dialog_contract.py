@@ -4,6 +4,7 @@ from quill.ui.dialog_contract import (
     apply_modal_ids,
     find_primary_focus_target,
     focus_primary_control,
+    set_transition_announcement_policy,
     show_modal_dialog,
 )
 
@@ -73,6 +74,68 @@ def test_show_modal_dialog_calls_accessibility_hooks_in_order() -> None:
         enter_region=enter_region,
         exit_region=exit_region,
     )
+
+    assert result == 9
+    assert events == [
+        "enter:Find",
+        "announce:Entered Find dialog",
+        "announce:Exited Find dialog",
+        "exit:Find",
+    ]
+
+
+def _run_dialog_with_hooks(events: list[str]) -> int:
+    dialog = _DialogWithIds(result=9)
+    return show_modal_dialog(
+        dialog,
+        "Find",
+        announce=lambda message: events.append(f"announce:{message}"),
+        enter_region=lambda label: events.append(f"enter:{label}"),
+        exit_region=lambda label: events.append(f"exit:{label}"),
+    )
+
+
+def test_show_modal_dialog_policy_off_silences_transition_cues() -> None:
+    events: list[str] = []
+    set_transition_announcement_policy(lambda: False)
+    try:
+        result = _run_dialog_with_hooks(events)
+    finally:
+        set_transition_announcement_policy(None)
+
+    assert result == 9
+    # Region tracking must survive so navigation state stays correct.
+    assert events == ["enter:Find", "exit:Find"]
+
+
+def test_show_modal_dialog_policy_on_keeps_transition_cues() -> None:
+    events: list[str] = []
+    set_transition_announcement_policy(lambda: True)
+    try:
+        result = _run_dialog_with_hooks(events)
+    finally:
+        set_transition_announcement_policy(None)
+
+    assert result == 9
+    assert events == [
+        "enter:Find",
+        "announce:Entered Find dialog",
+        "announce:Exited Find dialog",
+        "exit:Find",
+    ]
+
+
+def test_show_modal_dialog_policy_error_falls_back_to_announcing() -> None:
+    events: list[str] = []
+
+    def _broken_policy() -> bool:
+        raise RuntimeError("settings unavailable")
+
+    set_transition_announcement_policy(_broken_policy)
+    try:
+        result = _run_dialog_with_hooks(events)
+    finally:
+        set_transition_announcement_policy(None)
 
     assert result == 9
     assert events == [

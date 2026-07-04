@@ -1,39 +1,60 @@
-# QUILL 0.9.0 Beta 1 - Meet You Where You Are
+# QUILL 0.9.0 - The Last Feature Beta: Everything We Promised, By Ear
 
 ### The screen-reader-first writing studio, built by the people who depend on it.
 
 *From Community Access. Free. Optional by design. Private by default. Yours to make quiet.*
 
 This is the narrative companion to the **"0.9.0 Beta 1"** section of `CHANGELOG.md`
-(the canonical, append-as-you-go log). It tells the story of what changes in
-0.9.0 Beta 1 on top of the 0.8.0 line - what each feature is, and, just as
-important, **why it matters** for the way you actually work. This is the
-feature-complete cut for 0.9.0 - the GLOW accessibility suite ships in this beta
-as an experimental opt-in - and focus from here is polish.
+(the canonical, append-as-you-go log). And it is a milestone: **0.9.0 is the final
+feature release before QUILL 1.0.** Every feature this project set out to build is
+now in the product. From this beta to 1.0, not one new feature will be added - only
+bug fixes, polish, and the steady work of making what exists unbreakable. If
+something is rough, tell us and we will fix it. If something is missing, it is
+missing on purpose, and 1.0 will ship without it so that what *is* here is
+trustworthy.
 
 ---
 
-## The story of this release
+## The story so far - how a text editor became a studio
 
-0.8.0 made QUILL a serious writing and document studio. **0.9.0 makes it yours -
-and makes it complete.**
+Every version of QUILL has been an answer to the same question, asked by the people
+who use it: *what would a writing tool be like if the screen reader came first, not
+last?*
 
-Five threads run through this beta. First, a complete, **optional** AI suite that
-stays silent until you invite it in. Second, a wave of **power-user editing tools**
-in the tradition of the editors people still miss - Reveal Codes, classic-editor
-commands, and bookmarks that finally remember where you were. Third, the
-**production features** this project was always pointed at: the GLOW accessibility
-suite (shipping as an experimental opt-in, one switch away), and a document-rescue
-tool that turns scanned PDFs into real text with free, on-device OCR - nothing
-uploaded, ever. Fourth, a teaching library to
-match: six hands-on tutorials and a 36-episode audio course narrated by QUILL's own
-neural voices. And fifth, a quieter, **lighter, more honest install**: a smaller
-download, on-demand components you can fetch from one place, clearer announcements,
-and a day of under-the-hood hardening documented further down, because reliability
-work deserves release notes too.
+The early betas answered it small and stubborn: a clean editor that spoke plainly,
+saved atomically, and never surprised your hands. **0.5** gave the community its
+power tools - the Developer Console, GitHub integration, keyboard packs you could
+share, sound packs that made the editor musical, and an updater that verified what
+it fetched. **0.6** turned QUILL into a platform: the Quillin extension system,
+Insert Automation, Braille Mode's first phase, and the first AI writing toolkit -
+every piece optional, every piece spoken. **0.7** was named *Meet You Where You
+Are* because that was its whole idea: braille translation and embossing matured,
+DAISY talking books shipped, and the format list grew until the answer to "can
+QUILL open it?" became, usually, yes. **0.8** made it a serious document studio -
+rich formatting as invisible codes you could reveal like the WordPerfect of
+memory, Illuminations that let plain text keep its formatting, faithful Word and
+RTF round trips.
 
-Everything new is off, optional, or additive. Nothing here changes how your fingers
-already work - it just gives them more to reach for when you want it.
+**0.9.0 finishes the promise.** A complete optional AI suite that is silent until
+invited. The Accessible Vault - linked notes, backlinks, and search you traverse
+by ear, no graph picture required. Story Studio, a binder for a whole book. GLOW,
+guided accessibility review and repair, so the person most affected by an
+inaccessible document is the one best equipped to fix it. Hey QUILL, hands-free
+voice that can never do harm. Document rescue with free on-device OCR. Table
+Studio. The Quillin Hub. A 36-episode audio course narrated by QUILL's own
+voices. Restore points that remember every save. And a save pipeline that tells
+the truth, every time, in words.
+
+None of it was built in a vacuum. It was built out of your bug reports, your
+mailing-list threads, your "this almost works" messages, and your patience with
+betas. Eight lines from one tester rewrote how saving works. This release is the
+community's release, and the rest of these notes tell its story feature by
+feature - what each thing is and, just as important, **why it matters** for the
+way you actually work.
+
+One law holds throughout: everything new is off, optional, or additive. Nothing
+here changes how your fingers already work - it just gives them more to reach for
+when you want it.
 
 ---
 
@@ -111,7 +132,11 @@ across dialogs.
 Rewrite, summarise, expand, continue, fix grammar, or generate a table of contents;
 AI spell check and grammar-and-style check; translate a selection or document; the
 AI Thesaurus; and Document Q&A. Read the selection or document aloud, or export it as
-audio in a natural cloud voice, alongside QUILL's on-device speech.
+audio in a natural cloud voice, alongside QUILL's on-device speech - and new this
+beta, **ElevenLabs** joins the Read Aloud voice list: bring your own key, pick an
+ElevenLabs voice like any other, and QUILL synthesizes sentence by sentence with
+smart caching so repeated text is never re-billed. Consent is per session, and like
+every cloud voice it is optional beside the always-free on-device engines.
 **Why it matters:** every proposed change is an accessible accept/reject preview and
 a single undo step - help you can trust, not magic you have to babysit.
 
@@ -383,6 +408,29 @@ A vault is an ordinary folder of Markdown files plus one small `.quill` cache yo
 can delete without losing a word. Links live as plain `[[text]]` in your files -
 nothing hidden - so every note opens in any editor. It is entirely optional: never
 open a vault and QUILL is the editor it always was.
+
+---
+
+## The Quillin Hub - share what you make
+
+QUILL has always been extendable - Quillin extensions, sound packs, keyboard
+packs, verbosity packs, AI skill packs, pronunciation dictionaries. This beta
+gives all of it a home: **the Quillin Hub** (`hub.quillforall.org`), the
+community store and submission service for every shareable QUILL artifact.
+
+**Submitting is validated before it is public.** **Tools > Quillins > Submit to
+Quillin Hub...** runs the full artifact validator locally and reads you the
+verdict in an accessible dialog *before* anything goes near the network - pick a
+Quillin's manifest and the whole folder is checked. Every published artifact is
+**cryptographically signed**: the Hub fails closed on unsigned submissions, the
+storefront shows a spoken "Signed by" badge on everything, and the in-app
+submission dialog and Quillin Manager both tell you the signature state of what
+you are submitting or have installed.
+
+**Why it matters:** the people who customize QUILL best are the people who use
+it. The Hub turns "I made this for myself" into "everyone can have this" - with
+the same validation, the same signing, and the same spoken clarity whether the
+author is the QUILL team or you.
 
 ---
 
@@ -688,6 +736,15 @@ fixed yet, you hear that from us in exactly those words.
 
 The base installer is smaller because the heavy, optional pieces now download on
 demand - checksum-verified, with a cancelable progress bar, disabled in Safe Mode:
+- **Pandoc** - the engine behind Word, ODT, EPUB, and RTF import/export was the
+  single largest bundled component (~220 MB unpacked). The first time a
+  conversion needs it, QUILL offers the official, pinned build right there
+  (~45 MB) - roughly halving the installer on its own.
+- The **braille translation pack** - the liblouis tables and BRF profiles behind
+  the Translation submenu and embossing export (~68 MB unpacked; a ~9 MB
+  download when you first reach for them). Reading with a braille display never
+  needed them - that is your screen reader - and now the installer does not
+  carry them either.
 - The **offline speech engine** (whisper.cpp), **Kokoro** neural voices, and the
   classic **eSpeak NG** and **DECtalk** voices.
 - The **Vosk** speech engine - a tiny, very-low-resource dictation and transcription
@@ -697,6 +754,9 @@ demand - checksum-verified, with a cancelable progress bar, disabled in Safe Mod
   under **Tools > Spell Check Language** and QUILL fetches the dictionary the first
   time.
 - And the audio-export helper, **FFmpeg**.
+
+**Upgrading from a release that bundled Pandoc or the braille pack?** Your
+existing copies are kept and keep working - nothing to re-download.
 
 No speech engine is bundled in the installer any more - even the small default
 downloads the first time you dictate - and some build-only data was dropped from the
@@ -755,11 +815,14 @@ and never required. This is simply gratitude, made visible.
 
 A new **Settings > Experimental** tab lets you test how QUILL feels on different
 editor surfaces - **RichEdit 3.0 / 2.0**, **Notepad** (a plain edit control),
-**Rich text**, or a **native Win32 EDIT** spike. A read-only panel explains each
-choice's user and technical impact as you select it, and the options stay ignored
-until you tick **"I understand features may degrade based on the control selected."**
-A **Hide editor border** toggle is here too. QUILL warns you to restart when you change
-these.
+**Rich text**, a **native Win32 EDIT** spike, and new this beta, the **Scintilla**
+control (the engine behind Notepad++, and the only alternative surface with full
+multi-level undo *and* redo - it exists to answer one open question: how JAWS,
+NVDA, and braille displays behave on it, and your reports decide its future). A
+read-only panel explains each choice's user and technical impact as you select
+it, and the options stay ignored until you tick **"I understand features may
+degrade based on the control selected."** A **Hide editor border** toggle is here
+too. QUILL warns you to restart when you change these.
 **Why it matters:** a safe sandbox for power users and testers to help shape the
 editor, with a clear gate so nothing changes by accident.
 
@@ -789,6 +852,42 @@ copy of your document lingers.
 - **Proofread Mastodon posts before sending (per account)** - tick it and pressing
   Post opens the F7 Spelling Review on the post text first.
 - **Spell check a document before saving** - opens F7 automatically on Save / Save As.
+
+---
+
+## Safety advisories - a promise with an off switch we hope never to use
+
+QUILL 0.9.0 ships with a working, enabled **remote safety-advisory system** - and
+because trust is the entire product, here is exactly what it is and is not.
+
+If the community reports that a specific shipped feature is misbehaving badly -
+corrupting something, misleading a screen reader, breaking under an OS update -
+we can publish a **signed advisory** that temporarily disables *that one
+feature* until a fix ships. The advisory rides the same signed update feed as
+releases, is delivered by the startup update check (now on by default; the
+check fetches QUILL's own feed and sends nothing about you or your documents),
+and once received it is honored offline and across restarts, because a safety
+lock you can only reach while online would be useless during an incident.
+
+The guarantees, in plain words:
+
+- **It only ever turns things off.** An advisory can make a feature
+  unavailable; it can never enable, install, or run anything.
+- **It speaks.** A locked feature dims in the menus and QUILL announces the
+  advisory and its reason out loud - never a mystery, never a silent removal.
+- **It is signed.** Advisories are verified against the same signing chain as
+  updates; nobody can lock your features by spoofing a feed.
+- **You keep the last word.** A local escape hatch
+  (`QUILL_IGNORE_FEATURE_LOCKS=1`) disables all remote locks for that run, for
+  administrators and for the day an advisory is ever wrong.
+- **Policy:** we will use this only in response to real user feedback, when a
+  fix cannot ship fast enough, and every advisory is lifted by the same signed
+  feed the moment the repaired release is out.
+
+**Why it matters:** feature freeze plus a fleet of beta users means problems
+will be found by people mid-sentence in real documents. This is how we protect
+you in the hours between "you told us" and "it is fixed" - loudly, reversibly,
+and with your override in writing.
 
 ---
 
@@ -925,18 +1024,202 @@ Two fixes in this beta come from community contributor **Kelly Ford**:
 
 ---
 
+## Every save tells the truth: Caroline's eight lines
+
+A beta tester named Caroline wrote eight lines, pressed Ctrl+S, chose Word
+format, named the file, and pressed Enter. QUILL said it saved. Then three
+things went quietly wrong. The title bar still read "Untitled [modified]".
+Pressing Ctrl+S again brought back the Save dialog with an empty name box, as
+if the first save had never happened. And when she opened the file in Word,
+her eight lines had been fused into one long unbroken line.
+
+Every one of those symptoms traced to a real defect, and pulling that thread
+uncovered more. This beta fixes all of it and then finishes the thought:
+saving and converting in QUILL is now honest end to end, and it explains
+itself in language a screen reader user can act on.
+
+### What was wrong, and what is true now
+
+**The title bar and the vanishing filename were one bug.** Word (.docx) was
+the only Save As format that wrote the file without recording that the
+document now lived there. The document stayed "untitled and modified" in
+QUILL's mind, so the title never updated and the next save started from
+scratch. Fixed - and a regression test now pins the contract for every format:
+after any successful save, the document knows its path and knows it is clean.
+
+**The fused lines were a translation dialect problem.** On its way to Word,
+your document passed through a Markdown dialect in which a single line break
+is a "soft wrap" - a suggestion, not a fact. Eight lines in, one paragraph
+out. QUILL's rule is now uniform everywhere: **one editor line is one
+paragraph**, in the native Word writer, in the Pandoc fallback, and in every
+File > Export format - Word, OpenDocument, HTML, RTF, EPUB, and PDF alike.
+What you hear line by line is what the exported document is.
+
+**Your originals can no longer be destroyed by a reflex.** This one no user
+had reported yet, and it was the most serious find of the audit. When you open
+a PDF, an EPUB, a PowerPoint, or a spreadsheet, QUILL shows you *extracted
+text* - the binary original cannot take that text back. Yet Ctrl+S would write
+the text over the original file, destroying it. Now QUILL refuses, explains
+("this document was opened as extracted text; saving over the original would
+destroy it"), and opens Save As so your edits land somewhere that can hold
+them. The same guard stops the reverse mistake: typing `notes.pdf` in Save As
+no longer produces a Markdown file wearing a `.pdf` name that Acrobat cannot
+open - QUILL offers File > Export, which makes a real PDF, or asks you to pick
+a format it can genuinely write.
+
+**A converting save now says what it did.** Saving as Word, RTF, or HTML has
+always meant: the file on disk is converted; your editor keeps QUILL's clean
+text; every further save converts again. That model is sound - and it was
+silent. Now QUILL announces it the moment it happens: *"Saved as report.docx,
+Word format. You are still editing QUILL text; each save converts it to
+Word."* No mystery, no wondering which format you are "really" in.
+
+**Failure sounds like failure.** A save that dies on a full disk or a locked
+file now produces a clear spoken error and leaves your document exactly as it
+was - never a crash, never a success message over a file that was not written.
+
+### Restore points: any earlier save, back in one dialog
+
+While fixing how saving *talks*, this beta also changes what saving *keeps*.
+Every save now records a quiet snapshot of your document, and **File >
+Restore Previous Version** brings the history to you in plain language:
+"Today at 4:12 PM - 2,341 words." Pick a version and either **Restore** it —
+QUILL saves your current text as a restore point first, so even restoring is
+reversible, and nothing touches the disk until you save — or **Open as Copy**
+to put the old version in a new tab beside your current one.
+
+The engineering is deliberately humble. Snapshots are content-based, so
+saving unchanged text stores nothing. Keeping a snapshot can never be the
+reason a save fails — if the disk is full, your save still completes. And the
+history thins as it ages like a well-kept journal: everything from the last
+week, then one version per day for a month, then one per week, with the
+newest five never pruned and a per-document disk cap in Preferences.
+
+Where this sits among QUILL's safety nets: undo covers the current session,
+backups keep the copy from just before each save, and restore points are the
+long memory — last Tuesday's draft, back in three keystrokes. It is also the
+first shipped piece of the QUILL Sync plan: the same version store becomes
+the sync engine's history layer when sync arrives in a future release.
+
+### Small kindness, big difference: the filename suggestion
+
+Save an untitled document and the name box now arrives pre-filled from your
+document's first line - heading marks, quote markers, and bullets stripped,
+Windows-forbidden characters removed, capped to a sane length. For a screen
+reader user, an empty edit box is a dead end; a sensible proposal is a running
+start. It is on by default, it only ever *suggests* (type anything over it),
+and it never renames a document that already has a name. Turn it off with
+"Suggest a filename from the first line" in Preferences if you prefer the
+blank box.
+
+### Choose your converter - and hear the trade-off before you commit
+
+"Convert to Word" is not one operation. A structure-first engine and a
+formatting-first engine both produce legitimate Word documents that differ in
+what they keep. QUILL now lets you choose, and - this is the part we care
+about - **describes the outcome of every choice in plain spoken language**
+before you commit to it.
+
+- **Word document reading engine** (Preferences > Editing): how a .docx
+  becomes editable text on open. *Auto* (default) tries MarkItDown first.
+  *MarkItDown* is fast and reliable - headings, lists, and tables come
+  through; images, comments, and fonts do not. *Pandoc* keeps richer
+  structure - footnotes and complex tables survive better - and if Pandoc is
+  not installed the preference quietly degrades rather than failing your open.
+- **Word document saving engine** (Preferences > Editing): how your text
+  becomes a .docx on save. *Native* keeps QUILL's formatting codes - fonts,
+  sizes, colors, highlights, alignment - and maps each editor line to one Word
+  paragraph; it is the right choice for documents written in QUILL. *Pandoc*
+  maps structure to Word styles - headings, lists, tables, links, footnotes -
+  but drops the font, size, and color codes.
+- **Convert File** gains a per-conversion engine choice (Auto / Pandoc /
+  MarkItDown) with a description that updates as you arrow through it. Pick
+  MarkItDown for a conversion it cannot honestly do and QUILL says so and
+  offers Pandoc - it never silently substitutes an engine you did not choose.
+
+The defaults are unchanged and right for almost everyone. The choices exist
+for the days they are not.
+
+**The receipts.** Every engine description is backed by a measured bake-off
+(`docs/qa/converter-bakeoff.md`): seven fixture documents - nested lists, a
+data table, real footnotes, links, right-to-left Arabic text, a hundred-section
+document, and per-run formatting - through every candidate engine. MarkItDown
+and Pandoc passed the full corpus. The raw python-docx extract loses tables,
+footnotes, and link destinations, which is why it is only a last-resort
+fallback. Two outside libraries were evaluated and settled for good: **pydocx**
+is rejected permanently (it cannot even be imported on Python 3.10 or newer,
+and its last release was 2016), and **mammoth**, though well maintained, is
+not adopted because MarkItDown already covers its route at equal fidelity - with
+a recorded decision tree for the day that changes.
+
+The full conversion behavior - what every Save As choice does, which formats
+are protected, the one-line-one-paragraph rule, and the engine trade-offs - is
+documented in the user guide ("Saving in Different Formats" and "Choosing a
+conversion engine") and specified in the PRD (section 5.3a.1.1a), enforced by
+io-layer tests rather than UI convention. Caroline: thank you. Eight lines
+went a very long way.
+
+---
+
+## The road to 1.0 - what happens now
+
+**This is the feature freeze.** From this beta forward, nothing new goes in.
+Every commit between here and QUILL 1.0 is a bug fix, a polish pass, a
+performance win, or a documentation improvement. That is not the project
+slowing down - it is the project keeping its second promise. The first promise
+was "we will build it all." The second is "it will all *work*."
+
+What that means in practice:
+
+- **Your bug reports are the roadmap now.** Every issue filed against this
+  beta is triaged for 1.0. The fastest way to shape the release is to use
+  QUILL for real work and tell us where it creaks.
+- **Rough edges get smoothed, not shipped.** If something in this beta is
+  confusing, wordy, too quiet, too loud, or slow, that is exactly the feedback
+  the polish phase exists for.
+- **Safety advisories stand guard.** If something serious surfaces in the
+  field, we can disable that one feature - loudly and reversibly - while the
+  fix ships (see the safety advisories section above).
+- **1.0 will be boring, in the best way.** Same features as this beta.
+  Fewer surprises. That is the whole plan.
+
 ## For testers
 
-- Upgrade path: install over Beta 1 and confirm your settings, keymap, and
-  documents carry forward (see `docs/release/upgrade-path-regression-0.8.0.md`).
+- Upgrade path: install over the previous beta and confirm your settings,
+  keymap, and documents carry forward
+  (see `docs/release/upgrade-path-regression-0.8.0.md`).
 - Fresh install: see `docs/release/fresh-install-regression-0.8.0.md`.
 - Acceptance: `docs/release/user-acceptance-test-plan-0.8.0.md`.
-- New this beta to exercise: **Alt+F3** Reveal Codes; **Set/Go To/List Bookmarks**
-  then reopen the file; **Tools > Spell Check Language**; **Help > Download Optional
-  Components**; **Settings > Experimental**; **Help > About > Golden Quills**.
+- New this beta to exercise: **Alt+F3** Reveal Codes; **Set/Go To/List
+  Bookmarks** then reopen the file; **File > Restore Previous Version** after a
+  few saves; a Save As to Word and the announcement that follows;
+  **Tools > Vault** on a folder of notes; **Tools > Story Studio**;
+  **Tools > Speech > Voice Command**; **Help > Download Optional Components**;
+  **Settings > Experimental**; **Help > About > Golden Quills**.
 
-## Release mechanics (do not announce yet)
+---
 
-Per the active release hold, the repo stays on Beta 1 labels and the update feed
-stays where it is. No version bump, tag, push, or feed change until explicitly
-approved. See `RELEASE.md` for the tag-time checklist.
+## Thank you - this one belongs to the community
+
+QUILL is built by a small team and a large family. This release exists because:
+
+- **Testers wrote to us.** Caroline's eight lines rebuilt the save pipeline.
+  Kelly Ford's two contributions fixed focus and made a download honest. Dozens
+  more of you filed the issues, confirmed the fixes, and re-tested the builds -
+  wave after wave, until the open-issue count hit zero more than once.
+- **Supporters kept the lights on.** The Golden Quills - the people who chose
+  to give, when giving was never required - are named with gratitude in
+  **Help > About QUILL**. Every feature in this release is free for everyone,
+  forever, in part because of them.
+- **The wider community built the ground we stand on.** Screen reader makers
+  and the blind writing community whose decades of hard-won conventions this
+  product tries to honor on every keystroke; the open-source projects QUILL
+  gratefully builds on; and everyone who told a friend "try this editor."
+
+A writing tool for blind writers, built with blind writers, feature complete
+and heading to 1.0. Install the beta. Write something real with it. Tell us
+what creaks.
+
+We will fix it. That is the whole job now.
+
+*- The QUILL team at Community Access*

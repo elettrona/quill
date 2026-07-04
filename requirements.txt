@@ -38,12 +38,12 @@ pyenchant>=3.3.0
 # (e.g. Phi-4-mini Q4) into <app data>/models or set QUILL_LLAMA_MODEL.
 # Use llama-cpp-python CPU wheels to avoid source builds and Windows long-path failures.
 # Pin to the newest version with a prebuilt CPU wheel on the index below
-# (currently 0.3.19, cp310-cp313 win_amd64). A higher floor (>=0.3.31) has no
-# prebuilt wheel, so pip silently falls back to the PyPI sdist and compiles
-# llama.cpp from source via CMake -- which hangs. Bump this only when the index
-# publishes a newer wheel for the supported Python versions.
+# (py3-none-win_amd64 wheels; 0.3.32 is the newest — 0.3.31 has NO wheel there,
+# so that pin silently fell back to the PyPI sdist and pip tried to compile
+# llama.cpp from source via CMake, which fails or hangs). Bump only after
+# confirming the index actually publishes a wheel for the new version.
 --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
-llama-cpp-python==0.3.31
+llama-cpp-python==0.3.32
 
 # Dictation / voice input (mic permission required).
 SpeechRecognition>=3.17.0
@@ -54,6 +54,12 @@ SpeechRecognition>=3.17.0
 # catch-all requirements file would break `pip install` / tooling envs on
 # non-Windows interpreters. Install them explicitly with `pip install .[ocr]`
 # on a supported Windows Python.
+
+# Direct GitHub issue submission for Report a Bug (feedback_hub's accessible
+# FeedbackDialog + shared schema). This is the only Report a Bug form; on
+# failure QUILL copies the online support-form URL to the clipboard.
+# 1.0.1 fixes the wx sizer-parenting crash that broke the dialog on wx 4.2.5+.
+feedback-hub>=1.0.1
 
 # Structured document import (Word/PowerPoint/Excel/Pages/PDF fallback).
 # Only the converters Quill actually routes through MarkItDown are pulled in

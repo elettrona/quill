@@ -14,36 +14,18 @@ from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
-# The only Markdown files sanctioned to live at the repository root: conventional
-# community/governance/legal files plus the two master regression/usability plans
-# that copilot-instructions pins to the root — dialogs.md (the manual
-# dialog-regression checklist) and menus.md (the definitive menu-reorganization
-# plan). Every other Markdown document — design notes, research, planning
-# (including ROADMAP.md), and engineering — lives under docs/ so the root stays
-# scannable at a glance.
+# The only Markdown files sanctioned to live at the repository root. Everything
+# else — community/governance docs (docs/), legal docs (docs/legal/), the release
+# checklist (docs/release/), the manual dialog-regression checklist
+# (docs/qa/dialogs.md), design notes, research, and planning — lives under docs/
+# so the root stays scannable at a glance. CHANGELOG.md stays at the root because
+# release tooling (check_version_consistency, extract_release_body,
+# build_windows_distribution) and packaging convention read it there; CLAUDE.md
+# is pinned to the root by Claude Code; README.md is the repository front page.
 _SANCTIONED_ROOT_MARKDOWN = frozenset({
     "CHANGELOG.md",
     "CLAUDE.md",
-    "CODE_OF_CONDUCT.md",
-    "CONTRIBUTING.md",
-    "GOVERNANCE.md",
-    "MAINTAINERS.md",
-    "PRIVACY.md",
     "README.md",
-    "RELEASE.md",
-    "RESPONSIBLE_AI_USE.md",
-    "SECURITY.md",
-    "THIRD_PARTY_NOTICES.md",
-    "TRADEMARKS.md",
-    "ai.md",
-    "dialogs.md",
-    "issues.md",
-    "menus.md",
-    "rel.md",
-    "report.md",
-    "review.md",
-    "x2.md",
-    "x3.md",
 })
 
 
@@ -95,6 +77,24 @@ def test_docs_are_in_their_expected_homes() -> None:
     # files exist in their canonical locations and that old standalone files
     # that were folded into larger documents have not crept back.
     docs = _REPO_ROOT / "docs"
+    # Community/governance docs live at the top of docs/ (a GitHub-recognized
+    # home for CONTRIBUTING/CODE_OF_CONDUCT/SECURITY), legal docs under
+    # docs/legal/, the release checklist under docs/release/, and the manual
+    # dialog-regression checklist under docs/qa/.
+    for rel in (
+        "CODE_OF_CONDUCT.md",
+        "CONTRIBUTING.md",
+        "GOVERNANCE.md",
+        "MAINTAINERS.md",
+        "SECURITY.md",
+        "legal/PRIVACY.md",
+        "legal/RESPONSIBLE_AI_USE.md",
+        "legal/TRADEMARKS.md",
+        "legal/THIRD_PARTY_NOTICES.md",
+        "release/RELEASE.md",
+        "qa/dialogs.md",
+    ):
+        assert (docs / rel).is_file(), f"missing docs/{rel}"
     # Quillin scripting contract lives under docs/quillins/ alongside generated epub/html.
     assert (docs / "quillins" / "quillins.md").is_file(), "missing docs/quillins/quillins.md"
     # docs/planning/ is retained as the home for active planning, backlog, and

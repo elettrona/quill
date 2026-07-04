@@ -211,10 +211,14 @@ def test_publishing_send_results_use_explicit_confirmation_formatter() -> None:
 def test_write_document_to_disk_syncs_publishing_linkage_after_save() -> None:
     # The save chokepoint persists/refreshes the durable linkage registry so
     # Compare/Update survive a close-and-reopen cycle (#publishing-linkage).
-    assert (
-        "write_document_as(document, target, plain_text_link_style=link_style)"
-        "  # type: ignore[arg-type]\n        self._sync_publishing_linkage_for_document(document)"
-        in SOURCE
+    start = SOURCE.index("def _write_document_to_disk(")
+    body = SOURCE[start : SOURCE.index("\n    def ", start + 1)]
+    assert "write_document_as(" in body
+    assert "self._sync_publishing_linkage_for_document(document)" in body
+    # The linkage sync must follow the write, so a failed write never records
+    # linkage for a file that was not written.
+    assert body.index("write_document_as(") < body.index(
+        "self._sync_publishing_linkage_for_document(document)"
     )
     assert "def _sync_publishing_linkage_for_document(self, document: Document) -> None:" in SOURCE
 

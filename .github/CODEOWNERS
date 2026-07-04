@@ -25,8 +25,8 @@
 /tests/accessibility/      @accesswatch @kellylford @Community-Access
 
 # Governance and process docs
-/CODE_OF_CONDUCT.md        @Community-Access
-/CONTRIBUTING.md           @Community-Access
-/SECURITY.md               @accesswatch @Community-Access
-/GOVERNANCE.md             @accesswatch @Community-Access
 /docs/                     @Community-Access
+/docs/CODE_OF_CONDUCT.md   @Community-Access
+/docs/CONTRIBUTING.md      @Community-Access
+/docs/SECURITY.md          @accesswatch @Community-Access
+/docs/GOVERNANCE.md        @accesswatch @Community-Access
