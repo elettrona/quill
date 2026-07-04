@@ -5,7 +5,8 @@ behind Notepad++) as an experimental editor surface. Scintilla is the only
 alternative surface that natively provides multi-level undo AND redo while
 remaining a real windowed control that screen readers can address; NVDA
 supports it well (it drives Notepad++ daily), JAWS support is partial. The
-full risk analysis lives in edit.md at the repository root ("stc" section).
+full risk analysis lives in docs/planning/editor-surface-experiments.md
+("stc" section).
 
 StyledTextCtrl implements the wx.TextCtrl-compatible API QUILL relies on
 (value, caret, selection tuples, Replace/GetRange, PositionToXY, undo/redo),
@@ -28,8 +29,8 @@ JAWS compatibility: none, and not for lack of trying. Three bridging
 attempts (system caret mirror; classic WM_GETTEXT/EM_* window-proc answers;
 those plus the EM_POSFROMCHAR/EM_CHARFROMPOS geometry set) all failed live
 JAWS testing and were rolled back on 2026-07-03 -- full post-mortem in
-edit.md. NVDA reads and tracks this surface well through the native SCI_*
-message support. Treat as NVDA-only.
+docs/planning/editor-surface-experiments.md. NVDA reads and tracks this
+surface well through the native SCI_* message support. Treat as NVDA-only.
 
 Mirrors the rtf/win32 defensive pattern: on any failure the factory returns
 a stock ``wx.TextCtrl`` so selecting this surface can never brick the editor.

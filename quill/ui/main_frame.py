@@ -4393,7 +4393,7 @@ class MainFrame(
                 editor = create_rtf_editor(wx, splitter, wx.TE_MULTILINE | border)
             elif kind == "stc":
                 # The Notepad++ experiment: Scintilla via wx.stc, shimmed to the
-                # TextCtrl contract (see edit.md). Falls back to a wx.TextCtrl.
+                # TextCtrl contract (see stc_edit_surface.py). Falls back to a wx.TextCtrl.
                 from quill.ui.stc_edit_surface import create_stc_editor
 
                 editor = create_stc_editor(wx, splitter, wx.TE_MULTILINE | border)
@@ -11040,7 +11040,7 @@ class MainFrame(
                 "Technical: wx.stc.StyledTextCtrl (Win32 class 'Scintilla') wrapped "
                 "to the TextCtrl contract: EVT_TEXT forwarding, LF-only line "
                 "endings, load-without-dirty, and caret moves that collapse the "
-                "selection. Full risk analysis: edit.md at the repository root."
+                "selection. Full risk analysis: docs/planning/editor-surface-experiments.md."
             ),
             "win32": (
                 "Native Win32 EDIT — the pywin32 spike (Windows only).\n\n"

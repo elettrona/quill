@@ -334,21 +334,17 @@ class DevToolsMixin:
             diagnostic_summary = getattr(self.editor, "accessibility_diagnostic_summary", None)
             if callable(diagnostic_summary):
                 return str(diagnostic_summary())
-            return "\n".join(
-                [
-                    "Editor surface diagnostics",
-                    f"Surface: {surface_kind(self.editor)}",
-                    "Document content included: no",
-                ]
-            )
+            return "\n".join([
+                "Editor surface diagnostics",
+                f"Surface: {surface_kind(self.editor)}",
+                "Document content included: no",
+            ])
         except Exception as error:
-            return "\n".join(
-                [
-                    "Editor surface diagnostics",
-                    f"Surface diagnostics failed: {error.__class__.__name__}",
-                    "Document content included: no",
-                ]
-            )
+            return "\n".join([
+                "Editor surface diagnostics",
+                f"Surface diagnostics failed: {error.__class__.__name__}",
+                "Document content included: no",
+            ])
 
     def restart_typescript_worker(self) -> None:
         if not hasattr(self, "_dev_console_window"):

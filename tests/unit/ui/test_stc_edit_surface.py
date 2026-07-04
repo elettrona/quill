@@ -3,7 +3,8 @@
 Contract-level tests (no live wx): the setting round-trips, the combo offers
 the surface under the agreed label, the Experimental-tab explainer covers it,
 MainFrame dispatches it, and the wrapper shims the four contract gaps the
-probe found (see edit.md, "stc" section): EVT_TEXT never fires natively,
+probe found (see docs/planning/editor-surface-experiments.md, "stc"
+section): EVT_TEXT never fires natively,
 ChangeValue leaves the buffer modified, SetInsertionPoint drags the anchor,
 and CRLF passes through unconverted.
 """
@@ -83,7 +84,8 @@ def test_stc_surface_exposes_classic_text_diagnostics_without_document_content()
 
 
 def test_jaws_bridge_stays_removed_and_the_surface_is_labeled_nvda_only() -> None:
-    # 2026-07-03 post-mortem (edit.md): three JAWS bridging attempts on this
+    # 2026-07-03 post-mortem (docs/planning/editor-surface-experiments.md):
+    # three JAWS bridging attempts on this
     # surface failed live testing (caret mirror; classic WM_GETTEXT/EM_*
     # answers; those plus the EM_POSFROMCHAR/EM_CHARFROMPOS geometry set) and
     # were rolled back. The negative result is pinned here so the bridge is
