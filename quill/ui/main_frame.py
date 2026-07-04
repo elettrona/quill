@@ -8196,10 +8196,14 @@ class MainFrame(
 
         self._set_status(f"Exporting to {target.name} via Pandoc...")
         try:
+            # hard_line_breaks: the editor is line-oriented (one editor line is
+            # one paragraph), so bare "gfm" — where a single newline is a soft
+            # wrap — would join the user's lines into one paragraph in every
+            # exported format.
             convert_file_with_pandoc(
                 self.document.path or Path(""),
                 target,
-                from_format="gfm",
+                from_format="gfm+hard_line_breaks",
                 to_format=format_name,
             )
         except (PandocUnavailableError, PandocConversionError, ValueError) as error:

@@ -116,6 +116,16 @@ def test_reload_prompt_defaults_to_no_and_is_yes_no() -> None:
     assert "_show_message_box(" in body
 
 
+def test_export_document_preserves_editor_line_breaks() -> None:
+    # The editor is line-oriented: one editor line is one paragraph. Bare "gfm"
+    # treats a single newline as a soft wrap, which joined all of a user's lines
+    # into one long paragraph in every Pandoc export (Caroline's report).
+    start = _SOURCE.index("def export_document(")
+    body = _SOURCE[start : _SOURCE.index("\n    def ", start + 1)]
+    assert 'from_format="gfm+hard_line_breaks"' in body
+    assert 'from_format="gfm",' not in body
+
+
 def test_reload_in_place_reads_before_closing() -> None:
     start = _SOURCE.index("def _reload_in_place(")
     body = _SOURCE[start : _SOURCE.index("\n    def ", start + 1)]
