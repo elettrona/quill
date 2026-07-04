@@ -65,6 +65,7 @@ from quill.ui.main_frame_quillins_host import _EditorHostServices
 
 _QUILLINS_MANAGER_COMMAND = "tools.quillins_manager"
 _QUILLINS_WIZARD_COMMAND = "tools.quillin_wizard"
+_QUILLIN_HUB_SUBMIT_COMMAND = "tools.quillin_hub_submit"
 
 
 class QuillinsMenuMixin:
@@ -96,6 +97,13 @@ class QuillinsMenuMixin:
             self._menu_label("&Manage Quillins...", _QUILLINS_MANAGER_COMMAND),
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_quillins_manager(), id=manager_id)
+
+        hub_id = wx.NewIdRef()
+        menu.Append(
+            hub_id,
+            self._menu_label("Submit to Quillin &Hub...", _QUILLIN_HUB_SUBMIT_COMMAND),
+        )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_hub_submission(), id=hub_id)
 
         registry = self._quillin_registry
         if registry is not None and registry.commands:
@@ -169,6 +177,12 @@ class QuillinsMenuMixin:
             "Manage Quillins",
             self.open_quillins_manager,
             self._binding_for(_QUILLINS_MANAGER_COMMAND),
+        )
+        self.commands.register(
+            _QUILLIN_HUB_SUBMIT_COMMAND,
+            "Submit to Quillin Hub",
+            self.open_hub_submission,
+            self._binding_for(_QUILLIN_HUB_SUBMIT_COMMAND),
         )
         self._quillin_index: dict[str, tuple[ExtensionManifest, Path]] = {}
         self._bundled_command_ids: set[str] = set()
@@ -700,6 +714,18 @@ class QuillinsMenuMixin:
             show_modal=self._show_modal_dialog,
             reload_callback=self._register_quillin_contributions,
             third_party_locked=not self._quillins_enabled(),
+        )
+
+    # -- Quillin Hub submission check -----------------------------------------
+    def open_hub_submission(self) -> None:
+        """Validate any shareable QUILL artifact and guide the user to the Hub."""
+        from quill.ui.quillin_hub_submit import open_hub_submission
+
+        open_hub_submission(
+            self.frame,
+            self._wx,
+            announce=self._announce,
+            show_modal_dialog=self._show_modal_dialog,
         )
 
     # -- Quillins Manager dialog (hardened custom) ---------------------------
