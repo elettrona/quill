@@ -434,7 +434,12 @@ from quill.core.yaml_structure import (
     extract_yaml_nodes,
     rename_yaml_node,
 )
-from quill.io.export import format_label_for_path, write_document_as, write_plain_text_document
+from quill.io.export import (
+    EXPORT_ONLY_SUFFIXES,
+    format_label_for_path,
+    write_document_as,
+    write_plain_text_document,
+)
 from quill.io.open_read import OFFICE_STREAM_SUFFIXES as _OFFICE_STREAM_SUFFIXES
 from quill.io.open_read import read_open_document
 from quill.io.pandoc import (
@@ -9791,10 +9796,25 @@ class MainFrame(
         upsert_publishing_linkage(path, entry)
 
     def save_file(self) -> None:
+        wx = self._wx
         if self._active_tab().read_only_remote:
             self.save_copy_remote()
             return
         if self.document.path is None:
+            self.save_file_as()
+            return
+        path = self.document.path
+        if path.suffix.lower() in EXPORT_ONLY_SUFFIXES:
+            # e.g. an opened PDF: the buffer is extracted text. Writing it back
+            # would destroy the binary original, so route to Save As instead.
+            self._show_message_box(
+                f"{self.document.name} was opened as extracted text. QUILL cannot "
+                f"write {path.suffix} files directly, so saving over the original "
+                "would destroy it. Choose a new name and format (Markdown, Word, "
+                "HTML, RTF, or text), or use File > Export.",
+                "Save",
+                wx.ICON_INFORMATION | wx.OK,
+            )
             self.save_file_as()
             return
         # Optional pre-save proofread (off by default): review misspellings in the
@@ -9803,7 +9823,16 @@ class MainFrame(
             self.open_spell_check_dialog()
         if self.document.modified:
             backup_document(self.document)
-        self._write_document_to_disk(self.document)
+        try:
+            self._write_document_to_disk(self.document)
+        except OSError as error:
+            self._show_message_box(
+                f"Could not save {self.document.name}: {error}",
+                "Save",
+                wx.ICON_ERROR | wx.OK,
+            )
+            self._set_status(f"Could not save {self.document.name}")
+            return
         # Persist this document's bookmarks + cursor position under its path now that
         # it is saved (also migrates an untitled document's in-memory bookmarks).
         self._save_active_bookmarks()
@@ -9966,6 +9995,15 @@ class MainFrame(
     # Save As wildcard filter index -> the extension that filter implies.
     _SAVE_FILTER_EXTENSIONS = {0: ".txt", 1: ".md", 2: ".html", 3: ".rtf", 4: ".docx"}
 
+    @staticmethod
+    def _export_route_for_suffix(suffix: str) -> str | None:
+        """The Pandoc export format for an export-only Save As target, or ``None``.
+
+        Save As cannot write these formats itself; the ones Pandoc can produce
+        get offered a hand-off to File > Export, the rest are refused outright.
+        """
+        return {".pdf": "pdf", ".odt": "odt", ".epub": "epub"}.get(suffix.lower())
+
     def _resolve_save_target(self, target: Path, filter_index: int) -> Path:
         """Give ``target`` an extension from the chosen type filter when none typed.
 
@@ -10026,6 +10064,30 @@ class MainFrame(
             target = self._resolve_save_target(Path(dialog.GetPath()), chosen_filter)
             self._last_file_dir = str(target.parent)
 
+        if target.suffix.lower() in EXPORT_ONLY_SUFFIXES:
+            # A typed .pdf/.odt/.epub/... would otherwise write Markdown text
+            # into a file other apps cannot open. Route Pandoc-capable targets
+            # to File > Export; refuse the rest with a pointer to the type list.
+            export_format = self._export_route_for_suffix(target.suffix)
+            if export_format is not None:
+                answer = self._show_message_box(
+                    f"QUILL saves Markdown, Word, HTML, RTF, and text directly. "
+                    f"{target.suffix} goes through Export instead, which converts "
+                    "with Pandoc. Open Export now?",
+                    "Use Export for this format",
+                    wx.ICON_QUESTION | wx.YES_NO | wx.YES_DEFAULT,
+                )
+                if answer == wx.YES:
+                    self.export_document(export_format)
+                return
+            self._show_message_box(
+                f"QUILL cannot save to {target.suffix}. Choose Markdown, Word, "
+                "HTML, RTF, or text in the Save as type list.",
+                "Format not supported",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+
         # Optional pre-save proofread (off by default), after the user has chosen
         # the destination but before the file is written.
         if getattr(self.settings, "spell_check_before_save", False):
@@ -10033,7 +10095,16 @@ class MainFrame(
         self.document.set_text(self.editor.GetValue())
         if self.document.modified and self.document.path is not None:
             backup_document(self.document)
-        self._write_document_to_disk(self.document, target)
+        try:
+            self._write_document_to_disk(self.document, target)
+        except OSError as error:
+            self._show_message_box(
+                f"Could not save {target.name}: {error}",
+                "Save file as",
+                wx.ICON_ERROR | wx.OK,
+            )
+            self._set_status(f"Could not save {target.name}")
+            return
         # FEAT-19: restart the watcher on the new path so our save is the baseline.
         self._stop_external_change_watcher()
         self._start_external_change_watcher()

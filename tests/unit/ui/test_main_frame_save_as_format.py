@@ -116,6 +116,40 @@ def test_reload_prompt_defaults_to_no_and_is_yes_no() -> None:
     assert "_show_message_box(" in body
 
 
+def test_export_route_for_suffix() -> None:
+    # Pandoc-capable targets get routed to File > Export; the rest are refused.
+    assert MainFrame._export_route_for_suffix(".pdf") == "pdf"
+    assert MainFrame._export_route_for_suffix(".ODT") == "odt"
+    assert MainFrame._export_route_for_suffix(".epub") == "epub"
+    assert MainFrame._export_route_for_suffix(".xlsx") is None
+    assert MainFrame._export_route_for_suffix(".docx") is None
+
+
+def test_save_file_guards_export_only_originals() -> None:
+    # Ctrl-S on an opened PDF/EPUB/spreadsheet must never write text over the
+    # binary original; it explains and routes to Save As instead.
+    start = _SOURCE.index("def save_file(")
+    body = _SOURCE[start : _SOURCE.index("\n    def ", start + 1)]
+    assert "EXPORT_ONLY_SUFFIXES" in body
+    assert "self.save_file_as()" in body
+
+
+def test_save_file_as_offers_export_for_export_only_suffixes() -> None:
+    start = _SOURCE.index("def save_file_as(")
+    body = _SOURCE[start : _SOURCE.index("\n    def ", start + 1)]
+    assert "EXPORT_ONLY_SUFFIXES" in body
+    assert "_export_route_for_suffix" in body
+    assert "self.export_document(" in body
+
+
+def test_save_file_as_reports_write_failures() -> None:
+    # A failed conversion/write must not crash or claim success.
+    start = _SOURCE.index("def save_file_as(")
+    body = _SOURCE[start : _SOURCE.index("\n    def ", start + 1)]
+    assert "except OSError" in body
+    assert "Could not save" in body
+
+
 def test_export_document_preserves_editor_line_breaks() -> None:
     # The editor is line-oriented: one editor line is one paragraph. Bare "gfm"
     # treats a single newline as a soft wrap, which joined all of a user's lines

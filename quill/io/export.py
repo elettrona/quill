@@ -22,7 +22,10 @@ from quill.io.rtf import write_rtf_document
 from quill.io.text import _normalize_line_endings, write_text_document
 
 __all__ = [
+    "EXPORT_ONLY_SUFFIXES",
+    "HTML_SUFFIXES",
     "LINK_STYLES",
+    "UnsupportedSaveFormatError",
     "markdown_to_plain_text",
     "markdown_to_html",
     "write_plain_text_document",
@@ -32,10 +35,39 @@ __all__ = [
     "format_label_for_path",
 ]
 
-_HTML_SUFFIXES = {".html", ".htm", ".xhtml"}
+HTML_SUFFIXES = frozenset({".html", ".htm", ".xhtml"})
+_HTML_SUFFIXES = HTML_SUFFIXES
 _PLAIN_SUFFIXES = {".txt", ".text"}
 _RTF_SUFFIXES = {".rtf"}
 _DOCX_SUFFIXES = {".docx"}
+
+#: Formats QUILL can open (as extracted text) but cannot write back. Writing the
+#: editor's markup to one of these would destroy a binary original (an opened
+#: PDF, EPUB, spreadsheet...) or produce a file other apps cannot open (Markdown
+#: text named .pdf). Save must refuse and steer the user to Save As / Export.
+EXPORT_ONLY_SUFFIXES: frozenset[str] = frozenset({
+    ".pdf",
+    ".doc",
+    ".odt",
+    ".epub",
+    ".pages",
+    ".ppt",
+    ".pptx",
+    ".xls",
+    ".xlsx",
+    ".sqlite",
+    ".db",
+})
+
+
+class UnsupportedSaveFormatError(ValueError):
+    """Save targeted an extension QUILL cannot convert the editor text into."""
+
+    def __init__(self, suffix: str) -> None:
+        super().__init__(
+            f"QUILL cannot save directly to {suffix}. Use File > Export for this format."
+        )
+        self.suffix = suffix
 
 _FENCE_RE = re.compile(r"^\s*(```|~~~)")
 _HEADING_RE = re.compile(r"^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$")
@@ -288,6 +320,12 @@ def write_document_as(
     if target is None:
         raise ValueError("A path is required to save this document.")
     suffix = Path(target).suffix.lower()
+    if suffix in EXPORT_ONLY_SUFFIXES:
+        # Never fall through to the verbatim text writer for these: it would
+        # overwrite an opened binary original (PDF, EPUB, spreadsheet...) with
+        # plain text, or mint a Markdown file wearing a .pdf name that other
+        # apps cannot open.
+        raise UnsupportedSaveFormatError(suffix)
     if suffix in _RTF_SUFFIXES:
         return write_rtf_document(document, target)
     if suffix in _DOCX_SUFFIXES:

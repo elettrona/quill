@@ -279,6 +279,40 @@ def test_write_requires_path() -> None:
         write_document_as(_doc("x"), None)
 
 
+def test_write_document_as_refuses_export_only_suffixes(tmp_path: Path) -> None:
+    from quill.io.export import UnsupportedSaveFormatError
+
+    doc = _doc("# Title\nbody")
+    for name in (
+        "a.pdf",
+        "a.epub",
+        "a.odt",
+        "a.doc",
+        "a.ppt",
+        "a.pptx",
+        "a.xls",
+        "a.xlsx",
+        "a.pages",
+        "a.sqlite",
+        "a.db",
+    ):
+        with pytest.raises(UnsupportedSaveFormatError):
+            write_document_as(doc, tmp_path / name)
+        # The refusal must be total: nothing written, document state untouched.
+        assert not (tmp_path / name).exists()
+        assert doc.modified is True
+        assert doc.path is None
+
+
+def test_write_document_as_still_allows_brf_and_unknown_text(tmp_path: Path) -> None:
+    doc = _doc("hello")
+    write_document_as(doc, tmp_path / "a.brf")
+    doc2 = _doc("hello")
+    write_document_as(doc2, tmp_path / "a.log")
+    assert (tmp_path / "a.brf").read_text(encoding="utf-8") == "hello"
+    assert (tmp_path / "a.log").read_text(encoding="utf-8") == "hello"
+
+
 def test_write_docx_marks_saved(tmp_path: Path) -> None:
     doc = _doc("line one\nline two")
     target = tmp_path / "out.docx"
