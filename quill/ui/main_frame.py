@@ -302,9 +302,6 @@ from quill.core.read_aloud import (
     synthesize_with_kokoro,
     synthesize_with_piper,
 )
-from quill.core.read_aloud import (
-    VoiceOption as ReadAloudVoiceOption,
-)
 from quill.core.recent import (
     add_recent_file,
     clear_recent_files,
@@ -17569,37 +17566,6 @@ class MainFrame(
 
         remove_reader_pages(app_data_dir() / "browser-reader")
 
-    def _voice_is_english(self, engine: str, voice: ReadAloudVoiceOption) -> bool:
-        engine_name = (engine or "").strip().lower()
-        voice_id = (voice.id or "").strip().lower()
-        voice_name = (voice.name or "").strip().lower()
-
-        if engine_name in {
-            "dectalk",
-            "kokoro",
-            "espeak",
-        }:
-            return True
-
-        if engine_name == "sapi5":
-            english_markers = ("english", "en-", " en", "_en", "en_us", "en_gb", "enu")
-            return any(marker in voice_id or marker in voice_name for marker in english_markers)
-
-        if engine_name == "piper":
-            return (
-                "en" in voice_id
-                or "english" in voice_id
-                or "en" in voice_name
-                or "english" in voice_name
-            )
-
-        return True
-
-    def _english_only_voices(
-        self, engine: str, voices: list[ReadAloudVoiceOption]
-    ) -> list[ReadAloudVoiceOption]:
-        return [voice for voice in voices if self._voice_is_english(engine, voice)]
-
     # ------------------------------------------------------------------
     # Voice preview and settings for the supported read-aloud engines
     # ------------------------------------------------------------------
@@ -17872,7 +17838,7 @@ class MainFrame(
             ("DECtalk", "dectalk"),
             ("Piper (neural, offline)", "piper"),
             ("Kokoro (neural, offline)", "kokoro"),
-            ("eSpeak-NG (English variants)", "espeak"),
+            ("eSpeak-NG (many languages)", "espeak"),
             ("ElevenLabs (premium cloud)", "elevenlabs"),
         ]
         current_engine = self.settings.read_aloud_engine.strip().lower() or "sapi5"
@@ -18025,29 +17991,22 @@ class MainFrame(
 
     def _download_piper_voice(self, voice_id: str) -> None:
         """Download a Piper ONNX voice model in the background."""
-        import re as _re
         import urllib.request as _ureq
 
+        from quill.core.voice_catalog import piper_voice_download_urls
         from quill.ui.ai_transcribe_dialog import AIProgressDialog
 
         wx = self._wx
         piper_dir = default_piper_model_dir()
-        m = _re.match(r"^(en_[A-Z]+)-([^-]+)-(\w+)$", voice_id)
-        if m is None:
+        urls = piper_voice_download_urls(voice_id)
+        if urls is None:
             self._show_message_box(
                 f"Cannot determine download URL for: {voice_id}",
                 "Download Piper Voice",
                 wx.ICON_WARNING | wx.OK,
             )
             return
-        lang_code, voice_name, quality = m.group(1), m.group(2), m.group(3)
-        lang_family = lang_code.split("_")[0]
-        base = (
-            "https://huggingface.co/rhasspy/piper-voices/resolve/main"
-            f"/{lang_family}/{lang_code}/{voice_name}/{quality}"
-        )
-        onnx_url = f"{base}/{voice_id}.onnx"
-        json_url = f"{base}/{voice_id}.onnx.json"
+        onnx_url, json_url = urls
         onnx_path = piper_dir / f"{voice_id}.onnx"
         json_path = piper_dir / f"{voice_id}.onnx.json"
         if onnx_path.exists() and json_path.exists():

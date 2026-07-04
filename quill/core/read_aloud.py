@@ -16,6 +16,21 @@ from quill.core.punctuation_speech import normalize_punctuation_level, verbalize
 from quill.core.sentence_split import SentenceSpan, sentence_spans
 from quill.core.tts_cache import cached_sentence_generator
 
+# The static voice tables live in voice_catalog (GATE-11 extract). Only the
+# names this module itself uses are imported; catalog-only consumers import
+# straight from quill.core.voice_catalog.
+from quill.core.voice_catalog import (
+    ESPEAK_ACCENTS,
+    ESPEAK_ENGLISH_VOICES,
+    ESPEAK_WORLD_VOICES,
+    KOKORO_ACCENTS,
+    KOKORO_LANG_BY_LETTER,
+    KOKORO_VOICES,
+    PIPER_ACCENTS_BY_LANG,
+    PIPER_VOICES,
+    kokoro_lang_for_voice,
+)
+
 # Windows system speech (SAPI 5) is reached through
 # quill.platform.windows.sapi5, imported lazily inside the functions that need
 # it so quill.core stays importable on non-Windows and keeps no import-time
@@ -61,147 +76,6 @@ KOKORO_ONNX_VOICES_URL = (
 KOKORO_ONNX_MODEL_FILENAME = "kokoro-v1.0.int8.onnx"
 KOKORO_ONNX_VOICES_FILENAME = "voices-v1.0.bin"
 
-KOKORO_VOICES: list[tuple[str, str]] = [
-    ("af_heart", "Heart (American Female, warm)"),
-    ("af_bella", "Bella (American Female, expressive)"),
-    ("af_nicole", "Nicole (American Female, conversational)"),
-    ("af_alloy", "Alloy (American Female)"),
-    ("af_aoede", "Aoede (American Female)"),
-    ("af_jessica", "Jessica (American Female)"),
-    ("af_kore", "Kore (American Female)"),
-    ("af_nova", "Nova (American Female)"),
-    ("af_river", "River (American Female)"),
-    ("af_sarah", "Sarah (American Female)"),
-    ("af_sky", "Sky (American Female)"),
-    ("am_adam", "Adam (American Male, deep)"),
-    ("am_echo", "Echo (American Male)"),
-    ("am_eric", "Eric (American Male)"),
-    ("am_fenrir", "Fenrir (American Male)"),
-    ("am_liam", "Liam (American Male)"),
-    ("am_michael", "Michael (American Male)"),
-    ("am_onyx", "Onyx (American Male)"),
-    ("am_puck", "Puck (American Male)"),
-    ("am_santa", "Santa (American Male)"),
-    ("bf_alice", "Alice (British Female)"),
-    ("bf_emma", "Emma (British Female)"),
-    ("bf_isabella", "Isabella (British Female)"),
-    ("bf_lily", "Lily (British Female)"),
-    ("bm_daniel", "Daniel (British Male)"),
-    ("bm_fable", "Fable (British Male)"),
-    ("bm_george", "George (British Male)"),
-    ("bm_lewis", "Lewis (British Male)"),
-]
-
-# Official quality grades from hexgrad/Kokoro-82M VOICES.md.
-# Grades are descriptive metadata only — never used to filter voice availability.
-KOKORO_VOICE_GRADES: dict[str, str] = {
-    "af_heart": "A",
-    "af_alloy": "C",
-    "af_aoede": "C+",
-    "af_bella": "A-",
-    "af_jessica": "D",
-    "af_kore": "C+",
-    "af_nicole": "B-",
-    "af_nova": "C",
-    "af_river": "D",
-    "af_sarah": "C+",
-    "af_sky": "C-",
-    "am_adam": "F+",
-    "am_echo": "D",
-    "am_eric": "D",
-    "am_fenrir": "C+",
-    "am_liam": "D",
-    "am_michael": "C+",
-    "am_onyx": "D",
-    "am_puck": "C+",
-    "am_santa": "D-",
-    "bf_alice": "D",
-    "bf_emma": "B-",
-    "bf_isabella": "C",
-    "bf_lily": "D",
-    "bm_daniel": "D",
-    "bm_fable": "C",
-    "bm_george": "C",
-    "bm_lewis": "D+",
-}
-
-ESPEAK_ENGLISH_VOICES: list[tuple[str, str]] = [
-    # 8 definition files bundled in the QUILL eSpeak NG binary (lang/gmw/en*)
-    ("en-gb", "English (British)"),
-    ("en-us", "English (American)"),
-    ("en-029", "English (Caribbean)"),
-    ("en-gb-scotland", "English (Scottish)"),
-    ("en-gb-x-gbclan", "English (Lancashire)"),
-    ("en-gb-x-gbcwmd", "English (West Midlands)"),
-    ("en-gb-x-rp", "English (Received Pronunciation)"),
-    ("en-us-nyc", "English (New York City)"),
-]
-
-# Generic voice characters appended as ``accent+variant`` (e.g. ``en-gb+m1``).
-# All entries verified in the bundled eSpeak NG voices/!v directory.
-ESPEAK_VARIANTS: list[tuple[str, str]] = [
-    ("", "Default"),
-    ("m1", "Male 1"),
-    ("m2", "Male 2"),
-    ("m3", "Male 3"),
-    ("m4", "Male 4"),
-    ("m5", "Male 5"),
-    ("f1", "Female 1"),
-    ("f2", "Female 2"),
-    ("f3", "Female 3"),
-    ("f4", "Female 4"),
-    ("whisper", "Whisper"),
-    ("whisperf", "Whisper (feminine)"),
-    ("klatt", "Klatt"),
-    ("croak", "Croak"),
-    ("grandma", "Grandma"),
-    ("grandpa", "Grandpa"),
-    ("Tweaky", "Tweaky (robotic)"),
-    ("UniRobot", "UniRobot"),
-]
-
-PIPER_ENGLISH_VOICES: list[tuple[str, str]] = [
-    # British English
-    ("en_GB-alan-low", "Alan (British, low)"),
-    ("en_GB-alan-medium", "Alan (British, medium)"),
-    ("en_GB-alba-medium", "Alba (British, medium)"),
-    ("en_GB-aru-medium", "Aru (British, medium)"),
-    ("en_GB-cori-high", "Cori (British, high)"),
-    ("en_GB-cori-medium", "Cori (British, medium)"),
-    ("en_GB-jenny_dioco-medium", "Jenny Dioco (British, medium)"),
-    ("en_GB-northern_english_male-medium", "Northern English Male (British, medium)"),
-    ("en_GB-semaine-medium", "Semaine (British, medium)"),
-    ("en_GB-southern_english_female-low", "Southern English Female (British, low)"),
-    ("en_GB-vctk-medium", "VCTK (British, medium)"),
-    # American English
-    ("en_US-amy-low", "Amy (US, low)"),
-    ("en_US-amy-medium", "Amy (US, medium)"),
-    ("en_US-arctic-medium", "Arctic (US, medium)"),
-    ("en_US-bryce-medium", "Bryce (US, medium)"),
-    ("en_US-danny-low", "Danny (US, low)"),
-    ("en_US-hfc_female-medium", "HFC Female (US, medium)"),
-    ("en_US-hfc_male-medium", "HFC Male (US, medium)"),
-    ("en_US-joe-medium", "Joe (US, medium)"),
-    ("en_US-john-medium", "John (US, medium)"),
-    ("en_US-kathleen-low", "Kathleen (US, low)"),
-    ("en_US-kristin-medium", "Kristin (US, medium)"),
-    ("en_US-kusal-medium", "Kusal (US, medium)"),
-    ("en_US-l2arctic-medium", "L2Arctic (US, medium)"),
-    ("en_US-lessac-high", "Lessac (US, high)"),
-    ("en_US-lessac-low", "Lessac (US, low)"),
-    ("en_US-lessac-medium", "Lessac (US, medium)"),
-    ("en_US-libritts-high", "LibriTTS (US, high)"),
-    ("en_US-libritts_r-medium", "LibriTTS R (US, medium)"),
-    ("en_US-ljspeech-high", "LJSpeech (US, high)"),
-    ("en_US-ljspeech-medium", "LJSpeech (US, medium)"),
-    ("en_US-norman-medium", "Norman (US, medium)"),
-    ("en_US-reza_ibrahim-medium", "Reza Ibrahim (US, medium)"),
-    ("en_US-ryan-high", "Ryan (US, high)"),
-    ("en_US-ryan-low", "Ryan (US, low)"),
-    ("en_US-ryan-medium", "Ryan (US, medium)"),
-    ("en_US-sam-medium", "Sam (US, medium)"),
-]
-
 
 def default_piper_model_dir() -> Path:
     from quill.core.paths import app_data_dir
@@ -213,14 +87,9 @@ def list_piper_catalog_voices(model_dir: Path | None = None) -> list[VoiceOption
     """Return all catalog Piper voices with download status and accent metadata."""
     d = model_dir if model_dir is not None else default_piper_model_dir()
     result = []
-    for voice_id, display_name in PIPER_ENGLISH_VOICES:
+    for voice_id, display_name in PIPER_VOICES:
         downloaded = (d / f"{voice_id}.onnx").exists()
-        if voice_id.startswith("en_GB"):
-            accent = "British English"
-        elif voice_id.startswith("en_US"):
-            accent = "American English"
-        else:
-            accent = "English"
+        accent = PIPER_ACCENTS_BY_LANG.get(voice_id.split("-", 1)[0], "English")
         # Extract quality from name, e.g. "medium" from "Alan (British, medium)"
         desc = ""
         if "(" in display_name and ")" in display_name:
@@ -465,19 +334,11 @@ def discover_espeak_executable(configured_path: str = "") -> Path | None:
     return None
 
 
-_KOKORO_ACCENT: dict[str, str] = {
-    "af": "American English",
-    "am": "American English",
-    "bf": "British English",
-    "bm": "British English",
-}
-
-
 def list_kokoro_voices() -> list[VoiceOption]:
     ready = kokoro_onnx_ready()
     result = []
     for vid, display_name in KOKORO_VOICES:
-        accent = _KOKORO_ACCENT.get(vid[:2], "English")
+        accent = KOKORO_ACCENTS.get(vid[:2], "English")
         # Extract style note: "warm" from "Heart (American Female, warm)"
         desc = ""
         if "(" in display_name and ")" in display_name:
@@ -509,25 +370,20 @@ def list_piper_voices(model_search_path: str = "") -> list[VoiceOption]:
     return voices
 
 
-_ESPEAK_ACCENT: dict[str, str] = {
-    "en": "English",
-    "en-us": "American English",
-    "en-gb": "British English",
-    "en-au": "Australian English",
-    "en-ca": "Canadian English",
-    "en-in": "Indian English",
-    "en-sc": "Scottish English",
-    "en-wls": "Welsh English",
-    "en-rp": "British English",
-    "en-gb-x-rp": "British English",
-}
-
-
 def list_espeak_english_voices() -> list[VoiceOption]:
     return [
-        VoiceOption(id=vid, name=name, accent=_ESPEAK_ACCENT.get(vid, "English"))
+        VoiceOption(id=vid, name=name, accent=ESPEAK_ACCENTS.get(vid, "English"))
         for vid, name in ESPEAK_ENGLISH_VOICES
     ]
+
+
+def list_espeak_voices() -> list[VoiceOption]:
+    """The full eSpeak catalog: English variants plus the world languages."""
+    world = [
+        VoiceOption(id=vid, name=name, accent=name.split(" (")[0])
+        for vid, name in ESPEAK_WORLD_VOICES
+    ]
+    return list_espeak_english_voices() + world
 
 
 def _kokoro_dir_has_models(d: Path) -> bool:
@@ -640,7 +496,7 @@ def synthesize_with_kokoro(
             import soundfile as _sf  # type: ignore[import]
 
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            lang = "en-gb" if voice.startswith("b") else "en-us"
+            lang = kokoro_lang_for_voice(voice)
             _k = _get_cached_kokoro_onnx(model_dir)
             samples, sample_rate = _k.create(text, voice=voice, speed=float(speed), lang=lang)
             _sf.write(str(output_path), _np.array(samples), sample_rate)
@@ -668,7 +524,7 @@ def synthesize_with_kokoro(
             "Kokoro audio saving requires the 'soundfile' package (pip install soundfile)"
         ) from exc
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    lang_code = "b" if voice.startswith("b") else "a"
+    lang_code = voice[:1].lower() if voice[:1].lower() in KOKORO_LANG_BY_LETTER else "a"
     pipeline = KPipeline(lang_code=lang_code)
     samples_list: list[np.ndarray] = []
     for _g, _p, audio in pipeline(text, voice=voice, speed=float(speed)):

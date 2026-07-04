@@ -2401,6 +2401,16 @@ Policy:
 - Voice models are downloaded on demand into `%APPDATA%\Quill\speech\voices\...`.
 - Downloads require explicit user action and clear size disclosure before start.
 - Speech onboarding includes preview-first guidance and availability announcements before model download.
+- **Read Aloud is not English-only (0.9.0).** The voice catalogs are multilingual:
+  the Windows engine lists **every installed system voice** in any language; the
+  Kokoro catalog includes the Spanish, French, Hindi, Italian, and Brazilian
+  Portuguese voices already contained in its downloaded model (synthesis passes
+  the matching language code per voice); the Piper catalog includes the published
+  Italian voices, and its downloader resolves HuggingFace URLs for any
+  `lang_REGION-name-quality` id; the eSpeak catalog lists the same non-English
+  language set (its data directory ships all languages). Catalogs live in
+  `quill/core/voice_catalog.py`. Japanese and Mandarin Kokoro voices are
+  deliberately excluded until a proper G2P dependency is added.
 
 #### 5.25a.3 Voice library and download UX
 
