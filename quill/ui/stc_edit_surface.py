@@ -24,12 +24,20 @@ verified by probe. Four contract gaps remain, all shimmed here:
 * Line endings pass through unconverted; QUILL's buffer is LF-only. The
   wrapper pins ``STC_EOL_LF``, converts on load, and converts pasted text.
 
+JAWS compatibility: none, and not for lack of trying. Three bridging
+attempts (system caret mirror; classic WM_GETTEXT/EM_* window-proc answers;
+those plus the EM_POSFROMCHAR/EM_CHARFROMPOS geometry set) all failed live
+JAWS testing and were rolled back on 2026-07-03 -- full post-mortem in
+edit.md. NVDA reads and tracks this surface well through the native SCI_*
+message support. Treat as NVDA-only.
+
 Mirrors the rtf/win32 defensive pattern: on any failure the factory returns
 a stock ``wx.TextCtrl`` so selecting this surface can never brick the editor.
 """
 
 from __future__ import annotations
 
+import sys
 from typing import Any
 
 try:
@@ -62,6 +70,90 @@ if _SCINTILLA:
 
         def surface_kind(self) -> str:
             return "stc"
+
+        def accessibility_diagnostic_summary(self) -> str:
+            """Return a document-content-free snapshot of the STC accessibility surface."""
+            lines = [
+                "Editor surface diagnostics",
+                "Surface: stc",
+                f"Platform: {sys.platform}",
+                f"Handle: {self._safe_int(self.GetHandle())}",
+                f"STC text length: {self._safe_call_int(self.GetTextLength)}",
+                f"STC line count: {self._safe_call_int(self.GetLineCount)}",
+                f"STC current position: {self._safe_call_int(self.GetCurrentPos)}",
+                f"STC current line: {self._safe_call_int(self.GetCurrentLine)}",
+                f"STC current column: {self._safe_call_int(self.GetColumn, self.GetCurrentPos())}",
+                f"STC selection: {self._safe_selection()}",
+            ]
+            lines.extend(self._win32_accessibility_diagnostics())
+            lines.append("Document content included: no")
+            return "\n".join(lines)
+
+        @staticmethod
+        def _safe_int(value: Any) -> int | str:
+            try:
+                return int(value)
+            except Exception:  # noqa: BLE001 - diagnostics must not raise
+                return "unavailable"
+
+        @classmethod
+        def _safe_call_int(cls, func: Any, *args: Any) -> int | str:
+            try:
+                return cls._safe_int(func(*args))
+            except Exception:  # noqa: BLE001 - diagnostics must not raise
+                return "unavailable"
+
+        def _safe_selection(self) -> str:
+            try:
+                start, end = self.GetSelection()
+                return f"{int(start)}..{int(end)}"
+            except Exception:  # noqa: BLE001 - diagnostics must not raise
+                return "unavailable"
+
+        def _win32_accessibility_diagnostics(self) -> list[str]:
+            if sys.platform != "win32":
+                return ["Win32 classic text diagnostics: unavailable on this platform"]
+            try:
+                import ctypes
+                from ctypes import wintypes
+
+                user32 = ctypes.WinDLL("user32", use_last_error=True)
+                hwnd = wintypes.HWND(int(self.GetHandle()))
+                class_name = ctypes.create_unicode_buffer(256)
+                user32.GetClassNameW(hwnd, class_name, len(class_name))
+                wm_gettextlength = 0x000E
+                em_getsel = 0x00B0
+                em_exgetsel = 0x0434
+
+                lparam = getattr(wintypes, "LPARAM", ctypes.c_ssize_t)
+                user32.SendMessageW.argtypes = [
+                    wintypes.HWND,
+                    wintypes.UINT,
+                    wintypes.WPARAM,
+                    lparam,
+                ]
+                user32.SendMessageW.restype = lparam
+
+                class _CharRange(ctypes.Structure):
+                    _fields_ = [("cpMin", wintypes.LONG), ("cpMax", wintypes.LONG)]
+
+                packed_selection = int(user32.SendMessageW(hwnd, em_getsel, 0, 0))
+                extended_selection = _CharRange()
+                user32.SendMessageW(hwnd, em_exgetsel, 0, ctypes.addressof(extended_selection))
+                focus_hwnd = int(user32.GetFocus() or 0)
+                handle = int(hwnd.value or 0)
+                text_length = int(user32.SendMessageW(hwnd, wm_gettextlength, 0, 0))
+                extended_start = int(extended_selection.cpMin)
+                extended_end = int(extended_selection.cpMax)
+                return [
+                    f"Win32 class name: {class_name.value or 'unavailable'}",
+                    f"Win32 focused: {focus_hwnd == handle}",
+                    f"Win32 WM_GETTEXTLENGTH: {text_length}",
+                    f"Win32 EM_GETSEL packed: {packed_selection}",
+                    f"Win32 EM_EXGETSEL: {extended_start}..{extended_end}",
+                ]
+            except Exception as error:  # noqa: BLE001 - diagnostics must not raise
+                return [f"Win32 classic text diagnostics failed: {error.__class__.__name__}"]
 
         def _forward_text_event(self, event: Any) -> None:
             event.Skip()

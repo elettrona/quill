@@ -364,3 +364,344 @@ Scintilla previously led this list; it is now wired as surface 7 above
 4. Decide #813 on the rich2 vs plain A/B evidence, then fold the finding back
    into `editor_control_kind` guidance rather than growing the experimental
    list.
+
+## 2026-07-03 follow-up: STC JAWS troubleshooting hook
+
+After the JAWS test where Enter advanced QUILL's status line but JAWS stayed on
+the old top line, the next change was deliberately diagnostic rather than another
+caret workaround. `StcEditorSurface` now exposes
+`accessibility_diagnostic_summary()`, a document-content-free snapshot that
+compares what Scintilla knows internally with what classic Win32 text clients can
+query from the control.
+
+The snapshot reports the STC handle, internal text length, line count, current
+position, line, column, and selection. On Windows it also reports the visible
+Win32 class name, whether that handle has focus, `WM_GETTEXTLENGTH`, `EM_GETSEL`,
+and `EM_EXGETSEL`. This is meant to confirm the suspected root cause: STC's
+internal caret and line state can be correct while the Win32 text-query surface
+that JAWS relies on is empty, incomplete, or not recognized as a real Scintilla
+text window.
+
+The existing Tools > Advanced > Developer Console > Copy Diagnostic Summary
+command now includes the active editor-surface diagnostics. A tester can select
+the Notepad++ experiment, type `this is a test`, press Enter, type another line,
+then copy the diagnostic summary. If the STC line and caret values advance but
+`WM_GETTEXTLENGTH` or the EM selection values do not reflect the same state, that
+supports the theory that QUILL needs a real accessibility bridge for STC: either
+a window-proc bridge answering classic text messages plus a system caret, or a
+proper UIA TextPattern provider. A caret mirror by itself should remain avoided,
+because the earlier experiment showed it can make JAWS switch modes and go
+silent.
+
+Guard coverage added with this change: `tests/unit/ui/test_stc_edit_surface.py`
+now verifies that the STC surface exposes the diagnostic method, includes the
+classic Win32 text-query probes, and does not include document content in the
+diagnostic summary path.
+
+## 2026-07-03 second braille round: cell-2 is back with JAWS; analysis
+
+A structured four-way comparison (QUILL vs Notepad++, JAWS vs NVDA, braille
+display attached):
+
+| App | Screen reader | Text start cell | Selection visible in braille |
+|-----------|---------------|-----------------|------------------------------|
+| QUILL | JAWS | cell 2 | yes |
+| QUILL | NVDA | cell 1 | yes |
+| Notepad++ | JAWS | cell 1 | yes |
+| Notepad++ | NVDA | cell 1 | yes |
+
+Two things to note against the earlier round:
+
+- This CONTRADICTS the first braille finding above (stc + JAWS = cell 1).
+  Confirm which surface the tester actually had selected -- cell 2 with JAWS
+  is exactly the shipping rich2 behavior (#616), so a run against the default
+  surface would produce this table without telling us anything new about stc.
+  The Copy Diagnostic Summary output settles it: the "Win32 class name" line
+  reads the wx class for stc and RICHEDIT50W for the default.
+- Selection dots were visible in ALL four cells of this round, including
+  QUILL + JAWS -- better than the #813 report. Same caveat: confirm surface.
+
+Root-cause analysis (assuming the run was stc): there is no Scintilla
+property that fixes this, because the difference is not in Scintilla -- it is
+in which support path JAWS chooses. Notepad++ ships real ScintillaWin:
+window class "Scintilla", a window proc answering WM_GETTEXT / EM_GETSEL /
+EM_EXGETSEL and the line-index family, and a mirrored system caret. JAWS
+keys its dedicated handling off that class name and those channels, and that
+path renders from cell 1. wx's port is a from-scratch reimplementation on a
+generic wx window class with none of the three, so JAWS falls back to the
+same degraded generic path it uses elsewhere. NVDA's generic path is simply
+more forgiving.
+
+Zero-code experiments for the next tester session, in cost order:
+
+1. Copy Diagnostic Summary on the stc surface; record the Win32 class name.
+2. JAWS window class reassignment (Settings Center / ConfigNames): reassign
+   that class to "Scintilla", retest; then to "Edit", retest. Fixes cell 2 =
+   the class-name heuristic is confirmed. JAWS goes silent = JAWS
+   immediately queries the classic messages (same failure mode as the
+   reverted caret mirror), which the bridge below now answers.
+3. Check whether cell 2 persists in both JAWS braille structured mode and
+   line mode, and on every line or only the caret line.
+
+Performance note on the window-proc bridge (asked and answered): the classic
+text queries are demand-driven (a handful per caret move), microseconds
+each. The real overhead is the ctypes trampoline sitting in front of every
+message to that one HWND -- a few microseconds per message, well under 1%
+CPU even at mouse-move rates. The one genuine hotspot is repeated
+WM_GETTEXT on a novel-sized buffer, which is why the bridge caches an
+immutable text snapshot invalidated on change, and answers line-ranged
+queries (EM_GETLINE) from it. If profiling ever shows the trampoline, the
+escape hatch is a small native DLL subclass using Scintilla's direct
+function pointer (SCI_GETDIRECTFUNCTION) -- the table_uia precedent -- with
+zero Python in the hot path.
+
+## 2026-07-03 the accessibility bridge, implemented behind a flag
+
+`quill/ui/stc_accessibility_bridge.py`, opt-in via the new Experimental
+setting `experimental_stc_accessibility_bridge` (bool, default off, gated
+behind the master + editor-surfaces acknowledgements, restart required,
+Windows only, stc surface only). What it installs -- always together,
+because the caret-only experiment proved the halves are inseparable:
+
+- A comctl32 `SetWindowSubclass` window-proc hook (ctypes, no pywin32) that
+  answers WM_GETTEXT, WM_GETTEXTLENGTH, EM_GETSEL, EM_EXGETSEL,
+  EM_LINEFROMCHAR, EM_EXLINEFROMCHAR, EM_LINEINDEX, EM_LINELENGTH,
+  EM_GETLINE, and EM_GETLINECOUNT from a cached snapshot of the LF-only
+  buffer. Offsets are UTF-16 code units (what Win32 text clients expect);
+  Scintilla byte positions are converted at the boundary, with a fast path
+  for all-ASCII documents. Unhooks itself on WM_NCDESTROY; every handler
+  degrades to DefSubclassProc on any failure.
+- The invisible all-zero-bitmap system caret mirror from the reverted
+  d4f3f51, reinstated: created on focus, moved on EVT_STC_UPDATEUI,
+  destroyed on blur.
+
+Verified live on this machine (real STC window, SendMessageW from outside
+the control): WM_GETTEXTLENGTH/WM_GETTEXT return the exact buffer,
+EM_GETSEL/EM_EXGETSEL return the live selection both packed and through the
+out-pointers, the line family maps offsets to lines and back correctly, and
+window destruction unhooks cleanly. What SendMessage cannot prove is JAWS's
+reaction -- that needs the hardware round: stc surface + bridge ON vs OFF,
+checking (a) speech caret tracking on Enter, (b) braille start cell,
+(c) selection dots. The `accessibility_diagnostic_summary` now also reports
+"Classic text bridge: active/inactive", and with the bridge on its
+WM_GETTEXTLENGTH / EM_GETSEL probe lines show real values instead of zeros.
+
+Known limits, deliberate for the experiment: EM_POSFROMCHAR / EM_CHARFROMPOS
+were initially left out until testing said they matter. (Both statements in
+this paragraph were overtaken by round 1 -- see the next section: the class
+name turned out to BE "Scintilla", and the geometry messages turned out to
+be the load-bearing gap.)
+
+How the code is wired, file by file:
+
+- `quill/ui/stc_accessibility_bridge.py` (new, ~470 lines): everything
+  lives here. Pure, unit-testable helpers at the top (`utf16_units`,
+  `line_starts_utf16`, `line_from_offset`, `pack_em_getsel`,
+  `build_snapshot` returning an immutable `TextSnapshot`); the
+  `_SystemCaretMirror` class reinstated verbatim from d4f3f51; the
+  `StcAccessibilityBridge` class owning the SetWindowSubclass hook, the
+  message-handler table, and the snapshot cache; and
+  `attach_accessibility_bridge(ctrl)`, the single entry point, which
+  installs the subclass and binds the wx events (SET_FOCUS/KILL_FOCUS for
+  the caret's lifetime, EVT_STC_UPDATEUI for caret moves, EVT_STC_CHANGE
+  for snapshot invalidation, EVT_WINDOW_DESTROY for teardown). Returns
+  None on any failure -- non-Windows, subclass rejection, anything.
+- `quill/ui/stc_edit_surface.py`: `StcEditorSurface.__init__` and
+  `create_stc_editor` gained an `enable_accessibility_bridge: bool = False`
+  keyword; when true the surface calls `attach_accessibility_bridge(self)`
+  inside try/except and stores the result (or None) on
+  `self._accessibility_bridge`. The diagnostic summary reports
+  "Classic text bridge: active/inactive".
+- `quill/core/settings.py`: the `experimental_stc_accessibility_bridge`
+  bool field (default False) with its from-dict parse and constructor
+  wiring, same pattern as the other experimental gates.
+- `quill/core/settings_specs.py`: its Experimental-tab SettingSpec (bool),
+  which is what makes the checkbox appear on the tab.
+- `quill/ui/main_frame.py`: three touches. The stc branch of
+  `_create_document_tab` passes
+  `enable_accessibility_bridge=acknowledged and <setting>`; the
+  `_wire_experimental_gates` surface-children list adds the new checkbox so
+  it enables/disables with the editor-surfaces gate; the settings-apply
+  `_restart_keys` tuple adds the key so changing it warns about restart.
+  The stc explainer text mentions the option.
+- `quill/tools/module_size_budgets.json`: rebaseline entry
+  `_rebaseline_2026_07_03_stc_a11y_bridge` (main_frame 27288->27299,
+  settings 1492->1501, settings_specs 2185->2203).
+- `tests/unit/ui/test_stc_edit_surface.py`: five new tests -- settings
+  round-trip + default off, the spec is an experimental bool with
+  scope/restart language, the pure helpers map offsets/lines/packing
+  correctly (including astral chars and the ASCII fast path), the bridge
+  source answers every ScintillaWin message and ships the caret mirror with
+  teardown, and the flag is opt-in at both layers and wired from
+  main_frame.
+
+### 2026-07-03 bridge round 1 with JAWS: FAILED, and what the failure taught
+
+Jeff's live test of the bridge above: JAWS showed no blank line on Enter,
+newly typed text appeared to replace the previous line, and up arrow could
+not review the old line. Classic single-line-edit behavior.
+
+First, data integrity was verified immediately (live probe, typing sent
+through the bridged window proc as WM_CHAR): the buffer kept both lines,
+line count 2, caret moved freely back to line 0. The bridge answers
+read-only queries and forwards everything else; the document was never at
+risk. What broke was JAWS's VIEW of the buffer, not the buffer.
+
+Second, two probe facts that rewrite earlier assumptions in this file:
+
+- wx's StyledTextCtrl window class IS "Scintilla" (GetClassNameW, live).
+  The caret-experiment note above claiming wx lacks the Scintilla class was
+  wrong; both screen readers DO key their Scintilla handling off this
+  window.
+- wx's window proc answers the real Scintilla API messages natively:
+  SCI_GETLENGTH, SCI_GETCURRENTPOS, SCI_LINEFROMPOSITION all returned
+  correct values by SendMessage, bridge off. It answers NONE of the classic
+  edit contract (EM_GETSEL -> 0, EM_GETLINECOUNT -> 0, geometry -> 0), and
+  its native WM_GETTEXTLENGTH returns the window label, not the document.
+
+That pair fully explains the NVDA/JAWS split, no further investigation
+needed: NVDA's Scintilla support reads through SCI_* messages in-process,
+which work on this control -- so NVDA is flawless. JAWS's handling uses the
+classic edit-control contract (system caret + WM_GETTEXT/EM_* queries),
+which this control does not speak natively and the bridge only partially
+supplied.
+
+The specific gap matching the failure signature: the bridge answered text,
+selection, and line queries but not GEOMETRY. JAWS maps the system caret's
+screen position back to a character and line via EM_CHARFROMPOS /
+EM_POSFROMCHAR (with EM_GETRECT / EM_GETFIRSTVISIBLELINE for the viewport);
+unanswered, every caret position resolves to char 0 / line 0 -- one
+permanent line 0, which is exactly what Jeff experienced: no new line on
+Enter, "replaced" text, nothing above to review.
+
+The four geometry messages are now implemented and live-verified
+(EM_POSFROMCHAR(13) -> client coords -> EM_CHARFROMPOS -> char 13 line 1
+round-trip; formatting rect matches the client area; out-of-range -> -1).
+
+### Decision point after round 1
+
+Score so far on making wxSTC acceptable to JAWS: caret mirror alone =
+worse; text bridge without geometry = worse in a new way. Each retry costs
+a hardware session. Options:
+
+- One final round with the geometry messages in, then a hard stop. The
+  failure signature matched the geometry gap precisely, and the fix is
+  in and verified mechanically -- but JAWS's actual query pattern has now
+  surprised us twice.
+- Park stc as an NVDA-only experimental surface (it is genuinely excellent
+  there), leave the bridge off by default as a documented negative result,
+  and decide #813 on the rich2 vs plain A/B as originally planned. If a
+  Scintilla-class surface is ever wanted for JAWS users, the honest path is
+  hosting the real ScintillaWin (scintilla.dll as a native child) rather
+  than emulating it message by message, or a UIA TextPattern provider.
+
+Test protocol for the next hardware round (JAWS + braille display):
+
+1. Settings > Experimental: tick "Enable experimental features", tick the
+   editor-surfaces acknowledgement, set Editor surface to "Notepad++
+   experiment", tick "Notepad++ experiment: screen reader text bridge
+   (Windows)". Restart QUILL.
+2. Confirm the bridge took: Tools > Advanced > Developer Console > Copy
+   Diagnostic Summary -- "Classic text bridge: active", and the
+   WM_GETTEXTLENGTH / EM_GETSEL lines show real values.
+3. Type two lines, press Enter between them: does JAWS speech follow the
+   caret now (the d4f3f51 failure)? Arrow through lines: does braille
+   start at cell 1? Select text: dots 7-8?
+4. Repeat with the bridge checkbox OFF (restart) for the A/B.
+5. If speech still lags, run the JAWS class-reassignment experiment (wx
+   class -> "Scintilla") ON TOP of the bridge -- with the classic messages
+   now answered, the reassignment that previously would have gone silent
+   has real answers to read.
+
+## 2026-07-03 FINAL: bridge round 2 failed; bridge removed; verdict
+
+Round 2 (geometry messages included) still failed live JAWS testing. Per
+the decision point above, that was the hard stop. Jeff called it; the
+bridge is rolled back in full:
+
+- `quill/ui/stc_accessibility_bridge.py` deleted; the
+  `experimental_stc_accessibility_bridge` setting, its SettingSpec, the
+  Experimental-tab checkbox, the gate wiring, the restart key, and the
+  creation-site kwarg are all removed; module-size budgets restored to
+  their pre-bridge values. A regression test
+  (`test_jaws_bridge_stays_removed_and_the_surface_is_labeled_nvda_only`)
+  pins the removal so the idea is not casually re-attempted.
+- The stc surface itself STAYS, relabeled honestly: the Experimental-tab
+  explainer now reads "EXPERIMENTAL, NVDA ONLY: ... JAWS cannot follow the
+  caret on this surface (verified 2026-07-03; bridging attempts failed).
+  Do not use with JAWS." The surface remains double-gated and off by
+  default, and it remains the best NVDA braille result of any surface.
+
+Why it stays rather than being ripped out: the surface is committed,
+harmless behind two acknowledgements, genuinely excellent under NVDA, and
+it already earned its keep as an instrument -- it isolated #813 to
+RICHEDIT50W's selection reporting. Removing it buys nothing; the failed
+part (the JAWS emulation) is what was removed.
+
+Final scorecard for making wx.stc acceptable to JAWS, so nobody retries
+the cheap paths: (1) system caret mirror alone -- JAWS switched into
+live-edit mode with nothing to read, went silent (d4f3f51, reverted).
+(2) Caret + classic text/selection/line answers -- JAWS rendered a
+permanent single line; typing appeared to replace prior text (view-only;
+buffer verified intact). (3) All of that + the EM_POSFROMCHAR /
+EM_CHARFROMPOS / EM_GETRECT / EM_GETFIRSTVISIBLELINE geometry set,
+mechanically verified by SendMessage round-trip -- still failed. JAWS's
+Scintilla-class handling evidently depends on more of real ScintillaWin
+than its documented message surface (plausibly in-process direct-function
+reads or the character-metrics path); emulating it message by message from
+Python is a dead end.
+
+### What JAWS 2026 itself ships for Notepad++ (inspected on this machine)
+
+Question raised after the rollback: does JAWS 2026 ship Notepad++ scripts
+or settings that might have made the difference? Answer, from reading the
+actual files under C:\ProgramData\Freedom Scientific\JAWS\2026: yes it
+ships them, and no, they would not have helped. Three pieces:
+
+- GLOBAL, and the one that matters: Default.JCF, [WindowClasses] section:
+  `Scintilla=MultilineEdit` (comment: "Notepad++ and new Script Manager").
+  JAWS's entire core Scintilla strategy is a global class reassignment --
+  treat any window of class "Scintilla" in any application as a classic
+  multiline EDIT. Since our surface's class IS "Scintilla", QUILL received
+  this treatment in every test round. This also retro-explains the earlier
+  "reassign the class in JAWS" experiment idea as moot: the mapping we
+  would have created already exists out of the box.
+- Per-app Scripts\Notepad++.jss (source ships uncompiled, ~150 lines):
+  handles ONLY the autocomplete popup (ListboxX child window speech,
+  braille routing, pan left/right), Ctrl+Arrow unit navigation, and one
+  telling quirk fix -- it suppresses speak-window-name-on-focus because
+  "Scintilla windows return the entire text of the document as their
+  name". Nothing about core text reading, caret tracking, or line
+  navigation: all of that is the built-in MultilineEdit backend.
+- Per-app SETTINGS\enu\NotePad++.JCF: one line, BrailleMoveActiveCursor=1.
+
+So aliasing quill.exe to the NotePad++ config (ConfigNames.ini) would have
+bought autocomplete polish and one braille flag -- not caret tracking. The
+core handling QUILL already got, and it failed against our emulation while
+succeeding against real ScintillaWin. Conclusion sharpened: JAWS's
+MultilineEdit backend depends on genuine EDIT/ScintillaWin behavior beyond
+the documented message surface (in-process reads, font metrics, or EM_
+semantics we did not replicate). Freedom Scientific's own Script Manager
+is a real embedded Scintilla riding the same class map -- the mechanism is
+proven, but only with the genuine control behind it.
+
+One extra confirmation from the .jss comment: with our bridge on,
+WM_GETTEXT returned the whole document, so JAWS ALSO saw the document as
+the window NAME -- Notepad++ needs a script just to mute that. A working
+bridge would have needed a per-app QUILL script on top, one more hidden
+cost of the emulation path.
+
+If a Scintilla surface for JAWS users ever becomes strategic, the two
+honest paths, in order: host the real scintilla.dll as a native child
+(class, window proc, caret, and JAWS behavior all come from the genuine
+article; the LF EOL mode avoids the CRLF offset skew that killed the raw
+EDIT spike), or a full UIA TextPattern provider. Both are real projects,
+not knobs.
+
+Where this leaves the original goals: #813 (JAWS selection dots) and the
+cell-2 offset get decided on the rich2 vs plain A/B as planned, with the
+stc data point (a non-RichEdit surface showing correct selection dots
+under JAWS) as supporting evidence that the fault is in RICHEDIT50W's
+selection reporting. The undo/redo argument for leaving rich2 is gone --
+rich2 already has native multi-level undo/redo, and it remains the
+shipping default.

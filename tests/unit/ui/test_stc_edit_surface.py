@@ -11,6 +11,7 @@ and CRLF passes through unconverted.
 from __future__ import annotations
 
 import inspect
+from pathlib import Path
 
 from quill.core.settings import Settings
 from quill.core.settings_specs import SETTING_SPECS
@@ -67,3 +68,36 @@ def test_wrapper_shims_the_probed_contract_gaps() -> None:
     assert "def SetInsertionPoint" in source and "GotoPos" in source
     # LF-only buffer and paste conversion so offsets match GetValue().
     assert "STC_EOL_LF" in source and "SetPasteConvertEndings" in source
+
+
+def test_stc_surface_exposes_classic_text_diagnostics_without_document_content() -> None:
+    import quill.ui.stc_edit_surface as mod
+
+    source = inspect.getsource(mod)
+    assert "def accessibility_diagnostic_summary" in source
+    assert "WM_GETTEXTLENGTH" in source
+    assert "EM_GETSEL" in source
+    assert "EM_EXGETSEL" in source
+    assert "Document content included: no" in source
+    assert "GetValue" not in source[source.index("def accessibility_diagnostic_summary") :]
+
+
+def test_jaws_bridge_stays_removed_and_the_surface_is_labeled_nvda_only() -> None:
+    # 2026-07-03 post-mortem (edit.md): three JAWS bridging attempts on this
+    # surface failed live testing (caret mirror; classic WM_GETTEXT/EM_*
+    # answers; those plus the EM_POSFROMCHAR/EM_CHARFROMPOS geometry set) and
+    # were rolled back. The negative result is pinned here so the bridge is
+    # not casually reintroduced and users are warned off JAWS + stc.
+    assert not hasattr(Settings(), "experimental_stc_accessibility_bridge")
+    assert all(spec.key != "experimental_stc_accessibility_bridge" for spec in SETTING_SPECS)
+    frame_source = Path("quill/ui/main_frame.py").read_text(encoding="utf-8")
+    assert "experimental_stc_accessibility_bridge" not in frame_source
+    # The Experimental-tab explainer must carry the JAWS warning.
+    start = frame_source.index('"stc": (')
+    assert "JAWS cannot follow the caret" in frame_source[start : start + 1200]
+
+    import quill.ui.stc_edit_surface as mod
+
+    source = inspect.getsource(mod)
+    assert "attach_accessibility_bridge" not in source
+    assert "Treat as NVDA-only" in source
