@@ -57,9 +57,9 @@ SpeechRecognition>=3.17.0
 
 # Direct GitHub issue submission for Report a Bug (feedback_hub's accessible
 # FeedbackDialog + shared schema). This is the only Report a Bug form; on
-# failure QUILL copies the online support-form URL to the clipboard. Not on
-# PyPI; pinned to a release tag. v1.0.1 fixes the wx sizer-parenting crash.
-feedback-hub @ git+https://github.com/Community-Access/feedback-hub@v1.0.1
+# failure QUILL copies the online support-form URL to the clipboard.
+# 1.0.1 fixes the wx sizer-parenting crash that broke the dialog on wx 4.2.5+.
+feedback-hub>=1.0.1
 
 # Structured document import (Word/PowerPoint/Excel/Pages/PDF fallback).
 # Only the converters Quill actually routes through MarkItDown are pulled in
