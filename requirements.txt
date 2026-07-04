@@ -55,6 +55,11 @@ SpeechRecognition>=3.17.0
 # non-Windows interpreters. Install them explicitly with `pip install .[ocr]`
 # on a supported Windows Python.
 
+# Direct GitHub issue submission for Report a Bug (feedback_hub's accessible
+# FeedbackDialog + shared schema). Optional at runtime — QUILL falls back to
+# the browser support form when absent. Not on PyPI; pinned to a release tag.
+feedback-hub @ git+https://github.com/Community-Access/feedback-hub@v1.0.0
+
 # Structured document import (Word/PowerPoint/Excel/Pages/PDF fallback).
 # Only the converters Quill actually routes through MarkItDown are pulled in
 # (docx, pptx, xlsx, xls, pdf). The `[all]` extra additionally bundles audio
