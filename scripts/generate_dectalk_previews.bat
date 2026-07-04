@@ -2,14 +2,14 @@
 REM Regenerate the 9 DECtalk voice previews with the bundled QUILL phrase.
 REM
 REM DECtalk synthesis is driven through DECtalk.dll (the real synthesis runtime),
-REM not the graphical speak.exe sample. Run this from the repo root (double-click
-REM or invoke from a terminal). Anchored to this file's folder via %~dp0.
+REM not the graphical speak.exe sample. Double-click or invoke from a terminal;
+REM the script anchors itself to the repo root via %~dp0..
 
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 set "PHRASE=scripts\phrase.txt"
-set "DECTALK_DLL=%~dp0tools\speech\dectalk\AMD64\DECtalk.dll"
+set "DECTALK_DLL=%CD%\tools\speech\dectalk\AMD64\DECtalk.dll"
 
 if not exist "%PHRASE%" (
     echo ERROR: phrase file not found: %PHRASE%

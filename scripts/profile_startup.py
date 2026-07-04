@@ -5,9 +5,9 @@ the per-task timing file (written by QUILL_PROFILE_STARTUP=1), then closes the
 app automatically and prints a summary.
 
 Usage:
-    python tools/profile_startup.py
+    python scripts/profile_startup.py
 
-Output files (repo root):
+Output files (local/, gitignored):
     startup_cprofile.txt   -- top-60 cumulative cProfile entries
     startup_tasks.txt      -- copy of per-task wall-clock breakdown
 """
@@ -59,7 +59,9 @@ if __name__ == "__main__":
     s = io.StringIO()
     ps = pstats.Stats(pr, stream=s).sort_stats("cumulative")
     ps.print_stats(60)
-    cprofile_out = REPO_ROOT / "startup_cprofile.txt"
+    out_dir = REPO_ROOT / "local"
+    out_dir.mkdir(exist_ok=True)
+    cprofile_out = out_dir / "startup_cprofile.txt"
     cprofile_out.write_text(s.getvalue(), encoding="utf-8")
     print(f"cProfile report     -> {cprofile_out}")
 
@@ -67,7 +69,7 @@ if __name__ == "__main__":
     from quill.core.paths import app_data_dir
 
     task_file = app_data_dir() / "logs" / "startup_tasks.txt"
-    task_out = REPO_ROOT / "startup_tasks.txt"
+    task_out = out_dir / "startup_tasks.txt"
     if task_file.exists():
         text = task_file.read_text(encoding="utf-8")
         task_out.write_text(text, encoding="utf-8")
