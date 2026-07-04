@@ -62,4 +62,4 @@ requirements, and sets technical direction for the project.
 - `CONTRIBUTING.md`
 - `GOVERNANCE.md`
 - `SECURITY.md`
-- `RELEASE.md`
+- `release/RELEASE.md`

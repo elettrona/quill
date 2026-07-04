@@ -8,7 +8,7 @@ REM or invoke from a terminal). Anchored to this file's folder via %~dp0.
 setlocal
 cd /d "%~dp0"
 
-set "PHRASE=phrase.txt"
+set "PHRASE=scripts\phrase.txt"
 set "DECTALK_DLL=%~dp0tools\speech\dectalk\AMD64\DECtalk.dll"
 
 if not exist "%PHRASE%" (

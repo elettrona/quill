@@ -245,7 +245,7 @@ _REVIEWED_EGRESS: dict[str, str] = {
     # service (e.g. Microsoft's Edge cloud voices) to synthesize speech. Path:
     #   read_document_in_browser() (gated behind edge_read_aloud_enabled AND
     #   experimental_acknowledged) -> write local page -> open_preview_url().
-    # On-device voices stay fully local. The settings copy and PRIVACY.md both
+    # On-device voices stay fully local. The settings copy and docs/legal/PRIVACY.md both
     # disclose the cloud-voice behavior, and the page is deleted on app exit
     # (_cleanup_browser_reader_files) so no plaintext copy lingers.
     "io/http_transport.py::download_url": (

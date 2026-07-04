@@ -156,7 +156,7 @@ Quill is built on open-source foundations and integrates best practices from the
   - `html_to_text` (MIT) — converts HTML from clipboard pastes to clean, structured plain text. Used in `quill/ui/html_paste_cleaner.py`.
   - `app_elements`, `platform_utils`, `keyboard_handler` — small cross-platform utilities for dialogs, clipboard, and hotkeys.
 
-  Full license text is reproduced in `THIRD_PARTY_NOTICES.md`.
+  Full license text is reproduced in `docs/legal/THIRD_PARTY_NOTICES.md`.
 
 - **liblouis 3.38.0** (https://github.com/liblouis/liblouis, LGPL-2.1-or-later) — open-source braille translation and back-translation library that powers the QUILL Braille Pack. Provides UEB Grade 1 and Grade 2, Standard American English, and dozens of international language tables through its `lou_translate` runtime. The Braille Pack is an optional installer component; liblouis is only present when it is selected. Full license text is shipped alongside the pack as `COPYING` and `COPYING.LESSER`.
 

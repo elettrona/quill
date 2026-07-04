@@ -17,7 +17,7 @@ def _read(rel: str) -> str:
 
 
 def test_trademarks_file_exists() -> None:
-    text = _read("TRADEMARKS.md")
+    text = _read("docs/legal/TRADEMARKS.md")
     assert "QUILL for All" in text
     assert "Community Access" in text
     assert "Quill.js" in text or "QuillBot" in text
@@ -31,7 +31,7 @@ def test_notice_file_exists() -> None:
 
 
 def test_third_party_notices_file_exists() -> None:
-    text = _read("THIRD_PARTY_NOTICES.md")
+    text = _read("docs/legal/THIRD_PARTY_NOTICES.md")
     assert "Third-Party" in text or "third-party" in text or "third party" in text
 
 
@@ -70,7 +70,7 @@ def test_branding_module_independence_notice_in_test_data() -> None:
 def test_legal_docs_do_not_claim_trademark_registration() -> None:
     """Avoid wording that would imply a registered mark unless one exists."""
     for rel in (
-        "TRADEMARKS.md",
+        "docs/legal/TRADEMARKS.md",
         "NOTICE",
         "docs/legal/legal-notices.md",
         "docs/legal/trademark-notices.md",

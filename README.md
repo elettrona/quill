@@ -216,13 +216,13 @@ Use **Help -> Report a Bug** inside Quill. The flow supports diagnostics bundle 
 
 Community contributions are welcome.
 
-- Read **[CONTRIBUTING.md](CONTRIBUTING.md)** for setup, workflow, and PR expectations.
-- Read **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** before participating.
-- Read **[SECURITY.md](SECURITY.md)** for private vulnerability reporting.
-- Read **[PRIVACY.md](PRIVACY.md)** for data handling and retention behavior.
-- Read **[RESPONSIBLE_AI_USE.md](RESPONSIBLE_AI_USE.md)** for ethical and accountable AI use requirements.
-- Read **[GOVERNANCE.md](GOVERNANCE.md)** for project decision model.
-- Read **[MAINTAINERS.md](MAINTAINERS.md)** for maintainer responsibilities.
+- Read **[CONTRIBUTING.md](docs/CONTRIBUTING.md)** for setup, workflow, and PR expectations.
+- Read **[CODE_OF_CONDUCT.md](docs/CODE_OF_CONDUCT.md)** before participating.
+- Read **[SECURITY.md](docs/SECURITY.md)** for private vulnerability reporting.
+- Read **[PRIVACY.md](docs/legal/PRIVACY.md)** for data handling and retention behavior.
+- Read **[RESPONSIBLE_AI_USE.md](docs/legal/RESPONSIBLE_AI_USE.md)** for ethical and accountable AI use requirements.
+- Read **[GOVERNANCE.md](docs/GOVERNANCE.md)** for project decision model.
+- Read **[MAINTAINERS.md](docs/MAINTAINERS.md)** for maintainer responsibilities.
 - Contributor graph: **[contrib.rocks / QUILL](https://contrib.rocks/image?repo=Community-Access/quill)**
 
 ## Community discussions
@@ -232,7 +232,7 @@ Community contributions are welcome.
 
 ## Release governance
 
-- Release process and branch policy: **[RELEASE.md](RELEASE.md)**
+- Release process and branch policy: **[RELEASE.md](docs/release/RELEASE.md)**
 - Security advisory runbook: **[docs/QUILL-PRD.md](docs/QUILL-PRD.md)**
 
 ## License
@@ -248,5 +248,5 @@ company, or organisation.
 
 All trademarks are the property of their respective owners.
 
-See [TRADEMARKS.md](TRADEMARKS.md), [NOTICE](NOTICE), and
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for more information.
+See [TRADEMARKS.md](docs/legal/TRADEMARKS.md), [NOTICE](NOTICE), and
+[THIRD_PARTY_NOTICES.md](docs/legal/THIRD_PARTY_NOTICES.md) for more information.

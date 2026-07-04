@@ -677,7 +677,7 @@ Connection status messages tell you exactly what to do next:
 - "Rate limited by the AI provider. Wait a moment and try again." means you sent requests too quickly.
 - "Your saved API key could not be unlocked on this device. Open AI Connection and enter the key again." appears in the AI status line when a saved key cannot be decrypted, which can happen after moving a portable install to a different Windows account or machine. Open AI Connection and re-enter the key.
 
-For policy details, see the repository's `PRIVACY.md` and `RESPONSIBLE_AI_USE.md`.
+For policy details, see the repository's `docs/legal/PRIVACY.md` and `docs/legal/RESPONSIBLE_AI_USE.md`.
 
 These help you stay inside the editor instead of breaking flow for small writing chores.
 

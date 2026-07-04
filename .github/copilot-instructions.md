@@ -164,7 +164,7 @@ sequenced after Tier 4) now that the shared `quill-glow-core` engine is green.
 
 ## Keep dialogs.md current
 
-`dialogs.md` in the repo root is the master manual regression checklist for every
+`docs/qa/dialogs.md` is the master manual regression checklist for every
 user-facing dialog in QUILL, each mapped to the keyboard command or menu path
 that opens it. It must stay a faithful, complete map of the shipped dialogs.
 
