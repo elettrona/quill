@@ -64,9 +64,10 @@ ui = [
 spellcheck = ["pyenchant>=3.3.0"]
 # Direct GitHub issue submission for Report a Bug (#210): feedback_hub provides
 # the accessible FeedbackDialog driven by quill/core/schemas/feedback.json and
-# files the issue via the GitHub API. Optional at runtime — when absent, QUILL
-# falls back to the built-in browser support form. Not on PyPI; pinned to a tag.
-feedback = ["feedback-hub @ git+https://github.com/Community-Access/feedback-hub@v1.0.0"]
+# files the issue via the GitHub API. Ships in every build (this is the only
+# Report a Bug form); on failure QUILL copies the online support-form URL.
+# Not on PyPI; pinned to a tag. v1.0.1 fixes the wx sizer-parenting crash.
+feedback = ["feedback-hub @ git+https://github.com/Community-Access/feedback-hub@v1.0.1"]
 # Cross-platform earcon audio via BASS (Un4seen). Enables true mixing so multiple
 # sounds can play simultaneously. Falls back to winsound (Windows) or silence without
 # this extra. Confirm Un4seen commercial license terms before paid distribution.
@@ -81,7 +82,7 @@ ssh = ["paramiko>=5.0.0"]
 # (see requirements.txt). A higher floor has no wheel and makes pip compile
 # llama.cpp from source. Install via requirements.txt (which carries the
 # --extra-index-url) or pass that index so the wheel resolves.
-ai = ["llama-cpp-python==0.3.31"]
+ai = ["llama-cpp-python==0.3.32"]
 dictation = ["SpeechRecognition>=3.17.0"]
 # Offline speech-to-text (#617). The whisper.cpp executable + GGML models are
 # managed out-of-band (AI > Speech > Manage Speech Models); this optional extra

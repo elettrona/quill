@@ -1677,7 +1677,7 @@ The **Help** menu is where Quill becomes a guide.
 - **Why Don't I See a Feature?** explains profile-driven feature visibility.
 - **Feature Profiles** commands let you switch profile, run health checks, undo the last profile change, reset to Essential, and run onboarding.
 - **Personalise QUILL...** (the first-run setup wizard) can be rerun at any time to adjust your keyboard pack, feature profile, remote access, AI, reading and accessibility, writing tools, data location, and startup behaviour.
-- **Report a Bug...** opens an in-app review screen, copies the environment summary to the clipboard, and then opens the Community Access support-hub issue form.
+- **Report a Bug...** opens the accessible issue form, which submits your report directly to the Community Access issue tracker — no browser round-trip.
 - **Check for Updates...** verifies the signed update manifest, offers the download, and can close Quill so setup can run immediately. If you are running the **portable** build, QUILL recognises this and offers the portable `.zip` for the new version instead of pushing the installer at you — it downloads to your updates folder with an **Open folder** button so you can swap it into place. Installed copies keep receiving the installer.
 - **About Quill** shows version, publisher details, and linked third-party dependency attribution with license and version metadata.
 - **Open Third-Party Notices** opens a full notices document with dependency tables and bundled license texts.
@@ -1695,17 +1695,12 @@ Menu stability note: Quill now defers internal menu-state updates while native m
 
 Use this path when Quill is behaving unexpectedly or when you want to send the team a feature request.
 
-1. Open **Help -> Report a Bug...**. Focus lands on the Summary field, ready to type.
-2. Optionally fill in your name and contact email. Quill remembers these and pre-fills them next time, so you only enter them once.
-3. Pick your screen reader from the list (None, JAWS, NVDA, Narrator, VoiceOver, or Other). Quill pre-selects the one it detects. The choice is included in the report so the team can reproduce screen-reader-specific issues.
-4. Read the in-app report summary Quill prepares for you.
-5. Choose whether to include diagnostics, and whether to include plain file paths.
-6. If diagnostics are included, save the diagnostics bundle to a location you can find again easily.
-7. Choose **Open Support Form**.
-8. When the Community Access support page opens, describe the problem, what you expected, and what actually happened.
-9. Attach the diagnostics zip if it is relevant to the issue.
+1. Open **Help -> Report a Bug...**. The issue form opens as a dialog; the fields are plain, labelled controls your screen reader reads by name.
+2. Optionally fill in your name and email so the team can follow up.
+3. Pick a category and describe the problem: what happened, what you expected, and the steps to reproduce it. Your QUILL version is filled in for you.
+4. Choose **Submit Issue**. The report is filed directly on the Community Access issue tracker — no browser, no copy-and-paste — and no account is required. Escape cancels without sending anything.
 
-This unified flow keeps support reporting in one place. If you only need diagnostics, **Help -> Save Diagnostics...** remains available as a standalone export command.
+If the form ever cannot be opened, QUILL copies a link to the online support form to your clipboard and tells you so, so you always have a path. Need to share more detail? **Help -> Save Diagnostics...** remains available as a standalone export you can attach to any issue.
 
 ### When QUILL crashes: the new crash-submit dialog
 
