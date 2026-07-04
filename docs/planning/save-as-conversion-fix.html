@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>save-as-conversion-fix</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">save-as-conversion-fix</h1>
+</header>
+<h1
+id="fix-plan-save-as-conversion-window-title-and-export-fidelity">Fix
+Plan: Save As Conversion, Window Title, and Export Fidelity</h1>
+<blockquote>
+<p><strong>STATUS: IMPLEMENTED 2026-07-04</strong> on branch
+<code>fix/save-as-conversion</code> (6 commits). Tasks 1-8 are
+code-complete, tested, and documented. Task 9 (manual screen-reader spot
+checks) remains — it needs a human at a real build with JAWS/NVDA.
+Bake-off verdicts (docs/qa/converter-bakeoff.md): MarkItDown and Pandoc
+passed the full corpus; <strong>pydocx rejected permanently</strong>
+(cannot import on Python 3.10+ — <code>collections.Hashable</code>
+removed; last release 2016; it failed every fixture); <strong>mammoth
+not adopted</strong> (7/7 via its HTML writer, but MarkItDown already
+covers the route; if adopted later per the decision tree below, it would
+be <strong>bundled</strong>, never download-on-demand — frozen builds
+cannot pip-install at runtime). Only python-docx, MarkItDown, and Pandoc
+are ever used by QUILL; pydocx/mammoth were evaluated in a throwaway
+venv and never touched the codebase.</p>
+</blockquote>
+<blockquote>
+<p><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use
+superpowers:subagent-driven-development (recommended) or
+superpowers:executing-plans to implement this plan task-by-task. Steps
+use checkbox (<code>- [ ]</code>) syntax for tracking.</p>
+</blockquote>
+<p><strong>Goal:</strong> Make Save As genuinely convert (not just
+rename), make the window title and save state truthful for every format,
+protect binary originals from being overwritten with text, pre-fill
+filenames from the first line, and give users an informed choice of
+conversion engine.</p>
+<p><strong>Architecture:</strong> All fixes land in the existing layered
+split: format logic in <code>quill/io/export.py</code> (wx-free,
+unit-testable), UI policy in <code>MainFrame.save_file</code> /
+<code>save_file_as</code> in <code>quill/ui/main_frame.py</code>,
+settings in <code>quill/core/settings.py</code> +
+<code>settings_specs.py</code>.</p>
+<p><strong>Tech Stack:</strong> Python, wxPython, python-docx (bundled
+hard dependency), Pandoc (optional external tool), MarkItDown (bundled),
+LibreOffice headless (optional, legacy .doc/.ppt).</p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>No <code>wx</code> imports in <code>quill/io</code> or
+<code>quill/core</code> (mypy strict scope).</li>
+<li>All modal dialogs go through <code>_show_modal_dialog</code>, never
+<code>ShowModal()</code> directly.</li>
+<li>Atomic JSON writes via <code>core.storage.write_json_atomic</code>;
+document writes follow existing writer patterns.</li>
+<li>New user-facing strings must be speakable plain language
+(screen-reader-first product).</li>
+<li>Update release notes, user guide, PRD, and CHANGELOG as each bucket
+ships (incremental-docs rule).</li>
+<li>Run <code>pytest -m smoke -q</code> plus the targeted test file
+after each task; <code>ruff check .</code> before commit.</li>
+<li>No new dependencies without an explicit decision (pydocx/mammoth are
+evaluation-only in this plan).</li>
+</ul>
+<hr />
+<h2 id="part-1-what-caroline-hit-decoded">Part 1: What Caroline hit,
+decoded</h2>
+<p>Caroline’s mail contains three distinct defects plus one design
+question. All were reproduced or traced in current
+<code>main</code>.</p>
+<h3
+id="symptom-1-title-bar-stuck-at-untitled-modified-after-save-as-.docx">Symptom
+1: Title bar stuck at “Untitled [modified]” after Save As .docx</h3>
+<p><strong>Root cause (verified by repro):</strong>
+<code>write_docx_document</code> in
+<code>quill/io/export.py:230-259</code> is the only writer that never
+calls <code>document.mark_saved(target)</code>.</p>
+<ul>
+<li>Plain text / HTML writers: <code>_write_utf8</code> calls
+<code>mark_saved</code> (<code>export.py:207</code>).</li>
+<li>Text / Markdown writer: <code>write_text_document</code> calls it
+(<code>quill/io/text.py:86</code>).</li>
+<li>RTF writer: <code>write_rtf_document</code> calls it
+(<code>quill/io/rtf.py:709</code>).</li>
+<li>DOCX writer: <strong>neither</strong> the python-docx branch
+<strong>nor</strong> the Pandoc fallback calls it.</li>
+</ul>
+<p>Repro run against current main:</p>
+<pre><code>doc = Document(text=&#39;line one\nline two\nline three&#39;, path=None, modified=True)
+write_document_as(doc, tmp / &#39;test.docx&#39;)
+# doc.path -&gt; None          (BUG: stays None)
+# doc.modified -&gt; True      (BUG: stays True)
+# same test with .html/.rtf/.txt: path set, modified False (correct)</code></pre>
+<p>So after Save As .docx: the file IS written, the status line says
+“Saved as x.docx (Word)”, but <code>document.path</code> stays
+<code>None</code> and <code>modified</code> stays <code>True</code>.
+<code>_refresh_title</code> (<code>main_frame.py:7285</code>) then
+correctly renders the <em>wrong</em> state: “Untitled [modified]”.</p>
+<h3
+id="symptom-2-second-ctrl-s-reopens-save-as-with-an-empty-filename">Symptom
+2: Second Ctrl-S reopens Save As with an empty filename</h3>
+<p>Same root cause. <code>save_file</code>
+(<code>main_frame.py:9793</code>) sees
+<code>document.path is None</code> and falls back to
+<code>save_file_as</code>. The dialog’s <code>defaultFile</code> comes
+from <code>_suggested_save_basename()</code>
+(<code>main_frame.py:9978</code>), which returns <code>""</code> for an
+untitled document when <code>first_line_as_title</code> is off (its
+default). One bug, both of Caroline’s first two symptoms.</p>
+<h3
+id="symptom-3-all-lines-collapsed-into-one-paragraph-in-word">Symptom 3:
+All lines collapsed into one paragraph in Word</h3>
+<p><strong>Root cause:</strong> Caroline is on 0.8.0 Beta 1, which
+predates the native python-docx writer (it landed with the 2.0 rich-text
+hidden-codes work; python-docx is now a hard dependency in
+<code>pyproject.toml:33</code>). Her save went through the Pandoc
+fallback, which does:</p>
+<pre><code>convert_file_with_pandoc(source, target, from_format=&quot;gfm&quot;, to_format=&quot;docx&quot;)</code></pre>
+<p>In GFM, a single newline is a <em>soft wrap</em> – consecutive lines
+join into one paragraph. Eight lines, one paragraph. Exactly her
+report.</p>
+<p><strong>Current status:</strong> the native writer preserves line
+breaks (verified: 3 editor lines -&gt; 3 Word paragraphs, because
+<code>markdown_to_rich</code> in <code>quill/io/rtf_model.py:423</code>
+treats each editor line as one paragraph). <strong>But the bug is still
+live in two places:</strong></p>
+<ol type="1">
+<li>The Pandoc fallback inside <code>write_docx_document</code>
+(<code>export.py:258</code>) still uses bare <code>"gfm"</code>.</li>
+<li>Every File &gt; Export format (<code>main_frame.py:8202</code>) uses
+<code>from_format="gfm"</code> – so Export to ODT, EPUB, PDF, RTF, HTML
+via Pandoc all collapse single newlines today.</li>
+</ol>
+<p><strong>Policy decision:</strong> QUILL’s editor is line-oriented; a
+line is a line (that is what a screen reader user hears). The canonical
+model already commits to this (<code>markdown_to_rich</code>: one editor
+line = one paragraph). Therefore every Pandoc call whose source is QUILL
+canonical text must use <code>gfm+hard_line_breaks</code>. Trade-off: a
+<code>.md</code> file authored elsewhere with soft-wrapped paragraphs
+will export one paragraph per source line – consistent with what the
+QUILL editor displays, and the converter-preference feature (Part 5)
+gives an escape hatch later.</p>
+<h3
+id="carolines-implicit-design-question-and-jeffs-are-we-not-still-in-markdown-in-the-editor">Caroline’s
+implicit design question, and Jeff’s: “are we not still in markdown in
+the editor?”</h3>
+<p>Yes – by design, and that is defensible, but it is currently
+<em>silent</em>. After Save As .docx:</p>
+<ul>
+<li>The editing surface keeps QUILL canonical markup
+(Markdown-style).</li>
+<li><code>document.path</code> becomes <code>x.docx</code> (after Task
+1); every subsequent Ctrl-S re-converts markup -&gt; Word. This is
+coherent: the .docx on disk is always a faithful projection of the
+buffer.</li>
+<li>Reopening <code>x.docx</code> later converts Word -&gt; Markdown via
+MarkItDown (<code>quill/io/structured.py:40-45</code>), which is a
+<em>different</em> converter than the one that wrote it, so round trips
+can drift (images, comments, complex tables).</li>
+<li><code>_maybe_reload_surface_after_save_as</code>
+(<code>main_frame.py:10075</code>) only knows about the RTF rich lens vs
+plain; it says nothing for .docx.</li>
+</ul>
+<p>The fix is honesty, not a behavior change: announce the model after a
+converting Save As (“Saved as x.docx, Word format. You are still editing
+QUILL text; each save converts it to Word.”). See Task 5.</p>
+<hr />
+<h2
+id="part-2-a-worse-bug-found-during-the-audit-ctrl-s-destroys-binary-originals">Part
+2: A worse bug found during the audit – Ctrl-S destroys binary
+originals</h2>
+<p><code>write_document_as</code> (<code>export.py:262-291</code>) falls
+through to the <strong>verbatim text writer</strong> for any extension
+it does not recognize. Two consequences:</p>
+<ol type="1">
+<li><strong>Data loss:</strong> Open <code>report.pdf</code> (QUILL
+extracts its text for editing), press Ctrl-S. <code>document.path</code>
+is set, so <code>save_file</code> -&gt; <code>write_document_as</code>
+-&gt; suffix <code>.pdf</code> matches nothing -&gt;
+<code>write_text_document</code> <strong>overwrites the binary PDF with
+plain text</strong>. The original is destroyed (a <code>.bak</code>
+backup is made only if backups cover it – <code>backup_document</code>
+reads the old file first, so partial mitigation, but the on-disk PDF is
+gone). The same applies to <code>.epub</code>, <code>.pptx</code>,
+<code>.ppt</code>, <code>.xlsx</code>, <code>.xls</code>,
+<code>.doc</code>, <code>.odt</code>, <code>.pages</code>,
+<code>.sqlite</code>, <code>.db</code>.</li>
+<li><strong>Corrupt output trap:</strong> In Save As, typing
+<code>notes.pdf</code> (the “All files” filter allows anything) writes
+Markdown text into a file named <code>.pdf</code>, marks it saved, and
+reports success. Acrobat then fails to open it. Verified by repro:</li>
+</ol>
+<pre><code>doc4 = Document(text=&#39;# Title\nbody&#39;, path=None, modified=True)
+write_document_as(doc4, tmp / &#39;weird.pdf&#39;)
+# weird.pdf content: literally &quot;# Title\nbody&quot;  -- marked saved, no warning</code></pre>
+<p>There is no automatic guard: the read-only guard
+(<code>main_frame_power_tools.py:257</code>) is a manual user toggle,
+and <code>read_only_remote</code> only covers URL-opened documents. Task
+3 adds the guard.</p>
+<p>Deliberate non-guards (correct today, keep): - <code>.brf</code> /
+<code>.brl</code> / <code>.pef</code> / <code>.ueb</code>: byte-for-byte
+text contract, verbatim write is the spec. - <code>.json</code> /
+<code>.yaml</code> / <code>.toml</code> / <code>.xml</code> /
+<code>.ipynb</code>: opened as pretty-printed text of the same text
+format; writing the buffer back is what the user edited. (Note in docs:
+reformat-on-open means diff noise; out of scope.) - Unknown text
+extensions (<code>.log</code>, <code>.py</code>, <code>.cfg</code>, …):
+verbatim round trip is exactly right. -
+<code>.csv</code>/<code>.tsv</code> in the grid surface: has its own
+save path (<code>_save_table_as_csv</code>); spot-check only.</p>
+<hr />
+<h2 id="part-3-the-complete-conversion-matrix">Part 3: The complete
+conversion matrix</h2>
+<p>Every combination QUILL can hit, with the engine used and the honest
+expected outcome. This section becomes the basis for the user-guide
+“What happens to my file” page (Task 8).</p>
+<h3
+id="a.-save-as-from-the-editor-canonical-quill-markup---target-extension">3a.
+Save As from the editor (canonical QUILL markup -&gt; target
+extension)</h3>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>Target</th>
+<th>Engine</th>
+<th>Outcome today</th>
+<th>After this plan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>.txt, .text</td>
+<td>verbatim writer</td>
+<td>Markdown markup kept verbatim (#649); title updates</td>
+<td>unchanged (documented)</td>
+</tr>
+<tr>
+<td>.md, .markdown</td>
+<td>verbatim writer</td>
+<td>correct</td>
+<td>unchanged</td>
+</tr>
+<tr>
+<td>unknown text ext</td>
+<td>verbatim writer</td>
+<td>correct</td>
+<td>unchanged</td>
+</tr>
+<tr>
+<td>.html/.htm/.xhtml</td>
+<td>native HTML renderer</td>
+<td>standalone HTML, MathJax CDN script tag; title updates</td>
+<td>unchanged</td>
+</tr>
+<tr>
+<td>.rtf</td>
+<td>native RTF writer</td>
+<td>full hidden-codes fidelity; title updates</td>
+<td>unchanged</td>
+</tr>
+<tr>
+<td>.docx</td>
+<td>python-docx native</td>
+<td>line breaks OK, hidden codes OK, <strong>title never
+updates</strong></td>
+<td>mark_saved fixed (Task 1)</td>
+</tr>
+<tr>
+<td>.docx (no python-docx)</td>
+<td>Pandoc fallback</td>
+<td><strong>line breaks collapse</strong>, title never updates</td>
+<td>hard_line_breaks + mark_saved (Tasks 1-2)</td>
+</tr>
+<tr>
+<td>.pdf, .odt, .epub typed by hand</td>
+<td>verbatim writer</td>
+<td><strong>corrupt file that claims success</strong></td>
+<td>blocked with a routing offer to File &gt; Export (Task 3)</td>
+</tr>
+<tr>
+<td>.doc, .ppt(x), .xls(x), .pages, .sqlite, .db typed</td>
+<td>verbatim writer</td>
+<td><strong>corrupt/mislabeled file</strong></td>
+<td>blocked (Task 3)</td>
+</tr>
+<tr>
+<td>.brf family</td>
+<td>verbatim writer</td>
+<td>byte-exact, correct</td>
+<td>unchanged</td>
+</tr>
+</tbody>
+</table>
+<p>Also: “Save As Plain Text” (separate command,
+<code>main_frame.py:10137</code>) <em>strips</em> Markdown and offers
+keep-formatting / Illumination sidecar / plain choices. Unchanged; the
+matrix documents the difference between it and Save As -&gt; .txt.</p>
+<h3 id="b.-ctrl-s-save-when-the-document-already-has-a-path">3b. Ctrl-S
+(Save) when the document already has a path</h3>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>Opened as</th>
+<th>Engine on save</th>
+<th>Outcome today</th>
+<th>After this plan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>.txt/.md/unknown/.brf</td>
+<td>verbatim</td>
+<td>correct round trip</td>
+<td>unchanged</td>
+</tr>
+<tr>
+<td>.rtf</td>
+<td>native RTF</td>
+<td>markup -&gt; RTF, correct</td>
+<td>unchanged</td>
+</tr>
+<tr>
+<td>.docx</td>
+<td>native docx</td>
+<td>markup -&gt; Word, but read side was MarkItDown so round trips can
+drift</td>
+<td>mark_saved fixed; drift documented; engine choice in Part 5</td>
+</tr>
+<tr>
+<td>.pdf, .epub, .pptx, .xlsx, .doc, .odt, .pages, .sqlite</td>
+<td>verbatim</td>
+<td><strong>overwrites binary original with text</strong></td>
+<td>guard: explain + route to Save As (Task 3)</td>
+</tr>
+<tr>
+<td>.json/.yaml/.toml/.xml/.ipynb</td>
+<td>verbatim</td>
+<td>writes back the (pretty-printed) text; acceptable</td>
+<td>unchanged, documented</td>
+</tr>
+<tr>
+<td>.csv/.tsv grid surface</td>
+<td>grid save path</td>
+<td>own path</td>
+<td>spot check only</td>
+</tr>
+<tr>
+<td>URL-opened</td>
+<td>n/a</td>
+<td>already routed to Save a Copy</td>
+<td>unchanged</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="c.-file-export-pandoc-forces-a-save-first-reads-the-saved-file">3c.
+File &gt; Export (Pandoc; forces a save first, reads the saved
+file)</h3>
+<p>All routes use <code>from_format="gfm"</code> today, so <strong>every
+one collapses single newlines</strong>. After Task 2 all use
+<code>gfm+hard_line_breaks</code>.</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Export target</th>
+<th>Notes beyond line breaks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Markdown / CommonMark / GFM</td>
+<td>near-identity, dialect normalization</td>
+</tr>
+<tr>
+<td>HTML</td>
+<td>Pandoc fragment/standalone; differs from native Save As HTML (no
+MathJax tag)</td>
+</tr>
+<tr>
+<td>Word (.docx)</td>
+<td>Pandoc styles-mapped: headings/lists/tables/links/footnotes good;
+hidden-codes run attrs (font, size, color, highlight, alignment)
+dropped</td>
+</tr>
+<tr>
+<td>ODT</td>
+<td>same character as Pandoc docx</td>
+</tr>
+<tr>
+<td>RTF</td>
+<td>Pandoc RTF; weaker than QUILL’s native RTF writer for hidden
+codes</td>
+</tr>
+<tr>
+<td>Plain text</td>
+<td>Pandoc flattening (different rules than QUILL’s own stripper)</td>
+</tr>
+<tr>
+<td>EPUB</td>
+<td>produces a book; metadata minimal</td>
+</tr>
+<tr>
+<td>PDF</td>
+<td><strong>requires a PDF engine</strong> (LaTeX or similar) that
+Pandoc shells out to; if absent, Pandoc errors – Task 4 makes the
+failure message speakable and actionable</td>
+</tr>
+</tbody>
+</table>
+<h3 id="d.-export-as-daisy-native-reads-live-buffer">3d. Export as DAISY
+(native, reads live buffer)</h3>
+<p>Line-per-line text-only book; no Pandoc involved. Spot check in Task
+9 that line breaks and headings map to phrases correctly (they should –
+it was built line-oriented).</p>
+<h3
+id="e.-open-import-source-format---editor-markup-with-engine-chain">3e.
+Open / Import (source format -&gt; editor markup), with engine
+chain</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Source</th>
+<th>Engine chain today</th>
+<th>Expected outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>.docx</td>
+<td>MarkItDown -&gt; python-docx raw extract fallback</td>
+<td>headings/lists/pipe tables kept; fonts, colors, comments, images
+dropped</td>
+</tr>
+<tr>
+<td>.doc</td>
+<td>MarkItDown -&gt; LibreOffice headless -&gt; error</td>
+<td>as above; requires LibreOffice for old binaries</td>
+</tr>
+<tr>
+<td>.pptx / .ppt</td>
+<td>MarkItDown -&gt; native extract / LibreOffice</td>
+<td>slide text, reading order approximate</td>
+</tr>
+<tr>
+<td>.xlsx / .xls</td>
+<td>MarkItDown -&gt; capped openpyxl extract (50 rows x 20 cols)</td>
+<td>table extract, not full sheet</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>.pdf</td>
+<td>native <code>extract_pdf_text</code></td>
+<td>text layer only; no OCR unless OCR tool invoked; layout
+flattened</td>
+</tr>
+<tr>
+<td>.epub</td>
+<td>native EPUB renderer</td>
+<td>chapters flattened to markup</td>
+</tr>
+<tr>
+<td>.pages</td>
+<td>keynote-parser</td>
+<td>text extract</td>
+</tr>
+<tr>
+<td>.odt</td>
+<td>native XML extract</td>
+<td>text + basic structure</td>
+</tr>
+<tr>
+<td>.rtf</td>
+<td>native RTF reader</td>
+<td>full hidden-codes fidelity (the reference round trip)</td>
+</tr>
+<tr>
+<td>.html</td>
+<td>read as text (no conversion on plain open)</td>
+<td>raw HTML source in editor; File &gt; Import &gt; HTML converts via
+Pandoc</td>
+</tr>
+<tr>
+<td>File &gt; Import (any Tier-1)</td>
+<td>Pandoc -&gt; new Markdown tab, path=None</td>
+<td>correct: forces an explicit Save As</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="part-4-first-line-as-filename">Part 4: First line as
+filename</h2>
+<p>The machinery already exists and is wired everywhere it needs to
+be:</p>
+<ul>
+<li><code>quill/core/titles.py</code> –
+<code>suggested_title_from_text</code>: first non-empty line, strips
+<code>#</code>/<code>&gt;</code>/bullets/HTML tags, sanitizes
+Windows-invalid characters, 60-char cap.</li>
+<li><code>_suggested_save_basename</code>
+(<code>main_frame.py:9978</code>) feeds Save As, Save As Plain Text,
+Export, and DAISY export dialogs.</li>
+<li>Gated by setting <code>first_line_as_title</code>
+(<code>settings.py:78</code>), <strong>default False</strong> – which is
+why Caroline saw an empty name box.</li>
+</ul>
+<p><strong>Decision: flip the default to True</strong> (Task 6).
+Rationale: it only ever pre-fills the name for an <em>untitled</em>
+document; the user can always type over it; it converts a blank,
+screen-reader-hostile edit box into a meaningful proposal; and it would
+have softened both of Caroline’s symptoms. Users who explicitly turned
+it off keep their stored False (the loader only defaults when the key is
+absent).</p>
+<hr />
+<h2
+id="part-5-converter-choice-multiple-engines-described-outcomes-a-default-preference">Part
+5: Converter choice – multiple engines, described outcomes, a default
+preference</h2>
+<p>Jeff’s ask: when more than one converter can do a job (MarkItDown,
+Pandoc, python-docx, pydocx, …), let the user pick, describe the
+expected outcome of each in plain speakable language, and let them set a
+default.</p>
+<h3 id="engine-inventory-and-honest-assessment">Engine inventory and
+honest assessment</h3>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>Engine</th>
+<th>Direction</th>
+<th>Status</th>
+<th>Character</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>python-docx</td>
+<td>write .docx (and raw read fallback)</td>
+<td>bundled hard dep</td>
+<td>keeps QUILL hidden codes (font, size, color, highlight, alignment);
+one editor line = one Word paragraph; no footnotes/TOC fields</td>
+</tr>
+<tr>
+<td>Pandoc</td>
+<td>read+write many formats</td>
+<td>optional external tool, download offer exists</td>
+<td>structure-first: headings, lists, real tables, footnotes, links map
+to native Word/ODT styles; drops run-level font/size/color; needs
+hard_line_breaks flag</td>
+</tr>
+<tr>
+<td>MarkItDown</td>
+<td>read docx/pptx/xlsx/pdf -&gt; Markdown</td>
+<td>bundled</td>
+<td>fast, good structure, pipe tables; drops images, comments,
+formatting runs</td>
+</tr>
+<tr>
+<td>LibreOffice headless</td>
+<td>legacy .doc/.ppt -&gt; modern</td>
+<td>optional, detected</td>
+<td>fidelity of LibreOffice’s own filters; slow first launch</td>
+</tr>
+<tr>
+<td>pydocx</td>
+<td>read .docx -&gt; HTML only</td>
+<td><strong>not adopted; evaluate-only</strong></td>
+<td>unmaintained (last release ~2016), docx-to-HTML only, Python 3
+support doubtful. Evaluate in the bake-off spike; expected verdict:
+reject</td>
+</tr>
+<tr>
+<td>mammoth</td>
+<td>read .docx -&gt; HTML/Markdown</td>
+<td><strong>not adopted; evaluate-only</strong></td>
+<td>maintained, semantic style mapping, well-regarded; the credible
+alternative reader if MarkItDown fidelity disappoints</td>
+</tr>
+</tbody>
+</table>
+<p>The bake-off (Task 7, step 1) runs a small corpus (headings, nested
+lists, a table, footnotes, an image, tracked changes, RTL text, a long
+real-world doc) through each available read engine and records what
+survives. pydocx and mammoth are <code>pip install</code>ed into a
+scratch venv for the spike only.</p>
+<p><strong>Mammoth adoption decision tree (agreed
+2026-07-04):</strong></p>
+<ol type="1">
+<li>Bake-off first. If MarkItDown holds up on the corpus, mammoth is not
+adopted at all.</li>
+<li>If mammoth wins on docx fidelity in ways users would notice, it is
+<strong>bundled</strong> – never download-on-demand. It is a small,
+pure-Python, BSD-licensed pip package; the installed/portable builds
+cannot pip-install into a frozen environment at runtime, so a Python
+package is bundle-or-nothing. Download-on-demand remains reserved for
+external executables (Pandoc, LibreOffice) and large model assets (the
+assets-v1 pattern).</li>
+<li>If bundled, it follows the python-docx precedent: imported lazily
+(like <code>docx_writer.py</code>), so a broken import degrades to the
+existing MarkItDown chain instead of hard-failing, and it appears as a
+third choice in <code>docx_read_engine</code> with its own speakable
+outcome description.</li>
+<li>pydocx is expected to be rejected regardless (docx-to-HTML one-way,
+unmaintained since ~2016); the bake-off records the evidence so the
+verdict is documented, not folklore.</li>
+</ol>
+<h3 id="user-facing-design">User-facing design</h3>
+<p>New settings (Task 7), starting with the docx route because it is the
+one users actually hit; the pattern extends to other routes later:</p>
+<ul>
+<li><code>docx_read_engine</code>: <code>auto</code> (default) |
+<code>markitdown</code> | <code>pandoc</code> – honored in
+<code>read_structured_document</code>.</li>
+<li><code>docx_write_engine</code>: <code>auto</code> (default) |
+<code>native</code> | <code>pandoc</code> – honored in
+<code>write_docx_document</code>.</li>
+<li><code>auto</code> means today’s chain (MarkItDown-first read;
+python-docx-first write), so default behavior is unchanged.</li>
+</ul>
+<p>Each option carries a speakable outcome description in
+<code>settings_specs.py</code>, e.g.:</p>
+<ul>
+<li>native: “Keeps QUILL formatting codes: fonts, sizes, colors,
+highlights, and alignment. Each editor line becomes one Word paragraph.
+Best for documents written in QUILL.”</li>
+<li>pandoc (write): “Maps structure to Word styles: headings, lists,
+tables, links, and footnotes. Drops font, size, and color codes.
+Requires Pandoc.”</li>
+<li>markitdown (read): “Fast and reliable. Headings, lists, and tables
+come through; images, comments, and fonts do not.”</li>
+<li>pandoc (read): “Richer structure: footnotes and complex tables
+survive better. Requires Pandoc.”</li>
+</ul>
+<p>Per-operation override: the Convert File dialog
+(<code>quill/ui/convert_file_dialog.py</code>) gains an “Engine” choice
+(Auto / MarkItDown / Pandoc where applicable) with a live description
+StaticText tied to the selection via an <code>aria</code>-equivalent
+label (wx: the description is the control’s sibling StaticText named in
+the accessible name). Save As itself stays engine-silent (it uses the
+default) to keep the core dialog simple; power users change the default
+in Settings.</p>
+<hr />
+<h2 id="part-6-implementation-tasks">Part 6: Implementation tasks</h2>
+<p>Phase 1 (Tasks 1-4) is the correctness bucket and directly answers
+Caroline. Phase 2 (Tasks 5-6) is honesty and ergonomics. Phase 3 (Task
+7) is the converter-preference feature. Task 8 is docs, Task 9 manual
+verification.</p>
+<h3 id="task-1-write_docx_document-must-mark-the-document-saved">Task 1:
+<code>write_docx_document</code> must mark the document saved</h3>
+<p><strong>Files:</strong> - Modify:
+<code>quill/io/export.py:230-259</code> - Test:
+<code>tests/unit/io/test_export.py</code></p>
+<p><strong>Interfaces:</strong> - Produces:
+<code>write_docx_document(document, path)</code> now leaves
+<code>document.path == Path(target)</code> and
+<code>document.modified is False</code> on success, matching every other
+writer. No signature change.</p>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 1: Write the failing
+tests</strong></label></li>
+</ul>
+<p>Append to <code>tests/unit/io/test_export.py</code> (it already
+imports <code>Document</code> and <code>write_document_as</code>; follow
+the module’s existing imports):</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_write_docx_marks_saved(tmp_path: Path) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    doc <span class="op">=</span> Document(text<span class="op">=</span><span class="st">&quot;line one</span><span class="ch">\n</span><span class="st">line two&quot;</span>, path<span class="op">=</span><span class="va">None</span>, modified<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    target <span class="op">=</span> tmp_path <span class="op">/</span> <span class="st">&quot;out.docx&quot;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    result <span class="op">=</span> write_document_as(doc, target)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> result <span class="op">==</span> target</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> doc.path <span class="op">==</span> target</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> doc.modified <span class="kw">is</span> <span class="va">False</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_write_docx_keeps_line_breaks(tmp_path: Path) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> docx <span class="im">as</span> _docx</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    doc <span class="op">=</span> Document(text<span class="op">=</span><span class="st">&quot;one</span><span class="ch">\n</span><span class="st">two</span><span class="ch">\n</span><span class="st">three&quot;</span>, path<span class="op">=</span><span class="va">None</span>, modified<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    target <span class="op">=</span> tmp_path <span class="op">/</span> <span class="st">&quot;breaks.docx&quot;</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    write_document_as(doc, target)</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    paragraphs <span class="op">=</span> [p.text <span class="cf">for</span> p <span class="kw">in</span> _docx.Document(<span class="bu">str</span>(target)).paragraphs]</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> paragraphs <span class="op">==</span> [<span class="st">&quot;one&quot;</span>, <span class="st">&quot;two&quot;</span>, <span class="st">&quot;three&quot;</span>]</span></code></pre></div>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 2: Run tests to verify
+the first fails</strong></label></li>
+</ul>
+<p>Run: <code>pytest tests/unit/io/test_export.py -k docx -q</code>
+Expected: <code>test_write_docx_marks_saved</code> FAILS
+(<code>doc.path</code> is <code>None</code>);
+<code>test_write_docx_keeps_line_breaks</code> PASSES (native writer
+already correct – it pins the regression Caroline hit on 0.8.0).</p>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 3: Fix the
+writer</strong></label></li>
+</ul>
+<p>Replace the body of <code>write_docx_document</code> in
+<code>quill/io/export.py</code>:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> write_docx_document(document: Document, path: Path <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>) <span class="op">-&gt;</span> Path:</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">&quot;&quot;&quot;Write a document&#39;s Markdown markup out as a Word (.docx) file.</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co">    Prefers the native python-docx writer (:mod:`quill.io.docx_writer`), which</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co">    carries QUILL&#39;s hidden-codes attributes -- per-run font family, point size,</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co">    color, highlight, underline and per-paragraph alignment -- onto real Word runs</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co">    and paragraphs. When python-docx is not installed, falls back to the Pandoc</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co">    path, which maps headings, lists, emphasis, links, and simple tables to Word</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co">    styles (but drops the font/size/color/alignment attributes). Either way the</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co">    result is a properly structured, screen-reader-navigable document, and the</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co">    document is marked saved at ``target`` like every other writer here.</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="co">    &quot;&quot;&quot;</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    target <span class="op">=</span> Path(path <span class="kw">or</span> document.path <span class="kw">or</span> <span class="st">&quot;&quot;</span>)</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="kw">not</span> <span class="bu">str</span>(target):</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="st">&quot;A path is required to save this document.&quot;</span>)</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>    <span class="im">from</span> quill.io.docx_writer <span class="im">import</span> python_docx_available, write_docx</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> python_docx_available():</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>        write_docx(document, target)</span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>        document.mark_saved(target)</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> target</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> tempfile</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>    <span class="im">from</span> quill.io.pandoc <span class="im">import</span> convert_file_with_pandoc</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> tempfile.TemporaryDirectory() <span class="im">as</span> tmp:</span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>        source <span class="op">=</span> Path(tmp) <span class="op">/</span> <span class="st">&quot;source.md&quot;</span></span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>        source.write_text(document.text, encoding<span class="op">=</span><span class="st">&quot;utf-8&quot;</span>, newline<span class="op">=</span><span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>        convert_file_with_pandoc(</span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>            source, target, from_format<span class="op">=</span><span class="st">&quot;gfm+hard_line_breaks&quot;</span>, to_format<span class="op">=</span><span class="st">&quot;docx&quot;</span></span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>    document.mark_saved(target)</span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> target</span></code></pre></div>
+<p>(Keep the <code>path or document.path</code> None-check semantics:
+<code>Path("")</code> is falsy via <code>str()</code>; if you prefer the
+module’s existing style, keep the original two-line
+<code>target = path or document.path; if target is None: raise</code>
+form – either is fine, be consistent with the file.)</p>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 4: Run tests to verify
+they pass</strong></label></li>
+</ul>
+<p>Run: <code>pytest tests/unit/io/test_export.py -k docx -q</code>
+Expected: both PASS.</p>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 5:
+Commit</strong></label></li>
+</ul>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add quill/io/export.py tests/unit/io/test_export.py</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;fix(save-as): mark document saved after .docx write so the title and path update&quot;</span></span></code></pre></div>
+<h3
+id="task-2-hard-line-breaks-on-every-pandoc-call-that-consumes-quill-canonical-text">Task
+2: Hard line breaks on every Pandoc call that consumes QUILL canonical
+text</h3>
+<p><strong>Files:</strong> - Modify: <code>quill/io/export.py</code>
+(already done for the docx fallback in Task 1) - Modify:
+<code>quill/ui/main_frame.py:8202</code> (<code>export_document</code>)
+- Test: <code>tests/unit/io/test_export.py</code> (pandoc-gated),
+<code>tests/unit/ui/test_main_frame.py</code> (characterization)</p>
+<p><strong>Interfaces:</strong> - Consumes:
+<code>convert_file_with_pandoc(source, target, *, from_format, to_format)</code>
+from <code>quill/io/pandoc.py</code>. - Produces: all editor-sourced
+exports use <code>from_format="gfm+hard_line_breaks"</code>. Convert
+File / Batch Conversion of <em>arbitrary on-disk files</em> keep their
+detected source formats unchanged (a foreign <code>.md</code> keeps
+standard Markdown semantics there).</p>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 1: Write the failing
+characterization test</strong></label></li>
+</ul>
+<p>In <code>tests/unit/ui/test_main_frame.py</code>, follow the file’s
+existing MainFrame-fixture pattern (it already stubs frames for save
+tests; copy the neighboring export/save test setup) and assert on the
+recorded pandoc call:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_export_document_uses_hard_line_breaks(frame_fixture, monkeypatch) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    calls: <span class="bu">list</span>[<span class="bu">dict</span>] <span class="op">=</span> []</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> _fake_convert(source, target, <span class="op">*</span>, from_format, to_format):</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>        calls.append({<span class="st">&quot;from&quot;</span>: from_format, <span class="st">&quot;to&quot;</span>: to_format})</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    monkeypatch.<span class="bu">setattr</span>(<span class="st">&quot;quill.ui.main_frame.convert_file_with_pandoc&quot;</span>, _fake_convert)</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># ... use the fixture&#39;s established way to run export_document(&quot;docx&quot;)</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    <span class="co"># with a saved document and a stubbed FileDialog returning a target path.</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> calls <span class="kw">and</span> calls[<span class="dv">0</span>][<span class="st">&quot;from&quot;</span>] <span class="op">==</span> <span class="st">&quot;gfm+hard_line_breaks&quot;</span></span></code></pre></div>
+<p>(The exact fixture name and dialog stub differ; mirror the closest
+existing <code>export_document</code> or <code>save_file_as</code> test
+in that file rather than inventing new scaffolding.)</p>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 2: Run to verify it
+fails</strong></label></li>
+</ul>
+<p>Run:
+<code>pytest tests/unit/ui/test_main_frame.py -k hard_line_breaks -q</code>
+Expected: FAIL with <code>from == "gfm"</code>.</p>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 3: Change the call
+site</strong></label></li>
+</ul>
+<p>In <code>quill/ui/main_frame.py</code> <code>export_document</code>
+(line 8199-8204), change:</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>            convert_file_with_pandoc(</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>                <span class="va">self</span>.document.path <span class="kw">or</span> Path(<span class="st">&quot;&quot;</span>),</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>                target,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>                from_format<span class="op">=</span><span class="st">&quot;gfm+hard_line_breaks&quot;</span>,</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>                to_format<span class="op">=</span>format_name,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>            )</span></code></pre></div>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 4: Run
+tests</strong></label></li>
+</ul>
+<p>Run:
+<code>pytest tests/unit/ui/test_main_frame.py -k hard_line_breaks -q</code>
+then <code>pytest tests/unit/io/test_export.py -q</code> Expected:
+PASS.</p>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 5:
+Commit</strong></label></li>
+</ul>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add quill/ui/main_frame.py tests/unit/ui/test_main_frame.py</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;fix(export): preserve editor line breaks in every Pandoc export (gfm+hard_line_breaks)&quot;</span></span></code></pre></div>
+<h3
+id="task-3-guard-export-only-extensions-never-write-text-over-a-binary-never-ship-a-fake-.pdf">Task
+3: Guard export-only extensions – never write text over a binary, never
+ship a fake .pdf</h3>
+<p><strong>Files:</strong> - Modify: <code>quill/io/export.py</code>
+(new constant + exception + dispatch guard) - Modify:
+<code>quill/ui/main_frame.py</code> (<code>save_file</code> pre-check,
+<code>save_file_as</code> post-dialog check) - Test:
+<code>tests/unit/io/test_export.py</code>,
+<code>tests/unit/ui/test_main_frame.py</code></p>
+<p><strong>Interfaces:</strong> - Produces:
+<code>EXPORT_ONLY_SUFFIXES: frozenset[str]</code> and
+<code>class UnsupportedSaveFormatError(ValueError)</code> (attribute
+<code>suffix: str</code>) exported from <code>quill.io.export</code>;
+<code>write_document_as</code> raises it for those suffixes. UI callers
+catch it and route.</p>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 1: Write the failing io
+tests</strong></label></li>
+</ul>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_write_document_as_refuses_export_only_suffixes(tmp_path: Path) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    <span class="im">from</span> quill.io.export <span class="im">import</span> UnsupportedSaveFormatError</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    doc <span class="op">=</span> Document(text<span class="op">=</span><span class="st">&quot;# Title</span><span class="ch">\n</span><span class="st">body&quot;</span>, path<span class="op">=</span><span class="va">None</span>, modified<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> name <span class="kw">in</span> (<span class="st">&quot;a.pdf&quot;</span>, <span class="st">&quot;a.epub&quot;</span>, <span class="st">&quot;a.odt&quot;</span>, <span class="st">&quot;a.doc&quot;</span>, <span class="st">&quot;a.pptx&quot;</span>, <span class="st">&quot;a.xlsx&quot;</span>, <span class="st">&quot;a.pages&quot;</span>):</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">with</span> pytest.raises(UnsupportedSaveFormatError):</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>            write_document_as(doc, tmp_path <span class="op">/</span> name)</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">assert</span> <span class="kw">not</span> (tmp_path <span class="op">/</span> name).exists()</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">assert</span> doc.modified <span class="kw">is</span> <span class="va">True</span>  <span class="co"># untouched on refusal</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_write_document_as_still_allows_brf_and_unknown_text(tmp_path: Path) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>    doc <span class="op">=</span> Document(text<span class="op">=</span><span class="st">&quot;hello&quot;</span>, path<span class="op">=</span><span class="va">None</span>, modified<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>    write_document_as(doc, tmp_path <span class="op">/</span> <span class="st">&quot;a.brf&quot;</span>)</span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>    doc2 <span class="op">=</span> Document(text<span class="op">=</span><span class="st">&quot;hello&quot;</span>, path<span class="op">=</span><span class="va">None</span>, modified<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>    write_document_as(doc2, tmp_path <span class="op">/</span> <span class="st">&quot;a.log&quot;</span>)</span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> (tmp_path <span class="op">/</span> <span class="st">&quot;a.brf&quot;</span>).read_text() <span class="op">==</span> <span class="st">&quot;hello&quot;</span></span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> (tmp_path <span class="op">/</span> <span class="st">&quot;a.log&quot;</span>).read_text() <span class="op">==</span> <span class="st">&quot;hello&quot;</span></span></code></pre></div>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 2: Run to verify
+failure</strong></label></li>
+</ul>
+<p>Run:
+<code>pytest tests/unit/io/test_export.py -k export_only -q</code>
+Expected: FAIL (no such exception yet; files get written).</p>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 3: Implement in
+<code>quill/io/export.py</code></strong></label></li>
+</ul>
+<p>Add near the suffix sets:</p>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co">#: Formats QUILL can open (as extracted text) but cannot write back. Writing the</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="co">#: editor&#39;s markup to one of these would destroy a binary original (an opened</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="co">#: PDF, EPUB, spreadsheet...) or produce a file other apps cannot open (Markdown</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co">#: text named .pdf). Save must refuse and steer the user to Save As / Export.</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>EXPORT_ONLY_SUFFIXES: <span class="bu">frozenset</span>[<span class="bu">str</span>] <span class="op">=</span> <span class="bu">frozenset</span>({</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;.pdf&quot;</span>, <span class="st">&quot;.doc&quot;</span>, <span class="st">&quot;.odt&quot;</span>, <span class="st">&quot;.epub&quot;</span>, <span class="st">&quot;.pages&quot;</span>,</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;.ppt&quot;</span>, <span class="st">&quot;.pptx&quot;</span>, <span class="st">&quot;.xls&quot;</span>, <span class="st">&quot;.xlsx&quot;</span>, <span class="st">&quot;.sqlite&quot;</span>, <span class="st">&quot;.db&quot;</span>,</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> UnsupportedSaveFormatError(<span class="pp">ValueError</span>):</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">&quot;&quot;&quot;Save targeted an extension QUILL cannot convert the editor text into.&quot;&quot;&quot;</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, suffix: <span class="bu">str</span>) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>().<span class="fu">__init__</span>(</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>            <span class="ss">f&quot;QUILL cannot save directly to </span><span class="sc">{</span>suffix<span class="sc">}</span><span class="ss">. Use File &gt; Export for this format.&quot;</span></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.suffix <span class="op">=</span> suffix</span></code></pre></div>
+<p>Add <code>"EXPORT_ONLY_SUFFIXES"</code> and
+<code>"UnsupportedSaveFormatError"</code> to <code>__all__</code>. In
+<code>write_document_as</code>, immediately after computing
+<code>suffix</code>:</p>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> suffix <span class="kw">in</span> EXPORT_ONLY_SUFFIXES:</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>        <span class="cf">raise</span> UnsupportedSaveFormatError(suffix)</span></code></pre></div>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 4: Run io
+tests</strong></label></li>
+</ul>
+<p>Run: <code>pytest tests/unit/io/test_export.py -q</code> Expected:
+PASS (including the pre-existing dispatch tests).</p>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 5: Wire the UI
+policy</strong></label></li>
+</ul>
+<p>In <code>quill/ui/main_frame.py</code> import
+<code>EXPORT_ONLY_SUFFIXES</code> alongside the existing
+<code>write_document_as</code> import. In <code>save_file</code>
+(<code>main_frame.py:9789</code>), after the
+<code>read_only_remote</code> check and before the
+<code>path is None</code> check:</p>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>        path <span class="op">=</span> <span class="va">self</span>.document.path</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> path <span class="kw">is</span> <span class="kw">not</span> <span class="va">None</span> <span class="kw">and</span> path.suffix.lower() <span class="kw">in</span> EXPORT_ONLY_SUFFIXES:</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>            <span class="co"># e.g. an opened PDF: the buffer is extracted text. Writing it back</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>            <span class="co"># would destroy the binary original, so route to Save As instead.</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>            <span class="va">self</span>._show_message_box(</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>                <span class="ss">f&quot;</span><span class="sc">{</span><span class="va">self</span><span class="sc">.</span>document<span class="sc">.</span>name<span class="sc">}</span><span class="ss"> was opened as extracted text. QUILL cannot &quot;</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>                <span class="ss">f&quot;write </span><span class="sc">{</span>path<span class="sc">.</span>suffix<span class="sc">}</span><span class="ss"> files directly, so saving over the original &quot;</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;would destroy it. Choose a new name and format (Markdown, Word, &quot;</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;HTML, RTF, or text), or use File &gt; Export.&quot;</span>,</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;Save&quot;</span>,</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>                <span class="va">self</span>._wx.ICON_INFORMATION <span class="op">|</span> <span class="va">self</span>._wx.OK,</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>            <span class="va">self</span>.save_file_as()</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span></span></code></pre></div>
+<p>In <code>save_file_as</code>, after
+<code>target = self._resolve_save_target(...)</code> and before leaving
+the dialog <code>with</code> block is fine too, but simplest is right
+after the block:</p>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> target.suffix.lower() <span class="kw">in</span> EXPORT_ONLY_SUFFIXES:</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>            wx_mod <span class="op">=</span> <span class="va">self</span>._wx</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>            export_names <span class="op">=</span> {<span class="st">&quot;.pdf&quot;</span>: <span class="st">&quot;pdf&quot;</span>, <span class="st">&quot;.odt&quot;</span>: <span class="st">&quot;odt&quot;</span>, <span class="st">&quot;.epub&quot;</span>: <span class="st">&quot;epub&quot;</span>}</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>            fmt <span class="op">=</span> export_names.get(target.suffix.lower())</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> fmt <span class="kw">is</span> <span class="kw">not</span> <span class="va">None</span>:</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>                answer <span class="op">=</span> <span class="va">self</span>._show_message_box(</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>                    <span class="ss">f&quot;QUILL saves Markdown, Word, HTML, RTF, and text directly. &quot;</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>                    <span class="ss">f&quot;</span><span class="sc">{</span>target<span class="sc">.</span>suffix<span class="sc">}</span><span class="ss"> goes through Export instead, which converts &quot;</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>                    <span class="st">&quot;with Pandoc. Open Export now?&quot;</span>,</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>                    <span class="st">&quot;Use Export for this format&quot;</span>,</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>                    wx_mod.ICON_QUESTION <span class="op">|</span> wx_mod.YES_NO <span class="op">|</span> wx_mod.YES_DEFAULT,</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>                )</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>                <span class="cf">if</span> answer <span class="op">==</span> wx_mod.YES:</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>                    <span class="va">self</span>.export_document(fmt)</span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>                <span class="cf">return</span></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>            <span class="va">self</span>._show_message_box(</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>                <span class="ss">f&quot;QUILL cannot save to </span><span class="sc">{</span>target<span class="sc">.</span>suffix<span class="sc">}</span><span class="ss">. Choose Markdown, Word, &quot;</span></span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;HTML, RTF, or text in the Save as type list.&quot;</span>,</span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;Format not supported&quot;</span>,</span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a>                wx_mod.ICON_INFORMATION <span class="op">|</span> wx_mod.OK,</span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span></span></code></pre></div>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 6: Write and run the UI
+characterization test</strong></label></li>
+</ul>
+<p>Mirror the closest existing <code>save_file</code> test in
+<code>tests/unit/ui/test_main_frame.py</code>: open a fake document with
+<code>path=tmp_path/'x.pdf'</code>, stub <code>_show_message_box</code>
+to record and return OK, stub <code>save_file_as</code>, call
+<code>save_file</code>, assert the pdf bytes on disk are untouched and
+<code>save_file_as</code> was invoked.</p>
+<p>Run:
+<code>pytest tests/unit/ui/test_main_frame.py -k export_only -q</code>
+Expected: PASS.</p>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Step 7:
+Commit</strong></label></li>
+</ul>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add quill/io/export.py quill/ui/main_frame.py tests/unit/io/test_export.py tests/unit/ui/test_main_frame.py</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;fix(save): refuse to overwrite binary originals or write fake .pdf/.odt/.epub files&quot;</span></span></code></pre></div>
+<h3 id="task-4-honest-failure-handling-on-the-save-path">Task 4: Honest
+failure handling on the save path</h3>
+<p><strong>Files:</strong> - Modify: <code>quill/ui/main_frame.py</code>
+(<code>save_file</code>, <code>save_file_as</code> around
+<code>_write_document_to_disk</code>) - Test:
+<code>tests/unit/ui/test_main_frame.py</code></p>
+<p><strong>Interfaces:</strong> - Consumes: writers raise
+<code>OSError</code> on disk failure,
+<code>PandocUnavailableError</code> / <code>PandocConversionError</code>
+on the fallback path, <code>UnsupportedSaveFormatError</code> from Task
+3. - Produces: on failure, document state is untouched
+(<code>modified</code> stays True, <code>path</code> unchanged), the
+status line and a message box say what failed, and no “Saved” sound
+plays.</p>
+<ul class="task-list">
+<li><p><label><input type="checkbox" /><strong>Step 1: Write the failing
+test</strong> – stub <code>_write_document_to_disk</code> to raise
+<code>OSError("disk full")</code> inside a <code>save_file_as</code>
+run; assert the method returns without crashing,
+<code>document.modified</code> is still True, and the recorded status
+starts with “Could not save”.</label></p></li>
+<li><p><label><input type="checkbox" /><strong>Step 2: Run to verify
+failure</strong> (currently the exception propagates out of the
+handler).</label></p></li>
+<li><p><label><input type="checkbox" /><strong>Step 3:
+Implement</strong> – in both <code>save_file</code> and
+<code>save_file_as</code>, wrap the
+<code>_write_document_to_disk(...)</code> call:</label></p></li>
+</ul>
+<div class="sourceCode" id="cb16"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>        <span class="cf">try</span>:</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>            <span class="va">self</span>._write_document_to_disk(<span class="va">self</span>.document, target)</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>        <span class="cf">except</span> UnsupportedSaveFormatError <span class="im">as</span> error:</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>            <span class="va">self</span>._show_message_box(<span class="bu">str</span>(error), <span class="st">&quot;Save&quot;</span>, <span class="va">self</span>._wx.ICON_INFORMATION <span class="op">|</span> <span class="va">self</span>._wx.OK)</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>            <span class="va">self</span>._set_status(<span class="st">&quot;Save cancelled: format not supported&quot;</span>)</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">except</span> <span class="pp">OSError</span> <span class="im">as</span> error:</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>            <span class="va">self</span>._show_message_box(</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>                <span class="ss">f&quot;Could not save </span><span class="sc">{</span>target<span class="sc">.</span>name<span class="sc">}</span><span class="ss">: </span><span class="sc">{</span>error<span class="sc">}</span><span class="ss">&quot;</span>, <span class="st">&quot;Save&quot;</span>, <span class="va">self</span>._wx.ICON_ERROR <span class="op">|</span> <span class="va">self</span>._wx.OK</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>            <span class="va">self</span>._set_status(<span class="ss">f&quot;Could not save </span><span class="sc">{</span>target<span class="sc">.</span>name<span class="sc">}</span><span class="ss">&quot;</span>)</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span></span></code></pre></div>
+<p>(<code>save_file</code> uses <code>self.document.path</code> in place
+of <code>target</code> for the messages. The Pandoc error types are
+already imported at module top for export; include them in the except
+tuple on the docx fallback path.)</p>
+<ul class="task-list">
+<li><p><label><input type="checkbox" /><strong>Step 4: Run
+tests</strong> –
+<code>pytest tests/unit/ui/test_main_frame.py -k could_not_save -q</code>.
+Expected: PASS.</label></p></li>
+<li><p><label><input type="checkbox" /><strong>Step 5:
+Commit</strong></label></p></li>
+</ul>
+<div class="sourceCode" id="cb17"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add quill/ui/main_frame.py tests/unit/ui/test_main_frame.py</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;fix(save): report save failures honestly instead of crashing or claiming success&quot;</span></span></code></pre></div>
+<h3 id="task-5-say-what-a-converting-save-as-actually-did">Task 5: Say
+what a converting Save As actually did</h3>
+<p><strong>Files:</strong> - Modify: <code>quill/ui/main_frame.py</code>
+(<code>save_file_as</code>, after <code>_refresh_title()</code>) - Test:
+<code>tests/unit/ui/test_main_frame.py</code></p>
+<p><strong>Interfaces:</strong> - Consumes:
+<code>format_label_for_path</code> from <code>quill.io.export</code>
+(already imported). - Produces: an <code>_announce</code> after a Save
+As whose format is a conversion (docx/rtf/html), one sentence,
+screen-reader-first.</p>
+<ul class="task-list">
+<li><p><label><input type="checkbox" /><strong>Step 1: Write the failing
+test</strong> – Save As to <code>x.docx</code> with a recorded
+<code>_announce</code>; assert the announcement contains “still editing”
+and “Word”.</label></p></li>
+<li><p><label><input type="checkbox" /><strong>Step 2: Run to verify
+failure.</strong></label></p></li>
+<li><p><label><input type="checkbox" /><strong>Step 3:
+Implement</strong> – in <code>save_file_as</code>, after the existing
+<code>self._set_status(f"Saved as {target.name} ...")</code>
+line:</label></p></li>
+</ul>
+<div class="sourceCode" id="cb18"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>        converted <span class="op">=</span> target.suffix.lower() <span class="kw">in</span> ({<span class="st">&quot;.docx&quot;</span>, <span class="st">&quot;.rtf&quot;</span>} <span class="op">|</span> _HTML_SUFFIXES_UI)</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> converted:</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>            <span class="va">self</span>._announce(</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>                <span class="ss">f&quot;Saved as </span><span class="sc">{</span>target<span class="sc">.</span>name<span class="sc">}</span><span class="ss">, </span><span class="sc">{</span>format_label_for_path(target)<span class="sc">}</span><span class="ss"> format. &quot;</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;You are still editing QUILL text; each save converts it to &quot;</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>                <span class="ss">f&quot;</span><span class="sc">{</span>format_label_for_path(target)<span class="sc">}</span><span class="ss">.&quot;</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>            )</span></code></pre></div>
+<p>where <code>_HTML_SUFFIXES_UI = {".html", ".htm", ".xhtml"}</code> is
+a module-level constant (or import <code>_HTML_SUFFIXES</code> from
+<code>quill.io.export</code> after promoting it to a public name
+<code>HTML_SUFFIXES</code> – do the promotion; private cross-module
+imports fail lint).</p>
+<p>The existing <code>_maybe_reload_surface_after_save_as</code> prompt
+stays as-is (RTF rich lens only); do not offer a docx reload – a reload
+would round-trip through MarkItDown and silently lose formatting the
+user just saved. Note this in the user guide instead.</p>
+<ul class="task-list">
+<li><p><label><input type="checkbox" /><strong>Step 4: Run
+tests.</strong> Expected: PASS.</label></p></li>
+<li><p><label><input type="checkbox" /><strong>Step 5:
+Commit</strong></label></p></li>
+</ul>
+<div class="sourceCode" id="cb19"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add quill/io/export.py quill/ui/main_frame.py tests/unit/ui/test_main_frame.py</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;feat(save-as): announce format conversion and that the editor stays QUILL text&quot;</span></span></code></pre></div>
+<h3 id="task-6-first-line-filename-suggestion-on-by-default">Task 6:
+First-line filename suggestion on by default</h3>
+<p><strong>Files:</strong> - Modify:
+<code>quill/core/settings.py:78</code> and
+<code>quill/core/settings.py:601</code> - Test:
+<code>tests/unit/core/test_settings.py</code> (or the settings test
+module that asserts defaults; find it with
+<code>grep -r "first_line_as_title" tests/</code>)</p>
+<ul class="task-list">
+<li><p><label><input type="checkbox" /><strong>Step 1: Write/adjust the
+failing test</strong> – assert
+<code>Settings().first_line_as_title is True</code> and that loading a
+settings payload <em>without</em> the key yields True while an explicit
+<code>false</code> stays False.</label></p></li>
+<li><p><label><input type="checkbox" /><strong>Step 2: Run to verify
+failure.</strong></label></p></li>
+<li><p><label><input type="checkbox" /><strong>Step 3:
+Implement</strong> – <code>first_line_as_title: bool = True</code> at
+<code>settings.py:78</code>;
+<code>data.get("first_line_as_title", True)</code> at
+<code>settings.py:601</code>. Update the spec description in
+<code>settings_specs.py:218-226</code> to say it is on by
+default.</label></p></li>
+<li><p><label><input type="checkbox" /><strong>Step 4: Run</strong>
+<code>pytest tests/unit/core -k first_line -q</code> plus
+<code>pytest -m smoke -q</code>. Expected: PASS.</label></p></li>
+<li><p><label><input type="checkbox" /><strong>Step 5:
+Commit</strong></label></p></li>
+</ul>
+<div class="sourceCode" id="cb20"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add quill/core/settings.py quill/core/settings_specs.py tests/unit/core</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;feat(save-as): suggest a filename from the first line by default&quot;</span></span></code></pre></div>
+<h3
+id="task-7-converter-engine-preference-docx-route-first-engine-bake-off">Task
+7: Converter engine preference (docx route first) + engine bake-off</h3>
+<p><strong>Files:</strong> - Spike output:
+<code>docs/qa/converter-bakeoff.md</code> (results table; no dependency
+changes) - Modify: <code>quill/core/settings.py</code> (+ loader +
+specs): <code>docx_read_engine</code>, <code>docx_write_engine</code> -
+Modify: <code>quill/io/structured.py</code>
+(<code>read_structured_document</code> docx branch honors
+<code>docx_read_engine</code> – thread the setting in via a parameter
+with default <code>"auto"</code>, keeping the module wx-free and
+settings-free) - Modify: <code>quill/io/export.py</code>
+(<code>write_docx_document</code> gains
+<code>engine: str = "auto"</code> parameter;
+<code>write_document_as</code> gains and forwards
+<code>docx_engine: str = "auto"</code>;
+<code>MainFrame._write_document_to_disk</code> passes the setting) -
+Modify: <code>quill/ui/convert_file_dialog.py</code> (Engine choice +
+outcome description text) - Test:
+<code>tests/unit/io/test_export.py</code>,
+<code>tests/unit/io/test_structured.py</code>,
+<code>tests/unit/ui/test_convert_file_dialog.py</code></p>
+<p><strong>Interfaces:</strong> - Produces:
+<code>write_docx_document(document, path, *, engine="auto")</code> where
+<code>engine in {"auto", "native", "pandoc"}</code>;
+<code>read_structured_document(path, encoding="utf-8", *, docx_engine="auto")</code>
+where <code>docx_engine in {"auto", "markitdown", "pandoc"}</code>.
+<code>"auto"</code> reproduces today’s chains exactly.</p>
+<ul class="task-list">
+<li><p><label><input type="checkbox" /><strong>Step 1: Run the bake-off
+spike.</strong> Build a corpus of 8 fixture docx files (headings+nested
+lists, a 5x4 table with a merged cell, footnotes, an embedded image,
+tracked changes, RTL Arabic paragraph, hyperlinks, a 100-page real
+document). In a scratch venv, convert each with MarkItDown, Pandoc
+(<code>--from docx --to gfm</code>), python-docx raw extract, pydocx,
+and mammoth. Record per engine: structure survival, table fidelity,
+footnote survival, crash/hang, speed. Write
+<code>docs/qa/converter-bakeoff.md</code> with the table and a
+one-paragraph verdict per engine. Expected verdicts: pydocx rejected
+(unmaintained, HTML-only); mammoth noted as future optional reader;
+MarkItDown stays default; Pandoc offered as the richer optional
+reader.</label></p></li>
+<li><p><label><input type="checkbox" /><strong>Step 2: Write failing
+engine-forcing tests</strong> for
+<code>write_docx_document(engine="pandoc")</code> (skipped when Pandoc
+absent, follow the existing pandoc-skip marker in the test tree) and
+<code>engine="native"</code>, and for
+<code>read_structured_document(docx_engine=...)</code> with
+monkeypatched engines recording which was called.</label></p></li>
+<li><p><label><input type="checkbox" /><strong>Step 3: Implement the
+parameters and the settings plumbing.</strong> Settings
+fields:</label></p></li>
+</ul>
+<div class="sourceCode" id="cb21"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>    docx_read_engine: <span class="bu">str</span> <span class="op">=</span> <span class="st">&quot;auto&quot;</span>   <span class="co"># auto | markitdown | pandoc</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>    docx_write_engine: <span class="bu">str</span> <span class="op">=</span> <span class="st">&quot;auto&quot;</span>  <span class="co"># auto | native | pandoc</span></span></code></pre></div>
+<p>Specs (choices-type settings with the outcome descriptions from Part
+5, keywords
+<code>("word", "docx", "converter", "engine", "pandoc", "markitdown")</code>).
+<code>MainFrame._write_document_to_disk</code> reads
+<code>self.settings.docx_write_engine</code> and forwards; the open path
+(<code>read_open_document</code> callers) forwards
+<code>docx_read_engine</code> the same way <code>word_mode</code>
+already travels.</p>
+<ul class="task-list">
+<li><p><label><input type="checkbox" /><strong>Step 4: Convert File
+dialog engine choice.</strong> Add a labelled <code>wx.Choice</code>
+“Conversion engine” (Auto / MarkItDown / Pandoc as available) plus a
+StaticText description that updates on selection; both
+keyboard-reachable in the existing tab order; description text is the
+same speakable copy as the settings specs. Honor it in the conversion
+request.</label></p></li>
+<li><p><label><input type="checkbox" /><strong>Step 5: Run</strong>
+<code>pytest tests/unit/io -q</code> and the dialog test;
+<code>python -m quill.tools.dialog_inventory</code> gate if it covers
+this dialog. Expected: PASS.</label></p></li>
+<li><p><label><input type="checkbox" /><strong>Step 6:
+Commit</strong></label></p></li>
+</ul>
+<div class="sourceCode" id="cb22"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add quill/core/settings.py quill/core/settings_specs.py quill/io/structured.py quill/io/export.py quill/ui/main_frame.py quill/ui/convert_file_dialog.py docs/qa/converter-bakeoff.md tests/</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;feat(convert): user-selectable docx conversion engine with described outcomes&quot;</span></span></code></pre></div>
+<h3
+id="task-8-documentation-the-process-must-surface-all-conversion-outcome-knowledge">Task
+8: Documentation – the process must surface ALL conversion-outcome
+knowledge</h3>
+<p>The bake-off results and the Part 3 matrix are not internal notes;
+they become the user-facing knowledge base about what every conversion
+does. Four destinations, each written richly, not as stubs:</p>
+<p><strong>Files:</strong> - Modify: user guide (save/export chapter):
+add “What happens to my file when I choose a format” – the Part 3 matrix
+in prose plus small tables; the Save As vs Save As Plain Text vs Export
+distinction; the “you are still editing QUILL text” model; the engine
+preference with the outcome description of every engine choice; what
+each engine keeps and drops, per format, in plain speakable language. -
+Modify: <code>docs/QUILL-PRD.md</code> save/export section: extension
+policy table, <code>EXPORT_ONLY_SUFFIXES</code> invariant,
+hard-line-breaks policy statement, the engine-preference model and the
+mammoth decision tree. - Modify: <code>CHANGELOG.md</code>: entries per
+task under the next release heading. - Modify: release notes
+(docs/release/): after completion, a rich narrative section – what
+Caroline’s bug was, what changed for saving and exporting, the new
+binary-file protection, the first-line filename suggestion, and the
+engine choice, written for end users with the conversion-outcome
+knowledge inline (not a link out).</p>
+<ul class="task-list">
+<li><label><input type="checkbox" />Update all four as each phase lands
+(incremental-docs rule), commit with the phase; the release-notes
+narrative is written last, after Task 9’s spot checks confirm
+behavior.</label></li>
+</ul>
+<h3 id="task-9-manual-spot-check-script-screen-reader-session">Task 9:
+Manual spot-check script (screen reader session)</h3>
+<p>Run with JAWS or NVDA on a real build; this is the verification
+Caroline’s report deserves.</p>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Caroline’s exact
+repro:</strong> new document, 8 lines, Ctrl-S, switch type to Word, name
+it, Enter. Verify: title bar reads “name.docx - QUILL for All …(no
+[modified])”; second Ctrl-S saves silently with no dialog; the
+announcement from Task 5 speaks; the file opens in Word with 8
+paragraphs.</label></li>
+<li><label><input type="checkbox" /><strong>Save As each type:</strong>
+.txt, .md, .html, .rtf, .docx – title updates, status speaks the format
+label, file opens in Notepad/browser/WordPad/Word
+respectively.</label></li>
+<li><label><input type="checkbox" /><strong>Typed rogue
+extension:</strong> Save As, type <code>notes.pdf</code> – the Export
+routing prompt appears; accepting lands in Export as PDF; declining
+returns safely.</label></li>
+<li><label><input type="checkbox" /><strong>Binary protection:</strong>
+open any .pdf and any .xlsx, edit, Ctrl-S – the explanation speaks, Save
+As opens, the original file on disk is byte-identical.</label></li>
+<li><label><input type="checkbox" /><strong>Export each Tier-1
+format</strong> (with Pandoc installed) from an 8-line doc – line breaks
+survive in docx/odt/html/rtf outputs; PDF either produces a file or
+speaks the missing-PDF-engine error clearly.</label></li>
+<li><label><input type="checkbox" /><strong>DAISY export</strong> of the
+same doc – 8 phrases in the book.</label></li>
+<li><label><input type="checkbox" /><strong>First-line title:</strong>
+untitled doc starting <code># Trip Report</code>, Ctrl-S – name box
+pre-filled “Trip Report”.</label></li>
+<li><label><input type="checkbox" /><strong>Engine preference:</strong>
+flip <code>docx_write_engine</code> to pandoc, Save As .docx, open in
+Word – structure present, fonts absent, matching the described
+outcome.</label></li>
+</ul>
+<hr />
+<h2 id="part-7-decisions-taken-flag-if-you-disagree">Part 7: Decisions
+taken (flag if you disagree)</h2>
+<ol type="1">
+<li><strong>Line-break policy:</strong> one editor line = one paragraph
+everywhere (native writers already do this; Pandoc paths get
+<code>+hard_line_breaks</code>). The editor is the source of truth a
+screen reader user hears.</li>
+<li><strong>Save As .txt stays verbatim</strong> (#649 round-trip
+contract); “Save As Plain Text” remains the stripping path. Documented
+rather than changed.</li>
+<li><strong>No auto-reload after Save As .docx</strong> – reload would
+round-trip through a different engine and silently lose what was just
+saved. Announcement instead.</li>
+<li><strong><code>first_line_as_title</code> default flips to
+True.</strong> Stored explicit False is respected.</li>
+<li><strong>pydocx is evaluated, not adopted</strong> – it is a
+docx-to-HTML one-way reader, unmaintained for years; mammoth is the
+credible alternative if the bake-off shows MarkItDown gaps. Neither
+becomes a dependency inside this fix.</li>
+<li><strong>Engine preference starts with the docx route only</strong>
+(<code>auto</code> default preserves current behavior); the settings
+pattern generalizes to pptx/xlsx/pdf routes later if the bake-off
+motivates it.</li>
+</ol>
+<h2 id="suggested-reply-points-for-caroline">Suggested reply points for
+Caroline</h2>
+<ul>
+<li>The title bar and the reopened empty dialog were one bug: after a
+Word save, QUILL wrote the file but forgot to record that the document
+now lives there. Fixed.</li>
+<li>The lost line breaks were the old converter treating single newlines
+as soft wraps; the new native Word writer keeps every line, and the
+fallback converter is now told to do the same.</li>
+<li>Bonus from her report: QUILL now refuses to overwrite an opened
+PDF/spreadsheet with plain text, and suggests a filename from the first
+line when saving something untitled.</li>
+</ul>
+</body>
+</html>

@@ -159,9 +159,7 @@ def _read_docx(path: Path, *, engine: str = "auto") -> Document | None:
         try:
             from quill.io import pandoc as pandoc_mod
 
-            result = pandoc_mod.convert_document_with_pandoc(
-                path, "markdown", from_format="docx"
-            )
+            result = pandoc_mod.convert_document_with_pandoc(path, "markdown", from_format="docx")
             text = result.text
             if text.strip():
                 return Document(

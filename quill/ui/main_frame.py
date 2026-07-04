@@ -9779,9 +9779,7 @@ class MainFrame(
         link_style = str(
             getattr(getattr(self, "settings", None), "plain_text_link_style", "text_url")
         )
-        docx_engine = str(
-            getattr(getattr(self, "settings", None), "docx_write_engine", "auto")
-        )
+        docx_engine = str(getattr(getattr(self, "settings", None), "docx_write_engine", "auto"))
         write_document_as(
             document,
             target,  # type: ignore[arg-type]

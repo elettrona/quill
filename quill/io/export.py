@@ -69,6 +69,7 @@ class UnsupportedSaveFormatError(ValueError):
         )
         self.suffix = suffix
 
+
 _FENCE_RE = re.compile(r"^\s*(```|~~~)")
 _HEADING_RE = re.compile(r"^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$")
 _BLOCKQUOTE_RE = re.compile(r"^\s*>\s?(.*)$")
@@ -294,9 +295,7 @@ def write_docx_document(
         document.mark_saved(target)
         return target
     if engine == "native":
-        raise ValueError(
-            "The native Word writer needs python-docx, which is not installed."
-        )
+        raise ValueError("The native Word writer needs python-docx, which is not installed.")
 
     import tempfile
 

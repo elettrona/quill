@@ -488,7 +488,7 @@ QUILL ships a curated Tier-1 list of Pandoc-supported formats in the File menu a
 
 Post-conversion prompt rule (issue #262): when the target format is editable in QUILL (Markdown, CommonMark, GFM, HTML, plain text, CSV / TSV) the editor asks whether to open the new file in a new window. PDF, DOCX, EPUB, ODT, and RTF do not prompt; the file path is on the clipboard for pasting into File Explorer.
 
-##### 5.3a.1.1a Save As conversion pipeline and format truthfulness (shipped 0.9.0 Beta 2)
+##### 5.3a.1.1a Save As conversion pipeline and format truthfulness (shipped 0.9.0 Beta 1)
 
 **Save As converts; it never just renames.** The editor's canonical text is QUILL Markdown-style markup. `quill/io/export.py::write_document_as` is the single dispatcher every save routes through, keyed by target extension: `.rtf` re-serializes through the native RTF writer, `.docx` through `write_docx_document`, `.html`/`.htm`/`.xhtml` through the standalone HTML renderer, and `.txt`/`.md`/unknown text extensions are written verbatim (#649 round-trip contract; the explicit Save As Plain Text command is the stripping path, with the Illumination options).
 

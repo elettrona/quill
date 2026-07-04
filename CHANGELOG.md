@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.9.0 Beta 2 (in development)
+## 0.9.0 Beta 1
+
+The 0.9.0 beta. Rolls up everything through 0.8.0 (below) plus the features, fixes, and enhancements in this release — headlined by the new AI suite, the **Accessible Vault** (linked notes you can traverse by ear), the **GLOW accessibility suite** (guided document audit and repair, shipping as an experimental opt-in), the **ElevenLabs Read Aloud voice**, and a lighter, smaller install. This is the feature-complete cut for 0.9.0, and focus from here is polish. This section doubles as the in-app release notes: the same text appears when you **Check for Updates** and any time from **Help > What's New**.
+
+### Saving and converting: every save tells the truth
 
 - **Save As now finishes the job — the title bar, the modified flag, and the next Ctrl+S all tell the truth.** Saving as a Word document (.docx) wrote the file but never recorded that the document now lived there, so the title bar stayed "Untitled [modified]" and the next Ctrl+S reopened an empty Save As dialog (thank you, Caroline). Word was the only format with this gap; it is fixed and regression-tested for every format.
 - **Your line breaks survive every export.** Exports fed the document to Pandoc in a Markdown dialect where a single newline is a soft wrap, so consecutive lines merged into one long paragraph in Word, ODT, HTML, RTF, EPUB, and PDF output. Every export now treats one editor line as one paragraph — the same rule the native Word writer already follows.
@@ -9,10 +13,6 @@
 - **Save failures are reported honestly.** A failed write (disk full, file locked, conversion error) now produces a clear spoken error and leaves your document state untouched, instead of crashing or claiming success.
 - **Untitled documents suggest their own filename.** The Save dialog pre-fills the name from the document's first line (markup stripped, invalid characters removed) — now on by default. It only ever suggests; type over it freely, and it never renames a saved document.
 - **Choose your Word conversion engine — with the outcome described in plain language.** Two new settings: *Word document reading engine* (Auto / MarkItDown / Pandoc) and *Word document saving engine* (Auto / Native / Pandoc). Each choice says what it keeps and what it drops — Native keeps QUILL's fonts, sizes, colors, and alignment; Pandoc maps structure to Word styles but drops those codes; MarkItDown is fast and structural. The Convert File dialog gains a per-conversion engine choice whose description follows your selection. Defaults are unchanged. An engine bake-off (docs/qa/converter-bakeoff.md) backs every description with evidence — and permanently retires pydocx, which cannot run on any modern Python.
-
-## 0.9.0 Beta 1
-
-The 0.9.0 beta. Rolls up everything through 0.8.0 (below) plus the features, fixes, and enhancements in this release — headlined by the new AI suite, the **Accessible Vault** (linked notes you can traverse by ear), the **GLOW accessibility suite** (guided document audit and repair, shipping as an experimental opt-in), the **ElevenLabs Read Aloud voice**, and a lighter, smaller install. This is the feature-complete cut for 0.9.0, and focus from here is polish. This section doubles as the in-app release notes: the same text appears when you **Check for Updates** and any time from **Help > What's New**.
 
 ### What's New in this beta
 
