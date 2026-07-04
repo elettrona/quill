@@ -1062,6 +1062,11 @@ class MainFrame(
         self.features = FeatureManager.load(persistent=not safe_mode)
         self.macros = MacroManager.load(persistent=not safe_mode)
         self.settings = load_settings()
+        # Standalone dialogs announce Entered/Exited via dialog_contract directly,
+        # bypassing the gated wrappers; register the live setting to cover them.
+        from quill.ui.dialog_contract import set_transition_announcement_policy
+
+        set_transition_announcement_policy(lambda: self.settings.announce_dialog_transitions)
         # Remote feature kill switch: load the locally-cached locked set so any
         # active safety advisory is honored immediately at startup, even offline.
         from quill.core.safety.feature_lock import load_feature_locks
