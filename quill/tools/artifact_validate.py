@@ -347,13 +347,23 @@ def validate_artifact(
     artifact_type: str | None = None,
     *,
     strict: bool = False,
+    require_signed: bool = False,
 ) -> dict[str, Any]:
     """Validate the artifact at ``path`` and return a structured report.
 
     The report is JSON-serialisable: ``{path, type, label, status, errors,
-    warnings}`` where ``status`` is ``pass``, ``fail``, or ``unknown`` (type
-    could not be detected). With ``strict`` warnings also fail the artifact.
+    warnings, signature}`` where ``status`` is ``pass``, ``fail``, or
+    ``unknown`` (type could not be detected). With ``strict`` warnings also
+    fail the artifact. With ``require_signed`` an unsigned or bad-signature
+    artifact is also failed, and the per-type validator still runs so the
+    author sees the existing errors. ``signature`` is always present in the
+    report and contains a ``SignatureStatus`` dict or ``None`` when the type
+    could not be detected.
     """
+    # Import lazily so tests that patch PUBLIC_KEY_B64 after import time
+    # see the patched value.
+    from quill.tools.signing import signature_status
+
     detected = artifact_type or detect_artifact_type(path)
     if detected is None or detected not in _TYPES_BY_ID:
         return {
@@ -363,9 +373,15 @@ def validate_artifact(
             "status": "unknown",
             "errors": ["could not detect a supported QUILL artifact type"],
             "warnings": [],
+            "signature": None,
         }
+
+    sig = signature_status(path)
     errors, warnings = _VALIDATORS[detected](path)
     failed = bool(errors) or (strict and bool(warnings))
+    if require_signed and not sig.verified:
+        errors.append(f"signature: {sig.error or 'unsigned'}")
+        failed = True
     return {
         "path": str(path),
         "type": detected,
@@ -373,6 +389,12 @@ def validate_artifact(
         "status": "fail" if failed else "pass",
         "errors": errors,
         "warnings": warnings,
+        "signature": {
+            "signed": sig.signed,
+            "verified": sig.verified,
+            "signer_key_id": sig.signer_key_id,
+            "error": sig.error,
+        },
     }
 
 
@@ -381,6 +403,14 @@ def render_report(report: dict[str, Any]) -> str:
     lines = [f"{report['status'].upper()}  {report['path']}"]
     if report["label"]:
         lines.append(f"  type: {report['label']} ({report['type']})")
+    if report.get("signature") is not None:
+        sig = report["signature"]
+        if sig["verified"]:
+            lines.append(f"  signature: ok ({sig['signer_key_id']})")
+        elif sig["signed"]:
+            lines.append(f"  signature: invalid ({sig['error']})")
+        else:
+            lines.append(f"  signature: missing ({sig['error']})")
     for error in report["errors"]:
         lines.append(f"  error: {error}")
     for warning in report["warnings"]:
@@ -402,6 +432,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Override auto-detection with an explicit artifact type.",
     )
     parser.add_argument("--strict", action="store_true", help="Treat warnings as failures.")
+    parser.add_argument(
+        "--require-signed",
+        action="store_true",
+        help="Fail the artifact if no valid .minisig is present.",
+    )
     parser.add_argument("--json", action="store_true", help="Emit a machine-readable report.")
     args = parser.parse_args(argv)
 
@@ -409,7 +444,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: '{args.path}' not found.", file=sys.stderr)
         return 2
 
-    report = validate_artifact(args.path, args.type, strict=args.strict)
+    report = validate_artifact(
+        args.path, args.type, strict=args.strict, require_signed=args.require_signed
+    )
     if args.json:
         print(json.dumps(report, indent=2))
     else:
