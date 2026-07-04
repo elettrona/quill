@@ -5824,6 +5824,44 @@ traversing and reshaping text.</p>
 <p>Quill autosaves at a timed interval and keeps backup snapshots. It
 avoids unnecessary duplicate autosave writes and keeps state management
 efficient.</p>
+<h3 id="restore-points-bring-back-any-earlier-save">Restore points —
+bring back any earlier save</h3>
+<p>Every time you save, QUILL quietly keeps a snapshot of the document.
+<strong>File &gt; Restore Previous Version</strong> lists them in plain
+language — “Today at 4:12 PM - 2,341 words” — newest first. Pick one and
+choose:</p>
+<ul>
+<li><strong>Restore</strong> — replace the editor text with that
+version. Your current text is saved as a restore point first, so
+restoring is itself reversible, and the document is marked modified so
+nothing touches the disk until you save.</li>
+<li><strong>Open as Copy</strong> — open the earlier version as a new
+untitled document, leaving your current document exactly as it is. Good
+for comparing or rescuing a paragraph.</li>
+</ul>
+<p>Some honest details worth knowing:</p>
+<ul>
+<li>Saving unchanged text stores nothing extra — snapshots are
+content-based, so identical saves are free.</li>
+<li>Keeping a snapshot can never be the reason a save fails. If the disk
+is full, your save still completes; QUILL just logs that the snapshot
+was skipped.</li>
+<li>History thins as it ages: everything from the last week is kept,
+then one version per day for a month, then one per week, and the newest
+five versions are never pruned. <strong>Restore point disk limit
+(MB)</strong> in Preferences caps how much space one document’s history
+can use (200 MB by default), and <strong>Keep restore points when
+saving</strong> turns the feature off entirely.</li>
+<li>The command <code>file.restore_previous_version</code> has no
+default shortcut; assign one in the Keymap Editor if you reach for it
+often.</li>
+</ul>
+<p>How this fits with QUILL’s other safety nets: <strong>undo</strong>
+(and persistent undo) covers the current editing session,
+<strong>backups</strong> keep a copy of what was on disk just before
+each save, and <strong>restore points</strong> are the long-term history
+— any earlier save, days or weeks later, across restarts. You never need
+to choose between them; they all just run.</p>
 <h3 id="recovery">Recovery</h3>
 <p>If Quill closes unexpectedly, it can offer a recovery snapshot on the
 next launch. That is not a dramatic feature. It is a humane one.</p>

@@ -2762,6 +2762,23 @@ A small family of related commands that make working with links comfortable for 
 - **Persistent undo** keeps each document's undo stack alongside its autosave snapshots. Reopening a recently closed document restores up to 100 undo steps. Off by default for plain-text files larger than 5 MB. Stored in `%APPDATA%\Quill\undo\<hash>.undo`, atomically written, auto-pruned at 30 days.
 - **Crash-safe autosave**: snapshots write to `…snap.tmp` and rename to `…snap` on flush so a power loss mid-write cannot corrupt the recovery store.
 
+### 5.39a Restore points — per-save document history (shipped 0.9.0 Beta 1)
+
+The first shipped slice of the QUILL Sync plan (`docs/planning/quill-sync-plan.md`, section 7): document versioning, entirely offline, with no sync engine involved.
+
+**Model.** Every successful save snapshots the document's canonical text into a content-addressed store (`restore_points/<doc-key>/blobs/<sha256>.txt` + an atomically-written `index.json`, under the QUILL data dir). Content addressing makes unchanged saves free and gives dedup without reference counting. The store is wx-free, strict-typed `quill/core/restore_points.py`.
+
+**Invariants.**
+
+- Recording is best-effort by contract: the save-path hook (`_record_save_restore_point`, called from the `_write_document_to_disk` chokepoint so every save path is covered) is fully guarded — a snapshot failure can never be the reason a save fails.
+- Restoring is itself reversible: the current text is recorded as a restore point (source `restore`) before it is replaced, and the restore lands in the editor as a modified buffer — nothing touches disk until the user saves.
+- Retention thins by age (keep 7 days fully, then daily to 30 days, then weekly) under a per-document size cap (`restore_points_max_mb`, default 200, clamped 10-5000); the newest five versions are never pruned regardless of the cap.
+- Documents over 20 MB of text are not snapshotted (the cap would be consumed by a handful of saves).
+
+**UI.** `File > Restore Previous Version...` (command `file.restore_previous_version`, assignable, no default key) lists versions with speakable labels ("Today at 4:12 PM - 2,341 words", "(before a restore)" marking pre-restore snapshots), skips the version identical to the current editor text, and offers **Restore** (confirmed, announced, one editor-level undo of a restore via the pre-restore snapshot) and **Open as Copy** (a new untitled tab). Settings: **Keep restore points when saving** (default on) and the disk limit, both with speakable specs.
+
+**Relationship to the other safety nets.** Persistent undo is in-session; `core.backups` keeps the single pre-save `.bak`; restore points are the cross-session, long-horizon history above both. The Sync plan's later phases reuse this exact store as the sync engine's version layer.
+
 ### 5.40 Paragraph, line, and footnote refinements
 
 - **Join paragraph** (`Ctrl+Shift+J`): collapses a wrapped paragraph (the kind produced by plain-text email or older PDF extracts) into a single line, preserving sentence-internal spacing. Works on the current paragraph or selection. Idempotent.

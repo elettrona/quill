@@ -979,6 +979,29 @@ Word."* No mystery, no wondering which format you are "really" in.
 file now produces a clear spoken error and leaves your document exactly as it
 was - never a crash, never a success message over a file that was not written.
 
+### Restore points: any earlier save, back in one dialog
+
+While fixing how saving *talks*, this beta also changes what saving *keeps*.
+Every save now records a quiet snapshot of your document, and **File >
+Restore Previous Version** brings the history to you in plain language:
+"Today at 4:12 PM - 2,341 words." Pick a version and either **Restore** it —
+QUILL saves your current text as a restore point first, so even restoring is
+reversible, and nothing touches the disk until you save — or **Open as Copy**
+to put the old version in a new tab beside your current one.
+
+The engineering is deliberately humble. Snapshots are content-based, so
+saving unchanged text stores nothing. Keeping a snapshot can never be the
+reason a save fails — if the disk is full, your save still completes. And the
+history thins as it ages like a well-kept journal: everything from the last
+week, then one version per day for a month, then one per week, with the
+newest five never pruned and a per-document disk cap in Preferences.
+
+Where this sits among QUILL's safety nets: undo covers the current session,
+backups keep the copy from just before each save, and restore points are the
+long memory — last Tuesday's draft, back in three keystrokes. It is also the
+first shipped piece of the QUILL Sync plan: the same version store becomes
+the sync engine's history layer when sync arrives in a future release.
+
 ### Small kindness, big difference: the filename suggestion
 
 Save an untitled document and the name box now arrives pre-filled from your
