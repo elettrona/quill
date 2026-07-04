@@ -221,7 +221,8 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "bool",
         "When you save an untitled document, pre-fill the Save dialog with a name "
         "taken from the document's first line. Works across formats and strips "
-        "leading markup (a Markdown heading, a quote, or a list bullet).",
+        "leading markup (a Markdown heading, a quote, or a list bullet). On by "
+        "default; it never renames an already-saved document.",
         keywords=("title", "filename", "first line", "save", "name", "heading"),
     ),
     SettingSpec(

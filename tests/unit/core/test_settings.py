@@ -790,10 +790,14 @@ def test_corrupt_settings_file_is_quarantined_then_defaults(
     assert backups[0].read_text(encoding="utf-8") == "{ this is not valid json"
 
 
-def test_first_line_as_title_defaults_off_and_round_trips(
+def test_first_line_as_title_defaults_on_and_round_trips(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    assert Settings().first_line_as_title is False
+    # On by default: it only ever pre-fills the name for an *untitled* document,
+    # turning a blank Save As name box into a meaningful proposal.
+    assert Settings().first_line_as_title is True
     monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
-    save_settings(Settings(first_line_as_title=True))
-    assert load_settings().first_line_as_title is True
+    # An explicit opt-out survives the round trip; the default only applies
+    # when the key is absent.
+    save_settings(Settings(first_line_as_title=False))
+    assert load_settings().first_line_as_title is False

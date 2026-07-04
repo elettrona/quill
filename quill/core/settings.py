@@ -74,8 +74,9 @@ class Settings:
     recent_files_limit: int = 10
     recent_files_auto_clear_missing: bool = False
     # When saving an untitled document, suggest a filename from its first line
-    # (works across formats; strips leading markup). Opt-in.
-    first_line_as_title: bool = False
+    # (works across formats; strips leading markup). On by default: it only
+    # pre-fills the name for an untitled document, never renames anything.
+    first_line_as_title: bool = True
     # Background model warm-up after startup so the first use is fast. Loads the
     # model into memory; turn off to save RAM if you don't use the feature.
     warm_dictation_model: bool = True
@@ -598,7 +599,7 @@ class Settings:
         except (TypeError, ValueError):
             recent_files_limit = 10
         recent_files_auto_clear_missing = bool(data.get("recent_files_auto_clear_missing", False))
-        first_line_as_title = bool(data.get("first_line_as_title", False))
+        first_line_as_title = bool(data.get("first_line_as_title", True))
         warm_dictation_model = bool(data.get("warm_dictation_model", True))
         warm_kokoro_model = bool(data.get("warm_kokoro_model", True))
         tray_enabled = bool(data.get("tray_enabled", False))
