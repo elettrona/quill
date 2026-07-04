@@ -62,11 +62,31 @@ def open_hub_submission(
     target = chosen.parent if chosen.name.lower() == "manifest.json" else chosen
 
     from quill.tools.artifact_validate import render_report, validate_artifact
+    from quill.tools.signing import signature_status
 
     report = validate_artifact(target)
     passed = report["status"] == "pass"
     headline = _headline(report["status"])
     body_text = headline + "\n\n" + render_report(report)
+
+    # Signature status (always shown -- this is the user's only chance to
+    # see whether their artifact is signed before they upload it to the
+    # Hub, where unsigned submissions are now rejected).
+    sig = signature_status(target)
+    if sig.verified:
+        body_text += f"\n\nSignature: verified, signed by {sig.signer_key_id}."
+    elif sig.signed:
+        body_text += (
+            f"\n\nSignature: invalid ({sig.error or 'does not match publisher key'}). "
+            "The Hub will reject this until you re-sign it."
+        )
+    else:
+        body_text += (
+            "\n\nSignature: not signed. The Hub rejects unsigned submissions. "
+            "Re-sign with 'python -m quill.tools.signing sign <artifact>' and "
+            "upload the .minisig sidecar alongside."
+        )
+
     if passed:
         body_text += (
             "\n\nNext step: choose 'Open the Quillin Hub' to start your submission. "
@@ -89,7 +109,7 @@ def open_hub_submission(
     sizer.Add(text, 1, wx.EXPAND | wx.ALL, 8)
 
     buttons = wx.BoxSizer(wx.HORIZONTAL)
-    if passed:
+    if passed and sig.verified:
         open_button = wx.Button(dialog, label="&Open the Quillin Hub")
 
         def on_open_hub(_event: object) -> None:

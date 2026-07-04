@@ -16,6 +16,7 @@ Run as a cron job or worker::
 
 import json
 import os
+import re
 
 from app import db
 from app.models.database import Artifact
@@ -23,13 +24,38 @@ from github import Github
 
 _REPO = "Community-Access/quill"
 
+# Match the 'key id:' line in a minisig-shaped sidecar. We use a
+# permissive match (whitespace, any non-empty key id) so that a
+# future minisig variant or a manually-edited sidecar still parses.
+_SIG_KEY_ID_RE = re.compile(r"^key id:\s*(\S+)", re.MULTILINE)
+
 # Roots scanned for Quillin directories (manifest.json per child directory).
 _QUILLIN_ROOTS = ("quill/quillins_bundled",)
 # Root scanned for single-file AI agents (.md / .json).
 _AGENT_ROOT = "quill/core/ai/agents"
 
 
-def _upsert(manifest_id, artifact_type, name, version, description, download_url):
+def _read_signer_key_id(repo, sidecar_path: str) -> str | None:
+    """Return the signer key id from a minisig-shaped sidecar, or None.
+
+    The Hub does not enforce the presence of a sidecar; it just records
+    the signer key id when one is found. Bundled Quillin directories
+    don't have a sidecar (the sidecar convention is <file>.minisig);
+    single-file artifacts (agents, packs) do.
+    """
+    try:
+        content = repo.get_contents(sidecar_path)
+    except Exception:  # noqa: BLE001 - missing sidecar is normal
+        return None
+    text = content.decoded_content.decode("utf-8", errors="replace")
+    match = _SIG_KEY_ID_RE.search(text)
+    return match.group(1) if match else None
+
+
+def _upsert(
+    manifest_id, artifact_type, name, version, description,
+    download_url, signer_key_id=None,
+):
     artifact = Artifact.query.filter_by(manifest_id=manifest_id).first()
     if not artifact:
         artifact = Artifact(manifest_id=manifest_id)
@@ -39,6 +65,7 @@ def _upsert(manifest_id, artifact_type, name, version, description, download_url
     artifact.description = description or ""
     artifact.status = "Verified"  # main is post-review by definition
     artifact.download_url = download_url
+    artifact.signer_key_id = signer_key_id
     db.session.add(artifact)
     db.session.commit()
 
@@ -83,6 +110,7 @@ def _sync_skill_packs_in(repo, repo_name, directory):
             source = content_file.decoded_content.decode("utf-8")
             front = _front_matter(source)
             name = front.get("name", content_file.name)
+            signer = _read_signer_key_id(repo, f"{content_file.path}.minisig")
             _upsert(
                 manifest_id=f"sqp:{content_file.name[: -len('.sqp')]}",
                 artifact_type="skill-pack",
@@ -90,6 +118,7 @@ def _sync_skill_packs_in(repo, repo_name, directory):
                 version=front.get("version", "0.0.0"),
                 description=front.get("description", ""),
                 download_url=f"https://github.com/{repo_name}/raw/main/{content_file.path}",
+                signer_key_id=signer,
             )
         except Exception as exc:  # noqa: BLE001
             print(f"Error syncing skill pack {content_file.path}: {exc}")
@@ -122,6 +151,7 @@ def _sync_agents(repo, repo_name):
                 name = front.get("display_name", agent_id)
                 description = front.get("description", "")
                 version = front.get("version", "0.0.0")
+            signer = _read_signer_key_id(repo, f"{content_file.path}.minisig")
             _upsert(
                 manifest_id=f"agent:{agent_id}",
                 artifact_type="agent",
@@ -129,6 +159,7 @@ def _sync_agents(repo, repo_name):
                 version=version,
                 description=description,
                 download_url=f"https://github.com/{repo_name}/raw/main/{content_file.path}",
+                signer_key_id=signer,
             )
         except Exception as exc:  # noqa: BLE001
             print(f"Error syncing agent {content_file.path}: {exc}")

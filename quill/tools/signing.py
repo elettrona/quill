@@ -62,16 +62,22 @@ class SignatureStatus:
 
 
 def _resolve_pubkey_path() -> Path:
-    override = Path(__file__).resolve().parent.parent.parent
+    import os
+
+    env_path = os.environ.get("SIGNING_PUBLIC_KEY_PATH")
+    if env_path and Path(env_path).exists():
+        return Path(env_path)
+    repo_root = Path(__file__).resolve().parent.parent.parent
     candidates = [
-        override / "quill-pub.key",
-        override / "quillin-hub" / "quill-pub.key",
+        repo_root / "quill-pub.key",
+        repo_root / "quillin-hub" / "quill-pub.key",
     ]
     for candidate in candidates:
         if candidate.exists():
             return candidate
     raise FileNotFoundError(
-        "No publisher public key found. Expected quill-pub.key or quillin-hub/quill-pub.key."
+        "No publisher public key found. Expected quill-pub.key, "
+        "quillin-hub/quill-pub.key, or SIGNING_PUBLIC_KEY_PATH."
     )
 
 
@@ -140,13 +146,14 @@ def sign_artifact(
 def verify_artifact(
     artifact_path: Path,
     public_key: nacl_signing.VerifyKey | None = None,
+    sidecar: Path | None = None,
 ) -> SignatureStatus:
     """Verify a sidecar signature. Fail-closed: never raises."""
-    sidecar = sidecar_path(artifact_path)
-    if not sidecar.exists():
+    sidecar_path_resolved = sidecar if sidecar is not None else sidecar_path(artifact_path)
+    if not sidecar_path_resolved.exists():
         return SignatureStatus(False, False, None, "no sidecar .minisig")
     try:
-        sig, kid = read_minisig(sidecar)
+        sig, kid = read_minisig(sidecar_path_resolved)
     except (OSError, ValueError) as exc:
         return SignatureStatus(True, False, None, f"unreadable sidecar: {exc}")
     if public_key is None:
@@ -163,19 +170,32 @@ def verify_artifact(
     return SignatureStatus(True, True, kid, None)
 
 
-def signature_status(artifact_path: Path) -> SignatureStatus:
+def signature_status(artifact_path: Path, sidecar: Path | None = None) -> SignatureStatus:
     """Public alias for ``verify_artifact`` with the default key.
 
-    Uses the bundled public key (or the in-memory ``PUBLIC_KEY_B64`` if
-    tests have monkeypatched it).
+    Resolves the public key at call time: ``SIGNING_PUBLIC_KEY_PATH`` env
+    var (Hub deploy + smoke test), else the in-memory ``PUBLIC_KEY_B64``
+    (tests that monkeypatched it), else the bundled key file.
+    The ``sidecar`` argument lets callers point at an explicitly-uploaded
+    sidecar (e.g. when the artifact lives in a different directory after
+    Flask saved the upload).
     """
+    import os
+
+    env_path = os.environ.get("SIGNING_PUBLIC_KEY_PATH")
+    if env_path and Path(env_path).exists():
+        try:
+            vk = load_publisher_public_key_from(Path(env_path))
+        except ValueError as exc:
+            return SignatureStatus(True, False, None, f"public key unavailable: {exc}")
+        return verify_artifact(artifact_path, public_key=vk, sidecar=sidecar)
     if PUBLIC_KEY_B64:
         try:
             vk = load_publisher_public_key_from_value(PUBLIC_KEY_B64)
         except ValueError as exc:
             return SignatureStatus(True, False, None, f"public key unavailable: {exc}")
-        return verify_artifact(artifact_path, public_key=vk)
-    return verify_artifact(artifact_path, public_key=None)
+        return verify_artifact(artifact_path, public_key=vk, sidecar=sidecar)
+    return verify_artifact(artifact_path, public_key=None, sidecar=sidecar)
 
 
 def load_publisher_public_key_from_value(b64: str) -> nacl_signing.VerifyKey:

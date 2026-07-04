@@ -2,12 +2,15 @@
 
 Every submission, whatever its type, flows through the same three stages:
 
-1. **Validation** -- ``python -m quill.tools.artifact_validate --json`` is the
+1. **Signature verification** -- ``quill.tools.signing.signature_status()``
+   runs first, before validation. An unsigned submission is rejected before
+   its content is parsed.
+2. **Validation** -- ``python -m quill.tools.artifact_validate --json`` is the
    single authority. It detects the artifact type and runs the exact checks
    QUILL itself uses (quillin_lint, agent_lint, the pack loaders).
-2. **Security scan** (Quillins only) -- Bandit over any Python, plus the AST
+3. **Security scan** (Quillins only) -- Bandit over any Python, plus the AST
    SecurityWatchdog for capability honesty.
-3. **Metadata extraction** -- the Forge reads the artifact's own manifest or
+4. **Metadata extraction** -- the Forge reads the artifact's own manifest or
    front matter so submitters never retype their name, version, and
    description.
 """
@@ -17,6 +20,7 @@ import os
 import subprocess
 import sys
 import zipfile
+from pathlib import Path
 from typing import Any
 
 from .security_scanner import SecurityWatchdog
@@ -195,13 +199,36 @@ def _security_scan(upload_path: str, manifest: dict[str, Any]) -> tuple[str | No
     return (bandit_report, watchdog_report)
 
 
-def audit_submission(upload_path: str, artifact_type: str | None = None) -> dict[str, Any]:
+def audit_submission(
+    upload_path: str,
+    artifact_type: str | None = None,
+    sidecar_path: str | None = None,
+    sign_target: str | None = None,
+) -> dict[str, Any]:
     """End-to-end audit of any Hub submission.
 
+    The signature check runs first, before the validator, so an unsigned
+    submission is rejected before its content is parsed. ``sidecar_path``
+    is the explicitly-uploaded ``.minisig`` file. ``sign_target`` is the
+    path whose bytes the sidecar actually signs (for a zipped Quillin
+    the sidecar signs the *zip* bytes, not the extracted files);
+    defaults to ``upload_path``.
+
     Returns ``{status, artifact_type, label, metadata, reports}`` where
-    ``status`` is PASS / FAIL / ERROR and ``reports`` carries the validator,
-    security, and watchdog details.
+    ``status`` is PASS / FAIL / ERROR and ``reports`` carries the signature,
+    validator, security, and watchdog details.
     """
+    from quill.tools.signing import signature_status
+
+    sig_target = sign_target or upload_path
+    sig = signature_status(Path(sig_target), sidecar=Path(sidecar_path) if sidecar_path else None)
+    sig_dict = {
+        "signed": sig.signed,
+        "verified": sig.verified,
+        "signer_key_id": sig.signer_key_id,
+        "error": sig.error,
+    }
+
     validation = _run_artifact_validate(upload_path, artifact_type)
     detected_type = validation.get("type") or artifact_type
 
@@ -211,6 +238,7 @@ def audit_submission(upload_path: str, artifact_type: str | None = None) -> dict
         "label": validation.get("label"),
         "metadata": extract_metadata(upload_path, detected_type),
         "reports": {
+            "signature": sig_dict,
             "validator": {
                 "errors": validation.get("errors", []),
                 "warnings": validation.get("warnings", []),
@@ -223,6 +251,8 @@ def audit_submission(upload_path: str, artifact_type: str | None = None) -> dict
     if validation.get("status") == "error":
         results["status"] = "ERROR"
         return results
+    if not sig.verified:
+        results["status"] = "FAIL"
     if validation.get("status") in ("fail", "unknown"):
         results["status"] = "FAIL"
 

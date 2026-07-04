@@ -32,18 +32,26 @@ def _allowed_upload(filename: str) -> bool:
     return any(lowered.endswith(suffix) for suffix in accepted_suffixes())
 
 
-def _prepare_upload(file_storage) -> tuple[str, str]:
-    """Save the upload and return (audit_path, saved_path).
+def _prepare_upload(file_storage, signature_storage=None) -> tuple[str, str, str | None]:
+    """Save the upload (and an optional sidecar) and return (audit_path, saved_path, sidecar_path).
 
     Quillin ZIPs are extracted so the linter and security scan see real files;
     every other type is audited as the single file it is (.qsp stays zipped --
-    the sound-pack loader reads ZIPs natively).
+    the sound-pack loader reads ZIPs natively). If a signature sidecar is
+    uploaded (``<artifact>.minisig``), it is saved next to the artifact so
+    the linter can verify the signature.
     """
     filename = secure_filename(file_storage.filename or "artifact")
     upload_dir = os.path.join(current_app.config["UPLOAD_FOLDER"], uuid.uuid4().hex)
     os.makedirs(upload_dir, exist_ok=True)
     saved_path = os.path.join(upload_dir, filename)
     file_storage.save(saved_path)
+
+    sidecar_path: str | None = None
+    if signature_storage is not None and signature_storage.filename:
+        sidecar_name = secure_filename(signature_storage.filename)
+        sidecar_path = os.path.join(upload_dir, sidecar_name)
+        signature_storage.save(sidecar_path)
 
     if filename.lower().endswith(".zip"):
         extract_dir = os.path.join(upload_dir, "extracted")
@@ -53,9 +61,9 @@ def _prepare_upload(file_storage) -> tuple[str, str]:
             if total > _MAX_UPLOAD_BYTES:
                 raise ValueError("archive expands beyond the 32 MB submission limit")
             archive.extractall(extract_dir)
-        return (extract_dir, saved_path)
+        return (extract_dir, saved_path, sidecar_path)
 
-    return (saved_path, saved_path)
+    return (saved_path, saved_path, sidecar_path)
 
 
 def _github_links(metadata: dict, artifact_type_id: str | None) -> dict[str, str]:
@@ -120,7 +128,8 @@ def submit():
         requested_type = None
 
     try:
-        audit_path, _saved_path = _prepare_upload(upload)
+        signature = request.files.get("signature")
+        audit_path, _saved_path, sidecar_path = _prepare_upload(upload, signature)
     except (ValueError, zipfile.BadZipFile, OSError) as exc:
         return render_template(
             "submit_form.html",
@@ -130,7 +139,12 @@ def submit():
             error=f"Could not read the upload: {exc}",
         ), 400
 
-    results = audit_submission(audit_path, requested_type)
+    results = audit_submission(
+        audit_path,
+        requested_type,
+        sidecar_path=sidecar_path,
+        sign_target=_saved_path,
+    )
 
     submission = Submission(
         artifact_type=results.get("artifact_type"),

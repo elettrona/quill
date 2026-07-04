@@ -34,6 +34,7 @@ class Artifact(db.Model):
     download_url = db.Column(db.String(512))
     status = db.Column(db.String(20), default="Pending")  # Pending, Verified, Rejected
     is_gold_standard = db.Column(db.Boolean, default=False)
+    signer_key_id = db.Column(db.String(64), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 

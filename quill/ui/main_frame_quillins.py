@@ -1087,6 +1087,28 @@ class QuillinsMenuMixin:
                     active = is_event_enabled(item.id, event_name)
                     lines.append(f"  {title} ({event_name}): {'on' if active else 'off'}")
         lines.append(f"Enabled: {'yes' if item.enabled else 'no'}")
+
+        # Signature: a Quillin shipped with the repo (or installed from a
+        # signed zip) carries a .minisig sidecar; unsigned Quillins are
+        # visible in the manager but flagged so the user knows the source
+        # is not publisher-attested.
+        try:
+            from quill.tools.signing import signature_status
+
+            sig = signature_status(Path(item.directory) / "manifest.json")
+            if sig.verified:
+                lines.append(f"Signature: verified, signed by {sig.signer_key_id}.")
+            elif sig.signed:
+                lines.append(
+                    f"Signature: invalid ({sig.error or 'does not match publisher key'})."
+                )
+            else:
+                lines.append(
+                    "Signature: unsigned. This Quillin is not publisher-attested."
+                )
+        except (OSError, ValueError) as exc:
+            lines.append(f"Signature: check failed ({exc}).")
+
         if item.errors:
             lines.append("")
             lines.append("Problems:")
