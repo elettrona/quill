@@ -434,7 +434,13 @@ from quill.core.yaml_structure import (
     extract_yaml_nodes,
     rename_yaml_node,
 )
-from quill.io.export import format_label_for_path, write_document_as, write_plain_text_document
+from quill.io.export import (
+    EXPORT_ONLY_SUFFIXES,
+    HTML_SUFFIXES,
+    format_label_for_path,
+    write_document_as,
+    write_plain_text_document,
+)
 from quill.io.open_read import OFFICE_STREAM_SUFFIXES as _OFFICE_STREAM_SUFFIXES
 from quill.io.open_read import read_open_document
 from quill.io.pandoc import (
@@ -8196,10 +8202,14 @@ class MainFrame(
 
         self._set_status(f"Exporting to {target.name} via Pandoc...")
         try:
+            # hard_line_breaks: the editor is line-oriented (one editor line is
+            # one paragraph), so bare "gfm" — where a single newline is a soft
+            # wrap — would join the user's lines into one paragraph in every
+            # exported format.
             convert_file_with_pandoc(
                 self.document.path or Path(""),
                 target,
-                from_format="gfm",
+                from_format="gfm+hard_line_breaks",
                 to_format=format_name,
             )
         except (PandocUnavailableError, PandocConversionError, ValueError) as error:
@@ -8702,9 +8712,12 @@ class MainFrame(
             word_mode = (
                 self._resolve_word_open_mode(selected_path) if suffix in {".doc", ".docx"} else None
             )
+            docx_engine = self._docx_read_engine()
             self._run_background_task(
                 f"Opening {selected_path.name}",
-                lambda _progress: read_open_document(selected_path, suffix, word_mode=word_mode),
+                lambda _progress: read_open_document(
+                    selected_path, suffix, word_mode=word_mode, docx_engine=docx_engine
+                ),
                 finish,
             )
             return
@@ -8713,6 +8726,14 @@ class MainFrame(
         if suffix in {".csv", ".tsv"}:
             csv_mode = self._resolve_csv_open_mode(selected_path)
         finish(read_open_document(selected_path, suffix, csv_mode=csv_mode))
+
+    def _docx_read_engine(self) -> str:
+        """The ``docx_read_engine`` setting, resolved on the UI thread.
+
+        Workers must not touch settings mid-run, so callers capture this before
+        handing a read to the task manager (same pattern as ``word_mode``).
+        """
+        return str(getattr(getattr(self, "settings", None), "docx_read_engine", "auto"))
 
     def _maybe_apply_illumination(self, loaded: object, selected_path: Path, suffix: str) -> bool:
         """Restore hidden formatting from a ``<name>.illumination`` sidecar when
@@ -9758,7 +9779,13 @@ class MainFrame(
         link_style = str(
             getattr(getattr(self, "settings", None), "plain_text_link_style", "text_url")
         )
-        write_document_as(document, target, plain_text_link_style=link_style)  # type: ignore[arg-type]
+        docx_engine = str(getattr(getattr(self, "settings", None), "docx_write_engine", "auto"))
+        write_document_as(
+            document,
+            target,  # type: ignore[arg-type]
+            plain_text_link_style=link_style,
+            docx_engine=docx_engine,
+        )
         self._sync_publishing_linkage_for_document(document)  # type: ignore[arg-type]
 
     def _sync_publishing_linkage_for_document(self, document: Document) -> None:
@@ -9787,10 +9814,25 @@ class MainFrame(
         upsert_publishing_linkage(path, entry)
 
     def save_file(self) -> None:
+        wx = self._wx
         if self._active_tab().read_only_remote:
             self.save_copy_remote()
             return
         if self.document.path is None:
+            self.save_file_as()
+            return
+        path = self.document.path
+        if path.suffix.lower() in EXPORT_ONLY_SUFFIXES:
+            # e.g. an opened PDF: the buffer is extracted text. Writing it back
+            # would destroy the binary original, so route to Save As instead.
+            self._show_message_box(
+                f"{self.document.name} was opened as extracted text. QUILL cannot "
+                f"write {path.suffix} files directly, so saving over the original "
+                "would destroy it. Choose a new name and format (Markdown, Word, "
+                "HTML, RTF, or text), or use File > Export.",
+                "Save",
+                wx.ICON_INFORMATION | wx.OK,
+            )
             self.save_file_as()
             return
         # Optional pre-save proofread (off by default): review misspellings in the
@@ -9799,7 +9841,16 @@ class MainFrame(
             self.open_spell_check_dialog()
         if self.document.modified:
             backup_document(self.document)
-        self._write_document_to_disk(self.document)
+        try:
+            self._write_document_to_disk(self.document)
+        except OSError as error:
+            self._show_message_box(
+                f"Could not save {self.document.name}: {error}",
+                "Save",
+                wx.ICON_ERROR | wx.OK,
+            )
+            self._set_status(f"Could not save {self.document.name}")
+            return
         # Persist this document's bookmarks + cursor position under its path now that
         # it is saved (also migrates an untitled document's in-memory bookmarks).
         self._save_active_bookmarks()
@@ -9962,6 +10013,15 @@ class MainFrame(
     # Save As wildcard filter index -> the extension that filter implies.
     _SAVE_FILTER_EXTENSIONS = {0: ".txt", 1: ".md", 2: ".html", 3: ".rtf", 4: ".docx"}
 
+    @staticmethod
+    def _export_route_for_suffix(suffix: str) -> str | None:
+        """The Pandoc export format for an export-only Save As target, or ``None``.
+
+        Save As cannot write these formats itself; the ones Pandoc can produce
+        get offered a hand-off to File > Export, the rest are refused outright.
+        """
+        return {".pdf": "pdf", ".odt": "odt", ".epub": "epub"}.get(suffix.lower())
+
     def _resolve_save_target(self, target: Path, filter_index: int) -> Path:
         """Give ``target`` an extension from the chosen type filter when none typed.
 
@@ -10022,6 +10082,30 @@ class MainFrame(
             target = self._resolve_save_target(Path(dialog.GetPath()), chosen_filter)
             self._last_file_dir = str(target.parent)
 
+        if target.suffix.lower() in EXPORT_ONLY_SUFFIXES:
+            # A typed .pdf/.odt/.epub/... would otherwise write Markdown text
+            # into a file other apps cannot open. Route Pandoc-capable targets
+            # to File > Export; refuse the rest with a pointer to the type list.
+            export_format = self._export_route_for_suffix(target.suffix)
+            if export_format is not None:
+                answer = self._show_message_box(
+                    f"QUILL saves Markdown, Word, HTML, RTF, and text directly. "
+                    f"{target.suffix} goes through Export instead, which converts "
+                    "with Pandoc. Open Export now?",
+                    "Use Export for this format",
+                    wx.ICON_QUESTION | wx.YES_NO | wx.YES_DEFAULT,
+                )
+                if answer == wx.YES:
+                    self.export_document(export_format)
+                return
+            self._show_message_box(
+                f"QUILL cannot save to {target.suffix}. Choose Markdown, Word, "
+                "HTML, RTF, or text in the Save as type list.",
+                "Format not supported",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+
         # Optional pre-save proofread (off by default), after the user has chosen
         # the destination but before the file is written.
         if getattr(self.settings, "spell_check_before_save", False):
@@ -10029,7 +10113,16 @@ class MainFrame(
         self.document.set_text(self.editor.GetValue())
         if self.document.modified and self.document.path is not None:
             backup_document(self.document)
-        self._write_document_to_disk(self.document, target)
+        try:
+            self._write_document_to_disk(self.document, target)
+        except OSError as error:
+            self._show_message_box(
+                f"Could not save {target.name}: {error}",
+                "Save file as",
+                wx.ICON_ERROR | wx.OK,
+            )
+            self._set_status(f"Could not save {target.name}")
+            return
         # FEAT-19: restart the watcher on the new path so our save is the baseline.
         self._stop_external_change_watcher()
         self._start_external_change_watcher()
@@ -10049,7 +10142,25 @@ class MainFrame(
         self._refresh_title()
         self._refresh_sessions_menu()
         self._set_status(f"Saved as {target.name} ({format_label_for_path(target)})")
+        self._announce_save_as_conversion(target)
         self._maybe_reload_surface_after_save_as(target)
+
+    def _announce_save_as_conversion(self, target: Path) -> None:
+        """Speak what a converting Save As actually did.
+
+        The file on disk is now Word/RTF/HTML, but the editing surface still
+        holds QUILL's canonical text and every subsequent save re-converts it.
+        That model is deliberate; this makes it audible instead of silent.
+        Verbatim formats (.md/.txt/unknown) stay quiet — the status line
+        already names them and nothing was converted.
+        """
+        if target.suffix.lower() not in ({".docx", ".rtf"} | HTML_SUFFIXES):
+            return
+        label = format_label_for_path(target)
+        self._announce(
+            f"Saved as {target.name}, {label} format. You are still editing "
+            f"QUILL text; each save converts it to {label}."
+        )
 
     def _surface_kind_for_path(self, path: Path) -> str:
         """The editing surface ``open_file`` would use for ``path``.
@@ -10114,7 +10225,7 @@ class MainFrame(
         """
         suffix = target.suffix.lower()
         try:
-            result = read_open_document(target, suffix)
+            result = read_open_document(target, suffix, docx_engine=self._docx_read_engine())
         except Exception:
             self._set_status("Could not reload in the matching view.")
             return
@@ -10307,8 +10418,12 @@ class MainFrame(
                         else None
                     )
 
+                    docx_engine = self._docx_read_engine()
+
                     def _worker(_progress: object) -> tuple[object, object]:
-                        return read_open_document(selected_path, suffix, word_mode=word_mode)
+                        return read_open_document(
+                            selected_path, suffix, word_mode=word_mode, docx_engine=docx_engine
+                        )
 
                     self._run_background_task(
                         f"Opening {download.filename}",
@@ -10460,9 +10575,10 @@ class MainFrame(
         from quill.io.open_read import OFFICE_STREAM_SUFFIXES
 
         if suffix in OFFICE_STREAM_SUFFIXES:
+            docx_engine = self._docx_read_engine()
             self._run_background_task(
                 f"Opening {Path(remote_path).name}",
-                lambda _p: read_open_document(Path(local_path), suffix),
+                lambda _p: read_open_document(Path(local_path), suffix, docx_engine=docx_engine),
                 lambda result: self._finish_remote_download(
                     result, suffix, site, remote_path, existing_index
                 ),
@@ -14564,6 +14680,25 @@ class MainFrame(
             self._set_status("Copied Pandoc install command")
         return False
 
+    #: Sources MarkItDown can read and the Markdown-ish outputs it can produce.
+    _MARKITDOWN_SOURCE_SUFFIXES = frozenset({".docx", ".pptx", ".xlsx", ".xls", ".pdf"})
+    _MARKITDOWN_OUTPUT_TOKENS = frozenset({"gfm", "commonmark", "markdown", "plain"})
+
+    @classmethod
+    def _markitdown_convert_applies(cls, request: object) -> bool:
+        """Whether the MarkItDown engine can honestly serve this conversion.
+
+        MarkItDown is a one-way reader: Office/PDF in, Markdown out. Anything
+        else must go to Pandoc, and the caller says so instead of silently
+        substituting an engine the user did not pick.
+        """
+        source = Path(getattr(request, "source_path", ""))
+        token = str(getattr(request, "output_token", ""))
+        return (
+            source.suffix.lower() in cls._MARKITDOWN_SOURCE_SUFFIXES
+            and token in cls._MARKITDOWN_OUTPUT_TOKENS
+        )
+
     def convert_file(self) -> None:
         """File > Convert File: convert any document to another format via Pandoc."""
 
@@ -14602,28 +14737,58 @@ class MainFrame(
                 self._set_status("Convert File cancelled (file already exists)")
                 return
 
-        from_format = convert_formats.reader_for_path(str(request.source_path))
-        self._set_status(
-            f"Converting {request.source_path.name} to "
-            f"{convert_formats.label_for(request.output_token)}..."
-        )
-        try:
-            convert_file_with_pandoc(
-                request.source_path,
-                target,
-                from_format=from_format,
-                to_format=request.output_token,
-                tool_status=status,
-                resolve_writer=False,
-            )
-        except (PandocUnavailableError, PandocConversionError, ValueError) as error:
-            self._show_message_box(
-                f"Conversion failed: {error}",
+        engine = getattr(request, "engine", "auto")
+        if engine == "markitdown" and not self._markitdown_convert_applies(request):
+            proceed = self._show_message_box(
+                "MarkItDown reads Word, PowerPoint, Excel, or PDF into Markdown "
+                "or plain text only. Convert with Pandoc instead?",
                 "Convert File",
-                wx.ICON_ERROR | wx.OK,
+                wx.ICON_QUESTION | wx.YES_NO | wx.YES_DEFAULT,
             )
-            self._set_status("Conversion failed")
-            return
+            if proceed != wx.YES:
+                self._set_status("Convert File cancelled")
+                return
+            engine = "pandoc"
+
+        if engine == "markitdown":
+            self._set_status(f"Converting {request.source_path.name} with MarkItDown...")
+            try:
+                from quill.io.markitdown_bridge import convert_with_markitdown
+
+                text = convert_with_markitdown(request.source_path)
+                with target.open("w", encoding="utf-8", newline="\n") as handle:
+                    handle.write(text)
+            except (ImportError, ValueError, RuntimeError, OSError) as error:
+                self._show_message_box(
+                    f"Conversion failed: {error}",
+                    "Convert File",
+                    wx.ICON_ERROR | wx.OK,
+                )
+                self._set_status("Conversion failed")
+                return
+        else:
+            from_format = convert_formats.reader_for_path(str(request.source_path))
+            self._set_status(
+                f"Converting {request.source_path.name} to "
+                f"{convert_formats.label_for(request.output_token)}..."
+            )
+            try:
+                convert_file_with_pandoc(
+                    request.source_path,
+                    target,
+                    from_format=from_format,
+                    to_format=request.output_token,
+                    tool_status=status,
+                    resolve_writer=False,
+                )
+            except (PandocUnavailableError, PandocConversionError, ValueError) as error:
+                self._show_message_box(
+                    f"Conversion failed: {error}",
+                    "Convert File",
+                    wx.ICON_ERROR | wx.OK,
+                )
+                self._set_status("Conversion failed")
+                return
 
         self._remember_convert_file_choices(request.output_dir, request.output_token)
         self._record_recent(target)

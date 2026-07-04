@@ -221,7 +221,8 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "bool",
         "When you save an untitled document, pre-fill the Save dialog with a name "
         "taken from the document's first line. Works across formats and strips "
-        "leading markup (a Markdown heading, a quote, or a list bullet).",
+        "leading markup (a Markdown heading, a quote, or a list bullet). On by "
+        "default; it never renames an already-saved document.",
         keywords=("title", "filename", "first line", "save", "name", "heading"),
     ),
     SettingSpec(
@@ -519,6 +520,42 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
             ("never", "Keep current surface"),
         ),
         keywords=("save as", "convert", "rtf", "reload", "surface", "format"),
+    ),
+    SettingSpec(
+        "docx_read_engine",
+        "Word document reading engine",
+        "editing",
+        "choice",
+        "How QUILL converts a Word document into editable text when you open "
+        "it. Auto tries MarkItDown first and falls back to a plain extract. "
+        "MarkItDown is fast and reliable: headings, lists, and tables come "
+        "through; images, comments, and fonts do not. Pandoc keeps richer "
+        "structure - footnotes and complex tables survive better - and needs "
+        "Pandoc installed; when Pandoc is missing it falls back to Auto.",
+        choices=(
+            ("auto", "Auto (MarkItDown first)"),
+            ("markitdown", "MarkItDown"),
+            ("pandoc", "Pandoc"),
+        ),
+        keywords=("word", "docx", "converter", "engine", "pandoc", "markitdown", "open"),
+    ),
+    SettingSpec(
+        "docx_write_engine",
+        "Word document saving engine",
+        "editing",
+        "choice",
+        "How QUILL converts your text into a Word document when you save as "
+        ".docx. Native keeps QUILL formatting codes - fonts, sizes, colors, "
+        "highlights, and alignment - and each editor line becomes one Word "
+        "paragraph; best for documents written in QUILL. Pandoc maps structure "
+        "to Word styles - headings, lists, tables, links, and footnotes - but "
+        "drops font, size, and color codes, and needs Pandoc installed.",
+        choices=(
+            ("auto", "Auto (native writer first)"),
+            ("native", "Native (python-docx)"),
+            ("pandoc", "Pandoc"),
+        ),
+        keywords=("word", "docx", "converter", "engine", "pandoc", "save"),
     ),
     SettingSpec(
         "plain_text_link_style",

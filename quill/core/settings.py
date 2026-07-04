@@ -53,6 +53,12 @@ class Settings:
     word_open_mode: str = "prompt"
     editor_surface: str = "plain"
     save_as_surface_sync: str = "prompt"
+    # Conversion engine preferences for Word documents. "auto" keeps QUILL's
+    # default chains: MarkItDown-first when opening a .docx, the native
+    # python-docx writer first when saving one. The explicit choices trade
+    # differently: see the Settings descriptions for what each keeps and drops.
+    docx_read_engine: str = "auto"
+    docx_write_engine: str = "auto"
     plain_text_link_style: str = "text_url"
     indent_with_tabs: bool = False
     indent_size: int = 4
@@ -74,8 +80,9 @@ class Settings:
     recent_files_limit: int = 10
     recent_files_auto_clear_missing: bool = False
     # When saving an untitled document, suggest a filename from its first line
-    # (works across formats; strips leading markup). Opt-in.
-    first_line_as_title: bool = False
+    # (works across formats; strips leading markup). On by default: it only
+    # pre-fills the name for an untitled document, never renames anything.
+    first_line_as_title: bool = True
     # Background model warm-up after startup so the first use is fast. Loads the
     # model into memory; turn off to save RAM if you don't use the feature.
     warm_dictation_model: bool = True
@@ -571,6 +578,12 @@ class Settings:
         save_as_surface_sync = str(data.get("save_as_surface_sync", "prompt")).strip().lower()
         if save_as_surface_sync not in {"prompt", "always", "never"}:
             save_as_surface_sync = "prompt"
+        docx_read_engine = str(data.get("docx_read_engine", "auto")).strip().lower()
+        if docx_read_engine not in {"auto", "markitdown", "pandoc"}:
+            docx_read_engine = "auto"
+        docx_write_engine = str(data.get("docx_write_engine", "auto")).strip().lower()
+        if docx_write_engine not in {"auto", "native", "pandoc"}:
+            docx_write_engine = "auto"
         plain_text_link_style = str(data.get("plain_text_link_style", "text_url")).strip().lower()
         if plain_text_link_style not in {"text", "text_url", "url", "markdown"}:
             plain_text_link_style = "text_url"
@@ -598,7 +611,7 @@ class Settings:
         except (TypeError, ValueError):
             recent_files_limit = 10
         recent_files_auto_clear_missing = bool(data.get("recent_files_auto_clear_missing", False))
-        first_line_as_title = bool(data.get("first_line_as_title", False))
+        first_line_as_title = bool(data.get("first_line_as_title", True))
         warm_dictation_model = bool(data.get("warm_dictation_model", True))
         warm_kokoro_model = bool(data.get("warm_kokoro_model", True))
         tray_enabled = bool(data.get("tray_enabled", False))
@@ -1175,6 +1188,8 @@ class Settings:
             word_open_mode=word_open_mode,
             editor_surface=editor_surface,
             save_as_surface_sync=save_as_surface_sync,
+            docx_read_engine=docx_read_engine,
+            docx_write_engine=docx_write_engine,
             plain_text_link_style=plain_text_link_style,
             indent_with_tabs=indent_with_tabs,
             indent_size=indent_size,
