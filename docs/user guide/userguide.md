@@ -1819,9 +1819,36 @@ The dialog lists all twelve slots. Each row shows the slot number, an optional l
 - Slots survive restarts. Build a small library of recurring fragments you reach for daily.
 - All bindings are reassignable in the Keymap Editor (`Tools > Customize & Support > Preferences > Keyboard`).
 
+### Saving in Different Formats — what happens to your file
+
+**File > Save As** genuinely converts your document to the format you pick in the "Save as type" list — it never just renames the file. QUILL's editor holds your text in one clean canonical form; choosing a type in Save As re-serializes that text into the chosen format on disk. Here is exactly what each choice does:
+
+- **Markdown (.md)** — your text is written exactly as it is in the editor. This is QUILL's native format; nothing is converted or lost.
+- **Text (.txt)** — also written exactly as-is, including any Markdown markup, so a plain-text file makes a perfect round trip. If you want the markup *stripped* (headings and emphasis flattened to plain words), use **File > Save As Plain Text** instead — that command also offers to keep your formatting in an Illumination sidecar.
+- **HTML (.html)** — converted to a complete standalone web page with your document title, ready for a browser.
+- **Rich Text (.rtf)** — converted with full formatting fidelity: fonts, sizes, colors, highlights, and alignment all carry over.
+- **Word (.docx)** — converted to a real Word document. Headings become Word heading styles (so Word and screen readers can navigate them), each editor line becomes one Word paragraph (your line breaks are preserved exactly), and hidden-codes formatting — font, size, color, highlight, alignment — carries onto real Word runs.
+- **A typed extension QUILL cannot write** (for example typing `notes.pdf` in the name box) — QUILL refuses rather than writing a broken file, and for PDF, ODT, and EPUB it offers to open **File > Export**, which can produce them properly through Pandoc.
+
+**You keep editing QUILL text.** After a converting Save As, the file on disk is Word (or HTML, or RTF) — but your editing surface still holds QUILL's clean text, and every subsequent Ctrl+S converts it again to the saved format. QUILL announces this after the save ("Saved as report.docx, Word format. You are still editing QUILL text; each save converts it to Word.") so the model is never a mystery. The window title and tab title update to the new name immediately, and a plain Ctrl+S from then on saves silently to the same file.
+
+**Your originals are protected.** If you opened a PDF, EPUB, spreadsheet, or presentation, what you are editing is *extracted text* — the binary original cannot hold it back. Pressing Ctrl+S on such a document never overwrites the original: QUILL explains and opens Save As so your edits land in a new file, in a format that can actually hold them.
+
+**Filename suggestions.** When you save an untitled document, QUILL pre-fills the name box from the document's first line (leading `#` marks, quotes, and bullets are stripped, and invalid filename characters removed). This is on by default; turn it off with **Suggest a filename from the first line** in Preferences. It only ever *suggests* — type anything you like over it — and it never renames an already-saved document.
+
+### Choosing a conversion engine
+
+More than one converter can handle a Word document, and they make different trade-offs. QUILL lets you pick, and tells you the outcome of each choice in plain language:
+
+- **Word document reading engine** (Preferences > Editing) — how a `.docx` becomes editable text when you open it. **Auto** (default) tries MarkItDown first and falls back to a plain extract. **MarkItDown** is fast and reliable: headings, lists, and tables come through; images, comments, and fonts do not. **Pandoc** keeps richer structure — footnotes and complex tables survive better — and needs Pandoc installed; if Pandoc is missing, the preference quietly degrades to Auto rather than failing your open.
+- **Word document saving engine** (Preferences > Editing) — how your text becomes a `.docx` when you save. **Auto** (default) prefers the native writer. **Native** keeps QUILL's formatting codes — fonts, sizes, colors, highlights, alignment — and maps each editor line to one Word paragraph; it is the best choice for documents written in QUILL. **Pandoc** maps structure to Word styles — headings, lists, tables, links, and footnotes — but drops font, size, and color codes.
+- **Convert File dialog** — the **Conversion engine** choice (Auto, Pandoc, or MarkItDown) applies to one conversion at a time, and a description under the choice updates as you arrow through it so you hear each engine's outcome before converting. MarkItDown applies only when the source is Word, PowerPoint, Excel, or PDF and the output is Markdown or plain text; choose it for anything else and QUILL says so and offers Pandoc — it never silently substitutes an engine you did not pick.
+
+These preferences exist because "convert" is not one thing: a structure-first engine and a formatting-first engine produce honestly different Word documents from the same text. The defaults are right for almost everyone; the choices are there for when they are not. (The engine comparison evidence lives in `docs/qa/converter-bakeoff.md`.)
+
 ### Import and Export
 
-QUILL can convert between the formats the people around you actually use, without you leaving the editor. **File > Import** brings a non-QUILL document into QUILL as a new tab. **File > Export** saves the current buffer as a different file type. Both routes use Pandoc on a background thread, so the editor never freezes.
+QUILL can convert between the formats the people around you actually use, without you leaving the editor. **File > Import** brings a non-QUILL document into QUILL as a new tab. **File > Export** saves the current buffer as a different file type. Both routes use Pandoc on a background thread, so the editor never freezes. Exports preserve your line breaks exactly: one editor line is one paragraph in the exported document, in every format.
 
 **Import (File > Import):** Markdown, CommonMark, GitHub-Flavored Markdown, HTML, Word documents (`.docx`), OpenDocument Text (`.odt`), Rich Text (`.rtf`), plain text, CSV / TSV tables, EPUB books, LaTeX / TeX.
 
