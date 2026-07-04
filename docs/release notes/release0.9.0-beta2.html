@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>release0.9.0-beta2</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">release0.9.0-beta2</h1>
+</header>
+<h1 id="quill-0.9.0-beta-2---every-save-tells-the-truth">QUILL 0.9.0
+Beta 2 - Every Save Tells the Truth</h1>
+<h3
+id="the-screen-reader-first-writing-studio-built-by-the-people-who-depend-on-it.">The
+screen-reader-first writing studio, built by the people who depend on
+it.</h3>
+<p><em>From Community Access. Free. Optional by design. Private by
+default. Yours to make quiet.</em></p>
+<p>This is the narrative companion to the <strong>“0.9.0 Beta 2 (in
+development)”</strong> section of <code>CHANGELOG.md</code> (the
+canonical, append-as-you-go log). Beta 2 is the polish phase of the
+0.9.0 line, and this cut is about a single promise: <strong>when QUILL
+saves or converts your document, everything it tells you afterward is
+true</strong> - the title bar, the modified flag, the announcement, the
+file on disk.</p>
+<hr />
+<h2 id="the-story-of-this-release-carolines-eight-lines">The story of
+this release: Caroline’s eight lines</h2>
+<p>A beta tester named Caroline wrote eight lines, pressed Ctrl+S, chose
+Word format, named the file, and pressed Enter. QUILL said it saved.
+Then three things went quietly wrong. The title bar still read “Untitled
+[modified]”. Pressing Ctrl+S again brought back the Save dialog with an
+empty name box, as if the first save had never happened. And when she
+opened the file in Word, her eight lines had been fused into one long
+unbroken line.</p>
+<p>Every one of those symptoms traced to a real defect, and pulling that
+thread uncovered more. This beta fixes all of it and then finishes the
+thought: saving and converting in QUILL is now honest end to end, and it
+explains itself in language a screen reader user can act on.</p>
+<h2 id="what-was-wrong-and-what-is-true-now">What was wrong, and what is
+true now</h2>
+<p><strong>The title bar and the vanishing filename were one
+bug.</strong> Word (.docx) was the only Save As format that wrote the
+file without recording that the document now lived there. The document
+stayed “untitled and modified” in QUILL’s mind, so the title never
+updated and the next save started from scratch. Fixed - and a regression
+test now pins the contract for every format: after any successful save,
+the document knows its path and knows it is clean.</p>
+<p><strong>The fused lines were a translation dialect problem.</strong>
+On its way to Word, your document passed through a Markdown dialect in
+which a single line break is a “soft wrap” - a suggestion, not a fact.
+Eight lines in, one paragraph out. QUILL’s rule is now uniform
+everywhere: <strong>one editor line is one paragraph</strong>, in the
+native Word writer, in the Pandoc fallback, and in every File &gt;
+Export format - Word, OpenDocument, HTML, RTF, EPUB, and PDF alike. What
+you hear line by line is what the exported document is.</p>
+<p><strong>Your originals can no longer be destroyed by a
+reflex.</strong> This one no user had reported yet, and it was the most
+serious find of the audit. When you open a PDF, an EPUB, a PowerPoint,
+or a spreadsheet, QUILL shows you <em>extracted text</em> - the binary
+original cannot take that text back. Yet Ctrl+S would write the text
+over the original file, destroying it. Now QUILL refuses, explains
+(“this document was opened as extracted text; saving over the original
+would destroy it”), and opens Save As so your edits land somewhere that
+can hold them. The same guard stops the reverse mistake: typing
+<code>notes.pdf</code> in Save As no longer produces a Markdown file
+wearing a <code>.pdf</code> name that Acrobat cannot open - QUILL offers
+File &gt; Export, which makes a real PDF, or asks you to pick a format
+it can genuinely write.</p>
+<p><strong>A converting save now says what it did.</strong> Saving as
+Word, RTF, or HTML has always meant: the file on disk is converted; your
+editor keeps QUILL’s clean text; every further save converts again. That
+model is sound - and it was silent. Now QUILL announces it the moment it
+happens: <em>“Saved as report.docx, Word format. You are still editing
+QUILL text; each save converts it to Word.”</em> No mystery, no
+wondering which format you are “really” in.</p>
+<p><strong>Failure sounds like failure.</strong> A save that dies on a
+full disk or a locked file now produces a clear spoken error and leaves
+your document exactly as it was - never a crash, never a success message
+over a file that was not written.</p>
+<h2 id="small-kindness-big-difference-the-filename-suggestion">Small
+kindness, big difference: the filename suggestion</h2>
+<p>Save an untitled document and the name box now arrives pre-filled
+from your document’s first line - heading marks, quote markers, and
+bullets stripped, Windows-forbidden characters removed, capped to a sane
+length. For a screen reader user, an empty edit box is a dead end; a
+sensible proposal is a running start. It is on by default, it only ever
+<em>suggests</em> (type anything over it), and it never renames a
+document that already has a name. Turn it off with “Suggest a filename
+from the first line” in Preferences if you prefer the blank box.</p>
+<h2
+id="choose-your-converter---and-hear-the-trade-off-before-you-commit">Choose
+your converter - and hear the trade-off before you commit</h2>
+<p>“Convert to Word” is not one operation. A structure-first engine and
+a formatting-first engine both produce legitimate Word documents that
+differ in what they keep. QUILL now lets you choose, and - this is the
+part we care about - <strong>describes the outcome of every choice in
+plain spoken language</strong> before you commit to it.</p>
+<ul>
+<li><strong>Word document reading engine</strong> (Preferences &gt;
+Editing): how a .docx becomes editable text on open. <em>Auto</em>
+(default) tries MarkItDown first. <em>MarkItDown</em> is fast and
+reliable - headings, lists, and tables come through; images, comments,
+and fonts do not. <em>Pandoc</em> keeps richer structure - footnotes and
+complex tables survive better - and if Pandoc is not installed the
+preference quietly degrades rather than failing your open.</li>
+<li><strong>Word document saving engine</strong> (Preferences &gt;
+Editing): how your text becomes a .docx on save. <em>Native</em> keeps
+QUILL’s formatting codes - fonts, sizes, colors, highlights, alignment -
+and maps each editor line to one Word paragraph; it is the right choice
+for documents written in QUILL. <em>Pandoc</em> maps structure to Word
+styles - headings, lists, tables, links, footnotes - but drops the font,
+size, and color codes.</li>
+<li><strong>Convert File</strong> gains a per-conversion engine choice
+(Auto / Pandoc / MarkItDown) with a description that updates as you
+arrow through it. Pick MarkItDown for a conversion it cannot honestly do
+and QUILL says so and offers Pandoc - it never silently substitutes an
+engine you did not choose.</li>
+</ul>
+<p>The defaults are unchanged and right for almost everyone. The choices
+exist for the days they are not.</p>
+<p><strong>The receipts.</strong> Every engine description is backed by
+a measured bake-off (<code>docs/qa/converter-bakeoff.md</code>): seven
+fixture documents - nested lists, a data table, real footnotes, links,
+right-to-left Arabic text, a hundred-section document, and per-run
+formatting - through every candidate engine. MarkItDown and Pandoc
+passed the full corpus. The raw python-docx extract loses tables,
+footnotes, and link destinations, which is why it is only a last-resort
+fallback. Two outside libraries were evaluated and settled for good:
+<strong>pydocx</strong> is rejected permanently (it cannot even be
+imported on Python 3.10 or newer, and its last release was 2016), and
+<strong>mammoth</strong>, though well maintained, is not adopted because
+MarkItDown already covers its route at equal fidelity - with a recorded
+decision tree for the day that changes.</p>
+<h2 id="for-the-record">For the record</h2>
+<p>The full conversion behavior - what every Save As choice does, which
+formats are protected, the one-line-one-paragraph rule, and the engine
+trade-offs - is now documented in the user guide (“Saving in Different
+Formats” and “Choosing a conversion engine”), specified in the PRD
+(section 5.3a.1.1a), and enforced by io-layer tests rather than UI
+convention. Caroline: thank you. Eight lines went a very long way.</p>
+</body>
+</html>
