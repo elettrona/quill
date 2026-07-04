@@ -609,6 +609,32 @@ For the complete picture - every mode, the full list of spoken commands, the
 audio cues, and the privacy rules - see the new **Voice Interaction** page in
 the user guide.
 
+## Read Aloud in your language - not just English
+
+The voice lists are no longer English-only, and the change reaches every
+engine at once:
+
+- **Windows voices, unfiltered.** The Windows engine now shows **every voice
+  installed on your PC, in any language**. Add Italian, Spanish, French,
+  German - anything - in Windows Settings > Time & language > Speech, and it
+  appears in QUILL immediately.
+- **Kokoro speaks five more languages.** The offline neural engine gains
+  **Spanish, French, Hindi, Italian, and Brazilian Portuguese** voices - and
+  they live in the same voice pack you already downloaded, so there is nothing
+  new to fetch.
+- **Piper adds Italian.** The catalog gains **Paola** and **Riccardo** as
+  one-click, checksum-verified downloads.
+- **eSpeak NG** offers the same languages from its built-in data, fully
+  offline, as it always could - now surfaced properly.
+
+Read Aloud, audiobook export, and batch speech all honor the chosen voice's
+language, end to end.
+
+**Why it matters:** a screen-reader user's world is not monolingual, and
+neither is their reading. Whether it is a note from a relative, coursework, or
+a novel, QUILL now reads it in a voice that belongs to the language - on
+device, for free.
+
 ## Table Studio - accessible tables, at last (experimental)
 
 Tables have always been the hardest thing to edit by ear. This release adds
@@ -938,13 +964,25 @@ requirements updated, the roadmap reconciled so it tracks only genuinely
 open work, six new tutorials, and a 36-episode audio course. If you can
 reach a feature, you can read about it - and now, hear about it.
 
+### Every robot reviewer answered
+
+Alongside human review, every pull request in this cycle was combed by
+automated reviewers - GitHub Copilot and CodeQL - and this beta closes out
+**all 94 findings** they raised across the 0.9.0 feature wave: every one
+triaged, the real ones fixed (about sixty changes, from implicit string
+concatenation that could silently mangle a spoken message, to a modal dialog
+opened inside another dialog's teardown, to hardening in the native Table
+Studio UIA provider), and the false positives answered on the record. The
+Table Studio native provider also **builds cleanly again** (#823), so the
+richer UIA cell events are back on the menu for builds that compile it.
+
 ### The little disciplines
 
 The whole repository now passes its style gate completely clean; the module
-size budgets, dialog inventory, network egress audit, and UI-surface
-snapshots were all re-verified; and the full test suite - 6,776 tests -
-passes. New capability this cycle arrived with 44 new tests of its own.
-None of this is visible in a menu. All of it is why the menus keep working.
+size budgets, dialog inventory, network egress audit, persistence audit, and
+UI-surface snapshots were all re-verified; and the full test suite - now over
+7,000 tests - passes. None of this is visible in a menu. All of it is why the
+menus keep working.
 
 ---
 
