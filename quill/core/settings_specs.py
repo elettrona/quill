@@ -2135,7 +2135,8 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
             "Which control backs the editor, for testing different surfaces. "
             "'Default' follows the braille Editor control type (Accessibility). "
             "RichEdit 3.0/2.0 are the native Windows rich controls; 'Notepad' is a "
-            "plain EDIT control; 'Rich text' is an experimental wx.RichTextCtrl. "
+            "plain EDIT control; 'Rich text' is an experimental wx.RichTextCtrl; "
+            "'Notepad++ experiment' is the Scintilla control (wx.stc.StyledTextCtrl). "
             "RESTART QUILL after changing this so every document uses the new surface."
         ),
         choices=(
@@ -2145,6 +2146,7 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
             ("plain", "Notepad (plain edit control)"),
             ("rtf", "Rich text (wx.RichTextCtrl, experimental)"),
             ("win32", "Native Win32 EDIT (pywin32 spike, Windows only)"),
+            ("stc", "Notepad++ experiment (Scintilla, wx.stc.StyledTextCtrl)"),
         ),
         keywords=(
             "experimental",
@@ -2154,6 +2156,8 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
             "notepad",
             "rtf",
             "win32",
+            "stc",
+            "scintilla",
             "native",
             "testing",
         ),

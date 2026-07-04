@@ -62,6 +62,11 @@ ui = [
     "html_to_text>=1.0.0",
 ]
 spellcheck = ["pyenchant>=3.3.0"]
+# Direct GitHub issue submission for Report a Bug (#210): feedback_hub provides
+# the accessible FeedbackDialog driven by quill/core/schemas/feedback.json and
+# files the issue via the GitHub API. Optional at runtime — when absent, QUILL
+# falls back to the built-in browser support form. Not on PyPI; pinned to a tag.
+feedback = ["feedback-hub @ git+https://github.com/Community-Access/feedback-hub@v1.0.0"]
 # Cross-platform earcon audio via BASS (Un4seen). Enables true mixing so multiple
 # sounds can play simultaneously. Falls back to winsound (Windows) or silence without
 # this extra. Confirm Un4seen commercial license terms before paid distribution.

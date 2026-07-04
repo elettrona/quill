@@ -1062,6 +1062,11 @@ class MainFrame(
         self.features = FeatureManager.load(persistent=not safe_mode)
         self.macros = MacroManager.load(persistent=not safe_mode)
         self.settings = load_settings()
+        # Standalone dialogs announce Entered/Exited via dialog_contract directly,
+        # bypassing the gated wrappers; register the live setting to cover them.
+        from quill.ui.dialog_contract import set_transition_announcement_policy
+
+        set_transition_announcement_policy(lambda: self.settings.announce_dialog_transitions)
         # Remote feature kill switch: load the locally-cached locked set so any
         # active safety advisory is honored immediately at startup, even offline.
         from quill.core.safety.feature_lock import load_feature_locks
@@ -4386,6 +4391,12 @@ class MainFrame(
                 from quill.ui.rtf_edit_surface import create_rtf_editor
 
                 editor = create_rtf_editor(wx, splitter, wx.TE_MULTILINE | border)
+            elif kind == "stc":
+                # The Notepad++ experiment: Scintilla via wx.stc, shimmed to the
+                # TextCtrl contract (see stc_edit_surface.py). Falls back to a wx.TextCtrl.
+                from quill.ui.stc_edit_surface import create_stc_editor
+
+                editor = create_stc_editor(wx, splitter, wx.TE_MULTILINE | border)
             elif kind == "plain":
                 # A Notepad-style EDIT control -- editable, reports its value to
                 # JAWS/NVDA correctly, and avoids the RichEdit leading-cell quirk (#616).
@@ -11018,6 +11029,18 @@ class MainFrame(
                 "Technical: wx.richtext.RichTextCtrl. It is value/caret API-compatible "
                 "(GetValue/ChangeValue/insertion point), so basic editing and the "
                 "Reveal Codes sync work, but it is not a drop-in for every TextCtrl call."
+            ),
+            "stc": (
+                "Notepad++ experiment — the Scintilla control (wx.stc).\n\n"
+                "User: the editing engine Notepad++ uses. Fast on very large "
+                "documents and the only experimental surface with full multi-level "
+                "undo AND redo. EXPERIMENTAL, NVDA ONLY: NVDA reads and tracks it "
+                "well; JAWS cannot follow the caret on this surface (verified "
+                "2026-07-03; bridging attempts failed). Do not use with JAWS.\n\n"
+                "Technical: wx.stc.StyledTextCtrl (Win32 class 'Scintilla') wrapped "
+                "to the TextCtrl contract: EVT_TEXT forwarding, LF-only line "
+                "endings, load-without-dirty, and caret moves that collapse the "
+                "selection. Full risk analysis: docs/planning/editor-surface-experiments.md."
             ),
             "win32": (
                 "Native Win32 EDIT — the pywin32 spike (Windows only).\n\n"
