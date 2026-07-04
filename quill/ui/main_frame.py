@@ -121,7 +121,6 @@ from quill.core.custom_profiles import (
 )
 from quill.core.deletion_ring import DeletionRing, removed_span
 from quill.core.diagnostics import (
-    build_bug_report_payload,
     build_diagnostics_review_text,
     build_support_issue_url,
     collect_environment_info,
@@ -432,7 +431,13 @@ from quill.core.yaml_structure import (
     extract_yaml_nodes,
     rename_yaml_node,
 )
-from quill.io.export import format_label_for_path, write_document_as, write_plain_text_document
+from quill.io.export import (
+    EXPORT_ONLY_SUFFIXES,
+    HTML_SUFFIXES,
+    format_label_for_path,
+    write_document_as,
+    write_plain_text_document,
+)
 from quill.io.open_read import OFFICE_STREAM_SUFFIXES as _OFFICE_STREAM_SUFFIXES
 from quill.io.open_read import read_open_document
 from quill.io.pandoc import (
@@ -506,6 +511,7 @@ from quill.ui.main_frame_power_tools_menu import PowerToolsMenuMixin
 from quill.ui.main_frame_profile_picker import ProfilePickerMixin
 from quill.ui.main_frame_quill_key import QuillKeyMixin
 from quill.ui.main_frame_quillins import QuillinsMenuMixin
+from quill.ui.main_frame_restore_points import RestorePointsMixin
 from quill.ui.main_frame_reveal_codes import RevealCodesMixin
 from quill.ui.main_frame_section_move import SectionMoveMixin
 from quill.ui.main_frame_selection import SelectionMarksMixin
@@ -881,6 +887,7 @@ class MainFrame(
     PowerToolsMenuMixin,
     RevealCodesMixin,
     InlineNotesMixin,
+    RestorePointsMixin,
     QuillinsMenuMixin,
     ContextHelpMixin,
     WatchProfileDialogMixin,
@@ -1059,6 +1066,11 @@ class MainFrame(
         self.features = FeatureManager.load(persistent=not safe_mode)
         self.macros = MacroManager.load(persistent=not safe_mode)
         self.settings = load_settings()
+        # Standalone dialogs announce Entered/Exited via dialog_contract directly,
+        # bypassing the gated wrappers; register the live setting to cover them.
+        from quill.ui.dialog_contract import set_transition_announcement_policy
+
+        set_transition_announcement_policy(lambda: self.settings.announce_dialog_transitions)
         # Remote feature kill switch: load the locally-cached locked set so any
         # active safety advisory is honored immediately at startup, even offline.
         from quill.core.safety.feature_lock import load_feature_locks
@@ -3381,6 +3393,7 @@ class MainFrame(
         self.register_format_codes_commands()
         self.register_reveal_codes_commands()
         self.register_inline_note_commands()
+        self.register_restore_point_commands()
         self.commands.register(
             "format.heading_1",
             "Insert Heading 1",
@@ -4379,12 +4392,16 @@ class MainFrame(
                     splitter, style=wx.TE_MULTILINE | border
                 )
             elif kind == "rtf":
-                # Experimental: a wx.RichTextCtrl surface. It is TextCtrl-compatible for
-                # the value/caret API QUILL relies on (GetValue/ChangeValue/insertion
-                # point/last position), so the plain-text editing path still works.
-                import wx.richtext as _rt
+                # Experimental RichTextCtrl surface (TextCtrl-compatible selection API).
+                from quill.ui.rtf_edit_surface import create_rtf_editor
 
-                editor = _rt.RichTextCtrl(splitter, style=wx.TE_MULTILINE | border)
+                editor = create_rtf_editor(wx, splitter, wx.TE_MULTILINE | border)
+            elif kind == "stc":
+                # The Notepad++ experiment: Scintilla via wx.stc, shimmed to the
+                # TextCtrl contract (see stc_edit_surface.py). Falls back to a wx.TextCtrl.
+                from quill.ui.stc_edit_surface import create_stc_editor
+
+                editor = create_stc_editor(wx, splitter, wx.TE_MULTILINE | border)
             elif kind == "plain":
                 # A Notepad-style EDIT control -- editable, reports its value to
                 # JAWS/NVDA correctly, and avoids the RichEdit leading-cell quirk (#616).
@@ -6319,8 +6336,8 @@ class MainFrame(
                 return False
 
         if not effective_github_token():
-            self._set_status("No GitHub token: opening the bug report form")
-            self._report_bug_legacy()
+            self._set_status("No GitHub token: opening the issue form")
+            self.report_bug()
             return False
 
         body = (
@@ -6347,7 +6364,7 @@ class MainFrame(
                 wx.OK | wx.ICON_WARNING,
             ) as failed:
                 self._show_modal_dialog(failed, "Bug Report", restore_editor_focus=False)
-            self._report_bug_legacy()
+            self.report_bug()
             return False
 
         self._copy_to_clipboard(issue_url)
@@ -8185,10 +8202,14 @@ class MainFrame(
 
         self._set_status(f"Exporting to {target.name} via Pandoc...")
         try:
+            # hard_line_breaks: the editor is line-oriented (one editor line is
+            # one paragraph), so bare "gfm" — where a single newline is a soft
+            # wrap — would join the user's lines into one paragraph in every
+            # exported format.
             convert_file_with_pandoc(
                 self.document.path or Path(""),
                 target,
-                from_format="gfm",
+                from_format="gfm+hard_line_breaks",
                 to_format=format_name,
             )
         except (PandocUnavailableError, PandocConversionError, ValueError) as error:
@@ -8691,9 +8712,12 @@ class MainFrame(
             word_mode = (
                 self._resolve_word_open_mode(selected_path) if suffix in {".doc", ".docx"} else None
             )
+            docx_engine = self._docx_read_engine()
             self._run_background_task(
                 f"Opening {selected_path.name}",
-                lambda _progress: read_open_document(selected_path, suffix, word_mode=word_mode),
+                lambda _progress: read_open_document(
+                    selected_path, suffix, word_mode=word_mode, docx_engine=docx_engine
+                ),
                 finish,
             )
             return
@@ -8702,6 +8726,14 @@ class MainFrame(
         if suffix in {".csv", ".tsv"}:
             csv_mode = self._resolve_csv_open_mode(selected_path)
         finish(read_open_document(selected_path, suffix, csv_mode=csv_mode))
+
+    def _docx_read_engine(self) -> str:
+        """The ``docx_read_engine`` setting, resolved on the UI thread.
+
+        Workers must not touch settings mid-run, so callers capture this before
+        handing a read to the task manager (same pattern as ``word_mode``).
+        """
+        return str(getattr(getattr(self, "settings", None), "docx_read_engine", "auto"))
 
     def _maybe_apply_illumination(self, loaded: object, selected_path: Path, suffix: str) -> bool:
         """Restore hidden formatting from a ``<name>.illumination`` sidecar when
@@ -9747,8 +9779,17 @@ class MainFrame(
         link_style = str(
             getattr(getattr(self, "settings", None), "plain_text_link_style", "text_url")
         )
-        write_document_as(document, target, plain_text_link_style=link_style)  # type: ignore[arg-type]
+        docx_engine = str(getattr(getattr(self, "settings", None), "docx_write_engine", "auto"))
+        write_document_as(
+            document,
+            target,  # type: ignore[arg-type]
+            plain_text_link_style=link_style,
+            docx_engine=docx_engine,
+        )
         self._sync_publishing_linkage_for_document(document)  # type: ignore[arg-type]
+        # Restore points: snapshot the canonical text of every successful save
+        # (best-effort by contract; can never be the reason a save fails).
+        self._record_save_restore_point(document)
 
     def _sync_publishing_linkage_for_document(self, document: Document) -> None:
         """Persist or refresh this document's publishing linkage, keyed by its path.
@@ -9776,10 +9817,25 @@ class MainFrame(
         upsert_publishing_linkage(path, entry)
 
     def save_file(self) -> None:
+        wx = self._wx
         if self._active_tab().read_only_remote:
             self.save_copy_remote()
             return
         if self.document.path is None:
+            self.save_file_as()
+            return
+        path = self.document.path
+        if path.suffix.lower() in EXPORT_ONLY_SUFFIXES:
+            # e.g. an opened PDF: the buffer is extracted text. Writing it back
+            # would destroy the binary original, so route to Save As instead.
+            self._show_message_box(
+                f"{self.document.name} was opened as extracted text. QUILL cannot "
+                f"write {path.suffix} files directly, so saving over the original "
+                "would destroy it. Choose a new name and format (Markdown, Word, "
+                "HTML, RTF, or text), or use File > Export.",
+                "Save",
+                wx.ICON_INFORMATION | wx.OK,
+            )
             self.save_file_as()
             return
         # Optional pre-save proofread (off by default): review misspellings in the
@@ -9788,7 +9844,16 @@ class MainFrame(
             self.open_spell_check_dialog()
         if self.document.modified:
             backup_document(self.document)
-        self._write_document_to_disk(self.document)
+        try:
+            self._write_document_to_disk(self.document)
+        except OSError as error:
+            self._show_message_box(
+                f"Could not save {self.document.name}: {error}",
+                "Save",
+                wx.ICON_ERROR | wx.OK,
+            )
+            self._set_status(f"Could not save {self.document.name}")
+            return
         # Persist this document's bookmarks + cursor position under its path now that
         # it is saved (also migrates an untitled document's in-memory bookmarks).
         self._save_active_bookmarks()
@@ -9951,6 +10016,15 @@ class MainFrame(
     # Save As wildcard filter index -> the extension that filter implies.
     _SAVE_FILTER_EXTENSIONS = {0: ".txt", 1: ".md", 2: ".html", 3: ".rtf", 4: ".docx"}
 
+    @staticmethod
+    def _export_route_for_suffix(suffix: str) -> str | None:
+        """The Pandoc export format for an export-only Save As target, or ``None``.
+
+        Save As cannot write these formats itself; the ones Pandoc can produce
+        get offered a hand-off to File > Export, the rest are refused outright.
+        """
+        return {".pdf": "pdf", ".odt": "odt", ".epub": "epub"}.get(suffix.lower())
+
     def _resolve_save_target(self, target: Path, filter_index: int) -> Path:
         """Give ``target`` an extension from the chosen type filter when none typed.
 
@@ -10011,6 +10085,30 @@ class MainFrame(
             target = self._resolve_save_target(Path(dialog.GetPath()), chosen_filter)
             self._last_file_dir = str(target.parent)
 
+        if target.suffix.lower() in EXPORT_ONLY_SUFFIXES:
+            # A typed .pdf/.odt/.epub/... would otherwise write Markdown text
+            # into a file other apps cannot open. Route Pandoc-capable targets
+            # to File > Export; refuse the rest with a pointer to the type list.
+            export_format = self._export_route_for_suffix(target.suffix)
+            if export_format is not None:
+                answer = self._show_message_box(
+                    f"QUILL saves Markdown, Word, HTML, RTF, and text directly. "
+                    f"{target.suffix} goes through Export instead, which converts "
+                    "with Pandoc. Open Export now?",
+                    "Use Export for this format",
+                    wx.ICON_QUESTION | wx.YES_NO | wx.YES_DEFAULT,
+                )
+                if answer == wx.YES:
+                    self.export_document(export_format)
+                return
+            self._show_message_box(
+                f"QUILL cannot save to {target.suffix}. Choose Markdown, Word, "
+                "HTML, RTF, or text in the Save as type list.",
+                "Format not supported",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+
         # Optional pre-save proofread (off by default), after the user has chosen
         # the destination but before the file is written.
         if getattr(self.settings, "spell_check_before_save", False):
@@ -10018,7 +10116,16 @@ class MainFrame(
         self.document.set_text(self.editor.GetValue())
         if self.document.modified and self.document.path is not None:
             backup_document(self.document)
-        self._write_document_to_disk(self.document, target)
+        try:
+            self._write_document_to_disk(self.document, target)
+        except OSError as error:
+            self._show_message_box(
+                f"Could not save {target.name}: {error}",
+                "Save file as",
+                wx.ICON_ERROR | wx.OK,
+            )
+            self._set_status(f"Could not save {target.name}")
+            return
         # FEAT-19: restart the watcher on the new path so our save is the baseline.
         self._stop_external_change_watcher()
         self._start_external_change_watcher()
@@ -10038,7 +10145,25 @@ class MainFrame(
         self._refresh_title()
         self._refresh_sessions_menu()
         self._set_status(f"Saved as {target.name} ({format_label_for_path(target)})")
+        self._announce_save_as_conversion(target)
         self._maybe_reload_surface_after_save_as(target)
+
+    def _announce_save_as_conversion(self, target: Path) -> None:
+        """Speak what a converting Save As actually did.
+
+        The file on disk is now Word/RTF/HTML, but the editing surface still
+        holds QUILL's canonical text and every subsequent save re-converts it.
+        That model is deliberate; this makes it audible instead of silent.
+        Verbatim formats (.md/.txt/unknown) stay quiet — the status line
+        already names them and nothing was converted.
+        """
+        if target.suffix.lower() not in ({".docx", ".rtf"} | HTML_SUFFIXES):
+            return
+        label = format_label_for_path(target)
+        self._announce(
+            f"Saved as {target.name}, {label} format. You are still editing "
+            f"QUILL text; each save converts it to {label}."
+        )
 
     def _surface_kind_for_path(self, path: Path) -> str:
         """The editing surface ``open_file`` would use for ``path``.
@@ -10103,7 +10228,7 @@ class MainFrame(
         """
         suffix = target.suffix.lower()
         try:
-            result = read_open_document(target, suffix)
+            result = read_open_document(target, suffix, docx_engine=self._docx_read_engine())
         except Exception:
             self._set_status("Could not reload in the matching view.")
             return
@@ -10296,8 +10421,12 @@ class MainFrame(
                         else None
                     )
 
+                    docx_engine = self._docx_read_engine()
+
                     def _worker(_progress: object) -> tuple[object, object]:
-                        return read_open_document(selected_path, suffix, word_mode=word_mode)
+                        return read_open_document(
+                            selected_path, suffix, word_mode=word_mode, docx_engine=docx_engine
+                        )
 
                     self._run_background_task(
                         f"Opening {download.filename}",
@@ -10449,9 +10578,10 @@ class MainFrame(
         from quill.io.open_read import OFFICE_STREAM_SUFFIXES
 
         if suffix in OFFICE_STREAM_SUFFIXES:
+            docx_engine = self._docx_read_engine()
             self._run_background_task(
                 f"Opening {Path(remote_path).name}",
-                lambda _p: read_open_document(Path(local_path), suffix),
+                lambda _p: read_open_document(Path(local_path), suffix, docx_engine=docx_engine),
                 lambda result: self._finish_remote_download(
                     result, suffix, site, remote_path, existing_index
                 ),
@@ -11018,6 +11148,18 @@ class MainFrame(
                 "(GetValue/ChangeValue/insertion point), so basic editing and the "
                 "Reveal Codes sync work, but it is not a drop-in for every TextCtrl call."
             ),
+            "stc": (
+                "Notepad++ experiment — the Scintilla control (wx.stc).\n\n"
+                "User: the editing engine Notepad++ uses. Fast on very large "
+                "documents and the only experimental surface with full multi-level "
+                "undo AND redo. EXPERIMENTAL, NVDA ONLY: NVDA reads and tracks it "
+                "well; JAWS cannot follow the caret on this surface (verified "
+                "2026-07-03; bridging attempts failed). Do not use with JAWS.\n\n"
+                "Technical: wx.stc.StyledTextCtrl (Win32 class 'Scintilla') wrapped "
+                "to the TextCtrl contract: EVT_TEXT forwarding, LF-only line "
+                "endings, load-without-dirty, and caret moves that collapse the "
+                "selection. Full risk analysis: docs/planning/editor-surface-experiments.md."
+            ),
             "win32": (
                 "Native Win32 EDIT — the pywin32 spike (Windows only).\n\n"
                 "User: hosts the raw Windows EDIT control (the very control Notepad "
@@ -11248,8 +11390,10 @@ class MainFrame(
         import subprocess
         import sys
 
+        from quill.core.relaunch import build_relaunch_command
+
         try:
-            subprocess.Popen([sys.executable, *sys.argv])
+            subprocess.Popen(build_relaunch_command(sys.executable, sys.argv))
         except OSError as error:
             self._set_status(f"Could not restart automatically: {error}. Please restart QUILL.")
             return
@@ -14539,6 +14683,25 @@ class MainFrame(
             self._set_status("Copied Pandoc install command")
         return False
 
+    #: Sources MarkItDown can read and the Markdown-ish outputs it can produce.
+    _MARKITDOWN_SOURCE_SUFFIXES = frozenset({".docx", ".pptx", ".xlsx", ".xls", ".pdf"})
+    _MARKITDOWN_OUTPUT_TOKENS = frozenset({"gfm", "commonmark", "markdown", "plain"})
+
+    @classmethod
+    def _markitdown_convert_applies(cls, request: object) -> bool:
+        """Whether the MarkItDown engine can honestly serve this conversion.
+
+        MarkItDown is a one-way reader: Office/PDF in, Markdown out. Anything
+        else must go to Pandoc, and the caller says so instead of silently
+        substituting an engine the user did not pick.
+        """
+        source = Path(getattr(request, "source_path", ""))
+        token = str(getattr(request, "output_token", ""))
+        return (
+            source.suffix.lower() in cls._MARKITDOWN_SOURCE_SUFFIXES
+            and token in cls._MARKITDOWN_OUTPUT_TOKENS
+        )
+
     def convert_file(self) -> None:
         """File > Convert File: convert any document to another format via Pandoc."""
 
@@ -14577,28 +14740,58 @@ class MainFrame(
                 self._set_status("Convert File cancelled (file already exists)")
                 return
 
-        from_format = convert_formats.reader_for_path(str(request.source_path))
-        self._set_status(
-            f"Converting {request.source_path.name} to "
-            f"{convert_formats.label_for(request.output_token)}..."
-        )
-        try:
-            convert_file_with_pandoc(
-                request.source_path,
-                target,
-                from_format=from_format,
-                to_format=request.output_token,
-                tool_status=status,
-                resolve_writer=False,
-            )
-        except (PandocUnavailableError, PandocConversionError, ValueError) as error:
-            self._show_message_box(
-                f"Conversion failed: {error}",
+        engine = getattr(request, "engine", "auto")
+        if engine == "markitdown" and not self._markitdown_convert_applies(request):
+            proceed = self._show_message_box(
+                "MarkItDown reads Word, PowerPoint, Excel, or PDF into Markdown "
+                "or plain text only. Convert with Pandoc instead?",
                 "Convert File",
-                wx.ICON_ERROR | wx.OK,
+                wx.ICON_QUESTION | wx.YES_NO | wx.YES_DEFAULT,
             )
-            self._set_status("Conversion failed")
-            return
+            if proceed != wx.YES:
+                self._set_status("Convert File cancelled")
+                return
+            engine = "pandoc"
+
+        if engine == "markitdown":
+            self._set_status(f"Converting {request.source_path.name} with MarkItDown...")
+            try:
+                from quill.io.markitdown_bridge import convert_with_markitdown
+
+                text = convert_with_markitdown(request.source_path)
+                with target.open("w", encoding="utf-8", newline="\n") as handle:
+                    handle.write(text)
+            except (ImportError, ValueError, RuntimeError, OSError) as error:
+                self._show_message_box(
+                    f"Conversion failed: {error}",
+                    "Convert File",
+                    wx.ICON_ERROR | wx.OK,
+                )
+                self._set_status("Conversion failed")
+                return
+        else:
+            from_format = convert_formats.reader_for_path(str(request.source_path))
+            self._set_status(
+                f"Converting {request.source_path.name} to "
+                f"{convert_formats.label_for(request.output_token)}..."
+            )
+            try:
+                convert_file_with_pandoc(
+                    request.source_path,
+                    target,
+                    from_format=from_format,
+                    to_format=request.output_token,
+                    tool_status=status,
+                    resolve_writer=False,
+                )
+            except (PandocUnavailableError, PandocConversionError, ValueError) as error:
+                self._show_message_box(
+                    f"Conversion failed: {error}",
+                    "Convert File",
+                    wx.ICON_ERROR | wx.OK,
+                )
+                self._set_status("Conversion failed")
+                return
 
         self._remember_convert_file_choices(request.output_dir, request.output_token)
         self._record_recent(target)
@@ -14666,23 +14859,31 @@ class MainFrame(
         self._set_status(f"Saved diagnostics bundle to {bundle_path.name}")
 
     def report_bug(self) -> None:
-        # feedback_hub is an optional, separately-shipped component (#210
-        # follow-up). When it is importable we prefer it, but any runtime
-        # failure must still leave the user with a working report dialog, so we
-        # fall back to the always-present built-in form rather than crashing
-        # with no window.
-        if self._feedback_hub_available():
-            try:
-                self._report_bug_via_hub()
-                return
-            except Exception:  # noqa: BLE001 - never strand the user without a form
-                import logging
+        # feedback_hub ships with QUILL (the [feedback] extra / bundled
+        # runtime), so the direct-submission dialog is the one and only form
+        # (the old built-in browser form was removed once bundling landed).
+        # A failure must still not strand the user: copy the online support
+        # form's URL to the clipboard and say so plainly.
+        try:
+            self._report_bug_via_hub()
+        except Exception:  # noqa: BLE001 - never strand the user without a path
+            import logging
 
-                logging.getLogger(__name__).warning(
-                    "feedback_hub bug report failed; using the built-in form", exc_info=True
-                )
-                self._set_status("Report a Bug: using the built-in form")
-        self._report_bug_legacy()
+            logging.getLogger(__name__).warning("feedback_hub bug report failed", exc_info=True)
+            issue_url = build_support_issue_url(
+                {"summary": f"Bug report: {self.document.name}", "body": ""},
+                source_app="Quill",
+                version=__version__ or "0.0.0",
+                platform_label=str(collect_environment_info()["platform"]),
+            )
+            self._copy_to_clipboard(issue_url)
+            self._show_message_box(
+                "The issue form could not be opened. A link to the online "
+                "support form was copied to your clipboard instead; paste it "
+                "into your browser to file the report there.",
+                "Report a Bug",
+                self._wx.OK | self._wx.ICON_ERROR,
+            )
 
     def _report_bug_via_hub(self) -> None:
         from feedback_hub import load_schema
@@ -14701,35 +14902,6 @@ class MainFrame(
         dlg.Destroy()
         if result == self._wx.ID_OK:
             self._record_notification("Submitted feedback via feedback hub", "support")
-
-    def _feedback_hub_available(self) -> bool:
-        try:
-            import feedback_hub  # noqa: F401
-            from feedback_hub.wx_dialog import FeedbackDialog  # noqa: F401
-
-            return True
-        except ImportError:
-            return False
-
-    def _report_bug_legacy(self) -> None:
-        # #618: the modal path returns (payload, issue_url) synchronously
-        # and we run the post-submit completion work here; the modeless
-        # path returns None and runs the completion work itself from
-        # inside the Frame's submit handler. Both paths funnel through
-        # _complete_bug_report_submission so the auto-open-browser
-        # gating and status messages stay consistent.
-        review = self._review_bug_report()
-        if review is None:
-            # Either cancelled, or the modeless Frame is open and will
-            # run completion itself. Nothing more to do here.
-            if getattr(self, "_bug_report_frame", None) is None:
-                self._set_status("Bug report cancelled")
-            return
-        payload, issue_url = review
-        diagnostics_path = getattr(self, "_last_bug_report_diagnostics_path", None)
-        if not isinstance(diagnostics_path, Path):
-            diagnostics_path = None
-        self._complete_bug_report_submission(payload, issue_url, diagnostics_path)
 
     def _review_diagnostics_export(self) -> bool | None:
         wx = self._wx
@@ -14805,474 +14977,6 @@ class MainFrame(
         if self._show_modal_dialog(dialog, "Review Diagnostics Export") != wx.ID_OK:
             return None
         return include_paths.GetValue()
-
-    def _review_bug_report(self) -> tuple[dict[str, str], str] | None:
-        """#618: route the Report a Bug form to the modal or modeless path
-        based on the report_bug_separate_window setting.
-
-        The modal path returns (payload, issue_url) synchronously after
-        the user submits; the modeless path returns None synchronously
-        and runs the post-submit work (clipboard copy, optional
-        browser open, status update) from inside the Frame's submit
-        handler.
-        """
-        separate_window = getattr(self.settings, "report_bug_separate_window", True)
-        if separate_window:
-            return self._review_bug_report_modeless()
-        return self._review_bug_report_modal()
-
-    def _review_bug_report_modal(self) -> tuple[dict[str, str], str] | None:
-        """Modal wx.Dialog path. Returns (payload, issue_url) on submit,
-        or None on cancel. Preserves the 0.5.0 behaviour."""
-        wx = self._wx
-        dialog = wx.Dialog(self.frame, title="Report a Bug", size=(860, 720))
-        dialog_result: dict[str, object] = {}
-
-        def submit(payload: dict[str, str], issue_url: str, diagnostics_path: Path | None) -> None:
-            dialog_result["payload"] = payload
-            dialog_result["issue_url"] = issue_url
-            dialog_result["diagnostics_path"] = diagnostics_path
-            dialog.EndModal(wx.ID_OK)
-
-        def cancel() -> None:
-            dialog.EndModal(wx.ID_CANCEL)
-
-        body = self._build_report_bug_form_body(dialog, on_submit=submit, on_cancel=cancel)
-        # #618: the dialog buttons (id=wx.ID_OK and id=wx.ID_CANCEL) are
-        # constructed by _build_report_bug_form_body in a separate scope.
-        # The static dialog-button-contract audit cannot see across the
-        # call boundary, so this call carries the pragma to acknowledge
-        # the cross-scope split. The buttons are real and bound, and
-        # Enter/Escape close the dialog at runtime.
-        apply_modal_ids(  # dialog_button_contract: exempt
-            dialog,
-            affirmative_id=wx.ID_OK,
-            escape_id=wx.ID_CANCEL,
-        )
-        # #188: ensure SR focus lands on the Summary field, not the OK button.
-        self._wx.CallAfter(body["summary_field"].SetFocus)
-        if self._show_modal_dialog(dialog, "Review Bug Report") != wx.ID_OK:
-            return None
-        # Persist name and email so the next report is pre-filled.
-        self._save_bug_reporter_identity(body)
-        payload = dialog_result.get("payload")
-        issue_url = dialog_result.get("issue_url")
-        diagnostics_path = dialog_result.get("diagnostics_path")
-        if isinstance(diagnostics_path, Path):
-            self._last_bug_report_diagnostics_path = diagnostics_path
-        else:
-            self._last_bug_report_diagnostics_path = None
-        if not isinstance(payload, dict) or not isinstance(issue_url, str):
-            return None
-        return payload, issue_url
-
-    def _review_bug_report_modeless(self) -> tuple[dict[str, str], str] | None:
-        """#618: modeless wx.Frame path. Returns None synchronously; the
-        Frame stays open until the user submits or cancels, and the
-        user can alt-tab between the form and the editor to document
-        exact reproduction steps. Post-submit work runs from inside
-        the Frame's submit handler."""
-        wx = self._wx
-        existing = getattr(self, "_bug_report_frame", None)
-        if existing is not None:
-            # A bug-report Frame is already open; raise it instead of
-            # creating a duplicate so the user keeps their work.
-            try:
-                existing.Raise()
-                existing.SetFocus()
-            except Exception:
-                pass
-            return None
-        frame = wx.Frame(self.frame, title="Report a Bug", size=(860, 720))
-        # #729: host the form in a wx.Panel. A bare wx.Frame gives no Tab
-        # traversal between its child controls (only wx.Dialog / wx.Panel do),
-        # so without this the user could not Tab through the fields and had to
-        # fall back to screen-reader object navigation.
-        panel = wx.Panel(frame)
-
-        def submit(payload: dict[str, str], issue_url: str, diagnostics_path: Path | None) -> None:
-            self._last_bug_report_diagnostics_path = (
-                diagnostics_path if isinstance(diagnostics_path, Path) else None
-            )
-            self._save_bug_reporter_identity(self._bug_report_form_body)
-            try:
-                frame.Destroy()
-            finally:
-                self._bug_report_frame = None
-                self._bug_report_form_body = None
-            # #729: run completion AFTER the window closes so its "Copied bug
-            # report to clipboard" status announcement lands on the main window
-            # and is not buried by the focus-change chatter. Previously the user
-            # heard nothing on submit and thought the report (which is on the
-            # clipboard) had been lost.
-            self._wx.CallAfter(
-                self._complete_bug_report_submission, payload, issue_url, diagnostics_path
-            )
-
-        def cancel() -> None:
-            try:
-                frame.Destroy()
-            finally:
-                self._bug_report_frame = None
-                self._bug_report_form_body = None
-
-        body = self._build_report_bug_form_body(panel, on_submit=submit, on_cancel=cancel)
-        frame_sizer = wx.BoxSizer(wx.VERTICAL)
-        frame_sizer.Add(panel, 1, wx.EXPAND)
-        frame.SetSizer(frame_sizer)
-        self._bug_report_frame = frame
-        self._bug_report_form_body = body
-        frame.Bind(wx.EVT_CLOSE, lambda _e: cancel())
-        frame.Show()
-        # #188: ensure SR focus lands on the Summary field, not a button.
-        self._wx.CallAfter(body["summary_field"].SetFocus)
-        return None
-
-    def _build_report_bug_form_body(
-        self,
-        parent: object,
-        *,
-        on_submit: object,
-        on_cancel: object,
-    ) -> dict[str, object]:
-        """#618: shared Report a Bug form body. Builds the same widgets
-        and event wiring under either a wx.Dialog (modal) or wx.Frame
-        (modeless) parent. Returns a dict with the field controls,
-        the preview TextCtrl, the validation label, and a reference
-        to the diagnostics_path field so callers can refresh it after
-        the diagnostics bundle is created."""
-        wx = self._wx
-        root = wx.BoxSizer(wx.VERTICAL)
-        announcement_engine = getattr(self, "_announcement_engine", None)
-        announcement_environment = (
-            announcement_engine.diagnostics_environment() if announcement_engine is not None else {}
-        )
-        root.Add(
-            wx.StaticText(
-                parent,
-                label=(
-                    "Describe the issue, then open the support form. Quill can create a "
-                    "diagnostics bundle in this wizard so you can attach it to the issue."
-                ),
-            ),
-            0,
-            wx.ALL | wx.EXPAND,
-            8,
-        )
-        # Contact identity (pre-filled from settings, saved back after submit).
-        _sr_detection = detect_screen_reader()
-        _SR_CHOICES = [
-            "Not using a screen reader",
-            "JAWS",
-            "NVDA",
-            "Narrator",
-            "VoiceOver",
-            "Other",
-        ]
-        _detected_sr = _sr_detection.name if _sr_detection.detected else "Not using a screen reader"
-
-        name_row = wx.BoxSizer(wx.HORIZONTAL)
-        name_label = wx.StaticText(parent, label="Your name (optional)")
-        name_field = wx.TextCtrl(parent)
-        name_field.SetValue(getattr(self.settings, "bug_reporter_name", ""))
-        # #618: bind the field name for VoiceOver (macOS NSAccessibility
-        # does not associate separate StaticText labels with their fields).
-        name_field.SetName(name_label.GetLabel())
-        email_label = wx.StaticText(parent, label="Contact email (optional)")
-        email_field = wx.TextCtrl(parent)
-        email_field.SetValue(getattr(self.settings, "bug_reporter_email", ""))
-        # #618: bind the field name for VoiceOver.
-        email_field.SetName(email_label.GetLabel())
-        name_row.Add(name_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
-        name_row.Add(name_field, 1, wx.RIGHT, 16)
-        name_row.Add(email_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
-        name_row.Add(email_field, 1)
-        root.Add(name_row, 0, wx.ALL | wx.EXPAND, 8)
-
-        sr_row = wx.BoxSizer(wx.HORIZONTAL)
-        sr_label = wx.StaticText(parent, label="Screen reader")
-        sr_combo = wx.ComboBox(
-            parent,
-            choices=_SR_CHOICES,
-            style=wx.CB_READONLY,
-        )
-        sr_combo.SetStringSelection(_detected_sr)
-        if sr_combo.GetSelection() == wx.NOT_FOUND:
-            sr_combo.SetSelection(0)
-        # #618: bind the field name for VoiceOver.
-        sr_combo.SetName(sr_label.GetLabel())
-        sr_row.Add(sr_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
-        sr_row.Add(sr_combo, 1)
-        root.Add(sr_row, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
-
-        summary_label = wx.StaticText(parent, label="Summary")
-        summary_field = wx.TextCtrl(parent)
-        summary_field.SetValue(f"Bug report: {self.document.name}")
-        # #618: bind the field name for VoiceOver.
-        summary_field.SetName(summary_label.GetLabel())
-        root.Add(summary_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        root.Add(summary_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
-
-        happened_label = wx.StaticText(parent, label="What happened")
-        happened_field = wx.TextCtrl(parent, style=wx.TE_MULTILINE)
-        # #618: bind the field name for VoiceOver.
-        happened_field.SetName(happened_label.GetLabel())
-        root.Add(happened_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        root.Add(happened_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
-
-        expected_label = wx.StaticText(parent, label="What you expected")
-        expected_field = wx.TextCtrl(parent, style=wx.TE_MULTILINE)
-        # #618: bind the field name for VoiceOver.
-        expected_field.SetName(expected_label.GetLabel())
-        root.Add(expected_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        root.Add(expected_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
-
-        steps_label = wx.StaticText(parent, label="Steps to reproduce")
-        steps_field = wx.TextCtrl(parent, style=wx.TE_MULTILINE)
-        # #618: bind the field name for VoiceOver.
-        steps_field.SetName(steps_label.GetLabel())
-        root.Add(steps_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        root.Add(steps_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
-
-        include_diagnostics = wx.CheckBox(
-            parent,
-            label="Create diagnostics bundle in this wizard",
-        )
-        include_diagnostics.SetValue(True)
-        include_paths = wx.CheckBox(parent, label="Include plain file paths in diagnostics")
-        include_paths.SetValue(False)
-        diagnostics_path_field = wx.TextCtrl(parent, style=wx.TE_READONLY)
-        # #618: bind the field name for VoiceOver (no separate label
-        # widget is created for the diagnostics path; use a literal
-        # string matching the StaticText below).
-        diagnostics_path_field.SetName("Diagnostics bundle path")
-        root.Add(include_diagnostics, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        root.Add(include_paths, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        root.Add(wx.StaticText(parent, label="Diagnostics bundle path"), 0, wx.LEFT | wx.RIGHT, 8)
-        root.Add(diagnostics_path_field, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
-
-        preview_label = wx.StaticText(parent, label="Report preview")
-        review = wx.TextCtrl(parent, style=wx.TE_MULTILINE | wx.TE_READONLY)
-        root.Add(preview_label, 0, wx.LEFT | wx.RIGHT, 8)
-        root.Add(review, 1, wx.ALL | wx.EXPAND, 8)
-        validation_text = wx.StaticText(parent, label="")
-        root.Add(validation_text, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
-
-        copy_button = wx.Button(parent, label="Copy Preview")
-        open_button = wx.Button(parent, id=wx.ID_OK, label="Open Support Form")
-        cancel_button = wx.Button(parent, id=wx.ID_CANCEL, label="Cancel")
-
-        def build_payload(
-            diagnostics_note: str | None = None,
-        ) -> tuple[dict[str, str], str]:
-            chosen_sr = sr_combo.GetStringSelection() or _detected_sr
-            payload = build_bug_report_payload(
-                current_document=self.document,
-                extra_environment={
-                    "screen_reader": chosen_sr,
-                    "wx_version": self._wx.version(),
-                    **announcement_environment,
-                },
-                summary_override=summary_field.GetValue().strip(),
-                happened=happened_field.GetValue().strip(),
-                expected=expected_field.GetValue().strip(),
-                steps=steps_field.GetValue().strip(),
-                diagnostics_note=diagnostics_note,
-                screen_reader_name=chosen_sr,
-                reporter_name=name_field.GetValue().strip() or None,
-                reporter_email=email_field.GetValue().strip() or None,
-            )
-            issue_url = build_support_issue_url(
-                payload,
-                source_app="Quill",
-                version=__version__,
-                platform_label=str(collect_environment_info()["platform"]),
-                diagnostics_note=diagnostics_note,
-            )
-            return payload, issue_url
-
-        def refresh_preview() -> None:
-            diagnostics_note = None
-            path_text = diagnostics_path_field.GetValue().strip()
-            if path_text:
-                diagnostics_note = (
-                    "Diagnostics bundle created by Quill. Please attach this zip in the issue: "
-                    f"{path_text}"
-                )
-            elif include_diagnostics.GetValue():
-                diagnostics_note = (
-                    "Quill will create a diagnostics bundle when you continue. Attach the "
-                    "generated zip file to the issue."
-                )
-            payload, issue_url = build_payload(diagnostics_note=diagnostics_note)
-            review.SetValue(
-                f"Summary: {payload['summary']}\n\n{payload['body']}\n\nDestination:\n{issue_url}"
-            )
-
-        def confirm_preflight() -> bool:
-            include_diag = include_diagnostics.GetValue()
-            include_plain_paths = include_paths.GetValue() if include_diag else False
-            lines = [
-                "You are about to prepare this report with:",
-                "",
-                f"- Diagnostics bundle: {'Yes' if include_diag else 'No'}",
-                (
-                    f"- Plain file paths in diagnostics: {'Yes' if include_plain_paths else 'No'}"
-                    if include_diag
-                    else "- Plain file paths in diagnostics: N/A (diagnostics disabled)"
-                ),
-                "- Report summary and details shown in preview",
-                "",
-                "Continue?",
-            ]
-            with wx.MessageDialog(
-                parent,
-                "\n".join(lines),
-                "Report a Bug preflight",
-                style=wx.OK | wx.CANCEL | wx.ICON_QUESTION,
-            ) as preflight:
-                return self._show_modal_dialog(preflight, "Report a Bug Preflight") == wx.ID_OK
-
-        def submit_report() -> None:
-            if not confirm_preflight():
-                validation_text.SetLabel("Report submission cancelled from preflight summary.")
-                return
-            diagnostics_path: Path | None = None
-            if include_diagnostics.GetValue():
-                try:
-                    diagnostics_path = self._create_diagnostics_bundle_for_report(
-                        include_paths.GetValue()
-                    )
-                except OSError as error:
-                    validation_text.SetLabel(f"Could not write diagnostics bundle: {error}")
-                    return
-                diagnostics_path_field.SetValue(str(diagnostics_path))
-            diagnostics_note = None
-            if diagnostics_path is not None:
-                diagnostics_note = (
-                    "Diagnostics bundle created by Quill. Please attach this zip in the issue: "
-                    f"{diagnostics_path}"
-                )
-            elif include_diagnostics.GetValue():
-                diagnostics_note = (
-                    "Diagnostics bundle requested, but no local bundle path is available."
-                )
-            payload, issue_url = build_payload(diagnostics_note=diagnostics_note)
-            on_submit(payload, issue_url, diagnostics_path)
-
-        copy_button.Bind(wx.EVT_BUTTON, lambda _e: self._copy_to_clipboard(review.GetValue()))
-        open_button.Bind(wx.EVT_BUTTON, lambda _e: submit_report())
-        cancel_button.Bind(wx.EVT_BUTTON, lambda _e: on_cancel())
-
-        def on_toggle_include_diagnostics() -> None:
-            include_paths.Enable(include_diagnostics.GetValue())
-            refresh_preview()
-
-        include_diagnostics.Bind(wx.EVT_CHECKBOX, lambda _e: on_toggle_include_diagnostics())
-        include_paths.Bind(wx.EVT_CHECKBOX, lambda _e: refresh_preview())
-        summary_field.Bind(wx.EVT_TEXT, lambda _e: refresh_preview())
-        happened_field.Bind(wx.EVT_TEXT, lambda _e: refresh_preview())
-        expected_field.Bind(wx.EVT_TEXT, lambda _e: refresh_preview())
-        steps_field.Bind(wx.EVT_TEXT, lambda _e: refresh_preview())
-        name_field.Bind(wx.EVT_TEXT, lambda _e: refresh_preview())
-        email_field.Bind(wx.EVT_TEXT, lambda _e: refresh_preview())
-        sr_combo.Bind(wx.EVT_COMBOBOX, lambda _e: refresh_preview())
-        buttons = wx.BoxSizer(wx.HORIZONTAL)
-        buttons.Add(copy_button, 0, wx.RIGHT, 6)
-        buttons.AddStretchSpacer(1)
-        buttons.Add(open_button, 0, wx.RIGHT, 6)
-        buttons.Add(cancel_button, 0)
-        root.Add(buttons, 0, wx.ALL | wx.EXPAND, 8)
-        if hasattr(parent, "SetSizer"):
-            parent.SetSizer(root)
-        include_paths.Enable(include_diagnostics.GetValue())
-        refresh_preview()
-        refresh_preview()
-        return {
-            "summary_field": summary_field,
-            "name_field": name_field,
-            "email_field": email_field,
-            "validation_text": validation_text,
-            "diagnostics_path_field": diagnostics_path_field,
-        }
-
-    def _save_bug_reporter_identity(self, body: dict[str, object]) -> None:
-        """#618: persist name and email after a successful submit so
-        the next Report a Bug dialog is pre-filled. Used by both the
-        modal and the modeless paths."""
-        name_field = body.get("name_field")
-        email_field = body.get("email_field")
-        if name_field is not None and hasattr(self.settings, "bug_reporter_name"):
-            self.settings.bug_reporter_name = getattr(name_field, "GetValue", lambda: "")().strip()
-        if email_field is not None and hasattr(self.settings, "bug_reporter_email"):
-            self.settings.bug_reporter_email = getattr(
-                email_field, "GetValue", lambda: ""
-            )().strip()
-
-    def _complete_bug_report_submission(
-        self,
-        payload: dict[str, str],
-        issue_url: str,
-        diagnostics_path: Path | None,
-    ) -> None:
-        """#618: post-submit work shared by the modal and modeless paths.
-
-        Copies the report (with diagnostics bundle path) to the clipboard,
-        then optionally opens the support-hub URL in the user's default
-        browser. The auto-open is gated on report_bug_auto_open_browser;
-        the default is False so 0.5.0-upgrade users get the new
-        "Quill copies, you decide whether to open the browser" behaviour.
-        """
-        clipboard_text = payload["body"]
-        if isinstance(diagnostics_path, Path):
-            clipboard_text = f"{clipboard_text}\n\nDiagnostics bundle path:\n{diagnostics_path}"
-        self._copy_to_clipboard(clipboard_text)
-        auto_open = getattr(self.settings, "report_bug_auto_open_browser", False)
-        if auto_open:
-            webbrowser.open(issue_url)
-            self._record_notification("Opened support-hub bug report form", "support")
-            if isinstance(diagnostics_path, Path):
-                self._set_status(
-                    "Opened bug report form, copied report, and prepared diagnostics bundle path"
-                )
-            else:
-                self._set_status(
-                    "Opened bug report form and copied environment summary to clipboard"
-                )
-        else:
-            self._record_notification("Copied support-hub bug report to clipboard", "support")
-            if isinstance(diagnostics_path, Path):
-                self._set_status("Copied bug report and prepared diagnostics bundle path")
-            else:
-                self._set_status("Copied bug report to clipboard")
-
-    def _create_diagnostics_bundle_for_report(self, include_file_paths: bool) -> Path:
-        detection = detect_screen_reader()
-        announcement_engine = getattr(self, "_announcement_engine", None)
-        announcement_environment = (
-            announcement_engine.diagnostics_environment() if announcement_engine is not None else {}
-        )
-        target = (
-            app_data_dir()
-            / "diagnostics"
-            / (f"quill-diagnostics-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.zip")
-        )
-        bundle_path = write_diagnostics_bundle(
-            target,
-            settings=self.settings,
-            keymap=self.keymap,
-            notifications=self._notifications,
-            current_document=self.document,
-            include_file_paths=include_file_paths,
-            extra_environment={
-                "screen_reader": detection.name,
-                "wx_version": self._wx.version(),
-                **announcement_environment,
-                "bw_rollout": self._bw_diagnostics_snapshot(),
-            },
-        )
-        self._record_notification(f"Saved diagnostics to {bundle_path.name}", "diagnostics")
-        return bundle_path
 
     def _create_named_scratch_tab(self, title: str, text: str) -> None:
         index = self._create_document_tab(

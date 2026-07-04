@@ -14,7 +14,7 @@ voices synthesize *in Microsoft's cloud*. When the user picks an online voice th
 browser sends the selected text to that service. On-device voices (labelled "(on
 this device)") stay local. This is why the feature is opt-in under Experimental,
 why the settings copy says availability varies with network, and why the network
-egress audit and PRIVACY.md carry an entry for it.
+egress audit and docs/legal/PRIVACY.md carry an entry for it.
 
 This module is pure and wx-free (unit-tested): :func:`build_reader_html` returns
 the page as a string. The caller writes it out and opens it.

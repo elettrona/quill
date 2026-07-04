@@ -200,6 +200,29 @@ def focus_primary_control(
     return target
 
 
+# The "Entered/Exited <name> dialog" cues are opt-out via the
+# announce_dialog_transitions setting. Standalone dialogs call the module
+# helpers below directly (no MainFrame in scope), so the shell registers a
+# live lookup here at startup; None (bare unit tests, no shell) keeps the
+# cues on, matching the MainFrame wrappers' fallback for test doubles.
+_transition_announcement_policy: Callable[[], bool] | None = None
+
+
+def set_transition_announcement_policy(policy: Callable[[], bool] | None) -> None:
+    """Register the live announce_dialog_transitions lookup (None resets)."""
+    global _transition_announcement_policy
+    _transition_announcement_policy = policy
+
+
+def _transition_cues_enabled() -> bool:
+    if _transition_announcement_policy is None:
+        return True
+    try:
+        return bool(_transition_announcement_policy())
+    except Exception:
+        return True
+
+
 def show_modal_dialog(
     dialog: object,
     label: str,
@@ -209,14 +232,15 @@ def show_modal_dialog(
     exit_region: Callable[[str], None] | None = None,
 ) -> int:
     """Show a modal dialog with optional region and announcement hooks."""
+    speak_transitions = announce is not None and _transition_cues_enabled()
     if enter_region is not None:
         enter_region(label)
-    if announce is not None:
+    if speak_transitions:
         announce(f"Entered {label} dialog")
     try:
         result = dialog.ShowModal()
     finally:
-        if announce is not None:
+        if speak_transitions:
             announce(f"Exited {label} dialog")
         if exit_region is not None:
             exit_region(label)
@@ -239,11 +263,12 @@ def show_message_box(
     """
     import wx
 
-    if announce is not None:
+    speak_transitions = announce is not None and _transition_cues_enabled()
+    if speak_transitions:
         announce(f"Entered {caption} dialog")
     try:
         result = wx.MessageBox(message, caption, style, parent)
     finally:
-        if announce is not None:
+        if speak_transitions:
             announce(f"Exited {caption} dialog")
     return result

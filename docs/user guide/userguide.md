@@ -677,7 +677,7 @@ Connection status messages tell you exactly what to do next:
 - "Rate limited by the AI provider. Wait a moment and try again." means you sent requests too quickly.
 - "Your saved API key could not be unlocked on this device. Open AI Connection and enter the key again." appears in the AI status line when a saved key cannot be decrypted, which can happen after moving a portable install to a different Windows account or machine. Open AI Connection and re-enter the key.
 
-For policy details, see the repository's `PRIVACY.md` and `RESPONSIBLE_AI_USE.md`.
+For policy details, see the repository's `docs/legal/PRIVACY.md` and `docs/legal/RESPONSIBLE_AI_USE.md`.
 
 These help you stay inside the editor instead of breaking flow for small writing chores.
 
@@ -1677,7 +1677,7 @@ The **Help** menu is where Quill becomes a guide.
 - **Why Don't I See a Feature?** explains profile-driven feature visibility.
 - **Feature Profiles** commands let you switch profile, run health checks, undo the last profile change, reset to Essential, and run onboarding.
 - **Personalise QUILL...** (the first-run setup wizard) can be rerun at any time to adjust your keyboard pack, feature profile, remote access, AI, reading and accessibility, writing tools, data location, and startup behaviour.
-- **Report a Bug...** opens an in-app review screen, copies the environment summary to the clipboard, and then opens the Community Access support-hub issue form.
+- **Report a Bug...** opens the accessible issue form, which submits your report directly to the Community Access issue tracker — no browser round-trip.
 - **Check for Updates...** verifies the signed update manifest, offers the download, and can close Quill so setup can run immediately. If you are running the **portable** build, QUILL recognises this and offers the portable `.zip` for the new version instead of pushing the installer at you — it downloads to your updates folder with an **Open folder** button so you can swap it into place. Installed copies keep receiving the installer.
 - **About Quill** shows version, publisher details, and linked third-party dependency attribution with license and version metadata.
 - **Open Third-Party Notices** opens a full notices document with dependency tables and bundled license texts.
@@ -1695,17 +1695,12 @@ Menu stability note: Quill now defers internal menu-state updates while native m
 
 Use this path when Quill is behaving unexpectedly or when you want to send the team a feature request.
 
-1. Open **Help -> Report a Bug...**. Focus lands on the Summary field, ready to type.
-2. Optionally fill in your name and contact email. Quill remembers these and pre-fills them next time, so you only enter them once.
-3. Pick your screen reader from the list (None, JAWS, NVDA, Narrator, VoiceOver, or Other). Quill pre-selects the one it detects. The choice is included in the report so the team can reproduce screen-reader-specific issues.
-4. Read the in-app report summary Quill prepares for you.
-5. Choose whether to include diagnostics, and whether to include plain file paths.
-6. If diagnostics are included, save the diagnostics bundle to a location you can find again easily.
-7. Choose **Open Support Form**.
-8. When the Community Access support page opens, describe the problem, what you expected, and what actually happened.
-9. Attach the diagnostics zip if it is relevant to the issue.
+1. Open **Help -> Report a Bug...**. The issue form opens as a dialog; the fields are plain, labelled controls your screen reader reads by name.
+2. Optionally fill in your name and email so the team can follow up.
+3. Pick a category and describe the problem: what happened, what you expected, and the steps to reproduce it. Your QUILL version is filled in for you.
+4. Choose **Submit Issue**. The report is filed directly on the Community Access issue tracker — no browser, no copy-and-paste — and no account is required. Escape cancels without sending anything.
 
-This unified flow keeps support reporting in one place. If you only need diagnostics, **Help -> Save Diagnostics...** remains available as a standalone export command.
+If the form ever cannot be opened, QUILL copies a link to the online support form to your clipboard and tells you so, so you always have a path. Need to share more detail? **Help -> Save Diagnostics...** remains available as a standalone export you can attach to any issue.
 
 ### When QUILL crashes: the new crash-submit dialog
 
@@ -1824,9 +1819,36 @@ The dialog lists all twelve slots. Each row shows the slot number, an optional l
 - Slots survive restarts. Build a small library of recurring fragments you reach for daily.
 - All bindings are reassignable in the Keymap Editor (`Tools > Customize & Support > Preferences > Keyboard`).
 
+### Saving in Different Formats — what happens to your file
+
+**File > Save As** genuinely converts your document to the format you pick in the "Save as type" list — it never just renames the file. QUILL's editor holds your text in one clean canonical form; choosing a type in Save As re-serializes that text into the chosen format on disk. Here is exactly what each choice does:
+
+- **Markdown (.md)** — your text is written exactly as it is in the editor. This is QUILL's native format; nothing is converted or lost.
+- **Text (.txt)** — also written exactly as-is, including any Markdown markup, so a plain-text file makes a perfect round trip. If you want the markup *stripped* (headings and emphasis flattened to plain words), use **File > Save As Plain Text** instead — that command also offers to keep your formatting in an Illumination sidecar.
+- **HTML (.html)** — converted to a complete standalone web page with your document title, ready for a browser.
+- **Rich Text (.rtf)** — converted with full formatting fidelity: fonts, sizes, colors, highlights, and alignment all carry over.
+- **Word (.docx)** — converted to a real Word document. Headings become Word heading styles (so Word and screen readers can navigate them), each editor line becomes one Word paragraph (your line breaks are preserved exactly), and hidden-codes formatting — font, size, color, highlight, alignment — carries onto real Word runs.
+- **A typed extension QUILL cannot write** (for example typing `notes.pdf` in the name box) — QUILL refuses rather than writing a broken file, and for PDF, ODT, and EPUB it offers to open **File > Export**, which can produce them properly through Pandoc.
+
+**You keep editing QUILL text.** After a converting Save As, the file on disk is Word (or HTML, or RTF) — but your editing surface still holds QUILL's clean text, and every subsequent Ctrl+S converts it again to the saved format. QUILL announces this after the save ("Saved as report.docx, Word format. You are still editing QUILL text; each save converts it to Word.") so the model is never a mystery. The window title and tab title update to the new name immediately, and a plain Ctrl+S from then on saves silently to the same file.
+
+**Your originals are protected.** If you opened a PDF, EPUB, spreadsheet, or presentation, what you are editing is *extracted text* — the binary original cannot hold it back. Pressing Ctrl+S on such a document never overwrites the original: QUILL explains and opens Save As so your edits land in a new file, in a format that can actually hold them.
+
+**Filename suggestions.** When you save an untitled document, QUILL pre-fills the name box from the document's first line (leading `#` marks, quotes, and bullets are stripped, and invalid filename characters removed). This is on by default; turn it off with **Suggest a filename from the first line** in Preferences. It only ever *suggests* — type anything you like over it — and it never renames an already-saved document.
+
+### Choosing a conversion engine
+
+More than one converter can handle a Word document, and they make different trade-offs. QUILL lets you pick, and tells you the outcome of each choice in plain language:
+
+- **Word document reading engine** (Preferences > Editing) — how a `.docx` becomes editable text when you open it. **Auto** (default) tries MarkItDown first and falls back to a plain extract. **MarkItDown** is fast and reliable: headings, lists, and tables come through; images, comments, and fonts do not. **Pandoc** keeps richer structure — footnotes and complex tables survive better — and needs Pandoc installed; if Pandoc is missing, the preference quietly degrades to Auto rather than failing your open.
+- **Word document saving engine** (Preferences > Editing) — how your text becomes a `.docx` when you save. **Auto** (default) prefers the native writer. **Native** keeps QUILL's formatting codes — fonts, sizes, colors, highlights, alignment — and maps each editor line to one Word paragraph; it is the best choice for documents written in QUILL. **Pandoc** maps structure to Word styles — headings, lists, tables, links, and footnotes — but drops font, size, and color codes.
+- **Convert File dialog** — the **Conversion engine** choice (Auto, Pandoc, or MarkItDown) applies to one conversion at a time, and a description under the choice updates as you arrow through it so you hear each engine's outcome before converting. MarkItDown applies only when the source is Word, PowerPoint, Excel, or PDF and the output is Markdown or plain text; choose it for anything else and QUILL says so and offers Pandoc — it never silently substitutes an engine you did not pick.
+
+These preferences exist because "convert" is not one thing: a structure-first engine and a formatting-first engine produce honestly different Word documents from the same text. The defaults are right for almost everyone; the choices are there for when they are not. (The engine comparison evidence lives in `docs/qa/converter-bakeoff.md`.)
+
 ### Import and Export
 
-QUILL can convert between the formats the people around you actually use, without you leaving the editor. **File > Import** brings a non-QUILL document into QUILL as a new tab. **File > Export** saves the current buffer as a different file type. Both routes use Pandoc on a background thread, so the editor never freezes.
+QUILL can convert between the formats the people around you actually use, without you leaving the editor. **File > Import** brings a non-QUILL document into QUILL as a new tab. **File > Export** saves the current buffer as a different file type. Both routes use Pandoc on a background thread, so the editor never freezes. Exports preserve your line breaks exactly: one editor line is one paragraph in the exported document, in every format.
 
 **Import (File > Import):** Markdown, CommonMark, GitHub-Flavored Markdown, HTML, Word documents (`.docx`), OpenDocument Text (`.odt`), Rich Text (`.rtf`), plain text, CSV / TSV tables, EPUB books, LaTeX / TeX.
 
@@ -2971,6 +2993,22 @@ Use bookmarks for long-lived anchors; use marks when you are actively traversing
 
 Quill autosaves at a timed interval and keeps backup snapshots. It avoids unnecessary duplicate autosave writes and keeps state management efficient.
 
+### Restore points — bring back any earlier save
+
+Every time you save, QUILL quietly keeps a snapshot of the document. **File > Restore Previous Version** lists them in plain language — "Today at 4:12 PM - 2,341 words" — newest first. Pick one and choose:
+
+- **Restore** — replace the editor text with that version. Your current text is saved as a restore point first, so restoring is itself reversible, and the document is marked modified so nothing touches the disk until you save.
+- **Open as Copy** — open the earlier version as a new untitled document, leaving your current document exactly as it is. Good for comparing or rescuing a paragraph.
+
+Some honest details worth knowing:
+
+- Saving unchanged text stores nothing extra — snapshots are content-based, so identical saves are free.
+- Keeping a snapshot can never be the reason a save fails. If the disk is full, your save still completes; QUILL just logs that the snapshot was skipped.
+- History thins as it ages: everything from the last week is kept, then one version per day for a month, then one per week, and the newest five versions are never pruned. **Restore point disk limit (MB)** in Preferences caps how much space one document's history can use (200 MB by default), and **Keep restore points when saving** turns the feature off entirely.
+- The command `file.restore_previous_version` has no default shortcut; assign one in the Keymap Editor if you reach for it often.
+
+How this fits with QUILL's other safety nets: **undo** (and persistent undo) covers the current editing session, **backups** keep a copy of what was on disk just before each save, and **restore points** are the long-term history — any earlier save, days or weeks later, across restarts. You never need to choose between them; they all just run.
+
 ### Recovery
 
 If Quill closes unexpectedly, it can offer a recovery snapshot on the next launch. That is not a dramatic feature. It is a humane one.
@@ -3655,6 +3693,24 @@ When you select a Quillin, the details pane shows all declared capabilities (for
 
 If a Quillin fails to load — because it requires a newer QUILL version (`min_quill_version`), a missing dependency (`requires`), or a manifest error — the error is shown in the details pane so you know what is blocking it.
 
+### The Quillin Hub: sharing what you make
+
+Everything you build in QUILL can be shared with the community through the **Quillin Hub** — not just Quillin extensions. The Hub accepts seven kinds of artifact:
+
+- **Quillin extensions** (a zipped folder with `manifest.json`)
+- **AI agents** (a single `.md` or `.json` agent file)
+- **Verbosity packs** (`.qvp.json`)
+- **Sound packs** (`.qsp`)
+- **Keyboard packs** (`.kqp`)
+- **AI skill packs** (`.sqp`)
+- **Pronunciation dictionaries** (`.json`)
+
+**Submit to Quillin Hub.** Choose **Tools → Quillins → Submit to Quillin Hub...** and pick your file. QUILL figures out what kind of artifact it is and runs the exact same checks the Hub runs on submission — locally, on your machine, with nothing uploaded. To check a Quillin extension, pick its `manifest.json` file; QUILL validates the whole folder. The result is read to you in plain language: **Passed** means your work clears every check QUILL applies to its own bundled artifacts; **Needs work** lists each error and warning so you know exactly what to fix. The dialog also reports the **Signature** line — `verified` if you have a sidecar next to your file, `invalid` if the sidecar is present but does not match, or `unsigned` if there is no sidecar. The Hub rejects unsigned submissions, so the "Open the Quillin Hub" button only appears when your artifact is both passing and signed. Sign with `python -m quill.tools.signing sign <artifact>` and re-run the check. The check itself makes no network connection; only the explicit "Open the Quillin Hub" button opens anything.
+
+Publication is handled through GitHub pull requests, so every submission is reviewed in the open. The Hub re-runs the same validation, scans any extension code for security and capability honesty, reads your manifest so you never retype your name, version, or description, and verifies the publisher signature on every sidecar uploaded with the submission.
+
+**Verifying installed Quillins.** The Quillin Manager shows a **Signature** line in the details pane for every Quillin — `verified` for a sidecar next to the manifest that matches the publisher key, `invalid` for a sidecar that does not match, or `unsigned` if no sidecar is shipped. The line is read aloud with the rest of the manifest details, so you can hear whether a Quillin is publisher-attested before enabling it. See `docs/signing.md` for the signing protocol.
+
 ### Authoring Quillins
 
 For developers, Quillins are designed to be "screen-reader-first." They follow a strict capability model: a Quillin must declare the minimum set of permissions it needs, and any sensitive action (like writing to a file or changing a setting) is consent-gated at runtime.
@@ -3675,7 +3731,7 @@ Quillins can contribute:
 - **Network host allowlist (`net_allowed_hosts`)** — when declaring the `net` capability, restrict outbound connections to a named list of hostnames or wildcard patterns. QUILL blocks connections to any unlisted host even if the user has granted blanket `net` consent.
 - **Minimum version (`min_quill_version`)** — declare the oldest QUILL release the Quillin supports. QUILL rejects it at load time if the running version is too old.
 
-See `docs/quillins.md` for the full authoring reference.
+See `docs/quillins/quillins.md` for the full authoring reference, and PRD section 5.83a ("The Quillin Hub — community distribution for every shareable artifact") for the developer guide covering every shareable QUILL file format (Quillins, agents, verbosity packs, sound packs, keyboard packs, skill packs, and pronunciation dictionaries) and how to validate and submit each one. The single validator is `python -m quill.tools.artifact_validate <path>`.
 
 ---
 

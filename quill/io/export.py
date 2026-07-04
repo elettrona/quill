@@ -22,7 +22,10 @@ from quill.io.rtf import write_rtf_document
 from quill.io.text import _normalize_line_endings, write_text_document
 
 __all__ = [
+    "EXPORT_ONLY_SUFFIXES",
+    "HTML_SUFFIXES",
     "LINK_STYLES",
+    "UnsupportedSaveFormatError",
     "markdown_to_plain_text",
     "markdown_to_html",
     "write_plain_text_document",
@@ -32,10 +35,40 @@ __all__ = [
     "format_label_for_path",
 ]
 
-_HTML_SUFFIXES = {".html", ".htm", ".xhtml"}
+HTML_SUFFIXES = frozenset({".html", ".htm", ".xhtml"})
+_HTML_SUFFIXES = HTML_SUFFIXES
 _PLAIN_SUFFIXES = {".txt", ".text"}
 _RTF_SUFFIXES = {".rtf"}
 _DOCX_SUFFIXES = {".docx"}
+
+#: Formats QUILL can open (as extracted text) but cannot write back. Writing the
+#: editor's markup to one of these would destroy a binary original (an opened
+#: PDF, EPUB, spreadsheet...) or produce a file other apps cannot open (Markdown
+#: text named .pdf). Save must refuse and steer the user to Save As / Export.
+EXPORT_ONLY_SUFFIXES: frozenset[str] = frozenset({
+    ".pdf",
+    ".doc",
+    ".odt",
+    ".epub",
+    ".pages",
+    ".ppt",
+    ".pptx",
+    ".xls",
+    ".xlsx",
+    ".sqlite",
+    ".db",
+})
+
+
+class UnsupportedSaveFormatError(ValueError):
+    """Save targeted an extension QUILL cannot convert the editor text into."""
+
+    def __init__(self, suffix: str) -> None:
+        super().__init__(
+            f"QUILL cannot save directly to {suffix}. Use File > Export for this format."
+        )
+        self.suffix = suffix
+
 
 _FENCE_RE = re.compile(r"^\s*(```|~~~)")
 _HEADING_RE = re.compile(r"^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$")
@@ -227,8 +260,16 @@ def write_html_document(document: Document, path: Path | None = None) -> Path:
     return _write_utf8(document, target, markdown_to_html(document.text, title))
 
 
-def write_docx_document(document: Document, path: Path | None = None) -> Path:
+def write_docx_document(
+    document: Document, path: Path | None = None, *, engine: str = "auto"
+) -> Path:
     """Write a document's Markdown markup out as a Word (.docx) file.
+
+    ``engine`` selects the converter: ``auto`` (default) prefers the native
+    python-docx writer and falls back to Pandoc; ``native`` requires python-docx
+    and fails clearly when it is missing; ``pandoc`` forces the Pandoc path for
+    users who want structure-first Word styles instead of QUILL's run-level
+    formatting codes.
 
     Prefers the native python-docx writer (:mod:`quill.io.docx_writer`), which
     carries QUILL's hidden-codes attributes — per-run font family, point size,
@@ -236,17 +277,25 @@ def write_docx_document(document: Document, path: Path | None = None) -> Path:
     and paragraphs. When python-docx is not installed, falls back to the Pandoc
     path, which maps headings, lists, emphasis, links, and simple tables to Word
     styles (but drops the font/size/color/alignment attributes). Either way the
-    result is a properly structured, screen-reader-navigable document.
+    result is a properly structured, screen-reader-navigable document, and the
+    document is marked saved at the target like every other writer here — so the
+    window title, the modified flag, and the next plain Save stay truthful.
     """
+    if engine not in {"auto", "native", "pandoc"}:
+        raise ValueError(f"Unknown docx engine {engine!r}; use auto, native, or pandoc.")
     target = path or document.path
     if target is None:
         raise ValueError("A path is required to save this document.")
+    target = Path(target)
 
     from quill.io.docx_writer import python_docx_available, write_docx
 
-    if python_docx_available():
-        write_docx(document, Path(target))
-        return Path(target)
+    if engine != "pandoc" and python_docx_available():
+        write_docx(document, target)
+        document.mark_saved(target)
+        return target
+    if engine == "native":
+        raise ValueError("The native Word writer needs python-docx, which is not installed.")
 
     import tempfile
 
@@ -255,12 +304,23 @@ def write_docx_document(document: Document, path: Path | None = None) -> Path:
     with tempfile.TemporaryDirectory() as tmp:
         source = Path(tmp) / "source.md"
         source.write_text(document.text, encoding="utf-8", newline="\n")
-        convert_file_with_pandoc(source, Path(target), from_format="gfm", to_format="docx")
-    return Path(target)
+        # hard_line_breaks: the editor is line-oriented (one editor line is one
+        # paragraph, exactly what markdown_to_rich produces on the native path),
+        # so a bare "gfm" read — where a single newline is a soft wrap — would
+        # join the user's lines into one long Word paragraph.
+        convert_file_with_pandoc(
+            source, target, from_format="gfm+hard_line_breaks", to_format="docx"
+        )
+    document.mark_saved(target)
+    return target
 
 
 def write_document_as(
-    document: Document, path: Path | None = None, *, plain_text_link_style: str = "text"
+    document: Document,
+    path: Path | None = None,
+    *,
+    plain_text_link_style: str = "text",
+    docx_engine: str = "auto",
 ) -> Path:
     """Write ``document`` to ``path``, converting to the format of its extension.
 
@@ -272,15 +332,23 @@ def write_document_as(
     explicit "Save as plain text" command (``write_plain_text_document``) still
     flattens markup. ``plain_text_link_style`` is accepted for call-site symmetry
     and applies only on that explicit plain-text path (see :data:`LINK_STYLES`).
+    ``docx_engine`` is forwarded to :func:`write_docx_document` (the
+    ``docx_write_engine`` setting).
     """
     target = path or document.path
     if target is None:
         raise ValueError("A path is required to save this document.")
     suffix = Path(target).suffix.lower()
+    if suffix in EXPORT_ONLY_SUFFIXES:
+        # Never fall through to the verbatim text writer for these: it would
+        # overwrite an opened binary original (PDF, EPUB, spreadsheet...) with
+        # plain text, or mint a Markdown file wearing a .pdf name that other
+        # apps cannot open.
+        raise UnsupportedSaveFormatError(suffix)
     if suffix in _RTF_SUFFIXES:
         return write_rtf_document(document, target)
     if suffix in _DOCX_SUFFIXES:
-        return write_docx_document(document, target)
+        return write_docx_document(document, target, engine=docx_engine)
     if suffix in _HTML_SUFFIXES:
         return write_html_document(document, target)
     # A plain-text file the user opened (or saves to by extension) must round-trip

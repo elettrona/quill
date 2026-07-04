@@ -241,6 +241,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">QUILL-PRD</h1>
+</header>
 <h1 id="quill-product-requirements-document">Quill: Product Requirements
 Document</h1>
 <h2
@@ -1497,14 +1500,20 @@ As:</p>
 <li><strong>Save in place</strong>: every plain-text and
 lightweight-markup format, source code, configs, subtitles, braille
 (BRF), SVG, JSON/XML/YAML/TOML, notebooks (when the user has explicitly
-chosen to keep notebook structure on save).</li>
-<li><strong>Save As only (originals protected)</strong>: DOCX/DOC,
-PPTX/PPT, XLSX/XLS, ODT/ODP/ODS, Pages/Keynote/Numbers, PDF, PS/EPS,
-XPS, EPUB and other e-books, RTF, DjVu, comics, MHTML and web archives,
-email (<code>eml</code>, <code>msg</code>, <code>pst</code>,
+chosen to keep notebook structure on save), and the two rich formats
+QUILL genuinely writes — <strong>DOCX and RTF</strong> — which
+round-trip through the canonical buffer and are re-serialized on every
+save (see 5.3a.1.1a).</li>
+<li><strong>Save As only (originals protected)</strong>: DOC, PPTX/PPT,
+XLSX/XLS, ODT/ODP/ODS, Pages/Keynote/Numbers, PDF, PS/EPS, XPS, EPUB and
+other e-books, DjVu, comics, MHTML and web archives, email
+(<code>eml</code>, <code>msg</code>, <code>pst</code>,
 <code>mbox</code>), calendar and contact files, OneNote, data files
 (<code>sqlite</code>, <code>parquet</code>, <code>feather</code>), all
-image formats.</li>
+image formats. Enforced at the io layer by
+<code>EXPORT_ONLY_SUFFIXES</code> +
+<code>UnsupportedSaveFormatError</code> (5.3a.1.1a), not just by UI
+convention.</li>
 <li><strong>Read-only with explicit refusal-to-edit message</strong>:
 PST archives, parquet/feather, evtx, AZW3/KFX, anything
 DRM-protected.</li>
@@ -1558,6 +1567,91 @@ editable in QUILL (Markdown, CommonMark, GFM, HTML, plain text, CSV /
 TSV) the editor asks whether to open the new file in a new window. PDF,
 DOCX, EPUB, ODT, and RTF do not prompt; the file path is on the
 clipboard for pasting into File Explorer.</p>
+<h5
+id="a.1.1a-save-as-conversion-pipeline-and-format-truthfulness-shipped-0.9.0-beta-1">5.3a.1.1a
+Save As conversion pipeline and format truthfulness (shipped 0.9.0 Beta
+1)</h5>
+<p><strong>Save As converts; it never just renames.</strong> The
+editor’s canonical text is QUILL Markdown-style markup.
+<code>quill/io/export.py::write_document_as</code> is the single
+dispatcher every save routes through, keyed by target extension:
+<code>.rtf</code> re-serializes through the native RTF writer,
+<code>.docx</code> through <code>write_docx_document</code>,
+<code>.html</code>/<code>.htm</code>/<code>.xhtml</code> through the
+standalone HTML renderer, and <code>.txt</code>/<code>.md</code>/unknown
+text extensions are written verbatim (#649 round-trip contract; the
+explicit Save As Plain Text command is the stripping path, with the
+Illumination options).</p>
+<p><strong>The mark-saved contract (Caroline’s 0.8.0 report).</strong>
+Every writer in the dispatch — including both docx branches — must call
+<code>document.mark_saved(target)</code> on success, so the window
+title, the modified flag, the tab title, and the next plain Ctrl+S are
+truthful. The .docx writer’s missing <code>mark_saved</code> produced
+the “Untitled [modified] after a successful save, then an empty Save As
+dialog” failure; regression tests pin the contract for every format.</p>
+<p><strong>Line-break policy — one editor line is one paragraph,
+everywhere.</strong> The editor is line-oriented (what a screen reader
+user hears line by line is the document’s structure). The native writers
+already work this way (<code>markdown_to_rich</code> maps each editor
+line to a paragraph); every Pandoc call whose source is QUILL canonical
+text must therefore use <code>gfm+hard_line_breaks</code>, never bare
+<code>gfm</code> (where a single newline is a soft wrap that silently
+joins the user’s lines). This applies to the docx Pandoc fallback and to
+every File &gt; Export format. Convert File / Batch Conversion of
+arbitrary on-disk files keep their detected source semantics.</p>
+<p><strong>Export-only extension guard (data-loss invariant).</strong>
+<code>EXPORT_ONLY_SUFFIXES</code>
+(<code>.pdf .doc .odt .epub .pages .ppt .pptx .xls .xlsx .sqlite .db</code>)
+marks formats QUILL can open (as extracted text) but cannot write.
+<code>write_document_as</code> raises
+<code>UnsupportedSaveFormatError</code> for them: Ctrl+S on an opened
+PDF/EPUB/spreadsheet must never overwrite the binary original with text
+(the UI explains and routes to Save As), and a typed
+<code>notes.pdf</code> in Save As must never mint a Markdown file
+wearing a <code>.pdf</code> name (the UI offers the Pandoc Export
+hand-off for <code>.pdf</code>/<code>.odt</code>/<code>.epub</code> and
+refuses the rest). This implements the “Save As only (originals
+protected)” row of the editable-vs-read-only matrix above as an enforced
+io-layer invariant rather than a UI convention. <code>.brf</code>-family
+and unknown text extensions stay verbatim by design.</p>
+<p><strong>The editing surface stays QUILL text — audibly.</strong>
+After a converting Save As (.docx/.rtf/HTML) the file on disk is the
+converted artifact and each subsequent save re-converts; the editor does
+not switch to the target format.
+<code>_announce_save_as_conversion</code> speaks this (“Saved as
+report.docx, Word format. You are still editing QUILL text; each save
+converts it to Word.”) so the model is explicit for a screen reader
+user. No auto-reload is offered for .docx: a reload would round-trip
+through a different engine (MarkItDown) and silently lose formatting
+just saved.</p>
+<p><strong>Filename suggestion from the first line.</strong>
+<code>first_line_as_title</code> (default <strong>on</strong>) pre-fills
+Save/Export dialogs for an untitled document from its first meaningful
+line via <code>quill/core/titles.py</code> (markup leaders stripped,
+Windows-invalid characters removed, 60-char cap). It only ever suggests
+a name for an untitled document.</p>
+<p><strong>Conversion engine preferences.</strong> Two settings expose
+the engine choice with speakable outcome descriptions:
+<code>docx_read_engine</code> (auto | markitdown | pandoc — auto is
+MarkItDown-first with the raw python-docx extract as last resort; the
+pandoc preference degrades to auto when Pandoc is missing, so a
+preference never fails an open) and <code>docx_write_engine</code> (auto
+| native | pandoc — native is the hidden-codes-preserving python-docx
+writer; pandoc maps structure to Word styles and drops run-level
+font/size/color). The Convert File dialog carries a per-operation
+Conversion engine choice (Auto/Pandoc/MarkItDown) whose description
+follows the selection; MarkItDown is honored only where it honestly
+applies (Office/PDF source, Markdown/plain output) and the handler asks
+before substituting Pandoc, never silently. Engine evidence:
+<code>docs/qa/converter-bakeoff.md</code> (2026-07-04) — MarkItDown and
+Pandoc passed the full corpus; the python-docx reader loses
+tables/footnotes/links (fallback only); <strong>pydocx is rejected
+permanently</strong> (cannot import on Python 3.10+, last release 2016);
+<strong>mammoth is not adopted</strong> (no current gap) with a standing
+decision tree: if a MarkItDown fidelity gap appears, mammoth is the
+candidate and would be bundled (pure-Python; frozen builds cannot
+pip-install at runtime), lazily imported, and offered as a third
+read-engine choice.</p>
 <h5 id="a.1.2-batch-conversion-wizard">5.3a.1.2 Batch Conversion
 wizard</h5>
 <p><strong>File &gt; Import &gt; Batch Conversion…</strong> and
@@ -5364,6 +5458,53 @@ auto-pruned at 30 days.</li>
 <code>…snap.tmp</code> and rename to <code>…snap</code> on flush so a
 power loss mid-write cannot corrupt the recovery store.</li>
 </ul>
+<h3
+id="a-restore-points-per-save-document-history-shipped-0.9.0-beta-1">5.39a
+Restore points — per-save document history (shipped 0.9.0 Beta 1)</h3>
+<p>The first shipped slice of the QUILL Sync plan
+(<code>docs/planning/quill-sync-plan.md</code>, section 7): document
+versioning, entirely offline, with no sync engine involved.</p>
+<p><strong>Model.</strong> Every successful save snapshots the
+document’s canonical text into a content-addressed store
+(<code>restore_points/&lt;doc-key&gt;/blobs/&lt;sha256&gt;.txt</code> +
+an atomically-written <code>index.json</code>, under the QUILL data
+dir). Content addressing makes unchanged saves free and gives dedup
+without reference counting. The store is wx-free, strict-typed
+<code>quill/core/restore_points.py</code>.</p>
+<p><strong>Invariants.</strong></p>
+<ul>
+<li>Recording is best-effort by contract: the save-path hook
+(<code>_record_save_restore_point</code>, called from the
+<code>_write_document_to_disk</code> chokepoint so every save path is
+covered) is fully guarded — a snapshot failure can never be the reason a
+save fails.</li>
+<li>Restoring is itself reversible: the current text is recorded as a
+restore point (source <code>restore</code>) before it is replaced, and
+the restore lands in the editor as a modified buffer — nothing touches
+disk until the user saves.</li>
+<li>Retention thins by age (keep 7 days fully, then daily to 30 days,
+then weekly) under a per-document size cap
+(<code>restore_points_max_mb</code>, default 200, clamped 10-5000); the
+newest five versions are never pruned regardless of the cap.</li>
+<li>Documents over 20 MB of text are not snapshotted (the cap would be
+consumed by a handful of saves).</li>
+</ul>
+<p><strong>UI.</strong>
+<code>File &gt; Restore Previous Version...</code> (command
+<code>file.restore_previous_version</code>, assignable, no default key)
+lists versions with speakable labels (“Today at 4:12 PM - 2,341 words”,
+“(before a restore)” marking pre-restore snapshots), skips the version
+identical to the current editor text, and offers
+<strong>Restore</strong> (confirmed, announced, one editor-level undo of
+a restore via the pre-restore snapshot) and <strong>Open as
+Copy</strong> (a new untitled tab). Settings: <strong>Keep restore
+points when saving</strong> (default on) and the disk limit, both with
+speakable specs.</p>
+<p><strong>Relationship to the other safety nets.</strong> Persistent
+undo is in-session; <code>core.backups</code> keeps the single pre-save
+<code>.bak</code>; restore points are the cross-session, long-horizon
+history above both. The Sync plan’s later phases reuse this exact store
+as the sync engine’s version layer.</p>
 <h3 id="paragraph-line-and-footnote-refinements">5.40 Paragraph, line,
 and footnote refinements</h3>
 <ul>
@@ -6935,6 +7076,128 @@ discovered and are not affected by the SEC-8 lock.</p>
 <code>set_enabled</code>), <code>quill/ui/main_frame_quillins.py</code>
 (<code>QuillinsManagerMixin</code> — manager panel, Install from Folder
 button and handler).</p>
+<hr />
+<h3
+id="a-the-quillin-hub-community-distribution-for-every-shareable-artifact">5.83a
+The Quillin Hub — community distribution for every shareable
+artifact</h3>
+<p>The Quillin Hub (<code>hub.quillforall.org</code>; service code in
+<code>quillin-hub/</code>) is the community store and submission surface
+for <strong>every</strong> shareable QUILL artifact type, not just
+Quillin extensions. Seven artifact families are accepted for review and
+publication:</p>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>Type id</th>
+<th>Artifact</th>
+<th>Format</th>
+<th>Authoritative validator</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>quillin</code></td>
+<td>Quillin extension</td>
+<td>directory / .zip with <code>manifest.json</code></td>
+<td><code>quill.tools.quillin_lint</code></td>
+</tr>
+<tr>
+<td><code>agent</code></td>
+<td>AI agent (<code>quill.agent/1</code>)</td>
+<td><code>.md</code> / <code>.json</code></td>
+<td><code>quill.tools.agent_lint</code></td>
+</tr>
+<tr>
+<td><code>verbosity-pack</code></td>
+<td>Verbosity pack</td>
+<td><code>.qvp.json</code></td>
+<td><code>quill.core.verbosity.qvp</code></td>
+</tr>
+<tr>
+<td><code>sound-pack</code></td>
+<td>QSP sound pack</td>
+<td><code>.qsp</code> ZIP or directory</td>
+<td><code>quill.core.sound_pack</code></td>
+</tr>
+<tr>
+<td><code>keyboard-pack</code></td>
+<td>Keyboard Quill Pack</td>
+<td><code>.kqp</code></td>
+<td><code>quill.tools.kqp_validator</code></td>
+</tr>
+<tr>
+<td><code>skill-pack</code></td>
+<td>Skill Quill Pack</td>
+<td><code>.sqp</code></td>
+<td><code>quill.tools.sqp_validator</code></td>
+</tr>
+<tr>
+<td><code>pronunciation-dictionary</code></td>
+<td>Pronunciation dictionary</td>
+<td><code>.json</code></td>
+<td>pronunciation schema check</td>
+</tr>
+</tbody>
+</table>
+<p><strong>One validation authority.</strong>
+<code>python -m quill.tools.artifact_validate &lt;path&gt; [--type ID] [--strict] [--json]</code>
+detects the artifact type (by suffix, manifest sniffing, or schema
+markers) and dispatches to the per-type validator listed above. The
+Hub’s Submission Forge, CI, and the in-app submission check all run this
+same tool, so an author never sees three different verdicts. Exit codes
+follow the validator convention (0 pass, 1 issues, 2 not
+found/undetectable); <code>--json</code> emits the machine-readable
+report the Forge consumes.</p>
+<p><strong>The Submission Forge.</strong> The Hub’s
+<code>/forge/submit</code> flow accepts any supported file, auto-detects
+the type (with a manual override), and runs a three-stage audit: (1)
+<code>artifact_validate</code> validation; (2) for Quillins only, a
+Bandit scan plus the AST <code>SecurityWatchdog</code>
+capability-honesty check (undeclared
+<code>fs</code>/<code>net</code>/<code>stability</code> imports and
+<code>eval</code>/<code>exec</code> fail the submission); (3) metadata
+extraction from the artifact’s own manifest or front matter so authors
+never retype name/version/description. The result is an accessible
+plain-language Forge Report; publication itself stays GitHub-native (a
+guided pull request), keeping review transparent.</p>
+<p><strong>Registry API.</strong> <code>/api/v1/types</code>,
+<code>/api/v1/artifacts[?type=…]</code>, and
+<code>/api/v1/artifacts/&lt;id&gt;/latest</code> serve the verified
+catalog to clients; the original <code>/api/v1/plugins</code> endpoints
+remain as Quillin-only aliases. A sync worker mirrors artifacts that
+land on <code>main</code> (bundled/example Quillins, catalog agents,
+bundled <code>.sqp</code> skills) into the storefront as Verified.</p>
+<p><strong>In-app tie-in.</strong> <strong>Tools &gt; Quillins &gt;
+Submit to Quillin Hub…</strong> (<code>tools.quillin_hub_submit</code>)
+runs the identical <code>artifact_validate</code> checks locally and
+reports pass/fail in an accessible hardened dialog. Picking a Quillin’s
+<code>manifest.json</code> validates the whole folder (the accessible
+alternative to a directory picker). The Quillin Hub website opens in the
+browser only on the explicit “Open the Quillin Hub” button — QUILL
+itself makes no network call anywhere in the flow, so the command needs
+no egress-audit entry.</p>
+<p><strong>Roadmap linkage.</strong> Public deployment of the Hub is
+#517 (O14); the signing/marketplace trust model that would let vetted
+third-party Quillins load off the SEC-8 experimental flag is #519 (O16).
+This section covers the submission/validation platform and the in-app
+surface; signing and deployment remain open acceptance criteria on those
+issues.</p>
+<p><strong>Implementation map.</strong>
+<code>quill/tools/artifact_validate.py</code> (detection + dispatch;
+tests in <code>tests/unit/tools/test_artifact_validate.py</code>),
+<code>quill/ui/quillin_hub_submit.py</code> (submission-check dialog),
+<code>quill/ui/main_frame_quillins.py</code> (menu item + command),
+<code>quillin-hub/</code> (Flask service:
+<code>app/artifacts/registry.py</code>, <code>app/forge/</code>,
+<code>app/api/</code>, <code>worker/sync_to_pages.py</code>,
+<code>smoke_test.py</code>).</p>
 <hr />
 <h3
 id="skill-quill-pack-.sqp-multi-step-ai-workflows-in-plain-text">5.84

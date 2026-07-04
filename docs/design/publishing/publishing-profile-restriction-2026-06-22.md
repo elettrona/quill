@@ -27,6 +27,11 @@ matching 2026-06-22 entry for full validation numbers.
 The rest of this document is preserved as written during scoping, for
 the historical record of what was decided and why.
 
+Note (2026-07-04): the `codex-notes/` working-notes folder cited below
+was retired when the repository root was reorganized. The cited plans
+and work logs remain available in git history (last present at the
+`chore/root-docs-new-homes` merge, PR #824).
+
 ## Context
 
 The user was told (by someone above them in the project) that the

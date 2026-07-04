@@ -136,7 +136,9 @@ KOKORO_VOICES_SHA256 = "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c2
 # installer in quill.iss and fetched via release_assets / the dictation pre-flight), so no
 # offline engine is bundled -- the installer stays small and the first offline use fetches
 # the tiny default in-flow.
-DEFAULT_BUNDLED_DEPENDENCY_GROUPS = ("ui", "spellcheck", "ocr", "kokoro", "speech")
+# "feedback" bundles feedback_hub (direct GitHub issue submission) so Report a
+# Bug offers the accessible Submit flow instead of the browser support form.
+DEFAULT_BUNDLED_DEPENDENCY_GROUPS = ("ui", "spellcheck", "ocr", "kokoro", "speech", "feedback")
 
 # Pinned rcedit release (electron/rcedit). Build-tool only -- never copied into
 # the portable bundle or the installer payload. Used to stamp the bundled

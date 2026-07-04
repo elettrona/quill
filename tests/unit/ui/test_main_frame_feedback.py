@@ -56,8 +56,6 @@ def test_report_bug_feedback_hub_path_goes_through_show_modal_dialog(monkeypatch
         modal_calls.append(label) or frame._wx.ID_OK
     )
 
-    monkeypatch.setattr(frame, "_feedback_hub_available", lambda: True)
-
     class _FakeSchema:
         pass
 
@@ -86,94 +84,32 @@ def test_report_bug_feedback_hub_path_goes_through_show_modal_dialog(monkeypatch
     assert frame._notification == ("Submitted feedback via feedback hub", "support")
 
 
-def test_report_bug_falls_back_to_legacy_when_hub_raises(monkeypatch) -> None:
-    # A broken/incompatible feedback_hub must not strand the user without a
-    # report dialog (#210 follow-up): report_bug falls back to the built-in form.
+def test_report_bug_failure_copies_support_url_and_reports_plainly(monkeypatch) -> None:
+    # The legacy built-in form is gone (feedback_hub ships with QUILL), so a
+    # hub failure must still leave the user a path: the online support-form
+    # URL lands on the clipboard and a message box says so out loud.
     frame = _build_frame()
-    monkeypatch.setattr(frame, "_feedback_hub_available", lambda: True)
+    copied: list[str] = []
+    boxes: list[tuple[str, str]] = []
 
     def _boom() -> None:
         raise RuntimeError("hub exploded")
 
     monkeypatch.setattr(frame, "_report_bug_via_hub", _boom)
-    legacy_called: list[bool] = []
-    monkeypatch.setattr(frame, "_report_bug_legacy", lambda: legacy_called.append(True))
-
-    frame.report_bug()
-
-    assert legacy_called == [True]
-    assert frame._status_message == "Report a Bug: using the built-in form"
-
-
-def test_report_bug_reviews_then_opens_support_form(monkeypatch) -> None:
-    # #618: the auto-open-browser step is opt-in via the
-    # report_bug_auto_open_browser setting (default False in 0.7.0).
-    # This test exercises the opt-in path.
-    frame = _build_frame()
-    frame.settings.report_bug_auto_open_browser = True
-    opened: list[str] = []
-    copied: list[str] = []
-    monkeypatch.setattr(frame, "_feedback_hub_available", lambda: False)
-    monkeypatch.setattr(
-        frame,
-        "_review_bug_report",
-        lambda: ({"summary": "Bug report: note.md", "body": "Body"}, "https://example.invalid"),
-    )
     monkeypatch.setattr(frame, "_copy_to_clipboard", lambda text: copied.append(text) or True)
-    monkeypatch.setattr("quill.ui.main_frame.webbrowser.open", lambda url: opened.append(url))
+    frame._show_message_box = lambda message, caption, _style: boxes.append((message, caption))
+    frame._wx = type(
+        "Wx",
+        (),
+        {"version": staticmethod(lambda: "4.2-test"), "OK": 4, "ICON_ERROR": 512},
+    )()
 
     frame.report_bug()
 
-    assert copied == ["Body"]
-    assert opened == ["https://example.invalid"]
-    assert frame._notification == ("Opened support-hub bug report form", "support")
-
-
-def test_report_bug_includes_diagnostics_path_when_present(monkeypatch) -> None:
-    # #618: opt-in auto-open-browser to test the diagnostics-bundle path.
-    frame = _build_frame()
-    frame.settings.report_bug_auto_open_browser = True
-    opened: list[str] = []
-    copied: list[str] = []
-    frame._last_bug_report_diagnostics_path = Path(r"C:\Temp\quill-diagnostics.zip")
-    monkeypatch.setattr(frame, "_feedback_hub_available", lambda: False)
-    monkeypatch.setattr(
-        frame,
-        "_review_bug_report",
-        lambda: ({"summary": "Bug report: note.md", "body": "Body"}, "https://example.invalid"),
-    )
-    monkeypatch.setattr(frame, "_copy_to_clipboard", lambda text: copied.append(text) or True)
-    monkeypatch.setattr("quill.ui.main_frame.webbrowser.open", lambda url: opened.append(url))
-
-    frame.report_bug()
-
-    assert copied[0].startswith("Body")
-    assert "Diagnostics bundle path" in copied[0]
-    assert "quill-diagnostics.zip" in copied[0]
-    assert opened == ["https://example.invalid"]
-
-
-def test_report_bug_does_not_open_browser_by_default(monkeypatch) -> None:
-    # #618: 0.7.0 default is "Quill copies, you decide whether to open the
-    # browser". The browser must NOT open when report_bug_auto_open_browser
-    # is False (the default). The clipboard still receives the report.
-    frame = _build_frame()
-    opened: list[str] = []
-    copied: list[str] = []
-    monkeypatch.setattr(frame, "_feedback_hub_available", lambda: False)
-    monkeypatch.setattr(
-        frame,
-        "_review_bug_report",
-        lambda: ({"summary": "Bug report: note.md", "body": "Body"}, "https://example.invalid"),
-    )
-    monkeypatch.setattr(frame, "_copy_to_clipboard", lambda text: copied.append(text) or True)
-    monkeypatch.setattr("quill.ui.main_frame.webbrowser.open", lambda url: opened.append(url))
-
-    frame.report_bug()
-
-    assert copied == ["Body"], "report must always be copied to the clipboard"
-    assert opened == [], "browser must NOT open when auto_open_browser is False"
-    assert frame._notification == ("Copied support-hub bug report to clipboard", "support")
+    assert len(copied) == 1
+    assert copied[0].startswith("https://github.com/Community-Access/support/issues/new?")
+    assert boxes and boxes[0][1] == "Report a Bug"
+    assert "copied to your clipboard" in boxes[0][0]
 
 
 def test_save_diagnostics_bundle_cancels_when_review_cancelled(monkeypatch) -> None:
