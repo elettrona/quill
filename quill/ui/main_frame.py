@@ -436,6 +436,7 @@ from quill.core.yaml_structure import (
 )
 from quill.io.export import (
     EXPORT_ONLY_SUFFIXES,
+    HTML_SUFFIXES,
     format_label_for_path,
     write_document_as,
     write_plain_text_document,
@@ -10124,7 +10125,25 @@ class MainFrame(
         self._refresh_title()
         self._refresh_sessions_menu()
         self._set_status(f"Saved as {target.name} ({format_label_for_path(target)})")
+        self._announce_save_as_conversion(target)
         self._maybe_reload_surface_after_save_as(target)
+
+    def _announce_save_as_conversion(self, target: Path) -> None:
+        """Speak what a converting Save As actually did.
+
+        The file on disk is now Word/RTF/HTML, but the editing surface still
+        holds QUILL's canonical text and every subsequent save re-converts it.
+        That model is deliberate; this makes it audible instead of silent.
+        Verbatim formats (.md/.txt/unknown) stay quiet — the status line
+        already names them and nothing was converted.
+        """
+        if target.suffix.lower() not in ({".docx", ".rtf"} | HTML_SUFFIXES):
+            return
+        label = format_label_for_path(target)
+        self._announce(
+            f"Saved as {target.name}, {label} format. You are still editing "
+            f"QUILL text; each save converts it to {label}."
+        )
 
     def _surface_kind_for_path(self, path: Path) -> str:
         """The editing surface ``open_file`` would use for ``path``.

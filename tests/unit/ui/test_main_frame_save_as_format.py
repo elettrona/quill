@@ -150,6 +150,31 @@ def test_save_file_as_reports_write_failures() -> None:
     assert "Could not save" in body
 
 
+def test_save_file_as_announces_format_conversion() -> None:
+    # After a converting Save As (.docx/.rtf/HTML) the screen reader hears what
+    # actually happened: the file is Word/RTF/HTML on disk, but the editor still
+    # holds QUILL text and each save re-converts.
+    start = _SOURCE.index("def save_file_as(")
+    body = _SOURCE[start : _SOURCE.index("\n    def ", start + 1)]
+    assert "_announce_save_as_conversion(target)" in body
+
+
+def test_announce_save_as_conversion_wording() -> None:
+    spoken: list[str] = []
+    frame = _frame()
+    frame._announce = spoken.append  # type: ignore[method-assign]
+    frame._announce_save_as_conversion(Path("report.docx"))
+    assert spoken == [
+        "Saved as report.docx, Word format. You are still editing QUILL text; "
+        "each save converts it to Word."
+    ]
+    spoken.clear()
+    # Non-converting formats stay quiet: the status line already covers them.
+    frame._announce_save_as_conversion(Path("notes.md"))
+    frame._announce_save_as_conversion(Path("notes.txt"))
+    assert spoken == []
+
+
 def test_export_document_preserves_editor_line_breaks() -> None:
     # The editor is line-oriented: one editor line is one paragraph. Bare "gfm"
     # treats a single newline as a soft wrap, which joined all of a user's lines
