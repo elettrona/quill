@@ -16,8 +16,10 @@ __all__ = ["Heading", "iter_headings"]
 
 # ATX heading: up to three leading spaces, 1-6 hashes, at least one space, then
 # a non-space. Mirrors quill.core.navigation._heading_starts so manuscript
-# structure matches the editor's heading navigation.
-_HEADING_RE = re.compile(r"^[ \t]{0,3}(#{1,6})[ \t]+(\S.*?)[ \t]*#*[ \t]*$", re.MULTILINE)
+# structure matches the editor's heading navigation. A trailing hash run is
+# only an ATX closing sequence when whitespace precedes it (CommonMark), so a
+# literal title like "Chapter#" keeps its "#".
+_HEADING_RE = re.compile(r"^[ \t]{0,3}(#{1,6})[ \t]+(\S.*?)(?:[ \t]+#+)?[ \t]*$", re.MULTILINE)
 
 
 @dataclass(frozen=True, slots=True)

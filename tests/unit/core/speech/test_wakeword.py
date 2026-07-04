@@ -65,7 +65,7 @@ def test_cooldown_ignores_windows_right_after_a_wake() -> None:
     assert c.state == WakeState.LISTENING
     assert not _kinds(effects, "sound")
     # The next real wake works.
-    effects = c.on_window("hey quill save file")
+    c.on_window("hey quill save file")
     assert c.state == WakeState.WOKEN
 
 

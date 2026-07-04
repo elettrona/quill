@@ -17,6 +17,15 @@ from quill.core.story.fields import FieldRow, build_rows, collect_fields
 from quill.core.story.model import ElementKind
 
 
+def _with_mnemonic(label: str, used: set[str]) -> str:
+    """Insert ``&`` before the first letter not already used as a mnemonic."""
+    for index, char in enumerate(label):
+        if char.isalnum() and char.lower() not in used:
+            used.add(char.lower())
+            return label[:index] + "&" + label[index:]
+    return label
+
+
 class StoryElementFormDialog:
     """Edits an element's front-matter fields and reports them after OK.
 
@@ -58,8 +67,11 @@ class StoryElementFormDialog:
         outer = wx.BoxSizer(wx.VERTICAL)
         grid = wx.FlexGridSizer(cols=2, vgap=6, hgap=8)
         grid.AddGrowableCol(1, 1)
+        # Each label gets a unique Alt+letter mnemonic; the label immediately
+        # precedes its TextCtrl, so the access key focuses the field (#784).
+        used_mnemonics: set[str] = set()
         for row in self._rows:
-            label = wx.StaticText(dialog, label=f"{row.label}:")
+            label = wx.StaticText(dialog, label=f"{_with_mnemonic(row.label, used_mnemonics)}:")
             control = wx.TextCtrl(dialog, value=row.value)
             control.SetName(row.label)
             self._controls[row.key] = control

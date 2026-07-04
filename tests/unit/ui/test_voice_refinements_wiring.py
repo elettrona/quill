@@ -16,7 +16,7 @@ def test_conversation_capture_uses_vad() -> None:
     src = _src("quill/ui/main_frame_speech.py")
     assert "SilenceDetector" in src
     assert "_conv_poll_vad" in src
-    assert "captured_frames()" in src
+    assert "frames_since(" in src  # incremental polling, not O(n^2) re-joins
 
 
 def test_spoken_cues_respect_screen_reader_parity() -> None:

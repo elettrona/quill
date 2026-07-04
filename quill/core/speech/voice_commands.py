@@ -209,7 +209,7 @@ WAKE_PHRASES: tuple[str, ...] = ("hey quill", "quill")
 
 
 def extract_transcript_body(transcript: str) -> str | None:
-    """Strip a wake phrase from ``transcript``; ``None`` if no wake phrase led.
+    """Strip a wake phrase from ``transcript``; ``None`` if no wake phrase leads.
 
     Returns ``""`` for a wake-only utterance ("hey quill" alone — arm and
     wait), the remaining command text when a wake phrase prefixes it, and

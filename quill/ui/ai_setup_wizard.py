@@ -726,12 +726,22 @@ class AISetupWizard:
         if self.dialog.IsModal():
             self.dialog.EndModal(wx.ID_OK)
         # Hand off to the AI Hub Engines tab after the wizard closes, so the user
-        # lands exactly where the pack install + sign-in happen.
+        # lands exactly where the pack install + sign-in happen. Deferred with
+        # CallAfter: opening the modal AI Hub synchronously here would nest it
+        # inside the wizard's still-unwinding modal handler (#801 review).
         if open_engines:
-            try:
-                self._open_engines_cb()
-            except Exception:  # noqa: BLE001 - a hand-off failure must not crash setup
-                self._announce("Open AI > AI Hub > Engines to connect your agent.")
+
+            def _hand_off() -> None:
+                try:
+                    self._open_engines_cb()
+                except Exception:  # noqa: BLE001 - a hand-off failure must not crash setup
+                    self._announce("Open AI > AI Hub > Engines to connect your agent.")
+
+            call_after = getattr(wx, "CallAfter", None)
+            if callable(call_after):
+                call_after(_hand_off)
+            else:  # stub wx in unit tests
+                _hand_off()
 
 
 def _probe_provider(provider: str, api_key: str) -> tuple[bool, str]:

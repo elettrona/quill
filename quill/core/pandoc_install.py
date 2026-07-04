@@ -115,12 +115,17 @@ def _verify_sha256(path: Path) -> None:
 
 def _extract_pandoc(archive: Path, progress_fn: ProgressCallback | None) -> Path:
     """Extract just ``pandoc.exe`` (and any DLLs beside it) into the managed dir."""
-    target = managed_pandoc_dir()
-    target.mkdir(parents=True, exist_ok=True)
     if progress_fn is not None:
         progress_fn(0.97, "Extracting Pandoc...")
     found: Path | None = None
     with zipfile.ZipFile(archive) as zf:
+        # Pre-scan before touching the disk: a malformed archive must not
+        # leave behind a fresh managed dir with stray DLLs (#798 review).
+        all_names = [Path(i.filename).name for i in zf.infolist() if not i.is_dir()]
+        if not any(name.lower() == "pandoc.exe" for name in all_names):
+            raise PandocInstallError("The downloaded archive did not contain pandoc.exe.")
+        target = managed_pandoc_dir()
+        target.mkdir(parents=True, exist_ok=True)
         for info in zf.infolist():
             if info.is_dir():
                 continue

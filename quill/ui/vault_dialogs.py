@@ -14,6 +14,23 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 
+def _end_modal_then(wx: Any, dialog: Any, func: Callable[..., Any], *args: Any) -> None:
+    """End the modal first, then dispatch the activation callback.
+
+    Activation callbacks open files or mutate the UI; running them while the
+    dialog is still modal (parent disabled) caused focus glitches and
+    re-entrancy risk (#788 review). CallAfter defers until the modal has
+    unwound; stub wx objects in unit tests fall back to a direct call.
+    """
+    if dialog is not None:
+        dialog.EndModal(wx.ID_OK)
+    call_after = getattr(wx, "CallAfter", None)
+    if callable(call_after):
+        call_after(func, *args)
+    else:
+        func(*args)
+
+
 class VaultListDialog:
     """A labelled, activatable list of ``(label, payload)`` rows."""
 
@@ -31,6 +48,7 @@ class VaultListDialog:
         self._on_activate = on_activate
         self._listbox: Any = None
         self._dialog: Any = None
+        self._activated = False
 
     @property
     def labels(self) -> list[str]:
@@ -67,8 +85,23 @@ class VaultListDialog:
 
     def _on_listbox_activate(self, _event: Any) -> None:
         index = self._listbox.GetSelection() if self._listbox is not None else -1
-        if self.activate_index(index) and self._dialog is not None:
-            self._dialog.EndModal(self._wx.ID_OK)
+        if 0 <= index < len(self._items):
+            self._activated = True
+            _end_modal_then(self._wx, self._dialog, self.activate_index, index)
+
+    def activate_selected(self) -> bool:
+        """Activate the currently selected row (the OK/Open button path).
+
+        No-op when list activation already dispatched (Enter/double-click ends
+        the modal with ID_OK too, and must not open the row twice).
+        """
+        if self._activated:
+            return False
+        index = self._listbox.GetSelection() if self._listbox is not None else -1
+        if not 0 <= index < len(self._items):
+            return False
+        self._activated = True
+        return self.activate_index(index)
 
 
 class VaultFilterDialog:
@@ -108,6 +141,7 @@ class VaultFilterDialog:
         self._listbox: Any = None
         self._dialog: Any = None
         self._checkboxes: list[Any] = []
+        self._activated = False
 
     def _call_provider(self, query: str, options: dict[str, bool]) -> Sequence[tuple[str, Any]]:
         return self._provider(query, options) if self._option_labels else self._provider(query)
@@ -189,8 +223,22 @@ class VaultFilterDialog:
         index = self._listbox.GetSelection() if self._listbox is not None else -1
         if index < 0 and self._items:
             index = 0  # Enter in the field opens the top match
-        if self.activate_index(index) and self._dialog is not None:
-            self._dialog.EndModal(self._wx.ID_OK)
+        if 0 <= index < len(self._items):
+            self._activated = True
+            _end_modal_then(self._wx, self._dialog, self.activate_index, index)
+
+    def activate_selected(self) -> bool:
+        """Activate the selected row from the OK/Open button; no-op if the
+        list already dispatched (Enter/double-click also ends with ID_OK)."""
+        if self._activated:
+            return False
+        index = self._listbox.GetSelection() if self._listbox is not None else -1
+        if index < 0 and self._items:
+            index = 0
+        if not 0 <= index < len(self._items):
+            return False
+        self._activated = True
+        return self.activate_index(index)
 
     def _on_listbox_activate(self, _event: Any) -> None:
         self._activate_selected()
@@ -240,6 +288,70 @@ class VaultExplorerDialog:
         if path is None:
             event.Skip()  # a folder: let the tree expand/collapse
             return
-        self._on_activate(path)
-        if self._dialog is not None:
-            self._dialog.EndModal(self._wx.ID_OK)
+        _end_modal_then(self._wx, self._dialog, self._on_activate, path)
+
+
+# ── Modal shells ─────────────────────────────────────────────────────────────
+# Shared dialog plumbing for the MainFrame vault mixin, kept here so the mixin
+# stays within its GATE-11 size budget. ``frame`` is the MainFrame.
+
+
+def show_vault_list_modal(frame: Any, heading: str, items: Any, on_activate: Any = None) -> None:
+    """Show a VaultListDialog modally; OK ("Open") activates the selection."""
+    from quill.ui.dialog_contract import apply_modal_ids
+
+    wx = frame._wx
+    activate = on_activate or (lambda payload: frame._open_vault_note(payload[0], payload[1]))
+    view = VaultListDialog(wx, heading=heading, items=items, on_activate=activate)
+    dialog = wx.Dialog(frame.frame, title=heading, style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    outer = view.populate(dialog)
+    buttons = dialog.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL)
+    outer.Add(buttons, 0, wx.EXPAND | wx.ALL, 10)
+    apply_modal_ids(
+        dialog, affirmative_id=wx.ID_OK, affirmative_label="&Open", cancel_id=wx.ID_CANCEL
+    )
+    try:
+        # The button is labelled "Open", so OK must actually open the selected
+        # row, exactly like Enter on the list (#788 review).
+        if frame._show_modal_dialog(dialog, heading) == wx.ID_OK:
+            view.activate_selected()
+    finally:
+        dialog.Destroy()
+
+
+def show_vault_filter_modal(
+    frame: Any,
+    heading: str,
+    *,
+    prompt: str,
+    provider: Any,
+    on_activate: Any,
+    count_verb: str,
+    option_labels: Sequence[str] = (),
+) -> None:
+    """Show a VaultFilterDialog modally; OK ("Open") activates the selection."""
+    from quill.ui.dialog_contract import apply_modal_ids
+
+    wx = frame._wx
+    view = VaultFilterDialog(
+        wx,
+        heading=heading,
+        prompt=prompt,
+        provider=provider,
+        on_activate=on_activate,
+        announce=frame._announce,
+        count_verb=count_verb,
+        option_labels=option_labels,
+    )
+    dialog = wx.Dialog(frame.frame, title=heading, style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    outer = view.populate(dialog)
+    buttons = dialog.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL)
+    outer.Add(buttons, 0, wx.EXPAND | wx.ALL, 10)
+    apply_modal_ids(
+        dialog, affirmative_id=wx.ID_OK, affirmative_label="&Open", cancel_id=wx.ID_CANCEL
+    )
+    try:
+        if frame._show_modal_dialog(dialog, heading) == wx.ID_OK:
+            view.activate_selected()
+    finally:
+        dialog.Destroy()
