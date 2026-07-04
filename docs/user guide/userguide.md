@@ -3648,6 +3648,22 @@ When you select a Quillin, the details pane shows all declared capabilities (for
 
 If a Quillin fails to load — because it requires a newer QUILL version (`min_quill_version`), a missing dependency (`requires`), or a manifest error — the error is shown in the details pane so you know what is blocking it.
 
+### The Quillin Hub: sharing what you make
+
+Everything you build in QUILL can be shared with the community through the **Quillin Hub** — not just Quillin extensions. The Hub accepts seven kinds of artifact:
+
+- **Quillin extensions** (a zipped folder with `manifest.json`)
+- **AI agents** (a single `.md` or `.json` agent file)
+- **Verbosity packs** (`.qvp.json`)
+- **Sound packs** (`.qsp`)
+- **Keyboard packs** (`.kqp`)
+- **AI skill packs** (`.sqp`)
+- **Pronunciation dictionaries** (`.json`)
+
+**Submit to Quillin Hub.** Choose **Tools → Quillins → Submit to Quillin Hub...** and pick your file. QUILL figures out what kind of artifact it is and runs the exact same checks the Hub runs on submission — locally, on your machine, with nothing uploaded. To check a Quillin extension, pick its `manifest.json` file; QUILL validates the whole folder. The result is read to you in plain language: **Passed** means your work clears every check QUILL applies to its own bundled artifacts; **Needs work** lists each error and warning so you know exactly what to fix. When your artifact passes, an **Open the Quillin Hub** button takes you to the Hub's submission page in your browser — and only that explicit button press opens anything; the check itself makes no network connection.
+
+Publication is handled through GitHub pull requests, so every submission is reviewed in the open. The Hub re-runs the same validation, scans any extension code for security and capability honesty, and reads your manifest so you never retype your name, version, or description.
+
 ### Authoring Quillins
 
 For developers, Quillins are designed to be "screen-reader-first." They follow a strict capability model: a Quillin must declare the minimum set of permissions it needs, and any sensitive action (like writing to a file or changing a setting) is consent-gated at runtime.
@@ -3668,7 +3684,7 @@ Quillins can contribute:
 - **Network host allowlist (`net_allowed_hosts`)** — when declaring the `net` capability, restrict outbound connections to a named list of hostnames or wildcard patterns. QUILL blocks connections to any unlisted host even if the user has granted blanket `net` consent.
 - **Minimum version (`min_quill_version`)** — declare the oldest QUILL release the Quillin supports. QUILL rejects it at load time if the running version is too old.
 
-See `docs/quillins.md` for the full authoring reference.
+See `docs/quillins/quillins.md` for the full authoring reference, and PRD section 5.83a ("The Quillin Hub — community distribution for every shareable artifact") for the developer guide covering every shareable QUILL file format (Quillins, agents, verbosity packs, sound packs, keyboard packs, skill packs, and pronunciation dictionaries) and how to validate and submit each one. The single validator is `python -m quill.tools.artifact_validate <path>`.
 
 ---
 

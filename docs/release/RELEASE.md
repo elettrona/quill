@@ -25,6 +25,11 @@ release notes.
 6. **Manifest regenerated.** `docs/site/updates/manifests/manifest-<X>.json`
    exists for the target version, alongside the historical `0.5.0`
    manifest that the public feed still points at during pre-release.
+7. **Quillin Hub service code shipped.** `quillin-hub/` is a Flask
+   service in this repo; the registry API, Submission Forge, sync
+   worker, and smoke test are all in-tree. Public deployment
+   (`hub.quillforall.org` -- DNS, hosting, Postgres) is a separate
+   ops track and is tracked separately from the release cut.
 
 ## Tag-time flip
 
