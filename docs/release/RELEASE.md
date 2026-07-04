@@ -29,7 +29,11 @@ release notes.
    service in this repo; the registry API, Submission Forge, sync
    worker, and smoke test are all in-tree. Public deployment
    (`hub.quillforall.org` -- DNS, hosting, Postgres) is a separate
-   ops track and is tracked separately from the release cut.
+   ops track and is tracked separately from the release cut. The
+   Ed25519 publisher signature gate (`quill/tools/signing.py` plus
+   the Submission Forge fail-closed hook) and the deployment
+   runbook (`docs/release/quillin-hub-deployment.md`) are in; the
+   protocol is documented in `docs/signing.md`.
 
 ## Tag-time flip
 
