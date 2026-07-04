@@ -23,15 +23,6 @@ installer-smoke*/
 # Local working files (scratch notes, profiling output, one-off logs)
 /local/
 
-# Local profiling / smoke-run artifacts (never committed)
-baseline_stdout.txt
-safemode_stdout.txt
-profile_stdout.txt
-profile_stderr.txt
-profile_run2.txt
-pyspy_run.txt
-startup_pyspy.svg
-x.html
 *.log
 .quill-reqs.sha256
 kokoro/_hf_cache/
@@ -113,12 +104,6 @@ docs/planning/source/**/*.log
 /docs/prototypes/
 # Local Windows build output (portable bundle, zip, installer) -- multi-GB, regenerated.
 /build-out/
-
-# Local AI provider report (not committed)
-/learned.md
-
-# Local pre-merge test plan (not committed)
-/test.md
 
 # Podcast audio is distributed via the podcast-v1 GitHub release, not git.
 docs/podcast/audio/
