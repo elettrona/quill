@@ -332,6 +332,56 @@ def test_write_docx_keeps_line_breaks(tmp_path: Path) -> None:
     assert paragraphs == ["one", "two", "three"]
 
 
+def test_write_docx_engine_native_forced(tmp_path: Path) -> None:
+    docx = pytest.importorskip("docx")
+    from quill.io.export import write_docx_document
+
+    doc = _doc("one\ntwo")
+    target = tmp_path / "native.docx"
+    write_docx_document(doc, target, engine="native")
+    paragraphs = [p.text for p in docx.Document(str(target)).paragraphs]
+    assert paragraphs == ["one", "two"]
+    assert doc.path == target and doc.modified is False
+
+
+def test_write_docx_engine_pandoc_forced(tmp_path: Path) -> None:
+    docx = pytest.importorskip("docx")
+    from quill.core.external_tools import get_external_tool_status
+    from quill.io.export import write_docx_document
+
+    if not get_external_tool_status("pandoc").installed:
+        pytest.skip("pandoc not installed")
+    doc = _doc("alpha\nbeta")
+    target = tmp_path / "pandoc.docx"
+    write_docx_document(doc, target, engine="pandoc")
+    text = "\n".join(p.text for p in docx.Document(str(target)).paragraphs)
+    assert "alpha" in text and "beta" in text
+    assert doc.path == target and doc.modified is False
+
+
+def test_write_docx_engine_invalid_rejected(tmp_path: Path) -> None:
+    from quill.io.export import write_docx_document
+
+    with pytest.raises(ValueError, match="engine"):
+        write_docx_document(_doc("x"), tmp_path / "a.docx", engine="bogus")
+
+
+def test_write_document_as_forwards_docx_engine(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import quill.io.export as export_mod
+
+    recorded: list[str] = []
+
+    def _fake(document: Document, path: Path | None = None, *, engine: str = "auto") -> Path:
+        recorded.append(engine)
+        return Path(path or "")
+
+    monkeypatch.setattr(export_mod, "write_docx_document", _fake)
+    write_document_as(_doc("x"), tmp_path / "a.docx", docx_engine="pandoc")
+    assert recorded == ["pandoc"]
+
+
 def test_format_label_for_path() -> None:
     assert format_label_for_path(Path("a.rtf")) == "rich text"
     assert format_label_for_path(Path("a.html")) == "HTML"

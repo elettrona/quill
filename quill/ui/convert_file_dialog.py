@@ -44,6 +44,7 @@ class ConvertRequest:
     output_token: str
     output_dir: Path
     action: str  # "save" or "open"
+    engine: str = "auto"  # "auto" | "pandoc" | "markitdown"
 
     @property
     def output_path(self) -> Path:
@@ -116,6 +117,47 @@ class ConvertFileDialog:
         self.all_formats_check.SetName(_("Show all Pandoc formats"))
         root.Add(self.all_formats_check, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
+        # --- Conversion engine ---
+        # Each choice carries a speakable outcome description so the user can
+        # hear what the engine keeps and drops before converting. MarkItDown
+        # applies only to Office/PDF sources producing Markdown or plain text;
+        # the Convert handler validates that and offers Pandoc when it doesn't.
+        self._engines: tuple[tuple[str, str, str], ...] = (
+            (
+                "auto",
+                _("Auto (recommended)"),
+                _("QUILL picks the engine for this conversion: Pandoc."),
+            ),
+            (
+                "pandoc",
+                _("Pandoc"),
+                _(
+                    "Converts between many formats. Keeps structure: headings, "
+                    "lists, tables, links, and footnotes."
+                ),
+            ),
+            (
+                "markitdown",
+                _("MarkItDown"),
+                _(
+                    "Reads Word, PowerPoint, Excel, or PDF into Markdown or plain "
+                    "text. Fast; headings, lists, and tables come through; images, "
+                    "comments, and fonts do not."
+                ),
+            ),
+        )
+        engine_row = wx.BoxSizer(wx.HORIZONTAL)
+        engine_label = wx.StaticText(self.dialog, label=_("Conversion &engine"))
+        self.engine_choice = wx.Choice(self.dialog, choices=[e[1] for e in self._engines])
+        self.engine_choice.SetName(_("Conversion engine"))
+        engine_row.Add(engine_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        engine_row.Add(self.engine_choice, 1, wx.EXPAND)
+        root.Add(engine_row, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+        self.engine_description = wx.StaticText(self.dialog, label=self._engines[0][2])
+        self.engine_description.SetName(_("Conversion engine description"))
+        root.Add(self.engine_description, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+        self.engine_choice.SetSelection(0)
+
         # --- Output folder ---
         out_row = wx.BoxSizer(wx.HORIZONTAL)
         out_label = wx.StaticText(self.dialog, label=_("Output f&older"))
@@ -159,6 +201,7 @@ class ConvertFileDialog:
         browse_output.Bind(wx.EVT_BUTTON, lambda _e: self._browse_output())
         self.all_formats_check.Bind(wx.EVT_CHECKBOX, lambda _e: self._on_toggle_all_formats())
         self.format_choice.Bind(wx.EVT_CHOICE, lambda _e: self._sync_open_button())
+        self.engine_choice.Bind(wx.EVT_CHOICE, lambda _e: self._sync_engine_description())
         self.convert_button.Bind(wx.EVT_BUTTON, lambda _e: self._submit("save"))
         self.open_button.Bind(wx.EVT_BUTTON, lambda _e: self._submit("open"))
         cancel_button.Bind(wx.EVT_BUTTON, lambda _e: self.dialog.EndModal(wx.ID_CANCEL))
@@ -202,6 +245,19 @@ class ConvertFileDialog:
     def _on_toggle_all_formats(self) -> None:
         keep = self._current_token() or "gfm"
         self._populate_formats(keep)
+
+    def _current_engine(self) -> str:
+        sel = self.engine_choice.GetSelection()
+        if 0 <= sel < len(self._engines):
+            return self._engines[sel][0]
+        return "auto"
+
+    def _sync_engine_description(self) -> None:
+        """Keep the description text matched to the selected engine."""
+        sel = self.engine_choice.GetSelection()
+        if 0 <= sel < len(self._engines):
+            self.engine_description.SetLabel(self._engines[sel][2])
+            self.dialog.Layout()
 
     # -- browse helpers -----------------------------------------------------
 
@@ -263,6 +319,7 @@ class ConvertFileDialog:
             output_token=token,
             output_dir=output_dir,
             action=action,
+            engine=self._current_engine(),
         )
         self.dialog.EndModal(wx.ID_OK if action == "save" else ID_CONVERT_AND_OPEN)
 

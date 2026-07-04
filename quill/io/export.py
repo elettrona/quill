@@ -259,8 +259,16 @@ def write_html_document(document: Document, path: Path | None = None) -> Path:
     return _write_utf8(document, target, markdown_to_html(document.text, title))
 
 
-def write_docx_document(document: Document, path: Path | None = None) -> Path:
+def write_docx_document(
+    document: Document, path: Path | None = None, *, engine: str = "auto"
+) -> Path:
     """Write a document's Markdown markup out as a Word (.docx) file.
+
+    ``engine`` selects the converter: ``auto`` (default) prefers the native
+    python-docx writer and falls back to Pandoc; ``native`` requires python-docx
+    and fails clearly when it is missing; ``pandoc`` forces the Pandoc path for
+    users who want structure-first Word styles instead of QUILL's run-level
+    formatting codes.
 
     Prefers the native python-docx writer (:mod:`quill.io.docx_writer`), which
     carries QUILL's hidden-codes attributes — per-run font family, point size,
@@ -272,6 +280,8 @@ def write_docx_document(document: Document, path: Path | None = None) -> Path:
     document is marked saved at the target like every other writer here — so the
     window title, the modified flag, and the next plain Save stay truthful.
     """
+    if engine not in {"auto", "native", "pandoc"}:
+        raise ValueError(f"Unknown docx engine {engine!r}; use auto, native, or pandoc.")
     target = path or document.path
     if target is None:
         raise ValueError("A path is required to save this document.")
@@ -279,10 +289,14 @@ def write_docx_document(document: Document, path: Path | None = None) -> Path:
 
     from quill.io.docx_writer import python_docx_available, write_docx
 
-    if python_docx_available():
+    if engine != "pandoc" and python_docx_available():
         write_docx(document, target)
         document.mark_saved(target)
         return target
+    if engine == "native":
+        raise ValueError(
+            "The native Word writer needs python-docx, which is not installed."
+        )
 
     import tempfile
 
@@ -303,7 +317,11 @@ def write_docx_document(document: Document, path: Path | None = None) -> Path:
 
 
 def write_document_as(
-    document: Document, path: Path | None = None, *, plain_text_link_style: str = "text"
+    document: Document,
+    path: Path | None = None,
+    *,
+    plain_text_link_style: str = "text",
+    docx_engine: str = "auto",
 ) -> Path:
     """Write ``document`` to ``path``, converting to the format of its extension.
 
@@ -315,6 +333,8 @@ def write_document_as(
     explicit "Save as plain text" command (``write_plain_text_document``) still
     flattens markup. ``plain_text_link_style`` is accepted for call-site symmetry
     and applies only on that explicit plain-text path (see :data:`LINK_STYLES`).
+    ``docx_engine`` is forwarded to :func:`write_docx_document` (the
+    ``docx_write_engine`` setting).
     """
     target = path or document.path
     if target is None:
@@ -329,7 +349,7 @@ def write_document_as(
     if suffix in _RTF_SUFFIXES:
         return write_rtf_document(document, target)
     if suffix in _DOCX_SUFFIXES:
-        return write_docx_document(document, target)
+        return write_docx_document(document, target, engine=docx_engine)
     if suffix in _HTML_SUFFIXES:
         return write_html_document(document, target)
     # A plain-text file the user opened (or saves to by extension) must round-trip
