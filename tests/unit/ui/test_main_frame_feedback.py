@@ -105,6 +105,21 @@ def test_report_bug_falls_back_to_legacy_when_hub_raises(monkeypatch) -> None:
     assert frame._status_message == "Report a Bug: using the built-in form"
 
 
+def test_modeless_bug_report_frame_closes_on_escape() -> None:
+    # A wx.Frame has no built-in Escape-closes behaviour (only wx.Dialog
+    # does), so the separate-window Report a Bug form must bind EVT_CHAR_HOOK
+    # and cancel on WXK_ESCAPE — otherwise Escape just dings. Pin the binding
+    # at the source level (the frame path needs live wx to construct).
+    import inspect
+
+    from quill.ui.main_frame import MainFrame
+
+    source = inspect.getsource(MainFrame._review_bug_report_modeless)
+    assert "EVT_CHAR_HOOK" in source
+    assert "WXK_ESCAPE" in source
+    assert "cancel()" in source
+
+
 def test_report_bug_reviews_then_opens_support_form(monkeypatch) -> None:
     # #618: the auto-open-browser step is opt-in via the
     # report_bug_auto_open_browser setting (default False in 0.7.0).

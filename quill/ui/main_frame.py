@@ -14949,6 +14949,16 @@ class MainFrame(
         self._bug_report_frame = frame
         self._bug_report_form_body = body
         frame.Bind(wx.EVT_CLOSE, lambda _e: cancel())
+
+        # A wx.Frame gives no Escape-closes behaviour (only wx.Dialog does),
+        # so Escape just dinged. Close on Escape like the modal path.
+        def _on_char_hook(event: object) -> None:
+            if event.GetKeyCode() == wx.WXK_ESCAPE:
+                cancel()
+                return
+            event.Skip()
+
+        frame.Bind(wx.EVT_CHAR_HOOK, _on_char_hook)
         frame.Show()
         # #188: ensure SR focus lands on the Summary field, not a button.
         self._wx.CallAfter(body["summary_field"].SetFocus)
