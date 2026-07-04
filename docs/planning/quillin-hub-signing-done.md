@@ -361,4 +361,4 @@ Local checks (run in this environment, **all green**):
 
 - Spec: `docs/superpowers/specs/2026-07-04-quillin-hub-signing-deployment-design.md`
 - Plan: `docs/superpowers/plans/2026-07-04-quillin-hub-signing-deployment.md`
-- This summary: `done.md`
+- This summary: `docs/planning/quillin-hub-signing-done.md` (originally `done.md` at the repo root; relocated to satisfy the root-markdown layout gate)
