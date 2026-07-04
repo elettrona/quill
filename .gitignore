@@ -20,6 +20,9 @@ installer-smoke*/
 # Whisper model download cache (populated at runtime/build time).
 .whisper-dl/
 
+# Local working files (scratch notes, profiling output, one-off logs)
+/local/
+
 # Local profiling / smoke-run artifacts (never committed)
 baseline_stdout.txt
 safemode_stdout.txt

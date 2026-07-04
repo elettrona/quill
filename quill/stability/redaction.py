@@ -4,7 +4,7 @@ This module is the single point through which the crash-bundle builder
 (H-2) and the safe-subprocess logger (H-1) pass strings that might
 contain secrets, file paths, or other personally identifying
 information. Keeping the redaction rules in one place is the only
-way to make the bundle redaction contract (``SECURITY.md``) testable.
+way to make the bundle redaction contract (``docs/SECURITY.md``) testable.
 
 The module is intentionally dependency-free and platform-neutral so it
 can be imported from ``quill.core`` (wx-free) and from the early-startup
@@ -12,7 +12,7 @@ logging configuration in ``quill/__main__.py``.
 
 Implements: ROADMAP SEC-13 (broad diagnostics secret redaction,
 covering ``token``, ``password``, and ``NAME_KEY`` assignment
-patterns) and the redaction contract in ``SECURITY.md:81``.
+patterns) and the redaction contract in ``docs/SECURITY.md:81``.
 """
 
 from __future__ import annotations
