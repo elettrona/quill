@@ -101,6 +101,11 @@ vosk = ["vosk>=0.3.45"]
 # MP3 chapter markers for batch document-to-speech (§4.8): mutagen writes the
 # ID3v2.3 CHAP/CTOC frames. Imported lazily in quill/core/speech/chapters.py.
 mp3 = ["mutagen>=1.48.1"]
+# Ed25519 / minisign-shaped signing for QUILL artifacts (Hub Submission Forge,
+# in-app submit dialog, in-app install path). Transitive on systems that
+# already have flask-migrate; promoted to a direct extra so the Hub's deploy
+# install is explicit.
+signing = ["PyNaCl>=1.6.0"]
 # Native Word (.docx) export with full formatting fidelity (font family, point
 # size, color, highlight, paragraph alignment) for the hidden-codes feature
 # (docs/planning/rich-text-formatting-hidden-codes-design.md). Optional: when absent,
