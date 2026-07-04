@@ -233,6 +233,16 @@ packages = ["quill"]
 # display-language switcher can find them in installed builds.
 "quill/locale" = "quill/locale"
 
+[tool.uv]
+# The GLOW backend wheels (quill-glow-core, acb-large-print) are vendored, not
+# on PyPI yet; without this, `uv lock` / `uv sync --all-extras` cannot resolve
+# the [glow] extra at all (pip users pass --find-links vendor/wheels manually).
+find-links = ["vendor/wheels"]
+# azure-ai-contentunderstanding is pinned to a pre-release (>=1.2.0b1); uv
+# refuses pre-releases across resolver splits unless told otherwise, which
+# made every `uv lock` fail outright.
+prerelease = "allow"
+
 [tool.pytest.ini_options]
 # Pin pythonpath so the worktree's `quill` package wins over the parent
 # checkout's `quill` package when both pyproject.toml files are visible
