@@ -62,7 +62,11 @@ class Settings:
     plain_text_link_style: str = "text_url"
     indent_with_tabs: bool = False
     indent_size: int = 4
-    auto_check_updates: bool = False
+    # On by default so signed safety advisories (the remote feature kill
+    # switch) actually reach installs; the check fetches QUILL's own signed
+    # feed and sends nothing about the user. An explicit stored False is
+    # honored, and Safe Mode skips the check entirely.
+    auto_check_updates: bool = True
     beta_updates: bool = False
     # Recommended (force-once) updates to important defaults, e.g. restoring
     # Find to Ctrl+F for users who had it on a QUILL-key chord. This is the
@@ -83,6 +87,15 @@ class Settings:
     # (works across formats; strips leading markup). On by default: it only
     # pre-fills the name for an untitled document, never renames anything.
     first_line_as_title: bool = True
+    # Restore points: snapshot the document text on every save so File >
+    # Restore Previous Version can bring any earlier save back. On by default;
+    # recording is content-addressed (an unchanged save stores nothing) and
+    # best-effort (it can never be the reason a save fails).
+    restore_points_enabled: bool = True
+    # Per-document disk cap for restore-point history, in megabytes. Age
+    # thinning (keep a week fully, then daily, then weekly) runs first; the
+    # newest five versions are never pruned regardless of the cap.
+    restore_points_max_mb: int = 200
     # Background model warm-up after startup so the first use is fast. Loads the
     # model into memory; turn off to save RAM if you don't use the feature.
     warm_dictation_model: bool = True
@@ -592,7 +605,7 @@ class Settings:
             indent_size = int(data.get("indent_size", 4))
         except (TypeError, ValueError):
             indent_size = 4
-        auto_check_updates = bool(data.get("auto_check_updates", False))
+        auto_check_updates = bool(data.get("auto_check_updates", True))
         beta_updates = bool(data.get("beta_updates", False))
         apply_recommended_keymap_updates = bool(data.get("apply_recommended_keymap_updates", True))
         raw_applied = data.get("applied_recommended_updates", [])
@@ -612,6 +625,8 @@ class Settings:
             recent_files_limit = 10
         recent_files_auto_clear_missing = bool(data.get("recent_files_auto_clear_missing", False))
         first_line_as_title = bool(data.get("first_line_as_title", True))
+        restore_points_enabled = bool(data.get("restore_points_enabled", True))
+        restore_points_max_mb = _clamp_int(data.get("restore_points_max_mb", 200), 200, 10, 5000)
         warm_dictation_model = bool(data.get("warm_dictation_model", True))
         warm_kokoro_model = bool(data.get("warm_kokoro_model", True))
         tray_enabled = bool(data.get("tray_enabled", False))
@@ -1203,6 +1218,8 @@ class Settings:
             recent_files_limit=recent_files_limit,
             recent_files_auto_clear_missing=recent_files_auto_clear_missing,
             first_line_as_title=first_line_as_title,
+            restore_points_enabled=restore_points_enabled,
+            restore_points_max_mb=restore_points_max_mb,
             warm_dictation_model=warm_dictation_model,
             warm_kokoro_model=warm_kokoro_model,
             tray_enabled=tray_enabled,

@@ -5446,6 +5446,53 @@ auto-pruned at 30 days.</li>
 <code>…snap.tmp</code> and rename to <code>…snap</code> on flush so a
 power loss mid-write cannot corrupt the recovery store.</li>
 </ul>
+<h3
+id="a-restore-points-per-save-document-history-shipped-0.9.0-beta-1">5.39a
+Restore points — per-save document history (shipped 0.9.0 Beta 1)</h3>
+<p>The first shipped slice of the QUILL Sync plan
+(<code>docs/planning/quill-sync-plan.md</code>, section 7): document
+versioning, entirely offline, with no sync engine involved.</p>
+<p><strong>Model.</strong> Every successful save snapshots the
+document’s canonical text into a content-addressed store
+(<code>restore_points/&lt;doc-key&gt;/blobs/&lt;sha256&gt;.txt</code> +
+an atomically-written <code>index.json</code>, under the QUILL data
+dir). Content addressing makes unchanged saves free and gives dedup
+without reference counting. The store is wx-free, strict-typed
+<code>quill/core/restore_points.py</code>.</p>
+<p><strong>Invariants.</strong></p>
+<ul>
+<li>Recording is best-effort by contract: the save-path hook
+(<code>_record_save_restore_point</code>, called from the
+<code>_write_document_to_disk</code> chokepoint so every save path is
+covered) is fully guarded — a snapshot failure can never be the reason a
+save fails.</li>
+<li>Restoring is itself reversible: the current text is recorded as a
+restore point (source <code>restore</code>) before it is replaced, and
+the restore lands in the editor as a modified buffer — nothing touches
+disk until the user saves.</li>
+<li>Retention thins by age (keep 7 days fully, then daily to 30 days,
+then weekly) under a per-document size cap
+(<code>restore_points_max_mb</code>, default 200, clamped 10-5000); the
+newest five versions are never pruned regardless of the cap.</li>
+<li>Documents over 20 MB of text are not snapshotted (the cap would be
+consumed by a handful of saves).</li>
+</ul>
+<p><strong>UI.</strong>
+<code>File &gt; Restore Previous Version...</code> (command
+<code>file.restore_previous_version</code>, assignable, no default key)
+lists versions with speakable labels (“Today at 4:12 PM - 2,341 words”,
+“(before a restore)” marking pre-restore snapshots), skips the version
+identical to the current editor text, and offers
+<strong>Restore</strong> (confirmed, announced, one editor-level undo of
+a restore via the pre-restore snapshot) and <strong>Open as
+Copy</strong> (a new untitled tab). Settings: <strong>Keep restore
+points when saving</strong> (default on) and the disk limit, both with
+speakable specs.</p>
+<p><strong>Relationship to the other safety nets.</strong> Persistent
+undo is in-session; <code>core.backups</code> keeps the single pre-save
+<code>.bak</code>; restore points are the cross-session, long-horizon
+history above both. The Sync plan’s later phases reuse this exact store
+as the sync engine’s version layer.</p>
 <h3 id="paragraph-line-and-footnote-refinements">5.40 Paragraph, line,
 and footnote refinements</h3>
 <ul>

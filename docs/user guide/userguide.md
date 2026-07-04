@@ -2991,6 +2991,22 @@ Use bookmarks for long-lived anchors; use marks when you are actively traversing
 
 Quill autosaves at a timed interval and keeps backup snapshots. It avoids unnecessary duplicate autosave writes and keeps state management efficient.
 
+### Restore points — bring back any earlier save
+
+Every time you save, QUILL quietly keeps a snapshot of the document. **File > Restore Previous Version** lists them in plain language — "Today at 4:12 PM - 2,341 words" — newest first. Pick one and choose:
+
+- **Restore** — replace the editor text with that version. Your current text is saved as a restore point first, so restoring is itself reversible, and the document is marked modified so nothing touches the disk until you save.
+- **Open as Copy** — open the earlier version as a new untitled document, leaving your current document exactly as it is. Good for comparing or rescuing a paragraph.
+
+Some honest details worth knowing:
+
+- Saving unchanged text stores nothing extra — snapshots are content-based, so identical saves are free.
+- Keeping a snapshot can never be the reason a save fails. If the disk is full, your save still completes; QUILL just logs that the snapshot was skipped.
+- History thins as it ages: everything from the last week is kept, then one version per day for a month, then one per week, and the newest five versions are never pruned. **Restore point disk limit (MB)** in Preferences caps how much space one document's history can use (200 MB by default), and **Keep restore points when saving** turns the feature off entirely.
+- The command `file.restore_previous_version` has no default shortcut; assign one in the Keymap Editor if you reach for it often.
+
+How this fits with QUILL's other safety nets: **undo** (and persistent undo) covers the current editing session, **backups** keep a copy of what was on disk just before each save, and **restore points** are the long-term history — any earlier save, days or weeks later, across restarts. You never need to choose between them; they all just run.
+
 ### Recovery
 
 If Quill closes unexpectedly, it can offer a recovery snapshot on the next launch. That is not a dramatic feature. It is a humane one.

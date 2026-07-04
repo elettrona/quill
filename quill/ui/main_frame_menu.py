@@ -78,6 +78,7 @@ class MenuBuilderMixin:
         self._id_reload_from_disk = wx.NewIdRef()
         self._id_check_external_changes = wx.NewIdRef()
         self._id_restore_backup = wx.NewIdRef()
+        self._id_restore_previous_version = wx.NewIdRef()
         self._id_save_session = wx.NewIdRef()
         self._id_open_session = wx.NewIdRef()
         self._id_clear_recent_sessions = wx.NewIdRef()
@@ -384,6 +385,12 @@ class MenuBuilderMixin:
         file_menu.Append(self._id_reload_from_disk, _("&Reload from Disk"))
         file_menu.Append(self._id_check_external_changes, _("Check for E&xternal Changes..."))
         file_menu.Append(self._id_restore_backup, _("Restore &Backup..."))
+        file_menu.Append(
+            self._id_restore_previous_version,
+            self._menu_label(
+                _("Restore Previous &Version..."), "file.restore_previous_version"
+            ),
+        )
         file_menu.AppendSeparator()
         # --- Current-file operations (Power Tools recirculation, menus.md Phase 4) ---
         self._append_power_tools_file_ops_items(file_menu)
@@ -2736,6 +2743,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.restore_backup(),
             id=self._id_restore_backup,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.restore_previous_version(),
+            id=self._id_restore_previous_version,
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.save_session(), id=self._id_save_session)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_session(), id=self._id_open_session)

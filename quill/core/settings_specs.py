@@ -226,6 +226,28 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("title", "filename", "first line", "save", "name", "heading"),
     ),
     SettingSpec(
+        "restore_points_enabled",
+        "Keep restore points when saving",
+        "general",
+        "bool",
+        "Each time you save, QUILL keeps a snapshot of the document so File > "
+        "Restore Previous Version can bring any earlier save back. Saving "
+        "unchanged text stores nothing extra, and keeping a snapshot can never "
+        "be the reason a save fails. On by default.",
+        keywords=("restore", "version", "history", "snapshot", "save", "backup"),
+    ),
+    SettingSpec(
+        "restore_points_max_mb",
+        "Restore point disk limit (MB)",
+        "general",
+        "int",
+        "How much disk space one document's restore-point history may use, in "
+        "megabytes. Older versions thin out first (a full week is kept, then "
+        "one per day, then one per week), and the newest five versions are "
+        "always kept regardless of this limit.",
+        keywords=("restore", "version", "disk", "space", "limit", "history"),
+    ),
+    SettingSpec(
         "language",
         "Interface language",
         "general",
@@ -1645,9 +1667,14 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "Check for updates on startup",
         "admin",
         "bool",
-        "Look for a newer release each time QUILL starts.",
+        "Look for a newer release each time QUILL starts. This check also "
+        "delivers signed safety advisories - the rare notice that temporarily "
+        "disables a specific shipped feature if the community reports it is "
+        "misbehaving - so leaving it on keeps that protection current. On by "
+        "default; the check fetches QUILL's own signed feed and sends nothing "
+        "about you or your documents.",
         feature_id="core.updates",
-        keywords=("updates", "startup", "check"),
+        keywords=("updates", "startup", "check", "safety", "advisory"),
     ),
     SettingSpec(
         "beta_updates",

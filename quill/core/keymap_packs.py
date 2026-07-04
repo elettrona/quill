@@ -60,6 +60,7 @@ _PACK_LABELS: dict[str, str] = {
     "file.open": "Open",
     "file.save": "Save",
     "file.save_as": "Save As",
+    "file.restore_previous_version": "Restore Previous Version",
     "file.open_from_remote": "Open From Remote...",
     "file.save_to_remote": "Save To Remote",
     "file.save_copy_to_remote": "Save Copy To Remote...",
