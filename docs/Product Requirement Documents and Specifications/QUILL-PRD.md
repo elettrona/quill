@@ -3411,6 +3411,34 @@ The Quillin Manager (`Tools > Quillins`) lets users discover, enable, disable, a
 
 ---
 
+### 5.83a The Quillin Hub — community distribution for every shareable artifact
+
+The Quillin Hub (`hub.quillforall.org`; service code in `quillin-hub/`) is the community store and submission surface for **every** shareable QUILL artifact type, not just Quillin extensions. Seven artifact families are accepted for review and publication:
+
+| Type id | Artifact | Format | Authoritative validator |
+| --- | --- | --- | --- |
+| `quillin` | Quillin extension | directory / .zip with `manifest.json` | `quill.tools.quillin_lint` |
+| `agent` | AI agent (`quill.agent/1`) | `.md` / `.json` | `quill.tools.agent_lint` |
+| `verbosity-pack` | Verbosity pack | `.qvp.json` | `quill.core.verbosity.qvp` |
+| `sound-pack` | QSP sound pack | `.qsp` ZIP or directory | `quill.core.sound_pack` |
+| `keyboard-pack` | Keyboard Quill Pack | `.kqp` | `quill.tools.kqp_validator` |
+| `skill-pack` | Skill Quill Pack | `.sqp` | `quill.tools.sqp_validator` |
+| `pronunciation-dictionary` | Pronunciation dictionary | `.json` | pronunciation schema check |
+
+**One validation authority.** `python -m quill.tools.artifact_validate <path> [--type ID] [--strict] [--json]` detects the artifact type (by suffix, manifest sniffing, or schema markers) and dispatches to the per-type validator listed above. The Hub's Submission Forge, CI, and the in-app submission check all run this same tool, so an author never sees three different verdicts. Exit codes follow the validator convention (0 pass, 1 issues, 2 not found/undetectable); `--json` emits the machine-readable report the Forge consumes.
+
+**The Submission Forge.** The Hub's `/forge/submit` flow accepts any supported file, auto-detects the type (with a manual override), and runs a three-stage audit: (1) `artifact_validate` validation; (2) for Quillins only, a Bandit scan plus the AST `SecurityWatchdog` capability-honesty check (undeclared `fs`/`net`/`stability` imports and `eval`/`exec` fail the submission); (3) metadata extraction from the artifact's own manifest or front matter so authors never retype name/version/description. The result is an accessible plain-language Forge Report; publication itself stays GitHub-native (a guided pull request), keeping review transparent.
+
+**Registry API.** `/api/v1/types`, `/api/v1/artifacts[?type=…]`, and `/api/v1/artifacts/<id>/latest` serve the verified catalog to clients; the original `/api/v1/plugins` endpoints remain as Quillin-only aliases. A sync worker mirrors artifacts that land on `main` (bundled/example Quillins, catalog agents, bundled `.sqp` skills) into the storefront as Verified.
+
+**In-app tie-in.** **Tools > Quillins > Submit to Quillin Hub...** (`tools.quillin_hub_submit`) runs the identical `artifact_validate` checks locally and reports pass/fail in an accessible hardened dialog. Picking a Quillin's `manifest.json` validates the whole folder (the accessible alternative to a directory picker). The Quillin Hub website opens in the browser only on the explicit "Open the Quillin Hub" button — QUILL itself makes no network call anywhere in the flow, so the command needs no egress-audit entry.
+
+**Roadmap linkage.** Public deployment of the Hub is #517 (O14); the signing/marketplace trust model that would let vetted third-party Quillins load off the SEC-8 experimental flag is #519 (O16). This section covers the submission/validation platform and the in-app surface; signing and deployment remain open acceptance criteria on those issues.
+
+**Implementation map.** `quill/tools/artifact_validate.py` (detection + dispatch; tests in `tests/unit/tools/test_artifact_validate.py`), `quill/ui/quillin_hub_submit.py` (submission-check dialog), `quill/ui/main_frame_quillins.py` (menu item + command), `quillin-hub/` (Flask service: `app/artifacts/registry.py`, `app/forge/`, `app/api/`, `worker/sync_to_pages.py`, `smoke_test.py`).
+
+---
+
 ### 5.84 Skill Quill Pack (.sqp) — multi-step AI workflows in plain text
 
 A `.sqp` (Skill Quill Pack) file is a Markdown document with YAML front matter where level-1 headings define sequential AI steps. It extends `.pqp` prompt packs from single instructions to multi-step workflows with parameters, variable chaining, and conditional branching.
