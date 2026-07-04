@@ -790,6 +790,18 @@ def test_corrupt_settings_file_is_quarantined_then_defaults(
     assert backups[0].read_text(encoding="utf-8") == "{ this is not valid json"
 
 
+def test_restore_points_settings_default_and_clamp(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    assert Settings().restore_points_enabled is True
+    assert Settings().restore_points_max_mb == 200
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    save_settings(Settings(restore_points_enabled=False, restore_points_max_mb=9999999))
+    loaded = load_settings()
+    assert loaded.restore_points_enabled is False
+    assert loaded.restore_points_max_mb == 5000  # clamped to the sane ceiling
+
+
 def test_docx_engine_settings_default_and_round_trip(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

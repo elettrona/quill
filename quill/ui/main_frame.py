@@ -514,6 +514,7 @@ from quill.ui.main_frame_power_tools_menu import PowerToolsMenuMixin
 from quill.ui.main_frame_profile_picker import ProfilePickerMixin
 from quill.ui.main_frame_quill_key import QuillKeyMixin
 from quill.ui.main_frame_quillins import QuillinsMenuMixin
+from quill.ui.main_frame_restore_points import RestorePointsMixin
 from quill.ui.main_frame_reveal_codes import RevealCodesMixin
 from quill.ui.main_frame_section_move import SectionMoveMixin
 from quill.ui.main_frame_selection import SelectionMarksMixin
@@ -889,6 +890,7 @@ class MainFrame(
     PowerToolsMenuMixin,
     RevealCodesMixin,
     InlineNotesMixin,
+    RestorePointsMixin,
     QuillinsMenuMixin,
     ContextHelpMixin,
     WatchProfileDialogMixin,
@@ -3394,6 +3396,7 @@ class MainFrame(
         self.register_format_codes_commands()
         self.register_reveal_codes_commands()
         self.register_inline_note_commands()
+        self.register_restore_point_commands()
         self.commands.register(
             "format.heading_1",
             "Insert Heading 1",
@@ -9787,6 +9790,9 @@ class MainFrame(
             docx_engine=docx_engine,
         )
         self._sync_publishing_linkage_for_document(document)  # type: ignore[arg-type]
+        # Restore points: snapshot the canonical text of every successful save
+        # (best-effort by contract; can never be the reason a save fails).
+        self._record_save_restore_point(document)
 
     def _sync_publishing_linkage_for_document(self, document: Document) -> None:
         """Persist or refresh this document's publishing linkage, keyed by its path.

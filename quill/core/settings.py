@@ -83,6 +83,15 @@ class Settings:
     # (works across formats; strips leading markup). On by default: it only
     # pre-fills the name for an untitled document, never renames anything.
     first_line_as_title: bool = True
+    # Restore points: snapshot the document text on every save so File >
+    # Restore Previous Version can bring any earlier save back. On by default;
+    # recording is content-addressed (an unchanged save stores nothing) and
+    # best-effort (it can never be the reason a save fails).
+    restore_points_enabled: bool = True
+    # Per-document disk cap for restore-point history, in megabytes. Age
+    # thinning (keep a week fully, then daily, then weekly) runs first; the
+    # newest five versions are never pruned regardless of the cap.
+    restore_points_max_mb: int = 200
     # Background model warm-up after startup so the first use is fast. Loads the
     # model into memory; turn off to save RAM if you don't use the feature.
     warm_dictation_model: bool = True
@@ -612,6 +621,8 @@ class Settings:
             recent_files_limit = 10
         recent_files_auto_clear_missing = bool(data.get("recent_files_auto_clear_missing", False))
         first_line_as_title = bool(data.get("first_line_as_title", True))
+        restore_points_enabled = bool(data.get("restore_points_enabled", True))
+        restore_points_max_mb = _clamp_int(data.get("restore_points_max_mb", 200), 200, 10, 5000)
         warm_dictation_model = bool(data.get("warm_dictation_model", True))
         warm_kokoro_model = bool(data.get("warm_kokoro_model", True))
         tray_enabled = bool(data.get("tray_enabled", False))
@@ -1203,6 +1214,8 @@ class Settings:
             recent_files_limit=recent_files_limit,
             recent_files_auto_clear_missing=recent_files_auto_clear_missing,
             first_line_as_title=first_line_as_title,
+            restore_points_enabled=restore_points_enabled,
+            restore_points_max_mb=restore_points_max_mb,
             warm_dictation_model=warm_dictation_model,
             warm_kokoro_model=warm_kokoro_model,
             tray_enabled=tray_enabled,

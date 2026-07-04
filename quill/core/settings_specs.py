@@ -226,6 +226,28 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("title", "filename", "first line", "save", "name", "heading"),
     ),
     SettingSpec(
+        "restore_points_enabled",
+        "Keep restore points when saving",
+        "general",
+        "bool",
+        "Each time you save, QUILL keeps a snapshot of the document so File > "
+        "Restore Previous Version can bring any earlier save back. Saving "
+        "unchanged text stores nothing extra, and keeping a snapshot can never "
+        "be the reason a save fails. On by default.",
+        keywords=("restore", "version", "history", "snapshot", "save", "backup"),
+    ),
+    SettingSpec(
+        "restore_points_max_mb",
+        "Restore point disk limit (MB)",
+        "general",
+        "int",
+        "How much disk space one document's restore-point history may use, in "
+        "megabytes. Older versions thin out first (a full week is kept, then "
+        "one per day, then one per week), and the newest five versions are "
+        "always kept regardless of this limit.",
+        keywords=("restore", "version", "disk", "space", "limit", "history"),
+    ),
+    SettingSpec(
         "language",
         "Interface language",
         "general",
