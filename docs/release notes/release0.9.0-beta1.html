@@ -320,7 +320,12 @@ always reviewable</h3>
 table of contents; AI spell check and grammar-and-style check; translate
 a selection or document; the AI Thesaurus; and Document Q&amp;A. Read
 the selection or document aloud, or export it as audio in a natural
-cloud voice, alongside QUILL’s on-device speech. <strong>Why it
+cloud voice, alongside QUILL’s on-device speech - and new this beta,
+<strong>ElevenLabs</strong> joins the Read Aloud voice list: bring your
+own key, pick an ElevenLabs voice like any other, and QUILL synthesizes
+sentence by sentence with smart caching so repeated text is never
+re-billed. Consent is per session, and like every cloud voice it is
+optional beside the always-free on-device engines. <strong>Why it
 matters:</strong> every proposed change is an accessible accept/reject
 preview and a single undo step - help you can trust, not magic you have
 to babysit.</p>
@@ -934,7 +939,16 @@ that from us in exactly those words.</p>
 <h3 id="download-only-what-you-need">Download only what you need</h3>
 <p>The base installer is smaller because the heavy, optional pieces now
 download on demand - checksum-verified, with a cancelable progress bar,
-disabled in Safe Mode: - The <strong>offline speech engine</strong>
+disabled in Safe Mode: - <strong>Pandoc</strong> - the engine behind
+Word, ODT, EPUB, and RTF import/export was the single largest bundled
+component (~220 MB unpacked). The first time a conversion needs it,
+QUILL offers the official, pinned build right there (~45 MB) - roughly
+halving the installer on its own. - The <strong>braille translation
+pack</strong> - the liblouis tables and BRF profiles behind the
+Translation submenu and embossing export (~68 MB unpacked; a ~9 MB
+download when you first reach for them). Reading with a braille display
+never needed them - that is your screen reader - and now the installer
+does not carry them either. - The <strong>offline speech engine</strong>
 (whisper.cpp), <strong>Kokoro</strong> neural voices, and the classic
 <strong>eSpeak NG</strong> and <strong>DECtalk</strong> voices. - The
 <strong>Vosk</strong> speech engine - a tiny, very-low-resource
@@ -945,6 +959,9 @@ Vosk</strong> or the Optional Components dialog below. -
 <strong>Spanish</strong> or <strong>French</strong> under <strong>Tools
 &gt; Spell Check Language</strong> and QUILL fetches the dictionary the
 first time. - And the audio-export helper, <strong>FFmpeg</strong>.</p>
+<p><strong>Upgrading from a release that bundled Pandoc or the braille
+pack?</strong> Your existing copies are kept and keep working - nothing
+to re-download.</p>
 <p>No speech engine is bundled in the installer any more - even the
 small default downloads the first time you dictate - and some build-only
 data was dropped from the runtime, so the base download is lighter than

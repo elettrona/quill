@@ -132,7 +132,11 @@ across dialogs.
 Rewrite, summarise, expand, continue, fix grammar, or generate a table of contents;
 AI spell check and grammar-and-style check; translate a selection or document; the
 AI Thesaurus; and Document Q&A. Read the selection or document aloud, or export it as
-audio in a natural cloud voice, alongside QUILL's on-device speech.
+audio in a natural cloud voice, alongside QUILL's on-device speech - and new this
+beta, **ElevenLabs** joins the Read Aloud voice list: bring your own key, pick an
+ElevenLabs voice like any other, and QUILL synthesizes sentence by sentence with
+smart caching so repeated text is never re-billed. Consent is per session, and like
+every cloud voice it is optional beside the always-free on-device engines.
 **Why it matters:** every proposed change is an accessible accept/reject preview and
 a single undo step - help you can trust, not magic you have to babysit.
 
@@ -732,6 +736,15 @@ fixed yet, you hear that from us in exactly those words.
 
 The base installer is smaller because the heavy, optional pieces now download on
 demand - checksum-verified, with a cancelable progress bar, disabled in Safe Mode:
+- **Pandoc** - the engine behind Word, ODT, EPUB, and RTF import/export was the
+  single largest bundled component (~220 MB unpacked). The first time a
+  conversion needs it, QUILL offers the official, pinned build right there
+  (~45 MB) - roughly halving the installer on its own.
+- The **braille translation pack** - the liblouis tables and BRF profiles behind
+  the Translation submenu and embossing export (~68 MB unpacked; a ~9 MB
+  download when you first reach for them). Reading with a braille display never
+  needed them - that is your screen reader - and now the installer does not
+  carry them either.
 - The **offline speech engine** (whisper.cpp), **Kokoro** neural voices, and the
   classic **eSpeak NG** and **DECtalk** voices.
 - The **Vosk** speech engine - a tiny, very-low-resource dictation and transcription
@@ -741,6 +754,9 @@ demand - checksum-verified, with a cancelable progress bar, disabled in Safe Mod
   under **Tools > Spell Check Language** and QUILL fetches the dictionary the first
   time.
 - And the audio-export helper, **FFmpeg**.
+
+**Upgrading from a release that bundled Pandoc or the braille pack?** Your
+existing copies are kept and keep working - nothing to re-download.
 
 No speech engine is bundled in the installer any more - even the small default
 downloads the first time you dictate - and some build-only data was dropped from the
